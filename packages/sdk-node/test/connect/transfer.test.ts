@@ -18,6 +18,11 @@ import {
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PolarisError } from "@polaris-key/client-core";
+import {
+  DISK_RESERVE,
+  TRANSFER_MAX_FILES,
+  TRANSFER_QUOTA_BYTES,
+} from "../../src/connect/transferStore.js";
 import type { PolarisKeyClient } from "../../src/client.js";
 import {
   ConnectSession,
@@ -461,6 +466,69 @@ describe.each([
     );
     // Every chunk was written once: none of the old session's queued writes ran.
     expect(calls).toBe(Math.ceil(size / chunk));
+  });
+
+  it("finalize by a session that lost the partial delivers nothing", async () => {
+    const w = await make();
+    const size = 40_000;
+    const chunk = 4096;
+    w.a.cloudConnect.transfer.onOffer(() => ({
+      saveTo: join(w.out, "big.bin"),
+    }));
+    // Hold the receiver's first write, so every later effect of that session (the last write and
+    // the hand-over) stays queued behind it.
+    let calls = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const realWrite = PartialStore.prototype.write;
+    const writeSpy = vi
+      .spyOn(PartialStore.prototype, "write")
+      .mockImplementation(async function (this: PartialStore, ...args) {
+        if (++calls === 1) await gate;
+        return realWrite.apply(this, args);
+      });
+    let delivers = 0;
+    const realDeliver = PartialStore.prototype.deliver;
+    const deliverSpy = vi
+      .spyOn(PartialStore.prototype, "deliver")
+      .mockImplementation(async function (this: PartialStore, ...args) {
+        delivers++;
+        return realDeliver.apply(this, args);
+      });
+    let id = "";
+    const first = w.b.cloudConnect.transfer.send(A, content(size), {
+      chunk,
+      onStart: (t) => (id = t.id),
+    });
+    first.catch(() => undefined);
+    await until(() => calls === 1);
+    await sleep(300);
+    void w.inn.at(-1)!.close();
+    await expect(first).rejects.toMatchObject({ code: "peer-closed" });
+    await until(() => partsOf(w, w.a).length === 2);
+    let takenOver = false;
+    const realTruncate = PartialStore.prototype.truncate;
+    const truncSpy = vi
+      .spyOn(PartialStore.prototype, "truncate")
+      .mockImplementation(async function (this: PartialStore, ...args) {
+        await realTruncate.apply(this, args);
+        takenOver = true;
+      });
+    const second = w.b.cloudConnect.transfer.send(A, content(size), {
+      chunk,
+      id,
+    });
+    await until(() => takenOver);
+    release();
+    await second;
+    await sleep(100);
+    writeSpy.mockRestore();
+    deliverSpy.mockRestore();
+    truncSpy.mockRestore();
+    expect(delivers).toBe(1);
+    expect(readFileSync(join(w.out, "big.bin"))).toEqual(
+      Buffer.from(content(size)),
+    );
   });
 
   it("delivered memory records only delivered content", async () => {
@@ -923,5 +991,48 @@ describe("the partial store", () => {
     await s.deliver(ref, { saveTo: join(out, "new"), overwrite: false });
     expect(readFileSync(join(out, "new"))).toEqual(Buffer.from(content(10)));
     expect(readdirSync(join(root, "p"))).toEqual([]);
+  });
+
+  it("a symlinked transfer directory is refused", async () => {
+    const real = tmpDir(dirs);
+    mkdirSync(real, { recursive: true });
+    const link = join(tmpDir(dirs), "transfer");
+    mkdirSync(join(link, ".."), { recursive: true });
+    symlinkSync(real, link);
+    await expect(new PartialStore(link).ready()).rejects.toThrow(
+      "not a directory",
+    );
+    expect(readdirSync(real)).toEqual([]);
+    // A linked partials directory under a real root is refused the same way.
+    const root = join(tmpDir(dirs), "transfer");
+    mkdirSync(root, { recursive: true });
+    symlinkSync(real, join(root, "p"));
+    await expect(new PartialStore(root).ready()).rejects.toThrow(
+      "not a directory",
+    );
+    expect(readdirSync(real)).toEqual([]);
+  });
+
+  it("default store limits", async () => {
+    expect(TRANSFER_QUOTA_BYTES).toBe(4 * 1024 ** 3);
+    expect(DISK_RESERVE).toBe(256 * 1024 ** 2);
+    expect(TRANSFER_MAX_FILES).toBe(64);
+    const s = new PartialStore(root);
+    await s.ready();
+    expect(s.reserve("t1", TRANSFER_QUOTA_BYTES + 1)).toBe(false);
+    expect(s.free()).toBeLessThanOrEqual(TRANSFER_QUOTA_BYTES);
+    const refs = Array.from({ length: TRANSFER_MAX_FILES + 1 }, (_, n) =>
+      (n + 1).toString(16).padStart(64, "0"),
+    );
+    for (const [i, r] of refs.entries()) {
+      await s.create(r, key, meta(r));
+      await s.write(r, 0, content(1));
+      await s.keep(r);
+      const t = new Date(1_700_000_000_000 + i * 1000);
+      utimesSync(join(root, "p", `${r}.part`), t, t);
+    }
+    expect(
+      readdirSync(join(root, "p")).filter((f) => f.endsWith(".part")),
+    ).toHaveLength(TRANSFER_MAX_FILES);
   });
 });
