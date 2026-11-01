@@ -482,7 +482,8 @@ class CloudSyncSettingsTest {
         r.client.config.set(VOL, json(0.2))
         assertFalse(r.marker.exists())
         r.signIn()
-        assertTrue(r.marker.exists())
+        // The marker is written once the sign-in succeeded, off the main thread, so it can trail the state change.
+        eventually("the import marker is written") { r.marker.exists() }
         assertEquals(json(0.2), r.client.config.get(VOL, JsonNull))
         assertNotEquals(SettingSyncState.local, r.client.config.setting(VOL).sync())
     }
