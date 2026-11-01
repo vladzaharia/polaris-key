@@ -562,7 +562,7 @@ func _attempt(
 	var value := metadata.duplicate(true)
 	if _e2e():
 		value[BINDING_KEY] = {"sha256": file["sha256"], "size": file["size"], "format": file["format"]}
-	var set_r: Dictionary = await records.set_record(target_id, value, int(file["version"]), hard)
+	var set_r: Dictionary = await records.set_record(target_id, value, int(file["version"]), hard, file)
 	if set_r["ok"]:
 		var done := {"state": "done", "id": id, "version": set_r["version"], "file": file}
 		if target_id != id:

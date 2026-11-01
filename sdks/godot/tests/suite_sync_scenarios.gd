@@ -135,21 +135,16 @@ func _opts(corpus: Dictionary, init: Dictionary, ids: Array) -> Dictionary:
 
 func _file_record_cases(t: PKeyTestContext, corpus: Dictionary, family: Dictionary) -> void:
 	var ran := 0
-	var skipped := 0
 	for sc: Dictionary in family["scenarios"]:
-		# ported in SAVES-FILEPTR.2
-		if sc["name"] in ["put-at-file-pointer-create", "put-at-file-pointer-update", "put-at-without-pointer-keeps-file"]:
-			skipped += 1
-			continue
 		_replay(t, corpus, sc)
 		ran += 1
-	t.check("every fileRecordCases scenario replays (3 skipped by name)", ran + skipped == family["scenarios"].size(), "%d" % ran)
+	t.check("every fileRecordCases scenario replays (no skip)", ran == family["scenarios"].size(), "%d" % ran)
 
 
 func _call(m: Variant, name: String, args: Array) -> Dictionary:
 	match name:
 		"putAt":
-			return m.put_at(args[0], args[1], args[2], args[3])
+			return m.put_at(args[0], args[1], args[2], args[3], args[4] if args.size() > 4 else null)
 		"removeAt":
 			return m.remove_at(args[0], args[1], args[2])
 		"set":
