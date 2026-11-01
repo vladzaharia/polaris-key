@@ -34,6 +34,10 @@ import PolarisKeyCore
 public let savesCollection = "saves"
 /// The key of the E2E binding inside a save's sealed metadata (D-3).
 public let saveFileBindingKey = "$file"
+/// SDK-owned metadata keys written with every save (SAVES-META): when it was saved (epoch ms) and the
+/// device's display name. A write overwrites an app value under either key. Never a hardware value.
+public let saveSavedAtKey = "savedAt"
+public let saveDeviceKey = "deviceLabel"
 /// The `saves` template's default file bound.
 public let savesDefaultMaxBytes = 32 * 1024 * 1024
 
@@ -133,6 +137,13 @@ public protocol SaveRecords: Sendable {
         _ id: String, value: [String: JSONValue], base: SyncBase, file: SaveFile?, stop: SaveStop?
     ) async throws -> SaveSetResult
     func delete(_ id: String, baseVersion: Int) async throws -> SaveSetResult
+    /// Pull the `saves` collection from the server and return when the pull ended. False when this port
+    /// cannot pull (the cache is all there is); a pull that failed still returns true with the cache as it was.
+    func pull() async -> Bool
+}
+
+extension SaveRecords {
+    public func pull() async -> Bool { false }
 }
 
 // MARK: Errors, summaries, outcomes
@@ -290,6 +301,12 @@ public protocol SavesEnvironment: Sendable {
     func dropWaiting()
     /// Delete the person's transfer journal and chunk cache.
     func purgeFiles() async
+    /// The device's display name, stored with each save; nil stores none.
+    func deviceLabel() async -> String?
+}
+
+extension SavesEnvironment {
+    public func deviceLabel() async -> String? { nil }
 }
 
 private struct Binding: Equatable {
@@ -343,11 +360,26 @@ public final class SavesClient: Sendable {
     private let options: SavesOptions
     private let emit: @Sendable (CloudSyncEvent) -> Void
     private let live = LockedValue<[String: SaveTransfer]>([:])
+    private let now: @Sendable () -> Int
 
-    init(env: any SavesEnvironment, options: SavesOptions, emit: @escaping @Sendable (CloudSyncEvent) -> Void) {
+    init(
+        env: any SavesEnvironment, options: SavesOptions, emit: @escaping @Sendable (CloudSyncEvent) -> Void,
+        now: @escaping @Sendable () -> Int = { Int(Date().timeIntervalSince1970 * 1000) }
+    ) {
         self.env = env
         self.options = options
         self.emit = emit
+        self.now = now
+    }
+
+    /// The SDK's own keys: when and where this save was written (SAVES-META).
+    private func stamped(_ metadata: JSONValue) async -> JSONValue {
+        guard case .object(var o) = metadata else { return metadata }
+        o.removeValue(forKey: saveSavedAtKey)
+        o.removeValue(forKey: saveDeviceKey)
+        o[saveSavedAtKey] = .int(now())
+        if let label = await env.deviceLabel(), !label.isEmpty { o[saveDeviceKey] = .string(label) }
+        return .object(o)
     }
 
     private func summary(_ rec: SaveRecord, e2e: Bool) -> SaveSummary {
@@ -486,7 +518,7 @@ public final class SavesClient: Sendable {
         options writeOptions: SaveWriteOptions = SaveWriteOptions()
     ) async throws -> SaveTransfer {
         _ = try await env.savesContext()  // the typed refusal (no Sync service, locked, not started) is thrown here
-        return run(id, source, metadata, writeOptions, mode: nil)
+        return run(id, source, await stamped(metadata), writeOptions, mode: nil)
     }
 
     /// `write` with the app's own `Encodable` metadata.
@@ -503,11 +535,14 @@ public final class SavesClient: Sendable {
         _ conflict: SaveConflict, keep: SaveKeep, bytes: Data,
         options writeOptions: SaveWriteOptions = SaveWriteOptions()
     ) async throws -> SaveTransfer {
-        _ = try await env.savesContext()
+        let ctx = try await env.savesContext()
         switch keep {
         case .remote:
+            // Pull first, so the cache holds the copy the person chose (not this device's old one).
+            _ = await ctx.records.pull()
+            let rec = try? await ctx.records.get(conflict.id)
             return SaveTransfer.settled(
-                id: conflict.id, .keptRemote(id: conflict.id, version: conflict.serverVersion), state: .done)
+                id: conflict.id, .keptRemote(id: conflict.id, version: rec?.version), state: .done)
         case .both where !conflict.bothAvailable:
             return SaveTransfer.settled(id: conflict.id, .failed(SavesError(.slotsFull)), state: .failed)
         case .both:
@@ -706,6 +741,9 @@ public final class SavesClient: Sendable {
         _ records: any SaveRecords, _ e2e: Bool, _ id: String, _ metadata: [String: JSONValue], _ size: Int,
         _ serverVersion: Int?, known: SaveRecord? = nil, hasKnown: Bool = false
     ) async throws -> SaveOutcome {
+        // The cache may be behind the conflict: pull before reading it, so the screen shows what the server
+        // holds (and a save deleted elsewhere reads as deleted).
+        let pulled = await records.pull()
         let slots = try await records.list().count
         // The server's answer wins. `known` is the copy a rejected `set` carried (nil: deleted). A file `begin`
         // answers only a version, and the cached row stands in for it only while it is that very version; a
@@ -718,13 +756,22 @@ public final class SavesClient: Sendable {
         } else if let serverVersion {
             if serverVersion == 0 {
                 remote = nil
-            } else if let rec = try await records.get(id), rec.version == serverVersion {
-                remote = summary(rec, e2e: e2e)
+                version = 0
             } else {
-                remote = SaveSummary(
-                    id: id, version: serverVersion, metadata: .object([:]), file: nil, newerFormat: false)
+                let rec = try await records.get(id)
+                if let rec, rec.version >= serverVersion {
+                    remote = summary(rec, e2e: e2e)
+                    version = rec.version
+                } else if pulled, rec == nil {
+                    // Pulled and gone: a tombstone's version, not a copy.
+                    remote = nil
+                    version = nil
+                } else {
+                    remote = SaveSummary(
+                        id: id, version: serverVersion, metadata: .object([:]), file: nil, newerFormat: false)
+                    version = serverVersion
+                }
             }
-            version = serverVersion
         } else {
             let rec = try await records.get(id)
             remote = rec.map { summary($0, e2e: e2e) }

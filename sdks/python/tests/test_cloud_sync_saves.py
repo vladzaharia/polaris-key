@@ -178,7 +178,7 @@ def test_write_then_metadata_at_the_finalize_version_and_read_back(tmp_path: Pat
     listed = c.cloud_sync.saves.list()
     assert [(s["id"], bare(s["metadata"]), s["file"]["size"]) for s in listed] == [("slot-1", {"chapter": "one"}, 3000)]
     read = c.cloud_sync.saves.read("slot-1")
-    assert read["ok"] and read["metadata"] == {"chapter": "one"} and read["bytes"] == payload
+    assert read["ok"] and bare(read["metadata"]) == {"chapter": "one"} and read["bytes"] == payload
     c.close()
 
 
