@@ -14,6 +14,8 @@ class FakePlugin:
 	var calls: Array = []
 	var queued: Array = []
 	var reply := {}
+	## Whether the plugin reports `slots` (false: an older plugin).
+	var slots := true
 
 	func cmd(json: String) -> String:
 		var q: Dictionary = JSON.parse_string(json)
@@ -25,7 +27,10 @@ class FakePlugin:
 			return JSON.stringify(out)
 		if reply.has(op):
 			return JSON.stringify(reply[op])
-		return JSON.stringify({"ok": true, "supported": true, "permission": "not_required"})
+		var out := {"ok": true, "supported": true, "permission": "not_required"}
+		if slots:
+			out["slots"] = true
+		return JSON.stringify(out)
 
 	func event(body: Dictionary) -> void:
 		queued.append(body)
@@ -69,6 +74,9 @@ func run(t: PKeyTestContext) -> void:
 	_permission(t)
 	_advertise(t)
 	_bounds(t)
+	_slots(t)
+	_tags(t)
+	_older(t)
 	_export(t)
 	for a in _androids:
 		a.free()
@@ -215,6 +223,103 @@ func _bounds(t: PKeyTestContext) -> void:
 	other.event({"ev": "resumed"})
 	l2.poll()
 	t.check("poll: events that are not discovery are not routed here and break nothing", s2.up.is_empty())
+
+
+func _calls_of(fake: FakePlugin, op: String) -> Array:
+	return fake.calls.filter(func(c): return c["op"] == op)
+
+
+func _slots(t: PKeyTestContext) -> void:
+	var fake := FakePlugin.new()
+	var lane := _lane(fake)
+	t.check("slots: the plugin's status makes capabilities", lane.capabilities() == {"slots": true, "tags": true})
+	var a := lane.advertise({"instance": A, "port": 4100, "txt": ["v=1", "m=a"]})
+	var v := lane.advertise({"instance": B, "port": 4101, "txt": ["v=1", "m=v"], "slot": "v"})
+	var p := lane.advertise({"instance": C, "port": 4102, "txt": ["v=1", "m=p"], "slot": "p"})
+	var sent := _calls_of(fake, "nsd_advertise")
+	t.check("slots: each slot is its own registration on the caller's port", a.ok and v.ok and p.ok and sent.map(func(c): return c["slot"]) == ["a", "v", "p"] and
+		sent.map(func(c): return int(c["port"])) == [4100, 4101, 4102])
+	t.check("slots: the lane reports each one", lane.advertising("a") and lane.advertising("v") and lane.advertising("p") and lane.port_of("v") == 4101 and lane.port_of("p") == 4102)
+	var cs: Array = []
+	for i in 8:
+		var c := lane.advertise({"instance": "p1-" + _name16(100 + i), "port": 4100, "txt": [], "slot": "c"})
+		cs.append(c)
+	var c_slots: Array = _calls_of(fake, "nsd_advertise").slice(3).map(func(c): return c["slot"])
+	t.check("slots: contact adverts take c0 to c7", cs.all(func(c): return c.ok) and c_slots == ["c0", "c1", "c2", "c3", "c4", "c5", "c6", "c7"])
+	var ninth := lane.advertise({"instance": "p1-" + _name16(200), "port": 4100, "txt": [], "slot": "c"})
+	t.check("slots: a ninth contact advert is refused before the plugin", not ninth.ok and _calls_of(fake, "nsd_advertise").size() == 11)
+	var dup := lane.advertise({"instance": "p1-" + _name16(100), "port": 4100, "txt": [], "slot": "c"})
+	t.check("slots: a contact name that runs is refused", not dup.ok)
+	t.check("slots: an unknown slot is refused", not lane.advertise({"instance": A, "port": 4100, "slot": "c0"}).ok and not lane.advertise({"instance": A, "port": 4100, "slot": "x"}).ok)
+	# A second advert on a slot replaces it; the old handle then does nothing.
+	var old: Object = v.detail
+	var v2 := lane.advertise({"instance": C, "port": 4101, "txt": [], "slot": "v"})
+	old.stop()
+	t.check("slots: a replaced handle does nothing", v2.ok and _calls_of(fake, "nsd_advertise_stop").is_empty())
+	var did: bool = v2.detail.update(B, ["v=1", "m=v"])
+	var moved := fake.last("nsd_advertise")
+	t.check("slots: update moves the advert on the same port and slot", did and moved["instance"] == B and moved["slot"] == "v" and int(moved["port"]) == 4101)
+	t.check("slots: update with a bad name is false and sends nothing", not v2.detail.update("x", []) and fake.last("nsd_advertise")["instance"] == B)
+	v2.detail.stop()
+	t.check("slots: stop names the slot", fake.last("nsd_advertise_stop")["slot"] == "v" and not lane.advertising("v") and lane.port_of("v") == 0)
+	t.check("slots: …and update after that is false", not v2.detail.update(A, []))
+	(cs[3].detail as Object).stop()
+	t.check("slots: a stopped contact frees its place", fake.last("nsd_advertise_stop")["slot"] == "c3" and lane.advertise({"instance": "p1-" + _name16(300), "port": 4100, "slot": "c"}).ok and
+		fake.last("nsd_advertise")["slot"] == "c3")
+	fake.event({"ev": "nsd_advert", "slot": "p", "ok": false, "reason": "renamed"})
+	lane.poll()
+	t.check("slots: a refusal ends that slot only", not lane.advertising("p") and lane.advertising("a") and lane.last_error() == "renamed")
+	lane.stop()
+	t.check("slots: stop ends them all", not lane.advertising("a") and not lane.status()["active"] and fake.ops().has("nsd_stop_all"))
+
+
+func _tags(t: PKeyTestContext) -> void:
+	var fake := FakePlugin.new()
+	var lane := _lane(fake)
+	var seen := Seen.new()
+	var h1 := "0123456789abcdef"
+	var h2 := "fedcba9876543210"
+	var b := lane.browse(seen.on_up, seen.on_down, func(n: String) -> bool: return n == A, {"v": [h1, h2, "extra"], "p": [h2], "z": [h1]})
+	var acc := fake.last("nsd_accept")
+	t.check("tags: a browse pushes at most 2 per kind and only v and p", b.ok and acc["tags"] == {"v": [h1, h2], "p": [h2]} and acc["names"] == [])
+	t.check("tags: the names keep the tags in force", lane.set_accepted([A]) and fake.last("nsd_accept")["tags"] == {"v": [h1, h2], "p": [h2]} and fake.last("nsd_accept")["names"] == [A])
+	t.check("tags: new tags keep the names", lane.set_tags({"v": [h2]}) and fake.last("nsd_accept")["names"] == [A] and fake.last("nsd_accept")["tags"] == {"v": [h2]})
+	fake.event({"ev": "nsd_found", "instance": B, "hosts": ["192.168.1.8"], "port": 4100, "txt": ["v=1", "m=v", "h=" + h2]})
+	fake.event({"ev": "nsd_found", "instance": C, "hosts": ["192.168.1.7"], "port": 4100, "txt": ["v=1", "m=v", "h=" + h1]})
+	fake.event({"ev": "nsd_found", "instance": "p1-" + _name16(5), "hosts": ["192.168.1.6"], "port": 4100, "txt": ["v=1", "m=p", "h=" + h2]})
+	fake.event({"ev": "nsd_found", "instance": A, "hosts": ["192.168.1.9"], "port": 4100, "txt": ["v=1", "m=a"]})
+	lane.poll()
+	t.check("tags: a name the roster refuses enters on a matching kind and tag only", seen.up.map(func(p): return p["instance"]) == [B, A], str(seen.up.map(func(p): return p["instance"])))
+	b.detail.stop()
+	t.check("tags: ending the browse clears the tags natively", not fake.last("nsd_accept").has("tags") and fake.ops().has("nsd_browse_stop"))
+	var l2 := _lane(FakePlugin.new())
+	t.check("tags: set_tags with none and none held is nothing", l2.set_tags({}) and _calls_of(l2._android.native, "nsd_accept").is_empty())
+	var no_tags := FakePlugin.new()
+	var l3 := _lane(no_tags)
+	t.check("tags: a browse without tags sends no tags", l3.browse(Seen.new().on_up).ok and _calls_of(no_tags, "nsd_accept").is_empty())
+	var deny := FakePlugin.new()
+	deny.reply["nsd_accept"] = {"ok": false, "error": "bad_input"}
+	var l4 := _lane(deny)
+	l4.browse(Seen.new().on_up)
+	t.check("tags: a refused push is false and holds nothing", not l4.set_tags({"v": [h1]}) and l4._tags.is_empty())
+
+
+func _older(t: PKeyTestContext) -> void:
+	var fake := FakePlugin.new()
+	fake.slots = false
+	var lane := _lane(fake)
+	t.check("older: no slots, no tags", lane != null and lane.capabilities() == {"slots": false, "tags": false})
+	t.check("older: slot a works as it always did, without a slot field", lane.advertise({"instance": A, "port": 4100}).ok and not fake.last("nsd_advertise").has("slot"))
+	for slot in ["v", "p", "c"]:
+		var r := lane.advertise({"instance": B, "port": 4100, "slot": slot})
+		t.check("older: slot %s is nearby-unsupported and sends nothing" % slot, not r.ok and r.code == PKeyConstants.ErrorCode.NEARBY_UNSUPPORTED and _calls_of(fake, "nsd_advertise").size() == 1)
+	var br := lane.browse(Seen.new().on_up, Callable(), Callable(), {"v": ["0123456789abcdef"]})
+	t.check("older: a browse with tags is nearby-unsupported and starts nothing", not br.ok and br.code == PKeyConstants.ErrorCode.NEARBY_UNSUPPORTED and not fake.ops().has("nsd_browse_start"))
+	t.check("older: a plain browse works", lane.browse(Seen.new().on_up).ok)
+	t.check("older: set_tags with none is true, with some is false", lane.set_tags({}) and not lane.set_tags({"v": ["0123456789abcdef"]}))
+	var again := lane.advertise({"instance": B, "port": 4100})
+	again.detail.stop()
+	t.check("older: a stop sends no slot", again.ok and not fake.last("nsd_advertise_stop").has("slot") and not lane.advertising("a"))
 
 
 func _export(t: PKeyTestContext) -> void:
