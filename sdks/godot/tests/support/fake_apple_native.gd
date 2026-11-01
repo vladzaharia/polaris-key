@@ -187,3 +187,141 @@ func _later(op: String, result: Dictionary) -> String:
 		ev["req"] = _req
 		_queue.append(ev)
 	return JSON.stringify({"ok": true, "req": _req})
+
+
+## A stand-in for the binary entry's Cloud Sync bulk ops (`sb_*`; sdks/swift PolarisKeyPlatform/SyncBulkOps.swift),
+## with the same framing, bounds and replies, so PKeyAppleBulk runs headless. Tasks finish when the test says
+## (`finish`, `fail`), or at once with `auto_status`. Every payload is kept in `payloads`, so a test can assert
+## what crossed the boundary.
+class Bulk:
+	extends RefCounted
+
+	const OK := 1
+	const REFUSED := 0
+	const BAD := 3
+	const MAX_TASKS := 300
+
+	## Replies 0 (refused) to `sb_open`, or to `sb_put` and `sb_get`.
+	var refuse_open := false
+	var refuse_requests := false
+	## The reconcile report `sb_open` queues; null: none is sent.
+	var report: Variant = {"resume": [], "cancelled": 0, "swept": 0}
+	## A status that answers every accepted request at once (-1: the test answers).
+	var auto_status := -1
+	var auto_body := PackedByteArray()
+	## Every op in order: [op, payload bytes].
+	var payloads: Array = []
+	var ops: Array[String] = []
+	var open_args: Dictionary = {}
+	var staged := {}
+	var tasks := {}
+	var puts: Array = []
+	var gets: Array = []
+	var cancels: Array = []
+	var closed := 0
+	var _events: Array = []
+	var _serial := 0
+
+	func cmd_bin(op: String, data: PackedByteArray) -> Variant:
+		ops.append(op)
+		payloads.append([op, data.duplicate()])
+		match op:
+			"sb_open":
+				return _open(data)
+			"sb_stage":
+				return _stage(data)
+			"sb_put", "sb_get":
+				return _request(op, data)
+			"sb_cancel":
+				return _cancel(data)
+			"sb_close":
+				closed += 1
+				tasks.clear()
+				staged.clear()
+				return PackedByteArray([OK])
+		return PackedByteArray()
+
+	func _open(data: PackedByteArray) -> PackedByteArray:
+		var j: Variant = JSON.parse_string(data.get_string_from_utf8())
+		if refuse_open or not (j is Dictionary):
+			return PackedByteArray([REFUSED])
+		open_args = j
+		if report != null:
+			_events.append(["sb_reconciled", JSON.stringify(report).to_utf8_buffer()])
+		return PackedByteArray([OK])
+
+	func _stage(data: PackedByteArray) -> PackedByteArray:
+		if data.size() < 1 or data.size() - 1 > 8 * 1048576 + 36:
+			return PackedByteArray([BAD])
+		var n := int(data[0])
+		var name := ""
+		if n == 0:
+			_serial += 1
+			name = "%032x.bin" % _serial
+			staged[name] = PackedByteArray()
+		else:
+			name = data.slice(1, 37).get_string_from_ascii()
+		var cur: Variant = staged.get(name)
+		var piece := data.slice(1 + n)
+		if cur == null or (cur as PackedByteArray).size() + piece.size() > 16 * 1048576:
+			return PackedByteArray([REFUSED])
+		var buf: PackedByteArray = cur
+		buf.append_array(piece)
+		staged[name] = buf
+		var out := PackedByteArray([OK])
+		out.append_array(name.to_ascii_buffer())
+		return out
+
+	func _request(op: String, data: PackedByteArray) -> PackedByteArray:
+		var hdr := (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3] if data.size() >= 4 else 0
+		if hdr <= 0 or hdr > 16 * 1024 or data.size() != 4 + hdr:
+			return PackedByteArray([BAD])
+		var h: Variant = JSON.parse_string(data.slice(4).get_string_from_utf8())
+		var put := op == "sb_put"
+		if not (h is Dictionary) or refuse_requests or tasks.size() >= MAX_TASKS or (put and not staged.has(h.get("spool", ""))):
+			return PackedByteArray([REFUSED])
+		var req := int(h["req"])
+		var rec: Dictionary = (h as Dictionary).duplicate()
+		if put:
+			rec["body"] = staged[h["spool"]]
+			staged.erase(h["spool"])
+			puts.append(rec)
+		else:
+			gets.append(rec)
+		tasks[req] = rec
+		if auto_status >= 0:
+			finish(req, auto_status, {"etag": "\"e\""}, auto_body)
+		return PackedByteArray([OK])
+
+	func _cancel(data: PackedByteArray) -> PackedByteArray:
+		var c: Variant = JSON.parse_string(data.get_string_from_utf8())
+		if not (c is Dictionary):
+			return PackedByteArray([BAD])
+		cancels.append(c)
+		if c.has("req"):
+			tasks.erase(int(c["req"]))
+		if c.has("transfer"):
+			for r in tasks.keys():
+				if tasks[r].get("transfer") == c["transfer"]:
+					tasks.erase(r)
+		if c.has("spool"):
+			staged.erase(c["spool"])
+		return PackedByteArray([OK])
+
+	func poll_bin() -> Variant:
+		var out := _events
+		_events = []
+		return out
+
+	## The task of `req` finishes with an answer: the `sb_done` event (`u32be length ‖ JSON ‖ body`).
+	func finish(req: int, status: int, headers := {}, body := PackedByteArray()) -> void:
+		tasks.erase(req)
+		var json := JSON.stringify({"req": req, "status": status, "headers": headers}).to_utf8_buffer()
+		var frame := PackedByteArray([(json.size() >> 24) & 0xff, (json.size() >> 16) & 0xff, (json.size() >> 8) & 0xff, json.size() & 0xff])
+		frame.append_array(json)
+		frame.append_array(body)
+		_events.append(["sb_done", frame])
+
+	func fail(req: int, code: String) -> void:
+		tasks.erase(req)
+		_events.append(["sb_fail", JSON.stringify({"req": req, "code": code}).to_utf8_buffer()])

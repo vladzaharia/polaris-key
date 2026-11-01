@@ -38,6 +38,7 @@
 import CryptoKit
 import Foundation
 import PolarisKeyCore
+import PolarisKeyPlatform
 
 #if canImport(FoundationNetworking)
     import FoundationNetworking
@@ -75,78 +76,6 @@ public struct BackgroundTokens: Sendable {
         self.current = current
         self.refresh = refresh
     }
-}
-
-// MARK: Task tags
-
-struct BackgroundTag: Equatable {
-    enum Kind: String { case up, dn }
-    var idHash: String
-    var kind: Kind
-    var part: Int
-    var enqueuedAt: Int
-    var spool: String?
-
-    var text: String { "pkbg1|\(idHash)|\(kind.rawValue)|\(part)|\(enqueuedAt)|\(spool ?? "-")" }
-
-    static func parse(_ s: String?) -> BackgroundTag? {
-        guard let s else { return nil }
-        let f = s.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
-        guard f.count == 6, f[0] == "pkbg1", isHex64(f[1]), let kind = Kind(rawValue: f[2]),
-            let part = Int(f[3]), part >= 0, part <= 100_000, let at = Int(f[4]), at >= 0
-        else { return nil }
-        var spool: String?
-        if f[5] != "-" {
-            guard Self.isSpoolName(f[5]) else { return nil }
-            spool = f[5]
-        }
-        return BackgroundTag(idHash: f[1], kind: kind, part: part, enqueuedAt: at, spool: spool)
-    }
-
-    static func isSpoolName(_ s: String) -> Bool {
-        s.utf8.count == 36 && s.hasSuffix(".bin")
-            && s.dropLast(4).utf8.allSatisfy { ($0 >= 0x30 && $0 <= 0x39) || ($0 >= 0x61 && $0 <= 0x66) }
-    }
-}
-
-func backgroundIdHash(_ id: String) -> String {
-    SyncCrypto.sha256(Data(id.utf8)).map { String(format: "%02x", $0) }.joined()
-}
-
-// MARK: The session port
-
-/// One task of the background session, as the channel needs it.
-protocol BackgroundTaskRef: AnyObject, Sendable {
-    var taskIdentifier: Int { get }
-    var tag: String? { get }
-    var url: URL? { get }
-    func resume()
-    func cancel()
-}
-
-/// How a task ended.
-struct BackgroundResult: Sendable {
-    var taskIdentifier: Int
-    var tag: String?
-    var url: URL?
-    var status: Int
-    var headers: [String: String]
-    var body: Data
-    var error: (any Error)?
-}
-
-protocol BackgroundSink: AnyObject, Sendable {
-    func taskFinished(_ result: BackgroundResult)
-    func sessionFinishedEvents()
-}
-
-/// The background `URLSession`, behind a port so a test stubs it. `makeUpload` and `makeDownload` return a
-/// task that has not started.
-protocol BackgroundSessionPort: Sendable {
-    func start(sink: any BackgroundSink)
-    func makeUpload(_ request: URLRequest, from file: URL, tag: String, maxBody: Int) -> any BackgroundTaskRef
-    func makeDownload(_ request: URLRequest, tag: String, maxBody: Int) -> any BackgroundTaskRef
-    func liveTasks() async -> [any BackgroundTaskRef]
 }
 
 // MARK: The channel
@@ -217,7 +146,8 @@ public final class CloudSyncBackground: BulkChannel, TransferTaskCancelling, Bac
         ) {
             self.init(
                 product: product, stateDir: stateDir, journal: journal,
-                port: URLSessionBackgroundPort(identifier: Self.identifier(product: product)), tokens: tokens,
+                port: URLSessionBackgroundPort(
+                    identifier: Self.identifier(product: product), defaultLimit: Self.answerCap), tokens: tokens,
                 maxTaskAge: maxTaskAge, onResume: onResume)
             CloudSyncBackgroundRegistry.shared.register(self)
         }
@@ -362,7 +292,7 @@ public final class CloudSyncBackground: BulkChannel, TransferTaskCancelling, Bac
 
     // MARK: Delegate side
 
-    func taskFinished(_ r: BackgroundResult) {
+    package func taskFinished(_ r: BackgroundResult) {
         if let w = lock.withLock({ waiters.removeValue(forKey: r.taskIdentifier) }) {
             if let e = r.error {
                 w.cont.resume(throwing: e)
@@ -382,7 +312,7 @@ public final class CloudSyncBackground: BulkChannel, TransferTaskCancelling, Bac
         }
     }
 
-    func sessionFinishedEvents() {
+    package func sessionFinishedEvents() {
         let run = lock.withLock { () -> (@Sendable () -> Void)? in
             if let c = completion {
                 completion = nil
@@ -526,127 +456,3 @@ extension PolarisKeyClient {
         CloudSyncBackgroundRegistry.shared.handle(identifier: identifier, completion: completion)
     }
 }
-
-// MARK: The URLSession adapter
-
-#if canImport(Darwin)
-    final class URLSessionBackgroundPort: NSObject, BackgroundSessionPort, URLSessionDownloadDelegate,
-        @unchecked Sendable
-    {
-        private struct Held {
-            var data = Data()
-            var file: Data?
-            var limit: Int
-        }
-
-        private let identifier: String
-        private let lock = NSLock()
-        private var session: URLSession?
-        private weak var sink: (any BackgroundSink)?
-        private var held: [Int: Held] = [:]
-        private var limits: [Int: Int] = [:]
-
-        init(identifier: String) { self.identifier = identifier }
-
-        func start(sink: any BackgroundSink) {
-            self.sink = sink
-            let c = URLSessionConfiguration.background(withIdentifier: identifier)
-            c.sessionSendsLaunchEvents = true
-            c.isDiscretionary = false
-            c.waitsForConnectivity = true
-            c.httpCookieStorage = nil
-            c.urlCache = nil
-            c.httpShouldSetCookies = false
-            c.requestCachePolicy = .reloadIgnoringLocalCacheData
-            c.timeoutIntervalForResource = 7 * 86400
-            session = URLSession(configuration: c, delegate: self, delegateQueue: nil)
-        }
-
-        private final class Ref: BackgroundTaskRef, @unchecked Sendable {
-            let task: URLSessionTask
-            init(_ t: URLSessionTask) { task = t }
-            var taskIdentifier: Int { task.taskIdentifier }
-            var tag: String? { task.taskDescription }
-            var url: URL? { task.originalRequest?.url }
-            func resume() { task.resume() }
-            func cancel() { task.cancel() }
-        }
-
-        func makeUpload(_ request: URLRequest, from file: URL, tag: String, maxBody: Int) -> any BackgroundTaskRef {
-            let t = session!.uploadTask(with: request, fromFile: file)
-            t.taskDescription = tag
-            lock.withLock { limits[t.taskIdentifier] = maxBody }
-            return Ref(t)
-        }
-
-        func makeDownload(_ request: URLRequest, tag: String, maxBody: Int) -> any BackgroundTaskRef {
-            let t = session!.downloadTask(with: request)
-            t.taskDescription = tag
-            lock.withLock { limits[t.taskIdentifier] = maxBody }
-            return Ref(t)
-        }
-
-        func liveTasks() async -> [any BackgroundTaskRef] {
-            guard let session else { return [] }
-            let (a, b, c) = await session.tasks
-            return (a as [URLSessionTask] + b as [URLSessionTask] + c as [URLSessionTask]).map { Ref($0) }
-        }
-
-        private func limit(_ id: Int) -> Int {
-            lock.withLock { limits[id] } ?? CloudSyncBackground.answerCap
-        }
-
-        // H-3: no redirect is followed; a 3xx is the answer.
-        func urlSession(
-            _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
-            newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void
-        ) { completionHandler(nil) }
-
-        func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-            let id = dataTask.taskIdentifier
-            let cap = limit(id)
-            lock.withLock {
-                var h = held[id] ?? Held(limit: cap)
-                if h.data.count < cap { h.data.append(data.prefix(cap - h.data.count)) }
-                held[id] = h
-            }
-        }
-
-        func urlSession(
-            _ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL
-        ) {
-            // Read what the answer says (bounded) and remove the system's file before it returns.
-            let id = downloadTask.taskIdentifier
-            let cap = limit(id)
-            var body = Data()
-            if let fh = try? FileHandle(forReadingFrom: location) {
-                body = (try? fh.read(upToCount: cap)) ?? Data()
-                try? fh.close()
-            }
-            try? FileManager.default.removeItem(at: location)
-            lock.withLock { held[id] = Held(data: body, limit: cap) }
-        }
-
-        func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
-            let id = task.taskIdentifier
-            let h = lock.withLock { () -> Held? in
-                limits.removeValue(forKey: id)
-                return held.removeValue(forKey: id)
-            }
-            var headers: [String: String] = [:]
-            var status = 0
-            if let r = task.response as? HTTPURLResponse {
-                status = r.statusCode
-                for (k, v) in r.allHeaderFields { if let k = k as? String, let v = v as? String { headers[k] = v } }
-            }
-            sink?.taskFinished(
-                BackgroundResult(
-                    taskIdentifier: id, tag: task.taskDescription, url: task.originalRequest?.url, status: status,
-                    headers: headers, body: h?.data ?? Data(), error: error))
-        }
-
-        func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
-            sink?.sessionFinishedEvents()
-        }
-    }
-#endif

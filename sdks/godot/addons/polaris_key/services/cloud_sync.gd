@@ -186,11 +186,11 @@ func _build_saves() -> void:
 	_files = transport
 	# D-10: the bulk channel is used only when the app opted in and the platform supplied one.
 	var opts: PKeyOptions = _core.options
-	var channel: Object = opts.cloud_sync_bulk_channel if opts != null else null
+	var channel: Object = PKeyAppleBulk.pick(opts, _core.product, _core.base_url, host.state_dir())
 	if channel == null and opts != null and opts.cloud_sync_background_transfers and OS.get_name() == "Android":
 		# U-41.6b: the Android plugin's channel, when the export carries the plugin (null: foreground as before).
-		channel = PKeyAndroidBulk.create(_bulk_context)
-	if opts != null and opts.cloud_sync_background_transfers and channel != null:
+		channel = opts.cloud_sync_bulk_channel if opts.cloud_sync_bulk_channel != null else PKeyAndroidBulk.create(_bulk_context)
+	if channel != null:
 		transport.set_channel(channel)
 	_journal = Journal.Files.new(host.state_dir(), host.sealer())
 	var engine := Transfer.new(transport, _journal)
