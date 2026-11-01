@@ -140,6 +140,9 @@ function typePath(root: string, path: string): string {
     );
 }
 
+/** Direct Transfer's offer-answer rows: members only where the offer is an object (Python, Kotlin). */
+const TRANSFER_ANSWER = new Set(["accept", "decline"]);
+
 function renderNode(api: Api): string {
   const lines: string[] = [];
   const types: string[] = [];
@@ -184,6 +187,13 @@ function renderNode(api: Api): string {
       lines.push(
         `it(${q(r.id)}, () => expect(${q(r.name)} in CloudLinks.prototype).toBe(true));`,
       );
+    } else if (r.id.startsWith("cloudConnect.transfer.")) {
+      // Direct Transfer (CC-20): the verbs live on `cloudConnect.transfer` (`CloudTransfer`). The offer's answer is
+      // the handler's return value in Node, so accept and decline have no member to assert.
+      if (!TRANSFER_ANSWER.has(leafOf(r.id)))
+        lines.push(
+          `it(${q(r.id)}, () => expect(${q(r.name)} in CloudTransfer.prototype).toBe(true));`,
+        );
     } else if (r.id.startsWith("identity.choice.")) {
       // The licence choice an app shows itself: licenses, devices, complete, cancel live on `identity.choice`.
       lines.push(
@@ -214,6 +224,7 @@ function renderNode(api: Api): string {
     `  CloudConnect,`,
     `  CloudLinks,`,
     `  CloudNearby,`,
+    `  CloudTransfer,`,
     `  ConfigClient,`,
     `  DeviceCodeSession,`,
     `  EntitlementsClient,`,
@@ -327,6 +338,11 @@ function renderPython(api: Api): string {
     } else if (r.id.startsWith("cloudConnect.links.")) {
       // Inter-account links (CC-19): the verbs live on `cloud_connect.links`.
       attrs.push(`(${q(r.id)}, "CloudLinks", ${q(r.name)})`);
+    } else if (r.id.startsWith("cloudConnect.transfer.")) {
+      // Direct Transfer (CC-20): the verbs live on `cloud_connect.transfer` (`Transfer`); the offer answers on `IncomingOffer`.
+      attrs.push(
+        `(${q(r.id)}, ${q(TRANSFER_ANSWER.has(leafOf(r.id)) ? "IncomingOffer" : "Transfer")}, ${q(r.name)})`,
+      );
     } else if (PY_CLASS[r.ns]) {
       attrs.push(`(${q(r.id)}, ${q(PY_CLASS[r.ns]!)}, ${q(r.name)})`);
     }
@@ -351,6 +367,7 @@ from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
 from polaris_key.connect.links import CloudLinks
 from polaris_key.connect.nearby import CloudNearby
+from polaris_key.connect.transfer import IncomingOffer, Transfer
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.auto_sign_in import NearbyNamespace
 from polaris_key.identity.nearby_session import NearbySignInSession
@@ -372,6 +389,8 @@ CLASSES = {
     "CloudConnect": CloudConnect,
     "CloudLinks": CloudLinks,
     "CloudNearby": CloudNearby,
+    "IncomingOffer": IncomingOffer,
+    "Transfer": Transfer,
 }
 
 ${list("ATTRS", attrs)}
@@ -493,6 +512,11 @@ function renderSwift(api: Api): string {
     } else if (r.id.startsWith("cloudConnect.nearby.")) {
       // Nearby approval (CC-15): request and onRequest live on `cloudConnect.nearby`.
       lines.push(`_ = CloudNearby.${ref}  // ${r.id}`);
+    } else if (r.id.startsWith("cloudConnect.transfer.")) {
+      // Direct Transfer (CC-20): the verbs live on `cloudConnect.transfer` (`CloudTransfer`). The handler returns the
+      // answer (`TransferDecision`), so accept and decline have no member to assert.
+      if (!TRANSFER_ANSWER.has(leafOf(r.id)))
+        lines.push(`_ = CloudTransfer.${ref}  // ${r.id}`);
     } else if (SWIFT_TYPE[r.ns]) {
       lines.push(`_ = ${SWIFT_TYPE[r.ns]}.${ref}  // ${r.id}`);
     }
@@ -576,6 +600,16 @@ function renderKotlin(api: Api): string {
     } else if (r.id.startsWith("cloudConnect.links.")) {
       // Inter-account links (CC-19): the verbs live on `cloudConnect.links` (`CloudLinks`).
       lines.push(`CloudLinks::${r.name}  // ${r.id}`);
+    } else if (r.id === "cloudConnect.transfer.cancel") {
+      // `cancel(id)` and `cancel(peer, id)` overload; the typed reference picks the one the rows name.
+      lines.push(
+        `val cancelById: (CloudTransfer, String) -> Unit = CloudTransfer::cancel  // ${r.id}`,
+      );
+    } else if (r.id.startsWith("cloudConnect.transfer.")) {
+      // Direct Transfer (CC-20): the verbs live on `cloudConnect.transfer` (`CloudTransfer`); the offer answers on `TransferOffer`.
+      lines.push(
+        `${TRANSFER_ANSWER.has(leafOf(r.id)) ? "TransferOffer" : "CloudTransfer"}::${r.name}  // ${r.id}`,
+      );
     } else if (KOTLIN_TYPE[r.ns]) {
       lines.push(`${KOTLIN_TYPE[r.ns]}::${r.name}  // ${r.id}`);
     }
@@ -604,9 +638,11 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.sdk.CloudNearby`,
     `import im.plrs.key.sdk.CloudSyncClient`,
     `import im.plrs.key.sdk.CloudSyncHostOptions`,
+    `import im.plrs.key.sdk.CloudTransfer`,
     `import im.plrs.key.sdk.CommerceClient`,
     `import im.plrs.key.sdk.PolarisKeyClient`,
     `import im.plrs.key.sdk.SaveTransfer`,
+    `import im.plrs.key.sdk.TransferOffer`,
     `import im.plrs.key.sdk.SavesClient`,
     ...[
       ...new Set(

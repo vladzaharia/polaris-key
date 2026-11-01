@@ -314,13 +314,20 @@ public final class CloudTransfer: Sendable {
     /// Called when a transfer this device received is delivered or ends without the content. Returns the
     /// unsubscribe.
     @discardableResult
-    public func onReceived(_ fn: @escaping @Sendable (TransferReceipt) -> Void) -> @Sendable () -> Void {
+    public func onResult(_ fn: @escaping @Sendable (TransferReceipt) -> Void) -> @Sendable () -> Void {
         let id = state.with { s -> Int in
             s.next += 1
             s.receipts.append((s.next, fn))
             return s.next
         }
         return { [state] in state.with { $0.receipts.removeAll { $0.0 == id } } }
+    }
+
+    /// The earlier name of `onResult`; it stays for one release.
+    @available(*, deprecated, renamed: "onResult")
+    @discardableResult
+    public func onReceived(_ fn: @escaping @Sendable (TransferReceipt) -> Void) -> @Sendable () -> Void {
+        onResult(fn)
     }
 
     /// The largest content this device accepts; larger offers are refused with `size`. nil for no limit beyond the

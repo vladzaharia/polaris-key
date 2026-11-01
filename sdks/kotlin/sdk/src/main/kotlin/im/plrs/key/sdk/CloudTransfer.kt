@@ -359,6 +359,11 @@ public class CloudTransfer internal constructor(
         bound[peer]?.endpoint?.cancel(id)
     }
 
+    /** End the transfer [id] from this side, whichever session carries it (a no-op for an id that is not live). */
+    public fun cancel(id: String) {
+        for (b in bound.values.toList()) b.endpoint.cancel(id)
+    }
+
     /** Delete every kept partial file. */
     public fun discardPartials() {
         store.purgeAll()

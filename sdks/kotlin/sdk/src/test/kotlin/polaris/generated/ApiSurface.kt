@@ -21,9 +21,11 @@ import im.plrs.key.sdk.CloudLinks
 import im.plrs.key.sdk.CloudNearby
 import im.plrs.key.sdk.CloudSyncClient
 import im.plrs.key.sdk.CloudSyncHostOptions
+import im.plrs.key.sdk.CloudTransfer
 import im.plrs.key.sdk.CommerceClient
 import im.plrs.key.sdk.PolarisKeyClient
 import im.plrs.key.sdk.SaveTransfer
+import im.plrs.key.sdk.TransferOffer
 import im.plrs.key.sdk.SavesClient
 import im.plrs.key.sdk.boot
 import im.plrs.key.sdk.bootHost
@@ -198,4 +200,10 @@ internal suspend fun apiSurface() {
     CloudLinks::open  // cloudConnect.links.open
     CloudLinks::onLink  // cloudConnect.links.onLink
     CloudLinks::interAccount  // cloudConnect.links.interAccount
+    CloudTransfer::send  // cloudConnect.transfer.send
+    CloudTransfer::onOffer  // cloudConnect.transfer.onOffer
+    CloudTransfer::onResult  // cloudConnect.transfer.onResult
+    val cancelById: (CloudTransfer, String) -> Unit = CloudTransfer::cancel  // cloudConnect.transfer.cancel
+    TransferOffer::accept  // cloudConnect.transfer.accept
+    TransferOffer::decline  // cloudConnect.transfer.decline
 }

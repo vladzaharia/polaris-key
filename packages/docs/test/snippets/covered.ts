@@ -161,6 +161,11 @@ export const COVERED_PAGES: Covered[] = [
     path: "packages/docs/src/content/docs/features/licensing/server-kotlin.mdx",
     language: "kotlin",
   },
+  {
+    path: "packages/docs/src/content/docs/features/cloud-connect/transfer.md",
+    language: "ts",
+    prose: false,
+  },
   { path: "sdks/godot/README.md", language: "gdscript" },
   { path: `${BUILD}quickstart/godot.mdx`, language: "gdscript" },
   { path: `${BUILD}sdks/godot/your-own-ui.md`, language: "gdscript" },

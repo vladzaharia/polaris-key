@@ -5,6 +5,7 @@ import {
   CloudConnect,
   CloudLinks,
   CloudNearby,
+  CloudTransfer,
   ConfigClient,
   DeviceCodeSession,
   EntitlementsClient,
@@ -238,6 +239,14 @@ it("cloudConnect.links.onLink", () =>
   expect("onLink" in CloudLinks.prototype).toBe(true));
 it("cloudConnect.links.interAccount", () =>
   expect("interAccount" in CloudLinks.prototype).toBe(true));
+it("cloudConnect.transfer.send", () =>
+  expect("send" in CloudTransfer.prototype).toBe(true));
+it("cloudConnect.transfer.onOffer", () =>
+  expect("onOffer" in CloudTransfer.prototype).toBe(true));
+it("cloudConnect.transfer.onResult", () =>
+  expect("onResult" in CloudTransfer.prototype).toBe(true));
+it("cloudConnect.transfer.cancel", () =>
+  expect("cancel" in CloudTransfer.prototype).toBe(true));
 it("removed: config.getConfig", () =>
   expect("getConfig" in ConfigClient.prototype).toBe(false));
 it("removed: PolarisKeyClient.getConfig", () =>

@@ -252,7 +252,7 @@ final class TransferTests: XCTestCase {
         let seen = LockedValue<[TransferOffer]>([])
         accept(b.transfer, to: out, seen: seen)
         let receipts = LockedValue<[TransferReceipt]>([])
-        b.transfer.onReceived { r in receipts.with { $0.append(r) } }
+        b.transfer.onResult { r in receipts.with { $0.append(r) } }
         let data = content(200_000)
         let sent = try await a.transfer.send(
             over: p.a, source: .data(data),
@@ -431,7 +431,7 @@ final class TransferTests: XCTestCase {
             return .accept(to: out)
         }
         let receipts = LockedValue<[TransferReceipt]>([])
-        b.transfer.onReceived { r in receipts.with { $0.append(r) } }
+        b.transfer.onResult { r in receipts.with { $0.append(r) } }
         // Hold the sender's writes after the offer and a few chunks.
         p.pa.stall(after: 6)
         let task = Task { try await a.transfer.send(over: p.a, source: .data(content(1_000_000))) }
@@ -465,7 +465,7 @@ final class TransferTests: XCTestCase {
         let out = b.dir.appendingPathComponent("never.bin")
         accept(b.transfer, to: out)
         let receipts = LockedValue<[TransferReceipt]>([])
-        b.transfer.onReceived { r in receipts.with { $0.append(r) } }
+        b.transfer.onResult { r in receipts.with { $0.append(r) } }
         p.pa.stall(after: 6)
         let task = Task { try await a.transfer.send(over: p.a, source: .data(content(1_000_000))) }
         await eventually("stalled") { p.pa.stalled }

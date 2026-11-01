@@ -2487,22 +2487,22 @@
     {
       "sdk": "node",
       "path": "cloudConnect.transfer",
-      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb. CC-20.8 owns the verb rows"
+      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb"
     },
     {
       "sdk": "python",
       "path": "cloudConnect.transfer",
-      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb. CC-20.8 owns the verb rows"
+      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb"
     },
     {
       "sdk": "kotlin",
       "path": "cloudConnect.transfer",
-      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb. CC-20.8 owns the verb rows"
+      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb"
     },
     {
       "sdk": "swift",
       "path": "cloudConnect.transfer",
-      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb. CC-20.8 owns the verb rows"
+      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb"
     },
     {
       "sdk": "python",
@@ -7633,6 +7633,168 @@
         "python": {},
         "swift": {},
         "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.transfer.send",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "labels": ["_", "source", "options"]
+        },
+        "kotlin": {},
+        "react": {
+          "spelling": "adapter.cloudConnect.transfer.send",
+          "shape": "method",
+          "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "peer",
+          "type": "string"
+        },
+        {
+          "name": "source",
+          "type": "json"
+        },
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.transfer.onOffer",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "labels": ["_"]
+        },
+        "kotlin": {},
+        "react": {
+          "spelling": "adapter.cloudConnect.transfer.onOffer",
+          "shape": "method",
+          "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "handler",
+          "type": "listener"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.transfer.onResult",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "labels": ["_"]
+        },
+        "kotlin": {},
+        "react": {
+          "spelling": "adapter.cloudConnect.transfer.onResult",
+          "shape": "method",
+          "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.transfer.cancel",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "labels": ["_"]
+        },
+        "kotlin": {},
+        "react": {
+          "spelling": "adapter.cloudConnect.transfer.cancel",
+          "shape": "method",
+          "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.transfer.accept",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "python": {
+          "spelling": "IncomingOffer.accept"
+        },
+        "kotlin": {
+          "spelling": "TransferOffer.accept"
+        },
+        "react": {
+          "spelling": "TransferOfferDriver.accept",
+          "shape": "method",
+          "reason": "the offer prompt's driver carries the answer (the kit's useTransferOffer is a kit subpath hook)"
+        },
+        "node": {
+          "spelling": "cloudConnect.transfer.onOffer",
+          "reason": "the handler's return value is the answer: { saveTo } accepts, \"decline\" declines"
+        },
+        "swift": {
+          "spelling": "TransferDecision.accept",
+          "reason": "the handler returns the decision"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.transfer.decline",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "python": {
+          "spelling": "IncomingOffer.decline"
+        },
+        "kotlin": {
+          "spelling": "TransferOffer.decline"
+        },
+        "react": {
+          "spelling": "TransferOfferDriver.decline",
+          "shape": "method",
+          "reason": "the offer prompt's driver carries the answer (the kit's useTransferOffer is a kit subpath hook)"
+        },
+        "node": {
+          "spelling": "cloudConnect.transfer.onOffer",
+          "reason": "the handler's return value is the answer: { saveTo } accepts, \"decline\" declines"
+        },
+        "swift": {
+          "spelling": "TransferDecision.decline",
+          "reason": "the handler returns the decision"
+        }
       },
       "layer": "client"
     }
