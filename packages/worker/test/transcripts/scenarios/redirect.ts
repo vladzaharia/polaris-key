@@ -14,6 +14,10 @@
 //   redirect-web-key-return-limit  the same on a full licence: `device_limit` at token spends the
 //                            code, a fresh card press gets a fresh code, and once a seat is free
 //                            that code activates.
+//   redirect-web-key-return-refusals  the two refusals the card's own route also makes, answered at
+//                            token because the licence changed between the press and the redeem:
+//                            `license_owned` (the licence joined an account) and `key_entry_limit`
+//                            (another device took the last entry). Each spends its code.
 //
 // `browser` steps are the requests the SDK never makes; they are recorded so a replayer's fake
 // server can serve the whole conversation (format.ts). The SDK's own request is the `token` form.
@@ -41,7 +45,8 @@ import {
   type Scenario,
 } from "../world.js";
 import { seedLicenseWithKey } from "../../seed.js";
-import { seedAccount } from "./account.js";
+import { holdLicense, seedAccount } from "./account.js";
+import { otherDeviceEnters, refusalsOn, setLimit } from "./keyEntry.js";
 import { PORTAL_CSRF_HEADER } from "../../../src/services/identity/portal/session.js";
 import { portalSession, registerWebApp, WEB_CALLBACK } from "./webSignIn.js";
 
@@ -797,6 +802,111 @@ export const redirectWebKeyReturnLimit: Scenario = {
           });
         },
         activated(licenseId, 2),
+      );
+      return r.transcript();
+    }),
+};
+
+export const redirectWebKeyReturnRefusals: Scenario = {
+  id: "redirect-web-key-return-refusals",
+  record: () =>
+    pinned("redirect-web-key-return-refusals", async (pin) => {
+      const { w } = await world();
+      keyReturnOn(w);
+      await refusalsOn(w);
+      await setLimit(w, 1);
+      const owned = await seedLicense(w);
+      const full = await seedLicenseWithKey(w.db, PRODUCT, {
+        id: `lic_${PRODUCT}_2`,
+      });
+
+      const r = new TranscriptRecorder({
+        id: "redirect-web-key-return-refusals",
+        description:
+          "Continue without an account when the licence changes after the card's press (LK-SKIP, WIRE-CONTRACT-V5 §12.4.2 items 3.6, 3.7 and 5), with key-entry refusals on and a limit of 1. The card issues a code, then the licence joins an account: token repeats the ownership check and answers a flat 403 license_owned with signInUrl, takes no seat and counts nothing. For a second licence another device enters the key after the press, so the limit is reached: token answers 403 key_entry_limit with keyEntries and manageUrl. Each refusal spends its code, so the person presses the card again for a fresh one. Neither is an auth failure: the client keeps its state.",
+        features: KEY_RETURN_FEATURES,
+        requires: KEY_RETURN_REQUIRES,
+        product: PRODUCT,
+        now: T0,
+        world: w,
+        pinned: pin,
+        initial: { deviceId: DEVICE, version: VERSION },
+      });
+
+      const first = await startKeyReturn(
+        r,
+        "The app sends the person's browser to authorize with key_return=allow.",
+      );
+      const ownedRedirect = await pressKey(
+        r,
+        first,
+        owned.key,
+        "Continue without an account: the licence is not in an account yet, so the card answers a code.",
+      );
+      // The licence joins an account after the press, outside the recording.
+      const holder = await seedAccount(w, "holder@example.com");
+      await holdLicense(w, owned.licenseId, holder.id);
+      await r.step(
+        {
+          action: "redirectComplete",
+          note: "token repeats the ownership check: a licence in an account is license_owned, flat, with the sign-in link. Nothing is counted.",
+          args: keyReturnArgs(ownedRedirect),
+        },
+        async (s) => {
+          const res = await token(s, codeOfRedirect(ownedRedirect), VERIFIER);
+          expect(res.status).toBe(403);
+          expect(await res.json()).toMatchObject({ error: "license_owned" });
+        },
+        {
+          result: "license-owned",
+          code: "license_owned",
+          signInUrl: `https://key.plrs.im/signin?product=${PRODUCT}`,
+          tokenHeld: false,
+        },
+      );
+
+      const second = await startKeyReturn(
+        r,
+        "A second press on another licence: a new authorize.",
+      );
+      const limitRedirect = await pressKey(
+        r,
+        second,
+        full.key,
+        "Continue without an account: no entry is counted yet, so the card answers a code.",
+      );
+      // Another device enters the key after the press, outside the recording.
+      await otherDeviceEnters(w, full.key);
+      await r.step(
+        {
+          action: "redirectComplete",
+          note: "token meets the limit another device just reached: key_entry_limit, flat, with the count and the manage link. No seat is taken.",
+          args: keyReturnArgs(limitRedirect),
+        },
+        async (s) => {
+          const res = await token(s, codeOfRedirect(limitRedirect), VERIFIER);
+          expect(res.status).toBe(403);
+          expect(await res.json()).toMatchObject({
+            error: "key_entry_limit",
+            keyEntries: { used: 1, limit: 1 },
+          });
+        },
+        {
+          result: "key-entry-limit",
+          code: "key_entry_limit",
+          keyEntries: { used: 1, limit: 1 },
+          manageUrl: `https://key.plrs.im/activate?product=${PRODUCT}`,
+          tokenHeld: false,
+        },
+      );
+      await r.step(
+        {
+          action: "redirectComplete",
+          note: "The refusal spent the code: it cannot be redeemed again.",
+          args: keyReturnArgs(limitRedirect),
+        },
+        (s) => refusedGrant(s, codeOfRedirect(limitRedirect)),
+        { result: "invalid-grant", code: "invalid_grant" },
       );
       return r.transcript();
     }),

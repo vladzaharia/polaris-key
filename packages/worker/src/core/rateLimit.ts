@@ -18,6 +18,8 @@ export interface RateLimit {
   id: string;
   limit: number;
   windowSec: number;
+  /** Units one call counts for; absent is 1. A call is refused only once the counter has reached `limit`. */
+  cost?: number;
 }
 
 /**
@@ -256,6 +258,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",
   adminAccessDenied: "open",
+  // U-11a.F: the console's Cloud Sync file downloads, per signed-in session: a count a minute and a
+  // MiB budget an hour. Both are cost budgets on an already authenticated, stepped-up read.
+  adminSyncDownload: "open",
+  adminSyncDownloadMiB: "open",
   portalDeviceDisconnect: "open",
   // PX-W16: Account → Profile edits. Writes the account's own row only; nothing to guard.
   portalProfileEdit: "open",
@@ -404,6 +410,7 @@ export async function rateLimitCheck(
         limit: rl.limit,
         windowSec: rl.windowSec,
         now,
+        ...(rl.cost !== undefined && rl.cost !== 1 ? { cost: rl.cost } : {}),
         ...(peek ? { peek: true } : {}),
       }),
     });

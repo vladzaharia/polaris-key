@@ -1731,8 +1731,9 @@ the member names the device when the grant has none.
 
 ### 12.4.2 The key return [C]
 
-Pinned by `redirect-web-key-return.json` and `redirect-web-key-return-limit.json` (transcripts,
-recorded by LK-SKIP.4; their `browser` steps are the requests no SDK makes). The long form is
+Pinned by `redirect-web-key-return.json`, `redirect-web-key-return-limit.json` and
+`redirect-web-key-return-refusals.json` (the last: `license_owned` and `key_entry_limit` answered at
+`token`) (transcripts, recorded by LK-SKIP.4; their `browser` steps are the requests no SDK makes). The long form is
 `plans/LK-SKIP.md`. A person sent to the Polaris Locker card by an app, who holds a licence key,
 can return to the app on that licence without an account. The app gets a device on the key's
 licence, with no account and no subject. Nothing is signed and no signed document changes:

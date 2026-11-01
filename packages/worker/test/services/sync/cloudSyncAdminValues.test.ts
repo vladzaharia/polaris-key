@@ -19,6 +19,8 @@ import {
   getRing,
   keyringStore,
 } from "../../../src/core/keyring/store.js";
+import { DOWNLOAD_PER_MINUTE } from "../../../src/services/sync/admin/values.js";
+import { can } from "../../../src/core/rbac/can.js";
 import { cloudSyncStore } from "../../../src/services/sync/subjectStore.js";
 import { ADMIN_ROUTES } from "../../../src/console/routes.js";
 import { findRoute, levelOf } from "../../../src/console/routeMatch.js";
@@ -289,6 +291,23 @@ describe("files", () => {
     ]);
   });
 
+  it("limits downloads per session by count and by size, with a retry date", async () => {
+    const { w, call } = await serverWorld();
+    await stored(w, "big", "g1", bytesOf(2000, 1));
+    for (let i = 0; i < DOWNLOAD_PER_MINUTE; i++) {
+      const ok = await call("GET", SLUG, w.subject, "/files/big/g1");
+      expect(ok.status).toBe(200);
+      await ok.arrayBuffer();
+    }
+    const over = await call("GET", SLUG, w.subject, "/files/big/g1");
+    expect(over.status).toBe(429);
+    expect(Number(over.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(Number(over.headers.get("retry-after"))).toBeLessThanOrEqual(60);
+    // The listing of revisions is not a download.
+    const revs = await call("GET", SLUG, w.subject, "/files/big/g1/revisions");
+    expect(revs.status).toBe(200);
+  });
+
   it("is 404 for a missing file, 400 for a bad version, 403 without a step-up", async () => {
     const { w, call, stale, otherSubject, audits } = await serverWorld();
     await stored(w, "saves", "s1", bytesOf(10));
@@ -420,5 +439,25 @@ describe("level (M-2)", () => {
     expect(level("GET", ["files", "saves", "s1", "revisions"])).toBe("edit");
     expect(level("GET", [])).toBe("view");
     expect(level("POST", ["delete"])).toBe("edit");
+  });
+
+  it("a view-only member is refused those reads, and may read the summary", () => {
+    const viewer = {
+      memberId: "m-viewer",
+      grants: [
+        {
+          role: "product_admin" as const,
+          scope: `product:${SLUG}` as const,
+          areas: null,
+          level: "view" as const,
+          source: "grant" as const,
+        },
+      ],
+    };
+    const scope = { kind: "product" as const, slug: SLUG, system: false };
+    for (const tail of [["values"], ["files", "saves", "s1"], []])
+      expect(can(viewer, scope, "sync", level("GET", tail))).toBe(
+        tail.length === 0,
+      );
   });
 });
