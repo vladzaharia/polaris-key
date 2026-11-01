@@ -60,7 +60,7 @@ export const TRANSFER_MAX_FILES = 64;
 /** The bytes all partial files may take together. */
 export const TRANSFER_QUOTA_BYTES = 4 * 1024 ** 3;
 /** Space left on the volume that partial files never use. */
-const DISK_RESERVE = 256 * 1024 ** 2;
+export const DISK_RESERVE = 256 * 1024 ** 2;
 
 /** What `p/<ref>.meta` holds: the resume key's parts, nothing the peer chose but the id and hash. */
 interface Meta {
