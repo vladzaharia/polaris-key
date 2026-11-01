@@ -232,6 +232,38 @@ class LanJudgeTest {
     }
 
     @Test
+    fun lanDialFailsClosedWhenTheNetworkFactoryThrows() {
+        server().use { srv ->
+            var asked = 0
+            val connected = CopyOnWriteArrayList<Socket>()
+            val factory = object : javax.net.SocketFactory() {
+                override fun createSocket(): Socket {
+                    asked++
+                    throw java.io.IOException("network is gone")
+                }
+
+                override fun createSocket(h: String?, p: Int): Socket = throw UnsupportedOperationException()
+
+                override fun createSocket(h: String?, p: Int, a: java.net.InetAddress?, lp: Int): Socket = throw UnsupportedOperationException()
+
+                override fun createSocket(a: java.net.InetAddress?, p: Int): Socket = throw UnsupportedOperationException()
+
+                override fun createSocket(a: java.net.InetAddress?, p: Int, la: java.net.InetAddress?, lp: Int): Socket =
+                    throw UnsupportedOperationException()
+            }
+            val o = LanDialOptions(true, 3000, 30) { s, _, _ ->
+                connected += s
+                s.connect(InetSocketAddress("127.0.0.1", srv.localPort))
+            }.withSocketFactory(factory)
+            val r = runCatching { runBlocking { lanDialRaceTo(listOf("10.0.0.1"), srv.localPort, o) } }
+            assertTrue(r.isFailure)
+            assertTrue(r.exceptionOrNull() is java.io.IOException)
+            assertEquals(1, asked)
+            assertEquals(0, connected.size)
+        }
+    }
+
+    @Test
     fun aConnectionThatWinsJustBeforeTheTimeoutIsClosed() {
         server().use { srv ->
             val sockets = CopyOnWriteArrayList<Socket>()
