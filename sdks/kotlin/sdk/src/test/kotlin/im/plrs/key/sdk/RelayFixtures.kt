@@ -175,7 +175,9 @@ internal class ManualSleep : suspend (Double) -> Unit {
         try {
             f.await()
         } finally {
-            pending.removeAll { it.second === f }
+            // Kotlin's removeAll(predicate) is index-based, not atomic, on a CopyOnWriteArrayList: a concurrent add (the next
+            // sleep registering as a cancelled one unwinds) could be removed with it. removeIf is atomic.
+            pending.removeIf { it.second === f }
         }
     }
 

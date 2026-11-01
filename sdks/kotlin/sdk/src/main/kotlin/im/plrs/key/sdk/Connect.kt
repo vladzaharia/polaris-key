@@ -66,8 +66,10 @@ import im.plrs.key.core.wireErrorCode
 import im.plrs.key.core.wireRefusal
 import java.io.File
 import java.net.URI
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -545,11 +547,14 @@ public class ConnectClient internal constructor(
      */
     public suspend fun leave(): Unit = lock.withLock {
         // Whatever the record says, the device is leaving: what the SDK kept for it (partial transfers) goes too.
-        for (f in leftListeners) {
-            try {
-                f()
-            } catch (e: Exception) {
-                // a listener never stops a sign-out
+        // The listeners may touch the disk (the partial-transfer purge), so they run off the caller's thread.
+        withContext(Dispatchers.IO) {
+            for (f in leftListeners) {
+                try {
+                    f()
+                } catch (e: Exception) {
+                    // a listener never stops a sign-out
+                }
             }
         }
         // Nothing held means nothing to forget, and sign-out must not depend on a store it never
