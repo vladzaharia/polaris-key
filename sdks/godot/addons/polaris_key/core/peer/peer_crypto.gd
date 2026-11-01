@@ -14,6 +14,11 @@ extends RefCounted
 
 ## A Noise message is at most 65,535 bytes, so one AEAD call carries at most 65,519 of them.
 const MAX_AEAD_BYTES := 65535
+## The known-answer message that a native sync lane seals whole: 1 MiB, one file segment. Its
+## sealed form (key 0..31, nonce 0xA0.., AAD "pkey-sync-kat", byte i = i*31+7 mod 256) is pinned by
+## digest, computed with another implementation (Node's OpenSSL).
+const SYNC_KAT_BYTES := 1048576
+const SYNC_KAT_SEALED_SHA256 := "20985c5839f5d4ccc63675c2e97146b4e8de8c720a4536b93b8f36b9fa50d672"
 
 
 ## Native adapters, in preference order. Each script extends PKeyPeerCrypto and has
@@ -94,7 +99,7 @@ func available() -> bool:
 ## tampered message refused, and a low-order point refused. False on any difference, so a lane
 ## that answers wrongly, or with the wrong type, is not chosen. Nothing here is secret.
 func known_answers_ok() -> bool:
-	return _curve_answers_ok() and _gcm_answers_ok() and _gcm_empty_answers_ok()
+	return _curve_answers_ok() and _gcm_answers_ok() and _gcm_empty_answers_ok() and _sync_answers_ok()
 
 
 func _curve_answers_ok() -> bool:
@@ -154,6 +159,85 @@ func _gcm_empty_answers_ok() -> bool:
 			and opened13 is PackedByteArray and opened13.is_empty() \
 			and opened14 is PackedByteArray and opened14 == zeros \
 			and aes_gcm_open(key, nonce, none, bad13) == null and aes_gcm_open(key, nonce, none, bad14) == null
+
+
+## The answers behind the sync entry points (`sync_seal`, `sync_open`), which the Cloud Sync AEAD
+## facade (`PKeySyncAead`) calls for settings and files: an empty message and an empty AAD through
+## that path, a tampered tag refused, and, for a native lane that takes a whole segment, one 1 MiB
+## message with a pinned digest of the sealed output. The GDScript lane is the reference for the
+## rest, so it skips the 1 MiB case (it would cost seconds) and `sync_native()` says which applies.
+func _sync_answers_ok() -> bool:
+	var key := PackedByteArray()
+	key.resize(32)
+	var nonce := PackedByteArray()
+	nonce.resize(12)
+	var none := PackedByteArray()
+	var want_empty := "530f8afbc74536b9a963b4f1c4cb738b".hex_decode()
+	var bad := want_empty.duplicate()
+	bad[0] ^= 1
+	var sealed = sync_seal(key, nonce, none, none)
+	var opened = sync_open(key, nonce, none, want_empty)
+	if not (sealed is PackedByteArray and sealed == want_empty and opened is PackedByteArray and opened.is_empty() \
+			and sync_open(key, nonce, none, bad) == null):
+		return false
+	var k2 := PackedByteArray()
+	var n2 := PackedByteArray()
+	for i in 32:
+		k2.append(i)
+	for i in 12:
+		n2.append(0xA0 + i)
+	var aad := "pkey-sync-kat".to_utf8_buffer()
+	var small := PackedByteArray([1, 2, 3])
+	var s2 = sync_seal(k2, n2, aad, small)
+	var o2 = sync_open(k2, n2, aad, s2)
+	if not (s2 is PackedByteArray and s2.size() == 19 and o2 is PackedByteArray and o2 == small):
+		return false
+	var wrong_aad = sync_open(k2, n2, "pkey-sync-kaT".to_utf8_buffer(), s2)
+	if wrong_aad != null:
+		return false
+	if not sync_native() or sync_max_bytes() < SYNC_KAT_BYTES:
+		return true
+	var plain := PackedByteArray()
+	plain.resize(SYNC_KAT_BYTES)
+	for i in SYNC_KAT_BYTES:
+		plain[i] = (i * 31 + 7) & 0xFF
+	var big = sync_seal(k2, n2, aad, plain)
+	if not (big is PackedByteArray and big.size() == SYNC_KAT_BYTES + 16 and _sha256_hex(big) == SYNC_KAT_SEALED_SHA256):
+		return false
+	var back = sync_open(k2, n2, aad, big)
+	var ok: bool = back is PackedByteArray and back == plain
+	var flipped: PackedByteArray = (big as PackedByteArray).duplicate()
+	flipped[flipped.size() - 1] ^= 1
+	return ok and sync_open(k2, n2, aad, flipped) == null
+
+
+static func _sha256_hex(data: PackedByteArray) -> String:
+	var ctx := HashingContext.new()
+	ctx.start(HashingContext.HASH_SHA256)
+	ctx.update(data)
+	return ctx.finish().hex_encode()
+
+
+## Cloud Sync's entry points (U-40.2, GM.1). They differ from the Noise methods above only in
+## their bounds: the Noise methods stop at 65,519 message bytes, these at `sync_max_bytes()`. The
+## GDScript lane is `PKeySyncAesGcm` (1 MiB of message, 64 KiB of AAD). An adapter overrides all
+## three together. A refusal is the same value as above: an empty array from `sync_seal`, null
+## from `sync_open`. Callers go through `PKeySyncAead`, which checks the bound and falls back.
+func sync_max_bytes() -> int:
+	return PKeySyncAesGcm.MAX_BYTES
+
+
+## True for an adapter whose sync calls run native code, so the known answers add the 1 MiB case.
+func sync_native() -> bool:
+	return false
+
+
+func sync_seal(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, plain: PackedByteArray) -> PackedByteArray:
+	return PKeySyncAesGcm.seal(key, nonce, plain, aad)
+
+
+func sync_open(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, sealed: PackedByteArray) -> Variant:
+	return PKeySyncAesGcm.open(key, nonce, sealed, aad)
 
 
 ## The public key (u-coordinate) of a 32-byte X25519 private key. Empty when the key is not 32 bytes.

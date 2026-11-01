@@ -102,7 +102,7 @@ static func _seal_blob(key: PackedByteArray, aad: PackedByteArray, root: PackedB
 	var n := nonce if not nonce.is_empty() else Crypto.new().generate_random_bytes(NONCE_BYTES)
 	if n.size() != NONCE_BYTES:
 		return PackedByteArray()
-	var sealed := PKeySyncAesGcm.seal(key, n, root, aad)
+	var sealed := PKeySyncAead.seal(key, n, root, aad)
 	if sealed.is_empty():
 		return PackedByteArray()
 	var out := PackedByteArray([BLOB_VERSION])
@@ -114,7 +114,7 @@ static func _seal_blob(key: PackedByteArray, aad: PackedByteArray, root: PackedB
 static func _open_blob(key: PackedByteArray, aad: PackedByteArray, blob: PackedByteArray) -> Variant:
 	if aad.is_empty() or key.size() != 32 or blob.size() != BLOB_BYTES or blob[0] != BLOB_VERSION:
 		return null
-	var root: Variant = PKeySyncAesGcm.open(key, blob.slice(1, 13), blob.slice(13), aad)
+	var root: Variant = PKeySyncAead.open(key, blob.slice(1, 13), blob.slice(13), aad)
 	if root == null or (root as PackedByteArray).size() != PKeySyncHkdf.ROOT_BYTES:
 		return null
 	return root
