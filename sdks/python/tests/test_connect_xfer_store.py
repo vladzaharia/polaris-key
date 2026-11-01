@@ -209,6 +209,25 @@ def test_a_session_cannot_touch_the_partial_another_holds(tmp_path: Path) -> Non
     assert "held" not in s.partials(KEY)[0]
 
 
+def test_create_and_truncate_by_another_owner_are_refused(tmp_path: Path) -> None:
+    from polaris_key.connect.transfer_store import StoreRefused
+
+    s = _make(tmp_path, Clock())
+    a, b = object(), object()
+    ref = xfer_partial_path(KEY, ID, SHA)
+    s.apply(KEY, {"create": ref}, META, owner=a)
+    s.apply(KEY, {"write": ref, "offset": 0, "data": b"x" * 40}, owner=a)
+    with pytest.raises(StoreRefused):
+        s.apply(KEY, {"create": ref}, META, owner=b)
+    with pytest.raises(StoreRefused):
+        s.apply(KEY, {"truncate": ref, "to": 0}, owner=b)
+    # Nothing of the holder's partial changed: it is still 40 bytes long when the holder lets go.
+    s.apply(KEY, {"keep": ref}, owner=a)
+    s.apply(KEY, {"truncate": ref, "to": 10}, owner=b)
+    s.apply(KEY, {"keep": ref}, owner=b)
+    assert (tmp_path / "transfers" / ref).read_bytes() == b"x" * 10
+
+
 def test_rehash_of_a_missing_or_short_partial_raises(tmp_path: Path) -> None:
     s = _make(tmp_path, Clock())
     ref = _filled(s, b"x" * 10)
