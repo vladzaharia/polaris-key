@@ -55,6 +55,7 @@ func _same_code_then_records(t: PKeyTestContext) -> void:
 		var caps: Array = ["app/1", "ring/1", "vouch/1"] if mode == "v" else ["app/1", "ring/1"]
 		t.check("%s: the capabilities are the intersection (mode v adds vouch/1 itself)" % mode, est["caps"] == caps, str(est["caps"]))
 		t.check("%s: HELLO display data is not authenticated" % mode, est["hello_authenticated"] == false and est["peer_device_id"] == "")
+		t.check("%s: the one-time static key is dropped on both sides once the transport is open" % mode, d.session._static == null and m.session._static == null)
 		t.check("%s: both share the handshake hash" % mode, d.session.handshake_hash() == m.session.handshake_hash() and d.session.handshake_hash().size() == 32)
 		t.check("%s: nothing flows until the person confirms" % mode, not d.session.is_open() and d.session.send_record(PKeyPeerRecord.VOUCH_RESULT, PackedByteArray()).code == &"state")
 		t.check("%s: the sas event came after established" % mode, d.events.find(est) < d.events.find(sd[0]))

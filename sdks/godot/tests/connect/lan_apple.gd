@@ -126,6 +126,20 @@ func _browse(t: PKeyTestContext) -> void:
 		many.event("bj_found", {"instance": "p1-%s" % _name16(i), "txt": []})
 	lane2.poll()
 	t.check("browse: the reported table is bounded", rows.up.size() == PKeyAppleMdns.MAX_ROWS)
+	# Tag-only rows are counted apart: a full tag partition leaves room for the roster, and the reverse.
+	var mix := FakeBin.new()
+	mix.queued = []
+	mix.raw["bj_caps"] = '{"slots":1}'.to_utf8_buffer()
+	var lane3 := _lane(mix)
+	var rows3 := Seen.new()
+	lane3.browse(rows3.on_up, Callable(), func(n: String) -> bool: return n.begins_with("p1-a"), {"v": ["0123456789abcdef"]})
+	for i in PKeyAppleMdns.MAX_TAG_ROWS + 40:
+		mix.event("bj_found", {"instance": "p1-b%s" % _name16(i).substr(0, 15), "txt": ["v=1", "m=v", "h=0123456789abcdef"]})
+	lane3.poll()
+	t.check("browse: tag-only rows are bounded apart", rows3.up.size() == PKeyAppleMdns.MAX_TAG_ROWS)
+	mix.event("bj_found", {"instance": "p1-a%s" % _name16(1).substr(0, 15), "txt": []})
+	lane3.poll()
+	t.check("browse: a roster row still enters when the tag partition is full", rows3.up.size() == PKeyAppleMdns.MAX_TAG_ROWS + 1)
 	b.detail.stop()
 	t.check("browse: stop ends the browse", fake.ops().has("bj_browse_stop"))
 	lane.stop()

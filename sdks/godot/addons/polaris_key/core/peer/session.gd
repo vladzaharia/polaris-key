@@ -605,6 +605,10 @@ func _open_transport(hs: PKeyPeerNoise.Handshake, remote: PackedByteArray, peer_
 		return HANDSHAKE_FAILED
 	_tp = tp.detail
 	_hs = null
+	# The one-time static key is not needed past the handshake (V5 15.6.1 rule 10): zero our copy.
+	if _static is PackedByteArray:
+		(_static as PackedByteArray).fill(0)
+	_static = null
 	_transport_deadline = INF
 	_keyed_at = _mono()
 	_phase = &"hello"

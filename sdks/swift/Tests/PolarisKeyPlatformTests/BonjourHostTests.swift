@@ -552,15 +552,32 @@ import XCTest
             XCTAssertTrue(events(m.sink).isEmpty)
         }
 
-        func testTagRowsShareTheSameBoundedTable() {
+        func testTagRowsHaveTheirOwnBoundedPartition() {
             let m = make()
             let h = "0123456789abcdef"
             _ = run(m.ops, "bj_browse_start", json([:]))
             _ = run(m.ops, "bj_accept_tags", json(["v": [h]]))
-            m.driver.send(.upserted((0..<(BonjourTable.maxInstances + 20)).map { tagged($0, m: "v", h: h) }))
+            m.driver.send(.upserted((0..<(BonjourTable.maxTagged + 20)).map { tagged($0, m: "v", h: h) }))
             let ev = events(m.sink)
-            XCTAssertEqual(ev.filter { $0.0 == "bj_found" }.count, BonjourTable.maxInstances + 20)
-            XCTAssertEqual(ev.filter { $0.0 == "bj_lost" }.count, 20, "the oldest rows leave: 256 rows at most")
+            XCTAssertEqual(ev.filter { $0.0 == "bj_found" }.count, BonjourTable.maxTagged + 20)
+            XCTAssertEqual(ev.filter { $0.0 == "bj_lost" }.count, 20, "the oldest tag rows leave: 32 at most")
+        }
+
+        func testTaggedRowsNeverEvictARosterRow() {
+            let m = make()
+            let h = "0123456789abcdef"
+            _ = run(m.ops, "bj_browse_start", json([:]))
+            XCTAssertEqual(run(m.ops, "bj_accept", names([1])), [1])
+            _ = run(m.ops, "bj_accept_tags", json(["v": [h]]))
+            m.driver.send(.upserted([tagged(1, m: "a", h: "ffffffffffffffff")]))
+            XCTAssertEqual(events(m.sink).compactMap { $0.1["instance"] as? String }, [inst(1)])
+            m.driver.send(.upserted((100..<(100 + BonjourTable.maxInstances + 50)).map { tagged($0, m: "v", h: h) }))
+            let ev = events(m.sink)
+            XCTAssertFalse(
+                ev.contains { $0.0 == "bj_lost" && ($0.1["instance"] as? String) == inst(1) }, "the roster peer stays")
+            // A later tagged approver still enters once the partition is full of older strangers.
+            m.driver.send(.upserted([tagged(900, m: "v", h: h)]))
+            XCTAssertEqual(events(m.sink).filter { $0.0 == "bj_found" }.compactMap { $0.1["instance"] as? String }, [inst(900)])
         }
     }
 

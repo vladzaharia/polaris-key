@@ -145,6 +145,8 @@ public enum BonjourErrors {
 /// The bounded set of instances currently up.
 struct BonjourTable {
     static let maxInstances = 256
+    /// Rows admitted only by a nearby tag live in their own partition; they never evict a roster row.
+    static let maxTagged = 32
     static let maxTxt = 8
     /// An instance name is `p1-` and 16 characters.
     static let nameBytes = 19
@@ -157,6 +159,7 @@ struct BonjourTable {
     /// Least recently refreshed first.
     private var order: [String] = []
     private var rows: [String: BonjourFound] = [:]
+    private var tagged: Set<String> = []
 
     var count: Int { rows.count }
 
@@ -167,7 +170,7 @@ struct BonjourTable {
             && s[3...].allSatisfy { ($0.value >= 0x61 && $0.value <= 0x7A) || ($0.value >= 0x32 && $0.value <= 0x37) }
     }
 
-    mutating func upsert(_ found: BonjourFound) -> [Change] {
+    mutating func upsert(_ found: BonjourFound, tagged isTagged: Bool = false) -> [Change] {
         guard Self.isInstanceName(found.instance) else { return [] }
         let row = BonjourFound(
             instance: found.instance, txt: Array(found.txt.prefix(Self.maxTxt)), endpoint: found.endpoint)
@@ -175,15 +178,21 @@ struct BonjourTable {
         let existing = rows[row.instance]
         if existing != nil {
             order.removeAll { $0 == row.instance }
-        } else {
-            while rows.count >= Self.maxInstances, let oldest = order.first {
-                order.removeFirst()
-                rows[oldest] = nil
-                out.append(.down(oldest))
-            }
+            tagged.remove(row.instance)
+        }
+        // Each partition evicts only its own least recently refreshed row.
+        let cap = isTagged ? Self.maxTagged : Self.maxInstances
+        while (isTagged ? tagged.count : rows.count - tagged.count) >= cap,
+            let oldest = order.first(where: { tagged.contains($0) == isTagged })
+        {
+            order.removeAll { $0 == oldest }
+            rows[oldest] = nil
+            tagged.remove(oldest)
+            out.append(.down(oldest))
         }
         order.append(row.instance)
         rows[row.instance] = row
+        if isTagged { tagged.insert(row.instance) }
         if existing != row { out.append(.up(row)) }
         return out
     }
@@ -191,6 +200,7 @@ struct BonjourTable {
     mutating func remove(_ instance: String) -> [Change] {
         guard rows.removeValue(forKey: instance) != nil else { return [] }
         order.removeAll { $0 == instance }
+        tagged.remove(instance)
         return [.down(instance)]
     }
 
@@ -202,6 +212,7 @@ struct BonjourTable {
     mutating func clear() {
         order = []
         rows = [:]
+        tagged = []
     }
 }
 
@@ -296,7 +307,7 @@ public final class BonjourBrowse: Sendable {
                 guard let row = s.table.row(name) else { return false }
                 return !admit(row)
             }.flatMap { s.table.remove($0) }
-            return (retired + results.filter { admit($0) }.flatMap { s.table.upsert($0) }, s.onUp, s.onDown)
+            return (retired + results.filter { admit($0) }.flatMap { s.table.upsert($0, tagged: tagOnly($0)) }, s.onUp, s.onDown)
         }
         guard let up, let down else { return }
         deliver(changes, onUp: up, onDown: down)
@@ -326,7 +337,7 @@ public final class BonjourBrowse: Sendable {
                 guard s.running else { return [] }
                 // Match first, then store: a name the caller does not know never takes a table slot,
                 // so forged names cannot evict real peers.
-                return found.filter { admit($0) }.flatMap { s.table.upsert($0) }
+                return found.filter { admit($0) }.flatMap { s.table.upsert($0, tagged: tagOnly($0)) }
             }
             deliver(changes, onUp: onUp, onDown: onDown)
         case .removed(let names):
@@ -347,6 +358,11 @@ public final class BonjourBrowse: Sendable {
     /// `admitAlso` is a second way in (the nearby tags): a result it accepts enters whatever the name filter says.
     private func admit(_ f: BonjourFound) -> Bool {
         ((accept?(f.instance) ?? true) && (acceptFound?(f) ?? true)) || (admitAlso?(f) ?? false)
+    }
+
+    /// Admitted by the tags alone (not by the name filter): such a row sits in the capped tag partition.
+    private func tagOnly(_ f: BonjourFound) -> Bool {
+        !((accept?(f.instance) ?? true) && (acceptFound?(f) ?? true))
     }
 
     private func deliver(

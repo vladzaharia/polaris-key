@@ -289,6 +289,20 @@ class NsdCommandsTest {
     }
 
     @Test
+    fun aNameWhoseTagDoesNotMatchFreesItsSlot() {
+        op("nsd_accept") { put("names", JSONArray()).put("tags", tags(v = listOf(h1))) }
+        op("nsd_browse_start")
+        for (i in 0 until NsdCommands.MAX_CANDIDATES) {
+            assertTrue(fake.browseAccept!!(nameOf(i)))
+            fake.browseListener!!.onFound(nameOf(i))
+            fake.watchListeners[nameOf(i)]!!.onResolved(NsdResolved(nameOf(i), listOf("192.168.1.8"), 4100, attrs("v", h2), null))
+        }
+        assertTrue(poll().isEmpty())
+        assertTrue("forged names no longer hold the slots", fake.browseAccept!!(nameOf(100)))
+        assertFalse("a rejected name stays out until it goes", fake.browseAccept!!(nameOf(0)))
+    }
+
+    @Test
     fun aGoneCandidateFreesItsPlace() {
         op("nsd_accept") { put("names", JSONArray()).put("tags", tags(v = listOf(h1))) }
         op("nsd_browse_start")
