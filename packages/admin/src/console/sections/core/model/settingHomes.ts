@@ -259,6 +259,7 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   // is its default); the monthly ceiling has a Change… dialog (members with Cloud Connect edit).
   "cloudConnect.relay.enabled": at("connect-setup", "Relay"),
   "cloudConnect.ceiling.relayBytes": at("connect-setup", "Relay"),
+  "cloudConnect.interAccount": at("connect-setup", "Relay"),
 };
 
 /**
