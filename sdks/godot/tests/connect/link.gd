@@ -257,7 +257,7 @@ func _rules(t: PKeyTestContext) -> void:
 	t.check("rules: 29.999 s into a handshake is still open", rb.closed.is_empty())
 	now[0] = 30000
 	pump.poll_once()
-	t.check("rules: 30 s closes peer_timeout (V5, R-6G N7)", rb.closed == [[&"peer_timeout", false]], str(rb.closed))
+	t.check("rules: 30 s closes peer_timeout (V5)", rb.closed == [[&"peer_timeout", false]], str(rb.closed))
 	# Established links have no handshake deadline.
 	pipes = PKeyPeerMemoryPipe.pair()
 	now[0] = 0
@@ -407,7 +407,7 @@ func _small_things(t: PKeyTestContext) -> void:
 	t.check("small: and can be removed", pump.count() == 0)
 
 
-# ── R-6G fixes ───────────────────────────────────────────────────────────────────────────────
+# ── Bounds and lifecycle ───────────────────────────────────────────────────────────────────────────────
 
 
 ## A loopback TCP connection: [dialled raw peer, accepted pipe, listener]. The caller stops the listener.

@@ -123,7 +123,7 @@ class Assembler extends RefCounted:
 	var _parts: Array[PackedByteArray] = []
 	var _size := 0
 	## Set while a chain of an unknown non-critical type is being dropped, and how many records of it
-	## were seen: a dropped chain is a chain, so it is bounded by the same record count (R-6G N6).
+	## were seen: a dropped chain is a chain, so it is bounded by the same record count.
 	var _dropping := -1
 	var _dropped := 0
 

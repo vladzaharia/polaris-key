@@ -63,12 +63,12 @@ func try_take() -> float:
 	return (1.0 - _tokens) / rate()
 
 
-## Give back a token taken for a send the socket then refused (R-6G2 B1), so a retry is not charged twice.
+## Give back a token taken for a send the socket then refused, so a retry is not charged twice.
 func refund() -> void:
 	_tokens = minf(_cap(), _tokens + 1.0)
 
 
-## While a LIMIT 1 is honoured the bucket holds at most half the burst, as `halve` cut it (R-6G2 N9).
+## While a LIMIT 1 is honoured the bucket holds at most half the burst, as `halve` cut it.
 func _cap() -> float:
 	return _burst / 2.0 if _now() < _halved_until else _burst
 

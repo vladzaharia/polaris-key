@@ -118,7 +118,7 @@ func remote_port() -> int:
 
 func _pull() -> void:
 	# At most one chunk waits unread. A paused link reads nothing, so the rest stays in the kernel,
-	# whose window then closes on the peer (R-6G B1); without this a paused link buffered every byte.
+	# whose window then closes on the peer; without this a paused link buffered every byte.
 	var n := mini(_peer.get_available_bytes(), READ_CHUNK - _in.size())
 	if n <= 0:
 		return

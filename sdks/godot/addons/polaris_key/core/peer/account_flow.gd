@@ -80,7 +80,7 @@ func ring_body() -> PackedByteArray:
 
 
 ## One `RING` in RING_GAP_SECONDS is worked on; the rest are dropped without a parse or a verify, and a
-## peer that keeps sending them is closed (R-6G B4). `t` is monotonic seconds. Answers {code} (a close
+## peer that keeps sending them is closed. `t` is monotonic seconds. Answers {code} (a close
 ## code, or "" for nothing to do) or {ring: {jws, epoch}} for a roster that replaces the held one.
 func on_ring(body: PackedByteArray, t: float) -> Dictionary:
 	if t - _ring_at < PKeyPeerSession.RING_GAP_SECONDS:

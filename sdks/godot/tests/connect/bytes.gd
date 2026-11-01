@@ -208,7 +208,7 @@ func _split(t: PKeyTestContext) -> void:
 	var odd2 := PKeyPeerRecord.Assembler.new("ax")
 	t.check("assembler: a mode of two letters allows no type", odd2.push({"type": 0x8001, "flags": 0, "body": PackedByteArray()})["kind"] == &"close")
 	t.check("assembler redacts itself", str(asm) == "PKeyPeerRecord.Assembler(a)")
-	# R-6G N6: a chain of an unknown non-critical type is dropped, and is a chain: the same record count bounds it.
+	# A chain of an unknown non-critical type is dropped, and is a chain: the same record count bounds it.
 	var drop := PKeyPeerRecord.Assembler.new("a")
 	var kinds: Array = []
 	for i in PKeyPeerRecord.MAX_CHAIN_RECORDS + 1:

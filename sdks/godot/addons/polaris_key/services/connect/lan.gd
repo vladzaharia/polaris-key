@@ -426,7 +426,7 @@ func abort() -> void:
 	_forget()
 
 
-## Let go of the held identity and of every name worked out from K_disc (R-6G2 N3).
+## Let go of the held identity and of every name worked out from K_disc.
 func _forget() -> void:
 	_id = null
 	_names = {}
@@ -973,7 +973,7 @@ func _handshake(pipe: PKeyPeerPipe, ident: PKeyConnectClient.PeerSource, host: S
 		return {"error": opened, "host": host}
 	var session: PKeyConnectSession = opened.detail
 	if session.is_closed():
-		# Closed while the caller's stack was being cleaned: not a success (R-6G2 N7).
+		# Closed while the caller's stack was being cleaned: not a success.
 		link.destroy()
 		return {"error": PKeyConnectErrors.lan("handshake_failed", "The session closed before it could be used."), "host": host}
 	if not contact.is_empty():

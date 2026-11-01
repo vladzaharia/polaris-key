@@ -9,7 +9,7 @@ extends RefCounted
 ## that answers false from `poll()` is finished and is let go. The pump listens to the tree only while
 ## it holds a link. `poll_once()` does one round by hand (tests, and hosts with no tree).
 ##
-## Budget (R-6G N1). A round stops once FRAME_BUDGET_USEC have gone into it (every link is polled at
+## Budget. A round stops once FRAME_BUDGET_USEC have gone into it (every link is polled at
 ## least once over a few rounds: the next round starts where this one stopped), and each link takes only
 ## a bounded share of its own backlog (see PKeyPeerLink), so a peer that floods a link cannot hold the
 ## game's frame. What is not read stays in the transport.

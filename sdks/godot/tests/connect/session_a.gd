@@ -642,7 +642,7 @@ class OpenCountingCrypto extends PKeyPeerCrypto:
 		return super.aes_gcm_open(key, nonce, aad, sealed)
 
 
-## R-6G B2: a responder reads no more than FIRST_MESSAGE_MAX bytes of a first message, and runs no HKDF
+## A responder reads no more than FIRST_MESSAGE_MAX bytes of a first message, and runs no HKDF
 ## or AEAD over a longer one; nothing is sent.
 func _first_message_cap(t: PKeyTestContext) -> void:
 	t.check("first message: the cap is the ephemeral key, a tag and 256 bytes", PKeyPeerSession.FIRST_MESSAGE_MAX == 304)
@@ -689,7 +689,7 @@ class RingCounter extends RefCounted:
 		return inner.call()
 
 
-## R-6G B4: one RING in RING_GAP_SECONDS is worked on per session; the rest are dropped without a
+## One RING in RING_GAP_SECONDS is worked on per session; the rest are dropped without a
 ## parse or a verify; RING_DROP_LIMIT of them in a window close the session peer_busy.
 func _ring_flood(t: PKeyTestContext) -> void:
 	var ring2: String = _pair2["ring"]
@@ -740,7 +740,7 @@ func _ring_flood(t: PKeyTestContext) -> void:
 	t.check("ring flood: a real roster in the first window is still surfaced", older.of(&"ring").size() == 1 and older.of(&"ring")[0]["epoch"] == 2)
 
 
-## N8 (R-6G2): an abort in the step that finishes the handshake leaves the session closed, not `hello`.
+## An abort in the step that finishes the handshake leaves the session closed, not `hello`.
 func _abort_midstep(t: PKeyTestContext) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
 	var slow := func(work: Callable) -> Variant:

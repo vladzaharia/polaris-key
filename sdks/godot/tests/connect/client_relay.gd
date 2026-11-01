@@ -193,7 +193,7 @@ func _state_store(t: PKeyTestContext) -> void:
 			raw.slice(0, 4).get_string_from_ascii() == "PKSL" and raw[4] == 1 \
 			and raw.get_string_from_utf8().find("discKeys") == -1)
 	t.check("the sealer saw the connect context", sealer.calls.size() >= 2)
-	# R-6G B3: the context names the product, so a blob sealed for one product does not open for another
+	# The context names the product, so a blob sealed for one product does not open for another
 	# (on Windows the context is the DPAPI entropy).
 	var other_dir := _scratch.path_join("other-product")
 	DirAccess.make_dir_recursive_absolute(other_dir)
@@ -209,7 +209,7 @@ func _state_store(t: PKeyTestContext) -> void:
 	t.check("a sealer that cannot open fails, not as none", not sealed.read().ok)
 	sealer.fault_open = false
 	t.check("sealed clear leaves the platform key", sealed.clear().ok and not FileAccess.file_exists(path) and not sealer.calls.has("destroy"))
-	# R-6G2 N8: the engine-encrypted file lane reads a roster of 128 devices, far over the old 16 KiB cap.
+	# The engine-encrypted file lane reads a roster of 128 devices, far over the old 16 KiB cap.
 	var enc := PKeyConnectState.new(PRODUCT, _scratch.path_join("enc"), false, null)
 	if enc.protection() == "encrypted-file":
 		var big := _record("r".repeat(60000), "c".repeat(700))

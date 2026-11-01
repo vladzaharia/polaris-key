@@ -56,14 +56,14 @@ extends RefCounted
 ## Everything after the transport exists runs inline. A secret is held in a PackedByteArray and
 ## filled with zeros when it is replaced or the session ends (best effort).
 ##
-## Mode v (CC-15b.G1, R-6G ruling 5): one `PKeyPeerVouch.Flow` per session judges every vouch and Sync
+## Mode v (CC-15b.G1): one `PKeyPeerVouch.Flow` per session judges every vouch and Sync
 ## record in both directions (rule 7 and 12: what arrives, and what `send_record` is about to send), so
 ## a record in the wrong direction or order closes the session and nothing reaches the host. The host
 ## drives it through `vouch()`; a record the flow hands over is delivered as a `record` event (held first
 ## while the person's own code is unconfirmed). The code deadline restarts once: D's at `start_sas()`,
 ## M's when SAS_COMMIT arrives. A MORE chain over 16 KiB closes `peer_bad_frame` in modes v and p.
 ##
-## Bounds on unauthenticated or hostile input (R-6G): a responder reads a first message of at most
+## Bounds on unauthenticated or hostile input: a responder reads a first message of at most
 ## FIRST_MESSAGE_MAX bytes (a longer one closes `peer_bad_frame`, silently, with no AEAD run); an
 ## admitted peer's RING is worked on at most once in RING_GAP_SECONDS, and RING_DROP_LIMIT dropped ones
 ## close the session `peer_busy`. `abort()` ends a session with no CLOSE and no event.
@@ -88,11 +88,11 @@ const SAS_DEADLINE_SECONDS := 120.0
 ## Section 15.6: records held before the person's confirmation, modes v and p, and their bytes.
 const MAX_QUEUED := 16
 const MAX_QUEUED_BYTES := 16 * 1024
-## The most a responder reads of a first message (R-6G B2): ephemeral key, tag and 256 bytes of
+## The most a responder reads of a first message: ephemeral key, tag and 256 bytes of
 ## payload. A real one is 55 bytes (`{"v":1}`); a longer one is refused before any HKDF or AEAD runs,
 ## so an unauthenticated peer cannot make the main thread open a frame of its choosing.
 const FIRST_MESSAGE_MAX := 32 + 16 + 256
-## At most one RING is worked on per this many seconds and session (R-6G B4): each costs up to two
+## At most one RING is worked on per this many seconds and session: each costs up to two
 ## Ed25519 verifies. The rest are dropped, and RING_DROP_LIMIT of them in a window close the session.
 const RING_GAP_SECONDS := 10.0
 const RING_DROP_LIMIT := 8
@@ -557,11 +557,11 @@ func _write_third(hs: PKeyPeerNoise.Handshake) -> StringName:
 
 
 ## Message 1 of a responder (section 15.5 and 15.10): the keys are tried in a fixed order by
-## `PKeyPeerContactFlow.first_message`, one offloaded task (R-6G B2: a first message over
+## `PKeyPeerContactFlow.first_message`, one offloaded task (a first message over
 ## `FIRST_MESSAGE_MAX` bytes is refused before any key is tried).
 func _on_first_message(noise: PackedByteArray) -> StringName:
 	if noise.size() > FIRST_MESSAGE_MAX:
-		# Nothing is sent and no HKDF or AEAD runs over a frame nobody has authenticated (R-6G B2).
+		# Nothing is sent and no HKDF or AEAD runs over a frame nobody has authenticated.
 		return PEER_BAD_FRAME
 	var ctx := {
 		"mode": _mode, "slug": _slug, "static_key": _static, "crypto": _crypto, "admission": _admission,
@@ -604,7 +604,7 @@ func _own_payload() -> PackedByteArray:
 ## The handshake is done: the transport ciphers, then HELLO.
 func _open_transport(hs: PKeyPeerNoise.Handshake, remote: PackedByteArray, peer_device_id: String) -> StringName:
 	if _aborted:
-		# Aborted mid-step (the wipe is pending): do not come back to life as `hello` (R-6G2 N8).
+		# Aborted mid-step (the wipe is pending): do not come back to life as `hello`.
 		return HANDSHAKE_FAILED
 	_hash = hs.handshake_hash()
 	var tp := hs.transport()

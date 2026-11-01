@@ -244,7 +244,7 @@ func _pacer(t: PKeyTestContext) -> void:
 	clock.t += 10.5
 	t.check("pacer: after ten seconds the rate is whole again", h.rate() == 180.0)
 	t.check("pacer: str() shows nothing", str(h) == "PKeyConnectPacer()")
-	# A token taken for a send the socket refused is given back (R-6G2 B1), never above the cap.
+	# A token taken for a send the socket refused is given back, never above the cap.
 	var r := PKeyConnectPacer.new(180.0, 360.0, Callable(clock, "mono"))
 	taken = 0
 	while r.try_take() == 0.0 and taken < 1000:
@@ -258,7 +258,7 @@ func _pacer(t: PKeyTestContext) -> void:
 	while full.try_take() == 0.0 and taken < 1000:
 		taken += 1
 	t.check("pacer: a refund never lifts the bucket over the burst (%d)" % taken, taken == 360, str(taken))
-	# While LIMIT 1 is honoured the bucket refills only to half the burst (R-6G2 N9).
+	# While LIMIT 1 is honoured the bucket refills only to half the burst.
 	var cap := PKeyConnectPacer.new(180.0, 360.0, Callable(clock, "mono"))
 	cap.halve()
 	clock.t += 1.0
@@ -537,7 +537,7 @@ func _pacing(t: PKeyTestContext) -> void:
 	await _frames(3)
 
 
-## A socket whose outbound queue is full refuses the second send of a poll (R-6G2 B1): the envelope stays
+## A socket whose outbound queue is full refuses the second send of a poll: the envelope stays
 ## queued and goes next frame, in order, so no Noise message is lost and the session survives.
 func _flush_refused(t: PKeyTestContext) -> void:
 	var rig := await _pair_up()
@@ -578,7 +578,7 @@ func _flush_refused(t: PKeyTestContext) -> void:
 	await _frames(3)
 
 
-## A session that closes in the frame the dial yields to the caller is not returned as a success (R-6G2 N7).
+## A session that closes in the frame the dial yields to the caller is not returned as a success.
 func _closed_between(t: PKeyTestContext) -> void:
 	var rig := await _pair_up()
 	var a: Peer = rig["a"]
@@ -597,7 +597,7 @@ func _closed_between(t: PKeyTestContext) -> void:
 
 
 ## The unread messages of every relay session count against one budget (G10); a closed session gives its
-## share back (R-6G2 N2).
+## share back.
 func _pipe_budget(t: PKeyTestContext) -> void:
 	var budget := PKeyConnectSession.Budget.new(200000)
 	var p1 := PKeyConnectRelay.RelayPipe.new()

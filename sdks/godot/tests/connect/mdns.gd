@@ -225,7 +225,7 @@ func _interfaces(t: PKeyTestContext) -> void:
 		u[1]["addresses"] == ["10.0.0.5"], str(u))
 	t.check("interfaces: loopback, tunnel, direct-link, virtual, link-local, CGNAT and v6-only are dropped", not names.has("lo0") and not names.has("utun3") and not names.has("awdl0") and
 		not names.has("{AB-CD}") and not names.has("br0") and not names.has("wlan9"))
-	t.check("interfaces: so are the carrier's mobile-data interfaces (R-6G2 N4)", not names.has("rmnet_data0") and not names.has("ccmni1") and not names.has("pdp_ip0") and
+	t.check("interfaces: so are the carrier's mobile-data interfaces", not names.has("rmnet_data0") and not names.has("ccmni1") and not names.has("pdp_ip0") and
 		not names.has("v4-rmnet_data0") and not names.has("clat4"), str(names))
 	var withlo := PKeyMdns.usable_interfaces(raw, true)
 	t.check("interfaces: loopback only when allowed", withlo.map(func(f: Dictionary) -> String: return f["name"]).has("lo0"))
@@ -494,7 +494,7 @@ func _replies(t: PKeyTestContext) -> void:
 
 
 ## A datagram from outside the link's private blocks is neither parsed, answered nor learned from, and
-## burns no reply gap (R-6G2 B2). A legacy unicast answer goes only to a port at or above 1024.
+## burns no reply gap. A legacy unicast answer goes only to a port at or above 1024.
 func _off_link(t: PKeyTestContext) -> void:
 	var w := World.new()
 	var m := w.adapter()
@@ -544,7 +544,7 @@ func _off_link(t: PKeyTestContext) -> void:
 
 
 ## A legacy answer carries PTR TTL 10; a querier-only device asks every 30 s, so the peer must stay up
-## in between (R-6G2 N1).
+## in between.
 func _legacy_ttl(t: PKeyTestContext) -> void:
 	var w := World.new()
 	w.refuse_5353 = true
@@ -575,7 +575,7 @@ func _legacy_ttl(t: PKeyTestContext) -> void:
 
 
 ## The interface list is read again in the sweep: the link's blocks follow a network change, a new
-## interface is joined, and an advert's addresses follow (R-6G2 N4).
+## interface is joined, and an advert's addresses follow.
 func _interface_refresh(t: PKeyTestContext) -> void:
 	var w := World.new()
 	var f := Found.new()

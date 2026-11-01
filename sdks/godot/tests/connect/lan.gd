@@ -856,7 +856,7 @@ func _race(t: PKeyTestContext) -> void:
 
 
 ## A neighbour answers first with its own address (V5 section 15.4.1): when the race's winner fails the
-## handshake, the dial runs again over the addresses left and still reaches the real device (R-6G2 N5).
+## handshake, the dial runs again over the addresses left and still reaches the real device.
 func _fall_through(t: PKeyTestContext) -> void:
 	var bus := Bus.new()
 	var env_a := _env(_pair["a"], _ring, _roster2())
@@ -911,7 +911,7 @@ func _fall_through(t: PKeyTestContext) -> void:
 	b.stop()
 
 
-## A session that closes in the frame the dial yields to the caller is not returned as a success (R-6G2 N7).
+## A session that closes in the frame the dial yields to the caller is not returned as a success.
 func _closed_between(t: PKeyTestContext) -> void:
 	var bus := Bus.new()
 	var ra := _service(_env(_pair["a"], _ring, _roster2()), FakeMdns.new(bus), {"pump": _pump(true)})
@@ -959,7 +959,7 @@ func _stop(t: PKeyTestContext) -> void:
 	t.check("stop: before it, the names are worked out and the signature is a digest, not the key", a._names.size() > 0 and a._names_sig.length() == 64 and
 		not a._names_sig.contains(_disc.hex_encode()), a._names_sig)
 	a.stop()
-	t.check("stop: and then the held identity, the names and the signature are gone (R-6G2 N3)", a._id == null and a._names.is_empty() and a._names_sig == "" and a._names_epoch == -1)
+	t.check("stop: and then the held identity, the names and the signature are gone", a._id == null and a._names.is_empty() and a._names_sig == "" and a._names_epoch == -1)
 	t.check("stop: the advert and the browse are stopped", (mdns_a.adverts[0]["handle"] as FakeHandle).stops == 1 and mdns_a.browse_handle.stops == 1)
 	t.check("stop: the pending socket is gone", a.pending_count() == 0)
 	await _wait_until(func() -> bool: return sb.is_closed(), 400)

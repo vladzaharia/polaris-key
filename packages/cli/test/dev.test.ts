@@ -364,7 +364,7 @@ const REFUSALS = {
 describe("pkey dev server", () => {
   // Runs first: it pays the cold start for the tests below, which keep the 20 s default.
   // 2026-10-31: the 45 s start-time assertion is dropped — load-swamped on CI (45.6 s and 45.9 s on
-  // two consecutive ubuntu runs); logged in _lead/flaky-disabled.md. Re-add it once the dev server
+  // two consecutive ubuntu runs); logged as a disabled flaky check. Re-add it once the dev server
   // start is measured off a busy runner.
   it("starts with no account and no network", async () => {
     const { s, info } = await start();

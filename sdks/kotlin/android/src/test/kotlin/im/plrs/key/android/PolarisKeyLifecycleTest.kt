@@ -127,8 +127,8 @@ class PolarisKeyLifecycleCloudSyncTest {
 
     // Disabled 2026-10-31 under the load rule (owner 2026-10-26): it fails only on the Linux CI runners, again after
     // the signed-in wait (CI run 41199288150: the machine stays Local, state not Idle). It passes locally.
-    // Re-enable once it is diagnosed on Linux (_lead/flaky-disabled.md).
-    @Ignore("2026-10-31: fails on Linux CI runners only; see _lead/flaky-disabled.md")
+    // Re-enable once it is diagnosed on Linux.
+    @Ignore("2026-10-31: fails on Linux CI runners only")
     @Test
     fun theLastActivityStoppingFlushesBoundedAndTheStateLivesUnderNoBackup() {
         val mirror = kotlinx.serialization.json.Json.parseToJsonElement(

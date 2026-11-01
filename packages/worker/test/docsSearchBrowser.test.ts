@@ -8,7 +8,7 @@
  * expects a Help result.
  *
  * Not part of `pnpm test` (it needs Chromium): run it as
- *   PKEY_DOCS_BROWSER=1 _lead/heavy.sh pnpm --filter @polaris-key/worker exec vitest run docsSearchBrowser
+ *   PKEY_DOCS_BROWSER=1 pnpm --filter @polaris-key/worker exec vitest run docsSearchBrowser
  * Without the flag it skips; with the flag and no docs dist it fails (CI job help-search).
  */
 import { existsSync, readFileSync, statSync } from "node:fs";

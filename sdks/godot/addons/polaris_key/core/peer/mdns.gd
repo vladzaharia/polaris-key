@@ -283,7 +283,7 @@ static func _blocks_of(faces: Array) -> Array[String]:
 
 
 ## The network may have changed (Wi-Fi to Ethernet, a new lease): read the interface list again, so the
-## link's blocks and the advertised addresses follow it, and join the group on a new interface (R-6G2 N4).
+## link's blocks and the advertised addresses follow it, and join the group on a new interface.
 ## An advert whose addresses changed is announced again. When nothing is usable the blocks are empty and
 ## no source is on the link: fail closed.
 func _refresh_interfaces(now: float) -> void:
@@ -502,7 +502,7 @@ func _on_query(parsed: Dictionary, data: PackedByteArray, source: String, port: 
 			continue
 		if port != PORT and port < LEGACY_MIN_PORT:
 			# A legacy query is answered by unicast only from an unprivileged port: never a service port
-			# to be reflected at (R-6G2 B2).
+			# to be reflected at.
 			continue
 		ad.last_reply = now
 		if port == PORT:
@@ -523,7 +523,7 @@ func _on_query(parsed: Dictionary, data: PackedByteArray, source: String, port: 
 func _on_packet(pkt: Dictionary, now: float) -> void:
 	var data: PackedByteArray = pkt.get("data", PackedByteArray())
 	# Nothing from outside the link's private blocks is parsed, answered or learned from (RFC 6762
-	# section 11): a spoofed or routed source gets no reflected reply and burns no reply gap (R-6G2 B2).
+	# section 11): a spoofed or routed source gets no reflected reply and burns no reply gap.
 	var source := str(pkt.get("source", ""))
 	if not source_on_link(source):
 		return
@@ -587,7 +587,7 @@ func _learn(b: Browser, records: Array, source: String, now: float) -> void:
 		# A PTR is the refresh signal: its own TTL (capped) restarts the clock.
 		if type == &"PTR":
 			# Never under the re-ask interval (plus a sweep): a legacy answer carries TTL 10, and a
-			# querier-only device would otherwise report the peer lost and found again every 30 s (R-6G2 N1).
+			# querier-only device would otherwise report the peer lost and found again every 30 s.
 			e.exp = now + maxf(minf(float(r["ttl"]), ENTRY_TTL_SECONDS), ASK_AGAIN_SECONDS + SWEEP_SECONDS)
 		b.seen[instance] = e
 		if type == &"SRV":
