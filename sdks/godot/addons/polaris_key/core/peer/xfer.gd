@@ -341,7 +341,16 @@ class Machine extends RefCounted:
 		return {
 			"send": [], "close": &"", "ask": null, "withdraw": [], "results": [],
 			"partial": [], "refused": "", "drop": false,
+			"delivered": [],
 		}
+
+	## Record content in the delivered memory once its `finalize` has been performed. A failed delivery
+	## records nothing, so the next offer of it goes through consent again.
+	func remember_delivered(entries: Array, at: float) -> void:
+		if _delivered == null:
+			return
+		for d: Dictionary in entries:
+			_delivered.add(d["id"], d["sha"], d["size"], at)
 
 	## The kept partials now.
 	func partials() -> Array:
@@ -924,8 +933,9 @@ class Machine extends RefCounted:
 		_out["send"].append({"t": "DONE", "id": t.id})
 		if t.partial != "":
 			_eff({"finalize": t.partial})
-		if _delivered != null:
-			_delivered.add(t.id, t.sha, t.size, _clock)
+		# Remembered by the endpoint only once the host's delivery succeeded (`remember_delivered`).
+		if t.partial != "":
+			_out["delivered"].append({"id": t.id, "sha": t.sha, "size": t.size})
 		_result(t, {"id": t.id, "outcome": "delivered"})
 		_end(t, false)
 
