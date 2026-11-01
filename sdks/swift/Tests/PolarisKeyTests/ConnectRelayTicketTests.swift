@@ -341,6 +341,28 @@ final class ConnectRelayTicketTests: XCTestCase {
         XCTAssertEqual(fetches, 1, "nothing was fetched for it")
     }
 
+    func testABareFacadesPrivateTransferDirectoryIsRemovedWhenItIsReleased() async throws {
+        let c = try await client()
+        var named: URL?
+        var path: URL?
+        do {
+            let cloud = CloudConnect(connect: c.connect)
+            path = try XCTUnwrap(cloud.privateTransferDirectory)
+            try FileManager.default.createDirectory(at: path!, withIntermediateDirectories: true)
+            try Data("x".utf8).write(to: path!.appendingPathComponent("p"))
+            XCTAssertTrue(FileManager.default.fileExists(atPath: path!.path))
+            // A directory the host named is the host's: it is left alone.
+            let host = FileManager.default.temporaryDirectory.appendingPathComponent("pkey-host-" + UUID().uuidString)
+            try FileManager.default.createDirectory(at: host, withIntermediateDirectories: true)
+            named = host
+            let other = CloudConnect(connect: c.connect, transferDirectory: host)
+            XCTAssertNil(other.privateTransferDirectory)
+        }
+        defer { if let named { try? FileManager.default.removeItem(at: named) } }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: path!.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: named!.path))
+    }
+
     func testADeviceThatLeavesTheRosterLosesItsTransferPartials() async throws {
         // Direct Transfer keeps partial files per peer key; a roster that drops the device deletes them.
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("pkey-roster-" + UUID().uuidString)
