@@ -77,3 +77,22 @@ public func pkpFreeBin(_ p: UnsafeMutablePointer<UInt8>?) {
 public func pkpSetBinEventCallback(_ cb: PlatformEventSink.BinaryCallback?) {
     PlatformHost.shared.sink.setBinaryCallback(cb)
 }
+
+/// The app delegate's `application:handleEventsForBackgroundURLSession:completionHandler:` (U-41.5b).
+/// Answers false, and does not touch `completion`, for an identifier that is not a Cloud Sync session
+/// (`pkey.sync.`). Otherwise the session is recreated natively if it is not there yet, and `completion` is
+/// held until the session has delivered its events, then run on the main queue.
+@_cdecl("pkp_handle_background_events")
+public func pkpHandleBackgroundEvents(
+    _ identifier: UnsafePointer<CChar>?, _ completion: (@convention(block) () -> Void)?
+) -> Bool {
+    guard let identifier, let completion else { return false }
+    let box = BackgroundCompletion(run: completion)
+    return SyncBulkRegistry.shared.handleBackgroundEvents(
+        identifier: String(cString: identifier), completion: { box.run() })
+}
+
+private final class BackgroundCompletion: @unchecked Sendable {
+    let run: @convention(block) () -> Void
+    init(run: @escaping @convention(block) () -> Void) { self.run = run }
+}
