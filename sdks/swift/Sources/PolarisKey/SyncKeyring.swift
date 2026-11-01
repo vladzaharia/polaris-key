@@ -346,7 +346,12 @@ public actor SyncKeyring: CustomReflectable {
     private static let pinRecord = "sync-ring-pin"
 
     private let core: CoreContext
-    nonisolated let options: SyncKeyringOptions
+    /// The options, whether the SDK built this ring on its own (`implicit`: the Cloud Sync host asked for
+    /// it before the app configured one) and whether any option was read yet (`used`). While implicit and
+    /// unused, `configureKeyring(_:)` swaps the options in place, so the order of the host's background
+    /// start and the app's configure call cannot matter.
+    private nonisolated let state: LockedValue<(options: SyncKeyringOptions, implicit: Bool, used: Bool)>
+    nonisolated var options: SyncKeyringOptions { state.with { $0.used = true; return $0.options } }
     private nonisolated let memory = RingMemory()
     private var madeKeys: (any DeviceKeyPort)?
     private var madeRoots: RingRootStore?
@@ -361,8 +366,21 @@ public actor SyncKeyring: CustomReflectable {
 
     public init(core: CoreContext, options: SyncKeyringOptions = SyncKeyringOptions()) {
         self.core = core
-        self.options = options
+        self.state = LockedValue((options, false, false))
         self.codec = SyncCodec(memory: memory)
+    }
+
+    /// A ring the SDK made itself, open to one `configureKeyring(_:)` before it is first used.
+    nonisolated func markImplicit() { state.with { $0.implicit = true } }
+
+    /// Adopts `options` when this ring is implicit and nothing has read its options yet.
+    nonisolated func adopt(_ options: SyncKeyringOptions) -> Bool {
+        state.with {
+            guard $0.implicit, !$0.used else { return false }
+            $0.options = options
+            $0.implicit = false
+            return true
+        }
     }
 
     public nonisolated var customMirror: Mirror { Mirror(self, children: [], displayStyle: .class) }
@@ -1012,7 +1030,8 @@ extension PolarisKeyClient {
         if options.subject == nil { options.subject = { [identity] in identity.account } }
         let built = SyncKeyring(core: core, options: options)
         return try attachments.with { table in
-            if table[ObjectIdentifier(KeyringAttachment.self)] != nil {
+            if let existing = table[ObjectIdentifier(KeyringAttachment.self)] as? SyncKeyring {
+                if existing.adopt(options) { return existing }
                 throw PolarisError(
                     code: ErrorCode.invalidOptions,
                     message: "client.keyring is already built; call configureKeyring(_:) before the first read.")
@@ -1038,6 +1057,7 @@ extension PolarisKeyClient {
             // The client's Keychain access group, so a host sharing one stores the root in it.
             let k = SyncKeyring(
                 core: core, options: SyncKeyringOptions(accessGroup: core.keychainAccessGroup, subject: subject))
+            k.markImplicit()
             table[key] = k
             return k
         }

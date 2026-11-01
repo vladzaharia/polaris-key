@@ -413,6 +413,33 @@ final class CloudSyncSettingsTests: XCTestCase {
         } catch let e as PolarisError { XCTAssertEqual(e.code, ErrorCode.syncLocked) }
     }
 
+    /// The Cloud Sync host's background start can build the default ring before the app's
+    /// `configureKeyring` runs; forced here by reading `client.keyring` first. The late configure
+    /// must still take effect on that same ring, and a ring already in use must refuse it clearly.
+    func testConfigureKeyringAfterTheImplicitRingWasBuilt() async throws {
+        let store = InMemoryStore(deviceId: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+        let keys = try DeviceKeyStore.inMemory(productSlug: "djdl")
+        let core = CoreOptions(
+            productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0", pinnedKeys: signer.trust,
+            trustRefresh: false, store: store, transport: server.transport,
+            expectedServices: [.license, .config, .identity, .sync], stateDir: dir)
+        let client = try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                core: core, license: LicenseClientOptions(fingerprint: false),
+                connect: ConnectOptions(keys: keys, allowEphemeralKeys: true),
+                cloudSync: CloudSyncOptions(encryption: .server, catalog: mirror)))
+        let implicit = client.keyring  // the competing access, first
+        let roots = RingRootStore.inMemory()
+        let configured = try client.configureKeyring(SyncKeyringOptions(keys: keys, rootStore: roots))
+        XCTAssertTrue(configured === implicit, "the ring the host already holds is the configured one")
+        XCTAssertNotNil(configured.options.rootStore)
+        // Now it has been used: a second configure is the clear error.
+        do {
+            _ = try client.configureKeyring(SyncKeyringOptions(keys: keys, rootStore: roots))
+            XCTFail("a second configure was accepted")
+        } catch let e as PolarisError { XCTAssertEqual(e.code, ErrorCode.invalidOptions) }
+    }
+
     func testStatusIsTheTypedNotApplicableWithoutTheSyncService() async throws {
         let store = InMemoryStore(deviceId: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
         let client = try await PolarisKeyClient.create(
