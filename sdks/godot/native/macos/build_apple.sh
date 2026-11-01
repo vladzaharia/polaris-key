@@ -98,7 +98,7 @@ slice() {
       -framework Foundation -Xlinker -weak_framework -Xlinker GameKit -o "$dir/lib$NAME.dylib"
   else
     xcrun --sdk macosx swiftc -target "$triple" -sdk "$SDK" -swift-version 6 -warnings-as-errors -O \
-      -parse-as-library -module-name PolarisKeyPlatformC -I "$dir/mods" -emit-library "$CSRC"/*.swift \
+      -parse-as-library -package-name polaris_key -module-name PolarisKeyPlatformC -I "$dir/mods" -emit-library "$CSRC"/*.swift \
       "$dir/pkey_apple.o" "$dir/libPolarisKeyPlatform.a" \
       -Xlinker -install_name -Xlinker "@rpath/lib$NAME.dylib" \
       -framework Foundation -framework StoreKit -framework Security -o "$dir/lib$NAME.dylib"

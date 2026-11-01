@@ -148,6 +148,19 @@ grep -q "$BID.BackgroundDownload" "$OUT/store/PKeyExportCheck.xcodeproj/project.
 grep -q "already patched: no changes" "$OUT/logs/patch-store-again.log" || fail "store: second patch run was not a no-op"
 [ "$before" = "$after" ] || fail "store: second patch run changed files"
 
+# Background transfer (U-41.5c): the engine's app delegate forwards a relaunch for a finished background
+# session to a service the glue registers, which calls pkp_handle_background_events. The built binding must
+# carry that symbol (the check needs the xcframework; without it the check says so and moves on).
+XCF="$SDK/addons/polaris_key/native/ios/pkey_apple.xcframework"
+if [ -d "$XCF" ]; then
+  BIN="$(find "$XCF" -type f -name pkey_apple -path '*/ios-arm64/*' ! -path '*simulator*' | head -1)"
+  [ -n "$BIN" ] || fail "background events: no device binary in $XCF"
+  nm "$BIN" 2>/dev/null | grep -q '_pkp_handle_background_events' || fail "background events: pkp_handle_background_events is not in the device binary"
+  echo "export_check: pkp_handle_background_events is in the device binary"
+else
+  echo "export_check: no pkey_apple.xcframework built, the background-events symbol is not checked"
+fi
+
 # Sign in with Apple: the entitlement is there with the option on, and absent with it off.
 [ "$(pb "$S/PKeyExportCheck.entitlements" "com.apple.developer.applesignin:0")" = "Default" ] || fail "store: apple_sign_in=true did not add the applesignin entitlement"
 [ -z "$(pb "$L/PKeyExportCheck.entitlements" "com.apple.developer.applesignin")" ] || fail "sideload: has the applesignin entitlement with the option off"
