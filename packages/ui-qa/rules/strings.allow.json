@@ -26,6 +26,14 @@
       "reason": "Fixture tier and term names (license data, not copy)."
     },
     {
+      "pattern": "Contacts|Photos",
+      "reason": "Fixture data categories (CC-19.9 connect rows): the names the app gives the categories a pairing would share, drawn as chips; the kit shows them, it does not translate them."
+    },
+    {
+      "pattern": "holiday\\.zip",
+      "reason": "Fixture file name (CC-19.9 connect rows): text the contact chose, drawn isolated on its own row."
+    },
+    {
       "pattern": "Fennick Studio Edu",
       "reason": "Fixture license name (data, not copy): a full license row's own title (SIGN-IN §3.19)."
     },

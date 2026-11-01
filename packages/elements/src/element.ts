@@ -7,11 +7,13 @@ import { LitElement, nothing, type PropertyValues } from "lit";
 import { html } from "lit";
 import {
   BareViewModel,
+  CONNECT_MODELS,
   focusOnMount,
   HOLDER_MODELS,
   renewTarget,
   ViewModel,
   type ComponentName,
+  type ConnectScreenName,
   type HolderScreenName,
   type ScreenName,
   type UiInput,
@@ -45,8 +47,17 @@ import {
   type ThemeHost,
 } from "./theme.js";
 import { LAYOUTS } from "./layout.js";
+import { CONNECT_LAYOUTS } from "./connectLayouts.js";
 import { SYNC_LAYOUTS } from "./syncLayouts.js";
 import { renderView } from "./views.js";
+
+/** The control Escape answers on the inter-account screens, in order: decline, cancel, done. */
+const CONNECT_ESCAPE = [
+  "linkPairing.decline",
+  "transferOffer.decline",
+  "common.cancel",
+  "common.done",
+] as const;
 
 /** DL9: the ring shows only after a key was pressed since load (no ring at rest on a cold start). */
 let keyboard = false;
@@ -372,7 +383,9 @@ export abstract class PkElement extends LitElement {
 
   private ensureModel(): BareViewModel {
     if (!this.model) {
-      const holder = HOLDER_MODELS[this.component as HolderScreenName];
+      const holder =
+        HOLDER_MODELS[this.component as HolderScreenName] ??
+        CONNECT_MODELS[this.component as ConnectScreenName];
       this.model = holder
         ? new BareViewModel(
             this.component as ComponentName,
@@ -432,6 +445,11 @@ export abstract class PkElement extends LitElement {
     return {};
   }
 
+  /** What a subclass adds to the render context (LinkPairing's category names). */
+  protected ctxExtra(): Partial<RenderCtx> {
+    return {};
+  }
+
   protected ctx(view: View, resolved: Resolved): RenderCtx {
     const copy = copyFor(
       resolved.locale,
@@ -459,6 +477,7 @@ export abstract class PkElement extends LitElement {
         }, 2000);
       },
       handles: (this.handles ?? "").split(/[\s,]+/).filter(Boolean),
+      ...this.ctxExtra(),
       ...(view.component === "UnlockSync" && view.state === "start-over"
         ? { armed: Date.now() >= this.armUntil }
         : {}),
@@ -810,6 +829,20 @@ export abstract class PkElement extends LitElement {
     ) {
       e.preventDefault();
       c.act("common.done");
+      return;
+    }
+    // The inter-account screens: Escape declines a code or an offer, cancels a window or a
+    // transfer, and closes a finished screen.
+    if (
+      e.key === "Escape" &&
+      !e.defaultPrevented &&
+      v.component in CONNECT_LAYOUTS
+    ) {
+      const key = CONNECT_ESCAPE.find((k) => v.copy.includes(k));
+      if (key) {
+        e.preventDefault();
+        c.act(key);
+      }
       return;
     }
     if (

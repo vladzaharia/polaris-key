@@ -26,6 +26,7 @@ import { copyPending } from "./copy.js";
 import { LAYOUTS, dialogControls, type Layout } from "./layout.js";
 import { platformLabel } from "./platforms.js";
 import { holderContent, isHolder } from "./holderViews.js";
+import { connectContent, isConnect } from "./connectViews.js";
 import { syncContent } from "./syncViews.js";
 import {
   actions,
@@ -90,6 +91,7 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
   const { view, input } = c;
   const keys = new Set(view.copy);
   if (isHolder(view.component)) return holderContent(c);
+  if (isConnect(view.component)) return connectContent(c);
   switch (view.component) {
     case "UnlockSync":
     case "RecoveryCode":

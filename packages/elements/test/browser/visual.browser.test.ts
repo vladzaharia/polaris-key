@@ -46,6 +46,7 @@ const FAMILIES = [
   "paywall",
   "cloudSync",
   "saveConflict",
+  "connect",
   "holders",
 ] as const;
 const ROWS = FAMILIES.flatMap((f) =>

@@ -5,7 +5,7 @@ import type { Layout } from "./layout.js";
 /**
  * The inter-account screens (CC-19.9). LinkPairing draws its code, the categories and its controls
  * in `content`, so the categories sit before the confirm button; TransferOffer's controls are the
- * standard ones. The React kit draws both; the elements have no tag for them yet.
+ * standard ones. The React kit and the elements (`pk-link-pairing`, `pk-transfer-offer`) draw both.
  */
 export const CONNECT_LAYOUTS: Readonly<Record<ConnectScreenName, Layout>> = {
   LinkPairing: {

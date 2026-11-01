@@ -8,6 +8,7 @@ export { CONNECT_LAYOUTS } from "./connectLayouts.js";
 
 import { scopeCss } from "./scopeCss.js";
 import { HOLDER_CSS } from "./holderStyles.js";
+import { CONNECT_CSS } from "./connectStyles.js";
 import { SYNC_CSS } from "./syncStyles.js";
 
 /** The Cloud Sync screens' part of `lightDomCss()`, to adopt where they are drawn. */
@@ -20,3 +21,8 @@ export function lightDomHolderCss(): string {
   return scopeCss(`@layer polaris-key {\n${HOLDER_CSS}}\n`);
 }
 export { HOLDER_LAYOUTS } from "./layout.js";
+
+/** The inter-account screens' rules (LinkPairing, TransferOffer), to adopt where they are drawn. */
+export function lightDomConnectCss(): string {
+  return scopeCss(`@layer polaris-key {\n${CONNECT_CSS}}\n`);
+}
