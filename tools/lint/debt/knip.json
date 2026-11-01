@@ -242,6 +242,9 @@
       "knip:exports": 3,
       "knip:types": 2
     },
+    "packages/sdk-node/src/core/deviceLabel.ts": {
+      "knip:binaries": 1
+    },
     "packages/sdk-node/src/electron/preload.ts": {
       "knip:unlisted": 1
     },

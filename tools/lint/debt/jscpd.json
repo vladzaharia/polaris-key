@@ -1269,7 +1269,7 @@
       "jscpd:duplicate": 1
     },
     "packages/client-core/src/cloud-sync.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/client-core/src/decide.ts": {
       "jscpd:duplicate": 7
@@ -1389,7 +1389,7 @@
       "jscpd:duplicate": 3
     },
     "packages/client-core/test/cloudSyncE2e.test.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 7
     },
     "packages/client-core/test/content.test.ts": {
       "jscpd:duplicate": 17
@@ -1440,9 +1440,12 @@
       "jscpd:duplicate": 10
     },
     "packages/client-core/test/peerXfer.test.ts": {
-      "jscpd:duplicate": 8
+      "jscpd:duplicate": 9
     },
     "packages/client-core/test/presentation.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/test/syncCollection.test.ts": {
       "jscpd:duplicate": 1
     },
     "packages/client-core/test/syncSaves.test.ts": {
@@ -1590,7 +1593,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/cloudSync/api.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 5
     },
     "packages/sdk-node/src/cloudSync/files.ts": {
       "jscpd:duplicate": 8
@@ -1623,7 +1626,7 @@
       "jscpd:duplicate": 29
     },
     "packages/sdk-node/src/connect/lan.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 3
     },
     "packages/sdk-node/src/connect/links.ts": {
       "jscpd:duplicate": 1
@@ -1700,8 +1703,11 @@
     "packages/sdk-node/src/identity/choice.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/sdk-node/src/identity/nativeRedirect.ts": {
+      "jscpd:duplicate": 3
+    },
     "packages/sdk-node/src/identity/redirect.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/sdk-node/src/identity/signIn.ts": {
       "jscpd:duplicate": 3
@@ -1802,11 +1808,14 @@
     "packages/sdk-node/test/client.test.ts": {
       "jscpd:duplicate": 13
     },
+    "packages/sdk-node/test/cloudSyncCollection.test.ts": {
+      "jscpd:duplicate": 4
+    },
     "packages/sdk-node/test/cloudSyncFixtures.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/sdk-node/test/cloudSyncHost.test.ts": {
-      "jscpd:duplicate": 19
+      "jscpd:duplicate": 20
     },
     "packages/sdk-node/test/cloudSyncSaves.test.ts": {
       "jscpd:duplicate": 1
@@ -1824,16 +1833,16 @@
       "jscpd:duplicate": 15
     },
     "packages/sdk-node/test/connect/links.test.ts": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 11
     },
     "packages/sdk-node/test/connect/nearbyApprover.test.ts": {
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/test/connect/transfer.test.ts": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 15
     },
     "packages/sdk-node/test/connect/transferLinks.test.ts": {
-      "jscpd:duplicate": 8
+      "jscpd:duplicate": 9
     },
     "packages/sdk-node/test/connectCustody.test.ts": {
       "jscpd:duplicate": 1
@@ -1887,13 +1896,19 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/test/identity.test.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 6
     },
     "packages/sdk-node/test/identityAutoSignIn.test.ts": {
       "jscpd:duplicate": 2
     },
+    "packages/sdk-node/test/identityNativeRedirect.test.ts": {
+      "jscpd:duplicate": 3
+    },
     "packages/sdk-node/test/identityParity.test.ts": {
       "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/identityRedirect.test.ts": {
+      "jscpd:duplicate": 3
     },
     "packages/sdk-node/test/installDrivers.test.ts": {
       "jscpd:duplicate": 1
@@ -2090,6 +2105,9 @@
     "packages/sdk-react/test/chunkFixtures.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/sdk-react/test/cloudSyncCollection.test.tsx": {
+      "jscpd:duplicate": 2
+    },
     "packages/sdk-react/test/cloudSyncFiles.browser.test.ts": {
       "jscpd:duplicate": 1
     },
@@ -2097,10 +2115,13 @@
       "jscpd:duplicate": 44
     },
     "packages/sdk-react/test/cloudSyncSaves.test.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 9
     },
     "packages/sdk-react/test/cloudSyncSettings.test.tsx": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/test/cloudSyncWorld.ts": {
+      "jscpd:duplicate": 4
     },
     "packages/sdk-react/test/configMatrix.test.ts": {
       "jscpd:duplicate": 3
@@ -2298,7 +2319,7 @@
       "jscpd:duplicate": 1
     },
     "packages/shared-catalog/src/cloudSync.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/shared-catalog/src/representable.ts": {
       "jscpd:duplicate": 1
@@ -2383,6 +2404,9 @@
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/api.ts": {
       "jscpd:duplicate": 5
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/collection.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/create.ts": {
       "jscpd:duplicate": 1
