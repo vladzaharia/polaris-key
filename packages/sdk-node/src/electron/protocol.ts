@@ -50,7 +50,6 @@ export const BRIDGE_V5_METHODS = [
   "approverDeny",
   "approverChoose",
 ] as const;
-export type BridgeV5Method = (typeof BRIDGE_V5_METHODS)[number];
 
 /** Every bridge method that crosses IPC (v4 and v5), each an `ipcMain.handle` channel. */
 export const BRIDGE_METHODS = [

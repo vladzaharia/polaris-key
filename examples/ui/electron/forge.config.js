@@ -1,6 +1,15 @@
 // Electron Forge with the Vite plugin: main, preload and renderer are three Vite builds.
 export default {
-  packagerConfig: { asar: true },
+  packagerConfig: {
+    asar: true,
+    // Sign in from a nearby device (macOS). The system asks for Local Network access the first
+    // time the app looks for, or waits as, a nearby device; these two keys are what it reads.
+    extendInfo: {
+      NSLocalNetworkUsageDescription:
+        "Tidewater Studio looks for your other signed-in devices on this network, so you can sign in without typing.",
+      NSBonjourServices: ["_pkeypeer._tcp"],
+    },
+  },
   plugins: [
     {
       name: "@electron-forge/plugin-vite",
