@@ -34,6 +34,7 @@ const Transfer := preload("res://addons/polaris_key/services/cloud_sync/transfer
 const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 const BulkChannel := preload("res://addons/polaris_key/services/cloud_sync/bulk_channel.gd")
 
+const UNSCOPED := "unscoped"
 const JSON_MAX_BYTES := 1048576
 const ERROR_MAX_BYTES := 65536
 ## An unranged file GET: a `chunks` file's manifest, sealed (786,496 bytes plain) with its tags.
@@ -127,6 +128,9 @@ func open_channel(keep_ids: Array) -> Dictionary:
 
 ## Cancel every bulk request of one transfer, here and natively. Final: late answers are dropped.
 func cancel_transfer(transfer_id: String) -> void:
+	# A request with no journal id is tagged "unscoped".
+	if transfer_id == "":
+		transfer_id = UNSCOPED
 	for req in _pending.keys():
 		if _pending[req]["transfer"] == transfer_id:
 			_pending[req]["wait"].settle({"cancelled": true})
@@ -162,7 +166,7 @@ func _bulk_exchange(method: String, path: String, ctx: Dictionary, prepared: Dic
 	_next_req = _next_req % 2147483647 + 1
 	var req := _next_req
 	var transfer: String = via.get("transfer", "")
-	var head := {"req": req, "transfer": transfer if transfer != "" else "unscoped", "url": ctx["url"].call(path), "headers": headers,
+	var head := {"req": req, "transfer": transfer if transfer != "" else UNSCOPED, "url": ctx["url"].call(path), "headers": headers,
 			"bearer": ctx["token"], "max_body": mini(limit, BODY_LIMIT), "part": int(via.get("part", 0))}
 	var wait := _Wait.new()
 	_pending[req] = {"wait": wait, "transfer": head["transfer"]}

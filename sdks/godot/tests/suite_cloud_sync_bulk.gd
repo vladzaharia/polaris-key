@@ -89,6 +89,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _engine(t)
 	await _engine_cancel(t)
 	await _sign_out(t)
+	await _late_reply(t)
 	await PKeyTestFixtures.frames(10)
 	return true
 
@@ -199,6 +200,17 @@ func _transport(t: PKeyTestContext) -> void:
 	await tree.process_frame
 	t.check("cancel: the waiting request ends with no answer and the channel is told", waits[0] != null and waits[0]["status"] == 0 and waits[0]["code"] == "cancelled"
 			and ch.cancelled_transfers == ["saves:slot1"], str(waits[0]))
+
+	# an unscoped request (no journal id) is dropped by cancel_transfer("")
+	var tgt := {"collection": "saves", "record": "slot1"}
+	waits[0] = null
+	var unscoped := func() -> void: waits[0] = await ft.put_part(tgt, "up_1", 1, body, _sha(body))
+	unscoped.call()
+	await tree.process_frame
+	ch.cancelled_transfers.clear()
+	ft.cancel_transfer("")
+	await tree.process_frame
+	t.check("cancel: an unscoped request is dropped, here and natively", waits[0] != null and waits[0]["code"] == "cancelled" and ch.cancelled_transfers == ["unscoped"], str(waits[0]))
 
 	# close(): in flight ends, new requests are refused, open_channel reopens
 	waits[0] = null
@@ -427,18 +439,24 @@ func _sign_out(t: PKeyTestContext) -> void:
 	state.dir = dir
 	api.host = state
 	var chunks := dir.path_join(PKeyChunkCache.DIR_NAME)
-	var leaving := "person-a"
-	for who in [leaving, "person-b"]:
+	for who in ["person-a", "person-b", "orphan"]:
 		var d := chunks.path_join(who.sha256_text()).path_join("c")
 		DirAccess.make_dir_recursive_absolute(d)
 		var f := FileAccess.open(d.path_join("x"), FileAccess.WRITE)
 		f.store_string("x")
 		f.close()
-	api._cache_for = leaving
+	# A restart with no save since: no cache owner, no current subject, and the credential is already B's.
+	api._cache_for = null
+	api._subject = null
+	api._keep_subject = "person-b"
 	api._purge_save_files()
-	t.check("purge: only the leaving person's chunk folder goes", not DirAccess.dir_exists_absolute(chunks.path_join(leaving.sha256_text()))
-			and DirAccess.dir_exists_absolute(chunks.path_join("person-b".sha256_text())))
+	t.check("purge: the leaving person's folder goes though nothing names them", not DirAccess.dir_exists_absolute(chunks.path_join("person-a".sha256_text())))
+	t.check("purge: an orphan of an earlier person is swept", not DirAccess.dir_exists_absolute(chunks.path_join("orphan".sha256_text())))
+	t.check("purge: the incoming person's folder stays", DirAccess.dir_exists_absolute(chunks.path_join("person-b".sha256_text())))
 	t.check("purge: the journal is cleared", log == ["journal-clear"], str(log))
+	api._keep_subject = null
+	api._purge_save_files()
+	t.check("purge: a plain sign-out leaves no chunk folder", not DirAccess.dir_exists_absolute(chunks))
 	log.clear()
 	api.host = null
 	api.saves = null
@@ -447,3 +465,61 @@ func _sign_out(t: PKeyTestContext) -> void:
 	state.free()
 	rig["host"].queue_free()
 	PKeyTestFixtures.remove_tree(dir)
+
+
+class MixTransport:
+	extends RefCounted
+	var s: Object
+	var ft: Object
+
+	func _init(p_s: Object, p_ft: Object) -> void:
+		s = p_s
+		ft = p_ft
+
+	func batching() -> bool:
+		return ft.batching()
+
+	func cancel_transfer(id: String) -> void:
+		ft.cancel_transfer(id)
+
+	func begin(a, b): return s.begin(a, b)
+	func status(a, b): return s.status(a, b)
+	func abort(a, b): return s.abort(a, b)
+	func finalize(a, b): return s.finalize(a, b)
+	func plan_chunks(a, b, c): return s.plan_chunks(a, b, c)
+	func get_file(a, b): return s.get_file(a, b)
+	func get_chunk(a, b, _c = ""): return s.get_chunk(a, b)
+	func put_single(a, b, c, d): return s.put_single(a, b, c, d)
+	func put_chunk(a, b, c, d, e): return s.put_chunk(a, b, c, d, e)
+
+	func put_part(a, b, n, d, e):
+		return await ft.put_part(a, b, n, d, e)
+
+
+func _late_reply(t: PKeyTestContext) -> void:
+	var suite := TransferSuite.new()
+	var ch := FakeChannel.new()
+	var rig := _rig(ch)
+	var ft: FilesTransport = rig["ft"]
+	var srv := TransferSuite.FakeServer.new()
+	var j := Journal.Memory.new()
+	var big := suite._noise(350000)
+	var tree := Engine.get_main_loop() as SceneTree
+	var result := [null]
+	var go := func() -> void: result[0] = await suite._engine(MixTransport.new(TransferSuite.FakeMulti.new(srv), ft), j).upload(suite._upload_req("l1", big))
+	go.call()
+	var spins := 0
+	while ch.holds.size() < 4 and spins < 600:
+		await tree.process_frame
+		spins += 1
+	t.check("late reply: the whole batch is held by the channel", ch.holds.size() == 4, str(ch.holds.size()))
+	ft.close()
+	for req in ch.holds.keys():
+		ch.answer(req, _ok())
+	spins = 0
+	while result[0] == null and spins < 600:
+		await tree.process_frame
+		spins += 1
+	var rec: Variant = j.get_record("l1")
+	t.check("late reply: after close, an acknowledged reply marks nothing done", result[0] != null and not result[0].ok and (rec == null or (rec["done"] as Array).is_empty()), str(rec))
+	rig["host"].queue_free()
