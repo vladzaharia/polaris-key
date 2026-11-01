@@ -80,6 +80,7 @@ const FAMILIES = [
   "saveConflict",
   "holders",
   "connect",
+  "nearby",
 ] as const;
 
 const matrix = matrixJson as Obj & { vocabulary: Obj & { defaults: Obj } };
