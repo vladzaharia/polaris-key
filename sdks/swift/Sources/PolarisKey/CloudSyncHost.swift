@@ -620,9 +620,11 @@ public actor CloudSyncHost {
         await maybeRefetch(pulled.body)
     }
 
-    /// The bound person is known, the session's person is known, and they differ.
+    /// The request is bound to a person and the session's person is not that one. A session with no subject
+    /// (signed out, or holding an unconfirmed token) is not the bound person.
     private func otherPerson(_ bound: String?) async -> Bool {
-        guard let bound, let current = await deps.subject() else { return false }
+        guard let bound else { return false }
+        guard let current = await deps.subject() else { return true }
         return bound != current
     }
 

@@ -554,7 +554,11 @@ public actor CoreContext {
     /// The person confirmed the account: the token is a sign-in, the mark goes and the explicit sign-out
     /// flag ends. The provenance is written first, so a crash between leaves the mark over a token the next
     /// start drops. Throws when the mark cannot be removed; the token then stays unconfirmed.
-    public func confirmToken() async throws {
+    /// With `expected`, the held token is compared first and inside the actor, before any suspension: another
+    /// token (a later sign-in's) confirms nothing and the call answers false.
+    @discardableResult
+    public func confirmToken(expected: String? = nil) async throws -> Bool {
+        if let expected, tokenValue != expected { return false }
         guard tokenValue != nil, unconfirmedValue else {
             throw PolarisError(code: ErrorCode.signInFailed, message: "There is no unconfirmed sign-in to confirm.")
         }
@@ -566,6 +570,7 @@ public actor CoreContext {
         }
         unconfirmedValue = false
         await setExplicitSignOut(false)
+        return true
     }
 
     /// Remove the token, its provenance and then the mark: the token goes BEFORE its mark, so a crash leaves

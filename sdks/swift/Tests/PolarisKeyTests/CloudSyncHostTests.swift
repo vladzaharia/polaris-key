@@ -488,15 +488,26 @@ private func signedIn(_ rig: HostRig, options: CloudSyncOptions = CloudSyncOptio
         #expect(await h.status()?.pending == 1)  // the ok result was not applied
     }
 
-    @Test func hostBindAnUnknownSessionPersonDoesNotBlock() async throws {
+    @Test func hostBindASessionWithNoSubjectIsNotTheBoundPerson() async throws {
         let rig = HostRig()
-        rig.subject = nil  // offline or discovery not loaded: unknown, not a different person
+        let h = try await signedIn(rig)
+        let before = rig.sent.count
+        _ = await h.set(VOL, .double(0.7))
+        rig.now += 5_000
+        rig.subject = nil  // an unconfirmed token holds the device: no person, so not the bound one
+        await h.touch()
+        #expect(rig.sent.count == before)
+        #expect(await h.status()?.pending == 1)
+    }
+
+    @Test func hostBindANoSubjectDuringTheRequestDoesNotReadTheAnswer() async throws {
+        let rig = HostRig()
         let h = try await signedIn(rig)
         _ = await h.set(VOL, .double(0.7))
         rig.now += 5_000
+        rig.onSend = { $0.subject = nil }
         await h.touch()
-        #expect(rig.sent.contains { $0.method == .post })
-        #expect(await h.status()?.pending == 0)
+        #expect(await h.status()?.pending == 1)
     }
 
     // MARK: one pump at a time, the budget, the timer
