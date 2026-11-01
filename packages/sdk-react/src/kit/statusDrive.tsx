@@ -5,10 +5,10 @@
 // strip, and focus returns to the control that opened it. A host that passes `onAction` answers them itself.
 // Review on a pending save conflict opens SaveConflict (its `bytes` and `describe` are passed on);
 // RingChange is for a changed ring. Try again on a failed transfer calls `onRetry`, then `onAction`:
-// the saves hold no bytes to resend, so the app writes again. With neither, it clears the notice
-// and the app's next write syncs.
+// the saves hold no bytes to resend, so the app writes again. With neither, Try again is not
+// offered: the strip says the save did not sync until the next write succeeds.
 
-import { useContext, useState, type ReactNode } from "react";
+import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { PolarisContext } from "../react/context.js";
 import { kitComponent } from "./kitComponent.js";
@@ -44,27 +44,66 @@ export function CloudSyncStatus(allProps: CloudSyncStatusProps): ReactNode {
   const close = () => setOpen(null);
   const { theme, className } = props;
   // While a save moves, its transfer states draw over the host's input (K.2T).
-  const { input, clearFailure } = useTransferInput(props.input);
-  // The screen opens in the kit's modal dialog over the strip; closing it hands focus back to
-  // the control that opened it.
+  const { input, clearFailure, muted } = useTransferInput(
+    props.input,
+    onRetry !== undefined || props.onAction !== undefined,
+  );
+  // The screen opens in the kit's modal dialog over the strip. The control that opened it leaves
+  // the strip while it is open (Review is not offered then), so on close focus goes back to the
+  // strip: its Review control when it is asked again, else the strip itself, never the page.
+  const strip = useRef<HTMLSpanElement | null>(null);
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (open !== null) {
+      wasOpen.current = true;
+      return;
+    }
+    if (!wasOpen.current) return;
+    wasOpen.current = false;
+    // After the strip has redrawn without the screen.
+    const t = setTimeout(() => {
+      const root = strip.current;
+      if (!root || root.contains(document.activeElement)) return;
+      const to =
+        root.querySelector<HTMLElement>(
+          '[data-key="common.review"], [data-key="cloudSync.unlock"]',
+        ) ??
+        root.querySelector<HTMLElement>(
+          '[data-part="banner"], [data-part="status"], [role]',
+        );
+      if (!to) return;
+      if (!to.matches("button, a, [tabindex]")) to.tabIndex = -1;
+      to.focus({ preventScroll: true });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [open]);
   return (
     <>
-      <Status
-        {...props}
-        {...(input ? { input } : {})}
-        onAction={(a) => {
-          props.onAction?.(a);
-          if (a.key === "common.tryAgain") {
-            onRetry?.();
-            clearFailure();
-            return;
-          }
-          if (answers) return;
-          if (a.key === "cloudSync.unlock") setOpen("unlock");
-          else if (a.key === "common.review")
-            setOpen(saves && saves.conflicts().length > 0 ? "save" : "review");
-        }}
-      />
+      <span
+        ref={strip}
+        data-pk-strip=""
+        style={{ display: "contents" }}
+        {...(muted ? { "aria-hidden": true } : {})}
+      >
+        <Status
+          {...props}
+          {...(input ? { input } : {})}
+          onAction={(a) => {
+            props.onAction?.(a);
+            if (a.key === "common.tryAgain") {
+              onRetry?.();
+              clearFailure();
+              return;
+            }
+            if (answers) return;
+            if (a.key === "cloudSync.unlock") setOpen("unlock");
+            else if (a.key === "common.review")
+              setOpen(
+                saves && saves.conflicts().length > 0 ? "save" : "review",
+              );
+          }}
+        />
+      </span>
       {open === "unlock" ? (
         <UnlockSync
           theme={theme}

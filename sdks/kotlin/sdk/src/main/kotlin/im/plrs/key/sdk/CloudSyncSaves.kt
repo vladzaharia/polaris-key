@@ -56,6 +56,10 @@ public const val SAVES_COLLECTION: String = "saves"
 /** The key of the E2E binding inside a save's sealed metadata (D-3). */
 public const val SAVE_FILE_BINDING_KEY: String = "\$file"
 
+/** SDK-owned metadata keys written with every save (SAVES-META): when it was saved (epoch ms) and the device's display name. A write overwrites an app value under either key. Never a hardware value. */
+public const val SAVE_SAVED_AT_KEY: String = "savedAt"
+public const val SAVE_DEVICE_KEY: String = "deviceLabel"
+
 /** Retry-After is honoured up to an hour: a save may wait out a long throttle. */
 public const val SAVES_MAX_RETRY_AFTER_SECONDS: Double = 3600.0
 
@@ -191,6 +195,12 @@ internal interface SaveRecords {
     suspend fun set(id: String, value: JsonObject, baseVersion: JsonElement, file: RecordFile?): SaveSetResult
 
     suspend fun delete(id: String, baseVersion: Long): SaveSetResult
+
+    /**
+     * Pull the `saves` collection from the server and return when the pull ended. False when this port cannot pull (the cache
+     * is all there is); a pull that failed still returns true, with the cache as it was.
+     */
+    suspend fun pull(): Boolean = false
 }
 
 @Suppress("LongParameterList")
@@ -203,6 +213,10 @@ internal class SavesDeps(
     val maxBytes: Long = DEFAULT_MAX_BYTES,
     val saveFormatVersion: Int? = null,
     val cache: ChunkCache? = null,
+    /** The device's display name, stored with each save (SAVES-META); null stores none. */
+    val deviceLabel: String? = null,
+    /** The clock for `savedAt`, epoch milliseconds. */
+    val now: () -> Long = System::currentTimeMillis,
 )
 
 private class Binding(val sha256: String, val size: Long, val format: String)
@@ -349,7 +363,7 @@ public class SavesClient internal constructor(
         metadata: JsonObject,
         baseVersion: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null,
-    ): SaveTransfer = run(id, BytesSource(bytes), metadata, baseVersion?.let { WriteMode.Base(JsonPrimitive(it)) } ?: WriteMode.Plain, onProgress)
+    ): SaveTransfer = run(id, BytesSource(bytes), metadata, baseVersion?.let { WriteMode.Base(JsonPrimitive(it)) } ?: WriteMode.Plain, onProgress, stamp = true)
 
     /** [write] with a `@Serializable` metadata type (its serializer must encode an object). */
     public suspend inline fun <reified T> writeAs(
@@ -384,7 +398,7 @@ public class SavesClient internal constructor(
         metadata: JsonObject,
         baseVersion: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null,
-    ): SaveTransfer = run(id, source, metadata, baseVersion?.let { WriteMode.Base(JsonPrimitive(it)) } ?: WriteMode.Plain, onProgress)
+    ): SaveTransfer = run(id, source, metadata, baseVersion?.let { WriteMode.Base(JsonPrimitive(it)) } ?: WriteMode.Plain, onProgress, stamp = true)
 
     /**
      * Settle a conflict. `REMOTE` keeps the server's copy and writes nothing; `LOCAL` writes this device's save on top
@@ -393,7 +407,12 @@ public class SavesClient internal constructor(
     public suspend fun resolve(conflict: SaveConflict, keep: SaveKeep, bytes: ByteArray, onProgress: ((Long, Long) -> Unit)? = null): SaveTransfer {
         deps()
         return when {
-            keep == SaveKeep.REMOTE -> settled(conflict.id, SaveResult.KeptRemote(conflict.id, conflict.serverVersion))
+            keep == SaveKeep.REMOTE -> {
+                // Pull first, so the cache holds the copy the person chose (not this device's old one).
+                val d = deps()
+                d.records.pull()
+                settled(conflict.id, SaveResult.KeptRemote(conflict.id, d.records.get(conflict.id)?.version))
+            }
 
             keep == SaveKeep.BOTH && !conflict.bothAvailable -> settled(conflict.id, SaveResult.Failed(SavesException(SavesException.SLOTS_FULL)))
 
@@ -495,8 +514,12 @@ public class SavesClient internal constructor(
         metadata: JsonObject,
         mode: WriteMode,
         onProgress: ((Long, Long) -> Unit)?,
+        stamp: Boolean = false,
     ): SaveTransfer {
         val d = deps()
+        // The SDK's own keys: when and where this save was written. A resolve keeps the stamps of the copy it writes (they are
+        // already in the conflict's local metadata).
+        val metadata = if (stamp) stamped(d, metadata) else metadata
         val transferId = "saves:$id"
         var sealed: Pair<ByteArray, String>? = null
         lateinit var transfer: SaveTransfer
@@ -515,6 +538,12 @@ public class SavesClient internal constructor(
         transfer.start()
         return transfer
     }
+
+    private fun stamped(d: SavesDeps, metadata: JsonObject): JsonObject = JsonObject(
+        metadata.filterKeys { it != SAVE_SAVED_AT_KEY && it != SAVE_DEVICE_KEY } +
+            (SAVE_SAVED_AT_KEY to JsonPrimitive(d.now())) +
+            (d.deviceLabel?.takeIf { it.isNotEmpty() }?.let { mapOf(SAVE_DEVICE_KEY to JsonPrimitive(it)) } ?: emptyMap()),
+    )
 
     private fun precheck(d: SavesDeps, id: String, source: RangedSource, metadata: JsonObject): SavesException? = when {
         !SAVE_KEY.matches(id) -> SavesException(SavesException.INVALID_SAVE, "id")
@@ -634,6 +663,9 @@ public class SavesClient internal constructor(
         known: SaveRecord?,
         haveKnown: Boolean,
     ): SaveResult {
+        // The cache may be behind the conflict: pull before reading it, so the screen shows what the server holds (and a save
+        // deleted elsewhere reads as deleted).
+        val pulled = d.records.pull()
         val slots = d.records.list().size
         // The server's answer wins. [known] is the copy a rejected set carried (null: deleted). A file begin answers
         // only a version, and the cached row stands in for it only while it is that very version; a stale row is
@@ -652,12 +684,17 @@ public class SavesClient internal constructor(
             version = 0L
         } else {
             val rec = d.records.get(id)
-            remote = if (rec != null && rec.version == serverVersion) {
-                summary(d, rec)
+            if (rec != null && rec.version >= serverVersion) {
+                remote = summary(d, rec)
+                version = rec.version
+            } else if (pulled && rec == null) {
+                // Pulled and gone: a tombstone's version, not a copy.
+                remote = null
+                version = null
             } else {
-                SaveSummary(id, serverVersion, JsonObject(emptyMap()), null, false)
+                remote = SaveSummary(id, serverVersion, JsonObject(emptyMap()), null, false)
+                version = serverVersion
             }
-            version = serverVersion
         }
         return SaveResult.Conflict(SaveConflict(id, metadata, size, remote, version, slots < SYNC_SAVE_SLOTS))
     }

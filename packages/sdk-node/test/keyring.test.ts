@@ -505,6 +505,64 @@ describe("keyring: the root stays in memory", () => {
     expect(() => a.client.keyring.fileCodec("saves")).toThrow();
   });
 
+  it("the file codec stops a seal stream and an open stream when the ring locks", async () => {
+    const s = new FakeRing();
+    const a = await device(s, "DEVICEAAAAAAAAAAAAAAAAAAAAAAAAAA");
+    await a.client.keyring.create();
+    const piece = new Uint8Array(1_048_576).map((_, i) => (i * 7) & 255);
+    const source = async function* () {
+      for (let i = 0; i < 3; i++) yield piece;
+    };
+    const drain = async (it: AsyncGenerator<Uint8Array>) => {
+      for (;;) if ((await it.next()).done) return "finished";
+    };
+    // A seal stream that has produced a piece stops at the next one.
+    const codec = a.client.keyring.fileCodec("saves");
+    const seal = codec.sealStream(source());
+    expect((await seal.next()).done).toBe(false);
+    a.client.keyring.lock();
+    await expect(drain(seal)).rejects.toMatchObject({ code: "sync-locked" });
+    // So does an open stream that has read a piece.
+    await a.client.keyring.unlock();
+    const open = a.client.keyring.fileCodec("saves");
+    const sealed: Uint8Array[] = [];
+    for await (const p of open.sealStream(source())) sealed.push(p);
+    const stored = Buffer.concat(sealed);
+    const reading = open.openStream(
+      (async function* () {
+        for (let i = 0; i < stored.length; i += 500_000)
+          yield stored.subarray(i, i + 500_000);
+      })() as never,
+    );
+    expect((await reading.next()).done).toBe(false);
+    a.client.keyring.lock();
+    await expect(drain(reading)).rejects.toMatchObject({
+      code: "sync-locked",
+    });
+  });
+
+  it("a file codec made before a lock fails after unlock (the root is replaced)", async () => {
+    const s = new FakeRing();
+    const a = await device(s, "DEVICEAAAAAAAAAAAAAAAAAAAAAAAAAA");
+    await a.client.keyring.create();
+    const old = a.client.keyring.fileCodec("saves");
+    const plain = new Uint8Array([9]);
+    const id = await old.chunkId(plain);
+    a.client.keyring.lock();
+    await a.client.keyring.unlock();
+    expect(a.client.keyring.unlocked).toBe(true);
+    await expect(old.sealChunk(id, plain)).rejects.toMatchObject({
+      code: "sync-locked",
+    });
+    await expect(old.chunkId(plain)).rejects.toMatchObject({
+      code: "sync-locked",
+    });
+    const fresh = a.client.keyring.fileCodec("saves");
+    expect(
+      (await fresh.sealChunk(await fresh.chunkId(plain), plain)).length,
+    ).toBeGreaterThan(1);
+  });
+
   it("prints no key material, and the module touches no file", async () => {
     const s = new FakeRing();
     const a = await device(s, "DEVICEAAAAAAAAAAAAAAAAAAAAAAAAAA");

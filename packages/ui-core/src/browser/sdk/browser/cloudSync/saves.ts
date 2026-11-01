@@ -85,6 +85,8 @@ export interface BrowserSavesDeps {
   attach: () => Promise<void>;
   /** The person the session's token is for now, or null when not known: it scopes the chunk cache. */
   subject?: () => string | null;
+  /** The device's display name, stored with each save. */
+  deviceLabel?: () => string | null;
   /** Test seams, handed to the files layer. */
   files?: Pick<BrowserFilesDeps, "store" | "sleep">;
 }
@@ -231,6 +233,13 @@ export class MachineRecords implements SaveRecords {
     return r.ok === false && r.reason === "conflict" && r.server !== null
       ? { ...r, server: { ...r.server, id } }
       : r;
+  }
+
+  /** Ask the server for the collection's changes and wait for the pull to end. */
+  async pull(): Promise<void> {
+    if (!this.#host.isWriter) return;
+    this.#host.machine.pull();
+    await this.#host.touch();
   }
 
   async delete(id: string, baseVersion: number): Promise<SaveSetResult> {
@@ -507,6 +516,8 @@ export class SavesApi implements BrowserSaves {
     this.#subject = subject;
     return new SavesClient({
       records: this.#records,
+      ...(d.deviceLabel ? { deviceLabel: d.deviceLabel } : {}),
+      onState: () => this.#emit(null),
       engine,
       transport: files.transport,
       codec,
