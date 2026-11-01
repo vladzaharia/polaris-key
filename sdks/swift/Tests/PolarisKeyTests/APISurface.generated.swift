@@ -181,4 +181,8 @@ func apiSurface() async {
     _ = CloudLinks.open  // cloudConnect.links.open
     _ = CloudLinks.onLink  // cloudConnect.links.onLink
     _ = CloudLinks.interAccount  // cloudConnect.links.interAccount
+    _ = CloudTransfer.send(_:source:options:)  // cloudConnect.transfer.send
+    _ = CloudTransfer.onOffer(_:)  // cloudConnect.transfer.onOffer
+    _ = CloudTransfer.onResult(_:)  // cloudConnect.transfer.onResult
+    _ = CloudTransfer.cancel(_:)  // cloudConnect.transfer.cancel
 }

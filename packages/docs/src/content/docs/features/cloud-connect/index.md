@@ -81,3 +81,4 @@ The **Cloud Connect** section has three pages.
 - [The peer protocol](/docs/reference/protocol/peer/): the certificate, roster, handshake and relay envelope, for implementers.
 - [Sign-in](/docs/features/sign-in/): the account Cloud Connect links devices by.
 - [Cloud Sync](/docs/features/cloud-sync/): keeps one person's settings and saves across devices.
+- [Direct Transfer](/docs/features/cloud-connect/transfer/): send a file between devices, with consent per transfer, resume and limits.
