@@ -299,7 +299,7 @@ def _only_the_links_layer(monkeypatch: Any) -> Any:
     return seen
 
 
-def test_links_a_handshake_whose_contact_was_removed_is_ended_by_the_lan_layer_alone(world: Any, monkeypatch: Any) -> None:
+def test_links_a_handshake_with_a_removed_contact_is_ended_by_the_lan_layer_alone(world: Any, monkeypatch: Any) -> None:
     def then(a: Any, ida: str) -> None:
         assert a.cloud_connect.links.remove(a.cloud_connect.links.list()[0].id) is True
         time.sleep(0.3)  # the LAN service reloads its contacts
@@ -349,11 +349,11 @@ def test_links_a_session_under_a_replaced_pending_secret_promotes_nothing(world:
     a.connect.update_contacts(lambda rows, _now: list(rows) + [pend])
     assert len(a.connect.contact_rows()) == 2
     src = lan_source(a.connect)
-    ref = a.connect.live_contacts()  # the live list is what the LAN service reads
-    assert ref is not None
     from polaris_key.connect.contacts import ContactRef
 
-    mk = lambda tag: ContactRef(id="x", label=None, categories=("notes",), agree_key=held.agree_key, pending=True, tag=tag)
+    def mk(tag: str) -> Any:
+        return ContactRef(id="x", label=None, categories=("notes",), agree_key=held.agree_key, pending=True, tag=tag)
+
     assert src.contact_established is not None
     src.contact_established(mk("A" * 16))
     assert len(a.connect.contact_rows()) == 2

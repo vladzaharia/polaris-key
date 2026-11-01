@@ -801,8 +801,8 @@ import XCTest
             }
             let pendingSecret = rnd()
             _ = try await c.connect.updateContacts { rows, now in
-                ConnectContacts.store(rows, agreeKey: key, secret: pendingSecret, label: "Ben2", cats: ["docs"], now: now)?
-                    .rows
+                ConnectContacts.store(
+                    rows, agreeKey: key, secret: pendingSecret, label: "Ben2", cats: ["docs"], now: now)?.rows
             }
             let before = await c.connect.contactRows()
             XCTAssertEqual(before.count, 2)
