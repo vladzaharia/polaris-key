@@ -1525,11 +1525,11 @@ static func capabilities() -> Dictionary:
 		"sync.scenarios": {"status": "implemented", "service": "sync", "na": []},
 		"sync.settings": {"status": "implemented", "service": "sync", "na": []},
 		"sync.conflict": {"status": "planned", "service": "sync", "na": []},
-		"sync.saves": {"status": "implemented", "service": "sync", "na": [{"runtime": "ios", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}]},
+		"sync.saves": {"status": "implemented", "service": "sync", "na": []},
 		"sync.keyring": {"status": "implemented", "service": "sync", "na": []},
 		"sync.records": {"status": "planned", "service": "sync", "na": []},
-		"sync.files": {"status": "implemented", "service": "sync", "na": [{"runtime": "ios", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}]},
-		"sync.files.delta": {"status": "implemented", "service": "sync", "na": [{"runtime": "ios", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}]},
+		"sync.files": {"status": "implemented", "service": "sync", "na": []},
+		"sync.files.delta": {"status": "implemented", "service": "sync", "na": []},
 		"sync.e2e.recovery": {"status": "planned", "service": "sync", "na": []},
 		"sync.transfer.background": {"status": "planned", "service": "sync", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"sync.e2e": {"status": "implemented", "service": "sync", "na": []},
@@ -1635,4 +1635,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "18faf40c292596d90fd5dbc3f4d4c69885873b966feb17bab952265738a93489"
+const CAPABILITY_DIGEST := "55d2745d298d7641b8b6ece6fea15c4512114ef9ad1b13aa09fd9bc109154abe"

@@ -205,6 +205,8 @@ func _init(p_transport: Object, p_journal: Object) -> void:
 ## Upload one file's stored bytes (`single`/`multipart`) and finalize it. `req`: {id, collection, record,
 ## source, size, sha256, enc, base_version?, on_progress?: Callable(sent, total), cancel?: Cancel}.
 func upload(req: Dictionary) -> PKeyResult:
+	if not PKeySyncAead.files_supported():
+		return _needs_plugin()
 	var size: int = req["size"]
 	if not _fits(size, true):
 		return _unsupported()
@@ -233,6 +235,8 @@ func upload(req: Dictionary) -> PKeyResult:
 ## Upload a file as a manifest over content-defined chunks and finalize it. `req`: {id, collection, record,
 ## source (the plaintext), codec, base_version?, on_progress?: Callable(done, total), cancel?: Cancel}.
 func upload_chunked(req: Dictionary) -> PKeyResult:
+	if not PKeySyncAead.files_supported():
+		return _needs_plugin()
 	var source = req["source"]
 	if source.size > PKeyConstants.SYNC_FILE_MAX_BYTES:
 		return _result(_err("rejected", 0, "file_too_large"))
@@ -263,6 +267,8 @@ func upload_chunked(req: Dictionary) -> PKeyResult:
 ## passed. `req`: {collection, record, format: "whole" | "chunks", size, sha256, codec, sink, version?,
 ## cache?, on_progress?: Callable(written, total), cancel?: Cancel}.
 func download(req: Dictionary) -> PKeyResult:
+	if not PKeySyncAead.files_supported():
+		return _needs_plugin()
 	var size: Variant = req["size"]
 	var codec = req["codec"]
 	if typeof(size) != TYPE_INT or size <= 0 or size > codec.stored_size(PKeyConstants.SYNC_FILE_MAX_BYTES):
@@ -308,6 +314,10 @@ static func _invalid(detail: String) -> Dictionary:
 
 static func _unsupported() -> PKeyResult:
 	return PKeyResult.unsupported(FEATURE, PKeyConstants.UnsupportedReason.RUNTIME, "Synced files over 32 MiB are not supported on this runtime yet.")
+
+
+static func _needs_plugin() -> PKeyResult:
+	return PKeyResult.unsupported(FEATURE, PKeyConstants.UnsupportedReason.DEPENDENCY, PKeySyncAead.NEEDS_PLUGIN)
 
 
 static func _result(r: Dictionary) -> PKeyResult:

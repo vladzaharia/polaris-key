@@ -40,9 +40,10 @@ extends RefCounted
 ## The wait for the metadata write has no timeout: `cancel()`, a sign-out (the write is dropped) and the
 ## host's retries end it.
 ##
-## Godot's lane (D-10): files are held whole in memory and sealed and opened on a worker thread (the
-## GDScript AES-GCM runs about 1 s per MiB), at most 32 MiB each. iOS and Android wait for the native lanes
-## (CC-14b, `sync.saves` is N/A there): every call answers the typed `unsupported` refusal.
+## Godot's lane (D-10): files are held whole in memory, at most 32 MiB each. Desktop seals and opens on a
+## worker thread (the GDScript AES-GCM runs about 1 s per MiB). iOS and Android run when the native
+## AES-GCM lane passed its known answers (GM.3); without the plugin every call answers the typed
+## `unsupported` refusal, reason `dependency`.
 
 ## The transfers, the held conflicts or the last failure changed (K.5T): the save screens redraw on it.
 signal changed()
@@ -81,7 +82,7 @@ static func sealed_gen_of(sealed: Array) -> Variant:
 ##   emit         Callable(event Dictionary): transferProgress / transferDone / transferFailed
 ##   gate         Callable() -> null | PKeyResult (a coroutine): the refusal when the service is off or the
 ##                host is not up
-##   supported    Callable() -> bool, whether this runtime runs the GDScript lane (default: not iOS or Android)
+##   supported    Callable() -> bool, whether this runtime runs the GDScript lane (default: `PKeySyncAead.files_supported()`)
 ##   purge_files  Callable(), deletes the journal and the chunk cache of the person who left
 var _d: Dictionary
 var _live: Array = []
@@ -98,9 +99,9 @@ func _init(deps: Dictionary) -> void:
 	_d = deps
 
 
-## Whether the GDScript lane runs on this runtime at all (iOS and Android wait for CC-14b's native lanes).
+## Whether files and saves run on this runtime: always off iOS and Android, there only with a native lane.
 static func runtime_supported() -> bool:
-	return not (OS.has_feature("ios") or OS.has_feature("android"))
+	return PKeySyncAead.files_supported()
 
 
 func _supported() -> bool:
@@ -152,7 +153,7 @@ static func _failure(e: Dictionary) -> PKeyResult:
 		"invalid-save":
 			result_code = PKeyConstants.ErrorCode.INVALID_ARGUMENT
 		"unsupported":
-			return PKeyResult.unsupported(PKeyConstants.Feature.SYNC_SAVES, PKeyConstants.UnsupportedReason.RUNTIME, "Synced saves wait for the native lanes on this platform.")
+			return PKeyResult.unsupported(PKeyConstants.Feature.SYNC_SAVES, PKeyConstants.UnsupportedReason.DEPENDENCY, PKeySyncAead.NEEDS_PLUGIN)
 	return PKeyResult.failure(result_code, "saves: " + code, d)
 
 
@@ -161,7 +162,7 @@ static func _locked_result() -> PKeyResult:
 
 
 static func _unsupported_result() -> PKeyResult:
-	return PKeyResult.unsupported(PKeyConstants.Feature.SYNC_SAVES, PKeyConstants.UnsupportedReason.RUNTIME, "Synced saves wait for the native lanes on this platform.")
+	return PKeyResult.unsupported(PKeyConstants.Feature.SYNC_SAVES, PKeyConstants.UnsupportedReason.DEPENDENCY, PKeySyncAead.NEEDS_PLUGIN)
 
 
 ## An engine failure as a saves error, `{state: "aborted"}` for a cancel, or `{state: "conflict", ...}`.
@@ -465,7 +466,7 @@ func delete(id: String, base_version: Variant = null) -> PKeyResult:
 
 func _run(id: String, bytes: PackedByteArray, metadata: Dictionary, opts: Dictionary, mode: Variant) -> PKeyTransfer:
 	if not _supported():
-		return _tracked(Handle.settled(id, {"state": "failed", "error": _err("unsupported", {"feature": PKeyConstants.Feature.SYNC_SAVES, "reason": PKeyConstants.UnsupportedReason.RUNTIME})}))
+		return _tracked(Handle.settled(id, {"state": "failed", "error": _err("unsupported", {"feature": PKeyConstants.Feature.SYNC_SAVES, "reason": PKeyConstants.UnsupportedReason.DEPENDENCY})}))
 	var transfer_id := "saves:" + id
 	var progress := {"done": 0, "total": bytes.size()}
 	var meta := metadata.duplicate(true)
