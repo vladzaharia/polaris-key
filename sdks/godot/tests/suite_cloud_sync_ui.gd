@@ -1063,10 +1063,12 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	# Keeping offers nothing; kept names the choice and Done; failed focuses Cancel and Try again repeats.
 	var keeping: PKeySaveConflict = _sc.save_conflict("keeping")
 	await _frames(3)
-	var live := 0
-	for n in keeping.find_children("*", "Label", true, false):
-		live += 1 if int(n.get("accessibility_live")) != 0 else 0
-	t.check("saves: keeping has exactly one live label, its status", live == 1 and int(keeping._status.get("accessibility_live")) == 1, str(live))
+	# `accessibility_live` is an engine 4.5 property; the floor has no such label state to check.
+	if "accessibility_live" in keeping._status:
+		var live := 0
+		for n in keeping.find_children("*", "Label", true, false):
+			live += 1 if int(n.get("accessibility_live")) != 0 else 0
+		t.check("saves: keeping has exactly one live label, its status", live == 1 and int(keeping._status.get("accessibility_live")) == 1, str(live))
 	var kb := _buttons(keeping)
 	t.check("saves: while a choice is applied nothing is offered", kb.is_empty() and keeping._initial_focus() == null)
 	await _tree().create_timer(0.4).timeout
@@ -1152,7 +1154,8 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	var figs := strip.find_child("Figures", true, false) as Label
 	t.check("strip: transferring says Syncing saves before its figures", st.text == "Syncing saves…" and figs.text == "38 MB of 61 MB" and strip._bar.visible and not strip._bar.indeterminate and is_equal_approx(strip._bar.value, 0.62), st.text)
 	# One announcement per state change: the label is live, the figures are not, so a byte update is silent.
-	t.check("strip: only the label is live", int(st.get("accessibility_live")) == 1 and int(figs.get("accessibility_live")) == 0)
+	if "accessibility_live" in st:
+		t.check("strip: only the label is live", int(st.get("accessibility_live")) == 1 and int(figs.get("accessibility_live")) == 0)
 	var said := st.text
 	strip.transfer_size = "39 MB"
 	strip.refresh_view()
