@@ -49,6 +49,17 @@ class TransferStoreTest {
     }
 
     @Test
+    fun aSymlinkedTransferDirectoryIsRefused() {
+        val root = Files.createTempDirectory("pkey-store-test").toFile().also { dirs += it }
+        val target = File(root, "elsewhere").also { it.mkdirs() }
+        Files.createSymbolicLink(File(root, "xfer").toPath(), target.toPath())
+        val s = TransferStore(root, { System.currentTimeMillis() / 1000.0 }, { 1000L }, 0L)
+        refused { s.apply(XferEffect.Create(ref(1), partial(1, 100)), me, peer, s.epoch) { null } }
+        assertEquals(0, target.listFiles()!!.size)
+        assertTrue(s.partialsFor(peer).isEmpty())
+    }
+
+    @Test
     fun spaceIsReservedAtAcceptAndHeldUntilTheTransferEnds() {
         val s = store()
         val e = s.epoch
