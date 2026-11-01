@@ -76,4 +76,16 @@ final class CSurfaceTests: XCTestCase {
         XCTAssertEqual(r["unsupported"], true)
         XCTAssertTrue(["version", "outlet"].contains(r["reason"]?.stringValue ?? ""))
     }
+
+    /// U-41.5b: the app delegate's hook takes only a Cloud Sync session; for anything else it answers false
+    /// and leaves the completion alone (the host handles it).
+    func testTheBackgroundEventsHookRefusesWhatIsNotOurs() {
+        let ran = PlatformLock<Bool>(false)
+        let block: @convention(block) () -> Void = { ran.withLock { $0 = true } }
+        XCTAssertFalse("com.example.session".withCString { pkpHandleBackgroundEvents($0, block) })
+        XCTAssertFalse("pkey.syncX".withCString { pkpHandleBackgroundEvents($0, block) })
+        XCTAssertFalse(pkpHandleBackgroundEvents(nil, block))
+        XCTAssertFalse("pkey.sync.djdl".withCString { pkpHandleBackgroundEvents($0, nil) })
+        XCTAssertFalse(ran.withLock { $0 })
+    }
 }
