@@ -38,7 +38,7 @@ import "@polaris-key/elements"; // registers pk-gate, pk-welcome, pk-activate, .
 `<pk-gate config>` signs a person in by itself when it can, once, as the page loads: in a browser
 that offers Google through FedCM it asks for the account the person is already signed in with. A
 confirm or the license choice shows only when the sign-in needs one. When it cannot sign the person in, the normal sign-in
-shows. Set `auto-sign-in="off"` to turn it off:
+shows. See [Automatic sign-in](https://key.plrs.im/docs/features/sign-in/automatic/) and its [setup](https://key.plrs.im/docs/features/sign-in/platform-setup/). Set `auto-sign-in="off"` to turn it off:
 
 With a Content-Security-Policy it needs `connect-src https://accounts.google.com` (the browser
 fetches its FedCM configuration from there); inside an iframe the frame needs

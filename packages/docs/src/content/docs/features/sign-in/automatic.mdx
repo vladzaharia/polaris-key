@@ -1,0 +1,118 @@
+---
+title: "Automatic sign-in"
+description: "Sign a person in with no form: the ladder of rungs, its result kinds, the sign-out rule, the kits' opt-out and each SDK's call."
+type: "concept"
+status: "shipped"
+lastReviewed: "2026-11-01"
+sidebar:
+  order: 8
+---
+
+Automatic sign-in signs a person in from what the device already has, so the app shows no sign-in form. People see it as Automatic Sign-In. The SDK's `autoSignIn()` runs it, and the kits run it for you.
+
+It never signs a device in without a link between the platform account and a Polaris Locker account, and it never creates one. A new account and a new link always go through the regular sign-in. It never shows a sheet the app did not ask for, never signs a device in again after an explicit sign-out, and never throws: every outcome is a result.
+
+It is off until the operator turns on `launch.identityExchange` (Platform → Settings), and it needs the Identity service on and the product's [platform sign-in](/docs/features/sign-in/platform-setup/). With either missing the call answers `unavailable` and the app shows its own sign-in.
+
+## The ladder
+
+The call stops at the first rung that answers.
+
+1. **A stored sign-in.** A device token from an earlier sign-in and a held license. No network.
+2. **Silent restore**, where built: Swift and Kotlin, from the device backup. Planned on Godot. A runtime with no backup skips it. See [Swift](/docs/build/sdks/swift/#restore-from-backup) and [Kotlin](/docs/build/sdks/kotlin/#restore-from-backup).
+3. **The platform's silent credential.** The Google account the person already used with the app (Credential Manager on Android, FedCM on the web), exchanged for a device token over a fresh nonce. Apple has no silent mode: this rung is skipped.
+4. **The provider's one sheet**, only when the app asks. The default prompt is silent only; pass the optional prompt to allow the sheet.
+
+Past rung 4 the app's own sign-in takes over. After a sign-in the person started on this device, the app may offer to link the platform account, so the next launch is automatic. The offer is built in the React kit; the other SDKs plan it.
+
+## The result kinds
+
+| Kind          | Meaning                                                                                        |
+| ------------- | ---------------------------------------------------------------------------------------------- |
+| signed in     | The device holds a token. `via` says stored or platform.                                       |
+| confirm       | First use of this app with this account. Show what it shares, then complete with the yes.      |
+| choose        | Two or more licenses, or a license to pick. Show the license choice.                           |
+| needs sign-in | Show the regular sign-in. The reason is `noLink`, `terms`, `signedOut` or `noCredential`.      |
+| device limit  | Every seat is taken. The result carries a manage URL and, where the Worker sent it, the seats. |
+| unavailable   | The product serves no platform sign-in, or the Worker or platform refused. It carries a code.  |
+
+`confirm` and `choose` finish through the [license choice](/docs/features/sign-in/app-license-choice/). Nothing mints a license until the person presses.
+
+## Signing out
+
+An explicit sign-out sets a flag on the device. While it is set, rungs 2 to 4 stay off and the call answers `needsSignIn` with reason `signedOut`. Only a sign-in the person starts clears it: a redirect, a device code, a completed license choice or a provider started from the sign-in form. Key activation does not. The ladder's own exchange never lowers the flag, and a sign-out during a prompt makes that run store nothing.
+
+A sign-out also clears the platform's remembered account (Android's credential state, the browser's silent access) and the restore key.
+
+## The kits run it
+
+The React gate, the elements gate, the SwiftUI gate, the Compose gate and the Godot gate each run the ladder once, with no sheet: at launch, or on Godot the first time the gate shows the sign-in form. A confirm, a license choice or a device limit appears only when the sign-in needs it. To turn it off:
+
+| Kit      | Opt-out                                          |
+| -------- | ------------------------------------------------ |
+| React    | `autoSignIn={false}` on the provider             |
+| Elements | `auto-sign-in="off"` on `pk-gate`                |
+| SwiftUI  | Pass `false` as the gate's `autoSignIn` argument |
+| Compose  | Pass `false` as the gate's `autoSignIn` argument |
+| Godot    | `auto_sign_in = false` on `PKeyGateView`         |
+
+## The call in each SDK
+
+| SDK    | Call                                 | Notes                                                                                 |
+| ------ | ------------------------------------ | ------------------------------------------------------------------------------------- |
+| Node   | `client.identity.autoSignIn()`       | Rung 1 only. The options exist for parity and change nothing.                         |
+| React  | `usePolarisAuth().autoSignIn()`      | FedCM on Chromium. Needs a CSP line, below.                                           |
+| Python | `client.identity.auto_sign_in()`     | Rung 1 only.                                                                          |
+| Swift  | `client.identity.autoSignIn(_:)`     | Sign in with Apple. The optional prompt shows the sheet.                              |
+| Kotlin | `client.identity.autoSignIn()`       | Credential Manager on the `play` flavor. `AutoSignInPrompt.OPTIONAL` shows the sheet. |
+| Godot  | `PolarisKey.identity.auto_sign_in()` | Apple, Game Center, Play Games and Google. `prompt = "optional"`.                     |
+
+Node and Python have no platform account. Their ladder is a stored sign-in, then `needsSignIn`; your sign-in form follows, including [nearby approval](/docs/features/sign-in/nearby/).
+
+```ts
+import type { PolarisKeyClient } from "@polaris-key/node";
+
+export async function atStart(client: PolarisKeyClient): Promise<string> {
+  const result = await client.identity.autoSignIn();
+  if (result.kind === "signedIn") return "signed in";
+  if (result.kind === "needsSignIn") return result.reason; // "signedOut": start nothing yourself
+  return result.code; // unavailable
+}
+```
+
+```python
+from polaris_key import PolarisKeyClient
+
+
+def at_start(client: PolarisKeyClient) -> str:
+    result = client.identity.auto_sign_in()
+    if result.kind == "signed_in":
+        return "signed in"
+    if result.kind == "needs_sign_in":
+        return str(getattr(result, "reason", ""))  # "signed_out": start nothing yourself
+    return str(getattr(result, "code", ""))  # unavailable
+```
+
+In React, drive it yourself when you draw your own gate:
+
+```tsx
+import { useEffect, useState } from "react";
+import { usePolarisAuth } from "@polaris-key/react";
+
+export function useAutomatic(): string {
+  const auth = usePolarisAuth();
+  const [kind, setKind] = useState("pending");
+  useEffect(() => {
+    void auth
+      .autoSignIn({ prompt: "none" })
+      .then((result) => setKind(result.kind));
+  }, [auth]);
+  return kind;
+}
+```
+
+The Swift, Kotlin and Godot calls, with their `switch` over the result, are on the [Swift](/docs/build/sdks/swift/#automatic-sign-in), [Kotlin](/docs/build/sdks/kotlin/#automatic-sign-in) and [Godot](/docs/build/sdks/godot/#automatic-sign-in) pages.
+
+## On the web
+
+The browser fetches Google's FedCM configuration, so a page with a Content-Security-Policy needs `connect-src https://accounts.google.com`. Inside an iframe the frame needs `allow="identity-credentials-get"`. Browsers without FedCM, and cookie pages, skip the rung.
