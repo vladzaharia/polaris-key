@@ -84,7 +84,21 @@ static func normalize(raw: String) -> String:
 ## stops once more than DEVICE_LABEL_MAX_CODEPOINTS output code points exist, so a mode-a HELLO of
 ## a megabyte costs a bounded amount of NFC work.
 static func clean_hello(raw: String) -> String:
-	var cap: int = PKeyConstants.DEVICE_LABEL_MAX_CODEPOINTS
+	return _clean_nfc(raw, PKeyConstants.DEVICE_LABEL_MAX_CODEPOINTS)
+
+
+## §15.11: a transfer's `name` as shown. The HELLO cleaning (`clean_hello`) without the cut to
+## DEVICE_LABEL_MAX_CODEPOINTS; null when `raw` is not a String or nothing is left. U+FFFD, which a
+## JSON `\u0000` escape becomes here, is dropped first (as for a HELLO label). Display data only:
+## it never reaches a path.
+static func clean_name(raw: Variant) -> Variant:
+	if not raw is String:
+		return null
+	var cleaned := _clean_nfc((raw as String).replace(char(0xFFFD), ""), 0x7FFFFFFF)
+	return cleaned if cleaned != "" else null
+
+
+static func _clean_nfc(raw: String, cap: int) -> String:
 	var res := PackedInt32Array()
 	var seg := PackedInt32Array()
 	var parts := PackedInt32Array()
