@@ -56,18 +56,23 @@ final class CloudSyncMachineCollectionTests: XCTestCase {
 
     private func pushed(_ m: CloudSyncMachine) -> [[String: JSONValue]] {
         m.advance(SYNC_DEBOUNCE_MS)
-        return m.takeRequests().flatMap { ($0.body?.objectValue?["mutations"]?.arrayValue ?? []).compactMap(\.objectValue) }
+        return m.takeRequests().flatMap {
+            ($0.body?.objectValue?["mutations"]?.arrayValue ?? []).compactMap(\.objectValue)
+        }
     }
 
     func testUpdateWritesTheNamedFieldsUnderOneStampAndNothingElse() throws {
         let m = try machine()
         XCTAssertEqual(m.update("prefs", "main", set: ["volume": .int(3), "a": .int(1)], remove: ["old"]), .ok)
-        XCTAssertEqual(m.record("prefs", "main"), SyncEffectiveValue(value: js("{\"a\":1,\"volume\":3}"), from: .pending))
+        XCTAssertEqual(
+            m.record("prefs", "main"), SyncEffectiveValue(value: js("{\"a\":1,\"volume\":3}"), from: .pending))
         let sent = pushed(m)
-        XCTAssertEqual(sent.map { [$0["op"], $0["field"]] }, [
-            [.string("setField"), .string("a")], [.string("setField"), .string("volume")],
-            [.string("removeField"), .string("old")],
-        ])
+        XCTAssertEqual(
+            sent.map { [$0["op"], $0["field"]] },
+            [
+                [.string("setField"), .string("a")], [.string("setField"), .string("volume")],
+                [.string("removeField"), .string("old")],
+            ])
         XCTAssertEqual(Set(sent.compactMap { $0["editedHlc"]?.stringValue }).count, 1, "one stamp")
     }
 
@@ -234,7 +239,8 @@ final class CloudSyncCollectionHandleTests: XCTestCase {
         XCTAssertNotNil(sent[0]["ct"])
         XCTAssertNil(sent[0]["value"])
         XCTAssertEqual(
-            sent[0]["target"]?.objectValue?["record"], .array([.string("prefs"), .string(blind(.record, "prefs", "main"))]))
+            sent[0]["target"]?.objectValue?["record"],
+            .array([.string("prefs"), .string(blind(.record, "prefs", "main"))]))
         let wire = String(decoding: try JSONEncoder().encode(JSONValue.array(sent.map { .object($0) })), as: UTF8.self)
         XCTAssertFalse(wire.contains("volume") || wire.contains("\"main\""))
     }
@@ -322,7 +328,9 @@ final class CloudSyncCollectionHandleTests: XCTestCase {
             ]), "version": .int(5),
         ])
         rig.responder = { req, _ in
-            if req.method == .get { return .answer(status: 200, body: hReply(["cursor": .int(5), "changes": .array([row])])) }
+            if req.method == .get {
+                return .answer(status: 200, body: hReply(["cursor": .int(5), "changes": .array([row])]))
+            }
             return .answer(status: 200, body: hReply())
         }
         _ = try await h.signIn(hALICE)
@@ -356,11 +364,14 @@ final class CloudSyncCollectionHandleTests: XCTestCase {
         let (docs, h) = try await handle(rig, "docs")
         rig.responder = { req, _ in
             if req.method == .get { return .answer(status: 200, body: hReply()) }
-            let ids = (req.body?.objectValue?["mutations"]?.arrayValue ?? []).compactMap { $0.objectValue?["mutationId"] }
+            let ids = (req.body?.objectValue?["mutations"]?.arrayValue ?? []).compactMap {
+                $0.objectValue?["mutationId"]
+            }
             return .answer(
                 status: 200,
                 body: hReply([
-                    "results": .array(ids.map { .object(["mutationId": $0, "status": .string("ok"), "version": .int(4)]) })
+                    "results": .array(
+                        ids.map { .object(["mutationId": $0, "status": .string("ok"), "version": .int(4)]) })
                 ]))
         }
         let seen = LockedValue<[CollectionEvent]>([])

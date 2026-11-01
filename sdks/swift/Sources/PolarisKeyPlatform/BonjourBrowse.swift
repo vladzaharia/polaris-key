@@ -321,7 +321,10 @@ public final class BonjourBrowse: Sendable {
                 guard let row = s.table.row(name) else { return false }
                 return !admit(row)
             }.flatMap { s.table.remove($0) }
-            return (retired + results.filter { admit($0) }.flatMap { s.table.upsert($0, tagged: tagOnly($0)) }, s.onUp, s.onDown)
+            return (
+                retired + results.filter { admit($0) }.flatMap { s.table.upsert($0, tagged: tagOnly($0)) }, s.onUp,
+                s.onDown
+            )
         }
         guard let up, let down else { return }
         deliver(changes, onUp: up, onDown: down)

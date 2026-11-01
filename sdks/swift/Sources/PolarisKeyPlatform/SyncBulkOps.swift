@@ -36,6 +36,10 @@ import Foundation
     import Glibc
 #endif
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 // MARK: Limits and checks
 
 enum SyncBulkPolicy {
@@ -454,7 +458,9 @@ final class SyncBulkChannel: BackgroundSink, @unchecked Sendable {
     private func remove(spool name: String) {
         guard BackgroundTag.isSpoolName(name) else { return }
         lock.withLock { _ = staged.removeValue(forKey: name) }
-        if let dir = lock.withLock({ spoolDir }) { try? FileManager.default.removeItem(at: dir.appendingPathComponent(name)) }
+        if let dir = lock.withLock({ spoolDir }) {
+            try? FileManager.default.removeItem(at: dir.appendingPathComponent(name))
+        }
     }
 
     // MARK: events
@@ -479,7 +485,9 @@ final class SyncBulkChannel: BackgroundSink, @unchecked Sendable {
         if let n = p.spool { remove(spool: n) }
         let reqId = p.req
         if r.error != nil {
-            if (r.error as NSError?)?.code != NSURLErrorCancelled { emit("sb_fail", ["req": reqId, "code": "network"]) }
+            if (r.error as NSError?)?.code != NSURLErrorCancelled {
+                emit("sb_fail", ["req": reqId, "code": "network"])
+            }
             return
         }
         guard r.body.count <= p.maxBody else {
@@ -652,4 +660,3 @@ struct SyncBulkOps: Sendable {
         return [SyncBulkPolicy.ok]
     }
 }
-

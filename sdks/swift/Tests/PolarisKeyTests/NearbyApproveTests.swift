@@ -49,7 +49,8 @@ private final class Worker: PolarisTransport, @unchecked Sendable {
         let (named, next, isDown): (Bool, (Int, String)?, Bool) = lock.withLock {
             callsValue.append(
                 Call(
-                    path: path, body: body, authorization: request.headers.first { $0.key.lowercased() == "authorization" }?.value,
+                    path: path, body: body,
+                    authorization: request.headers.first { $0.key.lowercased() == "authorization" }?.value,
                     device: request.headers.first { $0.key.lowercased() == "x-pkey-device" }?.value))
             var next: (Int, String)?
             if path == approvePath, !approveAnswers.isEmpty {
@@ -440,8 +441,9 @@ final class NearbyApproveTests: XCTestCase {
         named.worker.answers([(404, #"{"error":"not_found"}"#)])
         let vouch = VerifiedVouch(
             request: nearbyRequestHandle, deviceId: nearbyDeviceId, signKey: "a", agreeKey: "b")
-        guard case .refused(let status, let code, _, let finish) = try await named.identity.nearbyApprove(
-            vouch, decision: "approve")
+        guard
+            case .refused(let status, let code, _, let finish) = try await named.identity.nearbyApprove(
+                vouch, decision: "approve")
         else { return XCTFail("expected a refusal") }
         XCTAssertEqual(status, 404)
         XCTAssertEqual(code, "not_found")

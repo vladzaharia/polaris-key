@@ -12,10 +12,10 @@
 import CryptoKit
 import Foundation
 import PolarisKeyCore
+import PolarisKeyPlatform
 import XCTest
 
 @testable import PolarisKey
-import PolarisKeyPlatform
 
 // MARK: Stubs
 
@@ -425,7 +425,8 @@ final class CloudSyncBackgroundTests: XCTestCase {
     func testTheRegistryHoldsACompletionUntilTheClientsSessionExists() async throws {
         let id = "pkey.sync.regtest-\(UUID().uuidString.prefix(6).lowercased())"
         let ran = Collected(0)
-        XCTAssertFalse(PolarisKeyClient.handleBackgroundEvents(identifier: "com.other.session") { ran.update { $0 += 1 } })
+        XCTAssertFalse(
+            PolarisKeyClient.handleBackgroundEvents(identifier: "com.other.session") { ran.update { $0 += 1 } })
         XCTAssertTrue(PolarisKeyClient.handleBackgroundEvents(identifier: id) { ran.update { $0 += 1 } })
         // The product is the identifier's tail.
         let product = String(id.dropFirst("pkey.sync.".count))

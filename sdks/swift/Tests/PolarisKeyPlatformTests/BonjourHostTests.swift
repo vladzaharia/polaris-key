@@ -579,7 +579,8 @@ import XCTest
             XCTAssertFalse(lost.contains(inst(1)), "the roster peer stays")
             // A later tagged approver still enters once the partition is full of older strangers.
             m.driver.send(.upserted([tagged(900, m: "v", h: h)]))
-            XCTAssertEqual(events(m.sink).filter { $0.0 == "bj_found" }.compactMap { $0.1["instance"] as? String }, [inst(900)])
+            XCTAssertEqual(
+                events(m.sink).filter { $0.0 == "bj_found" }.compactMap { $0.1["instance"] as? String }, [inst(900)])
         }
 
         // MARK: the table itself (presence is read from the table, not from the event sink)

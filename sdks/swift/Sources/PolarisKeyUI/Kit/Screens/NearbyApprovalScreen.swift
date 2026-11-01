@@ -188,7 +188,8 @@ public struct NearbyApprovalView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
                             RoundedRectangle(cornerRadius: style.groupRadius, style: .continuous)
-                                .fill(style.palette.raised))
+                                .fill(style.palette.raised)
+                        )
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)

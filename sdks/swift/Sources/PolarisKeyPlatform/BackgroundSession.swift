@@ -19,7 +19,6 @@ import Foundation
     import FoundationNetworking
 #endif
 
-
 package struct BackgroundTag: Equatable {
     package enum Kind: String { case up, dn }
     package var idHash: String
@@ -65,7 +64,6 @@ package struct BackgroundTag: Equatable {
 package func backgroundIdHash(_ id: String) -> String {
     SHA256.hash(data: Data(id.utf8)).map { String(format: "%02x", $0) }.joined()
 }
-
 
 /// One task of the background session, as the channel needs it.
 package protocol BackgroundTaskRef: AnyObject, Sendable {
@@ -165,7 +163,9 @@ package protocol BackgroundSessionPort: Sendable {
             func cancel() { task.cancel() }
         }
 
-        package func makeUpload(_ request: URLRequest, from file: URL, tag: String, maxBody: Int) -> any BackgroundTaskRef {
+        package func makeUpload(_ request: URLRequest, from file: URL, tag: String, maxBody: Int)
+            -> any BackgroundTaskRef
+        {
             let t = session!.uploadTask(with: request, fromFile: file)
             t.taskDescription = tag
             lock.withLock { limits[t.taskIdentifier] = maxBody }

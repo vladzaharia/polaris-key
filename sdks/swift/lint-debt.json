@@ -350,9 +350,6 @@
       "swift-format:OrderedImports": 1,
       "swift-format:TrailingComma": 1
     },
-    "sdks/swift/Tests/PolarisKeyTests/CloudSyncBackgroundTests.swift": {
-      "swift-format:LineLength": 1
-    },
     "sdks/swift/Tests/PolarisKeyTests/CloudSyncHostBoundsTests.swift": {
       "swift-format:AlwaysUseLowerCamelCase": 2
     },
