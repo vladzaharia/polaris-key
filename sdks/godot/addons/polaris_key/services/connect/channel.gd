@@ -135,7 +135,8 @@ class Attachment extends RefCounted:
 		if index >= 0 and index < contacts.size():
 			# Mode c (section 15.10): the pin has passed; the session has a contact and no device id.
 			session = PKeyConnectSession.new(_link, "", info["caps"], info["hello"], _role, _remote, _path, _budget)
-			session.contact = (contacts[index] as Dictionary).duplicate()
+			session.contact = {"id": contacts[index]["id"], "pending": contacts[index]["pending"]}
+			session.contact_tag = str(contacts[index].get("tag", ""))
 		elif str(info.get("peer_device_id", "")) != "":
 			session = PKeyConnectSession.new(_link, info["peer_device_id"], info["caps"], info["hello"], _role, _remote, _path, _budget)
 		else:

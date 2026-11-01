@@ -193,7 +193,7 @@ func _agree_public() -> Variant:
 ## operator's gate and the service are on (section 15.9). False before discovery. Never fetches.
 func inter_account() -> bool:
 	var core := _core()
-	return core != null and inter_account_of(core.discovery_manifest)
+	return core != null and core.discovery_fresh() and inter_account_of(core.discovery_manifest)
 
 
 static func inter_account_of(manifest: Variant) -> bool:
@@ -222,8 +222,24 @@ func live_contacts() -> Array:
 
 ## A handshake under a pending contact passed the pin: it takes the held one's place (`{id, agree_key}`).
 func contact_established(c: Dictionary) -> void:
-	if contacts().promote(str(c.get("agree_key", ""))).ok:
+	if contacts().promote(str(c.get("agree_key", "")), str(c.get("tag", ""))).ok:
 		notify_contacts()
+
+
+## Whether the link `id` is still held with the secret `tag` names, and links are still on: a session that was
+## opened under a link that has since been removed, replaced or switched off fails this.
+func holds_contact(id: String, tag: String) -> bool:
+	if not inter_account():
+		return false
+	var r := contacts().trial_order()
+	if not r.ok:
+		return false
+	var hit := false
+	for c: Dictionary in r.detail:
+		if str(c["id"]) == id and str(c["tag"]) == tag:
+			hit = true
+	PKeyConnectContacts.wipe_live(r.detail)
+	return hit
 
 
 ## What pairing reads of this client (section 15.10).

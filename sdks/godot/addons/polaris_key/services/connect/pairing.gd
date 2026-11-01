@@ -51,6 +51,8 @@ const PER_GROUP := 2
 const PER_MINUTE := 5
 const TRIES_PER_ADVERT := 2
 const MAX_CANDIDATES := 64
+## Offers put to the host in one window; a device that reaches the code after that is closed unasked.
+const MAX_OFFERS := 8
 const LABEL_MAX := 64
 const SLOT := "p"
 const UNKNOWN_PLATFORM := "unknown"
@@ -74,6 +76,7 @@ var _live: Dictionary = {}
 var _candidates: Dictionary = {}
 var _dialing: Dictionary = {}
 var _stopped := false
+var _offers := 0
 var _dial_all := false
 var _framed := false
 var _timer_gen := 0
@@ -639,6 +642,11 @@ func _on_sas(_code: int, display: String, id: int) -> void:
 		return
 	live.shown = true
 	live.code = display
+	_offers += 1
+	if _offers > MAX_OFFERS:
+		live.failure = "declined"
+		_end(live, PKeyPeerSession.PEER_BUSY)
+		return
 	var offer := Offer.new(self, live, str(live.hello.get("label", "")), str(live.hello.get("platform", "")), display, _cats)
 	(_o["on_offer"] as Callable).call(offer)
 

@@ -27,7 +27,9 @@ extends RefCounted
 ## Options (`_init`): `send` (Callable(type, body) -> PKeyResult), `close` (Callable(code)), `read`
 ## (Callable(id, offset, length) -> PackedByteArray, or anything else for a failure), `apply`
 ## (Callable(effect) -> PKeyResult, or a Callable job that returns one: the endpoint runs the job through
-## `offload`), `events` ({ask, withdraw, result, refused, error, finished} Callables, all optional), `now`
+## `offload`), `place` (Callable(id) -> null, or a PKeyResult: called for each content that arrived whole, after
+## the effects and before its `DONE` goes out, so content that carries no partial file (zero bytes) is placed
+## before the sender is told; a failure ends the session like a refused effect), `events` ({ask, withdraw, result, refused, error, finished} Callables, all optional), `now`
 ## (Callable() -> epoch seconds), `timer` (Callable(seconds, fn) -> a Callable that cancels), `offload`,
 ## `frame` (Callable, a coroutine that waits one frame) and `budget_usec`.
 
@@ -40,6 +42,7 @@ var _send: Callable
 var _close: Callable
 var _read: Callable
 var _apply: Callable
+var _place: Callable
 var _events: Dictionary
 var _now: Callable
 var _timer: Callable
@@ -63,6 +66,7 @@ func _init(options := {}) -> void:
 	_close = options.get("close", Callable())
 	_read = options.get("read", Callable())
 	_apply = options.get("apply", Callable())
+	_place = options.get("place", Callable())
 	_events = options.get("events", {})
 	_now = options.get("now", Callable())
 	_timer = options.get("timer", Callable(self, "_scene_timer"))
@@ -268,6 +272,13 @@ func _perform(out: Dictionary, offered: String) -> void:
 			if r is PKeyResult and not (r as PKeyResult).ok:
 				await _fail("the store refused an effect")
 				return
+		if _place.is_valid():
+			for r: Dictionary in out["results"]:
+				if r.get("outcome") == "delivered" and r.get("again", false) != true:
+					var placed: Variant = _place.call(r["id"])
+					if placed is PKeyResult and not (placed as PKeyResult).ok:
+						await _fail("the store could not place the content")
+						return
 		if _machine != null and not out["delivered"].is_empty():
 			_machine.remember_delivered(out["delivered"], _clock())
 		for s: Dictionary in out["send"]:

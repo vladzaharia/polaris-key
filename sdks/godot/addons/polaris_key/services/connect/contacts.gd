@@ -44,6 +44,15 @@ static func id_of(agree_key: String) -> String:
 	return PKeyB64Url.encode(PKeySyncHkdf.sha256(data).slice(0, 12))
 
 
+## A one-way tag of a contact secret: tells two secrets apart (a session shows which opened it) without
+## holding either.
+static func tag_of(secret: PackedByteArray) -> String:
+	var data := "pkey-contact-tag/1".to_utf8_buffer()
+	data.append(0)
+	data.append_array(secret)
+	return PKeyB64Url.encode(PKeySyncHkdf.sha256(data).slice(0, 12))
+
+
 # -- reads ----------------------------------------------------------------------------------------
 
 ## What the host sees of each held link, in the order they are held: Array of {id, label (String or
@@ -149,7 +158,7 @@ func store(incoming: Dictionary) -> PKeyResult:
 
 ## A handshake under the pending contact of `agree_key` passed the pin: it takes the held one's place,
 ## the held one's `reachable` choice kept.
-func promote(agree_key: String) -> PKeyResult:
+func promote(agree_key: String, tag := "") -> PKeyResult:
 	var loaded := _load()
 	if not loaded.ok:
 		return loaded
@@ -162,7 +171,8 @@ func promote(agree_key: String) -> PKeyResult:
 				pend = r
 			else:
 				held = r
-	if pend == null:
+	# Only the row whose secret opened the session is promoted: a pending row that replaced it is not.
+	if pend == null or (tag != "" and PKeyConnectContacts.tag_of(pend.stored.secret) != tag):
 		_wipe_rows(rows)
 		return PKeyResult.success()
 	var next: Array = []
@@ -347,6 +357,7 @@ class Row extends RefCounted:
 		return {
 			"id": id(), "agree_key": stored.agree_key, "secret": stored.secret.duplicate(), "label": stored.label,
 			"cats": stored.cats.duplicate(), "pending": is_pending(), "reachable": reachable,
+			"tag": PKeyConnectContacts.tag_of(stored.secret), "pending_since": stored.pending_since,
 		}
 
 

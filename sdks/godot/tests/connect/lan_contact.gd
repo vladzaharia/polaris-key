@@ -48,6 +48,7 @@ func run(t: PKeyTestContext) -> void:
 	await _txt(t, adverts["txt"], adverts["names"][0])
 	await _browse(t, adverts["browse"])
 	await _sessions(t)
+	await _in_flight(t)
 	await _gate_and_caps(t)
 
 
@@ -215,6 +216,68 @@ func _sessions(t: PKeyTestContext) -> void:
 	_stop(sc)
 	_stop(sa)
 	_stop(sb)
+
+
+## LAN layer alone (no links layer): a handshake that began before its contact was removed.
+func _in_flight(t: PKeyTestContext) -> void:
+	var now := PKeyTestPeers.NOW
+	var secret := PKeyTestPeers.random32()
+	var a: Dictionary = _pair["a"]
+	var b: Dictionary = _pair["b"]
+	for variant in ["establish", "refresh", "dialler"]:
+		var bus := Lan.Bus.new()
+		var held_a := Held.new()
+		var held_b := Held.new()
+		held_a.rows = [_row(secret, b["pub"], 0)]
+		held_b.rows = [_row(secret, a["pub"], 0)]
+		var sa := _service(a, held_a, now, {}, PackedByteArray(), Lan.FakeMdns.new(bus))
+		var sb := _service(b, held_b, now, {}, PackedByteArray(), Lan.FakeMdns.new(bus))
+		var la: PKeyConnectLan = sa["lan"]
+		var lb: PKeyConnectLan = sb["lan"]
+		var inbound: Array = []
+		lb.contact_session_opened.connect(func(s: PKeyConnectSession) -> void: inbound.append(s))
+		await _until(func() -> bool: return not la.contact_peers().is_empty())
+		var res: Array = [null]
+		var runner := func() -> void:
+			res[0] = await la.connect_contact("link0")
+		runner.call()
+		if variant == "dialler":
+			la._cx.contacts = []
+		else:
+			await _until(func() -> bool: return not lb._pending.is_empty(), 300)
+			held_b.rows = []
+			if variant == "refresh":
+				lb.refresh_contacts()
+				t.check("in flight (refresh): a handshake under a removed contact is ended at once", lb._pending.is_empty())
+			else:
+				lb._cx.contacts = []
+		await _until(func() -> bool: return res[0] != null, 600)
+		for i in 20:
+			await _tree().process_frame
+		if variant != "dialler":
+			t.check("in flight (%s): the listener opens no contact session" % variant, inbound.is_empty() and lb.session_count() == 0)
+		var r: PKeyResult = res[0]
+		if variant == "dialler":
+			t.check("in flight (dialler): a dial whose contact was removed returns no live session", r != null and not r.ok and la.session_count() == 0, str(r))
+			t.check("in flight (dialler): and the listener's end of it is closed too", await _until(func() -> bool: return lb.session_count() == 0))
+		else:
+			t.check("in flight (%s): and no session stays open on the dialling side" % variant, r != null and (not r.ok or await _until(func() -> bool: return (r.detail as PKeyConnectSession).is_closed())))
+		_stop(sa)
+		_stop(sb)
+	# A pending contact that lapses leaves the trial list at the time, not at the next epoch.
+	var held := Held.new()
+	var lapsing := _row(secret, b["pub"], 0, true)
+	lapsing["pending_since"] = now - 100
+	held.rows = [lapsing]
+	var s := _service(a, held, now, {"browse": false})
+	var lan: PKeyConnectLan = s["lan"]
+	t.check("lapse: the pending contact is in the trial list", lan._cx.contacts.size() == 1 and lan._cx.next_lapse() == now - 100 + PKeyPeerContact.PENDING_CONTACT_SECONDS)
+	(s["env"] as Lan.Env).now_value = now + PKeyPeerContact.PENDING_CONTACT_SECONDS
+	held.rows = []
+	lan._lapse_next = 0.0
+	lan._tick()
+	t.check("lapse: once it lapses the next frame drops it", lan._cx.contacts.is_empty())
+	_stop(s)
 
 
 func _gate_and_caps(t: PKeyTestContext) -> void:

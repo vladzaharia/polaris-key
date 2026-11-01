@@ -20,7 +20,7 @@ extends RefCounted
 ## Rules:
 ##   quota      `free_bytes()` = min(disk - reserve - promised, quota - held - promised). The default quota
 ##              is 4 GiB (a host option) with a 256 MiB disk reserve; a disk that cannot say how
-##              much is free (`get_space_left()` of 0) leaves only the quota.
+##              much is free (`get_space_left()` of 0) leaves only the quota, which then defaults to 1 GiB.
 ##   promises   `create` and `truncate` reserve `size - have`. A `write` past the promise is refused
 ##              and the session ends. A promise is released on keep, discard, delivery and owner
 ##              release.
@@ -51,6 +51,8 @@ extends RefCounted
 
 const DEFAULT_QUOTA := 4 * 1024 * 1024 * 1024
 const WEB_QUOTA := 64 * 1024 * 1024
+## Without a host quota and with a disk that cannot say how much is free, this lowers the default.
+const UNKNOWN_DISK_QUOTA := 1024 * 1024 * 1024
 const FREE_RESERVE := 256 * 1024 * 1024
 const MAX_FILES := 64
 const MAX_PER_PEER := 8
@@ -66,6 +68,7 @@ var _dir: String
 var _clock: Callable
 var _space: Callable
 var _quota: int
+var _quota_host := false
 var _web: bool
 var _mutex := Mutex.new()
 var _loaded := false
@@ -90,6 +93,7 @@ func _init(directory: String, opts := {}) -> void:
 	_dir = directory.simplify_path().trim_suffix("/") if directory != "user://" else directory
 	_web = bool(opts.get("web", OS.has_feature("web")))
 	_quota = int(opts.get("quota", WEB_QUOTA if _web else DEFAULT_QUOTA))
+	_quota_host = opts.has("quota")
 	_clock = opts.get("clock", Callable())
 	_space = opts.get("space", Callable())
 
@@ -223,8 +227,8 @@ func free_bytes() -> int:
 	var n := 0
 	if _ensure().ok:
 		var p := _promised_bytes("")
-		n = _quota - _held_bytes() - p
 		var disk := _disk_free()
+		n = _quota_for(disk) - _held_bytes() - p
 		if disk >= 0:
 			n = mini(n, disk - FREE_RESERVE - p)
 	_mutex.unlock()
@@ -411,7 +415,7 @@ func deliver(ref: String, dest: String, overwrite := false, owner: Variant = nul
 		if ref != "":
 			_close(ref)
 			want = int(_idx[ref]["size"])
-		epoch0 = _epoch + _total_peer_epoch()
+		epoch0 = _delivery_epoch(ref)
 	_mutex.unlock()
 	if refusal != null:
 		return refusal
@@ -430,7 +434,7 @@ func deliver(ref: String, dest: String, overwrite := false, owner: Variant = nul
 func _finish_delivery(ref: String, tmp: String, dest: String, overwrite: bool, who: Object, epoch0: int) -> PKeyResult:
 	if ref != "" and (not _idx.has(ref) or _claims.get(ref) != who):
 		return _refuse("gone", "The partial is gone or held by another session.")
-	if epoch0 != _epoch + _total_peer_epoch():
+	if epoch0 != _delivery_epoch(ref):
 		return _refuse("stale", "The store was purged.")
 	# The check just before the rename (the Q3 residual sits between this line and the rename).
 	if not _dest_usable(dest, overwrite):
@@ -593,11 +597,10 @@ func _is_closed(who: Object) -> bool:
 	return who != _anon and _closed_owners.has(who.get_instance_id())
 
 
-func _total_peer_epoch() -> int:
-	var n := 0
-	for k in _peer_epoch:
-		n += int(_peer_epoch[k])
-	return n
+## The purge counter a delivery of `ref` depends on: the whole store's and its own peer's, not another peer's.
+func _delivery_epoch(ref: String) -> int:
+	var tag := str((_idx[ref] as Dictionary).get("peer", "")) if ref != "" and _idx.has(ref) else ""
+	return _epoch + int(_peer_epoch.get(tag, 0))
 
 
 func _mine(ref: String, who: Object) -> bool:
@@ -632,6 +635,11 @@ func _held_bytes() -> int:
 	return n
 
 
+## The quota in force: the host's, or the default (lowered while the disk cannot say how much is free).
+func _quota_for(disk: int) -> int:
+	return _quota if _quota_host or disk >= 0 or _web else mini(_quota, UNKNOWN_DISK_QUOTA)
+
+
 ## Free bytes of the disk, or -1 when not asked (web) or unknown.
 func _disk_free() -> int:
 	if _space.is_valid():
@@ -651,8 +659,8 @@ func _reserve(ref: String, size: int, have: int) -> bool:
 	var need := maxi(0, size - have)
 	var p := _promised_bytes(ref)
 	var own := int(_sizes.get(ref, 0)) if _idx.has(ref) else 0
-	var room := _quota - (_held_bytes() - own) - p - have
 	var disk := _disk_free()
+	var room := _quota_for(disk) - (_held_bytes() - own) - p - have
 	if disk >= 0:
 		room = mini(room, disk - FREE_RESERVE - p)
 	if need > room:

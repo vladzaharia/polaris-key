@@ -94,6 +94,7 @@ var _links: Dictionary = {}
 ## session, so it lives as long as the link does.
 var _attached: Dictionary = {}
 var _stopped := false
+var _lapse_next := 0.0
 var _listening_frames := false
 ## The inter-account links (CC-19b.G3): their adverts, names and sessions. One limiter serves the listener's
 ## contact trial (section 15.10, "Admission").
@@ -118,6 +119,9 @@ class Source extends RefCounted:
 	var apply_trust: Callable
 	var contacts: Callable
 	var contact_established: Callable
+	## () -> bool: whether links between accounts are on (optional; absent counts as on, the `contacts` answer
+	## being the gate).
+	var inter_account: Callable
 	## What the Callables belong to, held so that they stay valid (a Callable keeps no reference).
 	var keep: RefCounted
 
@@ -137,6 +141,7 @@ static func source_of(client: PKeyConnectClient, apply_trust := Callable()) -> S
 	s.apply_trust = apply_trust
 	s.contacts = Callable(client, "live_contacts")
 	s.contact_established = Callable(client, "contact_established")
+	s.inter_account = Callable(client, "inter_account")
 	return s
 
 
@@ -227,11 +232,36 @@ func refresh_contacts() -> void:
 	if _stopped:
 		return
 	_cx.load_contacts()
+	_end_stale_handshakes()
 	var idr := _identity(true)
 	if idr.ok:
 		_advert_contacts(idr.detail, PKeyPeerAdvert.advert_epoch(_now()))
 	if _browse != null:
 		_push_accepted()
+
+
+## A handshake still running under a contact that is gone, replaced or switched off is ended: it must not open a
+## session with it. An established session is the links layer's to close.
+func _end_stale_handshakes() -> void:
+	for pid: int in _pending.keys():
+		var p: Pending = _pending[pid]
+		for ref: Dictionary in p.attachment.contacts:
+			if not _cx.holds(str(ref["id"]), str(ref["tag"])):
+				_release(p)
+				p.link.destroy()
+				break
+
+
+## Close `session` (opened under a contact) unless that contact is still held with the same secret. False when it
+## was closed.
+func _contact_held(session: PKeyConnectSession) -> bool:
+	if session.contact.is_empty():
+		return true
+	if _cx.holds(str(session.contact["id"]), session.contact_tag):
+		return true
+	var on := not _src.inter_account.is_valid() or bool(_src.inter_account.call())
+	session.close(PKeyPeerSession.PEER_REVOKED if on else PKeyPeerSession.PEER_BYE)
+	return false
 
 
 ## Stop the account browse for a while (a native lane browses once at a time, and a pairing window needs it).
@@ -732,12 +762,24 @@ func _tick() -> void:
 		return
 	_accept_ready()
 	var now := _mono()
+	_lapse_check()
 	var window := float(_o.get("handshake_seconds", HANDSHAKE_SECONDS))
 	for pid: int in _pending.keys():
 		var p: Pending = _pending[pid]
 		if now - p.at >= window:
 			_release(p)
 			p.link.destroy()
+
+
+## A pending contact lapses 24 h after it was stored: read the contacts again when the earliest one does, so its
+## secret leaves the trial list and the accepted names then and not at the next epoch.
+func _lapse_check() -> void:
+	if _mono() < _lapse_next:
+		return
+	_lapse_next = _mono() + 5.0
+	var at := _cx.next_lapse()
+	if at >= 0 and _now() >= at:
+		refresh_contacts()
 
 
 ## Take at most ACCEPTS_PER_FRAME connections a frame, each judged first on its own address, before
@@ -804,6 +846,9 @@ func _on_inbound(session: PKeyConnectSession, pid: int) -> void:
 	if _stopped or held >= int(_o.get("max_sessions_per_peer", MAX_SESSIONS_PER_PEER)):
 		session.close(PKeyPeerSession.PEER_BUSY)
 		return
+	# The handshake may have begun before the contact was removed or links were switched off.
+	if by_contact and not _contact_held(session):
+		return
 	_track(session)
 	if by_contact:
 		_contact_opened(session)
@@ -834,7 +879,7 @@ func _contact_opened(session: PKeyConnectSession) -> void:
 		return
 	var index := _cx.find(str(session.contact["id"]), true)
 	if index >= 0:
-		_src.contact_established.call({"id": session.contact["id"], "agree_key": _cx.contacts[index]["agree_key"]})
+		_src.contact_established.call({"id": session.contact["id"], "agree_key": _cx.contacts[index]["agree_key"], "tag": session.contact_tag})
 
 
 func _track(session: PKeyConnectSession) -> void:
@@ -860,7 +905,7 @@ func _make_link(pipe: PKeyPeerPipe, src: PKeyConnectClient.PeerSource, role: Str
 	var so: Dictionary
 	if not contact.is_empty():
 		served = [{"secret": (contact["secret"] as PackedByteArray).duplicate(), "agree_key": contact["agree_key"]}]
-		refs = [{"id": contact["id"], "pending": contact["pending"]}]
+		refs = [{"id": contact["id"], "pending": contact["pending"], "tag": contact["tag"]}]
 		so = PKeyConnectChannel.contact_session_options(src, opts, served[0])
 	else:
 		so = PKeyConnectChannel.session_options(src, opts)
@@ -931,9 +976,14 @@ func _handshake(pipe: PKeyPeerPipe, ident: PKeyConnectClient.PeerSource, host: S
 		# Closed while the caller's stack was being cleaned: not a success (R-6G2 N7).
 		link.destroy()
 		return {"error": PKeyConnectErrors.lan("handshake_failed", "The session closed before it could be used."), "host": host}
-	_track(session)
 	if not contact.is_empty():
+		# The contact may have been removed, replaced or switched off while the handshake ran.
+		if not _contact_held(session):
+			return {"error": PKeyConnectErrors.lan("unknown_peer", "That link was removed."), "host": ""}
+		_track(session)
 		_contact_opened(session)
+		return {"session": session}
+	_track(session)
 	return {"session": session}
 
 

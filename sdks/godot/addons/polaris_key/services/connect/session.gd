@@ -62,6 +62,8 @@ var path: String
 ## A session opened under an inter-account link (mode c): {id, label?, categories?, pending?}, with no device id.
 ## Empty otherwise.
 var contact: Dictionary = {}
+## A one-way tag of the secret the session opened under (not the secret); "" for a session with no link.
+var contact_tag := ""
 
 var _link: Object
 var _budget: Budget

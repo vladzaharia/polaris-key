@@ -13,9 +13,12 @@ extends RefCounted
 
 ## A store operation failed: {op, path, error, message}.
 signal store_error(err: Dictionary)
-## A discovery fetch succeeded and `discovery_manifest` holds its answer (Cloud Connect re-reads its gates).
+## A discovery fetch succeeded and `discovery_manifest` holds its answer, or a read failed and the cached answer
+## stopped counting (Cloud Connect re-reads its gates).
 signal discovery_changed
 
+## How long a discovery answer counts without a fresh read (24 h).
+const DISCOVERY_TTL_SECONDS := 86400.0
 const DEFAULT_BASE := "https://key.plrs.im"
 ## Stable state uses the bare product on the production origin. Other origins include their host
 ## and non-default port, so a local control plane cannot reuse production credentials or caches.
@@ -279,26 +282,48 @@ func require_service(slug: String, feature: String) -> Variant:
 	return PKeyResult.failure(PKeyErrors.SERVICE_UNAVAILABLE, "The %s service is not enabled for %s." % [slug, product], PKeyResult.product_detail(feature, slug))
 
 
+## Whether the cached discovery answer still counts: not after a failed read, not after 24 h (a manifest set by
+## hand, with no read behind it, counts). The read state is kept in the object's metadata.
+func discovery_fresh() -> bool:
+	var expires: float = get_meta("discovery_expires", -1.0)
+	return not bool(get_meta("discovery_lapsed", false)) and (expires < 0.0 or float(Time.get_ticks_msec()) / 1000.0 < expires)
+
+
+## A read ended without a document: the cached answer stops counting, and its readers look again.
+func _discovery_failed() -> void:
+	var was := discovery_fresh()
+	set_meta("discovery_lapsed", true)
+	if was:
+		discovery_changed.emit()
+
+
 ## Fetch the discovery document and, when it parses, install its capability map and hand it to
 ## `presentation_source`. A coroutine.
 ## detail: {kind: "ok" | "not-found" | "invalid" | "error", services?, manifest?}.
 func discover() -> PKeyResult:
 	var r := await transport.request("GET", "%s/%s/.well-known/polaris.json" % [base_url, product.uri_encode()])
 	if not r.ok:
+		_discovery_failed()
 		return PKeyResult.failure(r.code, r.message, {"kind": "error"})
 	var status: int = r.detail["status"]
 	if status == 404:
+		_discovery_failed()
 		return PKeyResult.failure(PKeyErrors.NOT_FOUND, "No such product.", {"kind": "not-found", "status": status})
 	if status < 200 or status >= 300:
+		_discovery_failed()
 		return PKeyResult.failure(PKeyErrors.HTTP_ERROR, "Discovery answered %d." % status, {"kind": "error", "status": status})
 	var parsed := PKeyJson.parse_bytes(r.detail["body"])
 	if not parsed["ok"]:
+		_discovery_failed()
 		return PKeyResult.failure(PKeyErrors.INVALID_RESPONSE, "Discovery response is not valid JSON.", {"kind": "invalid"})
 	var d := PKeyDiscovery.parse(parsed["value"], product)
 	if d["kind"] != "ok":
+		_discovery_failed()
 		return PKeyResult.failure(PKeyErrors.INVALID_RESPONSE, d["message"], d)
 	_discovered_services = d["services"]
 	discovery_manifest = d["manifest"]
+	set_meta("discovery_lapsed", false)
+	set_meta("discovery_expires", float(Time.get_ticks_msec()) / 1000.0 + DISCOVERY_TTL_SECONDS)
 	# core.presentation: parsed again from every successful discovery; a failed one keeps it.
 	if presentation_source != null:
 		presentation_source.accept(discovery_manifest)
