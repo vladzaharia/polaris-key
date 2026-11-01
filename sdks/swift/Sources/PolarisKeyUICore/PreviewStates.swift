@@ -476,7 +476,10 @@ extension PolarisKeyPreviewState {
             base { $0.nearbyApproval = KitNearbyApproval(step: .deviceLimit, device: "Kitchen iPad") }),
         .init(
             .nearbyApproval, "choose",
-            base { $0.nearbyApproval = KitNearbyApproval(step: .choose, device: "Kitchen iPad") }),
+            base {
+                $0.nearbyApproval = KitNearbyApproval(step: .choose, device: "Kitchen iPad")
+                $0.choices = KitLicenseChoices(choices: choices, preselected: "lic_pro")
+            }),
         .init(
             .nearbyApproval, "account-required",
             base {

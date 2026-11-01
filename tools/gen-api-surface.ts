@@ -438,6 +438,8 @@ const SWIFT_TYPE: Record<string, string> = {
   SaveTransfer: "SaveTransfer",
   SignInNamespace: "SignInNamespace",
   SignInSession: "SignInSession",
+  NearbyNamespace: "NearbyNamespace",
+  NearbySignInSession: "NearbySignInSession",
   ChoiceNamespace: "ChoiceNamespace",
 };
 /** Rows with no compile-only reference: actor-isolated properties have no key path, and an unapplied generic method cannot infer `T`. */

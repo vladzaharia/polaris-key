@@ -65,6 +65,18 @@ struct SettingsSections: View {
 
     var body: some View {
         panes
+            // "Approve a nearby device" opens over the pane and closes by any route as a Deny or a Done.
+            .sheet(
+                isPresented: Binding(
+                    get: { model.nearbyApproval?.presented ?? false },
+                    set: { shown in
+                        if !shown, let approval = model.nearbyApproval { Task { await approval.close() } }
+                    })
+            ) {
+                if let approval = model.nearbyApproval {
+                    NearbyApprovalView(model: approval)
+                }
+            }
             // The pane's results reach VoiceOver as they land (DL7).
             .onChange(of: model.checkResult) { _, line in announce(line) }
             .onChange(of: model.deviceFailure) { _, line in announce(line) }
@@ -84,7 +96,9 @@ struct SettingsSections: View {
             canAutoUpdate: model.canSetAutoUpdate, channel: model.channel,
             onChannel: model.handlers.selectChannel == nil ? nil : { model.selectChannel($0) },
             checking: model.checking, checkNote: model.checkResult, checkFailed: model.checkFailed,
-            part: .top)
+            part: .top,
+            onApproveNearby: model.canApproveNearby && model.nearbyApproval != nil
+                ? { model.nearbyApproval?.onOpen?() } : nil)
         DevicesSection(
             screen: model.devicesScreen, devices: model.deviceRows,
             onRemove: { device in
