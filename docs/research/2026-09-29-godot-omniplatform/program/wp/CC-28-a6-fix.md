@@ -14,11 +14,11 @@
 
 ## Goal
 
-mDNS address lapse, send-queue reserve, inbound byte bounds and the C5-F1/F2 release hooks. NP and SK merged in A6; G (wp/A6-FIX-G, on wp/CC-14.15) rides Connect pass 2.
+mDNS address lapse, send-queue reserve, inbound byte bounds, and leaving Connect at deactivation plus closing sessions a stored roster drops. NP and SK merged in A6; G (wp/A6-FIX-G, on wp/CC-14.15) rides Connect pass 2.
 
 ## Plan
 
-reviews/SIGNOFF/C3a-red.md (lead directory)
+Lead follow-up log, 2026-10-31 (A6-FIX-NP/SK/G entries).
 
 ## Acceptance criteria
 

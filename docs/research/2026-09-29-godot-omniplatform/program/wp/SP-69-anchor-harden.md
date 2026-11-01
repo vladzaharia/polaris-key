@@ -18,7 +18,7 @@ Replace newline-tolerant regex anchors with full-match anchors. wp/ANCHOR-HARDEN
 
 ## Plan
 
-reviews/U-22/newline-anchor-sweep.md (lead directory)
+Lead follow-up log, 2026-10-31 (ANCHOR-HARDEN entries).
 
 ## Acceptance criteria
 

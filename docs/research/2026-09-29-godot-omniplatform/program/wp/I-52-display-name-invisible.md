@@ -14,7 +14,7 @@
 
 ## Goal
 
-Refuse invisible characters in product and listing display names. On main (INTEG-COMBINE-2); the SIGNOFF DNI-green Lows are folded into its Worker pass.
+Refuse invisible characters in product and listing display names. On main (INTEG-COMBINE-2); its follow-up items are folded into its Worker pass.
 
 ## Plan
 

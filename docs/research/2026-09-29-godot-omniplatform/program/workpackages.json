@@ -19781,10 +19781,7 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": [
-        "reviews/SIGNOFF/C3a-red.md (lead directory)",
-        "LF 2026-10-31 A6-FIX-NP/SK/G entries"
-      ],
+      "refs": ["LF 2026-10-31 A6-FIX-NP/SK/G entries"],
       "brief": "wp/CC-28-a6-fix.md",
       "status": "in-progress"
     },
@@ -19859,8 +19856,7 @@
       "repo": "polaris-key",
       "optional": false,
       "refs": [
-        "plans/UK-42.22-DN.md (lead plan, 2026-10-31; lives in the lead directory, not in the repo)",
-        "reviews/SIGNOFF/C7-blue.md C7-B3 (lead directory)"
+        "plans/UK-42.22-DN.md (lead plan, 2026-10-31; lives in the lead directory, not in the repo)"
       ],
       "brief": "wp/UK-65-uk-42-22-dn.md",
       "status": "done"
@@ -19971,7 +19967,7 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["reviews/U-22/newline-anchor-sweep.md (lead directory)"],
+      "refs": ["LF 2026-10-31 ANCHOR-HARDEN entries"],
       "brief": "wp/SP-69-anchor-harden.md",
       "status": "in-review"
     },
@@ -19988,7 +19984,7 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["reviews/U-22/SWIFT-HARDEN.md (lead directory)"],
+      "refs": ["LF 2026-10-31 SWIFT-HARDEN entries"],
       "brief": "wp/SP-70-swift-harden.md",
       "status": "in-review"
     },

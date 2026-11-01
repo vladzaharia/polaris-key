@@ -18,7 +18,7 @@ Swift whole-match anchors and the Linux redirect refusal and Authorization strip
 
 ## Plan
 
-reviews/U-22/SWIFT-HARDEN.md (lead directory)
+Lead follow-up log, 2026-10-31 (SWIFT-HARDEN entries).
 
 ## Acceptance criteria
 

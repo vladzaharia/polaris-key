@@ -339,7 +339,7 @@ import XCTest
             _ = run(ob, "bj_stop_all", [])
         }
 
-        // MARK: fix round (R-6GN F1, F2, F7)
+        // MARK: write drain, pipe deadlines, roster shrink
 
         func testASendBetweenTheLastChunkAndTheEndOfTheDrainStartsANewDrainer() {
             let s = PipeState(id: 1)
