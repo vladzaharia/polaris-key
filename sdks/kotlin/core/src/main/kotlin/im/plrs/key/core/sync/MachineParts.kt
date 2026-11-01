@@ -80,7 +80,19 @@ public class CloudSyncMachine private constructor(private val parts: MachinePart
         return parts.core.events.toList().also { parts.core.events.clear() }
     }
 
-    internal fun observers(): Pair<List<(RecordOutcome) -> Unit>, List<String>> = parts.core.outcomeTaps.toList() to parts.core.watched.keys.toList()
+    /** Whether a person is signed in (a record call before that is `signed-out`). */
+    public val signedIn: Boolean get() = parts.core.s.subject != null
+
+    /**
+     * The host could not seal these mutations of the push in flight (a name or value no codec spells): each is dropped as
+     * `rejected` / `value_invalid`, as a refusal would be, instead of being retried for ever at the head of the journal.
+     * The caller then reports the transport failure for the request.
+     */
+    public fun refuseMutations(ids: List<Long>, code: String = "value_invalid") {
+        parts.exchange.refuse(ids, code)
+    }
+
+    internal fun observers(): Pair<List<(RecordOutcome) -> Unit>, Map<String, Int>> = parts.core.outcomeTaps.toList() to parts.core.watchCounts.toMap()
 
     public companion object {
         private fun fresh(opts: CloudSyncOptions): MachineState =

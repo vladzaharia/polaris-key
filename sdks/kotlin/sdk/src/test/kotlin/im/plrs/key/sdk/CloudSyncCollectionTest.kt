@@ -263,4 +263,73 @@ class CloudSyncCollectionTest {
         assertEquals(listOf("n1", "n2", "n3"), notes.ids())
         assertTrue(rig.host.withMachine { it is CloudSyncMachine })
     }
+
+    @Test
+    fun whatCannotBeSealedIsRefusedWithoutJournallingOrSending() = runBlocking {
+        val rig = Rig()
+        val cards = rig.open()
+        val notes = SyncCollection("notes", rig.host)
+        val tags = SyncCollection("tags", rig.host)
+        val one = JsonPrimitive(1)
+        val bad = CollectionResult.Refused(CollectionError.ValueInvalid)
+        assertEquals(bad, notes.put("a\u0000b", one))
+        assertEquals(bad, notes.put("n", JsonPrimitive(Double.NaN)))
+        assertEquals(bad, notes.put("n", JsonPrimitive(1L shl 60)))
+        assertEquals(bad, notes.put("x".repeat(129), one))
+        assertEquals(bad, notes.put("a b", one))
+        assertEquals(bad, notes.put("x:" + "A".repeat(43), one))
+        assertEquals(bad, cards.update("c", mapOf("f\u0000" to one)))
+        assertEquals(bad, cards.update("c", mapOf("f" to JsonPrimitive(Double.POSITIVE_INFINITY))))
+        assertEquals(bad, tags.add("t", JsonPrimitive(Double.NaN)))
+        assertEquals(bad, notes.delete("a\u0000b"))
+        rig.host.flush()
+        assertTrue(rig.mutations().isEmpty())
+        assertEquals(emptyList<String>(), notes.ids())
+    }
+
+    @Test
+    fun refusalsComeInOneOrder() = runBlocking {
+        val rig = Rig()
+        rig.host.start()
+        val nul = "a\u0000"
+        assertEquals(CollectionResult.Refused(CollectionError.CollectionUnknown), SyncCollection("nope", rig.host).put(nul, JsonPrimitive(1)))
+        assertEquals(CollectionResult.Refused(CollectionError.SignedOut), SyncCollection("tags", rig.host).put(nul, JsonPrimitive(1)))
+        val tags = rig.open("tags")
+        assertEquals(CollectionResult.Refused(CollectionError.OpInvalidForPolicy), tags.put(nul, JsonPrimitive(1)))
+    }
+
+    @Test
+    fun thereIsNoImplicitSavesCollection() = runBlocking {
+        val rig = Rig()
+        val saves = rig.open("saves")
+        assertNull(saves.policy())
+        assertEquals(CollectionResult.Refused(CollectionError.CollectionUnknown), saves.put("s", JsonPrimitive(1)))
+    }
+
+    @Test
+    fun twoHandlesOnOneCollectionDoNotSilenceEachOther() = runBlocking {
+        val rig = Rig()
+        val a = rig.open("notes")
+        val b = SyncCollection("notes", rig.host)
+        val events = LinkedBlockingQueue<CollectionEvent>()
+        a.on { events.add(it) }
+        b.on { }.cancel()
+        a.put("n1", JsonPrimitive(1))
+        val first = generateSequence { next(events) }.filterIsInstance<CollectionEvent.Change>().first()
+        assertEquals(CollectionEvent.Change(listOf("n1"), "local"), first)
+    }
+
+    @Test
+    fun anUnsealableJournaledMutationIsDroppedAndTheNextOneIsPushed() = runBlocking {
+        val rig = Rig("e2e")
+        val notes = rig.open("notes")
+        // Journaled around the handle: a name no codec spells.
+        rig.host.withMachine { it.put("notes", "a\u0000b", JsonPrimitive(1)) }
+        rig.host.flush()
+        assertTrue(rig.mutations().isEmpty())
+        assertEquals(CollectionResult.Ok(), notes.put("n1", JsonPrimitive(2)))
+        rig.host.flush()
+        assertEquals(1, rig.mutations().size)
+        assertEquals(0, rig.host.withMachine { it.status().pending })
+    }
 }
