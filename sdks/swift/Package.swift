@@ -124,10 +124,11 @@ let package = Package(
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.6"),
         // Linux only: Apple's swift-crypto supplies the `Crypto` module, API-compatible with
         // CryptoKit, which Linux lacks. Sources say `#if canImport(CryptoKit) import CryptoKit
-        // #else import Crypto #endif`, so Apple builds link nothing extra. Exact pin: 5.0.1,
-        // released 2026-10-12 (GitHub releases API, apple/swift-crypto), kept at least 14 days
-        // old before adoption.
-        .package(url: "https://github.com/apple/swift-crypto", exact: "5.0.1"),
+        // #else import Crypto #endif`, so Apple builds link nothing extra. Exact pin: 4.5.2,
+        // released 2026-09-02 (GitHub releases API, apple/swift-crypto), kept at least 14 days
+        // old before adoption. 5.x declares swift-tools-version 6.2, which the Xcode 16.4 (Swift
+        // 6.1) floor job cannot read, and SwiftPM resolves every dependency on every platform.
+        .package(url: "https://github.com/apple/swift-crypto", exact: "4.5.2"),
     ],
     targets: [
         .target(
