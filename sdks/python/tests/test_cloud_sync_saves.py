@@ -213,6 +213,53 @@ def test_a_stale_write_is_a_conflict_that_carries_the_server_copy(tmp_path: Path
     c.close()
 
 
+def test_a_conflict_describes_the_server_version_not_the_cached_copy(tmp_path: Path) -> None:
+    w = SavesWorld()
+    c = signed_in(w, tmp_path)
+    first = c.cloud_sync.saves.write("slot-1", data(300, 1), {"chapter": "one"}).wait(10)
+    assert first["state"] == "done"
+    # Another device writes version 40 and this device's cache is not told.
+    w.rows["slot-1"] = {
+        "value": {"chapter": "theirs"},
+        "version": 40,
+        "file": {"version": 40, "size": 5, "sha256": "a" * 64, "format": "whole"},
+    }
+    w.version = 40
+    cache = c.cloud_sync.saves._records
+    stale = cache.get("slot-1")
+    cache.get = lambda _id: stale  # type: ignore[method-assign]
+    mine = data(500, 2)
+    out = c.cloud_sync.saves.write("slot-1", mine, {"chapter": "mine"}, base_version=first["version"]).wait(10)
+    assert out["state"] == "conflict"
+    assert out["conflict"]["serverVersion"] == 40
+    assert out["conflict"]["remote"]["version"] == 40
+    # Keep this device's version succeeds, and a later write does not repeat the conflict.
+    kept = c.cloud_sync.saves.resolve(out["conflict"], "local", mine).wait(10)
+    assert kept["state"] == "done"
+    del cache.get
+    assert c.cloud_sync.saves.write("slot-1", data(400, 3), {"chapter": "again"}).wait(10)["state"] == "done"
+    c.close()
+
+
+def test_a_save_deleted_elsewhere_is_a_conflict_with_no_remote_and_keep_mine_succeeds(tmp_path: Path) -> None:
+    w = SavesWorld()
+    c = signed_in(w, tmp_path)
+    first = c.cloud_sync.saves.write("slot-1", data(300, 1), {"chapter": "one"}).wait(10)
+    assert first["state"] == "done"
+    del w.rows["slot-1"]
+    cache = c.cloud_sync.saves._records
+    stale = cache.get("slot-1")
+    cache.get = lambda _id: stale  # type: ignore[method-assign]
+    mine = data(500, 2)
+    out = c.cloud_sync.saves.write("slot-1", mine, {"chapter": "mine"}, base_version=first["version"]).wait(10)
+    assert out["state"] == "conflict"
+    assert out["conflict"]["remote"] is None and out["conflict"]["serverVersion"] == 0
+    kept = c.cloud_sync.saves.resolve(out["conflict"], "local", mine).wait(10)
+    assert kept["state"] == "done"
+    assert w.rows["slot-1"]["value"] == {"chapter": "mine"}
+    c.close()
+
+
 def test_delete_a_save_at_its_version(tmp_path: Path) -> None:
     w = SavesWorld()
     w.rows["slot-1"] = {
