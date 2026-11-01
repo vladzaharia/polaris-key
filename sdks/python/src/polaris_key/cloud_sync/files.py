@@ -90,7 +90,7 @@ def _shapes(product: str) -> "re.Pattern[str]":
 def is_files_path(product: str, path_and_query: str) -> bool:
     """Whether ``path_and_query`` is one of the file routes of §13.2 for ``product``. Dot segments are
     refused outright; the only query is ``version=<digits>`` on the file ``GET``."""
-    if _KEY.match(product) is None:
+    if _KEY.fullmatch(product) is None:
         return False
     path, _, query = path_and_query.partition("?")
     if any(s in (".", "..") for s in path.split("/")):
@@ -214,7 +214,7 @@ class FileRoutes:
 
     @staticmethod
     def _seg(value: Any, what: str) -> str:
-        if not isinstance(value, str) or _KEY.match(value) is None or value in (".", ".."):
+        if not isinstance(value, str) or _KEY.fullmatch(value) is None or value in (".", ".."):
             raise _bad(what)
         return value
 
@@ -229,7 +229,7 @@ class FileRoutes:
 
     @staticmethod
     def _chunk_id(chunk_id: Any) -> str:
-        if not isinstance(chunk_id, str) or _CHUNK_ID.match(chunk_id) is None:
+        if not isinstance(chunk_id, str) or _CHUNK_ID.fullmatch(chunk_id) is None:
             raise _bad("chunkId")
         return chunk_id
 
@@ -264,7 +264,7 @@ class FileRoutes:
             kwargs["content"] = json.dumps(sent.json, separators=(",", ":")).encode("utf-8")
         elif sent.body is not None:
             headers["content-type"] = "application/octet-stream"
-            if sent.sha256 is None or _HEX64.match(sent.sha256) is None:
+            if sent.sha256 is None or _HEX64.fullmatch(sent.sha256) is None:
                 raise _bad("digest")
             headers["content-digest"] = "sha-256=:" + base64.b64encode(bytes.fromhex(sent.sha256)).decode("ascii") + ":"
             kwargs["content"] = sent.body
@@ -362,7 +362,7 @@ class FileRoutes:
             ex = v.get("expiresAt")
             return (
                 isinstance(up, str)
-                and _KEY.match(up) is not None
+                and _KEY.fullmatch(up) is not None
                 and up not in (".", "..")
                 and v.get("mode") in ("single", "multipart", "chunks")
                 and isinstance(ex, (int, float))

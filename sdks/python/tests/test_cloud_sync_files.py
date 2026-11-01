@@ -934,11 +934,59 @@ def test_is_end_to_end_the_server_holds_sealed_chunks_and_a_sealed_manifest() ->
 
 def test_sends_the_begin_the_way_the_plan_says() -> None:
     s = FakeServer()
+    s.files.extend({"version": n, "format": "whole", "size": 0, "sha256": "", "bytes": b""} for n in (1, 2, 3))
     codec = e2e()
     out = make_engine(s)[0].upload_chunked(chunk_up(DATA, codec, base_version=3))
     seen = s.begin_requests[0]
     assert seen["format"] == "chunks" and seen["enc"] == "e2e" and seen["baseVersion"] == 3
     assert seen["size"] == codec.stored_size(len(DATA)) and seen["sha256"] == out["sha256"]
+
+
+def _lying_finalize(s: FakeServer, change: Callable[[Dict[str, Any]], Dict[str, Any]]) -> None:
+    real = s.finalize
+
+    def finalize(target: FileTarget, r: Dict[str, Any], cancel: Any = None) -> FileReply:
+        reply = real(target, r, cancel)
+        return FileReply.success(change(dict(reply.value))) if reply.ok else reply
+
+    s.finalize = finalize  # type: ignore[method-assign]
+
+
+_LIES = {
+    "size": lambda f: {**f, "size": f["size"] + 1},
+    "sha256": lambda f: {**f, "sha256": "ab" * 32},
+    "format": lambda f: {**f, "format": "chunks" if f["format"] == "whole" else "whole"},
+    "version": lambda f: {**f, "version": 0},
+    "stale-version": lambda f: {**f, "version": 3},
+}
+
+
+@pytest.mark.parametrize("which", sorted(_LIES))
+def test_refuses_a_finalize_answer_that_is_not_the_file_begun(which: str) -> None:
+    base = 3 if which == "stale-version" else None
+    for data in (SMALL, BIG):
+        s = FakeServer()
+        _lying_finalize(s, _LIES[which])
+        with pytest.raises(TransferError) as ei:
+            make_engine(s)[0].upload(request(data, base_version=base))
+        assert ei.value.reason == "file-invalid" and ei.value.detail == "finalize"
+    s = FakeServer()
+    _lying_finalize(s, _LIES[which])
+    with pytest.raises(TransferError) as ei:
+        make_engine(s)[0].upload_chunked(chunk_up(DATA, base_version=base))
+    assert ei.value.reason == "file-invalid" and ei.value.detail == "finalize"
+
+
+@pytest.mark.parametrize("bad", ["x\n", "x\n\n", "a" * 128 + "\n"])
+def test_a_key_or_upload_id_with_a_trailing_newline_is_refused(bad: str) -> None:
+    from polaris_key.cloud_sync import files as cf
+
+    assert cf._KEY.fullmatch(bad) is None
+    with pytest.raises(Exception):
+        cf.FileRoutes._seg(bad, "record")
+    assert cf._CHUNK_ID.fullmatch("a" * 64 + "\n") is None
+    with pytest.raises(Exception):
+        cf.FileRoutes._chunk_id("a" * 64 + "\n")
 
 
 def test_refuses_a_begin_that_does_not_answer_chunks() -> None:

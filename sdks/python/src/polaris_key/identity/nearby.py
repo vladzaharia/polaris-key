@@ -348,7 +348,7 @@ class NearbyRoutes:
 
     @staticmethod
     def _handle(request: Any) -> str:
-        if not isinstance(request, str) or _REQUEST.match(request) is None:
+        if not isinstance(request, str) or _REQUEST.fullmatch(request) is None:
             raise PolarisError(ErrorCode.INVALID_OPTIONS, "nearby: the request handle is malformed.")
         return request
 
@@ -381,7 +381,7 @@ class NearbyRoutes:
         request = b.get("request")
         if (
             not isinstance(request, str)
-            or _REQUEST.match(request) is None
+            or _REQUEST.fullmatch(request) is None
             or not _seconds(b.get("expiresIn"))
             or not _seconds(b.get("interval"))
         ):
