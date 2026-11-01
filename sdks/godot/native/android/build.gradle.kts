@@ -73,6 +73,9 @@ dependencies {
     // metadata name.
     for (f in flavours) "${f}Implementation"("${project.group}:polaris-key-platform-$f:${project.version}")
     compileOnly(libs.godot)
+    // The bulk runner is a suspend function the system cancels, so it names coroutine types (which WorkManager brings).
+    // WorkManager is :platform's `implementation`, so the export adds it (U-41.6b); the AAR and its POM name none.
+    compileOnly(libs.androidx.work.runtime)
     // Play Games Services v2 (I-48.7a, Q-3): compile-time only, in the play flavour. The AAR carries none of
     // it and the POM names none: the export opt-in (`polaris_key/play_games`) adds the Maven dependency, so a
     // game that does not sign in through Play Games ships no Play Games library. PlayGamesCommands judges its
@@ -82,6 +85,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.work.testing)
 }
 
 // Inside this build polaris-key-platform-<flavour> IS the :platform project: the root build file

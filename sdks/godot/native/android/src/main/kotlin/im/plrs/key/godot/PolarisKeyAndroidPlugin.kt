@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import im.plrs.key.platform.transfer.SyncTransfers
 import org.godotengine.godot.Godot
 import org.godotengine.godot.plugin.GodotPlugin
 import org.godotengine.godot.plugin.UsedByGodot
@@ -21,6 +22,12 @@ import org.godotengine.godot.plugin.UsedByGodot
 class PolarisKeyAndroidPlugin(godot: Godot) : GodotPlugin(godot), Host {
     private val commandsLazy = lazy { Commands(this) }
     private val commands: Commands by commandsLazy
+
+    init {
+        // The background runner (U-41.6a): the platform's scheduler calls it for a queued bulk transfer. A process that
+        // started for the work alone never gets here, so it has no runner and the work ends; GDScript resumes at launch.
+        SyncTransfers.install(GodotBulkRunner { if (commandsLazy.isInitialized()) commands.bulk else null })
+    }
 
     override fun getPluginName(): String = "PolarisKeyAndroid"
 
@@ -56,6 +63,31 @@ class PolarisKeyAndroidPlugin(godot: Godot) : GodotPlugin(godot), Host {
 
     @UsedByGodot
     fun cxX25519Pub(privateKey: ByteArray?): ByteArray = commands.crypto.x25519Public(privateKey)
+
+    // The bulk-body channel (U-41.6a): header and body are byte[]; each reply is a status byte then the result.
+    @UsedByGodot
+    fun sbOpen(header: ByteArray?): ByteArray = commands.bulk.open(header)
+
+    @UsedByGodot
+    fun sbStage(header: ByteArray?, piece: ByteArray?): ByteArray = commands.bulk.stage(header, piece)
+
+    @UsedByGodot
+    fun sbPut(header: ByteArray?): ByteArray = commands.bulk.put(header)
+
+    @UsedByGodot
+    fun sbGet(header: ByteArray?): ByteArray = commands.bulk.get(header)
+
+    @UsedByGodot
+    fun sbTake(header: ByteArray?): ByteArray = commands.bulk.take(header)
+
+    @UsedByGodot
+    fun sbCancel(header: ByteArray?): ByteArray = commands.bulk.cancel(header)
+
+    @UsedByGodot
+    fun sbEnd(header: ByteArray?): ByteArray = commands.bulk.end(header)
+
+    @UsedByGodot
+    fun sbClose(): ByteArray = commands.bulk.close()
 
     override fun onMainActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         commands.onActivityResult(requestCode, resultCode, data)
