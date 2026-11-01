@@ -43,6 +43,20 @@ class PolarisKeyAndroidPlugin(godot: Godot) : GodotPlugin(godot), Host {
     @UsedByGodot
     fun cmd(json: String): String = commands.cmd(json)
 
+    // The binary crypto ops (CC-14b.8): byte[] in and out (PackedByteArray in GDScript). The reply is
+    // a status byte then the result; see CryptoCommands. They touch no Activity, so no UI thread.
+    @UsedByGodot
+    fun cxSeal(key: ByteArray?, nonce: ByteArray?, aad: ByteArray?, plain: ByteArray?): ByteArray = commands.crypto.seal(key, nonce, aad, plain)
+
+    @UsedByGodot
+    fun cxOpen(key: ByteArray?, nonce: ByteArray?, aad: ByteArray?, sealed: ByteArray?): ByteArray = commands.crypto.open(key, nonce, aad, sealed)
+
+    @UsedByGodot
+    fun cxX25519(privateKey: ByteArray?, peerPublic: ByteArray?): ByteArray = commands.crypto.x25519(privateKey, peerPublic)
+
+    @UsedByGodot
+    fun cxX25519Pub(privateKey: ByteArray?): ByteArray = commands.crypto.x25519Public(privateKey)
+
     override fun onMainActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         commands.onActivityResult(requestCode, resultCode, data)
     }
