@@ -93,8 +93,8 @@ static func resolve_collection(c: Dictionary) -> Dictionary:
 	return out
 
 
-## The collections a host gives the machine: the catalog's declarations, and `saves` unless the
-## catalog declares it.
+## The collections a host gives the machine: the catalog's declarations, and no others (`saves` is
+## declared like any other collection).
 static func collection_decls(catalog: Dictionary) -> Array:
 	var out: Array = []
 	var block: Variant = catalog.get("cloudSync")
@@ -103,12 +103,6 @@ static func collection_decls(catalog: Dictionary) -> Array:
 		for c in declared:
 			if c is Dictionary and Types.is_string(c.get("name")) and String(c["name"]) != "":
 				out.append(resolve_collection(c))
-	var has_saves := false
-	for d: Dictionary in out:
-		if d["name"] == "saves":
-			has_saves = true
-	if not has_saves:
-		out.append({"name": "saves", "policy": "revision", "resolve": "keepServer"})
 	return out
 
 

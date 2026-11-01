@@ -437,6 +437,18 @@ func _receive(m: Machine, res: Dictionary, opened: Variant = null) -> void:
 		m.receive(res, opened)
 
 
+## The ids of the mutations the codec refuses to seal, one at a time.
+func _unsealable(mutations: Variant) -> Array:
+	var bad: Array = []
+	if not (mutations is Array):
+		return bad
+	for mu in mutations:
+		if not (mu is Dictionary) or not _codec.seal_push({"mutations": [mu]}, _routes).get("ok", false):
+			if mu is Dictionary and mu.has("mutationId"):
+				bad.append(mu["mutationId"])
+	return bad
+
+
 ## One request: seal it (E2E), send it, open the answer, hand both to the machine.
 func _exchange(m: Machine, req: Dictionary, bound: Variant) -> void:
 	var gen := _gen
@@ -453,8 +465,14 @@ func _exchange(m: Machine, req: Dictionary, bound: Variant) -> void:
 		if e2e:
 			var sealed: Dictionary = _codec.seal_push(body, _routes)
 			if not sealed.get("ok", false):
-				# Locked, or a mutation that cannot be sealed: nothing is sent (HC-6).
-				return _receive(m, Transport.TRANSPORT_ERROR)
+				# Locked: nothing is sent (HC-6). A mutation that cannot be sealed is dropped with a local
+				# rejection and the others go out; it is never retried.
+				var bad := _unsealable(mutations) if not _codec.locked() else []
+				if bad.is_empty():
+					return _receive(m, Transport.TRANSPORT_ERROR)
+				if m == _machine:
+					m.reject_unsealable(bad)
+				return
 			wire = {"method": "POST", "path": req["path"], "body": sealed["body"]}
 	var gate: Variant = _deps.get("exchange_gate")
 	if gate is Callable and (gate as Callable).is_valid():
