@@ -46,7 +46,11 @@ internal fun SaveCard(who: String, whenText: String?, newer: String?, modifier: 
                     color = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 ) {
-                    Text(newer, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = PolarisSpace.tight, vertical = NewerTagVertical))
+                    Text(
+                        newer,
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = PolarisSpace.tight, vertical = NewerTagVertical),
+                    )
                 }
             }
             if (whenText != null) {
