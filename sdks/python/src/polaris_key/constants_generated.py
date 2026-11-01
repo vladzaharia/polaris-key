@@ -2568,7 +2568,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.choice": CapabilityRow("implemented", "identity", ()),
         "identity.devicecode.choice": CapabilityRow("implemented", "identity", ()),
         "identity.signin.hints": CapabilityRow("implemented", "identity", ()),
-        "identity.keyreturn": CapabilityRow("planned", "identity", ()),
+        "identity.keyreturn": CapabilityRow("implemented", "identity", ()),
         "identity.exchange": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.gamecenter": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.pgs": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
@@ -2644,4 +2644,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "3cd084de5f1ec88635ee204f39f48fdc0f9802a2ba961c8fbb4a49a70e1cd8bb"
+CAPABILITY_DIGEST: Final[str] = "3590548d43b19864430432e33d45cd27833277155e04f0336400fbcc64517abe"

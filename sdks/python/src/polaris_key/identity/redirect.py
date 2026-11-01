@@ -34,10 +34,18 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, cast
 from urllib.parse import unquote_plus
 
-from ..constants_generated import ErrorCode, Feature
+from ..constants_generated import PAIRWISE_SUBJECT_PATTERN, ErrorCode, Feature
 from ..core.errors import PolarisError
-from ..core.manage import manage_form_encode
-from .sign_in import SIGNED_IN, CHOOSE, CANCELLED, SignInActivation, SignInDeps, SignInOutcome
+from ..core.manage import KeyEntries, is_manage_url, manage_form_encode
+from .sign_in import (
+    ACTIVATED,
+    CANCELLED,
+    CHOOSE,
+    SIGNED_IN,
+    SignInActivation,
+    SignInDeps,
+    SignInOutcome,
+)
 
 __all__ = [
     "AUTHORIZE_STATE_MAX",
@@ -46,8 +54,10 @@ __all__ = [
     "PKCE_VERIFIER_MAX",
     "PKCE_VERIFIER_MIN",
     "TOKEN_CONTENT_TYPE",
+    "KEY_RETURN_ALLOW",
     "CallbackResult",
     "RedirectPending",
+    "RefusalDetails",
     "RedirectSession",
     "SignInError",
     "TokenAnswer",
@@ -71,12 +81,15 @@ AUTHORIZE_STATE_MIN = 16
 AUTHORIZE_STATE_MAX = 512
 #: The scope a sign-in asks for when the host names none (a subset of ``profile email cloudSync``).
 DEFAULT_REDIRECT_SCOPE = "profile email"
+#: The value of the ``key_return`` authorize parameter (WIRE-CONTRACT-V5 §12.4).
+KEY_RETURN_ALLOW = "allow"
 #: The ``Content-Type`` of the token request.
 TOKEN_CONTENT_TYPE = "application/x-www-form-urlencoded"
 
 _VERIFIER = re.compile(r"[A-Za-z0-9\-._~]+")
 _PRINTABLE = re.compile(r"[\x21-\x7e]+")
 _GRANT = re.compile(r"sg_[A-Za-z0-9_-]{43}")
+_SUBJECT = re.compile(PAIRWISE_SUBJECT_PATTERN)
 _ENDPOINT = re.compile(r"https?://[^\s]+")
 _REDIRECT_URI = re.compile(r"https://([^/?#]*)([^#]*)")
 _REDIRECT_BAD = re.compile(r"[\s\x00-\x1f\x7f\\]")
@@ -85,6 +98,19 @@ _BAD_ESCAPE = re.compile(r"%(?![0-9A-Fa-f]{2})")
 
 #: Random bytes. Default :func:`secrets.token_bytes`; a test injects a fixed source.
 RandomBytes = Callable[[int], bytes]
+
+
+@dataclass(frozen=True)
+class RefusalDetails:
+    """The flat members a token refusal can carry (``device_limit``, ``key_entry_limit``,
+    ``license_owned``), each ``None`` when the answer did not carry it. ``manage_url`` and
+    ``sign_in_url`` are kept only when they are https links the Worker named."""
+
+    limit: Optional[int] = None
+    device_count: Optional[int] = None
+    manage_url: Optional[str] = None
+    key_entries: Optional[KeyEntries] = None
+    sign_in_url: Optional[str] = None
 
 
 class SignInError(PolarisError):
@@ -99,9 +125,13 @@ class SignInError(PolarisError):
         *,
         status: Optional[int] = None,
         retry_after_seconds: Optional[int] = None,
+        details: Optional["RefusalDetails"] = None,
     ) -> None:
         super().__init__(code, message, status=status)
         self.retry_after_seconds = retry_after_seconds
+        #: A key return refused as ``license/activate`` refuses (``device_limit``,
+        #: ``key_entry_limit``, ``license_owned``): the members the answer carried, else ``None``.
+        self.details = details
 
 
 def _invalid(message: str) -> PolarisError:
@@ -171,6 +201,8 @@ class RedirectPending:
     token_endpoint: str = field(repr=False)
     #: The authorize request carried ``license_choice=app``: the token endpoint may answer ``choose``.
     license_choice: bool = False
+    #: The authorize request carried ``key_return=allow``: the token endpoint may answer ``activated``.
+    key_return: bool = False
 
 
 def start_redirect(
@@ -186,17 +218,19 @@ def start_redirect(
     purpose: Optional[str] = None,
     license_choice: Optional[str] = None,
     choice_available: bool = False,
+    key_return: bool = False,
     random: Optional[RandomBytes] = None,
     state: Optional[str] = None,
     code_verifier: Optional[str] = None,
 ) -> RedirectPending:
     """Build the authorize request. Query order is fixed so every SDK emits the same bytes:
     ``response_type client_id redirect_uri state code_challenge code_challenge_method scope
-    [login_hint] [name_hint] [purpose] [license_choice]``, each value form-encoded (space as
+    [login_hint] [name_hint] [purpose] [license_choice] [key_return]``, each value form-encoded (space as
     ``+``). A hint that is empty is not sent; a hint is sent verbatim (the Worker normalises, and
     drops a login hint that is not an e-mail). ``license_choice="app"`` is sent only when
     ``choice_available`` (discovery has the ``choice*`` endpoints); otherwise the card chooses
-    and nothing is sent. Raises ``invalid-argument`` before anything is built."""
+    and nothing is sent. ``key_return=True`` appends ``key_return=allow`` last (off by default).
+    Raises ``invalid-argument`` before anything is built."""
     if not is_redirect_uri(redirect_uri):
         raise _invalid("redirect_uri must be an absolute https URL with no fragment.")
     for name, value in (("authorize", authorize_endpoint), ("token", token_endpoint)):
@@ -239,6 +273,8 @@ def start_redirect(
     sent_choice = license_choice == "app" and choice_available is True
     if sent_choice:
         pairs.append(("license_choice", "app"))
+    if key_return is True:
+        pairs.append(("key_return", KEY_RETURN_ALLOW))
     sep = "&" if "?" in authorize_endpoint else "?"
     return RedirectPending(
         authorize_url=f"{authorize_endpoint}{sep}{_form_body(pairs)}",
@@ -249,6 +285,7 @@ def start_redirect(
         issuer=issuer,
         token_endpoint=token_endpoint,
         license_choice=sent_choice,
+        key_return=key_return is True,
     )
 
 
@@ -376,9 +413,11 @@ class TokenAnswer:
     ``subject``, ``schema_version``, ``device``, ``license``), ``"choose"`` (``grant``,
     ``expires_in``, ``choices``: I-08b, the app shows the licence choice), ``"refused"`` (``error``
     is the Worker's flat OAuth / Polaris code, ``status`` the HTTP status, ``retry_after_seconds``
-    when it named one; a 5xx or a body with no ``error`` is ``server_error``) or ``"malformed"``
-    (a ``200`` that is neither, or lacks a member the call needs). The secrets are not in
-    ``repr``."""
+    when it named one; a 5xx or a body with no ``error`` is ``server_error``; ``details`` the flat
+    members it carried), ``"activated"`` (a ``via: "key"`` answer, read only with the key-return
+    opt-in: ``subject`` is ``None``, ``license`` is set, ``key_entries`` is the licence's count) or
+    ``"malformed"`` (a ``200`` that is none of these, or lacks a member the call needs). The
+    secrets are not in ``repr``."""
 
     kind: str
     access_token: Optional[str] = field(default=None, repr=False)
@@ -393,15 +432,43 @@ class TokenAnswer:
     error: Optional[str] = None
     status: Optional[int] = None
     retry_after_seconds: Optional[int] = None
+    key_entries: Optional[KeyEntries] = None
+    details: Optional[RefusalDetails] = None
+
+
+def _count(v: Any) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool) and v >= 0
+
+
+def _entries_of(v: Any) -> Optional[KeyEntries]:
+    if isinstance(v, dict) and _count(v.get("used")) and _count(v.get("limit")):
+        return KeyEntries(used=v["used"], limit=v["limit"])
+    return None
+
+
+def _refusal_details(b: Dict[str, Any]) -> Optional[RefusalDetails]:
+    manage, sign_in = b.get("manageUrl"), b.get("signInUrl")
+    out = RefusalDetails(
+        limit=b["limit"] if _count(b.get("limit")) else None,
+        device_count=b["deviceCount"] if _count(b.get("deviceCount")) else None,
+        manage_url=manage if isinstance(manage, str) and is_manage_url(manage) else None,
+        key_entries=_entries_of(b.get("keyEntries")),
+        sign_in_url=sign_in if isinstance(sign_in, str) and is_manage_url(sign_in) else None,
+    )
+    return None if out == RefusalDetails() else out
 
 
 def _is_number(v: Any) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
-def parse_token_answer(status: int, body: Any) -> TokenAnswer:
+def parse_token_answer(status: int, body: Any, *, key_return: bool = False) -> TokenAnswer:
     """Read the token endpoint's answer. ``choose`` is decided by the ``status`` member alone,
-    never by the absence of ``access_token``."""
+    never by the absence of ``access_token``. A ``200`` with ``via: "key"`` is ``activated`` only
+    when the caller opted in (``key_return``); without the opt-in, or with any other ``via``, it is
+    ``malformed``. A ``via: "key"`` body is also ``malformed`` unless ``scope`` is ``""``,
+    ``license`` is an object, ``key_entries`` is ``{used, limit}`` of non-negative integers and
+    ``subject`` is a pairwise subject or ``null``."""
     if status != 200:
         b = body if isinstance(body, dict) else {}
         err = b.get("error")
@@ -414,7 +481,13 @@ def parse_token_answer(status: int, body: Any) -> TokenAnswer:
             and cast(float, retry) > 0
             else None
         )
-        return TokenAnswer(kind="refused", error=error, status=status, retry_after_seconds=seconds)
+        return TokenAnswer(
+            kind="refused",
+            error=error,
+            status=status,
+            retry_after_seconds=seconds,
+            details=_refusal_details(b),
+        )
     if not isinstance(body, dict):
         return TokenAnswer(kind="malformed")
     if body.get("status") == "choose":
@@ -430,6 +503,34 @@ def parse_token_answer(status: int, body: Any) -> TokenAnswer:
     token, scope, subject = body.get("access_token"), body.get("scope"), body.get("subject")
     device = body.get("device")
     lic = body.get("license", False)
+    if "via" in body:
+        entries = _entries_of(body.get("keyEntries"))
+        if (
+            body["via"] != "key"
+            or key_return is not True
+            or not isinstance(token, str)
+            or token == ""
+            or scope != ""
+            or not (
+                subject is None
+                or (isinstance(subject, str) and _SUBJECT.fullmatch(subject) is not None)
+            )
+            or not isinstance(device, dict)
+            or not isinstance(lic, dict)
+            or entries is None
+        ):
+            return TokenAnswer(kind="malformed")
+        sv = body.get("schemaVersion")
+        return TokenAnswer(
+            kind="activated",
+            access_token=token,
+            scope="",
+            subject=subject,
+            schema_version=cast(int, sv) if _is_number(sv) else 1,
+            device=device,
+            license=lic,
+            key_entries=entries,
+        )
     if (
         not isinstance(token, str)
         or token == ""
@@ -556,7 +657,7 @@ def redeem_code(
         body: Any = res.json()
     except ValueError:
         body = None
-    answer = parse_token_answer(res.status_code, body)
+    answer = parse_token_answer(res.status_code, body, key_return=pending.key_return)
     if answer.kind == "malformed":
         raise PolarisError(
             ErrorCode.BAD_RESPONSE,
@@ -573,6 +674,7 @@ def redeem_code(
             f"the token endpoint refused the sign-in ({answer.error}).",
             status=res.status_code,
             retry_after_seconds=retry,
+            details=answer.details if res.status_code < 500 else None,
         )
     if answer.kind == "choose":
         # Only `license_choice=app` makes the Worker answer this; nothing is stored and
@@ -588,6 +690,30 @@ def redeem_code(
             grant=answer.grant,
             expires_in=answer.expires_in,
             choices=answer.choices,
+        )
+    if answer.kind == "activated":
+        # A key return (WIRE-CONTRACT-V5 §12.5 rule 3): a key activation, never a sign-in. The token
+        # is stored as `license.activate_with_key` stores one and the account the device held, if
+        # any, is forgotten with its stored subject (a null subject): `subject_changed`, no
+        # `signed_in`. The license event comes from the sync after the token is stored.
+        assert answer.access_token is not None and answer.license is not None
+        assert answer.key_entries is not None
+        before = deps.stored_subject() if deps.stored_subject is not None else None
+        deps.tokens.set(answer.access_token, "activate")
+        deps.store_identity(None)
+        if deps.write_subject is not None:
+            deps.write_subject(None)
+        deps.on_acquired()
+        if before is not None:
+            deps.emit("identity", change="subject_changed", subject=None)
+        lic_id = answer.license.get("id")
+        license_id = lic_id if isinstance(lic_id, str) else None
+        return SignInOutcome(
+            kind=ACTIVATED,
+            subject=None,
+            scope="",
+            activation=SignInActivation(license_id=license_id),
+            key_entries=answer.key_entries,
         )
     assert answer.access_token is not None and answer.subject is not None
     deps.tokens.set(answer.access_token, "signin", person_initiated=True)
@@ -616,6 +742,7 @@ def start_redirect_sign_in(
     purpose: Optional[str] = None,
     license_choice: Optional[str] = None,
     device_name: Optional[str] = None,
+    key_return: bool = False,
 ) -> RedirectSession:
     """Begin a redirect sign-in. Refuses before any sign-in request when the product does not run
     Identity (``service-unavailable``) or its discovery serves no ``authorize``, ``token`` or
@@ -662,6 +789,7 @@ def start_redirect_sign_in(
         purpose=purpose,
         license_choice=license_choice,
         choice_available=choice_available,
+        key_return=key_return,
         state=entropy.get("state"),
         code_verifier=entropy.get("code_verifier"),
     )

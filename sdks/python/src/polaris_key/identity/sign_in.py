@@ -39,6 +39,7 @@ from ..constants_generated import ErrorCode, Feature, UnsupportedReason
 from ..core.caps import Unsupported, UnsupportedError
 from ..core.context import CoreContext, server_message_of
 from ..core.errors import PolarisError
+from ..core.manage import KeyEntries
 from ..core.token import TokenManager
 
 __all__ = [
@@ -63,6 +64,8 @@ CHOOSE = "choose"
 SIGNED_IN = "signed_in"
 CANCELLED = "cancelled"
 EXPIRED = "expired"
+#: A key return (redirect channel, opt-in): the device holds the key's license, no account.
+ACTIVATED = "activated"
 
 
 @dataclass(frozen=True)
@@ -86,7 +89,7 @@ class SignInActivation:
 @dataclass(frozen=True)
 class SignInOutcome:
     """How a sign-in session ended, or (``once``) has not yet. ``kind`` is ``"pending"``,
-    ``"choose"``, ``"signed_in"``, ``"cancelled"`` or ``"expired"``.
+    ``"choose"``, ``"signed_in"``, ``"activated"``, ``"cancelled"`` or ``"expired"``.
 
     ``pending`` carries ``interval`` (seconds before the next poll) and ``slow_down`` (the Worker
     asked for a longer one); ``signed_in`` carries ``subject`` (the pairwise ``ps_...`` subject, or
@@ -107,6 +110,8 @@ class SignInOutcome:
     grant: Optional[str] = field(default=None, repr=False)
     expires_in: Optional[float] = None
     choices: Optional[Dict[str, Any]] = None
+    #: ``activated`` (a key return): the license's key entries (``used`` may exceed ``limit``).
+    key_entries: Optional[KeyEntries] = None
 
 
 def _is_str(v: Any) -> bool:
@@ -180,6 +185,7 @@ class SignInDeps:
         emit: Callable[..., Any],
         load_discovery: Optional[Callable[[], Optional[Dict[str, Any]]]] = None,
         write_subject: Optional[Callable[[Optional[str]], None]] = None,
+        stored_subject: Optional[Callable[[], Optional[str]]] = None,
     ) -> None:
         self.ctx = ctx
         self.tokens = tokens
@@ -197,6 +203,8 @@ class SignInDeps:
         self.load_discovery = load_discovery
         #: Persist the account subject (a redirect sign-in's token answer carries it).
         self.write_subject = write_subject
+        #: The persisted account subject, read before a key return clears it.
+        self.stored_subject = stored_subject
         #: Conformance replay only: the exact ``state`` and ``code_verifier`` of a recorded
         #: redirect conversation.
         self.entropy: Optional[Dict[str, str]] = None
@@ -597,6 +605,10 @@ class SignInNamespace:
         with ``authorize_url`` and ``complete(callback_url)``; with no ``redirect_uri`` it is the native
         redirect (I-15), a :class:`~polaris_key.identity.native_redirect.NativeSignInSession` (loopback
         listener, registered scheme or claimed HTTPS), or the typed ``redirect-unavailable``.
+        The redirect channel also takes ``key_return=True`` (default off): the authorize request then
+        sends ``key_return=allow`` and the sign-in may settle ``activated`` (a key activation, no
+        account, ``subject`` ``None``, ``key_entries`` set). The UI kits leave it off until a kit
+        renders the activated outcome.
         ``channel="nearby"`` (``device_name``) is the
         new device's side of nearby sign-in and answers a
         :class:`~polaris_key.identity.nearby_session.NearbySignInSession`: the typed N/A when the product

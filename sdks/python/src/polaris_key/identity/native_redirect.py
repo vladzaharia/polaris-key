@@ -43,6 +43,7 @@ from ..core.errors import PolarisError
 from .redirect import (
     AUTHORIZE_STATE_MAX,
     AUTHORIZE_STATE_MIN,
+    KEY_RETURN_ALLOW,
     PKCE_VERIFIER_MAX,
     PKCE_VERIFIER_MIN,
     TOKEN_CONTENT_TYPE,
@@ -234,6 +235,8 @@ class NativePending:
     token_endpoint: str = field(repr=False)
     #: The push carried ``license_choice=app``: the token endpoint may answer ``choose``.
     license_choice: bool = False
+    #: The push carried ``key_return=allow``: the token endpoint may answer ``activated``.
+    key_return: bool = False
 
 
 @dataclass(frozen=True)
@@ -272,15 +275,16 @@ def push_request(
     purpose: Optional[str] = None,
     license_choice: Optional[str] = None,
     choice_available: bool = False,
+    key_return: bool = False,
     random: Optional[RandomBytes] = None,
     state: Optional[str] = None,
     code_verifier: Optional[str] = None,
 ) -> PushedRequest:
     """Build the pushed request. Nothing here touches the network. Member order: ``response_type
     client_id redirect_uri state code_challenge code_challenge_method [scope] [nonce] [login_hint]
-    [name_hint] [purpose] [license_choice] [device_name] [return_uri]``. ``scope`` is left out when
+    [name_hint] [purpose] [license_choice] [key_return] [device_name] [return_uri]``. ``scope`` is left out when
     not given (the Worker defaults it); ``license_choice="app"`` is sent only when
-    ``choice_available`` (I-08b)."""
+    ``choice_available`` (I-08b); ``key_return=True`` sends ``key_return=allow`` (off by default)."""
     redirect_class = classify_native_redirect_uri(redirect_uri)
     if redirect_class is None:
         raise _invalid("redirect_uri is not a native redirect URI.")
@@ -327,6 +331,8 @@ def push_request(
     sent_choice = license_choice == "app" and choice_available is True
     if sent_choice:
         pairs.append(("license_choice", "app"))
+    if key_return is True:
+        pairs.append(("key_return", KEY_RETURN_ALLOW))
     if device_name:
         pairs.append(("device_name", device_name))
     if return_uri:
@@ -345,6 +351,7 @@ def push_request(
             authorize_endpoint=authorize_endpoint,
             token_endpoint=token_endpoint,
             license_choice=sent_choice,
+            key_return=key_return is True,
         ),
     )
 
@@ -819,6 +826,7 @@ class NativeSignInSession:
                             issuer=pending.issuer,
                             token_endpoint=pending.token_endpoint,
                             license_choice=pending.license_choice,
+                            key_return=pending.key_return,
                         ),
                         arrival.code or "",
                         None,
@@ -896,6 +904,7 @@ def start_native_sign_in(
     name_hint: Optional[str] = None,
     purpose: Optional[str] = None,
     license_choice: Optional[str] = None,
+    key_return: bool = False,
     device_name: Optional[str] = None,
     return_uri: Optional[str] = None,
     loopback: Optional[bool] = None,
@@ -984,6 +993,7 @@ def start_native_sign_in(
             purpose=purpose,
             license_choice=license_choice,
             choice_available=choice_available,
+            key_return=key_return,
             state=entropy.get("state"),
             code_verifier=entropy.get("code_verifier"),
         )

@@ -72,6 +72,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature license.manage connect.links
 # @pkey-feature identity.keyentry identity.account identity.attach identity.toggle
 # @pkey-feature core.presentation ui.cli.portal
+# @pkey-feature identity.keyreturn
 # @pkey-feature identity.redirect.web identity.choice identity.signin.hints identity.devicecode.choice
 # @pkey-feature sync.keyring connect.identity connect.relay sync.settings
 # @pkey-feature sync.files sync.files.delta sync.saves sync.records identity.nearby identity.redirect.native
@@ -527,14 +528,30 @@ def _act(
                 )
                 done = s.complete(args["callbackUrl"])
             out["result"] = "ok" if done.kind == "signed_in" else done.kind
-            if done.kind == "signed_in":
+            if done.kind in ("signed_in", "activated"):
                 out["scope"] = done.scope
                 out["licenseId"] = done.activation.license_id
                 out["subject"] = done.subject
                 out["tokenHeld"] = store.token is not None
+            if done.kind == "activated":
+                out["keyEntries"] = {"used": done.key_entries.used, "limit": done.key_entries.limit}
         except PolarisError as e:
             out["result"] = e.code.replace("_", "-")
             out["code"] = e.code
+            # A key return refused as `license/activate` refuses: the details ride the error.
+            d = getattr(e, "details", None)
+            if d is not None:
+                out["tokenHeld"] = store.token is not None
+                if d.limit is not None:
+                    out["limit"] = d.limit
+                if d.device_count is not None:
+                    out["deviceCount"] = d.device_count
+                if d.manage_url is not None:
+                    out["manageUrl"] = d.manage_url
+                if d.sign_in_url is not None:
+                    out["signInUrl"] = d.sign_in_url
+                if d.key_entries is not None:
+                    out["keyEntries"] = {"used": d.key_entries.used, "limit": d.key_entries.limit}
     elif action in ("choiceLicenses", "choiceDevices", "choiceComplete", "choiceCancel"):
         # The grant routes (I-10a.17): `client.identity.choice.*`, a refusal being a result.
         grant = str(args["grant"])
@@ -1071,6 +1088,8 @@ def _start_redirect_for(
             opts[name] = args[arg]
     if license_choice:
         opts["license_choice"] = license_choice
+    if args.get("keyReturn") is True:
+        opts["key_return"] = True
     return client.identity.sign_in.start(channel="redirect", redirect_uri=redirect_uri, **opts)
 
 
