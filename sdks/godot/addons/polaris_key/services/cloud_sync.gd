@@ -89,6 +89,8 @@ var _cache: Object = null
 var _cache_for: Variant = null
 ## While one person replaces another, the incoming person: their chunk folder is the one that stays.
 var _keep_subject: Variant = null
+## The records handles handed out, by collection name (one per name, so its signals persist).
+var _collections := {}
 
 
 ## Build the host over this Core. `emit` is `func(data: Dictionary)`: one cloudSync event.
@@ -159,6 +161,22 @@ func status() -> PKeyResult:
 	var out: Dictionary = host.machine().status()
 	out["protection"] = host.state_protection()
 	return PKeyResult.success(out)
+
+
+## The records handle of a collection the product's catalog declares (U-46, `sync.records`): a
+## `PKeyCollection`, the same one for the same name, in `detail`. Starts the host first. An undeclared
+## name answers `collection_unknown` from each call of the handle, never an error here. The typed
+## `product` N/A when the product does not run the Sync service. A coroutine.
+func collection(name: String) -> PKeyResult:
+	var refused: Variant = _core.require_service("sync", PKeyConstants.Feature.SYNC_RECORDS) if _core != null else PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
+	if refused != null:
+		return refused
+	await attach()
+	if host == null or not host.is_started():
+		return PKeyResult.failure(PKeyConstants.ErrorCode.SYNC_FAILED, "Cloud Sync could not start.", {"reason": "sync-not-started"})
+	if not _collections.has(name):
+		_collections[name] = PKeyCollection.new(name, host)
+	return PKeyResult.success(_collections[name])
 
 
 ## Send what is waiting now (bounded by the sign-out flush window), save the journal and answer the
@@ -391,6 +409,9 @@ func _allow_ring_holds() -> void:
 
 func close() -> void:
 	_closed = true
+	for handle: PKeyCollection in _collections.values():
+		handle.close()
+	_collections = {}
 	if host != null and is_instance_valid(host):
 		host.close()
 		host.queue_free()

@@ -23,7 +23,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | React | `web`, `desktop-bridge` | 114 | 25 | 3 | 0 |
 | Python | `python` | 108 | 16 | 18 | 0 |
 | Swift | `macos`, `ios` | 121 | 10 | 10 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 119 | 9 | 14 | 0 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 122 | 9 | 11 | 0 |
 | Kotlin | `android`, `jvm` | 122 | 9 | 10 | 1 |
 
 ## Core
@@ -82,7 +82,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `sync.conflict` | One conflict vocabulary: cloudSync.onConflict and MergeRequest for revision records | unit + transcripts (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | — |
 | `sync.saves` | cloudSync.saves on records and files: list, read, write, delete, revisions | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.keyring` | The key ring: create, wraps, recovery, adopt and reset over /devices/keyring | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `sync.records` | cloudSync.collection(name): records of any collection with put, update, compare-and-set and union merge | transcripts | ✓ | ✓ | ✓ | ✓ | planned (U-46) | ✓ | — |
+| `sync.records` | cloudSync.collection(name): records of any collection with put, update, compare-and-set and union merge | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.files` | cloudSync files: single and multipart upload, resume, progress and ranged download | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.files.delta` | cloudSync file delta: content-defined chunks, only the missing chunks travel | `sync-vectors.json` `cdcCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.e2e.recovery` | The recovery code, and the platform backup of the root where the OS has one | `sync-vectors.json` `recoveryCodeCases` + transcripts (U-36) | planned (U-38) | planned (U-20) | planned (U-06) | planned (U-39) | planned (U-40) | planned (U-39) | web, node, python, jvm, windows, linux: runtime |
@@ -98,8 +98,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `connect.protocol` | pkey-peer/1: adverts, prologue, PSK, SAS, frames, records and relay envelopes | `peer-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `connect.lan` | LAN discovery (mDNS) and TCP channels between a person's devices | unit + `peer-matrix.json` `lanAddresses` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | planned (CC-12b) | web, desktop-bridge: runtime |
 | `connect.relay` | The relay: ticket, WebSocket channel, quotas | transcripts + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `connect.links` | Inter-account links: mode p pairing and contacts | transcripts + `peer-matrix.json` `contact` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (CC-19) | ✓ | web, desktop-bridge: runtime |
-| `connect.transfer` | Direct Transfer: data between Cloud Connect peers | `peer-matrix.json` `xfer` | ✓ | ✓ | ✓ | ✓ | planned (CC-20) | ✓ | — |
+| `connect.links` | Inter-account links: mode p pairing and contacts | transcripts + `peer-matrix.json` `contact` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | ✓ | web, desktop-bridge: runtime |
+| `connect.transfer` | Direct Transfer: data between Cloud Connect peers | `peer-matrix.json` `xfer` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `connect.app` | The cloudConnect API: start, stop, peers, devices, open, onChannel | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Devices and identity

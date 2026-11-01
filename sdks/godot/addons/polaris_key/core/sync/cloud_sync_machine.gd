@@ -53,6 +53,10 @@ var _outbox: Array = []
 var _events: Array = []
 ## The listener for `put_at` / `remove_at` outcomes (a Callable(outcome: Dictionary)). Not persisted.
 var _outcome: Callable = Callable()
+var _outcome_taps: Array = []
+## The collections whose record changes are reported as `records` events, each with the last state
+## reported (record id to a canonical string). Empty: nothing is computed.
+var _watched: Dictionary = {}
 var _s: Dictionary
 var _client_id_re: RegEx
 ## "" when the machine was built; "bad-client-id" when the host's `newClientId` gave a malformed id.
@@ -210,8 +214,14 @@ static func _apply_record_op(base: Variant, op: Dictionary) -> Variant:
 	var name: String = op["op"]
 	if name == "set":
 		return Types.clone(op.get("value"))
-	if name == "setMember" or name == "removeMember":
-		return apply_setting_op("merge", base, op)
+	if name == "setField":
+		var o: Dictionary = (base as Dictionary).duplicate() if base is Dictionary else {}
+		o[op["field"]] = Types.clone(op.get("value"))
+		return o
+	if name == "removeField":
+		var o2: Dictionary = (base as Dictionary).duplicate() if base is Dictionary else {}
+		o2.erase(op["field"])
+		return o2
 	if name == "add":
 		var arr: Array = (base as Array).duplicate() if base is Array else []
 		var found := false
@@ -323,6 +333,7 @@ func take_requests() -> Array:
 
 
 func take_events() -> Array:
+	_note_record_changes("remote")
 	var out := _events
 	_events = []
 	return out
@@ -435,7 +446,7 @@ func set_discovery(discovery: Variant) -> void:
 
 
 ## Write a record: compare-and-swap for `revision`, a stamped `set` for `lastWrite`, `max` and
-## `min`, member operations for `merge`.
+## `min`, field operations for `merge`.
 func put(collection: String, record_id: String, value: Variant) -> Dictionary:
 	var decl: Variant = _collection(collection)
 	if decl == null or decl["policy"] == "union":
@@ -472,18 +483,18 @@ func put(collection: String, record_id: String, value: Variant) -> Dictionary:
 			var current: Variant = rec["value"] if rec != null else null
 			var cur: Dictionary = current if current is Dictionary else {}
 			var nxt: Dictionary = value if value is Dictionary else {}
-			for member: String in _sorted(nxt.keys()):
-				if not cur.has(member) or not Types.json_equal(cur[member], nxt[member]):
+			for field: String in _sorted(nxt.keys()):
+				if not cur.has(field) or not Types.json_equal(cur[field], nxt[field]):
 					_enqueue(p, _merged({
 						"target": target,
-						"op": "setMember",
-						"member": member,
-						"value": Types.clone(nxt[member]),
+						"op": "setField",
+						"field": field,
+						"value": Types.clone(nxt[field]),
 						"editedHlc": edited,
 					}, marks))
-			for member: String in _sorted(cur.keys()):
-				if not nxt.has(member):
-					_enqueue(p, _merged({"target": target, "op": "removeMember", "member": member, "editedHlc": edited}, marks))
+			for field: String in _sorted(cur.keys()):
+				if not nxt.has(field):
+					_enqueue(p, _merged({"target": target, "op": "removeField", "field": field, "editedHlc": edited}, marks))
 		else:
 			var queued2: Variant = null
 			if not _in_flight_touches(rk):
@@ -496,6 +507,7 @@ func put(collection: String, record_id: String, value: Variant) -> Dictionary:
 				queued2["editedHlc"] = edited
 			else:
 				_enqueue(p, _merged({"target": target, "op": "set", "value": Types.clone(value), "editedHlc": edited}, marks))
+	_note_record_changes("local")
 	_kick()
 	return Types.ok()
 
@@ -582,16 +594,154 @@ func _exact_op(collection: String, record_id: String, base_version: Variant, bod
 	var pointer: Variant = _file_of(file)
 	if pointer != null:
 		full["file"] = pointer
+	_note_record_changes("local")
 	_kick()
 	return {"ok": true, "mutationId": ticket}
 
 
 func _emit_outcome(op: Dictionary, outcome: Dictionary) -> void:
-	if not op.has("ticket") or not _outcome.is_valid():
+	if not op.has("ticket"):
 		return
 	var out := {"mutationId": int(op["ticket"])}
 	out.merge(outcome, true)
-	_outcome.call(out)
+	if _outcome.is_valid():
+		_outcome.call(out)
+	for tap: Callable in _outcome_taps.duplicate():
+		if tap.is_valid():
+			tap.call(out)
+
+
+## Another listener for `put_at` / `remove_at` outcomes, beside `on_outcome`'s. A tap is told of every
+## outcome, so it must tell its own ticket from another's, and it must not call back into the machine.
+## Returns the Callable that removes it.
+func tap_outcomes(fn: Callable) -> Callable:
+	_outcome_taps.append(fn)
+	return func() -> void: _outcome_taps.erase(fn)
+
+
+## The declaration of a collection in the catalog (a pattern included), `{name, policy, field?, resolve?}`,
+## or null.
+func collection_decl(name: String) -> Variant:
+	var d: Variant = _collection(name)
+	return (d as Dictionary).duplicate() if d != null else null
+
+
+## Report record changes of `collection` as `records` events from now on (`on` false: stop).
+func watch_records(collection: String, on: bool) -> void:
+	if not on:
+		_watched.erase(collection)
+	elif not _watched.has(collection):
+		_watched[collection] = _record_states(collection)
+
+
+## Carry over what observers registered on the machine this one replaces: its outcome taps and the
+## collections it watched.
+func adopt_observers(from: Object) -> void:
+	for tap: Callable in from._outcome_taps:
+		if not _outcome_taps.has(tap):
+			_outcome_taps.append(tap)
+	for c: String in from._watched.keys():
+		watch_records(c, true)
+
+
+## The ids of a collection's effective records (pending edits applied), in byte order.
+func record_ids(collection: String) -> Array:
+	return _sorted(_record_states(collection).keys())
+
+
+## The effective rows of a collection, pending creates and held values included: id to a canonical
+## string of the value and where it came from.
+func _record_states(collection: String) -> Dictionary:
+	var out := {}
+	if _s["subject"] == null:
+		return out
+	var prefix := collection + "/"
+	var p := _active()
+	var keys := {}
+	for rk: String in p["records"]:
+		keys[rk] = true
+	for op: Dictionary in p["pending"]:
+		if op["target"].has("record") and op["target"]["record"][0] == collection:
+			keys[_rk_of(op["target"])] = true
+	for rk: String in p["held"]:
+		keys[rk] = true
+	for rk: String in keys:
+		if not rk.begins_with(prefix):
+			continue
+		var rid := rk.substr(prefix.length())
+		var v: Variant = _record(collection, rid)
+		if v != null:
+			out[rid] = JSON.stringify([PKeySyncCanonicalJson.canonicalize_value(v["value"]).get("canonical", ""), v["from"]])
+	return out
+
+
+## Push a `records` event for each watched collection whose effective rows changed.
+func _note_record_changes(origin: String) -> void:
+	if _watched.is_empty():
+		return
+	for collection: String in _watched.keys():
+		var last: Dictionary = _watched[collection]
+		var now := _record_states(collection)
+		var ids: Array = []
+		for i: String in last:
+			if not now.has(i) or last[i] != now[i]:
+				ids.append(i)
+		for i: String in now:
+			if not last.has(i):
+				ids.append(i)
+		_watched[collection] = now
+		if not ids.is_empty():
+			_events.append({"type": "records", "collection": collection, "ids": _sorted(ids), "origin": origin})
+
+
+## Update a `merge` record: `change.set` writes the named fields and `change.remove` drops the named
+## ones; any other field is untouched. One clock stamp.
+func update(collection: String, record_id: String, change: Dictionary) -> Dictionary:
+	var decl: Variant = _collection(collection)
+	if decl == null or decl["policy"] != "merge":
+		return Types.fail("collection-unknown")
+	if _s["subject"] == null:
+		return Types.fail("signed-out")
+	var sets: Dictionary = change["set"] if change.get("set") is Dictionary else {}
+	var removes: Array = change["remove"] if change.get("remove") is Array else []
+	var seen := {}
+	for n in sets.keys() + removes:
+		if seen.has(n):
+			return Types.fail("bad_request")
+		seen[n] = true
+	if seen.is_empty():
+		return Types.fail("bad_request")
+	var p := _active()
+	var target := {"record": [collection, record_id]}
+	var edited := _tick_hlc()
+	var marks := {} if _s["contacted"] else {"preContact": true}
+	for field: String in _sorted(sets.keys()):
+		_enqueue(p, _merged({"target": target, "op": "setField", "field": field, "value": Types.clone(sets[field]), "editedHlc": edited}, marks))
+	for field: String in _sorted(removes):
+		_enqueue(p, _merged({"target": target, "op": "removeField", "field": field, "editedHlc": edited}, marks))
+	_note_record_changes("local")
+	_kick()
+	return Types.ok()
+
+
+## Delete a record of any policy but `revision` (use `remove_at` there). A `union` delete carries no
+## clock stamp.
+func delete(collection: String, record_id: String) -> Dictionary:
+	var decl: Variant = _collection(collection)
+	if decl == null or decl["policy"] == "revision":
+		return Types.fail("collection-unknown")
+	if _s["subject"] == null:
+		return Types.fail("signed-out")
+	var p := _active()
+	var op := {"target": {"record": [collection, record_id]}, "op": "delete"}
+	if decl["policy"] != "union":
+		op["editedHlc"] = _tick_hlc()
+		if not _s["contacted"]:
+			op["preContact"] = true
+	_enqueue(p, op)
+	_note_record_changes("local")
+	_kick()
+	return Types.ok()
 
 
 func sign_in(subject: String) -> Dictionary:
@@ -947,14 +1097,25 @@ func _target_of(key: String) -> Dictionary:
 	return {"setting": key, "scope": r["scope"] if r != null and r["route"] == "synced" else "user"}
 
 
+## The declaration governing a concrete name: an exact name, else the longest `prefix.*` pattern with
+## something after the prefix (V5 section 13.7, "Matching").
 func _collection(name: String) -> Variant:
 	var cs: Variant = _catalog.get("collections")
 	if cs == null:
 		return null
+	var pattern: Variant = null
+	var pattern_prefix := 0
 	for c: Dictionary in cs:
-		if c["name"] == name:
+		var declared: String = c["name"]
+		if declared == name:
 			return c
-	return null
+		if not declared.ends_with(".*"):
+			continue
+		var prefix := declared.length() - 1
+		if name.length() > prefix and name.begins_with(declared.substr(0, prefix)) and prefix > pattern_prefix:
+			pattern = c
+			pattern_prefix = prefix
+	return pattern
 
 
 func _alias(key: String) -> String:
@@ -1287,6 +1448,7 @@ func _union_op(collection: String, record_id: String, element: Variant, op: Stri
 		_enqueue(p, {"target": target, "op": op, "element": Types.clone(element)})
 	else:
 		_enqueue(p, {"target": target, "op": op, "element": Types.clone(element), "observedSeq": p["cursor"]})
+	_note_record_changes("local")
 	_kick()
 	return Types.ok()
 

@@ -1527,7 +1527,7 @@ static func capabilities() -> Dictionary:
 		"sync.conflict": {"status": "planned", "service": "sync", "na": []},
 		"sync.saves": {"status": "implemented", "service": "sync", "na": []},
 		"sync.keyring": {"status": "implemented", "service": "sync", "na": []},
-		"sync.records": {"status": "planned", "service": "sync", "na": []},
+		"sync.records": {"status": "implemented", "service": "sync", "na": []},
 		"sync.files": {"status": "implemented", "service": "sync", "na": []},
 		"sync.files.delta": {"status": "implemented", "service": "sync", "na": []},
 		"sync.e2e.recovery": {"status": "planned", "service": "sync", "na": []},
@@ -1538,8 +1538,8 @@ static func capabilities() -> Dictionary:
 		"connect.protocol": {"status": "implemented", "service": "connect", "na": []},
 		"connect.lan": {"status": "implemented", "service": "connect", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"connect.relay": {"status": "implemented", "service": "connect", "na": []},
-		"connect.links": {"status": "planned", "service": "connect", "na": []},
-		"connect.transfer": {"status": "planned", "service": "connect", "na": []},
+		"connect.links": {"status": "implemented", "service": "connect", "na": [{"runtime": "web", "reason": "runtime"}]},
+		"connect.transfer": {"status": "implemented", "service": "connect", "na": []},
 		"connect.app": {"status": "implemented", "service": "connect", "na": []},
 		"devices.fingerprint": {"status": "implemented", "service": "core", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"devices.facts": {"status": "implemented", "service": "core", "na": []},
@@ -1635,4 +1635,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "6ec1bcb362e8620b45a748f77cf11e9e2ee218082d3a4035b0adaac7835edf57"
+const CAPABILITY_DIGEST := "35cd35eae34e54439919fd5c5566fb2ef91774550f9be90a0956435848821b7f"

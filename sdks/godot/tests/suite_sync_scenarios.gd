@@ -6,9 +6,9 @@ extends RefCounted
 # `sync-scenarios.json`: the Cloud Sync client state machine and the setting routes.
 #
 # Mirrors sdks/python/tests/test_sync_scenarios.py. The corpus is read from the generator-owned
-# mirror through the strict parser (ints stay ints). `settingCases` runs in full and every
-# scenario replays except the named SKIPPED ones (U-21.5 deleted PENDING; record-merge-fields waits for
-# C26.7/U-09.11G), and the run asserts replayed plus skipped equals the corpus count. The X-1 conflict-copy unit test and the principal, blocked and
+# mirror through the strict parser (ints stay ints). `settingCases` runs in full and every scenario
+# replays, none skipped (a merge record sends setField / removeField, C26.7); the run asserts
+# replayed equals the corpus count. The X-1 conflict-copy unit test and the principal, blocked and
 # 410 paths are in tests/core/test_cloud_sync_machine.gd.
 #
 # The machine contract the driver calls (snake_case; `set`/`get` are Object methods, so the value
@@ -114,14 +114,10 @@ func _setting_cases(t: PKeyTestContext, cases: Array) -> void:
 
 func _scenarios(t: PKeyTestContext, corpus: Dictionary) -> void:
 	var ran := 0
-	var skipped := 0
 	for sc: Dictionary in corpus["scenarios"]:
-		if SKIPPED.has(sc["name"]):
-			skipped += 1
-			continue
 		_replay(t, corpus, sc)
 		ran += 1
-	t.check("every corpus scenario replays (skips: %s)" % ", ".join(SKIPPED), ran + skipped == corpus["scenarios"].size() and skipped == SKIPPED.size(), "%d" % ran)
+	t.check("every corpus scenario replays (no skip)", ran == corpus["scenarios"].size(), "%d" % ran)
 
 
 func _opts(corpus: Dictionary, init: Dictionary, ids: Array) -> Dictionary:

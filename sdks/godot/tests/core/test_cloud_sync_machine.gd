@@ -1,4 +1,5 @@
 extends RefCounted
+# @pkey-feature sync.records
 # The Cloud Sync machine's own tests, beyond the corpus scenarios: the X-1 conflict-copy cursor
 # (SEC-HOST2's reproduction and its control), the principal-change, blocked, 410 and client-id
 # paths. The corpus row for X-1 (`e2e-forged-plain-needs-cursor-below-since` covers the pull side;
@@ -13,6 +14,7 @@ func run(t: PKeyTestContext) -> void:
 	_x1(t)
 	_principal_and_blocked(t)
 	_gone_and_client_ids(t)
+	_collections(t)
 
 
 static func _opts(encryption: String, ids: Array, extra: Dictionary = {}) -> Dictionary:
@@ -164,3 +166,137 @@ func _gone_and_client_ids(t: PKeyTestContext) -> void:
 	var before: Dictionary = k.persist()
 	var mism: Dictionary = k.receive({"status": 409, "body": {}})
 	t.check("bad client id on a 409: an error result, the request stays in flight, no state change", not mism["ok"] and Types.json_equal(k.persist(), before) and k.status()["state"] == "syncing")
+
+
+# ── collections (C26.7, U-46): the handle's calls on the machine ──────────────────────────────
+
+func _coll_machine(extra: Dictionary = {}) -> Variant:
+	var o := _opts("server", _ids(), extra)
+	o["catalog"]["collections"] = [
+		{"name": "cards", "policy": "merge"},
+		{"name": "tags", "policy": "union"},
+		{"name": "scores", "policy": "max", "field": "points"},
+		{"name": "saves", "policy": "revision", "resolve": "keepServer"},
+		{"name": "log.*", "policy": "lastWrite"},
+		{"name": "log.audit.*", "policy": "union"},
+		{"name": "log.audit.fixed", "policy": "merge"},
+	]
+	return Machine.new(o)
+
+
+func _pending(m: Variant) -> Array:
+	return m.journal()["sub_alice"]["pending"]
+
+
+func _collections(t: PKeyTestContext) -> void:
+	var m: Variant = _coll_machine()
+	# A name is governed by itself, else by the longest `prefix.*` with something after the prefix.
+	t.check("collection_decl: an exact name", m.collection_decl("cards")["policy"] == "merge" and m.collection_decl("scores")["field"] == "points")
+	t.check("collection_decl: a pattern governs a name under it", m.collection_decl("log.app")["policy"] == "lastWrite" and m.collection_decl("log.app.deep")["policy"] == "lastWrite")
+	t.check(
+			"collection_decl: the longest pattern wins, an exact name beats a pattern",
+			m.collection_decl("log.audit.x")["policy"] == "union"
+			and m.collection_decl("log.audit.fixed")["policy"] == "merge"
+	)
+	t.check(
+			"collection_decl: a pattern needs something after its prefix, and an undeclared name is null",
+			m.collection_decl("log.") == null
+			and m.collection_decl("log") == null
+			and m.collection_decl("nope") == null
+	)
+
+	# update: one clock stamp over the named fields; the others stay.
+	var u: Dictionary = m.update("cards", "c1", {"set": {"title": "Dragon", "hp": 10}, "remove": ["old"]})
+	var ops := _pending(m)
+	var stamps := {}
+	var names := []
+	for o: Dictionary in ops:
+		stamps[o["editedHlc"]] = true
+		names.append("%s:%s" % [o["op"], o["field"]])
+	t.check("update: setField then removeField, in field order, under one stamp", u["ok"] and names == ["setField:hp", "setField:title", "removeField:old"] and stamps.size() == 1, str(names))
+	t.check("update: the record reads with the fields applied", Types.json_equal(m.record("cards", "c1")["value"], {"hp": 10, "title": "Dragon"}) and m.record("cards", "c1")["from"] == "pending")
+	m.update("cards", "c1", {"set": {"hp": 11}})
+	t.check("update: a field not named stays as it was", Types.json_equal(m.record("cards", "c1")["value"], {"hp": 11, "title": "Dragon"}))
+	var before := _pending(m).size()
+	t.check(
+			"update: refused for a policy that is not merge, an empty change and a field named twice",
+			m.update("tags", "t", {"set": {"a": 1}}).get("error") == "collection-unknown"
+			and m.update("cards", "c1", {}).get("error") == "bad_request"
+			and m.update("cards", "c1", {"set": {"a": 1}, "remove": ["a"]}).get("error") == "bad_request"
+			and _pending(m).size() == before
+	)
+
+	# put on a merge record sends fields, not members.
+	m.put("cards", "c2", {"a": 1, "b": 2})
+	var kinds := {}
+	for o: Dictionary in _pending(m):
+		if o["target"]["record"][1] == "c2":
+			kinds[o["op"]] = true
+	t.check("put on a merge record sends setField operations", kinds.keys() == ["setField"])
+
+	# delete: a stamp for every policy but union; revision uses remove_at.
+	m.add("tags", "t1", "x")
+	m.delete("tags", "t1")
+	m.delete("cards", "c1")
+	var dels := _pending(m).filter(func(o: Dictionary) -> bool: return o["op"] == "delete")
+	t.check("delete: a union delete carries no stamp, a merge delete does", dels.size() == 2 and not dels[0].has("editedHlc") and dels[1].has("editedHlc"))
+	t.check("delete: refused for revision and for an undeclared name", m.delete("saves", "s").get("error") == "collection-unknown" and m.delete("nope", "s").get("error") == "collection-unknown")
+	t.check(
+			"collection verbs: signed-out while nobody is signed in",
+			_coll_machine({"subject": null}).update("cards", "c", {"set": {"a": 1}}).get("error") == "signed-out"
+			and _coll_machine({"subject": null}).delete("cards", "c").get("error") == "signed-out"
+	)
+
+	# Record events: local from this device's calls, remote from a pull; nothing computed until watched.
+	var w: Variant = _coll_machine()
+	w.put("cards", "pre", {"a": 1})
+	w.take_events()
+	w.watch_records("cards", true)
+	t.check("watch: a record that exists when the watch starts is not reported", w.take_events().filter(func(e: Dictionary) -> bool: return e["type"] == "records").is_empty())
+	w.update("cards", "c1", {"set": {"a": 1}})
+	var ev: Array = w.take_events().filter(func(e: Dictionary) -> bool: return e["type"] == "records")
+	t.check("watch: a local write is reported once with its ids, in byte order", ev.size() == 1 and ev[0]["collection"] == "cards" and ev[0]["ids"] == ["c1"] and ev[0]["origin"] == "local", str(ev))
+	w.update("cards", "c0", {"set": {"a": 1}})
+	w.update("cards", "c2", {"set": {"a": 1}})
+	t.check("record_ids: the effective ids in byte order, pending creates included", w.record_ids("cards") == ["c0", "c1", "c2", "pre"])
+	w.watch_records("cards", false)
+	w.take_events()
+	w.update("cards", "c3", {"set": {"a": 1}})
+	t.check("watch: after the watch is off nothing is reported", w.take_events().filter(func(e: Dictionary) -> bool: return e["type"] == "records").is_empty())
+
+	# Observers: a tap hears every outcome beside on_outcome, and a rebuilt machine adopts both.
+	var heard := []
+	var main_heard := []
+	var a: Variant = _coll_machine()
+	a.on_outcome(func(o: Dictionary) -> void: main_heard.append(o["mutationId"]))
+	var off: Callable = a.tap_outcomes(func(o: Dictionary) -> void: heard.append(o["mutationId"]))
+	a.watch_records("cards", true)
+	a.receive(_ok({"cursor": 0, "changes": [], "tombstones": []}))
+	var put: Dictionary = a.put_at("saves", "s1", {"x": 1}, "*")
+	a.advance(PKeyConstants.SYNC_DEBOUNCE_MS)
+	var req: Array = a.take_requests()
+	a.receive({"status": 200, "body": {"cursor": 1, "results": [{"mutationId": 1, "status": "ok", "version": 1}], "changes": [], "tombstones": []}})
+	t.check(
+			"tap_outcomes: a tap hears the outcome of an exact write, and on_outcome still does",
+			put["ok"]
+			and heard == [put["mutationId"]]
+			and main_heard == heard,
+			"%s %s %s" % [heard, main_heard, req.size()]
+	)
+	off.call()
+	a.put_at("saves", "s2", {"x": 1}, "*")
+	a.advance(PKeyConstants.SYNC_DEBOUNCE_MS)
+	a.take_requests()
+	a.receive({"status": 200, "body": {"cursor": 2, "results": [{"mutationId": 2, "status": "ok", "version": 1}], "changes": [], "tombstones": []}})
+	t.check("tap_outcomes: the remover stops the tap", heard.size() == 1)
+	var b: Variant = _coll_machine()
+	var heard_b := []
+	a.tap_outcomes(func(o: Dictionary) -> void: heard_b.append(o["mutationId"]))
+	b.adopt_observers(a)
+	b.update("cards", "z", {"set": {"a": 1}})
+	t.check(
+			"adopt_observers: the watches and taps carry over to the machine that replaces this one",
+			b._watched.has("cards")
+			and b._outcome_taps.size() == 1
+			and not b.take_events().filter(func(e: Dictionary) -> bool: return e["type"] == "records").is_empty()
+	)
