@@ -8,10 +8,12 @@
 //     and the subnets of the Network the service was learned on, so an address the resolver took from an
 //     on-link host but that is not on this link never reaches a dial. A service with no known Network, or with
 //     no acceptable address, is not reported (and is reported down if it had been);
-//   - a dial uses the found network's socket factory, so it never leaves through a VPN route;
+//   - a dial uses the found network's socket factory, so it never leaves through a VPN route: a service whose
+//     network is a VPN (or has no factory) is not reported, and a factory that fails ends the dial;
 //   - NSD hands TXT over as a map: a repeated key cannot be seen (V5 refuses the whole advert), and a value
 //     that is not UTF-8 drops the advert. This is a stated residual of the Android resolver;
-//   - the OS renaming an instance (a name conflict) refuses the advert: two devices must not answer to one name;
+//   - the OS renaming an instance (a name conflict) refuses the advert: two devices must not answer to one name.
+//     After a network change the advert is registered again, and a rename then is retried with a bounded backoff;
 //   - a default-network change registers the adverts again on the new network. There is no auto-pause on
 //     background: the host owns the lifecycle (it stops the handle).
 
@@ -20,6 +22,7 @@ package im.plrs.key.android
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
+import android.net.NetworkCapabilities
 import im.plrs.key.core.peer.lan.MdnsAdapter
 import im.plrs.key.core.peer.lan.MdnsAdvert
 import im.plrs.key.core.peer.lan.MdnsFound
@@ -54,7 +57,8 @@ internal interface NsdPort {
 
     fun advertise(instance: String, port: Int, txt: Map<String, ByteArray>, onResult: (NsdAdvertResult) -> Unit): NsdStop
 
-    fun browse(listener: PeerNsdListener): NsdStop
+    /** Only a name [accept] allows takes a place in the found table. */
+    fun browse(listener: PeerNsdListener, accept: (String) -> Boolean): NsdStop
 
     fun watch(instance: String, listener: PeerNsdListener): NsdStop
 }
@@ -66,6 +70,9 @@ internal interface NetworkPort {
 
     /** The factory that opens sockets on [network]. */
     fun factoryOf(network: Network): SocketFactory?
+
+    /** True only when [network] is known not to be a VPN (the NOT_VPN capability is present). */
+    fun isNotVpn(network: Network): Boolean
 
     /** Calls [onChange] when the default network changes (not for the one current at the start). */
     fun onDefaultNetworkChange(onChange: () -> Unit): NsdStop
@@ -79,7 +86,7 @@ private class PeerNsdPort(private val nsd: PeerNsd) : NsdPort {
     override fun advertise(instance: String, port: Int, txt: Map<String, ByteArray>, onResult: (NsdAdvertResult) -> Unit): NsdStop =
         nsd.advertise(instance, port, txt, onResult).asStop()
 
-    override fun browse(listener: PeerNsdListener): NsdStop = nsd.browse(listener).asStop()
+    override fun browse(listener: PeerNsdListener, accept: (String) -> Boolean): NsdStop = nsd.browse(listener, accept).asStop()
 
     override fun watch(instance: String, listener: PeerNsdListener): NsdStop = nsd.watch(instance, listener).asStop()
 }
@@ -88,6 +95,12 @@ private class ConnectivityNetworkPort(private val context: Context) : NetworkPor
     override fun subnetsOf(network: Network): List<Subnet> = NetworkSubnets.of(context, network)
 
     override fun factoryOf(network: Network): SocketFactory? = network.socketFactory
+
+    override fun isNotVpn(network: Network): Boolean {
+        val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val caps = runCatching { cm?.getNetworkCapabilities(network) }.getOrNull()
+        return caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) == true
+    }
 
     override fun onDefaultNetworkChange(onChange: () -> Unit): NsdStop {
         val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return NsdStop {}
@@ -119,7 +132,11 @@ private class ConnectivityNetworkPort(private val context: Context) : NetworkPor
  * `_pkeypeer._tcp` discovery over the Android NSD stack. API 34 and up ([isSupported]); below that the
  * adapter is not installed, and LAN answers `unsupported` while the relay still works.
  */
-public class AndroidMdns internal constructor(private val nsd: NsdPort, private val net: NetworkPort) : MdnsAdapter {
+public class AndroidMdns internal constructor(
+    private val nsd: NsdPort,
+    private val net: NetworkPort,
+    private val schedule: (Long, () -> Unit) -> NsdStop = ::scheduleLater,
+) : MdnsAdapter {
     public constructor(context: Context, executor: Executor = defaultExecutor()) :
         this(PeerNsdPort(PeerNsd(context, executor)), ConnectivityNetworkPort(context))
 
@@ -129,7 +146,7 @@ public class AndroidMdns internal constructor(private val nsd: NsdPort, private 
     override suspend fun advertise(advert: MdnsAdvert): MdnsHandle {
         if (!nsd.supported()) throw MdnsUnavailableException("Local-network discovery needs Android 14 or later.")
         val txt = txtMap(advert.txt) ?: throw MdnsUnavailableException("The advert's TXT entries are not valid.")
-        val registration = Registration(nsd, advert.instance, advert.port, txt)
+        val registration = Registration(nsd, advert.instance, advert.port, txt, schedule)
         val first = CompletableDeferred<NsdAdvertResult>()
         registration.start { first.complete(it) }
         val change = net.onDefaultNetworkChange { registration.restart() }
@@ -152,16 +169,25 @@ public class AndroidMdns internal constructor(private val nsd: NsdPort, private 
         return MdnsHandle { browser.stop() }
     }
 
-    /** One advert: its registration, again after a network change, withdrawn on [stop]. */
+    /**
+     * One advert: its registration, again after a network change, withdrawn on [stop]. The first result goes to
+     * [start]'s callback; after that a refusal (the OS renamed the instance while the old name was still held)
+     * is retried with a growing delay, at most [MAX_RETRIES] times until the next network change.
+     */
     private class Registration(
         private val nsd: NsdPort,
         private val instance: String,
         private val port: Int,
         private val txt: Map<String, ByteArray>,
+        private val schedule: (Long, () -> Unit) -> NsdStop,
     ) {
         private var stop: NsdStop? = null
+        private var pending: NsdStop? = null
         private var stopped = false
         private var report: ((NsdAdvertResult) -> Unit)? = null
+        private var generation = 0
+        private var reported = false
+        private var attempts = 0
 
         fun start(onResult: (NsdAdvertResult) -> Unit) {
             report = onResult
@@ -169,8 +195,8 @@ public class AndroidMdns internal constructor(private val nsd: NsdPort, private 
         }
 
         private fun register() {
-            val onResult = report ?: return
-            val s = nsd.advertise(instance, port, txt) { onResult(it) }
+            val gen = synchronized(this) { ++generation }
+            val s = nsd.advertise(instance, port, txt) { result(gen, it) }
             val late = synchronized(this) {
                 if (stopped) {
                     true
@@ -182,18 +208,64 @@ public class AndroidMdns internal constructor(private val nsd: NsdPort, private 
             if (late) s.stop()
         }
 
-        fun restart() {
+        private fun result(gen: Int, r: NsdAdvertResult) {
+            // 0: nothing, 1: the first result, 2: a refusal to retry.
+            val action = synchronized(this) {
+                when {
+                    stopped || gen != generation -> 0
+                    !reported -> 1.also { reported = true }
+                    r is NsdAdvertResult.Refused -> 2
+                    else -> 0.also { attempts = 0 }
+                }
+            }
+            when (action) {
+                1 -> report?.invoke(r)
+                2 -> retryLater()
+            }
+        }
+
+        private fun retryLater() {
+            val delay = synchronized(this) {
+                if (stopped || attempts >= MAX_RETRIES) null else (RETRY_BASE_MILLIS shl attempts++).coerceAtMost(RETRY_MAX_MILLIS)
+            }
+            if (delay != null) {
+                val h = schedule(delay) { again() }
+                val late = synchronized(this) {
+                    if (stopped) {
+                        true
+                    } else {
+                        pending = h
+                        false
+                    }
+                }
+                if (late) h.stop()
+            }
+        }
+
+        private fun again() {
             val old = synchronized(this) { if (stopped) return else stop.also { stop = null } }
             old?.stop()
             register()
         }
 
+        fun restart() {
+            val (old, wait) = synchronized(this) {
+                if (stopped) return
+                attempts = 0
+                stop.also { stop = null } to pending.also { pending = null }
+            }
+            wait?.stop()
+            old?.stop()
+            register()
+        }
+
         fun stop() {
-            val old = synchronized(this) {
+            val (old, wait) = synchronized(this) {
                 if (stopped) return
                 stopped = true
-                stop.also { stop = null }
+                stop.also { stop = null } to pending.also { pending = null }
             }
+            wait?.stop()
             old?.stop()
         }
     }
@@ -213,11 +285,15 @@ public class AndroidMdns internal constructor(private val nsd: NsdPort, private 
         private var stopped = false
 
         fun start() {
-            val b = nsd.browse(object : PeerNsdListener {
-                override fun onFound(instance: String) = watch(instance)
+            // The name is judged inside the found table's gate, so a stranger's names never fill it.
+            val b = nsd.browse(
+                object : PeerNsdListener {
+                    override fun onFound(instance: String) = watch(instance)
 
-                override fun onLost(instance: String) = drop(instance)
-            })
+                    override fun onLost(instance: String) = drop(instance)
+                },
+                accept,
+            )
             val late = synchronized(lock) {
                 if (stopped) {
                     true
@@ -274,14 +350,12 @@ public class AndroidMdns internal constructor(private val nsd: NsdPort, private 
         }
 
         private fun found(r: NsdResolved): MdnsFound? {
-            val network = r.network
-            val hosts = if (network == null || r.port !in 1..MAX_PORT) emptyList() else onLink(r.addresses, net.subnetsOf(network))
+            // A VPN is not a LAN, and a network with no socket factory cannot be dialled without leaving it.
+            val network = r.network?.takeIf { net.isNotVpn(it) && r.port in 1..MAX_PORT }
+            val factory = network?.let { net.factoryOf(it) }
+            val hosts = if (network == null) emptyList() else onLink(r.addresses, net.subnetsOf(network))
             val txt = txtList(r.attributes)
-            return if (network == null || hosts.isEmpty() || txt == null) {
-                null
-            } else {
-                MdnsFound(r.instance, hosts[0], r.port, txt, hosts, net.factoryOf(network))
-            }
+            return if (factory == null || hosts.isEmpty() || txt == null) null else MdnsFound(r.instance, hosts[0], r.port, txt, hosts, factory)
         }
 
         // A global IPv6 address has no local address to be compared with here, so it is refused.
@@ -312,6 +386,20 @@ public class AndroidMdns internal constructor(private val nsd: NsdPort, private 
         const val ADVERT_WAIT_MILLIS: Long = 5_000
         private const val MAX_PORT = 65535
         private const val IDLE_SECONDS = 30L
+        const val MAX_RETRIES = 5
+        const val RETRY_BASE_MILLIS = 1_000L
+        const val RETRY_MAX_MILLIS = 30_000L
+
+        private val timer by lazy {
+            java.util.concurrent.ScheduledThreadPoolExecutor(1) { r -> Thread(r, "pkey-mdns-retry").apply { isDaemon = true } }
+                .apply { removeOnCancelPolicy = true }
+        }
+
+        /** Runs [task] once after [delayMillis]; the handle cancels it. */
+        fun scheduleLater(delayMillis: Long, task: () -> Unit): NsdStop {
+            val f = timer.schedule({ runCatching { task() } }, delayMillis, TimeUnit.MILLISECONDS)
+            return NsdStop { f.cancel(false) }
+        }
 
         /** One thread, in order, that lets go after 30 idle seconds. */
         fun defaultExecutor(): Executor = ThreadPoolExecutor(1, 1, IDLE_SECONDS, TimeUnit.SECONDS, LinkedBlockingQueue()) { r ->

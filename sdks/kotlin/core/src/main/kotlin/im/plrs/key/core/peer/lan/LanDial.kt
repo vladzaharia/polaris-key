@@ -95,8 +95,8 @@ private class Race(val hosts: List<String>, val port: Int, val o: LanDialOptions
     }
 
     /** An attempt ended without a connection; true when another should start at once. */
-    fun lose(s: Socket, e: Exception): Boolean {
-        closeQuietly(s)
+    fun lose(s: Socket?, e: Exception): Boolean {
+        if (s != null) closeQuietly(s)
         return synchronized(lock) {
             live.remove(s)
             last = e
@@ -139,11 +139,15 @@ private fun connectJudged(r: Race, s: Socket, host: String) {
 
 private fun CoroutineScope.launchAttempt(r: Race, host: String) {
     launch(Dispatchers.IO) {
-        val s = runCatching { r.o.socketFactory?.createSocket() }.getOrNull() ?: Socket()
-        val failure = runCatching { connectJudged(r, s, host) }.exceptionOrNull()
-        if (failure == null) {
+        // With a factory (the found network's), a socket it cannot make ends the attempt: the dial never
+        // falls back to a socket on the default route.
+        val factory = r.o.socketFactory
+        val made = if (factory == null) Result.success(Socket()) else runCatching { factory.createSocket() ?: throw IOException("no socket") }
+        val s = made.getOrNull()
+        val failure = if (s == null) made.exceptionOrNull() else runCatching { connectJudged(r, s, host) }.exceptionOrNull()
+        if (s != null && failure == null) {
             r.win(s, host)
-        } else if (r.lose(s, failure as? Exception ?: IOException(failure))) {
+        } else if (r.lose(s, failure as? Exception ?: IOException(failure ?: IOException("no socket")))) {
             r.take()?.let { launchAttempt(r, it) }
         }
     }

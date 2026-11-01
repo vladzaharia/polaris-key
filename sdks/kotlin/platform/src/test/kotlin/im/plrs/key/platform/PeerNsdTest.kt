@@ -198,8 +198,29 @@ class PeerNsdTest {
     @Test
     fun refusedAddressesAreDroppedBeforeTheCut() {
         fun ok(t: String) = lanCandidate(java.net.InetAddress.getByName(t))
-        assertTrue(ok("192.168.1.2") && ok("10.1.2.3") && ok("172.31.0.1") && ok("fd00::2") && ok("fe80::1") && ok("2606:4700::1"))
+        assertTrue(ok("192.168.1.2") && ok("10.1.2.3") && ok("172.31.0.1") && ok("fd00::2") && ok("fe80::1"))
         assertFalse(ok("100.64.0.1") || ok("169.254.1.1") || ok("8.8.8.8") || ok("172.32.0.1") || ok("127.0.0.1"))
         assertFalse(ok("::1") || ok("ff02::1") || ok("2001:0:1::1") || ok("2002::1"))
+        // Global unicast needs a local address in the same /64; a resolved service gives none, so it is refused.
+        assertFalse(ok("2606:4700::1") || ok("2a00:1450::1"))
+    }
+
+    @Test
+    fun browseDropsRefusedNamesBeforeTheFoundCap() {
+        val api = Fake()
+        val rec = Rec()
+        nsd(api).browse(rec, accept = { it.startsWith("p1-") })
+        for (i in 0 until 300) api.found!!("stranger$i")
+        api.found!!("p1-LEGITPEERNAME0001")
+        assertEquals(listOf("found:p1-LEGITPEERNAME0001"), rec.events)
+    }
+
+    @Test
+    fun globalAddressesNeverTakeTheUlaPlaceInTheCut() {
+        fun ip(t: String) = java.net.InetAddress.getByName(t)
+        val all = listOf("2606:4700::1", "2606:4700::2", "2606:4700::3", "2606:4700::4", "fd00::2").map { ip(it) }
+        assertEquals(listOf("fd00:0:0:0:0:0:0:2"), candidateAddresses(all))
+        val many = listOf("8.8.8.8", "169.254.1.1", "10.0.0.1", "10.0.0.2", "10.0.0.3", "10.0.0.4", "10.0.0.5", "fd00::2").map { ip(it) }
+        assertEquals(listOf("10.0.0.1", "10.0.0.2", "10.0.0.3", "10.0.0.4"), candidateAddresses(many))
     }
 }
