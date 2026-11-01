@@ -107,6 +107,47 @@ class TransferStoreTest {
     }
 
     @Test
+    fun aFinalizeByAnotherOwnerIsRefused() {
+        val s = store()
+        val e = s.epoch
+        val out = File(Files.createTempDirectory("pkey-store-test").toFile().also { dirs += it }, "delivered")
+        s.apply(XferEffect.Create(ref(1), partial(1, 100)), me, peer, e) { null }
+        s.apply(XferEffect.Write(ref(1), 0, ByteArray(100) { 7 }), me, peer, e) { null }
+        // The first session lets go; a second one takes the partial over and cuts it back.
+        s.apply(XferEffect.Keep(ref(1)), me, peer, e) { null }
+        s.apply(XferEffect.Truncate(ref(1), 50), you, peer, e) { null }
+        // The first session's queued hand-over delivers nothing.
+        refused { s.apply(XferEffect.Finalize(ref(1), "AAAAAAAAAAAAAAAAAAAAAA"), me, peer, e) { out } }
+        assertFalse(out.exists())
+        assertEquals(1, s.partialsFor(peer).size)
+        // The session that holds it hands it over.
+        s.apply(XferEffect.Write(ref(1), 50, ByteArray(50) { 7 }), you, peer, e) { null }
+        s.apply(XferEffect.Finalize(ref(1), "AAAAAAAAAAAAAAAAAAAAAA"), you, peer, e) { out }
+        assertEquals(100L, out.length())
+    }
+
+    @Test
+    fun aRefThatIsNotSixtyFourHexCharactersIsRefused() {
+        val s = store()
+        val e = s.epoch
+        fun named(f: () -> Unit) {
+            try {
+                f()
+                fail("must be refused")
+            } catch (ex: IllegalArgumentException) {
+                assertEquals("partial name", ex.message)
+            }
+        }
+        for (bad in listOf("a".repeat(63), "a".repeat(65), "../" + "a".repeat(61), "A".repeat(64))) {
+            named { s.apply(XferEffect.Create(bad, partial(1, 10).copy(ref = bad)), me, peer, e) { null } }
+            named { s.apply(XferEffect.Delete(bad), me, peer, e) { null } }
+            named { s.apply(XferEffect.Finalize(bad, "AAAAAAAAAAAAAAAAAAAAAA"), me, peer, e) { null } }
+            named { s.rehash(bad, 0) }
+        }
+        assertEquals(0, s.partialsFor(peer).size)
+    }
+
+    @Test
     fun evictionSparesALiveTransferAndAnotherPeersPartial() {
         val s = store()
         val e = s.epoch
