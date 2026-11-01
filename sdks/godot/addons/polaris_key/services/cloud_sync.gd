@@ -87,6 +87,8 @@ var _bulk_open := false
 var _saves_port: _SavesPort = null
 var _cache: Object = null
 var _cache_for: Variant = null
+## While one person replaces another, the incoming person: their chunk folder is the one that stays.
+var _keep_subject: Variant = null
 
 
 ## Build the host over this Core. `emit` is `func(data: Dictionary)`: one cloudSync event.
@@ -245,15 +247,23 @@ func _emit_transfer(event: Dictionary) -> void:
 
 
 ## The journal of the transfers and the chunk cache go with the person (D-9). Each is tried whatever the other did.
-## Person-scoped: only the leaving person's chunk folder goes, not the whole tree.
+## Person-scoped: every person's chunk folder goes (the leaving one and any orphan of an earlier person)
+## except the incoming person's, who replaces the leaving one. The leaving subject need not be known.
 func _purge_save_files() -> void:
 	if _journal != null:
 		_journal.clear()
-	var leaving: Variant = _cache_for if _cache_for != null else _subject
-	if (leaving == null or leaving == "") and _core != null:
-		leaving = _core.cache.subject
-	if host != null and is_instance_valid(host) and leaving is String and leaving != "":
-		_remove_tree(host.state_dir().path_join(PKeyChunkCache.DIR_NAME).path_join((leaving as String).sha256_text()))
+	if host != null and is_instance_valid(host):
+		var root: String = host.state_dir().path_join(PKeyChunkCache.DIR_NAME)
+		var keep := (_keep_subject as String).sha256_text() if _keep_subject is String and _keep_subject != "" else ""
+		var d := DirAccess.open(root)
+		if d != null:
+			for name in d.get_directories():
+				if name != keep:
+					_remove_tree(root.path_join(name))
+			for name in d.get_files():
+				DirAccess.remove_absolute(root.path_join(name))
+			if keep == "":
+				DirAccess.remove_absolute(root)
 	_cache = null
 	_cache_for = null
 
@@ -429,7 +439,9 @@ func _sign_in(subject: String) -> void:
 	# Another person: the first one leaves (unsent edits dropped, then forgotten) before this one starts.
 	# The device credential is already the new person's, so nothing is sent for the old one (A-1).
 	if _subject != null and _subject != subject:
+		_keep_subject = subject
 		await _sign_out_now()
+		_keep_subject = null
 	# Once per install, before the first principal arrives so the values enter at the floor and a newer
 	# cloud value wins. The marker is written after the sign-in succeeded (A-6).
 	var mark: bool = host.import_pending(_config._importable())
