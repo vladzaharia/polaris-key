@@ -354,12 +354,13 @@ describe("PolarisBridge v5 over IPC (SP-N10, SP-31)", () => {
       { purpose: "signin" },
       { purpose: "admin" },
       { licenseChoice: "other" },
+      { channel: "other" },
     ])
       await expect(bridge.beginSignIn(bad as never)).rejects.toMatchObject({
         code: "invalid-argument",
       });
     expect(sent.count).toBe(0);
-    await bridge.beginSignIn({ scope: "admin", channel: "redirect" } as never);
+    await bridge.beginSignIn({ scope: "admin" } as never);
     expect(sent.count).toBe(1);
     expect(sent.last).not.toHaveProperty("scope");
     expect(sent.last).not.toHaveProperty("channel");

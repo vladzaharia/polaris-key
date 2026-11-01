@@ -165,6 +165,11 @@ function renderNode(api: Api): string {
     } else if (r.id.startsWith("identity.nearby.")) {
       // M's side of nearby approval (I-47): `available` and `onRequest` live on the client's `nearby` member.
       types.push(`IdentityClient["nearby"][${q(r.name)}]`);
+    } else if (r.id === "identity.signIn.handleRedirect") {
+      // The native redirect session's verb (I-15b): the OS or the listener hands the URL back.
+      lines.push(
+        `it(${q(r.id)}, () => expect("handleRedirect" in NativeRedirectSession.prototype).toBe(true));`,
+      );
     } else if (r.id.startsWith("identity.signIn.session.")) {
       // The sessions `signIn.start` answers: device code (wait, reopen, cancel), redirect (complete, cancel),
       // nearby (D: approvers, choose, code, confirmAccount ...).
@@ -230,6 +235,7 @@ function renderNode(api: Api): string {
     `  EntitlementsClient,`,
     `  IdentityClient,`,
     `  LicenseClient,`,
+    `  NativeRedirectSession,`,
     `  NearbySignInSession,`,
     `  PolarisKeyClient,`,
     `  RedirectSession,`,

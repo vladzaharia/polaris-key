@@ -21,6 +21,10 @@ import type { ClaimResult, CommerceStore } from "../commerce/client.js";
 import { ErrorCode, type UpdateEvent } from "../constants.generated.js";
 import { copy } from "../core/copy.js";
 import type { DeviceCodeSession } from "../identity/signIn.js";
+import type {
+  NativeRedirectOutcome,
+  NativeRedirectSession,
+} from "../identity/nativeRedirect.js";
 import type { ActivationResult } from "../license/endpoints.js";
 import type { FeedKind } from "../update/client.js";
 import type { UpdateDecision } from "@polaris-key/protocol/update";
@@ -261,7 +265,12 @@ export type PolarisBridgeHandle = {
 };
 
 interface FlowEntry {
-  prompt: DeviceCodeSession;
+  /** A device-code flow. Exactly one of `prompt` and `native` is set. */
+  prompt?: DeviceCodeSession;
+  /** A native redirect flow (I-15b.2): the listener and the code stay in this process. */
+  native?: NativeRedirectSession;
+  /** The native flow's end, once it has one: an outcome, or the error it failed with. */
+  result?: { ok: NativeRedirectOutcome } | { err: unknown };
   /** The window that began the flow: only it may poll it. */
   windowId: number;
   timer: ReturnType<typeof setTimeout>;
@@ -708,6 +717,8 @@ export function exposePolarisBridge(
   const forgetFlow = (id: string): void => {
     const f = flows.get(id);
     if (f) clearTimeout(f.timer);
+    // A native flow still waiting closes its listener; a finished one ignores this.
+    f?.native?.cancel();
     flows.delete(id);
   };
   // The restart an install staged, applied by `update.restart` (the function cannot cross IPC).
@@ -736,8 +747,15 @@ export function exposePolarisBridge(
     discard: () => client.identity.choice.discardLate(),
     ended: (flowId) => forgetFlow(flowId),
   });
+  /** End the native redirect flows (one window's, or all): their listeners close. */
+  const endNativeFlows = (windowId?: number): void => {
+    for (const [id, f] of [...flows])
+      if (f.native && (windowId === undefined || f.windowId === windowId))
+        forgetFlow(id);
+  };
   const onIdentity = (e: { kind: string }): void => {
     if (e.kind === "signedOut") {
+      endNativeFlows();
       nearbyHost.dropAll();
       choiceHost.dropAll();
     }
@@ -1196,9 +1214,64 @@ export function exposePolarisBridge(
     beginSignIn: async (e, begin) => {
       // v4: the renderer's device name wins over the host option, which stays the default.
       const deviceName = optStr(bag(begin).deviceName) ?? opts.deviceName;
-      // UK-42.17: the hints the Node SDK's own `signIn.start` takes, and nothing more (no scope,
-      // no channel). Types and lengths are checked here; the Worker normalises the rest.
+      // UK-42.17: the hints the Node SDK's own `signIn.start` takes, and nothing more (no scope).
+      // Types and lengths are checked here; the Worker normalises the rest.
       const hints = signInHints(bag(begin));
+      const channel = bag(begin).channel;
+      if (channel !== undefined && channel !== "redirect")
+        throw new BridgeRefusal(
+          "invalid-argument",
+          'channel must be "redirect" when given.',
+        );
+      if (channel === "redirect") {
+        // I-15b.2: the native redirect. The main process binds the listener, opens the browser
+        // and redeems the code; the renderer holds a flow id and sees an end, never a code.
+        const reopenId = bag(begin).reopen;
+        if (reopenId !== undefined) {
+          const flow = flows.get(str(reopenId, "reopen"));
+          if (!flow?.native || flow.windowId !== e.sender.id)
+            return { reopened: false };
+          return { reopened: await flow.native.reopen() };
+        }
+        // One native flow per window: a new begin ends the window's earlier one.
+        endNativeFlows(e.sender.id);
+        const native = await client.identity.signIn.start({
+          channel: "redirect",
+          ...(deviceName ? { deviceName } : {}),
+          ...hints,
+          ...(opts.shell
+            ? {
+                openUrl: async (url: string) => {
+                  await opts.shell!.openExternal(url);
+                  return true;
+                },
+              }
+            : {}),
+        });
+        const flowId = randomUUID();
+        const entry: FlowEntry = {
+          native,
+          windowId: e.sender.id,
+          timer: setTimeout(
+            () => forgetFlow(flowId),
+            Math.max(0, native.expiresAt * 1000 - Date.now()) + graceMs,
+          ),
+        };
+        entry.timer.unref?.();
+        flows.set(flowId, entry);
+        // The window going away ends its flow (no listener outlives it).
+        e.sender.once?.("destroyed", () => forgetFlow(flowId));
+        native.wait().then(
+          (ok) => void (entry.result = { ok }),
+          (err: unknown) => void (entry.result = { err }),
+        );
+        return {
+          flowId,
+          channel: "redirect",
+          expiresAt: native.expiresAt,
+          interval: 2,
+        };
+      }
       const prompt = await client.identity.signIn.start({
         channel: "device-code",
         ...(deviceName ? { deviceName } : {}),
@@ -1229,10 +1302,22 @@ export function exposePolarisBridge(
         );
       let r;
       try {
-        r = await flow.prompt.wait({ once: true });
+        if (flow.native) {
+          // I-15b.2: a native flow ends on its own; until it does, it is pending.
+          if (flow.result === undefined) return { kind: "pending" };
+          if ("err" in flow.result) throw flow.result.err;
+          r = flow.result.ok;
+        } else r = await flow.prompt!.wait({ once: true });
       } catch (e) {
-        // Transport trouble says nothing about the sign-in: keep polling.
         const code = (e as { code?: unknown }).code;
+        // A native flow redeems its code once: whatever went wrong, it is over.
+        if (flow.native) {
+          forgetFlow(flowId as string);
+          if (code === ErrorCode.signInFailed)
+            return { kind: "error", message: (e as Error).message };
+          throw e;
+        }
+        // Transport trouble says nothing about the sign-in: keep polling.
         if (code === "network-error" || code === "server-error")
           return { kind: "pending" };
         if (code === ErrorCode.signInDenied) {
@@ -1255,9 +1340,13 @@ export function exposePolarisBridge(
           nearbyHost.supersede();
           pushState();
           notify("signedIn");
-          return r.identity
+          return "identity" in r && r.identity
             ? { kind: "ok", identity: r.identity }
             : { kind: "ok" };
+        case "activated":
+          forgetFlow(flowId as string);
+          pushState();
+          return { kind: "ok" };
         case "expired":
         case "cancelled":
           forgetFlow(flowId as string);
@@ -1270,6 +1359,7 @@ export function exposePolarisBridge(
       return bridgeActivation(r);
     },
     signOut: async () => {
+      endNativeFlows();
       nearbyHost.dropAll();
       choiceHost.dropAll();
       await client.identity.signOut();

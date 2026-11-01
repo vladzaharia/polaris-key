@@ -190,9 +190,8 @@
       "note": "LK-SKIP.7: signIn.start({channel: \"redirect\", redirectUri, keyReturn: true}) appends key_return=allow and complete() settles an activated outcome (licenseId, subject null, keyEntries) for a via: \"key\" answer: the token is stored as a key activation, the stored account is forgotten and no signedIn is emitted. A refusal (device_limit, key_entry_limit, license_owned) is a RedirectRefusedError whose details carry limit, deviceCount, manageUrl, keyEntries and signInUrl. Both redirect-web-key-return transcripts replay."
     },
     "identity.redirect.native": {
-      "status": "planned",
-      "wp": "I-15b",
-      "note": "I-15b: the pushed request, the system-browser session or loopback listener, and the redemption from the pushing device, with the replayer."
+      "status": "implemented",
+      "note": "I-15b.2: signIn.start({channel: \"redirect\"}) with no redirectUri binds a loopback listener on 127.0.0.1 first, pushes the request (X-PKey-Device), opens authorize with the request_uri in the system browser (or the host's openUrl, Electron: shell.openExternal) and redeems the code from the pushing device. handleRedirect(url) takes a registered scheme's delivery; reopen() is Open browser again. Headless (SSH, CI, no display on Linux) and a missing class answer redirect-unavailable. The Electron bridge serves beginSignIn({channel: \"redirect\"}) and pollSignIn from the main process. The redirect-native-* transcripts replay (test/identityNativeRedirect.test.ts holds the listener rules)."
     },
     "identity.exchange": {
       "status": "na",

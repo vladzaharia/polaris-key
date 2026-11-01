@@ -20,7 +20,7 @@
 // @pkey-feature connect.relay connect.links
 // @pkey-feature sync.settings
 // @pkey-feature sync.files sync.files.delta sync.saves
-// @pkey-feature identity.nearby
+// @pkey-feature identity.nearby identity.redirect.native
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented is listed as skipped rather than failing,
@@ -70,6 +70,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   ErrorCode,
   PolarisError,
+  NativeRedirectSession,
   PolarisKeyClient,
   RedirectRefusedError,
   RelayError,
@@ -103,6 +104,7 @@ import type {
   WireMutation,
 } from "@polaris-key/client-core/cloud-sync";
 import { signJws } from "@polaris-key/jws";
+import { classifyNativeRedirectUri } from "@polaris-key/client-core";
 import type { FileReply } from "@polaris-key/client-core/sync";
 import type { VouchRequest } from "@polaris-key/client-core/peer";
 // The host's own transport (U-06.2). The package does not export it, so the runner reads the
@@ -223,6 +225,33 @@ function usesRedirect(t: Transcript): boolean {
   );
 }
 
+/** Does this transcript push a native redirect request (I-15)? */
+function usesNative(t: Transcript): boolean {
+  return t.steps.some((s) =>
+    s.exchanges.items.some(
+      (x) =>
+        x.request.method === "POST" &&
+        x.request.path === `/${t.product}/identity/request`,
+    ),
+  );
+}
+
+/** The registered schemes the recorded pushes name (`<scheme>:/pkey/callback`). */
+function nativeSchemes(t: Transcript): string[] {
+  const out = new Set<string>();
+  for (const s of t.steps)
+    for (const x of s.exchanges.items) {
+      const uri = (x.request.body?.json as { redirect_uri?: unknown } | null)
+        ?.redirect_uri;
+      if (
+        typeof uri === "string" &&
+        classifyNativeRedirectUri(uri) === "scheme"
+      )
+        out.add(uri);
+    }
+  return [...out];
+}
+
 /** Does this transcript call the account verbs (so discovery must name their endpoints)? */
 function usesAccount(t: Transcript): boolean {
   return t.steps.some(
@@ -243,7 +272,13 @@ function asksDeviceChoice(t: Transcript): boolean {
 function standardDiscovery(t: Transcript): string {
   const base = `${t.baseUrl}/${t.product}`;
   const choice = t.steps.some((s) =>
-    s.exchanges.items.some((x) => x.request.path.includes("/identity/choice/")),
+    s.exchanges.items.some(
+      (x) =>
+        x.request.path.includes("/identity/choice/") ||
+        // A native push that asks the app to choose is only sent when the choice routes exist.
+        (x.request.body?.json as { license_choice?: unknown } | null)
+          ?.license_choice === "app",
+    ),
   );
   return JSON.stringify({
     product: t.product,
@@ -260,6 +295,15 @@ function standardDiscovery(t: Transcript): string {
               ...(asksDeviceChoice(t) ? { deviceChoice: true } : {}),
               issuer: redirectIssuer(t),
               account: true,
+              ...(usesNative(t)
+                ? {
+                    nativeRedirect: {
+                      loopback: true,
+                      schemes: nativeSchemes(t),
+                      claimedHttps: [],
+                    },
+                  }
+                : {}),
               endpoints: {
                 subject: `${base}/identity/subject`,
                 signout: `${base}/identity/signout`,
@@ -267,6 +311,12 @@ function standardDiscovery(t: Transcript): string {
                 accountPortal: `${t.baseUrl}/#/p/${t.product}`,
                 authorize: `${base}/identity/authorize`,
                 token: `${base}/identity/token`,
+                ...(usesNative(t)
+                  ? {
+                      request: `${base}/identity/request`,
+                      signinReturn: `${t.baseUrl}/signin/return`,
+                    }
+                  : {}),
                 ...(choice
                   ? {
                       choiceLicenses: `${base}/identity/choice/licenses`,
@@ -308,6 +358,9 @@ interface Session {
   server: ReplayServer;
   /** The redirect session the last authorize step started (its URL is what the browser opens). */
   redirect: RedirectSession | null;
+  /** The native redirect session the last push started, and the URLs its opener was given. */
+  native: NativeRedirectSession | null;
+  opened: string[];
   /** The label of the fixture keys the client holds (`connectIdentity`). */
   keyLabel?: string;
   /** Nearby approval (`identity.nearby`): D is this replay's client, M is built per approve. */
@@ -382,6 +435,90 @@ async function startRedirectFor(
   });
 }
 
+/** A stand-in for the loopback listener: the recorded port, no socket (the listener itself is
+ *  tested against a real socket in packages/sdk-node/test/identityNativeRedirect.test.ts). */
+const fakeListener = (port: number) => async () => ({
+  port,
+  arm() {},
+  close() {},
+});
+
+/** The recorded push that named `redirectUri`: the answer a replayed session starts from. */
+function recordedPush(
+  t: Transcript,
+  redirectUri: string,
+): { requestUri: string; expiresIn: number } | null {
+  for (const step of t.steps)
+    for (const x of step.exchanges.items) {
+      const body = x.request.body?.json as { redirect_uri?: unknown } | null;
+      const answer = x.response.body as {
+        request_uri?: unknown;
+        expires_in?: unknown;
+      };
+      if (
+        x.request.path === `/${t.product}/identity/request` &&
+        body?.redirect_uri === redirectUri &&
+        x.response.status === 201 &&
+        typeof answer.request_uri === "string" &&
+        typeof answer.expires_in === "number"
+      )
+        return { requestUri: answer.request_uri, expiresIn: answer.expires_in };
+    }
+  return null;
+}
+
+/**
+ * A native sign-in as the host would start it, from the push the Worker recorded: the SDK builds
+ * and sends the request itself (so its body is checked against the recording) unless `pushed`
+ * stands in for a push the replay already made.
+ */
+async function startNativeFor(
+  client: PolarisKeyClient,
+  step: Step,
+  session: Session,
+  rec: Record<string, string>,
+  pushed?: { requestUri: string; expiresIn: number },
+): Promise<NativeRedirectSession> {
+  const redirectUri = rec.redirect_uri!;
+  const cls = classifyNativeRedirectUri(redirectUri);
+  const internals = client.identity as unknown as {
+    redirectEntropy: unknown;
+    nativeReplay: unknown;
+  };
+  internals.redirectEntropy = {
+    state: rec.state ?? stringArg(step, "state") ?? REDIRECT_DEFAULTS.state,
+    codeVerifier:
+      stringArg(step, "codeVerifier") ?? REDIRECT_DEFAULTS.codeVerifier,
+  };
+  internals.nativeReplay = {
+    ...(cls === "loopback"
+      ? { listen: fakeListener(Number(new URL(redirectUri).port)) }
+      : {}),
+    ...(pushed ? { pushed: { kind: "pushed", ...pushed } } : {}),
+  };
+  const opts: Record<string, unknown> = {
+    channel: "redirect",
+    openUrl: async (url: string) => {
+      session.opened.push(url);
+      return true;
+    },
+    ...(cls === "scheme"
+      ? { loopback: false, registeredSchemes: [redirectUri] }
+      : {}),
+    ...(rec.device_name ? { deviceName: rec.device_name } : {}),
+    ...(rec.return_uri ? { returnUri: rec.return_uri } : {}),
+    ...(rec.scope ? { scope: rec.scope } : {}),
+    ...(rec.login_hint ? { loginHint: rec.login_hint } : {}),
+    ...(rec.name_hint ? { nameHint: rec.name_hint } : {}),
+    ...(rec.purpose ? { purpose: rec.purpose } : {}),
+    ...(rec.license_choice === "app" ? { licenseChoice: "app" } : {}),
+    ...(rec.key_return ? { keyReturn: true } : {}),
+  };
+  return (await client.identity.signIn.start(
+    opts as never,
+  )) as unknown as NativeRedirectSession;
+}
+
 /**
  * One `browser` step: the page the person's browser would load. The authorize request is the
  * one the SDK built (its `authorizeUrl`), unless the step is a refusal (`expect.error` on an
@@ -401,11 +538,41 @@ async function browserStep(
     stringArg(step, "redirectUri") ?? REDIRECT_DEFAULTS.redirectUri;
   let last: { status: number; headers: Headers; text: string } | null = null;
   let lastPath = "";
+  let lastWasPush = false;
   for (const item of step.exchanges.items) {
     const req = item.request;
     let path = req.path;
+    // I-15b: the native push is the SDK's own request, checked against the recording.
+    if (
+      req.method === "POST" &&
+      path === `/${t.product}/identity/request` &&
+      step.expect.error === undefined
+    ) {
+      session.opened = [];
+      session.native = await startNativeFor(
+        client,
+        step,
+        session,
+        (req.body?.json ?? {}) as Record<string, string>,
+      );
+      last = {
+        status: item.response.status,
+        headers: new Headers(item.response.headers),
+        text: ReplayServer.bodyText(item),
+      };
+      lastPath = path;
+      lastWasPush = true;
+      continue;
+    }
     if (req.method === "GET" && path.startsWith(authorizePath)) {
-      if (step.expect.error === undefined) {
+      if (req.path.includes("request_uri=")) {
+        // A pushed request: the browser opens what the SDK opened, and a recording that was
+        // not pushed in this step is played as recorded.
+        if (session.opened.length > 0)
+          expect(session.opened[0], "the URL the SDK opened").toBe(
+            `${t.baseUrl}${req.path}`,
+          );
+      } else if (step.expect.error === undefined) {
         const recorded = new URL(path, t.baseUrl);
         const session1 = await startRedirectFor(
           client,
@@ -423,8 +590,25 @@ async function browserStep(
     }
     const init: RequestInit = { method: req.method, redirect: "manual" };
     if (req.body !== null) {
-      init.body = JSON.stringify(req.body.json);
-      init.headers = { "content-type": "application/json" };
+      const recordedType = req.headers["content-type"] ?? "";
+      if (/^application\/x-www-form-urlencoded\b/i.test(recordedType)) {
+        // A form the browser or another device sent (a native token request played as recorded):
+        // the SDK's headers, the recorded device when it names one.
+        init.body = new URLSearchParams(
+          req.body.json as Record<string, string>,
+        ).toString();
+        const device = req.headers["x-pkey-device"];
+        const sent = client.core.headers({ "content-type": recordedType });
+        if (device !== undefined && !device.startsWith("{")) {
+          for (const k of Object.keys(sent))
+            if (k.toLowerCase() === "x-pkey-device") delete sent[k];
+          sent["x-pkey-device"] = device;
+        }
+        init.headers = sent;
+      } else {
+        init.body = JSON.stringify(req.body.json);
+        init.headers = { "content-type": "application/json" };
+      }
     }
     // A CORS exchange (`cloudsync-cors`) is the browser's own: the recorded headers are played
     // as recorded, and the SDK asserts nothing about them (React's Chromium job does).
@@ -449,8 +633,33 @@ async function browserStep(
       text: await res.text(),
     };
     lastPath = path;
+    lastWasPush =
+      req.method === "POST" && path === `/${t.product}/identity/request`;
   }
   if (last === null) return out;
+  // The native push answered on its own (nothing opened yet), or a native token request played
+  // from another device: there is no page to land on, only the Worker's answer.
+  if (
+    lastWasPush ||
+    (lastPath === `/${t.product}/identity/token` && last.status !== 200)
+  ) {
+    const answer = (() => {
+      try {
+        return JSON.parse(last.text) as { error?: unknown };
+      } catch {
+        return {};
+      }
+    })();
+    if (lastWasPush) {
+      out.navigated = "page";
+      if (last.status !== 201 && typeof answer.error === "string")
+        out.error = answer.error;
+    } else if (typeof answer.error === "string") {
+      out.result = answer.error.replace(/_/g, "-");
+      out.code = answer.error;
+    }
+    return out;
+  }
   const appUri = new URL(redirectUri);
   const location =
     last.headers.get("location") ??
@@ -464,7 +673,12 @@ async function browserStep(
     })();
   if (location !== null) {
     const to = new URL(location, t.baseUrl);
-    if (to.origin === appUri.origin && to.pathname === appUri.pathname) {
+    const nativeBack = classifyNativeRedirectUri(location.split("?")[0]);
+    if (
+      (to.origin === appUri.origin && to.pathname === appUri.pathname) ||
+      nativeBack === "loopback" ||
+      nativeBack === "scheme"
+    ) {
       out.navigated = "app";
       const error = to.searchParams.get("error");
       if (error) out.error = error;
@@ -1097,15 +1311,35 @@ async function act(
     case "redirectComplete": {
       const callbackUrl = String(step.args.callbackUrl);
       const cb = new URL(callbackUrl);
-      const sess = await startRedirectFor(
-        client,
-        step,
-        `${cb.origin}${cb.pathname}`,
-        undefined,
-        step.args.keyReturn === true,
-      );
+      const base = callbackUrl.split("?")[0]!;
+      const nativeClass = classifyNativeRedirectUri(base);
+      const recorded =
+        nativeClass === "loopback" || nativeClass === "scheme"
+          ? recordedPush(session.transcript, base)
+          : null;
+      // A native redirect back: the session starts from the push already recorded (no second
+      // push), then takes the URL the listener or the OS delivered.
+      const sess =
+        recorded !== null
+          ? await startNativeFor(
+              client,
+              step,
+              session,
+              { redirect_uri: base },
+              recorded,
+            )
+          : await startRedirectFor(
+              client,
+              step,
+              `${cb.origin}${cb.pathname}`,
+              undefined,
+              step.args.keyReturn === true,
+            );
       try {
-        const done = await sess.complete(callbackUrl);
+        const done =
+          sess instanceof NativeRedirectSession
+            ? await sess.handleRedirect(callbackUrl)
+            : await sess.complete(callbackUrl);
         out.result = done.kind === "signedIn" ? "ok" : done.kind;
         if (done.kind === "signedIn") {
           out.scope = done.scope;
@@ -1662,6 +1896,8 @@ async function replay(t: Transcript): Promise<void> {
     transcript: t,
     server,
     redirect: null,
+    native: null,
+    opened: [],
     syncWire,
   };
   const approvers: PolarisKeyClient[] = [];

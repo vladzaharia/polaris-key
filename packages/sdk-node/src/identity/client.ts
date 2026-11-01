@@ -68,6 +68,12 @@ import {
   type RedirectSession,
   type RedirectSignInOptions,
 } from "./redirect.js";
+import {
+  startNativeRedirectSignIn,
+  type NativeRedirectDeps,
+  type NativeRedirectSession,
+  type NativeRedirectSignInOptions,
+} from "./nativeRedirect.js";
 
 /** `identity.current()`: who this device is signed in as. */
 export interface CurrentIdentity extends ShownIdentity {
@@ -324,6 +330,10 @@ export class IdentityClient {
     | { state?: string; codeVerifier?: string }
     | undefined;
 
+  /** Conformance replay only (a typed cast, like `redirectEntropy`): a stand-in loopback
+   *  listener and the recorded answer of a native push. */
+  private nativeReplay: NativeRedirectDeps["replay"] | undefined;
+
   /**
    * Sign in. `start({channel: "device-code", ...})` returns a {@link DeviceCodeSession}: show
    * its `userCode` and `verificationUri` (or open `verificationUriComplete`), then `wait()`.
@@ -334,14 +344,21 @@ export class IdentityClient {
   get signIn(): {
     start(opts: DeviceCodeSignInOptions): Promise<DeviceCodeSession>;
     start(opts: RedirectSignInOptions): Promise<RedirectSession>;
+    start(opts: NativeRedirectSignInOptions): Promise<NativeRedirectSession>;
     start(opts: NearbySignInOptions): Promise<NearbySignInSession>;
   } {
     const start = (
       opts:
         | DeviceCodeSignInOptions
         | RedirectSignInOptions
+        | NativeRedirectSignInOptions
         | NearbySignInOptions,
-    ): Promise<DeviceCodeSession | RedirectSession | NearbySignInSession> => {
+    ): Promise<
+      | DeviceCodeSession
+      | RedirectSession
+      | NativeRedirectSession
+      | NearbySignInSession
+    > => {
       if (opts.channel === "nearby") {
         const b = this.nearbyBinding;
         if (b === null)
@@ -363,6 +380,22 @@ export class IdentityClient {
           opts,
         );
       }
+      // No `redirectUri`: the native redirect (a loopback listener or a registered scheme).
+      if (opts.channel === "redirect" && opts.redirectUri === undefined)
+        return startNativeRedirectSignIn(
+          {
+            ctx: this.ctx,
+            tokens: this.tokens,
+            discovery: this.loadDiscovery,
+            onAcquired: this.onAcquired,
+            forget: () => this.forget(),
+            emit: this.emit,
+            openUrl: (url) => openInBrowser(url),
+            ...(this.redirectEntropy ? { entropy: this.redirectEntropy } : {}),
+            ...(this.nativeReplay ? { replay: this.nativeReplay } : {}),
+          },
+          opts,
+        );
       if (opts.channel === "redirect")
         return startRedirectSignIn(
           {
@@ -403,6 +436,7 @@ export class IdentityClient {
       start: {
         (opts: DeviceCodeSignInOptions): Promise<DeviceCodeSession>;
         (opts: RedirectSignInOptions): Promise<RedirectSession>;
+        (opts: NativeRedirectSignInOptions): Promise<NativeRedirectSession>;
         (opts: NearbySignInOptions): Promise<NearbySignInSession>;
       };
     };

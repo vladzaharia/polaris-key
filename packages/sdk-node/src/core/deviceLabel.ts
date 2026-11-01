@@ -3,20 +3,83 @@
 // activation and registration. Display data only: no server decision reads it.
 //
 // Precedence: a per-call `deviceName`, else the client's `deviceName` option, else the platform
-// default (`os.hostname()` with a trailing `.local`, `.lan` or `.home` removed). An empty string
+// default (`defaultDeviceName`, SIGN-IN D-73: the computer's own name). An empty string
 // at either level opts out: no label is sent. Every candidate goes through client-core's
 // `normalizeDeviceLabel`, so what is sent is exactly what the Worker stores.
 
-import { hostname } from "node:os";
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { hostname, platform } from "node:os";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 
 /** The trailing mDNS and home-router suffixes a hostname carries but a person never typed. */
 const HOST_SUFFIX = /\.(local|lan|home)$/i;
+/** The names Windows generates at setup (SIGN-IN D-73): a person never chose them. */
+const WINDOWS_DESKTOP = /^DESKTOP-[A-Z0-9]+$/i;
+const WINDOWS_LAPTOP = /^LAPTOP-[A-Z0-9]+$/i;
 
-/** The platform's own name for this machine, or null when it reports none. */
-export function defaultDeviceName(): string | null {
+/** Where the computer's name comes from; a test supplies its own. */
+export interface NameSources {
+  platform: NodeJS.Platform;
+  hostname: () => string;
+  /** macOS: the Sharing name (`scutil --get ComputerName`), or null. */
+  macComputerName: () => string | null;
+  /** Linux: `PRETTY_HOSTNAME` of `/etc/machine-info`, or null. */
+  linuxPrettyHostname: () => string | null;
+}
+
+const realSources: NameSources = {
+  platform: platform(),
+  hostname: () => hostname(),
+  macComputerName: () => {
+    try {
+      return execFileSync("scutil", ["--get", "ComputerName"], {
+        encoding: "utf8",
+        timeout: 1000,
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+    } catch {
+      return null;
+    }
+  },
+  linuxPrettyHostname: () => {
+    try {
+      const m = /^PRETTY_HOSTNAME=(.*)$/m.exec(
+        readFileSync("/etc/machine-info", "utf8"),
+      );
+      if (!m) return null;
+      return m[1]!.trim().replace(/^(["'])(.*)\1$/, "$2");
+    } catch {
+      return null;
+    }
+  },
+};
+
+/**
+ * The user-visible name of this computer (SIGN-IN D-73): macOS the computer name, Linux
+ * `PRETTY_HOSTNAME` else the host name, Windows the host name unless Windows generated it
+ * (`DESKTOP-…`, `LAPTOP-…`), then "Windows PC" or "Windows laptop". Null when none is known.
+ */
+let cachedDefault: string | null | undefined;
+
+/** The default for this process, read once (the macOS lookup runs a process). */
+export function cachedDefaultDeviceName(): string | null {
+  return (cachedDefault ??= defaultDeviceName());
+}
+
+export function defaultDeviceName(
+  src: NameSources = realSources,
+): string | null {
   try {
-    return hostname().replace(HOST_SUFFIX, "") || null;
+    const host = src.hostname().replace(HOST_SUFFIX, "");
+    if (src.platform === "darwin") return src.macComputerName() || host || null;
+    if (src.platform === "linux")
+      return src.linuxPrettyHostname() || host || null;
+    if (src.platform === "win32") {
+      if (WINDOWS_LAPTOP.test(host)) return "Windows laptop";
+      if (WINDOWS_DESKTOP.test(host)) return "Windows PC";
+    }
+    return host || null;
   } catch {
     return null;
   }
@@ -29,7 +92,7 @@ export function defaultDeviceName(): string | null {
 export function resolveDeviceLabel(
   override: string | undefined,
   configured: string | undefined,
-  platformDefault: () => string | null = defaultDeviceName,
+  platformDefault: () => string | null = cachedDefaultDeviceName,
 ): string | null {
   if (override !== undefined) return normalizeDeviceLabel(override);
   if (configured !== undefined) return normalizeDeviceLabel(configured);

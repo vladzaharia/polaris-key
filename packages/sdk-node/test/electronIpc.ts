@@ -23,6 +23,10 @@ export function ipcPair() {
       if (event === "destroyed") destroyedListeners.add(listener);
       return undefined;
     },
+    destroy() {
+      for (const l of [...destroyedListeners]) l();
+      destroyedListeners.clear();
+    },
   };
   let allowed = true;
   const ipcMain: IpcMainLike = {

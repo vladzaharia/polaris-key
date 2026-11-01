@@ -180,99 +180,124 @@ export class RedirectSession {
         ErrorCode.signInFailed,
         `the sign-in redirect was refused (${checked.reason}).`,
       );
-    const { ctx, tokens } = this.#deps;
-    const res = await ctx.request(
-      pending.tokenEndpoint,
+    return redeemCode(
+      this.#deps,
       {
-        method: "POST",
-        headers: ctx.headers({ "content-type": TOKEN_CONTENT_TYPE }),
-        body: tokenForm(pending, checked.code, this.#deviceName ?? undefined),
+        tokenEndpoint: pending.tokenEndpoint,
+        keyReturn: pending.keyReturn === true,
       },
-      "redirect sign-in token",
+      tokenForm(pending, checked.code, this.#deviceName ?? undefined),
+      {},
     );
-    const body: unknown = await res
-      .text()
-      .then((t) => JSON.parse(t) as unknown)
-      .catch(() => null);
-    const answer: TokenAnswer = parseTokenAnswer(res.status, body, {
-      keyReturn: pending.keyReturn === true,
-    });
-    switch (answer.kind) {
-      case "malformed":
-        throw new PolarisError(
-          ErrorCode.badResponse,
-          "the token endpoint answered without a complete sign-in.",
-          { status: res.status },
-        );
-      case "refused": {
-        const retry = res.headers.get("retry-after");
-        const retryAfterSeconds =
-          answer.retryAfterSeconds ??
-          (retry !== null && /^\d+$/.test(retry.trim())
-            ? Math.min(Number(retry), 3600)
-            : undefined);
-        const refusal = [
-          answer.status >= 500 ? ErrorCode.serverError : answer.error,
-          `the token endpoint refused the sign-in (${answer.error}).`,
-          {
-            status: answer.status,
-            ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}),
-            ...(answer.status >= 500 ? { wireCode: answer.error } : {}),
-          },
-        ] as const;
-        // A key return is refused as `license/activate` would refuse it (`device_limit`,
-        // `key_entry_limit`, `license_owned`): the limit, the device count, the manage link,
-        // the key entries and the sign-in link ride along on `details`.
-        if (answer.details !== undefined && answer.status < 500)
-          throw new RedirectRefusedError(...refusal, answer.details);
-        throw new PolarisError(...refusal);
-      }
-      case "choose":
-        return {
-          kind: "choose",
-          grant: answer.grant,
-          expiresIn: answer.expiresIn,
-          choices: answer.choices,
-        };
-      case "activated": {
-        // A key return (LK-SKIP, §12.5 rule 3): a key activation, never a sign-in. The token is
-        // stored as `activate` (re-acquired by `license/token`) and the account the device held,
-        // if any, is forgotten with its stored subject (U-02): `subjectChanged` with a null subject, and
-        // no `signedIn` event. The license event comes from the sync after the token is stored.
-        const before = await readStoredSubject(ctx.dirs.state);
-        await tokens.set(answer.accessToken, "activate");
-        await this.#deps.forget();
-        await this.#deps.onAcquired();
-        const licenseId =
-          typeof answer.license.id === "string" ? answer.license.id : null;
-        if (before !== null)
-          this.#deps.emit?.({ kind: "subjectChanged", subject: null });
-        return {
-          kind: "activated",
-          subject: null,
-          licenseId,
-          activation: { licenseId },
-          keyEntries: answer.keyEntries,
-        };
-      }
-      case "token": {
-        await tokens.set(answer.accessToken, "signin");
-        await this.#deps.forget();
-        await writeStoredSubject(ctx.dirs.state, answer.subject);
-        await this.#deps.onAcquired();
-        this.#deps.emit?.({ kind: "signedIn", subject: answer.subject });
-        const licenseId =
-          answer.license && typeof answer.license.id === "string"
-            ? answer.license.id
-            : null;
-        return {
-          kind: "signedIn",
-          subject: answer.subject,
-          scope: answer.scope,
-          licenseId,
-          activation: { licenseId },
-        };
-      }
+  }
+}
+
+/**
+ * Redeem a code at the token endpoint and settle the outcome (stored token, subject, events).
+ * Shared by the web redirect and the native redirect (the pushing device's header rides in
+ * `headers`).
+ */
+export async function redeemCode(
+  deps: RedirectDeps,
+  pending: { tokenEndpoint: string; keyReturn: boolean },
+  form: string,
+  headers: Record<string, string>,
+): Promise<RedirectOutcome> {
+  const { ctx, tokens } = deps;
+  const res = await ctx.request(
+    pending.tokenEndpoint,
+    {
+      method: "POST",
+      headers: ctx.headers({
+        "content-type": TOKEN_CONTENT_TYPE,
+        ...headers,
+      }),
+      body: form,
+    },
+    "redirect sign-in token",
+  );
+  const body: unknown = await res
+    .text()
+    .then((t) => JSON.parse(t) as unknown)
+    .catch(() => null);
+  const answer: TokenAnswer = parseTokenAnswer(res.status, body, {
+    keyReturn: pending.keyReturn,
+  });
+  switch (answer.kind) {
+    case "malformed":
+      throw new PolarisError(
+        ErrorCode.badResponse,
+        "the token endpoint answered without a complete sign-in.",
+        { status: res.status },
+      );
+    case "refused": {
+      const retry = res.headers.get("retry-after");
+      const retryAfterSeconds =
+        answer.retryAfterSeconds ??
+        (retry !== null && /^\d+$/.test(retry.trim())
+          ? Math.min(Number(retry), 3600)
+          : undefined);
+      const refusal = [
+        answer.status >= 500 ? ErrorCode.serverError : answer.error,
+        `the token endpoint refused the sign-in (${answer.error}).`,
+        {
+          status: answer.status,
+          ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}),
+          ...(answer.status >= 500 ? { wireCode: answer.error } : {}),
+        },
+      ] as const;
+      // A key return is refused as `license/activate` would refuse it (`device_limit`,
+      // `key_entry_limit`, `license_owned`): the limit, the device count, the manage link,
+      // the key entries and the sign-in link ride along on `details`.
+      if (answer.details !== undefined && answer.status < 500)
+        throw new RedirectRefusedError(...refusal, answer.details);
+      throw new PolarisError(...refusal);
+    }
+    case "choose":
+      return {
+        kind: "choose",
+        grant: answer.grant,
+        expiresIn: answer.expiresIn,
+        choices: answer.choices,
+      };
+    case "activated": {
+      // A key return (LK-SKIP, §12.5 rule 3): a key activation, never a sign-in. The token is
+      // stored as `activate` (re-acquired by `license/token`) and the account the device held,
+      // if any, is forgotten with its stored subject (U-02): `subjectChanged` with a null subject, and
+      // no `signedIn` event. The license event comes from the sync after the token is stored.
+      const before = await readStoredSubject(ctx.dirs.state);
+      await tokens.set(answer.accessToken, "activate");
+      await deps.forget();
+      await deps.onAcquired();
+      const licenseId =
+        typeof answer.license.id === "string" ? answer.license.id : null;
+      if (before !== null)
+        deps.emit?.({ kind: "subjectChanged", subject: null });
+      return {
+        kind: "activated",
+        subject: null,
+        licenseId,
+        activation: { licenseId },
+        keyEntries: answer.keyEntries,
+      };
+    }
+    case "token": {
+      await tokens.set(answer.accessToken, "signin");
+      await deps.forget();
+      await writeStoredSubject(ctx.dirs.state, answer.subject);
+      await deps.onAcquired();
+      deps.emit?.({ kind: "signedIn", subject: answer.subject });
+      const licenseId =
+        answer.license && typeof answer.license.id === "string"
+          ? answer.license.id
+          : null;
+      return {
+        kind: "signedIn",
+        subject: answer.subject,
+        scope: answer.scope,
+        licenseId,
+        activation: { licenseId },
+      };
     }
   }
 }
