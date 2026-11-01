@@ -320,7 +320,9 @@ public final class XferStore: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         try check(t)
-        guard let l = live[ref], l.owner == t.owner else { throw XferStoreError(.notOwner) }
+        // No reservation: the room was refused when the person accepted.
+        guard let l = live[ref] else { throw XferStoreError(.quota) }
+        guard l.owner == t.owner else { throw XferStoreError(.notOwner) }
         try handle(ref).truncate(atOffset: UInt64(offset))
     }
 

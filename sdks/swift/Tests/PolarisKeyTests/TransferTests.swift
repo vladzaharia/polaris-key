@@ -660,6 +660,57 @@ final class TransferTests: XCTestCase {
         XCTAssertEqual(log.current, Array(repeating: "write", count: 5) + ["finalize", "release"])
     }
 
+    func testAnAcceptThatNoLongerFitsCancelsThatTransferWithQuotaAndKeepsTheSession() async throws {
+        let key = Data(repeating: 9, count: 32)
+        let data = content(20_000)
+        var h = SHA256()
+        h.update(data: data)
+        let sha = xferHex(h)
+        let id = Base64URL.encode(Data(repeating: 4, count: 16))
+        let closes = LockedValue(0)
+        let aResults = LockedValue<[XferResult]>([])
+        let bResults = LockedValue<[XferResult]>([])
+        let epA = LockedValue<XferEndpoint?>(nil)
+        let epB = LockedValue<XferEndpoint?>(nil)
+        let optsA = XferMachineOptions(
+            mode: .a, caps: [xferCap], maxMessage: 1 << 20, handler: nil, peerKey: key)
+        let optsB = XferMachineOptions(
+            mode: .a, caps: [xferCap], maxMessage: 1 << 20, handler: { _ in .ask }, peerKey: key)
+        epA.set(
+            XferEndpoint(
+                options: optsA,
+                ports: XferEndpointPorts(
+                    send: { t, b in epB.current?.receive(type: t, body: b) }, close: { _ in closes.with { $0 += 1 } },
+                    read: { _, off, len in xferContent(off, off + len) }, apply: { _ in }),
+                events: XferEvents(
+                    ask: { _ in }, withdraw: { _ in }, result: { r in aResults.with { $0.append(r) } },
+                    refused: { _ in }, error: { _ in })))
+        epB.set(
+            XferEndpoint(
+                options: optsB,
+                ports: XferEndpointPorts(
+                    send: { t, b in epA.current?.receive(type: t, body: b) }, close: { _ in closes.with { $0 += 1 } },
+                    read: { _, _, _ in Data() },
+                    // The room that fitted when the offer was shown is gone when the person accepts.
+                    apply: { op in
+                        if case .create = op.effect { throw XferStoreError(.quota) }
+                    }),
+                events: XferEvents(
+                    ask: { a in epB.current?.consent(id: a.id, accept: true) }, withdraw: { _ in },
+                    result: { r in bResults.with { $0.append(r) } }, refused: { _ in }, error: { _ in })))
+        try epA.current!.offer(XferOfferArgs(id: id, size: 20_000, chunk: 10_000, sha256: sha))
+        await eventually("sender told") { !aResults.current.isEmpty }
+        XCTAssertEqual(aResults.current, [.cancelled(id: id, reason: .quota)])
+        await epB.current!.idle()
+        XCTAssertEqual(closes.current, 0)
+        // The same session takes the next offer.
+        let id2 = Base64URL.encode(Data(repeating: 5, count: 16))
+        try epA.current!.offer(XferOfferArgs(id: id2, size: 20_000, chunk: 10_000, sha256: sha))
+        await eventually("second told") { aResults.current.count == 2 }
+        XCTAssertEqual(aResults.current.last, .cancelled(id: id2, reason: .quota))
+        XCTAssertEqual(closes.current, 0)
+    }
+
     // MARK: Names
 
     func testNamesThatLookLikePathsStayDisplayData() async throws {

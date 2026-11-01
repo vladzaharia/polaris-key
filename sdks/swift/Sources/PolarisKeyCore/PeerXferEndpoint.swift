@@ -14,6 +14,14 @@ public struct XferOp: Sendable {
     public let meta: XferPartial?
     /// The transfer the effect belongs to, when it names one (`create`, `truncate`, `finalize`, `write`).
     public let id: String?
+
+    /// A `create` or `truncate`: the effects that need room.
+    var isRoomEffect: Bool {
+        switch effect {
+        case .create, .truncate: return true
+        default: return false
+        }
+    }
 }
 
 /// What the host sees of a transfer.
@@ -124,6 +132,11 @@ public final class XferEndpoint: @unchecked Sendable {
         step { m, t in m.consent(t, id: id, accept: accept) }
     }
 
+    /// The room check failed at accept: `CANCEL` `quota` for that transfer; the session stays.
+    public func noRoom(id: String) {
+        step { m, t in m.noRoom(t, id: id) }
+    }
+
     public func cancel(id: String) {
         step { m, t in m.cancel(t, id: id) }
     }
@@ -221,8 +234,17 @@ public final class XferEndpoint: @unchecked Sendable {
                     }
                 }
             }
+            var full: String?
             do {
-                for op in frozen { try await self.ports.apply(op) }
+                for op in frozen {
+                    do {
+                        try await self.ports.apply(op)
+                    } catch let e as XferStoreError where e.kind == .quota && op.isRoomEffect {
+                        // No room for the transfer the person just accepted: it alone is cancelled.
+                        guard let id = op.id else { throw e }
+                        full = id
+                    }
+                }
             } catch {
                 release()
                 self.events.error(error)
@@ -231,7 +253,10 @@ public final class XferEndpoint: @unchecked Sendable {
             }
             release()
             do {
-                for send in sends { try await self.perform(send, chunks, &failed) }
+                for send in sends {
+                    if case .accept(let id, _) = send, id == full { continue }
+                    try await self.perform(send, chunks, &failed)
+                }
             } catch {
                 self.events.error(error)
                 self.ports.close(.peerBye)
@@ -243,6 +268,9 @@ public final class XferEndpoint: @unchecked Sendable {
             for r in results { self.events.result(r) }
             for id in failed {
                 self.step { m, t in m.fail(t, id: id) }
+            }
+            if let id = full {
+                self.step { m, t in m.noRoom(t, id: id) }
             }
         }
     }

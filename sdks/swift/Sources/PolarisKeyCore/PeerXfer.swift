@@ -529,6 +529,20 @@ public struct XferMachine {
         }
     }
 
+    /// The host's room check failed when the person accepted: `CANCEL` `quota` for that one transfer, and the
+    /// session stays. A partial this transfer made at 0 bytes goes; one with bytes kept stays.
+    public mutating func noRoom(_ at: Double, id: String) -> XferOut {
+        begin(at) { m in
+            guard let t = m.tr[id], t.dir == .incoming, t.st == .asking || t.accepted else { return }
+            m.out.send.append(.cancel(id: id, reason: .quota))
+            if let ref = t.partial, let p = m.parts.first(where: { $0.ref == ref }), p.bytes == 0 {
+                m.eff(.discard(ref))
+                m.parts.removeAll { $0.ref == ref }
+            }
+            m.end(t, cancelledHere: true)
+        }
+    }
+
     /// The host cancels a transfer.
     public mutating func cancel(_ at: Double, id: String) -> XferOut {
         begin(at) { m in
