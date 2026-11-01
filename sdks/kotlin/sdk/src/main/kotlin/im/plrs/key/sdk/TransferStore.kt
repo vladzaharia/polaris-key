@@ -32,6 +32,7 @@ import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
@@ -74,6 +75,7 @@ internal class TransferStore(
 
     /** The partials of [peerKey], expired ones removed first. */
     fun partialsFor(peerKey: ByteArray): List<XferPartial> = synchronized(lock) {
+        if (!dirIsPlain()) return@synchronized emptyList()
         sweep()
         val peer = xferHex(peerKey)
         val out = ArrayList<XferPartial>()
@@ -96,6 +98,7 @@ internal class TransferStore(
      */
     fun rehash(ref: String, offset: Long): MessageDigest {
         val d = MessageDigest.getInstance("SHA-256")
+        if (!dirIsPlain()) throw IOException("the transfer directory is not a plain directory")
         try {
             RandomAccessFile(part(ref), "r").use { f ->
                 val buf = ByteArray(READ_BLOCK)
@@ -334,9 +337,26 @@ internal class TransferStore(
     }
 
     private fun ensureDir() {
-        if (dir.isDirectory) return
-        dir.mkdirs()
-        ownerOnly(dir, true)
+        if (!Files.exists(dir.toPath(), LinkOption.NOFOLLOW_LINKS)) {
+            dir.mkdirs()
+            ownerOnly(dir, true)
+        }
+        // A link, or a directory another user owns, is refused: nothing is written through it.
+        if (!dirIsPlain()) throw IOException("the transfer directory is not a plain directory")
+    }
+
+    /** True when the directory is absent, or a real directory this user owns; false for a link or a foreign one. */
+    private fun dirIsPlain(): Boolean {
+        val p = dir.toPath()
+        if (!Files.exists(p, LinkOption.NOFOLLOW_LINKS)) return true
+        if (Files.isSymbolicLink(p) || !Files.isDirectory(p, LinkOption.NOFOLLOW_LINKS)) return false
+        return try {
+            Files.getOwner(p, LinkOption.NOFOLLOW_LINKS).name == System.getProperty("user.name")
+        } catch (e: UnsupportedOperationException) {
+            true
+        } catch (e: IOException) {
+            false
+        }
     }
 
     /** A new empty file that only the owner can open, from the first byte. */

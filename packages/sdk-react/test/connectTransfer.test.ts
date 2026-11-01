@@ -218,6 +218,41 @@ describe("a Blob over the relay", () => {
     expect(Buffer.concat(wrote)).toEqual(Buffer.from(body));
   });
 
+  it("delivered memory records only delivered content", async () => {
+    const r = await rig();
+    const body = bytes(200_000);
+    let asked = 0;
+    let first = true;
+    const sink = { blob: null as Blob | null };
+    r.setHandler(() => {
+      asked++;
+      return {
+        blob: (b: Blob) => {
+          if (first) {
+            first = false;
+            throw new Error("sink failed");
+          }
+          sink.blob = b;
+        },
+      };
+    });
+    await r.sender
+      .send(r.p.out, new Blob([body]), { id: ID })
+      .catch(() => undefined);
+    expect(sink.blob).toBeNull();
+    // The sender, not told it was delivered, retries on a new session: the person is asked again.
+    let inn2: unknown = null;
+    r.p.ra.onSession((s) => (inn2 = s));
+    const out2 = await r.p.rb.dial(r.p.a.id);
+    await until(() => inn2 !== null);
+    r.sender.adopt(out2);
+    r.receiver.adopt(inn2 as never);
+    await r.sender.send(out2, new Blob([body]), { id: ID });
+    await until(() => sink.blob !== null);
+    expect(asked).toBe(2);
+    expect(new Uint8Array(await sink.blob!.arrayBuffer())).toEqual(body);
+  });
+
   it("an empty Blob is delivered empty", async () => {
     const r = await rig();
     const sink = { blob: null as Blob | null };

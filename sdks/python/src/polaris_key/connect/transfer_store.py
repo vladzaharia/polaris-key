@@ -21,6 +21,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import tempfile
 import threading
 import time
@@ -96,6 +97,7 @@ class PartialStore:
             if self._loaded:
                 return
             os.makedirs(self._dir, mode=0o700, exist_ok=True)
+            self._check_dir()
             _chmod(self._dir, 0o700)
             try:
                 with open(os.path.join(self._dir, _INDEX), "rb") as f:
@@ -107,6 +109,15 @@ class PartialStore:
                 self._idx = {}
             self._loaded = True
             self._sweep_locked()
+
+    def _check_dir(self) -> None:
+        """The directory is a real directory this user owns: a link or a foreign one is refused."""
+        st = os.lstat(self._dir)
+        if stat.S_ISLNK(st.st_mode) or not stat.S_ISDIR(st.st_mode):
+            raise StoreRefused(errno.ELOOP, "the transfer directory is not a plain directory")
+        getuid = getattr(os, "getuid", None)
+        if getuid is not None and st.st_uid != getuid():
+            raise StoreRefused(errno.EACCES, "the transfer directory belongs to another user")
 
     def _path(self, ref: str) -> str:
         if _REF.match(ref) is None:
@@ -325,13 +336,16 @@ class PartialStore:
             elif "finalize" in effect:
                 raise ValueError("finalize goes through deliver")
 
-    def deliver(self, ref: Optional[str], dest: str, overwrite: bool = False) -> None:
+    def deliver(self, ref: Optional[str], dest: str, overwrite: bool = False, owner: Any = None) -> None:
         """Move a complete partial to ``dest``, the host's choice: a temp file in the destination's directory,
         then a rename (never over an existing file unless ``overwrite``). The partial is removed. ``ref``
-        None delivers an empty file (a transfer of zero bytes keeps no partial)."""
+        None delivers an empty file (a transfer of zero bytes keeps no partial). With ``owner``, only the
+        session that holds the partial delivers it."""
         with self._lock:
             self._ensure()
             if ref is not None:
+                if owner is not None and self._claims.get(ref) is not owner:
+                    raise StoreRefused(errno.EBUSY, "this session does not hold the partial")
                 self._close(ref)
             ddir = os.path.dirname(os.path.abspath(dest))
             fd, tmp = tempfile.mkstemp(prefix=".pkey-xfer-", dir=ddir)

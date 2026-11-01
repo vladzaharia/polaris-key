@@ -268,6 +268,8 @@ func _perform(out: Dictionary, offered: String) -> void:
 			if r is PKeyResult and not (r as PKeyResult).ok:
 				await _fail("the store refused an effect")
 				return
+		if _machine != null and not out["delivered"].is_empty():
+			_machine.remember_delivered(out["delivered"], _clock())
 		for s: Dictionary in out["send"]:
 			if not await _perform_send(s, failed):
 				return
