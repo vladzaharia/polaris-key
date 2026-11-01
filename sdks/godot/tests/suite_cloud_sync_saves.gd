@@ -992,7 +992,7 @@ func _make_host(tag: String, handler: Callable, codec: Object = null, encryption
 	}
 	if codec != null:
 		deps["codec"] = codec
-	host.configure(deps, {"encryption": encryption, "catalog": {"schemaVersion": 1, "entries": []}})
+	host.configure(deps, {"encryption": encryption, "catalog": {"schemaVersion": 1, "entries": [], "cloudSync": {"collections": [{"name": "saves", "template": "saves"}]}}})
 	return {"host": host, "server": server, "dir": dir}
 
 
@@ -1158,6 +1158,9 @@ class Worker:
 		var path: String = req["path"]
 		paths.append("%s %s" % [req["method"], path])
 		var base := "/diceroll/sync/files/saves/slot1"
+		if path == "/diceroll/config/schema" and req["method"] == "GET":
+			var schema := {"schemaVersion": 1, "entries": [], "cloudSync": {"collections": [{"name": "saves", "template": "saves"}]}}
+			return {"status": 200, "headers": {"content-type": "application/json"}, "body": JSON.stringify(schema)}
 		if path.begins_with("/diceroll/sync?"):
 			var changes := []
 			if version > 0:

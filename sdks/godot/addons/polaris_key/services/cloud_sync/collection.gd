@@ -39,16 +39,29 @@ var name: String
 var _host: Node
 var _tickets := {}
 var _off_tap: Callable = Callable()
+var _registered := false
+var _key_re: RegEx
 
 
 func _init(p_name: String, host: Node) -> void:
 	name = p_name
 	_host = host
+	_key_re = RegEx.create_from_string(PKeyChannel.anchored(PKeyConstants.SYNC_KEY_PATTERN))
 	_host.events.connect(_on_events)
-	var m: Object = _machine()
-	if m != null:
-		m.watch_records(name, true)
-		_off_tap = m.tap_outcomes(_on_outcome)
+	_register()
+
+
+## Watches the collection and taps the outcomes on the host's machine, once. A handle made before the
+## host started registers at the first call that finds a machine.
+func _register() -> void:
+	if _registered or _host == null or not is_instance_valid(_host) or not _host.is_started():
+		return
+	var m: Object = _host.machine()
+	if m == null:
+		return
+	_registered = true
+	m.watch_records(name, true)
+	_off_tap = m.tap_outcomes(_on_outcome)
 
 
 ## Stops watching: the signals fall silent and the machine computes nothing for this collection.
@@ -56,17 +69,22 @@ func close() -> void:
 	if _host != null and is_instance_valid(_host):
 		if _host.events.is_connected(_on_events):
 			_host.events.disconnect(_on_events)
-		var m: Object = _machine()
-		if m != null:
+		var m: Object = _host.machine() if _host.is_started() else null
+		if m != null and _registered:
 			m.watch_records(name, false)
 			if _off_tap.is_valid():
 				_off_tap.call()
 	_off_tap = Callable()
+	_registered = false
+	_tickets.clear()
 	_host = null
 
 
 func _machine() -> Object:
-	return _host.machine() if _host != null and is_instance_valid(_host) and _host.is_started() else null
+	if _host == null or not is_instance_valid(_host) or not _host.is_started():
+		return null
+	_register()
+	return _host.machine()
 
 
 # ── reads ─────────────────────────────────────────────────────────────────────────────────────
@@ -112,9 +130,11 @@ func put(id: String, value: Variant, if_version: Variant = null) -> PKeyResult:
 	var d: Variant = _check(id, func(p: String) -> bool: return _PUT_POLICIES.has(p))
 	if d is PKeyResult:
 		return d
+	if if_version != null and d["policy"] != "revision":
+		return _refuse(PKeyConstants.ErrorCode.OP_INVALID_FOR_POLICY)
+	if not _sealable(id, value):
+		return _refuse(PKeyConstants.ErrorCode.VALUE_INVALID)
 	if if_version != null:
-		if d["policy"] != "revision":
-			return _refuse(PKeyConstants.ErrorCode.OP_INVALID_FOR_POLICY)
 		var base: Variant = _version_of(if_version)
 		if base == null:
 			return _refuse(PKeyConstants.ErrorCode.VALUE_INVALID)
@@ -135,9 +155,12 @@ func update(id: String, changes: Dictionary) -> PKeyResult:
 		return _refuse(PKeyConstants.ErrorCode.VALUE_INVALID)
 	var seen := {}
 	for n in (sets as Dictionary).keys() + (removes as Array):
-		if not (n is String) or n == "" or n.to_utf8_buffer().size() > MAX_FIELD_BYTES or seen.has(n):
+		if not (n is String) or n == "" or n.to_utf8_buffer().has(0) or n.to_utf8_buffer().size() > MAX_FIELD_BYTES or seen.has(n):
 			return _refuse(PKeyConstants.ErrorCode.VALUE_INVALID)
 		seen[n] = true
+	for v in (sets as Dictionary).values():
+		if not PKeySyncCanonicalJson.canonicalize_value(v)["ok"]:
+			return _refuse(PKeyConstants.ErrorCode.VALUE_INVALID)
 	if seen.is_empty():
 		return _refuse(PKeyConstants.ErrorCode.VALUE_INVALID)
 	_prepare()
@@ -185,16 +208,26 @@ func _decl() -> Variant:
 ## The declaration when the call may go on, else the refusal.
 func _check(id: String, allowed: Callable) -> Variant:
 	var m := _machine()
-	if m == null:
-		return _refuse(SIGNED_OUT)
-	var d: Variant = m.collection_decl(name)
+	var d: Variant = m.collection_decl(name) if m != null else null
 	if d == null:
 		return _refuse(PKeyConstants.ErrorCode.COLLECTION_UNKNOWN)
+	if m.subject() == null:
+		return _refuse(SIGNED_OUT)
 	if not allowed.call(String(d["policy"])):
 		return _refuse(PKeyConstants.ErrorCode.OP_INVALID_FOR_POLICY)
-	if id == "":
+	if not _id_ok(id):
 		return _refuse(PKeyConstants.ErrorCode.VALUE_INVALID)
 	return d
+
+
+## A record id the host can seal: a sync key that does not look like a blinded name.
+func _id_ok(id: String) -> bool:
+	return _key_re.search(id) != null and not PKeySyncBlind.is_blinded_name(id)
+
+
+## Whether the id and the value can be sealed: the same checks the host codec makes.
+func _sealable(id: String, value: Variant) -> bool:
+	return _id_ok(id) and PKeySyncCanonicalJson.canonicalize_value(value)["ok"]
 
 
 func _element(id: String, element: Variant, adding: bool) -> PKeyResult:

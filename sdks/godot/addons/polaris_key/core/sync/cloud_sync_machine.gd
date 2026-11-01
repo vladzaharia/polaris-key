@@ -57,6 +57,8 @@ var _outcome_taps: Array = []
 ## The collections whose record changes are reported as `records` events, each with the last state
 ## reported (record id to a canonical string). Empty: nothing is computed.
 var _watched: Dictionary = {}
+## How many handles watch each collection; the last one off stops the watch.
+var _watch_counts: Dictionary = {}
 var _s: Dictionary
 var _client_id_re: RegEx
 ## "" when the machine was built; "bad-client-id" when the host's `newClientId` gave a malformed id.
@@ -629,8 +631,15 @@ func collection_decl(name: String) -> Variant:
 ## Report record changes of `collection` as `records` events from now on (`on` false: stop).
 func watch_records(collection: String, on: bool) -> void:
 	if not on:
-		_watched.erase(collection)
-	elif not _watched.has(collection):
+		var left: int = int(_watch_counts.get(collection, 0)) - 1
+		if left > 0:
+			_watch_counts[collection] = left
+		else:
+			_watch_counts.erase(collection)
+			_watched.erase(collection)
+		return
+	_watch_counts[collection] = int(_watch_counts.get(collection, 0)) + 1
+	if not _watched.has(collection):
 		_watched[collection] = _record_states(collection)
 
 
@@ -642,6 +651,7 @@ func adopt_observers(from: Object) -> void:
 			_outcome_taps.append(tap)
 	for c: String in from._watched.keys():
 		watch_records(c, true)
+		_watch_counts[c] = int(from._watch_counts.get(c, 1))
 
 
 ## The ids of a collection's effective records (pending edits applied), in byte order.
@@ -900,6 +910,29 @@ func receive(res: Dictionary, opened: Variant = null) -> Dictionary:
 			return Types.ok()
 	if proceed:
 		_kick()
+	return Types.ok()
+
+
+## The host could not seal these mutations of the request in flight: each is dropped with a local
+## `rejected` outcome (`value_invalid`), the rest of the journal stays and goes out next.
+func reject_unsealable(mutation_ids: Array) -> Dictionary:
+	var req: Variant = _in_flight
+	if req == null:
+		return Types.fail("no-request-in-flight")
+	_in_flight = null
+	if req["partition"] == _s["subject"]:
+		var p := _active()
+		var before := _value_map()
+		var overrides := {}
+		for id in mutation_ids:
+			for i in p["pending"].size():
+				if Types.json_equal(p["pending"][i]["mutationId"], id):
+					var op: Dictionary = p["pending"][i]
+					p["pending"].remove_at(i)
+					_result(p, op, {"status": "rejected", "code": PKeyConstants.ErrorCode.VALUE_INVALID}, overrides, {}, req["cursor"])
+					break
+		_emit_changes(before, overrides, "remote")
+	_kick()
 	return Types.ok()
 
 
@@ -2019,6 +2052,7 @@ func _leave(reason: String, discard: bool) -> void:
 	if unsynced > 0 and not discard:
 		_events.append({"type": "unsyncedData", "count": unsynced})
 	_emit_changes(before, {}, "remote")
+	_note_record_changes("remote")
 
 
 func _partition_expired(p: Dictionary) -> bool:

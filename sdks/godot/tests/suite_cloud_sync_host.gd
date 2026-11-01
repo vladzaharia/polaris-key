@@ -49,8 +49,20 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _host(t)
 	await _bounds(t)
 	await _collections(t)
+	await _collections_hardening(t)
 	await PKeyTestFixtures.frames(20)  # let abandoned coroutines resume and finish
 	return true
+
+
+## A codec that refuses to seal a mutation whose value is the string "unsealable".
+class RefusingCodec:
+	extends OpenCodec
+
+	func seal_push(body: Dictionary, _routes: Array) -> Dictionary:
+		for mu in body.get("mutations", []):
+			if mu is Dictionary and mu.get("value") is String and mu["value"] == "unsealable":
+				return {"ok": false, "code": "invalid_options"}
+		return {"ok": true, "body": body}
 
 
 func _server_url(s: PKeyFakeServer, path: String) -> String:
@@ -578,6 +590,14 @@ func _collections(t: PKeyTestContext) -> void:
 		"if_version on a merge delete": [cards.delete("c1", 3), "op_invalid_for_policy"],
 		"if_version on a lastWrite put": [logs.put("k", 1, 2), "op_invalid_for_policy"],
 		"a malformed if_version": [saves.put("s", {}, "later"), "value_invalid"],
+		"an id outside the sync key set": [saves.put("a b", 1), "value_invalid"],
+		"an id of 129 characters": [saves.put("a".repeat(129), 1), "value_invalid"],
+		"an id shaped like a blinded name": [saves.put("x:" + "A".repeat(43), 1), "value_invalid"],
+		"a field name holding a NUL byte": [cards.update("c1", {"set": {PackedByteArray([102, 0, 103]): 1}}), "value_invalid"],
+		"a NaN value": [logs.put("k", NAN), "value_invalid"],
+		"an integer beyond 2^53": [logs.put("k", 9007199254740993), "value_invalid"],
+		"a NaN field value": [cards.update("c1", {"set": {"a": INF}}), "value_invalid"],
+		"a NaN value with if_version": [saves.put("s", NAN, "*"), "value_invalid"],
 	}
 	for name in refused:
 		var pair: Array = refused[name]
@@ -585,6 +605,8 @@ func _collections(t: PKeyTestContext) -> void:
 		t.check("collection: %s is refused with %s" % [name, pair[1]], not res.ok and String(res.code) == pair[1], str(res))
 	await _settle(host)
 	t.check("collection: a refusal sends nothing", _posts(c["server"]) == posts)
+	t.check("collection: a refusal journals nothing", cards.ids() == ["c1"] and logs.ids() == [] and saves.ids() == [])
+	t.check("collection: the refusal order is unknown, policy, then value", String(nope.put("a b", NAN).code) == "collection_unknown" and String(cards.put("a b", NAN).code) == "op_invalid_for_policy")
 
 	# Union and delete.
 	var a := tags.add("t1", {"k": 1})
@@ -622,7 +644,13 @@ func _collections(t: PKeyTestContext) -> void:
 	cards.update("c2", {"set": {"a": 1}})
 	t.check("collection: a rebuilt machine still reports the watched collection", changes.size() >= 2 and changes.back()[0] == ["c2"], str(changes))
 
-	# Signed out.
+	# Signed out. A ticket still open is forgotten by close().
+	var open_ticket := saves.put("s9", {"playtime": 1}, "*")
+	t.check("collection: a ticket is held until its outcome", open_ticket.ok and not saves._tickets.is_empty())
+	var closing := PKeyCollection.new("saves", host)
+	closing.put("s8", 1, "*")
+	closing.close()
+	t.check("collection: close() forgets the tickets", closing._tickets.is_empty())
 	host.machine().sign_out(true)
 	t.check("collection: a verb while nobody is signed in answers signed_out", String(cards.update("c9", {"set": {"a": 1}}).code) == "signed_out")
 	cards.close()
@@ -635,3 +663,75 @@ func _collections(t: PKeyTestContext) -> void:
 
 static func _same_json(a: Variant, b: Variant) -> bool:
 	return PKeySyncCanonicalJson.canonicalize_value(a).get("canonical") == PKeySyncCanonicalJson.canonicalize_value(b).get("canonical")
+
+
+func _collections_hardening(t: PKeyTestContext) -> void:
+	var version := [0]
+	var catalog := {"schemaVersion": 1, "entries": [], "cloudSync": {"collections": [
+		{"name": "tags", "conflict": "union"},
+		{"name": "log.*", "template": "session"},
+	]}}
+	var c := _make(t, "collections_hardening", _answer(version), {}, {"catalog": catalog})
+	var host: Node = c["host"]
+	# A handle made before the host started registers when the host does.
+	var early := PKeyCollection.new("tags", host)
+	var early2 := PKeyCollection.new("tags", host)
+	t.check("collection: before the host starts a verb is refused, collection_unknown", String(early.add("t", 1).code) == "collection_unknown")
+	await host.start()
+	host.sign_in("sub_a")
+	await _settle(host)
+	var seen: Array = []
+	var seen2: Array = []
+	early.changed.connect(func(ids: Array, origin: String) -> void: seen.append([ids, origin]))
+	early2.changed.connect(func(ids: Array, origin: String) -> void: seen2.append([ids, origin]))
+	t.check("collection: a handle made before the host started reports changes", early.add("t1", 1).ok and seen == [[["t1"], "local"]], str(seen))
+	t.check("collection: the second handle on one collection reports them too", seen2 == [[["t1"], "local"]], str(seen2))
+	early.close()
+	early2.add("t2", 1)
+	t.check("collection: closing one handle does not silence the other", seen2.size() == 2 and seen2[1][0] == ["t2"], str(seen2))
+	early2.close()
+
+	# saves is not implicit.
+	var saves := PKeyCollection.new("saves", host)
+	t.check("collection: saves answers collection_unknown unless the catalog declares it", saves.policy() == "" and String(saves.put("s", 1).code) == "collection_unknown")
+	saves.close()
+
+	# close() forgets the tickets: no outcome after close.
+	_done(c)
+
+	# E2E: a mutation the codec cannot seal is dropped with a local rejection; the next one goes out.
+	var disc := func() -> Variant: return {"services": {"sync": {"enabled": true, "encryption": "e2e"}}}
+	var handler := func(req: Dictionary) -> Dictionary:
+		if req["method"] == "GET":
+			return {"status": 200, "body": JSON.stringify({"encryption": "e2e", "cursor": 1, "serverNow": 1760000000000})}
+		var parsed: Variant = JSON.parse_string((req["body"] as PackedByteArray).get_string_from_utf8())
+		var results := []
+		for mu in parsed["mutations"]:
+			version[0] += 1
+			results.append({"mutationId": int(mu["mutationId"]), "status": "ok", "version": version[0]})
+		return {"status": 200, "body": JSON.stringify({"encryption": "e2e", "results": results, "cursor": version[0] + 1, "serverNow": 1760000000000})}
+	var e := _make(t, "unsealable", handler, {"codec": RefusingCodec.new(), "discovery": disc}, {"encryption": "e2e", "catalog": catalog})
+	var eh: Node = e["host"]
+	await eh.start()
+	eh.sign_in("sub_a")
+	await _settle(eh)
+	var events: Array = []
+	eh.events.connect(func(batch: Array) -> void: events.append_array(batch))
+	var logs := PKeyCollection.new("log.app", eh)
+	t.check("e2e: the handle accepts a value the codec will refuse", logs.put("a", "unsealable").ok)
+	t.check("e2e: and a good one after it", logs.put("b", 2).ok)
+	await _settle(eh)
+	await _settle(eh)
+	var pushed: Array = []
+	for r: Dictionary in e["server"].requests:
+		if r["method"] == "POST":
+			pushed.append_array(JSON.parse_string((r["body"] as PackedByteArray).get_string_from_utf8())["mutations"])
+	var ids_pushed: Array = []
+	for mu in pushed:
+		ids_pushed.append(mu["target"]["record"][1])
+	var rejected := events.filter(func(ev: Dictionary) -> bool: return ev.get("type") == "rejected" and ev.get("code") == "value_invalid")
+	t.check("e2e: the unsealable mutation is dropped with a local value_invalid rejection", rejected.size() == 1, str(events))
+	t.check("e2e: the next mutation is pushed and the unsealable one never is", ids_pushed == ["b"], str(ids_pushed))
+	t.check("e2e: the journal holds nothing pending afterwards", eh.machine().status().get("pending", 0) == 0, str(eh.machine().status()))
+	logs.close()
+	_done(e)
