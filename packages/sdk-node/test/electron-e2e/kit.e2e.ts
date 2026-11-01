@@ -650,7 +650,7 @@ describe("the bridge and the shell, wired", () => {
         own: Object.getOwnPropertyNames(window),
       };
     });
-    expect(page.version).toBe(4);
+    expect(page.version).toBe(6);
     expect(page.leaks, "node or electron globals in the page").toEqual([]);
     // The same page in a sandboxed window with no preload: what the page has extra is the preload's.
     const bare: string[] = await l.app.evaluate(

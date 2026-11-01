@@ -79,12 +79,12 @@ describe("BridgeState mirrors @polaris-key/node's SyncState", () => {
   });
 
   it("declares its protocol revision (the fixture bridge is a v2 host)", () => {
-    expect(BRIDGE_VERSION).toBe(5);
+    expect(BRIDGE_VERSION).toBe(6);
     expect(makeFakeBridge(emptyBridgeState()).version).toBe(2);
   });
 
   it("v5 declares nearby sign-in as optional members, so a v4 host stays a PolarisBridge", () => {
-    expect(BRIDGE_VERSIONS_ACCEPTED).toEqual([3, 4, 5]);
+    expect(BRIDGE_VERSIONS_ACCEPTED).toEqual([3, 4, 5, 6]);
     // A v4 host: none of the v5 members. The assignment IS the assertion.
     const v4: PolarisBridge = makeFakeBridge(emptyBridgeState());
     expect(v4.autoSignIn).toBeUndefined();
