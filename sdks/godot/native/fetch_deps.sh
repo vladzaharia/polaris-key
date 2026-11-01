@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# fetch_deps.sh <dir> <dep>...   (dep: godot-cpp | sparkle | velopack | winsparkle)
+# fetch_deps.sh <dir> <dep>...   (dep: godot-cpp | sparkle | velopack | winsparkle | monocypher)
 #
 # Puts the native plugins' pinned inputs (deps.env) under <dir>, each checked before use:
 #
@@ -10,6 +10,8 @@
 #   velopack    <dir>/velopack: include/Velopack.h and lib/velopack_libc_win_x64_msvc.dll
 #   winsparkle  <dir>/winsparkle: include/winsparkle.h, x64/Release/WinSparkle.dll,
 #               bin/winsparkle-tool.exe
+#   monocypher  <dir>/monocypher: monocypher.c, monocypher.h, LICENCE.md (4.0.3; checked against
+#               the SHA-256 and upstream's published SHA-512)
 #
 # Every archive is checked against its SHA-256 in deps.env; a mismatch stops the script. An
 # input already present (a CI cache hit, a second local run) is not fetched again. Runs on macOS
@@ -18,7 +20,7 @@
 set -eu
 
 if [ $# -lt 2 ]; then
-  echo "usage: fetch_deps.sh <dir> <godot-cpp|sparkle|velopack|winsparkle>..." >&2
+  echo "usage: fetch_deps.sh <dir> <godot-cpp|sparkle|velopack|winsparkle|monocypher>..." >&2
   exit 2
 fi
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -36,6 +38,14 @@ sha256_of() {
     sha256sum "$1" | cut -c1-64
   else
     shasum -a 256 "$1" | cut -c1-64
+  fi
+}
+
+sha512_of() {
+  if command -v sha512sum >/dev/null 2>&1; then
+    sha512sum "$1" | cut -c1-128
+  else
+    shasum -a 512 "$1" | cut -c1-128
   fi
 }
 
@@ -107,6 +117,33 @@ for dep in "$@"; do
         mv "$WORK/ws/WinSparkle-$WINSPARKLE_VERSION" "$d"
       fi
       echo "fetch_deps: WinSparkle $WINSPARKLE_VERSION in $d"
+      ;;
+    monocypher)
+      d="$DIR/monocypher"
+      tgz="$d/monocypher-$MONOCYPHER_VERSION.tar.gz"
+      # The archive is kept beside the sources, so a cache hit is verified like a fresh download:
+      # both pinned digests are checked and the sources are extracted from it on every run.
+      if [ ! -f "$tgz" ]; then
+        fetch "$MONOCYPHER_URL" "$MONOCYPHER_SHA256" monocypher.tar.gz
+        rm -rf "$d"
+        mkdir -p "$d"
+        cp "$WORK/monocypher.tar.gz" "$tgz"
+      fi
+      got="$(sha256_of "$tgz")"
+      if [ "$got" != "$MONOCYPHER_SHA256" ]; then
+        echo "fetch_deps: monocypher archive has SHA-256 $got, deps.env pins $MONOCYPHER_SHA256" >&2
+        exit 1
+      fi
+      got="$(sha512_of "$tgz")"
+      if [ "$got" != "$MONOCYPHER_SHA512" ]; then
+        echo "fetch_deps: monocypher archive has SHA-512 $got, deps.env pins $MONOCYPHER_SHA512" >&2
+        exit 1
+      fi
+      rm -rf "$WORK/mc"
+      mkdir -p "$WORK/mc"
+      tar -xzf "$tgz" -C "$WORK/mc"
+      cp "$WORK/mc/monocypher-$MONOCYPHER_VERSION/src/monocypher.c" "$WORK/mc/monocypher-$MONOCYPHER_VERSION/src/monocypher.h" "$WORK/mc/monocypher-$MONOCYPHER_VERSION/LICENCE.md" "$d/"
+      echo "fetch_deps: Monocypher $MONOCYPHER_VERSION in $d (SHA-256 and SHA-512 verified)"
       ;;
     *)
       echo "fetch_deps: unknown dependency $dep" >&2

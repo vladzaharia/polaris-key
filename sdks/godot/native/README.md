@@ -23,13 +23,16 @@ every rule are in `docs/research/2026-09-29-godot-omniplatform/notes/S-11-deskto
 ## Layout
 
 ```
-deps.env, fetch_deps.sh    pinned inputs (godot-cpp commit, Sparkle, velopack_libc, WinSparkle; SHA-256)
+deps.env, fetch_deps.sh    pinned inputs (godot-cpp commit, Sparkle, velopack_libc, WinSparkle, Monocypher; SHA-256)
+THIRD_PARTY_NOTICES        Monocypher's licence text (compiled into pkey_win.dll); build.ps1 stages it
 macos/                     PKeySparkleNative (pkey_sparkle.mm), build.sh, pkey_sparkle.gdextension,
                            sign_and_notarize.sh (inside-out, notarytool, staple, Sparkle zip);
                            build_apple.sh, pkey_apple_macos.gdextension (SP-27: PolarisKeyApple's
                            desktop dylib, the login keychain for PKeyKeyringStore)
 windows/                   pkey_win.dll: velopack/, winsparkle/, storecontext/ (C++/WinRT, C++20),
                            credman/ (SP-27: Credential Manager for PKeyKeyringStore),
+                           crypto/ (CC-14b.6, .7: AES-256-GCM on CNG and X25519 on Monocypher for
+                           Cloud Connect; addons/polaris_key/native/pkey_win_crypto.gd),
                            src/register.cpp; SConstruct, build.ps1, pkey_win.gdextension;
                            velopack/shim/ (the Rust --mainExe), pack_velopack.ps1, sign.ps1,
                            installer/game.iss
