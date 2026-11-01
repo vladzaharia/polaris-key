@@ -772,6 +772,7 @@ public object Feature {
     public const val identityAttach: String = "identity.attach"
     public const val identityAccount: String = "identity.account"
     public const val identityRedirectWeb: String = "identity.redirect.web"
+    public const val identityRedirectNative: String = "identity.redirect.native"
     public const val identityChoice: String = "identity.choice"
     public const val identityDevicecodeChoice: String = "identity.devicecode.choice"
     public const val identitySigninHints: String = "identity.signin.hints"
@@ -917,6 +918,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.attach",
     "identity.account",
     "identity.redirect.web",
+    "identity.redirect.native",
     "identity.choice",
     "identity.devicecode.choice",
     "identity.signin.hints",
@@ -2102,6 +2104,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.attach" to CapabilityRow("implemented", "identity", listOf()),
     "identity.account" to CapabilityRow("implemented", "identity", listOf()),
     "identity.redirect.web" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.redirect.native" to CapabilityRow("planned", "identity", listOf()),
     "identity.choice" to CapabilityRow("implemented", "identity", listOf()),
     "identity.devicecode.choice" to CapabilityRow("implemented", "identity", listOf()),
     "identity.signin.hints" to CapabilityRow("implemented", "identity", listOf()),
@@ -2180,4 +2183,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "b94e67bc469fd088823a6728867fae1e00b2084cd8c42b511faa018ce7e65369"
+public const val CAPABILITY_DIGEST: String = "bd8a405e9fd5549964856c24bf86eba84d724e89e16d3136bcedb324a9d48584"

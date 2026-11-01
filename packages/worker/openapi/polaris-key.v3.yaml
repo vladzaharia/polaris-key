@@ -298,10 +298,16 @@ paths:
                           authDevicePoll: https://key.plrs.im/djdl/identity/auth/device/poll
                           authorize: https://key.plrs.im/djdl/identity/authorize
                           token: https://key.plrs.im/djdl/identity/token
+                          request: https://key.plrs.im/djdl/identity/request
+                          signinReturn: https://key.plrs.im/signin/return
                           attach: https://key.plrs.im/djdl/identity/attach
                           subject: https://key.plrs.im/djdl/identity/subject
                           signout: https://key.plrs.im/djdl/identity/signout
                           accountPortal: https://key.plrs.im/#/p/djdl
+                        nativeRedirect:
+                          loopback: true
+                          schemes: ["com.example.djdl:/pkey/callback"]
+                          claimedHttps: ["https://djdl.example/open"]
                       sync:
                         enabled: true
                         settings: true
