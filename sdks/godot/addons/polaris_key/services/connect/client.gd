@@ -53,6 +53,9 @@ var allow_ephemeral_keys := false
 var devices: PKeyDevices = null
 ## Called after a roster was stored (a pushed one, or an identity fetch). Cloud Connect sets it.
 var on_stored: Callable
+## Called with the agreement keys (32 raw bytes each) of devices a newer roster dropped, after it was
+## stored (section 15.11: a device that left the roster has its kept partial transfers deleted).
+var on_left: Callable
 
 var _locked := false
 var _core_ref: WeakRef
@@ -315,6 +318,7 @@ func _store_answer(answer: Dictionary, mine: Dictionary, before: PKeyConnectStat
 	if not stored.ok:
 		return stored
 	_announce_stored()
+	_announce_left(accepted.detail["gone"])
 	return PKeyResult.success(accepted.detail["view"])
 
 
@@ -493,8 +497,10 @@ func _accept(answer: Dictionary, mine: Dictionary, held_rec: PKeyConnectState.Re
 	# K_disc is stored exactly as the latest answer delivered it, never merged with older answers;
 	# a previous key goes when the roster lost a device or changed a device's keys.
 	var keys: Array[String] = answer["disc_keys"]
+	var gone: Array = []
 	if prior != null and int(ring["epoch"]) > int(prior["epoch"]):
 		keys = keys_after_ring(keys, prior, ring)
+		gone = _gone_keys(prior, ring)
 	var same_epoch_prev := held_rec != null and prior != null and int(prior["epoch"]) == int(ring["epoch"]) \
 			and held_rec.disc_keys.size() == 2 and keys.size() == 2 and held_rec.disc_keys[1] == keys[1]
 	var prev_until := -1
@@ -511,7 +517,7 @@ func _accept(answer: Dictionary, mine: Dictionary, held_rec: PKeyConnectState.Re
 	rec.registered_sign = mine["sign_key"]
 	rec.registered_agree = mine["agree_key"]
 	rec.stored_at = now
-	return PKeyResult.success({"rec": rec, "view": _view(rec, ring, cert)})
+	return PKeyResult.success({"rec": rec, "view": _view(rec, ring, cert), "gone": gone})
 
 
 ## The first thing wrong with how the certificate and roster fit this device ("" for none).
@@ -587,9 +593,11 @@ func adopt_ring(jws: String) -> Dictionary:
 	var prior: Variant = judged["prior"]
 	var keys := rec.disc_keys
 	var removed := false
+	var gone: Array = []
 	if prior != null:
 		keys = keys_after_ring(rec.disc_keys, prior, ring)
 		removed = not _intact(prior, ring)
+		gone = _gone_keys(prior, ring)
 	var next := rec.duplicate_record()
 	next.keys_stale = removed or rec.keys_stale
 	next.ring = jws
@@ -600,7 +608,25 @@ func adopt_ring(jws: String) -> Dictionary:
 	if not _state.write(next).ok:
 		return {"stored": false, "reason": "store_failed"}
 	_announce_stored()
+	_announce_left(gone)
 	return {"stored": true, "epoch": int(ring["epoch"])}
+
+
+## The agreement keys of the devices `prior` lists that `next` does not (with the same keys).
+static func _gone_keys(prior: Dictionary, next: Dictionary) -> Array:
+	var out: Array = []
+	for d: Dictionary in prior["devices"]:
+		if _lists(next, d):
+			continue
+		var k: Variant = PKeyB64Url.decode_strict(String(d["agree_key"]))
+		if k is PackedByteArray and (k as PackedByteArray).size() == 32:
+			out.append(k)
+	return out
+
+
+func _announce_left(keys: Array) -> void:
+	if not keys.is_empty() and on_left.is_valid():
+		on_left.call(keys)
 
 
 func _announce_stored() -> void:

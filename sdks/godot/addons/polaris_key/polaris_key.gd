@@ -245,7 +245,7 @@ func _build_connect(opts: PKeyOptions, keys: Object) -> void:
 	connect_client = PKeyConnectClient.new(core, state, keys)
 	connect_client.devices = devices
 	connect_client.allow_ephemeral_keys = opts.allow_ephemeral_keys
-	cloud_connect = PKeyCloudConnect.new(core, connect_client)
+	cloud_connect = PKeyCloudConnect.new(core, connect_client, {"store_root": opts.store_root})
 	if not _connect_hook_added:
 		_connect_hook_added = true
 		identity.add_before_sign_out(_stop_connect)

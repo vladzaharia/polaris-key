@@ -14,6 +14,9 @@ extends RefCounted
 ##  - the host sees only the APP range (0x0100 to 0x7FFF). An APP-critical type (0x8100 to 0xFFFD) it
 ##    cannot understand closes the session with `peer_unknown_critical`; other types the session does
 ##    not own are ignored (G9, `route_record`);
+##  - the six Direct Transfer types (0x0020 to 0x0025) belong to the transfer layer: they reach the port
+##    `attach_xfer` returned a writer for and nothing else (a session with `xfer/1` and no port closes
+##    `peer_not_allowed`), and the host's `send` and `send_record` refuse them;
 ##  - messages the host has not read yet are bounded (G10): the pipe pauses at 4 MiB queued and
 ##    resumes under 1 MiB; at 8 MiB, or at 256 queued messages, the session closes `peer_busy`; all
 ##    sessions together hold at most 32 MiB (`Budget`);
@@ -33,6 +36,8 @@ signal woke
 const APP_DEFAULT_TYPE := 0x0100
 const APP_FIRST := 0x0100
 const APP_LAST := 0x7fff
+const XFER_FIRST := 0x0020
+const XFER_LAST := 0x0025
 const CRITICAL_FIRST := 0x8100
 const CRITICAL_LAST := 0xfffd
 const MAX_QUEUED_MESSAGES := 256
@@ -49,6 +54,10 @@ var caps: Array
 ## The peer's HELLO display data {label?, platform, app, max_message}, authenticated in mode a.
 var hello: Dictionary
 var role: String
+## The contact this session runs with (mode c: {id, label, categories}), else null.
+var contact: Variant = null
+## The peer's static key (32 raw bytes), as certified by the handshake; empty until set.
+var peer_static := PackedByteArray()
 var remote_address: String
 ## "lan" or "relay".
 var path: String
@@ -59,6 +68,7 @@ var _queue: Array = []
 var _bytes := 0
 var _paused := false
 var _ended := false
+var _xfer: Callable
 var _end_code: StringName = &""
 var _end_by_peer := false
 
@@ -100,6 +110,24 @@ func send(body: PackedByteArray, type := APP_DEFAULT_TYPE) -> PKeyResult:
 ## Send a record of any type the session does not own (a peer document, a later transfer type). The
 ## engine refuses HELLO, CLOSE, REKEY and SAS records.
 func send_record(type: int, body: PackedByteArray) -> PKeyResult:
+	if type >= XFER_FIRST and type <= XFER_LAST:
+		return PKeyConnectErrors.lan("bad_type", "Transfer records belong to the transfer layer.")
+	return _send(type, body)
+
+
+## The transfer port (section 15.11): `on_record` (Callable(type, body)) becomes the one reader of the six
+## xfer types, and the answer is their one writer (Callable(type, body) -> PKeyResult). Only for an open
+## session that lists `xfer/1`, and once; otherwise the answer is an empty Callable.
+func attach_xfer(on_record: Callable) -> Callable:
+	if _ended or _link == null or _xfer.is_valid() or not caps.has(PKeyPeerXfer.CAP) or not on_record.is_valid():
+		return Callable()
+	_xfer = on_record
+	return Callable(self, "_write_xfer")
+
+
+func _write_xfer(type: int, body: PackedByteArray) -> PKeyResult:
+	if type < XFER_FIRST or type > XFER_LAST:
+		return PKeyConnectErrors.lan("bad_type", "Not a transfer type.")
 	return _send(type, body)
 
 
@@ -174,6 +202,7 @@ func ended(code: StringName, by_peer: bool) -> void:
 	_queue = []
 	_bytes = 0
 	_link = null
+	_xfer = Callable()
 	woke.emit()
 	closed.emit(code, by_peer)
 
@@ -194,6 +223,12 @@ static func route_record(link: Object, session: PKeyConnectSession, type: int, b
 	if type >= APP_FIRST and type <= APP_LAST:
 		if session != null:
 			session.deliver(type, body)
+	elif type >= XFER_FIRST and type <= XFER_LAST:
+		# The capability was checked by the engine; a port is there or the host listed it for nothing.
+		if session != null and session._xfer.is_valid():
+			session._xfer.call(type, body)
+		else:
+			link.close(PKeyPeerSession.PEER_NOT_ALLOWED)
 	elif type >= CRITICAL_FIRST and type <= CRITICAL_LAST:
 		link.close(PKeyPeerSession.PEER_UNKNOWN_CRITICAL)
 
