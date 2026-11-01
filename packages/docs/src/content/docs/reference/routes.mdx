@@ -208,6 +208,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/identity/nearby/poll` | identity | The new device collects the outcome of its nearby request (I-40.7) |
 | POST | `/{product}/identity/nearby/start` | identity | A signed-out device asks a nearby signed-in device to approve its sign-in (I-40.4) |
 | POST | `/{product}/identity/nonce` | identity | A nonce for a native platform sign-in (I-13.2) |
+| POST | `/{product}/identity/request` | identity | Push a native app's authorize request (RFC 9126; I-15) |
 | POST | `/{product}/identity/restore` | identity | Enrol or check this device's silent-restore key (I-49.5) |
 | DELETE | `/{product}/identity/restore` | identity | Revoke this device's silent-restore key (I-49.5) |
 | POST | `/{product}/identity/session/license` | identity | Mint a browser session from a license key |

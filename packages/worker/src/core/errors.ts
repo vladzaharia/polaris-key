@@ -101,6 +101,8 @@ export const ErrorCode = {
   UnsupportedGrantType: "unsupported_grant_type",
   InvalidScope: "invalid_scope",
   RedirectUriMismatch: "redirect_uri_mismatch",
+  /** I-15 (§12.12): an unknown, expired, malformed or taken `request_uri`; a card page, never a redirect. */
+  InvalidRequestUri: "invalid_request_uri",
   /** I-08: a licence choice is owed and was not made (Continue, `token`). */
   LicenseChoiceRequired: "license_choice_required",
 } as const;

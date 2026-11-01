@@ -431,7 +431,6 @@ describe("GET /<p>/identity/authorize (§12.4)", () => {
     ["a bad key_return", { key_return: "deny" }, "invalid_request"],
     ["an empty key_return", { key_return: "" }, "invalid_request"],
     ["a long nonce", { nonce: "n".repeat(256) }, "invalid_request"],
-    ["a request_uri", { request_uri: "urn:x" }, "invalid_request"],
   ] as const)("302s %s back to the app with iss", async (_n, over, error) => {
     const res = await authorize(over);
     expect(res.status).toBe(302);

@@ -9908,6 +9908,104 @@
     "cookies": [],
     "body": "30:61b5f4a46397ebc3"
   },
+  "GET /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "HEAD /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "POST /djdl/identity/request": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "82:2dea2b202a0486e1"
+  },
+  "POST+body /djdl/identity/request": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "82:2dea2b202a0486e1"
+  },
+  "PUT /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PUT+body /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH+body /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE+body /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS+body /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
   "GET /djdl/identity/restore": {
     "status": 405,
     "headers": {

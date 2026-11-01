@@ -86,6 +86,8 @@ export type SingleUseKind =
   | "relay-ticket"
   /** A nearby-approval request (I-40.2, WIRE-CONTRACT-V5 §12.11.5), by product + the hash of its `nr_` handle. */
   | "nearby-request"
+  /** A pushed native sign-in request (I-15.4, WIRE-CONTRACT-V5 §12.12), by product + the hash of its `request_uri`: the validated authorize request, resolvable until Continue or Cancel takes it. */
+  | "signin-par"
   /** A Game Center identity signature already accepted (I-14.6, WIRE-CONTRACT-V5 §12.11.7), by product + the hash of the signature: held 180 s, written `ifAbsent`. */
   | "gamecenter-signature";
 

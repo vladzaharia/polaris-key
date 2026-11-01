@@ -145,7 +145,9 @@ function withNoStore(res: Response): Response {
 }
 
 /** The form body as single-valued parameters, or `null` when it is not a plain form. */
-async function readForm(req: Request): Promise<Map<string, string> | null> {
+export async function readForm(
+  req: Request,
+): Promise<Map<string, string> | null> {
   const type = (req.headers.get("content-type") ?? "")
     .split(";")[0]!
     .trim()

@@ -307,7 +307,6 @@
       "code": "invalid_request_uri",
       "kind": "wire",
       "service": "identity",
-      "plannedBy": "I-15.4",
       "description": "400, the branded page only, never a redirect: GET /<p>/identity/authorize was given a `request_uri` that is unknown, expired, malformed or already taken by Continue or Cancel (WIRE-CONTRACT-V5 §12.4, §12.12; I-15)."
     },
     {
