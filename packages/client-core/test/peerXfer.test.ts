@@ -21,6 +21,7 @@ import {
   xferPartialPath,
   type SessionEvent,
   type XferAsk,
+  type XferOut,
   type XferPartial,
   type XferPartialEffect,
   type XferResult,
@@ -567,6 +568,11 @@ describe("a re-offer of delivered content (CC-20.F)", () => {
       peerKey: key,
       ...(mem ? { delivered: mem.forPeer(key) } : {}),
     });
+  /** What the endpoint does once a `finalize` has been applied. */
+  const commit = (mem: XferDeliveredMemory, key: Uint8Array, o: XferOut) => {
+    for (const d of o.delivered ?? [])
+      mem.forPeer(key).add(d.id, d.sha256, d.size, 3);
+  };
   const receive = async (
     m: XferMachine,
     id: string,
@@ -598,6 +604,15 @@ describe("a re-offer of delivered content (CC-20.F)", () => {
       );
     const d = m1.receive(3, XFER.DONE, doneBody(id, sha));
     expect(d.results).toEqual([{ id, outcome: "delivered" }]);
+    // Nothing is remembered until the driver has delivered the content.
+    expect(
+      rx(mem, key).receive(
+        5,
+        XFER.OFFER,
+        xferOfferBody({ id, size: 2500, sha256: sha, chunk: 1000 }),
+      ).send,
+    ).toEqual([{ t: "ACCEPT", id, offset: 0 }]);
+    commit(mem, key, d);
     // A new session (the sender never saw the final DONE) offers the same transfer again.
     const m2 = rx(mem, key);
     const r = m2.receive(
@@ -633,7 +648,7 @@ describe("a re-offer of delivered content (CC-20.F)", () => {
         XFER.CHUNK,
         xferChunkBody(id, off, content(off, off + 1000)),
       );
-    m1.receive(3, XFER.DONE, doneBody(id, sha));
+    commit(mem, key, m1.receive(3, XFER.DONE, doneBody(id, sha)));
     const m2 = rx(mem, key);
     const r = m2.receive(
       10,
@@ -653,7 +668,7 @@ describe("a re-offer of delivered content (CC-20.F)", () => {
     const m1 = rx(mem, key);
     const { sha } = await receive(m1, id, 1000, 1000, 1);
     m1.receive(2, XFER.CHUNK, xferChunkBody(id, 0, content(0, 1000)));
-    m1.receive(3, XFER.DONE, doneBody(id, sha));
+    commit(mem, key, m1.receive(3, XFER.DONE, doneBody(id, sha)));
     const offer = (m: XferMachine, at: number, size = 1000, h = sha) =>
       m.receive(
         at,
@@ -674,6 +689,99 @@ describe("a re-offer of delivered content (CC-20.F)", () => {
     // Forgetting a peer (a deleted link) forgets its entries.
     mem.forget(key);
     expect(offer(rx(mem, key), 10)).toEqual([{ t: "ACCEPT", id, offset: 0 }]);
+  });
+
+  it("a DONE whose hash equals the offer but whose bytes differ cancels, finalizes nothing and remembers nothing", async () => {
+    const mem = new XferDeliveredMemory();
+    const key = rnd();
+    const id = base64UrlEncodeBytes(rnd().slice(0, 16));
+    const m = rx(mem, key);
+    const { sha } = await receive(m, id, 1000, 1000, 1);
+    // Right length, wrong bytes.
+    m.receive(2, XFER.CHUNK, xferChunkBody(id, 0, content(1, 1001)));
+    const d = m.receive(3, XFER.DONE, doneBody(id, sha));
+    expect(d.send).toEqual([{ t: "CANCEL", id, reason: "hash" }]);
+    expect(d.partial.some((e) => "finalize" in e)).toBe(false);
+    expect(d.delivered).toBeUndefined();
+  });
+
+  it("answers the fifth concurrent OFFER busy", async () => {
+    const m = rx(null, rnd());
+    const sha = await shaHex(content(0, 10));
+    const ids = [1, 2, 3, 4, 5].map((n) =>
+      base64UrlEncodeBytes(new Uint8Array(16).fill(n)),
+    );
+    const sends = ids.map(
+      (id) =>
+        m.receive(
+          1,
+          XFER.OFFER,
+          xferOfferBody({ id, size: 10, sha256: sha, chunk: 10 }),
+        ).send,
+    );
+    for (let i = 0; i < 4; i++)
+      expect(sends[i]).toEqual([{ t: "ACCEPT", id: ids[i], offset: 0 }]);
+    expect(sends[4]).toEqual([{ t: "CANCEL", id: ids[4], reason: "busy" }]);
+  });
+
+  it("delivered memory records only delivered content", async () => {
+    const { a, b, A } = await pair([
+      ["app/1", "xfer/1"],
+      ["app/1", "xfer/1"],
+    ]);
+    const mem = new XferDeliveredMemory();
+    const store = memStore();
+    let failFinalize = true;
+    let asked = 0;
+    const rx2 = ends();
+    const tx2 = ends();
+    const recv = XferEndpoint.attach(b.s, {
+      machine: {
+        mode: "a",
+        caps: ["xfer/1"],
+        maxMessage: 1_048_576,
+        handler: () => {
+          asked++;
+          return "accept";
+        },
+        peerKey: A.pub,
+        delivered: mem.forPeer(A.pub),
+      },
+      read: async () => new Uint8Array(0),
+      apply: async (e) => {
+        if ("finalize" in e && failFinalize) throw new Error("disk full");
+        return store.apply(e);
+      },
+      events: { ...rx2.events, error: () => undefined },
+    });
+    const send = XferEndpoint.attach(a.s, {
+      machine: {
+        mode: "a",
+        caps: ["xfer/1"],
+        maxMessage: 1_048_576,
+        handler: null,
+        peerKey: A.pub,
+      },
+      read: async (_i, off, len) => content(off, off + len),
+      apply: async () => undefined,
+      events: tx2.events,
+    });
+    const id = base64UrlEncodeBytes(rnd().slice(0, 16));
+    send.offer({
+      id,
+      size: 100,
+      chunk: 50,
+      sha256: await shaHex(content(0, 100)),
+    });
+    for (let i = 0; i < 20; i++) {
+      await send.idle();
+      await recv.idle();
+      await settle(a, b);
+    }
+    expect(
+      mem.forPeer(A.pub).has(id, await shaHex(content(0, 100)), 100, 1),
+    ).toBe(false);
+    expect(asked).toBe(1);
   });
 
   it("keeps at most XFER_MAX_DELIVERED_PER_PEER entries per peer, oldest first", () => {

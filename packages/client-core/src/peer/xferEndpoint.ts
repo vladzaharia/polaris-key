@@ -130,6 +130,9 @@ export class XferEndpoint {
     this.chain = this.chain.then(async () => {
       try {
         for (const e of out.partial) await this.o.apply(e);
+        // Remembered only once the host's delivery succeeded.
+        for (const d of out.delivered ?? [])
+          this.o.machine.delivered?.add(d.id, d.sha256, d.size, this.now());
         for (const s of out.send) await this.perform(s, failed);
       } catch (err) {
         this.o.events.error(err);

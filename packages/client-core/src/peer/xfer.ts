@@ -352,6 +352,12 @@ export interface XferOut {
   withdraw: string[];
   results: XferResult[];
   partial: XferPartialEffect[];
+  /**
+   * Content whose hash matched and whose `finalize` is among `partial`. The driver records it in
+   * the delivered memory only after the `finalize` has been applied; a failed delivery records
+   * nothing, so the next offer of it goes through consent again.
+   */
+  delivered?: Array<{ id: string; sha256: string; size: number }>;
   /** The host's own send was refused locally: too many live transfers. */
   refused?: "busy";
   /** A late record for an ended id, dropped without effect. */
@@ -1093,7 +1099,12 @@ export class XferMachine {
       return cancel("hash");
     this.send({ t: "DONE", id: t.id });
     if (t.partial !== undefined) this.eff({ finalize: t.partial });
-    this.o.delivered?.add(t.id, t.sha, t.size, this.clock);
+    if (t.partial !== undefined)
+      (this.out.delivered ??= []).push({
+        id: t.id,
+        sha256: t.sha,
+        size: t.size,
+      });
     this.result(t, { id: t.id, outcome: "delivered" });
     this.end(t, false);
   }

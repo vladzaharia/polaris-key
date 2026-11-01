@@ -255,9 +255,17 @@ export class PartialStore {
 
   // ── reservations ───────────────────────────────────────────────────────────
 
-  /** Promise `size` bytes to an accepted transfer; `free()` counts it at once. */
-  reserve(token: string, size: number): void {
-    this.#reserved.set(token, { size, ref: null });
+  /**
+   * Promise `size` bytes to an accepted transfer; `free()` counts it at once. The check and the
+   * promise are one synchronous step: false (and nothing promised) when the promise no longer
+   * fits, as when another accepted transfer took the room after this offer was shown. `ref` is
+   * the kept partial this transfer resumes, whose bytes are inside the promise.
+   */
+  reserve(token: string, size: number, ref: string | null = null): boolean {
+    this.#reserved.set(token, { size, ref });
+    if (this.#headroom() >= 0) return true;
+    this.#reserved.delete(token);
+    return false;
   }
 
   /** The partial this transfer writes (its bytes are inside the reservation, not counted twice). */
@@ -332,6 +340,11 @@ export class PartialStore {
    * free space less the reserve and what is promised but not yet written.
    */
   free(): number | null {
+    return Math.max(0, this.#headroom());
+  }
+
+  /** What `free()` is made of, before it is clamped at 0: negative when the promises overrun. */
+  #headroom(): number {
     const bound = new Set<string>();
     let promised = 0;
     let unwrittenPromise = 0;
@@ -345,12 +358,9 @@ export class PartialStore {
     }
     let used = 0;
     for (const [ref, n] of this.#sizes) if (!bound.has(ref)) used += n;
-    const room = Math.max(0, this.#quota - used - promised);
+    const room = this.#quota - used - promised;
     if (this.#disk === null) return room;
-    return Math.min(
-      room,
-      Math.max(0, this.#disk - DISK_RESERVE - unwrittenPromise),
-    );
+    return Math.min(room, this.#disk - DISK_RESERVE - unwrittenPromise);
   }
 
   // ── effects ────────────────────────────────────────────────────────────────
