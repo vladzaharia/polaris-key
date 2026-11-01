@@ -11,6 +11,12 @@
 //   - the progress of a choice is a busy line under the title, with no control;
 //   - `failed` takes focus on the heading, not on Try again: Try again repeats a choice that may
 //     overwrite or delete, so a stray Return must not run it (on macOS it is not the default key);
+//   - Newer (UX2 D-7) tags the card the app names, between the name and the date; it never fills,
+//     focuses or reorders anything, and never shows on the deleted variant;
+//   - `kept` draws the success mark above the result title (the heading, where focus rests);
+//   - `failed` offers Try again, Choose again and Cancel, none filled and none the default key;
+//   - on a short or wide window the scaffold's trailing pane holds the heading, the cards and the
+//     undocked choices (UX2 D-8), and at 200 % text one column, versions before choices;
 //   - a deleted other copy has its own title and lede, and "Delete it here too" is a danger
 //     outline of its own, never a Keep.
 // Not bound to a live client: `SaveConflictModel` takes a `SaveConflictHost`, and the binding to the
@@ -33,10 +39,24 @@ public struct SaveConflictView: View {
         let screen = model.screen
         if let state = screen.state {
             KitScreenScaffold(header: true, dockActions: state != .choose) {
-                KitText(screen.copy.first ?? CopyLine("saveConflict.title"), .title, color: .strong)
-                    .accessibilityAddTraits(.isHeader)
-                    .accessibilityFocused($focus, equals: .heading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                kitStyle { style in
+                    VStack(alignment: .leading, spacing: style.space(.sm)) {
+                        if state == .kept {
+                            // Glyph and the result title, never colour alone.
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 36))
+                                .foregroundStyle(style.palette.success)
+                                .accessibilityHidden(true)
+                        }
+                        KitText(
+                            screen.copy.first ?? CopyLine("saveConflict.title"), .title,
+                            color: .strong
+                        )
+                        .accessibilityAddTraits(.isHeader)
+                        .accessibilityFocused($focus, equals: .heading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
             } content: {
                 content(screen, state)
             } actions: {
@@ -45,7 +65,7 @@ public struct SaveConflictView: View {
             .onAppear { focus = .heading }
             .onChange(of: screen.stateName) { _, _ in
                 // A refusal and the result are announced; the heading is where focus rests.
-                focus = state == .choose ? .heading : .message
+                focus = state == .keeping ? .message : .heading
             }
             .interactiveDismissDisabled(state == .keeping)
         }
@@ -65,13 +85,15 @@ public struct SaveConflictView: View {
                     }
                     card(
                         style, who: screen.lineOrKey("saveConflict.thisDevice"),
-                        when: screen.line("saveConflict.savedThis"))
+                        when: screen.line("saveConflict.savedThis"),
+                        newer: screen.line("saveConflict.newerThis"))
                     card(
                         style,
                         who: screen.line("saveConflict.otherDevice")
                             ?? screen.line("saveConflict.deletedElsewhere")
                             ?? screen.lineOrKey("saveConflict.otherUnknown"),
-                        when: screen.line("saveConflict.savedOther"))
+                        when: screen.line("saveConflict.savedOther"),
+                        newer: screen.line("saveConflict.newerOther"))
                 case .keeping:
                     HStack(alignment: .firstTextBaseline, spacing: style.space(.xs)) {
                         ProgressView().controlSize(.small).accessibilityHidden(true)
@@ -81,15 +103,10 @@ public struct SaveConflictView: View {
                     .accessibilityAddTraits(.updatesFrequently)
                     .accessibilityFocused($focus, equals: .message)
                 case .kept:
-                    if let kept = screen.copy.first(where: { $0.key.hasPrefix("saveConflict.kept") }) {
-                        HStack(alignment: .firstTextBaseline, spacing: style.space(.xs)) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(style.palette.success)
-                                .accessibilityHidden(true)
-                            KitText(kept, .body)
-                        }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityFocused($focus, equals: .message)
+                    // The title above is the result; Keep both adds what happened to the other copy.
+                    if let note = screen.line("saveConflict.keptCopy") {
+                        KitText(note, .body)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 case .failed:
                     // Glyph and words, never colour alone; announced when it appears.
@@ -97,19 +114,30 @@ public struct SaveConflictView: View {
                         Image(systemName: "exclamationmark.circle.fill")
                             .foregroundStyle(style.palette.danger)
                             .accessibilityHidden(true)
-                        KitText(screen.lineOrKey("saveConflict.failed"), .meta, color: .danger)
+                        KitText(
+                            screen.line("saveConflict.failedDeleted")
+                                ?? screen.lineOrKey("saveConflict.failed"), .meta, color: .danger)
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityFocused($focus, equals: .message)
                 }
             }
         }
     }
 
     /// One copy: who has it, and when it was saved. Stacked in reading order at every size.
-    private func card(_ style: KitResolvedStyle, who: CopyLine, when: CopyLine?) -> some View {
+    private func card(_ style: KitResolvedStyle, who: CopyLine, when: CopyLine?, newer: CopyLine?)
+        -> some View
+    {
         VStack(alignment: .leading, spacing: style.space(.xxs)) {
             KitText(who, .body, color: .strong)
+            if let newer {
+                // A tag, not a control: an outline and the word, in the accent's text colour.
+                KitText(newer, .meta, color: .accent)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, style.space(.xs))
+                    .padding(.vertical, 2)
+                    .overlay(Capsule().strokeBorder(style.palette.accentFg, lineWidth: 1))
+            }
             if let when { KitText(when, .meta, color: .muted) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -135,23 +163,18 @@ public struct SaveConflictView: View {
                     .keyboardShortcut(.defaultAction)
             }
         case .failed:
+            // Three controls, none filled: a stray Return must not repeat a choice that may
+            // overwrite or delete, and none is the default.
             KitActionStack {
-                KitButton(line: screen.lineOrKey("common.tryAgain"), kind: retryKind) {
+                KitButton(line: screen.lineOrKey("common.tryAgain"), kind: .secondary) {
                     Task { await model.retry() }
+                }
+                KitButton(line: screen.lineOrKey("saveConflict.chooseAgain"), kind: .secondary) {
+                    model.chooseAgain()
                 }
                 KitButton(line: screen.lineOrKey("common.cancel"), kind: .quiet) { model.cancel() }
             }
         }
-    }
-
-    /// On macOS Return runs the default button whatever has focus; Try again repeats a choice that
-    /// may overwrite or delete, so there it is not the default.
-    private var retryKind: KitButtonKind {
-        #if os(macOS)
-            return .secondary
-        #else
-            return .primary
-        #endif
     }
 
     /// The choices, the reason Keep both is off, and Cancel: one column, no filled control.
