@@ -354,6 +354,45 @@ class NativeSignInTest : NativeTestBase() {
     }
 
     @Test
+    fun androidNeverListensOnLoopback() = runBlocking {
+        NativeHost.onAndroid = { true }
+        try {
+            // Loopback asked for, no scheme registered: nothing to fall back to, nothing sent.
+            assertUnavailable(world(), loopbackOptions())
+            // A registered scheme is taken, and the opener is told which redirect URI to watch for.
+            val seen = AtomicReference<Pair<String, String>?>(null)
+            val opener = object : NativeRedirectOpener {
+                override suspend fun open(url: String): Boolean = false
+
+                override suspend fun open(url: String, redirectUri: String): Boolean {
+                    seen.set(url to redirectUri)
+                    return true
+                }
+            }
+            val w = world()
+            val s = w.client.signIn.start(
+                SignInOptions(
+                    channel = SignInChannel.Redirect,
+                    opener = opener,
+                    native = NativeRedirectOptions(loopback = true, registeredSchemes = listOf(scheme)),
+                ),
+            )
+            assertEquals(scheme, s.redirectUri)
+            assertEquals(scheme, seen.get()?.second)
+            assertTrue(seen.get()!!.first.contains("request_uri="))
+        } finally {
+            NativeHost.onAndroid = { NativeHost.isAndroid() }
+        }
+    }
+
+    @Test
+    fun theAndroidRuntimeIsRecognised() {
+        assertTrue(NativeHost.isAndroid("The Android Project", ""))
+        assertTrue(NativeHost.isAndroid("", "The Android Project"))
+        assertFalse(NativeHost.isAndroid("Eclipse Adoptium", "Oracle Corporation"))
+    }
+
+    @Test
     fun theHeadlessRule() {
         val none = emptyMap<String, String>()
         assertFalse(NativeHost.isHeadless(none, "Mac OS X"))

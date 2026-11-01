@@ -219,6 +219,16 @@ public class LoopbackListener @JvmOverloads public constructor(
 internal object NativeHost {
     private val MARKERS = listOf("SSH_CONNECTION", "SSH_TTY", "CI")
 
+    /** Test seam: what the host reports as Android. */
+    @Volatile
+    internal var onAndroid: () -> Boolean = { isAndroid() }
+
+    /** Android's runtime: a phone app never listens on loopback (§12.12); it takes a registered scheme or a claimed link. */
+    fun isAndroid(
+        vendor: String = System.getProperty("java.vm.vendor").orEmpty(),
+        spec: String = System.getProperty("java.specification.vendor").orEmpty(),
+    ): Boolean = vendor.contains("Android", ignoreCase = true) || spec.contains("Android", ignoreCase = true)
+
     /** `SSH_CONNECTION` or `SSH_TTY`, `CI`, or on Linux no `DISPLAY` and no `WAYLAND_DISPLAY`. */
     fun isHeadless(env: Map<String, String> = System.getenv(), os: String = System.getProperty("os.name").orEmpty()): Boolean =
         MARKERS.any { !env[it].isNullOrEmpty() } || (os.contains("linux", ignoreCase = true) && !hasDisplay(env))

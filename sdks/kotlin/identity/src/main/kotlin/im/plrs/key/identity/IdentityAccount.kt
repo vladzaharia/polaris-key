@@ -98,6 +98,14 @@ public fun interface AccountOpener {
     public suspend fun open(url: String): Boolean
 }
 
+/**
+ * An opener for a native redirect sign-in that needs to know where the browser will land (an Android Auth Tab watches
+ * for one scheme, or one HTTPS host and path). It is given the redirect URI of the class the sign-in chose.
+ */
+public interface NativeRedirectOpener : AccountOpener {
+    public suspend fun open(url: String, redirectUri: String): Boolean
+}
+
 /** A step to run before a sign-out reaches the server (Cloud Sync's flush, D-4). */
 public typealias BeforeSignOutHook = suspend () -> Unit
 

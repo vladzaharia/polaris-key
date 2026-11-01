@@ -29,7 +29,8 @@ private fun IdentityClient.chooseClass(facts: NativeFacts, options: SignInOption
     val native = options.native ?: NativeRedirectOptions()
     val hasOpener = options.opener != null || opener != null
     val browserOpens = !native.openBrowser || hasOpener || DesktopBrowser.available()
-    val canListen = (native.loopback ?: (!NativeHost.isHeadless() && browserOpens)) && facts.returnPage != null
+    val wantsListener = native.loopback ?: (!NativeHost.isHeadless() && browserOpens)
+    val canListen = wantsListener && !NativeHost.onAndroid() && facts.returnPage != null
     val choice = NativeRedirect.chooseClass(facts.request, facts.offer.classes, canListen, native.registeredSchemes, native.registeredClaimed)
     if (choice is RedirectChoice.Unavailable) {
         throw PolarisException(ErrorCode.redirectUnavailable, "no native redirect can start here; sign in with a code instead (${choice.reason}).")

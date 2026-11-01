@@ -1,4 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- No permission and no component: the app decides (the direct flavour's install-status receiver
-     arrives from polaris-key-platform-direct). -->
-<manifest />
+<!-- No permission and no launcher component: the app decides (the direct flavour's install-status
+     receiver arrives from polaris-key-platform-direct).
+
+     The native redirect sign-in (I-15b.6): PKeyRedirectActivity is declared NOT exported and with no
+     intent filter, so a build that does not sign in this way exposes nothing. An app that does adds, in
+     its own manifest, the filter for the scheme or claimed link it registered:
+
+       <activity android:name="im.plrs.key.android.PKeyRedirectActivity"
+           android:exported="true" tools:node="merge">
+         <intent-filter>   (a registered scheme)
+           <action android:name="android.intent.action.VIEW" />
+           <category android:name="android.intent.category.DEFAULT" />
+           <category android:name="android.intent.category.BROWSABLE" />
+           <data android:scheme="${pkeyRedirectScheme}" android:path="/pkey/callback" />
+         </intent-filter>
+         <intent-filter android:autoVerify="true">   (a claimed HTTPS link)
+           <action android:name="android.intent.action.VIEW" />
+           <category android:name="android.intent.category.DEFAULT" />
+           <category android:name="android.intent.category.BROWSABLE" />
+           <data android:scheme="https" android:host="${pkeyRedirectHost}" android:path="/pkey/callback" />
+         </intent-filter>
+       </activity>
+
+     The app fills pkeyRedirectScheme and pkeyRedirectHost with manifestPlaceholders. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <queries>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+    </queries>
+    <application>
+        <activity
+            android:name="im.plrs.key.android.PKeyRedirectActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+    </application>
+</manifest>

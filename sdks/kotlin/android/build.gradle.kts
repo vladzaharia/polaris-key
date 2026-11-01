@@ -96,6 +96,8 @@ dependencies {
     // brings (the same classes, class-retention annotations only): Play Core's copy serves both.
     implementation(libs.tink.android) { exclude(group = "androidx.annotation", module = "annotation-jvm") }
     implementation(libs.okhttp)
+    // The native redirect sign-in's Custom Tab (I-15b.6). 1.8.0: 1.9.0's AuthTabIntent needs AGP 8.9.1.
+    implementation(libs.androidx.browser)
 
     testImplementation(testFixtures(project(":core")))
     testImplementation(libs.junit)

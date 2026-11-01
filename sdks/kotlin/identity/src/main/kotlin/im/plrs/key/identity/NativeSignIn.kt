@@ -140,7 +140,11 @@ internal class NativeFlow(
 
     /** Show the authorize page: the host's opener, else the desktop browser. False when none could. */
     suspend fun open(): Boolean {
-        val shown = runCatching { (opener ?: DesktopBrowser).open(links.authorizeUrl) }
+        // An opener that wants the redirect URI (the Android tab) gets it with the URL.
+        val target = opener ?: DesktopBrowser
+        val shown = runCatching {
+            if (target is NativeRedirectOpener) target.open(links.authorizeUrl, redirectUri) else target.open(links.authorizeUrl)
+        }
             .onFailure { if (it is CancellationException) throw it }
             .getOrDefault(false)
         if (shown) opened = true
