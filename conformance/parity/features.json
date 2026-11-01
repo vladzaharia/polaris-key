@@ -1376,7 +1376,13 @@
           "wp": "I-15b"
         }
       ],
-      "allowedNa": [],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser signs in by identity.redirect.web; it has no loopback listener or registered scheme to take the redirect on."
+        }
+      ],
       "note": "I-15 (WIRE-CONTRACT-V5 §12.4, §12.12): a native app pushes its request at request (a form: the authorize parameters, a loopback, registered-scheme or claimed-HTTPS redirect_uri, the device label, an optional return_uri), opens authorize with the request_uri it gets in the system browser (ASWebAuthenticationSession, Auth Tab, Custom Tabs or the desktop browser), and redeems the code at token from the device that pushed it, with its PKCE verifier and the same redirect URI. The loopback class returns the card's handle (request=) for the return page. Pinned by redirect-native-loopback.json, redirect-native-scheme.json, redirect-native-choose-app.json, redirect-native-errors.json and locker-redirect-native.json; until I-15b implements it the row is planned and no SDK replays them."
     },
     {

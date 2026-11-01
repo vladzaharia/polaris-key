@@ -2463,6 +2463,24 @@ export class BrowserAdapter implements PolarisAdapter {
       opts.channel === "redirect"
         ? Feature.identityRedirectWeb
         : Feature.identityDevicecode;
+    // identity.redirect.native: a page has no loopback listener or registered scheme, so a
+    // redirect with no `redirectUri` is typed N/A; it signs in by identity.redirect.web.
+    if (
+      opts.channel === "redirect" &&
+      (opts as { redirectUri?: unknown }).redirectUri === undefined
+    )
+      throw this.fail(
+        "identity",
+        new UnsupportedError(
+          {
+            supported: false,
+            feature: Feature.identityRedirectNative,
+            reason: "runtime",
+            detail: "a browser signs in by identity.redirect.web.",
+          },
+          "unsupported",
+        ),
+      );
     if (!this.capabilities.identity.enabled)
       throw this.fail(
         "identity",

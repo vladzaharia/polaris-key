@@ -19,3 +19,4 @@ export {
   type BridgeActivation,
   type BridgeImportBundle,
 } from "./bridge.js";
+export type { NativeRedirectDesktopSession } from "./bridgeSignIn.js";

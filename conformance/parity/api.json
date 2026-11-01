@@ -3367,8 +3367,8 @@
           "spelling": "NativeRedirectSession.handleRedirect"
         },
         "react": {
-          "planned": "I-15b",
-          "reason": "the desktop adapter forwards to the Node host; a browser signs in by identity.redirect.web"
+          "spelling": "desktopAdapter.signIn.start({channel: \"redirect\"}).wait",
+          "reason": "the desktop adapter forwards the native redirect to the Node host, which takes the delivery itself (a loopback listener); a registered scheme's handleRedirect stays host-side, and a browser answers the typed runtime N/A"
         },
         "python": {},
         "swift": {

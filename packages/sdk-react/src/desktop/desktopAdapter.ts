@@ -39,7 +39,11 @@ import type { CapabilityContext } from "@polaris-key/client-core";
 import { isManageUrl } from "@polaris-key/client-core";
 import { createStore, type Store } from "../core/store.js";
 import { BeforeSignOutHooks } from "../core/account.js";
-import { BridgeDeviceCodeSession } from "./bridgeSignIn.js";
+import {
+  BridgeDeviceCodeSession,
+  type BridgeSignInHooks,
+  type NativeRedirectDesktopSession,
+} from "./bridgeSignIn.js";
 import type {
   DesktopNearbyApprover,
   DesktopNearbyRequester,
@@ -138,6 +142,7 @@ import {
   type BridgeHost,
   type KitView,
   type BridgeOidcBegin,
+  type BridgeSignInBegin,
   type BridgeState,
   type PolarisBridge,
 } from "./bridge.js";
@@ -1089,7 +1094,17 @@ export class DesktopAdapter implements PolarisAdapter {
 
   private async startSignIn(
     opts: SignInOptions,
-  ): Promise<DeviceCodeSignInSession | RedirectSignInSession> {
+  ): Promise<
+    | DeviceCodeSignInSession
+    | RedirectSignInSession
+    | NativeRedirectDesktopSession
+  > {
+    // identity.redirect.native: no `redirectUri` is the native redirect, which the host's Node
+    // client runs (its main process binds the listener and opens the browser). A `redirectUri`
+    // is the web redirect, which this runtime answers typed N/A.
+    const native =
+      opts.channel === "redirect" &&
+      (opts as { redirectUri?: unknown }).redirectUri === undefined;
     if (!this.capabilities.identity.enabled)
       throw this.fail(
         "identity",
@@ -1106,11 +1121,24 @@ export class DesktopAdapter implements PolarisAdapter {
           ErrorCode.serviceUnavailable,
         ),
       );
-    if (opts.channel === "redirect")
+    if (opts.channel === "redirect" && !native)
       throw this.fail("identity", this.noRedirect(Feature.identityRedirectWeb));
+    if (native && !this.speaksV6())
+      throw this.fail(
+        "identity",
+        new UnsupportedError(
+          {
+            supported: false,
+            feature: Feature.identityRedirectNative,
+            reason: "version",
+            detail: "The desktop bridge needs protocol v6 for this.",
+          },
+          "unsupported",
+        ),
+      );
     // The kit's "browser" channel is the device-code session here: the host opens the page.
     const channel = (opts as { channel: string }).channel;
-    if (channel !== "device-code" && channel !== "browser")
+    if (!native && channel !== "device-code" && channel !== "browser")
       throw this.fail(
         "identity",
         new PolarisError(
@@ -1158,7 +1186,9 @@ export class DesktopAdapter implements PolarisAdapter {
         "identity",
         new PolarisError(ErrorCode.invalidArgument, made),
       );
-    const bag = made;
+    const bag: BridgeSignInBegin | undefined = native
+      ? { ...made, channel: "redirect" }
+      : made;
     this.setBusy("identity", true);
     let begin: BridgeOidcBegin;
     try {
@@ -1169,31 +1199,34 @@ export class DesktopAdapter implements PolarisAdapter {
         new PolarisError("sign-in-unavailable", (e as Error).message),
       );
     }
-    return new BridgeDeviceCodeSession(
+    const hooks: BridgeSignInHooks = {
+      onSignedIn: async (identity) => {
+        this.apply(await this.bridge.getSyncState(), {
+          busy: noBusy(),
+          error: noErrors(),
+        });
+        const subject = await this.subject().catch(() => null);
+        return {
+          kind: "signedIn",
+          subject,
+          activation: { licenseId: null },
+          ...(identity ? { identity } : {}),
+        };
+      },
+      onFailed: (error) => {
+        this.fail("identity", error);
+      },
+      onStopped: () => this.setBusy("identity", false),
+    };
+    const session = new BridgeDeviceCodeSession(
       this.bridge,
       begin,
       opts.deviceName ?? null,
       this.clock(),
-      {
-        onSignedIn: async (identity) => {
-          this.apply(await this.bridge.getSyncState(), {
-            busy: noBusy(),
-            error: noErrors(),
-          });
-          const subject = await this.subject().catch(() => null);
-          return {
-            kind: "signedIn",
-            subject,
-            activation: { licenseId: null },
-            ...(identity ? { identity } : {}),
-          };
-        },
-        onFailed: (error) => {
-          this.fail("identity", error);
-        },
-        onStopped: () => this.setBusy("identity", false),
-      },
+      hooks,
+      native,
     );
+    return session as DeviceCodeSignInSession | NativeRedirectDesktopSession;
   }
 
   /** `invoke("config", "mint", {recipeId})`: the host's `client.config.mintToken()`. */

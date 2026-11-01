@@ -101,6 +101,9 @@ export interface BridgeOidcBegin {
   expiresAt?: number;
   /** v4: the minimum seconds between polls. */
   interval?: number;
+  /** I-15b.2: `"redirect"` when the host runs a native redirect sign-in. It then opens the
+   *  browser itself and holds the listener and the code: no URL or code comes back. */
+  channel?: "redirect";
 }
 
 /** UK-42.17: what `beginSignIn` takes. Every member is optional; a host that predates the hints
@@ -116,6 +119,11 @@ export interface BridgeSignInBegin {
   nameHint?: string;
   purpose?: "attach";
   licenseChoice?: "app" | "card";
+  /** I-15b.2: `"redirect"` starts a native redirect sign-in in the host process (v6 hosts). */
+  channel?: "redirect";
+  /** With `channel: "redirect"`: the flow id whose browser page to open again. Answers
+   *  `{reopened: boolean}` and starts nothing. */
+  reopen?: string;
 }
 
 /** The terminal outcome of polling an OIDC flow. v4's `ok` may carry the signed-in identity. */
