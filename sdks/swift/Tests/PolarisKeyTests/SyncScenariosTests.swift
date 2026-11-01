@@ -185,8 +185,12 @@ final class SyncScenariosTests: XCTestCase {
         XCTAssertEqual(family?["calls"], .array([.string("putAt"), .string("removeAt")]))
         XCTAssertEqual(family?["asserts"], .array([.string("rows"), .string("outcomes")]))
         let scenarios = f.fileRecordScenarios
-        XCTAssertEqual(scenarios.count, 16)
-        for sc in scenarios {
+        XCTAssertEqual(scenarios.count, 19)
+        // ported in SAVES-FILEPTR.2
+        let pending: Set<String> = [
+            "put-at-file-pointer-create", "put-at-file-pointer-update", "put-at-without-pointer-keeps-file",
+        ]
+        for sc in scenarios where !pending.contains(sc["name"]?.stringValue ?? "") {
             try runScenario(
                 sc, name: sc["name"]?.stringValue ?? "?", make: Self.makeMachine, product: f.root["product"] ?? .null)
         }
