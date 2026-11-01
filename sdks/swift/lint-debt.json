@@ -264,7 +264,7 @@
     },
     "sdks/swift/Sources/PolarisKeyUpdate/OutletReaders.swift": {
       "swift-format:Indentation": 18,
-      "swift-format:LineLength": 2
+      "swift-format:LineLength": 1
     },
     "sdks/swift/Sources/PolarisKeyUpdate/SparkleUpdater.swift": {
       "swift-format:Indentation": 53

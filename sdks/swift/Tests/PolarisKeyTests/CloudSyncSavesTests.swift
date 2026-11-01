@@ -337,10 +337,8 @@ final class CloudSyncSavesTests: XCTestCase {
             let rig = Rig(e2e: e2e)
             guard case .done = try await rig.client.write("a", bytes: Data("one".utf8), metadata: obj([:])).outcome()
             else { return XCTFail("first write") }
-            guard case .done(_, _, let other, nil) = try await rig.client.write(
-                "b", bytes: Data("another".utf8), metadata: obj([:])
-            ).outcome()
-            else { return XCTFail("second write") }
+            let second = try await rig.client.write("b", bytes: Data("another".utf8), metadata: obj([:])).outcome()
+            guard case .done(_, _, let other, nil) = second else { return XCTFail("second write") }
             let before = rig.records.sets.count
             rig.files.finalizeAnswer = { a in
                 var o = a.objectValue!

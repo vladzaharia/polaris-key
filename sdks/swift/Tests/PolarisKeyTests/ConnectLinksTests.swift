@@ -361,6 +361,7 @@ import XCTest
         private let lock = NSLock()
         private var socks: [RoomSocket] = []
         var seen: [String] = []
+        var members: Int { lock.withLock { socks.count } }
 
         func opener(alias: Data) -> ConnectRelayOpener {
             { [self] _, _ in
@@ -429,6 +430,9 @@ import XCTest
             rb.onSession { inbound.set($0) }
             await rb.start()
             await ra.start()
+            // `start` returns before the sockets open: dial once both are in the room, or the member
+            // list can miss the peer.
+            await until("both in the room") { room.members == 2 }
             let s = try await ra.dial(link.contactForA().id)
             XCTAssertEqual(s.path, "relay")
             XCTAssertEqual(s.contact?.id, link.contactForA().id)

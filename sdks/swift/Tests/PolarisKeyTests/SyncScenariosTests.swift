@@ -366,8 +366,8 @@ final class CloudSyncScenarioAdapter: SyncScenarioMachine {
         }
         switch name {
         case "putAt":
-            return ticket(
-                machine.putAt(str(0), str(1), a[2], baseVersion: base(3), file: a.count > 4 ? SyncFilePointer(json: a[4]) : nil))
+            let file = a.count > 4 ? SyncFilePointer(json: a[4]) : nil
+            return ticket(machine.putAt(str(0), str(1), a[2], baseVersion: base(3), file: file))
         case "removeAt": return ticket(machine.removeAt(str(0), str(1), baseVersion: base(2)))
         default: return plain(name, a)
         }
