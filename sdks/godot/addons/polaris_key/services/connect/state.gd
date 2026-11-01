@@ -22,6 +22,11 @@ extends RefCounted
 ## (replacing it would forget the held roster); only `clear()` removes it, and it never destroys the
 ## platform key (the device keys share it, R-6a #1, #6). Every call answers a PKeyResult. Nothing
 ## here puts K_disc in a result, message or `str()`.
+##
+## The inter-account links (CC-19b.G2, section 15.10) rest in the same record, as `contacts`: rows of raw
+## strings and numbers, at most 72 (64 held and 8 pending). Each secret is key material of the same
+## standing as K_disc. A row that breaks a rule makes the whole record unusable (never reset silently).
+## `PKeyConnectContacts` is the one reader and writer of the rows.
 
 const SCHEMA := "pkey.connect.v1"
 const FILE := "connect.v1"
@@ -34,7 +39,11 @@ const _OWNER_RW := FileAccess.UNIX_READ_OWNER | FileAccess.UNIX_WRITE_OWNER
 const _OWNER_RWX := FileAccess.UNIX_READ_OWNER | FileAccess.UNIX_WRITE_OWNER \
 		| FileAccess.UNIX_EXECUTE_OWNER
 
+## The most rows a record holds: 64 contacts and 8 pending ones (PKeyPeerContact).
+const MAX_CONTACT_ROWS := PKeyPeerContact.MAX_CONTACTS + PKeyPeerContact.MAX_PENDING_CONTACTS
+
 static var _key_re: RegEx
+static var _cat_re: RegEx
 
 var product: String
 var dir: String
@@ -49,6 +58,7 @@ var _mem := PackedByteArray()
 
 static func _static_init() -> void:
 	_key_re = PKeyClaims.whole("[A-Za-z0-9_-]{43}")
+	_cat_re = PKeyClaims.whole("[a-z0-9-]{1,32}")
 
 
 func _init(p_product: String, root := "user://pkey", memory := false,
@@ -278,6 +288,9 @@ class Record extends RefCounted:
 	## A pushed roster removed a device, so K_disc was replaced at the Worker and this copy is stale
 	## until the next identity fetch brings the new one (G11, G12).
 	var keys_stale := false
+	## The inter-account links: Dictionaries {agreeKey, secret, label?, cats, createdAt, reachable,
+	## pendingSince?} (agreeKey and secret are canonical base64url of 32 bytes). Absent when none.
+	var contacts: Array = []
 
 	func _to_string() -> String:
 		return "PKeyConnectState.Record(redacted)"
@@ -295,6 +308,7 @@ class Record extends RefCounted:
 		r.registered_agree = registered_agree
 		r.stored_at = stored_at
 		r.keys_stale = keys_stale
+		r.contacts = contacts.duplicate(true)
 		return r
 
 	func encode() -> PackedByteArray:
@@ -314,6 +328,8 @@ class Record extends RefCounted:
 			o["registered"] = {"signKey": registered_sign, "agreeKey": registered_agree}
 		if keys_stale:
 			o["keysStale"] = true
+		if not contacts.is_empty():
+			o["contacts"] = contacts.duplicate(true)
 		return PKeyJson.stringify(o).to_utf8_buffer()
 
 	## Strict parse; null when the bytes are not a record of this schema.
@@ -358,4 +374,51 @@ class Record extends RefCounted:
 		rec.epoch = int(v["epoch"])
 		rec.stored_at = int(v["storedAt"])
 		rec.keys_stale = v.get("keysStale") == true
+		if v.has("contacts"):
+			var rows: Variant = _parse_contacts(v["contacts"], nw)
+			if rows == null:
+				return null
+			rec.contacts = rows
 		return rec
+
+	## The contact rows, or null when any breaks a rule.
+	static func _parse_contacts(v: Variant, nw: PKeyJson.PointerSet) -> Variant:
+		if not v is Array or (v as Array).size() > PKeyConnectState.MAX_CONTACT_ROWS:
+			return null
+		var out: Array = []
+		for i in (v as Array).size():
+			var r: Variant = v[i]
+			if not r is Dictionary:
+				return null
+			var d: Dictionary = r
+			for k in ["agreeKey", "secret"]:
+				if not d.get(k) is String or not _canonical_key(d[k]):
+					return null
+			var cats: Variant = d.get("cats")
+			if not cats is Array or (cats as Array).size() > PKeyPeerContact.MAX_CONTACT_CATS:
+				return null
+			var seen := {}
+			for c in cats:
+				if not PKeyClaims.matches_whole_re(PKeyConnectState._cat_re, c) or seen.has(c):
+					return null
+				seen[c] = true
+			if d.has("label") and not d["label"] is String:
+				return null
+			var at := "/contacts/%d/" % i
+			if not PKeyClaims.is_wire_integer(d.get("createdAt"), at + "createdAt", 0, nw) or not d.get("reachable") is bool:
+				return null
+			if d.has("pendingSince") and not PKeyClaims.is_wire_integer(d["pendingSince"], at + "pendingSince", 0, nw):
+				return null
+			var row := {"agreeKey": d["agreeKey"], "secret": d["secret"], "cats": (cats as Array).duplicate(), "createdAt": int(d["createdAt"]), "reachable": d["reachable"]}
+			if d.has("label"):
+				row["label"] = d["label"]
+			if d.has("pendingSince"):
+				row["pendingSince"] = int(d["pendingSince"])
+			out.append(row)
+		return out
+
+	static func _canonical_key(s: String) -> bool:
+		if not PKeyClaims.matches_whole_re(PKeyConnectState._key_re, s):
+			return false
+		var b: Variant = PKeyB64Url.decode_strict(s)
+		return b != null and (b as PackedByteArray).size() == 32

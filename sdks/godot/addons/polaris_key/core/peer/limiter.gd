@@ -18,6 +18,8 @@ var _max_pending: int
 var _clock: Callable
 var _stamps: Array[float] = []
 var _pending := 0
+## The shared listener's trial runs on a worker task (CC-19b.G2), so the counters are guarded.
+var _lock := Mutex.new()
 
 
 ## `clock` returns monotonic seconds (empty: the engine's tick counter).
@@ -33,21 +35,27 @@ func _to_string() -> String:
 
 ## Sessions that have begun and not been released.
 func pending() -> int:
-	return _pending
+	_lock.lock()
+	var n := _pending
+	_lock.unlock()
+	return n
 
 
 ## A Ticket when one more session may start now; null when it may not.
 func begin() -> Ticket:
 	var t := _now()
+	_lock.lock()
 	var kept: Array[float] = []
 	for s in _stamps:
 		if t - s < WINDOW_SECONDS:
 			kept.append(s)
 	_stamps = kept
 	if _stamps.size() >= _max_per_minute or _pending >= _max_pending:
+		_lock.unlock()
 		return null
 	_stamps.append(t)
 	_pending += 1
+	_lock.unlock()
 	return Ticket.new(self)
 
 
@@ -56,7 +64,9 @@ func _now() -> float:
 
 
 func _release() -> void:
+	_lock.lock()
 	_pending = maxi(0, _pending - 1)
+	_lock.unlock()
 
 
 ## One waiting session's slot.
