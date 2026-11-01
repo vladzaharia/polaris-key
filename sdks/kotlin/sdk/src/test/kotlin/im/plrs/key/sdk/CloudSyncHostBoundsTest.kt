@@ -92,6 +92,7 @@ class CloudSyncHostBoundsTest {
         val file = File(dir, CLOUD_SYNC_FILE)
 
         fun signIn(who: String) = runBlocking {
+            deps.subject = { who }
             host.start()
             host.withMachine { it.signIn(who) }
         }

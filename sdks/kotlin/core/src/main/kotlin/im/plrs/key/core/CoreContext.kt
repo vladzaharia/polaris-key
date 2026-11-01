@@ -352,11 +352,13 @@ public class CoreContext(options: CoreOptions) {
         }
         // A start that finds the unconfirmed mark means the process ended on the confirm screen (V5 section 15.6.1
         // rule 12): the token goes, locally, before anything reads it.
+        var markStands = false
         if (readUnconfirmedMark()) {
-            dropMarkedToken()
+            markStands = !dropMarkedToken()
             token = null
         }
-        unconfirmedMemory = false
+        // A mark that could not be removed stays in memory too, so a later sign-in in this run clears it.
+        unconfirmedMemory = markStands
         val channelPreference = io { channelSlot.read() }
         lock.withLock {
             deviceIdValue = deviceId
@@ -476,16 +478,21 @@ public class CoreContext(options: CoreOptions) {
 
     @Volatile private var unconfirmedMemory = false
 
-    /** Remove the token a marked start found, then the mark. Not to be used this run either way. */
+    /**
+     * Remove the token a marked start found, then the mark. Not to be used this run either way. True when both
+     * are gone.
+     */
     @Suppress("TooGenericExceptionCaught", "SwallowedException")
-    private suspend fun dropMarkedToken() {
+    private suspend fun dropMarkedToken(): Boolean {
         try {
             onStore { store.clearToken() }
             clearUnconfirmedMark()
+            return true
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             // Not removable: memory holds none this run and the mark stands, so the next start tries again.
+            return false
         }
     }
 

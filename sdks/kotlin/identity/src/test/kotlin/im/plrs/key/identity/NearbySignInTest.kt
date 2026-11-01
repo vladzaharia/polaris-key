@@ -868,6 +868,34 @@ class NearbySignInTest {
     }
 
     @Test
+    fun aStartThatCannotRemoveTheMarkedTokenKeepsTheMarkInMemoryToo() = runBlocking {
+        val dir = java.nio.file.Files.createTempDirectory("nearby-keep").toFile()
+        try {
+            World(directory = dir).signedIn()
+            val refusing = object : im.plrs.key.core.Store by im.plrs.key.core.FileStore("djdl", dir) {
+                override suspend fun clearToken() {
+                    throw java.io.IOException("not removable")
+                }
+            }
+            val again = CoreContext(
+                CoreOptions(
+                    productSlug = "djdl", version = "1.0.0", pinnedKeys = emptyMap(), trustRefresh = false,
+                    store = refusing, clock = { 1_700_000_000L },
+                ),
+            )
+            again.start()
+            assertNull(again.token())
+            assertEquals("1", File(dir, "token-unconfirmed").readText().trim())
+            // A sign-in made later in this run clears the stale mark, so the next start keeps it.
+            again.setToken("pkeyt_later", TokenSource.activate)
+            assertEquals("pkeyt_later", again.token())
+            assertFalse(File(dir, "token-unconfirmed").readText().trim() == "1")
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
     fun theTokenIsClearedBeforeItsMark() = runBlocking {
         val dir = java.nio.file.Files.createTempDirectory("nearby-order").toFile()
         try {
