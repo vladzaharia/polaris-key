@@ -328,6 +328,9 @@ function renderPython(api: Api): string {
       attrs.push(`(${q(r.id)}, "IdentityClient", "sign_in")`);
     } else if (r.id === "identity.signIn.start") {
       attrs.push(`(${q(r.id)}, "SignInNamespace", "start")`);
+    } else if (r.id === "identity.signIn.handleRedirect") {
+      // I-15 (§12.12): a scheme or claimed delivery goes to the namespace.
+      attrs.push(`(${q(r.id)}, "SignInNamespace", "handle_redirect")`);
     } else if (r.id.startsWith("identity.nearby.")) {
       // M's side of nearby approval (I-47): `available` and `on_request` live on `identity.nearby`.
       attrs.push(`(${q(r.id)}, "NearbyNamespace", ${q(r.name)})`);

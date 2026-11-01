@@ -189,6 +189,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `identity.signOut` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.account` |
 | `identity.signIn.start` | `identity.signIn.start` | `usePolarisAuth().signIn.start` | `identity.sign_in.start` | `SignInNamespace.start` | `SignInNamespace.start` | `PKeySignInNamespace.start` | `identity.devicecode` |
 | `identity.signIn.startNearby` | — | — | — | — | `SignInNamespace.startNearby` | — | — |
+| `identity.signIn.handleRedirect` | planned (I-15b) | planned (I-15b) | `identity.sign_in.handle_redirect` | planned (I-15b) | planned (I-15b) | planned (I-15b) | `identity.redirect.native` |
 | `identity.signIn.session.reopen` | `identity.signIn.session.reopen` | `DeviceCodeSignInSession.reopen` | `identity.sign_in.session.reopen` | `SignInSession.reopen` | `SignInSession.reopen` | `PKeySignInSession.reopen` | `identity.devicecode` |
 | `identity.signIn.session.cancel` | `identity.signIn.session.cancel` | `SignInSession.cancel` | `identity.sign_in.session.cancel` | `SignInSession.cancel` | `SignInSession.cancel` | `PKeySignInSession.cancel` | `identity.devicecode` |
 | `identity.signIn.session.wait` | `identity.signIn.session.wait` | `DeviceCodeSignInSession.wait` | `identity.sign_in.session.wait` | `SignInSession.wait` | `SignInSession.wait` | `PKeySignInSession.wait` | `identity.devicecode` |
@@ -435,8 +436,8 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `cloudConnect.refreshPeers` | `cloudConnect.refreshPeers` | `useCloudConnect().refreshPeers` | `cloud_connect.refresh_peers` | `cloudConnect.refreshPeers` | `cloudConnect.refreshPeers` | `cloud_connect.refresh_peers` | `connect.app` |
 | `cloudConnect.status` | `cloudConnect.status` | `useCloudConnect().status` | `cloud_connect.status` | `cloudConnect.status` | `cloudConnect.status` | `cloud_connect.status` | `connect.app` |
 | `cloudConnect.onNotice` | `cloudConnect.onNotice` | `useCloudConnect().onNotice` | `cloud_connect.on_notice` | `cloudConnect.onNotice` | `cloudConnect.onNotice` | `notice` | `connect.app` |
-| `cloudConnect.nearby.request` | `cloudConnect.nearby.request` | `adapter.nearby.request` | `cloud_connect.nearby.request` | `cloudConnect.nearby.request` | `CloudNearby.request` | — | `identity.nearby` |
-| `cloudConnect.nearby.onRequest` | `cloudConnect.nearby.onRequest` | `adapter.nearby.approver` | `cloud_connect.nearby.on_request` | `cloudConnect.nearby.onRequest` | `CloudNearby.onRequest` | — | `identity.nearby` |
+| `cloudConnect.nearby.request` | `cloudConnect.nearby.request` | `adapter.nearby.request` | `cloud_connect.nearby.request` | `cloudConnect.nearby.request` | `CloudNearby.request` | `PKeyCloudNearby.request` | `identity.nearby` |
+| `cloudConnect.nearby.onRequest` | `cloudConnect.nearby.onRequest` | `adapter.nearby.approver` | `cloud_connect.nearby.on_request` | `cloudConnect.nearby.onRequest` | `CloudNearby.onRequest` | `PKeyCloudNearby.on_request` | `identity.nearby` |
 | `cloudConnect.links.pair` | `cloudConnect.links.pair` | — | `cloud_connect.links.pair` | `cloudConnect.links.pair` | `cloudConnect.links.pair` | — | `connect.links` |
 | `cloudConnect.links.list` | `cloudConnect.links.list` | — | `cloud_connect.links.list` | `cloudConnect.links.list` | `cloudConnect.links.list` | — | `connect.links` |
 | `cloudConnect.links.remove` | `cloudConnect.links.remove` | — | `cloud_connect.links.remove` | `cloudConnect.links.remove` | `cloudConnect.links.remove` | — | `connect.links` |
@@ -444,12 +445,12 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `cloudConnect.links.open` | `cloudConnect.links.open` | — | `cloud_connect.links.open` | `cloudConnect.links.open` | `cloudConnect.links.open` | — | `connect.links` |
 | `cloudConnect.links.onLink` | `cloudConnect.links.onLink` | — | `cloud_connect.links.on_link` | `cloudConnect.links.onLink` | `cloudConnect.links.onLink` | — | `connect.links` |
 | `cloudConnect.links.interAccount` | `cloudConnect.links.interAccount` | — | `cloud_connect.links.inter_account` | `cloudConnect.links.interAccount` | `cloudConnect.links.interAccount` | — | `connect.links` |
-| `cloudConnect.transfer.send` | `cloudConnect.transfer.send` | `adapter.cloudConnect.transfer.send` | `cloud_connect.transfer.send` | `cloudConnect.transfer.send` | `cloudConnect.transfer.send` | — | `connect.transfer` |
-| `cloudConnect.transfer.onOffer` | `cloudConnect.transfer.onOffer` | `adapter.cloudConnect.transfer.onOffer` | `cloud_connect.transfer.on_offer` | `cloudConnect.transfer.onOffer` | `cloudConnect.transfer.onOffer` | — | `connect.transfer` |
-| `cloudConnect.transfer.onResult` | `cloudConnect.transfer.onResult` | `adapter.cloudConnect.transfer.onResult` | `cloud_connect.transfer.on_result` | `cloudConnect.transfer.onResult` | `cloudConnect.transfer.onResult` | — | `connect.transfer` |
-| `cloudConnect.transfer.cancel` | `cloudConnect.transfer.cancel` | `adapter.cloudConnect.transfer.cancel` | `cloud_connect.transfer.cancel` | `cloudConnect.transfer.cancel` | `cloudConnect.transfer.cancel` | — | `connect.transfer` |
-| `cloudConnect.transfer.accept` | `cloudConnect.transfer.onOffer` | `TransferOfferDriver.accept` | `IncomingOffer.accept` | `TransferDecision.accept` | `TransferOffer.accept` | — | `connect.transfer` |
-| `cloudConnect.transfer.decline` | `cloudConnect.transfer.onOffer` | `TransferOfferDriver.decline` | `IncomingOffer.decline` | `TransferDecision.decline` | `TransferOffer.decline` | — | `connect.transfer` |
+| `cloudConnect.transfer.send` | `cloudConnect.transfer.send` | `adapter.cloudConnect.transfer.send` | `cloud_connect.transfer.send` | `cloudConnect.transfer.send` | `cloudConnect.transfer.send` | `PKeyCloudTransfer.send` | `connect.transfer` |
+| `cloudConnect.transfer.onOffer` | `cloudConnect.transfer.onOffer` | `adapter.cloudConnect.transfer.onOffer` | `cloud_connect.transfer.on_offer` | `cloudConnect.transfer.onOffer` | `cloudConnect.transfer.onOffer` | `PKeyCloudTransfer.on_offer` | `connect.transfer` |
+| `cloudConnect.transfer.onResult` | `cloudConnect.transfer.onResult` | `adapter.cloudConnect.transfer.onResult` | `cloud_connect.transfer.on_result` | `cloudConnect.transfer.onResult` | `cloudConnect.transfer.onResult` | `PKeyCloudTransfer.result` | `connect.transfer` |
+| `cloudConnect.transfer.cancel` | `cloudConnect.transfer.cancel` | `adapter.cloudConnect.transfer.cancel` | `cloud_connect.transfer.cancel` | `cloudConnect.transfer.cancel` | `cloudConnect.transfer.cancel` | `PKeyCloudTransfer.cancel` | `connect.transfer` |
+| `cloudConnect.transfer.accept` | `cloudConnect.transfer.onOffer` | `TransferOfferDriver.accept` | `IncomingOffer.accept` | `TransferDecision.accept` | `TransferOffer.accept` | `PKeyTransferOffer.accept` | `connect.transfer` |
+| `cloudConnect.transfer.decline` | `cloudConnect.transfer.onOffer` | `TransferOfferDriver.decline` | `IncomingOffer.decline` | `TransferDecision.decline` | `TransferOffer.decline` | `PKeyTransferOffer.decline` | `connect.transfer` |
 
 ## Removed in 0.9
 
