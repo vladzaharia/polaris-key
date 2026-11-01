@@ -25,7 +25,16 @@ func _init(owner: PKeyIdentity) -> void:
 ##                     for a host that can take the browser back to an https page it registered.
 ##                     The session's `authorize_url` is the page to open; hand the URL the browser
 ##                     landed on to `session.complete(callback_url)`.
-##   redirect_uri      redirect: the https URI the product registered (required)
+##   redirect_uri      redirect: the https URI the product registered. Leave it out for a NATIVE
+##                     redirect sign-in (WIRE-CONTRACT-V5 §12.12): on a desktop the SDK binds a
+##                     127.0.0.1 listener, pushes the request, opens the system browser and redeems
+##                     the code from this device (`session.wait()`); the session's `redirect_class`
+##                     says which. Without a listener (mobile, web, a headless host) `registered_schemes`
+##                     / `registered_claimed` (full redirect URIs) name the registered deliveries, which
+##                     the host hands to `handle_redirect(url)`; with none the start fails with
+##                     `redirect-unavailable`. Also: `loopback` (false to skip the listener),
+##                     `return_uri` (a registered scheme's redirect URI for "Return to <App>"),
+##                     `browser` (false: do not open the browser; `session.reopen()` does)
 ##   license_choice    redirect: "app" shows the licence choice in the app: a token that would need a
 ##                     choice settles `complete()` as `license_choice` (grant, choices) and
 ##                     `PolarisKey.identity.choice.*` finishes it. Honoured only when discovery names
@@ -43,3 +52,17 @@ func start(opts: Dictionary = {}) -> PKeySignInSession:
 	if identity == null:
 		return PKeySignInSession.new(false, PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
 	return await identity._start(opts)
+
+
+## Native redirect: hand the sign-in the URL the OS gave the app (a registered scheme or claimed
+## link). Goes to the sign-in `start()` last returned; a PKeySignInOutcome. A delivery that is not
+## that sign-in's (another URL, a wrong `state`) is a `sign-in-failed` outcome and leaves it waiting.
+## `sign-in-failed` as well when no native sign-in is running. A coroutine.
+func handle_redirect(url: String) -> PKeySignInOutcome:
+	var identity := _owner.get_ref() as PKeyIdentity if _owner != null else null
+	if identity == null:
+		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
+	var session = identity._active.get_ref() if identity._active != null else null
+	if not (session is PKeySignInSession) or session._native == null:
+		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.SIGN_IN_FAILED, "No native redirect sign-in is waiting; start one first.")
+	return await session.handle_redirect(url)

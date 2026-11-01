@@ -18,6 +18,12 @@ var polls: Array = []
 var tokens: Array = []
 ## Every token request: {path, body (the form text), headers}.
 var token_requests: Array = []
+## Answers for `POST …/identity/request` (the native redirect's pushed request): as `tokens`; the
+## last repeats. Every push: {path, body (the form text), headers}. `on_push(req)` runs when one
+## arrives (a test's probe of the world at that instant).
+var pushes: Array = []
+var push_requests: Array = []
+var on_push: Callable = Callable()
 ## Every device-flow request with the clock reading when it arrived: {path, at, body, headers}.
 var flow_requests: Array = []
 ## Answers for `POST …/identity/choice/<name>` by name (`licenses`, `devices`, `complete`, `cancel`):
@@ -97,6 +103,14 @@ func _answer(req: Dictionary) -> Dictionary:
 			return json(200, {"released": false})
 		var so = signouts[0] if signouts.size() == 1 else signouts.pop_front()
 		return so.call(req) if so is Callable else so
+	if path.ends_with("/identity/request"):
+		push_requests.append({"path": path, "body": (req["body"] as PackedByteArray).get_string_from_utf8(), "headers": req["headers"]})
+		if on_push.is_valid():
+			on_push.call(req)
+		if pushes.is_empty():
+			return {"status": 500}
+		var pu = pushes[0] if pushes.size() == 1 else pushes.pop_front()
+		return pu.call(req) if pu is Callable else pu
 	if path.ends_with("/identity/token"):
 		token_requests.append({"path": path, "body": (req["body"] as PackedByteArray).get_string_from_utf8(), "headers": req["headers"]})
 		if tokens.is_empty():

@@ -18,6 +18,15 @@ extends PKeyResult
 ##   cancel()          stop at once: the wait wakes, sends no further poll and ends `cancelled`
 ##   accept(attach)    the player accepted the identity `choose` showed, on the device
 ##   reopen()          open the verification page in the system browser again
+##   handle_redirect(url)  a native redirect sign-in: the URL the OS handed the app (see below)
+##
+## A native redirect sign-in (`sign_in.start({channel = "redirect"})` with no `redirect_uri`,
+## WIRE-CONTRACT-V5 §12.12): the SDK binds a 127.0.0.1 listener, pushes the request, opens
+## `authorize_url` in the system browser, and `wait()` settles when the redirect arrives and the code
+## is redeemed from this device. A registered scheme or claimed link is delivered with
+## `handle_redirect(url)` (or `PolarisKey.identity.sign_in.handle_redirect(url)`). `redirect_class` is
+## "loopback", "scheme" or "claimed". `reopen()` opens the SAME `authorize_url` again while the pushed
+## request lives. The code and the verifier never appear in a log, a URL the SDK builds or `str()`.
 ##
 ## Polling rules (P1b-08's, the same in every SDK): wait at least `interval` seconds between polls
 ## (never under one second, never past the code's lifetime); a `slow_down` (HTTP 429) lengthens the
@@ -82,7 +91,17 @@ var license_choice := false
 ## Worker) the label sent; "" when there is none. Show it under the code.
 var device_name := ""
 
+## Native redirect: "loopback", "scheme" or "claimed"; "" on the other channels.
+var redirect_class := ""
+## Native redirect: the redirect URI the pushed request named; "" on the other channels.
+var redirect_uri := ""
+## Native redirect: true when the system browser was asked to open `authorize_url` at the start.
+var opened := false
+
 var _identity: PKeyIdentity = null
+## The native redirect state (a pushed request, its listener, the callback that arrived), or null.
+var _native: PKeyNativeSignIn = null
+var _settling := false
 ## The redirect request until `complete()` or `cancel()` takes it (single use); {} otherwise.
 var _pending: Dictionary = {}
 var _cancelled := false
@@ -113,6 +132,8 @@ func wait() -> PKeySignInOutcome:
 	if _settled != null:
 		return _settled
 	if channel == &"redirect":
+		if _native != null:
+			return await _wait_native()
 		if _cancelled:
 			return _cancelled_outcome()
 		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyConstants.ErrorCode.INVALID_ARGUMENT, "A redirect sign-in settles through complete(callback_url), not wait().")
@@ -131,10 +152,13 @@ func wait() -> PKeySignInOutcome:
 ## later `wait()` answers `cancelled`. Also declines a pending identity confirmation. Safe to call
 ## at any time, and a no-op once the sign-in settled.
 func cancel() -> void:
-	if _settled != null or _cancelled:
+	if _settled != null or _cancelled or _settling:
 		return
 	_cancelled = true
 	_pending = {}
+	if _native != null:
+		_native.pending = {}
+		_native.shut()
 	_held = false
 	_woke.emit()
 	if not _running and ok:
@@ -154,6 +178,8 @@ func complete(callback_url: String) -> PKeySignInOutcome:
 		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyConstants.ErrorCode.INVALID_ARGUMENT, "complete(callback_url) belongs to a redirect sign-in; use wait().")
 	if not ok:
 		return await wait()
+	if _native != null:
+		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyConstants.ErrorCode.INVALID_ARGUMENT, "A native redirect sign-in settles through wait() or handle_redirect(url).")
 	var pending := _pending
 	_pending = {}
 	if pending.is_empty() or _identity == null:
@@ -192,7 +218,102 @@ func accept(attach_license := false) -> bool:
 ## popup blockers eat outside an input event, so always render the link and the QR code as well).
 ## True when the browser was asked to open it.
 func reopen() -> bool:
+	if _native != null:
+		# The SAME authorize URL (no new push, state or verifier) while the pushed request lives.
+		var core := _identity._core() if _identity != null else null
+		if core == null or _native.closed or core.clock.system_now() >= _native.expires_at:
+			return false
 	return _identity != null and _identity.open_in_browser(self) == OK
+
+
+## Native redirect: a scheme or claimed-HTTPS delivery, the URL the OS handed the app. Checks the
+## redirect URI, `state` and `iss` before anything is sent, then redeems the code from this device
+## and settles the sign-in (a PKeySignInOutcome, also emitted by `outcome`). A delivery that is not
+## this sign-in's (another URL, a wrong `state`) is a `sign-in-failed` outcome that leaves the
+## sign-in waiting. A coroutine.
+func handle_redirect(url: String) -> PKeySignInOutcome:
+	if not ok:
+		return await wait()
+	if _native == null:
+		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyConstants.ErrorCode.INVALID_ARGUMENT, "handle_redirect(url) belongs to a native redirect sign-in; use complete(callback_url) or wait().")
+	if _settled != null or _cancelled or _native.pending.is_empty():
+		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.SIGN_IN_FAILED, "This sign-in is already finished or was cancelled; start a new one.")
+	var result := PKeyNativeRedirect.parse_native_callback(_native.pending, url)
+	if result["kind"] == "failed" and result["reason"] in PKeyNativeRedirect.NOT_THIS_SIGN_IN:
+		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.SIGN_IN_FAILED, "The sign-in redirect was refused (%s)." % result["reason"])
+	if not _native.arrive(result):
+		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.SIGN_IN_FAILED, "This sign-in already received its redirect.")
+	return await _settle_native()
+
+
+## Native redirect: wait for the redirect (the listener, or `handle_redirect`), then redeem it.
+func _wait_native() -> PKeySignInOutcome:
+	if _running:
+		return await outcome
+	if _identity == null:
+		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.NOT_CONFIGURED, "This session has no SDK behind it.")
+	_running = true
+	var result := await _native_loop()
+	_running = false
+	if _settled == null:
+		_publish(result)
+	return result
+
+
+func _native_loop() -> PKeySignInOutcome:
+	var core := _identity._core()
+	if core == null or not core.started:
+		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
+	while true:
+		if _settled != null:
+			return _settled
+		if _cancelled:
+			return _cancelled_outcome()
+		if not _native.arrival.is_empty():
+			return await _settle_native()
+		var lapsed: bool = core.clock.system_now() >= _native.expires_at
+		if _native.listener != null:
+			_native.listener.poll()
+			# A listener that closed by itself (its own lifetime) with nothing received is the same lapse.
+			lapsed = lapsed or (_native.listener.is_closed() and _native.arrival.is_empty() and not _native.closed)
+		if lapsed:
+			_native.pending = {}
+			_native.shut()
+			return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, "The sign-in request expired before the browser returned; start again.")
+		await _native_idle()
+	return _expired()
+
+
+func _native_idle() -> void:
+	var host := _identity._host
+	if host != null and host.is_inside_tree():
+		await _hold(0.05)
+	else:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+
+
+## Redeem the arrived callback, once. A second caller waits for the first one's outcome.
+func _settle_native() -> PKeySignInOutcome:
+	if _settled != null:
+		return _settled
+	if _settling:
+		return await outcome
+	_settling = true
+	var arrival := _native.arrival
+	var pending := _native.pending
+	_native.pending = {}
+	_native.shut()
+	var result: PKeySignInOutcome
+	if arrival.get("kind") == "cancelled":
+		result = _cancelled_outcome()
+	elif arrival.get("kind") != "code" or pending.is_empty():
+		var reason := String(arrival.get("reason", "no redirect"))
+		result = PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.SIGN_IN_FAILED, "The sign-in redirect was refused (%s)." % reason)
+	else:
+		result = await _identity._redeem(self, pending, String(arrival["code"]), true)
+	_settling = false
+	_publish(result)
+	return result
 
 
 ## One poll, unpaced, for the transcript replayer: `identity._poll`'s answer ({status, ...}).

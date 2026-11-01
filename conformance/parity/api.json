@@ -3378,8 +3378,7 @@
           "spelling": "SignInNamespace.handleRedirect"
         },
         "godot": {
-          "planned": "I-15b",
-          "reason": "native redirect sign-in lands in the Godot SDK with I-15b.7"
+          "spelling": "PKeySignInNamespace.handle_redirect"
         }
       },
       "layer": "client"

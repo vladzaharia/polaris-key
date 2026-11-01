@@ -10,7 +10,7 @@ extends RefCounted
 # @pkey-feature sync.keyring sync.settings
 # @pkey-feature identity.exchange identity.gamecenter identity.pgs
 # @pkey-feature sync.files sync.files.delta sync.saves
-# @pkey-feature connect.identity connect.relay
+# @pkey-feature connect.identity connect.relay identity.redirect.native
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -66,6 +66,13 @@ extends RefCounted
 # rotates the keys. `connectIdentity` reports `epoch`, `devices` (the roster's ids), `deviceId` and
 # `discKeys` (1, or 2 while the previous K_disc is held); a refusal is `result: "refused"` with its
 # `code`, and Connect off for the product is `unavailable`.
+#
+# `browser` and `redirectComplete` of an `identity.redirect.native` transcript (I-15b.7) drive the NATIVE
+# sign-in: the push is the SDK's own (`sign_in.start({channel: "redirect"})` with the recorded label
+# and options, the recorded state and the recorded loopback port through PKeyReplayListener), the
+# authorize URL it built is compared to the recording's, and the recorded redirect is handed to the
+# session (the listener's callback for a loopback, `handle_redirect` for a scheme). A refusal the
+# browser played raw (a step that expects an `error`) stays the recording's.
 #
 # `discover` reports the result's `kind` as `result` and PolarisKey.presentation() as
 # `presentation` (core.presentation: the normalised member, or null when there is none), so
@@ -348,6 +355,11 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 			if not sdk.has_meta("pkey_replay"):
 				await _cors(sdk, step)
 				return out
+			if _is_native(sdk.get_meta("pkey_replay")["tr"]):
+				await _native_browser(sdk, step)
+				for k in step["expect"]:
+					out[k] = step["expect"][k]
+				return out
 			# The browser's half is the recording's; the SDK's half is the authorize URL it builds for
 			# the request the Worker answered with a 303 to the card (hints included).
 			var ctx: Dictionary = sdk.get_meta("pkey_replay")
@@ -364,12 +376,18 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 			for k in step["expect"]:
 				out[k] = step["expect"][k]
 		"redirectComplete":
-			var s := await _redirect_session(sdk, step)
+			var s: PKeySignInSession
+			var native_done: PKeySignInOutcome = null
+			if _is_native(sdk.get_meta("pkey_replay")["tr"]):
+				native_done = await _native_complete(sdk, step)
+				s = PKeySignInSession.new(true)
+			else:
+				s = await _redirect_session(sdk, step)
 			if not s.ok:
 				out["result"] = "error"
 				out["code"] = String(s.code)
 			else:
-				var o: PKeySignInOutcome = await s.complete(String(step["args"].get("callbackUrl", "")))
+				var o: PKeySignInOutcome = native_done if native_done != null else await s.complete(String(step["args"].get("callbackUrl", "")))
 				match o.kind:
 					PKeySignInOutcome.KIND_SIGNED_IN:
 						out["result"] = "ok"
@@ -682,6 +700,115 @@ static func _redirect_session(sdk: Node, step: Dictionary) -> PKeySignInSession:
 	return await sdk.identity.sign_in.start(opts)
 
 
+static func _is_native(tr: Dictionary) -> bool:
+	return "identity.redirect.native" in tr["features"]
+
+
+## The recorded redirect URI a step that names none uses: the transcript's first.
+static func _recorded_native_uri(tr: Dictionary) -> String:
+	for st in tr["steps"]:
+		if st["args"].get("redirectUri") is String:
+			return String(st["args"]["redirectUri"])
+	return RECORDED_REDIRECT
+
+
+## The form of the recorded push in a step (its first `identity/request` exchange), or {}.
+static func _pushed_body(step: Dictionary) -> Dictionary:
+	for item in step["exchanges"]["items"]:
+		var r: Dictionary = item["request"]
+		if r["method"] == "POST" and String(r["path"]).ends_with("/identity/request") and r["body"] is Dictionary:
+			return r["body"]["json"]
+	return {}
+
+
+## A native `browser` step: the SDK pushes its own request (unless the recording is a refusal the
+## browser played raw), and the authorize URL it built is compared to every recorded one.
+static func _native_browser(sdk: Node, step: Dictionary) -> void:
+	var ctx: Dictionary = sdk.get_meta("pkey_replay")
+	var tr: Dictionary = ctx["tr"]
+	var engine: PKeyTranscriptReplay = ctx["engine"]
+	var refusal: bool = step["expect"].has("error")
+	for item in step["exchanges"]["items"]:
+		var r: Dictionary = item["request"]
+		if refusal:
+			continue
+		if r["method"] == "POST" and r["path"] == "/%s/identity/request" % tr["product"]:
+			var session := await _native_start(sdk, step)
+			if not session.ok:
+				engine.failures.append("the native start failed: %s" % session)
+		elif r["method"] == "GET" and String(r["path"]).contains("/identity/authorize?client_id=") and sdk.has_meta("pkey_native"):
+			var live: PKeySignInSession = sdk.get_meta("pkey_native")
+			var want: String = String(tr["baseUrl"]) + String(r["path"])
+			var got := live.authorize_url.replace(String(ctx["base"]), String(tr["baseUrl"]))
+			if got != want:
+				engine.failures.append("authorize URL differs from the recording:\n    want %s\n    got  %s" % [want, got])
+	engine.serve_browser_exchanges()
+
+
+## The native sign-in as the host would start it: the recording's label, hints, state and port.
+static func _native_start(sdk: Node, step: Dictionary) -> PKeySignInSession:
+	var ctx: Dictionary = sdk.get_meta("pkey_replay")
+	var tr: Dictionary = ctx["tr"]
+	var body := _pushed_body(step)
+	var redirect_uri: String = String(step["args"].get("redirectUri", _recorded_native_uri(tr)))
+	sdk.identity.redirect_entropy = {"state": String(body.get("state", step["args"].get("state", RECORDED_STATE))), "code_verifier": String(step["args"].get("codeVerifier", RECORDED_VERIFIER))}
+	var opts := {"channel": "redirect", "browser": false, "device_name": String(body.get("device_name", ""))}
+	for name in ["login_hint", "name_hint", "purpose", "scope", "return_uri"]:
+		if body.get(name) is String:
+			opts[name] = body[name]
+	if body.get("license_choice") == "app":
+		opts["license_choice"] = "app"
+	if PKeyNativeRedirect.classify_native_redirect_uri(redirect_uri) == "loopback":
+		var port := int(redirect_uri.get_slice(":", 2).get_slice("/", 0))
+		sdk.identity.listener_factory = func() -> Object: return PKeyReplayListener.new(port)
+		sdk.identity.native_platform = "desktop"
+		opts["loopback"] = true
+	else:
+		opts["loopback"] = false
+		opts["registered_schemes"] = [redirect_uri]
+	var session: PKeySignInSession = await sdk.identity.sign_in.start(opts)
+	sdk.set_meta("pkey_native", session)
+	return session
+
+
+## A native `redirectComplete`: the recorded redirect handed to the sign-in waiting for it. A
+## sign-in already settled is single use, so a replayed redirect is played against a fresh one built
+## on the same pending request (the recording pins the Worker's refusal of the code).
+static func _native_complete(sdk: Node, step: Dictionary) -> PKeySignInOutcome:
+	var ctx: Dictionary = sdk.get_meta("pkey_replay")
+	var tr: Dictionary = ctx["tr"]
+	var url := String(step["args"].get("callbackUrl", ""))
+	var live = sdk.get_meta("pkey_native", null)
+	if live is PKeySignInSession and live.ok and live._native != null and not live._native.closed:
+		var n: PKeyNativeSignIn = live._native
+		if n.listener is PKeyReplayListener:
+			var answer: Array = n.listener.deliver(url)
+			var handle := RegEx.create_from_string("[?&]request=([^&#]*)").search(url)
+			if String(answer[0]) != "" and handle != null:
+				var want := "%s/signin/return?request=%s" % [ctx["base"], handle.get_string(1)]
+				if answer[0] != want:
+					ctx["engine"].failures.append("the return location differs from the recording: %s" % answer[0])
+			return await live.wait()
+		return await live.handle_redirect(url)
+	var fragment := PKeyDiscovery.identity_from(sdk.core.discovery_manifest)
+	var redirect_uri := url.get_slice("?", 0)
+	var fresh := PKeyNativeSignIn.new()
+	fresh.pending = {
+		"redirect_class": PKeyNativeRedirect.classify_native_redirect_uri(redirect_uri), "redirect_uri": redirect_uri,
+		"state": String(step["args"].get("state", RECORDED_STATE)), "code_verifier": String(step["args"].get("codeVerifier", RECORDED_VERIFIER)),
+		"client_id": tr["product"], "issuer": fragment["issuer"], "authorize_endpoint": fragment["endpoints"]["authorize"],
+		"token_endpoint": fragment["endpoints"]["token"], "license_choice": _asks_app_choice(tr),
+	}
+	fresh.redirect_class = fresh.pending["redirect_class"]
+	fresh.redirect_uri = redirect_uri
+	fresh.expires_at = sdk.core.clock.system_now() + 600.0
+	var session := PKeySignInSession.new(true)
+	session.channel = &"redirect"
+	session._native = fresh
+	session._identity = sdk.identity
+	return await session.handle_redirect(url)
+
+
 static func _asks_app_choice(tr: Dictionary) -> bool:
 	for step in tr["steps"]:
 		for item in step["exchanges"]["items"]:
@@ -857,6 +984,18 @@ static func _redirect_discovery(base: String, tr: Dictionary) -> Dictionary:
 		"choiceComplete": root + "/choice/complete", "choiceCancel": root + "/choice/cancel",
 	}
 	var identity := {"enabled": true, "configured": true, "issuer": issuer, "endpoints": endpoints}
+	if _is_native(tr):
+		# I-15 (§12.6): the pushed-request endpoint, the customer host's return page and the classes
+		# the product accepts (its registered schemes are the transcript's).
+		var schemes: Array = []
+		for st in tr["steps"]:
+			var uri = st["args"].get("redirectUri")
+			if uri is String and PKeyNativeRedirect.classify_native_redirect_uri(uri) == "scheme" and not (uri in schemes):
+				schemes.append(uri)
+		schemes.sort()
+		endpoints["request"] = root + "/request"
+		endpoints["signinReturn"] = base + "/signin/return"
+		identity["nativeRedirect"] = {"loopback": true, "schemes": schemes, "claimedHttps": []}
 	if tr["steps"].any(func(st): return st["action"] == "beginSignIn" and st["args"].get("licenseChoice") == "app"):
 		identity["deviceChoice"] = true
 	var services := {"identity": identity}
