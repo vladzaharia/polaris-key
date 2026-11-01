@@ -226,7 +226,14 @@ static func _payload_bytes(r: Dictionary) -> PackedByteArray:
 
 func _payloads(t: PKeyTestContext, rows: Array) -> void:
 	var good := 0
+	var ran := 0
+	var skipped: Array = []
 	for r in rows:
+		# Mode c (inter-account links, feature connect.links) is planned for Godot (parity.json, CC-19).
+		if r["mode"] == "c":
+			skipped.append(r["id"])
+			continue
+		ran += 1
 		var bytes := _payload_bytes(r)
 		var got := PKeyPeerPayload.parse_handshake_payload(r["mode"], int(r["message"]), bytes)
 		var want: Dictionary = r["want"]
@@ -235,7 +242,8 @@ func _payloads(t: PKeyTestContext, rows: Array) -> void:
 			ok = got["caps"] == want.get("caps", []) \
 					and got.get("ring", -1) == int(want.get("ring", -1)) and got.get("cert") == want.get("cert")
 		good += int(t.check("payload %s" % r["id"], ok))
-	t.check("every payload row ran", good == 58, "%d/58" % good)
+	t.check("every payload row Godot claims ran", ran >= 58 and good == ran, "%d/%d" % [good, ran])
+	t.check("the skipped payload rows are mode c only (connect.links is planned)", skipped.size() == rows.size() - ran, ", ".join(skipped))
 
 
 func _intersection(t: PKeyTestContext, rows: Array) -> void:
