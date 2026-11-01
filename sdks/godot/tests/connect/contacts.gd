@@ -44,6 +44,14 @@ static func _fill(n: int) -> PackedByteArray:
 	return b
 
 
+## The tag of the secret the pending row for `key` holds in the record.
+static func _pending_tag(state: PKeyConnectState, key: String) -> String:
+	for r: Dictionary in state.read().detail.contacts:
+		if r["agreeKey"] == key and r.has("pendingSince"):
+			return PKeyConnectContacts.tag_of(PKeyB64Url.decode_strict(str(r["secret"])))
+	return ""
+
+
 static func _key(n: int) -> String:
 	return PKeyB64Url.encode(_fill(n))
 
@@ -119,7 +127,7 @@ func _store_rows(t: PKeyTestContext, rows: Array) -> void:
 					else:
 						ok = ok and w["result"] == "full" and v.code == &"full"
 				"promote":
-					ok = ok and contacts.promote(_key(int(op["key"]))).ok
+					ok = ok and contacts.promote(_key(int(op["key"])), _pending_tag(state, _key(int(op["key"])))).ok
 				"drop":
 					clock.now = int(op["now"])
 					ok = ok and contacts.list().ok
@@ -187,7 +195,12 @@ func _changes(t: PKeyTestContext) -> void:
 	for x: Dictionary in c.trial_order().detail:
 		order.append(int((x["secret"] as PackedByteArray)[0]))
 	t.check("trial order: the held contacts, then the pending one", order == [11, 22, 33])
-	t.check("promote: the pending contact takes the held one's place, keeping its reachability", c.promote(_key(1)).ok and _held(state) == [[33, 22], []] and c.list().detail[0]["reachable"] == true \
+	# A session that names no secret, or another one, promotes nothing.
+	var before := _held(state)
+	t.check("promote: an empty tag promotes nothing", c.promote(_key(1), "").ok and _held(state) == before)
+	t.check("promote: nor does the tag of another secret", c.promote(_key(1), PKeyConnectContacts.tag_of(_fill(11))).ok and _held(state) == before)
+	var promoted := c.promote(_key(1), PKeyConnectContacts.tag_of(_fill(33)))
+	t.check("promote: the pending contact takes the held one's place, keeping its reachability", promoted.ok and _held(state) == [[33, 22], []] and c.list().detail[0]["reachable"] == true \
 			and c.list().detail[0]["label"] == "New" and c.list().detail[0]["categories"] == ["music"])
 	# A new peer is stored active and reachable, and the secret handed in is left alone.
 	var secret := _fill(44)

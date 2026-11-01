@@ -40,6 +40,8 @@ extends RefCounted
 signal link(session: PKeyConnectSession)
 
 const LAN_ATTEMPT_SECONDS := 4.0
+## After a discovery read that failed, the next one comes this soon (the cached answer has lapsed meanwhile).
+const REREAD_RETRY_SECONDS := 900.0
 
 ## Direct Transfer takes each session the links open or accept: Callable(session). Set by CC-20b.
 var adopt: Callable
@@ -84,16 +86,34 @@ func _to_string() -> String:
 	return "PKeyCloudLinks()"
 
 
+## One timer, at the end of the cached answer's life (a retry after a read that failed): then the lapse is
+## told to the readers and discovery is read again.
 func _arm_reread() -> void:
 	_reread_gen += 1
-	if _tree != null:
-		_tree.create_timer(PKeyCore.DISCOVERY_TTL_SECONDS).timeout.connect(_reread.bind(_reread_gen))
+	var core := _core_ref.get_ref() as PKeyCore
+	var seconds := REREAD_RETRY_SECONDS
+	if core != null and core.discovery_fresh():
+		seconds = core.discovery_seconds_left() + 0.5
+	var fn := _reread.bind(_reread_gen)
+	var timer: Variant = _o.get("timer")
+	if timer is Callable and (timer as Callable).is_valid():
+		(timer as Callable).call(seconds, fn)
+	elif _tree != null:
+		# Process always, and not slowed or stopped by `Engine.time_scale`.
+		_tree.create_timer(seconds, true, false, true).timeout.connect(fn)
 
 
 func _reread(gen: int) -> void:
 	var core := _core_ref.get_ref() as PKeyCore
-	if gen == _reread_gen and core != null:
-		await core.discover()
+	if gen != _reread_gen or core == null:
+		return
+	# The answer may have just lapsed: withdraw the adverts and rooms before the read, and again after it.
+	_client.notify_contacts()
+	var r: PKeyResult = await core.discover()
+	_client.notify_contacts()
+	# A good read, or one that moved the answer, armed the next timer already; a failed one retries soon.
+	if gen == _reread_gen and not r.ok:
+		_arm_reread()
 
 
 # ── the API ──────────────────────────────────────────────────────────────────────────────────

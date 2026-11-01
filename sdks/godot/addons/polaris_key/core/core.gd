@@ -289,6 +289,14 @@ func discovery_fresh() -> bool:
 	return not bool(get_meta("discovery_lapsed", false)) and (expires < 0.0 or float(Time.get_ticks_msec()) / 1000.0 < expires)
 
 
+## Seconds before the cached answer lapses by age; the whole life for one nothing stamped.
+func discovery_seconds_left() -> float:
+	var expires: float = get_meta("discovery_expires", -1.0)
+	if expires < 0.0:
+		return DISCOVERY_TTL_SECONDS
+	return maxf(expires - float(Time.get_ticks_msec()) / 1000.0, 0.0)
+
+
 ## A read ended without a document: the cached answer stops counting, and its readers look again.
 func _discovery_failed() -> void:
 	var was := discovery_fresh()

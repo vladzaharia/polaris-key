@@ -16,7 +16,7 @@ extends RefCounted
 ##    not own are ignored (G9, `route_record`);
 ##  - the six Direct Transfer types (0x0020 to 0x0025) belong to the transfer layer: they reach the port
 ##    `attach_xfer` returned a writer for and nothing else (a session with `xfer/1` and no port closes
-##    `peer_not_allowed`), and the host's `send` and `send_record` refuse them;
+##    `peer_not_allowed`; a link session holds a few until Direct Transfer takes it), and the host's `send` and `send_record` refuse them;
 ##  - messages the host has not read yet are bounded (G10): the pipe pauses at 4 MiB queued and
 ##    resumes under 1 MiB; at 8 MiB, or at 256 queued messages, the session closes `peer_busy`; all
 ##    sessions together hold at most 32 MiB (`Budget`);
@@ -45,6 +45,9 @@ const QUEUE_PAUSE_BYTES := 4 * 1024 * 1024
 const QUEUE_RESUME_BYTES := 1024 * 1024
 const QUEUE_MAX_BYTES := 8 * 1024 * 1024
 const TOTAL_QUEUE_BYTES := 32 * 1024 * 1024
+## Transfer records a link session receives before Direct Transfer has taken it (see `route_record`).
+const MAX_HELD_XFER := 8
+const MAX_HELD_XFER_BYTES := 1024 * 1024
 
 ## Process-wide, for sessions made without a budget of their own.
 static var shared_budget := Budget.new()
@@ -72,6 +75,8 @@ var _bytes := 0
 var _paused := false
 var _ended := false
 var _xfer: Callable
+var _held_xfer: Array = []
+var _held_xfer_bytes := 0
 var _end_code: StringName = &""
 var _end_by_peer := false
 
@@ -126,6 +131,27 @@ func attach_xfer(on_record: Callable) -> Callable:
 		return Callable()
 	_xfer = on_record
 	return Callable(self, "_write_xfer")
+
+
+## Hand the transfer port the records that came in before it was taken (a link session is taken by Direct
+## Transfer after its link has been checked, a moment after the peer may have started).
+func flush_xfer() -> void:
+	var held := _held_xfer
+	_held_xfer = []
+	_held_xfer_bytes = 0
+	for r: Array in held:
+		if _xfer.is_valid():
+			_xfer.call(r[0], r[1])
+
+
+func _hold_xfer(type: int, body: PackedByteArray) -> bool:
+	if _ended or contact.is_empty() or not caps.has(PKeyPeerXfer.CAP) or _xfer.is_valid():
+		return false
+	if _held_xfer.size() >= MAX_HELD_XFER or _held_xfer_bytes + body.size() > MAX_HELD_XFER_BYTES:
+		return false
+	_held_xfer.append([type, body])
+	_held_xfer_bytes += body.size()
+	return true
 
 
 func _write_xfer(type: int, body: PackedByteArray) -> PKeyResult:
@@ -207,6 +233,8 @@ func ended(code: StringName, by_peer: bool) -> void:
 	_bytes = 0
 	_link = null
 	_xfer = Callable()
+	_held_xfer = []
+	_held_xfer_bytes = 0
 	woke.emit()
 	closed.emit(code, by_peer)
 
@@ -231,6 +259,8 @@ static func route_record(link: Object, session: PKeyConnectSession, type: int, b
 		# The capability was checked by the engine; a port is there or the host listed it for nothing.
 		if session != null and session._xfer.is_valid():
 			session._xfer.call(type, body)
+		elif session != null and session._hold_xfer(type, body):
+			pass
 		else:
 			link.close(PKeyPeerSession.PEER_NOT_ALLOWED)
 	elif type >= CRITICAL_FIRST and type <= CRITICAL_LAST:

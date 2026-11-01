@@ -336,6 +336,7 @@ func attach(session: PKeyConnectSession) -> void:
 	_wires[session.get_instance_id()] = wire
 	wire.endpoint.bind(machine)
 	session.closed.connect(_on_session_closed.bind(wire))
+	session.flush_xfer()
 
 
 func _on_session_closed(_code: StringName, _by_peer: bool, wire: Wire) -> void:
