@@ -41,19 +41,22 @@ public enum CloudSyncFileBounds {
     public static let maxRetryAfterSeconds = 3600.0
 }
 
-public struct CloudSyncFileTransport: FileTransport, FileRevisions {
+public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTaskCancelling {
     private let product: String
     private let baseUrl: String
     private let transport: any PolarisTransport
     private let headers: @Sendable () async -> [String: String]
     private let token: @Sendable () async -> String?
     private let timeoutSeconds: Double
+    private let bulk: (any BulkChannel)?
 
     public init(
         product: String, baseUrl: String, transport: any PolarisTransport,
         headers: @escaping @Sendable () async -> [String: String],
-        token: @escaping @Sendable () async -> String?, timeoutSeconds: Double = 15
+        token: @escaping @Sendable () async -> String?, timeoutSeconds: Double = 15,
+        bulk: (any BulkChannel)? = nil
     ) {
+        self.bulk = bulk
         self.product = product
         self.baseUrl = baseUrl
         self.transport = transport
@@ -63,10 +66,10 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions {
     }
 
     /// The client's own transport, headers and device token.
-    public init(core: CoreContext) {
+    public init(core: CoreContext, bulk: (any BulkChannel)? = nil) {
         self.init(
             product: core.product, baseUrl: core.endpoints.baseUrl, transport: core.transport,
-            headers: { await core.headers() }, token: { await core.token })
+            headers: { await core.headers() }, token: { await core.token }, bulk: bulk)
     }
 
     // MARK: Paths
@@ -158,7 +161,7 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions {
 
     /// One request. A refusal comes back as a value; a request that gets no answer throws.
     private func exchange(
-        _ method: String, _ path: String, _ sent: Sent = Sent(), expectBytes: Int = 0, cap: Int
+        _ method: String, _ path: String, _ sent: Sent = Sent(), expectBytes: Int = 0, cap: Int, bulky: Bool = false
     ) async throws -> Exchanged {
         // The builders already checked; this is the closed list.
         guard Self.isFilesPath(product: product, path) else { throw bad("route") }
@@ -193,7 +196,10 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions {
             url: url, method: method, headers: h, body: body, timeoutSeconds: deadline,
             maxBodyBytes: cap + 1, followRedirects: false)
         do {
-            if sent.range != nil {
+            if bulky, let bulk {
+                // A part, a chunk or a ranged read: the background session carries it (U-41).
+                res = try await bulk.perform(request)
+            } else if sent.range != nil {
                 // A ranged GET streams: its answer is held to the range asked, and an error body to the
                 // error cap, whatever the server sends.
                 let streamed = try await transport.stream(request)
@@ -345,7 +351,7 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions {
         let path = try upload(target, uploadId)
         return empty(
             try await exchange(
-                "PUT", path, Sent(body: body, sha256: sha256), cap: CloudSyncFileBounds.errorMaxBytes))
+                "PUT", path, Sent(body: body, sha256: sha256), cap: CloudSyncFileBounds.errorMaxBytes, bulky: true))
     }
 
     public func putPart(_ target: FileTarget, uploadId: String, n: Int, body: Data, sha256: String) async throws
@@ -355,7 +361,7 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions {
         let path = "\(try upload(target, uploadId))/parts/\(n)"
         return empty(
             try await exchange(
-                "PUT", path, Sent(body: body, sha256: sha256), cap: CloudSyncFileBounds.errorMaxBytes))
+                "PUT", path, Sent(body: body, sha256: sha256), cap: CloudSyncFileBounds.errorMaxBytes, bulky: true))
     }
 
     public func abort(_ target: FileTarget, uploadId: String) async throws -> FileReply<Void> {
@@ -386,7 +392,7 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions {
         let path = "\(try upload(target, uploadId))/chunks/\(try chunkId(id))"
         return empty(
             try await exchange(
-                "PUT", path, Sent(body: body, sha256: sha256), cap: CloudSyncFileBounds.errorMaxBytes))
+                "PUT", path, Sent(body: body, sha256: sha256), cap: CloudSyncFileBounds.errorMaxBytes, bulky: true))
     }
 
     public func getFile(_ target: FileTarget, query: FileQuery) async throws -> FileReply<FileBody> {
@@ -403,7 +409,8 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions {
         // more is refused, never buffered).
         let cap = query.range.map { $0.upperBound - $0.lowerBound } ?? CloudSyncFileBounds.manifestMaxBytes
         let r = try await exchange(
-            "GET", path, Sent(range: query.range, ifMatch: query.ifMatch), expectBytes: cap, cap: cap)
+            "GET", path, Sent(range: query.range, ifMatch: query.ifMatch), expectBytes: cap, cap: cap,
+            bulky: query.range != nil)
         switch r {
         case .refusal(let f): return .refused(f)
         case .response(let res):
@@ -421,7 +428,7 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions {
     public func getChunk(collection: String, chunkId id: String) async throws -> FileReply<Data> {
         let path = "\(try base(collection))/chunks/\(try chunkId(id))"
         let r = try await exchange(
-            "GET", path, expectBytes: SYNC_CHUNK_MAX_STORED_BYTES, cap: SYNC_CHUNK_MAX_STORED_BYTES)
+            "GET", path, expectBytes: SYNC_CHUNK_MAX_STORED_BYTES, cap: SYNC_CHUNK_MAX_STORED_BYTES, bulky: true)
         switch r {
         case .refusal(let f): return .refused(f)
         case .response(let res):
@@ -432,6 +439,9 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions {
             return .ok(res.body)
         }
     }
+
+    /// The engine's `cancel`: the bulk channel stops the transfer's tasks.
+    public func cancelTasks(transferId: String) async { await bulk?.cancelTasks(transferId: transferId) }
 
     // MARK: FileRevisions
 
