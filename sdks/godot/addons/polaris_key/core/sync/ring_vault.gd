@@ -6,17 +6,28 @@ extends RefCounted
 ##
 ##   `sync-ring-pin.json`  the pin `{product, ring_id, epoch, root_kid}`. No secret. Plain JSON,
 ##                         written owner-only, replaced atomically.
-##   `sync-root`           the root `R`. With a native sealer (Keychain, Keystore, DPAPI) the file is
-##                         `"PKSL" || 0x01 || blob`, sealed under the platform key with context
-##                         `pkey-sync-root/1/<product>`. Without one it is the engine-encrypted file
-##                         (key from `OS.get_unique_id()`, the product and a random salt kept
-##                         beside it: obfuscation against a casual copy, not against code running as
-##                         the same user), or a plain file when the engine cannot encrypt.
+##   `sync-root`           the root `R`, never in the clear. With a native sealer (Keychain, Keystore,
+##                         DPAPI) the file is `"PKSL" || 0x01 || blob`, sealed under the platform key
+##                         with context `pkey-sync-root/1/<product>`: that is protection. Without one
+##                         (Linux has none) it is the engine-encrypted file, and that is OBFUSCATION,
+##                         NOT PROTECTION: its key is derived from `OS.get_unique_id()`, the product
+##                         and a random salt kept beside the file, all readable by any code running
+##                         as the same user, which can therefore derive the key and read `R`. It
+##                         keeps `R` out of a casual copy of the folder (a backup, a synced save
+##                         directory, a support zip) and nothing else. Treat a Linux root as
+##                         readable by anything that runs as the player.
 ##   memory                both records in process memory only (web without a persistent `user://`,
 ##                         or a store made with `memory = true`).
 ##
+## A root is never written as a plain file. A vault made with `encrypted = false` refuses every root
+## read and write with `invalid-options` (its `protection()` is "refused"); only `for_tests` builds a
+## vault that keeps a plain file, for the test suites. The pin holds no secret and is plain JSON.
+##
 ## `persistence()` and `protection()` say which. Every call answers a PKeyResult. A stored root that
 ## cannot be opened is `device-keys-unreadable`, never replaced silently: only `clear()` removes it.
+## With a pin standing, an unreadable root is replaced by the pinned ring's own wrap, which is the
+## same root. With no pin it is `device-keys-unreadable` and nothing is written. A sealed root whose
+## sealer is missing is `unsupported` and is kept as it is.
 ## `clear()` deletes the records and never destroys the platform key: the device keys share it.
 ## Nothing here puts a root in a result, message or `str()`.
 
@@ -36,13 +47,15 @@ var sealer: PKeyRecordSealer = null
 var unique_id := OS.get_unique_id()
 var _memory: bool
 var _encrypted: bool
+## Set by `for_tests` alone: the root may rest in a plain file.
+var _plain_ok := false
 var _root_ok := true
 var _mem_pin := PackedByteArray()
 var _mem_root := PackedByteArray()
 
 
 ## `root_dir` must be under `user://` or the no-backup directory (PKeyBackupExclusion). `p_sealer` null picks the platform's when its lane is present
-## (not in a memory store, a plain-file store, or when PKEY_DESKTOP_KEYRING=0).
+## (not in a memory store, a plain-file store, or when PKEY_DESKTOP_KEYRING=0 in a debug build).
 func _init(p_product: String, root_dir := "user://pkey", memory := false, encrypted := true, p_sealer: PKeyRecordSealer = null) -> void:
 	product = p_product
 	dir = root_dir.path_join(p_product)
@@ -52,8 +65,17 @@ func _init(p_product: String, root_dir := "user://pkey", memory := false, encryp
 	_root_ok = name_ok and not p_product.contains("..") and PKeyBackupExclusion.is_private_root(root_dir)
 	if not memory and encrypted and _root_ok:
 		sealer = p_sealer
-		if sealer == null and OS.get_environment("PKEY_DESKTOP_KEYRING") != "0":
+		if sealer == null and not PKeyRecordSealer.switched_off():
 			sealer = PKeyRecordSealer.for_platform(p_product)
+
+
+## TEST ONLY: a vault whose root rests in a plain file (no engine encryption, no sealer), so a suite
+## can restart a ring over a scratch directory on a machine with no unique id. A shipped game builds
+## a vault with `new` (encrypted, the default) or takes the product's own.
+static func for_tests(p_product: String, root_dir := "user://pkey", memory := false) -> PKeySyncRingVault:
+	var v := PKeySyncRingVault.new(p_product, root_dir, memory, false)
+	v._plain_ok = true
+	return v
 
 
 func _to_string() -> String:
@@ -75,7 +97,13 @@ func _no_seal_possible() -> bool:
 	return sealer == null and _encrypted and unique_id == ""
 
 
+## What the root rests in: "keychain-sealed", "keystore-sealed" or "dpapi-sealed" (protection),
+## "encrypted-file" (OBFUSCATION: readable by code running as the same user, see the header),
+## "memory", "file" (tests only) or "refused" (made with `encrypted = false`, so no root is read or
+## written).
 func protection() -> String:
+	if _plain_refused():
+		return "refused"
 	if persistence() == "memory":
 		return "memory"
 	if sealer != null:
@@ -83,6 +111,15 @@ func protection() -> String:
 	if _encrypted and unique_id != "":
 		return "encrypted-file"
 	return "file"
+
+
+## A vault made with `encrypted = false` that would put the root in a plain file, outside `for_tests`.
+func _plain_refused() -> bool:
+	return not _memory and _root_ok and not _encrypted and not _plain_ok
+
+
+func _refusal() -> PKeyResult:
+	return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_OPTIONS, "sync root: a vault made with encrypted = false is refused; the root is never written as a plain file")
 
 
 # ── The pin ──────────────────────────────────────────────────────────────────────────────
@@ -133,28 +170,43 @@ func write_root(ring_id: String, epoch: int, kid: PackedByteArray, root: PackedB
 	return r
 
 
-## Removes both records. A record that cannot be deleted is a failure, so a sign-out stops.
+## Removes both records, the root first and the pin last: a pin never outlives the failure to
+## remove the root it guards (a stored root with no pin is its own pin). A record that cannot be
+## deleted is a failure, so a sign-out stops.
 func clear() -> PKeyResult:
 	_mem_pin = PackedByteArray()
 	_mem_root = PackedByteArray()
 	if _memory or not _root_ok:
 		return PKeyResult.success()
-	for f in [PIN_FILE, ROOT_FILE, SALT_FILE]:
+	for group in [[ROOT_FILE, SALT_FILE], [PIN_FILE]]:
+		var res := _clear_files(group)
+		if not res.ok:
+			return res
+	return PKeyResult.success()
+
+
+func _clear_files(files: Array) -> PKeyResult:
+	for f in files:
 		var p := dir.path_join(f)
 		if FileAccess.file_exists(p):
-			var err := DirAccess.remove_absolute(p)
+			var err := _remove(p)
 			if err != OK:
 				return PKeyResult.failure(PKeyDeviceKeyStore.STORE_FAULT, "sync ring: could not remove a record (%d)" % err)
 	# A crash between write and rename leaves a temporary sibling; it holds the root too (S-5).
 	var d := DirAccess.open(dir)
 	if d != null:
 		for name in d.get_files():
-			for f in [PIN_FILE, ROOT_FILE, SALT_FILE]:
+			for f in files:
 				if name.begins_with(f + ".tmp-"):
-					var terr := DirAccess.remove_absolute(dir.path_join(name))
+					var terr := _remove(dir.path_join(name))
 					if terr != OK:
 						return PKeyResult.failure(PKeyDeviceKeyStore.STORE_FAULT, "sync ring: could not remove a record (%d)" % terr)
 	return PKeyResult.success()
+
+
+## The one removal; a suite overrides it to make one fail.
+func _remove(path: String) -> int:
+	return DirAccess.remove_absolute(path)
 
 
 func _decode(b: PackedByteArray) -> PKeyResult:
@@ -178,6 +230,10 @@ func _store_root(rec: PackedByteArray) -> PKeyResult:
 	if _memory or not _root_ok or _no_seal_possible():
 		_mem_root = rec.duplicate()
 		return PKeyResult.success()
+	if _plain_refused():
+		return _refusal()
+	if sealer == null and _sealed_in_place():
+		return _sealer_missing()
 	var bytes := rec
 	if sealer != null:
 		var sealed := sealer.seal(rec, _seal_context())
@@ -192,6 +248,8 @@ func _store_root(rec: PackedByteArray) -> PKeyResult:
 func _read_root_bytes() -> PKeyResult:
 	if _memory or not _root_ok or _no_seal_possible():
 		return PKeyResult.success(_mem_root.duplicate() if not _mem_root.is_empty() else null)
+	if _plain_refused():
+		return _refusal()
 	var path := dir.path_join(ROOT_FILE)
 	if not FileAccess.file_exists(path):
 		return PKeyResult.success(null)
@@ -205,6 +263,8 @@ func _read_root_bytes() -> PKeyResult:
 			return _unreadable("the sync root")
 		return sealer.open(raw.slice(5), _seal_context())
 	if _encrypted:
+		if _sealed_in_place():
+			return _sealer_missing()
 		var passphrase = _passphrase(false)
 		if passphrase == null or passphrase == "":
 			return _unreadable("the sync root")
@@ -215,6 +275,20 @@ func _read_root_bytes() -> PKeyResult:
 		f.close()
 		return PKeyResult.success(raw)
 	return _read_plain(ROOT_FILE, _mem_root)
+
+
+## True when the root file is a sealed record (a sealer wrote it).
+func _sealed_in_place() -> bool:
+	var f := FileAccess.open(dir.path_join(ROOT_FILE), FileAccess.READ)
+	if f == null:
+		return false
+	var raw := f.get_buffer(4)
+	f.close()
+	return raw.size() == 4 and raw.get_string_from_ascii() == _SEALED_MAGIC
+
+
+func _sealer_missing() -> PKeyResult:
+	return PKeyResult.unsupported("core.devicekeys", PKeyConstants.UnsupportedReason.DEPENDENCY, "sync ring: the root is sealed by the platform lane, which is not in this build")
 
 
 func _read_plain(file: String, mem: PackedByteArray) -> PKeyResult:

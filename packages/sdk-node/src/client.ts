@@ -317,6 +317,19 @@ export class PolarisKeyClient {
       () => this.cache.state.license?.doc.licenseId ?? null,
       // Sign-out and deactivation both end in `identity.forget()`: the root and its pin go with them.
       () => this.keyring.forget(),
+      // Nearby approval (I-47.4): the device keys, the keys route and a fresh discovery read.
+      {
+        signer: () => this.connect.nearbySigner(),
+        registerKeys: (port) => this.devices.registerKeys(port),
+        refreshDiscovery: async () => {
+          // A read that failed says nothing about nearby, so it never falls back to the old
+          // document (N11: only a fresh read that still names `nearby` keeps a 404 an expiry).
+          const r = await this.discover().catch(() => null);
+          return r !== null && r.kind === "ok" ? this.discoveryDoc : null;
+        },
+        lan: () => this.cloudConnect.nearby,
+        keyring: () => this.keyring,
+      },
     );
     this.release = new ReleaseClient(
       this.core,
@@ -346,6 +359,16 @@ export class PolarisKeyClient {
           if (this.discoveryDoc === null) await this.discover();
           return this.discoveryDoc;
         },
+        // WIRE-CONTRACT-V5 §15.9: links are on only while the cached document says so.
+        interAccount: () => {
+          const f: unknown = this.discoveryDoc?.services?.connect;
+          return (
+            typeof f === "object" &&
+            f !== null &&
+            (f as { enabled?: unknown }).enabled === true &&
+            (f as { interAccount?: unknown }).interAccount === true
+          );
+        },
       },
       {
         ...(opts.keyring?.deviceKeys
@@ -354,19 +377,30 @@ export class PolarisKeyClient {
         ...opts.connect,
       },
     );
-    this.cloudConnect = new CloudConnect(this.connect, {
-      slug: this.product,
-      now: () => this.core.now(),
-      requireIdentity: () =>
-        this.core.requireService("identity", Feature.identityNearby),
-      identity: async (fresh) => {
-        if (fresh || this.discoveryDoc === null)
-          await this.discover().catch(() => undefined);
-        return identityFragmentFrom(this.discoveryDoc);
+    this.cloudConnect = new CloudConnect(
+      this.connect,
+      {
+        slug: this.product,
+        now: () => this.core.now(),
+        requireIdentity: () =>
+          this.core.requireService("identity", Feature.identityNearby),
+        identity: async (fresh) => {
+          if (fresh || this.discoveryDoc === null)
+            await this.discover().catch(() => undefined);
+          return identityFragmentFrom(this.discoveryDoc);
+        },
+        // An unconfirmed nearby sign-in is not a sign-in yet (V5 §15.6.1 rule 12).
+        signedIn: async () =>
+          !this.tokens.unconfirmed && (await this.identity.current()) !== null,
+        signer: () => this.connect.nearbySigner(),
       },
-      signedIn: async () => (await this.identity.current()) !== null,
-      signer: () => this.connect.nearbySigner(),
-    });
+      join(this.core.dirs.state, "transfer"),
+    );
+    // A device the roster dropped leaves nothing half-sent behind (§15.11).
+    this.connect.onRosterRemoved = (keys) => {
+      for (const k of keys)
+        void this.cloudConnect.transfer.purgePeer(k).catch(() => undefined);
+    };
     this.cloudSyncHost = new CloudSyncHost(
       {
         ctx: this.core,
@@ -486,6 +520,7 @@ export class PolarisKeyClient {
       await this.connect.leave();
     };
     this.license.onDeactivated = async () => {
+      await this.cloudConnect.transfer.purge().catch(() => undefined);
       await this.keyring.forget();
       await this.identity.forget();
       await this.cloudSyncApi.onDeactivated().catch(() => undefined);
@@ -577,6 +612,8 @@ export class PolarisKeyClient {
       await this.portalStore.accept(result.manifest);
       this.cloudSyncHost.noteDiscovery();
       void this.cloudSyncApi.attach().catch(() => undefined);
+      // `interAccount` may have moved: links follow the document (§15.10 "Gates").
+      this.connect.notifyContacts();
     }
     return result;
   }

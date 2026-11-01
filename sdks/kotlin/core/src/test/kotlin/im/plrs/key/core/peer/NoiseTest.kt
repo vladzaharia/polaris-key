@@ -35,7 +35,7 @@ class NoiseTest {
         )
 
     private suspend fun pair(c: DeviceCurves, mode: PeerMode = PeerMode.v): Pair<NoiseHandshake, NoiseHandshake> {
-        val psk = if (mode == PeerMode.a) rnd() else null
+        val psk = if (mode == PeerMode.a || mode == PeerMode.c) rnd() else null
         val i = NoiseHandshake(options(c, NoiseRole.initiator, mode, psk))
         val r = NoiseHandshake(options(c, NoiseRole.responder, mode, psk))
         r.readMessage(i.writeMessage("one".toByteArray()))

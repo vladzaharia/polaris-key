@@ -1,5 +1,5 @@
 // @pkey-feature core.discover core.sync sync.settings core.cache license.activate license.enroll
-// @pkey-feature core.presentation
+// @pkey-feature core.presentation connect.links
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
@@ -388,6 +388,8 @@ enum SwiftReplay {
             // `identity.restore` (§12.11.6): the restore member and whether the endpoints name it.
             out["restore"] = .bool(identity?.restore ?? false)
             out["restoreEndpoint"] = .bool(!(identity?.restoreEndpoint ?? "").isEmpty)
+            // `connect.links` (CC-19): the cached `services.connect.interAccount` the SDK gates links on.
+            out["interAccount"] = .bool(await client.connect.interAccount())
         case "exchange":
             try await exchange(client, step: step, session: session, into: &out)
         case "restoreRedeem", "restoreEnroll", "restoreDelete":
@@ -453,6 +455,32 @@ enum SwiftReplay {
                 out["code"] = .string(e.code)
                 if let r = e.retryAfterSeconds { out["retryAfter"] = .int(r) }
                 if let sc = e.scope { out["scope"] = .string(sc) }
+            case .refused(let r):
+                out["result"] = .string("refused")
+                out["status"] = .int(r.status)
+                out["code"] = .string(r.code)
+            case .unsupported: out["result"] = .string("unavailable")
+            case .error(let code, _):
+                out["result"] = .string("error")
+                out["code"] = .string(code)
+            }
+        case "relayTicketContact":
+            // `client.connect.relayTicket(room:rid:)` (CC-19, `connect.links`): the body is sent as given; a
+            // refusal reads as `refused`; an answer without the `room` echo is the typed `contact_unsupported`.
+            switch await client.connect.relayTicket(
+                room: step.args["room"]?.stringValue ?? "", rid: step.args["rid"]?.stringValue ?? "")
+            {
+            case .granted(let g):
+                out["result"] = .string("ok")
+                out["room"] = .string("c")
+                out["protocol"] = .string(g.protocolName)
+                out["url"] = .string(g.url.absoluteString)
+                out["expiresIn"] = .int(g.expiresAt - (await client.core.now()))
+            case .relay(let e):
+                out["result"] = .string("refused")
+                out["status"] = e.status.map(JSONValue.int) ?? .null
+                out["code"] = .string(e.code)
+                if let r = e.retryAfterSeconds { out["retryAfter"] = .int(r) }
             case .refused(let r):
                 out["result"] = .string("refused")
                 out["status"] = .int(r.status)

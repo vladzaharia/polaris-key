@@ -97,6 +97,10 @@
       "title": "Límite de conexión remota alcanzado",
       "message": "Se restablece pronto. Los dispositivos de la misma red siguen conectándose."
     },
+    "connect_links_disabled": {
+      "title": "Vincular está desactivado",
+      "message": "Vincular con otras personas está desactivado en esta app. Tus propios dispositivos siguen conectándose."
+    },
     "relay_ticket_invalid": {
       "title": "Conexión caducada",
       "message": "La solicitud de conexión caducó. Inténtalo de nuevo."
@@ -628,6 +632,14 @@
     "peer-closed": {
       "title": "Conexión finalizada",
       "message": "La conexión con el dispositivo cercano ha finalizado. Inténtalo de nuevo."
+    },
+    "transfer-cancelled": {
+      "title": "Transferencia detenida",
+      "message": "La transferencia no se completó. No se recibió nada."
+    },
+    "link-unknown": {
+      "title": "Sin vincular",
+      "message": "Ese dispositivo ya no está vinculado con este."
     },
     "peer_revoked": {
       "title": "Dispositivo ya no es de confianza",

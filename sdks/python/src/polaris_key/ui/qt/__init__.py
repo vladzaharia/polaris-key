@@ -2,7 +2,8 @@
 
 ``pip install "polaris-key[qt]"``, then ``run_gate(client, window)``, which also offers updates as a dialog
 over the window and toasts a sign-in, and ``account_page(client)`` / ``settings_page(client)`` for the
-host's own settings. The three layers of §1.3: (a) the drop-in flow (:func:`run_gate`), (b) the styled parts (``kit/*.qml`` over the generated
+host's own settings. ``nearby_approval_page(client)`` is "Approve a nearby device" as a page of its own (the
+account page shows its entry), and ``ForegroundApprover`` keeps the advert up while the window is active. The three layers of §1.3: (a) the drop-in flow (:func:`run_gate`), (b) the styled parts (``kit/*.qml`` over the generated
 ``Theme.qml`` and the QSS), (c) the headless models (:mod:`polaris_key.ui.core`, :mod:`.layout`).
 
 Importing this package does not import Qt; the first call that needs it does, and says how to
@@ -15,14 +16,19 @@ from typing import Any
 
 __all__ = [
     "AccountPage",
+    "Approver",
+    "ForegroundApprover",
     "GateController",
     "GateFlow",
     "KitBridge",
     "KitView",
+    "NearbyApproval",
+    "NearbyApprovalPage",
     "UpdateOffer",
     "account_page",
     "build_spec",
     "load_fonts",
+    "nearby_approval_page",
     "render",
     "run_gate",
     "settings_page",
@@ -41,6 +47,11 @@ _LAZY = {
     "GateController": ".gate",
     "GateFlow": ".flow",
     "build_spec": ".layout",
+    "Approver": ".nearby",
+    "ForegroundApprover": ".nearby",
+    "NearbyApproval": ".nearby",
+    "NearbyApprovalPage": ".nearby",
+    "nearby_approval_page": ".nearby",
 }
 
 

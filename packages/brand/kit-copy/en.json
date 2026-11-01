@@ -2918,6 +2918,11 @@
       "role": "body",
       "note": "Nearby sign-in, waiting. Arguments: {app} = the app's name (never translated)."
     },
+    "signin.nearby.bodyOn": {
+      "value": "Open {app} on {device}.",
+      "role": "body",
+      "note": "Nearby sign-in, waiting, once a device is chosen: where to open the app. Arguments: {app} = the product's name from ProductIdentity (never translated); {device} = the other device's friendly name (never translated)."
+    },
     "signin.nearby.match": {
       "value": "Tap this code there:",
       "role": "label",
@@ -2949,7 +2954,7 @@
       "note": "Nearby approval, on the signed-in device. Arguments: {device} = the new device's friendly name (never translated)."
     },
     "signin.nearby.askBody": {
-      "value": "Tap the code it shows.",
+      "value": "Choose the code it shows.",
       "role": "body",
       "note": "Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated)."
     },
@@ -3253,6 +3258,76 @@
       "role": "body",
       "note": "Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting."
     },
+    "signin.cli.nearbyKey": {
+      "value": "c use a code instead · Esc cancel",
+      "role": "body",
+      "note": "Terminal sign-in (SIGN-IN.md §4.15), nearby: the keys line while the code waits for a tap on the other device. Plain text, no formatting."
+    },
+    "signin.cli.nearbyLooking": {
+      "value": "Looking for your other devices…",
+      "role": "label",
+      "note": "Terminal sign-in, nearby: shown beside the spinner for the first seconds while the computer looks for the person's other devices."
+    },
+    "signin.cli.nearbyWaiting": {
+      "value": "Waiting…",
+      "role": "label",
+      "note": "Terminal sign-in, nearby: shown beside the spinner while the code waits for a tap on the other device. Keep it to a word or two."
+    },
+    "signin.cli.nearbyPromptKeys": {
+      "value": "Enter continue · Esc not now",
+      "role": "hint",
+      "note": "Terminal key hints under the offer to look for nearby devices (macOS asks for access to the local network after it). Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators."
+    },
+    "signin.cli.nearbyPickKeys": {
+      "value": "1-{n} choose a device · c use a code instead · Esc cancel",
+      "role": "hint",
+      "note": "Terminal key hints while several devices nearby could approve the sign-in: 1-9 picks the numbered device. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated)."
+    },
+    "signin.cli.nearbyPickOneKeys": {
+      "value": "1 choose this device · c use a code instead · Esc cancel",
+      "role": "hint",
+      "note": "Terminal key hints while one device nearby could approve the sign-in: 1 picks it. Keep each key first and the ' · ' separators."
+    },
+    "signin.cli.nearbyDoneKeys": {
+      "value": "Enter continue · n or Esc not you, sign out",
+      "role": "hint",
+      "note": "Terminal key hints under 'Signed in as {email}' after a nearby sign-in: Enter accepts the account, n or Esc signs out again. Keep each key first and the ' · ' separators."
+    },
+    "signin.cli.approveWaiting": {
+      "value": "Waiting for a device to ask…",
+      "role": "label",
+      "note": "Terminal 'devices approve': shown beside the spinner while the computer waits for another device to ask to sign in."
+    },
+    "signin.cli.approveWaitKeys": {
+      "value": "Esc stop",
+      "role": "hint",
+      "note": "Terminal key hint while 'devices approve' waits for a device to ask. Keep the key first."
+    },
+    "signin.cli.approveKeys": {
+      "value": "1-3 choose a code · d or Esc deny",
+      "role": "hint",
+      "note": "Terminal key hints while a device asks to sign in: 1-3 pick the code it shows, d or Esc denies. Keep each key first and the ' · ' separators."
+    },
+    "signin.cli.approveUnsupported": {
+      "value": "Sign in with a code on the other device.",
+      "role": "body",
+      "note": "Terminal 'devices approve': this computer cannot take part in nearby sign-in. 'Polaris Locker' is the end-user product name (never translated)."
+    },
+    "signin.cli.approveUnsupportedTitle": {
+      "value": "Can't approve from this computer",
+      "role": "title",
+      "note": "Terminal 'devices approve': the title when this computer cannot take part in nearby sign-in; the next step follows (signin.cli.approveUnsupported)."
+    },
+    "signin.cli.approveChooseKeys": {
+      "value": "1-{n} choose a license · Esc deny",
+      "role": "hint",
+      "note": "Terminal key hints while 'devices approve' asks which license the new device gets: 1-9 picks the numbered license, Esc denies. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated)."
+    },
+    "signin.cli.approveChooseOneKeys": {
+      "value": "1 choose the license · Esc deny",
+      "role": "hint",
+      "note": "Terminal key hints while 'devices approve' asks which license the new device gets and only one can be given: 1 picks it, Esc denies. Keep each key first and the ' · ' separators."
+    },
     "signin.cli.headless": {
       "value": "No browser on this computer. Use a code instead:",
       "role": "body",
@@ -3547,6 +3622,16 @@
       "value": "Activate, sign in, devices and updates",
       "role": "body",
       "note": "Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it."
+    },
+    "cli.verb.devicesApprove": {
+      "value": "Approve a device signing in nearby",
+      "role": "body",
+      "note": "Terminal help: what 'devices approve' does."
+    },
+    "cli.approve.needsPerson": {
+      "value": "{command} needs a person at a terminal.",
+      "role": "body",
+      "note": "Terminal usage error: 'devices approve' asks a person to pick a code, so it does not run with --json or without a terminal. Arguments: {command} = the command the person ran."
     },
     "cli.gate.needs": {
       "value": "{command} needs a license",
@@ -8907,6 +8992,156 @@
       "value": "Download my data first",
       "role": "button",
       "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "linkPairing.title": {
+      "value": "Pair with Someone Nearby",
+      "role": "title",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device."
+    },
+    "linkPairing.openBody": {
+      "value": "Ask them to open this on their device. Stay close, on the same network.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Both people open this on their own device."
+    },
+    "linkPairing.searching": {
+      "value": "Looking for nearby devices…",
+      "role": "label",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Shown while the window is open and no device has reached the code."
+    },
+    "linkPairing.codeTitle": {
+      "value": "Compare the code",
+      "role": "title",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare."
+    },
+    "linkPairing.codeBody": {
+      "value": "Both screens must show this code.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Under the code: both screens must show the same one before anyone confirms."
+    },
+    "linkPairing.reported": {
+      "value": "Reported by the device: {device}",
+      "role": "label",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Arguments: {device} = the label the other device sent. Nothing authenticates it: any device on the network can send any label, so the line says it is reported, not verified."
+    },
+    "linkPairing.reportedUnnamed": {
+      "value": "The device gave no name",
+      "role": "label",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Used when the other device sent no label."
+    },
+    "linkPairing.shares": {
+      "value": "Each of you shares",
+      "role": "label",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Heading above the data categories both people approve; always shown before the confirm button."
+    },
+    "linkPairing.sharesNone": {
+      "value": "Nothing is shared yet.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Used when the app asks for no data categories."
+    },
+    "linkPairing.confirm": {
+      "value": "Codes match",
+      "role": "button",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Confirms the code matches. The link is made when the other person does the same."
+    },
+    "linkPairing.decline": {
+      "value": "Not a match",
+      "role": "button",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Declines: the session closes and nothing is stored."
+    },
+    "linkPairing.waiting": {
+      "value": "Waiting for them to confirm",
+      "role": "title",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet."
+    },
+    "linkPairing.linkedTitle": {
+      "value": "Paired",
+      "role": "title",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices."
+    },
+    "linkPairing.linkedBody": {
+      "value": "You can now connect without a code.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made."
+    },
+    "linkPairing.linkedWith": {
+      "value": "Paired with {device}.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Names who was paired. Arguments: {device} = the label the other device sent (text it chose, not verified). Used instead of the plain body when the device sent a label."
+    },
+    "linkPairing.failedTitle": {
+      "value": "Couldn’t pair",
+      "role": "title",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link."
+    },
+    "linkPairing.failedDeclined": {
+      "value": "Someone said no. Nothing was paired.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code."
+    },
+    "linkPairing.failedTimeout": {
+      "value": "Time ran out before you both confirmed. Nothing was paired.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first."
+    },
+    "linkPairing.failedFull": {
+      "value": "One of you has no room for another pairing. Remove one, then try again.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links."
+    },
+    "linkPairing.failedClosed": {
+      "value": "The connection closed. Nothing was paired.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended."
+    },
+    "a11y.linkCode": {
+      "value": "Pairing code {code}",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Names the pairing code both people compare. Arguments: {code} = the pairing code, spelled out by the kit."
+    },
+    "transferOffer.ask": {
+      "value": "{device} wants to send you {name}",
+      "role": "title",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose."
+    },
+    "transferOffer.askUnnamed": {
+      "value": "A paired device wants to send you {name}",
+      "role": "title",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends."
+    },
+    "transferOffer.askBody": {
+      "value": "Only accept what you expect.",
+      "role": "body",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title."
+    },
+    "transferOffer.accept": {
+      "value": "Accept",
+      "role": "button",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Accepts the offer."
+    },
+    "transferOffer.decline": {
+      "value": "Decline",
+      "role": "button",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Declines the offer; nothing is received."
+    },
+    "transferOffer.receiving": {
+      "value": "Receiving {name}",
+      "role": "title",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what is being received."
+    },
+    "transferOffer.done": {
+      "value": "Received {name}",
+      "role": "title",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was received."
+    },
+    "transferOffer.failed": {
+      "value": "Couldn’t receive {name}",
+      "role": "title",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was not received."
+    },
+    "transferOffer.failedBody": {
+      "value": "Nothing was saved.",
+      "role": "body",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title."
     }
   }
 }

@@ -200,9 +200,8 @@
       "note": "Play Games runs only on Android."
     },
     "identity.autosignin": {
-      "status": "planned",
-      "wp": "I-47",
-      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-47)."
+      "status": "implemented",
+      "note": "I-47: client.identity.auto_sign_in() (the ladder of plan-auto-sign-in §1, over the exchange rungs and nearby) with the session's confirm_account, decline_account, wrap and on_wrap; the terminal kit's login runs it first."
     },
     "identity.restore": {
       "status": "na",
@@ -217,9 +216,8 @@
       "note": "No OS account to offer a link from (I-43)."
     },
     "identity.nearby": {
-      "status": "planned",
-      "wp": "I-47",
-      "note": "Nearby approval (I-40.8 transcripts, I-47). The Node conformance runner replays the nearby-* transcripts with a reference client (I-40.9). The LAN half is in (CC-15.P1 to P4: client.cloud_connect.nearby.request and on_request, the vouch rows of peer-matrix.json run in tests/test_connect_conformance.py); the routes and the kit screens follow in I-47."
+      "status": "implemented",
+      "note": "I-47: both devices. D: identity.sign_in.start(channel='nearby') (approvers, on_approvers, choose, code, result, wait, confirm_account, decline_account, wrap, on_wrap) over the nearbyStart and nearbyPoll routes; M: identity.nearby.available and on_request (the approver, approve with the matched pick, the license choice). The six nearby-* transcripts replay in tests/test_transcripts.py (the reference client plays both devices), and the vouch rows of peer-matrix.json run in tests/test_connect_conformance.py. Kits: the terminal's login (nearby first) and devices approve, the Textual entry and the Qt SignIn states and NearbyApproval."
     },
     "identity.keyentry": {
       "status": "implemented",
@@ -549,12 +547,12 @@
       "note": "client.connect.relay_ticket() and polaris_key.connect.relay (ticket offer, WebSocket socket via the optional websockets extra, reconnect policy, LIMIT and close codes, redirects refused, mode-a relay sessions, pacing, 8 MiB queue cap); tests/test_connect_relay*.py and test_connect_client_relay.py; tests/test_transcripts.py replays connect-relay-ticket and connect-relay-quota."
     },
     "connect.links": {
-      "status": "planned",
-      "wp": "CC-19"
+      "status": "implemented",
+      "note": "client.cloud_connect.links (sdks/python/src/polaris_key/connect/links.py, CC-19.6; WIRE-CONTRACT-V5 section 15.10), the same API and store as Node: pair() opens the mode-p pairing window (pairing.py: m=p advert, own listener, the lower instance dials, the core/peer_contact.py exchange), list(), remove(id) (open sessions hear peer_revoked), set_reachable(), open(id) (mode c over the LAN, then the contact relay in contact_relay.py with the {room:c, rid} ticket and aliases only) and on_link(). Contacts are rows of pkey.connect.v1 (state.py). The shared LAN listener tries the account keys then the contact secrets under one HandshakeLimiter; everything is gated on the cached discovery interAccount (typed N/A otherwise). tests/test_connect_contact.py runs the peer-matrix contact rows and mode c sessions in memory; tests/test_connect_links.py is the loopback two-account test. tests/test_connect_contact_room.py (CC-19.POLISH) holds a relay message that arrives before MEMBERS (at most 8) and judges it on MEMBERS."
     },
     "connect.transfer": {
-      "status": "planned",
-      "wp": "CC-20"
+      "status": "implemented",
+      "note": "client.cloud_connect.transfer (polaris_key.connect.transfer, CC-20.5; WIRE-CONTRACT-V5 section 15.11): send(peer, source, name=, type=, cat=, chunk=, id=) returns a TransferHandle (wait, cancel); on_offer(handler) puts every OFFER to the host (an Accept(dest), 'decline', or None to answer later with IncomingOffer.accept/decline; no handler declines, mode c checks the category before asking); on_result(); cancel(id); purge() on sign-out and forget_peer() when a link is removed. The pure machine and codecs are core/peer_xfer.py (the peer-matrix xfer rows all run in tests/test_connect_xfer_conformance.py), core/peer_xfer_endpoint.py runs it over the session's transfer port (PeerSession.attach_xfer: the six types 0x20 to 0x25 belong to it when both payloads list xfer/1; without the cap they close peer_not_allowed, MORE closes peer_bad_frame, send_record refuses them). The partial store (connect/transfer_store.py) keeps files named only by the derived partial path under <state>/transfers (0700, files 0600), 24 h life, 8 per peer, a free-space check, atomic delivery (temp + rename) to the host's destination. tests/test_connect_xfer_*.py, tests/test_cloud_connect_transfer.py."
     },
     "connect.app": {
       "status": "implemented",

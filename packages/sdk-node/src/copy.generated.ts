@@ -122,6 +122,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Remote connection limit reached",
     message: "It resets soon. Devices on the same network still connect.",
   },
+  connect_links_disabled: {
+    title: "Pairing is off",
+    message:
+      "Pairing with other people is off for this app. Your own devices still connect.",
+  },
   relay_ticket_invalid: {
     title: "Connection expired",
     message: "The connection request expired. Try again.",
@@ -705,6 +710,14 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   "peer-closed": {
     title: "Connection ended",
     message: "The connection to the nearby device ended. Try again.",
+  },
+  "transfer-cancelled": {
+    title: "Transfer stopped",
+    message: "The transfer didn't finish. Nothing was received.",
+  },
+  "link-unknown": {
+    title: "Not paired",
+    message: "That device is no longer paired with this one.",
   },
   peer_revoked: {
     title: "Device no longer trusted",

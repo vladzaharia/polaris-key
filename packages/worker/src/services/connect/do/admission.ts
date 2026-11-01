@@ -25,11 +25,19 @@ export interface Admission {
   monthCeiling: number;
   /** The licence service is on: the roster counts only devices that hold a seat (the principal rule). */
   seatsHeld: boolean;
+  /**
+   * Set for a contact room (V5 §15.7): the room id the ticket was bound to. The subject and the
+   * device of the ticket still travel here, in the request of the live socket only, and the room
+   * never writes them.
+   */
+  contact?: { rid: string };
 }
 
 const PRODUCT_RE = /^[a-z0-9-]+$/;
 const SUBJECT_RE = /^[A-Za-z0-9_-]+$/;
 const HEX48 = /^[0-9a-f]{48}$/;
+/** A contact room id: 16 bytes in 22 base64url characters (the canonical check is the route's). */
+const RID_RE = /^[A-Za-z0-9_-]{22}$/;
 
 const toHex = hexEncode;
 const fromHex = (h: string): Uint8Array => hexDecode(h) ?? new Uint8Array(0);
@@ -47,6 +55,13 @@ export function relayObjectName(product: string, subject: string): string {
   return `${product}:${subject}`;
 }
 
+/** A contact room's name: the one place a contact room is named (`<p>:c:<rid>`, V5 §15.7). */
+export function contactObjectName(product: string, rid: string): string {
+  if (!PRODUCT_RE.test(product) || !RID_RE.test(rid))
+    throw new Error("relay: a name outside the product and room id grammars");
+  return `${product}:c:${rid}`;
+}
+
 export function encodeAdmission(a: Admission): string {
   return JSON.stringify({
     product: a.product,
@@ -59,6 +74,7 @@ export function encodeAdmission(a: Admission): string {
     expiresAt: a.ticket.expiresAt,
     monthCeiling: a.monthCeiling,
     seatsHeld: a.seatsHeld,
+    ...(a.contact ? { contact: { rid: a.contact.rid } } : {}),
   });
 }
 
@@ -88,10 +104,17 @@ export function decodeAdmission(raw: string | null): Admission | null {
   if (typeof j.seatsHeld !== "boolean") return null;
   if (typeof j.paused !== "boolean" || typeof j.productOver !== "boolean")
     return null;
+  let contact: { rid: string } | undefined;
+  if (j.contact !== undefined) {
+    const rid = (j.contact as { rid?: unknown } | null)?.rid;
+    if (typeof rid !== "string" || !RID_RE.test(rid)) return null;
+    contact = { rid };
+  }
   return {
     product,
     subject,
     seatsHeld: j.seatsHeld,
+    ...(contact ? { contact } : {}),
     monthCeiling: Math.min(
       Math.floor(j.monthCeiling),
       CLOUD_CONNECT_CEILINGS.perProduct.relayBytesPerMonth,

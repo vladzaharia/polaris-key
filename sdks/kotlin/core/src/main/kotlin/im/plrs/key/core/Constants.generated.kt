@@ -34,6 +34,7 @@ public object ErrorCode {
     public const val relayDisabled: String = "relay_disabled"
     public const val relayPaused: String = "relay_paused"
     public const val relayQuotaExceeded: String = "relay_quota_exceeded"
+    public const val connectLinksDisabled: String = "connect_links_disabled"
     public const val relayTicketInvalid: String = "relay_ticket_invalid"
     public const val deviceLimit: String = "device_limit"
     public const val keyEntryLimit: String = "key_entry_limit"
@@ -168,6 +169,8 @@ public object ErrorCode {
     public const val nearbyUnsupported: String = "nearby-unsupported"
     public const val peerHandshakeFailed: String = "peer-handshake-failed"
     public const val peerClosed: String = "peer-closed"
+    public const val transferCancelled: String = "transfer-cancelled"
+    public const val linkUnknown: String = "link-unknown"
     public const val peerRevoked: String = "peer_revoked"
     public const val peerExpired: String = "peer_expired"
     public const val peerBadFrame: String = "peer_bad_frame"
@@ -260,6 +263,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "relay_disabled",
     "relay_paused",
     "relay_quota_exceeded",
+    "connect_links_disabled",
     "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
@@ -394,6 +398,8 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "nearby-unsupported",
     "peer-handshake-failed",
     "peer-closed",
+    "transfer-cancelled",
+    "link-unknown",
     "peer_revoked",
     "peer_expired",
     "peer_bad_frame",
@@ -486,6 +492,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "relay_disabled" to "wire",
     "relay_paused" to "wire",
     "relay_quota_exceeded" to "wire",
+    "connect_links_disabled" to "wire",
     "relay_ticket_invalid" to "wire",
     "device_limit" to "wire",
     "key_entry_limit" to "wire",
@@ -620,6 +627,8 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "nearby-unsupported" to "client",
     "peer-handshake-failed" to "client",
     "peer-closed" to "client",
+    "transfer-cancelled" to "client",
+    "link-unknown" to "client",
     "peer_revoked" to "peer",
     "peer_expired" to "peer",
     "peer_bad_frame" to "peer",
@@ -2069,8 +2078,8 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "connect.protocol" to CapabilityRow("implemented", "connect", listOf()),
     "connect.lan" to CapabilityRow("planned", "connect", listOf()),
     "connect.relay" to CapabilityRow("implemented", "connect", listOf()),
-    "connect.links" to CapabilityRow("planned", "connect", listOf()),
-    "connect.transfer" to CapabilityRow("planned", "connect", listOf()),
+    "connect.links" to CapabilityRow("implemented", "connect", listOf()),
+    "connect.transfer" to CapabilityRow("implemented", "connect", listOf()),
     "connect.app" to CapabilityRow("implemented", "connect", listOf()),
     "devices.fingerprint" to CapabilityRow("implemented", "core", listOf()),
     "devices.facts" to CapabilityRow("implemented", "core", listOf()),
@@ -2165,4 +2174,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "4e20297ee08d4e84a2954b32261005d035999d4af89f03c5fa7b1b00c40dc639"
+public const val CAPABILITY_DIGEST: String = "b94e67bc469fd088823a6728867fae1e00b2084cd8c42b511faa018ce7e65369"

@@ -92,9 +92,21 @@ const DEFAULT_SETTINGS_PATH := "user://pkey_settings.cfg"
 ## The device key store the key ring opens its own wrap with (a `PKeyDeviceKeyStore`, or any object with
 ## `ensure()` and `dh()`). Null: the product's own store under `store_root`, the one the app registers keys
 ## from. Not an export: a game passes a store it already made, and tests pass a scratch one.
+## The default store is sealed by the platform where a native lane exists, else engine-encrypted
+## (obfuscation, not protection); one made with `encrypted = false` is refused (`invalid-options`).
 var device_keys: Object = null
 ## Where the key ring keeps its pin and root (`PKeySyncRingVault`). Null: the product's vault under `store_root`.
+## The root rests sealed by the platform key (Keychain, Keystore, DPAPI: protection) or, with no native
+## sealer (Linux), in an engine-encrypted file that is obfuscation, NOT protection: any code running as
+## the same user can derive its key. A vault made with `encrypted = false` is refused (`invalid-options`).
 var ring_vault: PKeySyncRingVault = null
+## Where Cloud Connect keeps its roster, certificate and K_disc (`PKeyConnectState`, D-7). Null: the
+## product's own record under `store_root`, sealed by the platform key where a native lane exists.
+## Not an export: tests pass a scratch or memory one.
+var connect_state: PKeyConnectState = null
+## Cloud Connect with a memory-only device key store (G18). Off: `connect.identity()` refuses, because
+## every restart would register a new key pair and the Worker allows four a day.
+var allow_ephemeral_keys := false
 
 ## Send a hashed hardware fingerprint when registering (PolarisKey.devices). Off: the server
 ## records the device `unverified` (a `strict` tier refuses it). Raw values never leave the device.

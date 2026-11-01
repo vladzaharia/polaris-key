@@ -90,6 +90,22 @@ extension PeerChannelOptions {
     }
 }
 
+extension PeerChannelOptions {
+    /// The options of a mode-`c` channel (§15.10): no account, no certificate; the static key is the device's
+    /// agreeKey behind the same port as mode `a`. An initiator names exactly one contact; a responder names the
+    /// contacts it serves and needs the `admission` limiter.
+    public static func connectContact(
+        _ src: PeerSource, role: PeerChannel.Role, contacts: [PeerContactLink], admission: HandshakeLimiter? = nil,
+        caps: [String] = ["app/1"], label: String? = nil, platform: String = connectPlatformName,
+        now: (@Sendable () -> Int)? = nil, rekeyMessages: Int? = nil, rekeySeconds: TimeInterval? = nil
+    ) -> PeerChannelOptions {
+        PeerChannelOptions(
+            role: role, slug: src.slug, staticKey: src.staticKey, admission: admission, caps: caps,
+            hello: (label, platform, src.slug, nil), mode: .c, contacts: contacts, now: now,
+            rekeyMessages: rekeyMessages ?? (1 << 20), rekeySeconds: rekeySeconds ?? 3600)
+    }
+}
+
 /// The HELLO `platform` of this process.
 public let connectPlatformName: String = {
     #if os(macOS)
@@ -315,7 +331,9 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
         let gate: Gate = state.with { s in
             if s.closed { return .closed }
             // One slot is kept for RING: a flood of TRUST documents cannot starve a roster (G11).
-            let full = kind == "ring" ? s.queued.count >= connectMaxDocsQueued : s.queued.count >= connectMaxDocsQueued - 1
+            let full =
+                kind == "ring"
+                ? s.queued.count >= connectMaxDocsQueued : s.queued.count >= connectMaxDocsQueued - 1
             if s.queued.contains(key) || full {
                 // At most one busy notice per kind per second; the rest are dropped, not reported.
                 let notify = s.lastBusy[kind].map { now - $0 >= 1 } ?? true

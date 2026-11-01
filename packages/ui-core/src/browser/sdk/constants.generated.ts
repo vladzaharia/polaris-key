@@ -28,6 +28,7 @@ export const ErrorCode = {
   relayDisabled: "relay_disabled",
   relayPaused: "relay_paused",
   relayQuotaExceeded: "relay_quota_exceeded",
+  connectLinksDisabled: "connect_links_disabled",
   relayTicketInvalid: "relay_ticket_invalid",
   deviceLimit: "device_limit",
   keyEntryLimit: "key_entry_limit",
@@ -162,6 +163,8 @@ export const ErrorCode = {
   nearbyUnsupported: "nearby-unsupported",
   peerHandshakeFailed: "peer-handshake-failed",
   peerClosed: "peer-closed",
+  transferCancelled: "transfer-cancelled",
+  linkUnknown: "link-unknown",
   peerRevoked: "peer_revoked",
   peerExpired: "peer_expired",
   peerBadFrame: "peer_bad_frame",
@@ -255,6 +258,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "relay_disabled",
   "relay_paused",
   "relay_quota_exceeded",
+  "connect_links_disabled",
   "relay_ticket_invalid",
   "device_limit",
   "key_entry_limit",
@@ -389,6 +393,8 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "nearby-unsupported",
   "peer-handshake-failed",
   "peer-closed",
+  "transfer-cancelled",
+  "link-unknown",
   "peer_revoked",
   "peer_expired",
   "peer_bad_frame",
@@ -484,6 +490,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   relay_disabled: "wire",
   relay_paused: "wire",
   relay_quota_exceeded: "wire",
+  connect_links_disabled: "wire",
   relay_ticket_invalid: "wire",
   device_limit: "wire",
   key_entry_limit: "wire",
@@ -618,6 +625,8 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "nearby-unsupported": "client",
   "peer-handshake-failed": "client",
   "peer-closed": "client",
+  "transfer-cancelled": "client",
+  "link-unknown": "client",
   peer_revoked: "peer",
   peer_expired: "peer",
   peer_bad_frame: "peer",
@@ -2180,7 +2189,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
   },
-  "connect.transfer": { status: "planned", service: "connect", na: [] },
+  "connect.transfer": { status: "implemented", service: "connect", na: [] },
   "connect.app": { status: "implemented", service: "connect", na: [] },
   "devices.fingerprint": {
     status: "na",
@@ -2470,4 +2479,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "1fcd824b6d76e51a5fef78ab3d08e385aeb2669420d07f35f0345353fed1c7fa";
+  "0a3f37ba67ef6729d04fce09992c81b6a339c062989ad954c2dd26d206a70bac";

@@ -61,6 +61,8 @@ import {
   utf8,
 } from "./reference/peerMatrix.js";
 import { buildNoiseVectors } from "./noise.js";
+import { buildContact } from "./contact.js";
+import { buildXfer } from "./xfer.js";
 import { refX25519Public, sha256 } from "./reference/noise.js";
 import {
   type RefInterface,
@@ -311,6 +313,8 @@ function buildPrologue(): unknown[] {
       ["acme-notes", "a"],
       ["a", "p"],
       ["", "a"],
+      [SLUG, "c"],
+      ["acme-notes", "c"],
     ] as const
   ).map(([slug, mode]) => ({
     slug,
@@ -658,6 +662,10 @@ function buildRecords(): unknown {
     ["p-ring", "p", 2],
     ["v-trust", "v", 3],
     ["p-candidates", "p", 6],
+    // Mode c has no roster, no trust document and no relay upgrade (§15.10).
+    ["c-ring", "c", 2],
+    ["c-trust", "c", 3],
+    ["c-candidates", "c", 6],
     ["a-vouch-req", "a", 0x8010],
     ["p-vouch-result", "p", 0x8011],
     ["a-sas-commit", "a", 0x8014],
@@ -923,7 +931,7 @@ function buildRelay(): unknown {
 
 interface PayloadIn {
   id: string;
-  mode: "a" | "v" | "p";
+  mode: "a" | "v" | "p" | "c";
   message: 1 | 2 | 3;
   text?: string;
   hex?: string;
@@ -1094,6 +1102,55 @@ function buildPayloads(): unknown {
       text: '{"v":1,"caps":[],"ring":7}',
     },
   ];
+  // Mode c (§15.5, §15.10): the payload of mode v and p: v and caps, no cert, ring ignored.
+  rows.push(
+    { id: "c-msg1", mode: "c", message: 1, text: '{"v":1}' },
+    {
+      id: "c-msg1-cert-present",
+      mode: "c",
+      message: 1,
+      text: `{"v":1,"cert":"${cert}"}`,
+    },
+    { id: "c-msg2", mode: "c", message: 2, text: '{"v":1,"caps":["app/1"]}' },
+    {
+      id: "c-msg3-xfer-cap",
+      mode: "c",
+      message: 3,
+      text: '{"v":1,"caps":["app/1","xfer/1"]}',
+    },
+    {
+      id: "c-msg3-empty-caps",
+      mode: "c",
+      message: 3,
+      text: '{"v":1,"caps":[]}',
+    },
+    {
+      id: "c-unknown-member-ignored",
+      mode: "c",
+      message: 2,
+      text: '{"v":1,"caps":["app/1"],"x":{"k":null}}',
+    },
+    {
+      id: "c-ring-ignored",
+      mode: "c",
+      message: 2,
+      text: '{"v":1,"caps":[],"ring":7}',
+    },
+    {
+      id: "c-cert-refused",
+      mode: "c",
+      message: 2,
+      text: `{"v":1,"caps":["app/1"],"cert":"${cert}"}`,
+    },
+    {
+      id: "c-cert-and-ring-refused",
+      mode: "c",
+      message: 3,
+      text: `{"v":1,"caps":["app/1"],"cert":"${cert}","ring":7}`,
+    },
+    { id: "c-caps-missing", mode: "c", message: 2, text: '{"v":1}' },
+    { id: "c-version-2", mode: "c", message: 2, text: '{"v":2,"caps":[]}' },
+  );
   const capsRow = (id: string, caps: unknown): PayloadIn => ({
     id,
     mode: "v",
@@ -3433,7 +3490,7 @@ export function buildPeerMatrix(): unknown {
   return {
     peerMatrixVersion: 1,
     description:
-      "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`; `lanAddresses` (which peer addresses a device dials or accepts, and the per-address count key); `mdnsAnswers` (which A and AAAA records a browser believes); `vouch` (the mode-v vouch of 15.6.1: `requests`, `results`, `flows`, `finish`). A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
+      "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`; `lanAddresses` (which peer addresses a device dials or accepts, and the per-address count key); `mdnsAnswers` (which A and AAAA records a browser believes); `vouch` (the mode-v vouch of 15.6.1: `requests`, `results`, `flows`, `finish`); `contact` (inter-account links, 15.10: `secrets`, `bodies`, `categories`, `exchange`, `store`, `listener`, `pin`, `adverts`, `rooms`, `tickets`); `xfer` (Direct Transfer, 15.11: `codecs`, `window`, `offer`, `hash`, `ending`, `resume`, `name`, `limits`); mode c also adds rows to `prologue` and `handshakePayloads`. A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
     adverts: buildAdverts(),
     prologue: buildPrologue(),
     psk: buildPsk(),
@@ -3445,5 +3502,7 @@ export function buildPeerMatrix(): unknown {
     lanAddresses: buildLanAddresses(),
     mdnsAnswers: buildMdnsAnswers(),
     vouch: buildVouch(),
+    contact: buildContact(),
+    xfer: buildXfer(),
   };
 }

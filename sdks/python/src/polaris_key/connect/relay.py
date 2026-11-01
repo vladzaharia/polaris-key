@@ -124,6 +124,8 @@ class RelayOptions(NamedTuple):
     clock: Callable[[], float] = time.monotonic
     caps: Any = ("app/1",)
     label: Optional[str] = None
+    #: Direct Transfer (CC-20); see ``LanOptions.xfer``.
+    xfer: Any = None
     #: Reconnect backoff: base 1 s, doubling to 60 s, with jitter; never under ``backoff_min``.
     backoff_base: float = 1.0
     backoff_max: float = 60.0
@@ -733,6 +735,7 @@ class RelayService:
             on_trust=docs.on_trust,
             on_ring_wanted=self._want_ring,
             path="relay",
+            xfer=o.xfer,
         )
         options = {
             **channel_base(
@@ -942,6 +945,19 @@ class RelayLink:
     def close(self, code: str = "peer_bye") -> None:
         self._call(lambda: self.channel.close(code))
 
+    def attach_xfer(self, on_record: Callable[[int, bytes], None]) -> Callable[[int, bytes], None]:
+        """Take the engine's transfer port (§15.11); see ``SocketLink.attach_xfer``. A message the room's
+        queue has no room for closes the session ``peer_busy``, like any other send."""
+        write = self.channel.attach_xfer(on_record)
+
+        def go(type_: int, body: bytes) -> None:
+            if not self._svc._has_room(len(body) + 128 * (len(body) // 60000 + 1)):
+                self.channel.close("peer_busy")
+                raise RuntimeError("closed")
+            write(type_, body)
+
+        return lambda type_, body: self._call(lambda: go(type_, body))
+
     def _send_record(self, type_: int, body: bytes) -> None:
         # Refuse before the engine encrypts: a message dropped after encryption would break the stream.
         if not self._svc._has_room(len(body) + 128 * (len(body) // 60000 + 1)):
@@ -1000,10 +1016,12 @@ class RelayLink:
     def _event(self, e: Any) -> None:
         h = self._h
         if isinstance(e, Established):
-            if e.peer_device_id is None:
+            # Mode c (a contact room, §15.7) has no device id: the contact that opened the session names
+            # the peer, and the room's alias is the stamp.
+            if e.peer_device_id is None and e.contact_index is None:
                 return
             # The certificate, not the room's stamp, names the peer; they must agree (G8).
-            if e.peer_device_id != b64url_encode(self.peer):
+            if e.peer_device_id is not None and e.peer_device_id != b64url_encode(self.peer):
                 self._why = "wrong_peer"
                 self.channel.close("peer_bye")
                 self._finish(Closed("handshake_failed", False))

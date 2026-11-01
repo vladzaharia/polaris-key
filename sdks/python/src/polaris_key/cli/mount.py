@@ -52,6 +52,7 @@ __all__ = [
 END_USER: Tuple[str, ...] = (
     "activate",
     "deactivate",
+    "devices approve",
     "devices deauthorize",
     "devices list",
     "devices rename",
@@ -102,6 +103,7 @@ IDS: Tuple[Tuple[str, str], ...] = tuple(
         (
             ("activate", "activate"),
             ("deactivate", "deactivate"),
+            ("devices approve", "devices"),
             ("devices deauthorize", "devices"),
             ("devices list", "devices"),
             ("devices rename", "devices"),
@@ -132,6 +134,7 @@ ID_COPY: Mapping[str, str] = {
     "devices list": "cli.verb.devicesList",
     "devices rename": "cli.verb.devicesRename",
     "devices deauthorize": "cli.verb.devicesRemove",
+    "devices approve": "cli.verb.devicesApprove",
     "config get": "cli.verb.configGet",
     "config list": "cli.verb.configList",
     "config set": "cli.verb.configSet",
@@ -172,6 +175,7 @@ HELP_ORDER: Tuple[str, ...] = (
     "devices list",
     "devices rename",
     "devices deauthorize",
+    "devices approve",
     "config get",
     "config list",
     "config set",

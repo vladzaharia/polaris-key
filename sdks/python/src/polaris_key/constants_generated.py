@@ -244,6 +244,7 @@ class ErrorCode:
     RELAY_DISABLED: Final = "relay_disabled"
     RELAY_PAUSED: Final = "relay_paused"
     RELAY_QUOTA_EXCEEDED: Final = "relay_quota_exceeded"
+    CONNECT_LINKS_DISABLED: Final = "connect_links_disabled"
     RELAY_TICKET_INVALID: Final = "relay_ticket_invalid"
     DEVICE_LIMIT: Final = "device_limit"
     KEY_ENTRY_LIMIT: Final = "key_entry_limit"
@@ -378,6 +379,8 @@ class ErrorCode:
     NEARBY_UNSUPPORTED: Final = "nearby-unsupported"
     PEER_HANDSHAKE_FAILED: Final = "peer-handshake-failed"
     PEER_CLOSED: Final = "peer-closed"
+    TRANSFER_CANCELLED: Final = "transfer-cancelled"
+    LINK_UNKNOWN: Final = "link-unknown"
     PEER_REVOKED: Final = "peer_revoked"
     PEER_EXPIRED: Final = "peer_expired"
     PEER_BAD_FRAME: Final = "peer_bad_frame"
@@ -470,6 +473,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "relay_disabled",
     "relay_paused",
     "relay_quota_exceeded",
+    "connect_links_disabled",
     "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
@@ -604,6 +608,8 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "nearby-unsupported",
     "peer-handshake-failed",
     "peer-closed",
+    "transfer-cancelled",
+    "link-unknown",
     "peer_revoked",
     "peer_expired",
     "peer_bad_frame",
@@ -698,6 +704,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "relay_disabled": "wire",
         "relay_paused": "wire",
         "relay_quota_exceeded": "wire",
+        "connect_links_disabled": "wire",
         "relay_ticket_invalid": "wire",
         "device_limit": "wire",
         "key_entry_limit": "wire",
@@ -832,6 +839,8 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "nearby-unsupported": "client",
         "peer-handshake-failed": "client",
         "peer-closed": "client",
+        "transfer-cancelled": "client",
+        "link-unknown": "client",
         "peer_revoked": "peer",
         "peer_expired": "peer",
         "peer_bad_frame": "peer",
@@ -2529,8 +2538,8 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "connect.protocol": CapabilityRow("implemented", "connect", ()),
         "connect.lan": CapabilityRow("implemented", "connect", ()),
         "connect.relay": CapabilityRow("implemented", "connect", ()),
-        "connect.links": CapabilityRow("planned", "connect", ()),
-        "connect.transfer": CapabilityRow("planned", "connect", ()),
+        "connect.links": CapabilityRow("implemented", "connect", ()),
+        "connect.transfer": CapabilityRow("implemented", "connect", ()),
         "connect.app": CapabilityRow("implemented", "connect", ()),
         "devices.fingerprint": CapabilityRow("implemented", "core", ()),
         "devices.facts": CapabilityRow("implemented", "core", ()),
@@ -2554,10 +2563,10 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.exchange": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.gamecenter": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.pgs": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
-        "identity.autosignin": CapabilityRow("planned", "identity", ()),
+        "identity.autosignin": CapabilityRow("implemented", "identity", ()),
         "identity.restore": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.link": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
-        "identity.nearby": CapabilityRow("planned", "identity", ()),
+        "identity.nearby": CapabilityRow("implemented", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
         "release.record": CapabilityRow("implemented", "release", ()),
@@ -2626,4 +2635,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "5caa23a0fbbd1a5da4c3cfcb8e51b63951bf5250f48d53a21fc69792220076e6"
+CAPABILITY_DIGEST: Final[str] = "fcc325eec3fe75d99d2d241bac6860695cbd4ff2fd61f27f4659be07e7f48fd6"

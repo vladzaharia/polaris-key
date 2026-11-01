@@ -78,6 +78,7 @@ import {
 import { animate, LiveRegion, spinnerFrames } from "./term/live.js";
 import { osc52 } from "./term/osc.js";
 import { clean, hasLogCommand } from "./term/sanitize.js";
+import { nearbyLogin } from "./nearby.js";
 import {
   percent,
   progressSpans,
@@ -1611,6 +1612,64 @@ export async function loginFlow(
   }
   const verb = args.verb ?? "login";
   const header = () => productHeader(ctx, verb);
+  const again = (): RailRow[] =>
+    commandRows(ctx, [
+      {
+        label: [{ text: cmd(ctx, verb), style: ["strong"], keep: true }],
+        value: [{ text: t("signin.again"), style: ["muted"] }],
+      },
+    ]);
+  // Three ways to end without signing in (DENY-01): the code lapsed, a person refused, or the
+  // sign-in failed after approval. Only the poll's refusal code is a refusal.
+  const endedBlock = (how: "expired" | "denied" | "failed") => {
+    const error: CliJsonError =
+      how === "expired"
+        ? {
+            code: "signin_expired",
+            title: ctx.copy.code("sign-in-expired", "title"),
+            message: t("signin.cli.signInAgain", { command: cmd(ctx, verb) }),
+          }
+        : {
+            code: how === "failed" ? "sign-in-failed" : "sign-in-denied",
+            title: ctx.copy.code(
+              how === "failed" ? "sign-in-failed" : "sign-in-denied",
+              "title",
+            ),
+            message: t("signin.cli.signInAgain", { command: cmd(ctx, verb) }),
+          };
+    return {
+      rows: [stepRow("fail", error.title), ...gap(ctx), ...again(), endRow()],
+      result: {
+        exitCode: EXIT.failed,
+        state: how,
+        result: { state: how },
+        error,
+      } as FlowResult,
+    };
+  };
+  // Nearby first (D-5, D-10): on an interactive terminal with a browser to fall back on, never
+  // under `--json`, in CI or on a pipe. Nothing nearby (or `c`) goes on to the regular sign-in.
+  if (!quiet(ctx) && ctx.keys && !args.deviceCode && !ctx.caps.headless) {
+    try {
+      const nearby = await nearbyLogin(ctx, client, {
+        verb,
+        hooks: {
+          header,
+          signedIn: (who) => signedInLine(ctx, who),
+          ended: endedBlock,
+          current: async () =>
+            (await Promise.resolve()
+              .then(() => client.identity.current())
+              .catch(() => null)) ?? {},
+          status: () => client.status().status,
+        },
+      });
+      if (!("fallthrough" in nearby)) return nearby;
+      if (nearby.deviceCode) args = { ...args, deviceCode: true };
+    } catch (e) {
+      return { ...failed(ctx, e, header()), result: { state: "error" } };
+    }
+  }
   let prompt: DeviceCodeSession;
   try {
     prompt = await busy(
@@ -1837,14 +1896,6 @@ export async function loginFlow(
     const rows = [...header(), ...result];
     if (live) live.commit(() => rows, result);
   };
-  const again = (): RailRow[] =>
-    commandRows(ctx, [
-      {
-        label: [{ text: cmd(ctx, verb), style: ["strong"], keep: true }],
-        value: [{ text: t("signin.again"), style: ["muted"] }],
-      },
-    ]);
-
   if (r.kind === "cancelled") {
     // Cancelling is not an error (DL7): the block closes on a neutral line, no ✗ and no screen.
     finish([endRow(t("cli.nothingChanged"))]);
@@ -1880,36 +1931,15 @@ export async function loginFlow(
     ]);
     return { exitCode: EXIT.ok, state: "signedIn", result };
   }
-  // Three ways to end without signing in (DENY-01): the code lapsed, a person refused, or the
-  // sign-in failed after approval. Only the poll's refusal code is a refusal.
   const how =
     r.kind === "denied"
       ? ("denied" as const)
       : r.kind === "failed"
         ? ("failed" as const)
         : ("expired" as const);
-  const error: CliJsonError =
-    how === "expired"
-      ? {
-          code: "signin_expired",
-          title: ctx.copy.code("sign-in-expired", "title"),
-          message: t("signin.cli.signInAgain", { command: cmd(ctx, verb) }),
-        }
-      : {
-          code: how === "failed" ? "sign-in-failed" : "sign-in-denied",
-          title: ctx.copy.code(
-            how === "failed" ? "sign-in-failed" : "sign-in-denied",
-            "title",
-          ),
-          message: t("signin.cli.signInAgain", { command: cmd(ctx, verb) }),
-        };
-  finish([stepRow("fail", error.title), ...gap(ctx), ...again(), endRow()]);
-  return {
-    exitCode: EXIT.failed,
-    state: how,
-    result: { state: how },
-    error,
-  };
+  const ended = endedBlock(how);
+  finish(ended.rows);
+  return ended.result;
 }
 
 export interface ConfirmArgs {

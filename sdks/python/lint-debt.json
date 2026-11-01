@@ -135,13 +135,8 @@
       "ruff:I001": 1
     },
     "sdks/python/src/polaris_key/identity/redirect.py": {
-      "mypy:arg-type": 3,
-      "mypy:operator": 1,
       "mypy:union-attr": 3,
       "ruff:I001": 1
-    },
-    "sdks/python/src/polaris_key/identity/sign_in.py": {
-      "mypy:arg-type": 2
     },
     "sdks/python/src/polaris_key/license/__init__.py": {
       "ruff:I001": 1
@@ -512,9 +507,7 @@
     },
     "sdks/python/tests/test_identity_session.py": {
       "ruff:E501": 3,
-      "ruff:F401": 1,
-      "ruff:F811": 19,
-      "ruff:I001": 1
+      "ruff:F401": 1
     },
     "sdks/python/tests/test_license_events.py": {
       "ruff:I001": 1

@@ -1,21 +1,26 @@
 // Shared fixtures for the Cloud Connect LAN tests (CC-08.2): an in-process mDNS network, a small
 // multi-device fake of the Worker's connect routes, and helpers to build clients.
 import { randomBytes } from "node:crypto";
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { base64UrlEncodeBytes, signJws } from "@polaris-key/jws";
 import { ISSUER } from "@polaris-key/protocol/core";
 import { PolarisKeyClient } from "../src/client.js";
 import { createNodeDeviceKeyStore } from "../src/devices/deviceKeys.js";
-import { InMemoryStore } from "../src/core/store.js";
+import { CACHE_VERSION, InMemoryStore } from "../src/core/store.js";
 import type {
   MdnsAdapter,
   MdnsAdvert,
   MdnsFound,
   MdnsHandle,
 } from "../src/connect/mdns.js";
-import { TEST_KID, TEST_PEM, TEST_PUB } from "./parityFixtures.js";
+import {
+  signedLicense,
+  TEST_KID,
+  TEST_PEM,
+  TEST_PUB,
+} from "./parityFixtures.js";
 
 export const PRODUCT = "djdl";
 export const BASE = "https://k.test";
@@ -80,15 +85,16 @@ const sign = (
 ): Promise<string> =>
   signJws({ iss: ISSUER, aud: PRODUCT, ...claims }, TEST_PEM, TEST_KID, typ);
 
-const DISCOVERY = {
+const discovery = (interAccount: boolean) => ({
   product: PRODUCT,
   services: {
     connect: {
       enabled: true,
+      interAccount,
       endpoints: { identity: `${BASE}/${PRODUCT}/connect/identity` },
     },
   },
-};
+});
 
 interface Member {
   signKey: string;
@@ -115,6 +121,13 @@ export class MultiWorker {
   ticketsAsked = 0;
   /** The `url` the ticket answer carries. */
   relayUrl = `wss://k.test/${PRODUCT}/connect/relay`;
+  /** Discovery's `services.connect.interAccount` and whether contact tickets are served (§15.7). */
+  interAccount = false;
+  /** An older Worker ignores the contact body and answers an account ticket. */
+  echoRoom = true;
+  /** Contact tickets: ticket to device and rid, and every ticket request body seen. */
+  contactTickets = new Map<string, { device: string; rid: string }>();
+  ticketBodies: string[] = [];
   /** Count and switch for the identity route. */
   identityCalls = 0;
   failIdentity = false;
@@ -154,7 +167,8 @@ export class MultiWorker {
     const path = new URL(String(input)).pathname.slice(PRODUCT.length + 2);
     const j = (b: unknown, s = 200) =>
       new Response(JSON.stringify(b), { status: s });
-    if (path === ".well-known/polaris.json") return j(DISCOVERY);
+    if (path === ".well-known/polaris.json")
+      return j(discovery(this.interAccount));
     const auth = new Headers(init?.headers).get("authorization") ?? "";
     const deviceId = this.tokens.get(auth.replace("Bearer ", ""));
     if (deviceId === undefined) return j({}, 401);
@@ -194,6 +208,37 @@ export class MultiWorker {
           429,
         );
       const ticket = `pkeyrt_${base64UrlEncodeBytes(randomBytes(24))}`;
+      const raw = typeof init?.body === "string" ? init.body : "";
+      this.ticketBodies.push(raw);
+      if (raw !== "") {
+        // A contact ticket (§15.7): the gate first, then the body, which must be exactly the two members.
+        if (!this.interAccount)
+          return j({ error: { code: "connect_links_disabled" } }, 403);
+        let body: unknown;
+        try {
+          body = JSON.parse(raw);
+        } catch {
+          return j({ error: { code: "bad_request" } }, 400);
+        }
+        const b = body as Record<string, unknown>;
+        if (
+          typeof b !== "object" ||
+          b === null ||
+          Object.keys(b).length !== 2 ||
+          b.room !== "c" ||
+          typeof b.rid !== "string" ||
+          !/^[A-Za-z0-9_-]{22}$/.test(b.rid)
+        )
+          return j({ error: { code: "bad_request" } }, 400);
+        this.contactTickets.set(ticket, { device: deviceId, rid: b.rid });
+        return j({
+          ticket,
+          url: this.relayUrl,
+          protocol: "pkey-relay.1",
+          expiresAt: Math.floor(Date.now() / 1000) + 60,
+          ...(this.echoRoom ? { room: "c" } : {}),
+        });
+      }
       this.tickets.set(ticket, deviceId);
       return j({
         ticket,
@@ -226,16 +271,30 @@ export async function makeClient(
   worker: MultiWorker,
   n: string,
   dirs: string[],
-  extra: { trustRefresh?: boolean } = {},
+  extra: {
+    trustRefresh?: boolean;
+    /** A device with no credential (and so not known to the Worker's token table). */
+    noToken?: boolean;
+    /** A licence document cached for this device: the "licence" half of autoSignIn()'s rung 1
+     *  (the acquisition sync that would fetch it after a sign-in is not part of these tests). */
+    licensed?: boolean;
+  } = {},
 ): Promise<PolarisKeyClient> {
   const deviceId = devId(n);
-  const token = tokenOf(n);
-  worker.add(deviceId, token);
   const store = Object.assign(new InMemoryStore(), {
     getDeviceId: async () => deviceId,
   });
-  await store.setToken(token);
+  if (extra.licensed === true)
+    await store.writeCache({
+      v: CACHE_VERSION,
+      docs: { license: await signedLicense({}, undefined, deviceId) },
+    });
+  if (extra.noToken !== true) {
+    worker.add(deviceId, tokenOf(n));
+    await store.setToken(tokenOf(n));
+  }
   const stateDir = tmpDir(dirs);
+  const keys = createNodeDeviceKeyStore({ product: PRODUCT, stateDir });
   const client = new PolarisKeyClient({
     productSlug: PRODUCT,
     baseUrl: BASE,
@@ -247,12 +306,23 @@ export async function makeClient(
     store,
     fetchImpl: worker.fetch,
     stateDir,
-    connect: {
-      deviceKeys: createNodeDeviceKeyStore({ product: PRODUCT, stateDir }),
-    },
+    // One key store for Connect and the key ring: both are this device's identity.
+    connect: { deviceKeys: keys },
+    keyring: { deviceKeys: keys },
   });
   await client.init();
   return client;
+}
+
+/** Mark a client signed in, as a finished sign-in leaves it (identity.json beside the token). */
+export function markSignedIn(c: PolarisKeyClient): void {
+  const state = (c as unknown as { core: { dirs: { state: string } } }).core
+    .dirs.state;
+  mkdirSync(state, { recursive: true });
+  writeFileSync(
+    join(state, "identity.json"),
+    JSON.stringify({ email: "ana@example.test", signedInAt: T0 }),
+  );
 }
 
 export const sleep = (ms: number): Promise<void> =>

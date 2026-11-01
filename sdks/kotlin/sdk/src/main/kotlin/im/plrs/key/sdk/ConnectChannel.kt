@@ -20,6 +20,8 @@ package im.plrs.key.sdk
 import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.PeerTrustResult
 import im.plrs.key.core.peer.AccountContext
+import im.plrs.key.core.peer.ContactLink
+import im.plrs.key.core.peer.HandshakeLimiter
 import im.plrs.key.core.peer.HeldRing
 import im.plrs.key.core.peer.HelloInfo
 import im.plrs.key.core.peer.NoisePorts
@@ -82,7 +84,7 @@ internal fun peerAccount(src: PeerSource, ring: () -> HeldRing? = { null }): Acc
     discKeys = listOf(src.discovery.current, src.discovery.previous),
 )
 
-private fun hostPlatform(): String {
+internal fun hostPlatform(): String {
     if (System.getProperty("java.vendor").orEmpty().contains("Android")) return "android"
     val os = System.getProperty("os.name").orEmpty().lowercase()
     return when {
@@ -105,8 +107,17 @@ internal class ChannelBase(
 ) {
     private val staticKey: DeviceKeyPort = src.keys
 
-    /** A mode-a channel for [role]; [send] takes Noise messages, [onEvent] its events. */
-    fun channel(role: NoiseRole, send: (ByteArray) -> Unit, onEvent: (SessionEvent) -> Unit): PeerChannel {
+    /**
+     * A mode-a channel for [role]; [send] takes Noise messages, [onEvent] its events. A responder that holds
+     * [contacts] also serves them (the shared listener, section 15.10) under [admission].
+     */
+    fun channel(
+        role: NoiseRole,
+        send: (ByteArray) -> Unit,
+        onEvent: (SessionEvent) -> Unit,
+        contacts: List<ContactLink> = emptyList(),
+        admission: HandshakeLimiter? = null,
+    ): PeerChannel {
         val clock = now ?: { System.currentTimeMillis() / 1000 }
         return PeerChannel(
             role, src.slug, staticKey.noiseStatic(), peerAccount(src, ring),
@@ -114,7 +125,30 @@ internal class ChannelBase(
             send, onEvent,
             caps = caps, ports = ports ?: NoisePorts(), now = clock,
             rekeyMessages = rekeyMessages ?: (1 shl 20), rekeySeconds = rekeySeconds ?: 3600.0,
-            mode = PeerMode.a,
+            mode = PeerMode.a, admission = admission, contacts = contacts,
+        )
+    }
+
+    /**
+     * A mode-c channel for [role] (section 15.10): no account, no certificate. The static key is the device's
+     * agreeKey behind the same port as mode a. An initiator names exactly one contact; a responder names the
+     * contacts it serves and needs [admission].
+     */
+    fun contactChannel(
+        role: NoiseRole,
+        send: (ByteArray) -> Unit,
+        onEvent: (SessionEvent) -> Unit,
+        contacts: List<ContactLink>,
+        admission: HandshakeLimiter? = null,
+    ): PeerChannel {
+        val clock = now ?: { System.currentTimeMillis() / 1000 }
+        return PeerChannel(
+            role, src.slug, staticKey.noiseStatic(), null,
+            HelloInfo(hostPlatform(), src.slug, label),
+            send, onEvent,
+            caps = caps, ports = ports ?: NoisePorts(), now = clock,
+            rekeyMessages = rekeyMessages ?: (1 shl 20), rekeySeconds = rekeySeconds ?: 3600.0,
+            mode = PeerMode.c, admission = admission, contacts = contacts,
         )
     }
 

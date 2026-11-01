@@ -1,0 +1,71 @@
+── truecolor · 80 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[38;2;114;202;190m◆[0m  [1mApprove on your other device[0m
+[2m│[0m  [1m1[0m  Ana's laptop
+[2m│[0m  [1m2[0m  Ben's phone
+[2m│[0m
+[2m└[0m  [1m1-2[0m [2mchoose a device · [0m[1mc[0m [2muse a code instead · [0m[1mEsc[0m [2mcancel[0m
+── ansi16 · 80 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[36m◆[0m  [1mApprove on your other device[0m
+[2m│[0m  [1m1[0m  Ana's laptop
+[2m│[0m  [1m2[0m  Ben's phone
+[2m│[0m
+[2m└[0m  [1m1-2[0m [2mchoose a device · [0m[1mc[0m [2muse a code instead · [0m[1mEsc[0m [2mcancel[0m
+── no-color · 80 ──
+┌  [7m Tidewater Studio [0m · login
+│
+◆  [1mApprove on your other device[0m
+│  [1m1[0m  Ana's laptop
+│  [1m2[0m  Ben's phone
+│
+└  [1m1-2[0m choose a device · [1mc[0m use a code instead · [1mEsc[0m cancel
+── ascii · 80 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
+[2m|[0m
+[36m*[0m  [1mApprove on your other device[0m
+[2m|[0m  [1m1[0m  Ana's laptop
+[2m|[0m  [1m2[0m  Ben's phone
+[2m|[0m
+[2m`[0m  [1m1-2[0m [2mchoose a device - c use a code instead - Esc cancel[0m
+── truecolor · 60 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[38;2;114;202;190m◆[0m  [1mApprove on your other device[0m
+[2m│[0m  [1m1[0m  Ana's laptop
+[2m│[0m  [1m2[0m  Ben's phone
+[2m│[0m
+[2m└[0m  [1m1-2[0m [2mchoose a device · [0m[1mc[0m [2muse a code instead · [0m[1mEsc[0m [2mcancel[0m
+── ansi16 · 60 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[36m◆[0m  [1mApprove on your other device[0m
+[2m│[0m  [1m1[0m  Ana's laptop
+[2m│[0m  [1m2[0m  Ben's phone
+[2m│[0m
+[2m└[0m  [1m1-2[0m [2mchoose a device · [0m[1mc[0m [2muse a code instead · [0m[1mEsc[0m [2mcancel[0m
+── no-color · 60 ──
+┌  [7m Tidewater Studio [0m · login
+│
+◆  [1mApprove on your other device[0m
+│  [1m1[0m  Ana's laptop
+│  [1m2[0m  Ben's phone
+│
+└  [1m1-2[0m choose a device · [1mc[0m use a code instead · [1mEsc[0m cancel
+── ascii · 60 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
+[2m|[0m
+[36m*[0m  [1mApprove on your other device[0m
+[2m|[0m  [1m1[0m  Ana's laptop
+[2m|[0m  [1m2[0m  Ben's phone
+[2m|[0m
+[2m`[0m  [1m1-2[0m [2mchoose a device - c use a code instead - Esc cancel[0m
+── pipe · 80 ──
+Tidewater Studio · login
+Approve on your other device
+1  Ana's laptop
+2  Ben's phone
+
+1-2 choose a device · c use a code instead · Esc cancel

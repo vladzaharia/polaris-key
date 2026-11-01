@@ -1889,6 +1889,10 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       // identity.nearby is N/A (runtime) here: a browser tab has no mode v handshake and the
       // renderer holds no device key (I-40.8); the Node runner replays the nearby-* transcripts.
       "identity.nearby",
+      // connect.links is N/A (runtime) here too (CC-19.9): the contact store and the pairing sockets
+      // are the host's; the Node and Python runners replay the connect-links-* and
+      // connect-relay-ticket-contact transcripts.
+      "connect.links",
     ];
     const expected = TRANSCRIPTS.filter(
       (t) =>

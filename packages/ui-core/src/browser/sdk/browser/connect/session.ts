@@ -15,7 +15,11 @@
 //  - the link, and with it the channel and its discovery keys, is held in a WeakMap, so it is
 //    in no enumerable field, no `JSON.stringify` and no console expansion.
 
-import type { PeerChannel, PeerHello } from "@polaris-key/client-core/peer";
+import {
+  XFER_CAP,
+  type PeerChannel,
+  type PeerHello,
+} from "@polaris-key/client-core/peer";
 import { LanError, type SessionCloseCode } from "./errors.js";
 import { printAs } from "./redact.js";
 
@@ -61,6 +65,17 @@ export interface ChannelLink {
   readonly channel: PeerChannel;
 }
 
+/** Records of `xfer/1` held until the transfer layer binds (a peer sends one `OFFER` and waits). */
+const XFER_QUEUE_MAX = 16;
+
+/** What `ConnectSession.xferPort` hands the transfer layer. @internal */
+export interface XferPort {
+  peerKey: Uint8Array;
+  send(type: number, body: Uint8Array): Promise<void>;
+  close(code: "peer_bye" | "peer_busy"): void;
+  bind(sink: (type: number, body: Uint8Array) => void): void;
+}
+
 /** Which path a session took. The browser has the relay only. */
 export type SessionPath = "relay";
 
@@ -82,6 +97,11 @@ export class ConnectSession {
   #closed: SessionClosed | null = null;
   #bytes = 0;
   readonly #budget: QueueBudget;
+  #peerKey: Uint8Array | null = null;
+  #xferSend: ((type: number, body: Uint8Array) => Promise<void>) | null = null;
+  #xferSink: ((type: number, body: Uint8Array) => void) | null = null;
+  #xferQueue: { type: number; body: Uint8Array }[] = [];
+  #xferTaken = false;
 
   /** @internal */
   constructor(
@@ -91,8 +111,21 @@ export class ConnectSession {
     hello: PeerHello,
     role: "initiator" | "responder",
     budget: QueueBudget = new QueueBudget(),
+    /** The peer's authenticated static key (its certificate's agreeKey). */
+    remoteStatic: Uint8Array | null = null,
   ) {
     links.set(this, link);
+    // Direct Transfer (§15.11): when both sides listed `xfer/1`, the six record types are taken at
+    // once, so none reaches the host before a reader exists. `xferPort().bind` hands them to the
+    // transfer layer; until then a small queue holds them.
+    if (remoteStatic !== null && caps.includes(XFER_CAP)) {
+      this.#peerKey = remoteStatic.slice();
+      try {
+        this.#xferSend = link.channel.attachXfer((t, b) => this.#xferIn(t, b));
+      } catch {
+        this.#xferSend = null;
+      }
+    }
     this.#budget = budget;
     this.peerDeviceId = peerDeviceId;
     this.caps = caps;
@@ -136,6 +169,41 @@ export class ConnectSession {
    *  and SAS records. @internal */
   sendRecord(type: number, body: Uint8Array): Promise<void> {
     return this.#channel.sendRecord(type, body);
+  }
+
+  /** Both sides listed `xfer/1`: this session carries Direct Transfer records. */
+  get xferCapable(): boolean {
+    return this.#xferSend !== null;
+  }
+
+  #xferIn(type: number, body: Uint8Array): void {
+    if (this.#closed !== null) return;
+    if (this.#xferSink !== null) return this.#xferSink(type, body);
+    if (this.#xferQueue.length >= XFER_QUEUE_MAX) {
+      void this.#channel.close("peer_busy");
+      return;
+    }
+    this.#xferQueue.push({ type, body });
+  }
+
+  /**
+   * The transfer layer's hold on this session (§15.11): the peer's key, a writer and a binder for
+   * the reader. Once, and only when both sides listed `xfer/1`; null otherwise. @internal
+   */
+  xferPort(): XferPort | null {
+    if (this.#xferSend === null || this.#peerKey === null || this.#xferTaken)
+      return null;
+    this.#xferTaken = true;
+    const send = this.#xferSend;
+    return {
+      peerKey: this.#peerKey.slice(),
+      send,
+      close: (code) => void this.close(code).catch(() => undefined),
+      bind: (sink) => {
+        this.#xferSink = sink;
+        for (const r of this.#xferQueue.splice(0)) sink(r.type, r.body);
+      },
+    };
   }
 
   /** The next message; rejects when the session closes with none waiting. */

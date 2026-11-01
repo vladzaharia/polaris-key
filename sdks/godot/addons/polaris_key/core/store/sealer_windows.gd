@@ -2,7 +2,8 @@ class_name PKeyWinSealer
 extends PKeyRecordSealer
 ## The Windows sealer (CC-26.7): DPAPI through pkey_win.dll's PKeyWinDpapiNative
 ## (native/windows/credman/pkey_credman.cpp). CryptProtectData with CRYPTPROTECT_UI_FORBIDDEN and
-## user scope: only this Windows user on this machine opens the blob, without a prompt. The entropy
+## user scope: only this Windows user opens the blob, without a prompt (a roaming profile carries
+## it to that user's other machines). The entropy
 ## is the context (which names the product), so another product's blob does not open. DPAPI keeps no
 ## per-product key, so destroy() has nothing to delete: the store removes its record. `unopenable`
 ## (not DPAPI data, another user or machine) is "unreadable"; any other failure is a fault.

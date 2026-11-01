@@ -5,7 +5,17 @@ import { hexDecode, hexEncode } from "../../../platform/bytes.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { accountDeviceKeys } from "../../../core/devices/keys.js";
-import { platformSetting } from "../../../core/settings/platformRead.js";
+import { hashKey } from "../../../platform/crypto.js";
+import {
+  launchGateOn,
+  platformSetting,
+} from "../../../core/settings/platformRead.js";
+import {
+  CONTACT_LEASE_BYTES,
+  CONTACT_ROOM_IDLE_SECONDS,
+  MAX_CONTACTS,
+} from "@polaris-key/client-core/peer";
+import { ContactRoom, type ContactRecord } from "./contactRoom.js";
 import {
   RELAY_CLOSE,
   RelayEngine,
@@ -136,15 +146,50 @@ export class ConnectRelayDO implements DurableObject {
     // Load the room before any event is delivered, then rebuild the engine from it.
     this.loaded = ctx.blockConcurrencyWhile(async () => {
       this.cached = await ctx.storage.get<Room>("room");
+      const contact = await ctx.storage.get<ContactRecord>("croom");
+      if (contact) this.contactRoom = this.newContact(contact);
       this.wake(this.now());
     });
+  }
+
+  /** Set when this object is a contact room (`<p>:c:<rid>`, CC-19.4): the sockets are its. */
+  private contactRoom: ContactRoom | undefined;
+
+  private newContact(record: ContactRecord | undefined): ContactRoom {
+    return new ContactRoom(
+      {
+        ctx: this.ctx,
+        env: this.env,
+        db: this.db,
+        now: this.now,
+        newId: this.newId,
+        pair: this.pair,
+        upgraded: this.upgraded,
+        erased: () => {
+          this.contactRoom = undefined;
+        },
+      },
+      record,
+    );
   }
 
   // ── upgrade ────────────────────────────────────────────────────────────────────────────────
 
   async fetch(request: Request): Promise<Response> {
     await this.loaded;
-    if (request.method === "POST") return this.purge(request);
+    const path = new URL(request.url).pathname;
+    if (path === "/rooms" || path === "/lease")
+      return request.method !== "POST"
+        ? new Response(null, { status: 405 })
+        : this.contactRoom
+          ? new Response(null, { status: 404 })
+          : path === "/rooms"
+            ? this.countRoom(request)
+            : this.lease(request);
+    if (request.method === "POST")
+      return this.contactRoom
+        ? new Response(null, { status: 403 })
+        : this.purge(request);
     if (request.method === "PUT") return this.poke(request);
     // Fail closed: an unreadable gate is off. The route gated already; this is the second lock.
     if (!(await this.gateOn())) return new Response(null, { status: 404 });
@@ -157,6 +202,14 @@ export class ConnectRelayDO implements DurableObject {
       return new Response(null, { status: 400 });
     const adm = decodeAdmission(request.headers.get(ADMISSION_HEADER));
     if (!adm) return new Response(null, { status: 400 });
+    // A contact admission goes to a contact room and an account admission to an account room;
+    // an object is never both (the names cannot collide, so this is a second lock).
+    if (adm.contact) {
+      if (this.cached) return new Response(null, { status: 403 });
+      this.contactRoom ??= this.newContact(undefined);
+      return this.contactRoom.upgrade(adm);
+    }
+    if (this.contactRoom) return new Response(null, { status: 403 });
 
     const pinned = this.cached;
     if (
@@ -222,16 +275,28 @@ export class ConnectRelayDO implements DurableObject {
       (pinned.product !== body.product || pinned.subject !== body.subject)
     )
       return new Response(null, { status: 403 });
-    for (const ws of this.ctx.getWebSockets()) {
-      try {
-        ws.close(RELAY_CLOSE.notMember, "erased");
-      } catch {
-        // Already closed.
+    // One critical section: no lease or upgrade is admitted between the count and the delete.
+    await this.ctx.blockConcurrencyWhile(async () => {
+      for (const ws of this.ctx.getWebSockets()) {
+        try {
+          ws.close(RELAY_CLOSE.notMember, "erased");
+        } catch {
+          // Already closed.
+        }
       }
-    }
-    await this.ctx.storage.deleteAlarm();
-    await this.ctx.storage.deleteAll();
-    await this.ctx.storage.put("erasedAt", this.now());
+      // Count what the room owes first, best effort: erasure never waits on the meter.
+      const product = pinned?.product ?? body.product;
+      if (typeof product === "string") {
+        try {
+          await this.flushPending(product);
+        } catch {
+          // The count is lost with the room; the erasure goes ahead.
+        }
+      }
+      await this.ctx.storage.deleteAlarm();
+      await this.ctx.storage.deleteAll();
+      await this.ctx.storage.put("erasedAt", this.now());
+    });
     this.cached = undefined;
     this.engine.restore(
       {
@@ -246,6 +311,153 @@ export class ConnectRelayDO implements DurableObject {
       this.now(),
     );
     return new Response(null, { status: 204 });
+  }
+
+  /**
+   * Count a contact room against this person's `MAX_CONTACTS` (V5 §15.7), reached only through
+   * `do/client.ts` after the ticket route's gates. A rid already held is refreshed for another
+   * idle period; a new one takes a slot, or is refused with 429 when the slots are all held. An
+   * entry expires `CONTACT_ROOM_IDLE_SECONDS` after its last ticket, as the contact room does.
+   * The room stores a keyed hash of the rid (per person, so two people's lists share no value),
+   * never the rid. The room is not created here: a call before the first socket pins nothing.
+   */
+  private async countRoom(request: Request): Promise<Response> {
+    let body: { product?: unknown; subject?: unknown; rid?: unknown };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return new Response(null, { status: 400 });
+    }
+    const { product, subject, rid } = body;
+    if (
+      typeof product !== "string" ||
+      typeof subject !== "string" ||
+      typeof rid !== "string" ||
+      !/^[A-Za-z0-9_-]{22}$/.test(rid)
+    )
+      return new Response(null, { status: 400 });
+    const pinned = this.cached;
+    if (pinned && (pinned.product !== product || pinned.subject !== subject))
+      return new Response(null, { status: 403 });
+    if (
+      !(await this.gateOn()) ||
+      !(await launchGateOn(this.env, this.db(), "launch.connectLinks"))
+    )
+      return new Response(null, { status: 404 });
+    const erasedAt = await this.ctx.storage.get<number>("erasedAt");
+    if (erasedAt !== undefined && this.now() - erasedAt < ERASED_MS)
+      return new Response(null, { status: 403 });
+    const now = Math.floor(this.now() / 1000);
+    const key = await hashKey(
+      `contact-room:${product}:${subject}:${rid}`,
+      this.env.KEY_HASH_PEPPER,
+    );
+    const held =
+      (await this.ctx.storage.get<Record<string, number>>("contactRooms")) ??
+      {};
+    for (const [k, exp] of Object.entries(held)) if (exp <= now) delete held[k];
+    if (!(key in held) && Object.keys(held).length >= MAX_CONTACTS) {
+      await this.ctx.storage.put("contactRooms", held);
+      return new Response(null, { status: 429 });
+    }
+    held[key] = now + CONTACT_ROOM_IDLE_SECONDS;
+    await this.ctx.storage.put("contactRooms", held);
+    return new Response(null, { status: 204 });
+  }
+
+  /**
+   * Lease bytes of this person's day to one of their contact rooms (CC-19.4, V5 §15.7), reached
+   * only through `do/client.ts`. The grant is added to the day's usage and to the meter exactly as
+   * a message of an account room would be, so the person's day quota, the 4 GiB ceiling and the
+   * product's month hold however many contact rooms are open. Answers `{granted, reason}`: the
+   * bytes granted (all of `n`, what is left of the day, or 0) and, when short, why: 2 the person's
+   * day is spent, 3 the product's month is, 4 the relay is paused. The room is created here when
+   * the person has never connected, with no members: only the usage lives in it. Pinned like every
+   * other call; behind both gates.
+   */
+  private async lease(request: Request): Promise<Response> {
+    let body: Record<string, unknown>;
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return new Response(null, { status: 400 });
+    }
+    const { product, subject, n, dayBytes, monthCeiling, seatsHeld } = body;
+    if (
+      typeof product !== "string" ||
+      typeof subject !== "string" ||
+      typeof n !== "number" ||
+      !Number.isSafeInteger(n) ||
+      n < 1 ||
+      n > CONTACT_LEASE_BYTES ||
+      typeof dayBytes !== "number" ||
+      !Number.isFinite(dayBytes) ||
+      dayBytes < 0 ||
+      typeof monthCeiling !== "number" ||
+      !Number.isFinite(monthCeiling) ||
+      monthCeiling < 0 ||
+      typeof seatsHeld !== "boolean"
+    )
+      return new Response(null, { status: 400 });
+    const pinned = this.cached;
+    if (pinned && (pinned.product !== product || pinned.subject !== subject))
+      return new Response(null, { status: 403 });
+    if (
+      !(await this.gateOn()) ||
+      !(await launchGateOn(this.env, this.db(), "launch.connectLinks"))
+    )
+      return new Response(null, { status: 404 });
+    const answer = (granted: number, reason: 0 | 2 | 3 | 4): Response =>
+      new Response(JSON.stringify({ granted, reason }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    const erasedAt = await this.ctx.storage.get<number>("erasedAt");
+    if (erasedAt !== undefined && this.now() - erasedAt < ERASED_MS)
+      return new Response(null, { status: 403 });
+    // A person with no device left leases nothing (and no lease re-creates an erased room).
+    try {
+      const keys = await accountDeviceKeys(this.db(), product, subject, {
+        seatsHeld,
+        now: Math.floor(this.now() / 1000),
+      });
+      if (keys.length === 0) return new Response(null, { status: 403 });
+    } catch {
+      return new Response(null, { status: 503 });
+    }
+
+    if (
+      (await platformSetting(
+        this.env,
+        this.db(),
+        "cloudConnect.relayPaused",
+      )) === "on"
+    )
+      return answer(0, 4);
+    const now = this.now();
+    const ceiling = Math.min(
+      Math.floor(monthCeiling),
+      CLOUD_CONNECT_CEILINGS.perProduct.relayBytesPerMonth,
+    );
+    const { from, to } = monthStart(Math.floor(now / DAY_MS));
+    const month = await withTimeout(
+      this.db().first<{ b: number }>(
+        "SELECT COALESCE(SUM(bytes), 0) AS b FROM connect_relay_daily WHERE product = ? AND day >= ? AND day < ?",
+        product,
+        from,
+        to,
+      ),
+    );
+    if ((month?.b ?? 0) >= ceiling) return answer(0, 3);
+
+    this.wake(now);
+    const { granted, day } = this.engine.lease(n, dayBytes, now);
+    if (granted > 0) {
+      await this.persist(product, subject, ceiling, seatsHeld);
+      await this.addBytes({ [String(day)]: granted });
+      await this.ensureAlarm();
+    }
+    return answer(granted, granted < n ? 2 : 0);
   }
 
   /**
@@ -280,7 +492,14 @@ export class ConnectRelayDO implements DurableObject {
     }
     if (roster !== null) {
       if (roster.length === 0) {
-        await this.eraseRoom(RELAY_CLOSE.notMember);
+        try {
+          // Under the input gate: nothing is admitted between the count and the delete.
+          await this.ctx.blockConcurrencyWhile(() =>
+            this.eraseRoom(RELAY_CLOSE.notMember),
+          );
+        } catch {
+          // The owed bytes could not be counted: the room stays and the next alarm erases it.
+        }
         return new Response(null, { status: 204 });
       }
       await this.carryOut(
@@ -315,6 +534,7 @@ export class ConnectRelayDO implements DurableObject {
     message: string | ArrayBuffer,
   ): Promise<void> {
     await this.loaded;
+    if (this.contactRoom) return this.contactRoom.message(ws, message);
     const att = ws.deserializeAttachment() as Attachment | null;
     if (!att) {
       ws.close(RELAY_CLOSE.refused, "refused");
@@ -334,7 +554,9 @@ export class ConnectRelayDO implements DurableObject {
   }
 
   async webSocketClose(ws: WebSocket, code: number): Promise<void> {
-    await this.gone(ws);
+    await this.loaded;
+    if (this.contactRoom) await this.contactRoom.close(ws);
+    else await this.gone(ws);
     try {
       ws.close(code >= 1000 && code < 5000 && code !== 1005 ? code : 1000);
     } catch {
@@ -343,7 +565,9 @@ export class ConnectRelayDO implements DurableObject {
   }
 
   async webSocketError(ws: WebSocket): Promise<void> {
-    await this.gone(ws);
+    await this.loaded;
+    if (this.contactRoom) await this.contactRoom.close(ws);
+    else await this.gone(ws);
   }
 
   private async gone(ws: WebSocket): Promise<void> {
@@ -361,6 +585,7 @@ export class ConnectRelayDO implements DurableObject {
 
   async alarm(): Promise<void> {
     await this.loaded;
+    if (this.contactRoom) return this.contactRoom.alarm();
     await this.ctx.blockConcurrencyWhile(async () => {
       const room = await this.ctx.storage.get<Room>("room");
       if (!room) return;
@@ -419,7 +644,19 @@ export class ConnectRelayDO implements DurableObject {
       if (roster !== null && !closeAll) {
         if (roster.length === 0) {
           // The person has no device left: nothing can reconnect, so the room goes.
-          await this.eraseRoom(RELAY_CLOSE.notMember);
+          try {
+            await this.eraseRoom(RELAY_CLOSE.notMember);
+          } catch {
+            // The count did not land: the room is not erased. Re-arm with a bounded backoff
+            // instead of throwing, so a long write outage cannot exhaust the runtime's retries.
+            const n =
+              ((await this.ctx.storage.get<number>("eraseFails")) ?? 0) + 1;
+            await this.ctx.storage.put("eraseFails", n);
+            await this.ctx.storage.setAlarm(
+              this.now() +
+                Math.min(ERASE_RETRY_MAX_MS, ERASE_RETRY_MS * 2 ** (n - 1)),
+            );
+          }
           return;
         }
         // Devices that left the roster lose their sockets (4003) and are announced gone.
@@ -428,29 +665,8 @@ export class ConnectRelayDO implements DurableObject {
         );
       }
       // Flush the meter. A failure throws: the runtime retries, and `pending` stays owed.
-      const pending = (await this.ctx.storage.get<Pending>("pending")) ?? {};
-      const days = Object.keys(pending);
+      await this.flushPending(room.product);
       const db = this.db();
-      if (days.length > 0) {
-        await withTimeout(
-          db.batch(
-            days.map((d) => ({
-              sql: `INSERT INTO connect_relay_daily (product, day, bytes, sessions)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT (product, day) DO UPDATE SET
-                      bytes = bytes + excluded.bytes,
-                      sessions = sessions + excluded.sessions`,
-              params: [
-                room.product,
-                dayString(Number(d)),
-                pending[d]!.bytes,
-                pending[d]!.sessions,
-              ],
-            })),
-          ),
-        );
-        await this.ctx.storage.delete("pending");
-      }
       // The product's month, from the counters every room feeds.
       const { from, to } = monthStart(Math.floor(now / DAY_MS));
       const row = await withTimeout(
@@ -482,7 +698,39 @@ export class ConnectRelayDO implements DurableObject {
     }
   }
 
-  /** Close every socket and drop the room, the usage and the alarm (no tombstone). */
+  /**
+   * Write the owed metered bytes and sessions to the meter, then forget them. A failure throws
+   * (the bytes stay owed). Every path that erases the room calls this first.
+   */
+  private async flushPending(product: string): Promise<void> {
+    const pending = (await this.ctx.storage.get<Pending>("pending")) ?? {};
+    const days = Object.keys(pending);
+    if (days.length === 0) return;
+    await withTimeout(
+      this.db().batch(
+        days.map((d) => ({
+          sql: `INSERT INTO connect_relay_daily (product, day, bytes, sessions)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (product, day) DO UPDATE SET
+                  bytes = bytes + excluded.bytes,
+                  sessions = sessions + excluded.sessions`,
+          params: [
+            product,
+            dayString(Number(d)),
+            pending[d]!.bytes,
+            pending[d]!.sessions,
+          ],
+        })),
+      ),
+    );
+    await this.ctx.storage.delete("pending");
+  }
+
+  /**
+   * Close every socket, count the bytes the room owes, then drop the room, the usage and the
+   * alarm (no tombstone). A failed count throws before anything is erased: from the alarm the
+   * runtime retries, from the poke the next alarm erases.
+   */
   private async eraseRoom(code: number): Promise<void> {
     for (const ws of this.ctx.getWebSockets()) {
       try {
@@ -491,6 +739,7 @@ export class ConnectRelayDO implements DurableObject {
         // Already closed.
       }
     }
+    if (this.cached) await this.flushPending(this.cached.product);
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
     this.cached = undefined;
@@ -618,6 +867,10 @@ export class ConnectRelayDO implements DurableObject {
       await this.ctx.storage.setAlarm(this.now() + ALARM_MS);
   }
 }
+
+/** Alarm re-arm after a failed erase count: 30 s, doubling, capped at 10 min. */
+const ERASE_RETRY_MS = 30_000;
+const ERASE_RETRY_MAX_MS = 600_000;
 
 function withTimeout<T>(p: Promise<T>): Promise<T> {
   let t: ReturnType<typeof setTimeout>;

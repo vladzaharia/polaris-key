@@ -100,7 +100,7 @@ func bind(p_core: PKeyCore, sdk: Node, p_config: PKeyConfig, p_keyring: Object, 
 	host = Host.new()
 	sdk.add_child(host)
 	var sealer: PKeyRecordSealer = null
-	if OS.get_environment("PKEY_DESKTOP_KEYRING") != "0":
+	if not PKeyRecordSealer.switched_off():
 		sealer = PKeyRecordSealer.for_platform(p_core.product)
 	# The real codec (U-21.8) over the key ring; a test or an app may pass its own; without a ring, the
 	# locked base codec, so an E2E product stays locked and sends nothing.

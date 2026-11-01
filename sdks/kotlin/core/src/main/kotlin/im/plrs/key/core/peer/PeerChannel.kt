@@ -66,6 +66,7 @@ private const val MAX_QUEUED_BYTES = 16 * 1024
 private const val MAX_UNVERIFIED_HELLO = 4096
 
 private const val SAS_NONCE_BYTES = 32
+private const val KEY_BYTES = 32
 private const val RATE_WINDOW_SECONDS = 60.0
 private const val MAX_SAFE_INTEGER = 9_007_199_254_740_991L
 private const val DEFAULT_REKEY_MESSAGES = 1 shl 20
@@ -93,6 +94,29 @@ public class AccountContext(
     override fun toString(): String = "AccountContext"
 }
 
+/** A contact the device holds (mode c): its secret (the PSK) and the peer's agreeKey. Prints as redacted. */
+public class ContactLink(
+    /** The 32-byte contact secret. */
+    public val secret: ByteArray,
+    /** The peer's agreeKey, 43 canonical base64url characters: the remote static key must equal it. */
+    public val agreeKey: String,
+) {
+    override fun toString(): String = "ContactLink(redacted)"
+}
+
+/** This device's side of the contact exchange (mode p, section 15.10). */
+public class ContactOffer(
+    /** This device's own agreeKey, 43 canonical base64url characters. */
+    public val agreeKey: String,
+    /** The agreeKey of every active contact the host holds for the product ([ContactExchange]). */
+    public val held: List<String> = emptyList(),
+    public val label: String? = null,
+    /** The data categories this side's person approved (at most 8, `[a-z0-9-]{1,32}`). */
+    public val cats: List<String> = emptyList(),
+) {
+    override fun toString(): String = "ContactOffer"
+}
+
 /** The peer's HELLO: display data (authenticated in mode a, by the certificate that opened the session). */
 public data class PeerHello(val platform: String, val app: String, val maxMessage: Long, val label: String? = null)
 
@@ -108,6 +132,8 @@ public sealed class SessionEvent {
         public val helloAuthenticated: Boolean,
         public val remoteStatic: ByteArray,
         public val peerDeviceId: String?,
+        /** Mode c: the index, in the channel's contacts, of the contact the peer is. */
+        public val contactIndex: Int? = null,
     ) : SessionEvent() {
         override fun toString(): String = "Established(caps=${caps.size})"
     }
@@ -115,6 +141,14 @@ public sealed class SessionEvent {
     /** A record the host owns. The host must close on an APP_CRITICAL type (0x8100 to 0xFFFD) it does not understand. */
     public class Record(public val recordType: Int, public val body: ByteArray) : SessionEvent() {
         override fun toString(): String = "Record(type=$recordType, ${body.size} bytes)"
+    }
+
+    /**
+     * Mode p with an exchange: the peer's valid `CONTACT`, read in order. [secret] is the new contact secret
+     * (key material: store it, zero your copy, never log it); [pending] is true for a peer the host holds.
+     */
+    public class Contact(public val secret: ByteArray, public val body: ContactBody, public val pending: Boolean) : SessionEvent() {
+        override fun toString(): String = "Contact(pending=$pending)"
     }
 
     /** A roster that replaced the held one at [epoch]; the host stores it. */
@@ -199,8 +233,17 @@ public class PeerChannel(
     private val mono: () -> Double = { System.nanoTime() / 1e9 },
     private val rekeyMessages: Int = DEFAULT_REKEY_MESSAGES,
     private val rekeySeconds: Double = DEFAULT_REKEY_SECONDS,
-    private val mode: PeerMode = PeerMode.a,
+    mode: PeerMode = PeerMode.a,
     private val admission: HandshakeLimiter? = null,
+    /**
+     * Mode c, and a mode-a responder that also serves contacts (the shared listener, section 15.10): the
+     * contacts the device holds in `contactTrialOrder`, at most 72. A mode-c initiator names exactly one. A
+     * responder first tries the account's keys (mode a only), then each secret in order; the first tag that
+     * verifies decides the mode. It needs [admission].
+     */
+    private val contacts: List<ContactLink> = emptyList(),
+    /** Mode p only: take part in the contact exchange. The session then owns `CONFIRM` and `CONTACT`. */
+    private val exchange: ContactOffer? = null,
     /**
      * Mode v, initiator only: stop after HELLO and send no SAS record until the host calls [startSas]. The
      * host dials several approvers and starts the one the person chose (N9).
@@ -208,13 +251,17 @@ public class PeerChannel(
     private val holdSas: Boolean = false,
 ) {
     private val lock = Mutex()
-    private val asm = RecordAssembler(RecordMode.valueOf(mode.name))
+    private var mode: PeerMode = mode
+    private var asm = RecordAssembler(RecordMode.valueOf(mode.name))
+    private val xchg: ContactExchange? = exchange?.let { ContactExchange(it.agreeKey, it.held) }
+    private var contactIdx = -1
+    private var contactDue: Double? = null
+    private var hash: ByteArray? = null
 
     // Both mode-v payloads list `vouch/1` (rule 1); the host cannot leave it out.
     private var caps: List<String> = if (mode == PeerMode.v && VOUCH_CAP !in caps) caps + VOUCH_CAP else caps.toList()
     private val flow: VouchFlow<VouchMessage>? =
         if (mode == PeerMode.v) VouchFlow(if (role == NoiseRole.initiator) VouchRole.Requester else VouchRole.Approver) else null
-    private var hash: ByteArray? = null
     private var hs: NoiseHandshake? = null
     private var hsStep = 0
     private var phase = "hs" // hs | hello | sas | sas-shown | open | closed
@@ -238,10 +285,22 @@ public class PeerChannel(
     private var peerCertJws = ""
     private var peerRemote: ByteArray? = null
     private var pending: Pending? = null
+    private var xfer: ((Int, ByteArray) -> Unit)? = null
 
     init {
         require((mode == PeerMode.a) == (account != null)) { "account context" }
-        require(mode == PeerMode.a || role != NoiseRole.responder || admission != null) { "an approver needs an admission limiter" }
+        if (mode == PeerMode.c) {
+            require(contacts.size in 1..MAX_CONTACT_SECRETS && (role != NoiseRole.initiator || contacts.size == 1)) { "contacts" }
+            require(contacts.all { it.secret.size == KEY_BYTES }) { "contacts" }
+            require(role == NoiseRole.initiator || admission != null) { "a contact responder needs an admission limiter" }
+        } else if (contacts.isNotEmpty()) {
+            // The shared listener: a mode-a responder that also serves contacts.
+            require(mode == PeerMode.a && role == NoiseRole.responder && contacts.size <= MAX_CONTACT_SECRETS) { "contacts" }
+            require(contacts.all { it.secret.size == KEY_BYTES }) { "contacts" }
+            require(admission != null) { "a contact responder needs an admission limiter" }
+        }
+        require(exchange == null || mode == PeerMode.p) { "exchange is for mode p" }
+        require(mode != PeerMode.v && mode != PeerMode.p || role != NoiseRole.responder || admission != null) { "an approver needs an admission limiter" }
         require(!holdSas || (mode == PeerMode.v && role == NoiseRole.initiator)) { "holdSas is for the mode v initiator" }
     }
 
@@ -278,6 +337,7 @@ public class PeerChannel(
         val waits = ArrayList<Double>()
         transportDue?.let { waits += it - mono() }
         sasDue?.let { waits += it - mono() }
+        contactDue?.let { waits += it - mono() }
         certExpires?.let { waits += (it - now()).toDouble() }
         waits.minOrNull()?.coerceAtLeast(0.0)
     }
@@ -291,6 +351,13 @@ public class PeerChannel(
         val expires = certExpires
         if (deadlinePassed(transportDue) || deadlinePassed(sasDue)) {
             fail(PeerCloseCode.peer_timeout.name, false)
+        } else if (deadlinePassed(contactDue)) {
+            contactDue = null
+            try {
+                exchangeStep(ExchangeEvent.Timeout)
+            } catch (e: Fail) {
+                fail(e.code, false)
+            }
         } else if (expires != null && now() >= expires) {
             fail(PeerCloseCode.peer_expired.name, false)
         }
@@ -303,7 +370,8 @@ public class PeerChannel(
         if (role != NoiseRole.initiator || hs != null || phase != "hs") throw Fail(HANDSHAKE_FAILED)
         val key = account?.let { it.discKeys.firstOrNull() ?: throw Fail(HANDSHAKE_FAILED) }
         startClock()
-        val h = newHandshake(key)
+        if (mode == PeerMode.c) contactIdx = 0
+        val h = newHandshake(mode, key, if (mode == PeerMode.c) contacts[0].secret else null)
         hs = h
         send(h.writeMessage(payload1()))
         hsStep = 1
@@ -314,7 +382,7 @@ public class PeerChannel(
         if (phase == "closed") return@guarded
         if (!started && role == NoiseRole.responder) {
             // An approver counts the attempt only now that a session starts.
-            if (admission != null) {
+            if (admission != null && (mode == PeerMode.v || mode == PeerMode.p)) {
                 release = admission.begin() ?: throw Fail(PeerCloseCode.peer_busy.name)
             }
             startClock()
@@ -325,9 +393,28 @@ public class PeerChannel(
     /** Send one message of the host's, split into records. Only once the session is open. */
     public suspend fun sendRecord(type: Int, body: ByteArray): Unit = lock.withLock {
         check(phase == "open") { "session not open" }
-        require(type !in OWNED && !(type == RecordType.CONFIRM && mode == PeerMode.p)) { "record owned by the session" }
+        require(type !in OWNED && !isXferType(type) && !(type == RecordType.CONFIRM && mode == PeerMode.p) && !(type == RecordType.CONTACT && xchg != null)) {
+            "record owned by the session"
+        }
         require(body.size <= maxSend) { "message too large" }
         emit(type, body)
+    }
+
+    /**
+     * The transfer port (section 15.11): the one reader and writer of the six transfer record types. Records of
+     * those types reach [onRecord] instead of the host's `Record` event, and [sendRecord] refuses them. Only once
+     * the session is open with `xfer/1` among its capabilities, and once. Returns the writer.
+     */
+    public fun attachXfer(onRecord: (Int, ByteArray) -> Unit): suspend (Int, ByteArray) -> Unit {
+        check(phase == "open" && xfer == null && XFER_CAP in caps) { "transfers are not available on this session" }
+        xfer = onRecord
+        return { type, body ->
+            lock.withLock {
+                check(phase == "open" && isXferType(type)) { "session not open" }
+                require(body.size <= maxSend) { "message too large" }
+                emit(type, body)
+            }
+        }
     }
 
     /**
@@ -352,6 +439,11 @@ public class PeerChannel(
         phase = "open"
         settle()
         if (mode == PeerMode.p) emit(RecordType.CONFIRM, "{}".toByteArray(Charsets.UTF_8))
+        if (xchg != null) {
+            // The peer's CONTACT must follow within CONTACT_EXCHANGE_SECONDS of this CONFIRM.
+            contactDue = mono() + CONTACT_EXCHANGE_SECONDS
+            exchangeStep(ExchangeEvent.OwnConfirm)
+        }
         val q = ArrayList(queued)
         queued.clear()
         for ((t, b) in q) onEvent(SessionEvent.Record(t, b))
@@ -416,22 +508,23 @@ public class PeerChannel(
         if (started) return
         started = true
         transportDue = mono() + TRANSPORT_DEADLINE_SECONDS
-        if (mode != PeerMode.a) sasDue = mono() + SAS_DEADLINE_SECONDS
+        if (mode == PeerMode.v || mode == PeerMode.p) sasDue = mono() + SAS_DEADLINE_SECONDS
     }
 
-    private suspend fun newHandshake(discKey: ByteArray?): NoiseHandshake = NoiseHandshake(
+    private suspend fun newHandshake(mode: PeerMode, discKey: ByteArray?, contactPsk: ByteArray? = null): NoiseHandshake = NoiseHandshake(
         NoiseHandshakeOptions(
             role = role,
             protocol = peerNoiseProtocol(mode),
             prologue = peerPrologue(slug, mode),
-            psk = if (mode == PeerMode.a && discKey != null) peerPsk(discKey, slug) else null,
+            psk = if (mode == PeerMode.a && discKey != null) peerPsk(discKey, slug) else contactPsk,
             staticKey = staticKey,
             ports = ports,
         ),
     )
 
     private fun ownPayload(): ByteArray {
-        val a = account ?: return payload23(mode, caps)
+        val a = account
+        if (a == null || mode != PeerMode.a) return payload23(mode, caps)
         val held = a.heldRing()
         return payload23(mode, caps, AccountPayload(a.certJws, held?.epoch ?: 1))
     }
@@ -459,6 +552,10 @@ public class PeerChannel(
         val verdict = parseHandshakePayload(mode, message, h.readMessage(noise)) as? PayloadVerdict.Accepted ?: throw Fail(HANDSHAKE_FAILED)
         val remote = h.remoteStatic ?: throw Fail(HANDSHAKE_FAILED)
         var peerDeviceId: String? = null
+        if (mode == PeerMode.c) {
+            // The pin (section 15.10): the peer must be the key the contact was made with. Nothing is sent.
+            if (!contactPin(contacts[contactIdx].agreeKey, remote)) throw Fail(PeerCloseCode.peer_revoked.name)
+        }
         if (mode == PeerMode.a) {
             val cert = verdict.cert
             val ring = verdict.ring
@@ -510,19 +607,44 @@ public class PeerChannel(
         return adm.cert.deviceId
     }
 
-    /** Message 1: try the current then the previous discovery key; a failed tag closes silently. */
+    /**
+     * Message 1, tried in a fixed order (section 15.5, section 15.10): the account's current then previous
+     * discovery key (mode a), then each contact's secret in the order given (mode c; no DH happens before the
+     * tag). The first tag that verifies decides the mode and the contact; a failed tag on every one closes
+     * silently. The contact trial is admitted by the limiter first, so a refused attempt tries no secret.
+     */
     private suspend fun onFirstMessage(noise: ByteArray) {
         var payload: ByteArray? = null
         val acct = account
-        for (k in if (acct != null) acct.discKeys.take(2) else listOf<ByteArray?>(null)) {
-            if (acct != null && k == null) continue
-            try {
-                val h = newHandshake(k)
-                payload = h.readMessage(noise)
-                hs = h
-                break
-            } catch (e: NoiseException) {
-                continue
+        if (mode != PeerMode.c) {
+            for (k in if (acct != null) acct.discKeys.take(2) else listOf<ByteArray?>(null)) {
+                if (acct != null && k == null) continue
+                try {
+                    val h = newHandshake(mode, k)
+                    payload = h.readMessage(noise)
+                    hs = h
+                    break
+                } catch (e: NoiseException) {
+                    continue
+                }
+            }
+        }
+        if (hs == null && contacts.isNotEmpty()) {
+            release = admission!!.begin() ?: throw Fail(PeerCloseCode.peer_busy.name)
+            for ((i, c) in contacts.withIndex()) {
+                try {
+                    val h = newHandshake(PeerMode.c, null, c.secret)
+                    payload = h.readMessage(noise)
+                    hs = h
+                    contactIdx = i
+                    break
+                } catch (e: NoiseException) {
+                    continue
+                }
+            }
+            if (hs != null) {
+                mode = PeerMode.c
+                asm = RecordAssembler(RecordMode.c)
             }
         }
         val h = hs
@@ -594,13 +716,24 @@ public class PeerChannel(
                 if (v is VouchVerdict.Closed) throw Fail(v.close.name)
             }
             caps = capsIntersection(caps, peerCaps)
+            asm.xferAllowed = XFER_CAP in caps
             pending = null
             hash = hs!!.handshakeHash
             val acctMode = mode == PeerMode.a
-            phase = if (acctMode) "open" else "sas"
-            onEvent(SessionEvent.Established(caps.toList(), h, acctMode, p.remote, p.peerDeviceId))
+            val direct = acctMode || mode == PeerMode.c
+            phase = if (direct) "open" else "sas"
+            // A contact responder's slot among the connections waiting for message 3 ends here.
+            if (direct) settle()
+            onEvent(
+                SessionEvent.Established(
+                    caps.toList(), h, acctMode, p.remote, p.peerDeviceId,
+                    contactIndex = if (mode == PeerMode.c) contactIdx else null,
+                ),
+            )
             if (acctMode) {
                 pushRing()
+            } else if (direct) {
+                return
             } else if (role == NoiseRole.initiator && !holdSas) {
                 // The device commits first, unless the host holds the code back until it picks this approver.
                 commitSas()
@@ -618,7 +751,16 @@ public class PeerChannel(
 
             RecordType.CLOSE -> onPeerClose(body)
 
+            RecordType.CONFIRM, RecordType.CONTACT -> if (xchg != null) {
+                // With the exchange on, the session owns both; only after the code is shown.
+                if (phase != "sas-shown" && phase != "open") throw Fail(PeerCloseCode.peer_not_allowed.name)
+                exchangeStep(if (type == RecordType.CONFIRM) ExchangeEvent.PeerConfirm else ExchangeEvent.PeerContact(body))
+            } else {
+                hostRecord(type, body)
+            }
+
             RecordType.TRUST -> {
+                if (mode != PeerMode.a) throw Fail(PeerCloseCode.peer_not_allowed.name)
                 val jws = parseStrictObject(body)?.get("trust").stringValue ?: throw Fail(PeerCloseCode.peer_bad_frame.name)
                 onEvent(SessionEvent.TrustUnverified(jws))
             }
@@ -627,21 +769,50 @@ public class PeerChannel(
 
             RecordType.SAS_COMMIT, RecordType.SAS_NONCE, RecordType.SAS_REVEAL -> onSas(type, body)
 
-            else -> {
-                // Everything else belongs to the host, and only once the code is settled.
-                if (phase == "sas-shown") {
-                    // The peer may confirm first: hold the record (bounded) until this side's person does.
-                    val held = queued.sumOf { it.second.size }
-                    if (queued.size >= MAX_QUEUED || held + body.size > MAX_QUEUED_BYTES) throw Fail(PeerCloseCode.peer_busy.name)
-                    queued += type to body
-                } else if (phase != "open") {
-                    throw Fail(PeerCloseCode.peer_not_allowed.name)
-                } else {
-                    onEvent(SessionEvent.Record(type, body))
-                }
+            else -> if (isXferType(type)) {
+                // Direct Transfer: the capability was checked by the assembler; no port attached means the host
+                // listed the capability without a transfer layer behind it.
+                (xfer ?: throw Fail(PeerCloseCode.peer_not_allowed.name))(type, body)
+            } else {
+                hostRecord(type, body)
             }
         }
     }
+
+    /** Everything else belongs to the host, and only once the code is settled. */
+    private fun hostRecord(type: Int, body: ByteArray) {
+        if (phase == "sas-shown") {
+            // The peer may confirm first: hold the record (bounded) until this side's person does.
+            val held = queued.sumOf { it.second.size }
+            if (queued.size >= MAX_QUEUED || held + body.size > MAX_QUEUED_BYTES) throw Fail(PeerCloseCode.peer_busy.name)
+            queued += type to body
+        } else if (phase != "open") {
+            throw Fail(PeerCloseCode.peer_not_allowed.name)
+        } else {
+            onEvent(SessionEvent.Record(type, body))
+        }
+    }
+
+    /** Run one event through the contact exchange and act on what it says. */
+    private suspend fun exchangeStep(e: ExchangeEvent) {
+        val x = xchg!!
+        val offer = exchange!!
+        val r = x.step(e)
+        if (r.close != null) throw Fail(r.close.name)
+        // CONFIRM is sent by confirmSas; only CONTACT is the exchange's to send.
+        if ("CONTACT" in r.sends) emit(RecordType.CONTACT, buildContact(offer.agreeKey, offer.label, offer.cats))
+        val stored = r.stored ?: return
+        if (!x.waiting) contactDue = null
+        val own = key32Bytes(offer.agreeKey)
+        val peer = key32Bytes(stored.agreeKey)
+        val d = nD
+        val m = nM
+        val h = hs
+        if (own == null || peer == null || d == null || m == null || h == null) throw Fail(PeerCloseCode.peer_bad_frame.name)
+        onEvent(SessionEvent.Contact(contactSecret(h.handshakeHash, d, m, own, peer), stored, r.pending))
+    }
+
+    private fun key32Bytes(text: String): ByteArray? = Base64Url.decodeStrict(text)?.takeIf { it.size == KEY_BYTES }
 
     /** The held initiator, established and not yet committed. */
     private fun canStartSas(): Boolean = holdSas && phase == "sas" && sasStep == 0 && nD == null
@@ -700,6 +871,8 @@ public class PeerChannel(
     private fun onPeerClose(body: ByteArray) {
         val code = parseStrictObject(body)?.get("code").stringValue
         phase = "closed"
+        // A peer's CLOSE ends the handshake: free its limiter slot and deadline (R-6K N5).
+        settle()
         transportDue = null
         certExpires = null
         wipe()
@@ -713,6 +886,7 @@ public class PeerChannel(
     }
 
     private fun onRing(body: ByteArray) {
+        if (mode != PeerMode.a) throw Fail(PeerCloseCode.peer_not_allowed.name)
         val ring = parseStrictObject(body)?.get("ring").stringValue ?: throw Fail(PeerCloseCode.peer_bad_frame.name)
         val a = account ?: throw Fail(PeerCloseCode.peer_bad_frame.name)
         val r = Peer.replaceRing(a.heldRing()?.jws, ring, a.trust, a.expectedAud, now())

@@ -46,7 +46,10 @@ function mapAndStrip(raw: string): number[] {
 }
 
 /** Steps 3 to 5 over the code points steps 1 and 2 left. */
-function collapseAndCut(cps: readonly number[]): string | null {
+function collapseAndCut(
+  cps: readonly number[],
+  max: number = DEVICE_LABEL_MAX_CODEPOINTS,
+): string | null {
   const kept: number[] = [];
   for (const cp of cps) {
     // Step 3, collapsing as it goes: a space never follows a space or starts the label.
@@ -56,7 +59,7 @@ function collapseAndCut(cps: readonly number[]): string | null {
   }
   while (kept.length > 0 && kept[kept.length - 1] === 0x20) kept.pop();
   // Step 4 after the trim, then trim again: a cut can leave a trailing space.
-  const cut = kept.slice(0, DEVICE_LABEL_MAX_CODEPOINTS);
+  const cut = kept.slice(0, max);
   while (cut.length > 0 && cut[cut.length - 1] === 0x20) cut.pop();
   return cut.length === 0 ? null : String.fromCodePoint(...cut);
 }
@@ -78,4 +81,18 @@ export function cleanDisplayLabel(raw: unknown): string | null {
   for (const cp of mapAndStrip(raw)) text += String.fromCodePoint(cp);
   const composed = text.normalize("NFC");
   return collapseAndCut(Array.from(composed, (c) => c.codePointAt(0)!));
+}
+
+/**
+ * §15.11: a transfer's `name` as shown. Cleaned as a HELLO label (steps 1 and 2, NFC, then steps
+ * 3 and 5) without the 64 code point cut. `null` when nothing is left. Display data only.
+ */
+export function cleanDisplayName(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  let text = "";
+  for (const cp of mapAndStrip(raw)) text += String.fromCodePoint(cp);
+  return collapseAndCut(
+    Array.from(text.normalize("NFC"), (c) => c.codePointAt(0)!),
+    Infinity,
+  );
 }

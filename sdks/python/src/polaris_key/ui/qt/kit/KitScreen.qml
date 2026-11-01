@@ -146,6 +146,17 @@ Rectangle {
                     }
                 }
 
+                // An outcome's mark (NearbyApproval), above its heading: the check for the one that worked, the
+                // triangle for the ones that did not. Decorative: the heading names the outcome.
+                KitGlyph {
+                    objectName: "titleMark"
+                    visible: spec.titleMark !== ""
+                    name: spec.titleMark === "ok" ? "check" : "warn"
+                    size: 28 * root.fs
+                    color: spec.titleMark === "ok" ? Theme.success : Theme.warning
+                    Accessible.ignored: true
+                }
+
                 Text {
                     id: heading
                     visible: text !== ""
@@ -376,7 +387,7 @@ Rectangle {
                     implicitHeight: 2
                     clip: true
                     Accessible.role: Accessible.ProgressBar
-                    Accessible.name: spec.title || spec.product
+                    Accessible.name: spec.progressLabel || spec.title || spec.product
                     Rectangle {
                         anchors.fill: parent
                         color: Theme.textStrong
@@ -395,6 +406,18 @@ Rectangle {
                             NumberAnimation { from: 0.7 * shimmer.width; to: 0; duration: 1200; easing.type: Easing.InOutQuad }
                         }
                     }
+                }
+
+                // What the wait is for, under the shimmer (nearby sign-in's wait).
+                Text {
+                    objectName: "progressLabel"
+                    visible: shimmer.visible && text !== ""
+                    text: spec.progressLabel
+                    Layout.fillWidth: true
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.typeMeta.size * root.fs
+                    color: Theme.textMuted
+                    Accessible.ignored: true
                 }
 
                 // A determinate bar only for counted bytes (DL7).
@@ -431,6 +454,7 @@ Rectangle {
                             role: modelData.role
                             scale_: root.fs
                             busy: modelData.busy
+                            mono: modelData.mono
                             external: modelData.external
                             externalNote: spec.externalNote
                             animate: kit.animate

@@ -323,6 +323,18 @@ find each other and talk over the local network or a relay.
   the one approver its person chose, before that approver's person has confirmed anything. The label
   is optional, and an app can turn it off. The requesting device shows the signed-in account (a
   masked email or a name) and asks the person to confirm it before it accepts a Sync key.
+- **Inter-account links.** Two people on different accounts can link their devices once, on the
+  same network. A link's secret is held on the two devices only; the server never stores it, and
+  no account id, subject or device id is exchanged. A link's advert carries no label, no id and no
+  product tag, and only the two linked devices can recognise its name. When a link works through
+  the relay, the Worker sees that two pairwise subjects of one product met in one room, with their
+  device ids while they are connected, and when, and counts the bytes against the sender. It never
+  sees content. The room keeps hashed aliases, an unspent lease count and a last-seen time per
+  alias, and no subject or device id at rest, and erases itself after 30 days without a
+  connection. Each person learns the other's device key, which is the same for all of that
+  device's links in one product, so two people who both linked one device can tell they know the
+  same device. A LAN observer can see that a host answers contact adverts and how many names it
+  publishes (at most 8). Deleting a link on a device drops its secret there.
 - **Kept for.** Device keys until the device is removed; the roster and discovery key until the
   product is removed or the account is deleted; relay counters 90 days.
 - **Admin view.** Rosters with labels and relay totals, never content.

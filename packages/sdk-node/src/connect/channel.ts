@@ -268,6 +268,9 @@ export function keysAfterRing(
   return intact ? keys : [keys[0]!];
 }
 
+/** The capabilities a session lists by default: the app channel and Direct Transfer (§15.11). */
+export const DEFAULT_CAPS: readonly string[] = ["app/1", "xfer/1"];
+
 /** What a transport tells every `PeerChannel` it builds (the same for LAN and relay). */
 export function channelBase(
   id: LanIdentity,
@@ -283,7 +286,33 @@ export function channelBase(
     slug: id.slug,
     staticKey: handle,
     account: peerAccount(id, ring),
-    caps: o.caps ?? ["app/1"],
+    caps: o.caps ?? DEFAULT_CAPS,
+    hello: { label: o.label, platform: process.platform, app: id.slug },
+    ports: peerPorts(id, handle),
+    now,
+    timer: o.timer,
+    rekeyMessages: o.rekeyMessages,
+    rekeySeconds: o.rekeySeconds,
+  };
+}
+
+/**
+ * What a mode-`c` channel needs (§15.10): no account, no certificate. The static key is the
+ * device's agreeKey behind the same handle as mode `a`.
+ */
+export function contactChannel(
+  id: LanIdentity,
+  o: Pick<
+    LanOptions,
+    "caps" | "label" | "timer" | "rekeyMessages" | "rekeySeconds"
+  >,
+  handle: Uint8Array,
+  now: () => number,
+): Omit<PeerSessionOptions, "send" | "onEvent" | "mode" | "role"> {
+  return {
+    slug: id.slug,
+    staticKey: handle,
+    caps: o.caps ?? DEFAULT_CAPS,
     hello: { label: o.label, platform: process.platform, app: id.slug },
     ports: peerPorts(id, handle),
     now,

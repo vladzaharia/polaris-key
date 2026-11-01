@@ -2,6 +2,7 @@
 // the build (scripts/bundle-contract.mjs) so the web gate's entry carries neither: syncParts.tsx
 // imports it, and adopts the sheet with the first screen drawn.
 export {
+  CONNECT_LAYOUTS,
   copyForm,
   lightDomSyncCss,
   recoveryGroups,

@@ -80,12 +80,12 @@ public enum PeerNoiseHash {
 // ── Protocol names, prologue, PSK (§15.5) ────────────────────────────────────────────
 
 public enum PeerNoiseMode: String, Sendable, CaseIterable {
-    case a, v, p
+    case a, v, p, c
 }
 
 /// The Noise protocol name of a mode: XXpsk0 for `a` (R-1), plain XX for `v` and `p`.
 public func peerNoiseProtocol(_ mode: PeerNoiseMode) -> String {
-    mode == .a ? "Noise_XXpsk0_25519_AESGCM_SHA256" : "Noise_XX_25519_AESGCM_SHA256"
+    mode == .a || mode == .c ? "Noise_XXpsk0_25519_AESGCM_SHA256" : "Noise_XX_25519_AESGCM_SHA256"
 }
 
 /// `"pkey-peer/1" || 0x00 || slug || 0x00 || mode || 0x00`.

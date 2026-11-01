@@ -13,8 +13,9 @@
 //    works with Connect off. A product that does not serve it gets the typed N/A (`product`);
 //  - it carries the vouch over the LAN and calls no route: the host calls `nearby/start`, `poll` and
 //    `approve` and gives the answers to the handles;
-//  - a runtime with no mDNS adapter answers `nearby-unsupported` (Android until the `:android` glue supplies
-//    one; the JVM desktop has its own); so does an adapter that cannot start;
+//  - a runtime with no mDNS adapter answers `nearby-unsupported` (the JVM desktop has its own; Android uses the
+//    installed `ConnectPlatform`'s, from Android 14); so does an adapter that cannot start. On Android the
+//    local-network permission is read first: `not-configured` (not declared) or `nearby-permission-denied`;
 //  - sign-out stops every advert and closes every request (after Connect, before the device leaves it): an
 //    epoch checked before and after a start, and the handle added to the stop set in the same atomic step as
 //    the last check, so a sign-out that lands while a start is in flight leaves nothing behind (B2a);
@@ -103,11 +104,33 @@ public class CloudNearby internal constructor(
         }
     }
 
-    /** Android has no mDNS adapter of its own yet: without one in the options, nearby is `nearby-unsupported` there. */
-    private fun requireRuntime(mdns: MdnsAdapter?) {
-        if (RuntimeFamily.isAndroid && mdns == null) {
-            throw unsupported("This runtime has no local-network discovery adapter; pass one in the options.", UnsupportedReason.runtime)
-        }
+    /**
+     * The adapter to use. Off Android, or when the host brought one, [mdns] itself (null: the default). On
+     * Android the installed platform's: nearby-unsupported where there is none (below Android 14), `not-configured`
+     * where the app does not declare the local-network permission and `nearby-permission-denied` where it is not
+     * granted. The relay is not involved: nearby is LAN only.
+     */
+    private suspend fun adapterFor(mdns: MdnsAdapter?): MdnsAdapter? {
+        if (!ConnectPlatforms.android || mdns != null) return mdns
+        val p = ConnectPlatforms.installed
+        val adapter = p?.mdns ?: throw unsupported(
+            if (p ==
+                null
+            ) {
+                "This runtime has no local-network discovery adapter; pass one in the options."
+            } else {
+                "Nearby approval needs Android 14 or later."
+            },
+            UnsupportedReason.runtime,
+        )
+        permissionError(p.localNetwork())?.let { throw it }
+        return adapter
+    }
+
+    private fun permissionError(v: LocalNetworkVerdict): PolarisException? = when (v) {
+        LocalNetworkVerdict.Ok -> null
+        LocalNetworkVerdict.Denied -> PolarisException(ErrorCode.nearbyPermissionDenied, "Local network access was refused.")
+        LocalNetworkVerdict.NotDeclared -> PolarisException(ErrorCode.notConfigured, "The app does not declare ACCESS_LOCAL_NETWORK.")
     }
 
     /** An adapter that cannot start (no socket on 5353) is the typed N/A, not a crash. */
@@ -141,7 +164,7 @@ public class CloudNearby internal constructor(
     public suspend fun request(options: NearbyRequestOptions): NearbyRequest {
         val epochAtStart = epochNow()
         fragment(true, listOf(START, POLL))
-        requireRuntime(options.mdns)
+        val adapter = adapterFor(options.mdns)
         synchronized(lock) { requests.removeAll { it.closed } }
         if (epochAtStart != epochNow()) throw stoppedError()
         val source = object : RequesterSource {
@@ -152,7 +175,7 @@ public class CloudNearby internal constructor(
             override suspend fun signer(): RequesterSigner = connect.nearbySigner()
         }
         val r = try {
-            NearbyRequester.start(source, options)
+            NearbyRequester.start(source, if (adapter === options.mdns) options else options.withMdns(adapter))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
@@ -175,7 +198,7 @@ public class CloudNearby internal constructor(
     public suspend fun onRequest(handler: NearbyApprovalHandler, options: NearbyApproverOptions): NearbyApproverHandle {
         val epochAtStart = epochNow()
         fragment(true, listOf(APPROVE))
-        requireRuntime(options.mdns)
+        val adapter = adapterFor(options.mdns)
         if (!signedIn() || epochAtStart != epochNow()) throw signedOut()
         val source = object : ApproverSource {
             override val slug: String = core.product
@@ -194,7 +217,7 @@ public class CloudNearby internal constructor(
             }
         }
         val h = try {
-            NearbyApprover.start(source, handler, options)
+            NearbyApprover.start(source, handler, if (adapter === options.mdns) options else options.withMdns(adapter))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {

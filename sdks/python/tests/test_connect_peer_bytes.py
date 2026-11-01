@@ -37,7 +37,7 @@ def _bytes(b: Union[str, Dict[str, Any]]) -> bytes:
 def test_row_counts() -> None:
     assert len(M["frames"]["encode"]) == 4
     assert len(M["records"]["parse"]) == 14
-    assert len(M["records"]["sessions"]) == 85
+    assert len(M["records"]["sessions"]) == 88
     assert len(M["relayEnvelopes"]["messages"]) + len(M["relayEnvelopes"]["refused"]) + len(
         M["relayEnvelopes"]["sizes"]
     ) == 56

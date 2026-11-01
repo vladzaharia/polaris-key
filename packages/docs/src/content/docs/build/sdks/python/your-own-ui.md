@@ -133,6 +133,100 @@ def sign_in(client: PolarisKeyClient, stop: threading.Event) -> Optional[str]:
 answers `cancelled` when `session.cancel()` is called or `cancel_token` is set. Sign-in needs the
 Identity service; with it off, every call raises `service-unavailable` before any request.
 
+### Signing in without a click
+
+`identity.auto_sign_in()` is the question to ask first. It never raises for a missing session, starts
+nothing and sends no request:
+
+```python
+from polaris_key import PolarisKeyClient
+
+
+def first(client: PolarisKeyClient) -> str:
+    result = client.identity.auto_sign_in()
+    if result.kind == "signed_in":
+        return "signed in"  # this device already holds a token that a sign-in produced
+    if result.kind == "needs_sign_in":
+        # "signed_out": the person signed out on purpose, so start nothing on your own.
+        # "no_credential": show your sign-in.
+        return str(getattr(result, "reason", ""))
+    return str(getattr(result, "code", ""))  # "unavailable": this product runs no Identity
+```
+
+Python has no platform identity, so the ladder is its first rung and its last: a stored sign-in, or
+the regular sign-in below. `options` is accepted for parity and ignored. Nearby approval is not part
+of the call: your sign-in form starts it, as in the next section.
+
+### Nearby sign-in
+
+A device with no browser at hand can ask a signed-in device on the same network to approve it. The
+new device (D) lists the devices that answer, the person picks one, D shows a code, and the person
+taps the same code on the other device. Ask first; it is `False` when Identity is off, the product
+serves no nearby approval, or this runtime cannot browse the network:
+
+```python
+import threading
+from typing import Any, List, Optional
+
+from polaris_key import PolarisKeyClient
+
+
+def sign_in_nearby(client: PolarisKeyClient, stop: threading.Event) -> str:
+    if not client.identity.nearby.available(role="requester"):
+        return "use-a-code"
+
+    session = client.identity.sign_in.start(channel="nearby")
+
+    # Labels come from an unverified peer: show them as text, never as a claim of who is there.
+    def on_approvers(found: List[Any]) -> None:
+        if len(found) == 1 and session.code is None:
+            code = session.choose(found[0].id)
+            print(f"Tap {code} on {found[0].label}")
+
+    off = session.on_approvers(on_approvers)
+    try:
+        outcome = session.wait(timeout=300, cancel_token=stop)  # signed_in | expired | cancelled
+    finally:
+        off()
+    if outcome.kind != "signed_in":
+        return outcome.kind
+    # Show who signed in. Nothing the other device sends is acted on until the person says it is theirs.
+    session.confirm_account()  # or session.decline_account(): the device signs out again
+    return "signed_in"
+```
+
+The poll decides the outcome; the other device's answer (`session.result`) is display only. A refusal
+raises `sign-in-denied`. `session.wrap` and `on_wrap` report the key ring's wrap that the approver
+sends once, for a product with Cloud Sync. A kit hands over to the device code when no device answers within 2 seconds, and picks a lone device after 3.
+
+The signed-in device (M) advertises only while the person has "Approve a nearby device" open:
+
+```python
+from typing import Any, Callable, Dict, Optional, Sequence
+
+from polaris_key import PolarisKeyClient
+
+
+def approve_nearby(client: PolarisKeyClient, tapped: Callable[[Sequence[str], Optional[str]], Optional[str]]) -> Any:
+    def on_ask(ask: Any) -> None:  # runs on the Connect thread
+        code = tapped(ask.codes, ask.device)  # three codes: tap the one D shows
+        if code is None:
+            ask.deny()  # none of them: nothing is approved
+            return
+        step = ask.pick(code)
+        while step.kind == "choose":
+            # The license goes to the new device by the person's choice, one tap per license.
+            free: Dict[str, Any] = next((c for c in step.choices["choices"] if c.get("state") == "free"), {})
+            step = step.choose({"kind": "license", "licenseId": free["id"]}) if free else step.cancel()  # declining is a deny
+        print(step.kind)  # approved, mismatch, not-nearby, denied, expired, device-limit, ...
+
+    return client.identity.nearby.on_request(on_ask, prompt=True, label="Ana's laptop")  # .stop() when the screen closes
+```
+
+Leaving the screen at the codes or at the license choice is Deny, in every kit. A wrong tap is not an
+approval: the session closes and the new device is told. `on_request` raises `account-required` while
+signed out, and the typed unsupported result where nearby approval is not served.
+
 ### Redirect sign-in
 
 A host that opens a browser and receives its redirect uses `channel="redirect"`. The session is

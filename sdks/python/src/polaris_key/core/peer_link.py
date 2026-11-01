@@ -67,7 +67,11 @@ class LinkHandlers:
         on_ring_wanted: Optional[Callable[[], None]] = None,
         on_closed: Optional[Callable[[Closed], None]] = None,
         on_ended: Optional[Callable[[], None]] = None,
+        on_event: Optional[Callable[[Any], None]] = None,
     ) -> None:
+        #: Modes v and p (CC-15, CC-19): the host owns the session. Every event of the engine goes here
+        #: except ``Closed``, there is no host object, and the handshake window ends at ``Established``.
+        self.on_event = on_event
         self.on_established = on_established
         self.on_record = on_record
         self.on_ring = on_ring
@@ -180,9 +184,19 @@ class SocketLink:
         """Send one record message; blocks the calling thread until the loop has queued it."""
         self._call(lambda: self.channel.send_record(type_, body))
 
+    def attach_xfer(self, on_record: Callable[[int, bytes], None]) -> Callable[[int, bytes], None]:
+        """Take the engine's transfer port (§15.11). Call it on the loop's thread, as the session is
+        established; the writer it returns is safe from any thread."""
+        write = self.channel.attach_xfer(on_record)
+        return lambda type_, body: self._call(lambda: write(type_, body))
+
     def close(self, code: str = "peer_bye") -> None:
         """End the session with a code (a CLOSE record when the transport exists)."""
         self._call(lambda: self.channel.close(code))
+
+    def confirm_sas(self) -> None:
+        """Modes v and p: the person confirmed the code. Safe from any thread."""
+        self._call(self.channel.confirm_sas)
 
     def close_nowait(self, code: str) -> None:
         """The loop-thread form of :meth:`close`, for a callback already on the loop."""
@@ -289,6 +303,16 @@ class SocketLink:
 
     def _event(self, e: Any) -> None:
         h = self._h
+        if h.on_event is not None and not isinstance(e, Closed):
+            if isinstance(e, Established):
+                self._open = True
+                if self._deadline is not None:
+                    self._deadline.cancel()
+                    self._deadline = None
+                if not self.opened.done():
+                    self.opened.set_result(None)
+            h.on_event(e)
+            return
         if self._on_event is not None:
             if isinstance(e, Established):
                 self._open = True
@@ -301,14 +325,15 @@ class SocketLink:
                 self._on_event(e)
             return
         if isinstance(e, Established):
-            if e.peer_device_id is None:
+            # Mode c (§15.10) has no device id: the contact that opened the session names the peer.
+            if e.peer_device_id is None and e.contact_index is None:
                 return
-            if self._expect_peer is not None and e.peer_device_id != self._expect_peer:
+            if e.peer_device_id is not None and self._expect_peer is not None and e.peer_device_id != self._expect_peer:
                 self.wrong_peer = True
                 self.channel.close("peer_bye")
                 self._finish(Closed("handshake_failed", False))
                 return
-            if self._peer_full is not None and self._peer_full(e.peer_device_id):
+            if e.peer_device_id is not None and self._peer_full is not None and self._peer_full(e.peer_device_id):
                 self.channel.close("peer_busy")
                 self._finish(Closed("peer_busy", False))
                 return

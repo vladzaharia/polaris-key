@@ -58,6 +58,10 @@ const FEATURE_ENROLL := PKeyConstants.Feature.LICENSE_ENROLL
 var on_acquired: Callable
 ## Called after the local state changed without a sync (deactivate's wipe).
 var on_changed: Callable
+## Runs before the seat is released: a coroutine returning null or a PKeyResult. A failing result
+## stops the call: nothing is sent, the token and the cache stay, and the result is returned (the
+## key ring and Cloud Connect state are forgotten first, or the credential stays).
+var before_release: Callable
 ## The route the last re-acquire took (PKeyTokenManager.ROUTE_*), or "" (tests, diagnostics).
 var last_reacquire_route := ""
 
@@ -247,11 +251,16 @@ static func _printable(s: String) -> bool:
 ## the device id stays). ok when the server confirmed and the wipe succeeded. Otherwise a wipe
 ## failure wins (`store-failed`: it is returned, never swallowed), then the server's failure (its
 ## code, or the transport's: `network-error`, `timeout`, `local-only`, …). detail:
-## {remote_attempted, remote_ok, wiped}. Without a token nothing is sent. A coroutine.
+## {remote_attempted, remote_ok, wiped}. Without a token nothing is sent. `before_release` runs first; a failure there stops
+## everything (nothing sent, token kept). A coroutine.
 func deactivate() -> PKeyResult:
 	var core := _core()
 	if core == null or not core.started:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call start() first.")
+	if before_release.is_valid():
+		var pre: Variant = await before_release.call()
+		if pre is PKeyResult and not pre.ok:
+			return pre
 	var token := core.tokens.current()
 	var remote: PKeyResult = null
 	if token != "":

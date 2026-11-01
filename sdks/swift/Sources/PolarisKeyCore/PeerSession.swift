@@ -105,6 +105,33 @@ public struct PeerEstablished: Sendable, Equatable {
     public let remoteStatic: Data
     /// The admitted certificate's device id.
     public let peerDeviceId: String?
+    /// Mode c: the index, in the channel's `contacts`, of the contact the peer is.
+    public var contactIndex: Int? = nil
+}
+
+/// A contact the device holds (mode c): its secret (the PSK) and the peer's agreeKey.
+public struct PeerContactLink: Sendable {
+    public let secret: Data
+    /// The peer's agreeKey, 43 canonical base64url characters: the remote static key must equal it.
+    public let agreeKey: String
+    public init(secret: Data, agreeKey: String) {
+        self.secret = secret
+        self.agreeKey = agreeKey
+    }
+}
+
+/// This device's side of the contact exchange (mode p, §15.10).
+public struct PeerContactOffer: Sendable {
+    public let agreeKey: String
+    public let held: [String]
+    public let label: String?
+    public let cats: [String]
+    public init(agreeKey: String, held: [String] = [], label: String? = nil, cats: [String]) {
+        self.agreeKey = agreeKey
+        self.held = held
+        self.label = label
+        self.cats = cats
+    }
 }
 
 public enum PeerSessionEvent: Sendable, Equatable, CustomStringConvertible, CustomReflectable {
@@ -116,6 +143,9 @@ public enum PeerSessionEvent: Sendable, Equatable, CustomStringConvertible, Cust
     /// A record the host owns, delivered only once the session is open. The host must close on an
     /// APP_CRITICAL type (0x8100 to 0xFFFD) it does not understand.
     case record(type: Int, body: Data)
+    /// Mode p with an exchange: the peer's valid `CONTACT`, read in order. `secret` is the new contact
+    /// secret (key material: store it, never log it); `pending` is true for a peer the host holds.
+    case contact(secret: Data, body: ContactBody, pending: Bool)
     /// A roster that replaced the held one at `epoch`; the host stores it.
     case ring(jws: String, epoch: Int)
     /// A `TRUST` document the peer sent. Not verified here; the host verifies it (V4 §1).
@@ -129,6 +159,7 @@ public enum PeerSessionEvent: Sendable, Equatable, CustomStringConvertible, Cust
         case .established: return "PeerSessionEvent.established"
         case .sas: return "PeerSessionEvent.sas"
         case .record(let t, _): return "PeerSessionEvent.record(type: \(t))"
+        case .contact: return "PeerSessionEvent.contact"
         case .ring(_, let e): return "PeerSessionEvent.ring(epoch: \(e))"
         case .trustUnverified: return "PeerSessionEvent.trustUnverified"
         case .ringWanted: return "PeerSessionEvent.ringWanted"
@@ -208,7 +239,12 @@ private let owned: Set<Int> = [
 public actor PeerChannel: CustomStringConvertible, CustomReflectable {
     public enum Role: Sendable { case initiator, responder }
 
-    private let mode: PeerNoiseMode
+    private var mode: PeerNoiseMode
+    private let contacts: [PeerContactLink]
+    private let offer: PeerContactOffer?
+    private var exchange: PeerContacts.Exchange?
+    private var contactIdx = -1
+    private var contactDue: TimeInterval?
     private let role: Role
     private let slug: String
     private let staticKey: any PeerNoiseStaticKey
@@ -270,7 +306,8 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
 
     public init(
         role: Role, slug: String, staticKey: any PeerNoiseStaticKey, account: PeerAccountContext? = nil,
-        admission: HandshakeLimiter? = nil, caps: [String] = [],
+        admission: HandshakeLimiter? = nil, caps: [String] = [], contacts: [PeerContactLink] = [],
+        exchange: PeerContactOffer? = nil,
         hello: (label: String?, platform: String, app: String, maxMessage: Int?),
         send: @escaping @Sendable (Data) -> Void, onEvent: @escaping @Sendable (PeerSessionEvent) -> Void,
         mode: PeerNoiseMode = .a, random: (@Sendable (Int) -> Data)? = nil, now: (@Sendable () -> Int)? = nil,
@@ -278,7 +315,21 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         rekeyMessages: Int = 1 << 20, rekeySeconds: TimeInterval = 3600, holdSas: Bool = false
     ) throws {
         guard (mode == .a) == (account != nil) else { throw PeerChannelError.mode }
-        guard mode == .a || role == .initiator || admission != nil else { throw PeerChannelError.mode }
+        if mode == .c {
+            guard !contacts.isEmpty, contacts.count <= maxContactSecrets, role != .initiator || contacts.count == 1,
+                contacts.allSatisfy({ $0.secret.count == 32 }), role == .initiator || admission != nil
+            else { throw PeerChannelError.mode }
+        } else if !contacts.isEmpty {
+            // The shared listener: a mode-a responder that also serves contacts.
+            guard mode == .a, role == .responder, contacts.count <= maxContactSecrets,
+                contacts.allSatisfy({ $0.secret.count == 32 }), admission != nil
+            else { throw PeerChannelError.mode }
+        }
+        if exchange != nil && mode != .p { throw PeerChannelError.mode }
+        if (mode == .v || mode == .p) && role == .responder && admission == nil { throw PeerChannelError.mode }
+        self.contacts = contacts
+        self.offer = exchange
+        self.exchange = exchange.map { PeerContacts.Exchange(own: $0.agreeKey, held: $0.held) }
         guard !holdSas || (mode == .v && role == .initiator) else { throw PeerChannelError.mode }
         self.holdSas = holdSas
         self.mode = mode
@@ -337,6 +388,7 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         var waits: [TimeInterval] = []
         if let d = transportDue { waits.append(d - mono()) }
         if let d = sasDue { waits.append(d - mono()) }
+        if let d = contactDue { waits.append(d - mono()) }
         if let e = certExpires { waits.append(TimeInterval(e - now())) }
         return waits.min().map { max(0, $0) }
     }
@@ -348,6 +400,12 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
             if phase == .closed { return }
             if (transportDue.map { mono() >= $0 } ?? false) || (sasDue.map { mono() >= $0 } ?? false) {
                 await fail(.peerTimeout, byPeer: false)
+            } else if let d = contactDue, mono() >= d {
+                contactDue = nil
+                do { try await exchangeStep(.timeout) } catch let f as Fail { await fail(f.code, byPeer: false) } catch
+                {
+                    await fail(.handshakeFailed, byPeer: false)
+                }
             } else if let e = certExpires, now() >= e {
                 await fail(.peerExpired, byPeer: false)
             }
@@ -366,7 +424,8 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
                 key = k
             }
             startClock()
-            let h = try await newHandshake(key)
+            if mode == .c { contactIdx = 0 }
+            let h = try await newHandshake(mode: mode, discKey: key, psk: mode == .c ? contacts[0].secret : nil)
             hs = h
             sendNoise(try await h.writeMessage(PeerPayload.payload1()))
             hsStep = 1
@@ -379,7 +438,7 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
             if phase == .closed { return }
             if !started && role == .responder {
                 // An approver counts the attempt only now that a session starts.
-                if let admission {
+                if let admission, mode == .v || mode == .p {
                     guard let r = admission.begin() else { throw Fail(.peerBusy) }
                     release = r
                 }
@@ -394,7 +453,9 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         await acquire()
         defer { releaseGate() }
         guard phase == .open else { throw PeerChannelError.notOpen }
-        guard !owned.contains(type), !(type == PeerRecordType.confirm && mode == .p) else {
+        guard !owned.contains(type), !(type == PeerRecordType.confirm && mode == .p),
+            !(type == PeerRecordType.contact && exchange != nil)
+        else {
             throw PeerChannelError.ownedRecord
         }
         guard body.count <= maxSend else { throw PeerChannelError.messageTooLarge }
@@ -422,6 +483,11 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
             phase = .open
             settle()
             if mode == .p { try emit(PeerRecordType.confirm, Data("{}".utf8)) }
+            if exchange != nil {
+                // The peer's CONTACT must follow within `contactExchangeSeconds` of this CONFIRM.
+                contactDue = mono() + TimeInterval(contactExchangeSeconds)
+                try await exchangeStep(.ownConfirm)
+            }
             let q = queued
             queued = []
             for m in q { onEvent(.record(type: m.type, body: m.body)) }
@@ -500,18 +566,20 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         if started { return }
         started = true
         transportDue = mono() + peerTransportDeadlineSeconds
-        if mode != .a { sasDue = mono() + peerSasDeadlineSeconds }
+        if mode == .v || mode == .p { sasDue = mono() + peerSasDeadlineSeconds }
     }
 
-    private func newHandshake(_ discKey: Data?) async throws -> PeerNoiseHandshake {
+    private func newHandshake(mode: PeerNoiseMode, discKey: Data?, psk: Data? = nil) async throws
+        -> PeerNoiseHandshake
+    {
         try PeerNoiseHandshake(
             role: role == .initiator ? .initiator : .responder, protocol: peerNoiseProtocol(mode),
             prologue: peerPrologue(slug: slug, mode: mode), staticKey: staticKey,
-            psk: mode == .a ? try peerPsk(discoveryKey: discKey ?? Data(), slug: slug) : nil)
+            psk: mode == .a ? try peerPsk(discoveryKey: discKey ?? Data(), slug: slug) : psk)
     }
 
     private func ownPayload() throws -> Data {
-        guard let acct else { return try PeerPayload.payload23(mode: mode, caps: caps) }
+        guard let acct, mode == .a else { return try PeerPayload.payload23(mode: mode, caps: caps) }
         let held = acct.heldRing()
         return try PeerPayload.payload23(mode: mode, caps: caps, account: (acct.certJws, held?.epoch ?? 1))
     }
@@ -531,17 +599,40 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         if role == .responder && hs == nil {
             // Message 1: try the current then the previous discovery key; a failed tag closes
             // silently.
+            // Then, on the shared listener, each contact's secret in order (§15.5, §15.10); the first tag
+            // that verifies decides the mode. The contact trial is admitted first.
             var payload: Data?
-            let keys: [Data?] = acct.map { Array($0.discKeys.prefix(2)) } ?? [nil]
-            for k in keys {
-                if acct != nil && k == nil { continue }
-                do {
-                    let h = try await newHandshake(k)
-                    payload = try await h.readMessage(noise)
-                    hs = h
-                    break
-                } catch is PeerNoiseError {
-                    continue
+            if mode != .c {
+                let keys: [Data?] = acct.map { Array($0.discKeys.prefix(2)) } ?? [nil]
+                for k in keys {
+                    if acct != nil && k == nil { continue }
+                    do {
+                        let h = try await newHandshake(mode: mode, discKey: k)
+                        payload = try await h.readMessage(noise)
+                        hs = h
+                        break
+                    } catch is PeerNoiseError {
+                        continue
+                    }
+                }
+            }
+            if hs == nil && !contacts.isEmpty {
+                guard let r = admission?.begin() else { throw Fail(.peerBusy) }
+                release = r
+                for (i, c) in contacts.enumerated() {
+                    do {
+                        let h = try await newHandshake(mode: .c, discKey: nil, psk: c.secret)
+                        payload = try await h.readMessage(noise)
+                        hs = h
+                        contactIdx = i
+                        break
+                    } catch is PeerNoiseError {
+                        continue
+                    }
+                }
+                if hs != nil {
+                    mode = .c
+                    asm = PeerRecordAssembler(mode: .c)
                 }
             }
             guard let h = hs, let payload else { throw Fail(.handshakeFailed) }
@@ -558,6 +649,12 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         guard verdict.ok else { throw Fail(.handshakeFailed) }
         guard let remote = await h.remoteStatic else { throw Fail(.handshakeFailed) }
         var peerDeviceId: String?
+        if mode == .c {
+            // The pin (§15.10): the peer must be the key the contact was made with. Nothing is sent.
+            guard PeerContacts.pin(held: contacts[contactIdx].agreeKey, remoteStatic: remote) else {
+                throw Fail(.peerRevoked)
+            }
+        }
         if mode == .a {
             guard let certJws = verdict.cert, let ring = verdict.ring else { throw Fail(.handshakeFailed) }
             peerDeviceId = try admitAccount(certJws, ring, remote)
@@ -657,14 +754,19 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
             hash = try await hs?.handshakeHash
             pending = nil
             let account = mode == .a
-            phase = account ? .open : .sas
+            let direct = account || mode == .c
+            phase = direct ? .open : .sas
+            // A contact responder's slot among the connections waiting for message 3 ends here.
+            if direct { settle() }
             onEvent(
                 .established(
                     PeerEstablished(
                         caps: caps, hello: hello, helloAuthenticated: account, remoteStatic: p.remote,
-                        peerDeviceId: p.deviceId)))
+                        peerDeviceId: p.deviceId, contactIndex: mode == .c ? contactIdx : nil)))
             if account {
                 try pushRing()
+            } else if direct {
+                return
             } else if role == .initiator && !holdSas {
                 // The device commits first, unless the host holds the code back until it picks this approver.
                 try commitSas()
@@ -698,7 +800,16 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
             wipe()
             onEvent(
                 .closed(knownClose.contains(code) ? PeerClosedReason(rawValue: code)! : .peerBadFrame, byPeer: true))
+        case PeerRecordType.confirm, PeerRecordType.contact:
+            if exchange != nil {
+                // With the exchange on, the session owns both; only after the code is shown.
+                guard phase == .sasShown || phase == .open else { throw Fail(.peerNotAllowed) }
+                try await exchangeStep(type == PeerRecordType.confirm ? .peerConfirm : .peerContact(body))
+            } else {
+                try await hostRecord(type, body)
+            }
         case PeerRecordType.trust:
+            guard mode == .a else { throw Fail(.peerNotAllowed) }
             guard let (o, _) = PeerPayload.parseStrictObject(body), case .string(let t)? = o["trust"] else {
                 throw Fail(.peerBadFrame)
             }
@@ -708,16 +819,44 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         case PeerRecordType.sasCommit, PeerRecordType.sasNonce, PeerRecordType.sasReveal:
             try await onSas(type, body)
         default:
-            // Everything else belongs to the host, and only once the code is settled.
-            if phase == .sasShown {
-                // The peer may confirm first: hold the record (bounded) until this side's person does.
-                let heldBytes = queued.reduce(0) { $0 + $1.body.count }
-                if queued.count >= 16 || heldBytes + body.count > peerMaxQueuedBytes { throw Fail(.peerBusy) }
-                queued.append((type, body))
-                return
-            }
-            guard phase == .open else { throw Fail(.peerNotAllowed) }
-            onEvent(.record(type: type, body: body))
+            try await hostRecord(type, body)
+        }
+    }
+
+    /// Everything else belongs to the host, and only once the code is settled.
+    private func hostRecord(_ type: Int, _ body: Data) async throws {
+        if phase == .sasShown {
+            // The peer may confirm first: hold the record (bounded) until this side's person does.
+            let heldBytes = queued.reduce(0) { $0 + $1.body.count }
+            if queued.count >= 16 || heldBytes + body.count > peerMaxQueuedBytes { throw Fail(.peerBusy) }
+            queued.append((type, body))
+            return
+        }
+        guard phase == .open else { throw Fail(.peerNotAllowed) }
+        onEvent(.record(type: type, body: body))
+    }
+
+    /// Run one event through the contact exchange and act on what it says.
+    private func exchangeStep(_ e: ContactExchangeEvent) async throws {
+        guard var x = exchange, let offer else { return }
+        let r = x.step(e)
+        exchange = x
+        if let c = r.close { throw Fail(PeerClosedReason(c)) }
+        // CONFIRM is sent by `confirmSas`; only CONTACT is the exchange's to send.
+        if r.sends.contains("CONTACT") {
+            try emit(
+                PeerRecordType.contact,
+                try PeerContacts.buildContact(agreeKey: offer.agreeKey, label: offer.label, cats: offer.cats))
+        }
+        if let (body, pending) = r.stored {
+            if !x.waiting { contactDue = nil }
+            guard let h = hs, let own = PeerContacts.key32(offer.agreeKey),
+                let peer = PeerContacts.key32(body.agreeKey),
+                let nD, let nM
+            else { throw Fail(.peerBadFrame) }
+            let secret = try PeerContacts.secret(
+                h: try await h.handshakeHash, nD: nD, nM: nM, agreeKeyA: own, agreeKeyB: peer)
+            onEvent(.contact(secret: secret, body: body, pending: pending))
         }
     }
 
@@ -780,7 +919,7 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
     }
 
     private func onRing(_ body: Data) throws {
-        guard let acct else { throw Fail(.peerNotAllowed) }
+        guard let acct, mode == .a else { throw Fail(.peerNotAllowed) }
         guard let (o, _) = PeerPayload.parseStrictObject(body), case .string(let ring)? = o["ring"] else {
             throw Fail(.peerBadFrame)
         }

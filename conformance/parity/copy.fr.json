@@ -97,6 +97,10 @@
       "title": "Limite de connexion à distance atteinte",
       "message": "Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours."
     },
+    "connect_links_disabled": {
+      "title": "Liaison désactivée",
+      "message": "La liaison avec d'autres personnes est désactivée pour cette app. Tes propres appareils se connectent toujours."
+    },
     "relay_ticket_invalid": {
       "title": "Connexion expirée",
       "message": "La demande de connexion a expiré. Réessayez."
@@ -628,6 +632,14 @@
     "peer-closed": {
       "title": "Connexion terminée",
       "message": "La connexion avec l'appareil à proximité s'est terminée. Réessayez."
+    },
+    "transfer-cancelled": {
+      "title": "Transfert interrompu",
+      "message": "Le transfert n'a pas abouti. Rien n'a été reçu."
+    },
+    "link-unknown": {
+      "title": "Non associé",
+      "message": "Cet appareil n'est plus associé à celui-ci."
     },
     "peer_revoked": {
       "title": "Appareil non fiable",

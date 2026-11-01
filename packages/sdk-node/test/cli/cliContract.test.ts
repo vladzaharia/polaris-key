@@ -31,6 +31,7 @@ import { TERMINAL_SYMBOLS } from "../../src/cli/tokens.generated.js";
 import { KIT_COPY } from "../../src/kitCopy.generated.js";
 import type { PolarisKeyClient } from "../../src/client.js";
 import {
+  FakeNearbySession,
   FakeStdin,
   frozenTicker,
   KEY,
@@ -39,6 +40,7 @@ import {
   stubClient,
 } from "./harness.js";
 import { Screen } from "./screen.js";
+import { PolarisError } from "@polaris-key/client-core";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MATRIX = JSON.parse(
@@ -124,6 +126,14 @@ function terminalIO(o: {
     platform: "linux" as const,
     ticker: frozenTicker,
     now: () => NOW,
+    // The 2 s and 3 s windows of nearby sign-in elapse at once; the 300 s wait of `devices
+    // approve` only ends when the flow does.
+    delay: (ms: number, signal?: AbortSignal) =>
+      ms < 10_000
+        ? Promise.resolve()
+        : new Promise<void>((r) =>
+            signal?.addEventListener("abort", () => r(), { once: true }),
+          ),
     openUrl: () => true,
   };
   return { io, stdout, stderr, stdin };
@@ -351,8 +361,8 @@ interface Setup {
   interactive?: boolean;
   piped?: string;
   usage?: boolean;
-  /** Keys pressed once the flow waits. */
-  drive?: (stdin: FakeStdin) => void;
+  /** Keys pressed once the flow waits; `screen` reads what it has drawn so far. */
+  drive?: (stdin: FakeStdin, screen: () => string) => void | Promise<void>;
 }
 
 const offline = () => Object.assign(new Error("offline"), { code: "network" });
@@ -467,6 +477,88 @@ const SITUATIONS: Record<string, () => Setup> = {
   }),
 };
 
+// ── nearby (I-47.12) ───────────────────────────────────────────────────────────────────────
+
+const ANA = { id: "a1", label: "Ana's laptop", platform: "macos" };
+const nearbyOn = { available: async () => true };
+
+/** Wait (in real turns) until the flow has drawn `text`: keys reach it through readline. */
+const drawn = async (screen: () => string, text: string): Promise<void> => {
+  for (let i = 0; i < 600 && !screen().includes(text); i++)
+    await new Promise((r) => setTimeout(r, 5));
+};
+
+/** `login` with an approver nearby: it is chosen, the poll signs in, Enter confirms the account. */
+const nearbyLoginSetup = (): Setup => ({
+  interactive: true,
+  client: stubClient({
+    identity: {
+      nearby: nearbyOn,
+      nearbyStart: async () => new FakeNearbySession([ANA]),
+    },
+  }),
+  drive: async (s, screen) => {
+    await drawn(screen, "Enter continue");
+    s.press("return");
+  },
+});
+
+/** `devices approve`: a device asks; `step` is what the person's pick comes to. */
+const approveSetup = (
+  step: unknown,
+  press: string,
+  over: { rejects?: string } = {},
+): Setup => ({
+  interactive: true,
+  client: stubClient({
+    identity: {
+      nearby: {
+        available: async () => true,
+        onRequest: async (handler: (a: unknown) => void) => {
+          if (over.rejects)
+            throw new PolarisError(over.rejects, "cannot take part");
+          handler({
+            device: "New phone",
+            platform: "linux",
+            codes: ["111 111", "482 913", "777 777"],
+            pick: async () => step,
+            deny: async () => undefined,
+          });
+          return { stop: async () => undefined };
+        },
+      },
+    },
+  }),
+  drive: async (s, screen) => {
+    await drawn(screen, "choose a code");
+    s.press(press);
+  },
+});
+
+Object.assign(SITUATIONS, {
+  "sign-in-nearby": nearbyLoginSetup,
+  // No approver answers in 2 s: nearby is cancelled and the regular sign-in runs.
+  "sign-in-nearby-handoff": (): Setup => ({
+    interactive: true,
+    client: stubClient({
+      identity: {
+        nearby: nearbyOn,
+        nearbyStart: async () => new FakeNearbySession([]),
+      },
+    }),
+  }),
+  "approve-approved": () => approveSetup({ kind: "approved" }, "2"),
+  "approve-mismatch": () => approveSetup({ kind: "mismatch" }, "1"),
+  "approve-denied": () => approveSetup({ kind: "denied" }, "d"),
+  "approve-not-nearby": () => approveSetup({ kind: "not-nearby" }, "2"),
+  "approve-unsupported": () =>
+    approveSetup(null, "2", { rejects: "nearby-unsupported" }),
+  "approve-account-required": () =>
+    approveSetup(null, "2", { rejects: "account_required" }),
+  // `--json` is refused before anything starts, and so is a run without a terminal.
+  "approve-json": (): Setup => ({ interactive: true }),
+});
+
 const verbOf = (id: string): CliVerb => {
   const v = CLI_VERBS.find((x) => x.path.join(" ") === id);
   if (!v) throw new Error(`no kit verb ${id}`);
@@ -520,7 +612,7 @@ describe("ui-matrix.json cli: outcomes", () => {
       );
       if (s.drive) {
         await settle();
-        s.drive(t.stdin);
+        await s.drive(t.stdin, () => plain(t.stdout.text()));
       }
       const exit = await run;
       const e = r.expect;

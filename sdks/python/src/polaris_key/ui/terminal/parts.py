@@ -332,11 +332,11 @@ class Kit:
             out += [Span(key, ("strong",), None, "symbol"), Span(" "), self.t(action, "muted")]
         return out
 
-    def hint_string(self, key: str) -> List[Span]:
+    def hint_string(self, key: str, **args: Any) -> List[Span]:
         """A catalog hint line that already pairs keys and actions (``signin.cli.keys``):
         ``Enter open again · c use a code · Esc cancel``, each key ``strong``, each action
         ``mute``. The key is the first word of each part, in every locale."""
-        raw = self.copy(key)
+        raw = self.copy(key, **args)
         self.used.append(key)
         out: List[Span] = []
         for i, part in enumerate(raw.split(" · ")):

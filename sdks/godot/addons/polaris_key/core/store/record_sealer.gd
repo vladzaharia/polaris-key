@@ -26,6 +26,12 @@ extends RefCounted
 const FEATURE := "core.devicekeys"
 
 
+## True when PKEY_DESKTOP_KEYRING=0 applies: a debug build only, as for the token keyring (the
+## switch is the test runner's; a shipped release build ignores it).
+static func switched_off() -> bool:
+	return PKeyKeyringStore.env_switch_honoured() and OS.get_environment(PKeyKeyringStore.ENV_SWITCH) == "0"
+
+
 ## A short name for status details ("keychain", "keystore", "dpapi").
 func id() -> String:
 	return "none"

@@ -1,7 +1,7 @@
 // `noise-vectors.json`: the `pkey-peer/1` Noise known answers (WIRE-CONTRACT-V5 §15.5, §15.6,
 // §15.9; plans/CC-01-cloud-connect.md §2.5).
 //
-// X25519 and AES-256-GCM known answers, the low-order points, the three handshake modes with fixed
+// X25519 and AES-256-GCM known answers, the low-order points, the four handshake modes with fixed
 // ephemerals (and the transport records and rekey that follow), the refusals, and the external
 // Noise vectors that anchor the reference. Every row is recomputed through
 // `reference/noise.ts` (`node:crypto` only, nothing from client-core) and the generator throws
@@ -244,6 +244,8 @@ const MODES = {
   a: { protocol: "Noise_XXpsk0_25519_AESGCM_SHA256", psk: true },
   v: { protocol: "Noise_XX_25519_AESGCM_SHA256", psk: false },
   p: { protocol: "Noise_XX_25519_AESGCM_SHA256", psk: false },
+  // The contact mode (§15.5, §15.10): XXpsk0 under the contact secret, the device agreeKeys as statics.
+  c: { protocol: "Noise_XXpsk0_25519_AESGCM_SHA256", psk: true },
 } as const;
 type Mode = keyof typeof MODES;
 
@@ -255,6 +257,7 @@ const PAYLOADS: Record<Mode, string[]> = {
   ],
   v: ['{"v":1}', '{"v":1,"caps":["vouch/1"]}', '{"v":1,"caps":["vouch/1"]}'],
   p: ['{"v":1}', '{"v":1,"caps":["app/1"]}', '{"v":1,"caps":["app/1"]}'],
+  c: ['{"v":1}', '{"v":1,"caps":["app/1"]}', '{"v":1,"caps":["app/1"]}'],
 };
 
 /** A record (§15.6): u16be type, u8 flags, body. */
@@ -298,14 +301,18 @@ function transport(mode: Mode) {
 
 function baseHandshake(mode: Mode) {
   const m = MODES[mode];
-  const psk = m.psk
-    ? refHkdf(
-        new Uint8Array(0),
-        key("k_disc"),
-        cat(utf8("pkey-peer/1 psk"), Uint8Array.of(0), utf8(SLUG)),
-        32,
-      )
-    : undefined;
+  // Mode a: HKDF of the discovery key. Mode c: the contact secret itself (32 bytes of test
+  // material; its derivation is peer-matrix.json `contact.secrets`).
+  const psk = !m.psk
+    ? undefined
+    : mode === "c"
+      ? key("c contact secret")
+      : refHkdf(
+          new Uint8Array(0),
+          key("k_disc"),
+          cat(utf8("pkey-peer/1 psk"), Uint8Array.of(0), utf8(SLUG)),
+          32,
+        );
   return {
     protocol: m.protocol,
     prologue: prologue(SLUG, mode),
@@ -415,6 +422,27 @@ function buildFailures(): unknown[] {
     { failedAt: 0, reason: "decrypt" },
   );
   fail(
+    "c-wrong-psk",
+    "c",
+    "The responder holds another contact's secret: message 1's payload fails its tag.",
+    { responder: { psk: key("other contact secret") } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
+    "c-wrong-slug",
+    "c",
+    "The responder's prologue names another product.",
+    { responder: { prologue: prologue("other", "c") } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
+    "c-wrong-mode",
+    "c",
+    "The responder's prologue says mode a: the same PSK shape, another mode byte.",
+    { responder: { prologue: prologue(SLUG, "a") } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
     "v-wrong-slug",
     "v",
     "The responder's prologue names another product: the initiator cannot read message 2.",
@@ -454,7 +482,7 @@ function buildFailures(): unknown[] {
     { failedAt: 0, reason: "decrypt" },
   );
   // A low-order remote ephemeral: the responder's ee is all zeros and it aborts (§15.5).
-  const modes: Mode[] = ["a", "v", "p"];
+  const modes: Mode[] = ["a", "v", "p", "c"];
   for (const mode of modes)
     REF_X25519_LOW_ORDER_HEX.forEach((h, k) => {
       if (mode !== "v" && k !== 0) return;
@@ -504,7 +532,7 @@ export function buildNoiseVectors(): unknown {
   return {
     noiseVectorsVersion: 1,
     description:
-      "pkey-peer/1 Noise known answers (WIRE-CONTRACT-V5 sections 15.5, 15.6, 15.9; plans/CC-01-cloud-connect.md 2.5). All fields are lower-case hex. `x25519` holds RFC 7748 section 5.2 and 6.1; `lowOrder` the seven low-order points of 15.2 step 4 in both top-bit spellings, with the all-zero DH output a handshake must refuse; `aesGcm` the GCM specification's AES-256 cases (96-bit nonce); `handshakes` the three modes with fixed ephemerals and statics, the handshake hash, the three handshake messages and the transport records that follow, with rekey (Noise section 4.2: k = ENCRYPT(k, 2^64 - 1, empty, 32 zero bytes)[0..32], counter unchanged); `failures` the refusals; `anchors` external Noise_XX_25519_AESGCM_SHA256 and Noise_NNpsk0_25519_AESGCM_SHA256 vectors. The AESGCM nonce is four zero bytes then the 64-bit big-endian counter. The prologue is the ASCII 'pkey-peer/1', 0x00, the slug, 0x00, the mode, 0x00. The mode-a PSK is HKDF-SHA256 (salt empty, ikm a 32-byte discovery key, info 'pkey-peer/1 psk', 0x00, slug); the vector lists the PSK itself. Every key here is test material derived from a label. Append-only: a new row keeps noiseVectorsVersion; a changed row or rule bumps it.",
+      "pkey-peer/1 Noise known answers (WIRE-CONTRACT-V5 sections 15.5, 15.6, 15.9; plans/CC-01-cloud-connect.md 2.5). All fields are lower-case hex. `x25519` holds RFC 7748 section 5.2 and 6.1; `lowOrder` the seven low-order points of 15.2 step 4 in both top-bit spellings, with the all-zero DH output a handshake must refuse; `aesGcm` the GCM specification's AES-256 cases (96-bit nonce); `handshakes` the four modes (a, v, p and the contact mode c) with fixed ephemerals and statics, the handshake hash, the three handshake messages and the transport records that follow, with rekey (Noise section 4.2: k = ENCRYPT(k, 2^64 - 1, empty, 32 zero bytes)[0..32], counter unchanged); `failures` the refusals; `anchors` external Noise_XX_25519_AESGCM_SHA256 and Noise_NNpsk0_25519_AESGCM_SHA256 vectors. The AESGCM nonce is four zero bytes then the 64-bit big-endian counter. The prologue is the ASCII 'pkey-peer/1', 0x00, the slug, 0x00, the mode, 0x00. The mode-a PSK is HKDF-SHA256 (salt empty, ikm a 32-byte discovery key, info 'pkey-peer/1 psk', 0x00, slug); the mode-c PSK is the contact secret (peer-matrix.json `contact`); the vector lists the PSK itself. Every key here is test material derived from a label. Append-only: a new row keeps noiseVectorsVersion; a changed row or rule bumps it.",
     x25519: buildX25519(),
     lowOrder: buildLowOrder(),
     aesGcm: buildAesGcm(),

@@ -102,6 +102,15 @@ export {
   type CloudConnectOptions,
   type CloudConnectStatus,
   type CloudPeer,
+  CloudLinks,
+  PAIR_WINDOW_SECONDS,
+  type ContactInfo,
+  type LinkOffer,
+  type LinkOpenOptions,
+  type LinkPairHandle,
+  type LinkPairOptions,
+  type PairFailure,
+  type PairedLink,
   type ApprovalNotice,
   type ApproveAnswerInput,
   type FinishOutcome,
@@ -167,6 +176,22 @@ export {
   type SignInOutcome,
   type WaitOptions,
 } from "./identity/signIn.js";
+export {
+  type AutoSignInOptions,
+  type AutoSignInReason,
+  type AutoSignInResult,
+  type AutoSignInUnavailable,
+  type NearbyRole,
+} from "./identity/autoSignIn.js";
+export {
+  type NearbyApprovalStep,
+  type NearbyAsk,
+} from "./identity/nearbyApprover.js";
+export {
+  NearbySignInSession,
+  type NearbyApprover,
+  type NearbySignInOptions,
+} from "./identity/nearbySession.js";
 export {
   type AttachLicense,
   type AttachResult,

@@ -299,6 +299,86 @@ class ConnectNearbyTest {
         }
     }
 
+    // -- Android: the installed platform (CC-12b.6) ---------------------------------------------------
+
+    private class FakePlatform(override val mdns: MdnsAdapter?, var verdict: LocalNetworkVerdict = LocalNetworkVerdict.Ok) : ConnectPlatform {
+        override suspend fun localNetwork(): LocalNetworkVerdict = verdict
+    }
+
+    /** Run [block] as Android with [platform] installed (the JVM stands in), and put both back. */
+    private fun <T> asAndroid(platform: ConnectPlatform?, block: () -> T): T {
+        ConnectPlatforms.android = true
+        ConnectPlatforms.installed = platform
+        try {
+            return block()
+        } finally {
+            ConnectPlatforms.android = im.plrs.key.core.RuntimeFamily.isAndroid
+            ConnectPlatforms.installed = null
+        }
+    }
+
+    private fun bareApprover() = NearbyApproverOptions(prompt = true, host = "127.0.0.1", allowLoopback = true)
+
+    private fun bareRequest() = NearbyRequestOptions(request = request, allowLoopback = true)
+
+    @Test
+    fun androidNearbyRunsOverTheInstalledAdapter() = runBlocking<Unit> {
+        val w = World()
+        val dk = w.dKeys.ensure()
+        w.worker.start[request] = Triple(idD, dk.signKey, dk.agreeKey)
+        asAndroid(FakePlatform(w.net)) {
+            runBlocking {
+                val h = w.m.cloudConnect.nearby.onRequest({ }, bareApprover())
+                assertEquals(1, w.net.approverAdverts().size)
+                val r = w.d.cloudConnect.nearby.request(bareRequest())
+                until { r.approvers.size == 1 }
+                r.close()
+                h.stop()
+            }
+        }
+    }
+
+    @Test
+    fun androidWithNoAdapterIsNearbyUnsupportedAndCallsNoPermissionCheck() {
+        val w = World()
+        for (platform in listOf(null, FakePlatform(null, LocalNetworkVerdict.Denied))) {
+            asAndroid(platform) {
+                assertNA(UnsupportedReason.runtime, "nearby-unsupported") { w.d.cloudConnect.nearby.request(bareRequest()) }
+                assertNA(UnsupportedReason.runtime, "nearby-unsupported") { w.m.cloudConnect.nearby.onRequest({ }, bareApprover()) }
+            }
+        }
+    }
+
+    @Test
+    fun androidMapsThePermissionToItsRegisteredCodesAndAdvertisesNothing() {
+        val w = World()
+        for ((verdict, code) in listOf(
+            LocalNetworkVerdict.Denied to "nearby-permission-denied",
+            LocalNetworkVerdict.NotDeclared to "not-configured",
+        )) {
+            asAndroid(FakePlatform(w.net, verdict)) {
+                val a = assertThrows(PolarisException::class.java) { runBlocking { w.m.cloudConnect.nearby.onRequest({ }, bareApprover()) } }
+                assertEquals(code, a.code)
+                val b = assertThrows(PolarisException::class.java) { runBlocking { w.d.cloudConnect.nearby.request(bareRequest()) } }
+                assertEquals(code, b.code)
+            }
+        }
+        assertEquals(0, w.net.approverAdverts().size)
+        assertTrue(w.net.browsers.isEmpty())
+    }
+
+    @Test
+    fun androidKeepsAnAdapterTheHostBrought() = runBlocking<Unit> {
+        val w = World()
+        asAndroid(FakePlatform(null, LocalNetworkVerdict.Denied)) {
+            runBlocking {
+                val h = w.m.cloudConnect.nearby.onRequest({ }, w.approverOptions())
+                assertEquals(1, w.net.approverAdverts().size)
+                h.stop()
+            }
+        }
+    }
+
     // -- sign-out ------------------------------------------------------------------------------------
 
     @Test

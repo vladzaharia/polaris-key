@@ -37,7 +37,7 @@ func run(t: PKeyTestContext) -> void:
 
 
 func _store() -> PKeyDeviceKeyStore:
-	return PKeyDeviceKeyStore.new("djdl", "user://pkey_test_exchange_%d" % Time.get_ticks_usec(), false, false)
+	return PKeyDeviceKeyStore.for_tests("djdl", "user://pkey_test_exchange_%d" % Time.get_ticks_usec())
 
 
 func _bed(kinds := ["google", "apple"], with_keys := true) -> B:

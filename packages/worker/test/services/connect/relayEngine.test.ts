@@ -5,6 +5,7 @@ import {
   RELAY_LIMIT,
   RATE_STRIKES_MAX,
   RelayEngine,
+  type LeaseDenied,
   type RelayOutput,
   type RelayTicket,
 } from "../../../src/services/connect/relay/engine.js";
@@ -469,5 +470,181 @@ describe("relay engine: GONE, RING, restore", () => {
     });
     expect(sent(out, "b1")[0]?.op).toBe("recv");
     expect(e.snapshot().dayUsed).toBe(2 * (1 + 24 + 4 + 1));
+  });
+});
+
+describe("relay engine: a contact room (CC-19.4, V5 §15.7)", () => {
+  const ALIAS_A = dev(0x11);
+  const ALIAS_B = dev(0x22);
+  const ALIAS_C = dev(0x33);
+  const hex = (b: Uint8Array): string => Buffer.from(b).toString("hex");
+
+  function contactRoom() {
+    const e = new RelayEngine({ contact: true });
+    const now = T0;
+    const join = (
+      socket: string,
+      d: Uint8Array,
+      members = [ALIAS_A, ALIAS_B],
+    ) =>
+      e.step({
+        kind: "connect",
+        socket,
+        ticket: ticket(d, { members }),
+        now,
+      });
+    const frame = (
+      socket: string,
+      data: Uint8Array | string,
+      denied?: LeaseDenied,
+      at = now,
+    ) =>
+      e.step({
+        kind: "frame",
+        socket,
+        data,
+        now: at,
+        ...(denied ? { denied } : {}),
+      });
+    return { e, join, frame, now };
+  }
+
+  it("admits the pinned two, stamps the alias as from and closes a third alias 4003", () => {
+    const r = contactRoom();
+    expect(closes(r.join("a1", ALIAS_A))).toEqual([]);
+    expect(closes(r.join("b1", ALIAS_B))).toEqual([]);
+    // The shell hands a third connect the pinned two: the newcomer is not among them.
+    expect(closes(r.join("c1", ALIAS_C))).toEqual([
+      ["c1", RELAY_CLOSE.notMember],
+    ]);
+
+    r.e.credit(hex(ALIAS_A), 1000, T0);
+    const out = r.frame("a1", send(ALIAS_B));
+    const recv = sent(out, "b1").find((m) => m.op === "recv");
+    expect(recv?.op === "recv" && Buffer.from(recv.from)).toEqual(
+      Buffer.from(ALIAS_A),
+    );
+  });
+
+  it("pays a SEND from the sender's lease, emits no meter, and spends nothing for the receiver", () => {
+    const r = contactRoom();
+    r.join("a1", ALIAS_A);
+    r.join("b1", ALIAS_B);
+    r.e.credit(hex(ALIAS_A), 1000, T0);
+    const msg = send(ALIAS_B);
+    const out = r.frame("a1", msg);
+    expect(meters(out)).toEqual([]);
+    expect(sent(out, "b1").some((m) => m.op === "recv")).toBe(true);
+    expect(r.e.leaseOf(hex(ALIAS_A))).toBe(1000 - msg.length);
+    expect(r.e.leaseOf(hex(ALIAS_B))).toBe(0);
+    // B answering pays from B's own lease.
+    r.e.credit(hex(ALIAS_B), 500, T0);
+    r.frame("b1", send(ALIAS_A));
+    expect(r.e.leaseOf(hex(ALIAS_A))).toBe(1000 - msg.length);
+    expect(r.e.leaseOf(hex(ALIAS_B))).toBeLessThan(500);
+  });
+
+  it("asks for a lease only for a SEND to the other member that is online and not yet covered", () => {
+    const r = contactRoom();
+    r.join("a1", ALIAS_A);
+    const msg = send(ALIAS_B);
+    // B is offline: nothing to deliver, nothing to pay.
+    expect(r.e.needLease("a1", msg, T0)).toBe(0);
+    r.join("b1", ALIAS_B);
+    expect(r.e.needLease("a1", msg, T0)).toBe(msg.length);
+    r.e.credit(hex(ALIAS_A), msg.length - 1, T0);
+    expect(r.e.needLease("a1", msg, T0)).toBe(1);
+    r.e.credit(hex(ALIAS_A), 1, T0);
+    expect(r.e.needLease("a1", msg, T0)).toBe(0);
+    // Not a SEND, a send to oneself, to a stranger, text, an unknown socket.
+    expect(r.e.needLease("a1", encodeRelay({ op: "list" }), T0)).toBe(0);
+    expect(r.e.needLease("a1", send(ALIAS_A), T0)).toBe(0);
+    expect(r.e.needLease("a1", send(STRANGER), T0)).toBe(0);
+    expect(r.e.needLease("a1", "text", T0)).toBe(0);
+    expect(r.e.needLease("nobody", msg, T0)).toBe(0);
+    // An account room never asks.
+    const acct = new RelayEngine();
+    expect(acct.needLease("a1", msg, T0)).toBe(0);
+  });
+
+  it("drops a message the lease cannot cover with LIMIT 2, and closes 4008 only when the top-up granted nothing", () => {
+    const r = contactRoom();
+    r.join("a1", ALIAS_A);
+    r.join("b1", ALIAS_B);
+    const short = r.frame("a1", send(ALIAS_B), { reason: 2, zero: false });
+    expect(sent(short, "a1").map((m) => m.op === "limit" && m.reason)).toEqual([
+      2,
+    ]);
+    expect(closes(short)).toEqual([]);
+    expect(sent(short, "b1").some((m) => m.op === "recv")).toBe(false);
+
+    const zero = r.frame("a1", send(ALIAS_B), { reason: 3, zero: true });
+    expect(sent(zero, "a1").map((m) => m.op === "limit" && m.reason)).toEqual([
+      3,
+    ]);
+    expect(closes(zero)).toEqual([["a1", RELAY_CLOSE.limit]]);
+    // With no denial given a short lease reads as the person's day.
+    r.join("a2", ALIAS_A);
+    expect(
+      sent(r.frame("a2", send(ALIAS_B)), "a2").map(
+        (m) => m.op === "limit" && m.reason,
+      ),
+    ).toEqual([2]);
+  });
+
+  it("keeps a lease across the alias's sockets and clears every lease on a day rollover", () => {
+    const r = contactRoom();
+    r.join("a1", ALIAS_A);
+    r.join("b1", ALIAS_B);
+    r.e.credit(hex(ALIAS_A), 5000, T0);
+    r.e.step({ kind: "close", socket: "a1", now: T0 });
+    expect(r.e.leaseOf(hex(ALIAS_A))).toBe(5000);
+    r.join("a2", ALIAS_A);
+    expect(r.e.leaseOf(hex(ALIAS_A))).toBe(5000);
+    // The next UTC day: the lease belonged to the old day.
+    r.e.step({ kind: "tick", now: T0 + 86_400_000 });
+    expect(r.e.leaseOf(hex(ALIAS_A))).toBe(0);
+    expect(r.e.needLease("a2", send(ALIAS_B), T0 + 86_400_000)).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it("persists and restores the leases, and the pause still gives LIMIT 4", () => {
+    const r = contactRoom();
+    r.join("a1", ALIAS_A);
+    r.join("b1", ALIAS_B);
+    r.e.credit(hex(ALIAS_A), 321, T0);
+    const snap = r.e.snapshot();
+    expect(snap.leases).toEqual({ [hex(ALIAS_A)]: 321 });
+    const woken = new RelayEngine({ contact: true });
+    woken.restore(snap, T0);
+    expect(woken.leaseOf(hex(ALIAS_A))).toBe(321);
+    const paused = woken.step({ kind: "tick", now: T0, paused: true });
+    expect(sent(paused, "a1").map((m) => m.op === "limit" && m.reason)).toEqual(
+      [4],
+    );
+    // An account engine's snapshot carries no leases.
+    expect(new RelayEngine().snapshot().leases).toBeUndefined();
+  });
+
+  it("takes a lease from a person's day: all of it, what is left, then nothing", () => {
+    const e = new RelayEngine();
+    const mib = 1024 * 1024;
+    expect(e.lease(mib, 3 * mib, T0)).toMatchObject({ granted: mib });
+    expect(e.lease(mib, 3 * mib, T0).granted).toBe(mib);
+    expect(e.lease(2 * mib, 3 * mib, T0).granted).toBe(mib);
+    expect(e.lease(mib, 3 * mib, T0).granted).toBe(0);
+    // The day rolls over: a fresh day.
+    expect(e.lease(mib, 3 * mib, T0 + 86_400_000).granted).toBe(mib);
+    // Messages in an account room share the same day.
+    const acct = new RelayEngine();
+    acct.step({
+      kind: "connect",
+      socket: "a1",
+      ticket: ticket(A, { dayBytes: mib }),
+      now: T0,
+    });
+    expect(acct.lease(mib, mib, T0).granted).toBe(mib);
+    expect(acct.lease(1, mib, T0).granted).toBe(0);
   });
 });

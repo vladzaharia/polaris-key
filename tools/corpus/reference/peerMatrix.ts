@@ -469,7 +469,7 @@ const isInt = (v: Json | undefined): v is number =>
 
 /** Judge one handshake payload: message 1, or message 2 or 3 in a mode. */
 export function refHandshakePayload(
-  mode: "a" | "v" | "p",
+  mode: "a" | "v" | "p" | "c",
   message: 1 | 2 | 3,
   bytes: Uint8Array,
 ): PayloadVerdict {

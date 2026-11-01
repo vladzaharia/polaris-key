@@ -29,7 +29,13 @@ Rules this module keeps:
   the winner fails it races the addresses that are left; a handshake that completes with another device
   ends the dial as ``wrong_peer``;
 - the device's X25519 private key never leaves the key port (G1): the session is given the
-  :class:`~polaris_key.connect.client.PeerSource` static-key handle, whose ``dh`` calls the port.
+  :class:`~polaris_key.connect.client.PeerSource` static-key handle, whose ``dh`` calls the port;
+- inter-account links (CC-19.6, §15.10) ride the same listener: a responder that holds contacts tries the
+  account's keys, then each contact's secret in ``contact_trial_order`` under one
+  :class:`~polaris_key.core.peer_session.HandshakeLimiter`; ``m=c`` adverts (at most 8) are published on the
+  same port and browsed with ``browse_contact_instance``; a name no contact can announce never enters the
+  adapter's tables; with links off (no cached ``interAccount``) the contacts are empty, so nothing is
+  advertised and no mode ``c`` is answered.
 """
 
 from __future__ import annotations
@@ -41,13 +47,22 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple
 
 from ..core.peer_advert import ADVERT_EPOCH_SECONDS, BrowseHit, account_instance, advert_epoch, browse_table, parse_txt
+from ..core.peer_contact import (
+    MAX_LIVE_CONTACT_ADVERTS,
+    ContactKey,
+    browse_contact_instance,
+    contact_instance,
+    parse_contact_txt,
+)
 from ..core.peer_dial import dial_race
 from ..core.peer_lan_gate import Admitted, GatedProtocol, admit_transport, listen_socket
 from ..core.peer_lan_judge import PendingLimiter, text_verdict
 from ..core.peer_link import SocketLink
 from ..core.peer_mdns import MdnsAdapter, MdnsAdvert, MdnsFound, MdnsHandle, MulticastDnsAdapter
-from .channel import ConnectNotice, PeerDocs, PeerDocsSource, channel_base
+from ..core.peer_session import ContactLink, HandshakeLimiter
+from .channel import ConnectNotice, PeerDocs, PeerDocsSource, channel_base, contact_channel
 from .client import ConnectClient, PeerSource
+from .contacts import ContactRef, LiveContact, ref_of, wipe_live
 from .errors import LanError
 from .session import ConnectSession, session_handlers, wait_opened
 
@@ -96,6 +111,13 @@ class LanSource:
     refresh: Optional[Callable[[], Any]] = None
     adopt_ring: Optional[Callable[[str], Any]] = None
     apply_trust: Optional[Callable[[str], Any]] = None
+    #: The inter-account links (§15.10) in trial order, secrets decoded: empty while links are off (no
+    #: cached ``interAccount``) or none are held. Blocking; the service wipes what it replaces.
+    contacts: Optional[Callable[[], List[LiveContact]]] = None
+    #: Called when the contacts changed (from any thread); returns the unsubscribe.
+    on_contacts: Optional[Callable[[Callable[[], None]], Callable[[], None]]] = None
+    #: A session opened under a pending contact passed the pin: it replaces the held one. Blocking.
+    contact_established: Optional[Callable[[ContactRef], None]] = None
 
 
 def lan_source(
@@ -111,6 +133,12 @@ def lan_source(
         refresh=lambda: client.identity(refresh=True),
         adopt_ring=client.adopt_ring,
         apply_trust=apply_trust,
+        # A client without links (a test's stand-in) serves no contacts.
+        contacts=getattr(client, "live_contacts", None),
+        on_contacts=getattr(client, "on_contacts_changed", None),
+        contact_established=(lambda ref: client.promote_contact(ref.agree_key))
+        if hasattr(client, "promote_contact")
+        else None,
     )
 
 
@@ -126,6 +154,9 @@ class LanOptions:
     host: Optional[str] = None
     port: int = 0
     caps: Sequence[str] = ("app/1",)
+    #: Direct Transfer (CC-20): called as ``xfer(link, session, established)`` when a session is established
+    #: with ``xfer/1`` on both sides. Set by ``cloud_connect.start``.
+    xfer: Any = None
     label: Optional[str] = None
     advertise: bool = True
     browse: bool = True
@@ -175,7 +206,7 @@ class LanService:
         self._tab: Optional[Tuple[Tuple[int, Tuple[bytes, ...], Tuple[str, ...]], Dict[str, BrowseHit]]] = None
         #: The last identity read, kept when ``_id`` is dropped: the roster filter works from it (``_accepts``).
         self._known: Optional[PeerSource] = None
-        self._names: Optional[Tuple[PeerSource, int, "frozenset[str]"]] = None
+        self._names: Optional[Tuple[PeerSource, int, "frozenset[str]", str]] = None
         self._pending: Set[Any] = set()
         self._limit = PendingLimiter(o.max_pending, o.max_pending_per_address, o.max_pending_per_64)
         #: Accepted transports that hold a slot and have not reached ``_accept`` yet.
@@ -185,6 +216,17 @@ class LanService:
         self._tasks: Set["asyncio.Future[Any]"] = set()
         self._on_session: List[Callable[[ConnectSession], None]] = []
         self._on_peer: List[Callable[[LanPeer], None]] = []
+        #: The inter-account links held now (empty while off), in trial order.
+        self._contacts: List[LiveContact] = []
+        self._contacts_sig = ""
+        #: One live contact advert per name; at most ``MAX_LIVE_CONTACT_ADVERTS``.
+        self._contact_adv: Dict[str, MdnsHandle] = {}
+        #: ``(id, pending)`` to ``(instance, hosts, port)``.
+        self._contact_peers: Dict[Tuple[str, bool], Tuple[str, List[str], int]] = {}
+        self._on_contact_session: List[Callable[[ConnectSession], None]] = []
+        self._un_contacts: Optional[Callable[[], None]] = None
+        #: One limiter per listener for the contact trial (§15.10, "Admission").
+        self._limiter = HandshakeLimiter(5, 4)
         self._stopped = False
         self._rotate_lock = asyncio.Lock()
         self._docs = PeerDocs(
@@ -209,11 +251,14 @@ class LanService:
         s = cls(src, options or LanOptions())
         try:
             await s._identity(True)
+            await s._load_contacts()
             await s._listen()
             if s._o.advertise:
                 await s._rotate()
             if s._o.browse:
                 await s._start_browse()
+            if src.on_contacts is not None:
+                s._un_contacts = src.on_contacts(s._contacts_changed)
         except BaseException:
             await s.stop()
             raise
@@ -241,11 +286,45 @@ class LanService:
         self._on_session.append(fn)
         return lambda: self._on_session.remove(fn) if fn in self._on_session else None
 
+    def on_contact_session(self, fn: Callable[[ConnectSession], None]) -> Callable[[], None]:
+        """Called for each inbound mode-``c`` session (a contact dialled this device) once it is open."""
+        self._on_contact_session.append(fn)
+        return lambda: self._on_contact_session.remove(fn) if fn in self._on_contact_session else None
+
+    def contact_peers(self) -> List[Tuple[str, bool]]:
+        """The contacts seen on this network now, as ``(id, pending)`` (``pending`` is the pending secret
+        of a re-pair, §15.10). The host picks one to dial; :meth:`connect_contact` runs the handshake."""
+        return list(self._contact_peers.keys())
+
+    async def refresh_contacts(self) -> None:
+        """Read the contacts again (stored, promoted, removed, re-marked, or the gate moved) and bring the
+        adverts, the accepted names and the listener's trial order to match."""
+        async with self._rotate_lock:
+            if self._stopped:
+                return
+            await self._load_contacts()
+            ident = await self._identity(True)
+            await self._advert_contacts(ident, advert_epoch(self._src.now()))
+
+    def _contacts_changed(self) -> None:
+        """From any thread: the contacts moved."""
+        try:
+            self._loop.call_soon_threadsafe(self._contacts_changed_on_loop)
+        except RuntimeError:
+            pass  # the loop is gone: the service is over
+
+    def _contacts_changed_on_loop(self) -> None:
+        if not self._stopped:
+            self._spawn(self._quiet(self.refresh_contacts()))
+
     async def stop(self) -> None:
         if self._stopped:
             return
         self._stopped = True
         self._docs.close()
+        if self._un_contacts is not None:
+            self._un_contacts()
+            self._un_contacts = None
         if self._cancel_epoch is not None:
             self._cancel_epoch()
             self._cancel_epoch = None
@@ -259,10 +338,15 @@ class LanService:
                 pass
         await asyncio.gather(
             self._quiet(self._adv.stop() if self._adv is not None else None),
+            *[self._quiet(h.stop()) for h in list(self._contact_adv.values())],
             self._quiet(self._browse.stop() if self._browse is not None else None),
             self._close_server(),
         )
         self._adv = self._browse = None
+        self._contact_adv.clear()
+        self._contact_peers.clear()
+        wipe_live(self._contacts)
+        self._contacts = []
 
     def abort(self) -> None:
         """Force-end the service from another thread, without a graceful close, when the loop's thread is
@@ -277,6 +361,9 @@ class LanService:
 
     def _abort_on_loop(self) -> None:
         self._docs.close()
+        if self._un_contacts is not None:
+            self._un_contacts()
+            self._un_contacts = None
         if self._cancel_epoch is not None:
             self._cancel_epoch()
             self._cancel_epoch = None
@@ -294,10 +381,14 @@ class LanService:
                 srv.close()
             except Exception:
                 pass
-        for h in (self._adv, self._browse):
+        for h in (self._adv, self._browse, *self._contact_adv.values()):
             if h is not None:
                 asyncio.ensure_future(self._stop_handle(h))
         self._adv = self._browse = None
+        self._contact_adv.clear()
+        self._contact_peers.clear()
+        wipe_live(self._contacts)
+        self._contacts = []
 
     def _abort_unadmitted(self) -> None:
         for w in list(self._pending):
@@ -464,9 +555,15 @@ class LanService:
         o = self._o
         docs = self._docs
 
+        # The shared listener (§15.5, §15.10): a responder that holds contacts tries the account's keys, then
+        # each contact's secret, under the one limiter. Copies of the secrets go to the engine.
+        served = list(self._contacts) if role == "responder" else []
+        refs = [ref_of(c) for c in served]
+
         def established(s: ConnectSession) -> None:
             self._sessions.add(s)
             s.on_close(lambda _c: self._sessions.discard(s))
+            self._promote_if_pending(s)
 
         link: SocketLink
 
@@ -481,7 +578,15 @@ class LanService:
             on_trust=docs.on_trust,
             on_ring_wanted=ring_wanted,
             on_ended=lambda: self._links.discard(link),
+            contacts=refs,
+            xfer=o.xfer,
         )
+        extra: Dict[str, Any] = {}
+        if served:
+            extra = {
+                "contacts": [ContactLink(bytes(c.secret), c.agree_key) for c in served],
+                "admission": self._limiter,
+            }
         link = SocketLink(
             reader,
             writer,
@@ -496,6 +601,7 @@ class LanService:
                     rekey_seconds=o.rekey_seconds,
                 ),
                 "role": role,
+                **extra,
             },
             handlers,
             handshake_seconds=o.handshake_seconds,
@@ -589,11 +695,149 @@ class LanService:
             return
         done()
         session = f.result()
-        for fn in list(self._on_session):
+        for fn in list(self._on_contact_session if session.contact is not None else self._on_session):
             try:
                 fn(session)
             except Exception:
                 pass  # a host callback never ends a session
+
+    # -- contacts ---------------------------------------------------------------------------------
+
+    def _promote_if_pending(self, s: ConnectSession) -> None:
+        """The first handshake under a pending contact passed the pin: it replaces the held one."""
+        ref = s.contact
+        fn = self._src.contact_established
+        if ref is not None and ref.pending and fn is not None:
+            self._loop.run_in_executor(None, lambda: self._quiet_sync(fn, ref))
+
+    @staticmethod
+    def _quiet_sync(fn: Callable[[Any], Any], arg: Any) -> None:
+        try:
+            fn(arg)
+        except Exception:
+            pass
+
+    async def _load_contacts(self) -> None:
+        """Read the contacts from the source; the old ones are wiped."""
+        fn = self._src.contacts
+        nxt: List[LiveContact] = list(await self._loop.run_in_executor(None, fn)) if fn is not None else []
+        old, self._contacts = self._contacts, nxt
+        self._contacts_sig = ",".join(
+            "%s%s%s" % (c.id, "p" if c.pending else "h", "r" if c.reachable else "-") for c in nxt
+        )
+        wipe_live(old)
+        # A peer seen under a contact that is gone is forgotten.
+        have = {(c.id, c.pending) for c in nxt}
+        for k in [k for k in self._contact_peers if k not in have]:
+            del self._contact_peers[k]
+
+    async def _advert_contacts(self, ident: PeerSource, epoch: int) -> None:
+        """The contact adverts for the contacts marked reachable, at most 8, on this listener's port."""
+        if not self._o.advertise:
+            return
+        want = [
+            contact_instance(bytes(c.secret), ident.agree_public, epoch)
+            for c in [c for c in self._contacts if c.reachable][:MAX_LIVE_CONTACT_ADVERTS]
+        ]
+        for name in [n for n in self._contact_adv if n not in want]:
+            await self._quiet(self._contact_adv.pop(name).stop())
+        for name in want:
+            if name in self._contact_adv:
+                continue
+            self._contact_adv[name] = await self._mdns.advertise(MdnsAdvert(name, self._port, ["v=1", "m=c"]))
+
+    def _found_contact(self, f: MdnsFound, hosts: List[str]) -> None:
+        contacts = self._contacts
+        if not contacts or f.instance in self._miss:
+            return
+        hit = browse_contact_instance(
+            f.instance, [ContactKey(bytes(c.secret), c.agree_key_bytes) for c in contacts], self._src.now()
+        )
+        if hit is None:
+            if len(self._miss) >= MISS_CACHE:
+                del self._miss[next(iter(self._miss))]
+            self._miss[f.instance] = self._src.now()
+            return
+        c = contacts[hit["contact"]]
+        self._contact_peers[(c.id, c.pending)] = (f.instance, hosts, f.port)
+
+    async def connect_contact(self, contact_id: str, pending: bool = False) -> ConnectSession:
+        """Dial a contact seen on this network and run the mode-``c`` handshake under its secret (§15.10).
+        ``pending`` picks the pending secret of a re-pair. The pin is the session's: a peer that does not
+        hold the contact's key ends it as ``peer_revoked`` before a byte is sent back."""
+        if self._stopped:
+            raise LanError("not_listening", "The LAN service is stopped.")
+        c = next((x for x in self._contacts if x.id == contact_id and x.pending == pending), None)
+        seen = self._contact_peers.get((contact_id, pending))
+        hosts = [h for h in (seen[1] if seen is not None else []) if self._dialable(h)]
+        if c is None or seen is None or not hosts:
+            raise LanError("unknown_peer", "That contact was not found on this network.")
+        ident = await self._identity(False)
+        ref = ref_of(c)
+        secret = bytes(c.secret)
+        agree = c.agree_key
+        err: Optional[LanError] = None
+        while hosts:
+            try:
+                reader, writer, host = await self._dial(hosts, seen[2])
+            except LanError as e:
+                raise e
+            link = self._contact_link(reader, writer, ident, ref, secret, agree)
+            task = self._spawn(link.run())
+            link.start()
+            try:
+                return await wait_opened(link, self._o.handshake_seconds + 5)  # type: ignore[no-any-return]
+            except LanError as e:
+                self._abort(writer)
+                if e.reason not in ("connect_failed", "handshake_failed"):
+                    raise
+                err = e
+                hosts = [h for h in hosts if h != host]
+            except Exception:
+                task.cancel()
+                self._abort(writer)
+                err = LanError("handshake_failed", "The handshake failed.")
+                hosts = [h for h in hosts if h != host]
+        raise err or LanError("handshake_failed", "The handshake failed.")
+
+    def _contact_link(
+        self, reader: Any, writer: Any, ident: PeerSource, ref: ContactRef, secret: bytes, agree_key: str
+    ) -> SocketLink:
+        o = self._o
+
+        def established(s: ConnectSession) -> None:
+            self._sessions.add(s)
+            s.on_close(lambda _c: self._sessions.discard(s))
+            self._promote_if_pending(s)
+
+        link: SocketLink
+        handlers = session_handlers(
+            "initiator",
+            on_established=established,
+            on_ended=lambda: self._links.discard(link),
+            contacts=[ref],
+            xfer=o.xfer,
+        )
+        link = SocketLink(
+            reader,
+            writer,
+            {
+                **contact_channel(
+                    ident,
+                    caps=o.caps,
+                    label=o.label,
+                    now=self._src.now,
+                    rekey_messages=o.rekey_messages,
+                    rekey_seconds=o.rekey_seconds,
+                ),
+                "role": "initiator",
+                "contacts": [ContactLink(secret, agree_key)],
+            },
+            handlers,
+            handshake_seconds=o.handshake_seconds,
+        )
+        self._links.add(link)
+        return link
 
     # -- mDNS -------------------------------------------------------------------------------------
 
@@ -612,6 +856,9 @@ class LanService:
                 self._adv_name = name
                 if old is not None:
                     await self._quiet(old.stop())
+            # Contacts: the names rotate with the epoch like the account's.
+            await self._load_contacts()
+            await self._advert_contacts(ident, epoch)
             nxt = (epoch + 1) * ADVERT_EPOCH_SECONDS - self._src.now()
             if self._cancel_epoch is not None:
                 self._cancel_epoch()
@@ -634,10 +881,16 @@ class LanService:
             return False
         epoch = advert_epoch(self._src.now())
         held = self._names
-        if held is None or held[0] is not ident or held[1] != epoch:
+        if held is None or held[0] is not ident or held[1] != epoch or held[3] != self._contacts_sig:
             keys = [ident.keys.current] + ([ident.keys.previous] if ident.keys.previous else [])
-            names = frozenset(self._table(keys, [d for d in ident.roster if d != ident.device_id]))
-            held = self._names = (ident, epoch, names)
+            names = set(self._table(keys, [d for d in ident.roster if d != ident.device_id]))
+            # The names a contact can announce (its own agreeKey in the MAC): this and the last epoch.
+            for back in (0, 1):
+                if epoch - back < 0:
+                    continue
+                for c in self._contacts:
+                    names.add(contact_instance(bytes(c.secret), c.agree_key_bytes, epoch - back))
+            held = self._names = (ident, epoch, frozenset(names), self._contacts_sig)
         return instance in held[2]
 
     def _found_later(self, f: MdnsFound) -> None:
@@ -649,6 +902,8 @@ class LanService:
     def _gone(self, instance: str) -> None:
         for k in [k for k, (_, inst) in self._peers.items() if inst == instance]:
             del self._peers[k]
+        for ck in [k for k, (inst, _h, _p) in self._contact_peers.items() if inst == instance]:
+            del self._contact_peers[ck]
 
     def _table(self, keys: List[bytes], roster: List[str]) -> Dict[str, BrowseHit]:
         """The expected instance names, worked out once per (epoch, keys, roster): a forged name is an
@@ -664,6 +919,10 @@ class LanService:
         hosts = [h for h in (f.hosts or (f.host,)) if self._dialable(h)]
         if self._stopped or not hosts:
             return
+        # A contact advert (``m=c``) is judged by parse_contact_txt and by no other path (§15.4): the
+        # generic parser answers an unknown mode, so it can never be dialled as a or v.
+        if parse_contact_txt(f.txt)["ok"]:
+            return self._found_contact(f, hosts)
         txt = parse_txt(f.txt)
         if not txt["ok"] or txt["mode"] != "a":
             return

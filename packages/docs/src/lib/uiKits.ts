@@ -287,4 +287,8 @@ export const COMPONENTS_NOT_BUILT: readonly string[] = [
   "RingChange",
   // Save conflicts (U-22.K0); the kits that draw it follow (U-22.K2 to U-23.K5).
   "SaveConflict",
+  // Inter-account links and direct-transfer offers (CC-19.9); the React kit draws them first, the
+  // native kits follow with their own packages.
+  "LinkPairing",
+  "TransferOffer",
 ];

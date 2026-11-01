@@ -88,6 +88,10 @@ class Terminal:
         self.err: Optional[IO[str]] = None
         #: The environment ``--reveal`` reads to know whether a CI log obeys commands.
         self.log_env: Mapping[str, str] = os.environ
+        #: The operating system (macOS names the Local Network prompt before a nearby browse) and the
+        #: clock the nearby windows (2 s, 3 s, 300 s) count on; tests set both.
+        self.platform: str = sys.platform
+        self.clock: Callable[[], float] = time.monotonic
         # A resize (SIGWINCH, read by a live region) lays the kit's screens out at the new width.
         device.on_resize(self._resized)
 
@@ -468,6 +472,14 @@ def sign_in(
     ``browser`` (``--browser``) opens the browser even when the terminal looks headless."""
     k = t.kit
     verb = t.verb or "sign-in"
+    # Nearby first (D-5, D-10): on an interactive terminal, never under --json, in CI or on a pipe. Nothing
+    # nearby, or `c`, goes on to the regular sign-in below.
+    from . import nearby
+
+    first = nearby.login(client, t, verb)
+    if isinstance(first, Outcome):
+        return first
+    want_code = first.device_code
     # --browser opens the browser even where the kit would show the code (SSH, CI, a pipe).
     headless = not browser and (t.env.headless or t.env.json or not t.env.interactive)
     model = SignInModel(headless=headless, device_code_url=k.identity.device_code_url)
@@ -489,7 +501,9 @@ def sign_in(
         userCode=prompt.user_code,
         expiresAt=prompt.expires_at,
     )
-    if not headless:
+    if want_code and not headless:
+        view = model.use_code()  # `c` in the nearby wait: the code, not the browser
+    elif not headless:
         if not opener(prompt.verification_uri_complete):
             view = model.browser_failed()
 
@@ -592,7 +606,11 @@ def devices(client: Any, t: Terminal, words: Sequence[str], *, yes: bool = False
     k = t.kit
     action = words[0] if words else "list"
     # The header names the sub-verb, as the Node kit's does (`devices list`, `devices rename`, …).
-    verb = f"{t.verb or 'devices'} {action}" if action in ("list", "rename", "deauthorize") else (t.verb or "devices")
+    verb = f"{t.verb or 'devices'} {action}" if action in ("list", "rename", "deauthorize", "approve") else (t.verb or "devices")
+    if action == "approve" and len(words) == 1:
+        from . import nearby
+
+        return nearby.approve(client, t)
     try:
         if action == "list":
             rows = _rows(client, k.copy.locale)
@@ -629,7 +647,9 @@ def devices(client: Any, t: Terminal, words: Sequence[str], *, yes: bool = False
         return usage(t, "devices deauthorize <deviceId>")
     if action == "rename":
         return usage(t, "devices rename <deviceId> [label...]")
-    return usage(t, "devices [list | rename <deviceId> [label...] | deauthorize <deviceId>]")
+    if action == "approve":
+        return usage(t, "devices approve")
+    return usage(t, "devices [list | rename <deviceId> [label...] | deauthorize <deviceId> | approve]")
 
 
 def usage(t: Terminal, text: str) -> Outcome:

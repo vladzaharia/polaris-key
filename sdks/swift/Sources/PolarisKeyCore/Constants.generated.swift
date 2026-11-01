@@ -32,6 +32,7 @@ public enum ErrorCode {
     public static let relayDisabled = "relay_disabled"
     public static let relayPaused = "relay_paused"
     public static let relayQuotaExceeded = "relay_quota_exceeded"
+    public static let connectLinksDisabled = "connect_links_disabled"
     public static let relayTicketInvalid = "relay_ticket_invalid"
     public static let deviceLimit = "device_limit"
     public static let keyEntryLimit = "key_entry_limit"
@@ -166,6 +167,8 @@ public enum ErrorCode {
     public static let nearbyUnsupported = "nearby-unsupported"
     public static let peerHandshakeFailed = "peer-handshake-failed"
     public static let peerClosed = "peer-closed"
+    public static let transferCancelled = "transfer-cancelled"
+    public static let linkUnknown = "link-unknown"
     public static let peerRevoked = "peer_revoked"
     public static let peerExpired = "peer_expired"
     public static let peerBadFrame = "peer_bad_frame"
@@ -258,6 +261,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "relay_disabled",
     "relay_paused",
     "relay_quota_exceeded",
+    "connect_links_disabled",
     "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
@@ -392,6 +396,8 @@ public let ERROR_CODE_VALUES: [String] = [
     "nearby-unsupported",
     "peer-handshake-failed",
     "peer-closed",
+    "transfer-cancelled",
+    "link-unknown",
     "peer_revoked",
     "peer_expired",
     "peer_bad_frame",
@@ -484,6 +490,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "relay_disabled": "wire",
     "relay_paused": "wire",
     "relay_quota_exceeded": "wire",
+    "connect_links_disabled": "wire",
     "relay_ticket_invalid": "wire",
     "device_limit": "wire",
     "key_entry_limit": "wire",
@@ -618,6 +625,8 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "nearby-unsupported": "client",
     "peer-handshake-failed": "client",
     "peer-closed": "client",
+    "transfer-cancelled": "client",
+    "link-unknown": "client",
     "peer_revoked": "peer",
     "peer_expired": "peer",
     "peer_bad_frame": "peer",
@@ -2047,7 +2056,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "connect.protocol": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.lan": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.relay": CapabilityRow(status: "implemented", service: "connect", na: []),
-    "connect.links": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.links": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.transfer": CapabilityRow(status: "planned", service: "connect", na: []),
     "connect.app": CapabilityRow(status: "implemented", service: "connect", na: []),
     "devices.fingerprint": CapabilityRow(status: "implemented", service: "core", na: []),
@@ -2143,4 +2152,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "dde5765be5ece57a67fac9b2673d1aa7925282d9fa36f7104dd8b0ab25ae1da6"
+public let CAPABILITY_DIGEST = "016547171d0a488fc312044c5927dfa6d8bbb9a3ef5e43ebe9c292734d8f8956"

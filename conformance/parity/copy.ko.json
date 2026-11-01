@@ -97,6 +97,10 @@
       "title": "원격 연결 한도 도달",
       "message": "곧 초기화됩니다. 같은 네트워크의 기기는 계속 연결됩니다."
     },
+    "connect_links_disabled": {
+      "title": "연결이 꺼져 있어요",
+      "message": "이 앱에서는 다른 사람과의 연결이 꺼져 있어요. 내 기기끼리는 계속 연결돼요."
+    },
     "relay_ticket_invalid": {
       "title": "연결 만료",
       "message": "연결 요청이 만료되었습니다. 다시 시도하세요."
@@ -628,6 +632,14 @@
     "peer-closed": {
       "title": "연결이 종료됨",
       "message": "근처 기기와의 연결이 종료되었습니다. 다시 시도하세요."
+    },
+    "transfer-cancelled": {
+      "title": "전송 중단됨",
+      "message": "전송이 완료되지 않았습니다. 수신된 항목이 없습니다."
+    },
+    "link-unknown": {
+      "title": "페어링되지 않음",
+      "message": "해당 기기는 더 이상 이 기기와 페어링되어 있지 않습니다."
     },
     "peer_revoked": {
       "title": "더 이상 신뢰할 수 없는 기기",

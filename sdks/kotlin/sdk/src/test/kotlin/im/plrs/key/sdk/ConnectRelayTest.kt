@@ -288,7 +288,9 @@ class ConnectRelayTest {
         // wake() releases a sleep that is already registered: wait for it, or it is a no-op.
         until { svc.status.state == RelayState.backoff && r.sleep.pending.isNotEmpty() }
         r.wake()
-        svc.ready(5000)
+        // Wait on the state, not on ready(): a ready() that times out would throw the previous socket's
+        // LIMIT error and hide why the reopen did not happen.
+        until { svc.status.state == RelayState.open }
         assertNull(svc.status.error) // the last LIMIT is cleared on reopen
         r.room.dropAll(4008)
         until { svc.status.state == RelayState.backoff }

@@ -29,6 +29,7 @@ import { toast } from "../../../../ui/toast.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { mutate } from "../../../data/mutations.js";
 import { useMatrix, useOutlets } from "../data.js";
+import { FailureCallout, SubmitFooter, useSubmitState } from "./dialogParts.js";
 import { useDeliverables, useReleaseStore } from "../../release/data.js";
 import {
   outletKindLabel,
@@ -224,9 +225,8 @@ export function SetPercentageDialog({
   const [value, setValue] = React.useState<number | null>(
     rollout ? rollout.rolloutBp / 10_000 : null,
   );
-  const [error, setError] = React.useState<string | undefined>();
-  const [failure, setFailure] = React.useState<unknown>(null);
-  const [busy, setBusy] = React.useState(false);
+  const { error, setError, failure, setFailure, busy, setBusy } =
+    useSubmitState();
   if (!rollout) return null;
   const v = version ?? rollout.releaseId;
   const bp = toBp(value);
@@ -285,20 +285,11 @@ export function SetPercentageDialog({
             }}
             error={error}
           />
-          {copy ? (
-            <Callout tone="danger" title={copy.title} live>
-              {copy.description}
-            </Callout>
-          ) : null}
+          <FailureCallout copy={copy} />
         </DialogBody>
-        <DialogFooter>
-          <Button variant="outline" disabled={busy} onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" loading={busy}>
-            {bp === null ? "Set percentage" : `Set to ${formatBasisPoints(bp)}`}
-          </Button>
-        </DialogFooter>
+        <SubmitFooter busy={busy} onClose={onClose}>
+          {bp === null ? "Set percentage" : `Set to ${formatBasisPoints(bp)}`}
+        </SubmitFooter>
       </form>
     </Dialog>
   );

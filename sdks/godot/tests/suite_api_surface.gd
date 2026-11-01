@@ -186,6 +186,15 @@ const ROWS := [
 	["packs.packReady", "res://addons/polaris_key/services/packs.gd", "signal", "pack_ready"],
 	["packs.packFailed", "res://addons/polaris_key/services/packs.gd", "signal", "pack_failed"],
 	["packs.setChanged", "res://addons/polaris_key/services/packs.gd", "signal", "set_changed"],
+	["cloudConnect.start", "res://addons/polaris_key/services/cloud_connect.gd", "method", "start"],
+	["cloudConnect.stop", "res://addons/polaris_key/services/cloud_connect.gd", "method", "stop"],
+	["cloudConnect.peers", "res://addons/polaris_key/services/cloud_connect.gd", "method", "peers"],
+	["cloudConnect.devices", "res://addons/polaris_key/services/cloud_connect.gd", "method", "devices"],
+	["cloudConnect.open", "res://addons/polaris_key/services/cloud_connect.gd", "method", "open"],
+	["cloudConnect.onChannel", "res://addons/polaris_key/services/cloud_connect.gd", "signal", "channel"],
+	["cloudConnect.refreshPeers", "res://addons/polaris_key/services/cloud_connect.gd", "method", "refresh_peers"],
+	["cloudConnect.status", "res://addons/polaris_key/services/cloud_connect.gd", "method", "status"],
+	["cloudConnect.onNotice", "res://addons/polaris_key/services/cloud_connect.gd", "signal", "notice"],
 ]
 
 ## [concept, script, name]

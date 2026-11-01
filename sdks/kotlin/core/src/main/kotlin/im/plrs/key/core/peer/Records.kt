@@ -164,6 +164,13 @@ public class RecordAssembler(private val mode: RecordMode) {
     private var parts = ArrayList<ByteArray>()
     private var dropping = -1
 
+    /**
+     * Set by the session once the capabilities are known (section 15.11): whether `xfer/1` is in both payloads.
+     * While null the transfer types read as any other. When set, a transfer record without the capability is
+     * `peer_not_allowed`, and one with `MORE` set is `peer_bad_frame`.
+     */
+    internal var xferAllowed: Boolean? = null
+
     private fun bad(code: PeerCloseCode): AssembleResult = AssembleResult.Close(code)
 
     private fun chainTooLong(chain: Boolean, size: Int): Boolean = chain && mode.unverifiedPeer && size > MAX_VP_CHAIN_BYTES
@@ -185,6 +192,11 @@ public class RecordAssembler(private val mode: RecordMode) {
             return AssembleResult.Ignored
         }
         if (mode !in row.modes) return bad(PeerCloseCode.peer_not_allowed)
+        val xa = xferAllowed
+        if (xa != null && r.type in XferType.OFFER..XferType.CANCEL) {
+            if (!xa) return bad(PeerCloseCode.peer_not_allowed)
+            if (more) return bad(PeerCloseCode.peer_bad_frame)
+        }
         val chained = openType >= 0
         val size = (if (chained) openSize else 0) + r.body.size
         if (size > MAX_PEER_MESSAGE_BYTES) return bad(PeerCloseCode.peer_bad_frame)

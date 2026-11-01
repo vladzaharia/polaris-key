@@ -79,6 +79,10 @@ public interface PeerLinkPort {
 
     /** Stop (true) or resume (false) reading from the pipe. Safe from any thread. */
     public fun pause(on: Boolean)
+
+    /** The transfer port of the session (section 15.11); see [PeerChannel.attachXfer]. A link with no channel behind it has none. */
+    public fun attachXfer(onRecord: (Int, ByteArray) -> Unit): suspend (Int, ByteArray) -> Unit =
+        throw UnsupportedOperationException("transfers are not available on this link")
 }
 
 /** The peer was not admitted. [closeCode] is the channel's close code. */
@@ -93,6 +97,8 @@ public class LinkHandlers<H>(
     public val onRingWanted: () -> Unit = {},
     public val onClosed: (SessionEvent.Closed) -> Unit = {},
     public val onEnded: () -> Unit = {},
+    /** Mode p with an exchange: the peer's valid `CONTACT` and the new contact secret. */
+    public val onContact: (SessionEvent.Contact) -> Unit = {},
     /** Modes v and p: the code both screens show (CC-15). */
     public val onSas: (PeerLinkPort, SessionEvent.Sas) -> Unit = { _, _ -> },
     /**
@@ -205,6 +211,8 @@ public class PeerLink<H>(
 
     override suspend fun sendRecord(type: Int, body: ByteArray): Unit = channel.sendRecord(type, body)
 
+    override fun attachXfer(onRecord: (Int, ByteArray) -> Unit): suspend (Int, ByteArray) -> Unit = channel.attachXfer(onRecord)
+
     override suspend fun close(code: PeerCloseCode) {
         closing = true
         channel.close(code)
@@ -275,7 +283,7 @@ public class PeerLink<H>(
     private fun onEvent(e: SessionEvent) {
         when (e) {
             is SessionEvent.Established -> {
-                if (e.peerDeviceId == null && !handlers.anonymous) return
+                if (e.peerDeviceId == null && e.contactIndex == null && !handlers.anonymous) return
                 deadline?.cancel()
                 deadline = null
                 open = true
@@ -291,6 +299,8 @@ public class PeerLink<H>(
             SessionEvent.RingWanted -> handlers.onRingWanted()
 
             is SessionEvent.Sas -> handlers.onSas(this, e)
+
+            is SessionEvent.Contact -> handlers.onContact(e)
 
             is SessionEvent.Closed -> finish(if (lost && !closing && !e.byPeer) SessionEvent.Closed("connection_lost", false) else e)
         }

@@ -80,6 +80,10 @@ export type RelayErrorReason =
   | "wrong_peer"
   | "busy"
   | "mode_not_allowed"
+  /** A contact ticket while links between accounts are off (403 `connect_links_disabled`). */
+  | "links_disabled"
+  /** The Worker did not echo `room: "c"`: it predates contact rooms (§15.7). */
+  | "contact_unsupported"
   | "stopped";
 
 /** The registered code of each reason: the Worker's own for the four it answers with. */
@@ -97,6 +101,8 @@ const RELAY_CODE: Record<RelayErrorReason, string> = {
   wrong_peer: ErrorCode.peerCertInvalid,
   unknown_peer: ErrorCode.invalidArgument,
   mode_not_allowed: ErrorCode.invalidArgument,
+  links_disabled: ErrorCode.connectLinksDisabled,
+  contact_unsupported: ErrorCode.connectUnavailable,
   replaced: ErrorCode.cancelled,
   stopped: ErrorCode.cancelled,
 };
@@ -136,6 +142,8 @@ export interface RelayGrant {
   protocol: string;
   /** Seconds since the epoch. */
   expiresAt: number;
+  /** `"c"` for a contact-room ticket, echoed by the Worker; absent for an account ticket. */
+  room?: "c";
 }
 
 /** What the relay needs of the client: the LAN source's identity plus a ticket. */
@@ -322,6 +330,8 @@ class RelayLink {
           this.role,
           "relay",
           "relay",
+          null,
+          e.remoteStatic,
         );
         this.#session.peerStatic = e.remoteStatic;
         this.cb.onEstablished(this.#session);

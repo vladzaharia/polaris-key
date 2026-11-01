@@ -199,6 +199,29 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     /** `cloudConnect.refreshPeers()`. */
     public fun cloudConnectRefreshPeers(): CompletableFuture<List<CloudPeer>> = call { client.cloudConnect.refreshPeers() }
 
+    // ── Cloud Connect: inter-account links ───────────────────────────────────────────────────
+
+    /** `cloudConnect.links.pair(options)`: the pairing window (completes exceptionally with `LinksDisabledException` while links are off). */
+    public fun cloudLinksPair(options: LinkPairOptions): CompletableFuture<LinkPairHandle> = call { client.cloudConnect.links.pair(options) }
+
+    /** `cloudConnect.links.list()`. */
+    public fun cloudLinksList(): CompletableFuture<List<ContactInfo>> = call { client.cloudConnect.links.list() }
+
+    /** `cloudConnect.links.remove(id)`: false when [id] names no link. */
+    public fun cloudLinksRemove(id: String): CompletableFuture<Boolean> = call { client.cloudConnect.links.remove(id) }
+
+    /** `cloudConnect.links.setReachable(id, reachable)`: false when [id] names no link. */
+    public fun cloudLinksSetReachable(id: String, reachable: Boolean): CompletableFuture<Boolean> =
+        call { client.cloudConnect.links.setReachable(id, reachable) }
+
+    /** `cloudConnect.links.open(id, relay, lanAttemptSeconds)`. */
+    @JvmOverloads
+    public fun cloudLinksOpen(id: String, relay: Boolean = true, lanAttemptSeconds: Double? = null): CompletableFuture<ConnectSession> =
+        call { client.cloudConnect.links.open(id, relay, lanAttemptSeconds) }
+
+    /** `cloudConnect.links.interAccount()`. */
+    public fun cloudLinksInterAccount(): CompletableFuture<Boolean> = call { client.cloudConnect.links.interAccount() }
+
     // ── Nearby approval (CC-15) ──────────────────────────────────────────────────────────────
 
     /**

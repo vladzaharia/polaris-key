@@ -22,6 +22,7 @@
                             Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
                             Remove a device and make room for another
+  [1mdevices approve[22m           Approve a device signing in nearby
 
 [1mSettings[22m
   [1mconfig get <key>[22m          Show one setting and where its value comes from
@@ -80,6 +81,7 @@
                             Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
                             Remove a device and make room for another
+  [1mdevices approve[22m           Approve a device signing in nearby
 
 [1mSettings[22m
   [1mconfig get <key>[22m          Show one setting and where its value comes from
@@ -138,6 +140,7 @@
                             Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
                             Remove a device and make room for another
+  [1mdevices approve[22m           Approve a device signing in nearby
 
 [1mSettings[22m
   [1mconfig get <key>[22m          Show one setting and where its value comes from
@@ -196,6 +199,7 @@ Usage  tidewater <command> [options]
                             Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
                             Remove a device and make room for another
+  [1mdevices approve[22m           Approve a device signing in nearby
 
 [1mSettings[22m
   [1mconfig get <key>[22m          Show one setting and where its value comes from
@@ -254,6 +258,7 @@ Run tidewater <command> --help for one command's options.
                             Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
                             Remove a device and make room for another
+  [1mdevices approve[22m           Approve a device signing in nearby
 
 [1mSettings[22m
   [1mconfig get <key>[22m          Show one setting and where its value comes from
@@ -316,6 +321,7 @@ Run tidewater <command> --help for one command's options.
   [1mdevices deauthorize <deviceId>[22m
                     Remove a device and make room
                     for another
+  [1mdevices approve[22m   Approve a device signing in nearby
 
 [1mSettings[22m
   [1mconfig get <key>[22m  Show one setting and where its value
@@ -388,6 +394,7 @@ Run tidewater <command> --help for one command's options.
   [1mdevices deauthorize <deviceId>[22m
                     Remove a device and make room
                     for another
+  [1mdevices approve[22m   Approve a device signing in nearby
 
 [1mSettings[22m
   [1mconfig get <key>[22m  Show one setting and where its value
@@ -460,6 +467,7 @@ Run tidewater <command> --help for one command's options.
   [1mdevices deauthorize <deviceId>[22m
                     Remove a device and make room
                     for another
+  [1mdevices approve[22m   Approve a device signing in nearby
 
 [1mSettings[22m
   [1mconfig get <key>[22m  Show one setting and where its value
@@ -532,6 +540,7 @@ Usage  tidewater <command> [options]
   [1mdevices deauthorize <deviceId>[22m
                     Remove a device and make room
                     for another
+  [1mdevices approve[22m   Approve a device signing in nearby
 
 [1mSettings[22m
   [1mconfig get <key>[22m  Show one setting and where its value
@@ -604,6 +613,7 @@ Run tidewater <command> --help for one command's options.
   [1mdevices deauthorize <deviceId>[22m
                     Remove a device and make room
                     for another
+  [1mdevices approve[22m   Approve a device signing in nearby
 
 [1mSettings[22m
   [1mconfig get <key>[22m  Show one setting and where its value

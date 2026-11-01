@@ -95,6 +95,23 @@ export interface KeyringWrapInfo {
   by?: string;
 }
 
+/**
+ * A wrap of the root to one device, as `wrapTo` returns it and as `KEYRING_WRAP` (0x0030) carries
+ * it over a nearby session (`{ringId, epoch, kid, kem, enc, ct}`, V5 §15.6): the same wrap the
+ * Worker was `PUT` (which has no `ringId`). It is ciphertext for one device's agreement key; it
+ * holds no root.
+ */
+export interface KeyringWrapBody {
+  ringId: string;
+  epoch: number;
+  /** The root's `kid`, hex. */
+  kid: string;
+  /** The HPKE KEM id (32). */
+  kem: number;
+  enc: string;
+  ct: string;
+}
+
 export interface KeyringState {
   ring: KeyringRing | null;
   wrap: KeyringWrapInfo | null;
@@ -392,32 +409,63 @@ export class KeyringClient {
   async #unlock(accept: RingPin | null): Promise<UnlockResult> {
     const { ring, wrap } = await this.read();
     if (ring === null) return { kind: "locked", reason: "no-ring" };
+    const changed = await this.#ringChanged(ring, accept, wrap?.by);
+    if (changed !== null) return changed;
+    if (wrap === null) return { kind: "locked", reason: "no-wrap" };
+    return this.#openWrap(ring, wrap);
+  }
+
+  /** `ring-changed` when the served ring is not the one pinned (or, with `accept`, shown). */
+  async #ringChanged(
+    ring: KeyringRing,
+    accept: RingPin | null,
+    by?: string,
+  ): Promise<UnlockResult | null> {
     const pinned = await this.pin();
     // An accept holds only for the ring the person was shown; a ring that moved since is
     // reported again, not adopted.
     const expected = accept ?? pinned;
     if (
-      expected !== null &&
-      (expected.ringId !== ring.ringId ||
-        expected.epoch !== ring.epoch ||
-        expected.rootKid !== ring.rootKid)
+      expected === null ||
+      (expected.ringId === ring.ringId &&
+        expected.epoch === ring.epoch &&
+        expected.rootKid === ring.rootKid)
     )
-      return {
-        kind: "ring-changed",
-        pinned: pinned ?? expected,
-        served: {
-          ringId: ring.ringId,
-          epoch: ring.epoch,
-          rootKid: ring.rootKid,
-          createdAt: ring.createdAt,
-          ...(wrap?.by !== undefined ? { by: wrap.by } : {}),
-        },
-      };
-    if (wrap === null) return { kind: "locked", reason: "no-wrap" };
+      return null;
+    return {
+      kind: "ring-changed",
+      pinned: pinned ?? expected,
+      served: {
+        ringId: ring.ringId,
+        epoch: ring.epoch,
+        rootKid: ring.rootKid,
+        createdAt: ring.createdAt,
+        ...(by !== undefined ? { by } : {}),
+      },
+    };
+  }
+
+  /**
+   * Open `wrap` (this device's, for `ring`) and hold the root. A root already held for this ring
+   * and epoch is never replaced: the answer is `unlocked` and the wrap is not opened again.
+   */
+  async #openWrap(
+    ring: KeyringRing,
+    wrap: Pick<KeyringWrapInfo, "epoch" | "kid" | "kem" | "enc" | "ct">,
+  ): Promise<UnlockResult> {
     const keys = this.#keys;
     const kid = unhex(ring.rootKid);
     const enc = unb64(wrap.enc, 32);
     const ct = unb64(wrap.ct);
+    const held = this.#held;
+    if (
+      held !== null &&
+      held.ringId === ring.ringId &&
+      held.epoch === ring.epoch &&
+      kid !== null &&
+      same(held.kid, kid)
+    )
+      return { kind: "unlocked", ringId: ring.ringId, epoch: ring.epoch };
     if (
       !keys ||
       kid === null ||
@@ -446,6 +494,34 @@ export class KeyringClient {
     return { kind: "unlocked", ringId: ring.ringId, epoch: ring.epoch };
   }
 
+  /**
+   * Take the wrap a nearby approver sent over the channel (`KEYRING_WRAP`, V5 §13.11.3). Call it
+   * only after the person confirmed the signed-in account (§15.6.1 rule 12). The record must name
+   * the ring the Worker serves right now: this reads the ring afresh and compares `ringId`,
+   * `epoch` and `kid` (S5) before anything is opened, then opens it through this device's own
+   * agreement key and pins it. A ring that is not the pinned one is `ring-changed` and nothing is
+   * opened; a record that does not match, does not parse or does not open leaves the device
+   * locked. A root already held for the ring is kept: the channel copy wins over a server copy
+   * that differs, and `unlock()` never replaces it. Pass the record's bytes (strict JSON) or the
+   * body `wrapTo` returned.
+   */
+  async adoptWrap(record: Uint8Array | KeyringWrapBody): Promise<UnlockResult> {
+    const w = parseWrapRecord(record);
+    if (w === null) return { kind: "locked", reason: "unusable-wrap" };
+    const { ring } = await this.read();
+    if (ring === null) return { kind: "locked", reason: "no-ring" };
+    const changed = await this.#ringChanged(ring, null);
+    if (changed !== null) return changed;
+    if (
+      w.ringId !== ring.ringId ||
+      w.epoch !== ring.epoch ||
+      w.kid !== ring.rootKid ||
+      w.kem !== HPKE_KEM_X25519
+    )
+      return { kind: "locked", reason: "unusable-wrap" };
+    return this.#openWrap(ring, w);
+  }
+
   // ── Writes ──────────────────────────────────────────────────────────────────────────────────
 
   /**
@@ -465,11 +541,30 @@ export class KeyringClient {
   }
 
   /**
-   * Wrap the root to another device of the same person (`PUT .../wraps/{deviceId}`). `agreeKey` is
-   * that device's X25519 key, from the nearby approval (R-9): the host decides when to call this,
-   * the Worker accepts a wrap only from a device that holds a wrap itself.
+   * Wrap the root to another device of the same person (`PUT .../wraps/{deviceId}`) and answer the
+   * wrap it stored. `agreeKey` is that device's X25519 key, from the nearby approval (R-9): the
+   * host decides when to call this, the Worker accepts a wrap only from a device that holds a wrap
+   * itself.
    */
-  async wrapTo(deviceId: string, agreeKey: Uint8Array | string): Promise<void> {
+  async wrapTo(
+    deviceId: string,
+    agreeKey: Uint8Array | string,
+  ): Promise<KeyringWrapBody> {
+    const body = await this.sealWrapTo(deviceId, agreeKey);
+    await this.putWrap(deviceId, body);
+    return body;
+  }
+
+  /**
+   * The first half of {@link wrapTo}: seal the root to `agreeKey` for `deviceId` and answer the
+   * wrap, without storing it. A nearby approver sends this over the channel first and then stores
+   * the same bytes with {@link putWrap} (V5 §13.11.3), so a refused or failed `PUT` cannot take
+   * the channel copy with it.
+   */
+  async sealWrapTo(
+    deviceId: string,
+    agreeKey: Uint8Array | string,
+  ): Promise<KeyringWrapBody> {
     const h = this.#need();
     if (deviceId === "" || /[/?#\s]/.test(deviceId))
       throw badArg("A device id is required.");
@@ -484,14 +579,24 @@ export class KeyringClient {
       h.kid,
       h.root,
     );
+    // The same wrap, with its ring, is what a nearby approver also sends over the channel.
+    return {
+      ringId: h.ringId,
+      epoch: h.epoch,
+      kid: hex(h.kid),
+      ...wireWrap(w),
+    };
+  }
+
+  /** The second half of {@link wrapTo}: `PUT .../wraps/{deviceId}` with a wrap `sealWrapTo` made. */
+  async putWrap(deviceId: string, body: KeyringWrapBody): Promise<void> {
+    if (deviceId === "" || /[/?#\s]/.test(deviceId))
+      throw badArg("A device id is required.");
+    const { ringId: _ring, ...put } = body;
     await this.#send(
       "PUT",
       `devices/keyring/wraps/${encodeURIComponent(deviceId)}`,
-      {
-        epoch: h.epoch,
-        kid: hex(h.kid),
-        ...wireWrap(w),
-      },
+      put,
     );
   }
 
@@ -859,6 +964,42 @@ export class KeyringClient {
     printAs(codec, () => ({ locked: self.#held === null }));
     return codec;
   }
+}
+
+/** `KEYRING_WRAP`'s body: strict JSON `{ringId, epoch, kid, kem, enc, ct}`, or such an object. */
+function parseWrapRecord(
+  record: Uint8Array | KeyringWrapBody,
+): KeyringWrapBody | null {
+  let v: unknown = record;
+  if (record instanceof Uint8Array) {
+    if (record.length === 0 || record.length > 4096) return null;
+    try {
+      v = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(record));
+    } catch {
+      return null;
+    }
+  }
+  if (
+    !isRecord(v) ||
+    typeof v.ringId !== "string" ||
+    !RING_ID.test(v.ringId) ||
+    typeof v.epoch !== "number" ||
+    !Number.isSafeInteger(v.epoch) ||
+    v.epoch < 1 ||
+    typeof v.kid !== "string" ||
+    typeof v.kem !== "number" ||
+    typeof v.enc !== "string" ||
+    typeof v.ct !== "string"
+  )
+    return null;
+  return {
+    ringId: v.ringId,
+    epoch: v.epoch,
+    kid: v.kid,
+    kem: v.kem,
+    enc: v.enc,
+    ct: v.ct,
+  };
 }
 
 function wireWrap(w: SyncWrap): { kem: number; enc: string; ct: string } {

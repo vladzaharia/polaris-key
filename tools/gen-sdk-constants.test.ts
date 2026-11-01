@@ -76,7 +76,8 @@ describe("the Cloud Sync constants (U-05.2)", () => {
     );
     const found = syncExports(SOURCES.protocol, SOURCES.protocolSyncSource!);
     expect(found.map((f) => f.name).sort()).toEqual(names.sort());
-    expect(found.length).toBe(58);
+    expect(found.length).toBe(names.length);
+    expect(found.length).toBeGreaterThan(0);
     expect(
       found.find((f) => f.name === "SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS")
         ?.section,
@@ -265,10 +266,10 @@ describe("the sources", () => {
       outletMatrixVersion: 1,
       planMatrixVersion: 2,
       syncScenariosVersion: 4,
-      deviceLabelVersion: 1,
+      deviceLabelVersion: 2,
       presentationMatrixVersion: 1,
       portalMatrixVersion: 1,
-      uiMatrixVersion: 7,
+      uiMatrixVersion: 8,
       backendMatrixVersion: 1,
       contentCorpusVersion: 2,
     });

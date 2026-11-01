@@ -55,6 +55,12 @@ public enum class RelayErrorReason(public val code: String) {
     busy(ErrorCode.rateLimited),
     mode_not_allowed(ErrorCode.invalidArgument),
     stopped(ErrorCode.cancelled),
+
+    /** A contact ticket while links between accounts are off (403 `connect_links_disabled`). */
+    links_disabled(ErrorCode.connectLinksDisabled),
+
+    /** The Worker did not echo `room: "c"`: it predates contact rooms (section 15.7). */
+    contact_unsupported(ErrorCode.connectUnavailable),
 }
 
 /** The scope of a spent relay quota. */

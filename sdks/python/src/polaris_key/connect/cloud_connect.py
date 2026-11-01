@@ -9,6 +9,10 @@ over the identity client, the LAN service, the relay and the sessions they open.
 - ``open(device_id)``: a session to one device, LAN first, the relay after a bounded LAN attempt;
 - ``on_channel(fn)``: sessions other devices opened to this one, on either path;
 - ``stop()``: close the sessions, the relay and the LAN service;
+- ``links``: inter-account links (CC-19): ``pair()``, ``list()``, ``remove()``, ``open()``, ``on_link()``;
+  off unless discovery says ``interAccount``.
+- ``transfer``: Direct Transfer between peers (CC-20): ``send()``, ``on_offer()``, ``on_result()``. ``start()``
+  lists ``xfer/1`` in the capabilities unless the options say ``transfer=False``.
 - ``nearby``: approval of a device with no sign-in by a signed-in device nearby (mode ``v``, CC-15):
   ``nearby.request()`` on the new device, ``nearby.on_request()`` on the approver.
 
@@ -25,7 +29,8 @@ Rules this module keeps:
 - the relay stays off, with no socket and no ticket asked for, when the host turned it off (``relay=False``
   at start, or per call) and when discovery says so: ``services.connect.relay`` is false, or the ticket
   endpoint is null (G21). ``status().relay_reason`` says which;
-- the relay carries mode ``a`` only; modes ``v`` and ``p`` are not reachable through this API;
+- the account relay carries mode ``a`` only; modes ``v`` and ``p`` are not reachable through this API, and
+  mode ``c`` runs over contact rooms (contact_relay.py) that only ``links`` opens;
 - an inbound session with no ``on_channel`` listener is closed (G9);
 - a failure on one path is never swallowed: when no path works the last typed error is raised
   (:class:`~polaris_key.connect.errors.LanError` or :class:`~polaris_key.connect.errors.RelayError`).
@@ -34,18 +39,23 @@ Rules this module keeps:
 from __future__ import annotations
 
 import concurrent.futures
+import dataclasses
 import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional
 
 from ..core.b64url import b64url_encode
+from ..core.peer_xfer import XFER_CAP
 from .client import ConnectClient, ConnectDevice
 from .errors import LanError, RelayError
+from .links import CloudLinks
 from .loop import connect_loop
 from .nearby import CloudNearby, NearbyDeps
+from .transfer import Transfer
 
 if TYPE_CHECKING:  # the transports import asyncio and sockets: only when Connect starts
     from .channel import ConnectNotice
+    from .contact_relay import ContactRelay
     from .lan import LanService
     from .relay import RelayService
     from .session import ConnectSession
@@ -101,6 +111,16 @@ def relay_wanted(discovery: Optional[Mapping[str, Any]]) -> Optional[str]:
 Options = Optional[Mapping[str, Any]]
 
 
+def xfer_caps(caps: Any, on: bool) -> Any:
+    """``caps`` with ``xfer/1`` listed once when Direct Transfer is on."""
+    from ..core.peer_xfer import XFER_CAP
+
+    c = list(caps)
+    if on and XFER_CAP not in c:
+        c.append(XFER_CAP)
+    return tuple(c)
+
+
 class CloudConnect:
     """``client.cloud_connect``. ``discovery`` returns the loaded discovery document (or ``None``);
     ``apply_trust`` verifies and applies a trust manifest a peer pushed; ``now`` is epoch seconds (the
@@ -114,6 +134,7 @@ class CloudConnect:
         apply_trust: Optional[Callable[[str], Any]] = None,
         now: Optional[Callable[[], int]] = None,
         nearby: Optional[NearbyDeps] = None,
+        state_dir: Callable[[], Optional[str]] = lambda: None,
     ) -> None:
         self._nearby = CloudNearby(nearby)
         self._now = now
@@ -137,6 +158,35 @@ class CloudConnect:
         self._gate: Any = None
         # A roster this device stores re-admits every open session (§15.6).
         connect.on_roster(self._readmit)
+        self._contact_relay: Optional["ContactRelay"] = None
+        self._links = CloudLinks(self, connect)
+        self._transfer = Transfer(state_dir, self._open_for_transfer, links=self._link_ids)
+        leave = getattr(connect, "on_roster_leave", None)
+        if leave is not None:
+            leave(self._forget_left)
+
+    @property
+    def transfer(self) -> Transfer:
+        """Direct Transfer (CC-20): ``send``, ``on_offer``, ``on_result``."""
+        return self._transfer
+
+    def _forget_left(self, keys: List[bytes]) -> None:
+        for k in keys:
+            self._transfer.forget_peer(k)
+
+    def _link_ids(self) -> List[str]:
+        return [c.id for c in self._links.list()]
+
+    def _open_for_transfer(self, peer: Any) -> "ConnectSession":
+        if isinstance(peer, str):
+            return self.open(peer)
+        return self._links.open(peer.id)
+
+    @property
+    def links(self) -> CloudLinks:
+        """Inter-account links (CC-19): ``pair``, ``list``, ``remove``, ``set_reachable``, ``open``,
+        ``on_link``."""
+        return self._links
 
     def __repr__(self) -> str:
         return "<CloudConnect running=%s>" % self._running
@@ -202,6 +252,9 @@ class CloudConnect:
             self._touched = True
         self._run(self._start(options or {}))
 
+    def _xfer_hook(self, on: bool) -> Any:
+        return self._transfer.attach if on else None
+
     async def _start(self, opts: Mapping[str, Any]) -> None:
         from .lan import LanOptions, LanService, lan_source
         from .relay import RelayOptions, RelayService
@@ -220,6 +273,7 @@ class CloudConnect:
             relay_opt = opts.get("relay", True)
             reason = "host" if relay_opt is False else relay_wanted(self._discovery())
             relay_on = reason is None
+            xfer_on = opts.get("transfer", True) is not False
             src = lan_source(self._connect, apply_trust=self._apply_trust, now=self._now)
             lan_opt = opts.get("lan", True)
             if lan_opt is not False:
@@ -229,6 +283,7 @@ class CloudConnect:
                         if isinstance(lan_opt, LanOptions)
                         else LanOptions(**(lan_opt if isinstance(lan_opt, Mapping) else {}))
                     )
+                    lo = dataclasses.replace(lo, caps=xfer_caps(lo.caps, xfer_on), xfer=self._xfer_hook(xfer_on))
                     lan = await LanService.start(src, lo)
                     self._lan = lan
                     self._unsub.append(lan.on_session(self._inbound))
@@ -237,19 +292,34 @@ class CloudConnect:
                     self._lan_failed = e
                     if not relay_on:
                         raise
+            contact_relay: Optional["ContactRelay"] = None
             if relay_on:
+                from .contact_relay import ContactRelay, ContactRelaySource
+
                 ro = (
                     relay_opt
                     if isinstance(relay_opt, RelayOptions)
                     else RelayOptions(**(relay_opt if isinstance(relay_opt, Mapping) else {}))
                 )
+                ro = ro._replace(caps=xfer_caps(ro.caps, xfer_on), xfer=self._xfer_hook(xfer_on))
                 relay = RelayService(src, self._connect.relay_ticket, ro)
                 self._relay = relay
                 self._unsub.append(relay.on_session(self._inbound))
                 self._unsub.append(relay.on_notice(self._notice))
                 relay.start()
+                # The contact rooms (§15.7) ride the same options. A device with no links keeps no room;
+                # the list is read again whenever it changes.
+                contact_relay = ContactRelay(
+                    ContactRelaySource(src, lambda rid: self._connect.relay_ticket(("c", rid))), ro
+                )
+                self._contact_relay = contact_relay
+                try:
+                    await contact_relay.start()
+                except Exception:
+                    pass
             else:
                 self._relay_reason = reason
+            self._links.attach(self._lan, contact_relay, self._lan_attempt, relay_on)
             self._running = True
 
     def stop(self) -> None:
@@ -271,16 +341,17 @@ class CloudConnect:
 
     def _force_stop(self) -> None:
         with self._lock:
-            lan, relay = self._lan, self._relay
-            self._lan = self._relay = None
+            lan, relay, croom = self._lan, self._relay, self._contact_relay
+            self._lan = self._relay = self._contact_relay = None
             self._running = False
             unsub, self._unsub = self._unsub, []
+        self._links.detach_sync()
         for u in unsub:
             try:
                 u()
             except Exception:
                 pass
-        for svc in (lan, relay):
+        for svc in (lan, relay, croom):
             if svc is not None:
                 try:
                     svc.abort()
@@ -298,15 +369,16 @@ class CloudConnect:
             for u in self._unsub:
                 u()
             self._unsub.clear()
-            lan, relay = self._lan, self._relay
-            self._lan = self._relay = None
+            lan, relay, croom = self._lan, self._relay, self._contact_relay
+            self._lan = self._relay = self._contact_relay = None
+            await self._links.detach()
             for s in list(self._sessions):
                 try:
                     s.close()
                 except Exception:
                     pass
             self._sessions.clear()
-            for svc in (lan, relay):
+            for svc in (lan, relay, croom):
                 if svc is not None:
                     try:
                         await svc.stop()
@@ -414,6 +486,9 @@ class CloudConnect:
         with self._lock:
             subs = list(self._on_channel)
         if not subs:
+            if self._transfer.listening and XFER_CAP in s.caps:
+                self._track(s)  # a host that takes offers keeps the sessions its peers open for them
+                return
             try:
                 s.close()  # nobody to hand it to (G9)
             except Exception:

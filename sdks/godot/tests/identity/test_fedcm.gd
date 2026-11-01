@@ -189,7 +189,7 @@ func _sign_out(t: PKeyTestContext) -> void:
 
 func _ladder(t: PKeyTestContext) -> void:
 	var bed := B.new()
-	bed.device_keys = PKeyDeviceKeyStore.new("djdl", "user://pkey_test_fedcm_%d" % Time.get_ticks_usec(), false, false)
+	bed.device_keys = PKeyDeviceKeyStore.for_tests("djdl", "user://pkey_test_fedcm_%d" % Time.get_ticks_usec())
 	var sdk = await bed.make_sdk("", PackedStringArray(["license", "config", "identity"]))
 	sdk.identity.redirect_acquisition_sync = false
 	var root := "%s/%s/identity" % [bed.server.base_url(), bed.F["product"]]

@@ -10,6 +10,8 @@
 //   stop()       close the sessions, the relay and the LAN service
 //   nearby       approval of a device with no sign-in by a signed-in device nearby (mode v, CC-15):
 //                `request()` on the new device, `onRequest()` on the approver
+//   links        inter-account links (mode p pairing, mode c sessions, CC-19): `pair()`, `list()`,
+//                `remove()`, `open()`, `onLink()`; off unless discovery says `interAccount`
 //
 // Rules this module keeps:
 //  - the order is LAN, then relay. The LAN attempt is bounded (`lanAttemptMs`); when it fails or
@@ -17,8 +19,9 @@
 //    was not seen on the LAN goes straight to the relay. `session.path` says which was used;
 //  - with the relay disabled (`relay: false` at start, or per call) no relay socket is opened and
 //    no ticket is asked for: a device that is not reachable on the LAN stays unreachable;
-//  - the relay carries only mode `a` sessions (see relay.ts). Modes `v` and `p` are not reachable
-//    through this API at all;
+//  - the account relay carries only mode `a` sessions (see relay.ts). Modes `v` and `p` are not
+//    reachable through this API at all, and mode `c` runs over contact rooms (contactRelay.ts)
+//    that only `links` opens;
 //  - a failure on one path is never swallowed: when no path works the last typed error is thrown
 //    (`LanError` or `RelayError`).
 
@@ -33,6 +36,11 @@ import { ErrorCode, Feature } from "../constants.generated.js";
 import type { IdentityFragment } from "../discovery.js";
 import { serialQueue, type ConnectNotice } from "./channel.js";
 import type { ConnectClient, ConnectDevice } from "./client.js";
+import { ContactRelay } from "./contactRelay.js";
+import { CloudLinks } from "./links.js";
+import { contactId } from "./contacts.js";
+import { CloudTransfer } from "./transfer.js";
+import { PartialStore } from "./transferStore.js";
 import type { LanOptions, LanPeer, LanService } from "./lan.js";
 import { MdnsUnavailableError } from "./mdns.js";
 import {
@@ -287,18 +295,50 @@ export class CloudConnect {
   /** Bumped by a forced stop, so a `start()` it overtook tears down what it made. */
   #epoch = 0;
   /** What a `stop()` in flight is still closing, for the forced stop to reach. */
-  #draining: { lan: LanService | null; relay: RelayService | null } | null =
-    null;
+  #draining: {
+    lan: LanService | null;
+    relay: RelayService | null;
+    contactRelay: ContactRelay | null;
+  } | null = null;
 
   readonly #nearby: CloudNearby;
+  readonly #links: CloudLinks;
+  readonly #transfer: CloudTransfer;
+  #contactRelay: ContactRelay | null = null;
 
   constructor(
     private readonly connect: ConnectClient,
     nearby: NearbyDeps | null = null,
+    /** Where partial files of received transfers are kept (`<state>/transfer`); null for none. */
+    transferDir: string | null = null,
   ) {
     this.#nearby = new CloudNearby(nearby);
     // A roster this device stores re-admits every open session (§15.6).
     connect.onRoster((ring) => this.#readmit(ring));
+    this.#transfer = new CloudTransfer({
+      store: transferDir === null ? null : new PartialStore(transferDir),
+      openDevice: (id) => this.open(id),
+      openLink: (id) => this.#links.open(id),
+      hasLink: async (id) =>
+        (await connect.contactRows()).some((r) => contactId(r.agreeKey) === id),
+    });
+    this.#links = new CloudLinks(connect, {
+      adopt: (s) => this.#transfer.adopt(s),
+      removed: (keys) =>
+        Promise.all(keys.map((k) => this.#transfer.purgePeer(k))).then(
+          () => undefined,
+        ),
+    });
+  }
+
+  /** Direct Transfer (CC-20.3): `send(peer, source)`, `onOffer(handler)`, `onResult(fn)`. */
+  get transfer(): CloudTransfer {
+    return this.#transfer;
+  }
+
+  /** Inter-account links (CC-19): `pair`, `list`, `remove`, `setReachable`, `open`, `onLink`. */
+  get links(): CloudLinks {
+    return this.#links;
   }
 
   /**
@@ -377,6 +417,21 @@ export class CloudConnect {
           relay.onNotice((n) => this.#notice(n)),
         );
       }
+      // The contact rooms (§15.7) and the links API ride the same transports. A device with no
+      // links keeps no room; the list is read again whenever it changes.
+      let contactRelay: ContactRelay | null = null;
+      if (this.#relayOn) {
+        contactRelay = new ContactRelay(
+          this.connect.contactRelaySource(),
+          opts.relay === false ? {} : opts.relay,
+        );
+        this.#contactRelay = contactRelay;
+        await contactRelay.start().catch(() => undefined);
+      }
+      this.#links.attach(this.#lan, contactRelay, {
+        lanAttemptMs: this.#lanAttemptMs,
+        relayOn: this.#relayOn,
+      });
       this.#running = true;
     });
   }
@@ -390,8 +445,10 @@ export class CloudConnect {
       for (const u of this.#unsub.splice(0)) u();
       const lan = this.#lan;
       const relay = this.#relay;
-      this.#lan = this.#relay = null;
-      this.#draining = { lan, relay };
+      const contactRelay = this.#contactRelay;
+      this.#lan = this.#relay = this.#contactRelay = null;
+      this.#draining = { lan, relay, contactRelay };
+      await this.#links.detach();
       await Promise.all(
         [...this.#sessions].map((s) => s.close().catch(() => undefined)),
       );
@@ -399,6 +456,7 @@ export class CloudConnect {
       await Promise.all([
         lan?.stop().catch(() => undefined),
         relay?.stop().catch(() => undefined),
+        contactRelay?.stop().catch(() => undefined),
       ]);
       if (epoch === this.#epoch) this.#draining = null;
     });
@@ -412,6 +470,8 @@ export class CloudConnect {
    */
   async stopForSignOut(boundMs: number = SIGN_OUT_BOUND_MS): Promise<void> {
     if (await stopWithin(() => this.stop(), boundMs)) this.#forceStop();
+    // The partial files of received transfers go with the session (they are the peer's bytes).
+    await stopWithin(() => this.#transfer.purge(), boundMs);
     // Then the nearby adverts and sessions (after Connect, before the device leaves it).
     if (await stopWithin(() => this.#nearby.stopAll(), boundMs))
       this.#nearby.forceStop();
@@ -422,13 +482,22 @@ export class CloudConnect {
     this.#serial = serialQueue();
     this.#running = false;
     for (const u of this.#unsub.splice(0)) u();
-    const held = [{ lan: this.#lan, relay: this.#relay }, this.#draining];
-    this.#lan = this.#relay = null;
+    const held = [
+      {
+        lan: this.#lan,
+        relay: this.#relay,
+        contactRelay: this.#contactRelay,
+      },
+      this.#draining,
+    ];
+    this.#lan = this.#relay = this.#contactRelay = null;
     this.#draining = null;
     this.#sessions.clear();
+    void this.#links.detach().catch(() => undefined);
     for (const h of held) {
       h?.lan?.abort();
       h?.relay?.abort();
+      h?.contactRelay?.abort();
     }
   }
 
@@ -519,6 +588,7 @@ export class CloudConnect {
   }
 
   #track(s: ConnectSession): ConnectSession {
+    this.#transfer.adopt(s);
     this.#sessions.add(s);
     s.onClose(() => this.#sessions.delete(s));
     return s;

@@ -218,7 +218,7 @@ const EXPECT: Record<string, (input: UiInput) => Expect> = {
     ...refusal("devices.manage"),
     focus: "heading",
   }),
-  "NearbyApproval.choose": () => heading("signin.choice.continue"),
+  "NearbyApproval.choose": () => heading(null),
   "NearbyApproval.account-required": () => ({
     ...refusal("signin.key.signIn"),
     focus: "heading",

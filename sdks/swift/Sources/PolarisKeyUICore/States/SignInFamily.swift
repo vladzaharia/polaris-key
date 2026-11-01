@@ -307,7 +307,7 @@ extension KitStates {
         case .choose:
             return KitScreen(
                 .choose,
-                lines("signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.choice.continue"))
+                lines("signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.approve.deny"))
         case .accountRequired:
             return KitScreen(
                 .accountRequired,

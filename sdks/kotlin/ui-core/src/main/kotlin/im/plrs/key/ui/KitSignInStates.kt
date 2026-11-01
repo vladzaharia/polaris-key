@@ -266,7 +266,7 @@ internal fun nearbyApprovalScreen(inputs: KitInputs): KitScreen {
 
         "device-limit" -> step("device-limit", "core.codes.device_limit.title", "signin.nearby.deviceLimitBody", "devices.manage")
 
-        "choose" -> step("choose", "signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.choice.continue")
+        "choose" -> step("choose", "signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.approve.deny")
 
         "account-required" -> step(
             "account-required",

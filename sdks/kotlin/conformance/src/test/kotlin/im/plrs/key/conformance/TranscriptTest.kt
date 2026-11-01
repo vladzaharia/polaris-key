@@ -8,7 +8,7 @@
 // @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
 // @pkey-feature license.manage identity.keyentry
 // @pkey-feature core.presentation identity.account identity.attach
-// @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity connect.relay
+// @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity connect.relay connect.links
 // @pkey-feature identity.exchange identity.pgs sync.keyring sync.settings identity.restore sync.files sync.files.delta sync.saves
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
@@ -422,6 +422,8 @@ object KotlinReplay {
                     out["restore"] = JsonPrimitive(identity?.enabled == true && identity.extras["restore"].boolValue == true)
                     out["restoreEndpoint"] = JsonPrimitive(identity?.enabled == true && identity.endpoints["restore"] != null)
                 }
+                // connect.links (CC-19): the cached `services.connect.interAccount` the SDK gates links on.
+                out["interAccount"] = JsonPrimitive(client.connect.interAccount())
             }
 
             // `client.identity.exchange` (I-45.3, `identity.exchange`): a platform ID token for a device token. A step with
@@ -617,6 +619,24 @@ object KotlinReplay {
                     out["code"] = JsonPrimitive(e.code)
                     e.retryAfterSeconds?.let { out["retryAfter"] = jsonInt(it.toLong()) }
                     (e as? RelayException)?.scope?.let { out["scope"] = JsonPrimitive(it.name) }
+                }
+            }
+
+            // `client.connect.relayTicket(room, rid)` (CC-19, `connect.links`): the body is sent as given; a refusal
+            // reads as `refused`; an answer without the `room` echo is the typed `contact_unsupported`.
+            "relayTicketContact" -> {
+                try {
+                    val g = client.connect.relayTicket(args["room"].stringValue ?: "", args["rid"].stringValue ?: "")
+                    out["result"] = JsonPrimitive("ok")
+                    out["room"] = JsonPrimitive("c")
+                    out["protocol"] = JsonPrimitive(g.protocol)
+                    out["url"] = JsonPrimitive(g.url)
+                    out["expiresIn"] = jsonInt(g.expiresAt - session.now)
+                } catch (e: PolarisException) {
+                    out["result"] = JsonPrimitive("refused")
+                    out["status"] = e.httpStatus?.let { jsonInt(it.toLong()) } ?: JsonNull
+                    out["code"] = JsonPrimitive(e.code)
+                    e.retryAfterSeconds?.let { out["retryAfter"] = jsonInt(it.toLong()) }
                 }
             }
 

@@ -42,6 +42,25 @@ export type TokenSource =
   | "signin"
   | "reacquire";
 
+/**
+ * Where "this token came from a sign-in" is kept across a restart (I-47.2): the store's record
+ * has no room for it (a client-core change), so the identity client keeps it beside the token in
+ * the state directory. A token no sign-in produced (a key activation, an enrolment, a
+ * registration) is not a sign-in, and `autoSignIn()`'s first rung counts only a sign-in.
+ */
+export interface TokenMarks {
+  /** At load: was the token in the store produced by a sign-in? */
+  loaded(): Promise<boolean>;
+  /** At load: does the unconfirmed mark stand (a nearby sign-in no person confirmed)? */
+  loadedUnconfirmed(): Promise<boolean>;
+  /**
+   * A token was stored (`signin` says whether a sign-in produced it) or cleared (false).
+   * `unconfirmed` marks a nearby sign-in's token the person has not confirmed (V5 §15.6.1
+   * rule 12); it is exclusive with `signin`.
+   */
+  stored(signin: boolean, unconfirmed?: boolean): Promise<void>;
+}
+
 /** The two routes the §5 single re-acquire can take. */
 export type ReacquireRoute = "license-token" | "devices-register";
 
@@ -96,6 +115,11 @@ export class TokenManager {
   private tokenSource: TokenSource | null = null;
   private inFlight: Promise<boolean> | null = null;
   private attempted = false;
+  private marks: TokenMarks | null = null;
+  /** The held token was produced by a sign-in (kept in `marks` across a restart). */
+  private fromSignIn = false;
+  /** The held token is a nearby sign-in's, not yet confirmed by the person. */
+  private heldUnconfirmed = false;
 
   constructor(
     private readonly ctx: CoreContext,
@@ -110,9 +134,52 @@ export class TokenManager {
     }));
   }
 
+  /** Keep the sign-in mark in `marks` (the identity client's). */
+  setMarks(marks: TokenMarks): void {
+    this.marks = marks;
+  }
+
   async load(): Promise<void> {
     this.token = await this.store.getToken();
     this.tokenSource = null;
+    this.heldUnconfirmed = false;
+    // A start that finds the unconfirmed mark means the process ended on the confirm screen
+    // (V5 §15.6.1 rule 12): the token goes, locally, before anything reads it.
+    if (
+      this.marks !== null &&
+      (await this.marks.loadedUnconfirmed().catch(() => false))
+    )
+      await this.clear();
+    this.fromSignIn =
+      this.token !== null && this.marks !== null
+        ? await this.marks.loaded().catch(() => false)
+        : false;
+  }
+
+  /** The held token was produced by a sign-in, and nothing has replaced it since. An unconfirmed
+   *  nearby token is not one. */
+  get signedIn(): boolean {
+    return this.token !== null && this.fromSignIn;
+  }
+
+  /** The held token is a nearby sign-in's that the person has not confirmed. */
+  get unconfirmed(): boolean {
+    return this.token !== null && this.heldUnconfirmed;
+  }
+
+  /** The person confirmed the account: the token becomes a plain sign-in and the explicit
+   *  sign-out flag clears. */
+  async confirmSignIn(): Promise<void> {
+    if (this.token === null) return;
+    this.fromSignIn = true;
+    this.heldUnconfirmed = false;
+    await this.marks?.stored(true);
+  }
+
+  /** The account signed out here: the token, when it stays, is no longer a sign-in. */
+  async dropSignIn(): Promise<void> {
+    this.fromSignIn = false;
+    await this.marks?.stored(false);
   }
 
   get current(): string | null {
@@ -125,16 +192,55 @@ export class TokenManager {
     return this.tokenSource;
   }
 
-  async set(token: string, source: TokenSource): Promise<void> {
+  /**
+   * Hold `token`. Only `source: "signin"` makes it a sign-in; a re-acquire (and `keepSignIn`, for
+   * an attach that rotates a signed-in device's token) leaves the mark as it was; anything else
+   * clears it. `{unconfirmed: true}` holds a nearby sign-in's token under the unconfirmed mark,
+   * written BEFORE the token (a crash leaves the old token or the marked one, never a bare
+   * one); it is not a sign-in until {@link confirmSignIn}.
+   */
+  async set(
+    token: string,
+    source: TokenSource,
+    keepSignIn: boolean | { unconfirmed: true } = false,
+  ): Promise<void> {
+    const unconfirmed = typeof keepSignIn === "object";
+    const keep = keepSignIn === true;
     this.token = token;
     this.tokenSource = source;
+    this.fromSignIn = unconfirmed
+      ? false
+      : source === "signin"
+        ? true
+        : keep || source === "reacquire"
+          ? this.fromSignIn
+          : false;
+    this.heldUnconfirmed = unconfirmed
+      ? true
+      : keep || source === "reacquire"
+        ? this.heldUnconfirmed
+        : false;
+    if (this.heldUnconfirmed) {
+      await this.marks?.stored(false, true);
+      await this.store.setToken(token);
+      return;
+    }
+    // The mark and the token never disagree for long: a mark that is going away is dropped before
+    // the token changes, and a mark that is going to exist is written after it, so a crash between
+    // the two leaves "no sign-in" rather than a sign-in mark on a token that is not one.
+    if (!this.fromSignIn) await this.marks?.stored(false);
     await this.store.setToken(token);
+    if (this.fromSignIn) await this.marks?.stored(true);
   }
 
   async clear(): Promise<void> {
     this.token = null;
     this.tokenSource = null;
+    this.fromSignIn = false;
+    this.heldUnconfirmed = false;
+    // The token goes before its mark, so a crash leaves the mark over no token, never a bare one.
     await this.store.clearToken();
+    await this.marks?.stored(false);
   }
 
   /** Re-arm the single-attempt budget. Called once at the top of each `sync()`. */

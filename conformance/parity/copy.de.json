@@ -97,6 +97,10 @@
       "title": "Limit für Fernverbindungen erreicht",
       "message": "Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin."
     },
+    "connect_links_disabled": {
+      "title": "Verknüpfung aus",
+      "message": "Das Verknüpfen mit anderen Personen ist für diese App ausgeschaltet. Deine eigenen Geräte verbinden sich weiterhin."
+    },
     "relay_ticket_invalid": {
       "title": "Verbindung abgelaufen",
       "message": "Die Verbindungsanfrage ist abgelaufen. Versuchen Sie es erneut."
@@ -628,6 +632,14 @@
     "peer-closed": {
       "title": "Verbindung beendet",
       "message": "Die Verbindung zum Gerät in der Nähe wurde beendet. Versuchen Sie es erneut."
+    },
+    "transfer-cancelled": {
+      "title": "Übertragung beendet",
+      "message": "Die Übertragung wurde nicht abgeschlossen. Es wurde nichts empfangen."
+    },
+    "link-unknown": {
+      "title": "Nicht gekoppelt",
+      "message": "Dieses Gerät ist nicht mehr mit diesem gekoppelt."
     },
     "peer_revoked": {
       "title": "Gerät nicht mehr vertrauenswürdig",

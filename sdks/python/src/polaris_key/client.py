@@ -33,14 +33,13 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Union
 import httpx
 
 from .backend import BackendClient
-from .core.device_keys import DeviceKeyPort
-from .connect import CloudConnect, ConnectClient, NearbyDeps
-from .keyring import KeyringClient
-from .commerce import CommerceClient
 from .cloud_sync.api import CloudSyncApi, CloudSyncClient
 from .cloud_sync.saves import SavesApi
 from .cloud_sync.host import CloudSyncHost, CloudSyncHostDeps, CloudSyncHostOptions
+from .commerce import CommerceClient
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
+from .connect import CloudConnect, ConnectClient, NearbyDeps
+from .constants_generated import Feature, StoreDegradedReason, UnsupportedReason
 from .core.bundle import ImportBundleResult, import_bundle
 from .core.cache import CacheManager
 from .core.caps import (
@@ -51,19 +50,20 @@ from .core.caps import (
     supported_features,
     validate_detectors,
 )
-from .constants_generated import Feature, StoreDegradedReason, UnsupportedReason
 from .core.context import DEFAULT_REQUEST_TIMEOUT_SECONDS, CoreContext
+from .core.device_keys import DeviceKeyPort
+from .core.events import EventBus, listener_failed
+from .core.local_state import JsonStateFile
 from .core.models import (
     ActivationSource,
     BlockedState,
     DocProfile,
     LicenseDoc,
 )
+from .core.portal import PortalStore
 from .core.store import Store, StoreStatus
-from .core.sync import SyncDeps, SyncResult, sync as run_sync
-from .core.events import EventBus, listener_failed
-from .core.local_state import JsonStateFile
-from .core.update_journal import UpdateJournal
+from .core.sync import SyncDeps, SyncResult
+from .core.sync import sync as run_sync
 from .core.token import (
     Reacquired,
     TokenManager,
@@ -71,6 +71,7 @@ from .core.token import (
     choose_reacquire_route,
 )
 from .core.trust import TrustManager
+from .core.update_journal import UpdateJournal
 from .devices.client import (
     DeviceManagementUnsupportedError,
     DevicesClient,
@@ -78,19 +79,19 @@ from .devices.client import (
     RegisterResult,
 )
 from .devices.facts import ProbeDeclaration
-from .identity.account import identity_fragment_from
-from .identity.client import IdentityClient
-from .distribution import DistributionClient
 from .discovery import (
     DiscoveryOk,
     ServicesMap,
     discover_product,
 )
+from .distribution import DistributionClient
+from .identity.account import identity_fragment_from
+from .identity.client import IdentityClient
+from .keyring import KeyringClient
 from .license.client import LicenseClient
-from .license.entitlements import EntitlementsClient
 from .license.endpoints import ActivationOk, reacquire_token
+from .license.entitlements import EntitlementsClient
 from .license.gate import LicenseState
-from .core.portal import PortalStore
 from .presentation import DiscoveryPresentationSource
 from .release.client import ReleaseClient
 from .update.bootguard import BootGuard
@@ -288,6 +289,14 @@ class PolarisKeyClient:
             discover=self._discovery_or_load,
             wipe_local=lambda: self.license.wipe_local(),
             loaded_discovery=lambda: self._discovery_doc,
+            refresh_discovery=self._refresh_discovery,
+            # Nearby sign-in (I-47): D's keys come from Connect's signer, the LAN half is Cloud Connect's
+            # nearby engine, and this runtime can browse unless the client has no transport.
+            nearby_signer=lambda: self.connect.nearby_signer(),
+            cloud_nearby=lambda: self.cloud_connect.nearby,
+            keyring=lambda: self.keyring,
+            nearby_runtime=lambda role: not self.core.local_only,
+            register_nearby_keys=self._register_nearby_keys,
             license_id=lambda: self.license.get_license_id(),
             emit=self.events.emit,
             # Sign-out and deactivation both end in `identity.forget()`: the root and its pin go with them.
@@ -335,6 +344,7 @@ class PolarisKeyClient:
             lambda: self._trust.effective,
             device_keys=device_keys,
             allow_ephemeral_keys=allow_ephemeral_keys,
+            inter_account=self._inter_account,
         )
         #: Cloud Connect (WIRE-CONTRACT-V5 §15): LAN and relay behind one facade. Nothing starts until
         #: ``cloud_connect.start()``: no thread, no socket.
@@ -349,15 +359,19 @@ class PolarisKeyClient:
                 now=self.core.now,
                 require_identity=lambda: self.core.require_service("identity", Feature.IDENTITY_NEARBY),
                 identity=self._nearby_identity,
-                signed_in=lambda: self.identity.current() is not None,
+                # An unconfirmed nearby sign-in is not a sign-in yet (V5 §15.6.1 rule 12).
+                signed_in=lambda: not self._tokens.unconfirmed and self.identity.current() is not None,
                 signer=self.connect.nearby_signer,
             ),
+            state_dir=self.core.local_state_dir,
         )
         # Signing out first stops Cloud Connect (the sessions, the relay and the LAN service are this
         # person's devices' business), then forgets the held roster, certificate and K_disc (the device
         # keys stay). Hooks run in this order. A state that cannot be deleted raises, and the sign-out
         # stops (fail closed).
         self.identity.on_before_sign_out(self._stop_cloud_connect)
+        # Kept partial transfers are this person's data: they go with the sign-out (after the sessions end).
+        self.identity.on_before_sign_out(self.cloud_connect.transfer.purge)
         self.identity.on_before_sign_out(self.connect.leave)
 
         #: The Cloud Sync host (WIRE-CONTRACT-V5 §13): the machine, its transport and the state file.
@@ -568,6 +582,12 @@ class PolarisKeyClient:
                 self._cache.patch(**patch)
         return r
 
+    def _inter_account(self) -> bool:
+        """WIRE-CONTRACT-V5 §15.9: links are on only while the cached discovery document says so."""
+        doc = self._discovery_doc
+        services = doc.get("services") if isinstance(doc, dict) else None
+        f = services.get("connect") if isinstance(services, dict) else None
+        return isinstance(f, dict) and f.get("enabled") is True and f.get("interAccount") is True
     def _nearby_identity(self, fresh: bool) -> Optional[Dict[str, Any]]:
         """The Identity fragment of discovery for nearby approval; loaded again first when ``fresh`` (or
         when none is held). ``None`` while Identity is off or discovery cannot be read."""
@@ -665,6 +685,8 @@ class PolarisKeyClient:
         if isinstance(result, DiscoveryOk):
             self._discovery_doc = result.manifest
             self.core.set_services(result.services)
+            # ``interAccount`` may have moved: links follow the document (§15.10 "Gates").
+            self.connect.notify_contacts()
             self.cloud_sync_host.note_discovery()
             self._cloud_sync_api.attach_soon()
             try:
@@ -685,6 +707,20 @@ class PolarisKeyClient:
             "values": {k: e.value for k, e in entries.items()},
             "locked": [k for k, e in entries.items() if e.state in ("enforced", "hidden")],
         }
+
+    def _register_nearby_keys(self, creds: Any) -> None:
+        """M's answer to a 409 ``device_keys_required`` from ``nearby/approve``: register this device's
+        keys (``PUT devices/keys``). Only this client's own keys can be registered."""
+        self.devices.register_keys(creds.keys, allow_ephemeral=self.connect._allow_ephemeral)
+
+    def _refresh_discovery(self) -> Optional[Dict[str, Any]]:
+        """Discovery read again now (nearby approval reads a 404 against it, N11): the new document, or
+        ``None`` when it could not be read (never the stale one)."""
+        try:
+            result = self.discover()
+        except Exception:
+            return None
+        return self._discovery_doc if isinstance(result, DiscoveryOk) else None
 
     def _discovery_or_load(self) -> Optional[Dict[str, Any]]:
         """The discovery document, loaded once when this session has none (the account verbs

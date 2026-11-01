@@ -53,3 +53,32 @@ export type {
   NearbyRequest,
   NearbyRequestOptions,
 } from "./nearbyRequester.js";
+export {
+  ContactRelay,
+  ContactRoom,
+  type ContactRelaySource,
+} from "./contactRelay.js";
+export { CloudLinks, type LinkOpenOptions } from "./links.js";
+export { contactId, type ContactInfo, type ContactRef } from "./contacts.js";
+export {
+  LinkPairing,
+  PAIR_WINDOW_SECONDS,
+  type LinkOffer,
+  type LinkPairHandle,
+  type LinkPairOptions,
+  type PairFailure,
+  type PairedLink,
+} from "./pairing.js";
+export {
+  CloudTransfer,
+  TransferError,
+  type IncomingOffer,
+  type OfferDecision,
+  type OfferHandler,
+  type SendOptions,
+  type SentTransfer,
+  type TransferEvent,
+  type TransferPeer,
+  type TransferSource,
+} from "./transfer.js";
+export { PartialStore } from "./transferStore.js";

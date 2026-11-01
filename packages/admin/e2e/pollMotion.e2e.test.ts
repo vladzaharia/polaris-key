@@ -447,6 +447,10 @@ describe("Platform → Status: the 30-second poll", () => {
         { step: "asc:poll", outcome: "failed", error: "401 from App Store" },
       ];
       await run("poll-changed", () => page.clock.fastForward(POLL));
+      // The server's hit is not the render: on a slow runner the answer lands after run()'s fixed
+      // wait. Wait for the changed word to be on the page, then let its animation begin.
+      await page.getByText("Degraded", { exact: true }).first().waitFor();
+      await page.waitForTimeout(250);
       const changed = await probe(page);
       const after = await facts(page);
       const afterTops = await tops(page);

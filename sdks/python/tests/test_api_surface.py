@@ -6,8 +6,11 @@ import pytest
 from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
+from polaris_key.connect.links import CloudLinks
 from polaris_key.connect.nearby import CloudNearby
 from polaris_key.identity.client import IdentityClient
+from polaris_key.identity.auto_sign_in import NearbyNamespace
+from polaris_key.identity.nearby_session import NearbySignInSession
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
 from polaris_key.license.entitlements import EntitlementsClient
@@ -19,9 +22,12 @@ CLASSES = {
     "IdentityClient": IdentityClient,
     "SignInNamespace": SignInNamespace,
     "SignInSession": SignInSession,
+    "NearbyNamespace": NearbyNamespace,
+    "NearbySignInSession": NearbySignInSession,
     "LicenseClient": LicenseClient,
     "EntitlementsClient": EntitlementsClient,
     "CloudConnect": CloudConnect,
+    "CloudLinks": CloudLinks,
     "CloudNearby": CloudNearby,
 }
 
@@ -56,6 +62,7 @@ ATTRS = [
     ("identity.signIn.session.reopen", "SignInSession", "reopen"),
     ("identity.signIn.session.cancel", "SignInSession", "cancel"),
     ("identity.signIn.session.wait", "SignInSession", "wait"),
+    ("identity.autoSignIn", "IdentityClient", "auto_sign_in"),
     ("identity.useLicenseChoice", "IdentityClient", "choice"),
     ("identity.attachLicense", "IdentityClient", "attach"),
     ("identity.openAccount", "IdentityClient", "open_account"),
@@ -111,6 +118,25 @@ ATTRS = [
     ("cloudConnect.onNotice", "CloudConnect", "on_notice"),
     ("cloudConnect.nearby.request", "CloudNearby", "request"),
     ("cloudConnect.nearby.onRequest", "CloudNearby", "on_request"),
+    ("identity.nearby.available", "NearbyNamespace", "available"),
+    ("identity.nearby.onRequest", "NearbyNamespace", "on_request"),
+    ("identity.signIn.session.approvers", "NearbySignInSession", "approvers"),
+    ("identity.signIn.session.onApprovers", "NearbySignInSession", "on_approvers"),
+    ("identity.signIn.session.code", "NearbySignInSession", "code"),
+    ("identity.signIn.session.result", "NearbySignInSession", "result"),
+    ("identity.signIn.session.onResult", "NearbySignInSession", "on_result"),
+    ("identity.signIn.session.choose", "NearbySignInSession", "choose"),
+    ("identity.signIn.session.confirmAccount", "NearbySignInSession", "confirm_account"),
+    ("identity.signIn.session.declineAccount", "NearbySignInSession", "decline_account"),
+    ("identity.signIn.session.wrap", "NearbySignInSession", "wrap"),
+    ("identity.signIn.session.onWrap", "NearbySignInSession", "on_wrap"),
+    ("cloudConnect.links.pair", "CloudLinks", "pair"),
+    ("cloudConnect.links.list", "CloudLinks", "list"),
+    ("cloudConnect.links.remove", "CloudLinks", "remove"),
+    ("cloudConnect.links.setReachable", "CloudLinks", "set_reachable"),
+    ("cloudConnect.links.open", "CloudLinks", "open"),
+    ("cloudConnect.links.onLink", "CloudLinks", "on_link"),
+    ("cloudConnect.links.interAccount", "CloudLinks", "inter_account"),
 ]
 OPTION_PARAMS = [
     ("options.productSlug", "product_slug"),

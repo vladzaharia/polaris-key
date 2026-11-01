@@ -40,7 +40,6 @@ package im.plrs.key.sdk
 import im.plrs.key.core.CoreContext
 import im.plrs.key.core.PeerTrustResult
 import im.plrs.key.core.ProductDiscoveryDocument
-import im.plrs.key.core.RuntimeFamily
 import im.plrs.key.core.ServiceSlug
 import im.plrs.key.core.peer.PeerCloseCode
 import kotlinx.coroutines.CancellationException
@@ -79,6 +78,8 @@ public class CloudConnectOptions @JvmOverloads constructor(
     public val lanOptions: LanOptions = LanOptions(),
     public val relay: Boolean = true,
     public val lanAttemptSeconds: Double = CLOUD_LAN_ATTEMPT_SECONDS,
+    /** List `xfer/1` in every handshake so Direct Transfer (`cloudConnect.transfer`) works. False keeps the capability out. */
+    public val transfers: Boolean = true,
 ) {
     /** Test seam: the relay's options (an injected opener and clock). */
     internal var relayOptions: RelayOptions? = null
@@ -141,6 +142,25 @@ public class CloudConnect internal constructor(
 
     @Volatile
     private var relay: RelayService? = null
+
+    @Volatile
+    private var contactRelay: ContactRelay? = null
+
+    @Volatile
+    private var transfersOn = true
+
+    /** Direct Transfer (CC-20): `send` to a session's device, `onOffer` to answer offers, `onResult`. Rides every session when `transfers` is on. */
+    public val transfer: CloudTransfer = CloudTransfer({ core.store.stateDirectory }, { transfersOn })
+
+    init {
+        connect.onLeft { transfer.purgeAll() }
+    }
+
+    /** Inter-account links (CC-19): `pair`, `list`, `remove`, `setReachable`, `open`, `onLink`. Off unless discovery says `interAccount`. */
+    public val links: CloudLinks = CloudLinks(connect).also {
+        it.onSession = { s -> transfer.bind(s) }
+        it.onRemoved = { key -> transfer.purgePeer(key) }
+    }
 
     /** Test seam: the bound `stop()` waits ([CLOUD_STOP_MILLIS]). */
     @Volatile
@@ -215,20 +235,23 @@ public class CloudConnect internal constructor(
         val ident = connect.identity()
         self = ident.deviceId
         lanAttempt = o.lanAttemptSeconds
+        transfersOn = o.transfers
         lanFailed = null
         lanReason = null
         relayReason = null
         val reason = if (!o.relay) "host" else relayWanted(core.discoveryDocument())
         val relayOn = reason == null
         val src = watch(lanSource(connect, now = now, floored = floored, applyTrust = { applyPeerTrust(it) }))
+        val withCaps = if (o.transfers) o.lanOptions.withTransferCap() else o.lanOptions
+        val lanOptions = androidLanOptions(withCaps, ConnectPlatforms.android, ConnectPlatforms.installed)
         try {
             if (!o.lan) {
                 lanReason = "host"
-            } else if (RuntimeFamily.isAndroid && o.lanOptions.mdns == null) {
-                lanReason = "unsupported" // the :android glue supplies the adapter (CC-12b); the relay still works
+            } else if (lanOptions == null) {
+                lanReason = "unsupported" // Android below 14, or no :android glue installed; the relay still works
             } else {
                 try {
-                    val svc = LanService.start(src, o.lanOptions, onSession = { inbound(it) })
+                    val svc = LanService.start(src, lanOptions, onSession = { inbound(it) })
                     lan = svc
                     unsub += svc.onNotice { notice(it) }
                 } catch (e: CancellationException) {
@@ -239,7 +262,7 @@ public class CloudConnect internal constructor(
                 }
             }
             if (relayOn) {
-                val ro = o.relayOptions ?: RelayOptions(caps = o.lanOptions.caps, label = o.lanOptions.label)
+                val ro = o.relayOptions ?: RelayOptions(caps = withCaps.caps, label = o.lanOptions.label)
                 val svc = RelayService(src, { connect.relayTicket() }, ro)
                 relay = svc
                 unsub += svc.onSession { inbound(it) }
@@ -248,6 +271,15 @@ public class CloudConnect internal constructor(
             } else {
                 relayReason = reason
             }
+            // The contact rooms (section 15.7) and the links API ride the same transports. A device with no links
+            // keeps no room; the list is read again whenever it changes.
+            if (relayOn) {
+                val ro = o.relayOptions ?: RelayOptions(caps = withCaps.caps, label = o.lanOptions.label)
+                val cr = ContactRelay(ContactRelaySource(src) { rid -> connect.relayTicket("c", rid) }, ro)
+                contactRelay = cr
+                cr.start()
+            }
+            links.attach(lan, contactRelay, o.lanAttemptSeconds, relayOn)
             running = true
         } catch (e: Throwable) {
             teardown()
@@ -282,7 +314,10 @@ public class CloudConnect internal constructor(
         lan = null
         relay = null
         synchronized(lock) { unsub.clear() }
+        val cr = contactRelay
+        contactRelay = null
         quietly { l?.abort() }
+        quietly { cr?.abort() }
         quietly { r?.abort() }
         val open = synchronized(lock) { sessions.toList().also { sessions.clear() } }
         for (s in open) quietly { withTimeoutOrNull(SESSION_CLOSE_MILLIS) { s.close() } }
@@ -304,13 +339,17 @@ public class CloudConnect internal constructor(
         for (u in offs) u()
         val l = lan
         val r = relay
+        val cr = contactRelay
         lan = null
         relay = null
+        contactRelay = null
         dyingLan = l
         dyingRelay = r
+        quietly { links.detach() }
         // The services first: each bounds itself and closes its own sessions and sockets, so a host
         // callback that blocks a session close cannot keep the listener or the relay socket up.
         quietly { l?.stop() }
+        quietly { cr?.stop() }
         quietly { r?.stop() }
         dyingLan = null
         dyingRelay = null
@@ -329,6 +368,8 @@ public class CloudConnect internal constructor(
         }
         // Then the nearby adverts and sessions (after Connect, before the device leaves it), under the same bound.
         if (withTimeoutOrNull(stopMillis) { nearby.stopAll() } == null) nearby.forceStop()
+        // The kept partial files are this person's: they go with the sign-out.
+        transfer.purgeAll()
     }
 
     /** The client's `close()`: tear down in the background, then release the facade's scope. */
@@ -338,7 +379,11 @@ public class CloudConnect internal constructor(
         scope.launch {
             nearbyStop.join()
             teardown?.join()
-        }.invokeOnCompletion { scope.cancel() }
+        }.invokeOnCompletion {
+            links.shutdown()
+            transfer.shutdown()
+            scope.cancel()
+        }
     }
 
     /** The person's other devices that can be reached now, with the paths each has. */
@@ -430,7 +475,7 @@ public class CloudConnect internal constructor(
 
     private fun inbound(s: ConnectSession) {
         val subs = channelFns.toList()
-        if (subs.isEmpty()) {
+        if (subs.isEmpty() && !transfer.accepting) {
             scope.launch {
                 try {
                     s.close() // nobody to hand it to (G9)
@@ -503,6 +548,7 @@ public class CloudConnect internal constructor(
     private fun track(s: ConnectSession): ConnectSession {
         synchronized(lock) { sessions += s }
         s.onClose { synchronized(lock) { sessions -= s } }
+        transfer.bind(s)
         return s
     }
 

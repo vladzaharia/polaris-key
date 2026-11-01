@@ -107,12 +107,14 @@ export type LanErrorReason =
   | "closed"
   | "too_large"
   | "bad_type"
-  | "not_started";
+  | "not_started"
+  | "elsewhere";
 
 const LAN_CODE: Record<LanErrorReason, PolarisErrorCode> = {
   no_identity: ErrorCode.notConfigured,
   no_keys: ErrorCode.notConfigured,
   not_started: ErrorCode.notConfigured,
+  elsewhere: ErrorCode.connectUnavailable,
   unknown_peer: ErrorCode.invalidArgument,
   handshake_failed: ErrorCode.peerCertInvalid,
   wrong_peer: ErrorCode.peerCertInvalid,
