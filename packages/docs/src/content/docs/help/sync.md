@@ -3,7 +3,7 @@ title: "Sync Across Devices"
 description: "How your settings follow you between devices, what its status messages mean, and what happens when your storage is full."
 type: "help"
 status: "shipped"
-lastReviewed: "2026-10-28"
+lastReviewed: "2026-11-01"
 sidebar:
   order: 9
 ---
@@ -17,6 +17,12 @@ You need to be signed in to the app with your Polaris Locker account. A device y
 ## What syncs
 
 Settings the app marks as yours, such as volume or layout, and, where the app supports it, other data it syncs. A setting your developer locked does not sync, and the lock wins on every device. Some apps keep a setting on one kind of device only, such as Windows.
+
+## Your saves
+
+If a save changed on two devices, the app shows **Two versions**. Choose **Keep this one**, **Keep the other** or **Keep both**. **Keep both** is unavailable when you have no free save slot; delete a save you don't need first.
+
+Saves belong to the account that is signed in. Another person on the same device sees their own. If a save fails to send or load, choose **Try again**.
 
 ## Unlock sync on a new device
 

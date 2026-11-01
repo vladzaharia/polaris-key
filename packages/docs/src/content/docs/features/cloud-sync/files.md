@@ -2,7 +2,7 @@
 title: "Cloud Sync files"
 description: "A record's file in Cloud Sync: how a product declares one, how an upload runs, and the limits, errors and quota."
 type: "reference"
-lastReviewed: "2026-10-31"
+lastReviewed: "2026-11-01"
 sidebar:
   order: 2
 ---
@@ -17,7 +17,7 @@ A collection opts in with `files` (see [Cloud Sync](/docs/features/cloud-sync/))
 | --------------- | ----------------------------------------------------------------------- |
 | `maxBytes`      | The largest file, up to 1 GiB. A larger `begin` is `413 file_too_large` |
 | `keepRevisions` | How many older versions are kept. Older ones are collected              |
-| `delta`         | Planned: send only changed chunks of a new version. Not served yet      |
+| `delta`         | Send only the changed chunks of a new version (`format: "chunks"`)      |
 
 `template: "saves"` declares a file of up to 32 MiB and 5 kept versions.
 
@@ -33,11 +33,15 @@ An upload is one session. The client opens it, sends the bytes, then commits.
 | Abort    | `DELETE …/upload/{uploadId}`                                      | `204`; the reserved bytes are released                   |
 | Finalize | `POST …/finalize` with `{uploadId}`                               | `version`, `size`, `sha256`, `format`                    |
 
-Begin declares `size`, `sha256` (the hash of the bytes stored), `format` (`whole`), `enc` (`none` or `e2e`, which must match the product's mode) and an optional `baseVersion`: a number is compare-and-swap, `"*"` creates only, and absent overwrites. `expiresAt` is Unix epoch milliseconds.
+Begin declares `size`, `sha256` (the hash of the bytes stored), `format` (`whole`, or `chunks` with `delta`), `enc` (`none` or `e2e`, which must match the product's mode) and an optional `baseVersion`: a number is compare-and-swap, `"*"` creates only, and absent overwrites. `expiresAt` is Unix epoch milliseconds.
 
 The server picks the mode. A file up to 16 MiB goes in one `PUT`. A larger one is multipart: parts of `partBytes` (at least 8 MiB, a multiple of 1 MiB, the last shorter), sent in any order, up to 4 at once. Every `PUT` carries `Content-Length` and a `Content-Digest` (`sha-256=:<base64>:`) of its bytes. Finalize is idempotent per `uploadId`.
 
 A session lasts 24 hours and holds its bytes against the person's quota until it ends. A person has at most 4 open sessions.
+
+## From an SDK
+
+The Node, React and Python SDKs run all of this through [saves](/docs/features/cloud-sync/saves/): they begin the upload, resume it after an interruption and finalize it, then write the record. The transfer journal and the chunk cache are per person and are removed at sign-out. With `delta`, a new version sends only the chunks that changed.
 
 ## Download
 
