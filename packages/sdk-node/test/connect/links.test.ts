@@ -10,12 +10,13 @@ import { Socket } from "node:net";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UnsupportedError } from "@polaris-key/client-core";
-import { base64UrlEncodeBytes } from "@polaris-key/jws";
+import { base64UrlDecode, base64UrlEncodeBytes } from "@polaris-key/jws";
 import { promoteRow, secretTag } from "../../src/connect/contacts.js";
 import type { PolarisKeyClient } from "../../src/client.js";
 import {
   LanError,
   RelayError,
+  CloudLinks,
   contactId,
   type ConnectSession,
   type LinkOffer,
@@ -771,5 +772,152 @@ describe("links: promotion follows the secret", () => {
     expect(promoteRow(rows, "A".repeat(43), tag2).map((r) => r.secret)).toEqual(
       [s2],
     );
+  });
+});
+
+describe("links: each in-flight layer on its own", () => {
+  const fakeSession = (ref: ConnectSession["contact"]) => {
+    const closes: string[] = [];
+    const s = {
+      contact: ref,
+      close: async (code?: string) => {
+        closes.push(code ?? "");
+      },
+      onClose: () => () => undefined,
+    } as unknown as ConnectSession;
+    return { s, closes };
+  };
+
+  async function attached(adopt?: (s: ConnectSession) => void) {
+    const w = await world();
+    const { idOfB } = await link(w);
+    const ref = (await w.a.connect.contactRows())
+      .filter((r) => r.pendingSince === undefined)
+      .map((r) => ({
+        id: idOfB,
+        label: null,
+        categories: ["notes"],
+        agreeKey: r.agreeKey,
+        pending: false,
+        tag: secretTag(base64UrlDecode(r.secret)),
+      }))[0]!;
+    let push!: (s: ConnectSession) => void;
+    const lan = {
+      onContactSession: (fn: (s: ConnectSession) => void) => {
+        push = fn;
+        return () => undefined;
+      },
+    } as unknown as Parameters<CloudLinks["attach"]>[0];
+    const links = new CloudLinks(w.a.connect, adopt ? { adopt } : {});
+    links.attach(lan, null, { lanAttemptMs: 1000, relayOn: false });
+    const delivered: ConnectSession[] = [];
+    links.onLink((s) => delivered.push(s));
+    return { w, idOfB, ref, push: (s: ConnectSession) => push(s), delivered };
+  }
+
+  it("links: a session that completes after its contact is gone is closed peer_revoked (control: revoke-in-flight, links layer)", async () => {
+    const t = await attached();
+    await t.w.a.cloudConnect.links.remove(t.idOfB);
+    const { s, closes } = fakeSession(t.ref);
+    t.push(s);
+    await until(() => closes.length === 1);
+    expect(closes).toEqual(["peer_revoked"]);
+    expect(t.delivered).toHaveLength(0);
+  });
+
+  it("links: a session that completes after links go off is closed peer_bye (control: revoke-in-flight, links layer)", async () => {
+    const t = await attached();
+    t.w.worker.interAccount = false;
+    await t.w.a.discover();
+    const { s, closes } = fakeSession(t.ref);
+    t.push(s);
+    await until(() => closes.length === 1);
+    expect(closes).toEqual(["peer_bye"]);
+    expect(t.delivered).toHaveLength(0);
+  });
+
+  it("links: a session under a replaced pending secret promotes nothing and is closed", async () => {
+    const t = await attached();
+    const { s, closes } = fakeSession({ ...t.ref, tag: "AAAAAAAAAAAAAAAA" });
+    t.push(s);
+    await until(() => closes.length === 1);
+    expect(closes).toEqual(["peer_revoked"]);
+    expect(t.delivered).toHaveLength(0);
+  });
+
+  it("links: an inbound session that is no longer held is not handed to Direct Transfer", async () => {
+    const adopted: ConnectSession[] = [];
+    const t = await attached((s) => adopted.push(s));
+    await t.w.a.cloudConnect.links.remove(t.idOfB);
+    const gone = fakeSession(t.ref);
+    t.push(gone.s);
+    await until(() => gone.closes.length === 1);
+    expect(adopted).toHaveLength(0);
+    // A contact that is still held is handed over, once it has been checked.
+    const w2 = await attached((s) => adopted.push(s));
+    const ok = fakeSession(w2.ref);
+    w2.push(ok.s);
+    await until(() => w2.delivered.length === 1);
+    expect(adopted).toEqual([ok.s]);
+  });
+
+  it("links: the LAN layer ends a handshake whose contact was removed before message 3, without the links layer", async () => {
+    const w = await world();
+    const { idOfB, idOfA } = await link(w);
+    const lanA = await w.a.connect.lan({ mdns: w.net.adapter(), ...LOOP });
+    const lanB = await w.b.connect.lan({ mdns: w.net.adapter(), ...LOOP });
+    const seen: ConnectSession[] = [];
+    lanA.onContactSession((s) => seen.push(s));
+    const hold = holdThirdMessage();
+    try {
+      const dial = (async () => {
+        for (let i = 0; i < 100 && hold.state.held === 0; i++) {
+          try {
+            return await lanB.connectContact(idOfA, false);
+          } catch {
+            await new Promise((r) => setTimeout(r, 10));
+          }
+        }
+        return undefined;
+      })();
+      await until(() => hold.state.held === 1);
+      expect(await w.a.cloudConnect.links.remove(idOfB)).toBe(true);
+      hold.release();
+      await dial.catch(() => undefined);
+      await new Promise((r) => setTimeout(r, 300));
+    } finally {
+      hold.restore();
+      await lanA.stop().catch(() => undefined);
+      await lanB.stop().catch(() => undefined);
+    }
+    expect(seen).toHaveLength(0);
+  });
+
+  it("links: a handshake under a pending contact promotes only the row whose secret opened it (contactEstablished)", async () => {
+    const w = await world();
+    const { idOfB } = await link(w, ["notes"], ["notes"]);
+    const sa = await openPairing(w.a, w.net, ["notes", "docs"], "Ana2");
+    const sb = await openPairing(w.b, w.net, ["notes", "docs"], "Bo2");
+    await until(() => sa.offers.length === 1 && sb.offers.length === 1);
+    await Promise.all([sa.offers[0]!.confirm(), sb.offers[0]!.confirm()]);
+    await until(() => sa.linked.length === 1 && sb.linked.length === 1);
+    const rows = await w.a.connect.contactRows();
+    expect(rows).toHaveLength(2);
+    const pend = rows.find((r) => r.pendingSince !== undefined)!;
+    const ref = {
+      id: idOfB,
+      label: null,
+      categories: ["notes"],
+      agreeKey: pend.agreeKey,
+      pending: true,
+      tag: "AAAAAAAAAAAAAAAA",
+    };
+    await w.a.connect.lanSource().contactEstablished?.(ref);
+    expect(await w.a.connect.contactRows()).toHaveLength(2);
+    await w.a.connect.lanSource().contactEstablished?.({
+      ...ref,
+      tag: secretTag(base64UrlDecode(pend.secret)),
+    });
+    expect(await w.a.connect.contactRows()).toHaveLength(1);
   });
 });

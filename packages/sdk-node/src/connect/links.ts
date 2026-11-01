@@ -254,11 +254,13 @@ export class CloudLinks {
   }
 
   #inbound(s: ConnectSession): void {
-    this.#track(s);
     // The handshake may have begun before the contact was removed or the gate went off: the
-    // session is delivered only while the contact (same secret) is held and links are on.
+    // session is handed to Direct Transfer and delivered only while the contact (same secret)
+    // is held and links are on.
     void this.#stillHeld(s).then((ok) => {
-      if (ok) for (const f of [...this.#onLink]) f(s);
+      if (!ok) return;
+      this.#track(s);
+      for (const f of [...this.#onLink]) f(s);
     });
   }
 
