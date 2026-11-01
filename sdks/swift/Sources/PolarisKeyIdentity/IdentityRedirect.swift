@@ -443,8 +443,7 @@ extension IdentityClient {
     /// sync as after a device-code `ready`. A refusal is a `SignInError` under the Worker's code.
     func redeemRedirect(
         _ pending: RedirectPending, code: String, deviceName: String?, repeatLabel: Bool = true
-    ) async throws -> RedirectRedeemed
-    {
+    ) async throws -> RedirectRedeemed {
         guard let url = URL(string: pending.tokenEndpoint) else {
             throw PolarisError(
                 code: ErrorCode.badResponse, message: "the token endpoint is not a URL.")

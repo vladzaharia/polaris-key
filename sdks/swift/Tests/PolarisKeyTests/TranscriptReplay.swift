@@ -449,9 +449,12 @@ actor ReplayServer {
         // A transcript that talks to the grant routes finds them published (§12.6), as the
         // Worker publishes the four together; without them the SDK runs card mode.
         let native = transcript.features.contains(Feature.identityRedirectNative)
-        let choices = transcript.steps.contains {
+        let choiceRoutes = transcript.steps.contains {
             $0.exchanges.items.contains { $0.request.path.contains("/identity/choice/") }
-        } || (native && transcript.steps.contains { Self.pushedForm($0)["license_choice"] == "app" })
+        }
+        let nativeChoice =
+            native && transcript.steps.contains { Self.pushedForm($0)["license_choice"] == "app" }
+        let choices = choiceRoutes || nativeChoice
         if choices {
             for name in ["Licenses", "Devices", "Complete", "Cancel"] {
                 redirectEndpoints["choice\(name)"] = .string("\(base)/identity/choice/\(name.lowercased())")
