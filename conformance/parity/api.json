@@ -3375,8 +3375,7 @@
           "spelling": "SignInNamespace.handleRedirect"
         },
         "kotlin": {
-          "planned": "I-15b",
-          "reason": "native redirect sign-in lands in the Kotlin SDK with I-15b.5"
+          "spelling": "SignInNamespace.handleRedirect"
         },
         "godot": {
           "planned": "I-15b",

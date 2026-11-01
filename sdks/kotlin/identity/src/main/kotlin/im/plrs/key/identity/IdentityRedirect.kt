@@ -64,6 +64,12 @@ public enum class CallbackFailure(public val wire: String) {
     /** An `error` other than `access_denied`. */
     AuthorizationError("authorization-error"),
     MissingCode("missing-code"),
+
+    /** Native redirect: a parameter beyond `code state iss request` (or `error error_description state iss request`). */
+    UnexpectedParameter("unexpected-parameter"),
+
+    /** Native redirect: `request=` absent on a loopback delivery, or not an `rq_` handle. */
+    RequestInvalid("request-invalid"),
 }
 
 public sealed interface CallbackResult {
@@ -185,9 +191,9 @@ public object IdentityRedirect {
         return rest.isNotEmpty() && rest.none { it.isWhitespace() || Character.isSpaceChar(it) || it == '﻿' }
     }
 
-    private fun isPrintable(s: String): Boolean = s.isNotEmpty() && s.all { it.code in 0x21..0x7E }
+    internal fun isPrintable(s: String): Boolean = s.isNotEmpty() && s.all { it.code in 0x21..0x7E }
 
-    private fun invalid(message: String) = PolarisException(ErrorCode.invalidArgument, message)
+    internal fun invalid(message: String) = PolarisException(ErrorCode.invalidArgument, message)
 
     private fun scopeString(scope: List<String>?): String {
         if (scope == null) return DEFAULT_SCOPE
@@ -196,7 +202,7 @@ public object IdentityRedirect {
         return parts.joinToString(" ")
     }
 
-    private fun formBody(pairs: List<Pair<String, String>>): String =
+    internal fun formBody(pairs: List<Pair<String, String>>): String =
         pairs.joinToString("&") { "${ManageLink.formEncode(it.first)}=${ManageLink.formEncode(it.second)}" }
 
     /**
@@ -291,7 +297,7 @@ public object IdentityRedirect {
     }
 
     /** The query pairs of [url] (before any `#`); null when a name repeats or an escape is bad. */
-    private fun query(url: String): Map<String, String>? {
+    internal fun query(url: String): Map<String, String>? {
         val q = url.indexOf('?')
         if (q == -1) return emptyMap()
         val hash = url.indexOf('#')
@@ -461,9 +467,14 @@ internal suspend fun IdentityClient.startRedirect(options: SignInOptions): Redir
 internal suspend fun IdentityClient.redeemRedirect(pending: RedirectPending, code: String, deviceName: String?): SignInOutcome {
     val label = core.deviceLabel(deviceName)
     val form = IdentityRedirect.tokenForm(pending.clientId, pending.codeVerifier, pending.redirectUri, code, label)
+    return redeemForm(pending.tokenEndpoint, form, pending.licenseChoice)
+}
+
+/** POST a token form at [tokenEndpoint] and settle the answer: store a token, or hand the choice on; a refusal is a [SignInError]. */
+internal suspend fun IdentityClient.redeemForm(tokenEndpoint: String, form: String, licenseChoice: Boolean): SignInOutcome {
     val response: PolarisResponse = try {
         core.request(
-            pending.tokenEndpoint, method = "POST", headers = mapOf("content-type" to IdentityRedirect.TOKEN_CONTENT_TYPE),
+            tokenEndpoint, method = "POST", headers = mapOf("content-type" to IdentityRedirect.TOKEN_CONTENT_TYPE),
             body = form.toByteArray(Charsets.UTF_8),
         )
     } catch (e: CancellationException) {
@@ -486,7 +497,7 @@ internal suspend fun IdentityClient.redeemRedirect(pending: RedirectPending, cod
         }
         // Only `license_choice=app` makes the Worker answer this; nothing is stored and `identity.choice.*` finishes it.
         is TokenAnswer.Choose ->
-            if (pending.licenseChoice) {
+            if (licenseChoice) {
                 SignInOutcome.Choose(answer.grant, answer.expiresIn, answer.choices)
             } else {
                 throw PolarisException(ErrorCode.badResponse, "the token endpoint asked for a licence choice this sign-in did not request.")

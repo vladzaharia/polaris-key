@@ -217,9 +217,8 @@
       "note": "LK-SKIP.10: the opt-in, the via rule and the activated outcome, with the replayer."
     },
     "identity.redirect.native": {
-      "status": "planned",
-      "wp": "I-15b",
-      "note": "I-15b: the pushed request, the system-browser session or loopback listener, and the redemption from the pushing device, with the replayer."
+      "status": "implemented",
+      "note": "I-15b.5 (JVM desktop only; the Android Auth Tab is I-15b.6): signIn.start(SignInOptions(channel = Redirect)) with no redirectUri (NativeRedirect.kt, NativeListener.kt, NativeSignIn.kt; the client-core redirect.ts helpers ported). A LoopbackListener on a raw ServerSocket bound to 127.0.0.1 on an OS-assigned port before the request is pushed and held until the callback (exclusive; exact path, Host and method; one 303 to the customer host's return page; closed after the first good callback or 600 s), the desktop browser through java.awt.Desktop or the host's opener, then the code redeemed from the pushing device with the PKCE verifier. A registered scheme or claimed link goes to signIn.handleRedirect(url). A headless host, a product that serves no request endpoint and a host with no browser throw redirect-unavailable when no scheme or claimed class applies. The redirect-native-* and locker-redirect-native transcripts replay in TranscriptTest (JCA and Tink); NativeRedirectTest maps each listener rule over a real socket."
     },
     "identity.exchange": {
       "status": "implemented",

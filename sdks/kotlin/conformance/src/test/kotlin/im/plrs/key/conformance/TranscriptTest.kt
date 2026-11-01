@@ -9,6 +9,7 @@
 // @pkey-feature license.manage identity.keyentry
 // @pkey-feature core.presentation identity.account identity.attach
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity connect.relay connect.links
+// @pkey-feature identity.redirect.native
 // @pkey-feature identity.exchange identity.pgs sync.keyring sync.settings identity.restore sync.files sync.files.delta sync.saves
 // @pkey-feature identity.nearby
 //
@@ -202,6 +203,11 @@ class ReplaySession(val platform: String? = null) {
     var firstRingId: String? = null
     var prompt: SignInSession? = null
 
+    /** The native redirect sign-in the last `browser` step started, and its recorded loopback listener (identity.redirect.native). */
+    var nativeSession: SignInSession? = null
+    var nativeListener: ReplayListener? = null
+    var asksAppChoice: Boolean = false
+
     /** Cloud Sync's replay memory (U-07.K11): the last pull's ETag, the next mutation id, the header tap and the codec. */
     var syncEtag: String = ""
     var syncNextId: Int = 1
@@ -276,7 +282,8 @@ object KotlinReplay {
                         r["path"].stringValue!!.contains("/identity/authorize?")
                 }
                 if (authorize != null) {
-                    val started = redirectSession(client, args, replay.transcript)
+                    val native = "identity.redirect.native" in replay.transcript.features
+                    val started = if (native) NativeReplay.start(client, step, session) else redirectSession(client, args, replay.transcript)
                     val want = replay.transcript.baseUrl + authorize["request"]!!.obj["path"].stringValue
                     if (started.authorizeUrl != want) {
                         replay.recordFailure("authorize URL differs from the recording:\n    want $want\n    got  ${started.authorizeUrl}")
@@ -288,9 +295,14 @@ object KotlinReplay {
             }
 
             "redirectComplete" -> {
-                val s = redirectSession(client, args, server?.transcript)
+                val native = server?.transcript?.features?.contains("identity.redirect.native") == true
                 try {
-                    when (val o = s.complete(args["callbackUrl"].stringValue ?: "")) {
+                    val outcome = if (native) {
+                        NativeReplay.complete(client, args, session, server!!.transcript)
+                    } else {
+                        redirectSession(client, args, server?.transcript).complete(args["callbackUrl"].stringValue ?: "")
+                    }
+                    when (val o = outcome) {
                         is SignInOutcome.SignedIn -> {
                             out["result"] = JsonPrimitive("ok")
                             out["scope"] = o.scope?.let { JsonPrimitive(it) } ?: JsonNull
@@ -1501,6 +1513,9 @@ class TranscriptTest : ConformanceSuite() {
             "identity-attach", "identity-attach-errors",
             // I-10b.18: the redirect core and the request hints.
             "redirect-web-happy", "redirect-web-errors", "locker-redirect-web", "identity-request-hints",
+            // I-15b.5: the native redirect (a pushed request; loopback, scheme).
+            "redirect-native-loopback", "redirect-native-scheme", "redirect-native-choose-app",
+            "redirect-native-errors", "locker-redirect-native",
             // I-10b.19: the licence choice.
             "choice-key-app", "choice-replace-app", "choice-grant-errors",
             // UK-42.11: keep sends the device's bearer; a redirect sign-in, then attach.

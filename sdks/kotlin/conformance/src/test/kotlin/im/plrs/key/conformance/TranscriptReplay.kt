@@ -123,6 +123,18 @@ fun bodyProblems(expected: JsonElement, actual: JsonElement?, mode: String, path
     return if (jsonEquals(expected, actual ?: JsonNull)) emptyList() else listOf("$path: expected $expected, got $actual")
 }
 
+/** The form a step's recorded push (`POST .../identity/request`) carries, or empty. */
+fun pushedForm(step: JsonObject): Map<String, String> {
+    for (item in step["exchanges"]!!.obj["items"]!!.arrayValue!!) {
+        val r = item.obj["request"]!!.obj
+        if (r["method"].stringValue == "POST" && r["path"].stringValue!!.endsWith("/identity/request")) {
+            val json = r["body"].objectValue?.get("json").objectValue ?: continue
+            return json.mapNotNull { (k, v) -> v.stringValue?.let { k to it } }.toMap()
+        }
+    }
+    return emptyMap()
+}
+
 private val PLACEHOLDER = Regex("""\{([A-Za-z][A-Za-z0-9]*)\}""")
 
 /** The fake Worker a replay points the SDK at. */
@@ -307,7 +319,16 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
             it["action"].stringValue == "beginSignIn" && it["args"].objectValue?.get("licenseChoice").stringValue == "app"
         }
         if (deviceChoice || transcript.steps.any { it["action"].stringValue in setOf("browser", "redirectComplete") }) {
-            val choice = deviceChoice || transcript.steps.any { it["action"].stringValue?.startsWith("choice") == true }
+            // identity.redirect.native: the pushed request's own endpoints and the classes the product accepts (V5 section 12.6).
+            val native = "identity.redirect.native" in transcript.features
+            val choice = deviceChoice || transcript.steps.any { it["action"].stringValue?.startsWith("choice") == true } ||
+                (native && transcript.steps.any { pushedForm(it)["license_choice"] == "app" })
+            val schemes = if (native) {
+                transcript.steps.mapNotNull { it["args"]!!.obj["redirectUri"].stringValue }
+                    .filter { im.plrs.key.identity.NativeRedirect.classify(it) == im.plrs.key.identity.NativeRedirectClass.Scheme }.distinct()
+            } else {
+                emptyList()
+            }
             var issuer = "$base/identity"
             for (st in transcript.steps) {
                 if (st["action"].stringValue != "redirectComplete") continue
@@ -326,10 +347,29 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
                     "issuer" to JsonPrimitive(issuer),
                     *(if (account) arrayOf("account" to JsonPrimitive(true)) else emptyArray()),
                     *(if (deviceChoice) arrayOf("deviceChoice" to JsonPrimitive(true)) else emptyArray()),
+                    *(
+                        if (native) {
+                            arrayOf(
+                                "nativeRedirect" to JsonObject(
+                                    mapOf(
+                                        "loopback" to JsonPrimitive(true),
+                                        "schemes" to JsonArray(schemes.map { JsonPrimitive(it) }),
+                                        "claimedHttps" to JsonArray(emptyList()),
+                                    ),
+                                ),
+                            )
+                        } else {
+                            emptyArray()
+                        }
+                        ),
                     "endpoints" to JsonObject(
                         buildMap {
                             put("authorize", JsonPrimitive("$base/identity/authorize"))
                             put("token", JsonPrimitive("$base/identity/token"))
+                            if (native) {
+                                put("request", JsonPrimitive("$base/identity/request"))
+                                put("signinReturn", JsonPrimitive("${transcript.baseUrl}/signin/return"))
+                            }
                             if (account) {
                                 put("attach", JsonPrimitive("$base/identity/attach"))
                                 put("subject", JsonPrimitive("$base/identity/subject"))
