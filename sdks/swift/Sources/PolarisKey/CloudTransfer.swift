@@ -588,9 +588,11 @@ public final class CloudTransfer: Sendable {
             if let m = op.meta { store.reserve(ref, declared: m.size, written: 0, token: token) }
         case .truncate(let ref, let to):
             if let m = op.meta { store.reserve(ref, declared: m.size, written: to, token: token) }
-        case .keep(let ref), .discard(let ref), .delete(let ref), .finalize(let ref):
+        case .discard(let ref), .delete(let ref):
             store.release(ref, token: token)
-        case .write, .evict:
+        case .keep, .finalize, .write, .evict:
+            // Writes queued before a keep or a finalize have not been applied yet: the claim they write under
+            // is released when that effect has been performed (`apply`), never when it was decided.
             break
         }
     }
@@ -608,6 +610,7 @@ public final class CloudTransfer: Sendable {
             try store.write(ref, offset: offset, data: data, token: token)
         case .keep(let ref):
             store.keep(ref, token: token)
+            store.release(ref, token: token)
         case .evict(let ref):
             // A partial a live transfer holds is never another peer's to remove.
             if !store.isHeld(ref) { store.remove(ref, token: token) }

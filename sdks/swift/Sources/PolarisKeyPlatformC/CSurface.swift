@@ -29,6 +29,21 @@
 import Foundation
 import PolarisKeyPlatform
 
+#if canImport(Glibc)
+import Glibc
+#elseif canImport(Musl)
+import Musl
+#endif
+
+/// Clears `count` bytes in a way the optimiser cannot drop: `memset_s` on Apple platforms, `explicit_bzero` on Linux.
+private func zeroBytes(_ p: UnsafeMutableRawPointer, _ count: Int) {
+    #if canImport(Glibc) || canImport(Musl)
+    explicit_bzero(p, count)
+    #else
+    _ = memset_s(p, count, 0, count)
+    #endif
+}
+
 @_cdecl("pkp_call")
 public func pkp_call(_ json: UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>? {
     let out =
@@ -61,7 +76,7 @@ public func pkpCallBin(
     } else {
         out = PlatformHost.shared.callBinary(name, UnsafeBufferPointer(start: nil, count: 0))
     }
-    defer { out.withUnsafeMutableBytes { if let b = $0.baseAddress { _ = memset_s(b, $0.count, 0, $0.count) } } }
+    defer { out.withUnsafeMutableBytes { if let b = $0.baseAddress { zeroBytes(b, $0.count) } } }
     guard !out.isEmpty, out.count <= PlatformHost.maxBinaryBytes, let buf = malloc(out.count) else { return nil }
     out.withUnsafeBytes { buf.copyMemory(from: $0.baseAddress!, byteCount: out.count) }
     outN.pointee = out.count
