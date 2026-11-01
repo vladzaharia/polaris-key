@@ -39,6 +39,7 @@ import {
   type KitView,
 } from "./protocol.js";
 import { createNearbyHost, NearbyRefusal } from "./nearbyHost.js";
+import { ChoiceInputError, createChoiceHost } from "./choiceHost.js";
 import { resolveLocale } from "../cli/copy.js";
 import { KIT_COPY, KIT_COPY_VARIANTS } from "../kitCopy.generated.js";
 
@@ -255,6 +256,8 @@ export type PolarisBridgeHandle = {
 
 interface FlowEntry {
   prompt: DeviceCodeSession;
+  /** The window that began the flow: only it may poll it. */
+  windowId: number;
   timer: ReturnType<typeof setTimeout>;
 }
 
@@ -478,6 +481,17 @@ export function signInHints(b: Record<string, unknown>): {
     // "card" is what the Worker does without the hint.
     ...(b.licenseChoice === "app" ? { licenseChoice: "app" as const } : {}),
   };
+}
+
+/** A choice call: a malformed argument is `invalid-argument`, as every other verb answers it. */
+async function choiceCall<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    if (e instanceof ChoiceInputError)
+      throw new BridgeRefusal("invalid-argument", e.message);
+    throw e;
+  }
 }
 
 function optStr(v: unknown): string | undefined {
@@ -706,8 +720,20 @@ export function exposePolarisBridge(
     ...(opts.deviceName ? { deviceName: opts.deviceName } : {}),
   });
   // A sign-out from anywhere (an `invoke`, a declined nearby account) ends every ask.
+  const choiceHost = createChoiceHost({
+    choice: () => client.identity.choice,
+    signedIn: () => {
+      pushState();
+      notify("signedIn");
+    },
+    discard: () => client.identity.signOut(),
+    ended: (flowId) => forgetFlow(flowId),
+  });
   const onIdentity = (e: { kind: string }): void => {
-    if (e.kind === "signedOut") nearbyHost.dropAll();
+    if (e.kind === "signedOut") {
+      nearbyHost.dropAll();
+      choiceHost.dropAll();
+    }
   };
   client.events.on("identity", onIdentity);
 
@@ -1096,6 +1122,16 @@ export function exposePolarisBridge(
       }
       return client.update.feedUrl(kind, o);
     },
+    // ── v6 (UK-42.22.7): the licence and device choice after a `choose` poll. The `grant` argument
+    //    is the ref the poll answered; the real grant stays in this process. ──
+    "identity.choice.licenses": async (a, e) =>
+      choiceCall(() => choiceHost.licenses(e.sender, a)),
+    "identity.choice.devices": async (a, e) =>
+      choiceCall(() => choiceHost.devices(e.sender, a)),
+    "identity.choice.complete": async (a, e) =>
+      choiceCall(() => choiceHost.complete(e.sender, a)),
+    "identity.choice.cancel": async (a, e) =>
+      choiceCall(() => choiceHost.cancel(e.sender, a)),
     // ── v4 (SP-13 config.local, SP-14 update-health events) ───────────────────────────
     "config.set": async (a) => {
       const b = bag(a);
@@ -1150,7 +1186,7 @@ export function exposePolarisBridge(
       await client.sync({ force: true });
       return currentState(e.sender.id);
     },
-    beginSignIn: async (_e, begin) => {
+    beginSignIn: async (e, begin) => {
       // v4: the renderer's device name wins over the host option, which stays the default.
       const deviceName = optStr(bag(begin).deviceName) ?? opts.deviceName;
       // UK-42.17: the hints the Node SDK's own `signIn.start` takes, and nothing more (no scope,
@@ -1165,7 +1201,7 @@ export function exposePolarisBridge(
       const ttl = Math.max(0, prompt.expiresIn * 1000) + graceMs;
       const timer = setTimeout(() => flows.delete(flowId), ttl);
       timer.unref?.();
-      flows.set(flowId, { prompt, timer });
+      flows.set(flowId, { prompt, windowId: e.sender.id, timer });
       return {
         flowId,
         verificationUrl: prompt.verificationUriComplete,
@@ -1175,9 +1211,15 @@ export function exposePolarisBridge(
         interval: prompt.interval,
       };
     },
-    pollSignIn: async (_e, flowId) => {
+    pollSignIn: async (e, flowId) => {
       const flow = flows.get(str(flowId, "flowId"));
-      if (!flow) return { kind: "expired" };
+      if (!flow || flow.windowId !== e.sender.id) return { kind: "expired" };
+      // v6: a flow that ended in `choose` answers it again to the same window, and nothing to
+      // another.
+      if (choiceHost.has(flowId as string))
+        return (
+          choiceHost.again(e.sender, flowId as string) ?? { kind: "expired" }
+        );
       let r;
       try {
         r = await flow.prompt.wait({ once: true });
@@ -1198,8 +1240,9 @@ export function exposePolarisBridge(
       }
       switch (r.kind) {
         case "pending":
-        case "choose":
           return { kind: "pending" };
+        case "choose":
+          return choiceHost.issue(e.sender, flowId as string, r);
         case "signedIn":
           forgetFlow(flowId as string);
           pushState();
@@ -1220,6 +1263,7 @@ export function exposePolarisBridge(
     },
     signOut: async () => {
       nearbyHost.dropAll();
+      choiceHost.dropAll();
       await client.identity.signOut();
       pushState();
       return null;
@@ -1396,6 +1440,7 @@ export function exposePolarisBridge(
       client.events.off("config", onConfig);
       client.events.off("identity", onIdentity);
       nearbyHost.dropAll();
+      choiceHost.dropAll();
       offPresentation();
       for (const id of [...flows.keys()]) forgetFlow(id);
       subscribers.clear();

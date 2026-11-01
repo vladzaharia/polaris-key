@@ -119,8 +119,8 @@ async function setup(
 describe("PolarisBridge v5 over IPC (SP-N10, SP-31)", () => {
   it("serves the gate state with the capability map", async () => {
     const { bridge } = await setup();
-    expect(POLARIS_BRIDGE_VERSION).toBe(5);
-    expect(bridge.version).toBe(5);
+    expect(POLARIS_BRIDGE_VERSION).toBe(6);
+    expect(bridge.version).toBe(6);
     const s = await bridge.getSyncState();
     expect(s.activation).toBe("token");
     expect((s.doc as { licenseId: string }).licenseId).toBe("lic_parity");
@@ -644,6 +644,9 @@ describe("PolarisBridge v5 over IPC (SP-N10, SP-31)", () => {
     // so the scan cannot read these three; they are the adapter's account calls.
     for (const m of ["subject", "attach", "openAccount"])
       calls.add(`identity.${m}`);
+    // UK-42.22.7: the adapter's `choiceCall(method, args)` passes the method as a variable too.
+    for (const m of ["licenses", "devices", "complete", "cancel"])
+      calls.add(`identity.choice.${m}`);
     expect([...calls].sort()).toEqual([...DEFAULT_INVOKE_VERBS].sort());
   });
 });
@@ -1200,13 +1203,13 @@ describe("PolarisBridge v4 verbs round-trip through the preload (SP-31)", () => 
     ).rejects.toMatchObject({ code: "invoke-not-allowed" });
   });
 
-  it("subscribe answers {version: 5}", async () => {
+  it("subscribe answers {version: 6}", async () => {
     const { ipc } = await setup();
     expect(
       await ipc.ipcRenderer.invoke(
         channelOf(DEFAULT_BRIDGE_CHANNEL, "subscribe"),
       ),
-    ).toEqual({ ok: true, value: { version: 5 } });
+    ).toEqual({ ok: true, value: { version: 6 } });
   });
 
   it("pollSignIn's ok carries the identity the host's poll knew", async () => {
@@ -2013,9 +2016,9 @@ describe("PolarisBridge v5: automatic and nearby sign-in (I-47b)", () => {
     return last.nearby.approver.asks[0]!.askId;
   };
 
-  it("registers all eleven v5 methods and answers version 5", async () => {
+  it("registers all eleven v5 methods and answers version 6", async () => {
     const { bridge, ipc } = host();
-    expect(bridge.version).toBe(5);
+    expect(bridge.version).toBe(6);
     for (const m of [
       "autoSignIn",
       "nearbyStart",
