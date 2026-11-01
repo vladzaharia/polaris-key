@@ -182,9 +182,8 @@
       "status": "implemented"
     },
     "identity.keyreturn": {
-      "status": "planned",
-      "wp": "I-15b",
-      "note": "LK-SKIP.9: the opt-in, the via rule and the activated outcome, with the replayer."
+      "status": "implemented",
+      "note": "SignInOptions(keyReturn: true) appends key_return=allow (last) to the web authorize URL and the native pushed request; never sent unless set, off by default and off in the kits until they render the outcome. With it, a via: \"key\" token answer settles session.complete / the native sign-in as SignInOutcome.activated(SignInActivated: licenseId, keyEntries): the token is stored as a key activation (rung 1 of automatic sign-in does not count it), the held account is forgotten (subjectChanged with a nil subject), and no signedIn is emitted. Without the opt-in the same body is a bad-response. device_limit, key_entry_limit and license_owned are SignInError values whose details carry limit, deviceCount, manageUrl, keyEntries and signInUrl. The three redirect-web-key-return transcripts replay in TranscriptTests; KeyReturnTests maps each rule."
     },
     "identity.redirect.native": {
       "status": "implemented",

@@ -596,7 +596,8 @@ extension IdentityClient {
                 returnUri: native.returnUri, scope: options.scope, loginHint: options.loginHint,
                 nameHint: options.nameHint, purpose: options.purpose?.rawValue,
                 licenseChoice: options.licenseChoice?.rawValue,
-                choiceAvailable: fragment?.choiceAvailable == true, state: entropy?.state,
+                choiceAvailable: fragment?.choiceAvailable == true, keyReturn: options.keyReturn,
+                state: entropy?.state,
                 codeVerifier: entropy?.codeVerifier)
             guard let url = URL(string: pushed.url) else {
                 throw PolarisError(code: ErrorCode.badResponse, message: "the request endpoint is not a URL.")
@@ -670,7 +671,8 @@ extension IdentityClient {
             RedirectPending(
                 authorizeUrl: "", state: pending.state, codeVerifier: pending.codeVerifier,
                 redirectUri: pending.redirectUri, clientId: pending.clientId, issuer: pending.issuer,
-                tokenEndpoint: pending.tokenEndpoint, choiceApp: pending.choiceApp),
+                tokenEndpoint: pending.tokenEndpoint, choiceApp: pending.choiceApp,
+                keyReturn: pending.keyReturn),
             code: code, deviceName: nil, repeatLabel: false)
     }
 

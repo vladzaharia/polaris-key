@@ -51,6 +51,8 @@ struct NativePending: Sendable, Equatable {
     let tokenEndpoint: String
     /// The push carried `license_choice=app`: the token endpoint may answer `choose`.
     let choiceApp: Bool
+    /// The push carried `key_return=allow`: the token endpoint may answer `via: "key"`.
+    let keyReturn: Bool
 }
 
 extension NativePending: CustomStringConvertible, CustomDebugStringConvertible {
@@ -240,7 +242,7 @@ enum NativeRedirect {
 
     /// Build the pushed request (§12.12). Nothing here touches the network. Member order:
     /// `response_type client_id redirect_uri state code_challenge code_challenge_method [scope]
-    /// [nonce] [login_hint] [name_hint] [purpose] [license_choice] [device_name] [return_uri]`.
+    /// [nonce] [login_hint] [name_hint] [purpose] [license_choice] [key_return] [device_name] [return_uri]`.
     /// `scope` is left out when not given (the Worker defaults it); `license_choice=app` is sent
     /// only when `choiceAvailable` (I-08b).
     static func pushRequest(
@@ -248,8 +250,8 @@ enum NativeRedirect {
         clientId: String, redirectUri: String, deviceName: String? = nil, returnUri: String? = nil,
         scope: [String]? = nil, nonce: String? = nil, loginHint: String? = nil,
         nameHint: String? = nil, purpose: String? = nil, licenseChoice: String? = nil,
-        choiceAvailable: Bool = false, random: RandomBytes? = nil, state: String? = nil,
-        codeVerifier: String? = nil
+        choiceAvailable: Bool = false, keyReturn: Bool = false, random: RandomBytes? = nil,
+        state: String? = nil, codeVerifier: String? = nil
     ) throws -> PushedRequest {
         guard let redirectClass = classify(redirectUri) else {
             throw IdentityRedirect.invalid("redirectUri is not a native redirect URI.")
@@ -293,6 +295,7 @@ enum NativeRedirect {
         if let purpose, !purpose.isEmpty { pairs.append(("purpose", purpose)) }
         let sentChoice = licenseChoice == "app" && choiceAvailable
         if sentChoice { pairs.append(("license_choice", "app")) }
+        if keyReturn { pairs.append(("key_return", IdentityRedirect.keyReturnAllow)) }
         if let deviceName, !deviceName.isEmpty { pairs.append(("device_name", deviceName)) }
         if let returnUri, !returnUri.isEmpty { pairs.append(("return_uri", returnUri)) }
         return PushedRequest(
@@ -302,7 +305,7 @@ enum NativeRedirect {
                 redirectClass: redirectClass, redirectUri: redirectUri, state: state,
                 codeVerifier: verifier, clientId: clientId, issuer: issuer,
                 authorizeEndpoint: authorizeEndpoint, tokenEndpoint: tokenEndpoint,
-                choiceApp: sentChoice))
+                choiceApp: sentChoice, keyReturn: keyReturn))
     }
 
     /// Read the answer of `POST /<p>/identity/request`: `201 {request_uri, expires_in}`.

@@ -114,7 +114,7 @@ enum NativeReplay {
             clientId: transcript.product,
             issuer: parts?.queryItems?.first { $0.name == "iss" }?.value ?? "\(base)",
             authorizeEndpoint: "\(base)/authorize", tokenEndpoint: "\(base)/token",
-            choiceApp: session.licenseChoice == .app)
+            choiceApp: session.licenseChoice == .app, keyReturn: step.args["keyReturn"] == .bool(true))
         let flow = NativeFlow(
             pending: pending, authorizeUrl: "\(base)/authorize", expiresAt: Int.max, expiresIn: 600,
             listener: nil, returnPage: nil)

@@ -74,9 +74,12 @@ extension TokenAnswer: CustomStringConvertible, CustomDebugStringConvertible, Cu
         case .token(_, let scope, let subject, let schemaVersion, _, _):
             return
                 "TokenAnswer.token(accessToken: \(redactedCredential), scope: \(scope), subject: \(subject), schemaVersion: \(schemaVersion))"
+        case .activated(_, let subject, let schemaVersion, _, _, _):
+            return
+                "TokenAnswer.activated(accessToken: \(redactedCredential), subject: \(subject ?? "nil"), schemaVersion: \(schemaVersion))"
         case .choose(_, let expiresIn, _):
             return "TokenAnswer.choose(grant: \(redactedCredential), expiresIn: \(expiresIn))"
-        case .refused(let error, let status, let retry):
+        case .refused(let error, let status, let retry, _):
             return
                 "TokenAnswer.refused(error: \(error), status: \(status), retryAfterSeconds: \(retry.map(String.init) ?? "nil"))"
         case .malformed: return "TokenAnswer.malformed"
@@ -91,15 +94,69 @@ public enum TokenAnswer: Sendable, Equatable {
     case token(
         accessToken: String, scope: String, subject: String, schemaVersion: Int,
         device: [String: JSONValue], license: [String: JSONValue]?)
+    /// `200` with `via: "key"`, read only with the key-return opt-in (§12.5 rule 3). The device is
+    /// bound on the key's licence with no account: `subject` is nil, `license` is never absent and
+    /// `keyEntries` is the licence's count. The caller stores it as a key activation, clears the
+    /// held subject and settles `activated`, not `signedIn`.
+    case activated(
+        accessToken: String, subject: String?, schemaVersion: Int, device: [String: JSONValue],
+        license: [String: JSONValue], keyEntries: KeyEntries)
     /// `200` with `status: "choose"` (I-08b): the app shows the licence choice, then calls
     /// `choice/complete` with `grant`.
     case choose(grant: String, expiresIn: Double, choices: [String: JSONValue])
     /// The Worker refused: `error` is its flat OAuth / Polaris code (`invalid_grant`,
     /// `rate_limited`, ...), `retryAfterSeconds` when it named one. A 5xx or a body with no
     /// `error` is `server_error`.
-    case refused(error: String, status: Int, retryAfterSeconds: Int?)
+    case refused(error: String, status: Int, retryAfterSeconds: Int?, details: RefusalDetails?)
     /// A `200` that is neither of the above, or lacks a member the call needs.
     case malformed
+}
+
+/// What a flat refusal of the token endpoint carries beside its code: `device_limit` (`limit`,
+/// `deviceCount`, `manageUrl`), `key_entry_limit` (`keyEntries`, `manageUrl`) and `license_owned`
+/// (`signInUrl`). A member that is absent or malformed is nil.
+public struct RefusalDetails: Sendable, Equatable {
+    public let limit: Int?
+    public let deviceCount: Int?
+    public let manageUrl: String?
+    public let keyEntries: KeyEntries?
+    public let signInUrl: String?
+
+    public init(
+        limit: Int? = nil, deviceCount: Int? = nil, manageUrl: String? = nil,
+        keyEntries: KeyEntries? = nil, signInUrl: String? = nil
+    ) {
+        self.limit = limit
+        self.deviceCount = deviceCount
+        self.manageUrl = manageUrl
+        self.keyEntries = keyEntries
+        self.signInUrl = signInUrl
+    }
+
+    var isEmpty: Bool { self == RefusalDetails() }
+
+    static func count(_ value: JSONValue?) -> Int? {
+        guard let n = value?.intValue, n >= 0 else { return nil }
+        return n
+    }
+
+    static func entries(_ value: JSONValue?) -> KeyEntries? {
+        guard let o = value?.objectValue, let used = count(o["used"]), let limit = count(o["limit"])
+        else { return nil }
+        return KeyEntries(used: used, limit: limit)
+    }
+
+    static func read(_ o: [String: JSONValue]) -> RefusalDetails? {
+        func text(_ key: String) -> String? {
+            guard let v = o[key]?.stringValue, !v.isEmpty else { return nil }
+            return v
+        }
+        let found = RefusalDetails(
+            limit: count(o["limit"]), deviceCount: count(o["deviceCount"]),
+            manageUrl: text("manageUrl"), keyEntries: entries(o["keyEntries"]),
+            signInUrl: text("signInUrl"))
+        return found.isEmpty ? nil : found
+    }
 }
 
 /// One pending redirect sign-in. The session holds it between the navigation and the callback,
@@ -118,6 +175,8 @@ public struct RedirectPending: Sendable, Equatable {
     public let tokenEndpoint: String
     /// The authorize URL carries `license_choice=app`: the token endpoint may answer `choose`.
     public let choiceApp: Bool
+    /// The authorize URL carries `key_return=allow`: the token endpoint may answer `via: "key"`.
+    public let keyReturn: Bool
 }
 
 extension RedirectPending: CustomStringConvertible, CustomDebugStringConvertible {
@@ -141,6 +200,9 @@ public enum IdentityRedirect {
     public static let tokenContentType = "application/x-www-form-urlencoded"
 
     private static let grantPattern = #"sg_[A-Za-z0-9_-]{43}"#
+    private static let pairwiseSubjectPattern = #"ps_[A-Za-z0-9_-]{22}"#
+    /// The value of the `key_return` authorize parameter (§12.4).
+    public static let keyReturnAllow = "allow"
 
     // ── PKCE ─────────────────────────────────────────────────────────────────────────────
 
@@ -219,16 +281,17 @@ public enum IdentityRedirect {
 
     /// Build the authorize request. Query order is fixed so every SDK emits the same bytes:
     /// `response_type client_id redirect_uri state code_challenge code_challenge_method scope
-    /// [login_hint] [name_hint] [purpose] [license_choice]`, each value form-encoded (space as
+    /// [login_hint] [name_hint] [purpose] [license_choice] [key_return]`, each value form-encoded (space as
     /// `+`). A hint that is empty is not sent; a hint is sent verbatim (the Worker normalises,
     /// and drops a login hint that is not an email). `licenseChoice` `"app"` is sent only when
-    /// `choiceAvailable` (discovery has the `choice*` endpoints).
+    /// `choiceAvailable` (discovery has the `choice*` endpoints). `keyReturn` sends
+    /// `key_return=allow`, last; it is never sent unless set.
     public static func start(
         authorizeEndpoint: String, tokenEndpoint: String, issuer: String, clientId: String,
         redirectUri: String, scope: [String]? = nil, loginHint: String? = nil,
         nameHint: String? = nil, purpose: String? = nil, licenseChoice: String? = nil,
-        choiceAvailable: Bool = false, random: RandomBytes? = nil, state: String? = nil,
-        codeVerifier: String? = nil
+        choiceAvailable: Bool = false, keyReturn: Bool = false, random: RandomBytes? = nil,
+        state: String? = nil, codeVerifier: String? = nil
     ) throws -> RedirectPending {
         guard isRedirectUri(redirectUri) else {
             throw invalid("redirectUri must be an absolute https URL with no fragment.")
@@ -262,11 +325,13 @@ public enum IdentityRedirect {
         if let nameHint, !nameHint.isEmpty { pairs.append(("name_hint", nameHint)) }
         if let purpose, !purpose.isEmpty { pairs.append(("purpose", purpose)) }
         if licenseChoice == "app", choiceAvailable { pairs.append(("license_choice", "app")) }
+        if keyReturn { pairs.append(("key_return", keyReturnAllow)) }
         let joiner = authorizeEndpoint.contains("?") ? "&" : "?"
         return RedirectPending(
             authorizeUrl: "\(authorizeEndpoint)\(joiner)\(formBody(pairs))", state: state,
             codeVerifier: verifier, redirectUri: redirectUri, clientId: clientId, issuer: issuer,
-            tokenEndpoint: tokenEndpoint, choiceApp: licenseChoice == "app" && choiceAvailable)
+            tokenEndpoint: tokenEndpoint, choiceApp: licenseChoice == "app" && choiceAvailable,
+            keyReturn: keyReturn)
     }
 
     // ── The callback ─────────────────────────────────────────────────────────────────────
@@ -362,8 +427,14 @@ public enum IdentityRedirect {
     }
 
     /// Read the token endpoint's answer. `choose` is decided by the `status` member alone, never
-    /// by the absence of `access_token`.
-    public static func parseTokenAnswer(status: Int, body: JSONValue?) -> TokenAnswer {
+    /// by the absence of `access_token`. A `200` with a `via` member is `activated` only when the
+    /// caller opted in (`keyReturn`, from `RedirectPending.keyReturn`) and `via` is `"key"`; any
+    /// other `via`, or the opt-in missing, is `malformed`. A `via: "key"` body is `malformed`
+    /// unless `scope` is `""`, `license` is an object, `keyEntries` is `{used, limit}` of
+    /// non-negative integers and `subject` is a pairwise subject or null.
+    public static func parseTokenAnswer(
+        status: Int, body: JSONValue?, keyReturn: Bool = false
+    ) -> TokenAnswer {
         let object = body?.objectValue
         if status != 200 {
             let error = object?["error"]?.stringValue.flatMap { $0.isEmpty ? nil : $0 } ?? "server_error"
@@ -371,7 +442,9 @@ public enum IdentityRedirect {
             if let seconds = object?["retryAfter"]?.doubleValue, seconds.isFinite, seconds > 0 {
                 retry = Int(min(seconds.rounded(.up), Double(Int32.max)))
             }
-            return .refused(error: error, status: status, retryAfterSeconds: retry)
+            return .refused(
+                error: error, status: status, retryAfterSeconds: retry,
+                details: object.flatMap(RefusalDetails.read))
         }
         guard let object else { return .malformed }
         if object["status"]?.stringValue == "choose" {
@@ -380,6 +453,27 @@ public enum IdentityRedirect {
                 let choices = object["choices"]?.objectValue
             else { return .malformed }
             return .choose(grant: grant, expiresIn: expiresIn, choices: choices)
+        }
+        if object["via"] != nil {
+            guard object["via"]?.stringValue == "key", keyReturn,
+                let token = object["access_token"]?.stringValue, !token.isEmpty,
+                object["scope"]?.stringValue == "",
+                let device = object["device"]?.objectValue,
+                let license = object["license"]?.objectValue,
+                let entries = RefusalDetails.entries(object["keyEntries"])
+            else { return .malformed }
+            let subject: String?
+            switch object["subject"] {
+            case .null?: subject = nil
+            case .string(let s)?:
+                guard wholeMatches(pairwiseSubjectPattern, s) != nil else { return .malformed }
+                subject = s
+            default: return .malformed
+            }
+            return .activated(
+                accessToken: token, subject: subject,
+                schemaVersion: object["schemaVersion"]?.intValue ?? 1, device: device,
+                license: license, keyEntries: entries)
         }
         guard let token = object["access_token"]?.stringValue, !token.isEmpty,
             let scope = object["scope"]?.stringValue,
@@ -435,7 +529,7 @@ extension IdentityClient {
             clientId: core.product, redirectUri: redirectUri, scope: options.scope,
             loginHint: options.loginHint, nameHint: options.nameHint,
             purpose: options.purpose?.rawValue, licenseChoice: options.licenseChoice?.rawValue,
-            choiceAvailable: choiceAvailable, state: entropy?.state,
+            choiceAvailable: choiceAvailable, keyReturn: options.keyReturn, state: entropy?.state,
             codeVerifier: entropy?.codeVerifier)
     }
 
@@ -464,12 +558,14 @@ extension IdentityClient {
                 code: IdentityClient.networkError, message: "the token request could not be sent.")
         }
         let body = try? JSONDecoder().decode(JSONValue.self, from: response.body)
-        switch IdentityRedirect.parseTokenAnswer(status: response.status, body: body) {
+        switch IdentityRedirect.parseTokenAnswer(
+            status: response.status, body: body, keyReturn: pending.keyReturn)
+        {
         case .malformed:
             throw PolarisError(
                 code: ErrorCode.badResponse,
                 message: "the token endpoint answered without a complete sign-in.")
-        case .refused(let error, let status, let retryAfter):
+        case .refused(let error, let status, let retryAfter, let details):
             var retry = retryAfter
             if retry == nil,
                 let header = response.headers.first(where: { $0.key.lowercased() == "retry-after" })?
@@ -480,7 +576,27 @@ extension IdentityClient {
             throw SignInError(
                 code: status >= 500 ? IdentityClient.serverError : error,
                 message: "the token endpoint refused the sign-in (\(error)).",
-                retryAfterSeconds: retry)
+                retryAfterSeconds: retry, details: status < 500 ? details : nil)
+        case .activated(let accessToken, _, _, _, let license, let keyEntries):
+            // A key return is a key activation, never a sign-in: the token is stored as `activate`
+            // (so the automatic sign-in's first rung does not count it) and the held account, if
+            // any, is forgotten (the subject clears). The licence event comes from the sync.
+            let previous = subjectValue.with { held -> String? in
+                let old = held
+                held = nil
+                return old
+            }
+            do { try await core.setToken(accessToken, source: .activate) } catch {
+                subjectValue.with { held in if held == nil { held = previous } }
+                throw error
+            }
+            if redirectAcquisitionSync.current { await onAcquired?() }
+            if previous != nil {
+                notifyIdentity(
+                    IdentityChange(kind: IdentityChange.subjectChanged, subject: nil, previous: previous))
+            }
+            return .activated(
+                SignInActivated(licenseId: license["id"]?.stringValue, keyEntries: keyEntries))
         case .choose(let grant, let expiresIn, let choices):
             // Only `license_choice=app` makes the Worker answer this; a card sign-in never sees it.
             guard pending.choiceApp, let view = LicenseChoiceView.read(.object(choices)) else {
@@ -516,4 +632,5 @@ extension IdentityClient {
 enum RedirectRedeemed: Sendable, Equatable {
     case ready(SignInReady)
     case choose(PendingSignIn)
+    case activated(SignInActivated)
 }

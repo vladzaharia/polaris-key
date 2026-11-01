@@ -51,12 +51,19 @@ public struct SignInOptions: Sendable {
     /// Redirect channel with no `redirectUri`: how the native redirect sign-in (loopback, a
     /// registered scheme or a claimed HTTPS link, §12.12) starts. Ignored when `redirectUri` is set.
     public var native: NativeRedirectOptions
+    /// Redirect channel (web and native): the app accepts a key return, so `key_return=allow` is
+    /// sent (last) and a person who continues without an account on a key's licence settles the
+    /// session as `.activated`. Off by default and never sent unless set; the Worker drops it when
+    /// the product or its launch gate does not offer it. Leave it off until the app renders the
+    /// `.activated` outcome (the kits do not yet). Ignored on the device-code channel.
+    public var keyReturn: Bool
 
     public init(
         channel: SignInChannel = .deviceCode, deviceName: String? = nil,
         browser: (any SignInBrowser)? = nil, redirectUri: String? = nil, scope: [String]? = nil,
         loginHint: String? = nil, nameHint: String? = nil, purpose: SignInPurpose? = nil,
-        licenseChoice: LicenseChoiceMode? = nil, native: NativeRedirectOptions = NativeRedirectOptions()
+        licenseChoice: LicenseChoiceMode? = nil, native: NativeRedirectOptions = NativeRedirectOptions(),
+        keyReturn: Bool = false
     ) {
         self.channel = channel
         self.deviceName = deviceName
@@ -68,6 +75,7 @@ public struct SignInOptions: Sendable {
         self.purpose = purpose
         self.licenseChoice = licenseChoice
         self.native = native
+        self.keyReturn = keyReturn
     }
 }
 
@@ -83,19 +91,37 @@ public enum SignInOutcome: Sendable, Equatable {
     case chooseLicense(PendingSignIn)
     /// Signed in: the device token is stored and the post-acquisition sync has run.
     case signedIn(SignInReady)
+    /// Redirect channel with `keyReturn`: the person continued without an account and the device
+    /// is activated on the key's licence. The token is stored as a key activation (not a sign-in),
+    /// and the account the device held, if any, is forgotten.
+    case activated(SignInActivated)
     case cancelled
     case expired
 
-    /// `pending`, `choose`, `signedIn`, `cancelled` or `expired`.
+    /// `pending`, `choose`, `chooseLicense`, `signedIn`, `activated`, `cancelled` or `expired`.
     public var kind: String {
         switch self {
         case .pending: return "pending"
         case .choose: return "choose"
         case .chooseLicense: return "chooseLicense"
         case .signedIn: return "signedIn"
+        case .activated: return "activated"
         case .cancelled: return "cancelled"
         case .expired: return "expired"
         }
+    }
+}
+
+/// A key return that activated the device (`SignInOutcome.activated`).
+public struct SignInActivated: Sendable, Equatable {
+    /// The licence the device now runs on.
+    public let licenseId: String?
+    /// The licence's key-entry count after this return.
+    public let keyEntries: KeyEntries
+
+    public init(licenseId: String?, keyEntries: KeyEntries) {
+        self.licenseId = licenseId
+        self.keyEntries = keyEntries
     }
 }
 
@@ -106,11 +132,18 @@ public struct SignInError: Error, Sendable, Equatable, CustomStringConvertible {
     public let message: String
     /// Seconds to wait before retrying, when the Worker named them (`rate_limited`).
     public let retryAfterSeconds: Int?
+    /// What the refusal carries beside its code (`device_limit`, `key_entry_limit`,
+    /// `license_owned`), flat on the answer; nil when it carried none.
+    public let details: RefusalDetails?
 
-    public init(code: String, message: String, retryAfterSeconds: Int? = nil) {
+    public init(
+        code: String, message: String, retryAfterSeconds: Int? = nil,
+        details: RefusalDetails? = nil
+    ) {
         self.code = code
         self.message = message
         self.retryAfterSeconds = retryAfterSeconds
+        self.details = details
     }
 
     public var description: String { "SignInError(\(code)): \(message)" }
@@ -389,6 +422,7 @@ public final class SignInSession: Sendable {
                 {
                 case .ready(let ready): return try settle(.success(.signedIn(ready)))
                 case .choose(let grant): return try settle(.success(.chooseLicense(grant)))
+                case .activated(let activated): return try settle(.success(.activated(activated)))
                 }
             } catch let error as SignInError {
                 return try settle(.failure(error))
@@ -462,6 +496,7 @@ public final class SignInSession: Sendable {
                 switch try await client.redeemNative(pending, code: code) {
                 case .ready(let ready): return done(.success(.signedIn(ready)))
                 case .choose(let grant): return done(.success(.chooseLicense(grant)))
+                case .activated(let activated): return done(.success(.activated(activated)))
                 }
             } catch let error as SignInError {
                 return done(.failure(error))

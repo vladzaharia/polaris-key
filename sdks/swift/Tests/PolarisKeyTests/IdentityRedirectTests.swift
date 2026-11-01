@@ -301,17 +301,26 @@ final class IdentityRedirectTests: XCTestCase {
 
     func testRefusals() {
         let vectors: [(Int, String, TokenAnswer)] = [
-            (400, #"{"error":"invalid_grant"}"#, .refused(error: "invalid_grant", status: 400, retryAfterSeconds: nil)),
+            (
+                400, #"{"error":"invalid_grant"}"#,
+                .refused(error: "invalid_grant", status: 400, retryAfterSeconds: nil, details: nil)
+            ),
             (
                 401, #"{"error":"invalid_client"}"#,
-                .refused(error: "invalid_client", status: 401, retryAfterSeconds: nil)
+                .refused(error: "invalid_client", status: 401, retryAfterSeconds: nil, details: nil)
             ),
             (
                 429, #"{"error":"rate_limited","retryAfter":2.2}"#,
-                .refused(error: "rate_limited", status: 429, retryAfterSeconds: 3)
+                .refused(error: "rate_limited", status: 429, retryAfterSeconds: 3, details: nil)
             ),
-            (500, #""oops""#, .refused(error: "server_error", status: 500, retryAfterSeconds: nil)),
-            (502, #"{"error":""}"#, .refused(error: "server_error", status: 502, retryAfterSeconds: nil)),
+            (
+                500, #""oops""#,
+                .refused(error: "server_error", status: 500, retryAfterSeconds: nil, details: nil)
+            ),
+            (
+                502, #"{"error":""}"#,
+                .refused(error: "server_error", status: 502, retryAfterSeconds: nil, details: nil)
+            ),
         ]
         for (status, body, expected) in vectors {
             XCTAssertEqual(
