@@ -67,6 +67,13 @@ internal class MachineCore(val opts: CloudSyncOptions, var s: MachineState) {
     val outbox: MutableList<JsonObject> = mutableListOf()
     val events: MutableList<SyncEvent> = mutableListOf()
     var outcome: ((RecordOutcome) -> Unit)? = null
+    val outcomeTaps: LinkedHashSet<(RecordOutcome) -> Unit> = linkedSetOf()
+
+    /**
+     * The collections whose record changes are reported as `records` events, with the last state reported (record id to
+     * the value and where it came from). Empty: nothing is computed.
+     */
+    val watched: LinkedHashMap<String, Map<String, String>> = linkedMapOf()
 
     /** The app requires E2E, or this device has accepted it before: the pin cannot be undone. */
     fun requiresE2e(): Boolean = appEncryption == "e2e" || s.e2eSeen

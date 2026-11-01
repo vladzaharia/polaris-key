@@ -715,12 +715,12 @@ object CloudSyncReplay {
         out["empty"] = JsonPrimitive(b["empty"].boolValue == true)
         val names = (b["changes"].arrayValue ?: JsonArray(emptyList())).mapNotNull { it.objectValue?.get("setting").stringValue }
         out["settings"] = JsonArray(names.sortedWith { x, y -> compareUtf16(x, y) }.map { JsonPrimitive(it) })
-        // A record deleted on the server (`tombstones`), as `collection/id`.
-        out["deletedRecords"] = JsonArray(
-            (b["tombstones"].arrayValue ?: JsonArray(emptyList())).mapNotNull { t ->
-                t.objectValue?.get("record").arrayValue?.takeIf { it.size == 2 }?.let { "${it[0].stringValue}/${it[1].stringValue}" }
-            }.sortedWith { x, y -> compareUtf16(x, y) }.map { JsonPrimitive(it) },
-        )
+        // A record changed on the server (`changes`) or deleted there (`tombstones`), as `collection/id`.
+        fun recordNames(rows: JsonElement?): List<String> = (rows.arrayValue ?: JsonArray(emptyList())).mapNotNull { t ->
+            t.objectValue?.get("record").arrayValue?.takeIf { it.size == 2 }?.let { "${it[0].stringValue}/${it[1].stringValue}" }
+        }.sortedWith { x, y -> compareUtf16(x, y) }
+        recordNames(b["changes"]).takeIf { it.isNotEmpty() }?.let { out["records"] = JsonArray(it.map { n -> JsonPrimitive(n) }) }
+        out["deletedRecords"] = JsonArray(recordNames(b["tombstones"]).map { JsonPrimitive(it) })
         b["quota"].objectValue?.let { q ->
             q["bytes"]?.takeIf { number(it) }?.let { out["quotaBytes"] = it }
             q["files"].boolValue?.let { out["files"] = JsonPrimitive(it) }

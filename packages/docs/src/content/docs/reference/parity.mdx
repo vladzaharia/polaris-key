@@ -24,7 +24,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Python | `python` | 108 | 16 | 18 | 0 |
 | Swift | `macos`, `ios` | 120 | 10 | 11 | 1 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 118 | 9 | 15 | 0 |
-| Kotlin | `android`, `jvm` | 120 | 9 | 12 | 1 |
+| Kotlin | `android`, `jvm` | 121 | 9 | 11 | 1 |
 
 ## Core
 
@@ -82,7 +82,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `sync.conflict` | One conflict vocabulary: cloudSync.onConflict and MergeRequest for revision records | unit + transcripts (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | — |
 | `sync.saves` | cloudSync.saves on records and files: list, read, write, delete, revisions | transcripts | ✓ | ✓ | ✓ | ✓ | ✓; N/A (ios: runtime); N/A (android: runtime) | ✓ | ios, android: runtime |
 | `sync.keyring` | The key ring: create, wraps, recovery, adopt and reset over /devices/keyring | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `sync.records` | cloudSync.collection(name): records of any collection with put, update, compare-and-set and union merge | transcripts | ✓ | ✓ | ✓ | ✓ | planned (U-46) | planned (U-46) | — |
+| `sync.records` | cloudSync.collection(name): records of any collection with put, update, compare-and-set and union merge | transcripts | ✓ | ✓ | ✓ | ✓ | planned (U-46) | ✓ | — |
 | `sync.files` | cloudSync files: single and multipart upload, resume, progress and ranged download | transcripts | ✓ | ✓ | ✓ | ✓ | ✓; N/A (ios: runtime); N/A (android: runtime) | ✓ | ios, android: runtime |
 | `sync.files.delta` | cloudSync file delta: content-defined chunks, only the missing chunks travel | `sync-vectors.json` `cdcCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓; N/A (ios: runtime); N/A (android: runtime) | ✓ | ios, android: runtime |
 | `sync.e2e.recovery` | The recovery code, and the platform backup of the root where the OS has one | `sync-vectors.json` `recoveryCodeCases` + transcripts (U-36) | planned (U-38) | planned (U-20) | planned (U-06) | planned (U-39) | planned (U-40) | planned (U-39) | web, node, python, jvm, windows, linux: runtime |

@@ -33,19 +33,29 @@ internal object CloudSyncCatalog {
     /** The routes of [catalog], without any mode the catalog states (the app decides the mode, A-7). */
     fun routesOf(catalog: JsonObject): List<JsonObject> = SyncRoutes.syncedSettings(catalog).map { JsonObject(it - "encryption") }
 
-    /** The `saves` collection as the machine reads a declaration, or none when the catalog declares no such collection (v1 is saves only, D-2). */
-    fun collectionsOf(catalog: JsonObject): List<JsonObject> {
-        if (savesOf(catalog) == null) return emptyList()
-        return listOf(
+    /** What a template supplies of a collection's conflict policy (`saves` is `revision`, `session` is `lastWrite`). */
+    private val templatePolicy = mapOf(SAVES_COLLECTION to "revision", "session" to "lastWrite")
+
+    /**
+     * The collections as the machine reads a declaration: each member of the catalog's `cloudSync.collections` with its
+     * policy (`conflict`, else the template's, else `revision`), its `conflictField` as `field` and, for `revision`, the
+     * keep-server resolution. A name may be an exact name or a `prefix.*` pattern.
+     */
+    fun collectionsOf(catalog: JsonObject): List<JsonObject> =
+        catalog["cloudSync"].objectValue?.get("collections").arrayValue.orEmpty().mapNotNull { e ->
+            val decl = e.objectValue ?: return@mapNotNull null
+            val name = decl["name"].stringValue ?: return@mapNotNull null
+            val policy = decl["conflict"].stringValue ?: templatePolicy[decl["template"].stringValue] ?: "revision"
+            val field = decl["conflictField"].stringValue
             JsonObject(
-                mapOf(
-                    "name" to JsonPrimitive(SAVES_COLLECTION),
-                    "policy" to JsonPrimitive("revision"),
-                    "resolve" to JsonPrimitive("keepServer"),
-                ),
-            ),
-        )
-    }
+                buildMap {
+                    put("name", JsonPrimitive(name))
+                    put("policy", JsonPrimitive(policy))
+                    if (field != null) put("field", JsonPrimitive(field))
+                    if (policy == "revision") put("resolve", JsonPrimitive("keepServer"))
+                },
+            )
+        }
 
     /** The resolved `saves` collection of the catalog's `cloudSync` block: the declaration over the `saves` template (delta on, 32 MiB). */
     fun savesOf(catalog: JsonObject): SavesCollection? {
