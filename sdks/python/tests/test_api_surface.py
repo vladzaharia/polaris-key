@@ -62,6 +62,7 @@ ATTRS = [
     ("identity.subject", "IdentityClient", "subject"),
     ("identity.signOut", "IdentityClient", "sign_out"),
     ("identity.signIn.start", "SignInNamespace", "start"),
+    ("identity.signIn.handleRedirect", "SignInNamespace", "handle_redirect"),
     ("identity.signIn.session.reopen", "SignInSession", "reopen"),
     ("identity.signIn.session.cancel", "SignInSession", "cancel"),
     ("identity.signIn.session.wait", "SignInSession", "wait"),
