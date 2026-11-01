@@ -14,6 +14,7 @@ import { newKeys } from "../../deviceKeyFixtures.js";
 import {
   DeviceKeysConflictError,
   getDeviceKeys,
+  isValidAgreeKey,
   upsertDeviceKeys,
 } from "../../../src/core/devices/keys.js";
 import { assertConnectDoc } from "../../../src/core/signing.js";
@@ -176,7 +177,10 @@ describe("GET /<p>/connect/identity", () => {
   it("every accepted registration leaves the roster signable: a repeated key string is refused", async () => {
     const first = await identity(w);
     const held = (await getDeviceKeys(w.db, SLUG, B))!;
-    const mine = await newKeys();
+    // The second case reuses the signing key string as the agreement key, so it has to be a
+    // string both roles accept (the canonical X25519 spelling): draw until it is.
+    let mine = await newKeys();
+    while (!isValidAgreeKey(mine.signKey)) mine = await newKeys();
     for (const keys of [
       { signKey: held.sign_key, agreeKey: mine.agreeKey },
       { signKey: mine.signKey, agreeKey: mine.signKey },

@@ -865,6 +865,9 @@ describe("rule 7: every entry's rbacArea", () => {
       "core.adminGroup": "settings",
       "identity.provisioning": "settings",
       "identity.keyEntry.claimByKey": "settings",
+      "identity.nativeRedirect.claimedPaths": "keys",
+      "identity.nativeRedirect.loopback": "settings",
+      "identity.nativeRedirect.schemes": "keys",
       "distribution.access": "settings",
       "update.metadataAccess": "settings",
     });

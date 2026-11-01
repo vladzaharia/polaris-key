@@ -35,6 +35,9 @@
  *   - UK-04b: 11a/11b ingest the repository's own `.pkey/release.yaml`, which gained the
  *     `npm.elements` deliverable. Both entries were re-captured for exactly that: one more
  *     `release_deliverables` row (and its snapshot text) in each.
+ *   - 11a/11b (stage fix): the repository's `.pkey/release.yaml` gained the `maven.games`
+ *     deliverable. Both were re-captured for exactly that: one more `release_deliverables`
+ *     row (and its snapshot text and listed id) in each.
  *   - 11a/11b: the deploy hook's snapshot scrub reads the active schema, one more D1 round trip
  *     (sec/manifest-snapshot-redact); only the trip count moved.
  *   - CM-29 (integration, 2026-10-17): the service table gained `commerce` (off by default), so

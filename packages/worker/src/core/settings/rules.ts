@@ -199,6 +199,7 @@ export const SECURITY_WIDENING_AREAS: Readonly<
   "core.adminGroup": "settings",
   "identity.provisioning": "settings",
   "identity.keyEntry.claimByKey": "settings",
+  "identity.nativeRedirect.loopback": "settings",
   "distribution.access": "settings",
   "update.metadataAccess": "settings",
 };

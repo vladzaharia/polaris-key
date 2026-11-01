@@ -170,6 +170,7 @@ export const identityService: ServiceDescriptor = {
     const accountPortal = portalOn
       ? await accountPortalUrl(env, db, base, product)
       : null;
+    const customer = customerOrigin(env, base) ?? new URL(base).origin;
     // I-13.7 (§12.11.6): the exchange rung is named only while the launch gate serves it and
     // the product declares a kind; an SDK uses a rung only when its endpoint is present.
     const exchangeOn = await launchGateOn(env, db, "launch.identityExchange");
@@ -250,7 +251,7 @@ export const identityService: ServiceDescriptor = {
         token: `${base}/identity/token`,
         request: `${base}/identity/request`,
         // The customer-host page a loopback listener answers `303` to (§12.9 rule 2).
-        signinReturn: `${customerOrigin(env, base) ?? new URL(base).origin}/signin/return`,
+        signinReturn: `${customer}/signin/return`,
         choiceLicenses: `${base}/identity/choice/licenses`,
         choiceDevices: `${base}/identity/choice/devices`,
         choiceComplete: `${base}/identity/choice/complete`,
