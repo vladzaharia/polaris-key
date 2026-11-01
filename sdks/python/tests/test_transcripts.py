@@ -74,7 +74,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature core.presentation ui.cli.portal
 # @pkey-feature identity.redirect.web identity.choice identity.signin.hints identity.devicecode.choice
 # @pkey-feature sync.keyring connect.identity connect.relay sync.settings
-# @pkey-feature sync.files sync.files.delta sync.saves identity.nearby identity.redirect.native
+# @pkey-feature sync.files sync.files.delta sync.saves sync.records identity.nearby identity.redirect.native
 
 from __future__ import annotations
 

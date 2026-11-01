@@ -365,6 +365,10 @@ class CloudSyncMachine:
         self._outbox: List[Obj] = []
         self._events: List[Obj] = []
         self._outcome: Optional[Callable[[Obj], None]] = None
+        self._outcome_taps: List[Callable[[Obj], None]] = []
+        #: The collections whose record changes are reported as ``records`` events, with the last state
+        #: reported (record id to a canonical string). Empty: nothing is computed.
+        self._watched: Dict[str, Dict[str, str]] = {}
         if persisted is not None:
             self._s: Obj = _clone(persisted)
         else:
@@ -410,6 +414,7 @@ class CloudSyncMachine:
         return out
 
     def take_events(self) -> List[Obj]:
+        self._note_record_changes("remote")
         out, self._events = self._events, []
         return out
 
@@ -575,6 +580,7 @@ class CloudSyncMachine:
                     self._enqueue(
                         p, {"target": target, "op": "set", "value": _clone(value), "editedHlc": edited, **marks}
                     )
+        self._note_record_changes("local")
         self._kick()
         return _OK()
 
@@ -638,13 +644,131 @@ class CloudSyncMachine:
         pointer = _file_of(file)
         if pointer is not None:
             op["file"] = pointer
+        self._note_record_changes("local")
         self._kick()
         return {"ok": True, "mutationId": ticket}
 
     def _emit_outcome(self, op: Obj, outcome: Obj) -> None:
-        if "ticket" not in op or self._outcome is None:
+        if "ticket" not in op:
             return
-        self._outcome({"mutationId": op["ticket"], **outcome})
+        full = {"mutationId": op["ticket"], **outcome}
+        if self._outcome is not None:
+            self._outcome(full)
+        for tap in list(self._outcome_taps):
+            tap(full)
+
+    def tap_outcomes(self, fn: Callable[[Obj], None]) -> Callable[[], None]:
+        """Another listener for :meth:`put_at` / :meth:`remove_at` outcomes, beside :meth:`on_outcome`'s.
+        A tap is told of every outcome, so it must tell its own ticket from another's. Returns its remover."""
+        self._outcome_taps.append(fn)
+
+        def off() -> None:
+            if fn in self._outcome_taps:
+                self._outcome_taps.remove(fn)
+
+        return off
+
+    def collection_decl(self, name: str) -> Optional[Obj]:
+        """The declaration of a collection in the catalog (a pattern included), or ``None``."""
+        d = self._collection(name)
+        return dict(d) if d is not None else None
+
+    def watch_records(self, collection: str, on: bool) -> None:
+        """Report record changes of ``collection`` as ``records`` events from now on (``False``: stop)."""
+        if not on:
+            self._watched.pop(collection, None)
+        elif collection not in self._watched:
+            self._watched[collection] = self._record_states(collection)
+
+    def record_ids(self, collection: str) -> List[str]:
+        """The ids of a collection's effective records (pending edits applied), in byte order."""
+        return _sorted(self._record_states(collection).keys())
+
+    def _record_states(self, collection: str) -> Dict[str, str]:
+        out: Dict[str, str] = {}
+        if self._s["subject"] is None:
+            return out
+        prefix = f"{collection}/"
+        p = self._active()
+        keys = set(p["records"].keys())
+        for op in p["pending"]:
+            if "record" in op["target"] and op["target"]["record"][0] == collection:
+                keys.add(_record_key(*op["target"]["record"]))
+        keys.update(p["held"].keys())
+        for rk in keys:
+            if not rk.startswith(prefix):
+                continue
+            rid = rk[len(prefix) :]
+            v = self._record(collection, rid)
+            if v is not None:
+                out[rid] = _canonical_json([v["value"], v["from"]])
+        return out
+
+    def _note_record_changes(self, origin: str) -> None:
+        """Push a ``records`` event for each watched collection whose effective rows changed."""
+        for collection, last in list(self._watched.items()):
+            now = self._record_states(collection)
+            ids = [i for i in set(last) | set(now) if last.get(i) != now.get(i)]
+            self._watched[collection] = now
+            if ids:
+                self._events.append(
+                    {"type": "records", "collection": collection, "ids": _sorted(ids), "origin": origin}
+                )
+
+    def update(self, collection: str, record_id: str, change: Obj) -> CallResult:
+        """Update a ``merge`` record: ``set`` writes the named fields and ``remove`` drops the named
+        ones; any other field is untouched. One clock stamp."""
+        decl = self._collection(collection)
+        if decl is None or decl["policy"] != "merge":
+            return _fail("collection-unknown")
+        if self._s["subject"] is None:
+            return _fail("signed-out")
+        sets: Obj = change.get("set") or {}
+        removes: List[str] = list(change.get("remove") or [])
+        names = [*sets.keys(), *removes]
+        if len(set(names)) != len(names) or not names:
+            return _fail("bad_request")
+        p = self._active()
+        target = {"record": [collection, record_id]}
+        edited = self._tick_hlc()
+        marks: Obj = {} if self._s["contacted"] else {"preContact": True}
+        for field in _sorted(sets.keys()):
+            self._enqueue(
+                p,
+                {
+                    "target": target,
+                    "op": "setField",
+                    "field": field,
+                    "value": _clone(sets[field]),
+                    "editedHlc": edited,
+                    **marks,
+                },
+            )
+        for field in _sorted(removes):
+            self._enqueue(
+                p, {"target": target, "op": "removeField", "field": field, "editedHlc": edited, **marks}
+            )
+        self._note_record_changes("local")
+        self._kick()
+        return _OK()
+
+    def delete(self, collection: str, record_id: str) -> CallResult:
+        """Delete a record of any policy but ``revision`` (use :meth:`remove_at` there)."""
+        decl = self._collection(collection)
+        if decl is None or decl["policy"] == "revision":
+            return _fail("collection-unknown")
+        if self._s["subject"] is None:
+            return _fail("signed-out")
+        p = self._active()
+        op: Obj = {"target": {"record": [collection, record_id]}, "op": "delete"}
+        if decl["policy"] != "union":
+            op["editedHlc"] = self._tick_hlc()
+            if not self._s["contacted"]:
+                op["preContact"] = True
+        self._enqueue(p, op)
+        self._note_record_changes("local")
+        self._kick()
+        return _OK()
 
     def add(self, collection: str, record_id: str, element: Json) -> CallResult:
         """Add to a ``union`` record (an OR-set)."""
@@ -988,7 +1112,19 @@ class CloudSyncMachine:
         return {"setting": key, "scope": r["scope"] if r is not None and r["route"] == "synced" else "user"}
 
     def _collection(self, name: str) -> Optional[Obj]:
-        return next((c for c in self._catalog.get("collections") or [] if c["name"] == name), None)
+        """The declaration governing a concrete name: an exact name, else the longest ``prefix.*``
+        pattern with something after the prefix (V5 section 13.7, "Matching")."""
+        pattern: Optional[Obj] = None
+        pattern_prefix = 0
+        for c in self._catalog.get("collections") or []:
+            if c["name"] == name:
+                return c
+            if not c["name"].endswith(".*"):
+                continue
+            prefix = len(c["name"]) - 1
+            if len(name) > prefix and name.startswith(c["name"][:prefix]) and prefix > pattern_prefix:
+                pattern, pattern_prefix = c, prefix
+        return pattern
 
     def _alias(self, key: str) -> str:
         return self._s["aliases"].get(key, key)
@@ -1268,6 +1404,7 @@ class CloudSyncMachine:
             self._enqueue(p, {"target": target, "op": op, "element": _clone(element)})
         else:
             self._enqueue(p, {"target": target, "op": op, "element": _clone(element), "observedSeq": p["cursor"]})
+        self._note_record_changes("local")
         self._kick()
         return _OK()
 

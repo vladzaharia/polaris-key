@@ -1,9 +1,9 @@
 # @pkey-feature sync.records
-"""The record half of the Python host codec (U-22.0; WIRE-CONTRACT-V5 §13.10.4, "Record names"): a record
-value is sealed under its collection with ``k = id`` and its id travels blinded; a pulled record opens only
-when the ``k`` re-blinds to the id on the wire. Scalar values only (D-2): the other record operations are
-refused and sealed ``fields`` / ``elements`` read as invalid. Mirrors ``hostCodecRecords.test.ts`` and the
-Swift, Kotlin and Godot ports.
+"""The record half of the Python host codec (U-22.0, C-26 / U-46; WIRE-CONTRACT-V5 §13.10.4, "Record
+names"): a record value is sealed under its collection with ``k = id``, a merge field under
+``id U+0000 field`` and a union element under ``id U+0000 canonicalJson(e)``, each with its name blinded;
+a pulled record opens only when the ``k`` inside every envelope re-blinds to the names on the wire.
+Mirrors ``hostCodecRecords.test.ts``.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from polaris_key.cloud_sync.host_codec import open_pull, seal_push
 from polaris_key.core import sync_crypto as sc
 from polaris_key.core.b64url import b64url_decode, b64url_encode
 from polaris_key.core.errors import PolarisError
+from polaris_key.core.sync_crypto import canonical_json
 
 ROOT = bytes((3 * i + 7) % 256 for i in range(32))
 OTHER = bytes((250 - 5 * i) % 256 for i in range(32))
@@ -201,15 +202,120 @@ def test_a_plaintext_record_row_is_legacy_and_claims_are_stripped() -> None:
     assert opened["changes"] == [{"seq": 3}]
 
 
-def test_sealed_fields_and_elements_are_outside_the_scalar_codec() -> None:
-    cell = {"field": C.blind("field", "saves", "hp"), "ct": seal_ct("saves", f"{ID}\0hp", 10), "editedHlc": "h"}
-    rows = [
-        {"record": ["saves", wire_id()], "fields": [cell], "version": 8},
-        {"record": ["saves", wire_id()], "elements": [], "version": 8},
-        {**row(1), "fields": [cell]},
+def fcell(field: str, value: Any, rid: str = ID) -> Dict[str, Any]:
+    return {
+        "field": C.blind("field", "saves", field),
+        "ct": seal_ct("saves", f"{rid}\0{field}", value),
+        "editedHlc": "h",
+    }
+
+
+def ecell(element: Any, rid: str = ID) -> Dict[str, Any]:
+    name = canonical_json(element)
+    return {"element": C.blind("element", "saves", name), "ct": seal_ct("saves", f"{rid}\0{name}", element)}
+
+
+def test_sealed_fields_open_to_the_merge_object() -> None:
+    row_ = {"record": ["saves", wire_id()], "fields": [fcell("hp", 10), fcell("mp", {"a": [1]})], "version": 8}
+    out, opened = open_pull({"changes": [row_]}, C)
+    assert opened["changes"] == [{"sealed": True}]
+    assert out["changes"][0] == {"record": ["saves", ID], "value": {"hp": 10, "mp": {"a": [1]}}, "version": 8}
+
+
+def test_sealed_elements_open_to_the_union_array_in_served_order() -> None:
+    row_ = {"record": ["saves", wire_id()], "elements": [ecell("sword"), ecell({"tag": "a", "id": 7})], "version": 8}
+    out, opened = open_pull({"changes": [row_]}, C)
+    assert opened["changes"] == [{"sealed": True}]
+    assert out["changes"][0]["value"] == ["sword", {"tag": "a", "id": 7}]
+    assert out["changes"][0]["record"] == ["saves", ID]
+
+
+def test_a_record_with_no_cells_keeps_the_served_id_unless_held() -> None:
+    held = open_pull(
+        {"changes": [{"record": ["saves", wire_id()], "fields": [], "version": 1}]}, C, record_keys=[("saves", ID)]
+    )
+    assert held[0]["changes"][0]["record"] == ["saves", ID] and held[0]["changes"][0]["value"] == {}
+    bare = open_pull({"changes": [{"record": ["saves", wire_id()], "elements": [], "version": 1}]}, C)
+    assert bare[0]["changes"][0]["record"] == ["saves", wire_id()] and bare[0]["changes"][0]["value"] == []
+
+
+def test_a_cell_the_host_cannot_place_makes_the_row_invalid() -> None:
+    other = "slot-2"
+    cases = [
+        {"fields": [fcell("hp", 1), fcell("hp", 2)]},  # a repeated field
+        {"fields": [fcell("hp", 1), fcell("mp", 2, other)]},  # cells of two records
+        {"fields": [{**fcell("hp", 1), "field": C.blind("field", "saves", "mp")}]},  # swapped field name
+        {"fields": [{**fcell("hp", 1), "field": "hp"}]},  # a plaintext wire name
+        {"fields": [{**fcell("hp", 1), "ct": "!!"}]},
+        {"fields": ["junk"]},
+        {"elements": [{**ecell("sword"), "element": C.blind("element", "saves", '"shield"')}]},
+        {"elements": [ecell("sword"), ecell("sword")]},
+        {"elements": [ecell("sword")], "fields": [fcell("hp", 1)]},  # two shapes
+        {"elements": [ecell("sword")], "ct": "AQ"},
+        {"fields": [fcell("hp", 1, other)]},  # another record's cell under this id
     ]
-    _out, opened = open_pull({"changes": rows}, C)
-    assert opened["changes"] == [{"invalid": True}] * 3
+    for body in cases:
+        _o, opened = open_pull({"changes": [{"record": ["saves", wire_id()], "version": 8, **body}]}, C)
+        assert opened["changes"] == [{"invalid": True}], body
+    out, _ = open_pull({"changes": [{"record": ["saves", wire_id()], "version": 8, **cases[0]}]}, C)
+    assert all("fields" not in c and "elements" not in c and "value" not in c for c in out["changes"])
+
+
+def test_a_plaintext_id_with_sealed_cells_is_invalid() -> None:
+    _o, opened = open_pull({"changes": [{"record": ["saves", "old"], "fields": [], "version": 1}]}, C)
+    assert opened["changes"] == [{"invalid": True}]
+
+
+def test_a_conflict_copy_with_fields_or_elements_opens_under_the_mutations_record() -> None:
+    mutations = [rec(1, ID, "setField", field="hp", value=1), rec(2, ID, "add", element="x")]
+    results = [
+        {"mutationId": 1, "status": "conflict", "server": {"fields": [fcell("hp", 5)], "version": 9}},
+        {"mutationId": 2, "status": "conflict", "server": {"elements": [ecell("x")], "version": 9}},
+    ]
+    out, opened = open_pull({"results": results}, C, mutations=mutations)
+    assert out["results"][0]["server"] == {"value": {"hp": 5}, "version": 9}
+    assert out["results"][1]["server"] == {"value": ["x"], "version": 9}
+    assert opened["conflicts"] == {1: {"sealed": True}, 2: {"sealed": True}}
+
+
+def test_set_field_seals_under_id_nul_field_and_blinds_both_names() -> None:
+    m = push(rec(1, ID, "setField", field="hp", value=10, editedHlc="018bcfe56418:0000"))
+    assert m["field"] == C.blind("field", "saves", "hp") and "value" not in m
+    assert m["target"]["record"] == ["saves", wire_id()]
+    got = C.open("saves", f"{ID}\0hp", b64url_decode(m["ct"]))
+    assert got.ok and got.value == 10
+    assert "hp" not in json.dumps({k: v for k, v in m.items() if k != "editedHlc"}) and ID not in json.dumps(m)
+
+
+def test_remove_field_carries_the_blinded_field_and_no_ct() -> None:
+    m = push(rec(1, ID, "removeField", field="hp"))
+    assert m["field"] == C.blind("field", "saves", "hp") and "ct" not in m
+
+
+def test_add_seals_the_element_under_its_canonical_json() -> None:
+    m = push(rec(1, ID, "add", element={"tag": "a", "id": 7}))
+    name = '{"id":7,"tag":"a"}'
+    assert m["element"] == C.blind("element", "saves", name) and "value" not in m
+    got = C.open("saves", f"{ID}\0{name}", b64url_decode(m["ct"]))
+    assert got.ok and got.value == {"tag": "a", "id": 7}
+
+
+def test_remove_carries_the_blinded_element_and_no_ct() -> None:
+    m = push(rec(1, ID, "remove", element="sword", observedSeq=4))
+    assert m["element"] == C.blind("element", "saves", '"sword"') and "ct" not in m and m["observedSeq"] == 4
+
+
+def test_field_and_element_shapes_that_cannot_be_sealed_are_refused() -> None:
+    refused(rec(1, ID, "setField", field="", value=1))
+    refused(rec(1, ID, "setField", field="a\0b", value=1))
+    refused(rec(1, ID, "setField", value=1))
+    refused(rec(1, ID, "setField", field="f"))
+    refused(rec(1, ID, "removeField", field="f", value=1))
+    refused(rec(1, ID, "add"))
+    refused(rec(1, ID, "add", element=1, field="f"))
+    refused(rec(1, ID, "add", element=2**60))  # no canonical spelling
+    refused(rec(1, ID, "add", element=float("nan")))
+    refused(rec(1, ID, "remove", element=1, value=1))
 
 
 def test_a_record_tombstone_maps_back_only_for_a_held_record() -> None:
@@ -314,11 +420,12 @@ def test_corpus_record_rows(c: Dict[str, Any]) -> None:
     else:
         change = {"record": ref, "elements": [{"element": w["name"], "ct": ct}], "version": 5}
     out, opened = open_pull({"changes": [change]}, codec)
-    # Only a value of the corpus opens here; a field or element row is outside the scalar codec.
-    if c["expect"]["result"] == "ok" and w["kind"] == "value":
+    if c["expect"]["result"] == "ok":
         assert opened["changes"] == [{"sealed": True}]
-        assert out["changes"][0]["record"] == [c["collection"], c["name"]]
+        assert out["changes"][0]["record"][0] == c["collection"]
+        assert out["changes"][0]["record"][1] == c["name"].split("\0")[0]
     else:
         assert opened["changes"] == [{"invalid": True}]
         e = out["changes"][0]
-        assert "value" not in e and "ct" not in e and e["record"] == ref
+        assert "value" not in e and "ct" not in e and "fields" not in e and "elements" not in e
+        assert e["record"] == ref

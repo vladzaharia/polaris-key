@@ -4318,9 +4318,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "shape": "hook",
           "reason": "useCollection(name) is the hook; it returns the handle",
@@ -4350,9 +4348,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "shape": "hook",
           "reason": "the hook returns the record; its handle carries the verb",
@@ -4376,9 +4372,7 @@
       "feature": "sync.records",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "shape": "hook",
           "reason": "the hook returns the ids; its handle carries the verb",
@@ -4412,9 +4406,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "shape": "hook",
           "reason": "the hook's handle carries the verb",
@@ -4448,9 +4440,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "shape": "hook",
           "reason": "the hook's handle carries the verb",
@@ -4484,9 +4474,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "shape": "hook",
           "reason": "the hook's handle carries the verb",
@@ -4520,9 +4508,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "shape": "hook",
           "reason": "the hook's handle carries the verb",
@@ -4552,9 +4538,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "shape": "hook",
           "reason": "the hook's handle carries the verb",
@@ -4584,9 +4568,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "shape": "hook",
           "reason": "the hook re-renders on each change, so no event listener is exposed",
