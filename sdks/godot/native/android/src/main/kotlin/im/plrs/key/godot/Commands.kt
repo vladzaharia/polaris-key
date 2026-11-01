@@ -79,7 +79,8 @@ abstract class FlavorCommands(protected val c: Commands) {
  * result arrives later as a queued event `{ev: "result", req, ok, …}`.
  *
  * Common ops: capabilities, install_source, ks_get / ks_set / ks_delete / ks_info, ks_seal / ks_open /
- * ks_destroy (the Godot device key store's sealer, CC-26.7), no_backup_dir, poll, and the Google
+ * ks_destroy (the Godot device key store's sealer, CC-26.7), no_backup_dir, poll, the LAN discovery ops
+ * nsd_* ([NsdCommands], CC-14b.9) and the Google
  * sign-in ops gid_silent / gid_sheet / gid_provider / gid_sign_out ([GoogleIdentityCommands], I-48.5a).
  * Unsolicited events: update_state, update_result, pack_state, install_status, resumed.
  *
@@ -93,6 +94,8 @@ class Commands(
     private val keyProvider: () -> KeyProvider = { AndroidKeyStoreProvider(host.appContext) },
     /** The Credential Manager behind the `gid_*` ops (tests pass a fake). */
     identity: GoogleIdentityCommands.Backend = GoogleIdentityCommands.Real,
+    /** The NSD discovery behind the `nsd_*` ops (tests pass a fake). */
+    nsdBackend: NsdCommands.Backend = NsdCommands.Real { host.appContext },
 ) {
     val queue = EventQueue()
 
@@ -102,6 +105,9 @@ class Commands(
     val worker: ExecutorService = Executors.newSingleThreadExecutor { r -> Thread(r, "pkey-android-worker") }
     private val flavor: FlavorCommands = (flavorFactory ?: ::createFlavorCommands)(this)
     private val googleId = GoogleIdentityCommands(this, identity)
+
+    /** LAN discovery (CC-14b.9, D-15); its events join the `poll` reply. */
+    val nsd = NsdCommands(this, nsdBackend)
 
     fun cmd(json: String): String = try {
         val q = JSONObject(json)
@@ -113,7 +119,7 @@ class Commands(
     }
 
     private fun handle(op: String, q: JSONObject): JSONObject = when (op) {
-        "poll" -> queue.drain().put("ok", true)
+        "poll" -> queue.drain().also { nsd.drainInto(it.getJSONArray("events")) }.put("ok", true)
         "capabilities" -> capabilities()
         "install_source" -> InstallSource.read(host.appContext).toJson().put("ok", true)
         // The app's no-backup directory (noBackupFilesDir; created if absent): Auto Backup and
@@ -145,6 +151,7 @@ class Commands(
             JSONObject().put("ok", true)
         }
         "gid_silent", "gid_sheet", "gid_provider", "gid_sign_out" -> googleId.handle(op, q)
+        "nsd_status", "nsd_advertise", "nsd_advertise_stop", "nsd_browse_start", "nsd_browse_stop", "nsd_accept", "nsd_stop_all" -> nsd.handle(op, q)
         else -> when {
             op in flavor.ops -> flavor.handle(op, q)
             op in PLAY_OPS || op in DIRECT_OPS -> JSONObject()
@@ -172,6 +179,7 @@ class Commands(
             .put("googleId", googleId.available())
             .put("cryptoAesGcm", true)
             .put("cryptoX25519", crypto.x25519Supported)
+            .put("nsd", nsd.supported())
         flavor.capabilities(out)
         return out
     }
@@ -264,6 +272,7 @@ class Commands(
     fun onResume() = event("resumed", JSONObject())
 
     fun close() {
+        nsd.close()
         flavor.close()
         worker.shutdown()
     }

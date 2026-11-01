@@ -45,6 +45,16 @@ in `direct`, and `dependency` in a `play` export that carries no `androidx.crede
 class name before anything loads). A token arrives only in the result event (`{ok: true, token}`);
 a failure is `{ok: false, error: cancelled | unavailable, reason}`.
 
+The LAN discovery ops `nsd_status`, `nsd_advertise {instance, port, txt}`, `nsd_advertise_stop`,
+`nsd_browse_start`, `nsd_browse_stop`, `nsd_accept {names}` and `nsd_stop_all` (CC-14b.9, D-15) are in
+the main source set, over `:platform`'s `PeerNsd` (API 34 and later). Discovery only: the pipes are
+GDScript sockets and the advert names the port of the GDScript listener. Events (`nsd_found`,
+`nsd_lost`, `nsd_advert`, `nsd_error`) ride `poll`, coalesced per instance. Names outside the
+`nsd_accept` set are dropped before they take a slot. From Android 17 an app that targets it needs
+`ACCESS_LOCAL_NETWORK` (both exports declare it); without it advertise and browse answer
+`permission_denied`. `addons/polaris_key/native/pkey_android_mdns.gd` (`PKeyAndroidMdns`) is the
+GDScript adapter.
+
 The other flavour's ops answer `{ok: false, unsupported: true, reason: "outlet"}`.
 
 `integrity_prepare {cloudProjectNumber}` and `integrity_token {cloudProjectNumber, requestHash}`

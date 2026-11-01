@@ -176,4 +176,30 @@ class PeerNsdTest {
         n.watch("extra2", again)
         assertTrue(again.events.isEmpty())
     }
+
+    @Test
+    fun browseDropsRefusedNamesBeforeTheyTakeASlot() {
+        val api = Fake()
+        val rec = Rec()
+        nsd(api).browse(rec, accept = { it == "real" })
+        for (i in 0 until 400) api.found!!("forged$i")
+        api.found!!("real")
+        assertEquals(listOf("found:real"), rec.events)
+    }
+
+    @Test
+    fun addressesAreOrderedSoTheCutNeverDropsIpv4() {
+        val v4 = java.net.InetAddress.getByName("192.168.1.9")
+        val ll = java.net.InetAddress.getByName("fe80::1")
+        val ula = java.net.InetAddress.getByName("fd00::2")
+        assertEquals(listOf(v4, ula, ll), orderAddresses(listOf(ll, ula, v4)))
+    }
+
+    @Test
+    fun refusedAddressesAreDroppedBeforeTheCut() {
+        fun ok(t: String) = lanCandidate(java.net.InetAddress.getByName(t))
+        assertTrue(ok("192.168.1.2") && ok("10.1.2.3") && ok("172.31.0.1") && ok("fd00::2") && ok("fe80::1") && ok("2606:4700::1"))
+        assertFalse(ok("100.64.0.1") || ok("169.254.1.1") || ok("8.8.8.8") || ok("172.32.0.1") || ok("127.0.0.1"))
+        assertFalse(ok("::1") || ok("ff02::1") || ok("2001:0:1::1") || ok("2002::1"))
+    }
 }
