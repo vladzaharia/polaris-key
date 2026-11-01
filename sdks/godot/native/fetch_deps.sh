@@ -141,7 +141,8 @@ for dep in "$@"; do
       fi
       rm -rf "$WORK/mc"
       mkdir -p "$WORK/mc"
-      tar -xzf "$tgz" -C "$WORK/mc"
+      # Only the files the build uses: the archive's doc/html symlinks cannot be created by Windows tar.
+      tar -xzf "$tgz" -C "$WORK/mc" "monocypher-$MONOCYPHER_VERSION/src/monocypher.c" "monocypher-$MONOCYPHER_VERSION/src/monocypher.h" "monocypher-$MONOCYPHER_VERSION/LICENCE.md"
       cp "$WORK/mc/monocypher-$MONOCYPHER_VERSION/src/monocypher.c" "$WORK/mc/monocypher-$MONOCYPHER_VERSION/src/monocypher.h" "$WORK/mc/monocypher-$MONOCYPHER_VERSION/LICENCE.md" "$d/"
       echo "fetch_deps: Monocypher $MONOCYPHER_VERSION in $d (SHA-256 and SHA-512 verified)"
       ;;

@@ -26,7 +26,9 @@ const LABEL_ADOPT := "pkey-sync/1 adopt"
 static func sha256(data: PackedByteArray) -> PackedByteArray:
 	var h := HashingContext.new()
 	h.start(HashingContext.HASH_SHA256)
-	h.update(data)
+	# The engine refuses an update of nothing; the digest of an empty message is still defined.
+	if not data.is_empty():
+		h.update(data)
 	return h.finish()
 
 
