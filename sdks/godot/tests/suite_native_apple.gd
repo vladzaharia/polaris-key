@@ -85,6 +85,12 @@ func _binary(t: PKeyTestContext) -> void:
 	var evs := a.poll_bin()
 	t.check("binary: poll_bin keeps well-formed events in order and drops the rest", evs.size() == 2 and evs[0][0] == "bj_data" and evs[0][1] == PackedByteArray([1, 2]) and evs[1][0] == "bj_closed")
 	t.check("binary: poll_bin drains", a.poll_bin().is_empty())
+	# The bulk channel's events (U-41.5c) are taken by prefix: the others wait for their consumer.
+	fake.events = [["bj_data", PackedByteArray([7])], ["sb_done", PackedByteArray([1])], ["sb_fail", PackedByteArray([2])], ["sb_reconciled", PackedByteArray([3])]]
+	var sb := a.poll_bin("sb_")
+	t.check("binary: poll_bin(\"sb_\") takes the bulk events in order and leaves the rest", sb.size() == 3 and sb[0][0] == "sb_done" and sb[1][0] == "sb_fail" and sb[2][0] == "sb_reconciled")
+	var rest := a.poll_bin("bj_")
+	t.check("binary: another consumer's event waited for it", rest.size() == 1 and rest[0][0] == "bj_data" and a.poll_bin().is_empty())
 	a.free()
 	var old := _apple("ios", FakeNoBin.new())
 	t.check("binary: a native build without it is unavailable and answers empty", not old.binary_available() and old.cmd_bin("echo", all).is_empty() and old.poll_bin().is_empty())

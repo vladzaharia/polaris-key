@@ -15,6 +15,8 @@ const TransferSuite := preload("res://tests/suite_cloud_sync_transfer.gd")
 const CloudSync := preload("res://addons/polaris_key/services/cloud_sync.gd")
 
 const PRODUCT := "diceroll"
+const PRODUCT_URL := "https://key.example.test/diceroll/sync/files/saves/slot1/upload/u1"
+const BEARER := "tok-3f9a-secret-bearer"
 const TARGET := {"collection": "saves", "record": "slot1", "transfer": "saves:slot1"}
 
 
@@ -90,6 +92,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _engine_cancel(t)
 	await _sign_out(t)
 	await _late_reply(t)
+	await _apple(t)
 	await PKeyTestFixtures.frames(10)
 	return true
 
@@ -523,3 +526,208 @@ func _late_reply(t: PKeyTestContext) -> void:
 	var rec: Variant = j.get_record("l1")
 	t.check("late reply: after close, an acknowledged reply marks nothing done", result[0] != null and not result[0].ok and (rec == null or (rec["done"] as Array).is_empty()), str(rec))
 	rig["host"].queue_free()
+
+
+# ── The iOS channel (U-41.5c): PKeyAppleBulk over a fake of the binary entry ────────────────────────
+
+
+func _bulk_rig() -> Dictionary:
+	var fake := PKeyFakeAppleNative.Bulk.new()
+	var apple := PKeyApple.new()
+	apple.native = fake
+	apple.platform = "ios"
+	var ch := PKeyAppleBulk.create(PRODUCT, "https://key.example.test", "/var/state/ns", apple)
+	return {"fake": fake, "apple": apple, "ch": ch}
+
+
+static func _head(req: int, transfer := "saves:slot1", url := PRODUCT_URL) -> Dictionary:
+	return {"req": req, "transfer": transfer, "url": url, "headers": {"content-type": "application/octet-stream"},
+			"bearer": BEARER, "max_body": 4096, "part": 2}
+
+
+## Spin frames until `f` is true (or 600 frames).
+func _until(f: Callable) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var n := 0
+	while not f.call() and n < 600:
+		await tree.process_frame
+		n += 1
+
+
+func _apple(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	# Where there is none.
+	var bare := PKeyApple.new()
+	bare.platform = "ios"
+	bare.native = PKeyFakeAppleNative.new()
+	t.check("apple bulk: a native without the binary entry gives no channel", PKeyAppleBulk.create(PRODUCT, "https://k.test", "/s", bare) == null)
+	var other := PKeyApple.new()
+	other.platform = "android"
+	other.native = PKeyFakeAppleNative.Bulk.new()
+	t.check("apple bulk: off iOS there is no channel", PKeyAppleBulk.create(PRODUCT, "https://k.test", "/s", other) == null)
+	t.check("apple bulk: the origin leaves out the default port", PKeyAppleBulk.origin_of("https://key.example.test/") == "https://key.example.test" and
+		PKeyAppleBulk.origin_of("http://127.0.0.1:8787") == "http://127.0.0.1:8787" and PKeyAppleBulk.origin_of("nope") == "")
+
+	# The pick (D-10): the option decides, and a channel the app set wins.
+	var apple := PKeyApple.new()
+	apple.native = PKeyFakeAppleNative.Bulk.new()
+	apple.platform = "ios"
+	var opts := PKeyOptions.new()
+	t.check("apple bulk: option off, no channel", PKeyAppleBulk.pick(opts, PRODUCT, "https://key.example.test", "user://x", apple) == null)
+	opts.cloud_sync_background_transfers = true
+	t.check("apple bulk: option on, on iOS, the Apple channel", PKeyAppleBulk.pick(opts, PRODUCT, "https://key.example.test", "user://x", apple) is PKeyAppleBulk)
+	t.check("apple bulk: option on, the host with no plugin, none", PKeyAppleBulk.pick(opts, PRODUCT, "https://key.example.test", "user://x", bare) == null)
+	var mine := FakeChannel.new()
+	opts.cloud_sync_bulk_channel = mine
+	t.check("apple bulk: a channel the app set wins", PKeyAppleBulk.pick(opts, PRODUCT, "https://key.example.test", "user://x", apple) == mine)
+
+	# Open: the report, then a lost one.
+	var rig := _bulk_rig()
+	var fake: PKeyFakeAppleNative.Bulk = rig["fake"]
+	var ch: PKeyAppleBulk = rig["ch"]
+	fake.report = {"resume": ["saves:b"], "cancelled": 2, "swept": 1}
+	var got: Dictionary = await ch.open(["saves:a", "saves:b"])
+	t.check("apple bulk: open sends the product, origin, an absolute state dir and the kept ids", fake.open_args.get("product") == PRODUCT and
+		fake.open_args.get("origin") == "https://key.example.test" and str(fake.open_args.get("state_dir")).begins_with("/") and
+		fake.open_args.get("keep") == ["saves:a", "saves:b"], str(fake.open_args))
+	t.check("apple bulk: open answers the reconcile report", got == {"resume": ["saves:b"], "cancelled": 2, "swept": 1}, str(got))
+	ch.close()
+	var rig2 := _bulk_rig()
+	rig2["fake"].report = null
+	rig2["ch"].open_timeout_s = 0.05
+	var lost: Dictionary = await rig2["ch"].open(["saves:a"])
+	t.check("apple bulk: no report in time takes every kept transfer as lost", lost["resume"] == ["saves:a"], str(lost))
+	var rig3 := _bulk_rig()
+	rig3["fake"].refuse_open = true
+	var refused: Dictionary = await rig3["ch"].open(["x"])
+	t.check("apple bulk: a refused open leaves the channel unavailable", refused["resume"].is_empty() and not rig3["ch"].available())
+
+	# A put: staged in pieces, one header, the answer from the event.
+	rig = _bulk_rig()
+	fake = rig["fake"]
+	ch = rig["ch"]
+	await ch.open([])
+	var body := PackedByteArray()
+	body.resize(9 * 1048576 + 5)
+	for i in 64:
+		body[i * 1000] = i + 1
+	var res := [null]
+	var go := func() -> void: res[0] = await ch.put(_head(7), body)
+	go.call()
+	await _until(func() -> bool: return fake.puts.size() == 1)
+	t.check("apple bulk: the body is staged in two pieces of at most 8 MiB", fake.ops.count("sb_stage") == 2 and fake.puts.size() == 1 and (fake.puts[0]["body"] as PackedByteArray) == body)
+	var rec: Dictionary = fake.puts[0]
+	t.check("apple bulk: the header names the request, the spool and the bearer", rec["req"] == 7 and rec["transfer"] == "saves:slot1" and
+		rec["bearer"] == BEARER and rec["spool"].length() == 36 and rec["max_body"] == 4096 and rec["part"] == 2 and
+		rec["url"] == PRODUCT_URL, str(rec.keys()))
+	t.check("apple bulk: the request waits for its event", res[0] == null)
+	fake.finish(7, 204, {"ETag": "\"x\"", "x-junk": 3}, PackedByteArray([1, 2, 3]))
+	await _until(func() -> bool: return res[0] != null)
+	t.check("apple bulk: the event answers status, lower-case headers and body", res[0] is Dictionary and res[0]["status"] == 204 and
+		res[0]["headers"] == {"etag": "\"x\""} and res[0]["body"] == PackedByteArray([1, 2, 3]), str(res[0]))
+	# D-9: the bearer crossed once, in the one request header.
+	var seen := 0
+	var pieces := 0
+	for p in fake.payloads:
+		if p[0] == "sb_stage":
+			pieces += (p[1] as PackedByteArray).size() - (1 if p[1][0] == 0 else 37)
+		elif _contains(p[1], BEARER.to_utf8_buffer()):
+			seen += 1
+			t.check("apple bulk: the bearer is only in the put header", p[0] == "sb_put")
+	t.check("apple bulk: the bearer appears in exactly one payload", seen == 1, str(seen))
+	t.check("apple bulk: the staged pieces hold the body and nothing else", pieces == body.size(), str(pieces))
+
+	# A get, a failure, an oversize.
+	var g := [null, null, null]
+	var g1 := func() -> void: g[0] = await ch.fetch(_head(8, "saves:slot1", "https://key.example.test/diceroll/sync/files/saves/slot1"))
+	var g2 := func() -> void: g[1] = await ch.fetch(_head(9))
+	var g3 := func() -> void: g[2] = await ch.fetch(_head(10))
+	g1.call()
+	g2.call()
+	g3.call()
+	await _until(func() -> bool: return fake.gets.size() == 3)
+	t.check("apple bulk: a get carries no spool", fake.gets.size() == 3 and not fake.gets[0].has("spool") and fake.ops.count("sb_stage") == 2)
+	fake.finish(10, 200, {}, PackedByteArray([9]))
+	fake.fail(9, "network")
+	fake.fail(8, "oversize")
+	await _until(func() -> bool: return g[0] != null and g[1] != null and g[2] != null)
+	t.check("apple bulk: events are routed by request, in any order", g[2]["status"] == 200 and g[1] == {"fail": "network"} and g[0] == {"fail": "oversize"}, str(g))
+
+	# A refusal from the platform frees the staged file.
+	fake.refuse_requests = true
+	var refused_put: Dictionary = await ch.put(_head(11), PackedByteArray([1, 2, 3]))
+	t.check("apple bulk: a refused put answers a failure and cancels its spool", refused_put == {"fail": "network"} and
+		fake.cancels.any(func(c: Dictionary) -> bool: return c.has("spool")) and fake.staged.is_empty())
+	fake.refuse_requests = false
+
+	# Cancel is final.
+	var c1 := [null]
+	var cgo := func() -> void: c1[0] = await ch.fetch(_head(20))
+	cgo.call()
+	await _until(func() -> bool: return fake.tasks.has(20))
+	ch.cancel(20)
+	await _until(func() -> bool: return c1[0] != null)
+	var asked := fake.cancels.any(func(c: Dictionary) -> bool: return int(c.get("req", 0)) == 20)
+	t.check("apple bulk: cancel by request cancels natively and returns", asked and c1[0] == {"fail": "network"}, str(fake.cancels) + str(c1[0]))
+	fake.finish(20, 200)
+	await PKeyTestFixtures.frames(3)
+	var t1 := [null, null]
+	var tgo := func(r: int, tr: String) -> void: t1[r - 21] = await ch.fetch(_head(r, tr))
+	tgo.call(21, "saves:a")
+	tgo.call(22, "")
+	await _until(func() -> bool: return fake.tasks.has(21) and fake.tasks.has(22))
+	ch.cancel("saves:a")
+	ch.cancel("")
+	await _until(func() -> bool: return t1[0] != null and t1[1] != null)
+	t.check("apple bulk: cancel by transfer, and the empty id is the unscoped one", fake.cancels.has({"transfer": "saves:a"}) and
+		fake.cancels.has({"transfer": "unscoped"}) and t1[0] == {"fail": "network"} and t1[1] == {"fail": "network"}, str(fake.cancels))
+
+	# The platform's task bound: the rest wait for a place.
+	fake.tasks.clear()
+	var many := []
+	many.resize(305)
+	var peak := [0]
+	var mgo := func(i: int) -> void:
+		many[i] = await ch.fetch(_head(100 + i, "saves:many"))
+	for i in 305:
+		mgo.call(i)
+	await _until(func() -> bool: return fake.tasks.size() == 300)
+	await PKeyTestFixtures.frames(3)
+	t.check("apple bulk: no more than 300 requests are queued at once", fake.tasks.size() == 300 and fake.gets.size() >= 300, str(fake.tasks.size()))
+	for i in 5:
+		fake.finish(100 + i, 200)
+	await _until(func() -> bool: return fake.tasks.size() == 300 and fake.gets.size() == 305 + 3 + 0)
+	t.check("apple bulk: places freed let the waiting ones go", many[0] is Dictionary and many[0]["status"] == 200 and fake.tasks.size() <= 300)
+	for r in fake.tasks.keys().duplicate():
+		fake.finish(r, 200)
+	await _until(func() -> bool: return many.all(func(m: Variant) -> bool: return m != null))
+	t.check("apple bulk: every request is answered in the end", many.all(func(m: Variant) -> bool: return m is Dictionary and m.get("status") == 200))
+
+	# Close: what is in flight fails; late events are dropped; nothing goes after.
+	var k := [null]
+	var kgo := func() -> void: k[0] = await ch.fetch(_head(300))
+	kgo.call()
+	await _until(func() -> bool: return fake.tasks.has(300))
+	var closes := fake.closed
+	ch.close()
+	await _until(func() -> bool: return k[0] != null)
+	t.check("apple bulk: close tells the platform and fails what was in flight", fake.closed == closes + 1 and k[0] == {"fail": "network"})
+	fake.finish(300, 200)
+	var after: Dictionary = await ch.fetch(_head(301))
+	t.check("apple bulk: after close a request is refused without reaching the platform", after == {"fail": "network"} and not fake.tasks.has(301))
+	await tree.process_frame
+	apple.free()
+	(rig["apple"] as PKeyApple).free()
+	(rig2["apple"] as PKeyApple).free()
+	(rig3["apple"] as PKeyApple).free()
+	bare.free()
+	other.free()
+
+
+static func _contains(hay: PackedByteArray, needle: PackedByteArray) -> bool:
+	if needle.is_empty() or hay.size() < needle.size():
+		return false
+	for i in hay.size() - needle.size() + 1:
+		if hay[i] == needle[0] and hay.slice(i, i + needle.size()) == needle:
+			return true
+	return false

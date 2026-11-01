@@ -35,6 +35,8 @@
 // `…6` alone, which a 4.5 or 4.6 engine does not have.
 
 #import <Foundation/Foundation.h>
+#include <TargetConditionals.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -446,10 +448,79 @@ static int resolve_bin(void) {
            variant_from_arr && pba_from_variant;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Background session events (U-41.5c; GODOT-MOBILE-SYNC D-5): when the system relaunches the app for
+// a finished Cloud Sync background transfer it calls
+// application:handleEventsForBackgroundURLSession:completionHandler: on the app delegate. Godot's
+// delegate (GDTApplicationDelegate from 4.7, GodotApplicationDelegate in 4.4 to 4.6) forwards that
+// call to every registered service (checked in the 4.4-stable and 4.7.2-stable sources), so the
+// glue registers one service at init and hands the identifier to PolarisKeyPlatform
+// (pkp_handle_background_events), which accepts only `pkey.sync.` sessions. The engine's delegate
+// runs the system's completion handler itself, right after the services, and a second call would be
+// a fault; the service therefore gives the platform a block that does nothing. On an engine whose
+// delegate does not forward the call, a method is added to its class instead.
+#if TARGET_OS_IOS && !defined(PKEY_GAMECENTER)
+#import <UIKit/UIKit.h>
+#import <objc/runtime.h>
+
+extern bool pkp_handle_background_events(const char *identifier, void (^completion)(void));
+
+static void pkey_forward_background_events(NSString *identifier) {
+    if (identifier.length == 0) return;
+    const char *id_c = identifier.UTF8String;
+    if (id_c) (void)pkp_handle_background_events(id_c, ^{
+    });
+}
+
+@interface PKeyBackgroundEventsService : NSObject <UIApplicationDelegate>
+@end
+
+@implementation PKeyBackgroundEventsService
+- (void)application:(UIApplication *)application
+    handleEventsForBackgroundURLSession:(NSString *)identifier
+                      completionHandler:(void (^)(void))completionHandler {
+    (void)application;
+    (void)completionHandler;  // the engine's delegate runs it
+    pkey_forward_background_events(identifier);
+}
+@end
+
+static void pkey_register_background_events(void) {
+    static BOOL done = NO;
+    if (done) return;
+    done = YES;
+    Class delegate = NSClassFromString(@"GDTApplicationDelegate");
+    if (!delegate) delegate = NSClassFromString(@"GodotApplicationDelegate");
+    if (!delegate) return;
+    SEL add = NSSelectorFromString(@"addService:");
+    if ([delegate respondsToSelector:add]) {
+        static PKeyBackgroundEventsService *service;
+        service = [PKeyBackgroundEventsService new];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        [delegate performSelector:add withObject:service];
+#pragma clang diagnostic pop
+        return;
+    }
+    SEL handler = @selector(application:handleEventsForBackgroundURLSession:completionHandler:);
+    if (class_getInstanceMethod(delegate, handler)) return;
+    IMP imp = imp_implementationWithBlock(^(id self_, UIApplication *app, NSString *identifier, void (^completion)(void)) {
+        (void)self_;
+        (void)app;
+        pkey_forward_background_events(identifier);
+        if (completion) completion();
+    });
+    class_addMethod(delegate, handler, imp, "v@:@@@?");
+}
+#else
+static void pkey_register_background_events(void) {}
+#endif
+
 static void initialize(void *userdata, GDExtensionInitializationLevel level) {
     (void)userdata;
     if (level != GDEXTENSION_INITIALIZATION_SCENE) return;
 
+    pkey_register_background_events();
     g_events = [NSMutableArray array];
     g_bin_events = [NSMutableArray array];
     g_lock = [NSLock new];

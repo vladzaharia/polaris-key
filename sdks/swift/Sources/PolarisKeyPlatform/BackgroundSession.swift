@@ -118,7 +118,7 @@ package protocol BackgroundSessionPort: Sendable {
 
 #if canImport(Darwin)
     package final class URLSessionBackgroundPort: NSObject, BackgroundSessionPort, URLSessionDownloadDelegate,
-        @unchecked Sendable
+        URLSessionDataDelegate, @unchecked Sendable
     {
         private struct Held {
             var data = Data()
