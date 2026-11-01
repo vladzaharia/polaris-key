@@ -56,7 +56,10 @@ public const val SAVES_COLLECTION: String = "saves"
 /** The key of the E2E binding inside a save's sealed metadata (D-3). */
 public const val SAVE_FILE_BINDING_KEY: String = "\$file"
 
-/** SDK-owned metadata keys written with every save (SAVES-META): when it was saved (epoch ms) and the device's display name. A write overwrites an app value under either key. Never a hardware value. */
+/**
+ * SDK-owned metadata keys written with every save (SAVES-META): when it was saved (epoch ms) and the device's display
+ * name. A write overwrites an app value under either key. Never a hardware value.
+ */
 public const val SAVE_SAVED_AT_KEY: String = "savedAt"
 public const val SAVE_DEVICE_KEY: String = "deviceLabel"
 
@@ -363,7 +366,7 @@ public class SavesClient internal constructor(
         metadata: JsonObject,
         baseVersion: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null,
-    ): SaveTransfer = run(id, BytesSource(bytes), metadata, baseVersion?.let { WriteMode.Base(JsonPrimitive(it)) } ?: WriteMode.Plain, onProgress, stamp = true)
+    ): SaveTransfer = run(SaveWrite(id, BytesSource(bytes), metadata, modeFor(baseVersion), stamp = true), onProgress)
 
     /** [write] with a `@Serializable` metadata type (its serializer must encode an object). */
     public suspend inline fun <reified T> writeAs(
@@ -398,7 +401,7 @@ public class SavesClient internal constructor(
         metadata: JsonObject,
         baseVersion: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null,
-    ): SaveTransfer = run(id, source, metadata, baseVersion?.let { WriteMode.Base(JsonPrimitive(it)) } ?: WriteMode.Plain, onProgress, stamp = true)
+    ): SaveTransfer = run(SaveWrite(id, source, metadata, modeFor(baseVersion), stamp = true), onProgress)
 
     /**
      * Settle a conflict. `REMOTE` keeps the server's copy and writes nothing; `LOCAL` writes this device's save on top
@@ -416,19 +419,22 @@ public class SavesClient internal constructor(
 
             keep == SaveKeep.BOTH && !conflict.bothAvailable -> settled(conflict.id, SaveResult.Failed(SavesException(SavesException.SLOTS_FULL)))
 
-            keep == SaveKeep.BOTH -> run(conflict.id, BytesSource(bytes), conflict.localMetadata, WriteMode.Copy, onProgress)
+            keep == SaveKeep.BOTH ->
+                run(SaveWrite(conflict.id, BytesSource(bytes), conflict.localMetadata, WriteMode.Copy), onProgress)
 
             else -> run(
-                conflict.id,
-                BytesSource(bytes),
-                conflict.localMetadata,
-                WriteMode.Base(
-                    // A copy the server no longer holds is replaced on "record must not exist".
-                    if (conflict.remote == null || (conflict.serverVersion ?: 0L) == 0L) {
-                        JsonPrimitive("*")
-                    } else {
-                        JsonPrimitive(conflict.serverVersion)
-                    },
+                SaveWrite(
+                    conflict.id,
+                    BytesSource(bytes),
+                    conflict.localMetadata,
+                    WriteMode.Base(
+                        // A copy the server no longer holds is replaced on "record must not exist".
+                        if (conflict.remote == null || (conflict.serverVersion ?: 0L) == 0L) {
+                            JsonPrimitive("*")
+                        } else {
+                            JsonPrimitive(conflict.serverVersion)
+                        },
+                    ),
                 ),
                 onProgress,
             )
@@ -508,18 +514,19 @@ public class SavesClient internal constructor(
         return transfer
     }
 
-    private suspend fun run(
-        id: String,
-        source: RangedSource,
-        metadata: JsonObject,
-        mode: WriteMode,
-        onProgress: ((Long, Long) -> Unit)?,
-        stamp: Boolean = false,
-    ): SaveTransfer {
+    /** One write: what is stored, under which id, and how the server is asked to take it. */
+    private class SaveWrite(val id: String, val source: RangedSource, val metadata: JsonObject, val mode: WriteMode, val stamp: Boolean = false)
+
+    private fun modeFor(baseVersion: Long?): WriteMode = baseVersion?.let { WriteMode.Base(JsonPrimitive(it)) } ?: WriteMode.Plain
+
+    private suspend fun run(write: SaveWrite, onProgress: ((Long, Long) -> Unit)?): SaveTransfer {
+        val id = write.id
+        val source = write.source
+        val mode = write.mode
         val d = deps()
         // The SDK's own keys: when and where this save was written. A resolve keeps the stamps of the copy it writes (they are
         // already in the conflict's local metadata).
-        val metadata = if (stamp) stamped(d, metadata) else metadata
+        val metadata = if (write.stamp) stamped(d, write.metadata) else write.metadata
         val transferId = "saves:$id"
         var sealed: Pair<ByteArray, String>? = null
         lateinit var transfer: SaveTransfer

@@ -97,7 +97,10 @@ internal class HostSaveRecords(private val host: CloudSyncHost) : SaveRecords {
     }
 
     override suspend fun pull(): Boolean {
-        val asked = host.withMachine { it.pull(); true }
+        val asked = host.withMachine {
+            it.pull()
+            true
+        }
         host.touch()
         return asked
     }

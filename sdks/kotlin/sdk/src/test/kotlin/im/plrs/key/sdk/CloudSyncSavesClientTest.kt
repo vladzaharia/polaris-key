@@ -256,18 +256,28 @@ class CloudSyncSavesClientTest {
     private val settled = CopyOnWriteArrayList<Pair<String, SaveResult>>()
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    private fun client(
-        cloud: Cloud,
-        e2e: Boolean,
-        formatVersion: Int? = null,
-        maxBytes: Long = 32L * 1024 * 1024,
-        journal: JournalStore = MemoryJournal(),
-        deviceLabel: String? = null,
-    ): SavesClient {
-        val engine = FileTransferEngine(cloud, journal, sleeper = { })
+    private class ClientOptions(
+        val formatVersion: Int? = null,
+        val maxBytes: Long = 32L * 1024 * 1024,
+        val journal: JournalStore = MemoryJournal(),
+        val deviceLabel: String? = null,
+    )
+
+    private fun client(cloud: Cloud, e2e: Boolean, options: ClientOptions = ClientOptions()): SavesClient {
+        val engine = FileTransferEngine(cloud, options.journal, sleeper = { })
         val codec: FileCodec = if (e2e) E2eFileCodec(root, SAVES_COLLECTION) else ServerFileCodec()
         return SavesClient(scope, SavesHooks(settled = { id, r -> settled += id to r })) {
-            SavesDeps(cloud, engine, cloud, codec, delta = false, maxBytes = maxBytes, saveFormatVersion = formatVersion, deviceLabel = deviceLabel, now = { 1_000L })
+            SavesDeps(
+                cloud,
+                engine,
+                cloud,
+                codec,
+                delta = false,
+                maxBytes = options.maxBytes,
+                saveFormatVersion = options.formatVersion,
+                deviceLabel = options.deviceLabel,
+                now = { 1_000L },
+            )
         }
     }
 
@@ -366,7 +376,7 @@ class CloudSyncSavesClientTest {
     @Test
     fun aNewerFormatReadsAsNewerFormatAndListsAsSuch() = runBlocking {
         val cloud = Cloud(e2e = false)
-        val saves = client(cloud, e2e = false, formatVersion = 2)
+        val saves = client(cloud, e2e = false, ClientOptions(formatVersion = 2))
         assertTrue(saves.write("s", bytes(100), meta("x", 3)).result() is SaveResult.Done)
         assertTrue(saves.write("t", bytes(100), meta("x", 2)).result() is SaveResult.Done)
         val newer = saves.read("s") as SaveRead.NewerFormat
@@ -379,7 +389,7 @@ class CloudSyncSavesClientTest {
     @Test
     fun theSixteenSlotsAreTheLimitAndBadInputIsRefusedBeforeAnyRequest() = runBlocking {
         val cloud = Cloud(e2e = false)
-        val saves = client(cloud, e2e = false, maxBytes = 1000)
+        val saves = client(cloud, e2e = false, ClientOptions(maxBytes = 1000))
         for (i in 1..16) assertTrue(saves.write("s$i", bytes(50), meta("c")).result() is SaveResult.Done)
         fun failed(r: SaveResult) = (r as SaveResult.Failed).error.code
         assertEquals(SavesException.SLOTS_FULL, failed(saves.write("s17", bytes(50), meta("c")).result()))
@@ -445,7 +455,7 @@ class CloudSyncSavesClientTest {
     @Test
     fun aConflictAndKeepingTheOtherVersionPullFirstAndSavesRecordWhenAndWhere() = runBlocking {
         val cloud = Cloud(e2e = false)
-        val saves = client(cloud, e2e = false, deviceLabel = "Steam Deck")
+        val saves = client(cloud, e2e = false, ClientOptions(deviceLabel = "Steam Deck"))
         assertTrue(saves.write("s", bytes(100), meta("old")).result() is SaveResult.Done)
         val stale = cloud.get("s")!!
         // Another device wrote on top; this device's cache still holds the first row until it pulls.
@@ -533,7 +543,7 @@ class CloudSyncSavesClientTest {
     fun aPausedTransferKeepsItsJournalAndResumesAndACancelReleasesTheUpload() = runBlocking {
         val cloud = Cloud(e2e = false).also { it.gate = CompletableDeferred() }
         val journal = MemoryJournal()
-        val saves = client(cloud, e2e = false, journal = journal)
+        val saves = client(cloud, e2e = false, ClientOptions(journal = journal))
         val t = saves.write("s", bytes(500), meta("c"))
         withTimeout(5000) { while (journal.list().isEmpty()) kotlinx.coroutines.delay(5) }
         t.pause()
