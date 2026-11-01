@@ -51,6 +51,8 @@ public class ContactRef(
     public val agreeKey: String,
     /** The session was opened under a pending contact: it is the first handshake of a re-pair. */
     public val pending: Boolean,
+    /** A one-way tag of the secret the session opened under (not the secret). */
+    internal val tag: String = "",
 ) {
     override fun toString(): String = "ContactRef($id)"
 }
@@ -91,7 +93,10 @@ internal class LiveContact(
     val reachable: Boolean,
     val pending: Boolean,
 ) {
-    val ref: ContactRef get() = ContactRef(id, label, cats, agreeKey, pending)
+    /** A one-way tag of this contact's secret: tells two secrets apart without holding either. */
+    val tag: String = secretTag(secret)
+
+    val ref: ContactRef get() = ContactRef(id, label, cats, agreeKey, pending, tag)
 
     fun wipe() {
         secret.fill(0)
@@ -99,6 +104,9 @@ internal class LiveContact(
 
     override fun toString(): String = "LiveContact(redacted)"
 }
+
+internal fun secretTag(secret: ByteArray): String =
+    Base64Url.encode(sha256("pkey-contact-tag/1".toByteArray(Charsets.UTF_8), byteArrayOf(0), secret).copyOf(ID_BYTES))
 
 internal fun contactId(agreeKey: String): String {
     val raw = Base64Url.decode(agreeKey) ?: ByteArray(0)
@@ -172,8 +180,10 @@ internal fun storeRow(
 }
 
 /** A handshake under the pending contact of [agreeKey] passed the pin: it takes the held one's place. */
-internal fun promoteRow(rows: List<ContactRow>, agreeKey: String): List<ContactRow> {
-    val pend = rows.firstOrNull { it.pendingSince != null && it.agreeKey == agreeKey } ?: return rows
+internal fun promoteRow(rows: List<ContactRow>, agreeKey: String, tag: String? = null): List<ContactRow> {
+    val pend = rows.firstOrNull {
+        it.pendingSince != null && it.agreeKey == agreeKey && (tag == null || secretTag(Base64Url.decode(it.secret) ?: ByteArray(0)) == tag)
+    } ?: return rows
     val held = rows.firstOrNull { it.pendingSince == null && it.agreeKey == agreeKey }
     val stored = rows.map(::storedOf)
     try {

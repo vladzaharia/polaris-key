@@ -185,7 +185,7 @@ public class CloudLinks internal constructor(private val connect: ConnectClient)
                 val ms = ((lanAttemptSeconds ?: lanAttempt) * MILLIS).toLong()
                 if (withTimeoutOrNull(ms) { attempt.join() } != null) {
                     try {
-                        return track(attempt.await())
+                        return trackHeld(attempt.await())
                     } catch (e: CancellationException) {
                         if (!attempt.isCancelled) throw e
                         last = LanException(LanErrorReason.closed, "The LAN attempt was cancelled.")
@@ -208,7 +208,7 @@ public class CloudLinks internal constructor(private val connect: ConnectClient)
             }
             if (r != null && relay && relayOn) {
                 try {
-                    return track(r.dial(id, pending))
+                    return trackHeld(r.dial(id, pending))
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -262,6 +262,29 @@ public class CloudLinks internal constructor(private val connect: ConnectClient)
 
     private fun inbound(s: ConnectSession) {
         track(s)
+        // The handshake may have begun before the contact was removed or the gate went off: the session is delivered
+        // only while the contact (same secret) is held and links are on.
+        scope.launch {
+            if (stillHeld(s)) deliver(s)
+        }
+    }
+
+    /** Close [s] (`peer_revoked`, or `peer_bye` when the gate is off) unless its contact is still held. */
+    private suspend fun stillHeld(s: ConnectSession): Boolean {
+        val ref = s.contact ?: return true
+        val on = connect.interAccount()
+        if (on && connect.holdsContact(ref.agreeKey, ref.tag)) return true
+        quiet { s.close(if (on) "peer_revoked" else "peer_bye") }
+        return false
+    }
+
+    private suspend fun trackHeld(s: ConnectSession): ConnectSession {
+        track(s)
+        if (stillHeld(s)) return s
+        throw LanException(LanErrorReason.unknown_peer, "That link was removed.")
+    }
+
+    private fun deliver(s: ConnectSession) {
         for (f in onLinkFns.toList()) {
             try {
                 f(s)

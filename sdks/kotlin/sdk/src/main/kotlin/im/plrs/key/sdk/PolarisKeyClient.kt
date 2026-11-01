@@ -93,6 +93,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -663,8 +664,29 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     // ── Capabilities (D-21) ──────────────────────────────────────────────────────────────────
     public suspend fun discover(): DiscoveryResult = core.discover().also {
         cloudSyncImpl.noteDiscovery()
+        // Not found, invalid or unreachable: the cached links answer is no longer trusted.
+        connect.noteDiscovery(it is DiscoveryResult.Ok)
+        if (it is DiscoveryResult.Ok) rereadLinksGate()
         // `interAccount` may have moved: links follow the document (section 15.10 "Gates").
         connect.notifyContacts()
+    }
+
+    private var linksReread: kotlinx.coroutines.Job? = null
+
+    /** Read discovery again when the cached links answer lapses, so a lapse withdraws the adverts. */
+    private fun rereadLinksGate() {
+        linksReread?.cancel()
+        linksReread = scope.launch {
+            delay(INTER_ACCOUNT_TTL_SECONDS * 1000L)
+            try {
+                discover()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // an unreachable Worker leaves the answer lapsed
+            }
+            if (connect.linksLapsed()) connect.notifyContacts()
+        }
     }
 
     // ── Presentation (core.presentation, plans/HA-13.md) ────────────────────────────────────────

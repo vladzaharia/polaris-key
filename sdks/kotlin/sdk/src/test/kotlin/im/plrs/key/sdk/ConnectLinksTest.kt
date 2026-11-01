@@ -23,6 +23,7 @@ import im.plrs.key.core.peer.RelayMessage
 import im.plrs.key.core.peer.contactAlias
 import im.plrs.key.core.peer.contactRid
 import im.plrs.key.core.peer.decodeRelay
+import im.plrs.key.core.peer.lan.MdnsFound
 import im.plrs.key.core.peer.encodeRelay
 import im.plrs.key.core.testing.ScriptedTransport
 import im.plrs.key.core.testing.ScriptedTransport.Companion.respond
@@ -191,6 +192,74 @@ class ConnectLinksTest : ConnectLanBase() {
         runBlocking { s.close() }
     }
 
+    /** Holds every write after a socket's first (handshake message 3 and later) until [gate] opens. */
+    private class HoldingFactory : javax.net.SocketFactory() {
+        val gate = java.util.concurrent.CountDownLatch(1)
+        val held = java.util.concurrent.atomic.AtomicInteger()
+
+        override fun createSocket(): java.net.Socket = object : java.net.Socket() {
+            private var n = 0
+
+            override fun getOutputStream(): java.io.OutputStream {
+                val o = super.getOutputStream()
+                return object : java.io.OutputStream() {
+                    override fun write(b: Int) = o.write(b)
+
+                    override fun write(b: ByteArray, off: Int, len: Int) {
+                        val k = ++n
+                        if (k >= 2) {
+                            if (k == 2) held.incrementAndGet()
+                            gate.await()
+                        }
+                        o.write(b, off, len)
+                    }
+
+                    override fun flush() = o.flush()
+
+                    override fun close() = o.close()
+                }
+            }
+        }
+
+        override fun createSocket(host: String?, port: Int): java.net.Socket = createSocket().also { it.connect(java.net.InetSocketAddress(host, port)) }
+
+        override fun createSocket(host: String?, port: Int, localHost: java.net.InetAddress?, localPort: Int): java.net.Socket = createSocket(host, port)
+
+        override fun createSocket(host: java.net.InetAddress?, port: Int): java.net.Socket = createSocket().also { it.connect(java.net.InetSocketAddress(host, port)) }
+
+        override fun createSocket(address: java.net.InetAddress?, port: Int, localAddress: java.net.InetAddress?, localPort: Int): java.net.Socket =
+            createSocket(address, port)
+    }
+
+    @Test
+    fun aHandshakeInFlightWhenTheContactIsRemovedOpensNoSession() {
+        val link = Link()
+        val w = World()
+        val hold = HoldingFactory()
+        val ca = Contacts(listOf(link.forA()))
+        val cb = Contacts(listOf(link.forB()))
+        val a = start(w, link.a, ca)
+        val b = start(w, link.b, cb)
+        val inbound = CopyOnWriteArrayList<ConnectSession>()
+        b.onContactSession { inbound += it }
+        until { a.contactPeerIds().isNotEmpty() }
+        w.net.factory = hold
+        // The adverts are already known: re-found them with the holding factory.
+        until { w.net.names().size == 4 }
+        for ((_, adv) in synchronized(w.net.adverts) { w.net.adverts.entries.toList() }) {
+            w.net.inject(MdnsFound(adv.instance, w.net.at, adv.port, adv.txt, socketFactory = hold))
+        }
+        val dial = Thread { runCatching { runBlocking { a.connectContact(link.forA().id) } } }
+        dial.start()
+        until { hold.held.get() == 1 }
+        // B removes the contact while message 3 is still on its way.
+        cb.set(emptyList())
+        hold.gate.countDown()
+        dial.join(10_000)
+        Thread.sleep(300)
+        assertTrue("no session reaches the host after the contact was removed", inbound.isEmpty())
+    }
+
     @Test
     fun aContactAdvertIsNeverDialledAsAnAccountDevice() {
         val link = Link()
@@ -330,7 +399,9 @@ class ConnectLinksTest : ConnectLanBase() {
     // -- the client: rows, the gate, the ticket -------------------------------------------------------
 
     private val deviceId = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-    private val now = 1_700_000_000L
+    @Volatile
+    private var now = 1_700_000_000L
+    private var discoveryStatus = 200
     private var interAccount = false
     private var ticketBody: String? = null
     private var ticketStatus = 200
@@ -342,6 +413,8 @@ class ConnectLinksTest : ConnectLanBase() {
     )}","url":"wss://key.plrs.im/djdl/connect/relay","protocol":"$RELAY_PROTOCOL","expiresAt":${now + 60}${if (room) ",\"room\":\"c\"" else ""}}"""
 
     private fun handle(r: PolarisRequest, port: DeviceKeyPort): PolarisResponse = when {
+        r.path.endsWith("/.well-known/polaris.json") && discoveryStatus != 200 -> respond(discoveryStatus, "")
+
         r.path.endsWith("/.well-known/polaris.json") -> respond(
             200,
             """{"product":"djdl","services":{"connect":{"enabled":true,"interAccount":$interAccount,"endpoints":{"identity":"x","ticket":"t"}}}}""",
@@ -506,6 +579,27 @@ class ConnectLinksTest : ConnectLanBase() {
     }
 
     @Test
+    fun aDiscoveryThatIsNotFoundClosesTheGate() = runBlocking {
+        interAccount = true
+        val c = client()
+        c.discover()
+        assertTrue(c.cloudConnect.links.interAccount())
+        discoveryStatus = 404
+        c.discover()
+        assertFalse(c.cloudConnect.links.interAccount())
+    }
+
+    @Test
+    fun aDiscoveryAnswerOlderThanADayNoLongerCounts() = runBlocking {
+        interAccount = true
+        val c = client()
+        c.discover()
+        assertTrue(c.cloudConnect.links.interAccount())
+        now += 25 * 3600
+        assertFalse(c.cloudConnect.links.interAccount())
+    }
+
+    @Test
     fun pairAndOpenAreTheTypedNAWhileLinksAreOff() = runBlocking {
         interAccount = false
         val c = client()
@@ -562,5 +656,22 @@ class ConnectLinksTest : ConnectLanBase() {
             assertEquals(RelayErrorReason.links_disabled, e.reason)
             assertEquals(403, e.httpStatus)
         }
+    }
+}
+
+class ConnectLinksSecretTest {
+    private fun row(key: String, secret: ByteArray, pending: Long?) =
+        ContactRow(key, Base64Url.encode(secret), null, listOf("docs"), 1L, true, pending)
+
+    @Test
+    fun aSessionUnderAReplacedPendingSecretDoesNotPromoteTheNewerPendingRow() {
+        val key = Base64Url.encode(ByteArray(32) { 7 })
+        val s1 = ByteArray(32) { 1 }
+        val s2 = ByteArray(32) { 2 }
+        val rows = listOf(row(key, s1, null), row(key, s2, 5L))
+        assertEquals(rows, promoteRow(rows, key, secretTag(s1)))
+        val after = promoteRow(rows, key, secretTag(s2))
+        assertEquals(listOf(Base64Url.encode(s2)), after.map { it.secret })
+        assertTrue(after.all { it.pendingSince == null })
     }
 }
