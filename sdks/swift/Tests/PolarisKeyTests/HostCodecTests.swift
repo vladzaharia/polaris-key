@@ -177,7 +177,7 @@ private func pull(
         }
         let record = obj([
             "mutationId": .int(2), "target": obj(["record": .array([str("slots"), str("a")])]),
-            "op": str("setField"), "field": str("hp"), "value": .int(1),
+            "op": str("setField"), "field": str(""), "value": .int(1),
         ])
         let c = FixtureCodec(root)
         #expect(

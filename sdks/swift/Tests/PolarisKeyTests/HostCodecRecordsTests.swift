@@ -1,8 +1,8 @@
 // @pkey-feature sync.e2e
 // The host codec's record half (U-23.S3; WIRE-CONTRACT-V5 §13.10.4): scalar record values sealed under
 // their collection with `k = id`, the id sent as `blind("record", c, id)`, and a pulled record opened
-// only when the `k` inside the envelope re-blinds to the id on the wire. Merge and union records are
-// outside the native codec (D-2). The corpus's record rows run in SyncVectorsTests.
+// only when the `k` inside the envelope re-blinds to the id on the wire. Merge fields and union elements
+// are in HostCodecCellsTests. The corpus's record rows run in SyncVectorsTests.
 
 import Foundation
 import Testing
@@ -113,10 +113,17 @@ private func recordOf(_ c: [String: JSONValue]) -> [JSONValue]? { c["record"]?.a
             return obj(m)
         }
         let refused: [String: JSONValue] = [
-            "setField": mutation(["field": str("hp"), "value": .int(1)], op: "setField"),
-            "removeField": mutation(["field": str("hp")], op: "removeField"),
-            "add": mutation(["element": str("e"), "value": .int(1)], op: "add"),
-            "remove": mutation(["element": str("e"), "observedSeq": .int(1)], op: "remove"),
+            "setField with no value": mutation(["field": str("hp")], op: "setField"),
+            "setField with an empty field": mutation(["field": str(""), "value": .int(1)], op: "setField"),
+            "setField with a NUL field": mutation(["field": str("h\u{0}p"), "value": .int(1)], op: "setField"),
+            "setField with an element": mutation(
+                ["field": str("hp"), "value": .int(1), "element": .int(1)], op: "setField"),
+            "removeField with a value": mutation(["field": str("hp"), "value": .int(1)], op: "removeField"),
+            "add with no element": mutation([:], op: "add"),
+            "add with a value": mutation(["element": str("e"), "value": .int(1)], op: "add"),
+            "add with a field": mutation(["element": str("e"), "field": str("f")], op: "add"),
+            "add of an unspellable element": mutation(["element": .double(.nan)], op: "add"),
+            "remove with no element": mutation([:], op: "remove"),
             "clear": mutation([:], op: "clear"),
             "delete with a value": mutation(["value": .int(1)], op: "delete"),
             "set with no value": mutation([:]),
@@ -199,8 +206,13 @@ private func recordOf(_ c: [String: JSONValue]) -> [JSONValue]? { c["record"]?.a
             "an id holding NUL": [
                 "record": arr([str(saves), str(bl(.record, saves, "s"))]), "ct": str(nulName),
             ],
-            "sealed fields": ["record": arr([str(saves), str(served)]), "fields": arr([])],
-            "sealed elements": ["record": arr([str(saves), str(served)]), "elements": arr([])],
+            "a ct with sealed fields": ["record": arr([str(saves), str(served)]), "ct": str(good), "fields": arr([])],
+            "sealed fields and elements": [
+                "record": arr([str(saves), str(served)]), "fields": arr([]), "elements": arr([]),
+            ],
+            "sealed fields under an id that is not blinded": [
+                "record": arr([str(saves), str("slot-1")]), "fields": arr([]),
+            ],
             "a malformed reference": ["record": arr([str(saves)]), "ct": str(good)],
         ]
         for (name, entry) in hostile {
@@ -301,7 +313,7 @@ private func recordOf(_ c: [String: JSONValue]) -> [JSONValue]? { c["record"]?.a
         #expect(r.opened.conflicts[10] == invalidRow && r.opened.conflicts[11] == invalidRow)
         #expect(r.opened.conflicts[12] == SyncOpenedRow(seq: 3))
         let f = try pull(
-            obj(["results": arr([result(7, ["fields": arr([]), "version": .int(3)])])]), mutations: ms)
+            obj(["results": arr([result(7, ["fields": arr([]), "ct": str("AAAA"), "version": .int(3)])])]), mutations: ms)
         #expect(f.opened.conflicts[7] == invalidRow)
     }
 

@@ -59,13 +59,15 @@ public enum CloudSyncEvent: Sendable, Equatable {
         }
     }
 
-    init(_ e: SyncEvent) {
+    /// nil for a `records` event: a collection's changes go to its handle, not to this stream.
+    init?(_ e: SyncEvent) {
         switch e {
         case .change(let k, let o): self = .change(keys: k, origin: o)
         case .rejected(let id, let c): self = .rejected(mutationId: id, code: c)
         case .signedOut(let r, let u): self = .signedOut(reason: r, unsynced: u)
         case .unsyncedData(let c): self = .unsyncedData(count: c)
         case .signInOffered(let u): self = .signInOffered(signInUrl: u)
+        case .records: return nil
         }
     }
 }
@@ -99,6 +101,11 @@ public final class CloudSyncClient: Sendable {
     /// status.
     @discardableResult
     public func flush() async throws -> SyncStatus { try await api.flush() }
+
+    /// The records handle of a collection the product's catalog declares (plans/C-26). Starts Cloud Sync
+    /// first; an undeclared name answers `collection_unknown` from each call, never a throw. Throws the typed
+    /// `product` N/A when the product does not run the Sync service.
+    public func collection(_ name: String) async throws -> CloudSyncCollection { try await api.collection(name) }
 
     /// A new recovery code for the key ring (`SyncKeyring.setRecoveryCode`). Shown once, kept nowhere.
     public func newRecoveryCode() async throws -> String { try await api.newRecoveryCode() }
@@ -191,6 +198,12 @@ actor CloudSyncApi {
         await host().flush()
         await drain()
         return try await status()
+    }
+
+    func collection(_ name: String) async throws -> CloudSyncCollection {
+        try await core.requireService(.sync, feature: Feature.syncRecords)
+        await attach()
+        return CloudSyncCollection(name: name, host: host())
     }
 
     func newRecoveryCode() async throws -> String { try await recovery() }
@@ -449,7 +462,7 @@ actor CloudSyncApi {
                 emit(.signInOffered(signInUrl: safeSignInUrl(url, origin: originString)))
                 continue
             }
-            emit(CloudSyncEvent(e))
+            if let event = CloudSyncEvent(e) { emit(event) }
         }
         if let forgotten {
             await forgotten.value
