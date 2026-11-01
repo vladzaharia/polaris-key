@@ -1356,6 +1356,28 @@
     <string name="signin_nearby_rateLimitedBody">Wait a moment, then try again on %1$s.</string>
     <!-- Nearby approval: the code expired. Body under the Code expired title; the person starts again on the new device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_expiredBody">Start again on %1$s.</string>
+    <!-- Nearby sign-in, on the device that signs in: several devices answered, so the person chooses which one to ask. The devices follow as buttons. -->
+    <string name="signin_nearby_pick">Choose the device to ask.</string>
+    <!-- Nearby sign-in, waiting: asks again and lists the devices, to choose a different one. -->
+    <string name="signin_nearby_another">Choose another device</string>
+    <string name="signin_nearby_another__macos">Choose Another Device</string>
+    <!-- Nearby sign-in, on the device that signs in: no device answered after a while. -->
+    <string name="signin_nearby_noneTitle">No device found</string>
+    <!-- Nearby sign-in: where to go on the other device. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_nearby_noneBody">Open %1$s on your other device and choose Approve a Nearby Device.</string>
+    <!-- Nearby approval, on the signed-in device: the screen that waits for a request. -->
+    <string name="signin_nearby_listenTitle">Approve a Nearby Device</string>
+    <!-- Nearby approval: what to do on the new device so its request shows here. -->
+    <string name="signin_nearby_listenBody">On the new device, choose to sign in with a nearby device. Its request shows here.</string>
+    <!-- Nearby approval: this device stopped listening after requests were declined. -->
+    <string name="signin_nearby_pausedTitle">Approvals paused</string>
+    <!-- Nearby approval: why it stopped (two declined requests in a short time); Start again listens again. -->
+    <string name="signin_nearby_pausedBody">Two requests were declined, so this device stopped listening.</string>
+    <!-- Nearby approval: listen for requests again after it paused. -->
+    <string name="signin_nearby_startAgain">Start again</string>
+    <string name="signin_nearby_startAgain__macos">Start Again</string>
+    <!-- Nearby approval: the service or the network failed, so nothing was approved. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_failedBody">Nothing was approved. Try again on %1$s.</string>
     <!-- The key was refused and the person adds it to their account on the web (↗, opens the browser). -->
     <string name="signin_key_addInLocker">Add it in Polaris Locker</string>
     <string name="signin_key_addInLocker__macos">Add It in Polaris Locker</string>

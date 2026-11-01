@@ -719,6 +719,19 @@ export const KIT_COPY: Readonly<
     "signin.nearby.rateLimitedBody":
       "Wait a moment, then try again on {device}.",
     "signin.nearby.expiredBody": "Start again on {device}.",
+    "signin.nearby.pick": "Choose the device to ask.",
+    "signin.nearby.another": "Choose another device",
+    "signin.nearby.noneTitle": "No device found",
+    "signin.nearby.noneBody":
+      "Open {app} on your other device and choose Approve a Nearby Device.",
+    "signin.nearby.listenTitle": "Approve a Nearby Device",
+    "signin.nearby.listenBody":
+      "On the new device, choose to sign in with a nearby device. Its request shows here.",
+    "signin.nearby.pausedTitle": "Approvals paused",
+    "signin.nearby.pausedBody":
+      "Two requests were declined, so this device stopped listening.",
+    "signin.nearby.startAgain": "Start again",
+    "signin.nearby.failedBody": "Nothing was approved. Try again on {device}.",
     "signin.key.addInLocker": "Add it in Polaris Locker",
     "signin.key.scan": "Scan to add this key in Polaris Locker on your phone.",
     "signin.return.yours": "{product} is yours",
@@ -2716,6 +2729,20 @@ export const KIT_COPY: Readonly<
     "signin.nearby.rateLimitedBody":
       "Warten Sie einen Moment und versuchen Sie es dann auf {device} erneut.",
     "signin.nearby.expiredBody": "Beginnen Sie auf {device} von vorn.",
+    "signin.nearby.pick": "Wählen Sie das Gerät, das gefragt werden soll.",
+    "signin.nearby.another": "Anderes Gerät wählen",
+    "signin.nearby.noneTitle": "Kein Gerät gefunden",
+    "signin.nearby.noneBody":
+      "Öffnen Sie {app} auf Ihrem anderen Gerät und wählen Sie „Gerät in der Nähe bestätigen“.",
+    "signin.nearby.listenTitle": "Gerät in der Nähe bestätigen",
+    "signin.nearby.listenBody":
+      "Wählen Sie auf dem neuen Gerät die Anmeldung über ein Gerät in der Nähe. Die Anfrage erscheint hier.",
+    "signin.nearby.pausedTitle": "Bestätigungen pausiert",
+    "signin.nearby.pausedBody":
+      "Zwei Anfragen wurden abgelehnt, daher hört dieses Gerät nicht mehr zu.",
+    "signin.nearby.startAgain": "Erneut starten",
+    "signin.nearby.failedBody":
+      "Nichts wurde bestätigt. Versuchen Sie es auf {device} erneut.",
     "signin.key.addInLocker": "In Polaris Locker hinzufügen",
     "signin.key.scan":
       "Scannen, um diesen Schlüssel auf Ihrem Telefon in Polaris Locker hinzuzufügen.",
@@ -4795,6 +4822,20 @@ export const KIT_COPY: Readonly<
     "signin.nearby.rateLimitedBody":
       "Patientez un instant, puis réessayez sur {device}.",
     "signin.nearby.expiredBody": "Recommencez sur {device}.",
+    "signin.nearby.pick": "Choisissez l’appareil à solliciter.",
+    "signin.nearby.another": "Choisir un autre appareil",
+    "signin.nearby.noneTitle": "Aucun appareil trouvé",
+    "signin.nearby.noneBody":
+      "Ouvrez {app} sur votre autre appareil et choisissez Approuver un appareil à proximité.",
+    "signin.nearby.listenTitle": "Approuver un appareil à proximité",
+    "signin.nearby.listenBody":
+      "Sur le nouvel appareil, choisissez de vous connecter avec un appareil à proximité. Sa demande s’affiche ici.",
+    "signin.nearby.pausedTitle": "Approbations en pause",
+    "signin.nearby.pausedBody":
+      "Deux demandes ont été refusées, cet appareil a donc cessé d’écouter.",
+    "signin.nearby.startAgain": "Recommencer",
+    "signin.nearby.failedBody":
+      "Rien n’a été approuvé. Réessayez sur {device}.",
     "signin.key.addInLocker": "L’ajouter dans Polaris Locker",
     "signin.key.scan":
       "Scannez pour ajouter cette clé dans Polaris Locker sur votre téléphone.",
@@ -6854,6 +6895,20 @@ export const KIT_COPY: Readonly<
     "signin.nearby.rateLimitedBody":
       "Espera un momento y vuelve a intentarlo en {device}.",
     "signin.nearby.expiredBody": "Empieza de nuevo en {device}.",
+    "signin.nearby.pick": "Elige el dispositivo al que preguntar.",
+    "signin.nearby.another": "Elegir otro dispositivo",
+    "signin.nearby.noneTitle": "No se encontró ningún dispositivo",
+    "signin.nearby.noneBody":
+      "Abre {app} en tu otro dispositivo y elige Aprobar un dispositivo cercano.",
+    "signin.nearby.listenTitle": "Aprobar un dispositivo cercano",
+    "signin.nearby.listenBody":
+      "En el dispositivo nuevo, elige iniciar sesión con un dispositivo cercano. Su solicitud aparece aquí.",
+    "signin.nearby.pausedTitle": "Aprobaciones en pausa",
+    "signin.nearby.pausedBody":
+      "Se rechazaron dos solicitudes, así que este dispositivo dejó de escuchar.",
+    "signin.nearby.startAgain": "Empezar de nuevo",
+    "signin.nearby.failedBody":
+      "No se aprobó nada. Inténtalo de nuevo en {device}.",
     "signin.key.addInLocker": "Añadirla en Polaris Locker",
     "signin.key.scan":
       "Escanea para añadir esta clave en Polaris Locker desde tu teléfono.",
@@ -8915,6 +8970,20 @@ export const KIT_COPY: Readonly<
     "signin.nearby.rateLimitedBody":
       "Aguarde um instante e tente de novo em {device}.",
     "signin.nearby.expiredBody": "Comece de novo em {device}.",
+    "signin.nearby.pick": "Escolha o dispositivo a consultar.",
+    "signin.nearby.another": "Escolher outro dispositivo",
+    "signin.nearby.noneTitle": "Nenhum dispositivo encontrado",
+    "signin.nearby.noneBody":
+      "Abra {app} no seu outro dispositivo e escolha Aprovar um dispositivo próximo.",
+    "signin.nearby.listenTitle": "Aprovar um dispositivo próximo",
+    "signin.nearby.listenBody":
+      "No dispositivo novo, escolha entrar com um dispositivo próximo. O pedido aparece aqui.",
+    "signin.nearby.pausedTitle": "Aprovações pausadas",
+    "signin.nearby.pausedBody":
+      "Dois pedidos foram recusados, então este dispositivo parou de escutar.",
+    "signin.nearby.startAgain": "Começar de novo",
+    "signin.nearby.failedBody":
+      "Nada foi aprovado. Tente novamente em {device}.",
     "signin.key.addInLocker": "Adicionar no Polaris Locker",
     "signin.key.scan":
       "Escaneie para adicionar esta chave no Polaris Locker pelo celular.",
@@ -10927,6 +10996,20 @@ export const KIT_COPY: Readonly<
     "signin.nearby.rateLimitedBody":
       "Attendi un attimo, poi riprova su {device}.",
     "signin.nearby.expiredBody": "Ricomincia su {device}.",
+    "signin.nearby.pick": "Scegli il dispositivo a cui chiedere.",
+    "signin.nearby.another": "Scegli un altro dispositivo",
+    "signin.nearby.noneTitle": "Nessun dispositivo trovato",
+    "signin.nearby.noneBody":
+      "Apri {app} sull’altro dispositivo e scegli Approva un dispositivo vicino.",
+    "signin.nearby.listenTitle": "Approva un dispositivo vicino",
+    "signin.nearby.listenBody":
+      "Sul nuovo dispositivo, scegli di accedere con un dispositivo vicino. La richiesta compare qui.",
+    "signin.nearby.pausedTitle": "Approvazioni in pausa",
+    "signin.nearby.pausedBody":
+      "Due richieste sono state rifiutate, quindi questo dispositivo ha smesso di ascoltare.",
+    "signin.nearby.startAgain": "Ricomincia",
+    "signin.nearby.failedBody":
+      "Non è stato approvato nulla. Riprova su {device}.",
     "signin.key.addInLocker": "Aggiungila in Polaris Locker",
     "signin.key.scan":
       "Inquadra per aggiungere questa chiave in Polaris Locker dal telefono.",
@@ -12970,6 +13053,20 @@ export const KIT_COPY: Readonly<
     "signin.nearby.rateLimitedBody":
       "しばらく待ってから、{device} でもう一度お試しください。",
     "signin.nearby.expiredBody": "{device} で最初からやり直してください。",
+    "signin.nearby.pick": "確認を求めるデバイスを選んでください。",
+    "signin.nearby.another": "別のデバイスを選ぶ",
+    "signin.nearby.noneTitle": "デバイスが見つかりません",
+    "signin.nearby.noneBody":
+      "もう一方のデバイスで {app} を開き、「近くのデバイスを承認」を選んでください。",
+    "signin.nearby.listenTitle": "近くのデバイスを承認",
+    "signin.nearby.listenBody":
+      "新しいデバイスで、近くのデバイスでサインインを選んでください。リクエストがここに表示されます。",
+    "signin.nearby.pausedTitle": "承認を一時停止しました",
+    "signin.nearby.pausedBody":
+      "リクエストが2回拒否されたため、このデバイスは待機を止めました。",
+    "signin.nearby.startAgain": "もう一度始める",
+    "signin.nearby.failedBody":
+      "何も承認されませんでした。{device} でもう一度お試しください。",
     "signin.key.addInLocker": "Polaris Locker で追加",
     "signin.key.scan":
       "スマートフォンでスキャンして、このキーを Polaris Locker で追加します。",
@@ -15003,6 +15100,20 @@ export const KIT_COPY: Readonly<
     "signin.nearby.rateLimitedBody":
       "잠시 기다린 뒤 {device}에서 다시 시도하세요.",
     "signin.nearby.expiredBody": "{device}에서 처음부터 다시 시작하세요.",
+    "signin.nearby.pick": "요청할 기기를 선택하세요.",
+    "signin.nearby.another": "다른 기기 선택",
+    "signin.nearby.noneTitle": "기기를 찾지 못했어요",
+    "signin.nearby.noneBody":
+      "다른 기기에서 {app}을(를) 열고 ‘근처 기기 승인’을 선택하세요.",
+    "signin.nearby.listenTitle": "근처 기기 승인",
+    "signin.nearby.listenBody":
+      "새 기기에서 근처 기기로 로그인을 선택하세요. 요청이 여기에 표시돼요.",
+    "signin.nearby.pausedTitle": "승인을 일시 중지했어요",
+    "signin.nearby.pausedBody":
+      "요청이 두 번 거절되어 이 기기는 대기를 멈췄어요.",
+    "signin.nearby.startAgain": "다시 시작",
+    "signin.nearby.failedBody":
+      "아무것도 승인되지 않았어요. {device}에서 다시 시도하세요.",
     "signin.key.addInLocker": "Polaris Locker에서 추가",
     "signin.key.scan":
       "스캔해서 휴대폰의 Polaris Locker에서 이 키를 추가하세요.",
@@ -16916,6 +17027,18 @@ export const KIT_COPY: Readonly<
       "此许可证已用于全部设备。请移除一台设备，为 {device} 腾出位置。",
     "signin.nearby.rateLimitedBody": "请稍候，然后在 {device} 上重试。",
     "signin.nearby.expiredBody": "请在 {device} 上重新开始。",
+    "signin.nearby.pick": "选择要询问的设备。",
+    "signin.nearby.another": "选择其他设备",
+    "signin.nearby.noneTitle": "未找到设备",
+    "signin.nearby.noneBody":
+      "在你的另一台设备上打开 {app}，然后选择“批准附近的设备”。",
+    "signin.nearby.listenTitle": "批准附近的设备",
+    "signin.nearby.listenBody":
+      "在新设备上选择通过附近的设备登录。请求会显示在这里。",
+    "signin.nearby.pausedTitle": "已暂停批准",
+    "signin.nearby.pausedBody": "有两个请求被拒绝，因此这台设备已停止监听。",
+    "signin.nearby.startAgain": "重新开始",
+    "signin.nearby.failedBody": "没有批准任何内容。请在 {device} 上重试。",
     "signin.key.addInLocker": "在 Polaris Locker 中添加",
     "signin.key.scan": "扫描后在手机上的 Polaris Locker 中添加此密钥。",
     "signin.return.yours": "{product}已归你所有",
@@ -18178,6 +18301,8 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.nearby.code": { macos: "Use a Code Instead" },
   "signin.nearby.notYou": { macos: "Not You?" },
   "signin.nearby.menu": { macos: "Approve a Nearby Device" },
+  "signin.nearby.another": { macos: "Choose Another Device" },
+  "signin.nearby.startAgain": { macos: "Start Again" },
   "signin.key.addInLocker": { macos: "Add It in Polaris Locker" },
   "signin.return.stay": { macos: "Stay Here" },
   "signin.done.start": { macos: "Start Using {product}" },

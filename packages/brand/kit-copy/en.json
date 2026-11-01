@@ -3008,6 +3008,56 @@
       "role": "body",
       "note": "Nearby approval: the code expired. Body under the Code expired title; the person starts again on the new device. Arguments: {device} = the new device's friendly name (never translated)."
     },
+    "signin.nearby.pick": {
+      "value": "Choose the device to ask.",
+      "role": "body",
+      "note": "Nearby sign-in, on the device that signs in: several devices answered, so the person chooses which one to ask. The devices follow as buttons."
+    },
+    "signin.nearby.another": {
+      "value": "Choose another device",
+      "role": "button",
+      "note": "Nearby sign-in, waiting: asks again and lists the devices, to choose a different one."
+    },
+    "signin.nearby.noneTitle": {
+      "value": "No device found",
+      "role": "title",
+      "note": "Nearby sign-in, on the device that signs in: no device answered after a while."
+    },
+    "signin.nearby.noneBody": {
+      "value": "Open {app} on your other device and choose Approve a Nearby Device.",
+      "role": "body",
+      "note": "Nearby sign-in: where to go on the other device. Arguments: {app} = the app's name (never translated)."
+    },
+    "signin.nearby.listenTitle": {
+      "value": "Approve a Nearby Device",
+      "role": "title",
+      "note": "Nearby approval, on the signed-in device: the screen that waits for a request."
+    },
+    "signin.nearby.listenBody": {
+      "value": "On the new device, choose to sign in with a nearby device. Its request shows here.",
+      "role": "body",
+      "note": "Nearby approval: what to do on the new device so its request shows here."
+    },
+    "signin.nearby.pausedTitle": {
+      "value": "Approvals paused",
+      "role": "title",
+      "note": "Nearby approval: this device stopped listening after requests were declined."
+    },
+    "signin.nearby.pausedBody": {
+      "value": "Two requests were declined, so this device stopped listening.",
+      "role": "body",
+      "note": "Nearby approval: why it stopped (two declined requests in a short time); Start again listens again."
+    },
+    "signin.nearby.startAgain": {
+      "value": "Start again",
+      "role": "button",
+      "note": "Nearby approval: listen for requests again after it paused."
+    },
+    "signin.nearby.failedBody": {
+      "value": "Nothing was approved. Try again on {device}.",
+      "role": "body",
+      "note": "Nearby approval: the service or the network failed, so nothing was approved. Arguments: {device} = the new device's friendly name (never translated)."
+    },
     "signin.key.addInLocker": {
       "value": "Add it in Polaris Locker",
       "role": "button",

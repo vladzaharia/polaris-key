@@ -258,6 +258,67 @@
             "signin.nearby.notYou"
           ]
         },
+        "nearby-choose": {
+          "copy": [
+            "signin.nearby.title",
+            "signin.nearby.pick",
+            "signin.nearby.code"
+          ]
+        },
+        "nearby-none-found": {
+          "copy": [
+            "signin.nearby.noneTitle",
+            "signin.nearby.noneBody",
+            "common.tryAgain",
+            "signin.nearby.code"
+          ]
+        },
+        "nearby-denied": {
+          "copy": [
+            "core.codes.sign-in-denied.title",
+            "core.codes.sign-in-denied.message",
+            "common.tryAgain",
+            "signin.nearby.code"
+          ]
+        },
+        "nearby-expired": {
+          "copy": [
+            "core.codes.sign-in-expired.title",
+            "core.codes.sign-in-expired.message",
+            "common.tryAgain",
+            "signin.nearby.code"
+          ]
+        },
+        "nearby-not-nearby": {
+          "copy": [
+            "core.codes.not_nearby.title",
+            "core.codes.not_nearby.message",
+            "common.tryAgain",
+            "signin.nearby.code"
+          ]
+        },
+        "nearby-failed": {
+          "copy": [
+            "core.codes.network.title",
+            "core.codes.network.message",
+            "common.tryAgain",
+            "signin.nearby.code"
+          ]
+        },
+        "nearby-cancelled": {
+          "copy": [
+            "core.codes.unauthorized.title",
+            "common.tryAgain",
+            "signin.nearby.code"
+          ]
+        },
+        "nearby-signed-out": {
+          "copy": [
+            "core.gate.revoked.title",
+            "common.tryAgain",
+            "signin.nearby.code"
+          ]
+        },
         "device-limit": {
           "copy": [
             "core.codes.device_limit.title",
@@ -468,6 +529,29 @@
           "copy": [
             "core.codes.rate_limited.title",
             "signin.nearby.rateLimitedBody",
+            "common.done"
+          ]
+        },
+        "listening": {
+          "copy": [
+            "signin.nearby.listenTitle",
+            "signin.nearby.listenBody",
+            "signin.cli.approveWaiting",
+            "common.done"
+          ]
+        },
+        "stopped": {
+          "copy": [
+            "signin.nearby.pausedTitle",
+            "signin.nearby.pausedBody",
+            "signin.nearby.startAgain",
+            "common.done"
+          ]
+        },
+        "failed": {
+          "copy": [
+            "core.codes.network.title",
+            "signin.nearby.failedBody",
             "common.done"
           ]
         }

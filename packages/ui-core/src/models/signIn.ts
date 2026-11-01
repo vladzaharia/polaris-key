@@ -425,6 +425,36 @@ function autoStepView(
         extraActions: replace ? ["open-manage-url"] : [],
       });
     }
+    case "nearby-choose":
+      return view("nearby-choose", [
+        "signin.nearby.title",
+        "signin.nearby.pick",
+        "signin.nearby.code",
+      ]);
+    case "nearby-none-found":
+      return view(
+        "nearby-none-found",
+        [
+          "signin.nearby.noneTitle",
+          "signin.nearby.noneBody",
+          "common.tryAgain",
+          "signin.nearby.code",
+        ],
+        { primary: "common.tryAgain", tone: "neutral" },
+      );
+    // How a request ended (UXR-47b B1): a title, a line, and the two ways on.
+    case "nearby-denied":
+      return nearbyEnd(view, "nearby-denied", "sign-in-denied");
+    case "nearby-expired":
+      return nearbyEnd(view, "nearby-expired", "sign-in-expired");
+    case "nearby-not-nearby":
+      return nearbyEnd(view, "nearby-not-nearby", "not_nearby");
+    case "nearby-failed":
+      return nearbyEnd(view, "nearby-failed", "network");
+    case "nearby-cancelled":
+      return nearbyEnd(view, "nearby-cancelled", "core.codes.unauthorized.title");
+    case "nearby-signed-out":
+      return nearbyEnd(view, "nearby-signed-out", "core.gate.revoked.title");
     case "nearby-done":
       return view(
         "nearby-done",
@@ -432,6 +462,31 @@ function autoStepView(
         { primary: "common.continue" },
       );
   }
+}
+
+/** A nearby request's ending: its title and line (`code` is a core code, whose title and message
+ *  are used, or a full title key and no line), then Try again and Use a code instead. Neutral:
+ *  nothing is wrong with the person. */
+function nearbyEnd(
+  view: (
+    state: SignInState,
+    copy: (string | false | undefined)[],
+    o?: { primary?: string | null; tone?: "neutral" | "danger" },
+  ) => View<"SignIn", SignInState>,
+  state: SignInState,
+  code: string,
+): View<"SignIn", SignInState> {
+  const kit = code.startsWith("core.");
+  return view(
+    state,
+    [
+      kit ? code : `core.codes.${code}.title`,
+      !kit && `core.codes.${code}.message`,
+      "common.tryAgain",
+      "signin.nearby.code",
+    ],
+    { primary: "common.tryAgain", tone: "neutral" },
+  );
 }
 
 // ── LicenseChoice ──────────────────────────────────────────────────────────────────────────────
