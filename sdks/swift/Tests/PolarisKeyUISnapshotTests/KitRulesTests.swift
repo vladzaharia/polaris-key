@@ -517,6 +517,44 @@ final class KitRulesTests: XCTestCase {
         }
     #endif
 
+    #if os(macOS)
+        /// D-8: in a short landscape window the cards and every choice, the slots-full reason and
+        /// Cancel are on screen (inside the window), not merely laid out.
+        @MainActor func testShortWindowsShowTheCardsAndEveryChoice() async throws {
+            let sizes = [
+                CGSize(width: 956, height: 440), CGSize(width: 844, height: 390),
+                CGSize(width: 900, height: 440), CGSize(width: 700, height: 420),
+                CGSize(width: 640, height: 360),
+            ]
+            for preview in PolarisKeyPreviewState.of(.saveConflict) where preview.state == "choose" {
+                for size in sizes {
+                    var seen: [String: CGRect] = [:]
+                    let model = SaveConflictModel(inputs: preview.inputs)
+                    let host = NSHostingView(
+                        rootView: SaveConflictView(
+                            model: model, window: size, frames: { seen = $0 })
+                            .environment(\.colorScheme, .light)
+                            .frame(width: size.width, height: size.height))
+                    host.frame = NSRect(origin: .zero, size: size)
+                    host.layoutSubtreeIfNeeded()
+                    try await Task.sleep(nanoseconds: 150_000_000)
+                    host.layoutSubtreeIfNeeded()
+                    let window = CGRect(origin: .zero, size: size)
+                    for name in ["cards", "choices"] {
+                        let frame = try XCTUnwrap(seen[name], "\(preview.id) \(size) \(name)")
+                        XCTAssertGreaterThan(frame.height, 0)
+                        XCTAssertTrue(
+                            window.insetBy(dx: -0.5, dy: -0.5).contains(frame),
+                            "\(preview.id) at \(size): \(name) \(frame) is not on screen")
+                    }
+                    XCTAssertLessThanOrEqual(
+                        try XCTUnwrap(seen["cards"]).maxX, try XCTUnwrap(seen["choices"]).minX,
+                        "the panes sit side by side")
+                }
+            }
+        }
+    #endif
+
     // MARK: Baselines
 
     static var snapshots: URL {

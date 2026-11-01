@@ -489,6 +489,7 @@ public struct CloudSyncStatusView: View {
                         : AnyLayout(HStackLayout(alignment: .center, spacing: style.space(.sm)))
                     layout {
                         text(style, state, line)
+                            .layoutPriority(1)
                         if !dynamicType.isAccessibilitySize { Spacer(minLength: style.space(.xs)) }
                         if let (label, run) = action {
                             KitButton(
@@ -502,7 +503,14 @@ public struct CloudSyncStatusView: View {
                     if state == .transferring { bar(style, line) }
                 }
             }
+            .onChange(of: line.key) { _, _ in announce(state, line) }
         }
+    }
+
+    /// One announcement per state change, the label only: the byte figures are never spoken.
+    private func announce(_ state: CloudSyncStatusState, _ line: CopyLine) {
+        guard [.transferring, .waiting, .transferFailed].contains(state) else { return }
+        AccessibilityNotification.Announcement(strings.string(line)).post()
     }
 
     /// A failed sync with nobody signed in is not a fault (ui-core: neutral tone, Sign in to sync).
@@ -522,7 +530,7 @@ public struct CloudSyncStatusView: View {
         case .waiting:
             // D-9: the offline glyph for a connection, the info glyph for power or background;
             // never a warning.
-            return (line.key == "cloudSync.waitingNetwork" ? "wifi.slash" : "info.circle", .neutral)
+            return (line.key == "cloudSync.waitingNetwork" ? "icloud.slash" : "info.circle", .neutral)
         case .ringChanged: return ("exclamationmark.triangle", .neutral)
         case .conflict: return ("exclamationmark.triangle", .warning)
         case .transferFailed: return ("exclamationmark.circle", .danger)
