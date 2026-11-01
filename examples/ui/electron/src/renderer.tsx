@@ -1,7 +1,7 @@
 // The renderer: the React kit over the bridge the preload exposed. No credential, keyring or
 // network code runs here. The one theme line, `platform: "auto"`, turns on the desktop chrome
 // (Windows, macOS, GNOME) from the host's OS, which comes over the bridge with its accent.
-import { StrictMode } from "react";
+import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { PolarisKeyProvider } from "@polaris-key/react";
 import {
@@ -20,11 +20,30 @@ const platform = CHROMES.find((c) => c === forced) ?? "auto";
 // The nearby e2e opens one nearby sign-in screen on its own (main passes ?screen=).
 const screen = new URLSearchParams(location.search).get("screen");
 
+// Done, Use a code instead and a finished sign-in hand the window back to the app. The other ways a
+// request ends (denied, expired, cancelled…) draw their own screen, with Try again.
+const HAND_BACK = ["signed-in", "signed-out", "use-code", "not-now"];
+
 function Nearby({ which }: { which: string }) {
+  const [back, setBack] = useState(false);
+  if (back)
+    return (
+      <PolarisKeyGate theme={{ platform }}>
+        <App />
+      </PolarisKeyGate>
+    );
   return which === "nearby-approver" ? (
-    <NearbyApprover theme={{ platform }} />
+    <NearbyApprover fill theme={{ platform }} onClose={() => setBack(true)} />
   ) : (
-    <NearbySignIn theme={{ platform }} prompt={false} deviceName="Studio PC" />
+    <NearbySignIn
+      fill
+      theme={{ platform }}
+      prompt={false}
+      deviceName="Studio PC"
+      onClose={(end) => {
+        if (HAND_BACK.includes(end.kind)) setBack(true);
+      }}
+    />
   );
 }
 

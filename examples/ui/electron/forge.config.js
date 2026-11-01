@@ -6,7 +6,7 @@ export default {
     // time the app looks for, or waits as, a nearby device; these two keys are what it reads.
     extendInfo: {
       NSLocalNetworkUsageDescription:
-        "Tidewater Studio looks for your other signed-in devices on this network, so you can sign in without typing.",
+        "Tidewater Studio finds your other signed-in devices on this network, and lets them find this one, so you can sign in without typing.",
       NSBonjourServices: ["_pkeypeer._tcp"],
     },
   },
