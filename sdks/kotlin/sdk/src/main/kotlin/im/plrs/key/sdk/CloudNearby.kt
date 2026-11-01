@@ -139,7 +139,7 @@ public class CloudNearby internal constructor(
         throw e
     }
 
-    private suspend fun signedIn(): Boolean = core.token() != null && core.storedSubject() != null
+    private suspend fun signedIn(): Boolean = core.token() != null && !core.tokenUnconfirmed() && core.storedSubject() != null
 
     private fun stoppedError() = NearbyException(NearbyErrorReason.closed, "Nearby approval was stopped.")
 
@@ -238,6 +238,9 @@ public class CloudNearby internal constructor(
         }
         return ApproverHandle(h) { synchronized(lock) { approvers.remove(h) } }
     }
+
+    /** Whether this runtime can discover devices: off Android always, on Android only with an installed adapter (below Android 14 there is none). */
+    internal fun runtimeSupported(): Boolean = !ConnectPlatforms.android || ConnectPlatforms.installed?.mdns != null
 
     private fun signedOut() = PolarisException(ErrorCode.accountRequired, "Sign in before approving a nearby device.")
 

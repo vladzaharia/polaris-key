@@ -42,6 +42,10 @@ import im.plrs.key.identity.ExchangeNonceResult
 import im.plrs.key.identity.ExchangeOutcome
 import im.plrs.key.identity.LicenseChoice
 import im.plrs.key.identity.LicenseChoiceView
+import im.plrs.key.identity.NearbyCode
+import im.plrs.key.identity.NearbyRole
+import im.plrs.key.identity.NearbySignInOptions
+import im.plrs.key.identity.NearbySignInSession
 import im.plrs.key.identity.ReplaceView
 import im.plrs.key.identity.SignInOptions
 import im.plrs.key.identity.SignInOutcome
@@ -100,6 +104,28 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     /** `session.wait(once)`: poll until the sign-in settles; a refusal completes it exceptionally with `SignInError`. */
     @JvmOverloads
     public fun signInWait(session: SignInSession, once: Boolean = false): CompletableFuture<SignInOutcome> = call { session.wait(once) }
+
+    /** `identity.signIn.startNearby(options)`: the nearby session to show and wait on (WIRE-CONTRACT-V5 section 15.6.1). */
+    @JvmOverloads
+    public fun signInStartNearby(options: NearbySignInOptions = NearbySignInOptions()): CompletableFuture<NearbySignInSession> =
+        call { client.identity.signIn.startNearby(options) }
+
+    /** `session.wait(once)` of a nearby session; a refusal completes it exceptionally with `SignInError`. */
+    @JvmOverloads
+    public fun nearbySignInWait(session: NearbySignInSession, once: Boolean = false): CompletableFuture<SignInOutcome> = call { session.wait(once) }
+
+    /** `session.choose(id)`: the person tapped this approver; answers the code to show. */
+    public fun nearbySignInChoose(session: NearbySignInSession, id: String): CompletableFuture<NearbyCode> = call { session.choose(id) }
+
+    /** `session.confirmAccount()`: the person says the signed-in account is theirs. */
+    public fun nearbySignInConfirm(session: NearbySignInSession): CompletableFuture<Unit> = call { session.confirmAccount() }
+
+    /** `session.declineAccount()`: it is not theirs; the device signs out. */
+    public fun nearbySignInDecline(session: NearbySignInSession): CompletableFuture<Unit> = call { session.declineAccount() }
+
+    /** `identity.nearby.available(role)`. */
+    @JvmOverloads
+    public fun nearbyAvailable(role: NearbyRole = NearbyRole.Requester): CompletableFuture<Boolean> = call { client.identity.nearby.available(role) }
 
     /** Redirect channel: `session.complete(callbackUrl)`; a refusal completes it exceptionally with `SignInError`. */
     public fun signInComplete(session: SignInSession, callbackUrl: String): CompletableFuture<SignInOutcome> = call { session.complete(callbackUrl) }

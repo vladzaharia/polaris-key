@@ -69,6 +69,7 @@ import im.plrs.key.core.registerDevice
 import im.plrs.key.core.renameDevice
 import im.plrs.key.core.requestDeviceRegistration
 import im.plrs.key.identity.IdentityClient
+import im.plrs.key.identity.NearbyHost
 import im.plrs.key.identity.onBeforeSignOut
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.EntitlementsClient
@@ -496,6 +497,14 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
             cc.stopForSignOut()
             connect.leave()
         }
+        // Nearby sign-in on this device (I-45.12): the identity client cannot reach Connect, so it is handed the LAN half.
+        identity.installNearby(
+            NearbyHost(
+                request = { cc.nearby.request(it) },
+                signer = { connect.nearbySigner() },
+                runtime = { cc.nearby.runtimeSupported() },
+            ),
+        )
     }
 
     /**

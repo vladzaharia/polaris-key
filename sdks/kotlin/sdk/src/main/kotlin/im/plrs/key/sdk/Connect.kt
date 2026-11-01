@@ -877,8 +877,12 @@ public class ConnectClient internal constructor(
         throw PolarisException(ErrorCode.storeFailed, "The device keys could not be used: ${e.message}", cause = e)
     }
 
-    private suspend fun requireToken(): String =
-        core.token() ?: throw PolarisException(ErrorCode.noToken, "Register or sign in before using Cloud Connect.")
+    private suspend fun requireToken(): String {
+        val token = core.token() ?: throw PolarisException(ErrorCode.noToken, "Register or sign in before using Cloud Connect.")
+        // A nearby sign-in nobody has confirmed is not a sign-in yet (V5 section 15.6.1 rule 12).
+        if (core.tokenUnconfirmed()) throw PolarisException(ErrorCode.noToken, "Confirm the sign-in before using Cloud Connect.")
+        return token
+    }
 
     /** One bearer GET; the body text, or the Worker's refusal as a typed exception. */
     private suspend fun get(url: String, what: String): String {
