@@ -150,6 +150,11 @@ def signed_in(w: World, tmp_path: Path) -> Any:
     return c
 
 
+def bare(meta: Dict[str, Any]) -> Dict[str, Any]:
+    """The app's metadata, without the SDK's own savedAt / deviceLabel stamps."""
+    return {k: v for k, v in meta.items() if k not in ("savedAt", "deviceLabel")}
+
+
 def data(n: int, seed: int = 7) -> bytes:
     return bytes((i * 31 + seed) & 0xFF for i in range(n))
 
@@ -165,13 +170,13 @@ def test_write_then_metadata_at_the_finalize_version_and_read_back(tmp_path: Pat
     assert out["state"] == "done" and out["id"] == "slot-1"
     assert w.files[:3] == ["POST begin", "PUT upload/up_1", "POST finalize"]
     row = w.rows["slot-1"]
-    assert row["value"] == {"chapter": "one"} and row["file"]["sha256"] == sha(payload)
+    assert bare(row["value"]) == {"chapter": "one"} and row["file"]["sha256"] == sha(payload)
     assert c.cloud_sync.transfers() == []
     assert any(e["type"] == TransferEvent.TRANSFERPROGRESS for e in events)
     assert events[-1]["type"] == TransferEvent.TRANSFERDONE and events[-1]["state"] == "done"
 
     listed = c.cloud_sync.saves.list()
-    assert [(s["id"], s["metadata"], s["file"]["size"]) for s in listed] == [("slot-1", {"chapter": "one"}, 3000)]
+    assert [(s["id"], bare(s["metadata"]), s["file"]["size"]) for s in listed] == [("slot-1", {"chapter": "one"}, 3000)]
     read = c.cloud_sync.saves.read("slot-1")
     assert read["ok"] and read["metadata"] == {"chapter": "one"} and read["bytes"] == payload
     c.close()
@@ -230,7 +235,7 @@ def test_the_new_file_is_listed_at_once_with_no_echo_of_the_record_in_the_push_r
     out2 = c.cloud_sync.saves.write("slot-1", second, {"chapter": "two"}, base_version=out1["version"]).wait(10)
     assert out2["state"] == "done"
     read = c.cloud_sync.saves.read("slot-1")
-    assert read["ok"] and read["metadata"] == {"chapter": "two"} and read["bytes"] == second
+    assert read["ok"] and bare(read["metadata"]) == {"chapter": "two"} and read["bytes"] == second
     c.close()
 
 
@@ -255,26 +260,52 @@ def test_a_conflict_describes_the_server_version_not_the_cached_copy(tmp_path: P
     c = signed_in(w, tmp_path)
     first = c.cloud_sync.saves.write("slot-1", data(300, 1), {"chapter": "one"}).wait(10)
     assert first["state"] == "done"
-    # Another device writes version 40 and this device's cache is not told.
+    # Another device writes version 400 and this device's cache is not told.
     w.rows["slot-1"] = {
         "value": {"chapter": "theirs"},
-        "version": 40,
-        "file": {"version": 40, "size": 5, "sha256": "a" * 64, "format": "whole"},
+        "version": 400,
+        "file": {"version": 400, "size": 5, "sha256": "a" * 64, "format": "whole"},
     }
-    w.version = 40
+    w.version = 400
     cache = c.cloud_sync.saves._records
     stale = cache.get("slot-1")
     cache.get = lambda _id: stale  # type: ignore[method-assign]
     mine = data(500, 2)
     out = c.cloud_sync.saves.write("slot-1", mine, {"chapter": "mine"}, base_version=first["version"]).wait(10)
     assert out["state"] == "conflict"
-    assert out["conflict"]["serverVersion"] == 40
-    assert out["conflict"]["remote"]["version"] == 40
+    assert out["conflict"]["serverVersion"] == 400
+    assert out["conflict"]["remote"]["version"] == 400
     # Keep this device's version succeeds, and a later write does not repeat the conflict.
     kept = c.cloud_sync.saves.resolve(out["conflict"], "local", mine).wait(10)
     assert kept["state"] == "done"
     del cache.get
-    assert c.cloud_sync.saves.write("slot-1", data(400, 3), {"chapter": "again"}).wait(10)["state"] == "done"
+    assert c.cloud_sync.saves.write("slot-1", data(4000, 3), {"chapter": "again"}).wait(10)["state"] == "done"
+    c.close()
+
+
+def test_a_conflict_and_keeping_the_other_version_pull_first_and_saves_record_when_and_where(tmp_path: Path) -> None:
+    w = SavesWorld()
+    c = signed_in(w, tmp_path)
+    first = c.cloud_sync.saves.write("slot-1", data(300, 1), {"chapter": "one"}).wait(10)
+    assert first["state"] == "done"
+    meta = c.cloud_sync.saves.read("slot-1")["metadata"]
+    assert meta["chapter"] == "one" and isinstance(meta["savedAt"], int) and meta["savedAt"] > 0
+    # Another device writes version 40; this device's cache is not told.
+    w.rows["slot-1"] = {
+        "value": {"chapter": "theirs", "savedAt": 5},
+        "version": 40,
+        "file": {"version": 40, "size": 5, "sha256": "a" * 64, "format": "whole"},
+    }
+    w.version = 40
+    assert c.cloud_sync.saves.list()[0]["version"] == first["version"]
+    out = c.cloud_sync.saves.write("slot-1", data(500, 2), {"chapter": "mine"}, base_version=first["version"]).wait(10)
+    assert out["state"] == "conflict"
+    # The pull made the cards real: the server's metadata, and this device's own stamps.
+    assert out["conflict"]["remote"]["metadata"] == {"chapter": "theirs", "savedAt": 5}
+    assert out["conflict"]["local"]["metadata"]["savedAt"] >= meta["savedAt"]
+    kept = c.cloud_sync.saves.resolve(out["conflict"], "remote", b"").wait(10)
+    assert kept["state"] == "done" and kept["kept"] == "remote" and kept["version"] == 40
+    assert c.cloud_sync.saves.list()[0]["metadata"]["chapter"] == "theirs"
     c.close()
 
 
@@ -293,7 +324,7 @@ def test_a_save_deleted_elsewhere_is_a_conflict_with_no_remote_and_keep_mine_suc
     assert out["conflict"]["remote"] is None and out["conflict"]["serverVersion"] == 0
     kept = c.cloud_sync.saves.resolve(out["conflict"], "local", mine).wait(10)
     assert kept["state"] == "done"
-    assert w.rows["slot-1"]["value"] == {"chapter": "mine"}
+    assert bare(w.rows["slot-1"]["value"]) == {"chapter": "mine"}
     c.close()
 
 
@@ -322,7 +353,7 @@ def test_a_record_with_a_file_and_no_value_is_listed(tmp_path: Path) -> None:
     w.version = 4
     c = signed_in(w, tmp_path)
     listed = c.cloud_sync.saves.list()
-    assert [(s["id"], s["metadata"], s["file"]["size"]) for s in listed] == [("slot-9", {}, 9)]
+    assert [(s["id"], bare(s["metadata"]), s["file"]["size"]) for s in listed] == [("slot-9", {}, 9)]
     c.close()
 
 
