@@ -571,6 +571,9 @@ jobs:
     uses: ./.github/workflows/publish-package.yml
     with:
       deliverable: maven.${{ matrix.artifact }}
+      # maven.games is not yet registered on production (owner step OS-27): its publish is
+      # refused until then, as ui-desktop's was, but it stays in the release.
+      pending-registration: ${{ matrix.artifact == 'games' }}
       artifact: maven-repo
       version: ${{ needs.version.outputs.version }}
       channel: ${{ needs.version.outputs.channel }}

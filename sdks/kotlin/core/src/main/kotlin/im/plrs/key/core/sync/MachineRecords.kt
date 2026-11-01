@@ -69,7 +69,7 @@ internal class MachineRecords(private val p: MachineParts) :
         }
         if (refusal != null) return CallResult.Failed(refusal)
         val part = core.active()
-        val op = Op(0, OpTarget.Record(collection, recordId), name, null, null, element)
+        val op = Op(0, OpTarget.Record(collection, recordId), name).also { it.element = element }
         if (name == "remove") op.observedSeq = part.cursor
         p.journal.enqueue(part, op)
         p.pump.kick()

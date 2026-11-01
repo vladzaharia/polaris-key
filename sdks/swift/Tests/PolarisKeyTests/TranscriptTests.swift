@@ -1169,9 +1169,8 @@ enum SwiftReplay {
         // The redirect recordings hold the token exchange, not the sync a sign-in triggers after it.
         // Nor the backup: a replay has no restore store, so the only restore traffic is the recorded one.
         client.identity.installRestoreStore(nil)
-        if redirects
-            || t.steps.contains(where: { ["exchange", "choiceComplete", "restoreRedeem", "nearbyPoll"].contains($0.action) })
-        {
+        let identityActions: Set<String> = ["exchange", "choiceComplete", "restoreRedeem", "nearbyPoll"]
+        if redirects || t.steps.contains(where: { identityActions.contains($0.action) }) {
             client.identity.redirectAcquisitionSync.set(false)
         }
         session.platform = t.initial.platform

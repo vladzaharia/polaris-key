@@ -781,7 +781,7 @@ class _UploadPass(_Pass):
 
     def _check_finalized(self, got: Any, fmt: str, base_version: Any) -> None:
         """The answer must describe the file that was begun: its size, hash and format, and a newer version."""
-        v = got.get("version") if isinstance(got, dict) else None
+        v: Any = got.get("version") if isinstance(got, dict) else None
         if (
             not isinstance(got, dict)
             or not _is_int(got.get("size"))

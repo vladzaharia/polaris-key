@@ -29,16 +29,12 @@ internal sealed interface OpTarget {
 }
 
 /** One journalled mutation. The marks (`preContact`, `moved`, `parked`) are journal-only and never sent. */
-internal class Op(
-    var mutationId: Long,
-    val target: OpTarget,
-    val op: String,
-    var value: JsonElement? = null,
-    val member: String? = null,
-    val element: JsonElement? = null,
+internal class Op(var mutationId: Long, val target: OpTarget, val op: String, var value: JsonElement? = null) {
+    var member: String? = null
+    var element: JsonElement? = null
+
     /** `setField` and `removeField` on a `merge` record (§13.3). */
-    val field: String? = null,
-) {
+    var field: String? = null
     var editedHlc: String? = null
     var baseVersion: JsonElement? = null
     var observedSeq: Long? = null
@@ -74,7 +70,10 @@ internal class Op(
     }
 
     /** A copy for a re-send: no mutation id and no `parked` mark (the id is assigned on enqueue). */
-    fun resend(keepParked: Boolean = false): Op = Op(0, target, op, value, member, element, field).also {
+    fun resend(keepParked: Boolean = false): Op = Op(0, target, op, value).also {
+        it.member = member
+        it.element = element
+        it.field = field
         if (keepParked) it.parked = parked
         it.editedHlc = editedHlc
         it.baseVersion = baseVersion

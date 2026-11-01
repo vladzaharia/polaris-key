@@ -24,6 +24,10 @@ extends RefCounted
 const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 const Routes := preload("res://addons/polaris_key/core/sync/sync_routes.gd")
 
+# Scenarios the GDScript machine does not replay yet, by name: ported in C26.7/U-09.11G
+# (a merge record sends setField / removeField there).
+const SKIPPED := ["record-merge-fields"]
+
 const CORPUS := "res://tests/corpus/v2/sync-scenarios.json"
 const STEP_KINDS := ["local", "advance", "network", "respond", "signIn", "signOut", "relaunch", "root", "assert"]
 const CALLS := ["set", "clear", "put", "add", "remove", "flush", "refresh"]
@@ -106,11 +110,6 @@ func _setting_cases(t: PKeyTestContext, cases: Array) -> void:
 				open_clean = open_clean and r["key"] != key
 		t.check("%s: open keys have no route" % name, open_clean)
 	t.check("setting cases evaluated", cases.size() > 0)
-
-
-# Scenarios the GDScript machine does not replay yet, by name: ported in C26.7/U-09.11G
-# (a merge record sends setField / removeField there).
-const SKIPPED := ["record-merge-fields"]
 
 
 func _scenarios(t: PKeyTestContext, corpus: Dictionary) -> void:

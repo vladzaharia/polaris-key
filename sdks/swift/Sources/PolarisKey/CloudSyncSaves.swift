@@ -719,7 +719,9 @@ public final class SavesClient: Sendable {
             return .done(id: id, version: version, file: file, copyId: targetId != id ? targetId : nil)
         case .conflict(let server):
             return try await conflictOutcome(
-                records, ctx.codec.enc == "e2e", id, metadata, source.size, server?.version, known: server, hasKnown: true)
+                records, ctx.codec.enc == "e2e", id, metadata, source.size, server?.version, known: server,
+                hasKnown: true
+            )
         case .rejected(let code):
             return .failed(SavesError(.rejected, detail: code))
         }

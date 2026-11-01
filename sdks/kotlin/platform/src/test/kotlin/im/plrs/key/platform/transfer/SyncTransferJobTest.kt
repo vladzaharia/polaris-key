@@ -109,7 +109,7 @@ class SyncTransferJobTest {
 
     @Test
     @Config(sdk = [34])
-    fun theManifestDeclaresTheJobAndThePermission() {
+    fun theManifestDeclaresTheJobAndNoPermission() {
         val pm = ctx.packageManager
         val info = pm.getPackageInfo(
             ctx.packageName,
@@ -118,7 +118,8 @@ class SyncTransferJobTest {
         val svc = info.services!!.single { it.name == "im.plrs.key.platform.transfer.SyncTransferJob" }
         assertEquals("android.permission.BIND_JOB_SERVICE", svc.permission)
         assertFalse(svc.exported)
-        assertTrue(info.requestedPermissions!!.contains("android.permission.RUN_USER_INITIATED_JOBS"))
+        // The library declares no permission: the app (the Godot export plugin) adds RUN_USER_INITIATED_JOBS.
+        assertTrue(info.requestedPermissions.orEmpty().none { it == "android.permission.RUN_USER_INITIATED_JOBS" })
     }
 
     private fun params(job: Int, owner: String?, id: String?, stop: Int = 0): JobParameters {

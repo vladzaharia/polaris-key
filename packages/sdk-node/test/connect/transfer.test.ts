@@ -340,7 +340,10 @@ describe.each([
 
   it("resumes after a dropped session from the bytes kept, and delivers the whole file", async () => {
     const w = await make();
-    const size = 1_200_000;
+    const size = 400_000;
+    // Sized for a slow runner: the cost is per chunk (an encrypt, a frame and a write each), twice over
+    // (the dropped send, then the resume). The partial still ends well short of the whole file.
+    const CHUNK = 16_384;
     w.a.cloudConnect.transfer.onOffer(() => ({
       saveTo: join(w.out, "big.bin"),
     }));
@@ -356,7 +359,7 @@ describe.each([
     let id = "";
     await expect(
       w.b.cloudConnect.transfer.send(A, content(size), {
-        chunk: 4096,
+        chunk: CHUNK,
         onStart: (t) => (id = t.id),
       }),
     ).rejects.toMatchObject({ code: "peer-closed" });
@@ -387,7 +390,10 @@ describe.each([
         writes += args[2].length;
         return real.apply(this, args);
       });
-    await w.b.cloudConnect.transfer.send(A, content(size), { chunk: 4096, id });
+    await w.b.cloudConnect.transfer.send(A, content(size), {
+      chunk: CHUNK,
+      id,
+    });
     expect(writes).toBeLessThan(size);
     expect(writes).toBeGreaterThan(0);
     expect(readFileSync(join(w.out, "big.bin"))).toEqual(

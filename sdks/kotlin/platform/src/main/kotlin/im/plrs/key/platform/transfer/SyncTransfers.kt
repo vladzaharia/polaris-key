@@ -149,7 +149,11 @@ internal object UserInitiatedJobs {
     const val NAMESPACE: String = "pkey.sync"
     private const val UPSIDE_DOWN_CAKE = 34
 
+    // RUN_USER_INITIATED_JOBS is the app's to declare (no permission in the AAR); a refusal is caught below and the
+    // transfer then runs as a WorkManager job. Lint cannot see that for a normal permission.
+    @SuppressLint("MissingPermission")
     @RequiresApi(UPSIDE_DOWN_CAKE)
+    @Suppress("SwallowedException")
     fun schedule(context: Context, transferId: String, owner: String): Boolean {
         val scheduler = namespaced(context)
         val extras = PersistableBundle().apply {
@@ -163,7 +167,11 @@ internal object UserInitiatedJobs {
             .setExtras(extras)
             .build()
         // One job per transfer: an identical id is replaced, which is the same transfer.
-        return scheduler.schedule(info) == JobScheduler.RESULT_SUCCESS
+        return try {
+            scheduler.schedule(info) == JobScheduler.RESULT_SUCCESS
+        } catch (e: SecurityException) {
+            false
+        }
     }
 
     @RequiresApi(UPSIDE_DOWN_CAKE)

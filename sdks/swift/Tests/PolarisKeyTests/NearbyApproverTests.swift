@@ -124,6 +124,7 @@ final class NearbyApproverTests: XCTestCase {
         r.timers.fire(100)
         await nearbyUntil("signed out") { r.status.state == .stopped }
         XCTAssertEqual(r.status.reason, .signedOut)
+        await nearbyUntil("signed-out word") { r.stopped.value == [.signedOut] }
         XCTAssertEqual(r.stopped.value, [.signedOut])
         XCTAssertTrue(r.net.live.isEmpty)
 
@@ -133,6 +134,7 @@ final class NearbyApproverTests: XCTestCase {
         q.timers.fire(100)
         await nearbyUntil("discovery") { q.status.state == .stopped }
         XCTAssertEqual(q.status.reason, .discovery)
+        await nearbyUntil("discovery word") { q.stopped.value == [.discovery] }
         XCTAssertEqual(q.stopped.value, [.discovery])
     }
 
@@ -410,6 +412,8 @@ final class NearbyApproverTests: XCTestCase {
         }
         await nearbyUntil("budget stop") { r.status.state == .stopped }
         XCTAssertEqual(r.status.reason, .budget)
+        // The status moves before the stop word is told: wait for the word, not a delay.
+        await nearbyUntil("budget word") { r.stopped.value == [.budget] }
         XCTAssertEqual(r.stopped.value, [.budget])
         XCTAssertTrue(r.net.live.isEmpty)
         try await r.approver.reopen()

@@ -477,7 +477,8 @@ final class CloudSyncTransferTests: XCTestCase {
             for data in [noise(100), noise(300_000)] {
                 let s = FakeServer()
                 s.finalizeAnswer = lie
-                await expect(.fileInvalid, "finalize") { try await self.engine(s).upload(self.upReq("f-\(name)", data)) }
+                let request = self.upReq("f-\(name)", data)
+                await expect(.fileInvalid, "finalize") { try await self.engine(s).upload(request) }
             }
             let s = FakeServer()
             s.finalizeAnswer = name == "format" ? { a in Self.changed(a, "format", .string("whole")) } : lie
