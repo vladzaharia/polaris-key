@@ -46,7 +46,7 @@ class NavigationTest {
         // The Account screen's title; the home screen has no such text. (The Settings row is drawn only
         // when the settings pane has content, UK-09 K-3, so it is not a marker of the screen.)
         launch("tidewater://polaris/account").use {
-            waitForText("Account and license")
+            waitForText("Account and License")
             assertTrue(!shown("Licensed. Open your account or check for updates."))
         }
     }
@@ -56,7 +56,7 @@ class NavigationTest {
         launch("tidewater://polaris?route=devices").use {
             // The Devices screen on its own; the Account list would also show its title.
             waitForText("Your devices")
-            assertTrue(!shown("Account and license"))
+            assertTrue(!shown("Account and License"))
         }
     }
 
