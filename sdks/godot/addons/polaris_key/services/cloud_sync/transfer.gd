@@ -49,6 +49,8 @@ const _HASH_SLICE := 1048576
 ## A seal or an open of at least this many bytes runs on a worker thread (the GDScript AES-GCM lane takes
 ## about a second a MiB, so on the main thread a 32 MiB save would freeze the game).
 const THREAD_MIN_BYTES := 65536
+## Bytes a native-lane whole-file seal or open does between two frame yields.
+const YIELD_BYTES := 4194304
 const _BACKOFF_BASE := 0.5
 const _BACKOFF_CAP := 30.0
 const _MANIFEST_PLAIN_MAX := PKeySyncManifest.HEADER_BYTES + PKeySyncManifest.RECORD_BYTES * 16384
@@ -115,10 +117,56 @@ static func codec_off(codec: Object, method: String, args: Array, size: int, fai
 		target = codec.inner()
 		if target == null:
 			return failed
+	# A native AEAD lane is called from the main thread only (PKeySyncAead), so the work stays here: a
+	# whole file goes one segment at a time with a frame yield every `YIELD_BYTES`, anything else is one
+	# bounded call. The GDScript lane runs on a worker thread.
+	if PKeySyncAead.lane_name() != "gdscript":
+		var inline: Variant
+		if (method == "seal_whole" or method == "open_whole") and target.has_method("whole_sealer"):
+			inline = await _whole_by_segment(codec if guarded else null, target, method, args[0], failed)
+		else:
+			inline = target.callv(method, args)
+		if guarded and codec.locked():
+			return failed
+		return inline
 	var r: Variant = await off_thread(func() -> Variant: return target.callv(method, args), size)
 	if guarded and codec.locked():
 		return failed
 	return r
+
+
+## `seal_whole` / `open_whole` of an E2e codec on the main thread, one segment per step. A guarded codec is
+## asked before every segment: once it went stale the result is thrown away (`failed`).
+static func _whole_by_segment(guard: Object, target: Object, method: String, data: PackedByteArray, failed: Variant) -> Variant:
+	var tree := Engine.get_main_loop() as SceneTree
+	var sealing := method == "seal_whole"
+	var worker: Object = target.whole_sealer() if sealing else target.whole_opener()
+	var out := PackedByteArray()
+	if sealing:
+		out = worker.header.duplicate()
+	var step := PKeySyncFileStream.SEGMENT_BYTES
+	var at := 0
+	var since := 0
+	while at < data.size():
+		if guard != null and guard.locked():
+			return failed
+		var end := mini(data.size(), at + step)
+		for seg in worker.push(data.slice(at, end)):
+			out.append_array(seg)
+		if worker.error != "":
+			return failed if sealing else {"ok": false, "reason": worker.error}
+		since += end - at
+		at = end
+		if since >= YIELD_BYTES and tree != null:
+			since = 0
+			await tree.process_frame
+	if guard != null and guard.locked():
+		return failed
+	var last: PackedByteArray = worker.finish()
+	if worker.error != "":
+		return failed if sealing else {"ok": false, "reason": worker.error}
+	out.append_array(last)
+	return out if sealing else {"ok": true, "plain": out}
 
 
 static func reply_ok(value: Variant = null) -> Dictionary:
@@ -177,7 +225,7 @@ func upload_chunked(req: Dictionary) -> PKeyResult:
 	var rel: Dictionary = await _release_prior(req["id"])
 	if not rel["ok"]:
 		return _result(rel)
-	var cut := _cut(req)
+	var cut: Dictionary = await _cut(req)
 	if not cut["ok"]:
 		return _result(cut)
 	var restarts := 0
@@ -667,7 +715,8 @@ func _cut(req: Dictionary) -> Dictionary:
 			if piece.size() != end - frm:
 				return _err("source-mismatch")
 			ctx.update(piece)
-			pending = chunker.push(piece)
+			# The cut itself touches nothing shared: a worker thread owns the chunker while it runs.
+			pending = await off_thread(func() -> Array: return chunker.push(piece), piece.size())
 			frm = end
 		else:
 			pending = chunker.finish()
