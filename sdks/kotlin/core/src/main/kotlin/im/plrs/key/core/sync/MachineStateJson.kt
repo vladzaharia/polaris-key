@@ -127,10 +127,10 @@ public object MachineStateJson {
                 decodeTarget(o["target"].objectValue!!),
                 o["op"].stringValue!!,
                 o["value"],
-                o["member"].stringValue,
-                o["element"],
-                o["field"].stringValue,
             )
+        op.member = o["member"].stringValue
+        op.element = o["element"]
+        op.field = o["field"].stringValue
         op.editedHlc = o["editedHlc"].stringValue
         op.baseVersion = o["baseVersion"]
         op.observedSeq = o["observedSeq"].longValue

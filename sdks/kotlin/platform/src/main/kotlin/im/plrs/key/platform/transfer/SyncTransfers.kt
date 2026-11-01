@@ -149,7 +149,9 @@ internal object UserInitiatedJobs {
     const val NAMESPACE: String = "pkey.sync"
     private const val UPSIDE_DOWN_CAKE = 34
 
-    // An app that did not declare RUN_USER_INITIATED_JOBS is refused; the transfer then runs as a WorkManager job.
+    // RUN_USER_INITIATED_JOBS is the app's to declare (no permission in the AAR); a refusal is caught below and the
+    // transfer then runs as a WorkManager job. Lint cannot see that for a normal permission.
+    @SuppressLint("MissingPermission")
     @RequiresApi(UPSIDE_DOWN_CAKE)
     @Suppress("SwallowedException")
     fun schedule(context: Context, transferId: String, owner: String): Boolean {

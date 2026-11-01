@@ -608,14 +608,11 @@ private open class UploadPass(val engine: FileTransferEngine, collection: String
         val rec = record
         val version = got["version"].longValue
         val base = baseVersion.longValue
-        if (got["size"].longValue != rec.size.toLong() ||
-            got["sha256"].stringValue != rec.sha256 ||
-            got["format"].stringValue != format ||
-            version == null || version < 1 ||
-            (base != null && version <= base)
-        ) {
-            throw invalid("finalize")
-        }
+        val describesFile = got["size"].longValue == rec.size.toLong() &&
+            got["sha256"].stringValue == rec.sha256 &&
+            got["format"].stringValue == format
+        val newer = version != null && version >= 1 && (base == null || version > base)
+        if (!describesFile || !newer) throw invalid("finalize")
     }
 
     /**

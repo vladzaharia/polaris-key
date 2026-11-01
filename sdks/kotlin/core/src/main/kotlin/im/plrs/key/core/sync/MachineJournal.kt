@@ -40,11 +40,21 @@ internal class MachineJournal(private val p: MachineParts) {
         val cur = if (core.s.subject == null) JsonObject(emptyMap()) else SyncValues.objectOf(p.layers.layer(key)?.value)
         for (member in value.keys.sorted()) {
             if (member !in cur || !SyncJson.jsonEqual(cur[member], value[member])) {
-                enqueue(part, Op(0, target, "setMember", value[member], member).also { it.editedHlc = editedHlc }.withMarks(marks))
+                val op = Op(0, target, "setMember", value[member]).also {
+                    it.member = member
+                    it.editedHlc = editedHlc
+                }
+                enqueue(part, op.withMarks(marks))
             }
         }
         for (member in cur.keys.sorted()) {
-            if (member !in value) enqueue(part, Op(0, target, "removeMember", null, member).also { it.editedHlc = editedHlc }.withMarks(marks))
+            if (member !in value) {
+                val op = Op(0, target, "removeMember").also {
+                    it.member = member
+                    it.editedHlc = editedHlc
+                }
+                enqueue(part, op.withMarks(marks))
+            }
         }
     }
 

@@ -113,7 +113,10 @@ private class ConnectivityNetworkPort(private val context: Context) : NetworkPor
                 synchronized(this) { if (known == network) known = null }
             }
         }
-        // Without the right to watch the network the adverts keep their first registration.
+
+        // Without the right to watch the network the adverts keep their first registration. The platform signals an
+        // exhausted request budget with an unnamed RuntimeException subclass, so that is the narrowest type to catch.
+        @Suppress("TooGenericExceptionCaught")
         val watching = try {
             cm.registerDefaultNetworkCallback(callback)
             true
