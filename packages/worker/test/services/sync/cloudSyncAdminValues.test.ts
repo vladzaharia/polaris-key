@@ -267,6 +267,11 @@ describe("files", () => {
     // L-1: the console's security headers, and the file never runs.
     expect(live.headers.get("x-content-type-options")).toBe("nosniff");
     expect(live.headers.get("content-security-policy")).toMatch(/; sandbox$/);
+    // The app policy is the base of that header, not just its suffix.
+    expect(live.headers.get("content-security-policy")).toMatch(
+      /^default-src 'self'; base-uri 'none'/,
+    );
+    expect(live.headers.get("referrer-policy")).not.toBeNull();
     expect(new Uint8Array(await live.arrayBuffer())).toEqual(two);
 
     const revs = (await (

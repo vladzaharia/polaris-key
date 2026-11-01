@@ -110,6 +110,8 @@ export const OPERATOR_ROW_KEYS: readonly string[] = [
   "email.dailyCap",
   // ST-05b: the operator-only artifact policy.
   "update.operatorPolicy",
+  // CC-18: the monthly relay ceiling per product (raising is L2, lowering L1).
+  "cloudConnect.ceiling.relayBytes",
 ];
 
 /** Does the settings API serve `def`: a row-backed claimable key or an operator row key? */

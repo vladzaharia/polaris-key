@@ -32,6 +32,7 @@ import {
   fileCall,
   fileHandler,
   fileLimits,
+  wrongMethod,
   withObject,
   type FileCall,
 } from "./files.js";
@@ -144,7 +145,8 @@ export async function handleChunkPut(
   match: RouteMatch,
 ): Promise<Response> {
   const { req, env } = ctx;
-  if (req.method !== "PUT") return wireError(405, "method_not_allowed");
+  const wrong = await wrongMethod(ctx, "PUT");
+  if (wrong) return wrong;
   const call = await fileCall(ctx, match, { write: true, limiter: "parts" });
   if (call instanceof Response) return refuse(req, call);
 
@@ -241,8 +243,9 @@ export async function handleChunkGet(
   ctx: ServiceContext,
   match: RouteMatch,
 ): Promise<Response> {
-  const { env, req } = ctx;
-  if (req.method !== "GET") return wireError(405, "method_not_allowed");
+  const { env } = ctx;
+  const wrong = await wrongMethod(ctx, "GET");
+  if (wrong) return wrong;
   const call = await fileCall(ctx, match, { write: false, limiter: "parts" });
   if (call instanceof Response) return call;
   const resolved = await withObject(ctx, call.caller, (pin) =>
