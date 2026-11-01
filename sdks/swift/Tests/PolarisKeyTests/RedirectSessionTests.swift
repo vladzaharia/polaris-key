@@ -241,16 +241,27 @@ final class RedirectSessionTests: XCTestCase {
         }
     }
 
-    func testAMissingOrBadRedirectUriIsInvalidArgument() async throws {
+    func testABadRedirectUriIsInvalidArgument() async throws {
         await discovery()
         let c = try await client()
-        for uri in [nil, "http://app.example/cb"] {
-            do {
-                _ = try await c.identity.signIn.start(SignInOptions(channel: .redirect, redirectUri: uri))
-                XCTFail("accepted \(uri ?? "nil")")
-            } catch let e as PolarisError {
-                XCTAssertEqual(e.code, ErrorCode.invalidArgument)
-            }
+        do {
+            _ = try await c.identity.signIn.start(
+                SignInOptions(channel: .redirect, redirectUri: "http://app.example/cb"))
+            XCTFail("accepted a plain http redirect URI")
+        } catch let e as PolarisError {
+            XCTAssertEqual(e.code, ErrorCode.invalidArgument)
+        }
+    }
+
+    /// No redirect URI is the native redirect (I-15b.4); a product that serves no pushed request has none.
+    func testNoRedirectUriIsTheNativeRedirectAndAProductWithoutItIsUnavailable() async throws {
+        await discovery()
+        let c = try await client()
+        do {
+            _ = try await c.identity.signIn.start(SignInOptions(channel: .redirect))
+            XCTFail("started")
+        } catch let e as PolarisError {
+            XCTAssertEqual(e.code, ErrorCode.redirectUnavailable)
         }
     }
 

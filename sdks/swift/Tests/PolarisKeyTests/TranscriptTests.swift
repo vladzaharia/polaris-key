@@ -9,7 +9,7 @@
 // @pkey-feature license.manage
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
-// @pkey-feature connect.relay
+// @pkey-feature connect.relay identity.redirect.native
 // @pkey-feature identity.exchange sync.keyring sync.settings identity.restore identity.gamecenter identity.devicecode.choice sync.files sync.files.delta sync.saves
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
@@ -83,6 +83,8 @@ private let registerFingerprint = HardwareFingerprint(
 /// The replay's memory between steps: the session the last `beginSignIn` step started.
 final class ReplaySession: @unchecked Sendable {
     var signIn: SignInSession?
+    /// The recorded loopback listener of the native sign-in the last `browser` step started.
+    var nativeListener: ReplayListener?
     /// What the last `browser` step's authorize request asked for (`license_choice=app`).
     var licenseChoice: LicenseChoiceMode?
     /// `initial.platform`: the device's canonical platform.
@@ -183,10 +185,16 @@ enum SwiftReplay {
                 $0.request.method == "GET" && $0.response.status == 303
                     && $0.request.path.contains("/identity/authorize?")
             }) {
-                session.licenseChoice =
-                    authorize.request.path.contains("license_choice=app") ? .app : nil
-                let started = try await redirectSession(
-                    client, step: step, licenseChoice: session.licenseChoice)
+                let started: SignInSession
+                if transcript.features.contains(Feature.identityRedirectNative) {
+                    // The SDK pushes the request itself; the recording pins what it sends.
+                    started = try await NativeReplay.start(client, step: step, session: session)
+                } else {
+                    session.licenseChoice =
+                        authorize.request.path.contains("license_choice=app") ? .app : nil
+                    started = try await redirectSession(
+                        client, step: step, licenseChoice: session.licenseChoice)
+                }
                 let want = transcript.baseUrl + authorize.request.path
                 if started.authorizeUrl != want {
                     await server.recordFailure(
@@ -202,10 +210,18 @@ enum SwiftReplay {
         case "redirectComplete":
             // What the recorded browser asked for decides whether the session may settle
             // `.chooseLicense`.
-            let s = try await redirectSession(
-                client, step: step, licenseChoice: session.licenseChoice)
+            let native = await server?.transcript.features.contains(Feature.identityRedirectNative) == true
             do {
-                switch try await s.complete(callbackUrl: step.args["callbackUrl"]?.stringValue ?? "") {
+                let outcome: SignInOutcome
+                if native, let transcript = await server?.transcript {
+                    outcome = try await NativeReplay.complete(
+                        client, step: step, session: session, transcript: transcript)
+                } else {
+                    let s = try await redirectSession(
+                        client, step: step, licenseChoice: session.licenseChoice)
+                    outcome = try await s.complete(callbackUrl: step.args["callbackUrl"]?.stringValue ?? "")
+                }
+                switch outcome {
                 case .signedIn(let ready):
                     out["result"] = .string("ok")
                     out["scope"] = ready.scope.map(JSONValue.string) ?? .null

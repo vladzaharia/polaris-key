@@ -182,7 +182,7 @@ public enum IdentityRedirect {
         return !authority.isEmpty && !authority.contains("@")
     }
 
-    private static func isAbsoluteHttp(_ s: String) -> Bool {
+    static func isAbsoluteHttp(_ s: String) -> Bool {
         let rest: Substring
         if s.hasPrefix("https://") {
             rest = s.dropFirst(8)
@@ -194,11 +194,11 @@ public enum IdentityRedirect {
         return !rest.isEmpty && !rest.unicodeScalars.contains(where: { $0.properties.isWhitespace })
     }
 
-    private static func isPrintable(_ s: String) -> Bool {
+    static func isPrintable(_ s: String) -> Bool {
         !s.isEmpty && s.unicodeScalars.allSatisfy { $0.value >= 0x21 && $0.value <= 0x7E }
     }
 
-    private static func scopeString(_ scope: [String]?) throws -> String {
+    static func scopeString(_ scope: [String]?) throws -> String {
         guard let scope else { return defaultScope }
         let parts = scope.joined(separator: " ").split(separator: " ", omittingEmptySubsequences: true)
             .map(String.init)
@@ -208,11 +208,11 @@ public enum IdentityRedirect {
         return parts.joined(separator: " ")
     }
 
-    private static func invalid(_ message: String) -> PolarisError {
+    static func invalid(_ message: String) -> PolarisError {
         PolarisError(code: ErrorCode.invalidArgument, message: message)
     }
 
-    private static func formBody(_ pairs: [(String, String)]) -> String {
+    static func formBody(_ pairs: [(String, String)]) -> String {
         pairs.map { "\(ManageLink.formEncode($0.0))=\(ManageLink.formEncode($0.1))" }
             .joined(separator: "&")
     }
@@ -273,7 +273,7 @@ public enum IdentityRedirect {
 
     /// The query pairs of `url` (before any `#`); nil when a name repeats or an escape is bad.
     /// A `+` is a space.
-    private static func query(of url: String) -> [String: String]? {
+    static func query(of url: String) -> [String: String]? {
         guard let q = url.firstIndex(of: "?") else { return [:] }
         let after = url.index(after: q)
         var end = url.endIndex
@@ -441,14 +441,15 @@ extension IdentityClient {
 
     /// Redeem the code at the token endpoint and, on a token, store it and run the acquisition
     /// sync as after a device-code `ready`. A refusal is a `SignInError` under the Worker's code.
-    func redeemRedirect(_ pending: RedirectPending, code: String, deviceName: String?)
-        async throws -> RedirectRedeemed
+    func redeemRedirect(
+        _ pending: RedirectPending, code: String, deviceName: String?, repeatLabel: Bool = true
+    ) async throws -> RedirectRedeemed
     {
         guard let url = URL(string: pending.tokenEndpoint) else {
             throw PolarisError(
                 code: ErrorCode.badResponse, message: "the token endpoint is not a URL.")
         }
-        let label = await core.deviceLabel(deviceName)
+        let label = repeatLabel ? await core.deviceLabel(deviceName) : nil
         let form = IdentityRedirect.tokenForm(
             clientId: pending.clientId, codeVerifier: pending.codeVerifier,
             redirectUri: pending.redirectUri, code: code, deviceName: label)
