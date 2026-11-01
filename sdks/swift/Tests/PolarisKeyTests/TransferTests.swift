@@ -729,6 +729,30 @@ final class TransferTests: XCTestCase {
         XCTAssertThrowsError(try store.make(bad, store.begin(peer: Data(count: 32))))
     }
 
+    func testARefThatIsNotSixtyFourHexCharactersIsRefused() throws {
+        let store = XferStore(directory: tempDir().appendingPathComponent("xfer"))
+        for count in [63, 65] {
+            let ref = String(repeating: "a", count: count)
+            let bad = XferPartial(ref: ref, id: "x", sha256: "y", size: 1, chunk: 1, bytes: 0, writtenAt: 0)
+            XCTAssertThrowsError(try store.make(bad, store.begin(peer: Data(count: 32)))) {
+                XCTAssertEqual(($0 as? XferStoreError)?.kind, .badPath)
+            }
+        }
+    }
+
+    func testAnEmptyDeliveryNeverOverwrites() throws {
+        let store = XferStore(directory: tempDir().appendingPathComponent("xfer"))
+        let dest = tempDir().appendingPathComponent("x")
+        try Data("old".utf8).write(to: dest)
+        XCTAssertThrowsError(try store.deliverEmpty(to: dest)) {
+            XCTAssertEqual(($0 as? XferStoreError)?.kind, .exists)
+        }
+        XCTAssertEqual(try Data(contentsOf: dest), Data("old".utf8))
+        try FileManager.default.removeItem(at: dest)
+        try store.deliverEmpty(to: dest)
+        XCTAssertEqual(try Data(contentsOf: dest), Data())
+    }
+
     func testDeliveryNeverOverwrites() throws {
         let dir = tempDir().appendingPathComponent("xfer")
         let store = XferStore(directory: dir)
@@ -900,7 +924,9 @@ final class TransferTests: XCTestCase {
         let id = Base64URL.encode(Data(repeating: 3, count: 16))
         let ref = xferPartialPath(key: key, id: id, sha256: sha)
         let meta = XferPartial(ref: ref, id: id, sha256: sha, size: 10, chunk: 5, bytes: 0, writtenAt: 0)
-        XCTAssertThrowsError(try store.create(meta, token: store.begin(peer: key)))
+        XCTAssertThrowsError(try store.create(meta, token: store.begin(peer: key))) {
+            XCTAssertEqual(($0 as? XferStoreError)?.kind, .badPath)
+        }
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: target.path), [])
     }
 
