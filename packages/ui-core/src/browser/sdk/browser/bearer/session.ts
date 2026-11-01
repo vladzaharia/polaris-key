@@ -434,6 +434,8 @@ const isSeconds = (v: unknown): v is number =>
 
 export class BearerSession {
   private deviceIdValue = "";
+  /** Device codes whose start sent `licenseChoice: "app"`; only these may be answered `choose`. */
+  private readonly choiceStarts = new Set<string>();
   private token: string | null = null;
   private tokenSource: TokenSource | null = null;
   /** Persisted beside the token: only "signin" is a signed-in account (rung 1). */
@@ -2197,6 +2199,7 @@ export class BearerSession {
         "device sign-in start answered without a complete prompt.",
       );
     const expiresIn = Math.ceil(b.expiresIn);
+    if (body.licenseChoice === "app") this.choiceStarts.add(b.deviceCode);
     return {
       deviceCode: b.deviceCode,
       userCode: b.userCode,
@@ -2270,15 +2273,21 @@ export class BearerSession {
             };
       case "choose": {
         // UK-42.22: a start that asked `licenseChoice: "app"`. A grant, no token; the flow is spent.
+        // A start that did not ask is never answered with one.
         const choices = b.choices;
         if (
+          !this.choiceStarts.has(prompt.deviceCode) ||
           !isString(b.grant) ||
           !isSeconds(b.expiresIn) ||
           typeof choices !== "object" ||
           choices === null ||
           Array.isArray(choices)
         )
-          return { status: "error", message: "choose without a grant." };
+          return {
+            status: "error",
+            message: "choose without a grant.",
+            code: ErrorCode.signInFailed,
+          };
         return {
           status: "choose",
           grant: b.grant,

@@ -325,10 +325,14 @@ export class NearbyRoutes {
    * stored the way a device-code sign-in stores one and answered once as `ready`. A `429` is
    * `slow-down` (with the interval to use); a `503` throws `server-error` with the `Retry-After`
    * in `retryAfterSeconds` and the request kept; pacing is the caller's.
+   *
+   * A late answer never replaces a newer token: when the held token changed while the request
+   * was in flight (another sign-in landed), a ready answer stores nothing.
    */
   async poll(started: NearbyStarted): Promise<NearbyPoll> {
     const url = await this.#endpoint("nearbyPoll");
     const { ctx, tokens } = this.#d;
+    const heldAtStart = tokens.current;
     const { port, deviceId } = await this.#d.signer();
     const keys = await port.publicKeys();
     if (keys === null || keys.signKey !== started.signKey)
@@ -403,6 +407,7 @@ export class NearbyRoutes {
         ErrorCode.badResponse,
         "nearby poll answered without a complete sign-in.",
       );
+    if (tokens.current !== heldAtStart) return { kind: "timeout" };
     // Held unconfirmed (V5 §15.6.1 rule 12): not a sign-in, no stored subject and no `signedIn`
     // event until the person confirms the account (`NearbySignInSession.confirmAccount`), so Sync
     // and Connect do not start for an account nobody has accepted.

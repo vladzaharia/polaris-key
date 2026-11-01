@@ -155,6 +155,14 @@ def test_a_choose_poll_is_the_choose_outcome_and_stops_polling(clock) -> None:
     assert c.identity.current() is None
 
 
+def test_a_choose_poll_to_a_start_that_did_not_ask_is_sign_in_failed(clock) -> None:
+    w = Worker(choice_discovery(), start=ok(**START), poll=queue(CHOOSE))
+    c = make(w)
+    with pytest.raises(PolarisError) as e:
+        c.identity.sign_in.start().wait(once=True)
+    assert e.value.code == "sign-in-failed"
+
+
 def test_a_choose_poll_without_a_grant_is_sign_in_failed(clock) -> None:
     w = Worker(choice_discovery(), start=ok(**START), poll=queue(ok(status="choose", expiresIn=300, choices={})))
     c = make(w)

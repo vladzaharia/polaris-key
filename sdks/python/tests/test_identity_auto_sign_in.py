@@ -180,6 +180,23 @@ def test_the_unconfirmed_provenance_is_written_before_the_token(tmp_path: Any) -
     c.close()
 
 
+def test_a_failed_store_write_keeps_the_unconfirmed_mark_over_the_old_token(tmp_path: Any) -> None:
+    store = InMemoryStore(PRODUCT)
+    c = make_client(
+        Worker(discovery()), store=store, expected_services=["license", "config", "identity"], state_dir=str(tmp_path)
+    )
+    c._tokens.set("pkeyt_nearby", "signin", provenance="unconfirmed")
+
+    def boom(_t: str) -> None:
+        raise OSError("write failed")
+
+    store.set_token = boom  # type: ignore[method-assign]
+    with pytest.raises(OSError):
+        c._tokens.set("pkeyt_other", "register")
+    assert c._tokens.provenance == "unconfirmed"
+    c.close()
+
+
 def test_an_unconfirmed_token_is_dropped_at_load_and_rung_1_needs_sign_in(tmp_path: Any) -> None:
     store = InMemoryStore(PRODUCT)
     w = Worker(discovery())

@@ -1922,6 +1922,7 @@ describe("PolarisBridge v5: automatic and nearby sign-in (I-47b)", () => {
 
   function fakeSession() {
     const approverCbs = new Set<(l: unknown[]) => void>();
+    const resultCbs = new Set<(status: string) => void>();
     const list = [
       { id: "SDK_APPROVER_ID", label: "Ben's Mac", platform: "macos" },
     ];
@@ -1932,7 +1933,11 @@ describe("PolarisBridge v5: automatic and nearby sign-in (I-47b)", () => {
         approverCbs.add(f);
         return () => approverCbs.delete(f);
       },
-      onResult: () => () => undefined,
+      onResult: (f: (status: string) => void) => {
+        resultCbs.add(f);
+        return () => resultCbs.delete(f);
+      },
+      resultCbs,
       choose: vi.fn(async () => ({ code: "482 913" })),
       wait: vi.fn(async () => ({
         kind: "signedIn",
@@ -2414,6 +2419,88 @@ describe("PolarisBridge v5: automatic and nearby sign-in (I-47b)", () => {
     await expect(bridge.nearbyCancel!(s.sessionId)).rejects.toMatchObject({
       code: "invalid-argument",
     });
+  });
+
+  it("a pick that answers choose after a sign-out is cancelled and shows no choice", async () => {
+    const h = host();
+    await h.bridge.approverStart!();
+    let release!: () => void;
+    const cancel = vi.fn(async () => ({ kind: "denied" }));
+    const a = fakeAsk({
+      pick: vi.fn(
+        () =>
+          new Promise((r) => {
+            release = () =>
+              r({
+                kind: "choose",
+                choices: { choices: [{ id: "lic_1", name: "Pro" }] },
+                cancel,
+                choose: vi.fn(),
+              });
+          }),
+      ),
+    });
+    h.ask(a.ask);
+    const pending = h.bridge.approverPick!(askIdOf(h.states), "111 111");
+    await vi.waitFor(() => expect(release).toBeTypeOf("function"));
+    await h.bridge.signOut();
+    release();
+    expect(await pending).toEqual({ kind: "expired" });
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("an ask is single use while its pick runs: a second pick or a deny is refused", async () => {
+    const h = host();
+    await h.bridge.approverStart!();
+    let release!: () => void;
+    const pick = vi.fn(
+      () => new Promise((r) => (release = () => r({ kind: "approved" }))),
+    );
+    const a = fakeAsk({ pick });
+    h.ask(a.ask);
+    const askId = askIdOf(h.states);
+    const first = h.bridge.approverPick!(askId, "111 111");
+    await vi.waitFor(() => expect(pick).toHaveBeenCalledTimes(1));
+    await expect(
+      h.bridge.approverPick!(askId, "222 222"),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+    await expect(h.bridge.approverDeny!(askId)).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+    release();
+    expect(await first).toEqual({ kind: "approved" });
+    expect(pick).toHaveBeenCalledTimes(1);
+    expect(a.deny).not.toHaveBeenCalled();
+  });
+
+  it("a destroyed window ends its approver, its open asks and its requester", async () => {
+    const h = host();
+    await h.bridge.approverStart!();
+    const a = fakeAsk();
+    h.ask(a.ask);
+    await h.bridge.nearbyStart!();
+    h.ipc.destroy();
+    expect(h.stop).toHaveBeenCalledTimes(1);
+    expect(a.deny).toHaveBeenCalledTimes(1);
+    expect(h.session.cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("a display-only denied result still lets cancel, sign-out and a new start end the session", async () => {
+    const h = host();
+    h.session.wait.mockImplementation(() => new Promise(() => undefined));
+    const s = await h.bridge.nearbyStart!();
+    await h.bridge.nearbyChoose!(s.sessionId, s.approvers[0]!.id);
+    for (const f of h.session.resultCbs) f("denied");
+    // The session is over on the host's side: its poll cannot store a token later.
+    expect(h.session.cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("another sign-in completing ends an open nearby request", async () => {
+    const h = host();
+    await h.bridge.nearbyStart!();
+    expect(h.session.cancel).not.toHaveBeenCalled();
+    await h.bridge.autoSignIn!();
+    expect(h.session.cancel).toHaveBeenCalledTimes(1);
   });
 
   it("bounds the device name at the bridge", async () => {

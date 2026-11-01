@@ -105,6 +105,8 @@ export interface ChoiceDeps {
   /** Forget the stored identity file (a choice answers no name or email). */
   forget: () => Promise<void>;
   emit?: (e: IdentityEvent) => void;
+  /** Sign out of the account (the identity client's own `signOut`). */
+  signOut?: () => Promise<unknown>;
 }
 
 type ChoiceEndpoint =
@@ -121,6 +123,23 @@ const isCount = (v: unknown): v is { used: number; limit: number } =>
 
 export class ChoiceClient {
   constructor(private readonly deps: ChoiceDeps) {}
+
+  /** The token the last `complete` stored; never exposed. */
+  #stored: string | null = null;
+
+  /**
+   * Undo what the last `complete` stored, when the host no longer wants it. Signs out only while
+   * the device still holds THAT token; a newer sign-in's token is left alone. Answers whether it
+   * signed out.
+   */
+  async discardLate(): Promise<boolean> {
+    const mine = this.#stored;
+    this.#stored = null;
+    const { tokens, signOut } = this.deps;
+    if (mine === null || tokens.current !== mine || !signOut) return false;
+    await signOut();
+    return true;
+  }
 
   /** The licences the account can run this device on. Counts against the grant's read budget. */
   licenses(grant: string): Promise<ChoiceViewResult<LicenseChoiceView>> {
@@ -166,6 +185,7 @@ export class ChoiceClient {
     const keyEntries =
       isRecord(body) && isCount(body.keyEntries) ? body.keyEntries : undefined;
     await tokens.set(answer.accessToken, "signin");
+    this.#stored = answer.accessToken;
     await this.deps.forget();
     await writeStoredSubject(ctx.dirs.state, answer.subject);
     await this.deps.onAcquired();

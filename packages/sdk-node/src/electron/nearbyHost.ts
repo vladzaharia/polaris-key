@@ -240,7 +240,9 @@ export function createNearbyHost(deps: NearbyHostDeps) {
 
   const endRequester = (r: RequesterRec, phase: RequesterPhase): void => {
     for (const off of r.offs.splice(0)) off();
-    if (!TERMINAL.has(r.phase)) {
+    // Always: a display-only result may have made the phase terminal while the session's poll
+    // lives on, and `cancel` is idempotent.
+    if (r.phase !== "done") {
       try {
         r.session.cancel();
       } catch {
@@ -328,7 +330,14 @@ export function createNearbyHost(deps: NearbyHostDeps) {
     k: AskRec,
     step: NearbyApprovalStep,
   ): NearbyStepView => {
-    if (step.kind === "choose" && !a.stopped) {
+    if (step.kind === "choose" && a.stopped) {
+      // A sign-out or stop landed while the pick ran: the choice is not offered, and the Worker's
+      // approval is ended now rather than at its own expiry.
+      a.asks.delete(k.id);
+      void step.cancel().catch(() => undefined);
+      return { kind: "expired" };
+    }
+    if (step.kind === "choose") {
       k.phase = "choosing";
       k.step = step;
       k.choiceIds = new Set(step.choices.choices.map((c) => c.id));
@@ -353,6 +362,17 @@ export function createNearbyHost(deps: NearbyHostDeps) {
     }
   };
 
+  /** Another sign-in completed: a nearby request still open is over and its late answer is not
+   *  stored. A confirmed one is left as it is. */
+  function supersede(): void {
+    if (
+      requester &&
+      requester.phase !== "done" &&
+      requester.phase !== "confirming"
+    )
+      endRequester(requester, "cancelled");
+  }
+
   function dropFor(wcId: number): void {
     if (approver && approver.wc.id === wcId) stopApprover(approver);
     if (requester && requester.wc.id === wcId)
@@ -375,6 +395,7 @@ export function createNearbyHost(deps: NearbyHostDeps) {
       if (name !== undefined) o.deviceName = name;
       const r = await deps.identity.autoSignIn(o);
       if (r.kind === "signedIn") {
+        supersede();
         deps.pushAll();
         return {
           kind: "signedIn",
@@ -427,8 +448,8 @@ export function createNearbyHost(deps: NearbyHostDeps) {
         session.onResult((status) => {
           // Display only: the poll is the authority.
           if (requester !== r || r.phase !== "waiting") return;
-          if (status === "denied") setPhase(r, "denied");
-          else if (status === "expired") setPhase(r, "expired");
+          if (status === "denied") endRequester(r, "denied");
+          else if (status === "expired") endRequester(r, "expired");
           pushTo(wc);
         }),
       );
@@ -632,6 +653,8 @@ export function createNearbyHost(deps: NearbyHostDeps) {
       }
       return settle(a, k, next);
     },
+
+    supersede,
 
     /** Sign-out, `close()` and a signed-out event: every ask, the approver and the requester go. */
     dropAll(): void {

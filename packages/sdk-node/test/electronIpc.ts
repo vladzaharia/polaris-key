@@ -11,6 +11,7 @@ export function ipcPair() {
     string,
     Set<(e: unknown, ...a: unknown[]) => void>
   >();
+  const destroyedListeners = new Set<() => void>();
   const sender = {
     id: 7,
     mainFrame: { url: "app://main" } as { url: string },
@@ -18,7 +19,8 @@ export function ipcPair() {
       for (const l of listeners.get(channel) ?? [])
         l({}, ...structuredClone(args));
     },
-    once() {
+    once(event: string, listener: () => void) {
+      if (event === "destroyed") destroyedListeners.add(listener);
       return undefined;
     },
   };
@@ -52,6 +54,11 @@ export function ipcPair() {
     sender,
     deny: () => {
       allowed = false;
+    },
+    /** The window goes away: its `destroyed` listeners run, once. */
+    destroy: () => {
+      for (const l of [...destroyedListeners]) l();
+      destroyedListeners.clear();
     },
   };
 }

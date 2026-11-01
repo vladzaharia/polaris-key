@@ -729,10 +729,11 @@ export function exposePolarisBridge(
   const choiceHost = createChoiceHost({
     choice: () => client.identity.choice,
     signedIn: () => {
+      nearbyHost.supersede();
       pushState();
       notify("signedIn");
     },
-    discard: () => client.identity.signOut(),
+    discard: () => client.identity.choice.discardLate(),
     ended: (flowId) => forgetFlow(flowId),
   });
   const onIdentity = (e: { kind: string }): void => {
@@ -1251,6 +1252,7 @@ export function exposePolarisBridge(
           return choiceHost.issue(e.sender, flowId as string, r);
         case "signedIn":
           forgetFlow(flowId as string);
+          nearbyHost.supersede();
           pushState();
           notify("signedIn");
           return r.identity

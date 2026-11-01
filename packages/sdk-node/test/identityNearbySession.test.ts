@@ -755,6 +755,26 @@ describe("nearby sign-in: the session acts only on its own token (C4-N2, C4-N4, 
     expect(tokensOf(w.client).signedIn).toBe(true);
   });
 
+  it("nearby sign-in: a poll that lands after a newer sign-in stores nothing over it", async () => {
+    const g = gate();
+    const w = await world(g.handler);
+    const waiting = w.session.wait({ once: true });
+    await g.entered;
+    await (
+      w.client as unknown as {
+        tokens: { set: (t: string, s: string) => Promise<void> };
+      }
+    ).tokens.set("pkeyt_newer", "signin");
+    w.session.cancel();
+    g.release();
+    expect(await waiting).toEqual({ kind: "cancelled" });
+    await until(() => w.session.ended);
+    expect(w.signOut).not.toHaveBeenCalled();
+    expect(w.client.hasToken).toBe(true);
+    expect(tokensOf(w.client).signedIn).toBe(true);
+    expect(tokensOf(w.client).unconfirmed).toBe(false);
+  });
+
   it("nearby sign-in: a confirm after a later sign-in fails and writes no subject and no event", async () => {
     const w = await world(ready);
     const events: string[] = [];

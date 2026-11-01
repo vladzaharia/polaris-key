@@ -319,6 +319,20 @@ describe("bearer: device code", () => {
     });
   });
 
+  it("a complete choose answer to a start that did not ask fails the sign-in", async () => {
+    const s = await server();
+    s.deviceChoice = true;
+    const adapter = await bearer(s);
+    const session = await adapter.signIn.start({ channel: "device-code" });
+    s.poll.push({
+      status: 200,
+      body: { status: "choose", grant: "sg_x", expiresIn: 300, choices: {} },
+    });
+    await expect(session.wait({ once: true })).rejects.toMatchObject({
+      code: "sign-in-failed",
+    });
+  });
+
   it("wait({once}) answers pending then slow-down; a ready poll is signedIn with the subject", async () => {
     const s = await server();
     const adapter = await bearer(s);

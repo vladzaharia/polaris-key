@@ -205,6 +205,7 @@ export class TokenManager {
     keepSignIn: boolean | { unconfirmed: true } = false,
   ): Promise<void> {
     const unconfirmed = typeof keepSignIn === "object";
+    const wasUnconfirmed = this.heldUnconfirmed;
     const keep = keepSignIn === true;
     this.token = token;
     this.tokenSource = source;
@@ -228,8 +229,11 @@ export class TokenManager {
     // The mark and the token never disagree for long: a mark that is going away is dropped before
     // the token changes, and a mark that is going to exist is written after it, so a crash between
     // the two leaves "no sign-in" rather than a sign-in mark on a token that is not one.
-    if (!this.fromSignIn) await this.marks?.stored(false);
+    // The exception is a token that replaces an unconfirmed one: its mark goes only after the new
+    // token is stored, so a failed write leaves the old token still under its mark.
+    if (!this.fromSignIn && !wasUnconfirmed) await this.marks?.stored(false);
     await this.store.setToken(token);
+    if (!this.fromSignIn && wasUnconfirmed) await this.marks?.stored(false);
     if (this.fromSignIn) await this.marks?.stored(true);
   }
 

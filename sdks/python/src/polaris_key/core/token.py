@@ -240,7 +240,10 @@ class TokenManager:
             self._store.set_token(token)
             return
         # Crash-safe: cleared first, written last, so a crash between leaves "unknown" (never signin).
-        if prov is not None:
+        # A token that replaces an unconfirmed one keeps that mark until the new token is stored,
+        # so a failed write leaves the old token still under its mark.
+        replaces_unconfirmed = self.unconfirmed
+        if prov is not None and not replaces_unconfirmed:
             self._write_provenance(None)
         self._token = token
         self._source = source
