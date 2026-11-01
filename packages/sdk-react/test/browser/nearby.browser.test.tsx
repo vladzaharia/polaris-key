@@ -22,6 +22,10 @@ const SIZES = [
   { label: "844x390", width: 844, height: 390, rootPx: 16 },
   { label: "1440x900", width: 1440, height: 900, rootPx: 16 },
   { label: "390x844@200", width: 390, height: 844, rootPx: 32 },
+  // The short laptop and 200 % text: the docked bar must never sit over a code or a licence
+  // (UXR-47b B5; WCAG 2.2 SC 2.4.11).
+  { label: "900x420", width: 900, height: 420, rootPx: 16 },
+  { label: "900x420@200", width: 900, height: 420, rootPx: 32 },
 ] as const;
 const PRODUCT = {
   name: "Tidewater",
@@ -57,10 +61,51 @@ const requester = (phase: "waiting" | "choose-approver") => ({
   ],
 });
 
+const LICENSES = {
+  kind: "choose" as const,
+  choices: [
+    { licenseId: "l1", name: "Ana — Personal" },
+    { licenseId: "l2", name: "مكتب سارة" },
+    {
+      licenseId: "l3",
+      name: "A very long licence name that has to wrap inside its row",
+    },
+  ],
+};
+
 const SCENES: Record<
   string,
-  Partial<PolarisBridge> & { ui: "d" | "m"; prompt?: boolean }
+  Partial<PolarisBridge> & {
+    ui: "d" | "m";
+    prompt?: boolean;
+    /** Press the first code once mounted (to reach the licence choice). */
+    pick?: boolean;
+  }
 > = {
+  "D.denied": {
+    ui: "d",
+    prompt: false,
+    nearbyStart: async () =>
+      ({ sessionId: "s-1", phase: "denied", approvers: [] }) as never,
+  },
+  "D.none": {
+    ui: "d",
+    prompt: false,
+    nearbyStart: async () =>
+      ({ sessionId: "s-1", phase: "searching", approvers: [] }) as never,
+  },
+  "M.listening": {
+    ui: "m",
+    approverStart: async () => ({ listening: true, asks: [] }),
+    approverStop: async () => undefined,
+  },
+  "M.choose": {
+    ui: "m",
+    pick: true,
+    approverStart: async () => ({ listening: true, asks: [ASK] }),
+    approverStop: async () => undefined,
+    approverPick: async () => LICENSES,
+  },
   "D.prompt": { ui: "d" },
   "D.wait": {
     ui: "d",
@@ -80,7 +125,7 @@ const SCENES: Record<
 };
 
 async function mount(id: string, scheme: "dark" | "light", rootPx: number) {
-  const { ui, prompt, ...over } = SCENES[id]!;
+  const { ui, prompt, pick, ...over } = SCENES[id]!;
   document.documentElement.style.fontSize = `${rootPx}px`;
   document.body.style.margin = "0";
   document.body.style.background = scheme === "dark" ? "#101114" : "#ffffff";
@@ -103,14 +148,34 @@ async function mount(id: string, scheme: "dark" | "light", rootPx: number) {
           fill
           theme={theme}
           {...(prompt === false ? { prompt: false } : {})}
+          {...(id === "D.none" ? { noneFoundMs: 20 } : {})}
+          onClose={() => {}}
         />
       ) : (
-        <Kit.NearbyApprover fill theme={theme} />
+        <Kit.NearbyApprover fill theme={theme} onClose={() => {}} />
       )}
     </PolarisKeyProvider>,
   );
   for (let i = 0; i < 150 && !host.querySelector(".btn"); i++)
     await new Promise((r) => setTimeout(r, 20));
+  if (pick) {
+    host.querySelector<HTMLElement>('[data-key="nearby.code"]')?.click();
+    for (
+      let i = 0;
+      i < 150 && !host.querySelector('[data-key="nearby.license"]');
+      i++
+    )
+      await new Promise((r) => setTimeout(r, 20));
+  }
+  if (id === "D.none")
+    for (
+      let i = 0;
+      i < 150 && !host.querySelector('[data-key="common.tryAgain"]');
+      i++
+    )
+      await new Promise((r) => setTimeout(r, 20));
+  // A screen reached by a change draws its entrance first: axe reads the settled colours.
+  await new Promise((r) => setTimeout(r, 500));
   await document.fonts.ready;
   await new Promise<void>((r) => requestAnimationFrame(() => r()));
   return host.querySelector<HTMLElement>(".pk-root")!;
@@ -154,6 +219,29 @@ describe("nearby sign-in on the desktop at the §7.1 rows", () => {
               innerWidth + 0.5,
             );
           }
+          // The actions never sit over the choices (2.4.11): Deny is in the flow, under the list.
+          const choices = [
+            ...kit.querySelectorAll(
+              '[data-key="nearby.code"], [data-key="nearby.license"], [data-key="nearby.approver"]',
+            ),
+          ].map((el) => el.getBoundingClientRect());
+          for (const bar of kit.querySelectorAll(".card > .actions")) {
+            if (choices.length === 0) break;
+            expect(
+              getComputedStyle(bar).position,
+              "docked over choices",
+            ).not.toBe("sticky");
+            const b = bar.getBoundingClientRect();
+            for (const r of choices)
+              expect(
+                r.bottom <= b.top + 0.5 || r.top >= b.bottom - 0.5,
+                "a choice sits under the actions",
+              ).toBe(true);
+          }
+          // The title takes focus when a screen arrives.
+          expect(document.activeElement?.getAttribute("data-part")).toBe(
+            "title",
+          );
           expect(await axeFindings(kit)).toEqual([]);
         });
 });

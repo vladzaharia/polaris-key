@@ -1040,3 +1040,37 @@ export function NearbyDialog(props: {
     </div>
   );
 }
+
+/** The Settings row that opens the approver (UXR-47b M5): "Approve a Nearby Device" where a nearby
+ *  device can be approved from, and nothing where it cannot. */
+export function NearbyEntry(props: {
+  adapter?: PolarisAdapter;
+  theme?: KitProps["theme"];
+}): ReactNode {
+  const ctx = useContext(PolarisContext);
+  const adapter = props.adapter ?? ctx?.adapter ?? null;
+  const loading = useAdapterLoading(adapter);
+  const nearby = loading ? null : nearbyOf(adapter);
+  const [open, setOpen] = useState(false);
+  if (!nearby || !adapter) return null;
+  return (
+    <>
+      <Screen
+        component="NearbyApproval"
+        bare
+        {...(props.theme ? { theme: props.theme } : {})}
+        input={{ nearbyApproval: { step: "entry" } }}
+        onKey={(a) => {
+          if (a.key === "signin.nearby.menu") setOpen(true);
+        }}
+      />
+      {open ? (
+        <NearbyDialog
+          adapter={adapter}
+          {...(props.theme ? { theme: props.theme } : {})}
+          onClose={() => setOpen(false)}
+        />
+      ) : null}
+    </>
+  );
+}

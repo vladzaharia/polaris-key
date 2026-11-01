@@ -32,6 +32,9 @@ npm start
   device limit once.
 - Sign in shows a code, then signs in about four seconds later.
 - Check for Updates (menu) offers 2.5.0 and installs it with progress.
+- Approve a Nearby Device (menu) opens the approver over the app. `?screen=nearby-signin` and
+  `?screen=nearby-approver` open the two nearby screens on their own; they hand the window back to
+  the app on `onClose` (see `src/renderer.tsx`).
 - `TIDEWATER_STATE=ok|grace|expired|revoked|version-too-old|version-too-new|channel-not-entitled npm start`
   pins the gate.
 - `npm run smoke` launches, waits for the gate and exits (`--shot=<png>` saves the window,
