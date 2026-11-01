@@ -3325,6 +3325,42 @@
       "layer": "client"
     },
     {
+      "id": "identity.signIn.handleRedirect",
+      "kind": "method",
+      "feature": "identity.redirect.native",
+      "args": [
+        {
+          "name": "url",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "I-15b",
+          "reason": "native redirect sign-in lands in the Node SDK with I-15b.2"
+        },
+        "react": {
+          "planned": "I-15b",
+          "reason": "the desktop adapter forwards to the Node host; a browser signs in by identity.redirect.web"
+        },
+        "python": {
+          "planned": "I-15b",
+          "reason": "native redirect sign-in lands in the Python SDK with I-15b.3"
+        },
+        "swift": {
+          "spelling": "SignInNamespace.handleRedirect"
+        },
+        "kotlin": {
+          "spelling": "SignInNamespace.handleRedirect"
+        },
+        "godot": {
+          "planned": "I-15b",
+          "reason": "native redirect sign-in lands in the Godot SDK with I-15b.7"
+        }
+      },
+      "layer": "client"
+    },
+    {
       "id": "identity.signIn.session.reopen",
       "kind": "method",
       "feature": "identity.devicecode",

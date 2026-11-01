@@ -227,9 +227,10 @@ class RedirectSessionTest {
     }
 
     @Test
-    fun aMissingOrBadRedirectUriIsInvalidArgument() = runBlocking {
+    fun aBadRedirectUriIsInvalidArgument() = runBlocking {
+        // A missing one is the native redirect's (I-15b.5): NativeRedirectTest.
         val w = world()
-        for (uri in listOf<String?>(null, "http://app.example/cb")) {
+        for (uri in listOf<String?>("http://app.example/cb")) {
             try {
                 w.client.signIn.start(SignInOptions(channel = SignInChannel.Redirect, redirectUri = uri))
                 fail("accepted $uri")

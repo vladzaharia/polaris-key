@@ -285,6 +285,10 @@ public class IdentityClient(
     internal var redirectEntropyValue: RedirectEntropy? = null
     internal var redirectAcquisitionSyncValue: Boolean = true
 
+    /** The native redirect sign-in waiting for its redirect, for `signIn.handleRedirect`; a new start replaces it (I-15b.5). */
+    internal val nativeActive = java.util.concurrent.atomic.AtomicReference<NativeFlow?>(null)
+    internal var nativeListenerFactoryValue: (() -> NativeLoopbackListener)? = null
+
     /** `signIn.start(options)`: the device-code or redirect session (see SignInSession.kt). */
     public val signIn: SignInNamespace get() = SignInNamespace(this)
 

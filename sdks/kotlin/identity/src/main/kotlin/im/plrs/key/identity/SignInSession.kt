@@ -50,6 +50,8 @@ public data class SignInOptions @JvmOverloads constructor(
     val purpose: SignInPurpose? = null,
     /** `"app"` makes the app show the licence choice itself (§12.4). Honoured only when discovery names the `choice*` endpoints (on the device-code channel also `deviceChoice`); otherwise the card chooses. */
     val licenseChoice: String? = null,
+    /** Redirect channel with no [redirectUri]: the native redirect (WIRE-CONTRACT-V5 §12.12) — a loopback listener, a registered scheme or a claimed HTTPS link. */
+    val native: NativeRedirectOptions? = null,
 )
 
 /** Where a session stands. `wait()` returns the settled ones; `session.outcome` reads `Pending` until then. */
@@ -109,12 +111,29 @@ public class SignInError @JvmOverloads constructor(
 /** `client.identity.signIn`. */
 public class SignInNamespace internal constructor(private val client: IdentityClient) {
     /**
+     * Native redirect: hand the URL the OS delivered to the app (a registered scheme or a claimed HTTPS link) to the
+     * sign-in waiting for it. Checks the redirect URI, `state` and `iss` before anything is sent, then redeems the code
+     * from this device. A delivery that is not this sign-in's (another URL or a wrong `state`) is a `sign-in-failed`
+     * that leaves the sign-in waiting; with no sign-in waiting it is `sign-in-failed` too.
+     */
+    public suspend fun handleRedirect(url: String): SignInOutcome {
+        val flow = client.nativeActive.get() ?: throw SignInError(ErrorCode.signInFailed, "no sign-in is waiting for a redirect; start one.")
+        return flow.handleRedirect(url)
+    }
+
+    /**
      * Ask for a device code (or, on the redirect channel, build the authorize URL) and return the session.
      * Throws `PolarisException` (`service-unavailable` when the product runs no Identity,
      * `sign-in-unavailable`, `invalid-argument`, `network-error`, ...). With [SignInOptions.opener] the page
      * is shown before this returns.
      */
     public suspend fun start(options: SignInOptions = SignInOptions()): SignInSession {
+        if (options.channel == SignInChannel.Redirect && options.redirectUri == null) {
+            val flow = client.startNative(options)
+            val session = SignInSession(client, nativePrompt(flow), options.opener, native = flow)
+            if (options.native?.openBrowser != false) session.reopen()
+            return session
+        }
         if (options.channel == SignInChannel.Redirect) {
             val pending = client.startRedirect(options)
             val session = SignInSession(client, redirectPrompt(options.deviceName), options.opener, pending, options.deviceName)
@@ -128,6 +147,12 @@ public class SignInNamespace internal constructor(private val client: IdentityCl
     }
 }
 
+private fun nativePrompt(flow: NativeFlow): SignInPrompt =
+    SignInPrompt(
+        deviceCode = "", userCode = "", verificationUri = "", verificationUriComplete = "", expiresIn = NativeRedirect.PUSHED_REQUEST_TTL_SECONDS,
+        interval = 0, expiresAt = flow.expiresAt, deviceName = flow.deviceName,
+    )
+
 private fun redirectPrompt(deviceName: String?): SignInPrompt =
     SignInPrompt(deviceCode = "", userCode = "", verificationUri = "", verificationUriComplete = "", expiresIn = 0, interval = 0, expiresAt = 0, deviceName = deviceName)
 
@@ -139,12 +164,22 @@ public class SignInSession internal constructor(
     private val opener: AccountOpener?,
     redirect: RedirectPending? = null,
     private val redirectDeviceName: String? = null,
+    private val native: NativeFlow? = null,
 ) {
     /** The channel this session runs on. */
-    public val channel: SignInChannel = if (redirect != null) SignInChannel.Redirect else SignInChannel.DeviceCode
+    public val channel: SignInChannel = if (redirect != null || native != null) SignInChannel.Redirect else SignInChannel.DeviceCode
 
-    /** Redirect channel: the URL to open in the browser. It carries the challenge and `state`, never the verifier. Null on the device-code channel. */
-    public val authorizeUrl: String? = redirect?.authorizeUrl
+    /** Redirect channel: the URL to open in the browser. It carries the challenge and `state` (or, native, only `client_id` and `request_uri`), never the verifier. Null on the device-code channel. */
+    public val authorizeUrl: String? = redirect?.authorizeUrl ?: native?.authorizeUrl
+
+    /** Native redirect: `Loopback`, `Scheme` or `Claimed`; null on the other channels. */
+    public val redirectClass: NativeRedirectClass? get() = native?.redirectClass
+
+    /** Native redirect: the redirect URI the request named (a loopback one carries the listener's port); null on the other channels. */
+    public val redirectUri: String? get() = native?.redirectUri
+
+    /** Native redirect: whether the first open of the browser succeeded. */
+    public val opened: Boolean get() = native?.opened == true
 
     /** The redirect request, until `complete` or `cancel` takes it (single use). */
     private var pending: RedirectPending? = redirect
@@ -178,12 +213,13 @@ public class SignInSession internal constructor(
 
     /** `Pending` until the session settles. */
     public val outcome: SignInOutcome
-        get() = synchronized(lock) {
+        get() = native?.let { it.outcomeOrNull ?: if (it.isCancelled) SignInOutcome.Cancelled else SignInOutcome.Pending(0) } ?: synchronized(lock) {
             settled?.getOrNull() ?: if (cancelled) SignInOutcome.Cancelled else SignInOutcome.Pending(pace)
         }
 
     /** Show the verification page again, through the opener given to `start` or the client's. False when no opener could open it. */
     public suspend fun reopen(): Boolean {
+        if (native != null) return native.reopen()
         val open = opener ?: client.opener ?: return false
         return try {
             open.open(authorizeUrl ?: prompt.verificationUriComplete)
@@ -196,6 +232,7 @@ public class SignInSession internal constructor(
 
     /** Stop the sign-in: the paced poll ends, `wait()` returns `Cancelled`, nothing binds. */
     public fun cancel() {
+        if (native != null) return native.cancel()
         val job = synchronized(lock) {
             if (settled != null || cancelled) return
             cancelled = true
@@ -212,6 +249,7 @@ public class SignInSession internal constructor(
      * call [cancel] to end it). A settled session answers the same outcome again.
      */
     public suspend fun wait(once: Boolean = false): SignInOutcome {
+        if (native != null) return native.wait(once)
         if (channel == SignInChannel.Redirect) {
             synchronized(lock) {
                 settled?.let { return it.getOrThrow() }
@@ -274,6 +312,7 @@ public class SignInSession internal constructor(
         if (channel != SignInChannel.Redirect) {
             throw PolarisException(ErrorCode.invalidArgument, "complete(callbackUrl) belongs to a redirect sign-in; use wait().")
         }
+        if (native != null) return native.handleRedirect(callbackUrl)
         val taken = synchronized(lock) {
             val p = pending
             pending = null
