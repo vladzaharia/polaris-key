@@ -1334,7 +1334,7 @@
     <string name="signin_nearby_notNearbyBody">両方を同じ Wi-Fi に接続するか、%1$s でコードを使ってサインインしてください。</string>
     <!-- Nearby approval: the person tapped a code that did not match; the request is denied. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_mismatch">コードが一致しなかったため、%1$s はサインインしませんでした。</string>
-    <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
+    <!-- Account menu entry: opens the nearby approval list on the signed-in device. macOS menu items use title case and an ellipsis because the item opens a pane. -->
     <string name="signin_nearby_menu">近くのデバイスを承認</string>
     <string name="signin_nearby_menu__macos">近くのデバイスを承認</string>
     <!-- Nearby approval, on the signed-in device: choose which license the new device gets. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
@@ -1347,6 +1347,28 @@
     <string name="signin_nearby_rateLimitedBody">しばらく待ってから、%1$s でもう一度お試しください。</string>
     <!-- Nearby approval: the code expired. Body under the Code expired title; the person starts again on the new device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_expiredBody">%1$s で最初からやり直してください。</string>
+    <!-- Nearby sign-in, on the device that signs in: several devices answered, so the person chooses which one to ask. The devices follow as buttons. -->
+    <string name="signin_nearby_pick">確認を求めるデバイスを選んでください。</string>
+    <!-- Nearby sign-in, waiting: asks again and lists the devices, to choose a different one. -->
+    <string name="signin_nearby_another">別のデバイスを選ぶ</string>
+    <string name="signin_nearby_another__macos">別のデバイスを選ぶ</string>
+    <!-- Nearby sign-in, on the device that signs in: no device answered after a while. -->
+    <string name="signin_nearby_noneTitle">デバイスが見つかりません</string>
+    <!-- Nearby sign-in: where to go on the other device. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_nearby_noneBody">もう一方のデバイスで %1$s を開き、「近くのデバイスを承認」を選んでください。</string>
+    <!-- Nearby approval, on the signed-in device: the screen that waits for a request. -->
+    <string name="signin_nearby_listenTitle">近くのデバイスを承認</string>
+    <!-- Nearby approval: what to do on the new device so its request shows here. -->
+    <string name="signin_nearby_listenBody">新しいデバイスで、近くのデバイスでサインインを選んでください。リクエストがここに表示されます。</string>
+    <!-- Nearby approval: this device stopped listening after requests were declined. -->
+    <string name="signin_nearby_pausedTitle">承認を一時停止しました</string>
+    <!-- Nearby approval: why it stopped (two declined requests in a short time); Start again listens again. -->
+    <string name="signin_nearby_pausedBody">リクエストが2回拒否されたため、このデバイスは待機を止めました。</string>
+    <!-- Nearby approval: listen for requests again after it paused. -->
+    <string name="signin_nearby_startAgain">もう一度始める</string>
+    <string name="signin_nearby_startAgain__macos">もう一度始める</string>
+    <!-- Nearby approval: the service or the network failed, so nothing was approved. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_failedBody">何も承認されませんでした。%1$s でもう一度お試しください。</string>
     <!-- The key was refused and the person adds it to their account on the web (↗, opens the browser). -->
     <string name="signin_key_addInLocker">Polaris Locker で追加</string>
     <string name="signin_key_addInLocker__macos">Polaris Locker で追加</string>

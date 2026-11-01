@@ -6,7 +6,10 @@
 
 import { randomBytes } from "node:crypto";
 import type { PolarisKeyClient } from "../client.js";
-import type { NearbyApproverHandle } from "../connect/nearbyApprover.js";
+import type {
+  NearbyApproverHandle,
+  NearbyStopReason,
+} from "../connect/nearbyApprover.js";
 import type {
   NearbyApprovalStep,
   NearbyAsk,
@@ -68,6 +71,8 @@ export interface NearbyAskView {
 
 export interface NearbyApproverView {
   listening: boolean;
+  /** Why the advert stopped on its own (declined requests, sign-out, discovery). */
+  stopped?: Exclude<NearbyStopReason, "host">;
   asks: NearbyAskView[];
 }
 
@@ -86,7 +91,8 @@ export type NearbyStepView =
         | "expired"
         | "device-limit"
         | "account-required"
-        | "rate-limited";
+        | "rate-limited"
+        | "failed";
     }
   | { kind: "choose"; choices: { licenseId: string; name: string }[] };
 
@@ -139,6 +145,8 @@ interface ApproverRec {
   handle: NearbyApproverHandle | null;
   asks: Map<string, AskRec>;
   stopped: boolean;
+  /** The advert stopped on its own (`onStopped`); the screen says so and may start it again. */
+  ended?: Exclude<NearbyStopReason, "host">;
 }
 
 /** Waiting asks at once (the SDK's own session cap). */
@@ -154,6 +162,15 @@ const refuse = (message: string, code = "invalid-argument"): never => {
  *  `undefined` when nothing is left. */
 const boundName = (v: unknown): string | undefined =>
   (typeof v === "string" ? cleanLabel(v) : null) ?? undefined;
+
+/** What this computer is called on the other device when the app names none: the kind of
+ *  computer, never its host name. */
+const friendlyDevice = (): string =>
+  process.platform === "darwin"
+    ? "Mac"
+    : process.platform === "win32"
+      ? "Windows PC"
+      : "Linux PC";
 
 const NOT_OPEN = "That nearby request is not open.";
 
@@ -190,7 +207,8 @@ export function createNearbyHost(deps: NearbyHostDeps) {
   });
 
   const approverView = (a: ApproverRec): NearbyApproverView => ({
-    listening: !a.stopped,
+    listening: !a.stopped && a.ended === undefined,
+    ...(a.ended !== undefined ? { stopped: a.ended } : {}),
     asks: [...a.asks.values()]
       .filter((k) => k.phase === "open")
       .map((k) => ({
@@ -478,7 +496,17 @@ export function createNearbyHost(deps: NearbyHostDeps) {
       if (approver) {
         if (approver.wc.id !== wc.id && approver.wc.isDestroyed?.() !== true)
           return refuse("Another window is already approving.", "busy");
-        if (approver.wc.id === wc.id) return approverView(approver);
+        if (approver.wc.id === wc.id) {
+          // Stopped by the declined-request budget: opening the screen again counts from zero.
+          if (approver.ended === "budget" && approver.handle) {
+            await approver.handle.reopen();
+            delete approver.ended;
+            pushTo(wc);
+            return approverView(approver);
+          }
+          // Stopped for good (signed out, discovery): a fresh approver below.
+          if (approver.ended === undefined) return approverView(approver);
+        }
         stopApprover(approver);
       }
       const a: ApproverRec = {
@@ -507,7 +535,21 @@ export function createNearbyHost(deps: NearbyHostDeps) {
             });
             pushTo(wc);
           },
-          { prompt: true },
+          {
+            prompt: true,
+            label: deps.deviceName ?? friendlyDevice(),
+            onStopped: (why) => {
+              if (why === "host" || a.stopped) return;
+              a.ended = why;
+              // Whatever was waiting can no longer be answered.
+              const asks = [...a.asks.values()];
+              a.asks.clear();
+              for (const k of asks)
+                if (k.phase === "open")
+                  void k.ask.deny().catch(() => undefined);
+              pushTo(wc);
+            },
+          },
         );
         a.handle = handle;
         // Stopped (or the window left) while the advert was starting.

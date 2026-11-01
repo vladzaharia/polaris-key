@@ -30,6 +30,7 @@ import { armTab, openManage } from "@polaris-key/ui-core/browser";
 import { installProgressInput } from "./adapt.js";
 import type { SettingsRow } from "./views.js";
 import { holderScreen } from "./holdersLazy.js";
+import { nearbyScreen } from "./nearbyLazy.js";
 import type { AddToAccountProps } from "./holders.js";
 import type { AddFlow, SessionSlot } from "./holderGate.js";
 
@@ -357,6 +358,11 @@ function AddInAccount(props: {
 
 /** The account pane a host-opened Settings carries (the menu's "Manage License…"): the license,
  *  its devices, the version, the update controls and Sign Out, from what the SDK knows. */
+const NearbyEntry = nearbyScreen<{
+  adapter: PolarisAdapter;
+  theme?: KitProps["theme"];
+}>("NearbyEntry");
+
 function OpenedAccount(props: {
   adapter: PolarisAdapter;
   version?: string;
@@ -437,49 +443,57 @@ function OpenedAccount(props: {
     ...(props.version ? { bundle: { slug: "", version: props.version } } : {}),
   };
   return (
-    <AccountAndLicense_
-      bare
-      headingLevel={3}
-      driven
-      {...(props.theme ? { theme: props.theme } : {})}
-      input={input}
-      onAction={(a: KitAction) => {
-        if (a.key === "common.signOut" || a.key === "account.removeKey")
-          void adapter.signOut().then(props.onSignedOut, props.onSignedOut);
-        else if (a.key === "update.checkNow") props.onCheckUpdates?.();
-        else if (a.key === "common.manage" && manageUrl) openLink(manageUrl);
-        else if (
-          a.key === "activate.recommend.action" ||
-          a.key === "signin.key.addInLocker"
-        ) {
-          // Add your name and email: AddToAccount here when discovery carries `deviceChoice` (or
-          // the host says "app"), else the product's page (no key is held in this pane, so none
-          // is sent).
-          void resolveAddIn(addIn, adapter)
-            .then((where) => {
-              if (where === "app" && caps.identity.enabled) {
-                setAdding(true);
-                return;
-              }
-              return import("./holderGate.js")
-                .then((m) =>
-                  m.portalTarget(adapter, {
-                    ...(sdk?.baseUrl !== undefined
-                      ? { baseUrl: sdk.baseUrl }
-                      : {}),
-                    ...(sdk?.productSlug !== undefined
-                      ? { product: sdk.productSlug }
-                      : {}),
-                  }),
-                )
-                .then((t) => {
-                  if (t) openManage(t.url);
-                });
-            })
-            .catch(() => undefined);
-        }
-      }}
-    />
+    <>
+      <AccountAndLicense_
+        bare
+        headingLevel={3}
+        driven
+        {...(props.theme ? { theme: props.theme } : {})}
+        input={input}
+        onAction={(a: KitAction) => {
+          if (a.key === "common.signOut" || a.key === "account.removeKey")
+            void adapter.signOut().then(props.onSignedOut, props.onSignedOut);
+          else if (a.key === "update.checkNow") props.onCheckUpdates?.();
+          else if (a.key === "common.manage" && manageUrl) openLink(manageUrl);
+          else if (
+            a.key === "activate.recommend.action" ||
+            a.key === "signin.key.addInLocker"
+          ) {
+            // Add your name and email: AddToAccount here when discovery carries `deviceChoice` (or
+            // the host says "app"), else the product's page (no key is held in this pane, so none
+            // is sent).
+            void resolveAddIn(addIn, adapter)
+              .then((where) => {
+                if (where === "app" && caps.identity.enabled) {
+                  setAdding(true);
+                  return;
+                }
+                return import("./holderGate.js")
+                  .then((m) =>
+                    m.portalTarget(adapter, {
+                      ...(sdk?.baseUrl !== undefined
+                        ? { baseUrl: sdk.baseUrl }
+                        : {}),
+                      ...(sdk?.productSlug !== undefined
+                        ? { product: sdk.productSlug }
+                        : {}),
+                    }),
+                  )
+                  .then((t) => {
+                    if (t) openManage(t.url);
+                  });
+              })
+              .catch(() => undefined);
+          }
+        }}
+      />
+      {input.account?.signedIn === true ? (
+        <NearbyEntry
+          adapter={adapter}
+          {...(props.theme ? { theme: props.theme } : {})}
+        />
+      ) : null}
+    </>
   );
 }
 
