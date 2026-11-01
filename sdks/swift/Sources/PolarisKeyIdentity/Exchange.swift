@@ -292,7 +292,7 @@ extension IdentityClient {
     // ── Routes and keys ──────────────────────────────────────────────────────────────────
 
     /// The two routes, or nil when the product does not accept `kind` (no request is sent).
-    private func exchangeRoutes(_ kind: ExchangeKind) async throws -> (nonce: URL, token: URL)? {
+    func exchangeRoutes(_ kind: ExchangeKind) async throws -> (nonce: URL, token: URL)? {
         if await core.discoveryDocument == nil { await core.discover() }
         try await core.requireService(.identity, feature: Feature.identityExchange)
         guard let fragment = await core.discoveryDocument?.identity,
@@ -339,7 +339,7 @@ extension IdentityClient {
             }
     }
 
-    private func fetchNonce(_ url: URL, _ port: any DeviceKeyPort) async throws -> ExchangeNonceAnswer {
+    func fetchNonce(_ url: URL, _ port: any DeviceKeyPort) async throws -> ExchangeNonceAnswer {
         let keys = try await port.ensure()
         let body = try JSONEncoder().encode(
             JSONValue.object(["signKey": .string(keys.signKey), "agreeKey": .string(keys.agreeKey)]))
@@ -454,6 +454,7 @@ extension IdentityClient {
             handle = h
             expiresIn = seconds
             expiresAt = await core.now() + seconds
+            linkHold(handle: h, expiresAt: await core.now() + seconds)
         }
         return .needsSignIn(
             NeedsSignIn(reason: reason, url: url, linkHandle: handle, expiresIn: expiresIn, expiresAt: expiresAt))

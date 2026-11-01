@@ -127,6 +127,7 @@ extension IdentityClient {
         }
         // The Worker accepted it: nothing silent may sign this person back in.
         await markSignedOut(provider)
+        linkReset()
         // An account sign-out that keeps the token leaves a device activated by key, not signed in.
         if !released { await core.setTokenProvenance(.key) }
         let previous = subjectValue.with { held -> String? in

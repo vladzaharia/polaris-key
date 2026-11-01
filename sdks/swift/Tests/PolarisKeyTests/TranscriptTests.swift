@@ -10,7 +10,7 @@
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
 // @pkey-feature connect.relay identity.redirect.native
-// @pkey-feature identity.exchange sync.keyring sync.settings identity.restore identity.gamecenter identity.devicecode.choice sync.files sync.files.delta sync.saves sync.records
+// @pkey-feature identity.link identity.exchange sync.keyring sync.settings identity.restore identity.gamecenter identity.devicecode.choice sync.files sync.files.delta sync.saves sync.records
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -421,6 +421,8 @@ enum SwiftReplay {
             await NearbyReplay.run(client, step: step, session: session, server: server, into: &out)
         case "exchange":
             try await exchange(client, step: step, session: session, into: &out)
+        case "linkOffer", "link":
+            try await link(client, step: step, session: session, into: &out)
         case "restoreRedeem", "restoreEnroll", "restoreDelete":
             try await restore(client, step: step, session: session, server: server, into: &out)
         case "connectIdentity", "connectDevices":
@@ -796,6 +798,44 @@ enum SwiftReplay {
             throw ReplayError("exchange: a step that signed nobody in changed the held token")
         }
         out["tokenHeld"] = .bool(signedIn && heldAfter != nil)
+    }
+
+    /// `linkOffer` / `link` (`identity.link`): `identity.link.offer()` and `accept(linkHandle:)` with
+    /// the recording's handle (and, where it names one, the value its proof covers). The fixture
+    /// device keys are the label's, as the exchange's.
+    private static func link(
+        _ client: PolarisKeyClient, step: Transcript.Step, session: ReplaySession,
+        into out: inout [String: JSONValue]
+    ) async throws {
+        if let label = step.args["keyLabel"]?.stringValue, session.keyLabel != label {
+            session.keys.use(label: label)
+            session.keyLabel = label
+        }
+        if step.action == "linkOffer" {
+            switch try await client.identity.link.offer() {
+            case .ok(let kinds):
+                out["result"] = .string("ok")
+                out["offer"] = .array(
+                    kinds.map {
+                        .object(["kind": .string($0.kind), "reach": $0.reach.map(JSONValue.string) ?? .null])
+                    })
+            case .unavailable: out["result"] = .string("unavailable")
+            }
+            return
+        }
+        switch try await client.identity.link.accept(
+            linkHandle: step.args["linkHandle"]?.stringValue,
+            proofValue: step.args["proofValue"]?.stringValue)
+        {
+        case .linked(let kind, let reach):
+            out["result"] = .string("ok")
+            out["linked"] = .object(["kind": .string(kind), "reach": reach.map(JSONValue.string) ?? .null])
+        case .refused(let status, let code):
+            out["result"] = .string("refused")
+            out["status"] = .int(status)
+            out["code"] = .string(code)
+        case .unavailable: out["result"] = .string("unavailable")
+        }
     }
 
     /// `restoreRedeem` / `restoreEnroll` / `restoreDelete` (`identity.restore`, I-49.10): the restore
@@ -1217,6 +1257,16 @@ final class TranscriptTests: XCTestCase {
 
     func testTheTranscriptSetIsPresent() throws {
         XCTAssertFalse(try transcripts().isEmpty)
+    }
+
+    /// `link-game` also pins Play Games, which this SDK does not run (`identity.pgs` is not
+    /// applicable here): the conversation is replayed up to that last step, the Game Center half.
+    func testLinkGameReplaysItsGameCenterHalf() async throws {
+        var t = try XCTUnwrap(try transcripts().first { $0.id == "link-game" })
+        XCTAssertEqual(
+            t.steps.last?.args["subjectTokenType"]?.stringValue, "urn:polaris-key:token-type:pgs-server-auth-code")
+        t.steps.removeLast()
+        try await SwiftReplay.replay(t)
     }
 
     func testReplaysEveryApplicableTranscript() async throws {

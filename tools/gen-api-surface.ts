@@ -450,6 +450,7 @@ const SWIFT_TYPE: Record<string, string> = {
   NearbyNamespace: "NearbyNamespace",
   NearbySignInSession: "NearbySignInSession",
   ChoiceNamespace: "ChoiceNamespace",
+  LinkNamespace: "LinkNamespace",
 };
 /** Rows with no compile-only reference: actor-isolated properties have no key path, and an unapplied generic method cannot infer `T`. */
 const SWIFT_UNASSERTED = new Set([

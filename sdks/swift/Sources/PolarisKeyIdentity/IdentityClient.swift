@@ -117,16 +117,20 @@ public struct SignInReady: Sendable, Equatable {
     public let scope: String?
     /// Redirect channel: the licence the device runs on; nil on a device with none.
     public let licenseId: String?
+    /// The sign-in was started and completed on this device (a redirect), so the link offer
+    /// (`identity.link`) may follow.
+    public let sameDevice: Bool
 
     public init(
         identity: SignInIdentity? = nil, attached: String? = nil, subject: String? = nil,
-        scope: String? = nil, licenseId: String? = nil
+        scope: String? = nil, licenseId: String? = nil, sameDevice: Bool = false
     ) {
         self.identity = identity
         self.attached = attached
         self.subject = subject
         self.scope = scope
         self.licenseId = licenseId
+        self.sameDevice = sameDevice
     }
 }
 
@@ -239,6 +243,8 @@ public final class IdentityClient: Sendable {
     /// The device key port the platform exchange signs with (`installDeviceKeys`); nil until one
     /// is handed over, and then a `DeviceKeyStore` for the product, made on first use.
     let deviceKeys = LockedValue<(any DeviceKeyPort)?>(nil)
+    /// The link offer's memory (`Link.swift`).
+    let linkState = LockedValue<LinkState>(LinkState())
     /// The platform identity `autoSignIn()` uses and `signOut()` cleans up after.
     let platformProvider = LockedValue<(any PlatformIdentityProvider)?>(nil)
     /// Platform sessions waiting on `choice.complete`, by grant (see `platformSession`).
