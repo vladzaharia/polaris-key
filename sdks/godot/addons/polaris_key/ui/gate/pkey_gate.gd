@@ -62,6 +62,10 @@ signal auto_sign_in_finished(result: PKeyAutoSignInResult)
 ## consent step, a licence choice the choice screen, a full licence its own step; anything else leaves
 ## the form as it is. false turns it off (Q-12), and `start_auto_sign_in()` runs it by hand.
 @export var auto_sign_in := true
+## Offer the phone sign-in (nearby sign-in, WIRE-CONTRACT-V5 section 15.6.1) once the silent rungs found nothing,
+## when this device and the product can run it (`identity.nearby_available()`). Off by default: the prompt
+## comes before the system asks for access to the local network. `show_nearby_prompt()` shows it by hand.
+@export var offer_nearby := false
 ## Retry emits `retry_requested` only; the owner decides (PKeyBoot).
 var managed_retry := false
 ## Owned by another scene (PKeyBoot): the owner feeds `show_state()` and decides visibility.
@@ -121,6 +125,8 @@ var _auto_started := false
 ## "" | "confirm" | "choose" | "device-limit": which automatic sign-in answer the gate is showing.
 var _auto_state := ""
 var _auto_result: PKeyAutoSignInResult = null
+## The nearby sign-in steps (PKeyGateNearby): the session and what each tap does.
+var _nearby_flow: PKeyGateNearby
 ## The silent rungs are running: a quiet thin indicator shows (after 250 ms, for at most 1.5 s).
 var _auto_running := false
 var _auto_bar := true
@@ -247,6 +253,8 @@ func _build() -> void:
 	auto_step.visible = false
 	auto_step.primary_pressed.connect(_on_auto_primary)
 	auto_step.secondary_pressed.connect(_on_auto_secondary)
+	_nearby_flow = PKeyGateNearby.new(self)
+	auto_step.approver_chosen.connect(_nearby_flow.on_chosen)
 	_main.add_child(auto_step)
 	_spacer = spacer(_main)
 	_actions = actions_row(_main, "Actions", BoxContainer.ALIGNMENT_BEGIN)
@@ -284,7 +292,7 @@ func _activation_owns_screen() -> bool:
 
 ## An automatic sign-in step (confirm, device-limit) is on screen in the form's place.
 func _auto_on() -> bool:
-	return _auto_state == "confirm" or _auto_state == "device-limit"
+	return _auto_state == "confirm" or _auto_state == "device-limit" or _auto_state.begins_with("nearby")
 
 
 ## The card's content width (logical pixels): what the activation panel wants while a dialog of
@@ -718,6 +726,8 @@ func start_auto_sign_in(force := false) -> void:
 		auto_sign_in_finished.emit(result)
 		return
 	await _apply_auto(result)
+	if offer_nearby and _auto_state == "" and not _person_acted() and sdk.identity.nearby_available():
+		show_nearby_prompt()
 	refresh_view()
 	auto_sign_in_finished.emit(result)
 
@@ -763,8 +773,13 @@ func _apply_auto(result: PKeyAutoSignInResult) -> void:
 				refresh_view()
 
 
-## The automatic sign-in's step is over: nothing of it stays on screen.
+## The automatic sign-in's step is over: nothing of it stays on screen. A nearby sign-in still held is
+## cancelled: leaving its steps by any route ends the request (an unconfirmed account signs out).
 func _end_auto() -> void:
+	_nearby_flow.end()
+	auto_step.approvers = []
+	auto_step.code = ""
+	auto_step.pending = false
 	_auto_state = ""
 	choosing = false
 	_auto_result = null
@@ -791,6 +806,9 @@ func _show_auto(step: String) -> void:
 ## step, Replace opens the Worker's manage page (the sign-in runs again when the person is back);
 ## where there is no link, or no browser, the primary is Try again.
 func _on_auto_primary(step: String) -> void:
+	if step.begins_with("nearby"):
+		await _nearby_flow.on_primary(step)
+		return
 	if step == "device-limit":
 		var url := PKeyGateController.manage_link(_auto_result)
 		if url != "" and not PKeyUiView.pad_only():
@@ -807,7 +825,10 @@ func _on_auto_primary(step: String) -> void:
 
 
 ## Use another account: give the grant up and show the regular form, on Polaris Locker's sign-in.
-func _on_auto_secondary(_step: String) -> void:
+func _on_auto_secondary(step: String) -> void:
+	if step.begins_with("nearby"):
+		await _nearby_flow.on_secondary(step)
+		return
 	_leave_auto_sign_in()
 
 
@@ -826,6 +847,15 @@ func _leave_auto_sign_in() -> void:
 	ensure_focus(true)
 	if grant != "" and sdk != null and is_instance_valid(sdk):
 		sdk.identity.choice.cancel(grant)
+
+
+## The phone sign-in's one tap before the system asks for access to the local network (nearby-prompt).
+func show_nearby_prompt() -> void:
+	_nearby_flow.show_prompt()
+
+
+func _exit_tree() -> void:
+	_nearby_flow.end()
 
 
 func _held_grant() -> String:

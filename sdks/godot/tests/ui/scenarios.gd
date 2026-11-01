@@ -445,6 +445,8 @@ func sign_in_step(kind: String) -> Control:
 		"nearby-done":
 			s.step = "nearby-done"
 			s.email = "ada@mail.io"
+			# Held for the person's confirmation: the title leads with the active mark.
+			s.pending = true
 		"nearby-wait":
 			s.step = "nearby-wait"
 			s.code = "482 913"

@@ -43,3 +43,23 @@ func start(opts: Dictionary = {}) -> PKeySignInSession:
 	if identity == null:
 		return PKeySignInSession.new(false, PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
 	return await identity._start(opts)
+
+
+## Begin a nearby sign-in on this device, the new device D (WIRE-CONTRACT-V5 section 15.6.1): a signed-in device
+## nearby approves it. `opts`: `device_name` (the label the approver is shown). ok with a PKeyNearbySignIn
+## (the approvers, `choose`, `code`, `wait`, `confirm_account`, `decline_account`, `cancel`); otherwise the typed
+## failure: `nearby-unsupported` (this runtime cannot browse the network; no route was called),
+## `nearby-permission-denied`, `service-unavailable` (discovery names no nearby approval), `rate_limited`,
+## `invalid_grant`, ... A sign-in already running is cancelled first. A coroutine.
+##
+##   var r := await PolarisKey.identity.sign_in.start_nearby()
+##   if r.ok:
+##       var s: PKeyNearbySignIn = r.detail
+##       var code := (await s.choose(s.approvers()[0]["id"])).detail["code"]   # show it
+##       var outcome := await s.wait()                                         # signed_in, ...
+##       await s.confirm_account()                                             # only if it is the person's
+func start_nearby(opts: Dictionary = {}) -> PKeyResult:
+	var identity := _owner.get_ref() as PKeyIdentity if _owner != null else null
+	if identity == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
+	return await identity._start_nearby(opts)

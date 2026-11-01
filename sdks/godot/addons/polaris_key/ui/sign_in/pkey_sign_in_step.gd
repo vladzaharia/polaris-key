@@ -11,6 +11,8 @@ signal primary_pressed(step: String)
 ## The step's quiet action was chosen (Use another account, No thanks, Not now, Use a code instead,
 ## Not you?).
 signal secondary_pressed(step: String)
+## nearby-wait: the person chose one of the devices that answered (`approvers`).
+signal approver_chosen(approver_id: String)
 
 ## State -> [title key, body keys (shown when the model names them), secondary keys]; the
 ## primary is the model's. Every step has a title that takes focus and no Cancel.
@@ -100,6 +102,19 @@ var error_key := "":
 		error_key = value
 		refresh_view()
 
+## nearby-wait: the devices that answered, `[{id, label (String or null), platform}]`, until one is chosen
+## (each is a button; a pad reaches them in order). Empty once a code shows.
+var approvers: Array = []:
+	set(value):
+		approvers = value
+		refresh_view()
+## nearby-done: the sign-in is held for the person's confirmation. The title leads with the active mark
+## (`◆ Signed in as ...`): the account is not theirs yet.
+var pending := false:
+	set(value):
+		pending = value
+		refresh_view()
+
 var model: Dictionary = {}
 
 
@@ -117,6 +132,11 @@ var _gets_label: Label
 var _gets_profile: Label
 var _gets_pairwise: Label
 var _error: Label
+## nearby-wait: the code to tap on the approving device, and the devices to choose from.
+var _code_label: Label
+var _approver_box: VBoxContainer
+var _approver_buttons: Array = []
+var _approver_sig := ""
 ## The device limit's QR code for a device with only a pad (no browser to open).
 var _qr: PKeyQrRect
 var _qr_caption: Label
@@ -151,6 +171,9 @@ func _build() -> void:
 	_gets_profile = label(_gets_group, "Profile")
 	_gets_pairwise = label(_gets_group, "Pairwise", "PKeyMuted")
 	_error = label(top, "Error", "PKeyError")
+	_approver_box = vbox(top, "Approvers", "PKeyTight")
+	_code_label = label(top, "NearbyCode", "PKeyCode", true)
+	_code_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_qr_box = vbox(top, "Remedy", "PKeyTight")
 	_qr = qr_tile(_qr_box)
 	_qr.get_parent().size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -287,6 +310,7 @@ func _render() -> void:
 		_license_group.visible = false
 		_gets_group.visible = false
 		cat_text(_lede, "", args)
+	_render_nearby(args)
 	# Continue failed: its own line in the error colour, with Continue as the retry.
 	if error_key != "" and confirm:
 		cat_text(_error, error_key)
@@ -325,6 +349,36 @@ func _render() -> void:
 	set_process(step == "nearby-wait" or busy)
 
 
+## nearby-wait: the devices that answered (until one is chosen), then the code to tap there. nearby-done: the
+## title leads with the active mark while the sign-in is held. Nothing else shows these.
+func _render_nearby(args: Dictionary) -> void:
+	var waiting := step == "nearby-wait"
+	var choosing := waiting and code == "" and not approvers.is_empty()
+	# The "tap this code" line belongs to a code that is on screen.
+	if waiting and code == "" and _lines.size() > 1:
+		cat_text(_lines[1], "", args)
+	_approver_box.visible = choosing
+	# The rows are rebuilt only when the list changes, so a focused row keeps the focus through a redraw.
+	var sig := JSON.stringify(approvers) if choosing else ""
+	if sig != _approver_sig:
+		_approver_sig = sig
+		for b: Button in _approver_buttons:
+			b.queue_free()
+		_approver_buttons.clear()
+	if choosing and _approver_buttons.is_empty():
+		for a: Dictionary in approvers:
+			var id := String(a.get("id", ""))
+			var device := String(a["label"]) if a.get("label") is String and a["label"] != "" else String(a.get("platform", ""))
+			var b := button(_approver_box, "Approver%d" % _approver_buttons.size(), func() -> void: approver_chosen.emit(id))
+			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			cat_text(b, "signin.nearby.bodyOn", {"app": args["app"], "device": PKeyUiTheme.isolate(device)})
+			_approver_buttons.append(b)
+	_code_label.visible = waiting and code != ""
+	_code_label.text = code if waiting and code != "" else ""
+	if step == "nearby-done" and pending and _title.visible:
+		_title.text = "\u25c6 " + _title.text
+
+
 ## The plain steps: the title, then the model's body lines in order.
 func _render_plain(copy: Array, row: Array, args: Dictionary) -> void:
 	var lines: Array = (row[1] as Array).filter(func(k): return copy.has(k))
@@ -356,13 +410,18 @@ func _render_confirm(copy: Array, args: Dictionary, tier_known: bool, level: int
 
 
 func _initial_focus() -> Control:
+	for b: Button in _approver_buttons:
+		if is_instance_valid(b) and not b.is_queued_for_deletion() and is_focusable(b):
+			return b
 	if is_focusable(_primary):
 		return _primary
 	return _secondary if is_focusable(_secondary) else null
 
 
 func _focus_chain() -> Array:
-	return [_primary, _secondary, _secondary2]
+	var out: Array = _approver_buttons.filter(func(b): return is_instance_valid(b) and not b.is_queued_for_deletion())
+	out.append_array([_primary, _secondary, _secondary2])
+	return out
 
 
 func _process(_delta: float) -> void:

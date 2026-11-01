@@ -464,7 +464,7 @@ func _gate() -> PKeyResult:
 			"reason": PKeyConstants.UnsupportedReason.PRODUCT,
 			"detail": off,
 		})
-	if not core.tokens.has_token():
+	if not core.tokens.has_token() or core.tokens.unconfirmed():
 		return PKeyResult.failure(PKeyErrors.NO_TOKEN, "Register or sign in before using Cloud Connect.")
 	if _keys == null:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Cloud Connect has no device keys.")

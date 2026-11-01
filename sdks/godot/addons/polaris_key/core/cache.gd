@@ -71,6 +71,10 @@ var explicit_sign_out := false
 ## when unknown. Automatic sign-in's rung 1 counts only `sign_in`. Unsigned: a forged value can only
 ## skip the ladder's network rungs, never grant anything.
 var token_origin := ""
+## True while the held token is a nearby sign-in's that no person confirmed (`tokenUnconfirmed` in the
+## record, written BEFORE the token and dropped AFTER it). It is no sign-in: rung 1 never counts it,
+## Connect and Cloud Sync treat the device as signed out, and a start that finds it drops the token.
+var token_unconfirmed := false
 ## Epoch seconds of the last verification: the newest verified document's signed `issuedAt` at
 ## load, then the time of each successful authenticated exchange (200 or 304). null: never.
 var last_verified_at = null
@@ -122,14 +126,17 @@ func load_record() -> void:
 	if not (rec is Dictionary):
 		_record = null
 		explicit_sign_out = store.cache_unreadable()
+		token_unconfirmed = false
 		return
 	if not PKeyClaims.is_number(rec.get("v")) or float(rec["v"]) != VERSION:
 		_record = null
 		explicit_sign_out = true
+		token_unconfirmed = false
 		return
 	_record = _normalize(rec)
 	explicit_sign_out = PKeyClaims.is_true(_record.get("explicitSignOut"))
 	token_origin = _record.get("tokenOrigin", "")
+	token_unconfirmed = PKeyClaims.is_true(_record.get("tokenUnconfirmed"))
 	var now := clock.system_now()
 
 	# §4.1: the tombstones first, so the manifest, the documents and the bundle all verify against
@@ -337,6 +344,45 @@ func set_token_origin(value: String) -> bool:
 	return true
 
 
+## Write the unconfirmed mark and drop the token's origin in ONE record write. False when the record could not
+## be written; the state is then as it was.
+func mark_unconfirmed() -> bool:
+	var origin := token_origin
+	token_unconfirmed = true
+	token_origin = ""
+	if patch({"tokenUnconfirmed": true, "tokenOrigin": null}):
+		return true
+	token_unconfirmed = false
+	token_origin = origin
+	_record.erase("tokenUnconfirmed")
+	if origin != "":
+		_record["tokenOrigin"] = origin
+	return false
+
+
+## The person confirmed the account: the mark goes and the token is a sign-in, in ONE record write. False when
+## the record could not be written; the token then stays unconfirmed.
+func confirm_unconfirmed() -> bool:
+	token_unconfirmed = false
+	token_origin = "sign_in"
+	if patch({"tokenUnconfirmed": null, "tokenOrigin": "sign_in"}):
+		return true
+	token_unconfirmed = true
+	token_origin = ""
+	_record["tokenUnconfirmed"] = true
+	_record.erase("tokenOrigin")
+	return false
+
+
+## Drop the unconfirmed mark alone (the token it described is gone or was replaced). True when it changed.
+func set_token_unconfirmed(on: bool) -> bool:
+	if on == token_unconfirmed:
+		return false
+	token_unconfirmed = on
+	patch({"tokenUnconfirmed": true if on else null})
+	return true
+
+
 ## Raise or lower the signed-out flag. True when the value changed.
 func set_explicit_sign_out(on: bool) -> bool:
 	if on == explicit_sign_out:
@@ -367,6 +413,9 @@ func replace(rec: Dictionary) -> bool:
 	out.erase("explicitSignOut")
 	if explicit_sign_out:
 		out["explicitSignOut"] = true
+	out.erase("tokenUnconfirmed")
+	if token_unconfirmed:
+		out["tokenUnconfirmed"] = true
 	var evidence := trust.pin_revocations()
 	if not evidence.is_empty():
 		out["pinRevocations"] = evidence
@@ -401,6 +450,7 @@ func _reset_loaded() -> void:
 	blocked = null
 	subject = ""
 	token_origin = ""
+	token_unconfirmed = false
 	last_verified_at = null
 	feeds = {}
 	feed_floors = {}
@@ -476,6 +526,8 @@ static func _normalize(rec: Dictionary) -> Dictionary:
 		out["tokenOrigin"] = rec["tokenOrigin"]
 	if PKeyClaims.is_true(rec.get("explicitSignOut")):
 		out["explicitSignOut"] = true
+	if PKeyClaims.is_true(rec.get("tokenUnconfirmed")):
+		out["tokenUnconfirmed"] = true
 	for slice in UPDATE_SLICES + ["pinRevocations"]:
 		if rec.get(slice) is Dictionary:
 			var m := {}
