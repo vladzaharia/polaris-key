@@ -239,9 +239,15 @@
       "note": "LK-SKIP.6b: bearer mode. signIn.start({channel: \"redirect\", redirectUri, keyReturn: true}) appends key_return=allow and signIn.complete settles an activated outcome (the key's license, subject null, keyEntries) for a via: \"key\" answer, stored as a key activation. The kits start the app at once (no ActivateDone; AccountAndLicense shows Not in an account from the license's profile). A token refusal (device_limit, key_entry_limit, license_owned) carries the typed activation with limit, deviceCount, manageUrl and keyEntries and opens the key step. Both redirect-web-key-return transcripts replay. The desktop renderer signs in by device code only, so its redirect is the same typed unsupported (runtime) as identity.redirect.web."
     },
     "identity.redirect.native": {
-      "status": "planned",
-      "wp": "I-15b",
-      "note": "I-15b: the pushed request, the system-browser session or loopback listener, and the redemption from the pushing device, with the replayer."
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "note": "A browser signs in by identity.redirect.web; it has no loopback listener or registered scheme, and signIn.start({channel: \"redirect\"}) with no redirectUri answers the typed runtime unsupported."
+        }
+      ],
+      "note": "I-15b.8: on the desktop, signIn.start({channel: \"redirect\"}) with no redirectUri forwards to the Node host over the v6 bridge (beginSignIn({channel: \"redirect\"}); the host binds the listener, opens the browser and redeems the code, the renderer holds a flow id). The session polls pollSignIn like the device-code one; reopen() asks the host to open the browser page again, cancel() stops waiting here (the host ends the flow on its next begin, sign-out, window close or expiry). A bridge below v6 is the typed version unsupported. Proof is the host's replay of the redirect-native-* transcripts (sdk-node) plus test/desktopNativeRedirect.test.ts."
     },
     "identity.exchange": {
       "status": "implemented",

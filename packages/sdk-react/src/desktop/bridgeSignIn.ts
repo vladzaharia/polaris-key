@@ -39,8 +39,23 @@ const delay = (ms: number, signal?: AbortSignal): Promise<void> =>
 
 const CANCELLED = Symbol("cancelled");
 
+/** The native redirect sign-in the desktop host runs (I-15b.8; identity.redirect.native): the
+ *  host's main process binds the loopback listener, opens the system browser and redeems the
+ *  code. The renderer holds a flow id and sees the end, never a URL, code or verifier. It polls
+ *  and cancels like the device-code session; `reopen` asks the host to open the page again. */
+export interface NativeRedirectDesktopSession {
+  readonly channel: "redirect";
+  readonly expiresAt: number;
+  readonly interval: number;
+  readonly deviceName: string | null;
+  reopen(): Promise<boolean>;
+  cancel(): void;
+  wait(opts?: { signal?: AbortSignal; once?: boolean }): Promise<SignInOutcome>;
+}
+
 export class BridgeDeviceCodeSession implements DeviceCodeSignInSession {
-  readonly channel = "device-code" as const;
+  /** `"redirect"` for a native redirect session (see `NativeRedirectDesktopSession`). */
+  readonly channel: "device-code";
   readonly userCode: string;
   readonly verificationUri: string;
   readonly verificationUriComplete: string;
@@ -51,6 +66,7 @@ export class BridgeDeviceCodeSession implements DeviceCodeSignInSession {
   readonly #bridge: PolarisBridge;
   readonly #flowId: string;
   readonly #hooks: BridgeSignInHooks;
+  readonly #native: boolean;
   #cancelled = false;
   readonly #abort = new AbortController();
 
@@ -60,7 +76,10 @@ export class BridgeDeviceCodeSession implements DeviceCodeSignInSession {
     deviceName: string | null,
     now: number,
     hooks: BridgeSignInHooks,
+    native = false,
   ) {
+    this.#native = native;
+    this.channel = (native ? "redirect" : "device-code") as "device-code";
     this.#bridge = bridge;
     this.#flowId = begin.flowId;
     this.#hooks = hooks;
@@ -74,8 +93,12 @@ export class BridgeDeviceCodeSession implements DeviceCodeSignInSession {
     this.deviceName = deviceName;
   }
 
-  reopen(): Promise<boolean> {
-    return openUrl(this.verificationUriComplete);
+  async reopen(): Promise<boolean> {
+    if (!this.#native) return openUrl(this.verificationUriComplete);
+    const r = await this.#bridge
+      .beginSignIn({ channel: "redirect", reopen: this.#flowId })
+      .catch(() => null);
+    return (r as { reopened?: unknown } | null)?.reopened === true;
   }
 
   cancel(): void {
@@ -120,7 +143,7 @@ export class BridgeDeviceCodeSession implements DeviceCodeSignInSession {
       }
       const error = new PolarisError(
         r.kind === "denied" ? ErrorCode.signInDenied : ErrorCode.signInFailed,
-        r.kind === "error" ? r.message : "device sign-in was refused.",
+        r.kind === "error" ? r.message : "sign-in was refused.",
       );
       this.#hooks.onFailed(error);
       throw error;

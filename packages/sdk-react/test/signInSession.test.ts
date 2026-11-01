@@ -1,6 +1,6 @@
 // @vitest-environment node
 //
-// @pkey-feature identity.devicecode identity.redirect.web identity.signin.hints identity.toggle identity.keyreturn identity.devicecode.choice
+// @pkey-feature identity.devicecode identity.redirect.web identity.signin.hints identity.toggle identity.keyreturn identity.devicecode.choice identity.redirect.native
 //
 // I-10a.10: `signIn.start` / `signIn.complete` through the ADAPTERS (the transcript replayer
 // drives the bearer engine; this is what the adapter adds): the device-code session and the web
@@ -391,6 +391,19 @@ describe("bearer: device code", () => {
 });
 
 describe("bearer: web redirect", () => {
+  // @pkey-feature identity.redirect.native
+  it("the native redirect (no redirectUri) is typed N/A in a browser; nothing is sent", async () => {
+    const s = await server();
+    const adapter = await bearer(s);
+    await expect(
+      adapter.signIn.start({ channel: "redirect" } as never),
+    ).rejects.toMatchObject({
+      name: "UnsupportedError",
+      feature: "identity.redirect.native",
+      reason: "runtime",
+    });
+  });
+
   it("start builds the authorize URL with the hints and keeps the verifier in sessionStorage by state", async () => {
     const s = await server();
     const adapter = await bearer(s);
