@@ -515,7 +515,10 @@ public final class SavesClient: Sendable {
         case .local:
             return run(
                 conflict.id, DataSource(bytes), conflict.local.metadata, writeOptions,
-                mode: .base(conflict.serverVersion.map { SyncBase.version($0) } ?? .any))
+                // A copy the server no longer holds is replaced on "record must not exist".
+                mode: .base(
+                    conflict.remote == nil || (conflict.serverVersion ?? 0) == 0
+                        ? .any : .version(conflict.serverVersion ?? 0)))
         }
     }
 
@@ -681,7 +684,7 @@ public final class SavesClient: Sendable {
             return .done(id: id, version: version, file: file, copyId: targetId != id ? targetId : nil)
         case .conflict(let server):
             return try await conflictOutcome(
-                records, ctx.codec.enc == "e2e", id, metadata, source.size, server?.version, known: server)
+                records, ctx.codec.enc == "e2e", id, metadata, source.size, server?.version, known: server, hasKnown: true)
         case .rejected(let code):
             return .failed(SavesError(.rejected, detail: code))
         }
@@ -701,16 +704,36 @@ public final class SavesClient: Sendable {
 
     private func conflictOutcome(
         _ records: any SaveRecords, _ e2e: Bool, _ id: String, _ metadata: [String: JSONValue], _ size: Int,
-        _ serverVersion: Int?, known: SaveRecord? = nil
+        _ serverVersion: Int?, known: SaveRecord? = nil, hasKnown: Bool = false
     ) async throws -> SaveOutcome {
-        let rec: SaveRecord?
-        if let known { rec = known } else { rec = try await records.get(id) }
         let slots = try await records.list().count
+        // The server's answer wins. `known` is the copy a rejected `set` carried (nil: deleted). A file `begin`
+        // answers only a version, and the cached row stands in for it only while it is that very version; a
+        // stale row is never presented as the server's copy.
+        let remote: SaveSummary?
+        let version: Int?
+        if hasKnown {
+            remote = known.map { summary($0, e2e: e2e) }
+            version = known?.version ?? serverVersion
+        } else if let serverVersion {
+            if serverVersion == 0 {
+                remote = nil
+            } else if let rec = try await records.get(id), rec.version == serverVersion {
+                remote = summary(rec, e2e: e2e)
+            } else {
+                remote = SaveSummary(
+                    id: id, version: serverVersion, metadata: .object([:]), file: nil, newerFormat: false)
+            }
+            version = serverVersion
+        } else {
+            let rec = try await records.get(id)
+            remote = rec.map { summary($0, e2e: e2e) }
+            version = rec?.version
+        }
         return .conflict(
             SaveConflict(
                 id: id, local: SaveConflict.Local(metadata: .object(metadata), size: size),
-                remote: rec.map { summary($0, e2e: e2e) }, serverVersion: rec?.version ?? serverVersion,
-                bothAvailable: slots < SYNC_SAVE_SLOTS))
+                remote: remote, serverVersion: version, bothAvailable: slots < SYNC_SAVE_SLOTS))
     }
 }
 
