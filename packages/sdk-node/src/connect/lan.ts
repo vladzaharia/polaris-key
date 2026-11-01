@@ -163,6 +163,8 @@ export class LanService {
   #miss = new Map<string, number>();
   #gate: AcceptGate;
   #links = new Set<SocketLink>();
+  /** For a handshake still running: the contacts (id and secret tag) its trial list holds. */
+  #serves = new Map<SocketLink, Set<string>>();
   #sessions = new Set<ConnectSession>();
   #onSession = new Set<(s: ConnectSession) => void>();
   #onPeer = new Set<(p: LanPeer) => void>();
@@ -469,6 +471,14 @@ export class LanService {
       .map((c) => `${c.id}${c.pending ? "p" : "h"}${c.reachable ? "r" : "-"}`)
       .join(",");
     wipeLive(old);
+    // A handshake still running under a contact that is gone (or whose secret was replaced) or
+    // while links are off is ended; an established session is the links layer's to close.
+    const held = new Set(next.map((c) => `${c.id}|${c.tag}`));
+    for (const [k, served] of [...this.#serves])
+      if ([...served].some((x) => !held.has(x))) {
+        this.#serves.delete(k);
+        k.destroy();
+      }
     // A peer seen under a contact that is gone is forgotten.
     const have = new Set(next.map((c) => `${c.id}|${c.pending}`));
     for (const [k, p] of this.#contactPeers)
@@ -552,16 +562,20 @@ export class LanService {
       },
       ...this.#docs.hooks,
       onEstablished: (s) => {
+        this.#serves.delete(link);
         this.#sessions.add(s);
         s.onClose(() => this.#sessions.delete(s));
         if (s.contact?.pending) void this.#src.contactEstablished?.(s.contact);
       },
       onEnded: () => {
         this.#links.delete(link);
+        this.#serves.delete(link);
         for (const l of links) l.secret.fill(0);
       },
     });
     this.#links.add(link);
+    if (served.length > 0)
+      this.#serves.set(link, new Set(served.map((c) => `${c.id}|${c.tag}`)));
     return link;
   }
 

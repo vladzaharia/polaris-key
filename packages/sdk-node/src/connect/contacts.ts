@@ -46,7 +46,19 @@ export interface ContactRef {
   agreeKey: string;
   /** The session was opened under a pending contact: it is a first handshake of a re-pair. */
   pending: boolean;
+  /** @internal A one-way tag of the secret the session opened under (not the secret). */
+  tag: string;
 }
+
+/** A one-way tag that tells two secrets apart without holding either. */
+export const secretTag = (secret: Uint8Array): string =>
+  createHash("sha256")
+    .update("pkey-contact-tag/1")
+    .update(Uint8Array.of(0))
+    .update(secret)
+    .digest()
+    .subarray(0, 12)
+    .toString("base64url");
 
 export const contactId = (agreeKey: string): string =>
   createHash("sha256")
@@ -67,18 +79,21 @@ export interface LiveContact {
   readonly cats: readonly string[];
   readonly reachable: boolean;
   readonly pending: boolean;
+  readonly tag: string;
 }
 
 export function liveOf(row: ContactRow): LiveContact {
+  const secret = base64UrlDecode(row.secret);
   return {
     id: contactId(row.agreeKey),
     agreeKey: row.agreeKey,
     agreeKeyBytes: base64UrlDecode(row.agreeKey),
-    secret: base64UrlDecode(row.secret),
+    secret,
     label: row.label ?? null,
     cats: row.cats,
     reachable: row.reachable,
     pending: row.pendingSince !== undefined,
+    tag: secretTag(secret),
   };
 }
 
@@ -88,6 +103,7 @@ export const refOf = (c: LiveContact): ContactRef => ({
   categories: c.cats,
   agreeKey: c.agreeKey,
   pending: c.pending,
+  tag: c.tag,
 });
 
 /** The contacts in `contactTrialOrder` (held first, then pending), decoded. The caller wipes them. */
@@ -198,9 +214,13 @@ export function storeRow(
 export function promoteRow(
   rows: readonly ContactRow[],
   agreeKey: string,
+  tag?: string,
 ): ContactRow[] {
   const pend = rows.find(
-    (r) => r.pendingSince !== undefined && r.agreeKey === agreeKey,
+    (r) =>
+      r.pendingSince !== undefined &&
+      r.agreeKey === agreeKey &&
+      (tag === undefined || secretTag(base64UrlDecode(r.secret)) === tag),
   );
   const held = rows.find(
     (r) => r.pendingSince === undefined && r.agreeKey === agreeKey,

@@ -6,9 +6,12 @@
 // revocation and the pending contact are covered here; the codecs and the cap are the
 // `peer-matrix.json` `contact` rows (conformance/runners/node).
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { Socket } from "node:net";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UnsupportedError } from "@polaris-key/client-core";
+import { base64UrlEncodeBytes } from "@polaris-key/jws";
+import { promoteRow, secretTag } from "../../src/connect/contacts.js";
 import type { PolarisKeyClient } from "../../src/client.js";
 import {
   LanError,
@@ -626,5 +629,147 @@ describe("mode c through the contact room", () => {
     expect(contactId(k)).toMatch(/^[A-Za-z0-9_-]{16}$/);
     expect(contactId(k)).toBe(contactId(k));
     expect(contactId(k)).not.toContain(k.slice(0, 8));
+  });
+});
+
+/** Hold every client write after the first on a socket (handshake message 3 and later) until `release()`. */
+function holdThirdMessage() {
+  const origConnect = Socket.prototype.connect;
+  const origWrite = Socket.prototype.write;
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  const state = { held: 0 };
+  const marks = new WeakMap<object, number>();
+  const proto = Socket.prototype as unknown as Record<string, unknown>;
+  proto.connect = function (this: Socket, ...args: unknown[]) {
+    marks.set(this, 0);
+    return (origConnect as (...a: unknown[]) => unknown).apply(this, args);
+  };
+  proto.write = function (this: Socket, ...args: unknown[]) {
+    const n = marks.get(this);
+    if (n !== undefined) {
+      marks.set(this, n + 1);
+      if (n + 1 >= 2) {
+        if (n + 1 === 2) state.held++;
+        void gate.then(() =>
+          (origWrite as (...a: unknown[]) => unknown).apply(this, args),
+        );
+        return true;
+      }
+    }
+    return (origWrite as (...a: unknown[]) => unknown).apply(this, args);
+  };
+  return {
+    state,
+    release,
+    restore: () => {
+      proto.connect = origConnect;
+      proto.write = origWrite;
+    },
+  };
+}
+
+describe("links: a handshake in flight when the footing goes (control: revoke-in-flight)", () => {
+  async function inFlight(
+    then: (
+      w: Awaited<ReturnType<typeof world>>,
+      idOfB: string,
+    ) => Promise<void>,
+  ) {
+    const w = await world();
+    const { idOfB, idOfA } = await link(w);
+    await startLan(w.a, w.net);
+    await startLan(w.b, w.net);
+    const inbound: ConnectSession[] = [];
+    const closes: { code: string }[] = [];
+    w.a.cloudConnect.links.onLink((s) => {
+      inbound.push(s);
+      s.onClose((c) => closes.push(c));
+    });
+    const hold = holdThirdMessage();
+    try {
+      const dial = (async () => {
+        for (let i = 0; i < 100 && hold.state.held === 0; i++) {
+          try {
+            return await w.b.cloudConnect.links.open(idOfA, {
+              lanAttemptMs: 20000,
+              relay: false,
+            });
+          } catch {
+            await new Promise((r) => setTimeout(r, 10));
+          }
+        }
+        return undefined;
+      })();
+      await until(() => hold.state.held === 1);
+      await then(w, idOfB);
+      hold.release();
+      await dial.catch(() => undefined);
+      await new Promise((r) => setTimeout(r, 300));
+    } finally {
+      hold.restore();
+    }
+    return { inbound, closes };
+  }
+
+  it("remove() before the handshake completes: no session is delivered to the host", async () => {
+    const { inbound } = await inFlight(async (w, idOfB) => {
+      expect(await w.a.cloudConnect.links.remove(idOfB)).toBe(true);
+    });
+    expect(inbound).toHaveLength(0);
+  });
+
+  it("a gate flip before the handshake completes: no session is delivered to the host", async () => {
+    const { inbound } = await inFlight(async (w) => {
+      w.worker.interAccount = false;
+      await w.a.discover();
+    });
+    expect(inbound).toHaveLength(0);
+  });
+});
+
+describe("links: the cached gate", () => {
+  it("a discovery that is not found closes the gate and withdraws the adverts", async () => {
+    const w = await world();
+    await link(w);
+    await startLan(w.a, w.net);
+    await until(() =>
+      [...w.net.adverts.values()].some((a) => a.txt.includes("m=c")),
+    );
+    w.worker.discoveryStatus = 404;
+    await w.a.discover();
+    expect(w.a.cloudConnect.links.interAccount()).toBe(false);
+    await until(
+      () => ![...w.net.adverts.values()].some((a) => a.txt.includes("m=c")),
+    );
+  });
+
+  it("an answer older than a day no longer counts", async () => {
+    const w = await world();
+    expect(w.a.cloudConnect.links.interAccount()).toBe(true);
+    vi.setSystemTime((T0 + 25 * 3600) * 1000);
+    expect(w.a.cloudConnect.links.interAccount()).toBe(false);
+  });
+});
+
+describe("links: promotion follows the secret", () => {
+  it("a session under a replaced pending secret does not promote the newer pending row", () => {
+    const row = (secret: string, pendingSince?: number) => ({
+      agreeKey: "A".repeat(43),
+      secret,
+      cats: ["notes"],
+      createdAt: 1,
+      reachable: true,
+      ...(pendingSince !== undefined ? { pendingSince } : {}),
+    });
+    const s1 = base64UrlEncodeBytes(new Uint8Array(32).fill(1));
+    const s2 = base64UrlEncodeBytes(new Uint8Array(32).fill(2));
+    const rows = [row(s1), row(s2, 5)];
+    const tag1 = secretTag(new Uint8Array(32).fill(1));
+    const tag2 = secretTag(new Uint8Array(32).fill(2));
+    expect(promoteRow(rows, "A".repeat(43), tag1)).toEqual(rows);
+    expect(promoteRow(rows, "A".repeat(43), tag2).map((r) => r.secret)).toEqual(
+      [s2],
+    );
   });
 });

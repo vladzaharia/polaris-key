@@ -82,6 +82,7 @@ import {
   contactId,
   dropStaleRows,
   promoteRow,
+  secretTag,
   storeRow,
   trialOrderOf,
   type LiveContact,
@@ -345,11 +346,15 @@ export class ConnectClient {
       onContacts: (fn) => this.onContactsChanged(fn),
       contactEstablished: async (ref) => {
         // The first handshake under a pending contact passed the pin: it replaces the held one.
+        // Only the row whose secret opened the session is promoted; a replaced pending row is not.
         await this.updateContacts((rows) =>
           rows.some(
-            (r) => r.pendingSince !== undefined && r.agreeKey === ref.agreeKey,
+            (r) =>
+              r.pendingSince !== undefined &&
+              r.agreeKey === ref.agreeKey &&
+              secretTag(base64UrlDecode(r.secret)) === ref.tag,
           )
-            ? promoteRow(rows, ref.agreeKey)
+            ? promoteRow(rows, ref.agreeKey, ref.tag)
             : null,
         );
       },
@@ -635,6 +640,19 @@ export class ConnectClient {
   }
 
   // ── Contacts (inter-account links, §15.10) ──────────────────────────────────────────────────
+
+  /**
+   * Whether the contact a session opened under is still held (same peer key, same secret) and links
+   * are still on. A session that fails this is closed by the caller. @internal
+   */
+  async holdsContact(ref: { agreeKey: string; tag: string }): Promise<boolean> {
+    if (!this.interAccount()) return false;
+    return (await this.contactRows()).some(
+      (r) =>
+        r.agreeKey === ref.agreeKey &&
+        secretTag(base64UrlDecode(r.secret)) === ref.tag,
+    );
+  }
 
   /** The cached `interAccount` answer of discovery; false while none is known. @internal */
   interAccount(): boolean {

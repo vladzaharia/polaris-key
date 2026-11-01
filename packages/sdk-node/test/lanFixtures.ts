@@ -123,6 +123,8 @@ export class MultiWorker {
   relayUrl = `wss://k.test/${PRODUCT}/connect/relay`;
   /** Discovery's `services.connect.interAccount` and whether contact tickets are served (§15.7). */
   interAccount = false;
+  /** The status of the discovery route (200 answers the document). */
+  discoveryStatus = 200;
   /** An older Worker ignores the contact body and answers an account ticket. */
   echoRoom = true;
   /** Contact tickets: ticket to device and rid, and every ticket request body seen. */
@@ -168,7 +170,9 @@ export class MultiWorker {
     const j = (b: unknown, s = 200) =>
       new Response(JSON.stringify(b), { status: s });
     if (path === ".well-known/polaris.json")
-      return j(discovery(this.interAccount));
+      return this.discoveryStatus === 200
+        ? j(discovery(this.interAccount))
+        : j({}, this.discoveryStatus);
     const auth = new Headers(init?.headers).get("authorization") ?? "";
     const deviceId = this.tokens.get(auth.replace("Bearer ", ""));
     if (deviceId === undefined) return j({}, 401);

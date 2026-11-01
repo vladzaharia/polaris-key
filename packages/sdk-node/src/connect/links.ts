@@ -180,7 +180,7 @@ export class CloudLinks {
         lan.contactPeers().some((p) => p.id === id && p.pending === pending)
       ) {
         try {
-          return this.#track(
+          return await this.#trackHeld(
             await this.#bounded(
               lan.connectContact(id, pending),
               o.lanAttemptMs ?? this.#lanAttemptMs,
@@ -192,7 +192,7 @@ export class CloudLinks {
       }
       if (this.#relay !== null && o.relay !== false && this.#relayOn) {
         try {
-          return this.#track(await this.#relay.dial(id, pending));
+          return await this.#trackHeld(await this.#relay.dial(id, pending));
         } catch (e) {
           last = e instanceof Error ? e : null;
         }
@@ -255,7 +255,28 @@ export class CloudLinks {
 
   #inbound(s: ConnectSession): void {
     this.#track(s);
-    for (const f of [...this.#onLink]) f(s);
+    // The handshake may have begun before the contact was removed or the gate went off: the
+    // session is delivered only while the contact (same secret) is held and links are on.
+    void this.#stillHeld(s).then((ok) => {
+      if (ok) for (const f of [...this.#onLink]) f(s);
+    });
+  }
+
+  /** Close `s` (peer_revoked, or peer_bye when the gate is off) unless its contact is still held. */
+  async #stillHeld(s: ConnectSession): Promise<boolean> {
+    const ref = s.contact;
+    if (ref === null) return true;
+    const on = this.connect.interAccount();
+    const held = on && (await this.connect.holdsContact(ref));
+    if (held) return true;
+    await s.close(on ? "peer_revoked" : "peer_bye").catch(() => undefined);
+    return false;
+  }
+
+  async #trackHeld(s: ConnectSession): Promise<ConnectSession> {
+    this.#track(s);
+    if (await this.#stillHeld(s)) return s;
+    throw new LanError("unknown_peer", "That link was removed.");
   }
 
   #track(s: ConnectSession): ConnectSession {

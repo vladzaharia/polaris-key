@@ -111,6 +111,8 @@ export { DeviceManagementUnsupportedError };
 
 /** The registry runtime id of this SDK (packages/sdk-node/parity.json). */
 const NODE_RUNTIME = "node";
+/** How long a discovery answer of `interAccount: true` counts without a fresh read (24 h). */
+const INTER_ACCOUNT_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface PolarisKeyClientOptions extends CoreOptions {
   /** Config service inputs (override layers). */
@@ -234,6 +236,9 @@ export class PolarisKeyClient {
   private readonly probes: DevicesClientOptions["probes"];
   private timer: ReturnType<typeof setInterval> | null = null;
   private discoveryDoc: ProductDiscoveryDocument | null = null;
+  /** Epoch ms until which the cached `interAccount` answer counts; 0 while none is valid. */
+  private linksUntil = 0;
+  private linksTimer: NodeJS.Timeout | null = null;
   /** Discovery's `core.presentation` and its verified icon (HA-13). */
   private readonly presentationStore: PresentationStore;
   /** Discovery's `core.portal`, the terminal kits' product page link (DISC-01). */
@@ -361,6 +366,8 @@ export class PolarisKeyClient {
         },
         // WIRE-CONTRACT-V5 §15.9: links are on only while the cached document says so.
         interAccount: () => {
+          // A cached answer lapses (INTER_ACCOUNT_TTL_MS); a failed or empty re-read clears it.
+          if (Date.now() >= this.linksUntil) return false;
           const f: unknown = this.discoveryDoc?.services?.connect;
           return (
             typeof f === "object" &&
@@ -612,10 +619,30 @@ export class PolarisKeyClient {
       await this.portalStore.accept(result.manifest);
       this.cloudSyncHost.noteDiscovery();
       void this.cloudSyncApi.attach().catch(() => undefined);
+      this.linksUntil = Date.now() + INTER_ACCOUNT_TTL_MS;
+      this.#rereadLinksGate();
       // `interAccount` may have moved: links follow the document (§15.10 "Gates").
+      this.connect.notifyContacts();
+    } else if (this.linksUntil !== 0) {
+      // Not found, invalid or unreachable: the cached links answer is no longer trusted.
+      this.linksUntil = 0;
       this.connect.notifyContacts();
     }
     return result;
+  }
+
+  /** Re-read discovery when the cached links answer lapses, so a lapse withdraws the adverts. */
+  #rereadLinksGate(): void {
+    if (this.linksTimer !== null) clearTimeout(this.linksTimer);
+    this.linksTimer = setTimeout(() => {
+      this.linksTimer = null;
+      void this.discover()
+        .catch(() => undefined)
+        .finally(() => {
+          if (Date.now() >= this.linksUntil) this.connect.notifyContacts();
+        });
+    }, INTER_ACCOUNT_TTL_MS);
+    this.linksTimer.unref();
   }
 
   // ── The product page link (core.portal, DISC-01) ───────────────────────────────────────
@@ -1017,6 +1044,8 @@ export class PolarisKeyClient {
 
   /** Stop the refresh timers and Cloud Connect. Safe to call more than once. */
   close(): void {
+    if (this.linksTimer !== null) clearTimeout(this.linksTimer);
+    this.linksTimer = null;
     void this.cloudConnect.stop().catch(() => undefined);
     void this.cloudConnect.nearby.stopAll().catch(() => undefined);
     void this.cloudSyncHost.close().catch(() => undefined);
