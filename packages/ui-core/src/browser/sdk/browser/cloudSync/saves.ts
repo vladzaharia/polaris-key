@@ -517,6 +517,7 @@ export class SavesApi implements BrowserSaves {
     return new SavesClient({
       records: this.#records,
       ...(d.deviceLabel ? { deviceLabel: d.deviceLabel } : {}),
+      onState: () => this.#emit(null),
       engine,
       transport: files.transport,
       codec,

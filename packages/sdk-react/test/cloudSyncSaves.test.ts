@@ -236,7 +236,10 @@ describe("cloudSync.saves in the browser host", () => {
     ).done;
     expect(stale.state).toBe("conflict");
     if (stale.state !== "conflict") return;
-    expect(stale.conflict.remote?.metadata).toEqual({ n: 1 });
+    expect(stale.conflict.remote?.metadata).toMatchObject({
+      n: 1,
+      savedAt: expect.any(Number),
+    });
     const kept = await (
       await r.saves.resolve(stale.conflict, "local", bytes(900, 2))
     ).done;

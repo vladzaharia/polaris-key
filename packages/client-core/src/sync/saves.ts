@@ -266,6 +266,8 @@ export interface SavesDeps {
   deviceLabel?: () => string | null | undefined;
   /** The clock for `savedAt` (epoch ms); default `Date.now`. */
   now?: () => number;
+  /** A write went running, paused or settled: a host that draws the transfers redraws. */
+  onState?: () => void;
 }
 
 const DEFAULT_MAX_BYTES = 32 * 1024 * 1024;
@@ -674,6 +676,7 @@ export class SavesClient {
       attempt,
       () => this.d.engine.cancel(transferId),
       () => hard.abort(),
+      this.d.onState,
     );
   }
 
@@ -867,6 +870,7 @@ class WriteTransfer implements SaveTransfer {
     private readonly attempt: (signal: AbortSignal) => Promise<SaveOutcome>,
     private readonly release: () => Promise<void>,
     private readonly onCancel: () => void = () => undefined,
+    private readonly onState: () => void = () => undefined,
   ) {
     this.done = this.drive();
   }
@@ -896,20 +900,20 @@ class WriteTransfer implements SaveTransfer {
     for (;;) {
       this.controller = new AbortController();
       if (this.wanted === "pause") this.controller.abort();
-      this.state = "running";
+      this.setState("running");
       try {
         const outcome = await this.attempt(this.controller.signal);
         if (this.want() === "cancel") return this.cancelled();
-        this.state = outcome.state === "done" ? "done" : outcome.state;
+        this.setState(outcome.state === "done" ? "done" : outcome.state);
         return outcome;
       } catch (e) {
         if (this.want() === "cancel") return this.cancelled();
         if (!(e instanceof TransferError && e.reason === "aborted")) {
-          this.state = "failed";
+          this.setState("failed");
           return { state: "failed", error: asSavesError(e) };
         }
         // Paused: wait for resume (or cancel).
-        this.state = "paused";
+        this.setState("paused");
         await new Promise<void>((resolve) => {
           this.gate = resolve;
           if (this.want() !== "pause") resolve();
@@ -918,6 +922,16 @@ class WriteTransfer implements SaveTransfer {
         if (this.want() === "cancel") return this.cancelled();
         this.wanted = "run";
       }
+    }
+  }
+
+  private setState(next: TransferState): void {
+    if (this.state === next) return;
+    this.state = next;
+    try {
+      this.onState();
+    } catch {
+      // A listener's failure is its own.
     }
   }
 
@@ -932,7 +946,7 @@ class WriteTransfer implements SaveTransfer {
     } catch {
       // The server expires the upload within the day.
     }
-    this.state = "cancelled";
+    this.setState("cancelled");
     return { state: "cancelled" };
   }
 }

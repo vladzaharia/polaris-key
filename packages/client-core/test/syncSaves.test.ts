@@ -149,6 +149,7 @@ function rig(
     saveFormatVersion?: number;
     now?: () => number;
     deviceLabel?: () => string | null;
+    onState?: () => void;
   } = {},
 ) {
   const server = new FakeServer();
@@ -171,6 +172,7 @@ function rig(
     codec,
     delta: over.delta ?? false,
     cache: memoryChunkCache(),
+    ...(over.onState ? { onState: over.onState } : {}),
     ...(over.now ? { now: over.now } : {}),
     ...(over.deviceLabel ? { deviceLabel: over.deviceLabel } : {}),
     ...(over.maxBytes !== undefined ? { maxBytes: over.maxBytes } : {}),
@@ -686,10 +688,16 @@ const until = async (cond: () => boolean): Promise<void> => {
 
 describe("saves, the transfer handle", () => {
   it("pauses, resumes and finishes without sending a stored chunk again", async () => {
-    const r = rig({ delta: true });
+    const states: string[] = [];
+    const seen = { t: null as null | { state: string } };
+    const r = rig({
+      delta: true,
+      onState: () => seen.t && states.push(seen.t.state),
+    });
     const big = noise(3 * MIB, 31);
     const hold = holdFirstPut(r.server);
     const t = r.saves.write("a", big, meta);
+    seen.t = t;
     await until(hold.held);
     t.pause();
     hold.release();
@@ -701,6 +709,8 @@ describe("saves, the transfer handle", () => {
     const out = await t.done;
     expect(out.state).toBe("done");
     expect(t.state).toBe("done");
+    // A host that draws the transfers is told of the pause and the resume.
+    expect(states).toEqual(["paused", "running", "done"]);
     // Each chunk was stored once across both runs.
     expect(r.server.chunkPuts.length).toBe(new Set(r.server.chunkPuts).size);
     expect(r.server.chunkPuts.length).toBeGreaterThan(sent);
