@@ -499,7 +499,7 @@ final class KitRulesTests: XCTestCase {
                 + PolarisKeyPreviewState.of(.cloudSyncStatus).filter {
                     ["transferring", "waiting", "transfer-failed"].contains($0.state)
                 }
-            XCTAssertEqual(previews.count, 9)
+            XCTAssertEqual(previews.count, 13)
             for preview in previews {
                 for size in [DynamicTypeSize.large, .accessibility3, .accessibility5] {
                     for scheme in [ColorScheme.dark, .light] {
