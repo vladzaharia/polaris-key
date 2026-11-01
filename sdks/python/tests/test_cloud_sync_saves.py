@@ -175,6 +175,28 @@ def test_write_then_metadata_at_the_finalize_version_and_read_back(tmp_path: Pat
     c.close()
 
 
+def test_the_new_file_is_listed_at_once_with_no_echo_of_the_record_in_the_push_reply(tmp_path: Path) -> None:
+    w = SavesWorld()
+    push = w.push
+
+    def no_echo(body: Dict[str, Any]) -> Dict[str, Any]:
+        return {**push(body), "changes": []}
+
+    w.push = no_echo
+    c = signed_in(w, tmp_path)
+    first = data(300, 1)
+    out1 = c.cloud_sync.saves.write("slot-1", first, {"chapter": "one"}).wait(10)
+    assert out1["state"] == "done"
+    listed = c.cloud_sync.saves.list()
+    assert [(s["id"], s["file"]["size"], s["file"]["sha256"]) for s in listed] == [("slot-1", 300, sha(first))]
+    second = data(500, 2)
+    out2 = c.cloud_sync.saves.write("slot-1", second, {"chapter": "two"}, base_version=out1["version"]).wait(10)
+    assert out2["state"] == "done"
+    read = c.cloud_sync.saves.read("slot-1")
+    assert read["ok"] and read["metadata"] == {"chapter": "two"} and read["bytes"] == second
+    c.close()
+
+
 def test_a_stale_write_is_a_conflict_that_carries_the_server_copy(tmp_path: Path) -> None:
     w = SavesWorld()
     w.rows["slot-1"] = {

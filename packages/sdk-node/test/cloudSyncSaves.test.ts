@@ -239,6 +239,44 @@ describe("cloudSync.saves", () => {
     client.close();
   });
 
+  it("lists the new file at once after a write, with no echo of the record in the push reply", async () => {
+    const { w } = savesWorld();
+    const push = w.push;
+    w.push = (body) => ({ ...push(body), changes: [] });
+    const { client } = await signedIn(w);
+    const first = bytes(300, 1);
+    const out1 = await (
+      await client.cloudSync.saves.write("slot-1", first, { chapter: "one" })
+    ).done;
+    expect(out1).toMatchObject({ state: "done" });
+    const list1 = await client.cloudSync.saves.list();
+    expect(list1).toEqual([
+      expect.objectContaining({
+        id: "slot-1",
+        file: expect.objectContaining({ size: 300, sha256: sha(first) }),
+      }),
+    ]);
+
+    const second = bytes(500, 2);
+    const out2 = await (
+      await client.cloudSync.saves.write(
+        "slot-1",
+        second,
+        { chapter: "two" },
+        { baseVersion: out1.state === "done" ? (out1.version ?? 0) : 0 },
+      )
+    ).done;
+    expect(out2).toMatchObject({ state: "done" });
+    const read = await client.cloudSync.saves.read("slot-1");
+    expect(read).toMatchObject({ ok: true, metadata: { chapter: "two" } });
+    expect(
+      read.ok &&
+        read.bytes &&
+        Buffer.from(read.bytes).equals(Buffer.from(second)),
+    ).toBe(true);
+    client.close();
+  });
+
   it("reports a stale write as a conflict that carries the server copy", async () => {
     const { w, rows } = savesWorld();
     rows.set("slot-1", {

@@ -128,7 +128,10 @@ public protocol SaveRecords: Sendable {
     /// Push the metadata `set` on `base`, the version `finalize` answered. The wait for the one outcome has
     /// no timeout: the caller's cancel (`stop`), a sign-out (the write is dropped) and the host's retries
     /// are what end it. A cancel throws an `aborted` `TransferError`.
-    func set(_ id: String, value: [String: JSONValue], base: SyncBase, stop: SaveStop?) async throws -> SaveSetResult
+    /// `file` is the pointer `finalize` answered; an acknowledged set adopts it on the row.
+    func set(
+        _ id: String, value: [String: JSONValue], base: SyncBase, file: SaveFile?, stop: SaveStop?
+    ) async throws -> SaveSetResult
     func delete(_ id: String, baseVersion: Int) async throws -> SaveSetResult
 }
 
@@ -673,7 +676,7 @@ public final class SavesClient: Sendable {
                 "sha256": .string(file.sha256), "size": .int(file.size), "format": .string(file.format.rawValue),
             ])
         }
-        switch try await records.set(targetId, value: value, base: .version(file.version), stop: stop) {
+        switch try await records.set(targetId, value: value, base: .version(file.version), file: file, stop: stop) {
         case .ok(let version):
             return .done(id: id, version: version, file: file, copyId: targetId != id ? targetId : nil)
         case .conflict(let server):

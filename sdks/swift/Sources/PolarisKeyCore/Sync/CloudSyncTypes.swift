@@ -174,12 +174,16 @@ public struct SyncOp: Sendable, Equatable {
     public var parked: SyncParkReason?
     /// Journal-only: the caller's ticket from `putAt` / `removeAt`; never on the wire.
     public var ticket: Int?
+    /// Journal-only: the pointer `putAt` was given (the one the save's finalize returned); the row adopts it
+    /// when the op is acknowledged `ok`. Never on the wire.
+    public var file: SyncFilePointer?
 
     public init(
         mutationId: Int, target: SyncTarget, op: SyncOpName, value: JSONValue? = nil,
         member: String? = nil, element: JSONValue? = nil, observedSeq: Int? = nil,
         editedHlc: String? = nil, baseVersion: Int? = nil, baseAny: Bool = false,
-        preContact: Bool = false, moved: Bool = false, parked: SyncParkReason? = nil, ticket: Int? = nil
+        preContact: Bool = false, moved: Bool = false, parked: SyncParkReason? = nil, ticket: Int? = nil,
+        file: SyncFilePointer? = nil
     ) {
         self.mutationId = mutationId
         self.target = target
@@ -195,6 +199,7 @@ public struct SyncOp: Sendable, Equatable {
         self.moved = moved
         self.parked = parked
         self.ticket = ticket
+        self.file = file
     }
 
     /// The push body's form (no journal-only marks).

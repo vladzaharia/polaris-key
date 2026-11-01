@@ -12,6 +12,8 @@ import im.plrs.key.core.sync.CloudSyncMachine
 import im.plrs.key.core.sync.CloudSyncOptions
 import im.plrs.key.core.sync.OpenedBody
 import im.plrs.key.core.sync.OpenedRow
+import im.plrs.key.core.sync.PutAtResult
+import im.plrs.key.core.sync.RecordFile
 import im.plrs.key.core.sync.SyncJson
 import im.plrs.key.core.sync.SyncResponse
 import kotlinx.serialization.json.JsonArray
@@ -101,6 +103,9 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
         (o["conflicts"] as? JsonObject).orEmpty().entries.associate { it.key.toLong() to row(it.value) },
     )
 
+    private fun putAt(args: JsonArray): PutAtResult =
+        machine.putAt(args[0].stringValue!!, args[1].stringValue!!, args[2], args[3], RecordFile.of(args.getOrNull(4)))
+
     private fun local(raw: JsonObject, where: String) {
         val args = raw["args"].arrayValue ?: JsonArray(emptyList())
         val result: JsonElement = when (val call = raw["call"].stringValue) {
@@ -109,7 +114,7 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
             "put" -> machine.put(args[0].stringValue!!, args[1].stringValue!!, args[2]).toJson()
             "add" -> machine.add(args[0].stringValue!!, args[1].stringValue!!, args[2]).toJson()
             "remove" -> machine.remove(args[0].stringValue!!, args[1].stringValue!!, args[2]).toJson()
-            "putAt" -> machine.putAt(args[0].stringValue!!, args[1].stringValue!!, args[2], args[3]).toJson()
+            "putAt" -> putAt(args).toJson()
             "removeAt" -> machine.removeAt(args[0].stringValue!!, args[1].stringValue!!, args[2]).toJson()
             "flush" -> machine.flush().toJson()
             "refresh" -> machine.refresh().toJson()

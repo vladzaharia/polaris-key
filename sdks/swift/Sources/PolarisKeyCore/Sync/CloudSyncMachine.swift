@@ -263,6 +263,7 @@ extension SyncOp {
         if moved { o["moved"] = .bool(true) }
         if let parked { o["parked"] = .string(parked.rawValue) }
         if let ticket { o["ticket"] = .int(ticket) }
+        if let file { o["file"] = file.json }
         return .object(o)
     }
 }
@@ -632,10 +633,13 @@ public final class CloudSyncMachine {
 
     /// Write a `revision` record at exactly `baseVersion`: a new mutation, never coalesced with a
     /// queued edit and never rebased on a conflict. Its outcome goes to `onOutcome`. Returns the ticket.
-    public func putAt(_ collection: String, _ recordId: String, _ value: JSONValue, baseVersion: SyncBase)
-        -> SyncTicketResult
-    {
-        exactOp(collection, recordId, baseVersion, op: .set, value: value)
+    /// `file` is the pointer the save's finalize returned: on `ok` the row takes it with the new version;
+    /// without one the row keeps its prior file.
+    public func putAt(
+        _ collection: String, _ recordId: String, _ value: JSONValue, baseVersion: SyncBase,
+        file: SyncFilePointer? = nil
+    ) -> SyncTicketResult {
+        exactOp(collection, recordId, baseVersion, op: .set, value: value, file: file)
     }
 
     /// Delete a `revision` record at exactly `baseVersion` (removes its file).
@@ -648,7 +652,8 @@ public final class CloudSyncMachine {
     public func onOutcome(_ listener: ((Int, SyncRecordOutcome) -> Void)?) { outcome = listener }
 
     func exactOp(
-        _ collection: String, _ recordId: String, _ base: SyncBase, op: SyncOpName, value: JSONValue?
+        _ collection: String, _ recordId: String, _ base: SyncBase, op: SyncOpName, value: JSONValue?,
+        file: SyncFilePointer? = nil
     ) -> SyncTicketResult {
         guard let decl = collectionDecl(collection), decl.policy == "revision" else {
             return .failed("collection-unknown")
@@ -663,6 +668,7 @@ public final class CloudSyncMachine {
         case .version(let v): mutation.baseVersion = v
         }
         mutation.ticket = ticket
+        mutation.file = file
         _ = enqueue(name, mutation)
         kick()
         return .ticket(ticket)

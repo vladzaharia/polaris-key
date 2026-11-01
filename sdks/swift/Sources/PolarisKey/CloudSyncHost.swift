@@ -265,10 +265,10 @@ public actor CloudSyncHost {
     /// settle it, so a caller can be waiting on the ticket before its outcome exists.
     func putAt(
         _ collection: String, _ id: String, _ value: JSONValue, base: SyncBase,
-        onTicket: (@Sendable (Int) -> Void)? = nil
+        file: SyncFilePointer? = nil, onTicket: (@Sendable (Int) -> Void)? = nil
     ) -> SyncTicketResult {
         guard let m = machine else { return .failed("signed-out") }
-        let r = m.putAt(collection, id, value, baseVersion: base)
+        let r = m.putAt(collection, id, value, baseVersion: base, file: file)
         if case .ticket(let t) = r { onTicket?(t) }
         return r
     }

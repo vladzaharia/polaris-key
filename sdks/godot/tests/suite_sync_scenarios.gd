@@ -78,7 +78,7 @@ func _shape(t: PKeyTestContext, corpus: Dictionary) -> void:
 	var family_names := {}
 	for sc: Dictionary in family["scenarios"]:
 		family_names[sc["name"]] = true
-	t.check("fileRecordCases is declared (16 cases)", family["scenarios"].size() == 16 and family_names.size() == 16)
+	t.check("fileRecordCases is declared (19 cases)", family["scenarios"].size() == 19 and family_names.size() == 19)
 	t.check("fileRecordCases vocabulary is the driver's", Types.json_equal(family["calls"], FILE_RECORD_CALLS) and Types.json_equal(family["asserts"], FILE_RECORD_ASSERTS))
 	t.check("every step and call is known", unknown == 0, str(unknown))
 	t.check("the corpus has scenarios, rules and setting cases", corpus["scenarios"].size() > 0 and corpus["rules"].size() > 0 and corpus["settingCases"].size() > 0)
@@ -144,7 +144,7 @@ func _file_record_cases(t: PKeyTestContext, corpus: Dictionary, family: Dictiona
 func _call(m: Variant, name: String, args: Array) -> Dictionary:
 	match name:
 		"putAt":
-			return m.put_at(args[0], args[1], args[2], args[3])
+			return m.put_at(args[0], args[1], args[2], args[3], args[4] if args.size() > 4 else null)
 		"removeAt":
 			return m.remove_at(args[0], args[1], args[2])
 		"set":

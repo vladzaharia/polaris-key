@@ -93,8 +93,11 @@ public interface SyncExactRecords {
      */
     public fun records(collection: String): List<RecordRow>
 
-    /** Write a `revision` record at exactly [baseVersion] (a version or `"*"`): never coalesced, never rebased. */
-    public fun putAt(collection: String, id: String, value: JsonElement, baseVersion: JsonElement): PutAtResult
+    /**
+     * Write a `revision` record at exactly [baseVersion] (a version or `"*"`): never coalesced, never rebased. [file] is the
+     * pointer the save's finalize returned: on `ok` the row takes it with the new version; without one the row keeps its prior file.
+     */
+    public fun putAt(collection: String, id: String, value: JsonElement, baseVersion: JsonElement, file: RecordFile? = null): PutAtResult
 
     /** Delete a `revision` record at exactly [baseVersion] (removes its file, V5 section 13.8.1). */
     public fun removeAt(collection: String, id: String, baseVersion: JsonElement): PutAtResult

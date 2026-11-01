@@ -85,6 +85,9 @@ export interface SaveRecords {
      *  `TransferError`. A pause does not fire it. There is no timeout: cancel, a sign-out drop and
      *  the host's retries are what end a wait. */
     cancel?: AbortSignal,
+    /** The pointer `finalize` returned: an acknowledged set adopts it, so the row lists the new
+     *  file at once instead of the prior one (or none). */
+    file?: SaveFileRef,
   ): Promise<SaveSetResult>;
   delete(id: string, baseVersion: number): Promise<SaveSetResult>;
 }
@@ -610,6 +613,12 @@ export class SavesClient {
         value,
         file.version,
         hard.signal,
+        {
+          version: file.version,
+          size: file.size,
+          sha256: file.sha256,
+          format: file.format,
+        },
       );
       if (set.ok)
         return {

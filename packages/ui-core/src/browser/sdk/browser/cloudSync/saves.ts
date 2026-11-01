@@ -43,6 +43,7 @@ import {
   type SaveOutcome,
   type SaveRead,
   type SaveRecord,
+  type SaveFileRef,
   type SaveRecords,
   type SaveSetResult,
   type SaveSummary,
@@ -212,9 +213,17 @@ export class MachineRecords implements SaveRecords {
     value: Meta,
     baseVersion: number | "*",
     cancel?: AbortSignal,
+    file?: SaveFileRef,
   ): Promise<SaveSetResult> {
     const r = await this.#wait(
-      () => this.#host.machine.putAt(SAVES_COLLECTION, id, value, baseVersion),
+      () =>
+        this.#host.machine.putAt(
+          SAVES_COLLECTION,
+          id,
+          value,
+          baseVersion,
+          file,
+        ),
       cancel,
     );
     return r.ok === false && r.reason === "conflict" && r.server !== null

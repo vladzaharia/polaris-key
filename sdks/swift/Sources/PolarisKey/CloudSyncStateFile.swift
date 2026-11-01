@@ -308,6 +308,7 @@ extension SyncOp {
             mutationId: id, target: target, op: op, value: o["value"], member: o["member"]?.stringValue,
             element: o["element"], observedSeq: o["observedSeq"]?.intValue, editedHlc: o["editedHlc"]?.stringValue,
             baseVersion: base, baseAny: any, preContact: o["preContact"]?.boolValue ?? false,
-            moved: o["moved"]?.boolValue ?? false, parked: parked, ticket: o["ticket"]?.intValue)
+            moved: o["moved"]?.boolValue ?? false, parked: parked, ticket: o["ticket"]?.intValue,
+            file: SyncFilePointer(json: o["file"]))
     }
 }

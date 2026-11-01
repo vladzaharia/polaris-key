@@ -283,7 +283,7 @@ def _new_partition(client_id: Optional[str]) -> Obj:
     }
 
 
-_JOURNAL_ONLY = ("preContact", "moved", "parked", "ticket")
+_JOURNAL_ONLY = ("preContact", "moved", "parked", "ticket", "file")
 
 
 def wire_of(op: Obj) -> Obj:
@@ -590,10 +590,14 @@ class CloudSyncMachine:
             )
         return out
 
-    def put_at(self, collection: str, record_id: str, value: Json, base_version: Any) -> CallResult:
+    def put_at(
+        self, collection: str, record_id: str, value: Json, base_version: Any, file: Optional[Obj] = None
+    ) -> CallResult:
         """Write a ``revision`` record at exactly ``base_version``: a new mutation, never coalesced
-        with a queued edit and never rebased on a conflict. Its outcome goes to :meth:`on_outcome`."""
-        return self._exact_op(collection, record_id, base_version, {"op": "set", "value": _clone(value)})
+        with a queued edit and never rebased on a conflict. Its outcome goes to :meth:`on_outcome`.
+        ``file`` is the pointer the save's finalize returned: on ``ok`` the row takes it with the new
+        version; without one the row keeps its prior file."""
+        return self._exact_op(collection, record_id, base_version, {"op": "set", "value": _clone(value)}, file)
 
     def remove_at(self, collection: str, record_id: str, base_version: Any) -> CallResult:
         """Delete a ``revision`` record at exactly ``base_version`` (removes its file)."""
@@ -604,7 +608,9 @@ class CloudSyncMachine:
         arrives or on sign-out. It must not call the machine. ``None`` removes it."""
         self._outcome = fn
 
-    def _exact_op(self, collection: str, record_id: str, base_version: Any, body: Obj) -> CallResult:
+    def _exact_op(
+        self, collection: str, record_id: str, base_version: Any, body: Obj, file: Optional[Obj] = None
+    ) -> CallResult:
         decl = self._collection(collection)
         if decl is None or decl["policy"] != "revision":
             return _fail("collection-unknown")
@@ -617,6 +623,9 @@ class CloudSyncMachine:
         ticket = p.get("nextTicket", 1)
         p["nextTicket"] = ticket + 1
         op["ticket"] = ticket
+        pointer = _file_of(file)
+        if pointer is not None:
+            op["file"] = pointer
         self._kick()
         return {"ok": True, "mutationId": ticket}
 
@@ -1644,7 +1653,7 @@ class CloudSyncMachine:
                 p["records"][rk] = {
                     "value": value,
                     "version": r["version"],
-                    **_file_mark(prior.get("file") if prior else None),
+                    **_file_mark(op.get("file") or (prior.get("file") if prior else None)),
                 }
             if rk in p["held"]:
                 rebase_on, has_rebase = r["version"], True

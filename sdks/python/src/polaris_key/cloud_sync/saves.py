@@ -122,11 +122,16 @@ class SaveRecords:
         raise NotImplementedError
 
     def set(
-        self, id: str, value: Obj, base_version: Any, cancel: Optional[threading.Event] = None
+        self,
+        id: str,
+        value: Obj,
+        base_version: Any,
+        cancel: Optional[threading.Event] = None,
+        file: Optional[Obj] = None,
     ) -> Obj:  # pragma: no cover - interface
         """``cancel`` is set when the caller cancels the write (a pause does not set it): stop waiting and
         raise an ``aborted`` :class:`TransferError`. There is no timeout: cancel, a sign-out drop and the
-        host's retries end a wait."""
+        host's retries end a wait. ``file`` is the pointer finalize returned; an acknowledged set adopts it."""
         raise NotImplementedError
 
     def delete(self, id: str, base_version: int) -> Obj:  # pragma: no cover - interface
@@ -222,8 +227,15 @@ class MachineRecords(SaveRecords):
             return {"ok": False, "reason": "rejected", "code": o["code"]}
         return {"ok": False, "reason": "rejected", "code": "signed-out"}
 
-    def set(self, id: str, value: Obj, base_version: Any, cancel: Optional[threading.Event] = None) -> Obj:
-        return self._wait(lambda m: m.put_at(SAVES_COLLECTION, id, value, base_version), id, cancel)
+    def set(
+        self,
+        id: str,
+        value: Obj,
+        base_version: Any,
+        cancel: Optional[threading.Event] = None,
+        file: Optional[Obj] = None,
+    ) -> Obj:
+        return self._wait(lambda m: m.put_at(SAVES_COLLECTION, id, value, base_version, file), id, cancel)
 
     def delete(self, id: str, base_version: int) -> Obj:
         return self._wait(lambda m: m.remove_at(SAVES_COLLECTION, id, base_version), id)
@@ -740,7 +752,9 @@ class SavesClient:
                     "size": file["size"],
                     "format": file["format"],
                 }
-            result = self._records.set(target_id, value, file["version"], hard)
+            pointer = {k: file[k] for k in ("version", "size", "sha256", "format")}
+            pointer = {k: file[k] for k in ("version", "size", "sha256", "format")}
+            result = self._records.set(target_id, value, file["version"], hard, pointer)
             if result["ok"]:
                 out: Obj = {"state": "done", "id": id, "version": result["version"], "file": file}
                 if target_id != id:

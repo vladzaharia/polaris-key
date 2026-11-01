@@ -172,6 +172,7 @@ class FakeRecords:
 	var hold_set := false
 	var release_set := false
 	var set_calls := 0
+	var set_files: Array = []
 	var rejected_code := ""
 
 	func _init(f: FakeFiles) -> void:
@@ -205,8 +206,9 @@ class FakeRecords:
 			return null
 		return _row(w, files.records[w])
 
-	func set_record(id: String, value: Dictionary, base_version: Variant, cancel: Variant = null) -> Dictionary:
+	func set_record(id: String, value: Dictionary, base_version: Variant, cancel: Variant = null, file: Variant = null) -> Dictionary:
 		set_calls += 1
+		set_files.append(file)
 		var tree := Engine.get_main_loop() as SceneTree
 		while hold_set and not release_set:
 			if cancel != null and cancel.cancelled:
@@ -959,6 +961,11 @@ func _records_binding(t: PKeyTestContext) -> void:
 	t.check("records: a rejection carries its code", denied == {"ok": false, "reason": "rejected", "code": "quota_exceeded"}, str(denied))
 	var created: Dictionary = await records.set_record("fresh", {"a": 1}, "*")
 	t.check("records: create-only with * creates", created["ok"] and created["version"] == 1)
+	var pointer := {"version": 1, "size": 7, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "format": "whole"}
+	var with_file: Dictionary = await records.set_record("fresh2", {"a": 1}, "*", null, pointer)
+	t.check("records: a write that gives the finalized pointer lists its file at once (no pull)", with_file["ok"] and records.get_record("fresh2")["file"] == pointer and records.list().any(func(r: Dictionary) -> bool: return r["id"] == "fresh2" and r["file"] == pointer), str(records.get_record("fresh2")))
+	t.check("records: the pointer is never sent", not pushes.back()["mutations"][0].has("file"), str(pushes.back()))
+	t.check("records: without a pointer a new row has no file", records.get_record("fresh")["file"] == null)
 	var gone: Dictionary = await records.delete_record("fresh", 1)
 	t.check("records: remove_at deletes at the exact version and the row goes", gone["ok"] and records.get_record("fresh") == null, str(gone))
 
@@ -1131,9 +1138,9 @@ func _through_the_sdk(t: PKeyTestContext) -> void:
 	t.check("sdk: the handle is listed while it runs", sdk.cloud_sync.transfers().size() == 1 and sdk.cloud_sync.transfers()[0] == h or h.outcome != null)
 	var out := await h.wait()
 	t.check("sdk: the write is done at the record version the Worker answered", out["state"] == "done" and out["version"] == 2 and Types.json_equal(worker.value, {"chapter": "two", "formatVersion": 1}) and worker.data == data, "%s | %s | %s" % [str(out), str(worker.value), worker.data == data])
-	# The acknowledged row has no file pointer until the next pull names it (it keeps only the prior row's).
+	# The acknowledged row takes the pointer finalize returned, so it lists its file before any pull.
 	var before_pull = await saves.list()
-	t.check("sdk: the acknowledged row is listed at once, its file named by the next pull", before_pull.ok and before_pull.detail.size() == 1 and before_pull.detail[0]["file"] == null)
+	t.check("sdk: the acknowledged row is listed at once with its new file, before any pull", before_pull.ok and before_pull.detail.size() == 1 and before_pull.detail[0]["file"] != null and before_pull.detail[0]["file"]["size"] == out["file"]["size"] and before_pull.detail[0]["file"]["sha256"] == out["file"]["sha256"], str(before_pull.detail))
 	var machine = sdk.cloud_sync.host.machine()
 	machine.set_network("offline")
 	machine.set_network("online")

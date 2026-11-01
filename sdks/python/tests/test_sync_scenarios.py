@@ -61,7 +61,7 @@ def _call(m: CloudSyncMachine, name: str, args: List[Any]) -> Dict[str, Any]:
     if name == "remove":
         return m.remove(args[0], args[1], args[2])
     if name == "putAt":
-        return m.put_at(args[0], args[1], args[2], args[3])
+        return m.put_at(args[0], args[1], args[2], args[3], args[4] if len(args) > 4 else None)
     if name == "removeAt":
         return m.remove_at(args[0], args[1], args[2])
     if name == "flush":
@@ -74,6 +74,7 @@ def _call(m: CloudSyncMachine, name: str, args: List[Any]) -> Dict[str, Any]:
 def test_file_record_family_vocabulary() -> None:
     assert _FILE_RECORDS["calls"] == ["putAt", "removeAt"]
     assert _FILE_RECORDS["asserts"] == ["rows", "outcomes"]
+    assert len(_FILE_RECORD_CASES) == 19
 
 
 _ALL = [*_SCENARIOS, *_FILE_RECORD_CASES]

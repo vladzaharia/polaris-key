@@ -155,7 +155,7 @@ private final class FakeRecords: SaveRecords, @unchecked Sendable {
     let files: FakeFiles
     let e2e: Bool
     var failSet: SaveSetResult?
-    var sets: [(id: String, value: [String: JSONValue], base: SyncBase)] = []
+    var sets: [(id: String, value: [String: JSONValue], base: SyncBase, file: SaveFile?)] = []
     /// While set, `set` waits (as the machine's outcome wait does) until the caller cancels it.
     var holdSet = false
     var dropped = false
@@ -171,8 +171,10 @@ private final class FakeRecords: SaveRecords, @unchecked Sendable {
 
     func get(_ id: String) async throws -> SaveRecord? { lock.withLock { rows[id] } }
 
-    func set(_ id: String, value: [String: JSONValue], base: SyncBase, stop: SaveStop?) async throws -> SaveSetResult {
-        lock.withLock { sets.append((id, value, base)) }
+    func set(
+        _ id: String, value: [String: JSONValue], base: SyncBase, file: SaveFile?, stop: SaveStop?
+    ) async throws -> SaveSetResult {
+        lock.withLock { sets.append((id, value, base, file)) }
         if lock.withLock({ holdSet }) {
             // A pause never ends the wait; only the caller's cancel does.
             while !(stop?.isSet ?? false) && !lock.withLock({ dropped }) {
@@ -292,6 +294,14 @@ final class CloudSyncSavesTests: XCTestCase {
         XCTAssertEqual(content.bytes, payload)
         XCTAssertEqual(content.metadata, obj(["chapter": .string("3")]))
         XCTAssertEqual(content.file, file)
+    }
+
+    func testTheMetadataWriteCarriesTheFinalizedPointerSoTheNewFileListsAtOnce() async throws {
+        let rig = Rig(e2e: false)
+        let t = try await rig.client.write("slot1", bytes: Data("x".utf8), metadata: obj(["a": .int(1)]))
+        guard case .done(_, _, let file, nil) = await t.outcome() else { return XCTFail("not done") }
+        // The machine adopts this pointer on ok; without it the new row would list no file until a pull.
+        XCTAssertEqual(rig.records.sets.first?.file, file)
     }
 
     func testAServerModeWriteHasNoBinding() async throws {

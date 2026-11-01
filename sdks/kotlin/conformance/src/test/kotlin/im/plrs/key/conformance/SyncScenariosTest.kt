@@ -76,7 +76,7 @@ class SyncScenariosTest : ConformanceSuite() {
         assertEquals(listOf("rows", "outcomes"), family["asserts"].arrayValue!!.map { it.stringValue })
         val cases = family["scenarios"].arrayValue!!.map { it as JsonObject }
         val names = cases.map { it["name"].stringValue!! }
-        assertEquals(16, names.size)
+        assertEquals(19, names.size)
         assertEquals(names.size, names.toSet().size)
         for (sc in cases) SyncScenarioDriver(corpus["product"].stringValue!!, sc).run()
     }
