@@ -448,6 +448,43 @@ function relaxGate(
   return null;
 }
 
+/**
+ * An operator cost control whose raise is L2 (the relay ceiling) takes the typed key on the route,
+ * not only in the console dialog, and a critical one takes a reason on a reset as on a write.
+ * `target` is the value the change leaves in force (the default, for a reset).
+ */
+async function costControlGate(
+  r: Request_,
+  def: SettingDef,
+  body: Record<string, unknown>,
+  target: unknown,
+  reset = false,
+): Promise<Response | null> {
+  if (
+    !isRowServed(def) ||
+    def.ownership !== "operator" ||
+    def.critical !== true ||
+    !("up" in def.confirm)
+  )
+    return null;
+  const [cur] = await readViews(r, [def]);
+  const level = confirmLevelFor(def, cur?.value ?? null, target);
+  if ((level === "L2" || level === "L3") && body.confirm !== def.key)
+    return err(400, ErrorCode.BadRequest, `type ${def.key} to confirm`, {
+      reason: "confirm_required",
+      level,
+    });
+  if (
+    reset &&
+    level !== "L0" &&
+    (typeof body.reason !== "string" || body.reason.trim() === "")
+  )
+    return err(422, ErrorCode.BadRequest, "a reason is required", {
+      reason: "reason_required",
+    });
+  return null;
+}
+
 export async function handleProductSettings(
   req: Request,
   env: Env,
@@ -592,23 +629,9 @@ export async function handleProductSettings(
         if (gate) return gate;
       }
     }
-    // An operator cost control whose raise is L2 (the relay ceiling) takes the typed key here too,
-    // not only in the console dialog: the route is the enforcement.
-    if (
-      adapter === undefined &&
-      isRowServed(def) &&
-      def.ownership === "operator" &&
-      def.critical === true &&
-      "up" in def.confirm &&
-      body.confirm !== def.key
-    ) {
-      const [cur] = await readViews(r, [def]);
-      const level = confirmLevelFor(def, cur?.value ?? null, body.value);
-      if (level === "L2" || level === "L3")
-        return err(400, ErrorCode.BadRequest, `type ${def.key} to confirm`, {
-          reason: "confirm_required",
-          level,
-        });
+    if (adapter === undefined) {
+      const gate = await costControlGate(r, def, body, body.value);
+      if (gate) return gate;
     }
     await adapter?.beforeWrite?.(adapterCtx(r));
     const before = adapter?.audit ? (await readViews(r, [def]))[0] : undefined;
@@ -702,6 +725,16 @@ export async function handleProductSettings(
 
   if (req.method === "DELETE") {
     const body = await readBody(req);
+    if (adapter === undefined) {
+      const gate = await costControlGate(
+        r,
+        def,
+        body,
+        rowSettingDefault(def, product),
+        true,
+      );
+      if (gate) return gate;
+    }
     if (adapter?.relaxes) {
       const [now_] = await readViews(r, [def]);
       if (adapter.relaxes(now_?.value ?? null, undefined)) {

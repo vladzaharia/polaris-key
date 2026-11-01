@@ -444,6 +444,8 @@ export async function handleUploadStatus(
   ctx: ServiceContext,
   match: RouteMatch,
 ): Promise<Response> {
+  const wrong = await wrongMethod(ctx, "GET");
+  if (wrong) return wrong;
   const out = await sessionCall(ctx, match, "fileStatus");
   if (out instanceof Response) return out;
   const r = out.value.outcome;
