@@ -186,8 +186,9 @@ func _build_saves() -> void:
 	_files = transport
 	# D-10: the bulk channel is used only when the app opted in and the platform supplied one.
 	var opts: PKeyOptions = _core.options
-	if opts != null and opts.cloud_sync_background_transfers and opts.cloud_sync_bulk_channel != null:
-		transport.set_channel(opts.cloud_sync_bulk_channel)
+	var channel: Object = PKeyAppleBulk.pick(opts, _core.product, _core.base_url, host.state_dir())
+	if channel != null:
+		transport.set_channel(channel)
 	_journal = Journal.Files.new(host.state_dir(), host.sealer())
 	var engine := Transfer.new(transport, _journal)
 	# A save may wait out a long throttle.
