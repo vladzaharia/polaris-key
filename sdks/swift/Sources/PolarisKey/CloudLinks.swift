@@ -202,11 +202,13 @@ import PolarisKeyCore
             for p in pairs { await p.stop() }
         }
 
-        private func inbound(_ s: ConnectSession) async {
-            track(s)
-            // The handshake may have begun before the contact was removed or the gate went off: the session is
-            // delivered only while the contact (same secret) is held and links are on.
-            if await stillHeld(s) { listeners.fire(s) }
+        func inbound(_ s: ConnectSession) async {
+            // The handshake may have begun before the contact was removed or the gate went off: the session is handed
+            // to Direct Transfer and delivered only while the contact (same secret) is held and links are on.
+            if await stillHeld(s) {
+                track(s)
+                listeners.fire(s)
+            }
         }
 
         /// Close `s` (`peer_revoked`, or `peer_bye` when the gate is off) unless its contact is still held.

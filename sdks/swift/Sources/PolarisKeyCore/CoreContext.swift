@@ -926,6 +926,14 @@ public actor CoreContext {
 
     public var discoveryDocument: ProductDiscoveryDocument? { discoveryDocumentValue }
 
+    private nonisolated let discoveryObservers = LockedValue<[@Sendable (DiscoveryResult) async -> Void]>([])
+
+    /// Called after every discovery read finishes, whichever caller made it (the client's `discover()`, a sign-in,
+    /// a restore, a nearby, update or packs read): the one place a read is noted.
+    public nonisolated func onDiscovery(_ fn: @escaping @Sendable (DiscoveryResult) async -> Void) {
+        discoveryObservers.with { $0.append(fn) }
+    }
+
     /// Fetch `/.well-known/polaris.json` and install the product's real capability map.
     ///
     /// Explicit rather than automatic, because it is a NETWORK read and `sync()` must stay
@@ -943,6 +951,7 @@ public actor CoreContext {
             // No member (or an invalid one) clears it; a failed discovery keeps the last.
             presentationSource.accept(document.presentation)
         }
+        for fn in discoveryObservers.current { await fn(result) }
         return result
     }
 

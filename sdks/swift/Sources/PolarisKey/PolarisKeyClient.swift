@@ -451,6 +451,7 @@ public actor PolarisKeyClient {
             }
             await publisher.publish()
         }
+        core.onDiscovery { [weak self] result in await self?.discoveryRead(result) }
         backendSync.set { [weak self] force in
             guard let self else { return false }
             let result = await self.sync(force: force)
@@ -511,7 +512,11 @@ public actor PolarisKeyClient {
     // ── Capabilities (D-21) ──────────────────────────────────────────────────────────────
     @discardableResult
     public func discover() async -> DiscoveryResult {
-        let result = await core.discover()
+        await core.discover()
+    }
+
+    /// Every discovery read lands here, whoever made it (`CoreContext.onDiscovery`).
+    private func discoveryRead(_ result: DiscoveryResult) async {
         cloudSyncApi.attachSoon()
         // Not found, invalid or unreachable: the cached links answer is no longer trusted.
         var isOk = false
@@ -520,7 +525,6 @@ public actor PolarisKeyClient {
         if isOk { rereadLinksGate() }
         // `interAccount` may have moved: links follow the document (§15.10 "Gates").
         connect.notifyContacts()
-        return result
     }
 
     private var linksReread: Task<Void, Never>?
