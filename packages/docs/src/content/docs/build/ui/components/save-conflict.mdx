@@ -11,6 +11,7 @@ lanes: ["kit"]
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 Shown when the same save changed on two devices. Two cards, one per copy, carry the device, the time and which is newer; the person keeps this device's copy, the other one, or both when a slot is free.
@@ -34,6 +35,12 @@ Shown when the same save changed on two devices. Two cards, one per copy, carry 
     **Cards.** Every SDK stores `savedAt` (milliseconds) and `deviceLabel` (the device's display name, never a hardware value) in the metadata of each save, and the cards read them. Your own `savedAt` or `deviceLabel` key is overwritten. `describe` is optional and overrides a card's `when`, `device` or `newer`.
 
     **Styled part and headless.** Given an `input.saveConflict` it is the plain part and the host drives it; `viewOf("SaveConflict", input)` returns the view.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitStatus kit="godot" />
+
+    <GodotKitTab component="SaveConflict" />
 
   </TabItem>
 </Tabs>

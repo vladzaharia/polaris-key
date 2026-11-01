@@ -280,6 +280,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
               "build/ui/components/paywall",
               "build/ui/components/polaris-key-gate",
               "build/ui/components/release-notes",
+              "build/ui/components/save-conflict",
               "build/ui/components/settings",
               "build/ui/components/sign-in-handoff",
               "build/ui/components/sign-in",
