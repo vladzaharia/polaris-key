@@ -94,7 +94,7 @@ func available() -> bool:
 ## tampered message refused, and a low-order point refused. False on any difference, so a lane
 ## that answers wrongly, or with the wrong type, is not chosen. Nothing here is secret.
 func known_answers_ok() -> bool:
-	return _curve_answers_ok() and _gcm_answers_ok()
+	return _curve_answers_ok() and _gcm_answers_ok() and _gcm_empty_answers_ok()
 
 
 func _curve_answers_ok() -> bool:
@@ -126,6 +126,34 @@ func _gcm_answers_ok() -> bool:
 	var opened = aes_gcm_open(key, nonce, aad, want)
 	return sealed is PackedByteArray and sealed == want and opened is PackedByteArray and opened == plain \
 			and aes_gcm_open(key, nonce, aad, bad_tag) == null and aes_gcm_open(key, nonce, aad, bad_body) == null
+
+
+## GCM specification cases 13 and 14 (AES-256, zero key and nonce, no additional data): an empty
+## message seals to its tag alone, and sixteen zero bytes to one block and a tag. A flipped tag bit
+## must be refused in both. Transport frames use this empty-AAD path.
+func _gcm_empty_answers_ok() -> bool:
+	var key := PackedByteArray()
+	key.resize(32)
+	var nonce := PackedByteArray()
+	nonce.resize(12)
+	var none := PackedByteArray()
+	var zeros := PackedByteArray()
+	zeros.resize(16)
+	var want13 := "530f8afbc74536b9a963b4f1c4cb738b".hex_decode()
+	var want14 := ("cea7403d4d606b6e074ec5d3baf39d18" + "d0d1c8a799996bf0265b98b5d48ab919").hex_decode()
+	var bad13 := want13.duplicate()
+	bad13[15] ^= 1
+	var bad14 := want14.duplicate()
+	bad14[31] ^= 1
+	var sealed13 = aes_gcm_seal(key, nonce, none, none)
+	var sealed14 = aes_gcm_seal(key, nonce, none, zeros)
+	var opened13 = aes_gcm_open(key, nonce, none, want13)
+	var opened14 = aes_gcm_open(key, nonce, none, want14)
+	return sealed13 is PackedByteArray and sealed13 == want13 \
+			and sealed14 is PackedByteArray and sealed14 == want14 \
+			and opened13 is PackedByteArray and opened13.is_empty() \
+			and opened14 is PackedByteArray and opened14 == zeros \
+			and aes_gcm_open(key, nonce, none, bad13) == null and aes_gcm_open(key, nonce, none, bad14) == null
 
 
 ## The public key (u-coordinate) of a 32-byte X25519 private key. Empty when the key is not 32 bytes.
