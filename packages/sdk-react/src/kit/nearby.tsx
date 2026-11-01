@@ -143,6 +143,12 @@ const CSS = `@layer polaris-key {
 .pk-root[data-component="SignIn"][data-state="nearby-choose"] .stage[data-kind="screen"] .card > .actions::before {
   content: none;
 }
+/* The exits are quiet next to the job: the codes and the licences are the hero. */
+.pk-root[data-component="NearbyApproval"][data-state="ask"] .actions .btn[data-variant="secondary"],
+.pk-root[data-component="NearbyApproval"][data-state="choose"] .actions .btn[data-variant="secondary"],
+.pk-root[data-component="SignIn"][data-state="nearby-wait"] .actions .btn[data-variant="secondary"] {
+  background: none;
+}
 .pk-root .nearby-codes .btn:focus-visible,
 .pk-root .nearby-more:focus-visible {
   scroll-margin-block: var(--pk-space-6);
