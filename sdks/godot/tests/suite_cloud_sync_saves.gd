@@ -890,14 +890,54 @@ func _unsupported(t: PKeyTestContext) -> void:
 		all = all and not r.ok and r.code == &"unsupported"
 	t.check("unsupported: list, read, revisions and delete answer the typed unsupported refusal", all, str(results[0].detail))
 	var u: PKeyResult = results[0]
-	t.check("unsupported: it names sync.saves and the runtime reason", str(u.detail).contains("sync.saves") and str(u.detail).contains("runtime"), str(u.detail))
+	t.check("unsupported: it names sync.saves and the dependency reason", str(u.detail).contains("sync.saves") and str(u.detail).contains("dependency") and str(u.message).contains("native plugin"), str(u.detail))
 	var h: PKeyTransfer = saves.write("a", _noise(10), {})
 	t.check("unsupported: a write is over at once, failed unsupported, nothing sent", h.outcome != null and h.outcome["state"] == "failed" and h.outcome["error"]["code"] == "unsupported" and rig["files"].calls.is_empty())
 	var res: PKeyTransfer = saves.resolve({"id": "a", "local": {"metadata": {}, "size": 1}, "remote": null, "server_version": 1, "both_available": true}, "local", _noise(10))
 	t.check("unsupported: resolve local too", res.outcome != null and res.outcome["error"]["code"] == "unsupported")
-	t.check("unsupported: it is a state of the runtime, not of a call", PKeySaves.runtime_supported() == not (OS.has_feature("ios") or OS.has_feature("android")))
-	var na: Array = PKeyConstants.capabilities()["sync.saves"]["na"]
-	t.check("unsupported: the capability table says N/A on iOS and Android for sync.saves", na.any(func(n: Dictionary) -> bool: return n["runtime"] == "ios") and na.any(func(n: Dictionary) -> bool: return n["runtime"] == "android"), str(na))
+	var na: Array = PKeyConstants.capabilities()["sync.saves"].get("na", [])
+	t.check("unsupported: the capability table has no N/A runtime for sync.saves", na.is_empty(), str(na))
+	await _mobile_matrix(t)
+
+
+## A native-lane stand-in: only its name and bound matter to the gate.
+class GateLane:
+	extends PKeyPeerCrypto
+
+	func lane_name() -> String:
+		return "gate-native"
+
+	func sync_native() -> bool:
+		return true
+
+	func sync_max_bytes() -> int:
+		return 1048576
+
+
+## iOS and Android alike are `mobile_override = 1`; the lane is what differs (GM.3, D-2).
+func _mobile_matrix(t: PKeyTestContext) -> void:
+	for lane_on: bool in [false, true]:
+		for os_name: String in ["ios", "android"]:
+			var tag := "mobile %s %s" % [os_name, "native" if lane_on else "no plugin"]
+			PKeySyncAead.mobile_override = 1
+			PKeySyncAead.use_lane_for_tests(GateLane.new() if lane_on else null)
+			var rig = _rig(false, {"supported": null})
+			var saves: PKeySaves = rig["saves"]
+			var supported := PKeySaves.runtime_supported()
+			var r: PKeyResult = await saves.read("a")
+			var w: PKeyTransfer = saves.write("a", _noise(10), {})
+			var d: PKeyResult = await rig["engine"].download({"size": 0, "codec": Codec.Server.new()})
+			if lane_on:
+				t.check(tag + ": supported, the calls go through", supported and r.code != &"unsupported" and d.code != &"unsupported", str(r.detail))
+			else:
+				var det := str(r.detail)
+				t.check(tag + ": typed unsupported, reason dependency", not supported and r.code == &"unsupported" and det.contains("dependency") and not det.contains("runtime"), det)
+				t.check(tag + ": a write is over at once and sends nothing", w.outcome != null and w.outcome["error"]["code"] == "unsupported" and rig["files"].calls.is_empty())
+				t.check(tag + ": the file engine says the same", d.code == &"unsupported" and str(d.detail).contains("dependency"), str(d.detail))
+	PKeySyncAead.mobile_override = 0
+	PKeySyncAead.use_lane_for_tests(null)
+	t.check("mobile: a desktop runtime is supported with no lane", PKeySaves.runtime_supported())
+	PKeySyncAead.mobile_override = -1
 
 
 # ── sign-out: lock, purge the saves, then remove the pin ────────────────────────────────────────

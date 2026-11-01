@@ -23,6 +23,8 @@ const MAX_AAD_BYTES := PKeySyncAesGcm.MAX_AAD_BYTES
 
 ## Tests put a lane here; null means `PKeyPeerCrypto.for_platform()`.
 static var _override: PKeyPeerCrypto = null
+## Tests: 1 treats the runtime as iOS or Android, 0 as neither; -1 reads the engine's features.
+static var mobile_override := -1
 
 
 static func seal(key: PackedByteArray, nonce: PackedByteArray, plain: PackedByteArray, aad: PackedByteArray = PackedByteArray()) -> PackedByteArray:
@@ -43,6 +45,20 @@ static func open(key: PackedByteArray, nonce: PackedByteArray, sealed: PackedByt
 			and aad.size() <= MAX_AAD_BYTES and key.size() == KEY_BYTES and nonce.size() == NONCE_BYTES:
 		return lane.sync_open(key, nonce, aad, sealed)
 	return PKeySyncAesGcm.open(key, nonce, sealed, aad)
+
+
+## Whether Cloud Sync files and saves run on this runtime (D-2). Desktop and web always do (GDScript
+## lane, at most 32 MiB). iOS and Android need a native lane that passed its known answers: a build
+## without the plugin, or a lane that failed them, answers the typed `dependency` refusal.
+static func files_supported() -> bool:
+	var mobile := OS.has_feature("ios") or OS.has_feature("android")
+	if mobile_override >= 0:
+		mobile = mobile_override == 1
+	return not mobile or _native_lane() != null
+
+
+## The text of that refusal.
+const NEEDS_PLUGIN := "Synced files need the Polaris Key native plugin on this platform."
 
 
 ## The lane the next call on this thread uses: "apple", "android", "windows" or a test lane, else
