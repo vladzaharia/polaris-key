@@ -182,6 +182,9 @@ public final class CloudSyncKitHostModel {
             await refresh()
         case .rejected, .unsyncedData, .purgeFailed:
             await refresh()
+        case .transferProgress, .transferDone, .transferFailed:
+            // The kit's transfer states are the save screens' (U-23 .3 to .5); the sync row has nothing to say.
+            break
         }
     }
 

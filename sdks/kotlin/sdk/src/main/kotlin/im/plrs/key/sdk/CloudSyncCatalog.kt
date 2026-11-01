@@ -6,6 +6,7 @@ package im.plrs.key.sdk
 import im.plrs.key.core.SYNC_KEY_PATTERN
 import im.plrs.key.core.arrayValue
 import im.plrs.key.core.longValue
+import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
 import im.plrs.key.core.sync.SyncRoutes
 import kotlinx.serialization.json.JsonArray
@@ -19,6 +20,11 @@ public const val MAX_CATALOG_BYTES: Int = 1024 * 1024
 /** A served catalog is fetched again at most this often (the first fetch is free), in milliseconds. */
 public const val CATALOG_REFETCH_MS: Long = 5 * 60_000L
 
+/** What a catalog says of the `saves` collection that the client needs. */
+internal class SavesCollection(val delta: Boolean, val maxBytes: Long)
+
+private const val DEFAULT_SAVE_MAX_BYTES: Long = 32L * 1024 * 1024
+
 internal val EMPTY_CATALOG: JsonObject = JsonObject(mapOf("schemaVersion" to JsonPrimitive(0), "entries" to JsonArray(emptyList())))
 
 internal object CloudSyncCatalog {
@@ -26,6 +32,30 @@ internal object CloudSyncCatalog {
 
     /** The routes of [catalog], without any mode the catalog states (the app decides the mode, A-7). */
     fun routesOf(catalog: JsonObject): List<JsonObject> = SyncRoutes.syncedSettings(catalog).map { JsonObject(it - "encryption") }
+
+    /** The `saves` collection as the machine reads a declaration, or none when the catalog declares no such collection (v1 is saves only, D-2). */
+    fun collectionsOf(catalog: JsonObject): List<JsonObject> {
+        if (savesOf(catalog) == null) return emptyList()
+        return listOf(
+            JsonObject(
+                mapOf(
+                    "name" to JsonPrimitive(SAVES_COLLECTION),
+                    "policy" to JsonPrimitive("revision"),
+                    "resolve" to JsonPrimitive("keepServer"),
+                ),
+            ),
+        )
+    }
+
+    /** The resolved `saves` collection of the catalog's `cloudSync` block: the declaration over the `saves` template (delta on, 32 MiB). */
+    fun savesOf(catalog: JsonObject): SavesCollection? {
+        val decl = catalog["cloudSync"].objectValue?.get("collections").arrayValue.orEmpty()
+            .firstOrNull { it.objectValue?.get("name").stringValue == SAVES_COLLECTION }?.objectValue ?: return null
+        val files = decl["files"].objectValue
+        val template = decl["template"].stringValue == SAVES_COLLECTION
+        val delta = (files?.get("delta") as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toBooleanStrictOrNull() ?: template
+        return SavesCollection(delta, files?.get("maxBytes").longValue ?: DEFAULT_SAVE_MAX_BYTES)
+    }
 
     /**
      * A catalog fit to route by: the right shape and size, every entry key a valid sync key, and one entry

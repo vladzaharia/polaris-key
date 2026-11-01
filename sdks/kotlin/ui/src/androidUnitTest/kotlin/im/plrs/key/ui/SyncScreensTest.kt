@@ -9,6 +9,8 @@ package im.plrs.key.ui
 
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -17,20 +19,31 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.assertRangeInfoEquals
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
+import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import im.plrs.key.core.ErrorCode
@@ -46,6 +59,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.ParameterizedRobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -435,5 +450,345 @@ class SyncScreensTest {
         rule.waitForIdle()
         rule.onNodeWithText("Done").assertDoesNotExist()
         assertEquals(1, source.flushes)
+    }
+
+    // ── SaveConflict (U-22.K4) ───────────────────────────────────────────────────────────────
+
+    @Test
+    fun theConflictShowsBothCopiesAndEachChoiceReportsItself() {
+        val kept = mutableListOf<PolarisSaveKeep>()
+        var cancelled = 0
+        show { PolarisSaveConflict(saveScreen("choose"), onKeep = { kept += it }, onCancel = { cancelled++ }) }
+        rule.onNodeWithText("Two versions of this save").assertIsDisplayed()
+        rule.onNodeWithText("Version on this device").assertIsDisplayed()
+        rule.onNodeWithText("Version on Maya's Steam Deck").assertIsDisplayed()
+        rule.onNodeWithText("Saved today, 14:02").assertIsDisplayed()
+        rule.onNodeWithText("Saved yesterday, 21:40").assertIsDisplayed()
+        rule.onNodeWithText("Keep this device's version").performClick()
+        rule.onNodeWithText("Keep the other version").performClick()
+        rule.onNodeWithText("Keep both").performClick()
+        rule.onNodeWithText("Cancel").performClick()
+        assertEquals(listOf(PolarisSaveKeep.Local, PolarisSaveKeep.Remote, PolarisSaveKeep.Both), kept)
+        assertEquals(1, cancelled)
+    }
+
+    @Test
+    fun nothingIsFocusedOrFilledSoNoChoiceIsTheDefault() {
+        show { PolarisSaveConflict(saveScreen("choose")) }
+        for (label in listOf("Keep this device's version", "Keep the other version", "Keep both", "Cancel")) {
+            rule.onNodeWithText(label).assertIsNotFocused()
+        }
+    }
+
+    @Test
+    fun keepBothIsDisabledWithItsReasonWhileEverySlotIsInUse() {
+        val kept = mutableListOf<PolarisSaveKeep>()
+        show { PolarisSaveConflict(saveScreen("choose", both = false), onKeep = { kept += it }) }
+        rule.onNodeWithText("Keep both").assertIsNotEnabled()
+        rule.onNodeWithText("All save slots are in use. Delete a save to keep both.").assertIsDisplayed()
+        rule.onNodeWithText("Keep both").performClick()
+        assertTrue(kept.isEmpty())
+        rule.onNodeWithText("Keep this device's version").assertIsEnabled()
+    }
+
+    @Test
+    fun aDeletedCopyHasItsOwnTitleAndOnlyItsOwnButtonAcceptsTheDeletion() {
+        val kept = mutableListOf<PolarisSaveKeep>()
+        show { PolarisSaveConflict(saveScreen("choose", deleted = true), onKeep = { kept += it }) }
+        rule.onNodeWithText("This save was deleted elsewhere").assertIsDisplayed()
+        rule.onNodeWithText("Keep it on this device, or delete it here too.").assertIsDisplayed()
+        rule.onNodeWithText("Deleted on another device").assertIsDisplayed()
+        rule.onNodeWithText("Two versions of this save").assertDoesNotExist()
+        rule.onNodeWithText("Keep the other version").assertDoesNotExist()
+        rule.onNodeWithText("Keep both").assertDoesNotExist()
+        rule.onNodeWithText("Delete it here too").performClick()
+        assertEquals(listOf(PolarisSaveKeep.Remote), kept)
+    }
+
+    @Test
+    fun whileAChoiceRunsNoControlIsOffered() {
+        show { PolarisSaveConflict(saveScreen("keeping", keep = "local")) }
+        rule.onNodeWithText("Keeping your choice…").assertIsDisplayed()
+        for (label in listOf("Keep this device's version", "Keep the other version", "Keep both", "Cancel", "Try again", "Done")) {
+            rule.onNodeWithText(label).assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun theDeletedVariantKeepsItsTitleThroughKeepingAndFailed() {
+        show { PolarisSaveConflict(saveScreen("keeping", deleted = true, keep = "remote")) }
+        rule.onNodeWithText("This save was deleted elsewhere").assertIsDisplayed()
+        rule.onNodeWithText("Two versions of this save").assertDoesNotExist()
+    }
+
+    @Test
+    fun theDeletedVariantFailsWithItsOwnLine() {
+        show { PolarisSaveConflict(saveScreen("failed", deleted = true, keep = "remote")) }
+        rule.onNodeWithText("This save was deleted elsewhere").assertIsDisplayed()
+        rule.onNodeWithText("Couldn't keep your choice. Your save is unchanged.").assertIsDisplayed()
+        rule.onNodeWithText("Two versions of this save").assertDoesNotExist()
+    }
+
+    @Test
+    fun theNewerTagSitsOnTheNamedCardAndChoosesNothing() {
+        val kept = mutableListOf<PolarisSaveKeep>()
+        show { PolarisSaveConflict(saveScreen("choose", newer = "remote"), onKeep = { kept += it }) }
+        // The tag is part of the other device's card, not of a control, and not of this device's card.
+        rule.onNode(hasText("Newer") and hasText("Version on Maya's Steam Deck")).assertIsDisplayed().assertHasNoClickAction()
+        rule.onNode(hasText("Newer") and hasText("Version on this device")).assertDoesNotExist()
+        rule.onNodeWithText("Keep the other version").assertIsNotFocused()
+        assertTrue(kept.isEmpty())
+    }
+
+    @Test
+    fun noNewerTagWithoutTheAppNamingOneOrWithOneCopy() {
+        show { PolarisSaveConflict(saveScreen("choose")) }
+        rule.onNodeWithText("Newer").assertDoesNotExist()
+    }
+
+    @Test
+    fun newerIsIgnoredWhenTheOtherCopyWasDeleted() {
+        show { PolarisSaveConflict(saveScreen("choose", deleted = true, newer = "local")) }
+        rule.onNodeWithText("Newer").assertDoesNotExist()
+    }
+
+    @Test
+    fun keptShowsItsResultTitleAndDone() {
+        show { PolarisSaveConflict(saveScreen("kept", keep = "remote", deleted = true)) }
+        rule.onNodeWithText("Save deleted").assertIsDisplayed()
+        rule.onNodeWithText("Two versions of this save").assertDoesNotExist()
+        rule.onNodeWithText("Done").assertIsDisplayed()
+    }
+
+    @Test
+    fun keptNamesTheChoiceThatWasMadeAndOffersDone() {
+        var done = 0
+        show { PolarisSaveConflict(saveScreen("kept", keep = "both"), onDone = { done++ }) }
+        rule.onNodeWithText("Kept both versions").assertIsDisplayed()
+        rule.onNodeWithText("The other version is saved as a copy.").assertIsDisplayed()
+        rule.onNodeWithText("Two versions of this save").assertDoesNotExist()
+        rule.onNodeWithText("Kept this device's version").assertDoesNotExist()
+        rule.onNodeWithText("Done").performClick()
+        assertEquals(1, done)
+    }
+
+    @Test
+    fun aFailedChoiceSaysBothSavesAreUnchangedAndTakesNoFocusOnTryAgain() {
+        var retried = 0
+        var chosenAgain = 0
+        var cancelled = 0
+        show {
+            PolarisSaveConflict(
+                saveScreen("failed", keep = "remote"),
+                onRetry = { retried++ },
+                onChooseAgain = { chosenAgain++ },
+                onCancel = { cancelled++ },
+            )
+        }
+        rule.onNodeWithText("Couldn't keep your choice. Both saves are unchanged.").assertIsDisplayed()
+        for (label in listOf("Try again", "Choose again", "Cancel")) rule.onNodeWithText(label).assertIsNotFocused()
+        rule.onNodeWithText("Kept the other version").assertDoesNotExist()
+        rule.onNodeWithText("Try again").performClick()
+        rule.onNodeWithText("Choose again").performClick()
+        rule.onNodeWithText("Cancel").performClick()
+        assertEquals(1, retried)
+        assertEquals(1, chosenAgain)
+        assertEquals(1, cancelled)
+    }
+
+    @Test
+    fun theHolderDrivesTheScreenFromChoiceToKept() {
+        val applied = mutableListOf<PolarisSaveKeep>()
+        val state = PolarisSaveConflictState(
+            PolarisSaveVersion("today, 14:02"),
+            PolarisSaveVersion("yesterday, 21:40", "Maya's Steam Deck"),
+            true,
+            { applied += it },
+            CoroutineScope(Dispatchers.Unconfined),
+        )
+        show { PolarisSaveConflict(state) }
+        rule.onNodeWithText("Keep the other version").performClick()
+        rule.waitForIdle()
+        assertEquals(listOf(PolarisSaveKeep.Remote), applied)
+        rule.onNodeWithText("Kept the other version").assertIsDisplayed()
+        rule.onNodeWithText("Done").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Done").assertDoesNotExist()
+    }
+
+    // ── CloudSyncStatus transfers (U-22.K4) ──────────────────────────────────────────────────
+
+    @Test
+    fun aTransferNamesItsLabelBeforeItsFiguresAndNeverSaysSynced() {
+        show { PolarisCloudSyncTransfer(transferScreen("transferring"), fraction = 0.62f) }
+        rule.onNodeWithContentDescription("Syncing saves…").assertIsDisplayed()
+        rule.onNodeWithText("38 MB of 61 MB").assertIsDisplayed()
+        rule.onNodeWithText("Synced", substring = true).assertDoesNotExist()
+        rule.onNode(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+            .assertRangeInfoEquals(androidx.compose.ui.semantics.ProgressBarRangeInfo(0.62f, 0f..1f))
+    }
+
+    @Test
+    fun onlyTheLabelIsALiveRegionAndTheBarCarriesNoSentence() {
+        show { PolarisCloudSyncTransfer(transferScreen("transferring"), fraction = 0.62f) }
+        rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion)).assertContentDescriptionEquals("Syncing saves…")
+        rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
+    }
+
+    @Test
+    fun withoutCountedBytesTheBarIsIndeterminate() {
+        show { PolarisCloudSyncTransfer(transferScreen("transferring", counted = false)) }
+        rule.onNodeWithText("Syncing saves…").assertIsDisplayed()
+        // An indeterminate bar reports the empty range, never a made-up fraction.
+        rule.onNode(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+            .assertRangeInfoEquals(androidx.compose.ui.semantics.ProgressBarRangeInfo.Indeterminate)
+    }
+
+    @Test
+    fun aWaitingTransferNamesWhatItWaitsForAndOffersNothing() {
+        show { PolarisCloudSyncTransfer(transferScreen("waiting")) }
+        rule.onNodeWithText("Waiting for a connection").assertIsDisplayed()
+        rule.onNodeWithText("Try again").assertDoesNotExist()
+        rule.onNodeWithText("Synced", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun aFailedTransferOffersTryAgain() {
+        var retried = 0
+        show { PolarisCloudSyncTransfer(transferScreen("transfer-failed"), onRetry = { retried++ }) }
+        rule.onNodeWithText("Couldn't sync your saves.").assertIsDisplayed()
+        rule.onNodeWithText("Try again").performClick()
+        assertEquals(1, retried)
+        rule.onNodeWithText("Synced", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun theKitScreenRouteReportsTheSaveChoicesAsMatrixActions() {
+        val actions = mutableListOf<KitAction?>()
+        show { PolarisKitScreen(saveScreen("choose", deleted = true), onAction = { actions += it }) }
+        rule.onNodeWithText("Delete it here too").performClick()
+        rule.onNodeWithText("Keep this device's version").performClick()
+        assertEquals(listOf<KitAction?>(KitAction.keepRemote, KitAction.keepLocal), actions)
+    }
+}
+
+/** The sizes the save screens are recorded at (phone and tablet in both orientations, a short window, 200 % text, the desktop window). */
+internal val saveSizes = listOf(
+    ResponsiveSize("phone-390x844", 390, 844, nativeDark = false),
+    ResponsiveSize("phone-844x390", 844, 390, nativeDark = true),
+    ResponsiveSize("small-landscape-640x360", 640, 360, nativeDark = false),
+    ResponsiveSize("tablet-820x1180", 820, 1180, nativeDark = true),
+    ResponsiveSize("tablet-1180x820", 1180, 820, nativeDark = false),
+    ResponsiveSize("desktop-1440x900", 1440, 900, nativeDark = true),
+    ResponsiveSize("desktop-1440x900-font200", 1440, 900, fontScale = 2f, nativeDark = false),
+    ResponsiveSize("phone-390x844-font200", 390, 844, fontScale = 2f, nativeDark = true),
+    ResponsiveSize("phone-844x390-font200", 844, 390, fontScale = 2f, nativeDark = false),
+    ResponsiveSize("wide-1920x1080", 1920, 1080, nativeDark = true),
+)
+
+internal val saveSnapshotScreens = listOf(
+    "saveConflict-choose",
+    "saveConflict-choose-full",
+    "saveConflict-choose-deleted",
+    "saveConflict-choose-newer",
+    "saveConflict-choose-newer-local",
+    "saveConflict-failed",
+    "saveConflict-failed-deleted",
+    "cloudSyncTransfer-transferring",
+    "cloudSyncTransfer-failed",
+)
+
+/** The save screens at the sizes above, dark and light (each size renders neutral in one theme and branded in the other). */
+@RunWith(ParameterizedRobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35])
+class SaveScreensSnapshotTest(private val variant: SnapshotVariant) {
+    companion object {
+        @JvmStatic
+        @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
+        fun variants(): List<Array<Any>> = saveSizes.flatMap(::bothLooks).map { arrayOf<Any>(it) }
+    }
+
+    @get:Rule
+    val rule = createEmptyComposeRule()
+
+    @Test
+    fun everySaveScreen() {
+        // The quieter states are recorded once, on the phone.
+        val phone = variant.name.startsWith("phone-390x844-")
+        val screens =
+            saveSnapshotScreens +
+                if (phone) {
+                    listOf(
+                        "saveConflict-keeping",
+                        "saveConflict-keeping-deleted",
+                        "saveConflict-kept",
+                        "saveConflict-kept-deleted",
+                        "cloudSyncTransfer-waiting",
+                    )
+                } else {
+                    emptyList()
+                }
+        for (name in screens) rule.capture("$name/${variant.name}", variant, content = kitScreen(name))
+    }
+}
+
+/** SaveConflict's choose step in reading order at every recorded size: one column, or two panes in a short landscape window. */
+@RunWith(ParameterizedRobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35])
+class SaveReadingOrderTest(private val variant: SnapshotVariant) {
+    companion object {
+        @JvmStatic
+        @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
+        fun variants(): List<Array<Any>> = saveSizes.map { arrayOf<Any>(bothLooks(it).first()) }
+    }
+
+    @get:Rule
+    val rule = createEmptyComposeRule()
+
+    @Test
+    fun theChoicesFollowTheCopiesInReadingOrder() {
+        RuntimeEnvironment.setQualifiers(variant.qualifiers)
+        RuntimeEnvironment.setFontScale(variant.fontScale)
+        rule.mainClock.autoAdvance = false
+        ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                activity.setContent {
+                    StockHost(variant.dark) {
+                        PolarisTheme(branding = variant.branding, copy = sampleCopy, darkTheme = variant.dark) {
+                            PolarisSaveConflict(saveScreen("choose", both = false))
+                        }
+                    }
+                }
+            }
+            rule.mainClock.advanceTimeBy(2_600)
+            fun node(text: String) = rule.onNodeWithText(text).fetchSemanticsNode()
+            fun top(text: String) = node(text).positionInRoot.y
+            fun left(text: String) = node(text).positionInRoot.x
+            val copies = listOf("Two versions of this save", "Version on this device", "Version on Maya's Steam Deck")
+            val choices = listOf(
+                "Keep this device's version",
+                "Keep the other version",
+                "Keep both",
+                "All save slots are in use. Delete a save to keep both.",
+                "Cancel",
+            )
+            // Each group reads top to bottom, and this device's choice sits on the same side as the other's.
+            assertEquals(copies.map(::top).sorted(), copies.map(::top))
+            assertEquals(choices.map(::top).sorted(), choices.map(::top))
+            assertEquals(left("Keep this device's version"), left("Keep the other version"), 1f)
+            val window = PolarisWindow(variant.widthDp.dp, variant.heightDp.dp)
+            if (window.twoPane && window.compactHeight && variant.fontScale < 1.5f) {
+                // Two panes: the choices are the second pane, level with the copies and from the top.
+                assertTrue(left("Keep this device's version") > left("Version on this device"))
+                assertTrue(top("Keep this device's version") < top("Version on Maya's Steam Deck"))
+            } else {
+                // One column: the copies, then the choices.
+                assertTrue(top("Version on Maya's Steam Deck") < top("Keep this device's version"))
+                assertEquals(left("Version on this device"), left("Keep this device's version"), 1f)
+            }
+        }
     }
 }

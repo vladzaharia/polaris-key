@@ -556,6 +556,10 @@ export interface UiInput {
     remote?: { when?: string; device?: string } | null;
     bothAvailable?: boolean;
     keep?: "local" | "remote" | "both";
+    /** The version the app knows was saved later, from its own metadata and never from the
+     *  `when` strings. It tags that card and chooses, fills, focuses and reorders nothing; it is
+     *  ignored when the other copy was deleted. */
+    newer?: "local" | "remote";
   };
   /** UnlockSync's step (U-42). `nearby` says the host could unlock from a nearby device:
    *  v0.10.0 never offers it, because NearbyApproval does not ship. */

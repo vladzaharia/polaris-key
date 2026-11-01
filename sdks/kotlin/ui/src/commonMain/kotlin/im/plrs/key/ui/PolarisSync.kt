@@ -523,7 +523,7 @@ private fun PolarisSyncStep(
 
 /** A failure the person can act on: the warning glyph and the sentence, announced as it appears. */
 @Composable
-private fun PolarisErrorLine(text: String) {
+internal fun PolarisErrorLine(text: String) {
     Row(
         Modifier.fillMaxWidth().semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Assertive },
         horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls),

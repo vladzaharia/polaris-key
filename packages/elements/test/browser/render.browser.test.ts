@@ -543,6 +543,7 @@ describe("the save screens", () => {
     { label: "390", width: 390, height: 844, font: "" },
     { label: "844x390", width: 844, height: 390, font: "" },
     { label: "640x360", width: 640, height: 360, font: "" },
+    { label: "844x390-text200", width: 844, height: 390, font: "200%" },
     { label: "1440", width: 1440, height: 900, font: "" },
     { label: "390-text200", width: 390, height: 844, font: "200%" },
     { label: "1440-text200", width: 1440, height: 900, font: "200%" },
@@ -589,6 +590,38 @@ describe("the save screens", () => {
               `${key} below the one before`,
             ).toBeGreaterThanOrEqual(prev.bottom - 1);
           prev = r;
+        }
+        // Short landscape: two panes, the cards left of the choices, all in the first viewport.
+        const card = root
+          .querySelector("[data-side=remote]")!
+          .getBoundingClientRect();
+        const mine = root
+          .querySelector("[data-side=local]")!
+          .getBoundingClientRect();
+        if (size.label === "844x390" || size.label === "640x360") {
+          expect(card.right, "cards left of the choices").toBeLessThanOrEqual(
+            at(keys[0]!)!.left + 1,
+          );
+          expect(card.width, "pane of 18rem").toBeGreaterThanOrEqual(288);
+          expect(at(keys[0]!)!.width, "pane of 18rem").toBeGreaterThanOrEqual(
+            288,
+          );
+          for (const r of [
+            root.querySelector("h1")!.getBoundingClientRect(),
+            mine,
+            card,
+            at(keys[0]!)!,
+            at("common.cancel")!,
+          ]) {
+            expect(r.top, "top edge on screen").toBeGreaterThanOrEqual(0);
+            expect(r.bottom, "in the first viewport").toBeLessThanOrEqual(
+              size.height,
+            );
+          }
+        } else {
+          expect(card.bottom, "versions before choices").toBeLessThanOrEqual(
+            at(keys[0]!)!.top + 1,
+          );
         }
         // The two choices share a column: the other never moves under the "this device" card.
         expect(

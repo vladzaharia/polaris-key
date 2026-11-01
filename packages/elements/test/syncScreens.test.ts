@@ -516,6 +516,63 @@ describe("pk-save-conflict (U-22.K2)", () => {
   });
 });
 
+describe("pk-save-conflict, UX2", () => {
+  const choose = (extra: Record<string, unknown> = {}) => ({
+    saveConflict: {
+      step: "choose" as const,
+      local: { when: "today, 14:02" },
+      remote: { when: "yesterday, 21:40", device: "Maya's Steam Deck" },
+      bothAvailable: true,
+      ...extra,
+    },
+  });
+  it("tags the newer card, shows busy with one live region, and offers Choose again", async () => {
+    const newer = await mount("SaveConflict", choose({ newer: "remote" }));
+    const tags = [...newer.shadowRoot!.querySelectorAll("[data-part=newer]")];
+    expect(tags).toHaveLength(1);
+    expect(tags[0]!.closest("[data-side]")?.getAttribute("data-side")).toBe(
+      "remote",
+    );
+    const keeping = await mount("SaveConflict", {
+      saveConflict: { step: "keeping", keep: "local" },
+    });
+    expect(
+      keeping.shadowRoot!.querySelectorAll('[role="status"]'),
+    ).toHaveLength(1);
+    expect(
+      keeping.shadowRoot!.querySelector('[aria-busy="true"]'),
+    ).not.toBeNull();
+    const failed = await mount("SaveConflict", {
+      saveConflict: { step: "failed", keep: "remote", remote: null },
+    });
+    expect(
+      q(failed, 'button[data-key="saveConflict.chooseAgain"]'),
+    ).not.toBeNull();
+    expect(q(failed, '[data-variant="primary"]')).toBeNull();
+  });
+
+  it("shows the success mark and the result title on kept", async () => {
+    const kept = await mount("SaveConflict", {
+      saveConflict: { step: "kept", keep: "both" },
+    });
+    expect(q(kept, ".success")).not.toBeNull();
+    expect(kept.shadowRoot!.textContent).toContain("Kept both versions");
+    expect(kept.shadowRoot!.textContent).toContain("saved as a copy");
+  });
+
+  it("announces a transfer's label only", async () => {
+    const el = await mount("CloudSyncStatus", {
+      cloudSync: {
+        state: "transferring",
+        transfer: { size: "38 MB", total: "61 MB", fraction: 0.62 },
+      },
+    });
+    const live = el.shadowRoot!.querySelectorAll('[role="status"]');
+    expect(live).toHaveLength(1);
+    expect(live[0]!.getAttribute("data-key")).toBe("cloudSync.transferring");
+  });
+});
+
 describe("pk-cloud-sync-status transfers (U-22.K2)", () => {
   it("draws a counted bar, or an indeterminate one, and never says Synced", async () => {
     const counted = await mount("CloudSyncStatus", {

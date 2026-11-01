@@ -801,6 +801,17 @@ export abstract class PkElement extends LitElement {
   /** Escape leaves a Cloud Sync screen by its Cancel (DL9), where it has one. */
   private escapes(e: KeyboardEvent, c: RenderCtx): void {
     const v = c.view;
+    // A kept save conflict has no Cancel: Escape is Done.
+    if (
+      e.key === "Escape" &&
+      !e.defaultPrevented &&
+      v.component === "SaveConflict" &&
+      v.state === "kept"
+    ) {
+      e.preventDefault();
+      c.act("common.done");
+      return;
+    }
     if (
       e.key !== "Escape" ||
       e.defaultPrevented ||

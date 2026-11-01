@@ -490,7 +490,22 @@ key ring calls on `PolarisKey.keyring` through `PKeyCloudSyncController` unless 
 - **`PKeyCloudSyncStatus`** also draws `locked` ("Sync is locked." with **Unlock sync**, signal
   `unlock_requested`) and `ring-changed` ("Your sync key changed." with **Review**, which always
   shows, signal `review_requested`). Following the sync client's state is the host binding and not
-  built yet; set `state` yourself until then.
+  built yet; set `state` yourself until then. While saves move it draws `transferring` ("Syncing
+  saves…" before its figures, `transfer_size` / `transfer_total`, and a bar filled by
+  `transfer_fraction`, or running when that is negative), `waiting` (`reason`: `network`, `battery` or
+  `background`) and `transfer-failed` (a secondary **Try again**, signal `retry_requested`). None of
+  them ever says synced.
+- **`PKeySaveConflict`.** The same save changed on two devices (not bound to a live client yet: set
+  `step`, `local_when`, `remote_when`, `remote_device`, `remote_deleted`, `both_available`, `keep`,
+  `newer` and connect the signals). `newer` (`"local"` or `"remote"`, from your own metadata) tags that
+  card **Newer**; it chooses nothing and never shows when the other copy was deleted. Once applied it
+  titles itself with the result under a success mark; a failure offers **Try again**, **Choose
+  again** (`choose_again_requested()`: set `step` back to `"choose"`) and **Cancel**, none filled. It offers **Keep this device's version**, **Keep the other version** and
+  **Keep both** as one unfilled column, none the default; the first focus is **Cancel**. **Keep both**
+  stays on screen, disabled with its reason, while all 16 save slots are in use. When the other copy
+  was deleted it has its own title and lede and **Delete it here too** in place of the other two.
+  `keep_requested(keep)`, `retry_requested(keep)`, `cancelled()` and `done()`; `model` is the ui-core
+  view of the state.
 
 `PKeyCloudSyncController.begin(sdk)` says which screen a device needs: a locked device with no ring
 creates one and shows its recovery code, a ring this device cannot open asks for the code, a changed
@@ -1095,6 +1110,43 @@ the platform seal is not read through the weaker path. Its folder is rooted thro
 on every write: on Android with the `PolarisKeyAndroid` plugin it sits in the no-backup directory, on iOS with the
 `PolarisKeyApple` plugin it is marked out of backups, and elsewhere nothing is set. The journal never holds the root. The backup table above covers the
 key ring's files.
+
+## Synced saves (`PolarisKey.cloud_sync.saves`)
+
+A save is a metadata record and one file, written in that order so a save is never torn: the file
+goes up first, then the metadata. `PolarisKey.cloud_sync.saves` needs the Sync service and a signed-in
+person; with end-to-end encryption (the default) the file and the metadata are sealed with the
+[key ring](#key-ring-polariskeykeyring) and the Worker holds ciphertext. A locked ring, or a ring whose root was replaced while a call ran, fails the call
+with `sync-locked`.
+
+```gdscript
+func save_game(bytes: PackedByteArray) -> void:
+	var transfer: PKeyTransfer = PolarisKey.cloud_sync.saves.write("slot1", bytes, {"chapter": "two", "playtime": 5400, "formatVersion": 3})
+	var outcome: Dictionary = await transfer.wait()        # done, cancelled, failed or conflict; never an error value
+	match outcome.state:
+		"done": print("saved at version ", outcome.version)
+		"conflict":                                         # another device wrote first
+			var kept := PolarisKey.cloud_sync.saves.resolve(outcome.conflict, "local", bytes)   # or "remote" or "both"
+			await kept.wait()
+
+func load_game() -> void:
+	var list: PKeyResult = await PolarisKey.cloud_sync.saves.list()      # [{id, version, metadata, file, newer_format}], at most 16
+	var read: PKeyResult = await PolarisKey.cloud_sync.saves.read("slot1")  # {id, version, metadata, file, bytes}
+```
+
+`write(id, bytes, metadata, opts)` returns at once. `opts` may carry `base_version` (an int, or `"*"` to
+create only) and `on_progress`. `transfer.pause()`, `resume()` and `cancel()` keep the upload's journal
+across a pause or a restart; `cancel()` also ends the wait for the metadata write and reports
+`cancelled`. That wait has no timeout: cancel, a sign-out (the write is dropped) and the host's retries
+end it. `PolarisKey.cloud_sync.transfers()` lists the writes in flight, and `transferProgress`,
+`transferDone` and `transferFailed` arrive on the `cloudSync` event. `list()`, `read()`, `revisions()` and `delete()` answer
+`PKeyResult`s; `read` of a save whose `formatVersion` is above
+`PKeyOptions.cloud_sync_save_format_version` fails with reason `newer-format` and downloads nothing.
+A save is at most 32 MiB (`cloud_sync_saves_max_bytes` lowers it) and the file is held whole in memory:
+the GDScript AES-GCM lane seals about a MiB a second, on a worker thread so the game keeps drawing.
+`cloud_sync_saves_delta` sends a changed save as content-defined chunks. A row you just wrote shows its
+file once the next pull names it. On iOS and Android every call answers the typed `unsupported` refusal
+until the native lanes (CC-14b).
 
 ## License notes
 

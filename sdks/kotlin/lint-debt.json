@@ -486,7 +486,7 @@
       "detekt:complexity.LongParameterList": 1,
       "detekt:complexity.NestedBlockDepth": 1,
       "detekt:empty-blocks.EmptyFunctionBlock": 1,
-      "detekt:style.MaxLineLength": 3,
+      "detekt:style.MaxLineLength": 2,
       "detekt:style.ThrowsCount": 1,
       "ktlint:standard:max-line-length": 1
     },
@@ -2092,8 +2092,6 @@
       "detekt:complexity.ComplexCondition": 1,
       "detekt:complexity.CyclomaticComplexMethod": 2,
       "detekt:complexity.TooManyFunctions": 1,
-      "detekt:exceptions.RethrowCaughtException": 1,
-      "detekt:style.MagicNumber": 11,
       "detekt:style.MaxLineLength": 1,
       "detekt:style.ReturnCount": 5
     },
@@ -2641,10 +2639,10 @@
       "detekt:complexity.CyclomaticComplexMethod": 2,
       "detekt:complexity.LongMethod": 1,
       "detekt:complexity.TooManyFunctions": 1,
-      "detekt:naming.EnumNaming": 60,
+      "detekt:naming.EnumNaming": 65,
       "detekt:style.MagicNumber": 8,
       "detekt:style.ReturnCount": 1,
-      "ktlint:standard:enum-entry-name-case": 60,
+      "ktlint:standard:enum-entry-name-case": 65,
       "ktlint:standard:property-naming": 3
     },
     "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/KitRows.kt": {
@@ -2655,6 +2653,10 @@
       "ktlint:standard:function-signature": 1,
       "ktlint:standard:import-ordering": 1,
       "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/KitSaveStates.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1
     },
     "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/KitSettingsStates.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 1,
@@ -3079,8 +3081,9 @@
       "ktlint:standard:max-line-length": 3
     },
     "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisCloudSyncKit.kt": {
-      "detekt:naming.FunctionNaming": 1,
-      "ktlint:standard:function-naming": 1
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:naming.FunctionNaming": 3,
+      "ktlint:standard:function-naming": 3
     },
     "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisCopy.kt": {
       "detekt:style.LoopWithTooManyJumpStatements": 1,
@@ -3227,6 +3230,15 @@
       "detekt:exceptions.TooGenericExceptionCaught": 1,
       "detekt:style.MagicNumber": 12,
       "detekt:style.ReturnCount": 1
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisSaveConflict.kt": {
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:naming.FunctionNaming": 7,
+      "ktlint:standard:function-naming": 7
+    },
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisSaveParts.kt": {
+      "detekt:naming.FunctionNaming": 2,
+      "ktlint:standard:function-naming": 2
     },
     "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisScreen.kt": {
       "detekt:complexity.ComplexCondition": 1,

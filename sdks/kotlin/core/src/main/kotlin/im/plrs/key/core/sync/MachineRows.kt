@@ -45,8 +45,11 @@ internal class MachineRows(private val p: MachineParts) {
     /** A conflict's `server` copy as a held row, judged at the [cursor] the push carried (X-1). */
     fun copyRow(part: SyncPartition, latchKey: String, server: JsonObject, openRow: OpenedRow?, cursor: Long): SyncRow {
         val version = SyncNum.long(server["version"])!!
-        val flag = rowBad(part, latchKey, version, openRow, cursor)
-        return SyncRow(server["value"] ?: JsonNull, version, null, flag.bad, flag.plain)
+        // The same file-only rule as a pulled row, without the blinded-id check: a conflict copy sits under the mutation's own plain id.
+        val file = RecordFile.of(server["file"])
+        val fileOnly = server["value"] == null && server["ct"] == null && openRow?.invalid != true && file != null
+        val flag = if (fileOnly) RowFlag() else rowBad(part, latchKey, version, openRow, cursor)
+        return SyncRow(server["value"] ?: JsonNull, version, null, flag.bad, flag.plain, file)
     }
 
     /** Take a served boundary: the least ever served, held at or below the sealed floor. */

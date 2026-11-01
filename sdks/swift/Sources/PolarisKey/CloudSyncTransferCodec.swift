@@ -53,21 +53,21 @@ public protocol FileCodec: Sendable {
     /// What `begin` calls it: "e2e" or "none".
     var enc: String { get }
     /// The 32 raw bytes of a plaintext chunk's id.
-    func chunkId(_ plain: Data) -> Data
+    func chunkId(_ plain: Data) throws -> Data
     /// The size of the raw (codec 0) object for a chunk of `plainLen` bytes.
     func chunkObjectBytes(_ plainLen: Int) -> Int
     func sealChunk(id: Data, plain: Data) throws -> Data
     /// Opens a stored object for `id`: every check of the format, the id of the plaintext last.
-    func openChunk(id: Data, object: Data) -> FileOpened
+    func openChunk(id: Data, object: Data) throws -> FileOpened
     /// The stored form of a file of `plainSize` bytes, as `begin` declares it.
     func storedSize(_ plainSize: Int) -> Int
     /// The plaintext size a stored size implies, or nil when none does.
     func plainSize(_ storedSize: Int) -> Int?
     func sealManifest(_ plain: Data) throws -> Data
-    func openManifest(_ stored: Data) -> FileOpened
+    func openManifest(_ stored: Data) throws -> FileOpened
     /// The stored form of a whole file (a fresh salt every call).
     func sealWhole(_ plain: Data) throws -> Data
-    func makeOpener() -> any FileOpener
+    func makeOpener() throws -> any FileOpener
 }
 
 private final class SyncOpener: FileOpener, @unchecked Sendable {
@@ -101,7 +101,9 @@ public struct E2eFileCodec: FileCodec, CustomStringConvertible, CustomReflectabl
     public var customMirror: Mirror { Mirror(self, children: [], displayStyle: .struct) }
     public var enc: String { "e2e" }
 
-    public func chunkId(_ plain: Data) -> Data { SyncChunks.chunkId(root: root, collection: collection, plain: plain) }
+    public func chunkId(_ plain: Data) -> Data {
+        SyncChunks.chunkId(root: root, collection: collection, plain: plain)
+    }
     public func chunkObjectBytes(_ plainLen: Int) -> Int { plainLen + 30 }
 
     public func sealChunk(id: Data, plain: Data) throws -> Data {

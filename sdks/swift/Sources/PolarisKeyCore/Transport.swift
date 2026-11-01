@@ -219,18 +219,23 @@ public struct URLSessionTransport: PolarisTransport {
             (data, response) = try await capped(req, limit: limit, delegate: policy)
         } else {
             #if canImport(FoundationNetworking)
-                (data, response) = try await session.data(for: req)
+                (data, response) = try await DelegatedExchange.run(
+                    req, configuration: session.configuration, policy: policy, limit: nil)
             #else
-                (data, response) = try await session.data(for: req, delegate: policy)
+                if DelegatedExchange.forced {
+                    (data, response) = try await DelegatedExchange.run(
+                        req, configuration: session.configuration, policy: policy, limit: nil)
+                } else {
+                    (data, response) = try await session.data(for: req, delegate: policy)
+                }
             #endif
         }
         try policy.throwIfRefused()
         #if canImport(FoundationNetworking)
-            // Linux: FoundationNetworking gives no per-request redirect hook, so a redirect is FOLLOWED by
-            // the session before this code sees the answer, and the request (bearer included, as the
-            // session's own cross-origin rules allow) has already reached the target. All this can do is
-            // refuse to treat that answer as the control plane's: a final URL that differs from the
-            // request's is no answer. It does not refuse the redirect and does not undo the exposure.
+            // Linux: the exchange runs on a session whose delegate is the redirect policy
+            // (`DelegatedExchange`), so a redirect is decided before it is followed and a refused
+            // one is never sent. This check is a second line: a final URL that differs from the
+            // request's, where no redirect is allowed, is no answer.
             if !request.followRedirects, let final = response.url, final.absoluteString != request.url.absoluteString {
                 throw PolarisError(code: "transport", message: "A redirect was followed where none is allowed.")
             }
@@ -301,9 +306,13 @@ public struct URLSessionTransport: PolarisTransport {
         _ req: URLRequest, limit: Int, delegate: RedirectPolicy.Delegate
     ) async throws -> (Data, URLResponse) {
         #if canImport(FoundationNetworking)
-            let (data, response) = try await session.data(for: req)
-            return (data.prefix(limit), response)
+            return try await DelegatedExchange.run(
+                req, configuration: session.configuration, policy: delegate, limit: limit)
         #else
+            if DelegatedExchange.forced {
+                return try await DelegatedExchange.run(
+                    req, configuration: session.configuration, policy: delegate, limit: limit)
+            }
             let (bytes, response) = try await session.bytes(for: req, delegate: delegate)
             var data = Data()
             if response.expectedContentLength > 0 {
@@ -318,6 +327,127 @@ public struct URLSessionTransport: PolarisTransport {
             }
             return (data, response)
         #endif
+    }
+}
+
+/// One request on a session of its own whose delegate carries the redirect policy. swift-corelibs
+/// FoundationNetworking has no per-request delegate on `data(for:)`, but it does call a session
+/// delegate's `willPerformHTTPRedirection` for a task that has no completion handler, so the
+/// Linux path uses this instead of `session.data(for:)`. Compiled on every platform so the delegate
+/// path can be tested on macOS; only Linux calls it.
+package final class DelegatedExchange: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    private let lock = NSLock()
+    package typealias Redirect = @Sendable (
+        URLSession, URLSessionTask, HTTPURLResponse, URLRequest, @escaping (URLRequest?) -> Void
+    ) -> Void
+    private let redirect: Redirect
+    private let limit: Int?
+    private var buffer = Data()
+    private var response: URLResponse?
+    private var truncated = false
+    private var continuation: CheckedContinuation<(Data, URLResponse), Error>?
+
+    private init(redirect: @escaping Redirect, limit: Int?) {
+        self.redirect = redirect
+        self.limit = limit
+    }
+
+    /// Tests only (macOS): route the calls that take the Linux path through this type, and count
+    /// the exchanges that ran, so a call site that stops using it is caught. Linux always uses it.
+    nonisolated(unsafe) private static var forcedValue = false
+    nonisolated(unsafe) private static var runsValue = 0
+    private static let counterLock = NSLock()
+    package static var forced: Bool {
+        get { counterLock.lock(); defer { counterLock.unlock() }; return forcedValue }
+        set { counterLock.lock(); forcedValue = newValue; runsValue = 0; counterLock.unlock() }
+    }
+    private static func countRun() {
+        counterLock.lock()
+        runsValue += 1
+        counterLock.unlock()
+    }
+    package static var runs: Int { counterLock.lock(); defer { counterLock.unlock() }; return runsValue }
+
+    /// With the redirect policy of `RedirectPolicy.Delegate`.
+    static func run(
+        _ req: URLRequest, configuration: URLSessionConfiguration, policy: RedirectPolicy.Delegate, limit: Int?
+    ) async throws -> (Data, URLResponse) {
+        try await run(
+            req, configuration: configuration, limit: limit,
+            redirect: { s, t, r, n, c in
+                policy.urlSession(s, task: t, willPerformHTTPRedirection: r, newRequest: n, completionHandler: c)
+            })
+    }
+
+    /// A caller-supplied session's own delegate is not used here: only its configuration is.
+    package static func run(
+        _ req: URLRequest, configuration: URLSessionConfiguration, limit: Int?,
+        redirect: @escaping Redirect
+    ) async throws -> (Data, URLResponse) {
+        countRun()
+        let exchange = DelegatedExchange(redirect: redirect, limit: limit)
+        let session = URLSession(configuration: configuration, delegate: exchange, delegateQueue: nil)
+        defer { session.finishTasksAndInvalidate() }
+        let task = session.dataTask(with: req)
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { c in
+                exchange.lock.lock()
+                exchange.continuation = c
+                exchange.lock.unlock()
+                task.resume()
+            }
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    package func urlSession(
+        _ session: URLSession, task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        redirect(session, task, response, request, completionHandler)
+    }
+
+    package func urlSession(
+        _ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+        completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
+    ) {
+        lock.lock()
+        self.response = response
+        lock.unlock()
+        completionHandler(.allow)
+    }
+
+    package func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        lock.lock()
+        buffer.append(data)
+        var stop = false
+        if let limit, buffer.count >= limit {
+            buffer = buffer.prefix(limit)
+            truncated = true
+            stop = true
+        }
+        lock.unlock()
+        if stop { dataTask.cancel() }
+    }
+
+    package func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        lock.lock()
+        let c = continuation
+        continuation = nil
+        let data = buffer
+        let response = self.response ?? task.response
+        let cut = truncated
+        lock.unlock()
+        guard let c else { return }
+        if let error, !cut {
+            c.resume(throwing: error)
+        } else if let response {
+            c.resume(returning: (data, response))
+        } else {
+            c.resume(throwing: PolarisError(code: "transport", message: "non-http response"))
+        }
     }
 }
 

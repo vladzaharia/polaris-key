@@ -8,11 +8,24 @@
 
 import type { Unsupported } from "@polaris-key/client-core";
 import type {
+  RangedSource,
+  ReadOptions,
+  SaveConflict,
+  SaveKeep,
+  SaveRead,
+  SaveSetResult,
+  SaveSummary,
+  SaveTransfer,
+  WriteOptions,
+} from "@polaris-key/client-core/sync";
+import type { FileRevision } from "@polaris-key/protocol/sync";
+import type { Json } from "@polaris-key/client-core/cloud-sync";
+import type {
   SyncEvent,
   SyncStatus,
 } from "@polaris-key/client-core/cloud-sync";
 import type { BrowserCloudSyncHost } from "../browser/cloudSync/host.js";
-import { Feature } from "../constants.generated.js";
+import { Feature, TransferEvent } from "../constants.generated.js";
 import { UnsupportedError } from "./caps.js";
 
 export type { SyncEvent, SyncStatus };
@@ -22,6 +35,57 @@ export type IdentityNote =
   | { kind: "signedIn"; subject: string }
   | { kind: "signedOut" };
 
+/** A transfer event of the saves (`transferEvent` in `conformance/parity/enums.json`). */
+export type SaveTransferEvent =
+  | {
+      type: typeof TransferEvent.transferprogress;
+      id: string;
+      done: number;
+      total: number;
+    }
+  | {
+      type: typeof TransferEvent.transferdone;
+      id: string;
+      /** `done`; `cancelled` (a state, not a failure); `conflict` (settle it with `resolve`). */
+      state: "done" | "cancelled" | "conflict";
+    }
+  | { type: typeof TransferEvent.transferfailed; id: string; code: string };
+
+/**
+ * The saves of the signed-in person (sync.saves, U-22.7): records with one file each, over Cloud
+ * Sync. Loaded on the first call. Where Cloud Sync cannot run every verb throws the typed
+ * unsupported. Only the writer tab can write, delete or resolve (`sync-not-writer` otherwise).
+ */
+export interface BrowserSaves {
+  list(): Promise<SaveSummary[]>;
+  read(id: string, opts?: ReadOptions): Promise<SaveRead>;
+  /** Resolves with a handle at once; `done` settles on done, cancelled, failed or conflict. */
+  write(
+    id: string,
+    bytes: Uint8Array | RangedSource,
+    metadata: { [k: string]: Json },
+    opts?: WriteOptions,
+  ): Promise<SaveTransfer>;
+  resolve(
+    conflict: SaveConflict,
+    keep: SaveKeep,
+    bytes: Uint8Array | RangedSource,
+    opts?: WriteOptions,
+  ): Promise<SaveTransfer>;
+  delete(id: string, baseVersion?: number): Promise<SaveSetResult>;
+  revisions(id: string): Promise<FileRevision[]>;
+  /** The writes in flight (running, paused or waiting). Empty before the saves have loaded. */
+  transfers(): SaveTransfer[];
+  /** The conflicts a write ended with that nobody has settled (`resolve`) or dismissed yet. */
+  conflicts(): SaveConflict[];
+  /** Forget a conflict without settling it (the person cancelled). */
+  dismissConflict(id: string): void;
+  /** Transfer events in order; `null` when the set of transfers changed. */
+  onTransfers(listener: (event: SaveTransferEvent | null) => void): () => void;
+  /** The adapter's wiring: the person's transfers, journal and chunk cache are gone. */
+  purge(): Promise<void>;
+}
+
 /** Cloud Sync for settings. The host's machine API (`set`, `get`, `settingState`, `signIn`, ...)
  *  is `host()`'s; app code reads status and flushes. */
 export interface CloudSyncClient {
@@ -29,6 +93,8 @@ export interface CloudSyncClient {
   readonly unsupported: Unsupported | null;
   /** The Worker's origin: a sign-in offer is only handed on when it is on it. */
   readonly signInOrigin?: string;
+  /** The saves of the signed-in person (sync.saves). */
+  readonly saves: BrowserSaves;
   /** Loads the host, restores the journal and joins the writer election. Idempotent. Throws the
    *  typed `UnsupportedError` where it cannot run (no Web Locks; a product without Sync). */
   host(): Promise<BrowserCloudSyncHost>;
@@ -58,6 +124,10 @@ export interface CloudSyncClient {
   beforeSignOut(): Promise<void>;
 }
 
+/** The saves' own feature id on a transport that cannot run Cloud Sync. */
+const savesUnsupported = (u: Unsupported): UnsupportedError =>
+  new UnsupportedError({ ...u, feature: Feature.syncSaves });
+
 /** A client for a transport that cannot run Cloud Sync: every verb throws the typed unsupported. */
 export function unsupportedCloudSync(
   reason: Unsupported["reason"],
@@ -72,8 +142,22 @@ export function unsupportedCloudSync(
   const refuse = (): never => {
     throw new UnsupportedError(unsupported);
   };
+  const saves: BrowserSaves = {
+    list: () => Promise.reject(savesUnsupported(unsupported)),
+    read: () => Promise.reject(savesUnsupported(unsupported)),
+    write: () => Promise.reject(savesUnsupported(unsupported)),
+    resolve: () => Promise.reject(savesUnsupported(unsupported)),
+    delete: () => Promise.reject(savesUnsupported(unsupported)),
+    revisions: () => Promise.reject(savesUnsupported(unsupported)),
+    transfers: () => [],
+    conflicts: () => [],
+    dismissConflict: () => undefined,
+    onTransfers: () => () => undefined,
+    purge: async () => undefined,
+  };
   return {
     unsupported,
+    saves,
     host: () => Promise.reject(new UnsupportedError(unsupported)),
     status: refuse,
     flush: () => Promise.reject(new UnsupportedError(unsupported)),
@@ -105,6 +189,7 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
   let loading: Promise<CloudSyncClient> | null = null;
   const listeners = new Set<(events: SyncEvent[]) => void>();
   const statusListeners = new Set<() => void>();
+  const transferListeners = new Set<(e: SaveTransferEvent | null) => void>();
   // A product that does not run the Sync service answers the typed N/A on every verb.
   const off = () =>
     unsupportedCloudSync(
@@ -117,13 +202,34 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
           (c) => (
             c.onEvents((e) => listeners.forEach((l) => l(e))),
             c.onStatus(() => statusListeners.forEach((l) => l())),
+            c.saves.onTransfers((e) => transferListeners.forEach((l) => l(e))),
             (real = c)
           ),
           (err) => ((loading = null), Promise.reject(err)),
         ))
       : (off().host() as Promise<never>);
+  const saves: BrowserSaves = {
+    list: async () => (await ready()).saves.list(),
+    read: async (id, o) => (await ready()).saves.read(id, o),
+    write: async (id, b, m, o) => (await ready()).saves.write(id, b, m, o),
+    resolve: async (c, k, b, o) => (await ready()).saves.resolve(c, k, b, o),
+    delete: async (id, v) => (await ready()).saves.delete(id, v),
+    revisions: async (id) => (await ready()).saves.revisions(id),
+    transfers: () => real?.saves.transfers() ?? [],
+    conflicts: () => real?.saves.conflicts() ?? [],
+    dismissConflict: (id) => real?.saves.dismissConflict(id),
+    onTransfers: (l) => (
+      transferListeners.add(l),
+      () => transferListeners.delete(l)
+    ),
+    purge: async () => {
+      const c = real ?? (await loading?.catch(() => null)) ?? null;
+      await c?.saves.purge();
+    },
+  };
   return {
     unsupported: null,
+    saves,
     ...(src.signInOrigin !== undefined
       ? { signInOrigin: src.signInOrigin }
       : {}),

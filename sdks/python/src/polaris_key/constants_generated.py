@@ -2525,11 +2525,11 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "sync.scenarios": CapabilityRow("implemented", "sync", ()),
         "sync.settings": CapabilityRow("implemented", "sync", ()),
         "sync.conflict": CapabilityRow("planned", "sync", ()),
-        "sync.saves": CapabilityRow("planned", "sync", ()),
+        "sync.saves": CapabilityRow("implemented", "sync", ()),
         "sync.keyring": CapabilityRow("implemented", "sync", ()),
         "sync.records": CapabilityRow("planned", "sync", ()),
-        "sync.files": CapabilityRow("planned", "sync", ()),
-        "sync.files.delta": CapabilityRow("planned", "sync", ()),
+        "sync.files": CapabilityRow("implemented", "sync", ()),
+        "sync.files.delta": CapabilityRow("implemented", "sync", ()),
         "sync.e2e.recovery": CapabilityRow("planned", "sync", ()),
         "sync.transfer.background": CapabilityRow("na", "sync", (CapabilityNa("python", "runtime"),)),
         "sync.e2e": CapabilityRow("implemented", "sync", ()),
@@ -2635,4 +2635,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "5c652141857a90b07978ff0cdc804a4a4b24237ab8ca35fc58170940e98128d9"
+CAPABILITY_DIGEST: Final[str] = "fcc325eec3fe75d99d2d241bac6860695cbd4ff2fd61f27f4659be07e7f48fd6"

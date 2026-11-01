@@ -3946,25 +3946,20 @@
       "kind": "property",
       "feature": "sync.saves",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useSaves",
           "shape": "hook",
           "reason": "a hook returns a render value; its handle carries the verbs"
         },
         "swift": {
-          "planned": "U-23"
+          "shape": "property"
         },
-        "kotlin": {
-          "planned": "U-23"
-        },
+        "kotlin": {},
         "godot": {
-          "planned": "U-23"
+          "shape": "property",
+          "reason": "a property holding the saves (PKeySaves)"
         }
       },
       "layer": "client"
@@ -3974,25 +3969,21 @@
       "kind": "method",
       "feature": "sync.saves",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useSaves().list",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.list"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.list"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.list"
         }
       },
       "layer": "client"
@@ -4008,25 +3999,22 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useSaves().read",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.read",
+          "labels": ["_", "options"]
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.read"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.read"
         }
       },
       "layer": "client"
@@ -4046,25 +4034,22 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useSaves().write",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.write",
+          "labels": ["_", "bytes", "metadata", "options"]
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.write"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.write"
         }
       },
       "layer": "client"
@@ -4080,25 +4065,22 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useSaves().delete",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.delete",
+          "labels": ["_", "baseVersion"]
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.delete"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.delete"
         }
       },
       "layer": "client"
@@ -4114,25 +4096,22 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useSaves().revisions",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.revisions",
+          "labels": ["_"]
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.revisions"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.revisions"
         }
       },
       "layer": "client"
@@ -4142,26 +4121,16 @@
       "kind": "method",
       "feature": "sync.files",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useTransfers().transfers",
           "shape": "hook",
           "reason": "a hook returns the render value: the transfers in flight"
         },
-        "swift": {
-          "planned": "U-23"
-        },
-        "kotlin": {
-          "planned": "U-23"
-        },
-        "godot": {
-          "planned": "U-23"
-        }
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4170,25 +4139,21 @@
       "kind": "method",
       "feature": "sync.files",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useTransfers().pause",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.pause"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.pause"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeyTransfer.pause"
         }
       },
       "layer": "client"
@@ -4198,25 +4163,21 @@
       "kind": "method",
       "feature": "sync.files",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useTransfers().resume",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.resume"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.resume"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeyTransfer.resume"
         }
       },
       "layer": "client"
@@ -4226,25 +4187,21 @@
       "kind": "method",
       "feature": "sync.files",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useTransfers().cancel",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.cancel"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.cancel"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeyTransfer.cancel"
         }
       },
       "layer": "client"
@@ -4255,25 +4212,25 @@
       "feature": "sync.files",
       "enum": "transferEvent",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useTransfers().transfers",
           "shape": "hook",
           "reason": "the hook re-renders on each transfer event, so no event listener is exposed"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "events",
+          "reason": "one event stream on the client; the transfer cases of CloudSyncEvent"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "client.events",
+          "reason": "one event stream on the client (client.events), PolarisEvent.CloudSync"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "client.event",
+          "shape": "signal",
+          "reason": "Godot observes the one event signal, kind cloudSync (type transferProgress, transferDone, transferFailed)"
         }
       },
       "layer": "client"

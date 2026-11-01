@@ -100,8 +100,16 @@ public final class MemoryChunkCache: ChunkCache, @unchecked Sendable {
 /// another's and a collection name cannot climb out of the cache root.
 public func chunkCacheDirectory(stateDir: URL, subject: String, collection: String) -> URL {
     func h(_ s: String) -> String { SyncCrypto.sha256(Data(s.utf8)).map { String(format: "%02x", $0) }.joined() }
+    return chunkCachePersonDirectory(stateDir: stateDir, subject: subject)
+        .appendingPathComponent(h(collection), isDirectory: true)
+}
+
+/// `<stateDir>/cloud-sync-chunks/<hash(subject)>`: everything one person's chunk cache holds. A purge removes
+/// this and nothing beside it.
+public func chunkCachePersonDirectory(stateDir: URL, subject: String) -> URL {
+    let digest = SyncCrypto.sha256(Data(subject.utf8)).map { String(format: "%02x", $0) }.joined()
     return stateDir.appendingPathComponent(cloudSyncChunksDirName, isDirectory: true)
-        .appendingPathComponent(h(subject), isDirectory: true).appendingPathComponent(h(collection), isDirectory: true)
+        .appendingPathComponent(digest, isDirectory: true)
 }
 
 /// The cache on disk: an LRU of at most `maxBytes`, one file per object named by its chunk id (0600, in a

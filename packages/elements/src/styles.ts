@@ -377,7 +377,8 @@ const KIT_CSS = String.raw`
   content: none;
 }
 .pk-root[data-shape="short"][data-fill] .stage {
-  align-content: center;
+  /* safe: a card taller than the window starts at the top and scrolls, never clipped above it. */
+  align-content: safe center;
 }
 /* Height is what a short window lacks: a group of links is two columns, not a column. */
 .pk-root[data-shape="short"] .links:has(> :nth-child(3)) {

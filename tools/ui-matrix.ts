@@ -74,6 +74,14 @@
 // the four ways a session ends without a link, links off for the product) and TransferOffer (D-8:
 // consent per transfer). Like `cloudSync` it sits outside COMPONENT_FAMILIES, so only ui-core runs
 // it; the native kits learn it with their own packages.
+// Version 8 (U-22.UX2): the saveConflict family from the built UX reviews. The `newer` input
+// member and the Newer tag; the `choose-again` action (a failed choice returns to its choices,
+// nothing applied); keeping is busy (`a11y.busy`) and keeps the deleted variant's title; kept
+// names the choice as its title (`keptLocalTitle`, `keptRemoteTitle`, `keptBothTitle`,
+// `keptDeletedTitle`, with `keptCopy` under Keep both), replacing the four `kept*` lines; failed
+// offers Try again, Choose again and Cancel with none filled, and says `failedDeleted` after a
+// deletion elsewhere. 17 rows become 23. Version 8 also carries the NearbyApproval row
+// change (I-47.U); version 7 is the release v0.10.0 carries.
 // Version 7 (I-46.1, automatic sign-in): the `autoSignIn` and `nearbyApproval` input members; the
 // SignIn states confirm, link-offer, link-done, link-conflict, nearby-prompt, nearby-wait and
 // nearby-done (and, from KFA-0, device-limit: a device limit with no license rows, a row that keeps
@@ -302,11 +310,13 @@ export const ACTIONS: Readonly<Record<string, string>> = {
     "Open the recovery code screen from the ring confirmation.",
   "copy-code": "Copy the recovery code to the clipboard.",
   "keep-local":
-    "Resolve a save conflict by keeping the copy on this device (Keep this device's).",
+    "Resolve a save conflict by keeping the copy on this device (Keep this device's version).",
   "keep-remote":
-    "Resolve a save conflict by keeping the other copy, or accepting its deletion (Keep the other, Delete it here too).",
+    "Resolve a save conflict by keeping the other copy, or accepting its deletion (Keep the other version, Delete it here too).",
   "keep-both":
     "Resolve a save conflict by keeping both: the other copy is saved under a new name (Keep both).",
+  "choose-again":
+    "Return a failed save conflict to its choices; nothing is applied (Choose again).",
 };
 
 /** The copy keys whose control is each action (UI-KITS §4.1: copy matches controls). */
@@ -324,6 +334,7 @@ export const ACTION_KEYS: Readonly<Record<string, readonly string[]>> = {
   "keep-local": ["saveConflict.keepThis"],
   "keep-remote": ["saveConflict.keepOther", "saveConflict.acceptDelete"],
   "keep-both": ["saveConflict.keepBoth"],
+  "choose-again": ["saveConflict.chooseAgain"],
   "start-sign-in": [
     "signin.key.signIn",
     "signin.key.ownedSignIn",
@@ -752,7 +763,7 @@ const INPUTS: Record<string, string> = {
   cloudSync:
     "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed | transferring | waiting | transfer-failed, signedIn?, canReview?, lastSynced?, transfer?: {size?, total?, fraction?}, reason?: network | battery | background}. `ring-changed` always offers Review: the kit owns the confirmation. `transferring` shows `transfer.size` of `transfer.total` (display-ready sizes) when both are given, and a bar that is determinate only with `transfer.fraction` (counted bytes, 0 to 1); `waiting` names its `reason` (default network); `transfer-failed` offers Try again. While a transfer is pending the status never says Synced, whatever `lastSynced` holds.",
   saveConflict:
-    "SaveConflict: {step: choose | keeping | kept | failed, local?: {when?}, remote?: {when?, device?} | null, bothAvailable?, keep?: local | remote | both}. `remote: null` means the other copy was deleted: Keep the other becomes Delete it here too and Keep both is not offered. `bothAvailable` is true only with a free slot of the 16; absent or false draws Keep both disabled, with its reason. `keep` is the choice being applied (keeping), applied (kept) or that failed; kept needs it. `when` and `device` are display-ready.",
+    "SaveConflict: {step: choose | keeping | kept | failed, local?: {when?}, remote?: {when?, device?} | null, bothAvailable?, keep?: local | remote | both, newer?: local | remote}. `remote: null` means the other copy was deleted: Keep the other becomes Delete it here too and Keep both is not offered. `bothAvailable` is true only with a free slot of the 16; absent or false draws Keep both disabled, with its reason. `keep` is the choice being applied (keeping), applied (kept) or that failed; kept needs it. `newer`: `local | remote`, the version the app knows was saved later (its own metadata, never the display strings). It tags that card and chooses nothing; it is ignored when the other copy was deleted. `when` and `device` are display-ready.",
   licenseHolder:
     "Who holds the license a key just activated: {email?}. No email (or an empty one): floating, held by the key alone. An email: the license was sent to it and no account holds it yet (waiting); screens mask it. Absent: the holder is not known and AccountAndLicense draws what it drew before.",
   activateDone:
@@ -4308,12 +4319,14 @@ function saveConflictFamily(a: A): Draft[] {
   const inv = (invariant: string, m: Omit<MustNot, "invariant">) => ({
     mustNot: { invariant, ...m },
   });
-  const KEPT = [
-    "saveConflict.keptLocal",
-    "saveConflict.keptRemote",
-    "saveConflict.keptBoth",
-    "saveConflict.keptDeleted",
+  const KEPT_TITLES = [
+    "saveConflict.keptLocalTitle",
+    "saveConflict.keptRemoteTitle",
+    "saveConflict.keptBothTitle",
+    "saveConflict.keptDeletedTitle",
   ];
+  const KEPT = [...KEPT_TITLES, "saveConflict.keptCopy"];
+  const NEWER = ["saveConflict.newerThis", "saveConflict.newerOther"];
   const THIS = { when: "today, 14:02" };
   const OTHER = { when: "yesterday, 21:40", device: "Maya's Steam Deck" };
   const SC = (step: string, extra: Obj = {}): Obj => ({
@@ -4322,13 +4335,11 @@ function saveConflictFamily(a: A): Draft[] {
   const CS = (state: string, extra: Obj = {}): Obj => ({
     cloudSync: { state, ...extra },
   });
-  const KEPT_NAMES: Record<string, string> = {
-    "saveConflict.keptLocal": "this device's copy",
-    "saveConflict.keptRemote": "the other copy",
-    "saveConflict.keptBoth": "both copies",
-    "saveConflict.keptDeleted": "the deletion",
-  };
-  const keptOthers = (own: string) => KEPT.filter((k) => k !== own);
+  const KEPT_ONLY =
+    "Kept names the choice that was made, and no other, as its title.";
+  const TD = ["saveConflict.title", "saveConflict.deletedTitle"];
+  const keptOthers = (own: string[]) =>
+    [...KEPT, ...TD].filter((k) => !own.includes(k));
   const choose = (name: string, input: Obj, drop: string[], o: Opts = {}) =>
     row(
       name,
@@ -4401,6 +4412,7 @@ function saveConflictFamily(a: A): Draft[] {
         "saveConflict.deletedElsewhere",
         "saveConflict.acceptDelete",
         "saveConflict.bothFull",
+        ...NEWER,
       ],
       inv("A save is never discarded without a choice.", {
         states: ["keeping", "kept"],
@@ -4416,6 +4428,7 @@ function saveConflictFamily(a: A): Draft[] {
         "saveConflict.deletedElsewhere",
         "saveConflict.acceptDelete",
         "saveConflict.bothFull",
+        ...NEWER,
       ],
     ),
     choose(
@@ -4427,6 +4440,7 @@ function saveConflictFamily(a: A): Draft[] {
         "saveConflict.otherUnknown",
         "saveConflict.deletedElsewhere",
         "saveConflict.acceptDelete",
+        ...NEWER,
       ],
       {
         dropActions: ["keep-both"],
@@ -4436,6 +4450,40 @@ function saveConflictFamily(a: A): Draft[] {
           actions: ["keep-both"],
         },
       },
+    ),
+    choose(
+      "SaveConflict/choose: the other version is newer",
+      SC("choose", { bothAvailable: true, newer: "remote" }),
+      [
+        "saveConflict.deletedTitle",
+        "saveConflict.deletedLede",
+        "saveConflict.otherUnknown",
+        "saveConflict.deletedElsewhere",
+        "saveConflict.acceptDelete",
+        "saveConflict.bothFull",
+        "saveConflict.newerThis",
+      ],
+      inv("Newer tags the version the app names and chooses nothing.", {
+        states: ["keeping", "kept"],
+        copy: ["saveConflict.newerThis"],
+      }),
+    ),
+    choose(
+      "SaveConflict/choose: this device's version is newer",
+      SC("choose", { bothAvailable: true, newer: "local" }),
+      [
+        "saveConflict.deletedTitle",
+        "saveConflict.deletedLede",
+        "saveConflict.otherUnknown",
+        "saveConflict.deletedElsewhere",
+        "saveConflict.acceptDelete",
+        "saveConflict.bothFull",
+        "saveConflict.newerOther",
+      ],
+      inv("Newer tags the version the app names and chooses nothing.", {
+        states: ["keeping", "kept"],
+        copy: ["saveConflict.newerOther"],
+      }),
     ),
     choose(
       "SaveConflict/choose: the other copy was deleted",
@@ -4449,6 +4497,7 @@ function saveConflictFamily(a: A): Draft[] {
         "saveConflict.keepOther",
         "saveConflict.keepBoth",
         "saveConflict.bothFull",
+        ...NEWER,
       ],
       inv(
         "A deletion is accepted only by its own button, never as Keep the other, Keep both has nothing to keep, and the screen never says two versions.",
@@ -4462,33 +4511,85 @@ function saveConflictFamily(a: A): Draft[] {
         },
       ),
     ),
+    choose(
+      "SaveConflict/choose: one version, no Newer tag",
+      SC("choose", { remote: null, bothAvailable: true, newer: "local" }),
+      [
+        "saveConflict.title",
+        "saveConflict.lede",
+        "saveConflict.otherDevice",
+        "saveConflict.otherUnknown",
+        "saveConflict.savedOther",
+        "saveConflict.keepOther",
+        "saveConflict.keepBoth",
+        "saveConflict.bothFull",
+        ...NEWER,
+      ],
+      inv("With one version there is nothing to compare: no Newer tag.", {
+        copy: NEWER,
+        actions: ["keep-both"],
+      }),
+    ),
     row(
       "SaveConflict/keeping: the choice is being applied",
       SC("keeping", { keep: "local" }),
       "SaveConflict",
       "keeping",
-      "all",
+      ["saveConflict.title", "saveConflict.keeping", "a11y.busy"],
       inv("A choice is applied once: no control is offered while it runs.", {
         actions: ["keep-both", "keep-local", "keep-remote"],
       }),
     ),
+    row(
+      "SaveConflict/keeping: after a deletion elsewhere",
+      SC("keeping", { remote: null, keep: "remote" }),
+      "SaveConflict",
+      "keeping",
+      ["saveConflict.deletedTitle", "saveConflict.keeping", "a11y.busy"],
+      inv(
+        "After a deletion elsewhere no step says two versions, and nothing is offered while it runs.",
+        {
+          copy: ["saveConflict.title"],
+          actions: ["keep-both", "keep-local", "keep-remote"],
+        },
+      ),
+    ),
     ...(
       [
-        ["local", "saveConflict.keptLocal", {}],
-        ["remote", "saveConflict.keptRemote", {}],
-        ["both", "saveConflict.keptBoth", {}],
-        ["remote", "saveConflict.keptDeleted", { remote: null }],
-      ] as [string, string, Obj][]
-    ).map(([keep, key, extra]) =>
+        [
+          "this device's version",
+          { keep: "local" },
+          ["saveConflict.keptLocalTitle"],
+        ],
+        [
+          "the other version",
+          { keep: "remote" },
+          ["saveConflict.keptRemoteTitle"],
+        ],
+        [
+          "both versions",
+          { keep: "both" },
+          ["saveConflict.keptBothTitle", "saveConflict.keptCopy"],
+        ],
+        [
+          "the deletion",
+          { remote: null, keep: "remote" },
+          ["saveConflict.keptDeletedTitle"],
+        ],
+        [
+          "this device's version after a deletion elsewhere",
+          { remote: null, keep: "local" },
+          ["saveConflict.keptLocalTitle"],
+        ],
+      ] as [string, Obj, string[]][]
+    ).map(([name, extra, own]) =>
       row(
-        `SaveConflict/kept: ${KEPT_NAMES[key]!}`,
-        SC("kept", { keep, ...extra }),
+        `SaveConflict/kept: ${name}`,
+        SC("kept", extra),
         "SaveConflict",
         "kept",
-        ["saveConflict.title", key, "common.done"],
-        inv("Kept names the choice that was made, and no other.", {
-          copy: keptOthers(key),
-        }),
+        [...own, "common.done"],
+        inv(KEPT_ONLY, { copy: keptOthers(own) }),
       ),
     ),
     row(
@@ -4496,11 +4597,37 @@ function saveConflictFamily(a: A): Draft[] {
       SC("failed", { keep: "local" }),
       "SaveConflict",
       "failed",
-      "all",
+      [
+        "saveConflict.title",
+        "saveConflict.failed",
+        "common.tryAgain",
+        "saveConflict.chooseAgain",
+        "common.cancel",
+      ],
       inv("A failed choice never says kept; both copies stay as they were.", {
         states: ["kept"],
-        copy: KEPT,
+        copy: [...KEPT, "saveConflict.failedDeleted"],
       }),
+    ),
+    row(
+      "SaveConflict/failed: after a deletion elsewhere, your save is unchanged",
+      SC("failed", { remote: null, keep: "remote" }),
+      "SaveConflict",
+      "failed",
+      [
+        "saveConflict.deletedTitle",
+        "saveConflict.failedDeleted",
+        "common.tryAgain",
+        "saveConflict.chooseAgain",
+        "common.cancel",
+      ],
+      inv(
+        "A failed choice never says kept, and with one save it never says two versions or both saves.",
+        {
+          states: ["kept"],
+          copy: [...KEPT, "saveConflict.failed", "saveConflict.title"],
+        },
+      ),
     ),
     row(
       "SaveConflict/hidden: Cloud Sync off",
@@ -7299,7 +7426,7 @@ const DESCRIPTION = [
   "theme rows pin UI-KITS §1.2 and §3.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter).",
   "vocabulary.loadingDelay pins DL7's delayed response: a row whose input has elapsedMs below min expects its loading state with no copy; from max, the state's usual copy.",
   "cli is the terminal drop-in contract (plans/UK-51.md), one object rather than component rows: verbs (the end-user set a mount offers, the developer verbs it offers only by name, the aliases), mount and help (what registering into a host CLI mounts, refuses with polaris-verb-collision, skips, hides and lists), gate (every licenseStatus x tty x json x entitled: run, the inline flow, or a refusal that is a triangle with its fix and exits 4), outcomes (a kit verb in a vocabulary.cli.situations situation: its mark, exit, result fields, stdout and fix verbs), stdin (what activate with no key reads, per vocabulary.cli.stdinKinds), capabilities (environment x streams x flags) and exit (the exit table). vocabulary.cli holds the rules; mount, help, gate and capabilities are computed by the generator's references.",
-  "Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 6: a changed row, input member or rule bumps it.",
+  "Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within a uiMatrixVersion: a changed row, input member or rule bumps it.",
 ].join(" ");
 
 export function buildUiMatrix(

@@ -494,8 +494,8 @@
       "wp": "U-08"
     },
     "sync.saves": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "client.cloud_sync.saves (cloud_sync/saves.py, synchronous): list, read, write, delete, revisions and resolve, a port of client-core's SavesClient bound to the machine's records (rows keep the file pointer; put_at and remove_at at an exact version, one outcome each: the fileRecordCases family of sync-scenarios.json) and the Python file transport, journal and chunk cache under one TransferEngine (max_retry_after_seconds 3600). A write runs on its own thread: its handle has pause, resume, cancel and wait; client.cloud_sync.transfers() lists the writes in flight; transferProgress, transferDone and transferFailed arrive as cloudSync events. The journal and chunk cache go with the person. tests/test_cloud_sync_saves.py; the cloudsync-files-single transcript replays through the transport."
     },
     "sync.keyring": {
       "status": "implemented",
@@ -506,12 +506,12 @@
       "wp": "U-46"
     },
     "sync.files": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "polaris_key.cloud_sync.files.FileRoutes: the FileTransport port of the transfer engine over bearer HTTP (the closed route list, no redirects, Content-Digest, bounds equal to what was asked, Retry-After parsed), under the transfer engine and journal (cloud_sync/transfer.py, journal.py). The cloudsync-files-* transcripts replay through it in tests/test_transcripts.py (cloudSyncFile); tests/test_cloud_sync_files.py."
     },
     "sync.files.delta": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "The same transport carries the chunk plan, chunk PUT and chunk GET calls; the chunker and chunk objects are core/sync_files.py (sync-vectors.json cdcCases and chunkCases run in tests/test_sync_crypto_conformance.py). The cloudsync-chunks* transcripts replay through the transport (cloudSyncChunk)."
     },
     "sync.e2e.recovery": {
       "status": "planned",

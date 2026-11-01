@@ -141,6 +141,13 @@ var allow_ephemeral_keys := false
 @export var cloud_sync_encryption := "e2e"
 ## Renames the app declares for synced settings (old name to current name). Never taken from a served body.
 @export var cloud_sync_aliases: Dictionary = {}
+## `cloud_sync.saves`: the newest `format_version` of a save this build can read (0: no check). A save above
+## it lists with `newer_format` and `read` refuses it with reason `newer-format` (plan D-11). App code's choice.
+@export var cloud_sync_save_format_version := 0
+## `cloud_sync.saves`: send a changed save as content-defined chunks (the collection's `files.delta`).
+@export var cloud_sync_saves_delta := true
+## `cloud_sync.saves`: the most bytes a save may be (0: the `saves` template's 32 MiB).
+@export var cloud_sync_saves_max_bytes := 0
 ## The codec the E2E lane seals with (a PKeyCloudSync codec port). Not an export. Null: PKeySyncHostCodec over the key ring.
 var cloud_sync_codec: Object = null
 

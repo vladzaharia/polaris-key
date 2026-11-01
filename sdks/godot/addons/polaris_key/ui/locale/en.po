@@ -2412,25 +2412,55 @@ msgstr "All save slots are in use. Delete a save to keep both."
 msgid "saveConflict.keeping"
 msgstr "Keeping your choice…"
 
-#. Kept this device's save.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptLocal"
-msgstr "Kept this device's save."
+#. Newer
+#. SaveConflict: tag on this device's card when the app says that version was saved later. Never a choice.
+msgid "saveConflict.newerThis"
+msgstr "Newer"
 
-#. Kept the other save.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptRemote"
-msgstr "Kept the other save."
+#. Newer
+#. SaveConflict: tag on the other card when the app says that version was saved later. Never a choice.
+msgid "saveConflict.newerOther"
+msgstr "Newer"
 
-#. Kept both. The other is saved as a copy.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptBoth"
-msgstr "Kept both. The other is saved as a copy."
+#. Choose again
+#. SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied.
+msgid "saveConflict.chooseAgain"
+msgstr "Choose again"
 
-#. The save is deleted.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptDeleted"
-msgstr "The save is deleted."
+#. macos: Choose Again
+msgctxt "macos"
+msgid "saveConflict.chooseAgain"
+msgstr "Choose Again"
+
+#. Couldn't keep your choice. Your save is unchanged.
+#. SaveConflict: the choice failed after the other copy was deleted; only this device's save exists.
+msgid "saveConflict.failedDeleted"
+msgstr "Couldn't keep your choice. Your save is unchanged."
+
+#. Kept this device's version
+#. SaveConflict: result title after Keep this device's version.
+msgid "saveConflict.keptLocalTitle"
+msgstr "Kept this device's version"
+
+#. Kept the other version
+#. SaveConflict: result title after Keep the other version.
+msgid "saveConflict.keptRemoteTitle"
+msgstr "Kept the other version"
+
+#. Kept both versions
+#. SaveConflict: result title after Keep both.
+msgid "saveConflict.keptBothTitle"
+msgstr "Kept both versions"
+
+#. The other version is saved as a copy.
+#. SaveConflict: under Kept both versions, where the other version went.
+msgid "saveConflict.keptCopy"
+msgstr "The other version is saved as a copy."
+
+#. Save deleted
+#. SaveConflict: result title after Delete it here too.
+msgid "saveConflict.keptDeletedTitle"
+msgstr "Save deleted"
 
 #. Couldn't keep your choice. Both saves are unchanged.
 #. SaveConflict: applying the choice failed; Try again repeats it.

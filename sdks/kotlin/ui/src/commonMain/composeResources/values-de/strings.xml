@@ -888,14 +888,25 @@
     <string name="saveConflict_bothFull">Alle Speicherplätze sind belegt. Löschen Sie einen Spielstand, um beide zu behalten.</string>
     <!-- SaveConflict: the choice is being applied. -->
     <string name="saveConflict_keeping">Ihre Wahl wird übernommen…</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptLocal">Spielstand dieses Geräts behalten.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptRemote">Anderen Spielstand behalten.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptBoth">Beide behalten. Der andere ist als Kopie gespeichert.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptDeleted">Der Spielstand ist gelöscht.</string>
+    <!-- SaveConflict: tag on this device's card when the app says that version was saved later. Never a choice. -->
+    <string name="saveConflict_newerThis">Neuer</string>
+    <!-- SaveConflict: tag on the other card when the app says that version was saved later. Never a choice. -->
+    <string name="saveConflict_newerOther">Neuer</string>
+    <!-- SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied. -->
+    <string name="saveConflict_chooseAgain">Erneut wählen</string>
+    <string name="saveConflict_chooseAgain__macos">Erneut wählen</string>
+    <!-- SaveConflict: the choice failed after the other copy was deleted; only this device's save exists. -->
+    <string name="saveConflict_failedDeleted">Ihre Wahl konnte nicht übernommen werden. Ihr Spielstand ist unverändert.</string>
+    <!-- SaveConflict: result title after Keep this device's version. -->
+    <string name="saveConflict_keptLocalTitle">Version dieses Geräts behalten</string>
+    <!-- SaveConflict: result title after Keep the other version. -->
+    <string name="saveConflict_keptRemoteTitle">Andere Version behalten</string>
+    <!-- SaveConflict: result title after Keep both. -->
+    <string name="saveConflict_keptBothTitle">Beide Versionen behalten</string>
+    <!-- SaveConflict: under Kept both versions, where the other version went. -->
+    <string name="saveConflict_keptCopy">Die andere Version ist als Kopie gespeichert.</string>
+    <!-- SaveConflict: result title after Delete it here too. -->
+    <string name="saveConflict_keptDeletedTitle">Spielstand gelöscht</string>
     <!-- SaveConflict: applying the choice failed; Try again repeats it. -->
     <string name="saveConflict_failed">Ihre Wahl konnte nicht übernommen werden. Beide Spielstände sind unverändert.</string>
     <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->

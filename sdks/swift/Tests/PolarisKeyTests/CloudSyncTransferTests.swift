@@ -293,11 +293,11 @@ final class CloudSyncTransferTests: XCTestCase {
         let srv = ServerFileCodec()
         let plain = noise(5000)
         for c in [e2e as any FileCodec, srv] {
-            let id = c.chunkId(plain)
+            let id = try! c.chunkId(plain)
             let obj = try! c.sealChunk(id: id, plain: plain)
             XCTAssertEqual(obj.count, c.chunkObjectBytes(plain.count), c.enc)
-            XCTAssertEqual(c.openChunk(id: id, object: obj), .ok(plain), c.enc)
-            XCTAssertNotEqual(c.openChunk(id: c.chunkId(noise(10)), object: obj), .ok(plain), c.enc)
+            XCTAssertEqual(try! c.openChunk(id: id, object: obj), .ok(plain), c.enc)
+            XCTAssertNotEqual(try! c.openChunk(id: try! c.chunkId(noise(10)), object: obj), .ok(plain), c.enc)
             XCTAssertEqual(c.plainSize(c.storedSize(4096)), 4096, c.enc)
         }
         XCTAssertFalse("\(e2e)".contains(hexOf(root)))

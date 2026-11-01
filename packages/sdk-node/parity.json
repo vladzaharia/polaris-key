@@ -493,8 +493,8 @@
       "wp": "U-08"
     },
     "sync.saves": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "client.cloudSync.saves (src/cloudSync/saves.ts): list, read, write, delete, revisions and resolve over client-core's SavesClient, bound to the machine's records (rows keep the file pointer; putAt and removeAt at an exact version, one outcome each: the fileRecordCases family of sync-scenarios.json) and the Node file transport, journal and chunk cache under one TransferEngine (maxRetryAfterSeconds 3600). client.cloudSync.transfers() lists the writes in flight; transferProgress, transferDone and transferFailed ride client.events under the cloudSync kind. The journal and chunk cache go with the person. test/cloudSyncSaves.test.ts; the cloudsync-files-single transcript replays through the transport."
     },
     "sync.keyring": {
       "status": "implemented",
@@ -505,12 +505,12 @@
       "wp": "U-46"
     },
     "sync.files": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "The Node file transport (src/cloudSync/files.ts: the closed route list, no redirects, Content-Digest, bounds equal to what was asked), the transfer journal and the chunk cache, under client-core's TransferEngine (single and multipart, resume, Retry-After). The cloudsync-files-* transcripts replay through the transport in the Node transcript runner (cloudSyncFile); test/cloudSyncFiles.test.ts."
     },
     "sync.files.delta": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "The same transport carries the chunk plan, chunk PUT and chunk GET calls; client-core's engine cuts and plans the chunks (sync-vectors.json cdcCases and chunkCases run in syncVectors.test.ts). The cloudsync-chunks* transcripts replay through the transport (cloudSyncChunk)."
     },
     "sync.e2e.recovery": {
       "status": "planned",

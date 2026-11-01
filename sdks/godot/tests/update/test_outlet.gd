@@ -116,6 +116,10 @@ func _macos(t: PKeyTestContext) -> void:
 	t.check("outlet: the product's Caskroom link restricts to direct + homebrew", _same(_detect(e), {"kind": "direct", "confidence": "heuristic", "source": "macos.homebrewCask", "subkind": "homebrew"}))
 	var other := IDS.duplicate()
 	other["caskToken"] = "other"
+	for tail in ["\n", "\r"]:
+		other["caskToken"] = "diceroll" + tail
+		t.check("outlet: a cask token with a trailing control character is never read", not PKeyOutletSignals.read_outlet_signals(e, other).has("macos.homebrewCask"))
+	other["caskToken"] = "other"
 	t.check("outlet: another token's Caskroom is never read", not PKeyOutletSignals.read_outlet_signals(e, other).has("macos.homebrewCask"))
 
 

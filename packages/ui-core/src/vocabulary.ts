@@ -93,6 +93,7 @@ export const ACTIONS = [
   "keep-local",
   "keep-remote",
   "keep-both",
+  "choose-again",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -132,6 +133,7 @@ export const ACTION_KEYS: Readonly<Record<Action, readonly string[]>> = {
   "keep-local": ["saveConflict.keepThis"],
   "keep-remote": ["saveConflict.keepOther", "saveConflict.acceptDelete"],
   "keep-both": ["saveConflict.keepBoth"],
+  "choose-again": ["saveConflict.chooseAgain"],
 };
 
 /** The opt-in services (tools/services.json), and what each requires (ST-38's closure rule). */

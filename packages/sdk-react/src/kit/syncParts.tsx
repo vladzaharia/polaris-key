@@ -352,13 +352,18 @@ function CodeBlock(props: { c: KitCtx; code: string }): ReactNode {
 function saveCard(
   c: KitCtx,
   side: "local" | "remote",
-  keys: { who: string; when: string },
+  keys: { who: string; when: string; newer?: string },
 ): ReactNode {
   return (
     <li className="save-card" data-part="save-card" data-side={side}>
       <span className="label" data-key={keys.who}>
         {text(c, keys.who)}
       </span>
+      {keys.newer && shown(c, keys.newer) ? (
+        <span className="meta newer" data-part="newer" data-key={keys.newer}>
+          {text(c, keys.newer)}
+        </span>
+      ) : null}
       {shown(c, keys.when) ? (
         <span className="meta" data-key={keys.when}>
           {text(c, keys.when)}
@@ -367,13 +372,6 @@ function saveCard(
     </li>
   );
 }
-
-const KEPT_KEYS = [
-  "saveConflict.keptLocal",
-  "saveConflict.keptRemote",
-  "saveConflict.keptBoth",
-  "saveConflict.keptDeleted",
-];
 
 /** SaveConflict: the two copies, then the way on for each state. The choices are plain buttons
  *  with no filled one (nothing is the default); Keep both stays on screen, unavailable and
@@ -390,6 +388,7 @@ function SaveConflictBody(props: { c: KitCtx }): ReactNode {
           {saveCard(c, "local", {
             who: "saveConflict.thisDevice",
             when: "saveConflict.savedThis",
+            newer: "saveConflict.newerThis",
           })}
           {saveCard(c, "remote", {
             who: gone
@@ -398,6 +397,7 @@ function SaveConflictBody(props: { c: KitCtx }): ReactNode {
                 ? "saveConflict.otherDevice"
                 : "saveConflict.otherUnknown",
             when: "saveConflict.savedOther",
+            newer: "saveConflict.newerOther",
           })}
         </ul>
         {/* One block, in reading order and not docked: nothing here is the primary, so nothing
@@ -434,29 +434,39 @@ function SaveConflictBody(props: { c: KitCtx }): ReactNode {
       </>
     );
   }
+  // keeping: the busy indicator is the card's; this line is the one live announcement.
   if (state === "keeping")
     return (
       <p className="body" role="status" data-key="saveConflict.keeping">
         {text(c, "saveConflict.keeping")}
       </p>
     );
-  if (state === "kept") {
-    const key = KEPT_KEYS.find((k) => shown(c, k));
+  // kept: the title is the result; Done is the only control.
+  if (state === "kept")
     return (
       <>
-        {key ? (
-          <p className="body" role="status" data-key={key}>
-            {text(c, key)}
+        {shown(c, "saveConflict.keptCopy") ? (
+          <p className="body" data-key="saveConflict.keptCopy">
+            {text(c, "saveConflict.keptCopy")}
           </p>
         ) : null}
         {row(c, ["common.done"])}
       </>
     );
-  }
   return (
     <>
-      {callout(c, ["saveConflict.failed"])}
-      {row(c, ["common.tryAgain", "common.cancel"], { quiet: true })}
+      {callout(c, [
+        shown(c, "saveConflict.failedDeleted")
+          ? "saveConflict.failedDeleted"
+          : "saveConflict.failed",
+      ])}
+      {row(
+        c,
+        ["common.tryAgain", "saveConflict.chooseAgain", "common.cancel"],
+        {
+          quiet: true,
+        },
+      )}
     </>
   );
 }

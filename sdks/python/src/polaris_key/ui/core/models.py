@@ -129,8 +129,8 @@ def gate_view(
 
 #: A license key's body: 16 random bytes in base64url (``pkey_<product>_<22>``).
 KEY_BODY_LENGTH = 22
-_BODY = re.compile(r"^[A-Za-z0-9_-]*$")
-_SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+_BODY = re.compile(r"^[A-Za-z0-9_-]*\Z")
+_SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*\Z")
 
 
 @dataclass(frozen=True)

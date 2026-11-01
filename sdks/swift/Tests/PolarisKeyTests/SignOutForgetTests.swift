@@ -134,3 +134,37 @@ final class SignOutForgetTests: XCTestCase {
         XCTAssertEqual(token, "pkeyt_dev")
     }
 }
+
+// @pkey-feature sync.saves
+// The order a person's keys and saves leave in: the ring locks, the save transfers are purged, then the
+// pin goes. A pin that cannot be removed still comes after the purge and is reported.
+final class ForgetOrderTests: XCTestCase {
+    private final class Log: @unchecked Sendable {
+        let lock = NSLock()
+        var steps: [String] = []
+        func add(_ s: String) { lock.withLock { steps.append(s) } }
+        var all: [String] { lock.withLock { steps } }
+    }
+
+    func testTheRingLocksThenTheSavesArePurgedThenThePinIsRemoved() async throws {
+        let log = Log()
+        try await CloudSyncApi.forgetInOrder(
+            lock: { log.add("lock") }, purgeSaves: { log.add("purge saves") }, forget: { log.add("remove pin") })
+        XCTAssertEqual(log.all, ["lock", "purge saves", "remove pin"])
+    }
+
+    func testAPinThatCannotBeRemovedIsReportedAfterThePurge() async throws {
+        struct Stuck: Error {}
+        let log = Log()
+        do {
+            try await CloudSyncApi.forgetInOrder(
+                lock: { log.add("lock") }, purgeSaves: { log.add("purge saves") },
+                forget: {
+                    log.add("remove pin")
+                    throw Stuck()
+                })
+            XCTFail("the failure was swallowed")
+        } catch is Stuck {}
+        XCTAssertEqual(log.all, ["lock", "purge saves", "remove pin"])
+    }
+}

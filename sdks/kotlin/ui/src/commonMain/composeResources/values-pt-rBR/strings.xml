@@ -893,14 +893,25 @@
     <string name="saveConflict_bothFull">Todos os espaços estão em uso. Exclua um jogo salvo para manter os dois.</string>
     <!-- SaveConflict: the choice is being applied. -->
     <string name="saveConflict_keeping">Aplicando sua escolha…</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptLocal">Jogo salvo deste dispositivo mantido.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptRemote">Outro jogo salvo mantido.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptBoth">Os dois foram mantidos. O outro foi salvo como cópia.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptDeleted">O jogo salvo foi excluído.</string>
+    <!-- SaveConflict: tag on this device's card when the app says that version was saved later. Never a choice. -->
+    <string name="saveConflict_newerThis">Mais recente</string>
+    <!-- SaveConflict: tag on the other card when the app says that version was saved later. Never a choice. -->
+    <string name="saveConflict_newerOther">Mais recente</string>
+    <!-- SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied. -->
+    <string name="saveConflict_chooseAgain">Escolher de novo</string>
+    <string name="saveConflict_chooseAgain__macos">Escolher de novo</string>
+    <!-- SaveConflict: the choice failed after the other copy was deleted; only this device's save exists. -->
+    <string name="saveConflict_failedDeleted">Não foi possível aplicar sua escolha. Seu jogo salvo continua igual.</string>
+    <!-- SaveConflict: result title after Keep this device's version. -->
+    <string name="saveConflict_keptLocalTitle">Versão deste dispositivo mantida</string>
+    <!-- SaveConflict: result title after Keep the other version. -->
+    <string name="saveConflict_keptRemoteTitle">Outra versão mantida</string>
+    <!-- SaveConflict: result title after Keep both. -->
+    <string name="saveConflict_keptBothTitle">As duas versões mantidas</string>
+    <!-- SaveConflict: under Kept both versions, where the other version went. -->
+    <string name="saveConflict_keptCopy">A outra versão foi salva como cópia.</string>
+    <!-- SaveConflict: result title after Delete it here too. -->
+    <string name="saveConflict_keptDeletedTitle">Jogo salvo excluído</string>
     <!-- SaveConflict: applying the choice failed; Try again repeats it. -->
     <string name="saveConflict_failed">Não foi possível aplicar sua escolha. Os dois jogos salvos continuam iguais.</string>
     <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->

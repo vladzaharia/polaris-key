@@ -233,6 +233,80 @@ public final class SyncCodec: Sendable, CustomReflectable, CustomStringConvertib
     }
 }
 
+/// The file codec of a collection: it seals with the root it was made with, and refuses (`sync-locked`) on
+/// every call and every stream piece once the ring no longer holds that root. The root is not exposed.
+private final class GuardedFileCodec: FileCodec, CustomReflectable, CustomStringConvertible {
+    private let inner: E2eFileCodec
+    private let memory: RingMemory
+    private let kid: Data
+
+    init(inner: E2eFileCodec, memory: RingMemory, kid: Data) {
+        self.inner = inner
+        self.memory = memory
+        self.kid = kid
+    }
+
+    var description: String { "GuardedFileCodec(locked: \(!live))" }
+    var customMirror: Mirror { Mirror(self, children: [], displayStyle: .class) }
+
+    fileprivate var live: Bool { memory.held?.kid == kid }
+    fileprivate func check() throws { if !live { throw SyncKeyring.lockedError() } }
+
+    var enc: String { inner.enc }
+    func chunkId(_ plain: Data) throws -> Data {
+        try check()
+        return try inner.chunkId(plain)
+    }
+    func chunkObjectBytes(_ plainLen: Int) -> Int { inner.chunkObjectBytes(plainLen) }
+    func sealChunk(id: Data, plain: Data) throws -> Data {
+        try check()
+        return try inner.sealChunk(id: id, plain: plain)
+    }
+    func openChunk(id: Data, object: Data) throws -> FileOpened {
+        try check()
+        return try inner.openChunk(id: id, object: object)
+    }
+    func storedSize(_ plainSize: Int) -> Int { inner.storedSize(plainSize) }
+    func plainSize(_ storedSize: Int) -> Int? { inner.plainSize(storedSize) }
+    func sealManifest(_ plain: Data) throws -> Data {
+        try check()
+        return try inner.sealManifest(plain)
+    }
+    func openManifest(_ stored: Data) throws -> FileOpened {
+        try check()
+        return try inner.openManifest(stored)
+    }
+    func sealWhole(_ plain: Data) throws -> Data {
+        try check()
+        return try inner.sealWhole(plain)
+    }
+    func makeOpener() throws -> any FileOpener {
+        try check()
+        return GuardedOpener(inner: try inner.makeOpener(), codec: self)
+    }
+}
+
+private final class GuardedOpener: FileOpener, @unchecked Sendable {
+    private let inner: any FileOpener
+    private let codec: GuardedFileCodec
+    init(inner: any FileOpener, codec: GuardedFileCodec) {
+        self.inner = inner
+        self.codec = codec
+    }
+    func push(_ data: Data) throws -> [Data] {
+        try codec.check()
+        let out = try inner.push(data)
+        try codec.check()
+        return out
+    }
+    func finish() throws -> Data {
+        try codec.check()
+        let out = try inner.finish()
+        try codec.check()
+        return out
+    }
+}
+
 /// `SyncCodec` is the host codec's port (U-07.5). `open` gains no default here: the host passes the
 /// app's aliases explicitly.
 extension SyncCodec: SyncCodecPort {}
@@ -265,9 +339,8 @@ private func same(_ a: Data, _ b: Data) -> Bool {
     return d == 0
 }
 
-private let ringIdPattern = try! NSRegularExpression(pattern: "^rg_[A-Za-z0-9_-]{22}$")
-private func isRingId(_ s: String) -> Bool {
-    ringIdPattern.firstMatch(in: s, range: NSRange(s.startIndex..., in: s)) != nil
+func isRingId(_ s: String) -> Bool {
+    wholeMatches("rg_[A-Za-z0-9_-]{22}", s) != nil
 }
 
 /// Where the root is backed up for a new device of the same person. The bytes are a JSON object
@@ -406,6 +479,15 @@ public actor SyncKeyring: CustomReflectable {
     /// Feeds the machine: it is told now, and on every unlock and lock. Returns a detach function.
     public nonisolated func attach(_ listener: any SyncRootListener) -> @Sendable () -> Void {
         memory.attach(listener)
+    }
+
+    /// The file codec of a collection (end-to-end mode), sealing with the ring's current root. Every call
+    /// and every stream piece re-checks that the ring still holds it, and refuses with `sync-locked` once
+    /// it does not. Throws `sync-locked` while locked.
+    public nonisolated func fileCodec(collection: String) throws -> any FileCodec {
+        guard let h = memory.held else { throw Self.lockedError() }
+        return GuardedFileCodec(
+            inner: E2eFileCodec(root: h.root, collection: collection), memory: memory, kid: h.kid)
     }
 
     /// Whether this device holds a root right now.

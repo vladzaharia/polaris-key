@@ -1962,25 +1962,50 @@
       "role": "label",
       "note": "SaveConflict: the choice is being applied."
     },
-    "saveConflict.keptLocal": {
-      "value": "Kept this device's save.",
-      "role": "body",
-      "note": "SaveConflict: the choice was applied."
+    "saveConflict.newerThis": {
+      "value": "Newer",
+      "role": "label",
+      "note": "SaveConflict: tag on this device's card when the app says that version was saved later. Never a choice."
     },
-    "saveConflict.keptRemote": {
-      "value": "Kept the other save.",
-      "role": "body",
-      "note": "SaveConflict: the choice was applied."
+    "saveConflict.newerOther": {
+      "value": "Newer",
+      "role": "label",
+      "note": "SaveConflict: tag on the other card when the app says that version was saved later. Never a choice."
     },
-    "saveConflict.keptBoth": {
-      "value": "Kept both. The other is saved as a copy.",
-      "role": "body",
-      "note": "SaveConflict: the choice was applied."
+    "saveConflict.chooseAgain": {
+      "value": "Choose again",
+      "role": "button",
+      "note": "SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied."
     },
-    "saveConflict.keptDeleted": {
-      "value": "The save is deleted.",
+    "saveConflict.failedDeleted": {
+      "value": "Couldn't keep your choice. Your save is unchanged.",
       "role": "body",
-      "note": "SaveConflict: the choice was applied."
+      "note": "SaveConflict: the choice failed after the other copy was deleted; only this device's save exists."
+    },
+    "saveConflict.keptLocalTitle": {
+      "value": "Kept this device's version",
+      "role": "title",
+      "note": "SaveConflict: result title after Keep this device's version."
+    },
+    "saveConflict.keptRemoteTitle": {
+      "value": "Kept the other version",
+      "role": "title",
+      "note": "SaveConflict: result title after Keep the other version."
+    },
+    "saveConflict.keptBothTitle": {
+      "value": "Kept both versions",
+      "role": "title",
+      "note": "SaveConflict: result title after Keep both."
+    },
+    "saveConflict.keptCopy": {
+      "value": "The other version is saved as a copy.",
+      "role": "body",
+      "note": "SaveConflict: under Kept both versions, where the other version went."
+    },
+    "saveConflict.keptDeletedTitle": {
+      "value": "Save deleted",
+      "role": "title",
+      "note": "SaveConflict: result title after Delete it here too."
     },
     "saveConflict.failed": {
       "value": "Couldn't keep your choice. Both saves are unchanged.",

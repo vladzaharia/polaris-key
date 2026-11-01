@@ -34,6 +34,7 @@ import httpx
 
 from .backend import BackendClient
 from .cloud_sync.api import CloudSyncApi, CloudSyncClient
+from .cloud_sync.saves import SavesApi
 from .cloud_sync.host import CloudSyncHost, CloudSyncHostDeps, CloudSyncHostOptions
 from .commerce import CommerceClient
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
@@ -397,10 +398,22 @@ class PolarisKeyClient:
             subject=self.identity._account.stored_subject,
             emit=self._emit_cloud_sync,
             log=lambda m: _log.warning("%s", m),
+            on_subject=lambda s: self._set_synced_subject(s),
+            purge_saves=lambda: self._saves_api.purge(),
+        )
+        self._synced_subject: Optional[str] = None
+        self._saves_api = SavesApi(
+            ctx=self.core,
+            host=self.cloud_sync_host,
+            keyring=self.keyring,
+            tokens=self._tokens,
+            subject=lambda: self._synced_subject,
+            attach=self._cloud_sync_api.attach,
+            emit=self._emit_cloud_sync,
         )
         #: Cloud Sync (WIRE-CONTRACT-V5 §13): ``status()`` and ``flush()``; changes arrive as
         #: ``client.events`` ``cloudSync`` events. A product without the Sync service gets the typed N/A.
-        self.cloud_sync = CloudSyncClient(self._cloud_sync_api)
+        self.cloud_sync = CloudSyncClient(self._cloud_sync_api, self._saves_api)
         # The identity session's subject drives the machine; a sign-out flushes (bounded) and forgets.
         self.events.subscribe(self._identity_to_sync, ("identity",))
         self.identity.on_before_sign_out(self._cloud_sync_api.before_sign_out)
@@ -533,6 +546,9 @@ class PolarisKeyClient:
             self._cloud_sync_api.on_deactivated()
         except Exception:  # noqa: BLE001 - leaving Cloud Sync never fails a deactivation
             pass
+
+    def _set_synced_subject(self, subject: Optional[str]) -> None:
+        self._synced_subject = subject
 
     def _emit_cloud_sync(self, data: Dict[str, Any]) -> None:
         self.events.emit("cloudSync", **data)

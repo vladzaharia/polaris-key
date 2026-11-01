@@ -7,6 +7,10 @@ extends PKeyUiView
 ## sync**, in a neutral tone. A device with no key for the synced data says "Sync is locked." and
 ## offers **Unlock sync** (`locked`); a changed key says "Your sync key changed." and always offers
 ## **Review** (`ring-changed`), which opens `PKeyRingChange` (the game connects `review_requested`).
+## While saves move it says so and never says synced: `transferring` ("Syncing saves…" before its
+## figures, with a bar that is filled by the counted fraction or runs indeterminate), `waiting` (for a
+## connection, power, or the app opening) and `transfer-failed` ("Couldn't sync your saves." with a
+## secondary **Try again**, `retry_requested`).
 ## It never implies universal backup, and it hides itself while the
 ## Sync service is off or there is no state to show. A strip: it takes no focus from the game; a pad
 ## reaches its action with the first direction press.
@@ -17,8 +21,11 @@ signal review_requested()
 signal sign_in_requested()
 ## **Unlock sync** was chosen on a `locked` status: show `PKeyUnlockSync`.
 signal unlock_requested()
+## **Try again** was chosen on a `transfer-failed` status.
+signal retry_requested()
 
-## "synced", "syncing", "offline", "conflict", "error", "locked" or "ring-changed"; "" shows nothing.
+## "synced", "syncing", "offline", "conflict", "error", "locked", "ring-changed", "transferring",
+## "waiting" or "transfer-failed"; "" shows nothing.
 @export var state := ""
 ## When it last synced, already worded ("2 minutes ago"); used by `synced`.
 @export var sync_time := ""
@@ -26,6 +33,14 @@ signal unlock_requested()
 @export var can_review := false
 ## False with an `error`: the sync failed because nobody is signed in.
 @export var signed_in := true
+## While `transferring`: display-ready sizes ("38 MB", "61 MB"), both or neither.
+@export var transfer_size := ""
+@export var transfer_total := ""
+## While `transferring`: the counted fraction (0 to 1) that fills the bar; negative runs the bar
+## indeterminate.
+@export var transfer_fraction := -1.0
+## While `waiting`: "network" (default), "battery" or "background".
+@export_enum("network", "battery", "background") var reason := "network"
 ## False turns the Sync service off: nothing shows.
 @export var service_on := true
 
@@ -45,13 +60,19 @@ var _screen: PKeyUiView = null
 var _card: BoxContainer
 var _glyph: TextureRect
 var _text: Label
+var _figures: Label
+var _bar: ProgressBar
 var _action: Button
+var _action_pad: MarginContainer
+var _row: HBoxContainer
 
 
-static func input(st: String, signed: bool, review: bool, on: bool) -> Dictionary:
+static func input(st: String, signed: bool, review: bool, on: bool, extra := {}) -> Dictionary:
 	var out := {}
 	if st != "":
-		out["cloudSync"] = {"state": st, "signedIn": signed, "canReview": review}
+		var sync := {"state": st, "signedIn": signed, "canReview": review}
+		sync.merge(extra, true)
+		out["cloudSync"] = sync
 	if not on:
 		out["services"] = ["license", "config", "release", "distribution", "update", "identity"]
 	return out
@@ -68,12 +89,38 @@ func _build() -> void:
 	_card = columns(card_panel("Card", false), "Body")
 	_card_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var row := hbox(_card, "Row")
+	_row = row
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_glyph = glyph_node(row, "Glyph", "info")
 	_text = label(row, "Status", "PKeyMuted")
 	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# The label is the live line: a state change is announced once. The byte figures are their own
+	# label, not live, so an update to them is not.
+	if "accessibility_live" in _text:
+		_text.set("accessibility_live", 1)
+	# Under the words, not beside them: a figure beside a narrow strip would squeeze the status line.
+	_figures = label(_card, "Figures", "PKeyMuted")
+	_figures.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_figures.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# The counted fraction of a transfer: on its own row, the whole width of the strip.
+	_bar = ProgressBar.new()
+	_bar.name = "Progress"
+	_bar.show_percentage = false
+	_bar.min_value = 0.0
+	_bar.max_value = 1.0
+	_bar.visible = false
+	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_bar.custom_minimum_size = Vector2(0.0, 6.0)
+	_bar.set_meta(FREE_HEIGHT_META, true)
+	_card.add_child(_bar)
 	# A quiet action: the state is what the strip says, the button only a way on.
-	_action = button(_card, "Action", _on_action, "PKeyLink")
+	# In a margin of its own, so a failed transfer's Try again can line up with the words.
+	_action_pad = MarginContainer.new()
+	_action_pad.name = "ActionPad"
+	_action_pad.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_card.add_child(_action_pad)
+	_action = button(_action_pad, "Action", _on_action, "PKeyLink")
 
 
 func _ready() -> void:
@@ -181,7 +228,19 @@ func _screen_key() -> String:
 
 
 func _render() -> void:
-	model = view(input(state, signed_in, can_review, service_on))
+	var extra := {}
+	if state == "transferring":
+		var t := {}
+		if transfer_size != "":
+			t["size"] = transfer_size
+		if transfer_total != "":
+			t["total"] = transfer_total
+		if transfer_fraction >= 0.0:
+			t["fraction"] = transfer_fraction
+		extra["transfer"] = t
+	elif state == "waiting":
+		extra["reason"] = reason
+	model = view(input(state, signed_in, can_review, service_on, extra))
 	var st := String(model.get("state", "hidden"))
 	visible = st != "hidden"
 	if not visible:
@@ -189,13 +248,44 @@ func _render() -> void:
 	var copy: Array = model.get("copy", [])
 	var args := {"time": sync_time}
 	var key := "cloudSync.signedOut" if copy.has("cloudSync.signedOut") else String(copy[0]) if not copy.is_empty() else ""
+	var action_key = model.get("decisions", {}).get("primary")
+	var bar := false
+	match st:
+		"transferring":
+			# The label comes before its figures, and the figures are the model's own.
+			key = "cloudSync.transferring"
+			bar = true
+		"waiting":
+			for k in copy:
+				if String(k).begins_with("cloudSync.waiting"):
+					key = String(k)
+		"transfer-failed":
+			key = "cloudSync.transferFailed"
+			# Secondary: the strip is small, and Try again never competes with the game's primary.
+			action_key = "common.tryAgain"
 	cat_text(_text, key, args)
-	var primary = model.get("decisions", {}).get("primary")
-	cat_text(_action, "" if primary == null else String(primary), args)
+	if st == "transferring" and copy.has("cloudSync.transferProgress"):
+		cat_text(_figures, "cloudSync.transferProgress", model.get("args", {}))
+	else:
+		cat_text(_figures, "")
+	cat_text(_action, "" if action_key == null else String(action_key), args)
+	_bar.visible = bar
+	_action_pad.visible = _action.visible
+	if bar:
+		var held := transfer_fraction >= 0.0
+		if held:
+			_bar.indeterminate = false
+			_bar.value = clampf(transfer_fraction, 0.0, 1.0)
+			_bar.self_modulate.a = 1.0
+		else:
+			_hold_still(_bar)
 	_glyph.set_meta(&"pkey_glyph", {
 		"synced": "success", "syncing": "info", "offline": "cloud_off", "conflict": "warning", "error": "warning",
-		"locked": "lock", "ring-changed": "warning",
+		"locked": "lock", "ring-changed": "warning", "transferring": "info", "waiting": "info", "transfer-failed": "warning",
 	}.get(st, "info"))
+	# Waiting for a connection is the offline glyph; power and the app in the background are not offline.
+	if st == "waiting" and copy.has("cloudSync.waitingNetwork"):
+		_glyph.set_meta(&"pkey_glyph", "cloud_off")
 
 
 func _arrange(m: Dictionary) -> void:
@@ -204,7 +294,14 @@ func _arrange(m: Dictionary) -> void:
 	set_columns(_card, false)
 	_action.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	super(m)
-	size_glyph(_glyph, 20.0, get_theme_color("font_color", "PKeyWarning") if state in ["conflict", "error", "ring-changed"] else get_theme_color("font_color", "PKeyMuted"))
+	size_glyph(_glyph, 20.0, get_theme_color("font_color", "PKeyWarning") if state in ["conflict", "error", "ring-changed", "transfer-failed"] else get_theme_color("font_color", "PKeyMuted"))
+	# Try again after a failed transfer lines up with the words, not under the glyph.
+	var indent := 0
+	if state == "transfer-failed":
+		indent = roundi(_glyph.get_combined_minimum_size().x + float(_row.get_theme_constant("separation")))
+	var rtl := _row.is_layout_rtl()
+	_action_pad.add_theme_constant_override("margin_left", 0 if rtl else indent)
+	_action_pad.add_theme_constant_override("margin_right", indent if rtl else 0)
 
 
 func _apply_width(width: float) -> void:
@@ -233,5 +330,7 @@ func _on_action() -> void:
 			unlock_requested.emit()
 			if host != null:
 				host.open_unlock()
+		"transfer-failed":
+			retry_requested.emit()
 		_:
 			sign_in_requested.emit()

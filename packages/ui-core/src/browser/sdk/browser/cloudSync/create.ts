@@ -12,6 +12,7 @@ import type { CloudSyncClient } from "../../core/cloudSync.js";
 import type { LocalConfigEngine } from "../../core/localConfig.js";
 import { BrowserCloudSyncApi, clientOf, importMarker } from "./api.js";
 import { filesDbName, purgeFilesStore } from "./filesPurge.js";
+import { lazySaves } from "./lazySaves.js";
 import { BrowserCloudSyncHost, type CloudSyncHostOptions } from "./host.js";
 import { syncStateStore } from "./store.js";
 import { broadcastChannel, webLocks } from "./writer.js";
@@ -81,12 +82,16 @@ export async function createBrowserCloudSync(
         "Cloud Sync keeps one writer tab through Web Locks, and this browser has none.",
     });
   const page = pageEvents();
+  // The saves layer, built on the first call; the host's purge reaches it through this.
+  let saves: ReturnType<typeof lazySaves> | null = null;
+  let api: BrowserCloudSyncApi;
   const host = new BrowserCloudSyncHost(
     {
       product: o.product,
       request: (path, init) => bearer.ringRequest(path, init),
       subject: () => bearer.account,
       ring: o.keyring,
+      purgeSaves: () => saves?.purge() ?? Promise.resolve(),
       discovery: () =>
         (o.discovery_?.services?.sync as
           | { enabled?: unknown; encryption?: unknown }
@@ -101,7 +106,11 @@ export async function createBrowserCloudSync(
       channel: broadcastChannel(dbName),
       ...(page ? { page } : {}),
       // The file journal and chunk cache go with the record (D-9).
-      onPurge: () => purgeFilesStore(filesDbName(dbName)),
+      // The saves layer is closed first, so a transfer still running cannot recreate the database.
+      onPurge: async () => {
+        await saves?.purge().catch(() => undefined);
+        await purgeFilesStore(filesDbName(dbName));
+      },
     },
     {
       ...o.cloudSyncOptions,
@@ -111,13 +120,23 @@ export async function createBrowserCloudSync(
     },
   );
   await host.start();
-  const api = new BrowserCloudSyncApi({
+  saves = lazySaves(() => ({
     host,
     keyring: o.keyring,
+    product: o.product,
+    dbName,
+    fileFetch: (path, init) => bearer.fileFetch(path, init),
+    locks,
+    attach: () => api.attach(),
+  }));
+  api = new BrowserCloudSyncApi({
+    host,
+    keyring: o.keyring,
+    purgeSaves: () => saves!.purge(),
     config: o.config,
     subject: () => o.syncSubject(),
     marker: importMarker(`${dbName}:imported`),
     signInOrigin: new URL(o.base).origin,
   });
-  return clientOf(api, host);
+  return clientOf(api, host, saves);
 }

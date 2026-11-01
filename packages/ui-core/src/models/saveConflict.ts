@@ -8,7 +8,9 @@
 //     Delete it here too, its own button (danger), Keep both goes, and the screen has its own
 //     title and lede;
 //   - a choice is applied once: while it runs no control is offered, and `kept` names the choice
-//     that was made, never another, and never after a failure.
+//     that was made as its title, never another, and never after a failure;
+//   - a failed choice offers Try again, Choose again and Cancel, none filled; Newer (U-22.UX2) is
+//     information the app gives, shown on the choose step and never with one copy.
 
 import type { Context } from "../input.js";
 import { hiddenView, makeView, type View } from "../view.js";
@@ -20,12 +22,12 @@ export type SaveConflictState =
   | "failed"
   | "hidden";
 
-/** The strings of `kept`, by the choice made (`deleted` when the other copy was gone). */
+/** The result title of `kept`, by the choice made (`deleted` when the other copy was gone). */
 const KEPT = {
-  local: "saveConflict.keptLocal",
-  remote: "saveConflict.keptRemote",
-  both: "saveConflict.keptBoth",
-  deleted: "saveConflict.keptDeleted",
+  local: "saveConflict.keptLocalTitle",
+  remote: "saveConflict.keptRemoteTitle",
+  both: "saveConflict.keptBothTitle",
+  deleted: "saveConflict.keptDeletedTitle",
 } as const;
 
 /** A save conflict: choose, being applied, applied, or failed. */
@@ -35,38 +37,46 @@ export function saveConflictView(
   const c = ctx.input.saveConflict;
   if (!ctx.on("sync") || !c) return hiddenView(ctx, "SaveConflict");
   const gone = c.remote === null;
+  // The situation's own title: one copy and a deletion is never "two versions".
+  const situation = gone ? "saveConflict.deletedTitle" : "saveConflict.title";
   switch (c.step) {
     case "keeping":
       return makeView(ctx, "SaveConflict", {
         state: "keeping",
-        copy: ["saveConflict.title", "saveConflict.keeping"],
+        copy: [situation, "saveConflict.keeping", "a11y.busy"],
         // Nothing to press while it runs: the choice cannot be made twice.
         focus: "heading",
       });
-    case "kept":
+    case "kept": {
+      // With one copy there is no "both": it reads as the local choice.
+      const keep = gone && c.keep === "both" ? "local" : (c.keep ?? "local");
       return makeView(ctx, "SaveConflict", {
         state: "kept",
         copy: [
-          "saveConflict.title",
-          KEPT[c.keep === "remote" && gone ? "deleted" : (c.keep ?? "local")],
+          KEPT[keep === "remote" && gone ? "deleted" : keep],
+          keep === "both" && "saveConflict.keptCopy",
           "common.done",
         ],
         primary: "common.done",
+        focus: "heading",
       });
+    }
     case "failed":
-      // Both copies are as they were: Try again repeats the choice, Cancel leaves the conflict.
+      // The saves are as they were: Try again repeats the choice, Choose again returns to the
+      // choices (the host sets the step; nothing is applied), Cancel leaves the conflict.
       return makeView(ctx, "SaveConflict", {
         state: "failed",
         copy: [
-          "saveConflict.title",
-          "saveConflict.failed",
+          situation,
+          gone ? "saveConflict.failedDeleted" : "saveConflict.failed",
           "common.tryAgain",
+          "saveConflict.chooseAgain",
           "common.cancel",
         ],
-        primary: "common.tryAgain",
+        // No control is filled: a stray Enter must not repeat an overwrite or a deletion.
+        primary: null,
         tone: "danger",
         errorSlot: "screen",
-        // Try again repeats the choice (an overwrite, a deletion): a stray Enter must not run it.
         focus: "heading",
       });
     default: {
@@ -87,6 +97,9 @@ export function saveConflictView(
               ? "saveConflict.otherDevice"
               : "saveConflict.otherUnknown",
           !gone && c.remote?.when !== undefined && "saveConflict.savedOther",
+          // Newer only tags a card; it never chooses, fills or focuses anything.
+          !gone && c.newer === "local" && "saveConflict.newerThis",
+          !gone && c.newer === "remote" && "saveConflict.newerOther",
           "saveConflict.keepThis",
           gone ? "saveConflict.acceptDelete" : "saveConflict.keepOther",
           !gone && "saveConflict.keepBoth",

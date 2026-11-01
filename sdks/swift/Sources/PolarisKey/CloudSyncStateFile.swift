@@ -201,6 +201,7 @@ extension SyncPartition {
         if let encryptionSince { o["encryptionSince"] = .int(encryptionSince) }
         if let sealedFloor { o["sealedFloor"] = .int(sealedFloor) }
         if let headroom { o["headroom"] = .double(headroom) }
+        o["nextTicket"] = .int(nextTicket)
         return .object(o)
     }
 
@@ -233,6 +234,7 @@ extension SyncPartition {
         sealedKeys = o["sealedKeys"]?.arrayValue?.compactMap(\.stringValue) ?? []
         sealedFloor = o["sealedFloor"]?.intValue
         headroom = syncNumber(o["headroom"])
+        nextTicket = max(o["nextTicket"]?.intValue ?? 1, 1)
     }
 }
 
@@ -241,6 +243,7 @@ extension SyncRow {
         var o: [String: JSONValue] = ["value": value, "version": .int(version)]
         if bad { o["bad"] = .bool(true) }
         if let plain { o["plain"] = .int(plain) }
+        if let file { o["file"] = file.json }
         return .object(o)
     }
 
@@ -248,7 +251,9 @@ extension SyncRow {
         guard case .object(let o) = v, let value = o["value"], case .int(let version)? = o["version"] else {
             return nil
         }
-        self.init(value: value, version: version, bad: o["bad"]?.boolValue ?? false, plain: o["plain"]?.intValue)
+        self.init(
+            value: value, version: version, bad: o["bad"]?.boolValue ?? false, plain: o["plain"]?.intValue,
+            file: SyncFilePointer(json: o["file"]))
     }
 }
 
@@ -303,6 +308,6 @@ extension SyncOp {
             mutationId: id, target: target, op: op, value: o["value"], member: o["member"]?.stringValue,
             element: o["element"], observedSeq: o["observedSeq"]?.intValue, editedHlc: o["editedHlc"]?.stringValue,
             baseVersion: base, baseAny: any, preContact: o["preContact"]?.boolValue ?? false,
-            moved: o["moved"]?.boolValue ?? false, parked: parked)
+            moved: o["moved"]?.boolValue ?? false, parked: parked, ticket: o["ticket"]?.intValue)
     }
 }

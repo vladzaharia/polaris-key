@@ -218,7 +218,7 @@ public func readOutletSignals(
                 let marker = Data("ProductionSandbox".utf8)
                 signals["macos.receiptSandbox"] = .bool(env.readFile(receipt)?.range(of: marker) != nil)
             }
-            if let token = outletIds["caskToken"], token.range(of: #"^[a-z0-9][a-z0-9@._+-]*$"#, options: .regularExpression) != nil {
+            if let token = outletIds["caskToken"], wholeMatches(#"[a-z0-9][a-z0-9@._+-]*"#, token) != nil {
                 prefixes: for prefix in ["/opt/homebrew", "/usr/local"] {
                     let root = "\(prefix)/Caskroom/\(token)"
                     for version in env.listDirectory(root) {

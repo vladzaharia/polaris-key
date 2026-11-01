@@ -40,6 +40,7 @@ package im.plrs.key.sdk
 
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.PolarisException
+import im.plrs.key.core.SYNC_CHUNK_MAX_STORED_BYTES
 import im.plrs.key.core.SYNC_CHUNK_PLAN_MAX_IDS
 import im.plrs.key.core.SYNC_FILE_MAX_BYTES
 import im.plrs.key.core.SYNC_MAX_CHUNKS_PER_FILE
@@ -163,7 +164,7 @@ public class FileBody(
  * The upload and download routes of §13.8 under `/<p>/sync/files/{collection}/{id}`. `sha256` is the lowercase
  * hex of the body; a host sends it as `Content-Digest`. Requests and answers are the JSON objects of the wire
  * (`protocol/sync.ts`). A host bounds [getFile] to the range it asked for and [getChunk] to
- * [SERVER_CHUNK_MAX_STORED_BYTES].
+ * [SYNC_CHUNK_MAX_STORED_BYTES].
  */
 public interface FileTransport {
     public suspend fun begin(target: FileTarget, request: JsonObject): FileReply<JsonObject>
@@ -971,7 +972,7 @@ private class DownloadRun(val engine: FileTransferEngine, val req: DownloadReque
             }
         }
         val obj = engine.call(hold) { engine.transport.getChunk(req.collection, id) }.orReject()
-        if (obj.size > SERVER_CHUNK_MAX_STORED_BYTES) throw invalid("chunk-size")
+        if (obj.size > SYNC_CHUNK_MAX_STORED_BYTES) throw invalid("chunk-size")
         val o = req.codec.openChunk(rec.id, obj)
         if (o is FileOpened.Invalid) throw invalid("chunk-" + o.reason)
         val plain = (o as FileOpened.Ok).plain

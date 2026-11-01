@@ -239,17 +239,17 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `cloudSync.flush` | `cloudSync.flush` | `useCloudSync().flush` | `cloud_sync.flush` | `cloudSync.flush` | `cloudSync.flush` | `cloud_sync.flush` | `sync.settings` |
 | `cloudSync.encryption` | `cloudSync.encryption` | `BrowserAdapterOptions.cloudSync.encryption` | `cloud_sync.encryption` | `CloudSyncOptions(encryption:)` | `cloudSync.encryption` | `cloud_sync_encryption` | `sync.e2e` |
 | `cloudSync.event` | `events.on("cloudSync")` | `useCloudSync().status` | `cloud_sync.event` | `events` | `client.events` | `client.event` | `sync.settings` |
-| `cloudSync.saves` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
-| `cloudSync.saves.list` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
-| `cloudSync.saves.read` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
-| `cloudSync.saves.write` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
-| `cloudSync.saves.delete` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
-| `cloudSync.saves.revisions` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
-| `cloudSync.transfers` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.files` |
-| `cloudSync.transfer.pause` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.files` |
-| `cloudSync.transfer.resume` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.files` |
-| `cloudSync.transfer.cancel` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.files` |
-| `cloudSync.transferEvent` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.files` |
+| `cloudSync.saves` | `cloudSync.saves` | `useSaves` | `cloud_sync.saves` | `cloudSync.saves` | `cloudSync.saves` | `cloud_sync.saves` | `sync.saves` |
+| `cloudSync.saves.list` | `cloudSync.saves.list` | `useSaves().list` | `cloud_sync.saves.list` | `SavesClient.list` | `SavesClient.list` | `PKeySaves.list` | `sync.saves` |
+| `cloudSync.saves.read` | `cloudSync.saves.read` | `useSaves().read` | `cloud_sync.saves.read` | `SavesClient.read` | `SavesClient.read` | `PKeySaves.read` | `sync.saves` |
+| `cloudSync.saves.write` | `cloudSync.saves.write` | `useSaves().write` | `cloud_sync.saves.write` | `SavesClient.write` | `SavesClient.write` | `PKeySaves.write` | `sync.saves` |
+| `cloudSync.saves.delete` | `cloudSync.saves.delete` | `useSaves().delete` | `cloud_sync.saves.delete` | `SavesClient.delete` | `SavesClient.delete` | `PKeySaves.delete` | `sync.saves` |
+| `cloudSync.saves.revisions` | `cloudSync.saves.revisions` | `useSaves().revisions` | `cloud_sync.saves.revisions` | `SavesClient.revisions` | `SavesClient.revisions` | `PKeySaves.revisions` | `sync.saves` |
+| `cloudSync.transfers` | `cloudSync.transfers` | `useTransfers().transfers` | `cloud_sync.transfers` | `cloudSync.transfers` | `cloudSync.transfers` | `cloud_sync.transfers` | `sync.files` |
+| `cloudSync.transfer.pause` | `cloudSync.transfer.pause` | `useTransfers().pause` | `cloud_sync.transfer.pause` | `SaveTransfer.pause` | `SaveTransfer.pause` | `PKeyTransfer.pause` | `sync.files` |
+| `cloudSync.transfer.resume` | `cloudSync.transfer.resume` | `useTransfers().resume` | `cloud_sync.transfer.resume` | `SaveTransfer.resume` | `SaveTransfer.resume` | `PKeyTransfer.resume` | `sync.files` |
+| `cloudSync.transfer.cancel` | `cloudSync.transfer.cancel` | `useTransfers().cancel` | `cloud_sync.transfer.cancel` | `SaveTransfer.cancel` | `SaveTransfer.cancel` | `PKeyTransfer.cancel` | `sync.files` |
+| `cloudSync.transferEvent` | `cloudSync.transferEvent` | `useTransfers().transfers` | `cloud_sync.transfer_event` | `events` | `client.events` | `client.event` | `sync.files` |
 | `cloudSync.collection` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |
 | `cloudSync.collection.get` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |
 | `cloudSync.collection.ids` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |

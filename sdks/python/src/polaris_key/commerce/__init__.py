@@ -58,7 +58,7 @@ STORES = ("app-store", "play", "steam")
 #: The outlet kinds whose purchases go through the App Store's in-app purchase.
 APPLE_OUTLETS = ("app-store", "testflight")
 
-_UUID = re.compile(r"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$")
+_UUID = re.compile(r"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\Z")
 
 
 @dataclass(frozen=True)

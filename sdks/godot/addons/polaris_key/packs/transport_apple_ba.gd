@@ -53,7 +53,7 @@ func floats() -> bool:
 static func asset_pack_id(pack_id: String, level: int) -> String:
 	if level < 0:
 		return ""
-	var re := RegEx.create_from_string("^[a-z0-9.-]+$")
+	var re := RegEx.create_from_string("\\A[a-z0-9.-]+\\z")
 	if re.search(pack_id) == null:
 		return ""
 	var out := "%s-c%d" % [pack_id.replace(".", "-"), level]

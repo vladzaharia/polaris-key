@@ -54,6 +54,28 @@ public class CloudSyncHost private constructor(private val core: CloudSyncHostCo
         core.touchFn = ::touch
     }
 
+    /** The state directory (the transfer journal and the chunk cache live under it). */
+    internal val stateDir: java.io.File get() = st.deps.stateDir
+
+    /** The key ring's codec (it blinds record ids in end-to-end mode). */
+    internal val syncCodec: im.plrs.key.core.sync.SyncCodecPort get() = st.deps.codec
+
+    internal val appOptions: CloudSyncHostOptions get() = st.opts
+
+    /** The catalog's `saves` collection, or null when it declares none. */
+    internal suspend fun savesCollection(): SavesCollection? = withContext(dispatcher) { CloudSyncCatalog.savesOf(st.catalog) }
+
+    /**
+     * The one listener for the machine's `putAt` / `removeAt` outcomes, kept across rebuilds. It runs on the host's
+     * dispatcher, inside the machine, and must not call it.
+     */
+    internal suspend fun onOutcome(fn: ((im.plrs.key.core.sync.RecordOutcome) -> Unit)?) {
+        withContext(dispatcher) {
+            st.outcome = fn
+            st.machine?.onOutcome(fn)
+        }
+    }
+
     /** Whether the JVM shutdown hook is installed. */
     internal val hasShutdownHook: Boolean get() = st.shutdownHook != null
 

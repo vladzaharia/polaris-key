@@ -86,6 +86,53 @@ export const SYNC_CSS = `
   inline-size: auto;
   align-self: center;
 }
+/* Newer: the tag on the card the app names; information only, it chooses nothing. */
+.save-card .newer {
+  align-self: start;
+  padding: 0 var(--pk-space-2);
+  border-radius: var(--pk-kit-radius-control);
+  background: var(--pk-surface-raised, transparent);
+  box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
+  color: var(--pk-text-strong);
+  font-weight: 600;
+}
+/* A short landscape window (under 480px tall, room for two panes of 18rem at the current text
+   size): two panes both starting at the top. Left: title, lede and the cards, stacked. Right: the
+   choices and Cancel, in the DOM order they already have. Taller windows and large text keep the
+   one column, versions before choices. */
+@media (max-height: 480px) {
+  /* The container query counts rem at the page's root size, so 200 % text keeps one column. */
+  @container pk (min-width: 40rem) {
+  .pk-root .stage[data-kind="screen"]:has(> .card > .save-cards) {
+    padding-inline: var(--pk-space-1);
+    padding-block: var(--pk-space-2);
+    align-content: start;
+  }
+  .pk-root .stage[data-kind="screen"] .card:has(> .save-cards) {
+    inline-size: min(48rem, 100%);
+    padding-inline: var(--pk-space-4);
+    padding-block: var(--pk-space-3);
+    row-gap: var(--pk-space-2);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    column-gap: var(--pk-space-3);
+    align-items: start;
+    align-content: start;
+  }
+  .pk-root .stage[data-kind="screen"] .card:has(> .save-cards) > * {
+    grid-column: 1;
+  }
+  .pk-root .stage[data-kind="screen"] .card:has(> .save-cards) > .save-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pk-root .stage[data-kind="screen"] .card:has(> .save-cards) > .actions[data-part="actions"] {
+    gap: var(--pk-space-2);
+    grid-column: 2;
+    grid-row: 1 / -1;
+  }
+  }
+}
 /* Delete it here too removes a save: the danger outline, quieter than a solid confirm. */
 .btn[data-variant="danger"][data-key="saveConflict.acceptDelete"] {
   background: transparent;

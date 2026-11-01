@@ -10,6 +10,7 @@ import { PolarisContext } from "../react/context.js";
 import { kitComponent } from "./kitComponent.js";
 import type { KitProps } from "./component.js";
 import { syncScreen } from "./syncLazy.js";
+import { useTransferInput } from "./saveScreens.js";
 import type { RingChangeProps, UnlockSyncProps } from "./syncScreens.js";
 
 const Status = kitComponent("CloudSyncStatus");
@@ -22,12 +23,15 @@ export function CloudSyncStatus(props: KitProps): ReactNode {
   const answers = props.onAction !== undefined || !sdk;
   const close = () => setOpen(null);
   const { theme, className } = props;
+  // While a save moves, its transfer states draw over the host's input (K.2T).
+  const input = useTransferInput(props.input);
   // The screen opens in the kit's modal dialog over the strip; closing it hands focus back to
   // the control that opened it.
   return (
     <>
       <Status
         {...props}
+        {...(input ? { input } : {})}
         onAction={(a) => {
           props.onAction?.(a);
           if (answers) return;

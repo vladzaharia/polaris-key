@@ -415,6 +415,8 @@ const SWIFT_TYPE: Record<string, string> = {
   packs: "PacksClient",
   cloudConnect: "CloudConnect",
   cloudSync: "CloudSyncClient",
+  SavesClient: "SavesClient",
+  SaveTransfer: "SaveTransfer",
   SignInNamespace: "SignInNamespace",
   SignInSession: "SignInSession",
   ChoiceNamespace: "ChoiceNamespace",
@@ -532,6 +534,8 @@ const KOTLIN_TYPE: Record<string, string> = {
   cloudConnect: "CloudConnect",
   CloudNearby: "CloudNearby",
   cloudSync: "CloudSyncClient",
+  SavesClient: "SavesClient",
+  SaveTransfer: "SaveTransfer",
 };
 /** Rows built by the Android and Desktop bootstrap objects (PolarisKeyAndroid, PolarisKeyDesktop): not on the client, and the Android module is not in the JVM build. */
 const KOTLIN_UNASSERTED = new Set([
@@ -602,6 +606,8 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.sdk.CloudSyncHostOptions`,
     `import im.plrs.key.sdk.CommerceClient`,
     `import im.plrs.key.sdk.PolarisKeyClient`,
+    `import im.plrs.key.sdk.SaveTransfer`,
+    `import im.plrs.key.sdk.SavesClient`,
     ...[
       ...new Set(
         rowsFor(api, "kotlin")
@@ -634,6 +640,8 @@ const GODOT_SCRIPT: Record<string, string> = {
   identity: `"res://addons/polaris_key/services/identity.gd"`,
   PKeySignInNamespace: `"res://addons/polaris_key/services/identity/sign_in_namespace.gd"`,
   PKeySignInSession: `"res://addons/polaris_key/services/identity/sign_in_session.gd"`,
+  PKeySaves: `"res://addons/polaris_key/services/cloud_sync/saves.gd"`,
+  PKeyTransfer: `"res://addons/polaris_key/services/cloud_sync/transfer_handle.gd"`,
   devices: `"res://addons/polaris_key/services/devices.gd"`,
   release: `"res://addons/polaris_key/services/release.gd"`,
   distribution: `"res://addons/polaris_key/services/distribution.gd"`,

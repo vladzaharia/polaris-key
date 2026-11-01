@@ -682,8 +682,18 @@
       "wp": "U-08"
     },
     "sync.saves": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime"
+        }
+      ],
+      "note": "PolarisKey.cloud_sync.saves (PKeySaves, services/cloud_sync/saves.gd, over saves_records.gd and transfer_handle.gd): list, read, write, resolve, delete, revisions, transfers() and the transferProgress, transferDone and transferFailed events. The machine's records binding (records, put_at, remove_at with a ticket per exact write, the delete op, file pointers on rows, on_outcome) replays fileRecordCases in tests/suite_sync_scenarios.gd; a write is the file, then the metadata set as an exact put_at that waits for its one outcome (cancel() settles it as cancelled; there is no timeout). End-to-end saves carry the $file binding; the file codec is guarded and refuses sync-locked once the ring locks; sign-out locks the ring, purges the saves, then removes the pin. Whole-file seal and open run on a worker thread (the GDScript AES-GCM lane, at most 32 MiB a file). iOS and Android wait for the native lanes (CC-14b) and answer the typed unsupported refusal. Proven by tests/suite_cloud_sync_saves.gd and the cloudsync-files-single transcript."
     },
     "sync.keyring": {
       "status": "implemented",
@@ -705,7 +715,7 @@
           "reason": "runtime"
         }
       ],
-      "note": "The file transport (services/cloud_sync/files_transport.gd: a closed route allow-list, no redirects, Content-Digest, answer caps, Retry-After read under a 3600 s cap) under the transfer engine (transfer.gd). The cloudsync-files-* transcripts replay each file call through it (tests/suite_transcripts.gd, cloudSyncFile) and tests/suite_cloud_sync_files.gd covers the transport. Files are at most 32 MiB on the GDScript lane; iOS and Android wait for CC-14b. The saves API (sync.saves) waits for the machine's file records (U-22.5)."
+      "note": "The file transport (services/cloud_sync/files_transport.gd: a closed route allow-list, no redirects, Content-Digest, answer caps, Retry-After read under a 3600 s cap) under the transfer engine (transfer.gd). The cloudsync-files-* transcripts replay each file call through it (tests/suite_transcripts.gd, cloudSyncFile) and tests/suite_cloud_sync_files.gd covers the transport. Files are at most 32 MiB on the GDScript lane; iOS and Android wait for CC-14b."
     },
     "sync.files.delta": {
       "status": "implemented",

@@ -38,6 +38,7 @@ public object MachineStateJson {
         r.editedHlc?.let { put("editedHlc", it) }
         if (r.bad) put("bad", true)
         r.plain?.let { put("plain", it) }
+        r.file?.let { put("file", it.toJson()) }
     }
 
     private fun partition(p: SyncPartition): JsonObject = buildJsonObject {
@@ -51,6 +52,7 @@ public object MachineStateJson {
         put("device", JsonObject(p.device.mapValues { it.value.toJson() }))
         p.signedOutAt?.let { put("signedOutAt", it) }
         p.headroom?.let { put("headroom", it) }
+        if (p.nextTicket > 0) put("nextTicket", p.nextTicket)
         p.encryptionSince?.let { put("encryptionSince", it) }
         p.sealedFloor?.let { put("sealedFloor", it) }
         put("sealedKeys", JsonArray(p.sealedKeys.map { JsonPrimitive(it) }))
@@ -78,7 +80,14 @@ public object MachineStateJson {
 
     private fun decodeRow(r: JsonElement): SyncRow {
         val o = r as JsonObject
-        return SyncRow(o["value"], o["version"].longValue!!, o["editedHlc"].stringValue, o["bad"].boolValue == true, o["plain"].longValue)
+        return SyncRow(
+            o["value"],
+            o["version"].longValue!!,
+            o["editedHlc"].stringValue,
+            o["bad"].boolValue == true,
+            o["plain"].longValue,
+            RecordFile.of(o["file"]),
+        )
     }
 
     private fun decodePartition(o: JsonObject): SyncPartition {
@@ -92,6 +101,7 @@ public object MachineStateJson {
         (o["device"] as JsonObject).forEach { (k, v) -> p.device[k] = decodeDevice(v as JsonObject) }
         p.signedOutAt = o["signedOutAt"].longValue
         p.headroom = o["headroom"].longValue
+        p.nextTicket = o["nextTicket"].longValue ?: 0
         p.encryptionSince = o["encryptionSince"].longValue
         p.sealedFloor = o["sealedFloor"].longValue
         o["sealedKeys"].arrayValue?.forEach { k -> k.stringValue?.let { p.sealedKeys.add(it) } }
@@ -126,6 +136,7 @@ public object MachineStateJson {
         op.preContact = o["preContact"].boolValue == true
         op.moved = o["moved"].boolValue == true
         op.parked = o["parked"].stringValue
+        op.ticket = o["ticket"].longValue
         return op
     }
 }

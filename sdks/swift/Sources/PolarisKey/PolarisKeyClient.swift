@@ -330,6 +330,7 @@ public actor PolarisKeyClient {
             PolarisKeyClient.keyring(core: core, attachments: attachments, subject: { identityClient.account })
         }
         let syncOptions = options.cloudSync
+        let savesBox = LockedValue<SavesClient?>(nil)
         let api = CloudSyncApi(
             core: core, config: config,
             host: {
@@ -340,9 +341,16 @@ public actor PolarisKeyClient {
                     options: syncOptions)
             },
             account: { identityClient.account }, emit: { hub.emit(.cloudSync($0)) },
-            forgetRing: { try await ring().forget() }, recovery: { try await ring().setRecoveryCode() })
+            forgetRing: { try await ring().forget() },
+            lockRing: { await ring().lock() },
+            purgeSaves: { await savesBox.current?.purge() },
+            recovery: { try await ring().setRecoveryCode() })
         self.cloudSyncApi = api
-        self.cloudSync = CloudSyncClient(api: api)
+        let saves = SavesClient(
+            env: LiveSavesEnvironment(core: core, api: api, keyring: ring, options: syncOptions.saves),
+            options: syncOptions.saves, emit: { hub.emit(.cloudSync($0)) })
+        savesBox.set(saves)
+        self.cloudSync = CloudSyncClient(api: api, saves: saves)
         // The activation event: mint a credential, then sync. `devices.register()` deliberately
         // does NOT fire it — a keyless registration is a provisioning step a host may want to
         // take long before it wants documents (an installer that registers at setup and syncs on

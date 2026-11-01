@@ -193,6 +193,66 @@ final class CloudSyncFilesTests: XCTestCase {
         XCTAssertEqual(stub.sent.last?.headers["range"], "bytes=0-9")
     }
 
+    func testARangeOverOneDownloadPieceIsRefusedBeforeAnythingIsSent() async throws {
+        let stub = Stub()
+        stub.answer = { _ in PolarisResponse(status: 206, body: Data(count: 1)) }
+        let t = transport(stub)
+        for range in [
+            0..<(downloadRangeBytes + 1), 5..<(5 + downloadRangeBytes + 1), 0..<Int.max, (Int.max - 4)..<Int.max,
+        ] {
+            do {
+                _ = try await t.getFile(target, query: FileQuery(range: range))
+                XCTFail("range \(range) was sent")
+            } catch let e as TransferError {
+                XCTAssertEqual(e.reason, .rejected)
+                XCTAssertEqual(e.detail, "range")
+            }
+        }
+        XCTAssertTrue(stub.sent.isEmpty)
+        // One whole piece is allowed.
+        stub.answer = { _ in
+            PolarisResponse(
+                status: 206, body: Data(count: downloadRangeBytes),
+                headers: ["Content-Range": "bytes 0-\(downloadRangeBytes - 1)/\(downloadRangeBytes)"])
+        }
+        guard case .ok = try await t.getFile(target, query: FileQuery(range: 0..<downloadRangeBytes)) else {
+            return XCTFail("a whole piece was refused")
+        }
+    }
+
+    /// A transport that streams a 1 MiB error body in 64 KiB pieces and counts the pieces asked for.
+    private final class Streaming: PolarisTransport, @unchecked Sendable {
+        let pulled = LockedValue(0)
+        func send(_ request: PolarisRequest) async throws -> PolarisResponse {
+            PolarisResponse(status: 599, body: Data())
+        }
+        func stream(_ request: PolarisRequest) async throws -> PolarisStreamResponse {
+            let pulled = self.pulled
+            var left = 16
+            let body = AsyncThrowingStream<Data, Error> {
+                guard left > 0 else { return nil }
+                left -= 1
+                pulled.with { $0 += 1 }
+                return Data(repeating: 0x20, count: 65_536)
+            }
+            return PolarisStreamResponse(status: 404, headers: [:], body: body)
+        }
+    }
+
+    func testARangedGetsErrorBodyIsReadToTheErrorCapOnly() async throws {
+        let streaming = Streaming()
+        let t = CloudSyncFileTransport(
+            product: "djdl", baseUrl: "https://key.plrs.im", transport: streaming,
+            headers: { [:] }, token: { "pkeyt_secret" })
+        guard case .refused(let f) = try await t.getFile(target, query: FileQuery(range: 0..<downloadRangeBytes)) else {
+            return XCTFail("expected a refusal")
+        }
+        XCTAssertEqual(f.status, 404)
+        XCTAssertEqual(f.code, ErrorCode.notFound)
+        // 64 KiB is the cap: one piece fills it, and the other fifteen are never pulled.
+        XCTAssertLessThanOrEqual(streaming.pulled.current, 2)
+    }
+
     func testARangedGetReadsTheContentRangeAndTheETag() async throws {
         let stub = Stub()
         stub.answer = { _ in
@@ -277,7 +337,10 @@ final class CloudSyncFilesPurgeTests: XCTestCase {
         XCTAssertEqual(journal.list().count, 1)
         try await host.purge()
         XCTAssertTrue(journal.list().isEmpty)
-        let chunks = rig.dir.appendingPathComponent(cloudSyncChunksDirName).path
-        XCTAssertFalse(FileManager.default.fileExists(atPath: chunks))
+        // Only the person's own directory goes, never the cache root.
+        let mine = chunkCachePersonDirectory(stateDir: rig.dir, subject: hALICE).path
+        XCTAssertFalse(FileManager.default.fileExists(atPath: mine))
+        let root = rig.dir.appendingPathComponent(cloudSyncChunksDirName).path
+        XCTAssertTrue(FileManager.default.fileExists(atPath: root))
     }
 }

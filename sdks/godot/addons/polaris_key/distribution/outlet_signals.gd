@@ -140,7 +140,7 @@ static func _macos(e: PKeyOutletEnv, exe: String, ids: Dictionary, out: Dictiona
 				break
 		out["macos.signingLeaf"] = leaf
 	var token = ids.get("caskToken")
-	if token is String and RegEx.create_from_string("^[a-z0-9][a-z0-9@._+-]*$").search(token) != null:
+	if token is String and RegEx.create_from_string("\\A[a-z0-9][a-z0-9@._+-]*\\z").search(token) != null:
 		var app := bundle.get_file()
 		for prefix in _cask_prefixes:
 			var root := prefix.path_join(token)
@@ -188,7 +188,7 @@ static func _android(e: PKeyOutletEnv, out: Dictionary) -> void:
 
 static func _steam(e: PKeyOutletEnv, exe: String, ids: Dictionary, out: Dictionary) -> void:
 	var app_id = ids.get("steamAppId")
-	if app_id is String and RegEx.create_from_string("^[0-9]+$").search(app_id) != null:
+	if app_id is String and RegEx.create_from_string("\\A[0-9]+\\z").search(app_id) != null:
 		var m := RegEx.create_from_string("(?i)^(.*)/steamapps/common/([^/]+)/").search(exe.replace("\\", "/"))
 		if m != null:
 			var manifest := m.get_string(1).path_join("steamapps/appmanifest_%s.acf" % app_id)

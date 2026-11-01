@@ -41,7 +41,8 @@ public class CloudSyncMachine private constructor(private val parts: MachinePart
     SyncReads by parts.reads,
     SyncSession by parts.session,
     SyncExchange by parts.receiver,
-    SyncRecords by parts.records {
+    SyncRecords by parts.records,
+    SyncExactRecords by parts.records {
     /** A machine for [opts], restored from [persisted] (a relaunch) when given. */
     public constructor(opts: CloudSyncOptions, persisted: MachineState? = null) : this(
         MachineParts(

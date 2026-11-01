@@ -85,11 +85,11 @@ public struct SecureStore: Sendable {
     public var service: String { "pkey:\(product)" }
 
     static func validProduct(_ s: String) -> Bool {
-        s.range(of: productNamePattern, options: .regularExpression) != nil
+        wholeASCII(productNamePattern, s)
     }
 
     static func validAccount(_ s: String) -> Bool {
-        s.range(of: accountNamePattern, options: .regularExpression) != nil
+        wholeASCII(accountNamePattern, s)
     }
 
     /// The item's identity: class, service, account, the data-protection keychain (unless the
@@ -155,3 +155,10 @@ public struct SecureStore: Sendable {
     static let invalid: PlatformObject = ["ok": false, "error": "invalid_name"]
 }
 #endif
+
+/// Whole-string match of an anchored pattern. ICU `$` also matches before a final line
+/// terminator, so the pattern is wrapped in `\A(?:…)\z` and a name with a trailing newline
+/// or other control character never passes.
+func wholeASCII(_ pattern: String, _ s: String) -> Bool {
+    s.range(of: #"\A(?:"# + pattern + #")\z"#, options: .regularExpression) != nil
+}

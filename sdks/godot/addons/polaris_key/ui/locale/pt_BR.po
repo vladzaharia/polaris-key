@@ -2417,25 +2417,55 @@ msgstr "Todos os espaços estão em uso. Exclua um jogo salvo para manter os doi
 msgid "saveConflict.keeping"
 msgstr "Aplicando sua escolha…"
 
-#. Kept this device's save.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptLocal"
-msgstr "Jogo salvo deste dispositivo mantido."
+#. Newer
+#. SaveConflict: tag on this device's card when the app says that version was saved later. Never a choice.
+msgid "saveConflict.newerThis"
+msgstr "Mais recente"
 
-#. Kept the other save.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptRemote"
-msgstr "Outro jogo salvo mantido."
+#. Newer
+#. SaveConflict: tag on the other card when the app says that version was saved later. Never a choice.
+msgid "saveConflict.newerOther"
+msgstr "Mais recente"
 
-#. Kept both. The other is saved as a copy.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptBoth"
-msgstr "Os dois foram mantidos. O outro foi salvo como cópia."
+#. Choose again
+#. SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied.
+msgid "saveConflict.chooseAgain"
+msgstr "Escolher de novo"
 
-#. The save is deleted.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptDeleted"
-msgstr "O jogo salvo foi excluído."
+#. macos: Choose Again
+msgctxt "macos"
+msgid "saveConflict.chooseAgain"
+msgstr "Escolher de novo"
+
+#. Couldn't keep your choice. Your save is unchanged.
+#. SaveConflict: the choice failed after the other copy was deleted; only this device's save exists.
+msgid "saveConflict.failedDeleted"
+msgstr "Não foi possível aplicar sua escolha. Seu jogo salvo continua igual."
+
+#. Kept this device's version
+#. SaveConflict: result title after Keep this device's version.
+msgid "saveConflict.keptLocalTitle"
+msgstr "Versão deste dispositivo mantida"
+
+#. Kept the other version
+#. SaveConflict: result title after Keep the other version.
+msgid "saveConflict.keptRemoteTitle"
+msgstr "Outra versão mantida"
+
+#. Kept both versions
+#. SaveConflict: result title after Keep both.
+msgid "saveConflict.keptBothTitle"
+msgstr "As duas versões mantidas"
+
+#. The other version is saved as a copy.
+#. SaveConflict: under Kept both versions, where the other version went.
+msgid "saveConflict.keptCopy"
+msgstr "A outra versão foi salva como cópia."
+
+#. Save deleted
+#. SaveConflict: result title after Delete it here too.
+msgid "saveConflict.keptDeletedTitle"
+msgstr "Jogo salvo excluído"
 
 #. Couldn't keep your choice. Both saves are unchanged.
 #. SaveConflict: applying the choice failed; Try again repeats it.

@@ -45,6 +45,16 @@ def test_invalid_entries_are_not_recorded(tmp_path) -> None:
     assert j.record("update_applied", release="1.0.0", outlet="Not An Id")["outlet"] == "unknown"
 
 
+def test_a_trailing_control_character_is_refused(tmp_path) -> None:
+    j = UpdateJournal(str(tmp_path), _ctx)
+    for tail in ("\n", "\r"):
+        assert j.record("update_applied", release="1.0.0" + tail) is None
+        assert j.record("update_applied", release="1.0.0", channel="stable" + tail) is None
+        assert j.record("update_applied", release="1.0.0", outlet="direct" + tail)["outlet"] == "unknown"
+        assert j.record("update_applied", release="1.0.0", deliverable="app" + tail) is None
+        assert j.record("update_applied", release="1.0.0", pack_set_id="set" + tail) is None
+
+
 def test_at_most_sixteen_go_per_report_and_sent_ones_are_dropped(tmp_path) -> None:
     j = UpdateJournal(str(tmp_path), _ctx)
     for i in range(20):

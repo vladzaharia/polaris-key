@@ -54,7 +54,7 @@
       "jscpd:duplicate": 3
     },
     "conformance/runners/node/transcripts.test.ts": {
-      "jscpd:duplicate": 27
+      "jscpd:duplicate": 28
     },
     "examples/node-electron/src/main.ts": {
       "jscpd:duplicate": 1
@@ -1581,7 +1581,10 @@
       "jscpd:duplicate": 8
     },
     "packages/sdk-node/src/cloudSync/host.ts": {
-      "jscpd:duplicate": 12
+      "jscpd:duplicate": 14
+    },
+    "packages/sdk-node/src/cloudSync/saves.ts": {
+      "jscpd:duplicate": 6
     },
     "packages/sdk-node/src/cloudSync/state.ts": {
       "jscpd:duplicate": 1
@@ -1641,6 +1644,9 @@
       "jscpd:duplicate": 2
     },
     "packages/sdk-node/src/core/context.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/core/events.ts": {
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/core/presentation.ts": {
@@ -1786,6 +1792,9 @@
     },
     "packages/sdk-node/test/cloudSyncHost.test.ts": {
       "jscpd:duplicate": 19
+    },
+    "packages/sdk-node/test/cloudSyncSaves.test.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/sdk-node/test/commerce.test.ts": {
       "jscpd:duplicate": 1
@@ -2064,7 +2073,10 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/cloudSyncHost.test.ts": {
-      "jscpd:duplicate": 40
+      "jscpd:duplicate": 44
+    },
+    "packages/sdk-react/test/cloudSyncSaves.test.ts": {
+      "jscpd:duplicate": 6
     },
     "packages/sdk-react/test/cloudSyncSettings.test.tsx": {
       "jscpd:duplicate": 1
@@ -2144,8 +2156,11 @@
     "packages/sdk-react/test/kitRenew.test.tsx": {
       "jscpd:duplicate": 1
     },
-    "packages/sdk-react/test/kitSaveScreens.test.tsx": {
+    "packages/sdk-react/test/kitSaveBind.test.tsx": {
       "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/kitSaveScreens.test.tsx": {
+      "jscpd:duplicate": 2
     },
     "packages/sdk-react/test/kitSignIn.test.tsx": {
       "jscpd:duplicate": 2
@@ -2177,6 +2192,9 @@
     "packages/sdk-react/test/release.test.tsx": {
       "jscpd:duplicate": 3
     },
+    "packages/sdk-react/test/savesFixtures.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/sdk-react/test/signInSession.test.ts": {
       "jscpd:duplicate": 5
     },
@@ -2184,7 +2202,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/transcripts.test.ts": {
-      "jscpd:duplicate": 27
+      "jscpd:duplicate": 28
     },
     "packages/sdk-react/test/trustCustody.test.ts": {
       "jscpd:duplicate": 2
@@ -2200,6 +2218,9 @@
     },
     "packages/sdk-react/test/updateMatrixParity.test.ts": {
       "jscpd:duplicate": 5
+    },
+    "packages/sdk-react/test/useSaves.test.tsx": {
+      "jscpd:duplicate": 1
     },
     "packages/sdk-react/vitest.browser.config.ts": {
       "jscpd:duplicate": 4
@@ -2343,10 +2364,13 @@
       "jscpd:duplicate": 9
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/host.ts": {
-      "jscpd:duplicate": 14
+      "jscpd:duplicate": 16
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/idbJournal.ts": {
       "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/saves.ts": {
+      "jscpd:duplicate": 6
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/store.ts": {
       "jscpd:duplicate": 1
@@ -2424,6 +2448,9 @@
       "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/core/choice.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/core/cloudSync.ts": {
       "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/core/crash.ts": {
@@ -4920,7 +4947,7 @@
       "jscpd:duplicate": 1
     },
     "tools/sync-scenarios.ts": {
-      "jscpd:duplicate": 16
+      "jscpd:duplicate": 25
     },
     "tools/ui-matrix.ts": {
       "jscpd:duplicate": 18

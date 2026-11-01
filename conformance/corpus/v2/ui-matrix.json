@@ -1,6 +1,6 @@
 {
   "uiMatrixVersion": 8,
-  "description": "The UI state matrix (plans/UK-02.md \u00a74, plans/UK-02b.md): layer (c) of every UI kit, pinned once for every language. Component rows: drive the headless model of expect.component with input (a member input omits takes vocabulary.defaults) and compare state, the sorted copy keys and the sorted actions (absent means none). A state is a components.json state of the component, or hidden: the drop-in renders nothing and a styled part renders empty; hidden appears only on rows that turn a service off. copy lists the keys this input shows: a subset of the state's components.json list plus core.* keys the input selects (D7); vocabulary.unreached names the listed keys no row can show yet. actions are the controls the copy names (vocabulary.actionKeys) plus replace-in-browser. vocabulary.gaps declares the variants not pinned yet, each with the work package that appends its rows. mustNot marks a negative case (UI-KITS \u00a74.1): the expectation holds and none of its states, copy or actions appear. Inline sign-in rows have a sheet twin with the same expectation (D4); each must component has a presentation-absent twin of its default row (D6). theme rows pin UI-KITS \u00a71.2 and \u00a73.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter). vocabulary.loadingDelay pins DL7's delayed response: a row whose input has elapsedMs below min expects its loading state with no copy; from max, the state's usual copy. cli is the terminal drop-in contract (plans/UK-51.md), one object rather than component rows: verbs (the end-user set a mount offers, the developer verbs it offers only by name, the aliases), mount and help (what registering into a host CLI mounts, refuses with polaris-verb-collision, skips, hides and lists), gate (every licenseStatus x tty x json x entitled: run, the inline flow, or a refusal that is a triangle with its fix and exits 4), outcomes (a kit verb in a vocabulary.cli.situations situation: its mark, exit, result fields, stdout and fix verbs), stdin (what activate with no key reads, per vocabulary.cli.stdinKinds), capabilities (environment x streams x flags) and exit (the exit table). vocabulary.cli holds the rules; mount, help, gate and capabilities are computed by the generator's references. Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 6: a changed row, input member or rule bumps it.",
+  "description": "The UI state matrix (plans/UK-02.md \u00a74, plans/UK-02b.md): layer (c) of every UI kit, pinned once for every language. Component rows: drive the headless model of expect.component with input (a member input omits takes vocabulary.defaults) and compare state, the sorted copy keys and the sorted actions (absent means none). A state is a components.json state of the component, or hidden: the drop-in renders nothing and a styled part renders empty; hidden appears only on rows that turn a service off. copy lists the keys this input shows: a subset of the state's components.json list plus core.* keys the input selects (D7); vocabulary.unreached names the listed keys no row can show yet. actions are the controls the copy names (vocabulary.actionKeys) plus replace-in-browser. vocabulary.gaps declares the variants not pinned yet, each with the work package that appends its rows. mustNot marks a negative case (UI-KITS \u00a74.1): the expectation holds and none of its states, copy or actions appear. Inline sign-in rows have a sheet twin with the same expectation (D4); each must component has a presentation-absent twin of its default row (D6). theme rows pin UI-KITS \u00a71.2 and \u00a73.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter). vocabulary.loadingDelay pins DL7's delayed response: a row whose input has elapsedMs below min expects its loading state with no copy; from max, the state's usual copy. cli is the terminal drop-in contract (plans/UK-51.md), one object rather than component rows: verbs (the end-user set a mount offers, the developer verbs it offers only by name, the aliases), mount and help (what registering into a host CLI mounts, refuses with polaris-verb-collision, skips, hides and lists), gate (every licenseStatus x tty x json x entitled: run, the inline flow, or a refusal that is a triangle with its fix and exits 4), outcomes (a kit verb in a vocabulary.cli.situations situation: its mark, exit, result fields, stdout and fix verbs), stdin (what activate with no key reads, per vocabulary.cli.stdinKinds), capabilities (environment x streams x flags) and exit (the exit table). vocabulary.cli holds the rules; mount, help, gate and capabilities are computed by the generator's references. Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within a uiMatrixVersion: a changed row, input member or rule bumps it.",
   "vocabulary": {
     "actions": {
       "open-card": "Start the sign-in on the hosted card in the browser (Continue in browser, Continue with email).",
@@ -17,9 +17,10 @@
       "accept-ring-change": "Confirm the changed ring that was shown: hand `served` to `acceptRingChange`, never a fresh read.",
       "use-recovery-code": "Open the recovery code screen from the ring confirmation.",
       "copy-code": "Copy the recovery code to the clipboard.",
-      "keep-local": "Resolve a save conflict by keeping the copy on this device (Keep this device's).",
-      "keep-remote": "Resolve a save conflict by keeping the other copy, or accepting its deletion (Keep the other, Delete it here too).",
-      "keep-both": "Resolve a save conflict by keeping both: the other copy is saved under a new name (Keep both)."
+      "keep-local": "Resolve a save conflict by keeping the copy on this device (Keep this device's version).",
+      "keep-remote": "Resolve a save conflict by keeping the other copy, or accepting its deletion (Keep the other version, Delete it here too).",
+      "keep-both": "Resolve a save conflict by keeping both: the other copy is saved under a new name (Keep both).",
+      "choose-again": "Return a failed save conflict to its choices; nothing is applied (Choose again)."
     },
     "actionKeys": {
       "open-card": ["signin.desktop.continue", "signin.email.continue"],
@@ -33,6 +34,7 @@
       "keep-local": ["saveConflict.keepThis"],
       "keep-remote": ["saveConflict.keepOther", "saveConflict.acceptDelete"],
       "keep-both": ["saveConflict.keepBoth"],
+      "choose-again": ["saveConflict.chooseAgain"],
       "start-sign-in": [
         "signin.key.signIn",
         "signin.key.ownedSignIn",
@@ -95,7 +97,7 @@
       "toast": "{kind}: the toast being shown.",
       "error": "{code}: a core.codes code the step failed with.",
       "cloudSync": "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed | transferring | waiting | transfer-failed, signedIn?, canReview?, lastSynced?, transfer?: {size?, total?, fraction?}, reason?: network | battery | background}. `ring-changed` always offers Review: the kit owns the confirmation. `transferring` shows `transfer.size` of `transfer.total` (display-ready sizes) when both are given, and a bar that is determinate only with `transfer.fraction` (counted bytes, 0 to 1); `waiting` names its `reason` (default network); `transfer-failed` offers Try again. While a transfer is pending the status never says Synced, whatever `lastSynced` holds.",
-      "saveConflict": "SaveConflict: {step: choose | keeping | kept | failed, local?: {when?}, remote?: {when?, device?} | null, bothAvailable?, keep?: local | remote | both}. `remote: null` means the other copy was deleted: Keep the other becomes Delete it here too and Keep both is not offered. `bothAvailable` is true only with a free slot of the 16; absent or false draws Keep both disabled, with its reason. `keep` is the choice being applied (keeping), applied (kept) or that failed; kept needs it. `when` and `device` are display-ready.",
+      "saveConflict": "SaveConflict: {step: choose | keeping | kept | failed, local?: {when?}, remote?: {when?, device?} | null, bothAvailable?, keep?: local | remote | both, newer?: local | remote}. `remote: null` means the other copy was deleted: Keep the other becomes Delete it here too and Keep both is not offered. `bothAvailable` is true only with a free slot of the 16; absent or false draws Keep both disabled, with its reason. `keep` is the choice being applied (keeping), applied (kept) or that failed; kept needs it. `newer`: `local | remote`, the version the app knows was saved later (its own metadata, never the display strings). It tags that card and chooses nothing; it is ignored when the other copy was deleted. `when` and `device` are display-ready.",
       "licenseHolder": "Who holds the license a key just activated: {email?}. No email (or an empty one): floating, held by the key alone. An email: the license was sent to it and no account holds it yet (waiting); screens mask it. Absent: the holder is not known and AccountAndLicense draws what it drew before.",
       "activateDone": "The Done step after a key activates: {tier?, term?, deviceKind?, position?, limit?}, the strings and numbers the license line shows. Absent: ActivateDone is hidden. The state is `waiting` with a `licenseHolder` email, else `ready`; the reasons follow the services (Cloud Sync only with sync, Get your license back and Move it with Identity, else the portal line).",
       "addToAccount": "Add your name and email: {step: form | invalid | busy | added | owned | email-bound | other-account | failed, field?: name | email | both, deviceKind?, typedEmail?, signedEmail?, fromSettings?}. `invalid` names the field to fix (absent: both). owned: someone attached the license meanwhile; email-bound: the license was sent to another email (with `licenseHolder`); other-account: a different account signed in than the email typed (`typedEmail` and `signedEmail`, both masked); `fromSettings` closes `added` with Done; failed: sign-in or attach did not finish. `added` names Cloud Sync only with sync on. Absent: AddToAccount is hidden.",
@@ -12852,6 +12854,82 @@
       }
     },
     {
+      "name": "SaveConflict/choose: the other version is newer",
+      "input": {
+        "saveConflict": {
+          "step": "choose",
+          "local": { "when": "today, 14:02" },
+          "remote": {
+            "when": "yesterday, 21:40",
+            "device": "Maya's Steam Deck"
+          },
+          "bothAvailable": true,
+          "newer": "remote"
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "saveConflict.keepBoth",
+          "saveConflict.keepOther",
+          "saveConflict.keepThis",
+          "saveConflict.lede",
+          "saveConflict.newerOther",
+          "saveConflict.otherDevice",
+          "saveConflict.savedOther",
+          "saveConflict.savedThis",
+          "saveConflict.thisDevice",
+          "saveConflict.title"
+        ],
+        "actions": ["cancel", "keep-both", "keep-local", "keep-remote"]
+      },
+      "mustNot": {
+        "invariant": "Newer tags the version the app names and chooses nothing.",
+        "states": ["keeping", "kept"],
+        "copy": ["saveConflict.newerThis"]
+      }
+    },
+    {
+      "name": "SaveConflict/choose: this device's version is newer",
+      "input": {
+        "saveConflict": {
+          "step": "choose",
+          "local": { "when": "today, 14:02" },
+          "remote": {
+            "when": "yesterday, 21:40",
+            "device": "Maya's Steam Deck"
+          },
+          "bothAvailable": true,
+          "newer": "local"
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "saveConflict.keepBoth",
+          "saveConflict.keepOther",
+          "saveConflict.keepThis",
+          "saveConflict.lede",
+          "saveConflict.newerThis",
+          "saveConflict.otherDevice",
+          "saveConflict.savedOther",
+          "saveConflict.savedThis",
+          "saveConflict.thisDevice",
+          "saveConflict.title"
+        ],
+        "actions": ["cancel", "keep-both", "keep-local", "keep-remote"]
+      },
+      "mustNot": {
+        "invariant": "Newer tags the version the app names and chooses nothing.",
+        "states": ["keeping", "kept"],
+        "copy": ["saveConflict.newerOther"]
+      }
+    },
+    {
       "name": "SaveConflict/choose: the other copy was deleted",
       "input": {
         "saveConflict": {
@@ -12887,6 +12965,38 @@
       }
     },
     {
+      "name": "SaveConflict/choose: one version, no Newer tag",
+      "input": {
+        "saveConflict": {
+          "step": "choose",
+          "local": { "when": "today, 14:02" },
+          "remote": null,
+          "bothAvailable": true,
+          "newer": "local"
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "saveConflict.acceptDelete",
+          "saveConflict.deletedElsewhere",
+          "saveConflict.deletedLede",
+          "saveConflict.deletedTitle",
+          "saveConflict.keepThis",
+          "saveConflict.savedThis",
+          "saveConflict.thisDevice"
+        ],
+        "actions": ["cancel", "keep-local", "keep-remote"]
+      },
+      "mustNot": {
+        "invariant": "With one version there is nothing to compare: no Newer tag.",
+        "copy": ["saveConflict.newerOther", "saveConflict.newerThis"],
+        "actions": ["keep-both"]
+      }
+    },
+    {
       "name": "SaveConflict/keeping: the choice is being applied",
       "input": {
         "saveConflict": {
@@ -12902,7 +13012,7 @@
       "expect": {
         "component": "SaveConflict",
         "state": "keeping",
-        "copy": ["saveConflict.keeping", "saveConflict.title"]
+        "copy": ["a11y.busy", "saveConflict.keeping", "saveConflict.title"]
       },
       "mustNot": {
         "invariant": "A choice is applied once: no control is offered while it runs.",
@@ -12910,7 +13020,32 @@
       }
     },
     {
-      "name": "SaveConflict/kept: this device's copy",
+      "name": "SaveConflict/keeping: after a deletion elsewhere",
+      "input": {
+        "saveConflict": {
+          "step": "keeping",
+          "local": { "when": "today, 14:02" },
+          "remote": null,
+          "keep": "remote"
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "keeping",
+        "copy": [
+          "a11y.busy",
+          "saveConflict.deletedTitle",
+          "saveConflict.keeping"
+        ]
+      },
+      "mustNot": {
+        "invariant": "After a deletion elsewhere no step says two versions, and nothing is offered while it runs.",
+        "copy": ["saveConflict.title"],
+        "actions": ["keep-both", "keep-local", "keep-remote"]
+      }
+    },
+    {
+      "name": "SaveConflict/kept: this device's version",
       "input": {
         "saveConflict": {
           "step": "kept",
@@ -12925,19 +13060,22 @@
       "expect": {
         "component": "SaveConflict",
         "state": "kept",
-        "copy": ["common.done", "saveConflict.keptLocal", "saveConflict.title"]
+        "copy": ["common.done", "saveConflict.keptLocalTitle"]
       },
       "mustNot": {
-        "invariant": "Kept names the choice that was made, and no other.",
+        "invariant": "Kept names the choice that was made, and no other, as its title.",
         "copy": [
-          "saveConflict.keptBoth",
-          "saveConflict.keptDeleted",
-          "saveConflict.keptRemote"
+          "saveConflict.deletedTitle",
+          "saveConflict.keptBothTitle",
+          "saveConflict.keptCopy",
+          "saveConflict.keptDeletedTitle",
+          "saveConflict.keptRemoteTitle",
+          "saveConflict.title"
         ]
       }
     },
     {
-      "name": "SaveConflict/kept: the other copy",
+      "name": "SaveConflict/kept: the other version",
       "input": {
         "saveConflict": {
           "step": "kept",
@@ -12952,19 +13090,22 @@
       "expect": {
         "component": "SaveConflict",
         "state": "kept",
-        "copy": ["common.done", "saveConflict.keptRemote", "saveConflict.title"]
+        "copy": ["common.done", "saveConflict.keptRemoteTitle"]
       },
       "mustNot": {
-        "invariant": "Kept names the choice that was made, and no other.",
+        "invariant": "Kept names the choice that was made, and no other, as its title.",
         "copy": [
-          "saveConflict.keptBoth",
-          "saveConflict.keptDeleted",
-          "saveConflict.keptLocal"
+          "saveConflict.deletedTitle",
+          "saveConflict.keptBothTitle",
+          "saveConflict.keptCopy",
+          "saveConflict.keptDeletedTitle",
+          "saveConflict.keptLocalTitle",
+          "saveConflict.title"
         ]
       }
     },
     {
-      "name": "SaveConflict/kept: both copies",
+      "name": "SaveConflict/kept: both versions",
       "input": {
         "saveConflict": {
           "step": "kept",
@@ -12979,14 +13120,20 @@
       "expect": {
         "component": "SaveConflict",
         "state": "kept",
-        "copy": ["common.done", "saveConflict.keptBoth", "saveConflict.title"]
+        "copy": [
+          "common.done",
+          "saveConflict.keptBothTitle",
+          "saveConflict.keptCopy"
+        ]
       },
       "mustNot": {
-        "invariant": "Kept names the choice that was made, and no other.",
+        "invariant": "Kept names the choice that was made, and no other, as its title.",
         "copy": [
-          "saveConflict.keptDeleted",
-          "saveConflict.keptLocal",
-          "saveConflict.keptRemote"
+          "saveConflict.deletedTitle",
+          "saveConflict.keptDeletedTitle",
+          "saveConflict.keptLocalTitle",
+          "saveConflict.keptRemoteTitle",
+          "saveConflict.title"
         ]
       }
     },
@@ -13003,18 +13150,44 @@
       "expect": {
         "component": "SaveConflict",
         "state": "kept",
-        "copy": [
-          "common.done",
-          "saveConflict.keptDeleted",
-          "saveConflict.title"
-        ]
+        "copy": ["common.done", "saveConflict.keptDeletedTitle"]
       },
       "mustNot": {
-        "invariant": "Kept names the choice that was made, and no other.",
+        "invariant": "Kept names the choice that was made, and no other, as its title.",
         "copy": [
-          "saveConflict.keptBoth",
-          "saveConflict.keptLocal",
-          "saveConflict.keptRemote"
+          "saveConflict.deletedTitle",
+          "saveConflict.keptBothTitle",
+          "saveConflict.keptCopy",
+          "saveConflict.keptLocalTitle",
+          "saveConflict.keptRemoteTitle",
+          "saveConflict.title"
+        ]
+      }
+    },
+    {
+      "name": "SaveConflict/kept: this device's version after a deletion elsewhere",
+      "input": {
+        "saveConflict": {
+          "step": "kept",
+          "local": { "when": "today, 14:02" },
+          "remote": null,
+          "keep": "local"
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "kept",
+        "copy": ["common.done", "saveConflict.keptLocalTitle"]
+      },
+      "mustNot": {
+        "invariant": "Kept names the choice that was made, and no other, as its title.",
+        "copy": [
+          "saveConflict.deletedTitle",
+          "saveConflict.keptBothTitle",
+          "saveConflict.keptCopy",
+          "saveConflict.keptDeletedTitle",
+          "saveConflict.keptRemoteTitle",
+          "saveConflict.title"
         ]
       }
     },
@@ -13037,19 +13210,58 @@
         "copy": [
           "common.cancel",
           "common.tryAgain",
+          "saveConflict.chooseAgain",
           "saveConflict.failed",
           "saveConflict.title"
         ],
-        "actions": ["cancel", "retry"]
+        "actions": ["cancel", "choose-again", "retry"]
       },
       "mustNot": {
         "invariant": "A failed choice never says kept; both copies stay as they were.",
         "states": ["kept"],
         "copy": [
-          "saveConflict.keptBoth",
-          "saveConflict.keptDeleted",
-          "saveConflict.keptLocal",
-          "saveConflict.keptRemote"
+          "saveConflict.failedDeleted",
+          "saveConflict.keptBothTitle",
+          "saveConflict.keptCopy",
+          "saveConflict.keptDeletedTitle",
+          "saveConflict.keptLocalTitle",
+          "saveConflict.keptRemoteTitle"
+        ]
+      }
+    },
+    {
+      "name": "SaveConflict/failed: after a deletion elsewhere, your save is unchanged",
+      "input": {
+        "saveConflict": {
+          "step": "failed",
+          "local": { "when": "today, 14:02" },
+          "remote": null,
+          "keep": "remote"
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "failed",
+        "copy": [
+          "common.cancel",
+          "common.tryAgain",
+          "saveConflict.chooseAgain",
+          "saveConflict.deletedTitle",
+          "saveConflict.failedDeleted"
+        ],
+        "actions": ["cancel", "choose-again", "retry"]
+      },
+      "mustNot": {
+        "invariant": "A failed choice never says kept, and with one save it never says two versions or both saves.",
+        "states": ["kept"],
+        "copy": [
+          "saveConflict.failed",
+          "saveConflict.keptBothTitle",
+          "saveConflict.keptCopy",
+          "saveConflict.keptDeletedTitle",
+          "saveConflict.keptLocalTitle",
+          "saveConflict.keptRemoteTitle",
+          "saveConflict.title"
         ]
       }
     },

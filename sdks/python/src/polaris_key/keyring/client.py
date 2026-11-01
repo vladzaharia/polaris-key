@@ -35,7 +35,7 @@ import os
 import re
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, cast
 from urllib.parse import quote
 
 from ..constants_generated import ErrorCode
@@ -253,6 +253,66 @@ class _Held:
 
     def __deepcopy__(self, memo: Any) -> Any:
         raise TypeError("a held root cannot be copied")
+
+
+class _GuardedFileCodec:
+    """A file codec that refuses (``sync-locked``) once the root it was made with is no longer held."""
+
+    def __init__(self, inner: Any, live: Callable[[], bool]) -> None:
+        self._inner = inner
+        self._live = live
+        self.enc = inner.enc
+
+    def _check(self) -> None:
+        if not self._live():
+            raise _locked()
+
+    def __repr__(self) -> str:
+        return "<GuardedFileCodec locked=%s>" % (not self._live(),)
+
+    def __reduce__(self) -> Any:
+        raise TypeError("a codec cannot be pickled")
+
+    def chunk_id(self, plain: bytes) -> bytes:
+        self._check()
+        return self._inner.chunk_id(plain)
+
+    def chunk_object_bytes(self, plain_len: int) -> int:
+        return int(self._inner.chunk_object_bytes(plain_len))
+
+    def seal_chunk(self, id: bytes, plain: bytes) -> bytes:
+        self._check()
+        return self._inner.seal_chunk(id, plain)
+
+    def open_chunk(self, id: bytes, obj: bytes) -> Any:
+        self._check()
+        return self._inner.open_chunk(id, obj)
+
+    def stored_size(self, plain_size: int) -> int:
+        return int(self._inner.stored_size(plain_size))
+
+    def plain_size(self, stored_size: int) -> Optional[int]:
+        return self._inner.plain_size(stored_size)  # type: ignore[no-any-return]
+
+    def seal_manifest(self, plain: bytes) -> bytes:
+        self._check()
+        return self._inner.seal_manifest(plain)
+
+    def open_manifest(self, stored: bytes) -> Any:
+        self._check()
+        return self._inner.open_manifest(stored)
+
+    def seal_stream(self, source: Any) -> Any:
+        self._check()
+        for piece in self._inner.seal_stream(source):
+            self._check()
+            yield piece
+
+    def open_stream(self, stored: Any) -> Any:
+        self._check()
+        for piece in self._inner.open_stream(stored):
+            self._check()
+            yield piece
 
 
 class SyncCodec:
@@ -717,6 +777,16 @@ class KeyringClient:
         return opened
 
     # ── Internals ─────────────────────────────────────────────────────────────────────────────
+
+    def file_codec(self, collection: str) -> Any:
+        """The file codec of a collection, sealing with the ring's current root. The root is not exposed.
+        Every use re-checks that this root is still the ring's: once locked, nothing is sealed or opened
+        (the zeroed buffer would otherwise derive a guessable key). Raises ``sync-locked`` while locked."""
+        from ..cloud_sync.transfer_codec import E2eFileCodec
+
+        held = self._need()
+        # The codec keeps the ring's own buffer (not a copy), so `lock()` zeroing it stops the codec too.
+        return _GuardedFileCodec(E2eFileCodec(cast(bytes, held.root), collection), lambda: self._held is held)
 
     def _need(self) -> _Held:
         h = self._held

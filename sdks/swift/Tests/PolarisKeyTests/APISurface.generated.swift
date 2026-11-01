@@ -52,6 +52,17 @@ func apiSurface() async {
     _ = CloudSyncClient.status  // cloudSync.status
     _ = CloudSyncClient.flush  // cloudSync.flush
     _ = \PolarisKeyClient.events  // cloudSync.event
+    _ = \CloudSyncClient.saves  // cloudSync.saves
+    _ = SavesClient.list  // cloudSync.saves.list
+    _ = SavesClient.read(_:options:)  // cloudSync.saves.read
+    _ = SavesClient.write(_:bytes:metadata:options:)  // cloudSync.saves.write
+    _ = SavesClient.delete(_:baseVersion:)  // cloudSync.saves.delete
+    _ = SavesClient.revisions(_:)  // cloudSync.saves.revisions
+    _ = CloudSyncClient.transfers  // cloudSync.transfers
+    _ = SaveTransfer.pause  // cloudSync.transfer.pause
+    _ = SaveTransfer.resume  // cloudSync.transfer.resume
+    _ = SaveTransfer.cancel  // cloudSync.transfer.cancel
+    _ = \PolarisKeyClient.events  // cloudSync.transferEvent
     _ = PolarisKeyClient.discover  // client.discover
     _ = \PolarisKeyClient.presentation  // client.presentation
     _ = PolarisKeyClient.presentationIcon  // client.presentationIcon

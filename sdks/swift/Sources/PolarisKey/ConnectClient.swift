@@ -478,7 +478,7 @@ public actor ConnectClient {
     static func retryAfterSeconds(_ header: String?, now: Date = Date()) -> Int? {
         let text = (header ?? "").trimmingCharacters(in: .whitespaces)
         if text.isEmpty { return nil }
-        if text.range(of: #"^[0-9]+(\.[0-9]+)?$"#, options: .regularExpression) != nil {
+        if wholeMatches(#"[0-9]+(\.[0-9]+)?"#, text) != nil {
             guard let seconds = Double(text) else { return nil }
             return Self.cappedSeconds(seconds)
         }
