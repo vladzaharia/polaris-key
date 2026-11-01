@@ -102,6 +102,7 @@ class FakeRecords implements SaveRecords {
     return this.recs.has(this.wireId(id)) ? this.view(this.wireId(id)) : null;
   }
   failSet: string | null = null;
+  pull?: () => Promise<void>;
   async set(
     id: string,
     value: Meta,
@@ -146,6 +147,8 @@ function rig(
     delta?: boolean;
     maxBytes?: number;
     saveFormatVersion?: number;
+    now?: () => number;
+    deviceLabel?: () => string | null;
   } = {},
 ) {
   const server = new FakeServer();
@@ -168,6 +171,8 @@ function rig(
     codec,
     delta: over.delta ?? false,
     cache: memoryChunkCache(),
+    ...(over.now ? { now: over.now } : {}),
+    ...(over.deviceLabel ? { deviceLabel: over.deviceLabel } : {}),
     ...(over.maxBytes !== undefined ? { maxBytes: over.maxBytes } : {}),
     ...(over.saveFormatVersion !== undefined
       ? { saveFormatVersion: over.saveFormatVersion }
@@ -328,6 +333,76 @@ describe.each([
     delete (r.records as { get?: unknown }).get;
     const read = await r.saves.read("slot1");
     expect(read.ok).toBe(true);
+  });
+
+  it("a conflict pulls first: a save deleted elsewhere (a tombstone's version) reads as deleted", async () => {
+    const r = rig({ e2e });
+    done(await r.saves.write("slot1", small, meta).done);
+    const cached = (await r.records.get("slot1"))!;
+    r.records.recs.delete(r.records.wireId("slot1"));
+    r.records.get = async () => cached;
+    let pulls = 0;
+    r.records.pull = async () => {
+      pulls++;
+      delete (r.records as { get?: unknown }).get;
+    };
+    r.server.hook = (kind) =>
+      kind === "begin"
+        ? fail(409, "revision_conflict", { body: { server: { version: 99 } } })
+        : undefined;
+    const out = await r.saves.write("slot1", noise(700, 9), meta).done;
+    if (out.state !== "conflict") throw new Error("conflict");
+    expect(pulls).toBe(1);
+    expect(out.conflict.remote).toBeNull();
+  });
+
+  it("keeping the other version pulls, so read() returns the chosen server copy", async () => {
+    const mine = noise(700, 9);
+    const { r, conflict } = await conflictRig(e2e, mine);
+    const wire = r.records.wireId("slot1");
+    const server = r.records.recs.get(wire)!;
+    const stale = { ...(await r.records.get("slot1"))!, version: 1 };
+    r.records.get = async () => stale;
+    r.records.pull = async () => {
+      delete (r.records as { get?: unknown }).get;
+    };
+    const kept = await r.saves.resolve(conflict, "remote", mine).done;
+    expect(kept).toMatchObject({
+      state: "done",
+      kept: "remote",
+      version: server.version,
+    });
+    const read = await r.saves.read("slot1");
+    expect(read.ok && read.metadata.chapter).toBe("Two");
+  });
+
+  it("every write records savedAt and the device label; a resolve keeps the copy's own", async () => {
+    let clock = 1_000;
+    const r = rig({ e2e, now: () => clock, deviceLabel: () => "Steam Deck" });
+    done(await r.saves.write("slot1", small, { ...meta, savedAt: 5 }).done);
+    const first = await r.saves.read("slot1");
+    expect(first.ok && first.metadata).toMatchObject({
+      chapter: "One",
+      savedAt: 1_000,
+      deviceLabel: "Steam Deck",
+    });
+    clock = 2_000;
+    done(await r.saves.write("slot1", noise(900, 8), meta).done);
+    clock = 3_000;
+    const mine = noise(700, 9);
+    const out = await r.saves.write("slot1", mine, meta, {
+      baseVersion: first.ok ? first.version : 0,
+    }).done;
+    if (out.state !== "conflict") throw new Error("conflict");
+    expect(out.conflict.local.metadata).toMatchObject({
+      savedAt: 3_000,
+      deviceLabel: "Steam Deck",
+    });
+    expect(out.conflict.remote!.metadata.savedAt).toBe(2_000);
+    clock = 4_000;
+    done(await r.saves.resolve(out.conflict, "local", mine).done);
+    const read = await r.saves.read("slot1");
+    expect(read.ok && read.metadata.savedAt).toBe(3_000);
   });
 
   it("settles a conflict: keep remote writes nothing", async () => {
@@ -591,11 +666,13 @@ function holdFirstPut(server: FakeServer) {
   const gate = new Promise<void>((res) => (release = res));
   let held = false;
   const put = server.putChunk;
+  // Every put that starts before the release waits for it: with several in flight, a put that ran
+  // on could finish the upload before the pause is seen.
+  let open = false;
+  void gate.then(() => (open = true));
   server.putChunk = async (...args) => {
-    if (!held) {
-      held = true;
-      await gate;
-    }
+    held = true;
+    if (!open) await gate;
     return put(...args);
   };
   return { release, held: () => held };
@@ -617,7 +694,7 @@ describe("saves, the transfer handle", () => {
     t.pause();
     hold.release();
     // The held put settles first; wait for that rather than a fixed delay a busy runner can outlast.
-    await until(() => t.state !== "running");
+    await until(() => t.state === "paused" || t.state === "done");
     expect(t.state).toBe("paused");
     const sent = r.server.chunkPuts.length;
     t.resume();

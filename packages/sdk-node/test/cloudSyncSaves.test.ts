@@ -235,12 +235,16 @@ describe("cloudSync.saves", () => {
     expect(list).toEqual([
       expect.objectContaining({
         id: "slot-1",
-        metadata: { chapter: "one" },
+        metadata: expect.objectContaining({
+          chapter: "one",
+          savedAt: expect.any(Number),
+        }),
         file: expect.objectContaining({ size: 3000 }),
       }),
     ]);
     const read = await client.cloudSync.saves.read("slot-1");
     expect(read).toMatchObject({ ok: true, metadata: { chapter: "one" } });
+    expect(read.ok && typeof read.metadata.savedAt).toBe("number");
     expect(
       read.ok &&
         read.bytes &&
@@ -312,6 +316,48 @@ describe("cloudSync.saves", () => {
       metadata: { chapter: "two" },
     });
     expect(out.conflict.serverVersion).toBe(7);
+    client.close();
+  });
+
+  it("pulls on a conflict and on keeping the other version, so the cache holds the server's copy", async () => {
+    const { w, rows } = savesWorld();
+    const file = (v: number) => ({
+      version: v,
+      size: 5,
+      sha256: "a".repeat(64),
+      format: "whole" as const,
+    });
+    rows.set("slot-1", {
+      value: { chapter: "one" },
+      version: 3,
+      file: file(3),
+    });
+    w.version = 3;
+    const { client } = await signedIn(w);
+    expect((await client.cloudSync.saves.list())[0]?.version).toBe(3);
+    // Another device writes it again; this device has not pulled.
+    rows.set("slot-1", {
+      value: { chapter: "theirs" },
+      version: 9,
+      file: file(9),
+    });
+    w.version = 9;
+    const out = await (
+      await client.cloudSync.saves.write("slot-1", bytes(500), {
+        chapter: "mine",
+      })
+    ).done;
+    if (out.state !== "conflict") throw new Error(out.state);
+    expect(out.conflict.serverVersion).toBe(9);
+    expect(out.conflict.remote?.metadata).toMatchObject({ chapter: "theirs" });
+    expect(out.conflict.local.metadata).toMatchObject({ chapter: "mine" });
+    expect(typeof out.conflict.local.metadata.savedAt).toBe("number");
+    const kept = await (
+      await client.cloudSync.saves.resolve(out.conflict, "remote", bytes(1))
+    ).done;
+    expect(kept).toMatchObject({ state: "done", kept: "remote", version: 9 });
+    const [row] = await client.cloudSync.saves.list();
+    expect(row).toMatchObject({ version: 9, metadata: { chapter: "theirs" } });
     client.close();
   });
 
