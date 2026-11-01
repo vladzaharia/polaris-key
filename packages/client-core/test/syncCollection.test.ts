@@ -9,7 +9,7 @@ import {
   type Json,
   type SyncEvent,
 } from "../src/cloud-sync.js";
-import { SyncCollection } from "../src/sync/collection.js";
+import { SyncCollection, collectionDecls } from "../src/sync/collection.js";
 
 const T0 = 1_760_000_000_000;
 const ALICE = "sub_alice";
@@ -217,5 +217,95 @@ describe("SyncCollection", () => {
       type: "outcome",
       outcome: { mutationId: 1, status: "ok", version: 2 },
     });
+  });
+
+  it("refuses an id, field or value that cannot be sealed, journalling and sending nothing", () => {
+    const m = machine();
+    const prefs = handle(m, "prefs").c;
+    const best = handle(m, "best").c;
+    const bad = { ok: false, error: "value_invalid" } as const;
+    const journal = m.journal();
+    expect(prefs.update("a\u0000b", { set: { f: 1 } })).toEqual(bad);
+    expect(prefs.update("main", { set: { "f\u0000": 1 } })).toEqual(bad);
+    expect(prefs.update("main", { set: { f: Number.NaN } })).toEqual(bad);
+    expect(best.put("a\u0000b", { score: 1 })).toEqual(bad);
+    expect(best.put("a", { score: Number.NaN })).toEqual(bad);
+    expect(best.put("a", { score: "\ud800" })).toEqual(bad);
+    expect(best.put("x".repeat(129), { score: 1 })).toEqual(bad);
+    expect(best.put("a b", { score: 1 })).toEqual(bad);
+    expect(best.put(`x:${"A".repeat(43)}`, { score: 1 })).toEqual(bad);
+    expect(handle(m, "tags").c.add("t", Number.POSITIVE_INFINITY)).toEqual(bad);
+    expect(best.delete("a\u0000b")).toEqual(bad);
+    expect(m.takeRequests()).toEqual([]);
+    expect(m.journal()).toEqual(journal);
+  });
+
+  it("answers collection_unknown, then signed_out, then op_invalid_for_policy, then value_invalid", () => {
+    const m = machine();
+    m.signOut({ discardUnsynced: true });
+    m.takeEvents();
+    expect(handle(m, "nope").c.put("a\u0000", 1)).toEqual({
+      ok: false,
+      error: "collection_unknown",
+    });
+    expect(handle(m, "tags").c.put("a\u0000", 1)).toEqual({
+      ok: false,
+      error: "signed_out",
+    });
+    const m2 = machine();
+    expect(handle(m2, "tags").c.put("a\u0000", 1)).toEqual({
+      ok: false,
+      error: "op_invalid_for_policy",
+    });
+  });
+
+  it("has no implicit saves collection", () => {
+    const m = new CloudSyncMachine({
+      product: "demo",
+      catalog: { settings: [], collections: [] },
+      document: { values: {}, locked: [] },
+      now: T0,
+      offsetMs: 0,
+      contacted: true,
+      subject: ALICE,
+      network: "online",
+      newClientId: () => cid(1),
+      encryption: "server",
+    });
+    expect(handle(m, "saves").c.put("s", { n: 1 })).toEqual({
+      ok: false,
+      error: "collection_unknown",
+    });
+    expect(collectionDecls([])).toEqual([]);
+  });
+
+  it("two handles on one collection do not silence each other", () => {
+    const m = machine();
+    const a = handle(m, "prefs");
+    const b = handle(m, "prefs");
+    const seenA: unknown[] = [];
+    const seenB: unknown[] = [];
+    a.c.on((e) => seenA.push(e));
+    const offB = b.c.on((e) => seenB.push(e));
+    offB();
+    a.c.update("main", { set: { b: 2 } });
+    a.pump();
+    expect(seenA).toEqual([{ type: "change", ids: ["main"], origin: "local" }]);
+    expect(seenB).toEqual([]);
+  });
+
+  it("a sign-out rebases the watch snapshot", () => {
+    const m = machine();
+    const { c, pump } = handle(m, "prefs");
+    const seen: unknown[] = [];
+    c.on((e) => seen.push(e));
+    m.signOut({ discardUnsynced: true });
+    pump();
+    seen.length = 0;
+    m.signIn(ALICE);
+    pump();
+    expect(
+      seen.every((e) => (e as { origin: string }).origin !== "local"),
+    ).toBe(true);
   });
 });

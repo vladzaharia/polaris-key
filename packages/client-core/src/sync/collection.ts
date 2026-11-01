@@ -13,7 +13,10 @@ import type {
   RecordOutcome,
   SyncEvent,
 } from "../cloud-sync.js";
-import { SYNC_MAX_UNION_ELEMENT_BYTES } from "@polaris-key/protocol/sync";
+import {
+  SYNC_KEY_PATTERN,
+  SYNC_MAX_UNION_ELEMENT_BYTES,
+} from "@polaris-key/protocol/sync";
 import { isBlindedName } from "./blind.js";
 import { canonicalJson } from "./envelope.js";
 
@@ -47,6 +50,27 @@ export interface CollectionPort {
 }
 
 const encoder = new TextEncoder();
+const KEY_RE = new RegExp(SYNC_KEY_PATTERN);
+
+/** Whether the SDK's own canonical JSON can spell `v` (a number or text that cannot be spelled
+ *  identically everywhere is never sealed). */
+function spellable(v: unknown): boolean {
+  try {
+    return typeof canonicalJson(v as never) === "string";
+  } catch {
+    return false;
+  }
+}
+
+/** A field name the host can seal: non-empty, at most 1 KiB, no U+0000, no lone surrogate. */
+function fieldOk(n: string): boolean {
+  return (
+    n !== "" &&
+    !n.includes("\u0000") &&
+    encoder.encode(n).length <= MAX_FIELD_BYTES &&
+    spellable(n)
+  );
+}
 /** A merge field name: non-empty, at most 1 KiB (§13.3). */
 const MAX_FIELD_BYTES = 1024;
 
@@ -58,8 +82,8 @@ const PUT_POLICIES: ReadonlySet<CollectionPolicy> = new Set([
 ]);
 
 /** The collections a host gives the machine, from the catalog's resolved declarations: each
- *  member's policy, merge/max/min field and (for `revision`) the keep-server resolution, and the
- *  `saves` collection unless the catalog declares it. */
+ *  member's policy, merge/max/min field and (for `revision`) the keep-server resolution. There is
+ *  no implicit collection: a name the catalog does not declare is `collection_unknown`. */
 export function collectionDecls(
   resolved: ReadonlyArray<{
     name: string;
@@ -67,15 +91,12 @@ export function collectionDecls(
     conflictField: string | null;
   }>,
 ): CollectionDecl[] {
-  const out: CollectionDecl[] = resolved.map((r) => ({
+  return resolved.map((r) => ({
     name: r.name,
     policy: r.conflict,
     ...(r.conflictField !== null ? { field: r.conflictField } : {}),
     ...(r.conflict === "revision" ? { resolve: "keepServer" as const } : {}),
   }));
-  if (!out.some((c) => c.name === "saves"))
-    out.push({ name: "saves", policy: "revision", resolve: "keepServer" });
-  return out;
 }
 
 /** The handle `cloudSync.collection(name)` returns. */
@@ -124,6 +145,8 @@ export class SyncCollection {
     if ("error" in d) return d;
     if (opts.ifVersion !== undefined && d.policy !== "revision")
       return { ok: false, error: "op_invalid_for_policy" };
+    if (!this.#sealable(id, [value]))
+      return { ok: false, error: "value_invalid" };
     if (opts.ifVersion !== undefined) {
       const r = this.#port.machine.putAt(this.name, id, value, opts.ifVersion);
       if (!r.ok) return this.#fail(r.error);
@@ -145,7 +168,8 @@ export class SyncCollection {
     if (
       names.length === 0 ||
       new Set(names).size !== names.length ||
-      names.some((n) => n === "" || encoder.encode(n).length > MAX_FIELD_BYTES)
+      !names.every(fieldOk) ||
+      !this.#sealable(id, Object.values(change.set ?? {}))
     )
       return { ok: false, error: "value_invalid" };
     return this.#done(this.#port.machine.update(this.name, id, change));
@@ -169,6 +193,7 @@ export class SyncCollection {
   ): CollectionResult {
     const d = this.#check(id, () => true);
     if ("error" in d) return d;
+    if (!this.#sealable(id, [])) return { ok: false, error: "value_invalid" };
     if (d.policy === "revision") {
       const base =
         opts.ifVersion ??
@@ -208,18 +233,25 @@ export class SyncCollection {
   ): CollectionDecl | { ok: false; error: CollectionError } {
     const d = this.#decl();
     if (!d) return { ok: false, error: "collection_unknown" };
+    if (!this.#port.machine.signedIn())
+      return { ok: false, error: "signed_out" };
     if (!allowed(d.policy))
       return { ok: false, error: "op_invalid_for_policy" };
-    if (id === "") return { ok: false, error: "value_invalid" };
     return d;
+  }
+
+  /** The record id and every value can be sealed: a refused call journals nothing. */
+  #sealable(id: string, values: readonly unknown[]): boolean {
+    return KEY_RE.test(id) && !isBlindedName(id) && values.every(spellable);
   }
 
   #element(id: string, element: Json, op: "add" | "remove"): CollectionResult {
     const d = this.#check(id, (p) => p === "union");
     if ("error" in d) return d;
     if (
+      !this.#sealable(id, [element]) ||
       encoder.encode(canonicalJson(element as never)).length >
-      SYNC_MAX_UNION_ELEMENT_BYTES
+        SYNC_MAX_UNION_ELEMENT_BYTES
     )
       return { ok: false, error: "value_invalid" };
     const m = this.#port.machine;

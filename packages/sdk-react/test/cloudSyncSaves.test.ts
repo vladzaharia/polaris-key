@@ -34,7 +34,12 @@ import { FakeWorker, PRODUCT, hexOf } from "./savesFixtures.js";
 
 const SUBJECT = "ps_aqofwJ_4zDBMy1_W857ARg";
 const DB = "pkey-sync-saves";
-const CATALOG = { schemaVersion: 1, entries: [] };
+// There is no implicit collection: the catalog declares `saves`.
+const CATALOG = {
+  schemaVersion: 1,
+  entries: [],
+  cloudSync: { collections: [{ name: "saves", conflict: "revision" }] },
+};
 
 const bytes = (n: number, seed = 5): Uint8Array<ArrayBuffer> =>
   Uint8Array.from({ length: n }, (_, i) => (i * 31 + seed) & 255);

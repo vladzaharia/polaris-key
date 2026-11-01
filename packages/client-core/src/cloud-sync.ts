@@ -715,6 +715,7 @@ export class CloudSyncMachine {
   /** The collections whose record changes are reported as `records` events, with the last state
    *  reported (record key to canonical JSON, `null` for absent). Empty: nothing is computed. */
   private watched = new Map<string, Map<string, string>>();
+  private watchCounts = new Map<string, number>();
 
   constructor(opts: CloudSyncOptions, persisted?: CloudSyncPersisted) {
     this.product = opts.product;
@@ -1063,6 +1064,11 @@ export class CloudSyncMachine {
     return () => this.outcomeTaps.delete(fn);
   }
 
+  /** Whether a person is signed in (a record call before that is `signed-out`). */
+  signedIn(): boolean {
+    return this.s.subject !== null;
+  }
+
   /** The declaration of a collection in the catalog, or `undefined`. */
   collectionDecl(name: string): CollectionDecl | undefined {
     const d = this.collection(name);
@@ -1073,16 +1079,23 @@ export class CloudSyncMachine {
    *  catalog or document): the outcome taps and the watched collections. */
   adoptObservers(from: CloudSyncMachine): void {
     for (const tap of from.outcomeTaps) this.outcomeTaps.add(tap);
-    for (const collection of from.watched.keys())
-      this.watchRecords(collection, true);
+    for (const [collection, n] of from.watchCounts)
+      for (let i = 0; i < n; i++) this.watchRecords(collection, true);
   }
 
   /** Report record changes of `collection` as `records` events from now on (`false`: stop). */
   watchRecords(collection: string, on: boolean): void {
+    const n = this.watchCounts.get(collection) ?? 0;
     if (!on) {
-      this.watched.delete(collection);
+      // Reference-counted: two watchers of one collection do not silence each other.
+      if (n > 1) this.watchCounts.set(collection, n - 1);
+      else {
+        this.watchCounts.delete(collection);
+        this.watched.delete(collection);
+      }
       return;
     }
+    this.watchCounts.set(collection, n + 1);
     if (!this.watched.has(collection))
       this.watched.set(collection, this.recordStates(collection));
   }
@@ -2522,6 +2535,37 @@ export class CloudSyncMachine {
     if (unsynced > 0 && !discard)
       this.events.push({ type: "unsyncedData", count: unsynced });
     this.emitChanges(before, new Map(), "remote");
+    this.noteRecordChanges("remote");
+  }
+
+  /** The host could not seal these mutations of the push in flight (a name or value no codec
+   *  spells): each is dropped as `rejected` / `value_invalid`, as a refusal would be, instead of
+   *  being retried for ever at the head of the journal. The caller then reports the transport
+   *  failure for the request. */
+  refuseMutations(ids: readonly number[], code = "value_invalid"): void {
+    const req = this.inFlight;
+    if (!req || req.kind !== "push" || req.partition !== this.s.subject) return;
+    const p = this.active();
+    const before = this.valueMap();
+    const overrides = new Map<string, ChangeOrigin>();
+    for (const id of ids) {
+      const at = p.pending.findIndex(
+        (o) => o.mutationId === id && req.mutationIds.includes(id),
+      );
+      if (at < 0) continue;
+      const op = p.pending[at]!;
+      p.pending.splice(at, 1);
+      this.result(
+        p,
+        op,
+        { mutationId: id, status: "rejected", code },
+        overrides,
+        {},
+        req.cursor,
+      );
+    }
+    this.emitChanges(before, overrides, "remote");
+    this.noteRecordChanges("remote");
   }
 
   private expirePartitions(): void {

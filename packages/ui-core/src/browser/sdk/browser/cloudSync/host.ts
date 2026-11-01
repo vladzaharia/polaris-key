@@ -52,6 +52,7 @@ import {
   collectionDecls,
   openPull,
   sealPush,
+  unsealableMutations,
   type HostCodec,
 } from "@polaris-key/client-core/sync";
 import {
@@ -104,7 +105,7 @@ function shapeOf(catalog: ProductCatalog): string {
   return JSON.stringify([routesOf(catalog), collectionsOf(catalog)]);
 }
 
-/** The collections the machine knows: the catalog's declarations, and `saves` unless declared. */
+/** The collections the machine knows: the catalog's declarations (no implicit collection). */
 function collectionsOf(catalog: ProductCatalog): CollectionDecl[] {
   return collectionDecls(
     (catalog.cloudSync?.collections ?? []).map(resolveCollection),
@@ -697,7 +698,11 @@ export class BrowserCloudSyncHost {
             body: await sealPush(req.body, codec!, this.#routes),
           };
         } catch {
-          // Locked, or a mutation that cannot be sealed: nothing is sent.
+          // Nothing is sent. A mutation that cannot be sealed is dropped as refused (it would
+          // otherwise head the journal for ever); the others go out on the next push.
+          m.refuseMutations(
+            await unsealableMutations(req.body, codec!, this.#routes),
+          );
           return m.receive({ error: "transport" });
         }
       }
