@@ -2,7 +2,7 @@
 title: "Cloud Sync"
 description: "A signed-in person's settings, saves and records, synced across their devices: what works, how a product declares its data and the quota."
 type: "concept"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-11-01"
 sidebar:
   order: 1
 ---
@@ -20,7 +20,7 @@ Both routes are unsigned, take the device's bearer token and `X-PKey-Device`, an
 | `GET /<product>/sync`      | Pull. With no cursor it answers a snapshot, then the changes since `cursor`, at most 500 at a time. A revalidation is a `304` |
 | `POST /<product>/sync/ops` | Push a batch of at most 100 mutations and 256 KiB. The answer carries each result and a pull since the request's cursor       |
 
-No route takes a subject or an account id: the person is the account signed in on the device. A device with none gets `403 account_required`. A Cloud Sync answer never changes license state or a cached document. With Cloud Sync, Config or Identity off, the routes answer `404`. A push is refused with `attestation_required` when the product's trust policy enforces `cloudSyncWrite` and the device doesn't meet it. The wire contract is section 13 of `WIRE-CONTRACT-V4.md`.
+No route takes a subject or an account id: the person is the account signed in on the device. A device with none gets `403 account_required`. A Cloud Sync answer never changes license state or a cached document. With Cloud Sync, Config or Identity off, the routes answer `404`. A push is refused with `attestation_required` when the product's trust policy enforces `cloudSyncWrite` and the device doesn't meet it. The wire contract is section 13 of `WIRE-CONTRACT-V5.md`.
 
 ## Pause and limits
 
@@ -73,7 +73,7 @@ value sealed under a key a device doesn't hold stays locked on that device and i
 
 ## Records and saves
 
-A product declares collections in the catalog's `cloudSync` block, authored in `.pkey/schema`.
+A product declares collections in the catalog's `cloudSync` block, authored in `.pkey/schema`. [Collections](/docs/features/cloud-sync/collections/) shows how an app reads and writes their records.
 
 ```json title=".pkey/schema"
 {
@@ -149,7 +149,7 @@ Retired with no replacement period: `onAttach`, `cloudSync.saves` (use a collect
 
 ## Discovery
 
-`services.sync` in [discovery](/docs/reference/protocol/discovery/) is `{"enabled": false}` when off. When on, it lists the kinds of data served and `endpoints` for `pull`, `push` and `files`, each a URL or `null`. Today `settings` is true and `pull` and `push` are URLs; `collections` and `saves` are false and `files` is `null`. An SDK uses an endpoint only when discovery names it.
+`services.sync` in [discovery](/docs/reference/protocol/discovery/) is `{"enabled": false}` when off. When on, it lists the kinds of data served and `endpoints` for `pull`, `push` and `files`, each a URL or `null`. `settings` is true and `pull` and `push` are URLs. `collections` is true while the active catalog declares at least one collection. `saves` is true and `files` a URL while the operator's `launch.syncFiles` gate is on, else `saves` is false and `files` is `null`. `encryption` appears only while the operator's `launch.syncE2e` gate is on, and the `keyring` endpoint only when it is `e2e`. An SDK uses an endpoint only when discovery names it.
 
 ## In the console
 
