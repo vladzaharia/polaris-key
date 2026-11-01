@@ -626,7 +626,7 @@ class Transfer:
             id_ = wire.ref_id[ref]
             a = wire.dests[id_]
             try:
-                store.deliver(ref, a.dest, a.overwrite)
+                store.deliver(ref, a.dest, a.overwrite, owner=wire)
             except BaseException:
                 wire.failed_ids.add(id_)
                 raise

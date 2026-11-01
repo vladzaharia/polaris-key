@@ -277,3 +277,35 @@ def test_a_symbolic_link_in_place_of_a_partial_is_not_followed(tmp_path: Path) -
     with pytest.raises(OSError):
         s.rehash(ref, 3)
     assert target.read_bytes() == b"secret"
+
+
+def test_a_symlinked_transfer_directory_is_refused(tmp_path: Path) -> None:
+    from polaris_key.connect.transfer_store import StoreRefused
+
+    target = tmp_path / "elsewhere"
+    target.mkdir()
+    target.chmod(0o755)
+    os.symlink(target, tmp_path / "transfers")
+    s = _make(tmp_path, Clock())
+    with pytest.raises(StoreRefused):
+        s.apply(KEY, {"create": xfer_partial_path(KEY, ID, SHA)}, META)
+    assert os.listdir(target) == []
+    if sys.platform != "win32":
+        assert stat.S_IMODE(target.stat().st_mode) == 0o755
+
+
+def test_only_the_session_holding_a_partial_delivers_it(tmp_path: Path) -> None:
+    from polaris_key.connect.transfer_store import StoreRefused
+
+    s = _make(tmp_path, Clock())
+    a, b = object(), object()
+    ref = xfer_partial_path(KEY, ID, SHA)
+    s.apply(KEY, {"create": ref}, META, owner=a)
+    s.apply(KEY, {"write": ref, "offset": 0, "data": b"content"}, owner=a)
+    out = tmp_path / "out"
+    out.mkdir()
+    with pytest.raises(StoreRefused):
+        s.deliver(ref, str(out / "x"), owner=b)
+    assert list(out.iterdir()) == []
+    s.deliver(ref, str(out / "x"), owner=a)
+    assert (out / "x").read_bytes() == b"content"

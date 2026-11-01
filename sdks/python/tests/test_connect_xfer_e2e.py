@@ -19,6 +19,7 @@ from test_connect_peer_session import ID_A, ID_B, Dev, Side, _rnd
 
 from polaris_key.connect.contacts import ContactRef
 from polaris_key.connect.session import ConnectSession, SessionClosed
+from polaris_key.connect.transfer_store import PartialStore
 from polaris_key.connect.transfer import Accept, IncomingOffer, Transfer, TransferCancelled
 from polaris_key.core.b64url import b64url_encode
 from polaris_key.core.peer_session import Closed, Established
@@ -307,6 +308,35 @@ def test_resume_after_a_dropped_session(world: Any) -> None:
     go(a2, b2)
     assert h2.wait(0).outcome == "delivered" and dest.read_bytes() == data
     assert [n for n in os.listdir(tmp / "b" / "transfers")] == ["index.json"]
+
+
+def test_a_retry_after_a_failed_delivery_is_asked_about_again(world: Any) -> None:
+    a, b, clock, tmp, devs = world
+    dest = tmp / "out" / "got.bin"
+    seen = _take(b, dest)
+    data = _content(60_000)
+    real = PartialStore.deliver
+    calls = {"n": 0}
+
+    def flaky(self: Any, *args: Any, **kw: Any) -> None:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise OSError("delivery failed")
+        return real(self, *args, **kw)
+
+    PartialStore.deliver = flaky  # type: ignore[method-assign]
+    try:
+        h = a.hub.send(a.session, data, chunk=1000)
+        go(a, b)
+        assert h.wait(0).outcome != "delivered" and not dest.exists()
+        a2, b2, _ = connect(tmp / "a", tmp / "b", clock, devs)
+        seen2 = _take(b2, dest)
+        h2 = a2.hub.send(a2.session, data, chunk=1000, id=h.id)
+        go(a2, b2)
+    finally:
+        PartialStore.deliver = real  # type: ignore[method-assign]
+    assert len(seen) == 1 and len(seen2) == 1
+    assert h2.wait(0).outcome == "delivered" and dest.read_bytes() == data
 
 
 def test_a_different_content_does_not_resume(world: Any) -> None:
