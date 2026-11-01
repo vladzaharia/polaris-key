@@ -95,6 +95,8 @@ interface Wire {
   /** End the session after a port failed: the partials stay. */
   fail(): void;
   consent(id: string, answer: "accept" | "decline"): void;
+  /** The room check failed at accept: `CANCEL` `quota` for this transfer. */
+  noRoom(id: string): void;
 }
 
 const clock = (): number => performance.now() / 1000;
@@ -379,6 +381,7 @@ export class CloudTransfer {
       dead: false,
       fail,
       consent: (id, answer) => guard(() => wire.ep.consent(id, answer)),
+      noRoom: (id) => guard(() => wire.ep.noRoom(id)),
     };
     this.#open.add(wire);
     session.onClose((c) => {
@@ -528,15 +531,16 @@ export class CloudTransfer {
     // The room is checked and set aside now, at the accept: four offers that each fitted when they
     // arrived do not all fit together.
     const store = this.deps.store;
-    if (
-      to !== null &&
-      (store === null ||
-        wire.dead ||
-        !store.reserve(this.#key(wire, a.id), a.size))
-    )
-      to = null;
-    else if (to !== null) wire.reserved.set(a.id, this.#key(wire, a.id));
-    if (to === null) return wire.consent(a.id, "decline");
+    let full = false;
+    if (to !== null) {
+      if (store === null || wire.dead) to = null;
+      else if (!store.reserve(this.#key(wire, a.id), a.size)) {
+        to = null;
+        full = true;
+      } else wire.reserved.set(a.id, this.#key(wire, a.id));
+    }
+    if (to === null)
+      return full ? wire.noRoom(a.id) : wire.consent(a.id, "decline");
     // A kept partial is read back now, at the accept, not when the session began.
     if (store !== null)
       for (const p of wire.ep.machine.partials())

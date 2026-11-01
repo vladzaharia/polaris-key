@@ -608,6 +608,26 @@ export class XferMachine {
     });
   }
 
+  /**
+   * The host's room check failed when the person accepted (another accepted transfer took the room
+   * since the offer was shown): `CANCEL` `quota` for that one transfer; the session stays. A
+   * partial this transfer made at 0 bytes goes; one with bytes kept stays.
+   */
+  noRoom(at: number, id: string): XferOut {
+    return this.begin(at, () => {
+      const t = this.tr.get(id);
+      if (t === undefined || t.dir !== "in") return;
+      if (t.st !== "asking" && !t.accepted) return;
+      this.send({ t: "CANCEL", id, reason: "quota" });
+      const p = this.parts.find((x) => x.ref === t.partial);
+      if (p !== undefined && p.bytes === 0) {
+        this.eff({ discard: p.ref });
+        this.parts = this.parts.filter((x) => x !== p);
+      }
+      this.end(t, true);
+    });
+  }
+
   /** The host cancels a transfer. */
   cancel(at: number, id: string): XferOut {
     return this.begin(at, () => {

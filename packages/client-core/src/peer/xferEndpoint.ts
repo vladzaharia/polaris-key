@@ -106,6 +106,11 @@ export class XferEndpoint {
     this.handle(this.machine.consent(this.now(), id, answer));
   }
 
+  /** The room check failed at accept: `CANCEL` `quota` for that transfer; the session stays. */
+  noRoom(id: string): void {
+    this.handle(this.machine.noRoom(this.now(), id));
+  }
+
   cancel(id: string): void {
     this.handle(this.machine.cancel(this.now(), id));
   }

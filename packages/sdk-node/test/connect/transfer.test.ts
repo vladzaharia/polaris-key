@@ -735,6 +735,61 @@ describe.each([
     expect(readdirSync(w.out).sort()).toEqual(["q1", "q2"]);
   });
 
+  it("an accept that no longer fits cancels that transfer with quota and keeps the session", async () => {
+    const w = await make();
+    w.a.cloudConnect.transfer.quotaBytes = 250_000;
+    const answers: ((v: { saveTo: string }) => void)[] = [];
+    w.a.cloudConnect.transfer.onOffer(
+      (o) =>
+        new Promise((r) => {
+          answers.push(r as (v: { saveTo: string }) => void);
+          void o;
+        }),
+    );
+    // The senders hold their CHUNK records back, so the first accepted transfer stays open.
+    let open!: () => void;
+    const gate = new Promise<void>((r) => (open = r));
+    const orig = ConnectSession.prototype.xferPort;
+    vi.spyOn(ConnectSession.prototype, "xferPort").mockImplementation(function (
+      this: ConnectSession,
+    ) {
+      const port = orig.call(this);
+      if (port !== null && this.role === "initiator") {
+        const send = port.send;
+        port.send = (type, body) =>
+          type === 0x0022
+            ? gate.then(() => send(type, body))
+            : send(type, body);
+      }
+      return port;
+    });
+    const t = w.b.cloudConnect.transfer;
+    const s1 = await w.b.cloudConnect.open(A);
+    const s2 = await w.b.cloudConnect.open(A);
+    // Both offers fit when they are shown; the people accept both.
+    const p1 = t.send(s1, content(150_000), { name: "one" });
+    const p2 = t.send(s2, content(150_000), { name: "two" });
+    p1.catch(() => undefined);
+    p2.catch(() => undefined);
+    await until(() => answers.length === 2);
+    answers[0]!({ saveTo: join(w.out, "one") });
+    await sleep(40);
+    answers[1]!({ saveTo: join(w.out, "two") });
+    await expect(p2).rejects.toMatchObject({ reason: "quota" });
+    open();
+    await p1;
+    expect(s2.closed).toBeNull();
+    expect(existsSync(join(w.out, "two"))).toBe(false);
+    // The same session takes a transfer that fits.
+    const p3 = t.send(s2, content(1000), { name: "three" });
+    await until(() => answers.length === 3);
+    answers[2]!({ saveTo: join(w.out, "three") });
+    await p3;
+    expect(readFileSync(join(w.out, "three"))).toEqual(
+      Buffer.from(content(1000)),
+    );
+  });
+
   it("sign-out removes the partial files", async () => {
     const w = await make();
     w.a.cloudConnect.transfer.onOffer(() => ({ saveTo: join(w.out, "f") }));
