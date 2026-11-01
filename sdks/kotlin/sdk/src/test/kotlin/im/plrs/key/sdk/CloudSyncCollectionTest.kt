@@ -79,6 +79,7 @@ class CloudSyncCollectionTest {
         ).also {
             it.clock = { 1_760_000_000_000L }
             it.keyringUnlocked = { true }
+            it.subject = { "sub_alice" }
         }
         val host = CloudSyncHost(
             deps,
