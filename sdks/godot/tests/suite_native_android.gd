@@ -351,8 +351,11 @@ func _export(t: PKeyTestContext) -> void:
 	var direct := E.manifest_elements("direct")
 	t.check("export: a direct preset gets REQUEST_INSTALL_PACKAGES", direct.contains("<uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\" />"))
 	t.check("export: …and UPDATE_PACKAGES_WITHOUT_USER_ACTION", direct.contains("<uses-permission android:name=\"android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION\" />"))
-	t.check("export: …and exactly those two entries (no ENFORCE_UPDATE_OWNERSHIP)", direct.count("<uses-permission") == 2 and not direct.contains("ENFORCE_UPDATE_OWNERSHIP"))
-	t.check("export: a play preset gets no manifest entry", E.manifest_elements("play") == "")
+	t.check("export: …and exactly those two install entries beside it (no ENFORCE_UPDATE_OWNERSHIP)", direct.count("<uses-permission") == 3 and not direct.contains("ENFORCE_UPDATE_OWNERSHIP"))
+	t.check("export: …and the three entries are the two install permissions and the local-network one", direct.contains("android.permission.ACCESS_LOCAL_NETWORK"))
+	var play := E.manifest_elements("play")
+	var one := "<uses-permission android:name=\"android.permission.ACCESS_LOCAL_NETWORK\" />"
+	t.check("export: a play preset gets the local-network permission only, not the install ones", play.count("<uses-permission") == 1 and play.contains(one) and not play.contains("INSTALL"))
 	t.check("export: flavours are forgiving about case and spaces", E.canonical(" Direct ") == "direct" and E.canonical("beta") == "" and E.canonical(null) == "")
 	t.check("export: a missing AAR is listed", E.missing_libraries("play", "res://no_such_addons_dir").size() == 2)
 	t.check("export: the plugin rides only with the Gradle build and its AARs", E.carries_plugin("play", true, PackedStringArray()) and not E.carries_plugin("play", false, PackedStringArray()) and not E.carries_plugin("play", true, PackedStringArray(["x.aar"])) and not E.carries_plugin("none", true, PackedStringArray()))

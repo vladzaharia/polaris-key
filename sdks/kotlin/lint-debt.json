@@ -1849,7 +1849,6 @@
     "sdks/kotlin/platform/src/main/kotlin/im/plrs/key/platform/PeerNsd.kt": {
       "detekt:complexity.LongParameterList": 1,
       "detekt:empty-blocks.EmptyFunctionBlock": 6,
-      "detekt:style.LoopWithTooManyJumpStatements": 1,
       "detekt:style.MagicNumber": 1,
       "detekt:style.MaxLineLength": 1,
       "ktlint:standard:blank-line-between-when-conditions": 2,

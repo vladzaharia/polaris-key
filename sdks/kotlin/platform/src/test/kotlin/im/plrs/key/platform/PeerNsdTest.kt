@@ -176,4 +176,22 @@ class PeerNsdTest {
         n.watch("extra2", again)
         assertTrue(again.events.isEmpty())
     }
+
+    @Test
+    fun browseDropsRefusedNamesBeforeTheyTakeASlot() {
+        val api = Fake()
+        val rec = Rec()
+        nsd(api).browse(rec, accept = { it == "real" })
+        for (i in 0 until 400) api.found!!("forged$i")
+        api.found!!("real")
+        assertEquals(listOf("found:real"), rec.events)
+    }
+
+    @Test
+    fun addressesAreOrderedSoTheCutNeverDropsIpv4() {
+        val v4 = java.net.InetAddress.getByName("192.168.1.9")
+        val ll = java.net.InetAddress.getByName("fe80::1")
+        val ula = java.net.InetAddress.getByName("fd00::2")
+        assertEquals(listOf(v4, ula, ll), orderAddresses(listOf(ll, ula, v4)))
+    }
 }

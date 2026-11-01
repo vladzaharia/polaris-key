@@ -5,7 +5,9 @@ import android.net.Network
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.Build
+import java.net.Inet4Address
 import java.net.Inet6Address
+import java.net.InetAddress
 import java.util.concurrent.Executor
 
 /** What `advertise` reports: the name was registered as asked, or the advert was refused. */
@@ -121,14 +123,18 @@ public class PeerNsd internal constructor(private val api: NsdApi, private val e
         }
     }
 
-    /** Report each service name that appears or goes; the first [MAX_FOUND] names are tracked. */
-    public fun browse(listener: PeerNsdListener): PeerNsdHandle {
+    /**
+     * Report each service name that appears or goes; the first [MAX_FOUND] names are tracked. A name
+     * [accept] refuses is dropped before it takes a slot, so names a caller does not know cannot crowd out
+     * the ones it does.
+     */
+    public fun browse(listener: PeerNsdListener, accept: (String) -> Boolean = { true }): PeerNsdHandle {
         check(isSupported()) { "unsupported" }
         val found = HashSet<String>()
         val token = api.discover(
             SERVICE_TYPE,
             onFound = { name ->
-                val fresh = synchronized(found) { found.size < MAX_FOUND && found.add(name) }
+                val fresh = accept(name) && synchronized(found) { found.size < MAX_FOUND && found.add(name) }
                 if (fresh) executor.execute { listener.onFound(name) }
             },
             onLost = { name ->
@@ -243,14 +249,14 @@ private class RealNsdApi(context: Context) : NsdApi {
             override fun onServiceInfoCallbackRegistrationFailed(errorCode: Int) = onFailed("watch_$errorCode")
 
             override fun onServiceUpdated(serviceInfo: NsdServiceInfo) {
-                val addresses = LinkedHashSet<String>()
-                for (a in serviceInfo.hostAddresses) {
-                    if (addresses.size >= PeerNsd.MAX_ADDRESSES) break
-                    val text = a.hostAddress ?: continue
+                // Every address the OS knows, the dialable kinds first, so the cut at MAX_ADDRESSES drops
+                // the link-local ones (which need a zone) and never the IPv4 one.
+                val addresses = orderAddresses(serviceInfo.hostAddresses).map { a ->
+                    val text = a.hostAddress.orEmpty()
                     // A link-local IPv6 address keeps the zone the OS gave it; Inet6Address prints it.
-                    addresses += if (a is Inet6Address && !text.contains('%') && a.scopeId != 0) "$text%${a.scopeId}" else text
-                }
-                onResolved(NsdResolved(instance, addresses.toList(), serviceInfo.port, serviceInfo.attributes, serviceInfo.network))
+                    if (a is Inet6Address && !text.contains('%') && a.scopeId != 0) "$text%${a.scopeId}" else text
+                }.filter { it.isNotEmpty() }.distinct().take(PeerNsd.MAX_ADDRESSES)
+                onResolved(NsdResolved(instance, addresses, serviceInfo.port, serviceInfo.attributes, serviceInfo.network))
             }
 
             override fun onServiceLost() = onLost()
@@ -262,4 +268,13 @@ private class RealNsdApi(context: Context) : NsdApi {
     }
 
     override fun unwatch(token: Any) = nsd.unregisterServiceInfoCallback(token as NsdManager.ServiceInfoCallback)
+}
+
+/** [addresses] with IPv4 first, then IPv6 that is not link-local, then link-local (a stable sort). */
+internal fun orderAddresses(a: List<InetAddress>): List<InetAddress> = a.sortedBy { rank(it) }
+
+private fun rank(a: InetAddress): Int = when {
+    a is Inet4Address -> 0
+    a.isLinkLocalAddress -> 2
+    else -> 1
 }
