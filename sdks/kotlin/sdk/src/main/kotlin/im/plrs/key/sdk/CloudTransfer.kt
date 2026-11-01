@@ -55,6 +55,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.RandomAccessFile
@@ -416,7 +417,7 @@ public class CloudTransfer internal constructor(
 
     private inner class Bound(val session: ConnectSession) : XferEvents {
         private val key: ByteArray = session.peerKey!!
-        private val epoch = store.epoch
+        private val epoch = store.epochFor(key)
         private val writer = CompletableDeferred<suspend (Int, ByteArray) -> Unit>()
         private val dest = ConcurrentHashMap<String, File>()
         private val finalized = ConcurrentHashMap.newKeySet<String>()
@@ -434,7 +435,7 @@ public class CloudTransfer internal constructor(
                 free = { store.free() },
                 categories = session.contact?.categories.orEmpty(),
                 partials = store.partialsFor(key),
-                rehash = { ref, offset -> store.rehash(ref, offset) },
+                rehash = { ref, offset -> store.rehash(ref, offset, this@Bound, key, epoch) },
             ),
         )
 
@@ -459,6 +460,15 @@ public class CloudTransfer internal constructor(
             session.onClose {
                 endpoint.closed()
                 bound.remove(session)
+                letGoWhenIdle()
+            }
+        }
+
+        /** What this session still holds is let go once every effect it queued has run. */
+        private fun letGoWhenIdle() {
+            scope.launch {
+                endpoint.idle()
+                store.releaseOwner(this@Bound)
             }
         }
 
@@ -466,6 +476,7 @@ public class CloudTransfer internal constructor(
         fun stop() {
             endpoint.closed()
             bound.remove(session)
+            letGoWhenIdle()
             session.closeWith(PeerCloseCode.peer_bye)
         }
 

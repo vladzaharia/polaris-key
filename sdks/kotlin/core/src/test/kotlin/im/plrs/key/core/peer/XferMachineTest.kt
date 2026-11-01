@@ -46,6 +46,17 @@ class XferMachineTest {
     }
 
     @Test
+    fun aStoreThatFailsInAnyWayOnTheReadBackStartsAgainAtZero() {
+        for (boom in listOf<() -> Nothing>({ throw IllegalStateException("store") }, { throw SecurityException("store") })) {
+            val kept = XferPartial(ref(1), id, sha, 1000, 10, 80, 0.0)
+            val m = machine(listOf(kept)) { _, _ -> boom() }
+            val out = m.receive(1.0, XferType.OFFER, offerBody(1000, 10))
+            assertEquals(null, out.close)
+            assertEquals(0L, (out.send.single() as XferSend.Accept).offset)
+        }
+    }
+
+    @Test
     fun aPartialThatReadsBackIsResumed() {
         val kept = XferPartial(ref(1), id, sha, 1000, 10, 80, 0.0)
         val m = machine(listOf(kept)) { _, _ -> java.security.MessageDigest.getInstance("SHA-256") }

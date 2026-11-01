@@ -66,9 +66,13 @@ internal class TransferStore(
 
     private val holds = HashMap<String, Hold>()
     private var epochNo = 0
+    private val peerEpochs = HashMap<String, Int>()
 
     /** The store's epoch; a purge ends it. */
     val epoch: Int get() = synchronized(lock) { epochNo }
+
+    /** The epoch of [peerKey]'s sessions: the store's, and one more for each time that peer's partials were purged. */
+    fun epochFor(peerKey: ByteArray): Int = synchronized(lock) { epochNo + (peerEpochs[xferHex(peerKey)] ?: 0) }
 
     override fun toString(): String = "TransferStore"
 
@@ -93,19 +97,24 @@ internal class TransferStore(
     }
 
     /**
-     * A hasher fed with the first [offset] bytes of the partial [ref], read back from disk. Throws [IOException]
-     * when the file is gone or shorter than [offset] (another session finished or dropped it): the transfer then
-     * starts again from 0.
+     * A hasher fed with the first [offset] bytes of the partial [ref], read back from disk while no other session can
+     * touch it, and taken for [owner] so that none can until the transfer ends. Throws [IOException] when the file is
+     * gone or shorter than [offset] (another session finished or dropped it) or belongs to another session: the
+     * transfer then starts again from 0.
      */
-    fun rehash(ref: String, offset: Long): MessageDigest {
-        val d = MessageDigest.getInstance("SHA-256")
+    fun rehash(ref: String, offset: Long, owner: Any, peerKey: ByteArray, epoch: Int): MessageDigest = synchronized(lock) {
+        val f = part(ref)
+        requireLive(epoch, peerKey)
         if (!dirIsPlain()) throw IOException("the transfer directory is not a plain directory")
+        mine(ref, owner, peerKey)
+        val size = metas().firstOrNull { it.ref == ref }?.size ?: throw IOException("partial is gone")
+        val d = MessageDigest.getInstance("SHA-256")
         try {
-            RandomAccessFile(part(ref), "r").use { f ->
+            RandomAccessFile(f, "r").use { r ->
                 val buf = ByteArray(READ_BLOCK)
                 var left = offset
                 while (left > 0) {
-                    val n = f.read(buf, 0, minOf(buf.size.toLong(), left).toInt())
+                    val n = r.read(buf, 0, minOf(buf.size.toLong(), left).toInt())
                     if (n <= 0) throw IOException("partial shorter than its record")
                     d.update(buf, 0, n)
                     left -= n
@@ -114,7 +123,8 @@ internal class TransferStore(
         } catch (e: java.io.FileNotFoundException) {
             throw IOException("partial is gone", e)
         }
-        return d
+        holds[ref] = Hold(owner, size, minOf(f.length(), size))
+        d
     }
 
     /**
@@ -144,7 +154,7 @@ internal class TransferStore(
             return
         }
         synchronized(lock) {
-            requireLive(epoch)
+            requireLive(epoch, peerKey)
             when (e) {
                 is XferEffect.Create -> create(e.partial, owner, peerKey)
                 is XferEffect.Write -> write(e, owner, peerKey)
@@ -164,23 +174,26 @@ internal class TransferStore(
 
     private fun finalize(e: XferEffect.Finalize, owner: Any, peerKey: ByteArray, epoch: Int, destination: (String) -> File?) {
         val from = synchronized(lock) {
-            requireLive(epoch)
+            requireLive(epoch, peerKey)
             mine(e.ref, owner, peerKey)
             part(e.ref)
         }
         val to = destination(e.id) ?: throw IOException("no destination for the transfer")
         deliver(from, to)
         synchronized(lock) {
-            requireLive(epoch)
+            requireLive(epoch, peerKey)
             remove(e.ref)
         }
     }
 
+    /** The session [owner] is over and everything it queued has run: whatever it still holds is let go. */
+    fun releaseOwner(owner: Any) = synchronized(lock) { holds.values.removeAll { it.owner === owner } }
+
     /** Write an empty file at [to] (a transfer of no bytes has no partial). */
     fun deliverEmpty(to: File) = deliver(null, to)
 
-    private fun requireLive(epoch: Int) {
-        if (epoch != epochNo) throw IOException("the store was purged")
+    private fun requireLive(epoch: Int, peerKey: ByteArray) {
+        if (epoch != epochNo + (peerEpochs[xferHex(peerKey)] ?: 0)) throw IOException("the store was purged")
     }
 
     /** The partial [ref] belongs to [peerKey] and to no other live transfer than [owner]'s. */
@@ -252,7 +265,7 @@ internal class TransferStore(
 
     private fun deliver(from: File?, to: File) {
         val parent = (to.absoluteFile.parentFile ?: throw IOException("no destination directory"))
-        parent.mkdirs()
+        // The destination folder must exist already; none is made here.
         val tmp = Files.createTempFile(parent.toPath(), ".pkey-xfer-", ".tmp")
         try {
             if (from != null) Files.copy(from.toPath(), tmp, StandardCopyOption.REPLACE_EXISTING)
@@ -285,6 +298,8 @@ internal class TransferStore(
     /** A deleted contact: its partials go. */
     fun purgePeer(peerKey: ByteArray) = synchronized(lock) {
         val peer = xferHex(peerKey)
+        // That peer's sessions that are already running make no more effects.
+        peerEpochs[peer] = (peerEpochs[peer] ?: 0) + 1
         for (m in metas()) if (m.peer == peer) remove(m.ref)
     }
 
