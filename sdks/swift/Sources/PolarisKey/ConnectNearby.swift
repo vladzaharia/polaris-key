@@ -173,6 +173,14 @@ import PolarisKeyPlatform
         }
     }
 
+    /// D's sign-in session reads the LAN request through this (`identity.signIn.startNearby`, I-44.12).
+    struct CloudNearbyLan: NearbySignInLan {
+        let nearby: CloudNearby
+        func request(_ options: NearbyRequestOptions) async throws -> any NearbyRequestHandle {
+            try await nearby.request(options)
+        }
+    }
+
     /// Nearby approval (CC-15; WIRE-CONTRACT-V5 §15.6.1), `client.cloudConnect.nearby`. It is gated by the
     /// Identity service's discovery (`nearby` and its endpoints), never by Connect: it works with Connect off. It
     /// carries the vouch over the LAN and calls no route; the host calls `nearby/start`, `poll` and `approve` and

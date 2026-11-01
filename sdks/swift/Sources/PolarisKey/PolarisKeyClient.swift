@@ -325,6 +325,16 @@ public actor PolarisKeyClient {
                 requesterNetwork: options.connect.nearbyRequesterNetwork ?? SystemNearbyRequesterNetwork()),
             transferDirectory: core.dirs.state.appendingPathComponent("xfer", isDirectory: true))
         self.cloudConnect = cloudConnect
+        // Nearby sign-in (D): the Identity module reads the LAN half through this. A platform that cannot browse
+        // the network (no Network framework) leaves it nil and answers the typed `nearby-unsupported`.
+        #if canImport(Network)
+            let nearbyLan = CloudNearbyLan(nearby: cloudConnect.nearby)
+            identityClient.installNearby(
+                NearbyBinding(signer: { try await connect.nearbySigner() }, lan: { nearbyLan }))
+        #else
+            identityClient.installNearby(
+                NearbyBinding(signer: { try await connect.nearbySigner() }, lan: nil))
+        #endif
         let attachments = self.attachments
         let ring: @Sendable () -> SyncKeyring = {
             PolarisKeyClient.keyring(core: core, attachments: attachments, subject: { identityClient.account })
