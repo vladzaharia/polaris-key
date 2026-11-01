@@ -11,6 +11,7 @@ export function ipcPair() {
     string,
     Set<(e: unknown, ...a: unknown[]) => void>
   >();
+  const destroyed: (() => void)[] = [];
   const sender = {
     id: 7,
     mainFrame: { url: "app://main" } as { url: string },
@@ -18,8 +19,11 @@ export function ipcPair() {
       for (const l of listeners.get(channel) ?? [])
         l({}, ...structuredClone(args));
     },
-    once() {
-      return undefined;
+    once(event: string, fn: () => void) {
+      if (event === "destroyed") destroyed.push(fn);
+    },
+    destroy() {
+      for (const f of destroyed.splice(0)) f();
     },
   };
   let allowed = true;

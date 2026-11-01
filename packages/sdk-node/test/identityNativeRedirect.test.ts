@@ -464,6 +464,25 @@ describe("native redirect: the session", () => {
     }
   });
 
+  it("a foreign delivery is refused without ending the sign-in", async () => {
+    const env = setup();
+    const { s } = await start(env);
+    const p = pushed(env);
+    for (const bad of [
+      "not a url",
+      `http://127.0.0.1:${p.port + 1}/pkey/callback?${p.query()}`,
+      `http://127.0.0.1:${p.port}/pkey/callback?${p.query().replace(/state=[^&]+/, "state=other-state-0123456789")}`,
+    ])
+      await expect(s.handleRedirect(bad)).rejects.toMatchObject({
+        code: "sign-in-failed",
+      });
+    expect(tokenCalls(env)).toHaveLength(0);
+    // The flow and its listener are intact.
+    expect(await listening(p.port)).toBe(true);
+    expect((await hit(p.port, `/pkey/callback?${p.query()}`)).status).toBe(303);
+    expect((await s.wait()).kind).toBe("signedIn");
+  });
+
   it("Open browser again reopens the same URL without a new push", async () => {
     const env = setup();
     const { s } = await start(env);

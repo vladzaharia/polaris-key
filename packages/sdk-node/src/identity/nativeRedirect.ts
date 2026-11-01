@@ -385,6 +385,19 @@ export class NativeRedirectSession {
         ErrorCode.signInFailed,
         "this sign-in is already finished or was cancelled; start a new one.",
       );
+    // A delivery that is not ours (malformed, another redirect URI, another state) is refused
+    // without ending the sign-in: anything able to open the app's scheme could otherwise end it.
+    const first = parseNativeCallback(pending, callbackUrl);
+    if (
+      first.kind === "failed" &&
+      (first.reason === "malformed" ||
+        first.reason === "redirect-mismatch" ||
+        first.reason === "state-mismatch")
+    )
+      throw new PolarisError(
+        ErrorCode.signInFailed,
+        `the delivered URL was refused (${first.reason}).`,
+      );
     this.#used = true;
     this.#drop();
     try {

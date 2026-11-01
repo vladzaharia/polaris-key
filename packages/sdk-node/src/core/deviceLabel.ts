@@ -60,6 +60,13 @@ const realSources: NameSources = {
  * `PRETTY_HOSTNAME` else the host name, Windows the host name unless Windows generated it
  * (`DESKTOP-…`, `LAPTOP-…`), then "Windows PC" or "Windows laptop". Null when none is known.
  */
+let cachedDefault: string | null | undefined;
+
+/** The default for this process, read once (the macOS lookup runs a process). */
+export function cachedDefaultDeviceName(): string | null {
+  return (cachedDefault ??= defaultDeviceName());
+}
+
 export function defaultDeviceName(
   src: NameSources = realSources,
 ): string | null {
@@ -85,7 +92,7 @@ export function defaultDeviceName(
 export function resolveDeviceLabel(
   override: string | undefined,
   configured: string | undefined,
-  platformDefault: () => string | null = defaultDeviceName,
+  platformDefault: () => string | null = cachedDefaultDeviceName,
 ): string | null {
   if (override !== undefined) return normalizeDeviceLabel(override);
   if (configured !== undefined) return normalizeDeviceLabel(configured);

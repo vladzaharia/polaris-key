@@ -740,8 +740,15 @@ export function exposePolarisBridge(
     discard: () => client.identity.signOut(),
     ended: (flowId) => forgetFlow(flowId),
   });
+  /** End the native redirect flows (one window's, or all): their listeners close. */
+  const endNativeFlows = (windowId?: number): void => {
+    for (const [id, f] of [...flows])
+      if (f.native && (windowId === undefined || f.windowId === windowId))
+        forgetFlow(id);
+  };
   const onIdentity = (e: { kind: string }): void => {
     if (e.kind === "signedOut") {
+      endNativeFlows();
       nearbyHost.dropAll();
       choiceHost.dropAll();
     }
@@ -1219,6 +1226,8 @@ export function exposePolarisBridge(
             return { reopened: false };
           return { reopened: await flow.native.reopen() };
         }
+        // One native flow per window: a new begin ends the window's earlier one.
+        endNativeFlows(e.sender.id);
         const native = await client.identity.signIn.start({
           channel: "redirect",
           ...(deviceName ? { deviceName } : {}),
@@ -1243,6 +1252,8 @@ export function exposePolarisBridge(
         };
         entry.timer.unref?.();
         flows.set(flowId, entry);
+        // The window going away ends its flow (no listener outlives it).
+        e.sender.once?.("destroyed", () => forgetFlow(flowId));
         native.wait().then(
           (ok) => void (entry.result = { ok }),
           (err: unknown) => void (entry.result = { err }),
@@ -1340,6 +1351,7 @@ export function exposePolarisBridge(
       return bridgeActivation(r);
     },
     signOut: async () => {
+      endNativeFlows();
       nearbyHost.dropAll();
       choiceHost.dropAll();
       await client.identity.signOut();

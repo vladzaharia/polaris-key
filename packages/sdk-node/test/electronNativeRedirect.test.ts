@@ -40,6 +40,7 @@ async function setup(o: { request?: boolean } = {}) {
     endpoints: {
       authorize: `${BASE}/${PRODUCT}/identity/authorize`,
       token: `${BASE}/${PRODUCT}/identity/token`,
+      signout: `${BASE}/${PRODUCT}/identity/signout`,
       ...(o.request === false
         ? {}
         : {
@@ -58,6 +59,7 @@ async function setup(o: { request?: boolean } = {}) {
       [`POST /${PRODUCT}/identity/request`]: () =>
         json({ request_uri: REQUEST_URI, expires_in: 600 }, 201),
       [`POST /${PRODUCT}/identity/token`]: () => json(TOKEN_OK),
+      [`POST /${PRODUCT}/identity/signout`]: () => json({ released: false }),
     },
   });
   (
@@ -224,6 +226,48 @@ describe("PolarisBridge: the native redirect sign-in", () => {
       env.bridge.beginSignIn({ channel: "redirect" } as never),
     ).rejects.toMatchObject({ code: "redirect-unavailable" });
     expect(env.opened).toHaveLength(0);
+  });
+
+  it("a new native begin ends the window's earlier flow; sign-out and a closed window end it too", async () => {
+    const env = await setup();
+    const a = (await env.bridge.beginSignIn({
+      channel: "redirect",
+    } as never)) as unknown as { flowId: string };
+    const portA = Number(
+      new URL(
+        new URLSearchParams(
+          env.seen.find((s) => s.path.endsWith("/identity/request"))!.body!,
+        ).get("redirect_uri")!,
+      ).port,
+    );
+    const b = (await env.bridge.beginSignIn({
+      channel: "redirect",
+    } as never)) as unknown as { flowId: string };
+    expect(await listening(portA)).toBe(false);
+    expect(await env.bridge.pollSignIn(a.flowId)).toEqual({ kind: "expired" });
+    expect(await env.bridge.pollSignIn(b.flowId)).toEqual({ kind: "pending" });
+    const ports = env.seen
+      .filter((s) => s.path.endsWith("/identity/request"))
+      .map((s) =>
+        Number(new URL(new URLSearchParams(s.body!).get("redirect_uri")!).port),
+      );
+    const portB = ports[1]!;
+    expect(await listening(portB)).toBe(true);
+    await env.bridge.signOut();
+    expect(await listening(portB)).toBe(false);
+    // A closed window ends its flow.
+    await env.bridge.beginSignIn({ channel: "redirect" } as never);
+    const portC = Number(
+      new URL(
+        new URLSearchParams(
+          env.seen.filter((s) => s.path.endsWith("/identity/request"))[2]!
+            .body!,
+        ).get("redirect_uri")!,
+      ).port,
+    );
+    expect(await listening(portC)).toBe(true);
+    env.ipc.sender.destroy();
+    expect(await listening(portC)).toBe(false);
   });
 
   it("closing the bridge frees the listener", async () => {

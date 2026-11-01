@@ -3459,7 +3459,7 @@
       "layer": "client"
     },
     {
-      "id": "identity.signIn.session.handleRedirect",
+      "id": "identity.signIn.handleRedirect",
       "kind": "method",
       "feature": "identity.redirect.native",
       "args": [
@@ -3469,7 +3469,9 @@
         }
       ],
       "sdks": {
-        "node": {},
+        "node": {
+          "spelling": "NativeRedirectSession.handleRedirect"
+        },
         "react": {
           "planned": "I-15b",
           "reason": "the desktop adapter forwards the native redirect to the Node host (plans/I-15.md section 5)"
