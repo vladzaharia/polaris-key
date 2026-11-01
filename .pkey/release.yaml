@@ -238,6 +238,12 @@ release:
       name: "im.plrs.key:polaris-key-billing"
       artifacts:
         files: { match: "polaris-key-billing-*" }
+    maven.games:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-games"
+      artifacts:
+        files: { match: "polaris-key-games-*" }
     maven.android-play:
       kind: package
       ecosystem: maven
