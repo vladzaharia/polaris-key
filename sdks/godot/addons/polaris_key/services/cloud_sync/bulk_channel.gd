@@ -18,6 +18,9 @@ extends RefCounted
 ## `{fail: "network" | "oversize"}`. A request that gets no answer simply does not return: the caller owns
 ## the deadline and then calls `cancel(req)`. (`fetch` is the plan's `get`; `get` is a built-in of every
 ## Object and cannot be overridden.)
+##
+## A native lane must not follow redirects: a 3xx is answered as it is (the caller refuses it), so the bearer
+## and the body never leave the product's origin.
 
 ## Whether requests can be queued now.
 func available() -> bool:
