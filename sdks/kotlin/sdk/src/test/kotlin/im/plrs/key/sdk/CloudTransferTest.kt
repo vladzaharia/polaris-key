@@ -489,6 +489,52 @@ internal class CloudTransferTest {
     }
 
     @Test
+    fun anAcceptThatNoLongerFitsCancelsThatTransferWithQuotaAndKeepsTheSession() = bounded {
+        val scope = scope()
+        val devices = rigs.devices()
+        val a = Side()
+        val b = Side()
+        b.transfer.storeQuotaBytes = 250_000
+        val pending = Channel<TransferOffer>(Channel.UNLIMITED)
+        b.transfer.onOffer {
+            pending.trySend(it)
+            OfferDecision.Ask
+        }
+        val s1 = rigs.connect(scope, caps = xfer, devices = devices)
+        val s2 = rigs.connect(scope, caps = xfer, devices = devices)
+        for (s in listOf(s1, s2)) {
+            a.transfer.bind(s.sa)
+            b.transfer.bind(s.sb)
+        }
+        // Both offers fit when they are shown; the first is then accepted and holds its space.
+        val first = Probe(content(150_000), "one", stallAt = 1)
+        val h1 = a.transfer.send(s1.sa, first)
+        val h2 = a.transfer.send(s2.sa, Probe(content(150_000), "two"))
+        val o1 = pending.receive()
+        val o2 = pending.receive()
+        o1.accept(File(dir(), "one.bin"))
+        waitFor("the first transfer to hold its space") { partFiles(b.state).size == 1 }
+        val two = File(dir(), "two.bin")
+        o2.accept(two)
+        try {
+            h2.await()
+            fail("quota")
+        } catch (e: TransferCancelledException) {
+            assertEquals(XferReason.quota, e.reason)
+        }
+        assertFalse(two.exists())
+        // The same session takes a transfer that fits.
+        val small = content(1000)
+        val dst = File(dir(), "small.bin")
+        val h3 = a.transfer.send(s2.sa, TransferSource.ofBytes(small, "three"))
+        pending.receive().accept(dst)
+        assertEquals(TransferOutcome.delivered, h3.await().outcome)
+        assertArrayEquals(small, dst.readBytes())
+        first.release.complete(Unit)
+        assertEquals(TransferOutcome.delivered, h1.await().outcome)
+    }
+
+    @Test
     fun aPurgeClosesTheSessionAndALateWriteDoesNotBringTheStoreBack() = bounded {
         val r = rigs.connect(scope(), caps = xfer)
         val a = Side()

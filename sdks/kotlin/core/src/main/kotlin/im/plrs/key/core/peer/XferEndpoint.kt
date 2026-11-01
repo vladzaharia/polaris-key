@@ -97,6 +97,11 @@ public class XferEndpoint(
         synchronized(lock) { guarded { handle(machine.consent(now(), id, accept)) } }
     }
 
+    /** The room check failed at accept: `CANCEL` `quota` for that transfer; the session stays. */
+    public fun noRoom(id: String) {
+        synchronized(lock) { guarded { handle(machine.noRoom(now(), id)) } }
+    }
+
     /** The host cancels a transfer. */
     public fun cancel(id: String) {
         synchronized(lock) {
@@ -150,9 +155,24 @@ public class XferEndpoint(
     private fun handle(out: XferOut, offered: String? = null) {
         val failed = LinkedHashSet<String>()
         queue.trySend {
+            var full: String? = null
             try {
-                for (e in out.partial) ports.apply(e)
-                for (s in out.send) perform(s, failed)
+                for (e in out.partial) {
+                    try {
+                        ports.apply(e)
+                    } catch (x: XferNoRoomException) {
+                        // No room for the transfer the person just accepted: it alone is cancelled.
+                        full = when (e) {
+                            is XferEffect.Create -> e.partial.id
+                            is XferEffect.Truncate -> synchronized(lock) { machine.partials().firstOrNull { it.ref == e.ref }?.id }
+                            else -> null
+                        } ?: throw x
+                    }
+                }
+                for (s in out.send) {
+                    if (s is XferSend.Accept && s.id == full) continue
+                    perform(s, failed)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -165,6 +185,7 @@ public class XferEndpoint(
             if (out.refused && offered != null) ports.events.refused(offered)
             for (r in out.results) ports.events.result(r)
             for (id in failed) synchronized(lock) { if (!dead) handle(machine.fail(now(), id)) }
+            full?.let { id -> synchronized(lock) { if (!dead) handle(machine.noRoom(now(), id)) } }
         }
         val c = out.close
         if (c != null) {

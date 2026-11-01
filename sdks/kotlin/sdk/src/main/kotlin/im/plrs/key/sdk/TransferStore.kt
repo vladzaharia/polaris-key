@@ -23,6 +23,7 @@ import im.plrs.key.core.StrictJson
 import im.plrs.key.core.longValue
 import im.plrs.key.core.peer.XFER_PARTIAL_SECONDS
 import im.plrs.key.core.peer.XferEffect
+import im.plrs.key.core.peer.XferNoRoomException
 import im.plrs.key.core.peer.XferPartial
 import im.plrs.key.core.peer.xferHex
 import im.plrs.key.core.stringValue
@@ -202,7 +203,7 @@ internal class TransferStore(
 
     private fun create(p: XferPartial, owner: Any, peerKey: ByteArray) {
         if (holds.containsKey(p.ref)) throw IOException("partial is in use")
-        if (p.size > (freeLocked() ?: Long.MAX_VALUE)) throw IOException("not enough room for the transfer")
+        if (p.size > (freeLocked() ?: Long.MAX_VALUE)) throw XferNoRoomException("not enough room for the transfer")
         ensureDir()
         val f = part(p.ref)
         if (f.exists() && !ownedBy(p.ref, peerKey)) throw IOException("partial belongs to another peer")
@@ -231,7 +232,7 @@ internal class TransferStore(
         if (!f.isFile) throw IOException("partial is gone")
         if (f.length() < e.to) throw IOException("partial shorter than its record")
         holds.remove(e.ref)
-        if (size - e.to > (freeLocked() ?: Long.MAX_VALUE)) throw IOException("not enough room for the transfer")
+        if (size - e.to > (freeLocked() ?: Long.MAX_VALUE)) throw XferNoRoomException("not enough room for the transfer")
         RandomAccessFile(f, "rw").use { it.setLength(e.to) }
         holds[e.ref] = Hold(owner, size, e.to)
     }

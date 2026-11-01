@@ -312,6 +312,9 @@ public sealed class XferSend {
     public class Cancel(public val id: String, public val reason: XferReason) : XferSend()
 }
 
+/** A store refused a create or truncate for want of room: the endpoint cancels that one transfer with `quota`. */
+public class XferNoRoomException(message: String) : java.io.IOException(message)
+
 /** An effect on the kept partial files, or bytes for one; the driver applies them in order. */
 public sealed class XferEffect {
     /** A new partial; [partial] is its record (the id, hash, size and chunk the store keeps beside it). */
@@ -479,6 +482,22 @@ public class XferMachine(private val o: XferMachineOptions) {
             return@begin
         }
         accept(t)
+    }
+
+    /**
+     * The host's room check failed when the person accepted: `CANCEL` `quota` for that one transfer, and the
+     * session stays. A partial this transfer made at 0 bytes goes; one with bytes kept stays.
+     */
+    public fun noRoom(at: Double, id: String): XferOut = begin(at) {
+        val t = tr[id] ?: return@begin
+        if (t.dir != Dir.`in` || (t.st != St.asking && !t.accepted)) return@begin
+        send(XferSend.Cancel(id, XferReason.quota))
+        val p = parts.firstOrNull { it.ref == t.partial }
+        if (p != null && p.bytes == 0L) {
+            eff(XferEffect.Discard(p.ref))
+            parts.removeAll { it.ref == p.ref }
+        }
+        end(t, true)
     }
 
     /** The host cancels a transfer. */
