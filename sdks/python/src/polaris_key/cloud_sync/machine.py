@@ -1224,6 +1224,18 @@ class CloudSyncMachine:
             origin = "cloud" if self._s["subject"] is not None else "device"
         return {"value": value, "from": origin, "pending": pending}
 
+    def record_keys(self) -> List[Tuple[str, str]]:
+        """The ``(collection, id)`` pair of every record held in the active partition's snapshot;
+        empty with no subject. The end-to-end host passes it so a tombstone can name the record."""
+        if self._s["subject"] is None:
+            return []
+        out: List[Tuple[str, str]] = []
+        for rk in self._active()["records"].keys():
+            c, sep, rid = rk.partition("/")
+            if sep and c:
+                out.append((c, rid))
+        return out
+
     def _open_keys(self) -> List[str]:
         keys: Dict[str, None] = {}
 

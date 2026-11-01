@@ -1526,3 +1526,50 @@ describe("browser cloud sync host: isolation", () => {
     }
   });
 });
+
+describe("browser cloud sync host: record tombstones in end-to-end mode", () => {
+  it("a record tombstone removes the held record in end-to-end mode", async () => {
+    const w = new World();
+    const b = new Browser();
+    const catalog = {
+      ...CATALOG(1),
+      cloudSync: { collections: [{ name: "notes.*", conflict: "lastWrite" }] },
+    };
+    const t = await b.tab(w, {
+      opts: { catalog: catalog as never, encryption: "e2e" },
+    });
+    const { host } = t;
+    await host.start();
+    host.machine.signIn(SUBJECT);
+    await host.touch();
+    expect(host.machine.put("notes.work", "main", { t: "x" })).toEqual({
+      ok: true,
+    });
+    await host.flush(1000);
+    const push = w.reqs.filter((r) => r.method === "POST").at(-1)!;
+    const sent = push.body!.mutations as Array<{
+      target: { record: [string, string] };
+      ct: string;
+    }>;
+    const wire = sent[0]!.target.record;
+    expect(wire[1]).not.toBe("main");
+    // The sealed record comes back on a pull: the machine holds it under its plain name.
+    w.pull = () =>
+      w.body({
+        cursor: 5,
+        changes: [
+          { record: wire, version: 150, ct: sent[0]!.ct, sealed: true },
+        ],
+      });
+    host.machine.setNetwork("online");
+    await host.touch();
+    expect(host.machine.recordKeys()).toEqual([["notes.work", "main"]]);
+    w.pull = () =>
+      w.body({ cursor: 9, tombstones: [{ record: wire, version: 200 }] });
+    host.machine.setNetwork("online");
+    await host.touch();
+    expect(host.machine.recordKeys()).toEqual([]);
+    expect(host.machine.record("notes.work", "main")).toBeNull();
+    await b.close();
+  });
+});

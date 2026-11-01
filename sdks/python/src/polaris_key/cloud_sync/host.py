@@ -566,6 +566,7 @@ class CloudSyncHost:
                 mutations=mutations,
                 aliases=self._opts.aliases,
                 open_keys=list(self._open_keys),
+                record_keys=m.record_keys(),
             )
         except Exception:  # noqa: BLE001
             # Locked since the request left, or a repeated mutationId: the answer is dropped and the
