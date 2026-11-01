@@ -27,8 +27,7 @@ extends RefCounted
 ##                      `PKeyPeerContact.trial_order`. A mode c initiator names exactly one; a responder up
 ##                      to 72 and needs `admission`. The static key is the device's agreeKey (or a port)
 ##   exchange           mode p only: take part in the contact exchange, {agree_key, label?, cats, held?}.
-##                      The session then owns CONFIRM and CONTACT and ends the exchange with a `contact`
-##                      event; without it the host sees both as records
+##                      The session then owns CONFIRM and CONTACT and ends with a `contact` event; without it the host sees both as records
 ##   caps               the capabilities this side offers. Mode v adds `vouch/1` itself and requires
 ##                      it of the peer (section 15.6.1 rule 1)
 ##   hold_sas           the mode v initiator only: send no SAS_COMMIT at HELLO; the host starts the

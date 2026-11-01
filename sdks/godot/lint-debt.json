@@ -741,6 +741,7 @@
     },
     "sdks/godot/tests/suite_sync_vectors.gd": {
       "gdlint:class-definitions-order": 3,
+      "gdlint:max-file-lines": 1,
       "gdlint:max-line-length": 7,
       "gdlint:max-returns": 1
     },
