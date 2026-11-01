@@ -157,7 +157,20 @@ public class CloudLinks internal constructor(private val connect: ConnectClient)
             },
             allowed = { connect.interAccount() },
         )
-        val h = LinkPairing.start(src, options)
+        val adapter = platformMdnsFor(options.mdns, ConnectPlatforms.android, ConnectPlatforms.installed) { missing ->
+            val detail = if (missing) {
+                "This runtime has no local-network discovery adapter; pass one in the options."
+            } else {
+                "Link pairing needs Android 14 or later."
+            }
+            PolarisException(
+                ErrorCode.unsupported,
+                "Link pairing is not available here.",
+                detail = detail,
+                unsupported = Unsupported(Feature.connectLinks, UnsupportedReason.runtime, detail),
+            )
+        }
+        val h = LinkPairing.start(src, if (adapter === options.mdns) options else options.withMdns(adapter))
         synchronized(lock) { pairings += h }
         return h
     }

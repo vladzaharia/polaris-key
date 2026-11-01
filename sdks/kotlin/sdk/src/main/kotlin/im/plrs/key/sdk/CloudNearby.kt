@@ -110,28 +110,17 @@ public class CloudNearby internal constructor(
      * where the app does not declare the local-network permission and `nearby-permission-denied` where it is not
      * granted. The relay is not involved: nearby is LAN only.
      */
-    private suspend fun adapterFor(mdns: MdnsAdapter?): MdnsAdapter? {
-        if (!ConnectPlatforms.android || mdns != null) return mdns
-        val p = ConnectPlatforms.installed
-        val adapter = p?.mdns ?: throw unsupported(
-            if (p ==
-                null
-            ) {
-                "This runtime has no local-network discovery adapter; pass one in the options."
-            } else {
-                "Nearby approval needs Android 14 or later."
-            },
-            UnsupportedReason.runtime,
-        )
-        permissionError(p.localNetwork())?.let { throw it }
-        return adapter
-    }
-
-    private fun permissionError(v: LocalNetworkVerdict): PolarisException? = when (v) {
-        LocalNetworkVerdict.Ok -> null
-        LocalNetworkVerdict.Denied -> PolarisException(ErrorCode.nearbyPermissionDenied, "Local network access was refused.")
-        LocalNetworkVerdict.NotDeclared -> PolarisException(ErrorCode.notConfigured, "The app does not declare ACCESS_LOCAL_NETWORK.")
-    }
+    private suspend fun adapterFor(mdns: MdnsAdapter?): MdnsAdapter? =
+        platformMdnsFor(mdns, ConnectPlatforms.android, ConnectPlatforms.installed) { missing ->
+            unsupported(
+                if (missing) {
+                    "This runtime has no local-network discovery adapter; pass one in the options."
+                } else {
+                    "Nearby approval needs Android 14 or later."
+                },
+                UnsupportedReason.runtime,
+            )
+        }
 
     /** An adapter that cannot start (no socket on 5353) is the typed N/A, not a crash. */
     private fun wrap(e: Throwable): Nothing {

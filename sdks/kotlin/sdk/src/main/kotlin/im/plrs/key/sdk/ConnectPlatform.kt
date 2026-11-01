@@ -63,3 +63,27 @@ private fun guarded(p: ConnectPlatform, host: suspend () -> Boolean): suspend ()
             throw PolarisException(ErrorCode.notConfigured, "The app does not declare ACCESS_LOCAL_NETWORK.")
     }
 }
+
+/**
+ * The adapter nearby approval and link pairing start with. Off Android, or when the host brought one, [mdns]
+ * itself (null: the default). On Android the installed platform's, after its permission is read: [noAdapter]
+ * builds the error where there is none (below Android 14), `not-configured` where the app does not declare the
+ * permission and `nearby-permission-denied` where it is not granted.
+ */
+internal suspend fun platformMdnsFor(
+    mdns: MdnsAdapter?,
+    android: Boolean,
+    platform: ConnectPlatform?,
+    noAdapter: (platformMissing: Boolean) -> PolarisException,
+): MdnsAdapter? {
+    if (!android || mdns != null) return mdns
+    val adapter = platform?.mdns ?: throw noAdapter(platform == null)
+    localNetworkError(platform.localNetwork())?.let { throw it }
+    return adapter
+}
+
+internal fun localNetworkError(v: LocalNetworkVerdict): PolarisException? = when (v) {
+    LocalNetworkVerdict.Ok -> null
+    LocalNetworkVerdict.Denied -> PolarisException(ErrorCode.nearbyPermissionDenied, "Local network access was refused.")
+    LocalNetworkVerdict.NotDeclared -> PolarisException(ErrorCode.notConfigured, "The app does not declare ACCESS_LOCAL_NETWORK.")
+}

@@ -7,6 +7,7 @@ import im.plrs.key.core.peer.lan.MdnsFound
 import im.plrs.key.core.peer.lan.MdnsUnavailableException
 import im.plrs.key.platform.NsdAdvertResult
 import im.plrs.key.platform.NsdResolved
+import im.plrs.key.platform.PeerNsd
 import im.plrs.key.platform.PeerNsdListener
 import im.plrs.key.platform.Subnet
 import kotlinx.coroutines.runBlocking
@@ -170,6 +171,20 @@ class AndroidMdnsTest {
         nsd.browser!!.onFound("stranger")
         nsd.browser!!.onFound("p1-BBBBBBBBBBBBBBBB")
         assertEquals(listOf("p1-BBBBBBBBBBBBBBBB"), nsd.watchers.keys.toList())
+    }
+
+    @Test
+    fun aFullWatchTableMakesRoomForARealNameByDroppingTheOldestUnresolvedOne() {
+        val nsd = FakeNsd()
+        val seen = Seen()
+        browse(nsd, lan(), seen)
+        for (i in 0 until PeerNsd.MAX_WATCHED) nsd.browser!!.onFound("p1-%016d".format(i))
+        // One of them resolves (a real peer); it is never the one to go.
+        nsd.watchers.getValue("p1-%016d".format(0)).onResolved(resolved("p1-%016d".format(0), listOf("192.168.1.20")))
+        nsd.browser!!.onFound("p1-REAL")
+        assertTrue("p1-REAL" in nsd.watchers)
+        assertEquals(listOf("p1-%016d".format(1)), nsd.watchesStopped)
+        assertEquals(1, seen.up.size)
     }
 
     @Test

@@ -141,12 +141,17 @@ class PeerNsdTest {
     }
 
     @Test
-    fun browseTracksAtMost256Names() {
+    fun browseTracksAtMost256NamesAndTheOldestMakesRoom() {
         val api = Fake()
         val rec = Rec()
         nsd(api).browse(rec)
         for (i in 0 until 300) api.found!!("n$i")
-        assertEquals(PeerNsd.MAX_FOUND, rec.events.size)
+        assertEquals(300, rec.events.count { it.startsWith("found:") })
+        assertEquals(300 - PeerNsd.MAX_FOUND, rec.events.count { it.startsWith("lost:") })
+        assertEquals("lost:n0", rec.events[PeerNsd.MAX_FOUND])
+        // The newest name is held: its loss is reported once.
+        api.lost!!("n299")
+        assertEquals("lost:n299", rec.events.last())
     }
 
     @Test

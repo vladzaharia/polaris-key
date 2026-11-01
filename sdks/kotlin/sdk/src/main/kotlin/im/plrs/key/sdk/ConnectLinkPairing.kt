@@ -37,6 +37,7 @@ import im.plrs.key.core.peer.TxtResult
 import im.plrs.key.core.peer.advertEpoch
 import im.plrs.key.core.peer.base32Lower
 import im.plrs.key.core.peer.contactCategories
+import im.plrs.key.core.peer.isInstanceName
 import im.plrs.key.core.peer.lan.JvmMdns
 import im.plrs.key.core.peer.lan.LanDialOptions
 import im.plrs.key.core.peer.lan.MdnsAdapter
@@ -65,6 +66,7 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.security.SecureRandom
 import java.util.concurrent.CopyOnWriteArrayList
+import javax.net.SocketFactory
 
 /** The pairing window: it closes by itself after this many seconds (section 15.4). */
 public const val LINK_PAIR_WINDOW_SECONDS: Double = 300.0
@@ -189,6 +191,11 @@ public class LinkPairOptions @JvmOverloads constructor(
     public val handshakeSeconds: Double = 30.0,
     public val maxPendingPerAddress: Int = 1,
 ) {
+    /** These options with another discovery adapter (the platform's, on Android). */
+    internal fun withMdns(adapter: MdnsAdapter?): LinkPairOptions = LinkPairOptions(
+        categories, onCode, label, onLinked, onFailed, seconds, adapter, host, allowLoopback, handshakeSeconds, maxPendingPerAddress,
+    )
+
     override fun toString(): String = "LinkPairOptions"
 }
 
@@ -249,7 +256,13 @@ internal class LinkPairing private constructor(private val src: PairSource, priv
     @Volatile
     private var stopped = false
 
-    private class Candidate(val instance: String, val hosts: List<String>, val port: Int, var tries: Int = 0)
+    private class Candidate(
+        val instance: String,
+        val hosts: List<String>,
+        val port: Int,
+        var tries: Int = 0,
+        val socketFactory: SocketFactory? = null,
+    )
 
     override val open: Boolean get() = !stopped
 
@@ -305,7 +318,7 @@ internal class LinkPairing private constructor(private val src: PairSource, priv
         instance = "p1-" + base32Lower(ByteArray(INSTANCE_RANDOM_BYTES).also { rng.nextBytes(it) }).substring(0, INSTANCE_CHARS)
         val tag = productTag(src.slug, advertEpoch(src.now()))
         advert = mdns.advertise(MdnsAdvert(instance, s.localPort, listOf("v=1", "m=p", "h=$tag")))
-        browse = mdns.browse({ f -> scope.launch { quiet { found(f) } } }, { synchronized(lock) { candidates.remove(it) } })
+        browse = mdns.browse({ f -> scope.launch { quiet { found(f) } } }, { synchronized(lock) { candidates.remove(it) } }, { isInstanceName(it) })
         val seconds = minOf(o.seconds, LINK_PAIR_WINDOW_SECONDS)
         window = scope.launch {
             delay((seconds * MILLIS).toLong())
@@ -326,7 +339,7 @@ internal class LinkPairing private constructor(private val src: PairSource, priv
         if (hosts.isEmpty()) return
         synchronized(lock) {
             val had = candidates[f.instance]
-            candidates[f.instance] = Candidate(f.instance, hosts, f.port, had?.tries ?: 0)
+            candidates[f.instance] = Candidate(f.instance, hosts, f.port, had?.tries ?: 0, f.socketFactory)
         }
         pump()
     }
@@ -359,7 +372,7 @@ internal class LinkPairing private constructor(private val src: PairSource, priv
 
     private suspend fun dial(c: Candidate) {
         val (socket, _) = try {
-            lanDialRaceTo(c.hosts, c.port, LanDialOptions(o.allowLoopback, DIAL_MILLIS))
+            lanDialRaceTo(c.hosts, c.port, LanDialOptions(o.allowLoopback, DIAL_MILLIS).withSocketFactory(c.socketFactory))
         } catch (e: IOException) {
             return
         }
