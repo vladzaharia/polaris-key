@@ -11331,6 +11331,55 @@ at `POST /<p>/identity/token` for a device token. One row per threat; tests are 
   session: the first-party session cookie is never accepted on `token` or on any Cloud Sync route.
 - **Replace and the choice grant (I-08b).** See the next section.
 
+### Native redirect sign-in (I-15)
+
+plans/I-15.md §2 and §10, WIRE-CONTRACT-V5 §12.4 and §12.12. A native app pushes its request at
+`POST /<p>/identity/request`, opens `authorize` with the `request_uri` it gets in the system browser,
+and redeems the code at `token` from the device that pushed it. The redirect is a loopback address,
+a registered custom scheme or a claimed HTTPS path. Tests are in
+`test/surfaces/identityNativeRedirect.test.ts` and the transcripts `redirect-native-*.json` and
+`locker-redirect-native.json`.
+
+- **Code interception: a hijacked scheme, or a second app verified for the same App Link
+  (RFC 8252 §8.1).** PKCE `S256` is the only method. The code lives 60 seconds, is single use, and a
+  wrong verifier burns it. The code is bound to the device id that pushed the request, so a code
+  presented by another device is `invalid_grant` and is spent. ASWebAuthenticationSession and Auth
+  Tab return the callback to the starting app. Residual: a hijacking app on the device can make that
+  sign-in fail, but cannot redeem the code.
+- **Client impersonation (RFC 8252 §8.6).** The card shows the client record and never a query
+  value; the device label is normalised and marked "on <device>"; the yield is one product device
+  token (S-16 item 13); an operator can suspend the product. Residual: a local app can sign in "as"
+  the product with the person's consent, as with device code.
+- **The loopback listener: port scans, other local users, DNS rebinding.** The SDK binds 127.0.0.1
+  only, on an OS-assigned port, checks `Host`, compares `state` in constant time, answers anything
+  else with a 404 and keeps listening, sends no CORS headers and no HTML, and closes on use or after
+  600 seconds. The `303` to the return page carries `no-referrer`. Residual: a process running as
+  the same user can read the app's memory anyway. The desktop default is the loopback.
+- **A forwarded native authorize URL (R1-07, login CSRF).** The code goes to the victim's own
+  loopback or scheme, where the attacker's app does not run. The handle is bound by the
+  `__Host-pk_req` binder, and Continue needs the account session. Residual: malware already on the
+  victim's device.
+- **Open redirect and URI confusion.** Each class matches exactly: IP literals only for the
+  loopback, a fixed path, no query or fragment, `localhost` refused; a registered reverse-DNS scheme
+  with the reserved prefixes refused; claimed paths disjoint from the web paths. A native class is
+  accepted only through `request`, and a native `redirect_uri` sent straight to `authorize` is the
+  branded page. Nothing known remains.
+- **Association files on Polaris hosts.** The Worker serves neither
+  `/.well-known/apple-app-site-association` nor `assetlinks.json` on the API, console or customer
+  host, and a test pins the 404. A `webcredentials` listing would expose the person's Locker
+  passkeys. Residual: the developer's own domain is the developer's to protect.
+- **Embedded web view phishing.** The SDKs open only the system browser, ASWebAuthenticationSession,
+  Auth Tab or Custom Tabs, and the card sends `frame-ancestors 'none'`. Residual: a malicious app
+  drawing a fake card (S-16 item 14).
+- **Pushed-request flooding and reuse.** `request` is rate limited per network and per device id.
+  The `request_uri` carries 128 random bits and is stored as kind `signin-par` under the product
+  and a peppered hash, so a listing of the store yields nothing presentable. The record lives 600
+  seconds and one pushed URI yields at most one code: Continue or Cancel takes it, after which it
+  answers the `invalid_request_uri` page. Nothing known remains.
+- **Step-up laundering for the link offer.** `signin-fresh` is written only by a same-device code
+  redemption, never by device code, exchange, nearby or restore; it lasts 300 seconds and I-43
+  consumes it. Residual: as I-43's row.
+
 ### Licence choice at sign-in (I-08b)
 
 plans/I-08.md D2, D5, plans/I-04.md §B, §F.3, §G, plans/I-27.md §2.2, WIRE-CONTRACT-V4 §12.4.1 and
