@@ -1635,4 +1635,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "35cd35eae34e54439919fd5c5566fb2ef91774550f9be90a0956435848821b7f"
+const CAPABILITY_DIGEST := "8f76e54df7852a29756b4de3d41d9124a4da13e75a20d7909005082c1142ed39"

@@ -42,6 +42,7 @@ func apiSurface() async {
     _ = SignInSession.cancel  // identity.signIn.session.cancel
     _ = SignInSession.wait  // identity.signIn.session.wait
     _ = SignInSession.complete  // identity.signIn.session.complete
+    _ = \IdentityClient.SignInOptions(keyReturn:)  // identity.signIn.keyReturn
     _ = ChoiceNamespace.licenses(grant:)  // identity.choice.licenses
     _ = ChoiceNamespace.devices(grant:licenseId:)  // identity.choice.devices
     _ = ChoiceNamespace.complete(grant:choice:)  // identity.choice.complete

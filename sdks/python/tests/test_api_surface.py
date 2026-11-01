@@ -66,6 +66,7 @@ ATTRS = [
     ("identity.signIn.session.reopen", "SignInSession", "reopen"),
     ("identity.signIn.session.cancel", "SignInSession", "cancel"),
     ("identity.signIn.session.wait", "SignInSession", "wait"),
+    ("identity.signIn.keyReturn", "IdentityClient", "identity.sign_in.start(key_return=…)"),
     ("identity.autoSignIn", "IdentityClient", "auto_sign_in"),
     ("identity.useLicenseChoice", "IdentityClient", "choice"),
     ("identity.attachLicense", "IdentityClient", "attach"),

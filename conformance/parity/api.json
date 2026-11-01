@@ -3537,6 +3537,16 @@
           "spelling": "SignInOptions.keyReturn",
           "shape": "property",
           "reason": "a member of SignInOptions"
+        },
+        "python": {
+          "spelling": "identity.sign_in.start(key_return=…)",
+          "shape": "property",
+          "reason": "a keyword of sign_in.start"
+        },
+        "swift": {
+          "spelling": "SignInOptions(keyReturn:)",
+          "shape": "property",
+          "reason": "a member of SignInOptions"
         }
       },
       "layer": "client"
