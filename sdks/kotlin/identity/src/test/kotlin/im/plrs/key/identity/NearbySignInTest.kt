@@ -439,6 +439,19 @@ class NearbySignInTest {
     }
 
     @Test
+    fun aReacquireKeepsTheMarkAndAnotherTokenEndsIt() = runBlocking {
+        val w = World()
+        w.signedIn()
+        // The one re-acquire rotates the token of the same sign-in: still unconfirmed.
+        w.core.setToken("pkeyt_rotated", TokenSource.reacquire)
+        assertTrue(w.core.tokenUnconfirmed())
+        // A token any other way replaces it, and the mark goes with the old token.
+        w.core.setToken("pkeyt_activated", TokenSource.activate)
+        assertFalse(w.core.tokenUnconfirmed())
+        assertEquals("pkeyt_activated", w.core.token())
+    }
+
+    @Test
     fun confirmingMakesItASignInRaisesTheEventAndEndsTheSignOut() = runBlocking {
         val w = World()
         w.core.setExplicitSignOut(true)
