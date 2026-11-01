@@ -138,6 +138,13 @@ import PolarisKeyCore
         /// Direct Transfer (CC-20; §15.11): `send(_:source:options:)` and `onOffer(_:)`.
         public nonisolated let transfer: CloudTransfer
 
+        /// The temporary folder a facade made for itself (none when the host named one); removed in `deinit`.
+        let privateTransferDirectory: URL?
+
+        deinit {
+            if let d = privateTransferDirectory { try? FileManager.default.removeItem(at: d) }
+        }
+
         /// `discovery` returns the loaded discovery document; `applyTrust` verifies, applies and persists a trust
         /// manifest a peer pushed (`CoreContext.applyPeerTrust`); `now` is epoch seconds.
         public init(
@@ -148,11 +155,15 @@ import PolarisKeyCore
         ) {
             let links = CloudLinks(connect: connect)
             self.links = links
-            // Partial files live in the product's state directory; a bare facade (tests) gets a private one.
-            let transfer = CloudTransfer(
-                directory: transferDirectory
-                    ?? FileManager.default.temporaryDirectory.appendingPathComponent(
-                        "pkey-xfer-" + UUID().uuidString.lowercased(), isDirectory: true))
+            // Partial files live in the product's state directory; a bare facade (tests) gets a private one,
+            // removed when the facade is released.
+            let privateDirectory =
+                transferDirectory == nil
+                ? FileManager.default.temporaryDirectory.appendingPathComponent(
+                    "pkey-xfer-" + UUID().uuidString.lowercased(), isDirectory: true)
+                : nil
+            self.privateTransferDirectory = privateDirectory
+            let transfer = CloudTransfer(directory: transferDirectory ?? privateDirectory!)
             self.transfer = transfer
             connect.rosterDeparted.set { keys in for k in keys { transfer.purge(agreeKey: k) } }
             links.hook(adopt: { s in Task { await transfer.adopt(s) } }, removed: { transfer.purge(agreeKey: $0) })
