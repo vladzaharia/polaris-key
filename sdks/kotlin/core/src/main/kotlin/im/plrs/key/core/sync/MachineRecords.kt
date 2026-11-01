@@ -108,10 +108,10 @@ internal class MachineRecords(private val p: MachineParts) :
             val edited = p.journal.tickHlc()
             val marks = Marks(preContact = !core.s.contacted)
             for (field in set.keys.sorted()) {
-                p.journal.enqueue(part, Op(0, target, "setField", set.getValue(field), field = field).also { it.editedHlc = edited }.withMarks(marks))
+                p.journal.enqueue(part, Op(0, target, "setField", set.getValue(field)).also { it.field = field; it.editedHlc = edited }.withMarks(marks))
             }
             for (field in remove.sorted()) {
-                p.journal.enqueue(part, Op(0, target, "removeField", null, field = field).also { it.editedHlc = edited }.withMarks(marks))
+                p.journal.enqueue(part, Op(0, target, "removeField", null).also { it.field = field; it.editedHlc = edited }.withMarks(marks))
             }
             noteChanges("local")
             p.pump.kick()

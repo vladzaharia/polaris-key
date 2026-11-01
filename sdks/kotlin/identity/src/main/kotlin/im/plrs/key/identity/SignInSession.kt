@@ -121,6 +121,8 @@ public class SignInNamespace internal constructor(private val client: IdentityCl
      */
     @JvmOverloads
     public suspend fun startNearby(options: NearbySignInOptions = NearbySignInOptions()): NearbySignInSession = client.startNearbySignIn(options)
+
+    /**
      * Native redirect: hand the URL the OS delivered to the app (a registered scheme or a claimed HTTPS link) to the
      * sign-in waiting for it. Checks the redirect URI, `state` and `iss` before anything is sent, then redeems the code
      * from this device. A delivery that is not this sign-in's (another URL or a wrong `state`) is a `sign-in-failed`
