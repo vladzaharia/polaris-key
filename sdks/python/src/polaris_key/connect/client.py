@@ -24,15 +24,15 @@ Rules this module keeps:
 
 from __future__ import annotations
 
-import math
 import json
+import math
 import os
 import re
 import threading
 import time
 from dataclasses import dataclass, field
 from email.utils import parsedate_to_datetime
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from urllib.parse import urlsplit
 
 import httpx

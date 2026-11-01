@@ -3,12 +3,16 @@
 // WIRE-CONTRACT-V5 §13.8.3): cdcCases, cdcEditCases, deltaCases, chunkCases and manifestCases, and
 // (U-23.S2) fileStreamCases and transferPlanCases.
 
-import CryptoKit
 import Foundation
 import PolarisKeyPacks
 import Testing
 
 @testable import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private struct FileVectors: Decodable {
     struct CdcInput: Decodable {

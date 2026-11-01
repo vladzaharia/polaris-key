@@ -424,7 +424,12 @@ public actor SyncKeyring: CustomReflectable {
     /// unused, `configureKeyring(_:)` swaps the options in place, so the order of the host's background
     /// start and the app's configure call cannot matter.
     private nonisolated let state: LockedValue<(options: SyncKeyringOptions, implicit: Bool, used: Bool)>
-    nonisolated var options: SyncKeyringOptions { state.with { $0.used = true; return $0.options } }
+    nonisolated var options: SyncKeyringOptions {
+        state.with {
+            $0.used = true
+            return $0.options
+        }
+    }
     private nonisolated let memory = RingMemory()
     private var madeKeys: (any DeviceKeyPort)?
     private var madeRoots: RingRootStore?

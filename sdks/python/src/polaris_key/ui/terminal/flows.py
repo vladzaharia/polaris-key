@@ -26,7 +26,7 @@ from typing import IO, Any, Callable, Dict, List, Mapping, Optional, Sequence, T
 from ...constants_generated import ErrorCode
 from ...core.errors import PolarisError
 from ...core.models import license_user
-from ..core.identity import ProductIdentity, presentation_source
+from ..core.identity import presentation_source
 from ..core.models import (
     BootView,
     DeviceRow,
@@ -46,11 +46,11 @@ from ..core.models import (
 )
 from ..core.theme import Theme
 from . import fmt, screens
-from .device import Device, Worker, run_in_thread
+from .device import Device, run_in_thread
 from .env import TermEnv, detect
 from .exit import EXIT
 from .parts import Kit
-from .text import Line, Palette, Span, clean, plain
+from .text import Line, Palette, Span, clean
 
 __all__ = ["JSON_VERSION", "Outcome", "Terminal"]
 
@@ -606,7 +606,11 @@ def devices(client: Any, t: Terminal, words: Sequence[str], *, yes: bool = False
     k = t.kit
     action = words[0] if words else "list"
     # The header names the sub-verb, as the Node kit's does (`devices list`, `devices rename`, …).
-    verb = f"{t.verb or 'devices'} {action}" if action in ("list", "rename", "deauthorize", "approve") else (t.verb or "devices")
+    verb = (
+        f"{t.verb or 'devices'} {action}"
+        if action in ("list", "rename", "deauthorize", "approve")
+        else (t.verb or "devices")
+    )
     if action == "approve" and len(words) == 1:
         from . import nearby
 

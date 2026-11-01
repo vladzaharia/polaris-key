@@ -86,7 +86,8 @@ import Foundation
             sink: PlatformEventSink,
             makeDriver: @escaping @Sendable () -> (any BonjourBrowseDriver)? = { nil },
             makeListener: (@Sendable (Bool) -> BonjourListener)? = nil, allowLoopback: Bool = false,
-            writeSeconds: TimeInterval = BonjourHost.writeSeconds, closeSeconds: TimeInterval = BonjourHost.closeSeconds,
+            writeSeconds: TimeInterval = BonjourHost.writeSeconds,
+            closeSeconds: TimeInterval = BonjourHost.closeSeconds,
             configurationCheck: (@Sendable () -> BonjourBrowseError?)? = nil
         ) {
             self.sink = sink
@@ -95,7 +96,9 @@ import Foundation
             self.writeSeconds = writeSeconds
             self.closeSeconds = closeSeconds
             self.makeListener =
-                makeListener ?? { BonjourListener(peerToPeer: $0, policy: BonjourDialPolicy(allowLoopback: allowLoopback)) }
+                makeListener ?? {
+                    BonjourListener(peerToPeer: $0, policy: BonjourDialPolicy(allowLoopback: allowLoopback))
+                }
             self.configurationCheck = configurationCheck ?? BonjourBrowse.processConfigurationCheck
         }
 
@@ -164,7 +167,8 @@ import Foundation
             let existing = lock.withLock { browse != nil }
             if existing { return [Self.busy] }
             let b = BonjourBrowse(
-                options: BonjourBrowseOptions(peerToPeer: p2p), driver: makeDriver(), configurationCheck: configurationCheck,
+                options: BonjourBrowseOptions(peerToPeer: p2p), driver: makeDriver(),
+                configurationCheck: configurationCheck,
                 accept: { [weak self] in self?.isAllowed($0) ?? false })
             let first = lock.withLock { () -> Bool in
                 if browse != nil { return false }
@@ -369,7 +373,10 @@ import Foundation
                     }
                 }
             }
-            return [Self.ok, UInt8(state.id >> 24 & 255), UInt8(state.id >> 16 & 255), UInt8(state.id >> 8 & 255), UInt8(state.id & 255)]
+            return [
+                Self.ok, UInt8(state.id >> 24 & 255), UInt8(state.id >> 16 & 255), UInt8(state.id >> 8 & 255),
+                UInt8(state.id & 255),
+            ]
         }
 
         static func reason(_ error: Error) -> String {
@@ -392,7 +399,10 @@ import Foundation
                     do {
                         guard let chunk = try await pipe.read() else { break }
                         guard state.received(chunk.count) else { return }
-                        let head = [UInt8(state.id >> 24 & 255), UInt8(state.id >> 16 & 255), UInt8(state.id >> 8 & 255), UInt8(state.id & 255)]
+                        let head = [
+                            UInt8(state.id >> 24 & 255), UInt8(state.id >> 16 & 255), UInt8(state.id >> 8 & 255),
+                            UInt8(state.id & 255),
+                        ]
                         sink.emitBinary("bj_data", head + [UInt8](chunk))
                     } catch {
                         reason = "error"

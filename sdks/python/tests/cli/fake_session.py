@@ -126,7 +126,9 @@ class FakeNearbySession:
         self.cancelled = True
         self._stop.set()
 
-    def wait(self, timeout: Any = None, *, once: bool = False, cancel_token: Optional[threading.Event] = None) -> SignInOutcome:
+    def wait(
+        self, timeout: Any = None, *, once: bool = False, cancel_token: Optional[threading.Event] = None
+    ) -> SignInOutcome:
         deadline = time.monotonic() + 10
         while time.monotonic() < deadline:
             if self._stop.is_set() or (cancel_token is not None and cancel_token.is_set()):
@@ -160,7 +162,13 @@ def approver(id_: str = "a1", label: Optional[str] = "Ana's laptop", platform: s
     return SimpleNamespace(id=id_, label=label, platform=platform)
 
 
-def nearby_identity(session: Optional[FakeNearbySession] = None, *, available: bool = True, device_code: Optional[FakeSession] = None, calls: Optional[list] = None) -> SimpleNamespace:
+def nearby_identity(
+    session: Optional[FakeNearbySession] = None,
+    *,
+    available: bool = True,
+    device_code: Optional[FakeSession] = None,
+    calls: Optional[list] = None,
+) -> SimpleNamespace:
     """``client.identity`` with nearby on: ``nearby.available`` and a ``sign_in.start`` that answers the nearby
     session for ``channel="nearby"`` and the device-code ``FakeSession`` otherwise."""
 
@@ -188,7 +196,9 @@ def nearby_identity(session: Optional[FakeNearbySession] = None, *, available: b
 class FakeAsk:
     """A device asking to sign in, as ``identity.nearby.on_request`` hands it to the handler."""
 
-    def __init__(self, step: Any = None, *, device: Optional[str] = "New phone", codes: Any = ("111 111", "482 913", "777 777")) -> None:
+    def __init__(
+        self, step: Any = None, *, device: Optional[str] = "New phone", codes: Any = ("111 111", "482 913", "777 777")
+    ) -> None:
         self.device = device
         self.platform = "linux"
         self.codes = list(codes)
@@ -205,7 +215,9 @@ class FakeAsk:
         return SimpleNamespace(kind="denied")
 
 
-def approver_identity(ask: Optional[FakeAsk] = None, *, raises_: Optional[BaseException] = None, calls: Optional[list] = None) -> SimpleNamespace:
+def approver_identity(
+    ask: Optional[FakeAsk] = None, *, raises_: Optional[BaseException] = None, calls: Optional[list] = None
+) -> SimpleNamespace:
     """``client.identity`` for ``devices approve``: ``nearby.on_request`` hands ``ask`` to the handler at once
     (or raises) and answers a handle that records ``stop``."""
 

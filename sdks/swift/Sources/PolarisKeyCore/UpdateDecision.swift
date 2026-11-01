@@ -9,8 +9,12 @@
 // Nothing here imports Sparkle or sits behind `#if os(macOS)`: an iOS app (App Store, TestFlight,
 // a marketplace) is a "decide only" host and needs exactly this. Nothing here does I/O or throws.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 // ── The compiled tables (§2.9; `outlet-matrix.json#/kinds`, `#/platformNarrowing`, …) ─────────
 

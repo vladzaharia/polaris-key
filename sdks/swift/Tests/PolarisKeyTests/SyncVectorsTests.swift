@@ -3,11 +3,15 @@
 // WIRE-CONTRACT-V5 §13.10): hkdfCases, envelopeCases, blindCases and canonicalJsonCases. The
 // other sections belong to later work packages; a runner reads named sections only.
 
-import CryptoKit
 import Foundation
 import Testing
 
 @testable import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private struct Vectors: Decodable {
     struct Hkdf: Decodable {

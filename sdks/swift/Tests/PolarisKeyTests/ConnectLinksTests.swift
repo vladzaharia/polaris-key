@@ -5,7 +5,6 @@
 // corpus `contact` rows and the two-channel pairing are in `PeerContactTests.swift`; the transcripts replay in
 // `TranscriptTests.swift`. Mirrors the Node package's `test/connect/links.test.ts`.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import PolarisKeyPlatform
@@ -13,6 +12,11 @@ import XCTest
 
 @testable import PolarisKey
 @testable import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 #if canImport(Network)
     import Network

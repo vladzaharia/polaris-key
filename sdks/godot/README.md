@@ -968,7 +968,7 @@ store's `dh`. The root, the code and every key print as redacted.
 - **Device keys.** The ring opens its wrap with the product's own device key store under
   `store_root`, or the one you give as `PKeyOptions.device_keys`. The store follows the same rule as
   the vault: sealed where a native lane exists, an `encrypted-file` (obfuscation, not protection)
-  where not, and `PKeyDeviceKeyStore.new(..., false)` is refused (`invalid-options`, `protection()`
+  where not, and a store made with `encrypted = false` is refused (`invalid-options`, `protection()`
   is `refused`); the private keys are never written as a plain file. `PKeyDeviceKeyStore.for_tests`
   keeps a plain file for test suites. `wipe()` on a refused store deletes a plain `device-keys` file
   (and its salt and temporary siblings) an older build left behind, by name and without reading it.
@@ -991,7 +991,7 @@ func _ready() -> void:
 		print(peer["device_id"], peer["lan"], peer["relay"])
 
 func _on_channel(session: PKeyConnectSession) -> void:
-	session.message.connect(func(type, body): print(type, body.size()))
+	session.message.connect(func(type: int, body: PackedByteArray): print(type, body.size()))
 
 func send_to(device_id: String) -> void:
 	var r := await PolarisKey.cloud_connect.open(device_id)
@@ -1121,17 +1121,19 @@ with `sync-locked`.
 
 ```gdscript
 func save_game(bytes: PackedByteArray) -> void:
-	var transfer: PKeyTransfer = PolarisKey.cloud_sync.saves.write("slot1", bytes, {"chapter": "two", "playtime": 5400, "formatVersion": 3})
+	var saves: PKeySaves = PolarisKey.cloud_sync.saves
+	var transfer: PKeyTransfer = saves.write("slot1", bytes, {"chapter": "two", "playtime": 5400, "formatVersion": 3})
 	var outcome: Dictionary = await transfer.wait()        # done, cancelled, failed or conflict; never an error value
 	match outcome.state:
 		"done": print("saved at version ", outcome.version)
 		"conflict":                                         # another device wrote first
-			var kept := PolarisKey.cloud_sync.saves.resolve(outcome.conflict, "local", bytes)   # or "remote" or "both"
+			var kept: PKeyTransfer = saves.resolve(outcome.conflict, "local", bytes)   # or "remote" or "both"
 			await kept.wait()
 
 func load_game() -> void:
-	var list: PKeyResult = await PolarisKey.cloud_sync.saves.list()      # [{id, version, metadata, file, newer_format}], at most 16
-	var read: PKeyResult = await PolarisKey.cloud_sync.saves.read("slot1")  # {id, version, metadata, file, bytes}
+	var saves: PKeySaves = PolarisKey.cloud_sync.saves
+	var list: PKeyResult = await saves.list()      # [{id, version, metadata, file, newer_format}], at most 16
+	var read: PKeyResult = await saves.read("slot1")  # {id, version, metadata, file, bytes}
 ```
 
 `write(id, bytes, metadata, opts)` returns at once. `opts` may carry `base_version` (an int, or `"*"` to

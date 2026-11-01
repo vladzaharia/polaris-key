@@ -51,6 +51,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -369,7 +370,7 @@ public class CloudConnect internal constructor(
         // Then the nearby adverts and sessions (after Connect, before the device leaves it), under the same bound.
         if (withTimeoutOrNull(stopMillis) { nearby.stopAll() } == null) nearby.forceStop()
         // The kept partial files are this person's: they go with the sign-out.
-        transfer.purgeAll()
+        withContext(Dispatchers.IO) { transfer.purgeAll() }
     }
 
     /** The client's `close()`: tear down in the background, then release the facade's scope. */

@@ -11,8 +11,12 @@
 // partial fingerprint loses match precision, whereas a placeholder would make every partial
 // reader collide with every other one.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 #if os(macOS)
 import IOKit

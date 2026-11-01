@@ -9,11 +9,15 @@
 // pins every verdict across SDKs (`delegationCases`, `dataOnlyCases`); these pin the I/O around
 // them.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import PolarisKeyPacks
 import XCTest
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private let delegationPlans = Locked2(0)
 

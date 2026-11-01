@@ -8,8 +8,12 @@
 // the feed's pin, then a delegated record's scope. Nothing here does I/O or throws.
 // client-core's `record.ts` is the reference.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// P2-04's `BUILD_ID_RE`: ASCII, so build-id uniqueness and §2.8's tie-break compare bytes.
 public let BUILD_ID_PATTERN = "[a-z0-9][a-z0-9._-]{0,63}"

@@ -14,16 +14,15 @@ from typing import Any, Callable, Dict, List, Optional
 
 import httpx
 import pytest
+from helpers import PRODUCT
+from test_identity_account import SUBJECT, ok
+from test_identity_mint import T0
+from test_identity_nearby import HANDLE, TOKEN_ANSWER, Fake, client, nearby_discovery, queue
+from test_transcripts import _FixtureKeys
 
 from polaris_key import AsyncClient, PolarisError
 from polaris_key.core.caps import UnsupportedError
 from polaris_key.identity.nearby_session import KEYRING_WRAP_RECORD, NearbyApprover, NearbyCode
-
-from helpers import PRODUCT
-from test_identity_account import SUBJECT, ok
-from test_identity_mint import T0, clock  # noqa: F401
-from test_identity_nearby import HANDLE, TOKEN_ANSWER, Fake, client, nearby_discovery, queue
-from test_transcripts import _FixtureKeys
 
 PENDING = httpx.Response(200, json={"status": "pending"})
 START = httpx.Response(201, json={"request": HANDLE, "expiresIn": 300, "interval": 3})
@@ -211,7 +210,11 @@ def test_the_poll_is_the_authority_not_vouch_result(clock) -> None:
 
 
 def test_a_token_from_the_poll_is_a_sign_in_stored_as_device_code_stores_it(clock, tmp_path: Any) -> None:
-    w = Fake(nearby_discovery(), start=START, poll=queue(PENDING, httpx.Response(429, json={"status": "slow_down", "interval": 5}), TOKEN))
+    w = Fake(
+        nearby_discovery(),
+        start=START,
+        poll=queue(PENDING, httpx.Response(429, json={"status": "slow_down", "interval": 5}), TOKEN),
+    )
     c = client(w, state_dir=str(tmp_path))
     c.identity.sign_out()  # signed out earlier: the flag is up
     fake = wire(c)
@@ -265,7 +268,11 @@ def test_timeout_is_expired_and_closes_the_lan_side(clock) -> None:
 
 
 def test_the_request_lapsing_locally_is_expired_without_another_poll(clock) -> None:
-    w = Fake(nearby_discovery(), start=httpx.Response(201, json={"request": HANDLE, "expiresIn": 4, "interval": 3}), poll=PENDING)
+    w = Fake(
+        nearby_discovery(),
+        start=httpx.Response(201, json={"request": HANDLE, "expiresIn": 4, "interval": 3}),
+        poll=PENDING,
+    )
     c = client(w)
     fake = wire(c)
     s = c.identity.sign_in.start(channel="nearby")
@@ -274,7 +281,9 @@ def test_the_request_lapsing_locally_is_expired_without_another_poll(clock) -> N
 
 
 def test_a_denial_raises_sign_in_denied(clock) -> None:
-    w = Fake(nearby_discovery(), start=START, poll=httpx.Response(200, json={"status": "error", "reason": "access_denied"}))
+    w = Fake(
+        nearby_discovery(), start=START, poll=httpx.Response(200, json={"status": "error", "reason": "access_denied"})
+    )
     c = client(w)
     fake = wire(c)
     s = c.identity.sign_in.start(channel="nearby")
@@ -648,7 +657,7 @@ def test_cancel_or_close_before_confirm_signs_the_device_out(clock) -> None:
         c, fake, s = session(w)
         assert s.wait().kind == "signed_in" and c._tokens.current is not None
         ended: List[int] = []
-        s.on_end(lambda: ended.append(1))
+        s.on_end(lambda ended=ended: ended.append(1))
         getattr(s, end)()
         assert c._tokens.current is None and len(_signouts(w)) == 1
         assert s.ended is True and ended == [1]

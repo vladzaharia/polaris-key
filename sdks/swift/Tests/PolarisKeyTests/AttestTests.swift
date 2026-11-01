@@ -5,12 +5,16 @@
 // the key id kept and reused, a dead key replaced in the same call, the typed N/As, and the
 // attest-and-retry on a 403 `attestation_required` edge-mint.
 
-import CryptoKit
 import Foundation
 import PolarisKey
 import PolarisKeyCore
 import PolarisKeyPlatform
 import XCTest
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 final class FakeAttest: AppAttestClient, @unchecked Sendable {
     private let lock = NSLock()

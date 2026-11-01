@@ -6,12 +6,16 @@
 // verified and bound to this device, a stale or foreign roster refused, K_disc replaced and
 // never logged, the previous key gone after a leave, and the typed refusals.
 
-import CryptoKit
 import Foundation
 import XCTest
 
 @testable import PolarisKey
 @testable import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 // ── Corpus ───────────────────────────────────────────────────────────────────────────
 

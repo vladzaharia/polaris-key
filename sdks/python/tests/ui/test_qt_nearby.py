@@ -21,17 +21,18 @@ import pytest
 
 pytest.importorskip("PySide6.QtQuick")
 
+from qt_fixtures import TIDEWATER, FakeSource, with_defaults
+
 from polaris_key.core.errors import PolarisError
 from polaris_key.identity.sign_in import SignedInIdentity, SignInOutcome
+from polaris_key.ui.core import ui_signin
 from polaris_key.ui.core.copy import Copy
 from polaris_key.ui.core.theme import Theme
 from polaris_key.ui.core.ui_contract import context_of
-from polaris_key.ui.core import ui_signin
 from polaris_key.ui.qt.account import AccountPage
 from polaris_key.ui.qt.gate import run_gate
 from polaris_key.ui.qt.layout import build_spec
-from polaris_key.ui.qt.nearby import Approver, ForegroundApprover, NearbyApprovalPage
-from qt_fixtures import TIDEWATER, FakeSource, with_defaults
+from polaris_key.ui.qt.nearby import ForegroundApprover, NearbyApprovalPage
 
 COPY = Copy("en", platform="desktop")
 
@@ -78,8 +79,15 @@ def test_ask_draws_the_three_codes_as_buttons_and_deny_is_the_other() -> None:
 def test_choose_draws_the_licenses_and_a_new_one_and_has_no_second_step() -> None:
     spec = _spec(_approval("choose", device="Kitchen iPad", choices=["Pro", "Harbor Audio team"], create=True))
     # One tap per license, then Deny: leaving the choice answers Deny, as at the codes (UXR-47 B1).
-    assert [b.key for b in spec.buttons] == ["nearby.choice.1", "nearby.choice.2", "nearby.choice.create", "signin.approve.deny"]
-    assert spec.buttons[2].text == COPY("signin.choice.create") and "Use this license" not in [b.text for b in spec.buttons]
+    assert [b.key for b in spec.buttons] == [
+        "nearby.choice.1",
+        "nearby.choice.2",
+        "nearby.choice.create",
+        "signin.approve.deny",
+    ]
+    assert spec.buttons[2].text == COPY("signin.choice.create") and "Use this license" not in [
+        b.text for b in spec.buttons
+    ]
     assert COPY("common.cancel") not in [b.text for b in spec.buttons]
 
 
@@ -90,7 +98,16 @@ def test_an_unnamed_device_is_the_new_device_in_a_sentence_and_at_its_start() ->
 
 
 def test_the_nearby_wait_shows_its_code_in_the_code_block_with_a_code_instead() -> None:
-    wait = ui_signin.sign_in_view(context_of(with_defaults({"signIn": {"presentation": "inline", "replace": "browser", "channel": "browser"}, "autoSignIn": {"step": "nearby-wait", "code": "482 913"}})))
+    wait = ui_signin.sign_in_view(
+        context_of(
+            with_defaults(
+                {
+                    "signIn": {"presentation": "inline", "replace": "browser", "channel": "browser"},
+                    "autoSignIn": {"step": "nearby-wait", "code": "482 913"},
+                }
+            )
+        )
+    )
     spec = _spec(wait)
     assert spec.code is not None and spec.code.value == "482 913" and spec.progress == -1.0
     # The person's job is on the other device: the way out of nearby is a text control, never the filled one (B4).
@@ -100,7 +117,16 @@ def test_the_nearby_wait_shows_its_code_in_the_code_block_with_a_code_instead() 
 
 
 def test_several_approvers_are_buttons_before_a_code_is_chosen() -> None:
-    wait = ui_signin.sign_in_view(context_of(with_defaults({"signIn": {"presentation": "inline", "replace": "browser", "channel": "browser"}, "autoSignIn": {"step": "nearby-wait", "approvers": ["Ana's laptop", "Ben's phone"]}})))
+    wait = ui_signin.sign_in_view(
+        context_of(
+            with_defaults(
+                {
+                    "signIn": {"presentation": "inline", "replace": "browser", "channel": "browser"},
+                    "autoSignIn": {"step": "nearby-wait", "approvers": ["Ana's laptop", "Ben's phone"]},
+                }
+            )
+        )
+    )
     spec = _spec(wait)
     assert [b.key for b in spec.buttons if b.key.startswith("nearby.pick.")] == ["nearby.pick.1", "nearby.pick.2"]
     assert spec.code is None and "Ana's laptop" in [plain(b.text) for b in spec.buttons]
@@ -108,7 +134,6 @@ def test_several_approvers_are_buttons_before_a_code_is_chosen() -> None:
 
 def test_the_account_menu_entry_is_a_secondary_button() -> None:
     from polaris_key.ui.core.ui_settings import account_view
-
     from polaris_key.ui.qt.account import _replace_copy
 
     view = account_view(context_of(with_defaults({"account": {"signedIn": True, "holder": "Ada"}})))
@@ -207,7 +232,10 @@ class FakeIdentity:
             expires_in=600,
             interval=5,
             expires_at=int(time.time()) + 600,
-            wait=lambda timeout=None, *, once=False, confirm=None, cancel_token=None: (cancel_token.wait(5) if cancel_token is not None else None, SignInOutcome(kind="cancelled"))[1],
+            wait=lambda timeout=None, *, once=False, confirm=None, cancel_token=None: (
+                cancel_token.wait(5) if cancel_token is not None else None,
+                SignInOutcome(kind="cancelled"),
+            )[1],
         )
 
 
@@ -218,7 +246,9 @@ class FakeClient:
         self.core = SimpleNamespace(enabled=lambda slug: slug in ("license", "config", "identity"))
         self.license = SimpleNamespace(
             activate_with_key=lambda key: SimpleNamespace(kind="ok"),
-            license_info=lambda: SimpleNamespace(tier="pro", tierLabel="Pro", deviceLimit=3, entitledChannels=["stable"]),
+            license_info=lambda: SimpleNamespace(
+                tier="pro", tierLabel="Pro", deviceLimit=3, entitledChannels=["stable"]
+            ),
         )
         self.identity = FakeIdentity(self, **kw)
 
@@ -235,7 +265,12 @@ class Rig:
         self.opened: List[int] = []
         self.clock = [1000.0]
         self.gate = run_gate(
-            client, None, theme=Theme(color_scheme="dark", platform="gnome"), size=(480, 720), on_open=lambda: self.opened.append(1), open_url=lambda url: True
+            client,
+            None,
+            theme=Theme(color_scheme="dark", platform="gnome"),
+            size=(480, 720),
+            on_open=lambda: self.opened.append(1),
+            open_url=lambda url: True,
         )
         self.gate.flow._clock = lambda: self.clock[0]
         self.gate.flow._os = os_name
@@ -300,7 +335,9 @@ def test_a_lone_approver_is_chosen_after_3_s_its_code_is_shown_and_continue_conf
     assert r.client.identity.available_calls == ["requester"] and session is not None
     session.approvers = [approver()]
     r.tick()  # the approver answers: its 3 s start here, and its row shows meanwhile (UXR-47 N1)
-    assert r.shown == "SignIn.nearby-wait" and [b.key for b in r.spec.buttons if b.key.startswith("nearby.pick.")] == ["nearby.pick.1"]
+    assert r.shown == "SignIn.nearby-wait" and [b.key for b in r.spec.buttons if b.key.startswith("nearby.pick.")] == [
+        "nearby.pick.1"
+    ]
     r.tick(2.9)
     assert session.chosen == [] and r.shown == "SignIn.nearby-wait"  # the 3 s window has not ended
     r.tick(0.2)
@@ -428,7 +465,11 @@ def test_a_refused_poll_is_the_sign_in_s_own_refusal(rig):
     r.until("SignInHandoff.denied")
 
 
-@pytest.mark.parametrize("make", [lambda: FakeClient(available=False), lambda: FakeClient(start_error=PolarisError("nearby-unsupported", "no"))], ids=["not on offer", "unsupported"])
+@pytest.mark.parametrize(
+    "make",
+    [lambda: FakeClient(available=False), lambda: FakeClient(start_error=PolarisError("nearby-unsupported", "no"))],
+    ids=["not on offer", "unsupported"],
+)
 def test_where_nearby_is_not_on_offer_or_cannot_start_the_regular_sign_in_shows(rig, make):
     r = rig(make())
     r.press("welcome.signIn")
@@ -467,7 +508,9 @@ def test_not_now_goes_to_the_regular_sign_in_and_browses_nothing(rig, tmp_path: 
     r.press("welcome.signIn")
     r.until("SignIn.nearby-prompt")
     r.press("common.notNow")
-    assert r.shown == "SignIn.methods" and client.identity.session is None and not (tmp_path / "nearby-browsed").exists()
+    assert (
+        r.shown == "SignIn.methods" and client.identity.session is None and not (tmp_path / "nearby-browsed").exists()
+    )
 
 
 # ── M: the approval ────────────────────────────────────────────────────────────────────────────
@@ -495,10 +538,16 @@ class FakeApproverClient:
     """A signed-in client whose ``identity.nearby.on_request`` hands ``ask`` to the handler, and records the
     advert: its options, and ``stop`` / ``pause`` / ``resume`` / ``set_prompt``."""
 
-    def __init__(self, ask: Optional[FakeAsk] = None, *, available: bool = True, error: Optional[BaseException] = None) -> None:
+    def __init__(
+        self, ask: Optional[FakeAsk] = None, *, available: bool = True, error: Optional[BaseException] = None
+    ) -> None:
         self.presentation_source = FakeSource(TIDEWATER)
         self.core = SimpleNamespace(enabled=lambda slug: slug in ("license", "config", "identity"))
-        self.license = SimpleNamespace(license_info=lambda: SimpleNamespace(tier="pro", tierLabel="Pro", deviceLimit=3, entitledChannels=["stable"]))
+        self.license = SimpleNamespace(
+            license_info=lambda: SimpleNamespace(
+                tier="pro", tierLabel="Pro", deviceLimit=3, entitledChannels=["stable"]
+            )
+        )
         self.calls: List[str] = []
         self.options: Dict[str, Any] = {}
         self.ask = ask
@@ -554,7 +603,9 @@ def test_a_device_asks_its_codes_are_buttons_and_a_pick_approves_and_stops_the_a
     pump(kit_app, lambda: shown(p) == "NearbyApproval.ask")
     spec = p.kit.bridge.screen_spec
     assert plain(spec.title) == "Let New phone sign in?" and [b.text for b in spec.buttons[:3]] == ask.codes
-    assert client.options["prompt"] is True and client.options.get("background") is False  # open only while the screen is
+    assert (
+        client.options["prompt"] is True and client.options.get("background") is False
+    )  # open only while the screen is
     p.kit.bridge.invoke("nearby.code.2", "")
     pump(kit_app, lambda: shown(p) == "NearbyApproval.approved")
     assert ask.picks == ["482 913"] and plain(p.kit.bridge.screen_spec.title) == "New phone is signed in"
@@ -590,7 +641,12 @@ def test_leaving_the_codes_or_the_license_choice_answers_deny(kit_app, page):
     assert ask.denied == 1 and ask.picks == []
     cancelled: List[int] = []
     view = {"choices": [{"id": "lic_1", "tierName": "Pro", "name": None, "state": "free"}], "create": None}
-    step = SimpleNamespace(kind="choose", choices=view, choose=lambda c: SimpleNamespace(kind="approved"), cancel=lambda: (cancelled.append(1), SimpleNamespace(kind="denied"))[1])
+    step = SimpleNamespace(
+        kind="choose",
+        choices=view,
+        choose=lambda c: SimpleNamespace(kind="approved"),
+        cancel=lambda: (cancelled.append(1), SimpleNamespace(kind="denied"))[1],
+    )
     q = page(FakeApproverClient(FakeAsk(step)))
     pump(kit_app, lambda: shown(q) == "NearbyApproval.ask")
     q.kit.bridge.invoke("nearby.code.1", "")
@@ -607,9 +663,9 @@ def test_the_waiting_entry_says_what_it_waits_for_and_outcomes_carry_a_mark(kit_
     assert [b.text for b in spec.buttons] == [COPY("common.cancel")]
     for kind, mark in (("approved", "ok"), ("mismatch", "warn"), ("expired", "warn"), ("denied", "")):
         p = page(FakeApproverClient(FakeAsk(SimpleNamespace(kind=kind))))
-        pump(kit_app, lambda: shown(p) == "NearbyApproval.ask")
+        pump(kit_app, lambda p=p: shown(p) == "NearbyApproval.ask")
         p.kit.bridge.invoke("nearby.code.1", "")
-        pump(kit_app, lambda k=kind: shown(p) == f"NearbyApproval.{k}")
+        pump(kit_app, lambda k=kind, p=p: shown(p) == f"NearbyApproval.{k}")
         assert p.kit.bridge.screen_spec.title_mark == mark
     mismatch = page(FakeApproverClient(FakeAsk(SimpleNamespace(kind="mismatch"))))
     pump(kit_app, lambda: shown(mismatch) == "NearbyApproval.ask")
@@ -621,7 +677,11 @@ def test_the_waiting_entry_says_what_it_waits_for_and_outcomes_carry_a_mark(kit_
 def test_the_license_choice_is_buttons_and_the_last_row_creates_one(kit_app, page):
     chosen: List[Any] = []
     view = {
-        "choices": [{"id": "lic_1", "tierName": "Pro", "name": None, "state": "free"}, {"id": "lic_2", "tierName": "Team", "name": "Harbor team", "state": "free"}, {"id": "lic_3", "tierName": "Full", "name": "Full", "state": "full"}],
+        "choices": [
+            {"id": "lic_1", "tierName": "Pro", "name": None, "state": "free"},
+            {"id": "lic_2", "tierName": "Team", "name": "Harbor team", "state": "free"},
+            {"id": "lic_3", "tierName": "Full", "name": "Full", "state": "full"},
+        ],
         "create": {"tierName": "Pro", "access": "account"},
     }
     step = SimpleNamespace(
@@ -635,13 +695,25 @@ def test_the_license_choice_is_buttons_and_the_last_row_creates_one(kit_app, pag
     p.kit.bridge.invoke("nearby.code.1", "")
     pump(kit_app, lambda: shown(p) == "NearbyApproval.choose")
     labels = [plain(b.text) for b in p.kit.bridge.screen_spec.buttons]
-    assert labels[:3] == ["Pro", "Harbor team", COPY("signin.choice.create")] and "Full" not in labels  # a full license cannot be given
+    assert (
+        labels[:3] == ["Pro", "Harbor team", COPY("signin.choice.create")] and "Full" not in labels
+    )  # a full license cannot be given
     p.kit.bridge.invoke("nearby.choice.2", "")
     pump(kit_app, lambda: shown(p) == "NearbyApproval.approved")
     assert chosen == [{"kind": "license", "licenseId": "lic_2"}]
 
 
-@pytest.mark.parametrize("kind,state", [("mismatch", "mismatch"), ("not-nearby", "not-nearby"), ("expired", "expired"), ("rate-limited", "rate-limited"), ("device-limit", "device-limit"), ("account-required", "account-required")])
+@pytest.mark.parametrize(
+    "kind,state",
+    [
+        ("mismatch", "mismatch"),
+        ("not-nearby", "not-nearby"),
+        ("expired", "expired"),
+        ("rate-limited", "rate-limited"),
+        ("device-limit", "device-limit"),
+        ("account-required", "account-required"),
+    ],
+)
 def test_each_outcome_has_its_own_screen(kit_app, page, kind, state):
     p = page(FakeApproverClient(FakeAsk(SimpleNamespace(kind=kind))))
     pump(kit_app, lambda: shown(p) == "NearbyApproval.ask")
@@ -690,7 +762,12 @@ def test_the_account_pane_offers_the_entry_and_runs_the_approval_in_place(kit_ap
     try:
         pump(kit_app, lambda: any(b.key == "signin.nearby.menu" for b in acct.kit.bridge.screen_spec.buttons))
         acct.kit.bridge.invoke("signin.nearby.menu", "")
-        pump(kit_app, lambda: acct.screen is not None and acct.screen.component == "NearbyApproval" and acct.screen.state == "ask")
+        pump(
+            kit_app,
+            lambda: (
+                acct.screen is not None and acct.screen.component == "NearbyApproval" and acct.screen.state == "ask"
+            ),
+        )
         acct.kit.bridge.invoke("nearby.code.2", "")
         pump(kit_app, lambda: acct.screen.state == "approved")
         assert ask.picks == ["482 913"]
@@ -732,7 +809,9 @@ def test_leaving_the_approval_pane_stops_the_advert(kit_app):
 def _grab(kit_app: Any, view: Any, scheme: str) -> Any:
     from polaris_key.ui.qt.kit import KitView
 
-    kit = KitView(Theme(color_scheme=scheme, platform="gnome"), source=FakeSource(TIDEWATER), size=(480, 560), loading_delay_ms=0)
+    kit = KitView(
+        Theme(color_scheme=scheme, platform="gnome"), source=FakeSource(TIDEWATER), size=(480, 560), loading_delay_ms=0
+    )
     try:
         kit.set_view(view)
         return kit.grab()
@@ -750,8 +829,14 @@ def _wait_pick() -> Any:
 @pytest.mark.parametrize(
     "name,make",
     [
-        ("nearbyapproval-ask-codes", lambda: _approval("ask", device="Kitchen iPad", codes=["111 111", "482 913", "777 777"])),
-        ("nearbyapproval-choose-licenses", lambda: _approval("choose", device="Kitchen iPad", choices=["Pro", "Harbor Audio team"], create=True)),
+        (
+            "nearbyapproval-ask-codes",
+            lambda: _approval("ask", device="Kitchen iPad", codes=["111 111", "482 913", "777 777"]),
+        ),
+        (
+            "nearbyapproval-choose-licenses",
+            lambda: _approval("choose", device="Kitchen iPad", choices=["Pro", "Harbor Audio team"], create=True),
+        ),
         ("signin-nearby-wait-pick", _wait_pick),
     ],
     ids=["ask-codes", "choose-licenses", "wait-pick"],

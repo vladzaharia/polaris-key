@@ -6,7 +6,7 @@ arrives before it is held (at most 8) and never seats the sender as the peer. Mi
 from __future__ import annotations
 
 import asyncio
-from typing import Any, List
+from typing import List
 
 from polaris_key.connect.contact_relay import MAX_DEFERRED, ContactRelaySource, ContactRoom
 from polaris_key.connect.contacts import LiveContact
@@ -33,7 +33,9 @@ def _room() -> ContactRoom:
         reachable=True,
         pending=False,
     )
-    r = ContactRoom(ContactRelaySource(None, lambda _rid: None), c, RelayOptions(), lambda _s: None, lambda _r: None, True)  # type: ignore[arg-type]
+    r = ContactRoom(
+        ContactRelaySource(None, lambda _rid: None), c, RelayOptions(), lambda _s: None, lambda _r: None, True
+    )  # type: ignore[arg-type]
     r._own = bytes([1]) * 24
     r._open = True
     r._outbox = _Outbox()  # type: ignore[assignment]

@@ -419,7 +419,9 @@ class NearbyRoutes:
             longer = _json(res).get("interval")
             return NearbyPollResult(
                 kind="slow_down",
-                interval=int(math.ceil(longer)) if isinstance(longer, (int, float)) and _seconds(longer) else started.interval + 5,
+                interval=int(math.ceil(longer))
+                if isinstance(longer, (int, float)) and _seconds(longer)
+                else started.interval + 5,
             )
         if status == 503:
             return NearbyPollResult(kind="retry", retry_after_seconds=_retry_after(res))
@@ -490,7 +492,9 @@ class NearbyRoutes:
         request, device_id, sign_key, agree_key = vouch.request, vouch.device_id, vouch.sign_key, vouch.agree_key
         if decision not in ("approve", "deny"):
             raise PolarisError(ErrorCode.INVALID_OPTIONS, 'nearby: decision must be "approve" or "deny".')
-        if not (isinstance(sign_key, str) and _KEY.match(sign_key) and isinstance(agree_key, str) and _KEY.match(agree_key)):
+        if not (
+            isinstance(sign_key, str) and _KEY.match(sign_key) and isinstance(agree_key, str) and _KEY.match(agree_key)
+        ):
             raise PolarisError(ErrorCode.INVALID_OPTIONS, "nearby: D's keys are malformed.")
         if not isinstance(device_id, str) or not device_id:
             raise PolarisError(ErrorCode.INVALID_OPTIONS, "nearby: D's device id is missing.")

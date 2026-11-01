@@ -37,9 +37,13 @@
 //
 // Nothing here puts a key, a plaintext byte or a bearer token in an error or a log line.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// §13.8.1: at most 4 parts in flight.
 public let transferMaxParallelParts = SYNC_UPLOAD_PARALLELISM

@@ -14,29 +14,27 @@ import copy
 import dataclasses
 import json
 import pickle
-from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
 import httpx
 import pytest
+from helpers import PRODUCT, make_client
+from test_identity_account import BASE, SUBJECT, Worker, discovery, ok
+from test_transcripts import TRANSCRIPTS, _FixtureKeys, replay
 
 from polaris_key import PolarisError
 from polaris_key.devices.store import InMemoryStore
 from polaris_key.identity.nearby import (
+    _GRANTS,
     NearbyCredentials,
     NearbyPollResult,
     NearbyRefused,
     NearbyStarted,
     NearbyUnavailable,
-    _GRANTS,
     _grant,
     _Vouch,
 )
-
-from helpers import BASE_URL, PRODUCT, make_client
-from test_identity_account import BASE, SUBJECT, Worker, discovery, ok
-from test_transcripts import TRANSCRIPTS, _FixtureKeys, replay
 
 NEARBY = [t for t in TRANSCRIPTS if t["id"].startswith("nearby-")]
 HANDLE = "nr_" + "A" * 22
@@ -164,7 +162,11 @@ def test_nothing_is_sent_when_discovery_names_no_nearby_or_not_the_endpoint() ->
     c = client(w)
     r = routes(c).approve(
         creds(c, token="pkeyt_m"),
-        vouch(device_id="D" * 32, sign_key=_FixtureKeys("d").ensure().sign_key, agree_key=_FixtureKeys("d").ensure().agree_key),
+        vouch(
+            device_id="D" * 32,
+            sign_key=_FixtureKeys("d").ensure().sign_key,
+            agree_key=_FixtureKeys("d").ensure().agree_key,
+        ),
     )
     assert r.kind == "unavailable" and w.nearby_calls() == []
 
@@ -291,7 +293,10 @@ def test_a_token_is_stored_unconfirmed_until_the_person_confirms(tmp_path: Any) 
     c.identity._deps.on_acquired = lambda: acquired.append(1)
     r = routes(c).poll(d, started_by(c, d))
     assert isinstance(r, NearbyPollResult) and (r.kind, r.subject, r.scope, r.license_id) == (
-        "signed_in", SUBJECT, "email", "lic_n1",
+        "signed_in",
+        SUBJECT,
+        "email",
+        "lic_n1",
     )
     assert c._tokens.current == "pkeyt_nearby_token"
     # Unconfirmed (D-21): no sign-in mark, the explicit sign-out stands, no subject and no event yet.
@@ -347,7 +352,11 @@ def test_approve_sends_m_s_id_bearer_and_exactly_the_requests_keys() -> None:
     assert call["auth"] == "Bearer pkeyt_m"
     k = _FixtureKeys("d-1").ensure()
     assert {x: call["body"][x] for x in ("request", "deviceId", "signKey", "agreeKey", "decision")} == {
-        "request": HANDLE, "deviceId": "D" * 32, "signKey": k.sign_key, "agreeKey": k.agree_key, "decision": "approve",
+        "request": HANDLE,
+        "deviceId": "D" * 32,
+        "signKey": k.sign_key,
+        "agreeKey": k.agree_key,
+        "decision": "approve",
     }
     assert "choice" not in call["body"]
 
@@ -356,7 +365,9 @@ def test_approve_choose_deny_and_the_choice() -> None:
     choices = {"state": "choose", "choices": [{"id": "lic_1"}]}
     w = Fake(
         nearby_discovery(),
-        approve=queue(ok(status="choose", choices=choices), ok(status="approved", deviceLabel=None), httpx.Response(204)),
+        approve=queue(
+            ok(status="choose", choices=choices), ok(status="approved", deviceLabel=None), httpx.Response(204)
+        ),
     )
     c = client(w)
     m = creds(c, "m-1", "pkeyt_m", "M" * 32)

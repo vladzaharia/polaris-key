@@ -4,12 +4,16 @@
 // not match; names that look like paths stay display data; the partial store's layout and purge. The pipes are
 // in memory; no socket is opened.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import XCTest
 
 @testable import PolarisKey
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private let sub = "ps_AAAAAAAAAAAAAAAAAAAAAA"
 private let idA = "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH"

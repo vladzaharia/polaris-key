@@ -5,12 +5,16 @@
 // deadline and the byte cap), the cache (by hash, re-hashed on read, pruned to
 // PRESENTATION_CACHE_MAX_FILES), `presentation.json` for cold starts, and the client's accessor.
 
-import CryptoKit
 import Foundation
 import PolarisKey
 import XCTest
 
 @testable import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 // ── The matrix ───────────────────────────────────────────────────────────────────────────────
 

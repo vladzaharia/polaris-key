@@ -5,7 +5,6 @@
 // Account. The wire conversations are the exchange transcripts' (I-44.3). Rung 2 and the restore
 // item's life (I-49.9) run over a fake `RestoreItemStore`; TranscriptTests replays the restore transcripts.
 
-import CryptoKit
 import Foundation
 import PolarisKey
 import PolarisKeyPlatform
@@ -13,6 +12,11 @@ import XCTest
 
 @testable import PolarisKeyCore
 @testable import PolarisKeyIdentity
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private final class FakeProvider: PlatformIdentityProvider, @unchecked Sendable {
     let kind: ExchangeKind = .apple

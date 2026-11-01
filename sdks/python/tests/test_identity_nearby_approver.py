@@ -13,15 +13,14 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 import pytest
+from test_identity_nearby import HANDLE, Fake, client, nearby_discovery, queue
+from test_transcripts import _FixtureKeys
 
 from polaris_key import PolarisError
 from polaris_key.core.caps import UnsupportedError
 from polaris_key.core.peer_nearby import FinishOutcome
 from polaris_key.identity.nearby import _grant
 from polaris_key.identity.nearby_approver import MAX_ASKS, NearbyApprovalStep, NearbyAsk
-
-from test_identity_nearby import HANDLE, Fake, client, nearby_discovery, queue
-from test_transcripts import _FixtureKeys
 
 D_ID = "D" * 32
 CODES = ["111 111", "482 913", "777 777"]
@@ -68,7 +67,9 @@ class FakeNearby:
 
 def request_for(c: Any) -> Any:
     k = _FixtureKeys("d-1").ensure()
-    return SimpleNamespace(request=HANDLE, device_id=D_ID, sign_key=k.sign_key, agree_key=k.agree_key, label="New phone", platform="linux")
+    return SimpleNamespace(
+        request=HANDLE, device_id=D_ID, sign_key=k.sign_key, agree_key=k.agree_key, label="New phone", platform="linux"
+    )
 
 
 def wire(c: Any, supported: bool = True) -> FakeNearby:
@@ -135,7 +136,11 @@ def test_the_right_code_approves_with_exactly_the_verified_requests_keys_and_fin
     k = _FixtureKeys("d-1").ensure()
     assert call["auth"] == "Bearer pkeyt_m"
     assert {x: call["body"][x] for x in ("request", "deviceId", "signKey", "agreeKey", "decision")} == {
-        "request": HANDLE, "deviceId": D_ID, "signKey": k.sign_key, "agreeKey": k.agree_key, "decision": "approve",
+        "request": HANDLE,
+        "deviceId": D_ID,
+        "signKey": k.sign_key,
+        "agreeKey": k.agree_key,
+        "decision": "approve",
     }
     (answer,) = approval.finishes
     assert (answer.http, answer.discovery_nearby) == (200, True)
@@ -254,7 +259,8 @@ def test_a_409_registers_the_keys_once_and_the_machine_hears_it_so_a_second_one_
     assert step.kind == "expired" and registered == ["M" * 32] and len(approves(w)) == 2
     # The machine heard `device_keys_required` once (the registration), then the final 409.
     assert [(a.http, json.loads(a.body)["code"]) for a in approval.finishes] == [
-        (409, "device_keys_required"), (409, "device_keys_required"),
+        (409, "device_keys_required"),
+        (409, "device_keys_required"),
     ]
 
 
@@ -428,7 +434,9 @@ def test_a_refused_put_does_not_take_the_channel_copy_with_it() -> None:
 
 def test_a_wrap_is_sent_only_after_approved_never_for_a_refusal_or_a_deny() -> None:
     ring = FakeRing()
-    c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=httpx.Response(403, json={"error": {"code": "not_nearby"}})), ring)
+    c, approval, ask, sent = with_ring(
+        Fake(nearby_discovery(), approve=httpx.Response(403, json={"error": {"code": "not_nearby"}})), ring
+    )
     assert ask.pick("482 913").kind == "not-nearby"
     ring2 = FakeRing()
     c, approval, ask, sent = with_ring(Fake(nearby_discovery(), approve=httpx.Response(204)), ring2)
