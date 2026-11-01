@@ -195,6 +195,8 @@ const ROWS := [
 	["cloudConnect.refreshPeers", "res://addons/polaris_key/services/cloud_connect.gd", "method", "refresh_peers"],
 	["cloudConnect.status", "res://addons/polaris_key/services/cloud_connect.gd", "method", "status"],
 	["cloudConnect.onNotice", "res://addons/polaris_key/services/cloud_connect.gd", "signal", "notice"],
+	["cloudConnect.nearby.request", "res://addons/polaris_key/services/connect/nearby.gd", "method", "request"],
+	["cloudConnect.nearby.onRequest", "res://addons/polaris_key/services/connect/nearby.gd", "method", "on_request"],
 ]
 
 ## [concept, script, name]
