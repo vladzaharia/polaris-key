@@ -242,14 +242,8 @@
       "knip:exports": 4,
       "knip:types": 8
     },
-    "packages/sdk-node/src/electron/nearbyHost.ts": {
-      "knip:types": 1
-    },
     "packages/sdk-node/src/electron/preload.ts": {
       "knip:unlisted": 1
-    },
-    "packages/sdk-node/src/electron/protocol.ts": {
-      "knip:types": 1
     },
     "packages/sdk-node/src/update/bootguard.ts": {
       "knip:exports": 1
