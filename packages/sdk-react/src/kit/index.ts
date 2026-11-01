@@ -131,10 +131,5 @@ export type { LinkPairingProps, TransferOfferProps } from "./connect.js";
 export const NearbySignIn = nearbyScreen<NearbySignInProps>("NearbySignIn");
 export const NearbyApprover =
   nearbyScreen<NearbyApproverProps>("NearbyApprover");
-export type {
-  NearbyApproverProps,
-  NearbyEnd,
-  NearbySignInProps,
-} from "./nearby.js";
 export const ChannelPicker = c("ChannelPicker");
 export const Toast = c("Toast");
