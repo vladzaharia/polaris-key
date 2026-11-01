@@ -1347,6 +1347,28 @@
     <string name="signin_nearby_rateLimitedBody">잠시 기다린 뒤 %1$s에서 다시 시도하세요.</string>
     <!-- Nearby approval: the code expired. Body under the Code expired title; the person starts again on the new device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_expiredBody">%1$s에서 처음부터 다시 시작하세요.</string>
+    <!-- Nearby sign-in, on the device that signs in: several devices answered, so the person chooses which one to ask. The devices follow as buttons. -->
+    <string name="signin_nearby_pick">요청할 기기를 선택하세요.</string>
+    <!-- Nearby sign-in, waiting: asks again and lists the devices, to choose a different one. -->
+    <string name="signin_nearby_another">다른 기기 선택</string>
+    <string name="signin_nearby_another__macos">다른 기기 선택</string>
+    <!-- Nearby sign-in, on the device that signs in: no device answered after a while. -->
+    <string name="signin_nearby_noneTitle">기기를 찾지 못했어요</string>
+    <!-- Nearby sign-in: where to go on the other device. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_nearby_noneBody">다른 기기에서 %1$s을(를) 열고 ‘근처 기기 승인’을 선택하세요.</string>
+    <!-- Nearby approval, on the signed-in device: the screen that waits for a request. -->
+    <string name="signin_nearby_listenTitle">근처 기기 승인</string>
+    <!-- Nearby approval: what to do on the new device so its request shows here. -->
+    <string name="signin_nearby_listenBody">새 기기에서 근처 기기로 로그인을 선택하세요. 요청이 여기에 표시돼요.</string>
+    <!-- Nearby approval: this device stopped listening after requests were declined. -->
+    <string name="signin_nearby_pausedTitle">승인을 일시 중지했어요</string>
+    <!-- Nearby approval: why it stopped (two declined requests in a short time); Start again listens again. -->
+    <string name="signin_nearby_pausedBody">요청이 두 번 거절되어 이 기기는 대기를 멈췄어요.</string>
+    <!-- Nearby approval: listen for requests again after it paused. -->
+    <string name="signin_nearby_startAgain">다시 시작</string>
+    <string name="signin_nearby_startAgain__macos">다시 시작</string>
+    <!-- Nearby approval: the service or the network failed, so nothing was approved. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_failedBody">아무것도 승인되지 않았어요. %1$s에서 다시 시도하세요.</string>
     <!-- The key was refused and the person adds it to their account on the web (↗, opens the browser). -->
     <string name="signin_key_addInLocker">Polaris Locker에서 추가</string>
     <string name="signin_key_addInLocker__macos">Polaris Locker에서 추가</string>

@@ -3678,6 +3678,66 @@ msgstr "Attendi un attimo, poi riprova su {device}."
 msgid "signin.nearby.expiredBody"
 msgstr "Ricomincia su {device}."
 
+#. Choose the device to ask.
+#. Nearby sign-in, on the device that signs in: several devices answered, so the person chooses which one to ask. The devices follow as buttons.
+msgid "signin.nearby.pick"
+msgstr "Scegli il dispositivo a cui chiedere."
+
+#. Choose another device
+#. Nearby sign-in, waiting: asks again and lists the devices, to choose a different one.
+msgid "signin.nearby.another"
+msgstr "Scegli un altro dispositivo"
+
+#. macos: Choose Another Device
+msgctxt "macos"
+msgid "signin.nearby.another"
+msgstr "Scegli un altro dispositivo"
+
+#. No device found
+#. Nearby sign-in, on the device that signs in: no device answered after a while.
+msgid "signin.nearby.noneTitle"
+msgstr "Nessun dispositivo trovato"
+
+#. Open {app} on your other device and choose Approve a Nearby Device.
+#. Nearby sign-in: where to go on the other device. Arguments: {app} = the app's name (never translated).
+msgid "signin.nearby.noneBody"
+msgstr "Apri {app} sull’altro dispositivo e scegli Approva un dispositivo vicino."
+
+#. Approve a Nearby Device
+#. Nearby approval, on the signed-in device: the screen that waits for a request.
+msgid "signin.nearby.listenTitle"
+msgstr "Approva un dispositivo vicino"
+
+#. On the new device, choose to sign in with a nearby device. Its request shows here.
+#. Nearby approval: what to do on the new device so its request shows here.
+msgid "signin.nearby.listenBody"
+msgstr "Sul nuovo dispositivo, scegli di accedere con un dispositivo vicino. La richiesta compare qui."
+
+#. Approvals paused
+#. Nearby approval: this device stopped listening after requests were declined.
+msgid "signin.nearby.pausedTitle"
+msgstr "Approvazioni in pausa"
+
+#. Two requests were declined, so this device stopped listening.
+#. Nearby approval: why it stopped (two declined requests in a short time); Start again listens again.
+msgid "signin.nearby.pausedBody"
+msgstr "Due richieste sono state rifiutate, quindi questo dispositivo ha smesso di ascoltare."
+
+#. Start again
+#. Nearby approval: listen for requests again after it paused.
+msgid "signin.nearby.startAgain"
+msgstr "Ricomincia"
+
+#. macos: Start Again
+msgctxt "macos"
+msgid "signin.nearby.startAgain"
+msgstr "Ricomincia"
+
+#. Nothing was approved. Try again on {device}.
+#. Nearby approval: the service or the network failed, so nothing was approved. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.failedBody"
+msgstr "Non è stato approvato nulla. Riprova su {device}."
+
 #. Add it in Polaris Locker
 #. The key was refused and the person adds it to their account on the web (↗, opens the browser).
 msgid "signin.key.addInLocker"
