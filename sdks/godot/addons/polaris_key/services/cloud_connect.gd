@@ -46,6 +46,9 @@ signal notice(n: Dictionary)
 
 const LAN_ATTEMPT_SECONDS := 4.0
 
+## Nearby approval (`cloud_connect.nearby`): gated by Identity's discovery, it works with Connect stopped.
+var nearby: PKeyCloudNearby = null
+
 var _core_ref: WeakRef
 var _client: PKeyConnectClient
 var _tree: SceneTree
@@ -64,6 +67,8 @@ var _lan_attempt := LAN_ATTEMPT_SECONDS
 var _mono: Callable
 var _sessions: Dictionary = {}
 var _has_feature: Callable
+## The process's one discovery lane when nearby approval made it before the LAN service did.
+var _lane_shared: Object = null
 
 
 ## `core` and `client` are the SDK's own; `tree` and `mono` (Callable() -> monotonic seconds) and
@@ -77,6 +82,11 @@ func _init(core: PKeyCore, client: PKeyConnectClient, options := {}) -> void:
 	_mono = options.get("mono", Callable())
 	_has_feature = options.get("has_feature", Callable())
 	_client.on_stored = Callable(self, "_recheck_sessions")
+	var near := {"tree": _tree, "lane": Callable(self, "_shared_lane")}
+	for k in ["has_feature", "now", "signer", "signed_in", "discover", "pump"]:
+		if options.has("nearby_" + k):
+			near[k] = options["nearby_" + k]
+	nearby = PKeyCloudNearby.new(core, client, near)
 
 
 func _to_string() -> String:
@@ -173,7 +183,7 @@ func _start(core: PKeyCore, opts: Dictionary, gen: int) -> PKeyResult:
 	# A host-supplied `lan.mdns` wins; the lane is never made on web.
 	var host_mdns: bool = lan_opt is Dictionary and (lan_opt as Dictionary).has("mdns")
 	var web := _on_web()
-	var lane: Object = null if host_mdns or web else _native_lane()
+	var lane: Object = null if host_mdns or web else (_lane_shared if _lane_shared != null else _native_lane())
 	if lan_opt is bool and not lan_opt:
 		_lan_reason = "host"
 	elif unsupported != "" and (web or (lane == null and not host_mdns)):
@@ -226,10 +236,12 @@ func stop() -> void:
 	_pump = null
 
 
-## The sign-out step (G18): `stop()`, then forget the Connect state record. Fails closed: when the record
+## The sign-out step (G18): `stop()`, then nearby approval stops (adverts and requests), then forget the
+## Connect state record. Fails closed: when the record
 ## cannot be removed the failure is returned and the sign-out stops. ok when nothing is held.
 func _sign_out_step() -> PKeyResult:
 	stop()
+	nearby.stop_all()
 	return _client.leave()
 
 
@@ -300,6 +312,26 @@ func _no_path(lan_error: PKeyResult, relay: PKeyConnectRelay, off_by_call: bool)
 	if relay == null or off_by_call:
 		return PKeyConnectErrors.lan("unknown_peer", "That device was not found on this network, and the relay is off.")
 	return PKeyConnectErrors.relay("not_connected", "The relay is not connected.")
+
+
+## The process's one discovery lane, shared by the LAN service and nearby approval (two lanes on one OS
+## binding would take each other's accepts and tags). The running LAN service's own, else the one made here:
+## the native lane where the build has one, else the GDScript lane. Null where there is none (web, and mobile
+## builds without a native lane). `options` may carry `allow_loopback` and `interfaces` for the GDScript lane.
+func _shared_lane(options := {}) -> Object:
+	if _lan != null:
+		return _lan.lane()
+	if _lane_shared != null:
+		return _lane_shared
+	if _on_web():
+		return null
+	var lane: Object = _native_lane()
+	if lane == null:
+		if _lan_unsupported(_has_feature) != "":
+			return null
+		lane = PKeyMdns.new({"allow_loopback": bool(options.get("allow_loopback", false)), "only": options.get("interfaces", []), "tree": _tree})
+	_lane_shared = lane
+	return lane
 
 
 # ── discovery's word on the relay (G21) ──────────────────────────────────────────────────────

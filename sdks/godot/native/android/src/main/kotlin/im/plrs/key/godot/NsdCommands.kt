@@ -17,18 +17,24 @@ import java.util.concurrent.Executors
  * only: the pipes are GDScript sockets, and the advert names the port of the GDScript listener. No
  * bytes of a session cross the plugin.
  *
- * - `nsd_status`: `{supported, permission}` where permission is `not_required`, `granted` or `denied`.
- * - `nsd_advertise {instance, port, txt}`: publish (or move the running advert to a new name). The
- *   outcome arrives as the event `nsd_advert {ok, reason?}`. A second call replaces the first.
- * - `nsd_advertise_stop`, `nsd_browse_start`, `nsd_browse_stop`, `nsd_stop_all`.
- * - `nsd_accept {names}`: the instance names this device would accept. Until the first call nothing is
+ * - `nsd_status`: `{supported, permission, slots}` where permission is `not_required`, `granted` or `denied`,
+ *   and `slots` is true when the ops below take a slot (an older plugin has no such field).
+ * - `nsd_advertise {slot?, instance, port, txt}`: publish (or move the running advert of that slot to a new
+ *   name). `slot` is `a` (the default), `v`, `p` or `c0` to `c7`: at most 11 registrations over [PeerNsd],
+ *   all on the caller's port. The outcome arrives as the event `nsd_advert {slot, ok, reason?}`. A second
+ *   call on a slot replaces that slot's advert only.
+ * - `nsd_advertise_stop {slot?}` (no slot: `a`), `nsd_browse_start`, `nsd_browse_stop`, `nsd_stop_all`.
+ * - `nsd_accept {names, tags?}`: the instance names this device would accept. Until the first call nothing is
  *   accepted. A name outside the set is dropped before it takes a table slot, a watch or an event, so a
- *   forged name costs nothing. A bad list clears the set (nothing accepted) and answers `bad_input`.
+ *   forged name costs nothing. `tags` is `{v: [h, h], p: [h, h]}` (at most 2 per kind, each 16 of `0-9a-f`):
+ *   while it is not empty, a well-formed name outside `names` is watched (at most [MAX_CANDIDATES] such
+ *   names) and kept only when its TXT has `m=<kind>` and an `h` in `tags[kind]`. A bad list of either
+ *   kind clears both sets (nothing accepted) and answers `bad_input`.
  *
  * Events ride `poll`, as `nsd_found {instance, hosts, port, txt}` (every address the OS resolved, the
  * dialable kinds first), `nsd_lost {instance}`, `nsd_advert` and `nsd_error {reason}`. They are
  * coalesced per instance (the newest state of a name wins), so the buffer holds at most the watched names
- * plus two status slots, and an event is never lost to a busy network: it is replaced by a newer one.
+ * plus the status slots (one per advert slot, and the error), and an event is never lost to a busy network: it is replaced by a newer one.
  *
  * Android 17 (API 37) guards local-network access behind `ACCESS_LOCAL_NETWORK` for apps that target it.
  * When that applies and the permission is not granted, advertise and browse answer `permission_denied`
@@ -61,18 +67,32 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
 
     private val lock = Any()
     private var accepted: Set<String> = emptySet()
-    private var advert: Stopper? = null
+    private var tags: Map<String, Set<String>> = emptyMap()
+
+    /** Names outside the roster that the tag browse let in (watched, or rejected and kept out until lost). */
+    private val candidates = HashSet<String>()
+
+    /** The candidates whose TXT did not match: not watched again until they go. */
+    private val rejected = HashSet<String>()
+    private val adverts = HashMap<String, Advert>()
     private var advertGen = 0
     private var browse: Stopper? = null
     private val watches = HashMap<String, Stopper>()
     private val events = Coalesced()
 
+    private class Advert(val stop: Stopper, val gen: Int)
+
     fun handle(op: String, q: JSONObject): JSONObject = when (op) {
-        "nsd_status" -> JSONObject().put("ok", true).put("supported", backend.supported()).put("permission", backend.permission().word)
+        "nsd_status" -> JSONObject().put("ok", true).put("supported", backend.supported()).put("permission", backend.permission().word).put("slots", true)
         "nsd_advertise" -> guarded { advertise(q) }
         "nsd_advertise_stop" -> {
-            synchronized(lock) { stopAdvert() }
-            JSONObject().put("ok", true)
+            val slot = q.optString("slot", "a")
+            if (!isSlot(slot)) {
+                Commands.fail("bad_input", null)
+            } else {
+                synchronized(lock) { stopAdvert(slot) }
+                JSONObject().put("ok", true)
+            }
         }
         "nsd_browse_start" -> guarded { startBrowse() }
         "nsd_browse_stop" -> {
@@ -120,22 +140,24 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
     }
 
     private fun advertise(q: JSONObject): JSONObject {
+        val slot = q.optString("slot", "a")
         val instance = q.optString("instance")
         val port = q.optInt("port", 0)
-        if (!isInstanceName(instance) || port !in 1..65535) return Commands.fail("bad_input", null)
+        if (!isSlot(slot) || !isInstanceName(instance) || port !in 1..65535) return Commands.fail("bad_input", null)
         val txt = parseTxt(q.optJSONArray("txt")) ?: return Commands.fail("bad_input", null)
         synchronized(lock) {
-            stopAdvert()
+            stopAdvert(slot)
             val gen = ++advertGen
-            advert = backend.advertise(instance, port, txt) { result ->
+            val stop = backend.advertise(instance, port, txt) { result ->
                 synchronized(lock) {
                     // An answer for an advert that was since replaced or stopped says nothing about the current one.
-                    if (gen == advertGen) {
-                        events.single("advert", advertEvent(result))
-                        if (result is NsdAdvertResult.Refused) stopAdvert()
+                    if (adverts[slot]?.gen == gen) {
+                        events.single("advert:$slot", advertEvent(slot, result))
+                        if (result is NsdAdvertResult.Refused) stopAdvert(slot)
                     }
                 }
             }
+            adverts[slot] = Advert(stop, gen)
         }
         return JSONObject().put("ok", true)
     }
@@ -162,19 +184,27 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
                 names += n
             }
         }
+        val parsed = if (good) parseTags(q.opt("tags")) else null
+        if (parsed == null) good = false
         synchronized(lock) {
             val next: Set<String> = if (good) names else emptySet()
-            if (next != accepted) {
+            val nextTags: Map<String, Set<String>> = if (good) parsed!! else emptyMap()
+            if (next != accepted || nextTags != tags) {
                 accepted = next
+                tags = nextTags
                 if (browse != null) {
-                    // Names that left the set go now; names that joined need the OS to report them again, which
-                    // a fresh discovery does for every service already on the network.
+                    // Names that left the set go now, and so do the watches on candidates (the new browse reports
+                    // them again); names that joined need the OS to report them again, which a fresh discovery
+                    // does for every service already on the network.
                     for (n in watches.keys.toList()) if (n !in next) dropWatch(n)
+                    clearCandidates()
                     runCatching { browse?.invoke() }
                     browse = null
                     // The permission may have been withdrawn since the browse started: judge it again.
                     if (gate() == null) browse = runCatching { openBrowse() }.getOrNull()
                     if (browse == null) for (n in watches.keys.toList()) dropWatch(n)
+                } else {
+                    clearCandidates()
                 }
             }
         }
@@ -187,15 +217,35 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
         object : PeerNsdListener {
             override fun onFound(instance: String) = synchronized(lock) { watch(instance) }
 
-            override fun onLost(instance: String) = synchronized(lock) { dropWatch(instance) }
+            override fun onLost(instance: String) = synchronized(lock) {
+                dropWatch(instance)
+                candidates.remove(instance)
+                rejected.remove(instance)
+                Unit
+            }
 
             override fun onFailed(reason: String) = synchronized(lock) { events.single("error", JSONObject().put("ev", "nsd_error").put("reason", reasonWord(reason))) }
         },
-    ) { name -> synchronized(lock) { name in accepted } }
+    ) { name -> synchronized(lock) { name in accepted || admitCandidate(name) } }
+
+    private fun clearCandidates() {
+        candidates.clear()
+        rejected.clear()
+    }
+
+    /** Whether a name outside the roster may take a table slot: only while tags are set, and within the bound. */
+    private fun admitCandidate(name: String): Boolean {
+        if (tags.isEmpty() || !isInstanceName(name)) return false
+        if (name in candidates) return true
+        if (candidates.size >= MAX_CANDIDATES) return false
+        candidates += name
+        return true
+    }
 
     private fun watch(instance: String) {
         // The name filter ran before this, but the set may have changed since: judge again.
-        if (instance !in accepted || watches.containsKey(instance)) return
+        val known = instance in accepted || (tags.isNotEmpty() && instance in candidates)
+        if (!known || watches.containsKey(instance) || instance in rejected) return
         watches[instance] = backend.watch(
             instance,
             object : PeerNsdListener {
@@ -215,6 +265,12 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
     }
 
     private fun found(instance: String, r: NsdResolved) {
+        if (instance !in accepted && !tagMatch(r.attributes)) {
+            // A candidate whose TXT is not an advert we look for: not reported, not watched, and kept out until it goes.
+            rejected += instance
+            dropWatch(instance)
+            return
+        }
         if (r.port !in 1..65535 || r.addresses.isEmpty()) {
             // Nothing dialable is left (the last address expired): the name is lost, not kept at its old address.
             events.lost(instance)
@@ -229,35 +285,43 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
         events.found(instance, row)
     }
 
+    /** Whether a TXT says `m=<kind>` with an `h` that is one of the tags set for that kind. */
+    private fun tagMatch(attributes: Map<String, ByteArray?>): Boolean {
+        val kind = attributes["m"]?.let { String(it, Charsets.UTF_8) } ?: return false
+        val h = attributes["h"]?.let { String(it, Charsets.UTF_8) } ?: return false
+        return tags[kind]?.contains(h) == true
+    }
+
     private fun dropWatch(instance: String) {
         watches.remove(instance)?.let { runCatching { it() } }
         events.lost(instance)
     }
 
-    private fun stopAdvert() {
-        advertGen++
-        advert?.let { runCatching { it() } }
-        advert = null
+    private fun stopAdvert(slot: String) {
+        adverts.remove(slot)?.let { runCatching { it.stop() } }
     }
 
     private fun stopBrowse() {
         browse?.let { runCatching { it() } }
         browse = null
         for (n in watches.keys.toList()) dropWatch(n)
+        clearCandidates()
     }
 
     private fun stopAll() {
         synchronized(lock) {
-            stopAdvert()
+            for (slot in adverts.keys.toList()) stopAdvert(slot)
             stopBrowse()
             accepted = emptySet()
+            tags = emptyMap()
+            clearCandidates()
             events.clear()
         }
     }
 
-    private fun advertEvent(r: NsdAdvertResult): JSONObject = when (r) {
-        is NsdAdvertResult.Registered -> JSONObject().put("ev", "nsd_advert").put("ok", true)
-        is NsdAdvertResult.Refused -> JSONObject().put("ev", "nsd_advert").put("ok", false).put("reason", reasonWord(r.reason))
+    private fun advertEvent(slot: String, r: NsdAdvertResult): JSONObject = when (r) {
+        is NsdAdvertResult.Registered -> JSONObject().put("ev", "nsd_advert").put("slot", slot).put("ok", true)
+        is NsdAdvertResult.Refused -> JSONObject().put("ev", "nsd_advert").put("slot", slot).put("ok", false).put("reason", reasonWord(r.reason))
     }
 
     /** One fixed word per failure (never platform text): `renamed`, `failed`, `limit`, or `failed` for the rest. */
@@ -316,6 +380,11 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
 
     companion object {
         const val MAX_ACCEPTED = 1024
+
+        /** Names outside the roster that a tag browse may hold at once (half of PeerNsd's 64 watches). */
+        const val MAX_CANDIDATES = 32
+        const val MAX_TAGS = 2
+        const val TAG_LENGTH = 16
         const val MAX_TXT = 8
         const val MAX_TXT_BYTES = 255
 
@@ -324,6 +393,30 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
         const val LOCAL_NETWORK_API = 37
 
         private val INSTANCE = Regex("p1-[a-z2-7]{16}")
+        private val SLOT = Regex("[avp]|c[0-7]")
+        private val TAG = Regex("[0-9a-f]{16}")
+
+        fun isSlot(slot: String): Boolean = SLOT.matches(slot)
+
+        /** `{v: [h…], p: [h…]}` as sets, or null when it is anything else. An absent value is no tags. */
+        fun parseTags(value: Any?): Map<String, Set<String>>? {
+            if (value == null || value == JSONObject.NULL) return emptyMap()
+            val o = value as? JSONObject ?: return null
+            val out = HashMap<String, Set<String>>()
+            for (k in o.keys()) {
+                if (k != "v" && k != "p") return null
+                val list = o.optJSONArray(k) ?: return null
+                if (list.length() > MAX_TAGS) return null
+                val set = HashSet<String>()
+                for (i in 0 until list.length()) {
+                    val h = list.opt(i) as? String ?: return null
+                    if (!TAG.matches(h)) return null
+                    set += h
+                }
+                if (set.isNotEmpty()) out[k] = set
+            }
+            return out
+        }
 
         fun isInstanceName(name: String): Boolean = INSTANCE.matches(name)
 
