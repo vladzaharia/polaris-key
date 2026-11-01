@@ -230,6 +230,8 @@ export type AutoSignInStep =
   | "nearby-failed"
   | "nearby-cancelled"
   | "nearby-signed-out"
+  | "nearby-rate-limited"
+  | "nearby-unavailable"
   | "device-limit";
 
 export interface AutoSignInInput {

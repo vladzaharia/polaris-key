@@ -1334,7 +1334,7 @@
     <string name="signin_nearby_notNearbyBody">请将两台设备连接到同一 Wi-Fi，或在 %1$s 上用代码登录。</string>
     <!-- Nearby approval: the person tapped a code that did not match; the request is denied. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_mismatch">代码不匹配，因此 %1$s 未登录。</string>
-    <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
+    <!-- Account menu entry: opens the nearby approval list on the signed-in device. macOS menu items use title case and an ellipsis because the item opens a pane. -->
     <string name="signin_nearby_menu">批准附近的设备</string>
     <string name="signin_nearby_menu__macos">批准附近的设备</string>
     <!-- Nearby approval, on the signed-in device: choose which license the new device gets. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->

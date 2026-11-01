@@ -1343,9 +1343,9 @@
     <string name="signin_nearby_notNearbyBody">Connect both to the same Wi-Fi, or sign in with a code on %1$s.</string>
     <!-- Nearby approval: the person tapped a code that did not match; the request is denied. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_mismatch">That code didn't match, so %1$s wasn't signed in.</string>
-    <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
+    <!-- Account menu entry: opens the nearby approval list on the signed-in device. macOS menu items use title case and an ellipsis because the item opens a pane. -->
     <string name="signin_nearby_menu">Approve a nearby device</string>
-    <string name="signin_nearby_menu__macos">Approve a Nearby Device</string>
+    <string name="signin_nearby_menu__macos">Approve a Nearby Device…</string>
     <!-- Nearby approval, on the signed-in device: choose which license the new device gets. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_chooseTitle">Choose a license for %1$s</string>
     <!-- Nearby approval: choose a license. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->

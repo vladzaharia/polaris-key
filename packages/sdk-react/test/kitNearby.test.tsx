@@ -81,7 +81,10 @@ describe("<NearbySignIn> on the desktop bridge", () => {
     });
     const a = await adapterOf(bridge);
     const onClose = vi.fn();
-    const { container } = wrap(a, <NearbySignIn onClose={onClose} />);
+    const { container } = wrap(
+      a,
+      <NearbySignIn onClose={onClose} settleMs={0} />,
+    );
     // The pre-prompt comes before anything crosses the bridge.
     await shows(container, "common.continue");
     expect(bridge.nearbyStart).not.toHaveBeenCalled();
@@ -105,8 +108,11 @@ describe("<NearbySignIn> on the desktop bridge", () => {
     await waitFor(() =>
       expect(bridge.nearbyConfirm).toHaveBeenCalledWith("s-1"),
     );
-    await shows(container, "signin.nearby.notYou");
-    expect(container.textContent).toContain("Signed in as a@b.c");
+    await waitFor(() =>
+      expect(container.textContent).toContain("Signed in as a@b.c"),
+    );
+    // The confirm was the decision: no second "Not you?".
+    expect(control(container, "signin.nearby.notYou")).toBeNull();
     fireEvent.click(control(container, "common.continue")!);
     expect(onClose).toHaveBeenCalledWith({ kind: "signed-in" });
     a.dispose();
@@ -240,8 +246,9 @@ describe("<NearbyApprover> on the desktop bridge", () => {
         }),
       );
     });
-    await shows(container, "common.done");
-    expect(container.textContent).toContain("Studio PC is signed in");
+    await waitFor(() =>
+      expect(container.textContent).toContain("Studio PC is signed in"),
+    );
     fireEvent.click(control(container, "common.done")!);
     expect(onClose).toHaveBeenCalled();
     unmount();

@@ -3635,14 +3635,14 @@ msgid "signin.nearby.mismatch"
 msgstr "That code didn't match, so {device} wasn't signed in."
 
 #. Approve a nearby device
-#. Account menu entry: opens the nearby approval list on the signed-in device.
+#. Account menu entry: opens the nearby approval list on the signed-in device. macOS menu items use title case and an ellipsis because the item opens a pane.
 msgid "signin.nearby.menu"
 msgstr "Approve a nearby device"
 
-#. macos: Approve a Nearby Device
+#. macos: Approve a Nearby Device…
 msgctxt "macos"
 msgid "signin.nearby.menu"
-msgstr "Approve a Nearby Device"
+msgstr "Approve a Nearby Device…"
 
 #. Choose a license for {device}
 #. Nearby approval, on the signed-in device: choose which license the new device gets. Arguments: {device} = the new device's friendly name (never translated).

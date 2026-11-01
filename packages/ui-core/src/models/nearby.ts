@@ -178,11 +178,7 @@ export function nearbyApprovalView(
       // A server or network failure: nothing was approved, and the retry is on the new device.
       return outcome(
         "failed",
-        [
-          "core.codes.network.title",
-          "signin.nearby.failedBody",
-          "common.done",
-        ],
+        ["core.codes.network.title", "signin.nearby.failedBody", "common.done"],
         "common.done",
         "neutral",
       );

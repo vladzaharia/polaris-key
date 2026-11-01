@@ -186,6 +186,16 @@ const OWN_EXIT: ReadonlySet<string> = new Set([
   "link-conflict",
   "nearby-prompt",
   "nearby-done",
+  // A nearby request's endings list Try again and Use a code instead (UXR-47b B1).
+  "nearby-none-found",
+  "nearby-denied",
+  "nearby-expired",
+  "nearby-not-nearby",
+  "nearby-failed",
+  "nearby-rate-limited",
+  "nearby-unavailable",
+  "nearby-cancelled",
+  "nearby-signed-out",
 ]);
 
 /** The sign-in form's frame: Done ends on a heading and one Start; every other step of a sheet

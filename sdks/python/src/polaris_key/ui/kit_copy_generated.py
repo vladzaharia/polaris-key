@@ -14190,7 +14190,7 @@ KIT_COPY_VARIANTS: Final[Mapping[str, Mapping[str, str]]] = {
     "signin.linkOffer.join": {"macos": "Join Accounts"},
     "signin.nearby.code": {"macos": "Use a Code Instead"},
     "signin.nearby.notYou": {"macos": "Not You?"},
-    "signin.nearby.menu": {"macos": "Approve a Nearby Device"},
+    "signin.nearby.menu": {"macos": "Approve a Nearby Device…"},
     "signin.nearby.another": {"macos": "Choose Another Device"},
     "signin.nearby.startAgain": {"macos": "Start Again"},
     "signin.key.addInLocker": {"macos": "Add It in Polaris Locker"},

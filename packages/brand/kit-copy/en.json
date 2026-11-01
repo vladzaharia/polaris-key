@@ -2981,7 +2981,10 @@
     "signin.nearby.menu": {
       "value": "Approve a nearby device",
       "role": "menu",
-      "note": "Account menu entry: opens the nearby approval list on the signed-in device."
+      "note": "Account menu entry: opens the nearby approval list on the signed-in device. macOS menu items use title case and an ellipsis because the item opens a pane.",
+      "variants": {
+        "macos": "Approve a Nearby Device…"
+      }
     },
     "signin.nearby.chooseTitle": {
       "value": "Choose a license for {device}",

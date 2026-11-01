@@ -3626,11 +3626,11 @@ msgid "signin.nearby.mismatch"
 msgstr "コードが一致しなかったため、{device} はサインインしませんでした。"
 
 #. Approve a nearby device
-#. Account menu entry: opens the nearby approval list on the signed-in device.
+#. Account menu entry: opens the nearby approval list on the signed-in device. macOS menu items use title case and an ellipsis because the item opens a pane.
 msgid "signin.nearby.menu"
 msgstr "近くのデバイスを承認"
 
-#. macos: Approve a Nearby Device
+#. macos: Approve a Nearby Device…
 msgctxt "macos"
 msgid "signin.nearby.menu"
 msgstr "近くのデバイスを承認"

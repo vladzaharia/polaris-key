@@ -732,7 +732,7 @@ const INPUTS: Record<string, string> = {
   provider:
     "The sign-in provider's name (Apple, Google, Steam), for the strings that name it: the link offer, the failed sign-in. Absent: Polaris Locker, the sign-in the generic row opens.",
   autoSignIn:
-    "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done | nearby-choose | nearby-none-found | nearby-denied | nearby-expired | nearby-not-nearby | nearby-failed | nearby-cancelled | nearby-signed-out | device-limit, email?, reach?: global | developer | unknown, manageUrl? (device-limit: where a device is replaced)}. No email: the provider shared none. The provider is `provider`.",
+    "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done | nearby-choose | nearby-none-found | nearby-denied | nearby-expired | nearby-not-nearby | nearby-failed | nearby-rate-limited | nearby-unavailable | nearby-cancelled | nearby-signed-out | device-limit, email?, reach?: global | developer | unknown, manageUrl? (device-limit: where a device is replaced)}. No email: the provider shared none. The provider is `provider`.",
   nearbyApproval:
     "The approving device's side of nearby sign-in: {step: entry | ask | approved | not-nearby | mismatch | denied | expired | device-limit | choose | account-required | rate-limited | listening | stopped | failed, device?}. Absent: the account-menu entry. `listening` is the screen open with nothing asking yet; `stopped` the advert stopped after declined requests; `failed` a server or network failure.",
   linkPairing:
@@ -3870,11 +3870,16 @@ function nearbyFamily(a: A): Draft[] {
   return [
     ...[
       ["nearby-choose", "several devices answered: choose which to ask"],
-      ["nearby-none-found", "nobody answered: open the app on the other device"],
+      [
+        "nearby-none-found",
+        "nobody answered: open the app on the other device",
+      ],
       ["nearby-denied", "the other device denied it"],
       ["nearby-expired", "the request expired"],
       ["nearby-not-nearby", "the other device is not on this network"],
       ["nearby-failed", "the network failed"],
+      ["nearby-rate-limited", "too many attempts"],
+      ["nearby-unavailable", "this computer cannot look for nearby devices"],
       ["nearby-cancelled", "cancelled, or another account chosen"],
       ["nearby-signed-out", "Not you? signed this device out"],
     ].map(([state, what]) =>
@@ -6719,6 +6724,8 @@ const NEARBY_STATES: Record<string, readonly string[]> = {
     "nearby-expired",
     "nearby-not-nearby",
     "nearby-failed",
+    "nearby-rate-limited",
+    "nearby-unavailable",
     "nearby-cancelled",
     "nearby-signed-out",
   ],
@@ -6739,7 +6746,10 @@ function checkNearby(doc: UiMatrix, S: UiMatrixSources): string[] {
     names.add(r.name);
     const { component, state, copy } = r.expect;
     const actions = r.expect.actions ?? [];
-    if (!(component in NEARBY_STATES) || !NEARBY_STATES[component]!.includes(state)) {
+    if (
+      !(component in NEARBY_STATES) ||
+      !NEARBY_STATES[component]!.includes(state)
+    ) {
       errors.push(`${where}: ${component}.${state} is not a nearby state`);
       continue;
     }
@@ -6771,7 +6781,8 @@ function checkNearby(doc: UiMatrix, S: UiMatrixSources): string[] {
         continue;
       }
       for (const k of S.components[c]?.states[st]?.copy ?? [])
-        if (!union.has(k)) errors.push(`nearby: no row shows ${k} in ${c}.${st}`);
+        if (!union.has(k))
+          errors.push(`nearby: no row shows ${k} in ${c}.${st}`);
     }
   return errors;
 }
