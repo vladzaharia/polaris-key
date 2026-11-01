@@ -15,8 +15,10 @@
 //     focuses or reorders anything, and never shows on the deleted variant;
 //   - `kept` draws the success mark above the result title (the heading, where focus rests);
 //   - `failed` offers Try again, Choose again and Cancel, none filled and none the default key;
-//   - on a short or wide window the scaffold's trailing pane holds the heading, the cards and the
-//     undocked choices (UX2 D-8), and at 200 % text one column, versions before choices;
+//   - in a short landscape window (under 480 pt tall, two panes of 280 pt) `choose` draws two
+//     panes: the heading and cards, and the choices, the reason and Cancel (UX2 D-8); at an
+//     accessibility size one column, versions before choices, with the header dropped when short;
+//   - a refusal is posted as one announcement after focus moves to the heading; Escape on `kept` is Done;
 //   - a deleted other copy has its own title and lede, and "Delete it here too" is a danger
 //     outline of its own, never a Keep.
 // Not bound to a live client: `SaveConflictModel` takes a `SaveConflictHost`, and the binding to the
@@ -28,46 +30,185 @@ import SwiftUI
 /// Where VoiceOver goes: always the heading, then the message that appears.
 private enum SaveFocus: Hashable { case heading, message }
 
+/// Where the short-window two panes begin (UX2 D-8): under 480 pt tall and wide enough for two
+/// panes of at least 280 pt with the gutter between them.
+enum SaveShortWindow {
+    static let belowHeight: CGFloat = 480
+    static let paneMinWidth: CGFloat = 280
+    static let gutter: CGFloat = 32
+
+    static func applies(_ size: CGSize) -> Bool {
+        size.height > 0 && size.height < belowHeight && size.width >= 2 * paneMinWidth + gutter
+    }
+}
+
+private struct SaveWindowKey: PreferenceKey {
+    static let defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        let next = nextValue()
+        if next != .zero { value = next }
+    }
+}
+
+/// The frames of the parts a layout test reads, in the screen's own coordinate space.
+struct SaveFramesKey: PreferenceKey {
+    static let defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue()) { $1 }
+    }
+}
+
 public struct SaveConflictView: View {
     let model: SaveConflictModel
+    /// A fixed window size in place of the measured one (the layout tests).
+    var windowOverride: CGSize?
+    /// Called with the frames of the cards and the choices when the two panes are drawn.
+    var frameProbe: (([String: CGRect]) -> Void)?
     @Environment(\.polarisKeyStrings) private var strings
+    @Environment(\.dynamicTypeSize) private var dynamicType
+    @Environment(\.kitInSheet) private var inSheet
     @AccessibilityFocusState private var focus: SaveFocus?
+    @State private var measured: CGSize = .zero
 
     public init(model: SaveConflictModel) { self.model = model }
+
+    init(
+        model: SaveConflictModel, window: CGSize?, frames: (([String: CGRect]) -> Void)? = nil
+    ) {
+        self.model = model
+        self.windowOverride = window
+        self.frameProbe = frames
+    }
 
     public var body: some View {
         let screen = model.screen
         if let state = screen.state {
-            KitScreenScaffold(header: true, dockActions: state != .choose) {
-                kitStyle { style in
-                    VStack(alignment: .leading, spacing: style.space(.sm)) {
-                        if state == .kept {
-                            // Glyph and the result title, never colour alone.
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 36))
-                                .foregroundStyle(style.palette.success)
-                                .accessibilityHidden(true)
-                        }
-                        KitText(
-                            screen.copy.first ?? CopyLine("saveConflict.title"), .title,
-                            color: .strong
-                        )
-                        .accessibilityAddTraits(.isHeader)
-                        .accessibilityFocused($focus, equals: .heading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            let window = windowOverride ?? measured
+            let short = window.height > 0 && window.height < SaveShortWindow.belowHeight
+            let accessibility = dynamicType.isAccessibilitySize
+            let twoPane = state == .choose && SaveShortWindow.applies(window) && !accessibility && !inSheet
+            Group {
+                if twoPane {
+                    twoPaneBody(screen, state, window)
+                } else {
+                    // In a short window at an accessibility size the product header gives way
+                    // (DL3) and the actions flow under the content: the title and the reason are
+                    // read first, never hidden behind a docked bar.
+                    KitScreenScaffold(
+                        header: !(short && accessibility),
+                        dockActions: state != .choose && !short
+                    ) {
+                        heading(screen, state)
+                    } content: {
+                        content(screen, state)
+                    } actions: {
+                        actions(screen, state)
                     }
                 }
-            } content: {
-                content(screen, state)
-            } actions: {
-                actions(screen, state)
             }
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(key: SaveWindowKey.self, value: geo.size)
+                }
+                .allowsHitTesting(false).accessibilityHidden(true)
+            )
+            .onPreferenceChange(SaveWindowKey.self) { measured = $0 }
+            .background(escapeIsDone(state))
             .onAppear { focus = .heading }
             .onChange(of: screen.stateName) { _, _ in
-                // A refusal and the result are announced; the heading is where focus rests.
+                // The heading is where focus rests; a refusal is also said, once, after the
+                // heading so the title read does not cut it off.
                 focus = state == .keeping ? .message : .heading
+                if state == .failed {
+                    let line = screen.line("saveConflict.failedDeleted")
+                        ?? screen.lineOrKey("saveConflict.failed")
+                    let text = strings.string(line)
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 400_000_000)
+                        var said = AttributedString(text)
+                        said.accessibilitySpeechAnnouncementPriority = .high
+                        AccessibilityNotification.Announcement(said).post()
+                    }
+                }
             }
             .interactiveDismissDisabled(state == .keeping)
+        }
+    }
+
+    /// Escape on the result is Done (D-4): a hidden default-less key, never reached by VoiceOver.
+    @ViewBuilder private func escapeIsDone(_ state: SaveConflictState) -> some View {
+        if state == .kept {
+            Button("") { model.done() }
+                .keyboardShortcut(.cancelAction)
+                .opacity(0).frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private func heading(_ screen: KitScreen<SaveConflictState>, _ state: SaveConflictState)
+        -> some View
+    {
+        kitStyle { style in
+            VStack(alignment: .leading, spacing: style.space(.sm)) {
+                if state == .kept {
+                    // Glyph and the result title, never colour alone.
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 36))
+                        .foregroundStyle(style.palette.success)
+                        .accessibilityHidden(true)
+                }
+                KitText(
+                    screen.copy.first ?? CopyLine("saveConflict.title"), .title, color: .strong
+                )
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityFocused($focus, equals: .heading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    /// D-8, a short landscape window: the heading and the two cards in one pane, the choices, the
+    /// slots-full reason and Cancel in the other; both start at the top, nothing is docked, and
+    /// each pane scrolls on its own if it must. The decorative pane gives way (DL3).
+    private func twoPaneBody(
+        _ screen: KitScreen<SaveConflictState>, _ state: SaveConflictState, _ window: CGSize
+    ) -> some View {
+        kitStyle { style in
+            ZStack {
+                style.palette.page.ignoresSafeArea()
+                if style.ambient && !style.isNative { KitAmbient().ignoresSafeArea() }
+                HStack(alignment: .top, spacing: SaveShortWindow.gutter) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: style.space(.md)) {
+                            ProductHeader()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            heading(screen, state)
+                            content(screen, state)
+                                .background(frameReader("cards"))
+                        }
+                        .padding(.top, 16)
+                        .padding(.bottom, style.space(.md))
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                    ScrollView {
+                        actions(screen, state)
+                            .background(frameReader("choices"))
+                            .padding(.top, 16)
+                            .padding(.bottom, style.space(.md))
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                }
+                .padding(.horizontal, style.space(.lg))
+            }
+            .coordinateSpace(name: "pane")
+            .onPreferenceChange(SaveFramesKey.self) { frameProbe?($0) }
+        }
+    }
+
+    private func frameReader(_ name: String) -> some View {
+        GeometryReader { geo in
+            Color.clear.preference(
+                key: SaveFramesKey.self, value: [name: geo.frame(in: .named("pane"))])
         }
     }
 
@@ -95,7 +236,7 @@ public struct SaveConflictView: View {
                         when: screen.line("saveConflict.savedOther"),
                         newer: screen.line("saveConflict.newerOther"))
                 case .keeping:
-                    HStack(alignment: .firstTextBaseline, spacing: style.space(.xs)) {
+                    HStack(alignment: .center, spacing: style.space(.xs)) {
                         ProgressView().controlSize(.small).accessibilityHidden(true)
                         KitText(screen.lineOrKey("saveConflict.keeping"), .body)
                     }
@@ -131,12 +272,12 @@ public struct SaveConflictView: View {
         VStack(alignment: .leading, spacing: style.space(.xxs)) {
             KitText(who, .body, color: .strong)
             if let newer {
-                // A tag, not a control: an outline and the word, in the accent's text colour.
-                KitText(newer, .meta, color: .accent)
+                // A tag, not a control: the word on a neutral pill, no outline and no accent.
+                KitText(newer, .meta, color: .strong)
                     .fontWeight(.semibold)
                     .padding(.horizontal, style.space(.xs))
                     .padding(.vertical, 2)
-                    .overlay(Capsule().strokeBorder(style.palette.accentFg, lineWidth: 1))
+                    .background(Capsule().fill(style.palette.page))
             }
             if let when { KitText(when, .meta, color: .muted) }
         }
@@ -166,14 +307,28 @@ public struct SaveConflictView: View {
             // Three controls, none filled: a stray Return must not repeat a choice that may
             // overwrite or delete, and none is the default.
             KitActionStack {
-                KitButton(line: screen.lineOrKey("common.tryAgain"), kind: .secondary) {
-                    Task { await model.retry() }
-                }
-                KitButton(line: screen.lineOrKey("saveConflict.chooseAgain"), kind: .secondary) {
-                    model.chooseAgain()
-                }
+                // On the Mac the row reads right to left, so the retry takes the trailing slot.
+                #if os(macOS)
+                    chooseAgain(screen)
+                    tryAgain(screen)
+                #else
+                    tryAgain(screen)
+                    chooseAgain(screen)
+                #endif
                 KitButton(line: screen.lineOrKey("common.cancel"), kind: .quiet) { model.cancel() }
             }
+        }
+    }
+
+    private func tryAgain(_ screen: KitScreen<SaveConflictState>) -> some View {
+        KitButton(line: screen.lineOrKey("common.tryAgain"), kind: .secondary) {
+            Task { await model.retry() }
+        }
+    }
+
+    private func chooseAgain(_ screen: KitScreen<SaveConflictState>) -> some View {
+        KitButton(line: screen.lineOrKey("saveConflict.chooseAgain"), kind: .secondary) {
+            model.chooseAgain()
         }
     }
 

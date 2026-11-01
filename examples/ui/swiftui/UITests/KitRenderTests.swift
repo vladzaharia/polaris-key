@@ -66,7 +66,7 @@ final class KitRenderTests: XCTestCase {
                 "A lower row of the host's List: the audit grows the text until this element sits below the fold, where it cannot measure it (the group header's fixed-size glyph now scales and is no longer flagged); the AX3 and AX5 renders show it scaling."
             ),
             (
-                "Dynamic Type font sizes are partially unsupported", "", "Release channel",
+                "Dynamic Type font sizes are partially unsupported", "", "Release Channel",
                 [
                     "AccountAndLicense.signed-in", "AccountAndLicense.signed-in.pane",
                     "AccountAndLicense.signed-in.channel-locked",
