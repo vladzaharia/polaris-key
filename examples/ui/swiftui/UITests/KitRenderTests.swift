@@ -211,6 +211,8 @@ final class KitRenderTests: XCTestCase {
         "CloudSyncStatus.transferring", "CloudSyncStatus.waiting", "CloudSyncStatus.transfer-failed",
         "SaveConflict.choose", "SaveConflict.choose.slots-full", "SaveConflict.choose.deleted",
         "SaveConflict.keeping", "SaveConflict.kept", "SaveConflict.failed",
+        "SaveConflict.choose.newer", "SaveConflict.keeping.deleted", "SaveConflict.kept.both",
+        "SaveConflict.failed.deleted",
     ]
 
     /// The states rendered again in a launch pack, for the catalog's i18n proof.
