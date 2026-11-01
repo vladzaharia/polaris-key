@@ -142,9 +142,63 @@ class TransferStoreTest {
             named { s.apply(XferEffect.Create(bad, partial(1, 10).copy(ref = bad)), me, peer, e) { null } }
             named { s.apply(XferEffect.Delete(bad), me, peer, e) { null } }
             named { s.apply(XferEffect.Finalize(bad, "AAAAAAAAAAAAAAAAAAAAAA"), me, peer, e) { null } }
-            named { s.rehash(bad, 0) }
+            named { s.rehash(bad, 0, me, peer, e) }
         }
         assertEquals(0, s.partialsFor(peer).size)
+    }
+
+    @Test
+    fun aReadBackHoldsThePartialForItsSession() {
+        val s = store()
+        val e = s.epochFor(peer)
+        s.apply(XferEffect.Create(ref(1), partial(1, 100)), me, peer, e) { null }
+        s.apply(XferEffect.Write(ref(1), 0, ByteArray(50) { 5 }), me, peer, e) { null }
+        s.apply(XferEffect.Keep(ref(1)), me, peer, e) { null }
+        assertFalse(s.partialsFor(peer)[0].held)
+        val digest = s.rehash(ref(1), 50, you, peer, e)
+        assertEquals(32, digest.digest().size)
+        // From the read-back on, no other session can read, cut or drop it.
+        assertTrue(s.partialsFor(peer)[0].held)
+        refused { s.rehash(ref(1), 10, me, peer, e) }
+        refused { s.apply(XferEffect.Truncate(ref(1), 10), me, peer, e) { null } }
+        s.apply(XferEffect.Truncate(ref(1), 50), you, peer, e) { null }
+        s.apply(XferEffect.Keep(ref(1)), you, peer, e) { null }
+        assertFalse(s.partialsFor(peer)[0].held)
+        // A session that ends without using its read-back lets go of the partial.
+        s.rehash(ref(1), 50, you, peer, e)
+        s.releaseOwner(you)
+        assertFalse(s.partialsFor(peer)[0].held)
+    }
+
+    @Test
+    fun aPeerPurgeRefusesWhatThatPeersRunningSessionsHaveQueued() {
+        val s = store()
+        val e = s.epochFor(peer)
+        val eOther = s.epochFor(other)
+        s.apply(XferEffect.Create(ref(1), partial(1, 100)), me, peer, e) { null }
+        s.purgePeer(peer)
+        refused { s.apply(XferEffect.Write(ref(1), 0, ByteArray(1)), me, peer, e) { null } }
+        refused { s.apply(XferEffect.Create(ref(2), partial(2, 10)), me, peer, e) { null } }
+        refused { s.rehash(ref(1), 0, me, peer, e) }
+        assertEquals(0, s.partialsFor(peer).size)
+        // Another peer's sessions are not touched, and a session bound after the purge works.
+        s.apply(XferEffect.Create(ref(3), partial(3, 10)), you, other, eOther) { null }
+        s.apply(XferEffect.Create(ref(4), partial(4, 10)), you, peer, s.epochFor(peer)) { null }
+        assertEquals(1, s.partialsFor(peer).size)
+    }
+
+    @Test
+    fun aDeliveryNeverMakesTheFolderItGoesTo() {
+        val s = store()
+        val e = s.epochFor(peer)
+        s.apply(XferEffect.Create(ref(1), partial(1, 10)), me, peer, e) { null }
+        s.apply(XferEffect.Write(ref(1), 0, ByteArray(10)), me, peer, e) { null }
+        val base = Files.createTempDirectory("pkey-store-test").toFile().also { dirs += it }
+        val out = File(File(base, "missing"), "delivered")
+        refused { s.apply(XferEffect.Finalize(ref(1), "AAAAAAAAAAAAAAAAAAAAAA"), me, peer, e) { out } }
+        refused { s.deliverEmpty(out) }
+        assertFalse(File(base, "missing").exists())
+        assertEquals(1, s.partialsFor(peer).size)
     }
 
     @Test

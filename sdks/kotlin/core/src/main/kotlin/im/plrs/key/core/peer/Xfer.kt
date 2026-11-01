@@ -745,7 +745,8 @@ public class XferMachine(private val o: XferMachineOptions) {
             if (rehash != null && want > 0) {
                 hash = try {
                     rehash(m.ref, want)
-                } catch (e: java.io.IOException) {
+                } catch (e: Exception) {
+                    // Whatever the store says, the transfer starts again from 0.
                     null
                 }
                 if (hash != null) offset = want
