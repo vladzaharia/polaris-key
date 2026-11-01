@@ -364,6 +364,25 @@ final class SyncKeyringTests: XCTestCase {
         XCTAssertTrue(server.requestLog().contains { $0.hasPrefix("PUT /wraps/") })
     }
 
+    func testTheWrapRecordParserIsStrict() async throws {
+        let ring = "rg_" + String(repeating: "A", count: 22)
+        let kid = String(repeating: "a", count: 32)
+        func record(_ extra: String = "", kidValue: String? = nil, drop: String? = nil, pad: Int = 0) -> Data {
+            var members = [
+                "\"ringId\":\"\(ring)\"", "\"epoch\":1", "\"kid\":\"\(kidValue ?? kid)\"", "\"kem\":32",
+                "\"enc\":\"e\"", "\"ct\":\"\(String(repeating: "c", count: pad))\"",
+            ]
+            if let drop { members.removeAll { $0.hasPrefix("\"\(drop)\"") } }
+            if !extra.isEmpty { members.append(extra) }
+            return Data(("{" + members.joined(separator: ",") + "}").utf8)
+        }
+        XCTAssertNotNil(SyncWrapBody.parse(record()))
+        XCTAssertNil(SyncWrapBody.parse(record("\"x\":1")), "an extra member")
+        XCTAssertNil(SyncWrapBody.parse(record(drop: "enc")), "a missing member")
+        XCTAssertNil(SyncWrapBody.parse(record(kidValue: "xyz")), "a kid that is not 32 hex characters")
+        XCTAssertNil(SyncWrapBody.parse(record(pad: 3000)), "over 2048 bytes")
+    }
+
     func testAdoptWrapRefusesWhatIsNotTheServedRingsWrapForThisDevice() async throws {
         let server = RingServer()
         let m = try await device("m", server: server)
@@ -420,7 +439,7 @@ final class SyncKeyringTests: XCTestCase {
         let server = RingServer()
         let d = try await device("d", server: server)
         let record = SyncWrapBody(
-            ringId: "rg_" + String(repeating: "A", count: 22), epoch: 1, kid: "00", kem: 32, enc: "AA", ct: "AA")
+            ringId: "rg_" + String(repeating: "A", count: 22), epoch: 1, kid: String(repeating: "0", count: 32), kem: 32, enc: "AA", ct: "AA")
         let got = try await d.keyring.adoptWrap(record.record())
         XCTAssertEqual(got, .locked(reason: .noRing))
     }
