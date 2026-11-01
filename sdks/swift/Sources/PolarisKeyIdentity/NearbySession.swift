@@ -708,6 +708,8 @@ public final class NearbySignInSession: Sendable, CustomStringConvertible, Custo
     /// The account is not the person's: every held record is dropped, the LAN half closes and the device signs
     /// out (rule 12). Safe to call more than once.
     public func declineAccount() async {
+        // A confirmed (or confirming) sign-in is the person's: a late decline leaves it alone.
+        if state.with({ $0.confirmed }) { return }
         halt()
         await discardOnce().value
     }
