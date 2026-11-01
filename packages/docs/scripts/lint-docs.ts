@@ -16,7 +16,7 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { COMMANDS, COMMON_OPTIONS } from "../../cli/src/help";
 import { allIds, contentRoot, fileFor, splitFrontmatter } from "./site-map.mjs";
 

@@ -28,7 +28,7 @@ import {
 } from "node:fs";
 import { dirname, join, posix, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const docsRoot = join(here, "..");
