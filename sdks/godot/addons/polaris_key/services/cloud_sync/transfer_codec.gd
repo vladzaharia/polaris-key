@@ -150,6 +150,13 @@ class E2e:
 	func open_whole(stored: PackedByteArray) -> Dictionary:
 		return PKeySyncFileStream.open_file(_coll_key, _kid, stored)
 
+	## A stream sealer / opener under this codec's keys, for a caller that steps through a file itself.
+	func whole_sealer() -> PKeySyncFileStream.Sealer:
+		return PKeySyncFileStream.Sealer.new(_coll_key, _kid)
+
+	func whole_opener() -> PKeySyncFileStream.Opener:
+		return PKeySyncFileStream.Opener.new(_coll_key, _kid)
+
 
 class Server:
 	extends RefCounted
