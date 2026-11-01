@@ -30,7 +30,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.ktor.server.status.pages)
-    testImplementation("org.slf4j:slf4j-nop:2.0.16")
+    testImplementation("org.slf4j:slf4j-nop:2.0.20")
 }
 
 publishing {

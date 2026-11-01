@@ -4,12 +4,7 @@
 packages:
   - "*"
 minimumReleaseAge: 20160
-# Owner waiver 2026-10-29 for GHSA-f86p-h4j2-7qgj; remove after 2026-11-01. The patched seroval
-# 1.6.11 (published 2026-10-18) is younger than 14 days, so exactly these two packages are exempt
-# from the age rule; nothing else is. solid-js@1.9.17 pulls seroval 1.6.9, so it is overridden.
-minimumReleaseAgeExclude:
-  - seroval
-  - seroval-plugins
+# Security floor (GHSA-f86p-h4j2-7qgj): solid-js 1.9.17 still depends on seroval 1.6.9, so keep these.
 overrides:
   seroval: 1.6.11
   seroval-plugins: 1.6.11

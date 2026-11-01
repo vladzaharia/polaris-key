@@ -7,7 +7,7 @@
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { describe, expect, it } from "vitest";
 import { validateManifestDocuments } from "../../shared-manifest/src/index";
 
