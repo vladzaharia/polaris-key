@@ -1878,7 +1878,10 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // transcripts and cloudsync-chunks* replay through the file transport (cloudSyncFile, cloudSyncChunk).
     // identity.keyreturn is LK-SKIP's redirect-web-key-return* transcripts: replayed here (.6b).
     // identity.devicecode.choice is UK-42.22.5's holders-add-to-account-device, replayed here.
-    const plannedHere: string[] = ["sync.records"];
+    // identity.redirect.native stays planned here (parity.json, I-15b): the pushed request and the
+    // loopback listener are a native app's, so the locker-redirect-native and redirect-native-*
+    // transcripts are not replayed by the web engine.
+    const plannedHere: string[] = ["sync.records", "identity.redirect.native"];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     // identity.gamecenter and identity.pgs are N/A on the web (parity.json), so exchange-gamecenter-*,

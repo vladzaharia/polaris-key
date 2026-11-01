@@ -259,6 +259,8 @@ const FR: CopyBundle = {
       "L’app a demandé un accès que cette connexion ne propose pas. Contactez son développeur.",
     redirect_uri_mismatch:
       "La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur.",
+    invalid_request_uri:
+      "Ce lien de connexion a expiré. Retournez dans {product} et recommencez.",
     license_choice_required:
       "Choisissez la licence que cet appareil utilise, puis continuez.",
     interstitial_required:

@@ -737,14 +737,24 @@ describe("desktop: device code over the bridge, no new verb", () => {
       message: 'licenseChoice must be "app" or "card".',
     });
     expect(calls).toEqual([]);
-    await adapter.signIn.start({
+    // A host below bridge v6 never answers `choose`: the app's own choice is a typed, versioned refusal.
+    await expect(
+      adapter.signIn.start({ channel: "device-code", licenseChoice: "app" }),
+    ).rejects.toMatchObject({
+      name: "UnsupportedError",
+      feature: "identity.devicecode.choice",
+      reason: "version",
+    });
+    expect(calls).toEqual([]);
+    const v6 = await desktop({ version: 6 });
+    await v6.adapter.signIn.start({
       channel: "device-code",
       loginHint: "a@b.co",
       nameHint: "Ada",
       purpose: "attach",
       licenseChoice: "app",
     });
-    expect(calls).toEqual([
+    expect(v6.calls).toEqual([
       `begin ${JSON.stringify({
         loginHint: "a@b.co",
         nameHint: "Ada",

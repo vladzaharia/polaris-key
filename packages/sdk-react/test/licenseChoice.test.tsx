@@ -159,7 +159,7 @@ describe("useLicenseChoice", () => {
 });
 
 describe("the desktop renderer", () => {
-  it("answers the typed unsupported (runtime) from every choice call", async () => {
+  it("answers the typed unsupported (version) from every choice call on a bridge below v6", async () => {
     const adapter = new DesktopAdapter({
       bridge: makeFakeBridge(okBridgeState()),
     } as never);
@@ -172,7 +172,7 @@ describe("the desktop renderer", () => {
       await expect(call()).rejects.toMatchObject({
         name: "UnsupportedError",
         feature: "identity.choice",
-        reason: "runtime",
+        reason: "version",
       });
   });
 });
