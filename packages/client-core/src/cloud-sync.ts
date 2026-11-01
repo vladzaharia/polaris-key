@@ -163,6 +163,8 @@ export type SyncOpName =
   | "clear"
   | "setMember"
   | "removeMember"
+  | "setField"
+  | "removeField"
   | "add"
   | "remove"
   | "delete";
@@ -174,6 +176,8 @@ export interface WireMutation {
   op: SyncOpName;
   value?: Json;
   member?: string;
+  /** `setField` and `removeField` on a `merge` record (§13.3). */
+  field?: string;
   element?: Json;
   observedSeq?: number;
   editedHlc?: string;
@@ -577,9 +581,16 @@ function applyRecordOp(
   switch (op.op) {
     case "set":
       return clone(op.value as Json);
-    case "setMember":
-    case "removeMember":
-      return applySettingOp("merge", base, op);
+    case "setField": {
+      const o = isObject(base) ? { ...base } : {};
+      o[op.field as string] = clone(op.value as Json);
+      return o;
+    }
+    case "removeField": {
+      const o = isObject(base) ? { ...base } : {};
+      delete o[op.field as string];
+      return o;
+    }
     case "add": {
       const arr = Array.isArray(base) ? [...base] : [];
       if (!arr.some((x) => jsonEqual(x, op.element)))
@@ -852,7 +863,7 @@ export class CloudSyncMachine {
   }
 
   /** Write a record: compare-and-swap for `revision` (rule 3), a stamped `set` for `lastWrite`,
-   *  `max` and `min`, member operations for `merge`. */
+   *  `max` and `min`, field operations for `merge`. */
   put(collection: string, id: string, value: Json): CallResult {
     const decl = this.collection(collection);
     if (!decl || decl.policy === "union")
@@ -886,22 +897,22 @@ export class CloudSyncMachine {
         const current = this.record(collection, id)?.value;
         const cur = isObject(current) ? current : {};
         const next = isObject(value) ? value : {};
-        for (const member of Object.keys(next).sort(byteOrder))
-          if (!(member in cur) || !jsonEqual(cur[member], next[member]))
+        for (const field of Object.keys(next).sort(byteOrder))
+          if (!(field in cur) || !jsonEqual(cur[field], next[field]))
             this.enqueue(p, {
               target,
-              op: "setMember",
-              member,
-              value: clone(next[member] as Json),
+              op: "setField",
+              field,
+              value: clone(next[field] as Json),
               editedHlc,
               ...marks,
             });
-        for (const member of Object.keys(cur).sort(byteOrder))
-          if (!(member in next))
+        for (const field of Object.keys(cur).sort(byteOrder))
+          if (!(field in next))
             this.enqueue(p, {
               target,
-              op: "removeMember",
-              member,
+              op: "removeField",
+              field,
               editedHlc,
               ...marks,
             });

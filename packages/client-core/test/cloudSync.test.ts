@@ -603,12 +603,12 @@ describe("record field policies (D4)", () => {
     });
   });
 
-  it("sends member operations for a merge record", () => {
+  it("sends field operations for a merge record", () => {
     const { m } = started();
     m.put("prefs", "main", { a: 1, b: 2 });
     expect(mutations(m.takeRequests())).toEqual([
-      expect.objectContaining({ op: "setMember", member: "a", value: 1 }),
-      expect.objectContaining({ op: "setMember", member: "b", value: 2 }),
+      expect.objectContaining({ op: "setField", field: "a", value: 1 }),
+      expect.objectContaining({ op: "setField", field: "b", value: 2 }),
     ]);
     expect(m.record("prefs", "main")).toEqual({
       value: { a: 1, b: 2 },

@@ -155,6 +155,11 @@
       "ref": "plans/U-01b.md §2.5 (Import)"
     },
     {
+      "id": "record-merge-fields",
+      "title": "A merge record sends one setField or removeField per changed field, never a whole value; another device's field arrives in the pull",
+      "ref": "WIRE-CONTRACT-V5 §13.3 (U-09.11)"
+    },
+    {
       "id": "record-field-policy",
       "title": "A lastWrite, max or min record is a stamped set the server resolves; on conflict the client takes the server copy and enqueues nothing",
       "ref": "plans/U-01b.md D4, §2.2"
@@ -14724,6 +14729,299 @@
         }
       ],
       "wp": "U-35.2"
+    },
+    {
+      "name": "record-merge-fields",
+      "description": "A record in a merge collection sends one setField per changed field and one removeField per dropped field, each stamped, never a whole value; a field another device wrote arrives with the cloud copy.",
+      "rules": ["record-merge-fields"],
+      "wp": "U-09.11",
+      "init": {
+        "catalog": {
+          "settings": [
+            {
+              "key": "audio.music.volume",
+              "route": "synced",
+              "scope": "user",
+              "policy": "lastWrite",
+              "schema": { "type": "number", "minimum": 0, "maximum": 1 }
+            },
+            {
+              "key": "graphics.quality",
+              "route": "synced",
+              "scope": "user",
+              "policy": "lastWrite",
+              "schema": { "type": "string", "enum": ["low", "medium", "high"] }
+            },
+            {
+              "key": "input.bindings",
+              "route": "synced",
+              "scope": "user",
+              "policy": "merge",
+              "schema": { "type": "object" }
+            },
+            {
+              "key": "stats.bestScore",
+              "route": "synced",
+              "scope": "user",
+              "policy": "max",
+              "schema": { "type": "integer", "minimum": 0 }
+            },
+            {
+              "key": "ui.theme",
+              "route": "synced",
+              "scope": "user",
+              "policy": "lastWrite",
+              "schema": { "type": "string" }
+            }
+          ],
+          "collections": [
+            {
+              "name": "progress",
+              "policy": "revision",
+              "resolve": "keepLocal"
+            },
+            { "name": "unlocks", "policy": "union" },
+            { "name": "profile", "policy": "merge" }
+          ]
+        },
+        "document": {
+          "values": {
+            "audio.music.volume": 0.8,
+            "graphics.quality": "medium",
+            "input.bindings": { "jump": "space", "crouch": "ctrl" },
+            "stats.bestScore": 0,
+            "ui.theme": "dark"
+          },
+          "locked": ["ui.theme"]
+        },
+        "journal": null,
+        "clock": { "now": 1760000000000, "offsetMs": 0, "contacted": true },
+        "subject": "sub_alice",
+        "network": "online",
+        "licence": {
+          "state": "valid",
+          "lastSyncUnauthorized": false,
+          "documents": ["license", "config"]
+        },
+        "clientIds": ["c_000000000000000client1", "c_000000000000000client2"],
+        "options": { "onSignOut": "clear" },
+        "legacyLocal": null,
+        "encryption": "server",
+        "hasRoot": true
+      },
+      "steps": [
+        {
+          "assert": {
+            "requests": [
+              {
+                "method": "GET",
+                "path": "/demo/sync?cursor=0&clientId=c_000000000000000client1"
+              }
+            ]
+          }
+        },
+        {
+          "respond": {
+            "status": 200,
+            "body": {
+              "subject": "sub_alice",
+              "serverNow": 1760000000000,
+              "cursor": 3,
+              "more": false,
+              "lastMutationId": 0,
+              "catalogVersion": 1,
+              "aliases": {},
+              "quota": { "bytes": 268435456, "files": true },
+              "usage": { "bytes": 0, "settings": 0, "records": 0, "files": 0 },
+              "changes": [
+                {
+                  "record": ["profile", "main"],
+                  "value": { "name": "A", "color": "red" },
+                  "version": 2
+                }
+              ],
+              "tombstones": []
+            }
+          }
+        },
+        {
+          "local": {
+            "call": "put",
+            "args": [
+              "profile",
+              "main",
+              { "name": "A", "color": "blue", "level": 2 }
+            ],
+            "expect": { "ok": true }
+          }
+        },
+        {
+          "assert": {
+            "requests": [
+              {
+                "method": "POST",
+                "path": "/demo/sync/ops",
+                "body": {
+                  "clientId": "c_000000000000000client1",
+                  "cursor": 3,
+                  "atomic": false,
+                  "mutations": [
+                    {
+                      "mutationId": 1,
+                      "target": { "record": ["profile", "main"] },
+                      "op": "setField",
+                      "field": "color",
+                      "value": "blue",
+                      "editedHlc": "0199c82cc000:0000"
+                    },
+                    {
+                      "mutationId": 2,
+                      "target": { "record": ["profile", "main"] },
+                      "op": "setField",
+                      "field": "level",
+                      "value": 2,
+                      "editedHlc": "0199c82cc000:0000"
+                    }
+                  ]
+                }
+              }
+            ],
+            "records": {
+              "profile/main": {
+                "value": { "name": "A", "color": "blue", "level": 2 },
+                "from": "pending"
+              }
+            }
+          }
+        },
+        {
+          "respond": {
+            "status": 200,
+            "body": {
+              "subject": "sub_alice",
+              "serverNow": 1760000000000,
+              "cursor": 5,
+              "more": false,
+              "lastMutationId": 2,
+              "catalogVersion": 1,
+              "aliases": {},
+              "quota": { "bytes": 268435456, "files": true },
+              "usage": { "bytes": 0, "settings": 0, "records": 0, "files": 0 },
+              "changes": [
+                {
+                  "record": ["profile", "main"],
+                  "value": {
+                    "name": "A",
+                    "color": "blue",
+                    "level": 2,
+                    "mood": "calm"
+                  },
+                  "version": 4
+                }
+              ],
+              "tombstones": [],
+              "results": [
+                { "mutationId": 1, "status": "ok", "version": 3 },
+                { "mutationId": 2, "status": "ok", "version": 4 }
+              ]
+            }
+          }
+        },
+        {
+          "assert": {
+            "records": {
+              "profile/main": {
+                "value": {
+                  "name": "A",
+                  "color": "blue",
+                  "level": 2,
+                  "mood": "calm"
+                },
+                "from": "cloud"
+              }
+            },
+            "status": { "state": "idle", "pending": 0 }
+          }
+        },
+        { "advance": { "ms": 1000 } },
+        {
+          "local": {
+            "call": "put",
+            "args": [
+              "profile",
+              "main",
+              { "name": "A", "level": 2, "mood": "calm" }
+            ],
+            "expect": { "ok": true }
+          }
+        },
+        {
+          "assert": {
+            "requests": [
+              {
+                "method": "POST",
+                "path": "/demo/sync/ops",
+                "body": {
+                  "clientId": "c_000000000000000client1",
+                  "cursor": 5,
+                  "atomic": false,
+                  "mutations": [
+                    {
+                      "mutationId": 3,
+                      "target": { "record": ["profile", "main"] },
+                      "op": "removeField",
+                      "field": "color",
+                      "editedHlc": "0199c82cc3e8:0000"
+                    }
+                  ]
+                }
+              }
+            ],
+            "records": {
+              "profile/main": {
+                "value": { "name": "A", "level": 2, "mood": "calm" },
+                "from": "pending"
+              }
+            }
+          }
+        },
+        {
+          "respond": {
+            "status": 200,
+            "body": {
+              "subject": "sub_alice",
+              "serverNow": 1760000001000,
+              "cursor": 6,
+              "more": false,
+              "lastMutationId": 3,
+              "catalogVersion": 1,
+              "aliases": {},
+              "quota": { "bytes": 268435456, "files": true },
+              "usage": { "bytes": 0, "settings": 0, "records": 0, "files": 0 },
+              "changes": [
+                {
+                  "record": ["profile", "main"],
+                  "value": { "name": "A", "level": 2, "mood": "calm" },
+                  "version": 6
+                }
+              ],
+              "tombstones": [],
+              "results": [{ "mutationId": 3, "status": "ok", "version": 6 }]
+            }
+          }
+        },
+        {
+          "assert": {
+            "records": {
+              "profile/main": {
+                "value": { "name": "A", "level": 2, "mood": "calm" },
+                "from": "cloud"
+              }
+            },
+            "status": { "state": "idle", "pending": 0 }
+          }
+        }
+      ]
     }
   ],
   "settingCases": [
