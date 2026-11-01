@@ -30,6 +30,7 @@ private final class LoggedStore: Store, @unchecked Sendable {
     private var events: [String] = []
     var failMark = false
     var failToken = false
+    var failMarkClear = false
 
     init() { inner = InMemoryStore(productSlug: product, deviceId: String(repeating: "D", count: 32)) }
 
@@ -55,6 +56,7 @@ private final class LoggedStore: Store, @unchecked Sendable {
     func writeRecordChecked(_ name: String, _ data: Data?) async throws {
         if name == "token-unconfirmed" {
             if failMark && data != nil { throw StoreError.io(path: "mark", code: 5) }
+            if failMarkClear && data == nil { throw StoreError.io(path: "mark", code: 5) }
             note(data == nil ? "mark:clear" : "mark:set")
         }
         await inner.writeRecord(name, data)
@@ -975,6 +977,122 @@ final class NearbySignInWrapTests: XCTestCase {
     }
 }
 
+// MARK: - The confirmation against another token, and against the deadline
+
+/// Timers that keep every closure, so a deadline that already fired can be run after a decision.
+private final class KeptTimers: @unchecked Sendable {
+    private let lock = NSLock()
+    private var fns: [@Sendable () -> Void] = []
+    var timer: NearbyTimer {
+        { [self] _, fn in
+            lock.withLock { fns.append(fn) }
+            return {}
+        }
+    }
+    var all: [@Sendable () -> Void] { lock.withLock { fns } }
+}
+
+private func keepingTimers(_ r: Rig) async -> KeptTimers {
+    let kept = KeptTimers()
+    let port = FixtureKeyPort()
+    port.use(label: "nearby-d-1")
+    let deviceId = await r.core.deviceId
+    let lan = r.lan
+    r.identity.installNearby(
+        NearbyBinding(
+            signer: { (port, deviceId) }, lan: { @Sendable () -> (any NearbySignInLan)? in lan }, timer: kept.timer))
+    return kept
+}
+
+final class NearbyConfirmRaceTests: XCTestCase {
+    func testConfirmingOverAnotherUnconfirmedTokenIsRefusedAndConfirmsNothing() async throws {
+        let r = try await rig()
+        let (session, _) = try await ready(r)
+        try await r.core.setUnconfirmedToken("pkeyt_second")
+        var code: String?
+        do { try await session.confirmAccount() } catch let e as PolarisError { code = e.code }
+        XCTAssertEqual(code, ErrorCode.signInFailed)
+        let unconfirmed = await r.core.tokenUnconfirmed
+        XCTAssertTrue(unconfirmed, "the other token stays unconfirmed")
+        XCTAssertNil(r.identity.account)
+        XCTAssertFalse(r.events.kinds.contains("signedIn"))
+    }
+
+    func testTheCoreComparesTheTokenItConfirms() async throws {
+        let r = try await rig()
+        try await r.core.setUnconfirmedToken("pkeyt_a")
+        let other = try await r.core.confirmToken(expected: "pkeyt_b")
+        XCTAssertFalse(other)
+        let still = await r.core.tokenUnconfirmed
+        XCTAssertTrue(still)
+        let own = try await r.core.confirmToken(expected: "pkeyt_a")
+        XCTAssertTrue(own)
+        let after = await r.core.tokenUnconfirmed
+        XCTAssertFalse(after)
+    }
+
+    func testADeadlineThatAlreadyFiredAfterTheConfirmationDoesNothing() async throws {
+        let r = try await rig()
+        let kept = await keepingTimers(r)
+        let (session, _) = try await ready(r)
+        try await session.confirmAccount()
+        XCTAssertEqual(kept.all.count, 1)
+        for fn in kept.all { fn() }
+        await nearbySettle(200)
+        XCTAssertEqual(r.plane.count(signoutPath), 0)
+        let token = await r.core.token
+        XCTAssertEqual(token, "pkeyt_nearby_token")
+        XCTAssertFalse(session.ended)
+    }
+
+    func testEndingTheSessionAfterTheConfirmationLeavesTheSignInAlone() async throws {
+        let r = try await rig()
+        _ = await keepingTimers(r)
+        let (session, _) = try await ready(r)
+        try await session.confirmAccount()
+        session.cancel()
+        await session.declineAccount()
+        await nearbySettle(200)
+        XCTAssertEqual(r.plane.count(signoutPath), 0)
+        let token = await r.core.token
+        XCTAssertEqual(token, "pkeyt_nearby_token")
+    }
+
+    func testTheDeadlineBeforeTheConfirmationEndsTheSignInAndTheConfirmationFails() async throws {
+        let r = try await rig()
+        let kept = await keepingTimers(r)
+        let (session, _) = try await ready(r)
+        for fn in kept.all { fn() }
+        await nearbySettle(200)
+        var code: String?
+        do { try await session.confirmAccount() } catch let e as PolarisError { code = e.code }
+        XCTAssertEqual(code, ErrorCode.signInFailed)
+        XCTAssertEqual(r.plane.count(signoutPath), 1)
+        let token = await r.core.token
+        XCTAssertNil(token)
+    }
+
+    func testConfirmingDecliningAndTheDeadlineTogetherGiveOneDecision() async throws {
+        let r = try await rig()
+        let kept = await keepingTimers(r)
+        let (session, _) = try await ready(r)
+        let fns = kept.all
+        async let confirmed: Void = { try? await session.confirmAccount() }()
+        async let declined: Void = session.declineAccount()
+        for fn in fns { fn() }
+        _ = await (confirmed, declined)
+        await nearbySettle(200)
+        let token = await r.core.token
+        let signouts = r.plane.count(signoutPath)
+        if token == nil {
+            XCTAssertEqual(signouts, 1, "ended: one discard")
+        } else {
+            XCTAssertEqual(signouts, 0, "confirmed: nothing signed out")
+            XCTAssertEqual(token, "pkeyt_nearby_token")
+        }
+    }
+}
+
 // MARK: - The kit
 
 #if canImport(SwiftUI)
@@ -990,7 +1108,7 @@ final class NearbySignInWrapTests: XCTestCase {
             let lan: FakeLan
         }
 
-        private func kit(lanAvailable: Bool = true) async throws -> Kit {
+        private func kit(lanAvailable: Bool = true, store: (any Store)? = nil) async throws -> Kit {
             let plane = Plane()
             plane.set(discoveryPath, [(200, try discovery())])
             plane.set(startPath, [(201, #"{"request":"\#(handle)","expiresIn":300,"interval":1}"#)])
@@ -998,7 +1116,7 @@ final class NearbySignInWrapTests: XCTestCase {
             let client = try await PolarisKeyClient.create(
                 options: PolarisKeyClientOptions(
                     productSlug: product, baseUrl: base, version: "1.0.0", pinnedKeys: [:], trustRefresh: false,
-                    store: InMemoryStore(productSlug: product, deviceId: String(repeating: "D", count: 32)),
+                    store: store ?? InMemoryStore(productSlug: product, deviceId: String(repeating: "D", count: 32)),
                     transport: plane, expectedServices: [.license, .config, .identity], fingerprint: false))
             let port = FixtureKeyPort()
             port.use(label: "nearby-d-1")
@@ -1057,6 +1175,22 @@ final class NearbySignInWrapTests: XCTestCase {
             XCTAssertEqual(provenance, .signin)
             XCTAssertNil(k.model.inputs.autoSignIn)
             XCTAssertEqual(k.plane.count(signoutPath), 0)
+        }
+
+        func testAConfirmThatFailsShowsExpiredAndSignsTheDeviceOut() async throws {
+            let store = LoggedStore()
+            let k = try await kit(store: store)
+            k.plane.set(pollPath, [(200, readyBody())])
+            await k.model.offerNearby()
+            await k.model.nearbyContinue()
+            await until("the done step") { k.model.inputs.autoSignIn?.step == .nearbyDone }
+            store.failMarkClear = true
+            await k.model.nearbyConfirm()
+            XCTAssertEqual(k.model.inputs.error?.code, ErrorCode.signInExpired)
+            XCTAssertNil(k.model.inputs.autoSignIn)
+            await until("the sign-out") { k.plane.count(signoutPath) == 1 }
+            let token = await k.client.core.token
+            XCTAssertNil(token)
         }
 
         func testNotYouDeclinesAndSignsTheDeviceOut() async throws {

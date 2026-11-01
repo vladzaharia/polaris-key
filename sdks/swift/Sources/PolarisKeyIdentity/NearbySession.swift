@@ -147,15 +147,22 @@ extension IdentityClient {
 
     /// The person confirmed the account: the token is a sign-in (the explicit sign-out state ends), the subject
     /// is stored and the event goes out, so Cloud Sync and Connect start now and not before (§12.11.5 rule 9).
-    func nearbyConfirm(subject: String) async throws {
+    /// Answers false, confirming nothing, when the core no longer holds `token` (checked inside the core).
+    func nearbyConfirm(subject: String, token: String) async throws -> Bool {
         let previous = holdSubjectFirst(subject)
-        do { try await core.confirmToken() } catch {
+        let held: Bool
+        do { held = try await core.confirmToken(expected: token) } catch {
             restoreSubject(previous, ifHeld: subject)
             throw error
+        }
+        guard held else {
+            restoreSubject(previous, ifHeld: subject)
+            return false
         }
         announceSubject(subject, previous: previous)
         notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
         await restoreSignInCompleted()
+        return true
     }
 
     /// An unconfirmed nearby sign-in ended: the token, its mark and the documents it fetched go, whatever the
@@ -685,7 +692,14 @@ public final class NearbySignInSession: Sendable, CustomStringConvertible, Custo
         case .already:
             return
         case .go(let token, let subject):
-            guard let token, await client.nearbyHolds(token) else {
+            var confirmedNow = false
+            if let token {
+                do { confirmedNow = try await client.nearbyConfirm(subject: subject, token: token) } catch {
+                    state.with { $0.confirmed = false }
+                    throw error
+                }
+            }
+            guard confirmedNow else {
                 // A later sign-in replaced this one's token: nothing of it is written, nothing signed out.
                 state.with { $0.confirmed = false }
                 halt()
@@ -693,10 +707,6 @@ public final class NearbySignInSession: Sendable, CustomStringConvertible, Custo
                 _ = discardOnce()
                 throw PolarisError(
                     code: ErrorCode.signInFailed, message: "The sign-in ended before it was confirmed.")
-            }
-            do { try await client.nearbyConfirm(subject: subject) } catch {
-                state.with { $0.confirmed = false }
-                throw error
             }
             // The chosen session is gone: no records, the server copy is the fallback.
             try? await request.confirmAccount()
