@@ -1,5 +1,6 @@
 package im.plrs.key.platform
 
+import android.annotation.SuppressLint
 import android.os.Build
 import java.math.BigInteger
 import java.security.GeneralSecurityException
@@ -61,6 +62,8 @@ public class PlatformCrypto(private val sdkInt: Int = Build.VERSION.SDK_INT) {
     }
 
     /** The shared secret; throws [PlatformCryptoException.DH_ZERO] when it would be all zero. */
+    // The XDH classes are API 33; the x25519Supported check below is the guard (sdkInt is injectable for the JVM tests).
+    @SuppressLint("NewApi")
     public fun x25519(privateKey: ByteArray, peerPublic: ByteArray): ByteArray {
         if (privateKey.size != KEY_BYTES || peerPublic.size != KEY_BYTES) refuse(PlatformCryptoException.BAD_INPUT)
         if (!x25519Supported) refuse(PlatformCryptoException.UNSUPPORTED)

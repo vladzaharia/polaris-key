@@ -17,6 +17,7 @@
 
 package im.plrs.key.android
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
@@ -89,6 +90,9 @@ private class ConnectivityNetworkPort(private val context: Context) : NetworkPor
 
     override fun factoryOf(network: Network): SocketFactory? = network.socketFactory
 
+    // The library declares no permission (the app decides); a refusal is caught below. Lint cannot see that for a normal permission.
+    @SuppressLint("MissingPermission")
+    @Suppress("SwallowedException")
     override fun onDefaultNetworkChange(onChange: () -> Unit): NsdStop {
         val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return NsdStop {}
         val callback = object : ConnectivityManager.NetworkCallback() {
@@ -110,7 +114,14 @@ private class ConnectivityNetworkPort(private val context: Context) : NetworkPor
             }
         }
         // Without the right to watch the network the adverts keep their first registration.
-        val watching = runCatching { cm.registerDefaultNetworkCallback(callback) }.isSuccess
+        val watching = try {
+            cm.registerDefaultNetworkCallback(callback)
+            true
+        } catch (e: SecurityException) {
+            false
+        } catch (e: RuntimeException) {
+            false
+        }
         return NsdStop { if (watching) runCatching { cm.unregisterNetworkCallback(callback) } }
     }
 }
