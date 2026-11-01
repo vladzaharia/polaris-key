@@ -29,6 +29,7 @@ private final class LoggedStore: Store, @unchecked Sendable {
     private let lock = NSLock()
     private var events: [String] = []
     var failMark = false
+    var failToken = false
 
     init() { inner = InMemoryStore(productSlug: product, deviceId: String(repeating: "D", count: 32)) }
 
@@ -37,6 +38,7 @@ private final class LoggedStore: Store, @unchecked Sendable {
 
     func getToken() async throws -> String? { try await inner.getToken() }
     func setToken(_ token: String) async throws {
+        if failToken { throw StoreError.io(path: "token", code: 5) }
         note("token:set")
         await inner.setToken(token)
     }
@@ -320,11 +322,11 @@ final class NearbyUnconfirmedMarkTests: XCTestCase {
         XCTAssertFalse(held)
     }
 
-    func testAnotherSignInDropsTheMarkBeforeTheToken() async throws {
+    func testAnotherSignInWritesTheTokenBeforeDroppingTheMark() async throws {
         let r = try await rig()
         try await r.core.setUnconfirmedToken("pkeyt_a")
         try await r.core.setToken("pkeyt_b", source: .register)
-        XCTAssertEqual(r.store.log, ["mark:set", "token:set", "mark:clear", "token:set"])
+        XCTAssertEqual(r.store.log, ["mark:set", "token:set", "token:set", "mark:clear"])
         let held = await r.core.tokenUnconfirmed
         XCTAssertFalse(held)
     }
@@ -558,6 +560,59 @@ final class NearbySignInSessionTests: XCTestCase {
         XCTAssertFalse(held)
         XCTAssertEqual(r.lan.request.count("confirm"), 1)
         XCTAssertEqual(r.plane.count(signoutPath), 0)
+    }
+
+    func testTheUnconfirmedTokenDoesNotLeaveThePreviousPersonAsTheSubject() async throws {
+        let r = try await rig()
+        let a = "ps_" + String(repeating: "Z", count: 22)
+        try await r.core.setToken("pkeyt_A", source: .signin, person: true)
+        _ = r.identity.holdSubjectFirst(a)
+        XCTAssertEqual(r.identity.account, a)
+        let (_, outcome) = try await ready(r)
+        guard case .signedIn = outcome else { return XCTFail("expected signedIn, got \(outcome)") }
+        XCTAssertNil(r.identity.account, "no stored subject under the unconfirmed token")
+        XCTAssertEqual(r.events.kinds, ["subjectChanged"])
+    }
+
+    func testADeclineAfterTheConfirmationLeavesTheSignInAlone() async throws {
+        let r = try await rig()
+        let (session, _) = try await ready(r)
+        try await session.confirmAccount()
+        await session.declineAccount()
+        let token = await r.core.token
+        XCTAssertEqual(token, "pkeyt_nearby_token")
+        XCTAssertEqual(r.plane.count(signoutPath), 0)
+        XCTAssertEqual(r.identity.account, subject)
+    }
+
+    func testConfirmingWithNoUnconfirmedTokenThrows() async throws {
+        let r = try await rig()
+        try await r.core.setToken("pkeyt_plain", source: .signin, person: true)
+        do {
+            try await r.core.confirmToken()
+            XCTFail("expected a throw")
+        } catch let e as PolarisError {
+            XCTAssertEqual(e.code, ErrorCode.signInFailed)
+        }
+    }
+
+    func testAReplacingSignInKeepsTheOldMarkWhenTheNewTokenCannotBeWritten() async throws {
+        let r = try await rig()
+        try await r.core.setUnconfirmedToken("pkeyt_old")
+        r.store.failToken = true
+        do {
+            try await r.core.setToken("pkeyt_new", source: .signin, person: true)
+            XCTFail("expected a throw")
+        } catch {}
+        let unconfirmed = await r.core.tokenUnconfirmed
+        let token = await r.core.token
+        XCTAssertTrue(unconfirmed)
+        XCTAssertEqual(token, "pkeyt_old")
+        r.store.failToken = false
+        try await r.core.setToken("pkeyt_new", source: .signin, person: true)
+        let after = await r.core.tokenUnconfirmed
+        XCTAssertFalse(after)
+        XCTAssertEqual(r.store.log.suffix(2), ["token:set", "mark:clear"], "the new token is written before the mark goes")
     }
 
     func testADeclineSignsOutAndDropsEverythingOnce() async throws {
