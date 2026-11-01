@@ -84,6 +84,8 @@ export interface NearbyAsk {
   pick(code: string): Promise<NearbyApprovalStep>;
   /** "None of these match": the session closes, nothing is approved and no route is called. */
   deny(): Promise<void>;
+  /** Called once when the session ends (it expired or the peer left); returns the remover. */
+  onEnd?(fn: () => void): () => void;
 }
 
 /** The LAN half, as the approver reads it (`cloudConnect.nearby`). */
@@ -262,6 +264,7 @@ function askOf(
     device: a.label === null ? null : cleanLabel(a.label),
     platform: a.platform,
     codes,
+    onEnd: (fn) => a.onClose(() => fn()),
     pick: (code) =>
       (picked ??= (async () => {
         if (declined)
