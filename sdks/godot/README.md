@@ -1100,6 +1100,9 @@ The product turns it on (`interAccount` in discovery); while it is off `pair` an
 read again on a timer.
 
 ```gdscript
+func show_code(code: String) -> void:
+	print(code)                     # draw the code in your own UI
+
 func _on_offer(offer: PKeyConnectPairing.Offer) -> void:
 	show_code(offer.code)           # both people see the same code
 	# on the person's answer: offer.confirm() or offer.decline()
