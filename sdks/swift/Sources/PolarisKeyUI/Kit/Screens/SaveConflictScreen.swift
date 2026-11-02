@@ -154,7 +154,7 @@ public struct SaveConflictView: View {
                 if state == .kept {
                     // Glyph and the result title, never colour alone.
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 36))
+                        .font(style.font(.display))
                         .foregroundStyle(style.palette.success)
                         .accessibilityHidden(true)
                 }
@@ -187,14 +187,14 @@ public struct SaveConflictView: View {
                             content(screen, state)
                                 .background(frameReader("cards"))
                         }
-                        .padding(.top, 16)
+                        .padding(.top, style.space(.md))
                         .padding(.bottom, style.space(.md))
                     }
                     .scrollBounceBehavior(.basedOnSize)
                     ScrollView {
                         actions(screen, state)
                             .background(frameReader("choices"))
-                            .padding(.top, 16)
+                            .padding(.top, style.space(.md))
                             .padding(.bottom, style.space(.md))
                     }
                     .scrollBounceBehavior(.basedOnSize)
@@ -277,7 +277,7 @@ public struct SaveConflictView: View {
                 KitText(newer, .meta, color: .strong)
                     .fontWeight(.semibold)
                     .padding(.horizontal, style.space(.xs))
-                    .padding(.vertical, 2)
+                    .padding(.vertical, style.space(.xxs))
                     .background(Capsule().fill(style.palette.page))
             }
             if let when { KitText(when, .meta, color: .muted) }

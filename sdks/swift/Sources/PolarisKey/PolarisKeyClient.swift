@@ -23,6 +23,9 @@
 // local attacker to poison.
 
 import Foundation
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
 import PolarisKeyConfig
 import PolarisKeyCore
 import PolarisKeyIdentity

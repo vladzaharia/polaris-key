@@ -21,6 +21,9 @@
 //    attempts that never open the status is `unavailable` and a retry waits at least five minutes (G15).
 
 import Foundation
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
 import PolarisKeyCore
 
 public let connectRelayMaxRetryAfterSeconds = 3600

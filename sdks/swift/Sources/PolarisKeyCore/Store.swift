@@ -20,7 +20,9 @@
 //   * the keychain service tag is `pkey:<product>` (§8).
 
 import Foundation
-import Security
+#if canImport(Security)
+    import Security
+#endif
 
 /// The offline cache record — the signed artifacts plus fail-closed sync hints (§4.1).
 ///
@@ -329,6 +331,7 @@ protocol KeychainAPI: Sendable {
     func delete(_ query: [String: Any]) -> OSStatus
 }
 
+#if canImport(Security)
 /// The real Security.framework calls.
 struct SystemKeychain: KeychainAPI {
     func copyMatching(_ query: [String: Any]) -> (OSStatus, Data?) {
@@ -351,6 +354,7 @@ struct SystemKeychain: KeychainAPI {
         SecItemDelete(query as CFDictionary)
     }
 }
+#endif
 
 /// Production store: the secret token lives in the OS keychain (generic password, service
 /// `pkey:<product>` per §8), while the device id + offline cache are 0600 JSON files under
@@ -577,9 +581,11 @@ public actor KeychainStore: Store, DeviceIdRebindable {
     #endif
 
     private static func describe(_ status: OSStatus) -> String {
-        if let message = SecCopyErrorMessageString(status, nil) as String? {
-            return "\(message) (OSStatus \(status))"
-        }
+        #if canImport(Security)
+            if let message = SecCopyErrorMessageString(status, nil) as String? {
+                return "\(message) (OSStatus \(status))"
+            }
+        #endif
         return "OSStatus \(status)"
     }
 

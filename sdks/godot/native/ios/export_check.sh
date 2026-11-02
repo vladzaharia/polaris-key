@@ -155,7 +155,9 @@ XCF="$SDK/addons/polaris_key/native/ios/pkey_apple.xcframework"
 if [ -d "$XCF" ]; then
   BIN="$(find "$XCF" -type f -name pkey_apple -path '*/ios-arm64/*' ! -path '*simulator*' | head -1)"
   [ -n "$BIN" ] || fail "background events: no device binary in $XCF"
-  nm "$BIN" 2>/dev/null | grep -q '_pkp_handle_background_events' || fail "background events: pkp_handle_background_events is not in the device binary"
+  # Read nm to the end: `grep -q` closing the pipe early fails `nm` under pipefail.
+  SYMS="$(nm "$BIN" 2>/dev/null || true)"
+  grep -q '_pkp_handle_background_events' <<<"$SYMS" || fail "background events: pkp_handle_background_events is not in the device binary"
   echo "export_check: pkp_handle_background_events is in the device binary"
 else
   echo "export_check: no pkey_apple.xcframework built, the background-events symbol is not checked"

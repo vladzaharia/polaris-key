@@ -9,6 +9,17 @@
 // destination's directory) to a path the host chose, and never over an existing file.
 
 import Foundation
+#if canImport(Glibc)
+    import Glibc
+#endif
+
+private func closeDescriptor(_ fd: Int32) {
+    #if canImport(Darwin)
+        _ = Darwin.close(fd)
+    #else
+        _ = Glibc.close(fd)
+    #endif
+}
 #if canImport(CryptoKit)
     import CryptoKit
 #else
@@ -116,8 +127,13 @@ public final class XferStore: @unchecked Sendable {
         while !FileManager.default.fileExists(atPath: probe.path), probe.pathComponents.count > 1 {
             probe.deleteLastPathComponent()
         }
-        let v = try? probe.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-        return v?.volumeAvailableCapacityForImportantUsage.map { Int($0) }
+        #if canImport(Darwin)
+            let v = try? probe.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+            return v?.volumeAvailableCapacityForImportantUsage.map { Int($0) }
+        #else
+            let v = try? probe.resourceValues(forKeys: [.volumeAvailableCapacityKey])
+            return v?.volumeAvailableCapacity
+        #endif
     }
 
     /// The bytes a new offer may ask for now: the volume's free space less the disk reserve, and the quota less what
@@ -402,7 +418,7 @@ public final class XferStore: @unchecked Sendable {
     public func deliverEmpty(to destination: URL) throws {
         let fd = open(destination.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
         guard fd >= 0 else { throw XferStoreError(errno == EEXIST ? .exists : .io) }
-        _ = Darwin.close(fd)
+        closeDescriptor(fd)
     }
 
     /// A new owner-only file in the store's directory for a stream that is spooled before it is offered.
@@ -413,7 +429,7 @@ public final class XferStore: @unchecked Sendable {
         let u = dir.appendingPathComponent("spool-" + UUID().uuidString.lowercased(), isDirectory: false)
         let fd = open(u.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
         guard fd >= 0 else { throw XferStoreError(.io) }
-        _ = Darwin.close(fd)
+        closeDescriptor(fd)
         return u
     }
 
