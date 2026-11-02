@@ -26,7 +26,6 @@ const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 
 const PRODUCT := "diceroll"
 const MIB := 1048576
-const POINTER := {"version": 3, "size": 5, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "format": "whole"}
 
 
 ## The Worker's file routes for any number of records, behind the transport port the engine calls.
@@ -179,17 +178,11 @@ class FakeRecords:
 	## Holds a set until `release` or a cancel (a coroutine wait).
 	var hold_set := false
 	var release_set := false
-	## While set, get_record answers this device's stale cache instead of the server's row.
-	var stale_row: Variant = null
 	var set_calls := 0
 	var set_files: Array = []
 	var rejected_code := ""
 	## While set, get_record answers this device's stale cache instead of the server's row.
 	var stale_row: Variant = null
-	## What a pull does (another device wrote meanwhile); invalid: this port cannot pull.
-	var on_pull := Callable()
-	var pulls := 0
-
 	## What a pull does (another device wrote meanwhile); invalid: this port cannot pull.
 	var on_pull := Callable()
 	var pulls := 0
