@@ -20,6 +20,9 @@
 // once (§3.10).
 
 import Foundation
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
 import PolarisKeyCore
 import PolarisKeyLicense
 import PolarisKeyPlatform

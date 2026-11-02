@@ -1194,7 +1194,13 @@ final class NearbyConfirmRaceTests: XCTestCase {
             XCTAssertEqual(k.model.inputs.error?.code, ErrorCode.signInExpired)
             XCTAssertNil(k.model.inputs.autoSignIn)
             await until("the sign-out") { k.plane.count(signoutPath) == 1 }
-            let token = await k.client.core.token
+            // The request goes out before the local records are dropped: wait for the drop.
+            var token = await k.client.core.token
+            let end = Date().addingTimeInterval(10)
+            while token != nil, Date() < end {
+                try? await Task.sleep(nanoseconds: 5_000_000)
+                token = await k.client.core.token
+            }
             XCTAssertNil(token)
         }
 

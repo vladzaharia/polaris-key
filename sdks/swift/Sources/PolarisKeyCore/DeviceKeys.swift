@@ -29,7 +29,9 @@
 // error (locked, denied) is thrown, and none is taken for "no keys". `wipe()` is the way out.
 
 import Foundation
-import Security
+#if canImport(Security)
+    import Security
+#endif
 #if canImport(CryptoKit)
     import CryptoKit
 #else
@@ -131,6 +133,7 @@ protocol DeviceKeyWrapping: Sendable {
 
 // ── The Secure Enclave wrapper ───────────────────────────────────────────────────────
 
+#if canImport(Security)
 struct SecureEnclaveWrapper: DeviceKeyWrapping {
     private static let info = Data("pkey-device-keys/1 wrap".utf8)
 
@@ -180,6 +183,7 @@ struct SecureEnclaveWrapper: DeviceKeyWrapping {
         } catch { throw DeviceKeyError.wrap }
     }
 }
+#endif
 
 // ── Vaults ───────────────────────────────────────────────────────────────────────────
 

@@ -553,7 +553,7 @@ public struct CloudSyncStatusView: View {
                 .foregroundStyle(color)
                 .accessibilityHidden(true)
             // The label, then the figures: "Syncing saves… · 38 MB of 61 MB" reads in that order.
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: style.space(.xxs)) {
                 KitText(line, .body)
                 if state == .transferring, let figures = screen.line("cloudSync.transferProgress") {
                     KitText(figures, .meta, color: .muted)

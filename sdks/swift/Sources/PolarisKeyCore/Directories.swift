@@ -81,11 +81,15 @@ public struct ProductDirs: Sendable, Equatable {
         /// Support` for config, data and state, `Library/Caches` for the cache. Nil when this
         /// process is not entitled to the group.
         public static func appGroup(_ identifier: String) -> Roots? {
-            guard
-                let container = FileManager.default.containerURL(
-                    forSecurityApplicationGroupIdentifier: identifier)
-            else { return nil }
-            return inContainer(container)
+            #if canImport(Darwin)
+                guard
+                    let container = FileManager.default.containerURL(
+                        forSecurityApplicationGroupIdentifier: identifier)
+                else { return nil }
+                return inContainer(container)
+            #else
+                return nil  // App groups are an Apple-platform concept.
+            #endif
         }
 
         /// The roots inside `container` (an app group's, or any shared directory).
