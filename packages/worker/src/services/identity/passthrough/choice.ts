@@ -157,7 +157,7 @@ export async function licenseChoiceView(
     card?: { handle: string; deviceLabel: string | null };
     /**
      * A grant earned by a device code cannot Replace (§12.5.1 rule 5): every row's `replace` is
-     * `null`. The Free-a-device link stays, so the person frees a seat in the portal.
+     * `null`, and no row carries the Free-a-device link, which only the card builds.
      */
     withholdReplace?: boolean;
   },
