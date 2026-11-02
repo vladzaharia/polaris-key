@@ -200,6 +200,14 @@ func finish(session: PKeySignInSession, callback_url: String) -> void:
 the Worker's code (`invalid_grant`, `rate_limited` with `retry_after_seconds` in its detail,
 `sign-in-failed`) and leaves the device token alone. A replayed callback is refused without a request.
 
+To let a person continue with a license key instead of an account, pass `key_return = true` to a
+redirect `start()`. It is off by default and the device-code channel refuses it (`invalid-argument`).
+The sign-in may then settle `PKeySignInOutcome.KIND_ACTIVATED` (`license_id`, `key_entries`): the device
+holds the key's license and no account, the stored subject is cleared, and the identity event is
+`activated`, never `signedIn`. It does not lower the explicit sign-out flag. Add a `KIND_ACTIVATED`
+branch to your `match` before you opt in; the SDK's own dialog leaves it off. A `device_limit`,
+`key_entry_limit` or `license_owned` refusal is an `error` outcome whose `detail` holds the limit and links.
+
 ### The license choice
 
 With `license_choice = "app"`, a person who holds licenses settles `license_choice`, with a `grant`.

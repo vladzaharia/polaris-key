@@ -43,7 +43,7 @@ static func _static_init() -> void:
 	_grant_re = RegEx.create_from_string("\\Asg_[A-Za-z0-9_-]{43}\\z")
 	_origin_re = RegEx.create_from_string("\\A([A-Za-z][A-Za-z0-9+.\\-]*)://([^/?#]*)([^?#]*)")
 	_redirect_re = RegEx.create_from_string("\\Ahttps://([^/?#]*)([^#]*)\\z")
-	_subject_re = RegEx.create_from_string("\\Aps_[A-Za-z0-9_-]{22}\\z")
+	_subject_re = PKeyClaims.whole(PKeyConstants.PAIRWISE_SUBJECT_PATTERN)
 
 
 # ── PKCE ─────────────────────────────────────────────────────────────────────────────────
@@ -350,7 +350,7 @@ static func parse_token_answer(status: int, body: Variant, opts := {}) -> Dictio
 		var entries = _key_entries(body.get("keyEntries"))
 		var schema_key = body.get("schemaVersion")
 		if not (token is String) or token == "" or not (body.get("scope") is String) or body["scope"] != "" \
-				or not (subject == null or (subject is String and _subject_re.search(subject) != null)) \
+				or not body.has("subject") or not (subject == null or (subject is String and _subject_re.search(subject) != null)) \
 				or not (body.get("device") is Dictionary) or not (license is Dictionary) or entries == null:
 			return {"kind": "malformed"}
 		return {

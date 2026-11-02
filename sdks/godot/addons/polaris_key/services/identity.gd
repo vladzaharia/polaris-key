@@ -577,12 +577,12 @@ func _redeem(session: PKeySignInSession, pending: Dictionary, code: String, nati
 			return refused
 		"activated":
 			# A key return: a key activation, never a sign-in. The token is stored as `activate` (a key's
-			# provenance, so rung 1 of automatic sign-in does not count it) and the stored subject is the
-			# answered value, so a null one clears an account the device held.
-			var key_stored := core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_ACTIVATE, true, PKeyTokenManager.ORIGIN_KEY)
+			# provenance, so rung 1 of automatic sign-in does not count it), it does not lower the
+			# explicit sign-out flag, and the stored subject is cleared: the device holds a key, no account.
+			var key_stored := core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_ACTIVATE, false, PKeyTokenManager.ORIGIN_KEY)
 			var key_subject: String = answer["subject"] if answer["subject"] is String else ""
 			if _account != null:
-				_account.note_activated(key_subject)
+				_account.note_activated("")
 			var key_synced: PKeySyncResult = null
 			if redirect_acquisition_sync and on_acquired.is_valid():
 				key_synced = await on_acquired.call()

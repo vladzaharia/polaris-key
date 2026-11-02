@@ -67,6 +67,9 @@ func _parse(t: PKeyTestContext) -> void:
 	var a := R.parse_token_answer(200, KEY_BODY, opted)
 	t.check("key return: a via key body is activated with the opt-in", a["kind"] == "activated" and a["subject"] == null and a["license"] == {"id": "lic_1"}
 			and a["key_entries"] == {"used": 1, "limit": 10}, str(a))
+	var no_subject := KEY_BODY.duplicate(true)
+	no_subject.erase("subject")
+	t.check("key return: a via key body without a subject member is malformed", R.parse_token_answer(200, no_subject, opted) == {"kind": "malformed"})
 	t.check("key return: the same body is malformed without it", R.parse_token_answer(200, KEY_BODY) == {"kind": "malformed"}
 			and R.parse_token_answer(200, KEY_BODY, {"key_return": false}) == {"kind": "malformed"})
 	var named := KEY_BODY.duplicate(true)
@@ -142,7 +145,18 @@ func _session(t: PKeyTestContext) -> void:
 	bed.tokens = [B.json(200, named)]
 	s = await bed.sdk.identity.sign_in.start({"channel": "redirect", "redirect_uri": REDIRECT, "key_return": true})
 	var o2 := await s.complete(_callback(bed, _param(s.authorize_url, "state")))
-	t.check("key return session: a named subject is stored", o2.kind == PKeySignInOutcome.KIND_ACTIVATED and o2.subject == SUBJECT and bed.sdk.core.cache.subject == SUBJECT)
+	t.check("key return session: a named subject is reported but the stored one is cleared", o2.kind == PKeySignInOutcome.KIND_ACTIVATED and o2.subject == SUBJECT and bed.sdk.core.cache.subject == "")
+	bed.free_all()
+
+	# A key return keeps the explicit sign-out flag.
+	bed = await _bed(SUBJECT)
+	bed.sdk.core.cache.set_explicit_sign_out(true)
+	bed.tokens = [B.json(200, KEY_BODY)]
+	s = await bed.sdk.identity.sign_in.start({"channel": "redirect", "redirect_uri": REDIRECT, "key_return": true})
+	await s.complete(_callback(bed, _param(s.authorize_url, "state")))
+	t.check("key return session: the explicit sign-out flag stays set", bed.sdk.core.tokens.explicit_sign_out())
+	var again = await bed.sdk.identity.auto_sign_in()
+	t.check("key return session: automatic sign-in answers signed out", again.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and again.reason == "signed_out", str(again))
 	bed.free_all()
 
 	# Without the opt-in the same body is malformed and nothing is stored.
