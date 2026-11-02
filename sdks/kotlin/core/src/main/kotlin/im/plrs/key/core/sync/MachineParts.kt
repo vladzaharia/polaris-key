@@ -56,6 +56,9 @@ public class CloudSyncMachine private constructor(private val parts: MachinePart
         parts.start()
     }
 
+    /** Every `(collection, id)` of the records held (active partition); empty when signed out. */
+    public fun recordKeys(): List<Pair<String, String>> = parts.records.recordKeys()
+
     /** Who the machine holds signed in, or null (a signed-out device). */
     public val subject: String? get() = parts.core.s.subject
 

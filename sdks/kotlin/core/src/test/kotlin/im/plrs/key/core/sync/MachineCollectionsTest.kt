@@ -102,6 +102,22 @@ class MachineCollectionsTest {
     }
 
     @Test
+    fun recordKeysListTheHeldRecordsAndNoneSignedOut() {
+        val m = machine()
+        assertTrue(m.recordKeys().isEmpty())
+        settle(
+            m,
+            pullBody(
+                """[{"record":["tags","a"],"value":["x"],"version":4,"editedHlc":"018bcfe56418:0000"},""" +
+                    """{"record":["cards","b"],"value":{"hp":1},"version":5,"editedHlc":"018bcfe56418:0001"}]""",
+                5,
+            ),
+        )
+        assertEquals(listOf("cards" to "b", "tags" to "a"), m.recordKeys())
+        assertTrue(machine(subject = null).recordKeys().isEmpty())
+    }
+
+    @Test
     fun updateRefusalsJournalNothing() {
         val m = machine()
         settle(m)

@@ -457,12 +457,13 @@ public class SavesClient internal constructor(
     public fun transfers(): List<SaveTransfer> = running.values.sortedBy { it.id }
 
     /**
-     * A scheduled background run of [id]: wait for the live write and say how it came out. No such write, a cancelled,
+     * A scheduled background run of the write whose id hashes to [idHash]: wait for the live write and say how it came
+     * out. No such write, a cancelled,
      * failed or paused one is [BackgroundTransferOutcome.STOP]; one the host stopped (the transfer scope went away) is
      * RETRY. The caller's own cancellation is the system stopping the run and passes through.
      */
-    internal suspend fun awaitBackground(id: String): BackgroundTransferOutcome {
-        val t = running[id] ?: return BackgroundTransferOutcome.STOP
+    internal suspend fun awaitBackground(idHash: String): BackgroundTransferOutcome {
+        val t = running.values.firstOrNull { ownerTag(it.id) == idHash } ?: return BackgroundTransferOutcome.STOP
         var result: SaveResult? = null
         while (result == null && t.state != TransferState.PAUSED) result = withTimeoutOrNull(BACKGROUND_POLL_MS) { t.await() }
         return when (result) {

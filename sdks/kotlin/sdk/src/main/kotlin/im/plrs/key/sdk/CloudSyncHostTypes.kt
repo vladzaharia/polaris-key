@@ -52,15 +52,16 @@ public fun interface CloudSyncBackgroundRunner {
 }
 
 /**
- * What a platform gives the SDK to keep a write alive in the background. Only opaque ids cross it: a transfer id and an
- * owner tag (the SHA-256 hex of the signed-in person), never a token, a key or a file name. The write itself runs in the
+ * What a platform gives the SDK to keep a write alive in the background. Only opaque ids cross it: the SHA-256 hex of the
+ * transfer id (a transfer id names a save) and an owner tag (the SHA-256 hex of the signed-in person), never a token, a
+ * key or a file name. The write itself runs in the
  * SDK, which fetches its token per request.
  */
 public interface CloudSyncBackgroundPort {
     /** Called once, when the client is built: the platform runs a scheduled transfer through [runner]. */
     public fun attach(runner: CloudSyncBackgroundRunner)
 
-    /** A write the person started: schedule it (user-initiated work). */
+    /** A write the person started: schedule it (user-initiated work). [transferId] is the SHA-256 hex of the write's id. */
     public fun enqueue(transferId: String, owner: String)
 
     /** The write ended, or was cancelled: drop what is still scheduled for it. */

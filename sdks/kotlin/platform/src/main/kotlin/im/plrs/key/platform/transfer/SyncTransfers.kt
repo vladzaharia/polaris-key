@@ -11,7 +11,8 @@
 // Both are unique per transfer id, so a second enqueue of the same transfer never starts a second run.
 //
 // Tokens. Nothing a scheduler stores can carry a bearer token: the work's input data and the job's extras hold the
-// transfer id and an opaque owner tag, nothing else, and [enqueue] refuses a value that looks like a credential. The
+// SHA-256 hex of the transfer id (the id names a save, so the scheduler never holds it) and the owner tag, nothing
+// else, and [enqueue] refuses any value that is not 64 lowercase hex characters. The
 // runner asks the SDK for a fresh token at run time, per request, from the SDK's own store. Expiry is the SDK's:
 // a token the SDK cannot refresh yet is [SyncTransferOutcome.RETRY] (WorkManager backs off, the job hands over to
 // WorkManager); a refresh the server refuses, a sign-out, another person or a transfer the person cancelled is
@@ -102,7 +103,7 @@ public object SyncTransfers {
      * it falls back to WorkManager. Anything else goes to WorkManager. Scheduling twice is one run.
      */
     public fun enqueue(context: Context, transferId: String, owner: String, userInitiated: Boolean = false): SyncTransferRoute {
-        require(TransferIds.valid(transferId, owner)) { "transfer id or owner is not an opaque id" }
+        require(TransferIds.valid(transferId, owner)) { "transfer id or owner is not a SHA-256 hex tag" }
         if (userInitiated && Build.VERSION.SDK_INT >= UPSIDE_DOWN_CAKE && UserInitiatedJobs.schedule(context, transferId, owner)) {
             return SyncTransferRoute.USER_INITIATED_JOB
         }
@@ -248,14 +249,10 @@ public object SyncSpool {
 internal object TransferIds {
     private const val UNIQUE_PREFIX = "pkey.sync.transfer."
     private const val OWNER_TAG_PREFIX = "pkey.sync.owner."
-    private const val ID_MAX = 256
-    private const val OWNER_LEN = 64
-    private const val FIRST_PRINTABLE = 0x21
-    private const val LAST_PRINTABLE = 0x7e
+    private const val HEX_LEN = 64
     private const val BYTE_MASK = 0xff
     private const val BITS_PER_BYTE = 8
     private const val JOB_ID_BYTES = 4
-    private val CREDENTIAL_SHAPE = Regex("^pkey[a-z]*_|^eyJ|^Bearer", RegexOption.IGNORE_CASE)
 
     fun ownerTag(owner: String): String = OWNER_TAG_PREFIX + sha256Hex(owner)
 
@@ -270,17 +267,16 @@ internal object TransferIds {
     fun sha256Hex(s: String): String =
         MessageDigest.getInstance("SHA-256").digest(s.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 
-    /** A bounded printable string that is no token shape. */
+    /** The scheduler holds the SHA-256 hex of a transfer id, never the id (which names a save): 64 lowercase hex characters. */
     fun requireId(id: String) {
-        require(id.isNotEmpty() && id.length <= ID_MAX && id.all { it.code in FIRST_PRINTABLE..LAST_PRINTABLE }) {
-            "transfer id is not an opaque id"
-        }
-        require(!CREDENTIAL_SHAPE.containsMatchIn(id)) { "transfer id looks like a credential" }
+        require(isHex(id)) { "transfer id is not a SHA-256 hex tag" }
     }
 
     fun requireOwner(owner: String) {
-        require(owner.length == OWNER_LEN && owner.all { it in '0'..'9' || it in 'a'..'f' }) { "owner is not a SHA-256 hex tag" }
+        require(isHex(owner)) { "owner is not a SHA-256 hex tag" }
     }
+
+    private fun isHex(s: String): Boolean = s.length == HEX_LEN && s.all { it in '0'..'9' || it in 'a'..'f' }
 
     fun valid(id: String?, owner: String?): Boolean = id != null && owner != null && runCatching {
         requireId(id)
