@@ -22,8 +22,9 @@ package im.plrs.key.identity
 import im.plrs.key.core.Base64Url
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.Feature
-import im.plrs.key.core.ManageLink
 import im.plrs.key.core.JsonText
+import im.plrs.key.core.ManageLink
+import im.plrs.key.core.PAIRWISE_SUBJECT_PATTERN
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.ServiceSlug
@@ -140,12 +141,8 @@ public sealed interface TokenAnswer {
      * [retryAfterSeconds] when it named one. A 5xx or a body with no `error` is `server_error`. [details] holds the
      * flat members of `device_limit`, `key_entry_limit` and `license_owned`, each only when the body carried it.
      */
-    public data class Refused(
-        val error: String,
-        val status: Int,
-        val retryAfterSeconds: Int? = null,
-        val details: RefusalDetails? = null,
-    ) : TokenAnswer {
+    public data class Refused(val error: String, val status: Int, val retryAfterSeconds: Int? = null, val details: RefusalDetails? = null) :
+        TokenAnswer {
         override fun toString(): String = "Refused(error=$error, status=$status, retryAfterSeconds=$retryAfterSeconds, details=$details)"
     }
 
@@ -194,7 +191,7 @@ public object IdentityRedirect {
     public const val KEY_RETURN_ALLOW: String = "allow"
 
     private val GRANT = Regex("sg_[A-Za-z0-9_-]{43}")
-    private val SUBJECT = Regex("ps_[A-Za-z0-9_-]{22}")
+    private val SUBJECT = Regex(PAIRWISE_SUBJECT_PATTERN)
     private val secureRandom = SecureRandom()
 
     private fun systemRandom(length: Int): ByteArray = ByteArray(length).also { secureRandom.nextBytes(it) }
@@ -469,20 +466,27 @@ public object IdentityRedirect {
         return TokenAnswer.Token(token, scope, subject, o["schemaVersion"].longValue ?: 1L, device, license)
     }
 
+    /** The members every key return has: the opt-in, `via`, an empty scope and a `subject` member that is a pairwise subject or null. */
+    private fun keyHeadOk(o: JsonObject, keyReturn: Boolean): Boolean {
+        val subject = o["subject"]
+        val subjectOk = subject is JsonNull || (subject != null && SUBJECT.matches(subject.stringValue.orEmpty()))
+        return keyReturn && o["via"].stringValue == "key" && o["scope"].stringValue == "" && subjectOk
+    }
+
     private fun keyAnswer(o: JsonObject, keyReturn: Boolean): TokenAnswer {
-        if (o["via"].stringValue != "key" || !keyReturn) return TokenAnswer.Malformed
         val token = o["access_token"].stringValue?.takeIf { it.isNotEmpty() }
-        val subjectMember = o["subject"]
-        val subject: String? = when {
-            subjectMember == null -> return TokenAnswer.Malformed
-            subjectMember is JsonNull -> null
-            else -> subjectMember.stringValue?.takeIf { SUBJECT.matches(it) } ?: return TokenAnswer.Malformed
-        }
         val device = o["device"].objectValue
+        return if (keyHeadOk(o, keyReturn) && token != null && device != null) keyActivated(o, token, device) else TokenAnswer.Malformed
+    }
+
+    private fun keyActivated(o: JsonObject, token: String, device: JsonObject): TokenAnswer {
         val license = o["license"].objectValue
         val entries = entriesOf(o["keyEntries"])
-        if (token == null || o["scope"].stringValue != "" || device == null || license == null || entries == null) return TokenAnswer.Malformed
-        return TokenAnswer.Activated(token, subject, o["schemaVersion"].longValue ?: 1L, device, license, entries)
+        return if (license != null && entries != null) {
+            TokenAnswer.Activated(token, o["subject"].stringValue, o["schemaVersion"].longValue ?: 1L, device, license, entries)
+        } else {
+            TokenAnswer.Malformed
+        }
     }
 }
 
@@ -587,11 +591,12 @@ internal suspend fun IdentityClient.redeemForm(
         TokenAnswer.Malformed -> throw PolarisException(ErrorCode.badResponse, "the token endpoint answered without a complete sign-in.")
         is TokenAnswer.Refused -> {
             val retry = answer.retryAfterSeconds ?: response.header("retry-after")?.trim()?.toIntOrNull()
+            val serverFailure = answer.status >= 500
             throw SignInError(
-                if (answer.status >= 500) ErrorCode.serverError else answer.error,
+                if (serverFailure) ErrorCode.serverError else answer.error,
                 "the token endpoint refused the sign-in (${answer.error}).", retry,
                 // A 5xx carries no details: they belong to the refusals `license/activate` also gives.
-                details = answer.details.takeIf { answer.status < 500 },
+                details = answer.details.takeIf { !serverFailure },
             )
         }
         // Only `license_choice=app` makes the Worker answer this; nothing is stored and `identity.choice.*` finishes it.
@@ -602,13 +607,14 @@ internal suspend fun IdentityClient.redeemForm(
                 throw PolarisException(ErrorCode.badResponse, "the token endpoint asked for a licence choice this sign-in did not request.")
             }
         // A key return: a key activation, never a sign-in. The token is stored as `activate` (a key's provenance, so the
-        // automatic sign-in's first rung does not count it) and the stored subject is set to the answered value, so a
-        // null one clears whatever account the device held. The identity event is the subject change; no sign-in event.
+        // automatic sign-in's first rung does not count it) and, as for a key activation, it leaves the explicit
+        // sign-out flag alone. The stored subject is cleared, whatever the answer named, so the device holds no
+        // account. The identity event is the subject change; no sign-in event.
         is TokenAnswer.Activated -> {
-            if (core.storeSignIn(answer.accessToken, answer.subject, TokenSource.activate, personInitiated = true)) onSubject(answer.subject)
+            if (core.storeSignIn(answer.accessToken, null, TokenSource.activate)) onSubject(null)
             afterSignIn()
             if (redirectAcquisitionSyncValue) onAcquired?.invoke()
-            SignInOutcome.Activated(answer.license["id"].stringValue, answer.keyEntries, answer.subject)
+            SignInOutcome.Activated(answer.license["id"].stringValue, answer.keyEntries, null)
         }
         is TokenAnswer.Token -> {
             if (core.storeSignIn(answer.accessToken, answer.subject, TokenSource.signin, personInitiated = true)) onSubject(answer.subject)

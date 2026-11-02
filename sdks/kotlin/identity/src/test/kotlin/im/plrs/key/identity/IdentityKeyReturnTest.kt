@@ -1,9 +1,8 @@
 // @pkey-feature identity.keyreturn
 //
 // LK-SKIP.10: the key return of the redirect channel, web and native. The opt-in is never sent unless set; a
-// `via: "key"` body is an activation only with it; the session stores a key activation and sets the stored subject
-// to the answered value; the refusals a key bind shares with `license/activate` surface with their details. The wire
-// conversations are the transcripts' (redirect-web-key-return*).
+// `via: "key"` body is an activation only with it; the session stores a key activation and clears the stored subject; the
+// refusals a key bind shares with `license/activate` surface with their details. The wire conversations are the transcripts' (redirect-web-key-return*).
 
 package im.plrs.key.identity
 
@@ -133,6 +132,7 @@ class IdentityKeyReturnTest {
             keyBody.replace("\"license\":{\"id\":\"lic_1\"}", "\"license\":null"),
             keyBody.replace("\"used\":2", "\"used\":-1"),
             keyBody.replace("\"keyEntries\":{\"used\":2,\"limit\":10},", ""),
+            keyBody.replace(",\"subject\":null", ""),
         )) {
             assertEquals(bad, TokenAnswer.Malformed, parse(200, bad, true))
         }
@@ -151,6 +151,26 @@ class IdentityKeyReturnTest {
         assertNull(w.core.storedSubject())
         assertEquals(TokenProvenance.key, w.core.tokenProvenance())
         assertEquals("the identity event is the subject cleared", listOf<String?>(null), w.subjects)
+    }
+
+    // A key return is a key activation: it leaves the explicit sign-out flag alone, so automatic sign-in stays signed out.
+    @Test
+    fun aKeyReturnLeavesTheExplicitSignOutFlagSet() = runBlocking {
+        val w = world { respond(200, keyBody) }
+        w.core.setExplicitSignOut(true)
+        val (s, state) = begin(w, true)
+        assertTrue(s.complete(callback(state)) is SignInOutcome.Activated)
+        assertTrue(w.core.explicitSignOut())
+        val auto = w.client.autoSignIn() as AutoSignInResult.NeedsSignIn
+        assertEquals(AutoSignInReason.SignedOut, auto.reason)
+    }
+
+    @Test
+    fun anAnsweredSubjectIsNotStored() = runBlocking {
+        val w = world { respond(200, keyBody.replace("\"subject\":null", "\"subject\":\"$subject\"")) }
+        val (s, state) = begin(w, true)
+        assertEquals(SignInOutcome.Activated("lic_1", KeyReturnEntries(2, 10), null), s.complete(callback(state)))
+        assertNull(w.core.storedSubject())
     }
 
     @Test
