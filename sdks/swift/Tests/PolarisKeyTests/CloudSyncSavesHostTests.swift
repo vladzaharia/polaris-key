@@ -61,6 +61,39 @@ final class CloudSyncSavesHostTests: XCTestCase {
         return (r, h)
     }
 
+    func testARecordTombstoneRemovesTheHeldRecordInE2E() async throws {
+        let rig = HostRig()
+        let change: JSONValue = .object([
+            "record": .array([.string("saves"), .string(blindId("slot1"))]), "version": .int(4),
+            "ct": sealedValue("slot1", .object(["a": .int(1)])),
+        ])
+        script(rig, changes: [change]) { ok($0, 5) }
+        let (recs, h) = try await records(rig)
+        await h.flush()
+        let before = try await recs.list()
+        XCTAssertEqual(before.map(\.id), ["slot1"])
+        // Another device deleted slot1: the Worker serves a tombstone under the blinded id.
+        rig.responder = { req, _ in
+            if req.method == .get {
+                return .answer(
+                    status: 200,
+                    body: hReply([
+                        "cursor": .int(2),
+                        "tombstones": .array([
+                            .object([
+                                "record": .array([.string("saves"), .string(blindId("slot1"))]), "version": .int(5),
+                            ])
+                        ]),
+                    ]))
+            }
+            return .answer(status: 200, body: hReply())
+        }
+        _ = await recs.pull()
+        await h.flush()
+        let after = try await recs.list()
+        XCTAssertTrue(after.isEmpty, "the remote delete was not applied: \(after.map(\.id))")
+    }
+
     func testAWriteGoesOnTheExplicitBaseSealedWithABlindedIdAndIsAnswered() async throws {
         let rig = HostRig()
         script(rig) { ok($0, 5) }

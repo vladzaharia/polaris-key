@@ -63,12 +63,15 @@ class SyncTransferJobTest {
 
     private fun pending(): List<JobInfo> = jobs.values.toList()
 
+    /** What a scheduler holds for a save's transfer id: its SHA-256 hex. */
+    private fun tid(name: String): String = TransferIds.sha256Hex(name)
+
     private fun works(id: String): List<WorkInfo> = wm.getWorkInfosForUniqueWork(TransferIds.uniqueName(id)).get()
 
     @Test
     @Config(sdk = [34])
     fun aUserStartedSaveOnAndroid14IsAUserInitiatedJob() {
-        val route = SyncTransfers.enqueue(ctx, "saves:1", owner, userInitiated = true)
+        val route = SyncTransfers.enqueue(ctx, tid("saves:1"), owner, userInitiated = true)
         assertEquals(SyncTransferRoute.USER_INITIATED_JOB, route)
         val job = pending().single()
         assertTrue(job.isUserInitiated)
@@ -76,35 +79,38 @@ class SyncTransferJobTest {
         assertEquals("im.plrs.key.platform.transfer.SyncTransferJob", job.service.className)
         // Extras: the transfer and the owner, nothing else.
         assertEquals(setOf(SyncTransfers.KEY_TRANSFER, SyncTransfers.KEY_OWNER), job.extras.keySet())
-        assertTrue(works("saves:1").isEmpty())
+        // The transfer in them is the hash of the save's transfer id, never the id (which names the save).
+        assertEquals(tid("saves:1"), job.extras.getString(SyncTransfers.KEY_TRANSFER))
+        assertFalse(job.extras.getString(SyncTransfers.KEY_TRANSFER)!!.contains("saves"))
+        assertTrue(works(tid("saves:1")).isEmpty())
     }
 
     @Test
     @Config(sdk = [34])
     fun everythingElseGoesToWorkManager() {
-        assertEquals(SyncTransferRoute.WORK, SyncTransfers.enqueue(ctx, "saves:2", owner))
+        assertEquals(SyncTransferRoute.WORK, SyncTransfers.enqueue(ctx, tid("saves:2"), owner))
         assertTrue(pending().isEmpty())
-        assertEquals(1, works("saves:2").size)
+        assertEquals(1, works(tid("saves:2")).size)
     }
 
     @Test
     @Config(sdk = [33])
     fun beforeAndroid14AUserStartedSaveUsesWorkManager() {
-        assertEquals(SyncTransferRoute.WORK, SyncTransfers.enqueue(ctx, "saves:3", owner, userInitiated = true))
-        assertEquals(1, works("saves:3").size)
+        assertEquals(SyncTransferRoute.WORK, SyncTransfers.enqueue(ctx, tid("saves:3"), owner, userInitiated = true))
+        assertEquals(1, works(tid("saves:3")).size)
     }
 
     @Test
     @Config(sdk = [34])
     fun cancelAndSignOutRemoveTheJobsToo() {
-        SyncTransfers.enqueue(ctx, "saves:1", owner, userInitiated = true)
-        SyncTransfers.enqueue(ctx, "saves:2", owner, userInitiated = true)
-        SyncTransfers.enqueue(ctx, "saves:3", "d".repeat(64), userInitiated = true)
-        SyncTransfers.cancel(ctx, "saves:1")
+        SyncTransfers.enqueue(ctx, tid("saves:1"), owner, userInitiated = true)
+        SyncTransfers.enqueue(ctx, tid("saves:2"), owner, userInitiated = true)
+        SyncTransfers.enqueue(ctx, tid("saves:3"), "d".repeat(64), userInitiated = true)
+        SyncTransfers.cancel(ctx, tid("saves:1"))
         assertEquals(2, pending().size)
         SyncTransfers.cancelOwner(ctx, owner)
         val left = pending().single()
-        assertEquals("saves:3", left.extras.getString(SyncTransfers.KEY_TRANSFER))
+        assertEquals(tid("saves:3"), left.extras.getString(SyncTransfers.KEY_TRANSFER))
     }
 
     @Test
@@ -138,17 +144,17 @@ class SyncTransferJobTest {
     @Config(sdk = [34])
     fun aStopTheSystemChoseHandsTheTransferToWorkManagerAndACancelDoesNot() {
         val svc = Robolectric.buildService(SyncTransferJob::class.java).create().get()
-        assertFalse(svc.onStopJob(params(1, owner, "saves:9", JobParameters.STOP_REASON_TIMEOUT)))
-        assertEquals(1, works("saves:9").size)
-        assertFalse(svc.onStopJob(params(2, owner, "saves:8", JobParameters.STOP_REASON_CANCELLED_BY_APP)))
-        assertTrue(works("saves:8").isEmpty())
+        assertFalse(svc.onStopJob(params(1, owner, tid("saves:9"), JobParameters.STOP_REASON_TIMEOUT)))
+        assertEquals(1, works(tid("saves:9")).size)
+        assertFalse(svc.onStopJob(params(2, owner, tid("saves:8"), JobParameters.STOP_REASON_CANCELLED_BY_APP)))
+        assertTrue(works(tid("saves:8")).isEmpty())
     }
 
     @Test
     @Config(sdk = [34])
     fun aJobWithoutValidExtrasDoesNotRun() {
         val svc = Robolectric.buildService(SyncTransferJob::class.java).create().get()
-        assertFalse(svc.onStartJob(params(3, "not-hex", "saves:1")))
+        assertFalse(svc.onStartJob(params(3, "not-hex", tid("saves:1"))))
         assertFalse(svc.onStartJob(params(4, owner, null)))
         assertFalse(svc.onStartJob(params(5, owner, "pkeyt_secret")))
     }

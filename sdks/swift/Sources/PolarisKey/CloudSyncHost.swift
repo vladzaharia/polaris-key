@@ -785,7 +785,8 @@ public actor CloudSyncHost {
         let pulled: SyncOpenedPull
         do {
             pulled = try HostCodec.openPull(
-                body!, codec: codec, mutations: mutations, aliases: options.aliases, openKeys: openKeys)
+                body!, codec: codec, mutations: mutations, aliases: options.aliases, openKeys: openKeys,
+                recordKeys: m.recordKeys())
         } catch {
             // Locked since the request left, or a repeated mutationId: the answer is dropped and the
             // cursor stays.

@@ -364,10 +364,12 @@ public actor PolarisKeyClient {
             // The ring locks only after the background tasks are cancelled: nothing sealed under the root
             // goes out once it is locked.
             lockRing: {
-                await savesEnvBox.current?.closeBackground()
-                await ring().lock()
+                await CloudSyncApi.lockClosingBackground(
+                    closeBackground: { await savesEnvBox.current?.closeBackground() },
+                    lockRing: { await ring().lock() })
             },
             purgeSaves: { await savesBox.current?.purge() },
+            personSignedIn: { savesEnvBox.current?.personSignedIn() },
             recovery: { try await ring().setRecoveryCode() })
         self.cloudSyncApi = api
         // The bearer of a background task is read when the task is made; a 401 re-acquires once.

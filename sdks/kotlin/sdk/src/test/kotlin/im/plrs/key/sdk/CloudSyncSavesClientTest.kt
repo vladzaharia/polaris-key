@@ -619,7 +619,7 @@ class CloudSyncSavesClientTest {
         }
         val t = saves.write("s", bytes(500), meta("c"))
         assertEquals(listOf("saves:s"), started.toList())
-        val run = scope.async { saves.awaitBackground("saves:s") }
+        val run = scope.async { saves.awaitBackground(ownerTag("saves:s")) }
         kotlinx.coroutines.delay(100)
         assertFalse(run.isCompleted)
         cloud.gate!!.complete(Unit)
@@ -631,14 +631,14 @@ class CloudSyncSavesClientTest {
     fun aBackgroundRunStopsForANoSuchWriteACancelledOneAndAPausedOne() = runBlocking {
         val cloud = Cloud(e2e = false).also { it.gate = CompletableDeferred() }
         val saves = client(cloud, e2e = false)
-        assertEquals(BackgroundTransferOutcome.STOP, saves.awaitBackground("saves:none"))
+        assertEquals(BackgroundTransferOutcome.STOP, saves.awaitBackground(ownerTag("saves:none")))
         val t = saves.write("s", bytes(500), meta("c"))
         kotlinx.coroutines.delay(100)
-        val run = scope.async { saves.awaitBackground("saves:s") }
+        val run = scope.async { saves.awaitBackground(ownerTag("saves:s")) }
         t.pause()
         withTimeout(5000) { while (t.state != TransferState.PAUSED) kotlinx.coroutines.delay(5) }
         assertEquals(BackgroundTransferOutcome.STOP, withTimeout(10_000) { run.await() })
-        val cancelled = scope.async { saves.awaitBackground("saves:s") }
+        val cancelled = scope.async { saves.awaitBackground(ownerTag("saves:s")) }
         t.cancel()
         assertEquals(SaveResult.Cancelled, t.result())
         assertEquals(BackgroundTransferOutcome.STOP, withTimeout(10_000) { cancelled.await() })

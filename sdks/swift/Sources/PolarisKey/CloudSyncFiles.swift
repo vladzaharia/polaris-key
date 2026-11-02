@@ -9,7 +9,8 @@
 //    another URL.
 //  - Bounds. A JSON answer is read to 1 MiB, an error body to 64 KiB, an unranged file `GET` (a `chunks`
 //    file's manifest) to 2 MiB, a ranged one to the range asked (a server that ignores `Range` and sends
-//    more is refused, never buffered), a chunk to `SYNC_CHUNK_MAX_STORED_BYTES`. A request's deadline is
+//    more is refused and never read into memory; the background session also stops the task once it has
+//    written more than the bound), a chunk to `SYNC_CHUNK_MAX_STORED_BYTES`. A request's deadline is
 //    the base timeout plus its size at 64 KiB/s.
 //  - A refusal is a value (`FileReply.refused`); a call that gets no answer throws and the engine retries.
 //    `Retry-After` is read as seconds or an HTTP date and capped at 3,600 before any integer conversion.
@@ -406,7 +407,7 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
         if let v = query.version, !(v >= 0 && v < 1_000_000_000) { throw bad("version") }
         let path = "\(try record(target))\(query.version.map { "?version=\($0)" } ?? "")"
         // The body is bounded by the range asked, even for a 200 (a server that ignores `Range` and sends
-        // more is refused, never buffered).
+        // more is refused, never read into memory).
         let cap = query.range.map { $0.upperBound - $0.lowerBound } ?? CloudSyncFileBounds.manifestMaxBytes
         let r = try await exchange(
             "GET", path, Sent(range: query.range, ifMatch: query.ifMatch), expectBytes: cap, cap: cap,

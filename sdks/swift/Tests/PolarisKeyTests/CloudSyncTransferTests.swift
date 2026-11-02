@@ -842,6 +842,32 @@ final class CloudSyncTransferTests: XCTestCase {
         XCTAssertEqual(try cache.get(firstId), s.chunks[firstId], "...and is replaced by the good object")
     }
 
+    func testTheSpoolAndTheChunkCacheHoldNoPlaintextInE2E() async throws {
+        // The chunk cache half (the spool half is `CloudSyncBackgroundCloseTests.testTheSpoolHoldsNoPlaintextInE2E`):
+        // a marker in the plaintext through a real end-to-end codec, then every cache file is scanned.
+        let marker = Data("PLAINTEXT-MARKER-0123456789".utf8)
+        var data = noise(300_000)
+        data.replaceSubrange(1000..<(1000 + marker.count), with: marker)
+        let codec = E2eFileCodec(root: root, collection: "saves")
+        let s = FakeServer()
+        try await engine(s).uploadChunked(chunkedReq("c9", data, codec))
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let cache = FileChunkCache(directory: dir.appendingPathComponent("cache"), maxBytes: 64 * mib)
+        let sink = Collected()
+        var req = dlReq(data, stored: s.files[0], codec: codec, format: "chunks", cache: cache, sink: sink)
+        req.size = codec.storedSize(data.count)
+        try await engine(s).download(req)
+        XCTAssertEqual(sink.data, data)
+        let files = try FileManager.default.contentsOfDirectory(atPath: dir.appendingPathComponent("cache").path)
+        XCTAssertFalse(files.isEmpty, "the download filled the cache")
+        for name in files {
+            let bytes = try Data(contentsOf: dir.appendingPathComponent("cache").appendingPathComponent(name))
+            XCTAssertNil(bytes.range(of: marker), "a cache file holds the plaintext")
+            XCTAssertNil(bytes.range(of: data.subdata(in: 5000..<5064)), "a cache file holds the plaintext")
+        }
+    }
+
     func testTamperedChunksAndManifestsAreSyncFileInvalid() async throws {
         let codec = ServerFileCodec()
         let data = noise(mib + 4321)

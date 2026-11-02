@@ -157,6 +157,17 @@ final class ForgetOrderTests: XCTestCase {
         XCTAssertEqual(log.all, ["lock", "purge saves", "remove pin"])
     }
 
+    func testLockClosesTheBackgroundChannelBeforeTheRingLocks() async throws {
+        let log = Log()
+        try await CloudSyncApi.forgetInOrder(
+            lock: {
+                await CloudSyncApi.lockClosingBackground(
+                    closeBackground: { log.add("close channel") }, lockRing: { log.add("lock ring") })
+            },
+            purgeSaves: { log.add("purge saves") }, forget: { log.add("remove pin") })
+        XCTAssertEqual(log.all, ["close channel", "lock ring", "purge saves", "remove pin"])
+    }
+
     func testAPinThatCannotBeRemovedIsReportedAfterThePurge() async throws {
         struct Stuck: Error {}
         let log = Log()

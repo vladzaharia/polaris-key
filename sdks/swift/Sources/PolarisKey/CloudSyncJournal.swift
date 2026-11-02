@@ -107,6 +107,15 @@ public protocol JournalStore: Sendable {
     func put(_ id: String, _ record: JournalRecord)
     func delete(_ id: String)
     func list() -> [String]
+    /// Read, change and write back one record as one step: `change` gets what is held (nil when nothing is)
+    /// and answers the record to store, or nil to leave it. A delete never lands between the read and the write.
+    func update(_ id: String, _ change: (JSONValue?) -> JournalRecord?)
+}
+
+extension JournalStore {
+    public func update(_ id: String, _ change: (JSONValue?) -> JournalRecord?) {
+        if let next = change(get(id)) { put(id, next) }
+    }
 }
 
 /// An in-memory journal: tests, and a host with nothing durable (a transfer then does not survive a kill).
@@ -126,6 +135,10 @@ public final class MemoryJournal: JournalStore, @unchecked Sendable {
     public func delete(_ id: String) { lock.withLock { _ = map.removeValue(forKey: id) } }
 
     public func list() -> [String] { lock.withLock { Array(map.keys) } }
+
+    public func update(_ id: String, _ change: (JSONValue?) -> JournalRecord?) {
+        lock.withLock { if let next = change(map[id]) { map[id] = next.json } }
+    }
 }
 
 /// The file a transfer id lives in: the lowercase hex SHA-256 of the id, `.json`.
@@ -141,6 +154,8 @@ func cloudSyncWriteAtomic(_ data: Data, to url: URL) throws {
     let dir = url.deletingLastPathComponent()
     try FileManager.default.createDirectory(
         at: dir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+    // A directory that already exists keeps its mode through the call above: set it on every write.
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
     var dirURL = dir
     var dirValues = URLResourceValues()
     dirValues.isExcludedFromBackup = true
@@ -205,6 +220,13 @@ public final class FileJournal: JournalStore, @unchecked Sendable {
     public func put(_ id: String, _ record: JournalRecord) {
         guard let data = try? JSONEncoder().encode(record) else { return }
         lock.withLock { try? cloudSyncWriteAtomic(data, to: url(id)) }
+    }
+
+    public func update(_ id: String, _ change: (JSONValue?) -> JournalRecord?) {
+        lock.withLock {
+            guard let next = change(Self.read(url(id))), let data = try? JSONEncoder().encode(next) else { return }
+            try? cloudSyncWriteAtomic(data, to: url(id))
+        }
     }
 
     public func delete(_ id: String) {

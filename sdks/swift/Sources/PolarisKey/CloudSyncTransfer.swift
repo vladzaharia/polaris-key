@@ -183,6 +183,8 @@ public struct TransferError: Error, Sendable, Equatable, CustomStringConvertible
         case retriesExhausted = "retries-exhausted"
         case restartsExhausted = "restarts-exhausted"
         case aborted
+        /// The background channel was closed (sign-out, forget, lock): the transfer is over, not paused.
+        case closed
         case fileInvalid = "file-invalid"
     }
 
@@ -216,7 +218,7 @@ public struct TransferError: Error, Sendable, Equatable, CustomStringConvertible
         switch reason {
         case .fileInvalid:
             return PolarisError(code: ErrorCode.syncFileInvalid, message: description, detail: detail)
-        case .aborted:
+        case .aborted, .closed:
             return PolarisError(code: ErrorCode.cancelled, message: description)
         default:
             return PolarisError(
@@ -529,8 +531,8 @@ public final class FileTransferEngine: Sendable {
                 do { try await sleeper(wait) } catch { throw TransferError(.aborted) }
             }
             var reply: FileReply<T>?
-            do { reply = try await op() } catch is TransferError {
-                throw TransferError(.aborted)
+            do { reply = try await op() } catch let e as TransferError {
+                throw e.reason == .closed ? e : TransferError(.aborted)
             } catch {
                 // No answer: the network, a timeout. A cancelled task is not one.
                 if Task.isCancelled { throw TransferError(.aborted) }

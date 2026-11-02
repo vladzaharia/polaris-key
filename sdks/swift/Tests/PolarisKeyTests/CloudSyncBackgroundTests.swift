@@ -277,9 +277,9 @@ final class CloudSyncBackgroundTests: XCTestCase {
         await rig.channel.close()
         do {
             _ = try await call.value
-            XCTFail("expected aborted")
+            XCTFail("expected closed")
         } catch let e as TransferError {
-            XCTAssertEqual(e.reason, .aborted)
+            XCTAssertEqual(e.reason, .closed)
         }
         XCTAssertTrue(rig.session.tasks.allSatisfy { $0.isCancelled })
         XCTAssertTrue(stranger.isCancelled)
@@ -287,9 +287,9 @@ final class CloudSyncBackgroundTests: XCTestCase {
         let before = rig.session.tasks.count
         do {
             _ = try await rig.channel.perform(putRequest(Data("later".utf8)))
-            XCTFail("expected aborted")
+            XCTFail("expected closed")
         } catch let e as TransferError {
-            XCTAssertEqual(e.reason, .aborted)
+            XCTAssertEqual(e.reason, .closed)
         }
         XCTAssertEqual(rig.session.tasks.count, before, "nothing is enqueued while closed")
         XCTAssertEqual(rig.spoolFiles, [])
@@ -478,6 +478,171 @@ final class CloudSyncBackgroundTests: XCTestCase {
     }
 }
 
+// MARK: The close is sticky and ends what runs
+
+private let syncDiscovery = """
+    {"product":"djdl","services":{"license":{"enabled":true},"sync":{"enabled":true}}}
+    """
+
+final class CloudSyncBackgroundCloseTests: XCTestCase {
+    private struct Live {
+        let env: LiveSavesEnvironment
+        let rig: Rig
+        let client: PolarisKeyClient
+    }
+
+    /// The live environment over a stubbed session, the product running the sync service.
+    private func live() async throws -> Live {
+        let signer = TestSigner(kid: "k1")
+        let server = StubServer()
+        await server.reply("/djdl/.well-known/polaris.json", body: syncDiscovery)
+        let store = InMemoryStore(deviceId: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+        await store.setToken("pkeyt_dev")
+        let client = try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0", pinnedKeys: signer.trust,
+                trustRefresh: false, store: store, transport: server.transport, expectedServices: [.license, .sync],
+                fingerprint: false))
+        let rig = Rig()
+        let api = await client.cloudSyncApi
+        let env = LiveSavesEnvironment(
+            core: client.core, api: api, keyring: { SyncKeyring(core: client.core) },
+            options: SavesOptions(delta: false), backgroundTokens: rig.token.tokens, backgroundPort: rig.session)
+        return Live(env: env, rig: rig, client: client)
+    }
+
+    func testAClosedChannelEnqueuesNothingWhileASaveRetries() async throws {
+        let l = try await live()
+        defer { l.rig.cleanup() }
+        let channel = try XCTUnwrap(l.env.background)
+        await l.env.closeBackground()
+        // A save that retries asks for its context again: that never opens the channel.
+        for _ in 0..<2 { _ = try? await l.env.savesContext() }
+        let refused = Task { try await channel.perform(putRequest(Data("x".utf8))) }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertTrue(l.rig.session.tasks.isEmpty, "nothing is enqueued while closed")
+        refused.cancel()  // (a channel that took the call would wait for it)
+        guard case .failure(let error) = await refused.result, (error as? TransferError)?.reason == .closed else {
+            return XCTFail("a closed channel took a call")
+        }
+        XCTAssertEqual(l.rig.spoolFiles, [])
+        // A person's sign-in is what opens it.
+        l.env.personSignedIn()
+        let again = Task { try await channel.perform(putRequest(Data("y".utf8))) }
+        try await waitFor(l.rig.session.tasks.count == 1)
+        l.rig.session.finish(l.rig.session.tasks[0], status: 204)
+        _ = try await again.value
+    }
+
+    func testALateCompletionAfterCloseWritesNoJournal() async throws {
+        let rig = Rig()
+        defer { rig.cleanup() }
+        rig.journal.put("t1", journalRecord(done: [1]))
+        let tag = BackgroundTag(idHash: backgroundIdHash("t1"), kind: .up, part: 2, enqueuedAt: 1_000_000, spool: nil)
+        let t = rig.session.adopt(url: partURL.absoluteString, tag: tag.text)
+        await rig.channel.close()
+        rig.session.finish(t, status: 204)
+        XCTAssertEqual(try parseJournalRecord(rig.journal.get("t1")).done, [1], "a closed channel reads no completion")
+        // Opened again, the same completion is read.
+        rig.channel.open()
+        rig.session.finish(t, status: 204)
+        XCTAssertEqual(try parseJournalRecord(rig.journal.get("t1")).done, [1, 2])
+    }
+
+    func testAStaleTaskCancelledAtRelaunchIsReportedOnce() async throws {
+        let l = try await live()
+        defer { l.rig.cleanup() }
+        let channel = try XCTUnwrap(l.env.background)
+        l.env.journal.put(
+            "saves:slot1",
+            JournalRecord(
+                v: 1, id: "saves:slot1", kind: "upload", collection: "saves", record: "rec1", uploadId: "up1",
+                mode: "multipart", partBytes: 5, done: [1], sha256: hex64, size: 20, expiresAt: 9e15,
+                state: "uploading"))
+        let tag = BackgroundTag(
+            idHash: backgroundIdHash("saves:slot1"), kind: .up, part: 2, enqueuedAt: 1, spool: nil)
+        let stale = l.rig.session.adopt(url: partURL.absoluteString, tag: tag.text)
+        _ = await channel.reconcile()
+        XCTAssertTrue(stale.isCancelled)
+        // The record is gone from the journal, yet the live environment still hands the transfer back, once.
+        l.env.journal.clear()
+        XCTAssertEqual(l.env.interruptedWrites(), ["saves:slot1"])
+        XCTAssertEqual(l.rig.token.refreshes, 1)
+    }
+
+    func testReconcileDoesNothingWhileClosed() async throws {
+        let rig = Rig(maxTaskAge: 600, now: { 1_000_000 })
+        defer { rig.cleanup() }
+        rig.journal.put("t1", journalRecord())
+        let tag = BackgroundTag(idHash: backgroundIdHash("t1"), kind: .up, part: 3, enqueuedAt: 1, spool: nil)
+        await rig.channel.close()
+        let stale = rig.session.adopt(url: partURL.absoluteString, tag: tag.text)
+        let report = await rig.channel.reconcile()
+        XCTAssertEqual(report, BackgroundReconcileReport())
+        XCTAssertFalse(stale.isCancelled, "a closed channel touches no task")
+        XCTAssertEqual(rig.token.refreshes, 0)
+        XCTAssertTrue(rig.resumed.value.isEmpty)
+    }
+
+    func testReconcileCancelsATaskOfACancelledTransfer() async throws {
+        let rig = Rig()
+        defer { rig.cleanup() }
+        rig.journal.put("t1", journalRecord())
+        await rig.channel.cancelTasks(transferId: "t1")
+        let tag = BackgroundTag(idHash: backgroundIdHash("t1"), kind: .up, part: 3, enqueuedAt: 1_000_000, spool: nil)
+        let late = rig.session.adopt(url: partURL.absoluteString, tag: tag.text)
+        let report = await rig.channel.reconcile()
+        XCTAssertTrue(late.isCancelled, "a task of a cancelled transfer is not kept")
+        XCTAssertEqual(report.cancelledTasks, 1)
+        XCTAssertTrue(report.resume.isEmpty, "a cancelled transfer is not handed back")
+    }
+
+    func testAnExistingSpoolDirectoryIsMadeOwnerOnly() async throws {
+        let rig = Rig()
+        defer { rig.cleanup() }
+        try FileManager.default.createDirectory(
+            at: rig.spool, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o755])
+        let call = Task { try await rig.channel.perform(putRequest(Data("body".utf8))) }
+        try await waitFor(rig.session.tasks.count == 1)
+        let attrs = try FileManager.default.attributesOfItem(atPath: rig.spool.path)
+        XCTAssertEqual((attrs[.posixPermissions] as? NSNumber)?.intValue, 0o700)
+        rig.session.finish(rig.session.tasks[0], status: 204)
+        _ = try await call.value
+    }
+
+    func testTheSpoolHoldsNoPlaintextInE2E() async throws {
+        let rig = Rig()
+        defer { rig.cleanup() }
+        let marker = "PLAINTEXT-MARKER-0123456789"
+        let plain = Data((marker + String(repeating: " pad", count: 40)).utf8)
+        let root = Data((0..<32).map { UInt8(truncatingIfNeeded: 7 * $0 + 3) })
+        let codec = E2eFileCodec(root: root, collection: "saves")
+        let sealed = try codec.sealWhole(plain)
+        let foreground = JSONStub()
+        foreground.sha = SHA256.hash(data: sealed).map { String(format: "%02x", $0) }.joined()
+        foreground.size = sealed.count
+        let transport = CloudSyncFileTransport(
+            product: "djdl", baseUrl: "https://key.plrs.im", transport: foreground, headers: { [:] },
+            token: { "tok-1" }, bulk: rig.channel)
+        let engine = FileTransferEngine(transport: transport, journal: rig.journal)
+        let spoolSeen = Collected<[Data]>([])
+        rig.session.onStart = { [session = rig.session, spool = rig.spool] t in
+            for name in ((try? FileManager.default.contentsOfDirectory(atPath: spool.path)) ?? []) {
+                if let d = try? Data(contentsOf: spool.appendingPathComponent(name)) {
+                    spoolSeen.update { $0.append(d) }
+                }
+            }
+            session.finish(t, status: 204)
+        }
+        _ = try await engine.upload(
+            UploadRequest(
+                id: "saves:slot1", collection: "saves", record: "rec1", source: DataSource(sealed), size: sealed.count,
+                sha256: foreground.sha, enc: codec.enc))
+        XCTAssertFalse(spoolSeen.value.isEmpty, "the body went through the spool")
+        for d in spoolSeen.value { XCTAssertNil(d.range(of: Data(marker.utf8)), "the spool holds ciphertext") }
+    }
+}
+
 /// Answers `begin` (single mode) and `finalize` in the foreground.
 private final class JSONStub: PolarisTransport, @unchecked Sendable {
     let lock = NSLock()
@@ -485,6 +650,7 @@ private final class JSONStub: PolarisTransport, @unchecked Sendable {
     var paths: [String] { lock.withLock { seen } }
     /// The hash `finalize` answers: the stored file's.
     var sha = String(repeating: "a", count: 64)
+    var size = 12
     func send(_ request: PolarisRequest) async throws -> PolarisResponse {
         lock.withLock { seen.append(request.url.path) }
         let path = request.url.path
@@ -497,7 +663,7 @@ private final class JSONStub: PolarisTransport, @unchecked Sendable {
             return PolarisResponse(
                 status: 200,
                 body: Data(
-                    #"{"version":1,"size":12,"sha256":"\#(sha)","format":"whole"}"#.utf8))
+                    #"{"version":1,"size":\#(size),"sha256":"\#(sha)","format":"whole"}"#.utf8))
         }
         return PolarisResponse(status: 404, body: Data())
     }

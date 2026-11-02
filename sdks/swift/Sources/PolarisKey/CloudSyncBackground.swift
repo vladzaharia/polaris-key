@@ -23,8 +23,9 @@
 //  - a task older than `maxTaskAge` is cancelled at relaunch (its token may be stale) and its transfer is
 //    handed back for resume, after one token refresh; resume makes new tasks with the refreshed token;
 //  - a 401 on a task refreshes the token once and sends the task again; a second 401 is the answer;
-//  - sign-out, forget and lock close the channel (`close()`): waiting calls end `.aborted`, every task of
-//    the session is cancelled, the spool is deleted, and nothing new is enqueued until `open()`.
+//  - sign-out, forget and lock close the channel (`close()`): waiting calls end `.closed` (the transfer is
+//    over, not paused), every task of the session is cancelled, the spool is deleted, and nothing new is
+//    enqueued, and no late completion is read, until `open()` (a person signs in).
 //
 // A cancel is final: `cancelTasks(transferId:)` cancels that transfer's tasks and spool, and leaves the id
 // tombstoned so a late completion never writes the journal after the engine deleted its record.
@@ -161,8 +162,8 @@ public final class CloudSyncBackground: BulkChannel, TransferTaskCancelling, Bac
 
     // MARK: Open and close
 
-    /// Sign-out, forget and lock: the waiting calls end `.aborted`, every task is cancelled, the spool is
-    /// deleted, and nothing is enqueued until `open()`.
+    /// Sign-out, forget and lock: the waiting calls end `.closed`, every task is cancelled, the spool is
+    /// deleted, and nothing is enqueued until `open()`. The close is sticky: only `open()` undoes it.
     public func close() async {
         let doomed = lock.withLock { () -> [Waiter] in
             closed = true
@@ -170,7 +171,7 @@ public final class CloudSyncBackground: BulkChannel, TransferTaskCancelling, Bac
             waiters.removeAll()
             return w
         }
-        for w in doomed { w.cont.resume(throwing: TransferError(.aborted)) }
+        for w in doomed { w.cont.resume(throwing: TransferError(.closed)) }
         for t in await port.liveTasks() { t.cancel() }
         lock.withLock { claimed.removeAll() }
         try? FileManager.default.removeItem(at: spoolDir)
@@ -202,7 +203,8 @@ public final class CloudSyncBackground: BulkChannel, TransferTaskCancelling, Bac
     }
 
     private func gate() throws {
-        if Task.isCancelled || lock.withLock({ closed }) { throw TransferError(.aborted) }
+        if lock.withLock({ closed }) { throw TransferError(.closed) }
+        if Task.isCancelled { throw TransferError(.aborted) }
     }
 
     private func runOnce(_ request: PolarisRequest, bearer: String, idHash: String) async throws -> PolarisResponse {
@@ -245,14 +247,15 @@ public final class CloudSyncBackground: BulkChannel, TransferTaskCancelling, Bac
         let key = task.taskIdentifier
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (cont: CheckedContinuation<PolarisResponse, any Error>) in
-                let refuse = lock.withLock { () -> Bool in
-                    if closed || Task.isCancelled { return true }
+                let refuse = lock.withLock { () -> TransferError? in
+                    if closed { return TransferError(.closed) }
+                    if Task.isCancelled { return TransferError(.aborted) }
                     waiters[key] = Waiter(cont: cont, idHash: idHash, spool: tag.spool)
-                    return false
+                    return nil
                 }
-                if refuse {
+                if let refuse {
                     task.cancel()
-                    cont.resume(throwing: TransferError(.aborted))
+                    cont.resume(throwing: refuse)
                 } else {
                     task.resume()
                 }
@@ -308,7 +311,8 @@ public final class CloudSyncBackground: BulkChannel, TransferTaskCancelling, Bac
         // No one is waiting: the app was relaunched (or the call was cancelled).
         guard let tag = BackgroundTag.parse(r.tag) else { return }
         if let name = tag.spool { release(spool: name) }
-        guard r.error == nil else { return }
+        // A closed channel reads nothing: the person it belonged to is gone.
+        guard r.error == nil, !lock.withLock({ closed }) else { return }
         if (200..<300).contains(r.status), tag.kind == .up, tag.part >= 1, let url = r.url {
             feedJournal(tag, url)
         } else if r.status == 401 {
@@ -348,21 +352,27 @@ public final class CloudSyncBackground: BulkChannel, TransferTaskCancelling, Bac
     }
 
     private func feedJournal(_ tag: BackgroundTag, _ url: URL) {
-        guard !lock.withLock({ tombstones.contains(tag.idHash) }), let id = journalId(forHash: tag.idHash),
-            var rec = try? parseJournalRecord(journal.get(id)), rec.mode != "chunks"
+        guard !lock.withLock({ tombstones.contains(tag.idHash) || closed }), let id = journalId(forHash: tag.idHash)
         else { return }
         // <product>/sync/files/<collection>/<record>/upload/<uploadId>[/parts/<n>]
         let p = url.path.split(separator: "/").map(String.init)
-        guard p.count >= 7, p[0] == product, p[1] == "sync", p[2] == "files", p[3] == rec.collection,
-            p[4] == rec.record, p[5] == "upload", p[6] == rec.uploadId
-        else { return }
-        if rec.mode == "single" {
-            guard p.count == 7 else { return }
-        } else {
-            guard p.count == 9, p[7] == "parts", Int(p[8]) == tag.part else { return }
+        // The read, the check and the write are one step under the journal's lock: a delete or a purge
+        // either comes before it (nothing to read) or after it.
+        journal.update(id) { raw in
+            guard !self.lock.withLock({ self.tombstones.contains(tag.idHash) || self.closed }),
+                var rec = try? parseJournalRecord(raw), rec.mode != "chunks"
+            else { return nil }
+            guard p.count >= 7, p[0] == self.product, p[1] == "sync", p[2] == "files", p[3] == rec.collection,
+                p[4] == rec.record, p[5] == "upload", p[6] == rec.uploadId
+            else { return nil }
+            if rec.mode == "single" {
+                guard p.count == 7 else { return nil }
+            } else {
+                guard p.count == 9, p[7] == "parts", Int(p[8]) == tag.part else { return nil }
+            }
+            rec.done = Array(Set(rec.done).union([tag.part])).sorted()
+            return rec
         }
-        rec.done = Array(Set(rec.done).union([tag.part])).sorted()
-        journal.put(id, rec)
     }
 
     // MARK: Relaunch

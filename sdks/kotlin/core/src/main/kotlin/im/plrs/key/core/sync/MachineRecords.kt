@@ -257,6 +257,19 @@ internal class MachineRecords(private val p: MachineParts) :
 
     override fun recordIds(collection: String): List<String> = recordStates(collection).keys.sorted()
 
+    /**
+     * Every `(collection, id)` of the records the active partition holds (pulled or held), in key order; empty
+     * with no subject. A record tombstone names its id blinded, and only these map it back.
+     */
+    fun recordKeys(): List<Pair<String, String>> {
+        if (core.s.subject == null) return emptyList()
+        val part = core.active()
+        return (part.records.keys + part.held.keys).toSortedSet().mapNotNull { rk ->
+            val i = rk.indexOf('/')
+            if (i < 0) null else rk.substring(0, i) to rk.substring(i + 1)
+        }
+    }
+
     /** The effective rows of a collection: pending creates and held values included. Record id to its value and origin. */
     private fun recordStates(collection: String): Map<String, String> {
         val out = linkedMapOf<String, String>()

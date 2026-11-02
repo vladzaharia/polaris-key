@@ -19,6 +19,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -63,8 +64,16 @@ class SyncTransferBindingTest {
     fun aWriteIsScheduledAsUserInitiatedWorkWithIdsOnly() {
         val seen = mutableListOf<List<Any>>()
         val b = AndroidSyncBackground(ctx) { _, id, o, user -> seen += listOf(id, o, user) }
-        b.enqueue("saves:slot-1", owner)
-        assertEquals(listOf(listOf<Any>("saves:slot-1", owner, true)), seen)
+        val hash = sha("saves:slot-1")
+        b.enqueue(hash, owner)
+        assertEquals(listOf(listOf<Any>(hash, owner, true)), seen)
+        assertEquals(64, (seen.single()[0] as String).length)
+        // The scheduler refuses the save's own transfer id: only its hash may be scheduled.
+        try {
+            AndroidSyncBackground(ctx).enqueue("saves:slot-1", owner)
+            fail("the scheduler took a save's name")
+        } catch (_: IllegalArgumentException) {
+        }
     }
 
     @Test
@@ -78,7 +87,7 @@ class SyncTransferBindingTest {
             val b = AndroidSyncBackground(ctx)
             attach(b, outcome)
             runs.clear()
-            val id = "saves:${outcome.name.lowercase()}"
+            val id = sha("saves:${outcome.name.lowercase()}")
             b.enqueue(id, owner)
             val unique = "pkey.sync.transfer." + sha(id)
             val info = wm.getWorkInfosForUniqueWork(unique).get().single()
@@ -91,9 +100,9 @@ class SyncTransferBindingTest {
     @Test
     fun cancelAndSignOutDropWhatIsScheduled() {
         val b = AndroidSyncBackground(ctx)
-        b.enqueue("saves:a", owner)
-        b.enqueue("saves:b", owner)
-        b.cancel("saves:a")
+        b.enqueue(sha("saves:a"), owner)
+        b.enqueue(sha("saves:b"), owner)
+        b.cancel(sha("saves:a"))
         assertEquals(1, wm.getWorkInfosByTag(ownerTag()).get().count { !it.state.isFinished })
         b.cancelOwner(owner)
         assertTrue(wm.getWorkInfosByTag(ownerTag()).get().all { it.state.isFinished })

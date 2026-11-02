@@ -97,7 +97,9 @@ internal class CloudSyncHostExchange(private val st: CloudSyncHostState) {
 
     private suspend fun answerE2e(m: CloudSyncMachine, body: JsonElement, mutations: List<JsonElement>) {
         // Locked since the request left, or a repeated mutationId: the answer is dropped and the cursor stays.
-        val pulled = runCatching { HostCodec.openPull(body, deps.codec, mutations, st.opts.aliases, st.openKeys.toList()) }.getOrNull()
+        val pulled = runCatching {
+            HostCodec.openPull(body, deps.codec, mutations, st.opts.aliases, st.openKeys.toList(), m.recordKeys())
+        }.getOrNull()
         if (pulled == null) {
             m.receive(SyncResponse.TRANSPORT)
         } else {

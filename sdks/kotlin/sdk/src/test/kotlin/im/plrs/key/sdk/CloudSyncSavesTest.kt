@@ -28,6 +28,8 @@ import im.plrs.key.core.testing.ScriptedTransport.Companion.respond
 import im.plrs.key.core.testing.TestSigner
 import im.plrs.key.core.testing.path
 import im.plrs.key.license.LicenseClientOptions
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -78,6 +80,9 @@ private class SavesWorld(val e2e: Boolean = false) {
     val files = CopyOnWriteArrayList<String>()
     val pushes = CopyOnWriteArrayList<JsonObject>()
 
+    /** Deletions another device made: every pull carries them. */
+    val tombstones = CopyOnWriteArrayList<JsonElement>()
+
     /** The push never answers (a request-level failure): a write waits on its outcome. */
     @Volatile var opsDown = false
 
@@ -106,7 +111,7 @@ private class SavesWorld(val e2e: Boolean = false) {
             put("catalogVersion", JsonPrimitive(1))
             put("lastMutationId", JsonPrimitive(0))
             put("changes", JsonArray(rows.filter { it.value.version > since }.map { (id, r) -> change(id, r) }))
-            put("tombstones", JsonArray(emptyList()))
+            put("tombstones", JsonArray(tombstones.toList()))
             put("aliases", JsonObject(emptyMap()))
             put("usage", Json.parseToJsonElement("""{"bytes":0,"settings":0,"records":0,"files":0}"""))
             put("quota", Json.parseToJsonElement("""{"bytes":268435456,"files":true}"""))
@@ -153,7 +158,10 @@ private class SavesWorld(val e2e: Boolean = false) {
                 put("version", v)
             }
         }
-        return body(mapOf("results" to JsonArray(results), "tombstones" to JsonArray(tombstones)), request["cursor"].longValue ?: 0)
+        return body(
+            mapOf("results" to JsonArray(results), "tombstones" to JsonArray(this.tombstones.toList() + tombstones)),
+            request["cursor"].longValue ?: 0,
+        )
     }
 }
 
@@ -574,6 +582,27 @@ class CloudSyncSavesTest {
     }
 
     @Test
+    fun aRecordTombstoneRemovesTheHeldRecordInE2E() = runBlocking {
+        world = SavesWorld(e2e = true)
+        val r = Rig(seedRoot = true, e2e = true)
+        r.signIn()
+        r.saves.write("slot-1", bytes(2000), meta("chapter")).result() as SaveResult.Done
+        val wireId = world.rows.keys.single()
+        assertEquals(listOf("slot-1"), r.saves.list().map { it.id })
+        // Another device deleted the save: the Worker serves a tombstone under the blinded id.
+        val v = ++world.version
+        world.rows.remove(wireId)
+        world.tombstones += buildJsonObject {
+            put("record", JsonArray(listOf(JsonPrimitive("saves"), JsonPrimitive(wireId))))
+            put("version", v)
+        }
+        // The next exchange carries it.
+        r.saves.write("slot-2", bytes(100), meta("next")).result() as SaveResult.Done
+        eventually("the deleted save leaves the list") { r.saves.list().map { it.id } == listOf("slot-2") }
+        r.client.close()
+    }
+
+    @Test
     fun aProductWithoutASavesCollectionGetsTheTypedNotApplicable() = runBlocking {
         val bare = Json.parseToJsonElement("""{"schemaVersion":1,"entries":[]}""") as JsonObject
         val dir = tmp.newFolder()
@@ -640,10 +669,10 @@ class CloudSyncSavesTest {
         val r = Rig(port = FakePort(log))
         r.signIn()
         assertTrue(r.saves.write("slot-1", bytes(100), meta("x")).result() is SaveResult.Done)
-        eventually("the port heard the end") { log.contains("cancel:saves:slot-1") }
-        assertEquals(listOf("attach", "enqueue:saves:slot-1:${tag(ALICE)}", "cancel:saves:slot-1"), log.toList())
+        eventually("the port heard the end") { log.contains("cancel:${tag("saves:slot-1")}") }
+        assertEquals(listOf("attach", "enqueue:${tag("saves:slot-1")}:${tag(ALICE)}", "cancel:${tag("saves:slot-1")}"), log.toList())
         // Nothing the port saw is a token or the subject itself.
-        assertTrue(log.none { it.contains("pkeyt_") || it.contains(ALICE) })
+        assertTrue(log.none { it.contains("pkeyt_") || it.contains(ALICE) || it.contains("slot-1") })
         r.client.close()
     }
 
@@ -667,10 +696,17 @@ class CloudSyncSavesTest {
         val t = r.saves.write("slot-1", bytes(100), meta("x"))
         eventually("the file is stored and the write waits") { world.rows["slot-1"]?.file != null }
         val runner = port.runner!!
-        assertEquals(BackgroundTransferOutcome.STOP, runner.run("saves:slot-1", tag("ps_Bob")))
-        assertEquals(BackgroundTransferOutcome.STOP, runner.run("saves:other", tag(ALICE)))
+        assertEquals(BackgroundTransferOutcome.STOP, runner.run(tag("saves:slot-1"), tag("ps_Bob")))
+        assertEquals(BackgroundTransferOutcome.STOP, runner.run(tag("saves:other"), tag(ALICE)))
+        // The person's own live write is found by the hash of its id, and the run ends with it.
+        val live = async(Dispatchers.Default) { runner.run(tag("saves:slot-1"), tag(ALICE)) }
+        delay(100)
+        world.opsDown = false
+        r.client.cloudSync.flush()
+        assertEquals(BackgroundTransferOutcome.DONE, withTimeout(30_000) { live.await() })
+        assertTrue(t.result() is SaveResult.Done)
         t.cancel()
-        assertEquals(BackgroundTransferOutcome.STOP, runner.run("saves:slot-1", tag(ALICE)))
+        assertEquals(BackgroundTransferOutcome.STOP, runner.run(tag("saves:slot-1"), tag(ALICE)))
         r.client.close()
     }
 
@@ -690,7 +726,7 @@ class CloudSyncSavesTest {
         rig = Rig(roots = roots, seedRoot = true, port = port)
         rig.signIn()
         assertTrue(rig.saves.write("slot-1", bytes(100), meta("x")).result() is SaveResult.Done)
-        eventually("the port heard the end") { log.contains("cancel:saves:slot-1") }
+        eventually("the port heard the end") { log.contains("cancel:${tag("saves:slot-1")}") }
         log.clear()
         rig.client.identity.signOut()
         assertEquals(listOf("cancelOwner:${tag(ALICE)}:locked=true,pinStillThere=true", "pin:locked=true"), log.toList())

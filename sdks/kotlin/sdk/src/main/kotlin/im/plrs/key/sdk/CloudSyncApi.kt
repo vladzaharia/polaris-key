@@ -176,7 +176,7 @@ internal fun safeSignInUrl(url: String?, origin: String): String? {
 
 private const val HTTPS_PORT = 443
 
-/** The owner tag a scheduler holds in place of the person: SHA-256 hex of the subject. */
+/** What a scheduler holds in place of a person or a transfer id: the SHA-256 hex of it. */
 internal fun ownerTag(subject: String): String =
     java.security.MessageDigest.getInstance("SHA-256").digest(subject.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 private val RETRY_DELAYS_MS = listOf(1_000L, 5_000L, 30_000L)
@@ -235,13 +235,14 @@ internal class CloudSyncApi(
         progress = { id, done, total -> emit(CloudSyncEvent.TransferProgress(id, done, total)) },
         settled = { id, result ->
             // A failed write keeps its scheduled retry; every other end drops what is still queued for it.
-            background?.takeIf { result !is SaveResult.Failed }?.let { runCatching { it.cancel(id) } }
+            background?.takeIf { result !is SaveResult.Failed }?.let { runCatching { it.cancel(ownerTag(id)) } }
             emit(settledEvent(id, result))
         },
         started = { id ->
-            // Opaque ids only: the write fetches its own token per request, in this process.
+            // Opaque ids only (the SHA-256 hex of the id, never the save's name): the write fetches its own token
+            // per request, in this process.
             val owner = savesSubject?.let(::ownerTag)
-            if (owner != null) background?.let { runCatching { it.enqueue(id, owner) } }
+            if (owner != null) background?.let { runCatching { it.enqueue(ownerTag(id), owner) } }
         },
         readDone = { id, failure ->
             emit(
@@ -259,13 +260,16 @@ internal class CloudSyncApi(
     internal val saves: SavesClient = SavesClient(transferScope, savesHooks) { savesDeps() }
 
     init {
-        background?.attach { id, owner -> backgroundRun(id, owner) }
+        background?.attach { idHash, owner -> backgroundRun(idHash, owner) }
     }
 
-    /** One scheduled run: only the signed-in person's own live write, never another's, and nothing once signed out. */
-    private suspend fun backgroundRun(id: String, owner: String): BackgroundTransferOutcome {
+    /**
+     * One scheduled run ([idHash] is the SHA-256 hex of the transfer id): only the signed-in person's own live write,
+     * never another's, and nothing once signed out.
+     */
+    private suspend fun backgroundRun(idHash: String, owner: String): BackgroundTransferOutcome {
         val who = withContext(dispatcher) { subject } ?: return BackgroundTransferOutcome.STOP
-        return if (ownerTag(who) == owner) saves.awaitBackground(id) else BackgroundTransferOutcome.STOP
+        return if (ownerTag(who) == owner) saves.awaitBackground(idHash) else BackgroundTransferOutcome.STOP
     }
 
     /** D-11: an upload the journal holds that no live write does was cut short; report it once, so the app can write it again. */
