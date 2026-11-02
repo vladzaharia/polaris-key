@@ -301,8 +301,7 @@
       "note": "Rung 2 over the pkp_call bk_* ops on the native Apple and Android lanes (I-49.13 to I-49.15)."
     },
     "identity.link": {
-      "status": "planned",
-      "wp": "I-48",
+      "status": "implemented",
       "except": [
         {
           "runtime": "linux",
@@ -313,7 +312,7 @@
           "reason": "runtime"
         }
       ],
-      "note": "Link offer (I-43.3 transcripts, I-48)."
+      "note": "I-48.13: PolarisKey.identity.link (services/identity/link.gd): pending, offer() (GET link with the device token), accept(link_handle) (POST link with the held handle, else one platform provider prompt over a fresh nonce; proof purpose link by the device key), decline() and dismiss(), each a coroutine answering a PKeyLinkResult. The offer opens only after a sign-in this device started through the browser (a redirect, native or not, or a licence choice one left) that named its subject; a device-code, exchange, nearby or restore sign-in never opens it, and without one offer() and accept() answer unavailable with no request. The handle an exchange left is held in memory for its lifetime and spent by the attempt that uses it, except by step_up_required. A decline is sha256(issuer + sub) in a sealed record of its own (services/identity/link_store.gd, link.v1); a declined account gets unavailable with no request, and a link_conflict is remembered the same way. The redirect token request carries the held device token as the bearer only to a token endpoint on the product's origin. Refusals are typed (step_up_required, link_conflict, not_found, invalid_grant). The link-offer, link-errors and link-game transcripts are replayed in tests/suite_transcripts.gd; tests/identity/test_link.gd maps the rules."
     },
     "identity.nearby": {
       "status": "planned",

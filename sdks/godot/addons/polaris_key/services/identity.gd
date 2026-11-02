@@ -15,6 +15,9 @@ extends RefCounted
 ##                                         sign-in with license_choice = "app"; see PKeyIdentityChoice
 ##   exchange.nonce(kind) / exchange.exchange(kind, token, nonce)
 ##                                         the platform exchange primitive; see PKeyIdentityExchange
+##   link.offer() / accept() / decline() / dismiss(), link.pending
+##                                         the link offer after a sign-in this device started through
+##                                         the browser; see PKeyIdentityLink
 ##   auto_sign_in(opts)                    the automatic sign-in ladder (a coroutine answering a
 ##                                         PKeyAutoSignInResult); see PKeyIdentityAutoSignIn
 ##   install_platform_provider(provider)   add a platform sign-in (PKeyPlatformIdentityProvider) the
@@ -82,6 +85,8 @@ var choice: PKeyIdentityChoice
 var exchange: PKeyIdentityExchange
 ## `auto_sign_in()`'s ladder (PKeyIdentityAutoSignIn).
 var ladder: PKeyIdentityAutoSignIn
+## `link.offer / accept / decline`: the link offer after a sign-in this device started (PKeyIdentityLink).
+var link: PKeyIdentityLink
 ## The device key port (PKeyDeviceKeyStore or the options' own) the exchange signs its proof with:
 ## the autoload hands identity the one instance the key ring holds. Null until configure().
 var device_keys: Object = null
@@ -114,11 +119,13 @@ func _init() -> void:
 	choice = PKeyIdentityChoice.new(self)
 	exchange = PKeyIdentityExchange.new(self)
 	ladder = PKeyIdentityAutoSignIn.new(self)
+	link = PKeyIdentityLink.new(self)
 
 
 ## Bind to Core (PolarisKey.configure). A sign-in in progress is cancelled.
 func bind(core: PKeyCore, host: Node) -> void:
 	_cancel_active()
+	link._reset()
 	_core_ref = weakref(core)
 	_host = host
 	_account = PKeyIdentityAccount.new(core, _before_sign_out)
@@ -225,6 +232,7 @@ func clear_platform_providers() -> void:
 ## PKeyResult is deactivate()'s. `state_changed` fires as for a deactivation. A coroutine.
 func sign_out() -> PKeyResult:
 	_cancel_active()
+	link._reset()
 	var license = _host.get("license") if _host != null and is_instance_valid(_host) else null
 	if license == null or _account == null:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
@@ -541,6 +549,10 @@ func _redeem(session: PKeySignInSession, pending: Dictionary, code: String, nati
 			return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.NOT_CONFIGURED, "The device has no usable id.")
 		form = tr["body"]
 		h = core.headers(tr["headers"])
+	# A device that already holds its token presents it to its own product, as the web client does: the
+	# Worker then knows the device and keeps the licence it runs on. Never to an endpoint off the product.
+	if core.tokens.has_token() and _own(String(pending["token_endpoint"])):
+		h["Authorization"] = "Bearer %s" % core.tokens.current()
 	var r := await core.transport.request("POST", pending["token_endpoint"], h, form.to_utf8_buffer())
 	if not r.ok:
 		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, r.code if r.code == PKeyErrors.LOCAL_ONLY else PKeyErrors.NETWORK, r.message)
@@ -554,6 +566,7 @@ func _redeem(session: PKeySignInSession, pending: Dictionary, code: String, nati
 			# Only `license_choice=app` makes the Worker answer this. Nothing is stored;
 			# `identity.choice.*` finishes it.
 			if pending.get("license_choice") == true:
+				link._choice_pending(String(answer["grant"]))
 				return PKeySignInOutcome.license_choice(answer["grant"], answer["expires_in"], answer["choices"])
 			return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.INVALID_RESPONSE, "The token endpoint asked for a licence choice this sign-in did not request.", status)
 		"refused":
@@ -570,6 +583,8 @@ func _redeem(session: PKeySignInSession, pending: Dictionary, code: String, nati
 	var subject: String = answer["subject"]
 	if _account != null:
 		_account.note_signed_in(subject)
+	# A sign-in this device started: the link offer may follow (only for a sign-in that named its subject).
+	link._open(subject)
 	var synced: PKeySyncResult = null
 	if redirect_acquisition_sync and on_acquired.is_valid():
 		synced = await on_acquired.call()

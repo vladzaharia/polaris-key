@@ -10,7 +10,7 @@ extends RefCounted
 # @pkey-feature sync.keyring sync.settings
 # @pkey-feature identity.exchange identity.gamecenter identity.pgs
 # @pkey-feature sync.files sync.files.delta sync.saves sync.records
-# @pkey-feature connect.identity connect.relay connect.links identity.redirect.native
+# @pkey-feature connect.identity connect.relay connect.links identity.redirect.native identity.link
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -59,6 +59,13 @@ extends RefCounted
 # identity fragment; a recorded discovery is rebased onto the loopback server. Its `confirm` is
 # completed by `choiceComplete` with the consent the recording's request carries. Each exchange
 # step reports `tokenHeld` for that step alone: whether it stored a token.
+# `linkOffer` and `link` (I-48.13, `identity.link`) are PolarisKey.identity.link.offer() and accept() with the
+# recording's handle (and, where it names one, the value its proof covers: the conformance seam), over the
+# fixture device keys of `args.keyLabel`. A step with no handle but a `serverAuthCode` is the provider path: a
+# replay provider of the kind `args.subjectTokenType` names hands back that code. A transcript of this feature
+# runs on one discovery (the redirect routes, the exchange member, the nonce and the link) at the Worker's
+# standard paths on the loopback server. `result` is `ok` (with `offer` or `linked`), `refused` (with `status`
+# and `code`) or `unavailable`.
 # `connectIdentity` and `connectDevices` (CC-14.1b, `connect.identity`) are PolarisKey.connect_client.identity(refresh)
 # and list_devices() over a memory state record (PKeyOptions.connect_state) and the fixture device keys of
 # `args.keyLabel` (format.ts: the Ed25519 seed is SHA-256(label), the agreement key is SHA-256(label +
@@ -211,12 +218,15 @@ static func replay(tr: Dictionary) -> Array:
 			if step["action"] == "beginSignIn" and step["args"].get("licenseChoice") == "app" and sdk.core.discovery_manifest == null:
 				# The transcript ran no discovery: Identity with the account and choice endpoints and `deviceChoice`.
 				sdk.core.discovery_manifest = _redirect_discovery(server.base_url(), tr)
+			if "identity.link" in tr["features"] and sdk.core.discovery_manifest == null:
+				sdk.core.discovery_manifest = _link_discovery(server.base_url(), tr)
 			if step["action"] in ["browser", "redirectComplete"] and sdk.core.discovery_manifest == null:
 				sdk.core.discovery_manifest = _redirect_discovery(server.base_url(), tr)
 			if step["action"] in ["exchange", "choiceComplete"] and exchange_keys != null:
 				if sdk.core.discovery_manifest == null:
 					sdk.core.discovery_manifest = _exchange_discovery(server.base_url(), tr["product"])
-				else:
+				elif not ("identity.link" in tr["features"]):
+					# (A link transcript's discovery is already on the loopback server, its issuer the recorded one.)
 					sdk.core.discovery_manifest = _identity_rebased(sdk.core.discovery_manifest, tr["baseUrl"], server.base_url())
 			if step["action"] in ["chunkRange", "releaseFetch"] and sdk.core.discovery_manifest is Dictionary:
 				# The discovered blobs template names the transcript's base; the bytes come from the
@@ -255,6 +265,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 			out["interAccount"] = PKeyConnectClient.inter_account_of(sdk.core.discovery_manifest)
 		"exchange":
 			out.merge(await _exchange_step(sdk, step, exchange_keys), true)
+		"linkOffer", "link":
+			out.merge(await _link_step(sdk, step, exchange_keys), true)
 		"subject":
 			var r: PKeyResult = await sdk.identity.subject()
 			out["subject"] = r.detail.get("subject") if r.ok else "unavailable"
@@ -910,6 +922,62 @@ static func _exchange_step(sdk: Node, step: Dictionary, keys: PKeyFixtureDeviceK
 		out["result"] = "a step that signed nobody in changed the held token"
 	out["tokenHeld"] = signed_in and sdk.core.tokens.current() != ""
 	return out
+
+
+## `linkOffer` / `link`: see the header. The result is the transcript's vocabulary.
+static func _link_step(sdk: Node, step: Dictionary, keys: PKeyFixtureDeviceKeys) -> Dictionary:
+	var out := {}
+	var a: Dictionary = step["args"]
+	if keys != null:
+		keys.use_label(String(a.get("keyLabel", "")))
+	var link: PKeyIdentityLink = sdk.identity.link
+	var r: PKeyLinkResult
+	if step["action"] == "linkOffer":
+		r = await link.offer()
+	else:
+		if a.get("serverAuthCode") is String:
+			var replay_kind := ""
+			for k in PKeyIdentityExchange.TOKEN_TYPES:
+				if PKeyIdentityExchange.TOKEN_TYPES[k] == a.get("subjectTokenType"):
+					replay_kind = k
+			var provider := ReplayProvider.new()
+			provider.kind = replay_kind
+			provider.token = String(a["serverAuthCode"])
+			sdk.identity.clear_platform_providers()
+			sdk.identity.install_platform_provider(provider)
+		r = await link._accept(String(a.get("linkHandle", "")), String(a.get("proofValue", "")))
+	match r.kind:
+		PKeyLinkResult.KIND_OFFER:
+			out["result"] = "ok"
+			out["offer"] = r.kinds
+		PKeyLinkResult.KIND_LINKED:
+			out["result"] = "ok"
+			out["linked"] = {"kind": r.linked_kind, "reach": r.reach}
+		PKeyLinkResult.KIND_REFUSED:
+			out["result"] = "refused"
+			out["status"] = r.http_status
+			out["code"] = String(r.code)
+		PKeyLinkResult.KIND_UNAVAILABLE:
+			out["result"] = "unavailable"
+		_:
+			out["result"] = "error"
+			out["code"] = String(r.code)
+	return out
+
+
+## The one discovery of an `identity.link` transcript: the redirect routes, the exchange member, the nonce
+## route and the link route, at the Worker's standard paths on the loopback server.
+static func _link_discovery(base: String, tr: Dictionary) -> Dictionary:
+	var m := _redirect_discovery(base, tr)
+	var root := "%s/%s/identity" % [base, tr["product"]]
+	var identity: Dictionary = m["services"]["identity"]
+	identity["exchange"] = {
+		"kinds": ["google", "apple", "gamecenter", "pgs"],
+		"google": {"serverClientId": "1234-web.apps.googleusercontent.com"},
+		"pgs": {"serverClientId": "123456789012-transcriptpgs.apps.googleusercontent.com"},
+	}
+	identity["endpoints"].merge({"nonce": root + "/nonce", "link": root + "/link"})
+	return m
 
 
 ## The discovery `exchange` member as the recording pins it: {kinds, google?: {serverClientId}}, or null.
@@ -1642,3 +1710,11 @@ class FixtureKeys extends RefCounted:
 		ctx.start(HashingContext.HASH_SHA256)
 		ctx.update(bytes)
 		return ctx.finish()
+
+
+## A platform sign-in that hands back one fixed token (the recording's server auth code).
+class ReplayProvider extends PKeyPlatformIdentityProvider:
+	var token := ""
+
+	func provider_row(_nonce: String, _audience: String) -> Dictionary:
+		return {"token": token}

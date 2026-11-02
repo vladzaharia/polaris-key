@@ -293,6 +293,7 @@ func _needs_sign_in(body: Dictionary, bad: PKeyExchangeResult) -> PKeyExchangeRe
 		r.link_handle = handle
 		r.expires_in = int(body["expiresIn"])
 		r.expires_at = _identity()._core().clock.system_now() + r.expires_in
+		_identity().link._hold(handle, r.expires_at)
 	return r
 
 

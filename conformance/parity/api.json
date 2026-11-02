@@ -509,6 +509,11 @@
         "file": "sdks/godot/addons/polaris_key/services/identity/exchange.gd"
       },
       {
+        "ns": "identity",
+        "type": "PKeyIdentityLink",
+        "file": "sdks/godot/addons/polaris_key/services/identity/link.gd"
+      },
+      {
         "ns": "devices",
         "file": "sdks/godot/addons/polaris_key/services/devices.gd"
       },
@@ -1973,6 +1978,11 @@
       "sdk": "godot",
       "path": "identity.bind",
       "reason": "wiring PolarisKey.configure calls; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.dismiss",
+      "reason": "closes the link offer without remembering a decline (identity.link.decline carries the row); the app's own screen state, not a verb of its own"
     },
     {
       "sdk": "godot",
@@ -3733,8 +3743,7 @@
           "reason": "the link offer (plan-auto-sign-in §2.3)"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "PKeyIdentityLink.offer"
         }
       },
       "layer": "client",
@@ -3758,8 +3767,7 @@
           "reason": "the link offer (plan-auto-sign-in §2.3)"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "PKeyIdentityLink.accept"
         }
       },
       "layer": "client",
@@ -3789,8 +3797,7 @@
           "reason": "the link offer (plan-auto-sign-in §2.3)"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "PKeyIdentityLink.decline"
         }
       },
       "layer": "client",
