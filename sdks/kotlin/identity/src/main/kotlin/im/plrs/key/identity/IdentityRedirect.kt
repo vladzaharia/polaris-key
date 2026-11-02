@@ -472,11 +472,15 @@ internal suspend fun IdentityClient.redeemRedirect(pending: RedirectPending, cod
 
 /** POST a token form at [tokenEndpoint] and settle the answer: store a token, or hand the choice on; a refusal is a [SignInError]. */
 internal suspend fun IdentityClient.redeemForm(tokenEndpoint: String, form: String, licenseChoice: Boolean): SignInOutcome {
+    // A device that already holds its token presents it to its own product, as the web client does: the Worker then knows
+    // the device and keeps the licence it runs on. Never to an endpoint outside this product.
+    val headers = buildMap {
+        put("content-type", IdentityRedirect.TOKEN_CONTENT_TYPE)
+        val held = core.token()
+        if (held != null && tokenEndpoint.startsWith(core.endpoints.url(""))) put("authorization", "Bearer $held")
+    }
     val response: PolarisResponse = try {
-        core.request(
-            tokenEndpoint, method = "POST", headers = mapOf("content-type" to IdentityRedirect.TOKEN_CONTENT_TYPE),
-            body = form.toByteArray(Charsets.UTF_8),
-        )
+        core.request(tokenEndpoint, method = "POST", headers = headers, body = form.toByteArray(Charsets.UTF_8))
     } catch (e: CancellationException) {
         throw e
     } catch (e: PolarisException) {
@@ -498,6 +502,7 @@ internal suspend fun IdentityClient.redeemForm(tokenEndpoint: String, form: Stri
         // Only `license_choice=app` makes the Worker answer this; nothing is stored and `identity.choice.*` finishes it.
         is TokenAnswer.Choose ->
             if (licenseChoice) {
+                linkMemory.choicePending(answer.grant)
                 SignInOutcome.Choose(answer.grant, answer.expiresIn, answer.choices)
             } else {
                 throw PolarisException(ErrorCode.badResponse, "the token endpoint asked for a licence choice this sign-in did not request.")
@@ -506,7 +511,8 @@ internal suspend fun IdentityClient.redeemForm(tokenEndpoint: String, form: Stri
             if (core.storeSignIn(answer.accessToken, answer.subject, TokenSource.signin, personInitiated = true)) onSubject(answer.subject)
             afterSignIn()
             if (redirectAcquisitionSyncValue) onAcquired?.invoke()
-            SignInOutcome.SignedIn(answer.subject, answer.scope, answer.license?.get("id").stringValue)
+            linkMemory.open(answer.subject)
+            SignInOutcome.SignedIn(answer.subject, answer.scope, answer.license?.get("id").stringValue, sameDevice = true)
         }
     }
 }

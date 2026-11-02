@@ -132,7 +132,7 @@ class NativeSignInTest : NativeTestBase() {
         assertTrue("the callback never reached the token endpoint before wait", w.calls("/djdl/identity/token").isEmpty())
 
         val outcome = s.wait()
-        assertEquals(SignInOutcome.SignedIn("ps_abc", "profile email", null), outcome)
+        assertEquals(SignInOutcome.SignedIn("ps_abc", "profile email", null, sameDevice = true), outcome)
         assertEquals("pkeyt_new", w.store.getToken())
         val token = w.calls("/djdl/identity/token").single()
         assertEquals("TRANSCRIPTDEVICE0000000000000001", token.headers.entries.first { it.key.equals("x-pkey-device", true) }.value)

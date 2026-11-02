@@ -229,6 +229,7 @@ public class ChoiceClient internal constructor(private val client: IdentityClien
         if (core.storeSignIn(answer.accessToken, answer.subject, TokenSource.signin, personInitiated = true)) client.onSubject(answer.subject)
         client.afterSignIn()
         if (client.redirectAcquisitionSyncValue) client.onAcquired?.invoke()
+        client.linkChoiceCompleted(grant, answer.subject)
         return ChoiceResult.Ok(
             ChoiceCompleted(
                 licenseId = answer.license?.get("id").stringValue,

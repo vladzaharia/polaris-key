@@ -231,6 +231,9 @@ internal object IdentityExchange {
         return uri.scheme == "https" || (uri.scheme == "http" && (host == "localhost" || host == "127.0.0.1" || host == "[::1]" || host == "::1"))
     }
 
+    /** `lh_` and 43 base64url characters. */
+    fun isHandle(s: String): Boolean = HANDLE.matches(s)
+
     fun grantOf(o: JsonObject): String? = o["grant"].stringValue?.takeIf { GRANT.matches(it) }
     fun handleOf(o: JsonObject): String? = o["linkHandle"].stringValue?.takeIf { HANDLE.matches(it) }
 }
@@ -401,7 +404,7 @@ internal suspend fun IdentityClient.exchangeTokens(
     }
     val form = IdentityExchange.form(core.product, subjectToken, spent, proof.signKey, proof.sig, IdentityExchange.subjectTokenType(kind))
     val res = exchangePost(url, contentType(IdentityRedirect.TOKEN_CONTENT_TYPE), form.toByteArray(Charsets.UTF_8))
-    return settleTokenAnswer(res, personInitiated, mayStore)
+    return settleTokenAnswer(res, personInitiated, mayStore).also { linkHold(it) }
 }
 
 /**

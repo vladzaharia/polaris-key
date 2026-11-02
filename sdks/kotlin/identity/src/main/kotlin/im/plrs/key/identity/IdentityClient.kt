@@ -152,6 +152,15 @@ public class IdentityClient(
     internal val sleep: suspend (Long) -> Unit = sleep ?: { seconds -> delay(seconds * 1000) }
     internal val beforeSignOut = java.util.concurrent.CopyOnWriteArrayList<BeforeSignOutHook>()
     internal val platformProvider = java.util.concurrent.atomic.AtomicReference<PlatformIdentityProvider?>(null)
+
+    /** The link offer's memory (Link.kt) and its decline record. */
+    internal val linkMemory = LinkMemory()
+
+    @Volatile
+    internal var declinedSlotValue: im.plrs.key.core.StateSlot? = null
+
+    /** The link offer (Link.kt): `pending`, `offer()`, `accept()`, `decline()`, `dismiss()`. */
+    public val link: LinkClient get() = LinkClient(this)
     private val revokeRestore: BeforeSignOutHook = { restoreSignOut() }
     private val account =
         IdentityAccount(core, opener, { beforeSignOut.toList() + revokeRestore }, onSubject, onSignedOut) { markSignedOut() }

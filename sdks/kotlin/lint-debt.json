@@ -485,10 +485,13 @@
       "detekt:complexity.LongMethod": 2,
       "detekt:complexity.LongParameterList": 1,
       "detekt:complexity.NestedBlockDepth": 1,
-      "detekt:empty-blocks.EmptyFunctionBlock": 1,
-      "detekt:style.MaxLineLength": 2,
+      "detekt:empty-blocks.EmptyFunctionBlock": 2,
+      "detekt:style.MaxLineLength": 5,
       "detekt:style.ThrowsCount": 1,
-      "ktlint:standard:max-line-length": 1
+      "ktlint:standard:argument-list-wrapping": 18,
+      "ktlint:standard:binary-expression-wrapping": 7,
+      "ktlint:standard:function-literal": 6,
+      "ktlint:standard:max-line-length": 3
     },
     "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/UpdateMatrixTest.kt": {
       "detekt:style.MaxLineLength": 3,
@@ -1312,6 +1315,7 @@
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityExchange.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 1,
       "detekt:complexity.LongParameterList": 2,
+      "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.SwallowedException": 5,
       "detekt:exceptions.TooGenericExceptionCaught": 5,
       "detekt:naming.EnumNaming": 9,
@@ -1331,13 +1335,23 @@
       "detekt:style.MaxLineLength": 2,
       "detekt:style.ReturnCount": 5,
       "detekt:style.ThrowsCount": 3,
-      "ktlint:standard:argument-list-wrapping": 17,
+      "ktlint:standard:argument-list-wrapping": 15,
       "ktlint:standard:blank-line-between-when-conditions": 5,
       "ktlint:standard:import-ordering": 1,
       "ktlint:standard:max-line-length": 1
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityRestore.kt": {
       "detekt:exceptions.TooGenericExceptionCaught": 1
+    },
+    "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/Link.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 6,
+      "detekt:exceptions.TooGenericExceptionCaught": 6,
+      "detekt:style.MagicNumber": 5,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 5,
+      "detekt:style.ThrowsCount": 2
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/RestoreLadder.kt": {
       "detekt:exceptions.SwallowedException": 2,
@@ -1352,7 +1366,6 @@
       "detekt:style.ThrowsCount": 1,
       "ktlint:standard:argument-list-wrapping": 10,
       "ktlint:standard:blank-line-between-when-conditions": 6,
-      "ktlint:standard:class-signature": 5,
       "ktlint:standard:max-line-length": 1,
       "ktlint:standard:statement-wrapping": 3
     },
@@ -1394,6 +1407,11 @@
       "detekt:style.MaxLineLength": 3,
       "ktlint:standard:argument-list-wrapping": 11,
       "ktlint:standard:max-line-length": 2
+    },
+    "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/LinkTest.kt": {
+      "detekt:empty-blocks.EmptyFunctionBlock": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:style.MaxLineLength": 1
     },
     "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/NearbySignInTest.kt": {
       "detekt:complexity.LargeClass": 1

@@ -75,6 +75,8 @@ public sealed interface SignInOutcome {
         val subject: String? = null,
         val scope: String? = null,
         val licenseId: String? = null,
+        /** The sign-in was started and completed on this device (a redirect), so the link offer (`identity.link`) may follow. */
+        val sameDevice: Boolean = false,
     ) : SignInOutcome {
         override val kind: String get() = "signedIn"
     }

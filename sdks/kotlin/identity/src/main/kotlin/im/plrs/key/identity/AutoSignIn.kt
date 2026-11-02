@@ -207,6 +207,7 @@ internal suspend fun IdentityClient.runProviderSignIn(): AutoSignInResult {
 
 /** Called by `signOut()` once the Worker accepted it (the restore key was revoked before the Worker was asked). */
 internal suspend fun IdentityClient.markSignedOut() {
+    linkMemory.reset()
     core.setExplicitSignOut(true)
     restoreAfterSignOut()
     platformProvider.get()?.let { safeCleanup(it) }
@@ -304,7 +305,7 @@ private suspend fun IdentityClient.signOutAfterRevocation(provider: PlatformIden
 }
 
 /** The client id the provider's token is issued for: Google's audience, or the Play Games server client id. */
-private suspend fun IdentityClient.audienceFor(kind: ExchangeKind): String? {
+internal suspend fun IdentityClient.audienceFor(kind: ExchangeKind): String? {
     val exchange = core.discoveryDocument()?.identity?.exchange
     return if (kind == ExchangeKind.pgs) exchange?.pgsServerClientId else exchange?.googleServerClientId
 }
