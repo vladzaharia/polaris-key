@@ -132,6 +132,8 @@ func open(keep_ids: Array) -> Dictionary:
 			extra.append(s)
 		else:
 			keep.append(s)
+	# What a session before this one left in the native queue is not for this one.
+	_apple.poll_bin("sb_")
 	var r := _apple.cmd_bin("sb_open", JSON.stringify({"product": _product, "origin": _origin, "state_dir": ProjectSettings.globalize_path(_state_dir), "keep": keep}).to_utf8_buffer())
 	if r.is_empty() or r[0] != OK_BYTE:
 		# The platform will not carry bodies for this session: the usual transport takes over.
