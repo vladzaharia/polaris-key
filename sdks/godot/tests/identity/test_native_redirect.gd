@@ -31,6 +31,7 @@ func run(t: PKeyTestContext) -> void:
 	await _helpers(t)
 	await _listener(t)
 	await _session(t)
+	await _android(t)
 
 
 func _push_opts(extra := {}) -> Dictionary:
@@ -473,3 +474,116 @@ func _param(form: String, name: String) -> String:
 		if part.begins_with(name + "="):
 			return part.substr(name.length() + 1).uri_decode()
 	return ""
+
+
+# ── Android: the registered scheme, the plugin's browser, the OS delivery (I-48.17b) ─────
+
+## A sign-in on a faked Android: the project registered SCHEME, the plugin routes it, discovery lists it.
+func _phone(scheme_setting := "com.tidewater.studio", authorize := AUTHORIZE) -> Array:
+	var bed := await _bed("", false)
+	var frag: Dictionary = bed.sdk.core.discovery_manifest["services"]["identity"]
+	frag["issuer"] = ISS
+	frag["endpoints"]["authorize"] = authorize
+	bed.sdk.identity.native_platform = "android"
+	var fake := PKeyFakeAndroidNative.new()
+	fake.auth_filters = [SCHEME]
+	var droid := PKeyAndroid.new()
+	droid.platform = "android"
+	droid.native = fake
+	droid.timeout_s = 2.0
+	var opener := PKeyAndroidRedirect.new()
+	opener.android = droid
+	opener.settings = {"scheme": scheme_setting} if scheme_setting != "" else {}
+	bed.sdk.identity.native_opener = opener
+	return [bed, fake, droid, opener]
+
+
+func _pump(droid: PKeyAndroid) -> void:
+	droid.poll()
+	await (Engine.get_main_loop() as SceneTree).process_frame
+
+
+func _android(t: PKeyTestContext) -> void:
+	var rig := await _phone()
+	var bed: B = rig[0]
+	var fake: PKeyFakeAndroidNative = rig[1]
+	var droid: PKeyAndroid = rig[2]
+	var s: PKeySignInSession = await bed.sdk.identity.sign_in.start({"channel": "redirect"})
+	t.check("android redirect: the registered scheme is the class, with no listener", s.ok and s.redirect_class == "scheme" and s.redirect_uri == SCHEME and s._native.listener == null, str(s))
+	t.check("android redirect: the page opened through the plugin, on the issuer's host, for the scheme", s.opened and fake.auth_opened.size() == 1 and fake.auth_opened[0]["url"] == s.authorize_url and fake.auth_opened[0]["issuerHost"] == "key.plrs.im" and fake.auth_opened[0]["scheme"] == "com.tidewater.studio" and fake.auth_opened[0]["claimedUri"] == "", str(fake.auth_opened))
+	t.check("android redirect: the push named the scheme", String(bed.push_requests[0]["body"]).contains("redirect_uri=com.tidewater.studio%3A%2Fpkey%2Fcallback"), bed.push_requests[0]["body"])
+	t.check("android redirect: Open browser again opens the same page", s.reopen() and fake.auth_opened.size() == 2 and fake.auth_opened[1]["url"] == s.authorize_url)
+	var box := B.follow(s)
+	var state := _param(bed.push_requests[0]["body"], "state")
+	var iss := ISS.uri_encode()
+	t.check("android redirect: a foreign scheme is dropped by the plugin", not fake.auth_deliver("com.other.app:/pkey/callback?code=C0DE&state=%s&iss=%s" % [state, iss]))
+	t.check("android redirect: a redirect with a fragment is dropped by the plugin", not fake.auth_deliver("%s?code=C0DE&state=%s&iss=%s#x" % [SCHEME, state, iss]))
+	t.check("android redirect: a delivery with another state reaches the sign-in and is refused", fake.auth_deliver("%s?code=C0DE&state=wrong-state-0123456789&iss=%s" % [SCHEME, iss]))
+	await _pump(droid)
+	await B.until(func(): return true, 3)
+	t.check("android redirect: the refusal sent nothing and left the sign-in waiting", bed.token_requests.is_empty() and box.is_empty() and not s._native.pending.is_empty())
+	var good := "%s?code=C0DE&state=%s&iss=%s" % [SCHEME, state, iss]
+	t.check("android redirect: the OS delivers the right redirect", fake.auth_deliver(good))
+	await _pump(droid)
+	await B.until(func(): return box.size() == 1)
+	var o: PKeySignInOutcome = box[0] if box.size() == 1 else null
+	t.check("android redirect: handle_redirect redeemed it from this device", o != null and o.kind == PKeySignInOutcome.KIND_SIGNED_IN and bed.token_requests.size() == 1 and bed.token_requests[0]["headers"].get("x-pkey-device") == bed.F["device_id"], str(o))
+	t.check("android redirect: the same URL again is dropped (single use)", not fake.auth_deliver(good) and bed.token_requests.size() == 1)
+	t.check("android redirect: nothing waits natively once it settled", not fake.auth_deliver("%s?code=C0DE2&state=%s&iss=%s" % [SCHEME, state, iss]))
+	t.check("android redirect: str() holds no code", not str(s).contains("C0DE"))
+	droid.free()
+	bed.free_all()
+
+	# Cancel drops the native wait.
+	rig = await _phone()
+	bed = rig[0]
+	fake = rig[1]
+	droid = rig[2]
+	var s2: PKeySignInSession = await bed.sdk.identity.sign_in.start({"channel": "redirect"})
+	var st2 := _param(bed.push_requests[0]["body"], "state")
+	s2.cancel()
+	await B.until(func(): return s2._native.closed)
+	t.check("android redirect: after cancel() a redirect is dropped", not fake.auth_deliver("%s?code=C0DE&state=%s&iss=%s" % [SCHEME, st2, ISS.uri_encode()]) and bed.token_requests.is_empty())
+	droid.free()
+	bed.free_all()
+
+	# No scheme registered, no plugin: redirect-unavailable before anything is sent.
+	rig = await _phone("")
+	bed = rig[0]
+	var s3: PKeySignInSession = await bed.sdk.identity.sign_in.start({"channel": "redirect"})
+	t.check("android redirect: no registered scheme or link is redirect-unavailable, nothing sent", not s3.ok and s3.code == &"redirect-unavailable" and bed.push_requests.is_empty(), str(s3))
+	rig[2].free()
+	bed.free_all()
+	rig = await _phone()
+	bed = rig[0]
+	rig[1].auth_redirect = false
+	var s4: PKeySignInSession = await bed.sdk.identity.sign_in.start({"channel": "redirect"})
+	t.check("android redirect: a plugin without the redirect ops is redirect-unavailable, nothing sent", not s4.ok and s4.code == &"redirect-unavailable" and bed.push_requests.is_empty(), str(s4))
+	rig[2].free()
+	bed.free_all()
+
+	# The manifest has no filter for it: the plugin refuses to open; the page is never shown.
+	rig = await _phone()
+	bed = rig[0]
+	fake = rig[1]
+	fake.auth_filters = []
+	var s5: PKeySignInSession = await bed.sdk.identity.sign_in.start({"channel": "redirect"})
+	t.check("android redirect: a manifest without the intent filter opens nothing", s5.ok and not s5.opened and fake.auth_opened.is_empty() and not s5.reopen())
+	rig[2].free()
+	bed.free_all()
+
+	# An authorize endpoint off the issuer's host is refused natively.
+	rig = await _phone("com.tidewater.studio", "https://evil.example/authorize")
+	bed = rig[0]
+	fake = rig[1]
+	var s6: PKeySignInSession = await bed.sdk.identity.sign_in.start({"channel": "redirect"})
+	t.check("android redirect: an off-host authorize page is never opened", s6.ok and not s6.opened and fake.auth_opened.is_empty(), str(fake.auth_opened))
+	rig[2].free()
+	bed.free_all()
+
+	# The registered redirects, from the project settings' shapes.
+	var o2 := PKeyAndroidRedirect.new()
+	o2.settings = {"scheme": "com.tidewater.studio", "claimed_uri": "https://game.example/open/pkey"}
+	t.check("android redirect: registered() names the scheme URI and the claimed link", o2.registered() == {"schemes": [SCHEME], "claimed": ["https://game.example/open/pkey"]} and o2.owns(SCHEME) and o2.owns("https://game.example/open/pkey") and not o2.owns("com.other.app:/pkey/callback"))
+	o2.settings = {"scheme": "https", "claimed_uri": "http://game.example/open"}
+	t.check("android redirect: a reserved scheme and a non-HTTPS link register nothing", o2.registered() == {"schemes": [], "claimed": []})

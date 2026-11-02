@@ -92,8 +92,12 @@ var redirect_entropy: Dictionary = {}
 ## Conformance replay and tests only: a Callable returning the loopback listener (an object with the
 ## members of PKeyLoopbackListener: port, start, close, poll, is_closed) instead of a bound socket.
 var listener_factory: Callable = Callable()
-## Tests only: "" reads the platform; "desktop" or "other" forces whether a listener can be bound.
+## Tests only: "" reads the platform; "desktop", "android" or "other" forces whether a listener can be bound
+## (desktop) or the Android opener is used (android).
 var native_platform := ""
+## The mobile opener of a native redirect sign-in (an object with available / registered / owns / attach / open /
+## cancel; PKeyAndroidRedirect on Android). Null reads the platform; hosts and tests may set their own.
+var native_opener: Object = null
 ## Conformance replay only: false skips the forced sync after a redirect token (the `redirect-web-*`
 ## recordings hold the token exchange, not the sync that follows it).
 var redirect_acquisition_sync := true
@@ -164,6 +168,9 @@ func open_in_browser(session: PKeySignInSession) -> int:
 	# Only an https link ever reaches the browser, whatever the server sent.
 	if session == null or not PKeyOutletAdapter.is_https(session._page_url()):
 		return ERR_INVALID_PARAMETER
+	# A native redirect sign-in on a phone opens the page through the plugin (the redirect comes back to the app).
+	if session._native != null and session._native.opener != null:
+		return session._native.opener.open(session, session._native.issuer_host)
 	return OS.shell_open(session._page_url())
 
 
@@ -429,10 +436,18 @@ func _begin_native(opts: Dictionary) -> PKeySignInSession:
 	if request_endpoint != "" and (authorize == "" or token == "" or issuer == ""):
 		return _failed(PKeyConstants.ErrorCode.SIGN_IN_UNAVAILABLE, "This product's discovery serves no redirect sign-in.")
 	var desktop := PKeyNativeRedirect.is_desktop() if native_platform == "" else native_platform == "desktop"
+	# A phone's redirect is the project's registered scheme or App Link, delivered by the OS (opts may name their own).
+	var opener := _mobile_opener()
+	var registered_schemes: Array = opts.get("registered_schemes", [])
+	var registered_claimed: Array = opts.get("registered_claimed", [])
+	if opener != null and not opts.has("registered_schemes") and not opts.has("registered_claimed"):
+		var mine: Dictionary = opener.registered()
+		registered_schemes = mine["schemes"]
+		registered_claimed = mine["claimed"]
 	var can_listen: bool = (not PKeyNativeRedirect.is_headless() if not opts.has("loopback") else opts["loopback"] == true) and desktop and return_page != ""
 	var choice := PKeyNativeRedirect.choose_redirect_class({
 		"request_endpoint": request_endpoint, "discovery": native, "can_listen": can_listen,
-		"registered_schemes": opts.get("registered_schemes", []), "registered_claimed": opts.get("registered_claimed", []),
+		"registered_schemes": registered_schemes, "registered_claimed": registered_claimed,
 	})
 	if choice["kind"] == "unavailable":
 		var gone := _failed(StringName(choice["code"]), "No native redirect can start here; sign in with a code instead (%s)." % choice["reason"])
@@ -491,6 +506,9 @@ func _begin_native(opts: Dictionary) -> PKeySignInSession:
 			n.expires_at = core.clock.system_now() + float(answer["expires_in"])
 			n.listener = listener
 			n.return_page = return_page
+			if opener != null and choice["kind"] != "loopback" and opener.owns(redirect_uri):
+				n.opener = opener
+				n.issuer_host = String(PKeyTransport.parse_url(issuer).get("host", ""))
 			var session := PKeySignInSession.new(true)
 			session.channel = &"redirect"
 			session._native = n
@@ -504,10 +522,23 @@ func _begin_native(opts: Dictionary) -> PKeySignInSession:
 			if listener != null:
 				listener.start(Callable(n, "on_listener_callback"))
 				n.drive(_host)
+			if n.opener != null:
+				n.opener.attach(session)
 			return session
 	if listener != null:
 		listener.close()
 	return failure
+
+
+## The opener a phone's native redirect uses, or null (a desktop, the web, a build without the plugin, or a project
+## that registered no scheme or link: then no class applies and the sign-in answers `redirect-unavailable`).
+func _mobile_opener() -> Object:
+	if native_opener == null:
+		var on_android := OS.get_name() == "Android" if native_platform == "" else native_platform == "android"
+		if not on_android:
+			return null
+		native_opener = PKeyAndroidRedirect.new()
+	return native_opener if native_opener.available() else null
 
 
 ## A push that got no answer, as the failed session (null when there was one).

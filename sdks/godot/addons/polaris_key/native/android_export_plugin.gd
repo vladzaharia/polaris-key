@@ -147,4 +147,12 @@ func _get_android_manifest_element_contents(_platform: EditorExportPlatform, _de
 
 
 func _get_android_manifest_application_element_contents(_platform: EditorExportPlatform, _debug: bool) -> String:
-	return A.application_elements(_flavor(), _play_games(), A.play_games_app_id(_option(A.PLAY_GAMES_APP_ID_OPTION, A.PLAY_GAMES_APP_ID_ENV)))
+	var out := A.application_elements(_flavor(), _play_games(), A.play_games_app_id(_option(A.PLAY_GAMES_APP_ID_OPTION, A.PLAY_GAMES_APP_ID_ENV)))
+	# The native redirect sign-in's intent filter: only for what the project settings register (I-48.17b).
+	out += A.redirect_elements(_flavor(), A.redirect_scheme(_setting(A.REDIRECT_SCHEME_SETTING)), A.redirect_claimed(_setting(A.REDIRECT_CLAIMED_SETTING)))
+	return out
+
+
+## A project setting's value, or null when unset.
+func _setting(name: String) -> Variant:
+	return ProjectSettings.get_setting(name) if ProjectSettings.has_setting(name) else null

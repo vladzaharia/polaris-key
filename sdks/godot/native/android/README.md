@@ -45,6 +45,16 @@ in `direct`, and `dependency` in a `play` export that carries no `androidx.crede
 class name before anything loads). A token arrives only in the result event (`{ok: true, token}`);
 a failure is `{ok: false, error: cancelled | unavailable, reason}`.
 
+The native redirect sign-in ops `auth_open {url, scheme, claimedUri, issuerHost}` and `auth_cancel` (I-48.17b) are in
+the main source set, with `PKeyGodotRedirectActivity` (declared not exported, no intent filter). `auth_open` opens
+the authorize page in a Custom Tab and answers `{ok: true}` once the browser started; it refuses (reason word only,
+never the URL) a page that is not HTTPS on `issuerHost`, a redirect that is not `<scheme>:/pkey/callback` or a claimed
+HTTPS link, and a redirect the merged manifest does not route to the activity (`not-registered`). The browser's
+redirect arrives once as the `auth_done {url}` event through `poll`; a malformed, foreign or repeated intent is dropped.
+The Godot export adds the activity's intent filter (and `exported="true"`) for `polaris_key/native_redirect/scheme` and
+`polaris_key/native_redirect/claimed_uri` in the project settings, and none when both are unset. The activity lives in
+this module, not in the Kotlin `:android` module, because the binding links `:platform` only (`checkPlatformOnly`).
+
 The LAN discovery ops `nsd_status`, `nsd_advertise {slot?, instance, port, txt}`, `nsd_advertise_stop {slot?}`,
 `nsd_browse_start`, `nsd_browse_stop`, `nsd_accept {names, tags?}` and `nsd_stop_all` (CC-14b.9, D-15; slots `a`, `v`, `p`, `c0` to `c7` and the tag browse, CC-15b.GK) are in
 the main source set, over `:platform`'s `PeerNsd` (API 34 and later). Discovery only: the pipes are

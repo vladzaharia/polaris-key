@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature update.driver outlet.detect core.store packs.transport.play devices.attest
+# @pkey-feature update.driver outlet.detect core.store packs.transport.play devices.attest identity.redirect.native
 # The Android platform plugin's GDScript side (P5-06), headless on every OS:
 #
 #   stubs     PKeyAndroid without the plugin: every call answers Unsupported, reason `runtime` off
@@ -67,6 +67,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _direct(t)
 	await load("res://tests/native/test_google.gd").new().run(t)
 	await load("res://tests/native/test_play_games.gd").new().run(t)
+	await load("res://tests/native/test_redirect.gd").new().run(t)
 	return true
 
 

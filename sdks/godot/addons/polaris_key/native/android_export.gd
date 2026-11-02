@@ -75,6 +75,14 @@ const TRANSFER_PERMISSIONS := ["android.permission.RUN_USER_INITIATED_JOBS", "an
 ## The LAN lane reads the network's subnets and watches the default network; without this normal
 ## (install-time) permission it finds no subnet and dials nothing.
 const NETWORK_STATE_PERMISSION := "android.permission.ACCESS_NETWORK_STATE"
+## The native redirect sign-in (I-48.17b): the project registers a custom scheme and/or a verified App Link in the
+## project settings, and the export adds the matching intent filter to the redirect activity. Unset (the default)
+## adds nothing, and the activity stays unexported.
+const REDIRECT_SCHEME_SETTING := "polaris_key/native_redirect/scheme"
+const REDIRECT_CLAIMED_SETTING := "polaris_key/native_redirect/claimed_uri"
+const REDIRECT_ACTIVITY := "im.plrs.key.godot.PKeyGodotRedirectActivity"
+const REDIRECT_PATH := "/pkey/callback"
+const REDIRECT_RESERVED_SCHEMES := ["http", "https", "javascript", "data", "file", "content", "intent"]
 ## The outlet kinds each flavour suits (a mismatch only warns: the stamp is the product's call).
 const PLAY_KINDS := ["play", "play-testing"]
 const NO_PLAY_CORE_KINDS := ["fdroid-repo"]
@@ -190,6 +198,49 @@ static func manifest_elements(flavor: String, background := false) -> String:
 	for p in DIRECT_PERMISSIONS:
 		s += "    <uses-permission android:name=\"%s\" />\n" % p
 	return s
+
+
+## A registered scheme name from a project setting (lower case; letters, digits, `+ . -`), or "" when it is none.
+static func redirect_scheme(raw: Variant) -> String:
+	var name := str(raw).strip_edges() if raw != null else ""
+	var re := RegEx.create_from_string("^[a-z][a-z0-9+.-]{0,63}$")
+	return name if re.search(name) != null and not REDIRECT_RESERVED_SCHEMES.has(name) else ""
+
+
+## A claimed App Link from a project setting: an `https://host/path` URI with no port, query, fragment or userinfo and a
+## path of its own; "" when it is none.
+static func redirect_claimed(raw: Variant) -> String:
+	var uri := str(raw).strip_edges() if raw != null else ""
+	var re := RegEx.create_from_string("^https://([a-z0-9.-]+)(/[A-Za-z0-9._~/%-]+)$")
+	return uri if uri.length() <= 2048 and re.search(uri) != null else ""
+
+
+## The <application> child for the redirect activity: exported, with one intent filter per registered redirect;
+## "" when neither a scheme nor a claimed link is registered, or when the build carries no plugin. The host of the
+## claimed link is verified by Android (autoVerify) against the site's assetlinks.json.
+static func redirect_elements(flavor: String, scheme: String, claimed_uri: String) -> String:
+	if flavor != "play" and flavor != "direct":
+		return ""
+	var filters := ""
+	if scheme != "":
+		filters += "            <intent-filter>\n"
+		filters += "                <action android:name=\"android.intent.action.VIEW\" />\n"
+		filters += "                <category android:name=\"android.intent.category.DEFAULT\" />\n"
+		filters += "                <category android:name=\"android.intent.category.BROWSABLE\" />\n"
+		filters += "                <data android:scheme=\"%s\" android:path=\"%s\" />\n" % [scheme, REDIRECT_PATH]
+		filters += "            </intent-filter>\n"
+	if claimed_uri != "":
+		var rest := claimed_uri.trim_prefix("https://")
+		var slash := rest.find("/")
+		filters += "            <intent-filter android:autoVerify=\"true\">\n"
+		filters += "                <action android:name=\"android.intent.action.VIEW\" />\n"
+		filters += "                <category android:name=\"android.intent.category.DEFAULT\" />\n"
+		filters += "                <category android:name=\"android.intent.category.BROWSABLE\" />\n"
+		filters += "                <data android:scheme=\"https\" android:host=\"%s\" android:path=\"%s\" />\n" % [rest.substr(0, slash), rest.substr(slash)]
+		filters += "            </intent-filter>\n"
+	if filters == "":
+		return ""
+	return "    <activity android:name=\"%s\" android:exported=\"true\" tools:replace=\"android:exported\">\n%s    </activity>\n" % [REDIRECT_ACTIVITY, filters]
 
 
 ## The AARs of `flavor` missing under `addons_dir` (res://addons by default).

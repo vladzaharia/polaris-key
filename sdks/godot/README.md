@@ -877,7 +877,7 @@ redeems the code from this device; the person sees the return page on the Worker
 error. `session.redirect_class` says which delivery ran, `session.reopen()` opens the SAME page again
 while the request lives (600 s), and `cancel()` closes the listener. A registered scheme or claimed
 link (`registered_schemes` / `registered_claimed` in the start options, your export's deep-link
-hook) is handed to `PolarisKey.identity.sign_in.handle_redirect(url)`. Mobile, web, a headless host
+hook) is handed to `PolarisKey.identity.sign_in.handle_redirect(url)`. The web, a headless host
 (SSH, CI, no display) and a product without the pushed-request endpoint fail with `redirect-unavailable`
 before anything is sent: offer the device code instead.
 
@@ -888,6 +888,21 @@ if not s.ok and s.code == &"redirect-unavailable":
 else:
 	var outcome := await s.wait()                        # the browser, the listener, the token
 ```
+
+**Native redirect (Android).** With the `PolarisKeyAndroid` plugin in the export, the same call works on
+a phone through a redirect your game registers. Set `polaris_key/native_redirect/scheme` (a reverse-DNS
+scheme name, for example `com.example.game`; the redirect is `com.example.game:/pkey/callback`) and/or
+`polaris_key/native_redirect/claimed_uri` (a verified App Link, `https://host/path`) in Project Settings
+(`[polaris_key]` in `project.godot`), and list the same redirect in the product's native redirect
+settings. The export adds the intent filter to the plugin's redirect activity (`exported` only then; with
+neither setting there is no filter and nothing is exposed). `sign_in.start({channel = "redirect"})` pushes the
+request, opens the issuer's HTTPS page in a Custom Tab (never a web view; the plugin refuses any other host)
+and hands the redirect the OS brings back to `handle_redirect`, which checks the redirect URI, `state` and
+`iss` and redeems the code from this device, once. Closing the tab delivers nothing and the sign-in keeps
+waiting (`reopen()`). A build without the plugin, or a project that registers nothing, answers
+`redirect-unavailable`. The `polaris_key/native_redirect/*` settings are read at run time and by the export; a
+hand-registered redirect (`registered_schemes`) still works with your own deep-link hook. iOS is a separate
+change.
 
 - **Account calls.** `subject()`, `sign_out()` and `open_account()` use only the endpoints
   discovery's Identity fragment publishes (`account: true`, `subject`, `signout`, `accountPortal`,
