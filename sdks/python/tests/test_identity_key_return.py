@@ -17,6 +17,7 @@ from helpers import make_client
 from test_identity_account import ok
 
 from polaris_key.constants_generated import ErrorCode
+from polaris_key.core.errors import PolarisError
 from polaris_key.core.manage import KeyEntries
 from polaris_key.devices.store import InMemoryStore
 from polaris_key.identity.native_redirect import push_request
@@ -159,6 +160,18 @@ def test_an_ordinary_answer_still_signs_in_with_the_opt_in(tmp_path: Any) -> Non
 )
 def test_a_via_key_body_that_breaks_a_rule_is_malformed(over: Dict[str, Any]) -> None:
     assert parse_token_answer(200, {**KEY_OK, **over}, key_return=True).kind == "malformed"
+
+
+def test_a_via_key_body_without_a_subject_member_is_malformed() -> None:
+    body = {k: v for k, v in KEY_OK.items() if k != "subject"}
+    assert parse_token_answer(200, body, key_return=True).kind == "malformed"
+
+
+def test_the_device_code_channel_refuses_key_return(tmp_path: Any) -> None:
+    c = _web_client(web.FormWorker(web.disc(), token=ok(**KEY_OK)), tmp_path)
+    with pytest.raises(PolarisError) as e:
+        c.identity.sign_in.start(key_return=True)
+    assert e.value.code == ErrorCode.INVALID_ARGUMENT
 
 
 def test_the_activated_parse_keeps_the_answered_subject_and_the_count() -> None:

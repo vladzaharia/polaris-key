@@ -511,6 +511,7 @@ def parse_token_answer(status: int, body: Any, *, key_return: bool = False) -> T
             or not isinstance(token, str)
             or token == ""
             or scope != ""
+            or "subject" not in body
             or not (
                 subject is None
                 or (isinstance(subject, str) and _SUBJECT.fullmatch(subject) is not None)
