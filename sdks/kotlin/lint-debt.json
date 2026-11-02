@@ -1041,14 +1041,14 @@
       "detekt:complexity.CyclomaticComplexMethod": 4,
       "detekt:complexity.LongParameterList": 4,
       "detekt:complexity.TooManyFunctions": 2,
-      "detekt:exceptions.SwallowedException": 1,
       "detekt:naming.EnumNaming": 17,
       "detekt:style.MagicNumber": 10,
       "detekt:style.ReturnCount": 13,
       "ktlint:standard:enum-entry-name-case": 17
     },
     "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/XferEndpoint.kt": {
-      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.SwallowedException": 2,
       "detekt:exceptions.TooGenericExceptionCaught": 4,
       "detekt:style.MagicNumber": 1,
@@ -1103,6 +1103,12 @@
       "detekt:exceptions.TooGenericExceptionCaught": 5,
       "detekt:style.ReturnCount": 1,
       "detekt:style.ThrowsCount": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/sync/HostCodec.kt": {
+      "detekt:complexity.TooManyFunctions": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/sync/MachineExchange.kt": {
+      "detekt:complexity.TooManyFunctions": 1
     },
     "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/Base64UrlTest.kt": {
       "detekt:exceptions.SwallowedException": 1,
@@ -2280,13 +2286,12 @@
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/TransferStore.kt": {
       "detekt:complexity.ComplexCondition": 1,
-      "detekt:complexity.NestedBlockDepth": 1,
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.ExceptionRaisedInUnexpectedLocation": 1,
       "detekt:exceptions.SwallowedException": 5,
       "detekt:style.LoopWithTooManyJumpStatements": 2,
       "detekt:style.ReturnCount": 1,
-      "detekt:style.ThrowsCount": 5,
+      "detekt:style.ThrowsCount": 4,
       "ktlint:standard:blank-line-between-when-conditions": 7
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/BackendTest.kt": {

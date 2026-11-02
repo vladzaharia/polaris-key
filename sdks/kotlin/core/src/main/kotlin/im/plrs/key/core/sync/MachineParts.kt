@@ -92,7 +92,8 @@ public class CloudSyncMachine private constructor(private val parts: MachinePart
         parts.exchange.refuse(ids, code)
     }
 
-    internal fun observers(): Pair<List<(RecordOutcome) -> Unit>, Map<String, Int>> = parts.core.outcomeTaps.toList() to parts.core.watchCounts.toMap()
+    internal fun observers(): Pair<List<(RecordOutcome) -> Unit>, Map<String, Int>> = parts.core.outcomeTaps
+        .toList() to parts.core.watchCounts.toMap()
 
     public companion object {
         private fun fresh(opts: CloudSyncOptions): MachineState =

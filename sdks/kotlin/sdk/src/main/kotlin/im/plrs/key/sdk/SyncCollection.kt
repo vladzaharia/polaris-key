@@ -99,7 +99,7 @@ public class SyncCollection internal constructor(public val name: String, privat
      * exact compare-and-set, whose outcome goes to the listener as [CollectionEvent.Outcome].
      */
     public suspend fun put(id: String, value: JsonElement, ifVersion: IfVersion? = null): CollectionResult {
-        val r = apply(id, { it in PUT_POLICIES }) { m, policy ->
+        val r = apply({ it in PUT_POLICIES }) { m, policy ->
             when {
                 ifVersion != null && policy != "revision" -> refused(CollectionError.OpInvalidForPolicy)
                 !sealable(id, listOf(value)) -> refused(CollectionError.ValueInvalid)
@@ -113,7 +113,7 @@ public class SyncCollection internal constructor(public val name: String, privat
     /** `merge`: write the fields in [set] and drop the ones in [remove]. Others stay as stored. */
     public suspend fun update(id: String, set: Map<String, JsonElement> = emptyMap(), remove: List<String> = emptyList()): CollectionResult {
         val names = set.keys.toList() + remove
-        val r = apply(id, { it == "merge" }) { m, _ ->
+        val r = apply({ it == "merge" }) { m, _ ->
             val bad = names.isEmpty() || names.toSet().size != names.size || !names.all(::fieldOk) || !sealable(id, set.values.toList())
             if (bad) refused(CollectionError.ValueInvalid) else done(m.update(name, id, set, remove))
         }
@@ -131,7 +131,7 @@ public class SyncCollection internal constructor(public val name: String, privat
      * [IfVersion.Absent]); it is refused for any other policy.
      */
     public suspend fun delete(id: String, ifVersion: IfVersion? = null): CollectionResult {
-        val r = apply(id, { true }) { m, policy ->
+        val r = apply({ true }) { m, policy ->
             when {
                 ifVersion != null && policy != "revision" -> refused(CollectionError.OpInvalidForPolicy)
 
@@ -163,7 +163,7 @@ public class SyncCollection internal constructor(public val name: String, privat
 
     // ── internals ────────────────────────────────────────────────────────────────────────────
 
-    private suspend fun apply(id: String, allowed: (String) -> Boolean, block: (CloudSyncMachine, String) -> CollectionResult): CollectionResult =
+    private suspend fun apply(allowed: (String) -> Boolean, block: (CloudSyncMachine, String) -> CollectionResult): CollectionResult =
         host.withMachine { m ->
             val policy = m.collectionDecl(name)?.policy
             when {
@@ -175,7 +175,7 @@ public class SyncCollection internal constructor(public val name: String, privat
         }
 
     private suspend fun elementOp(id: String, element: JsonElement, add: Boolean): CollectionResult {
-        val r = apply(id, { it == "union" }) { m, _ ->
+        val r = apply({ it == "union" }) { m, _ ->
             val size = try {
                 CanonicalJson.encodeBytes(element).size
             } catch (_: SyncCryptoException) {

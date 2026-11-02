@@ -732,6 +732,7 @@ public class XferMachine(private val o: XferMachineOptions) {
      * Step 8: the resume lookup, then `ACCEPT`. A kept partial the store can no longer read back (gone, or shorter
      * than it said) is not resumed: the transfer starts again at 0 on a fresh file.
      */
+    @Suppress("TooGenericExceptionCaught", "SwallowedException")
     private fun accept(t: Tr) {
         val mi = parts.indexOfFirst { it.id == t.id && it.sha256 == t.sha }
         val m = if (mi >= 0) parts[mi] else null
