@@ -416,8 +416,16 @@ func _server_mode(t: PKeyTestContext) -> void:
 	t.check("write: done with the version the metadata set answered", out["state"] == "done" and out["id"] == "slot1" and out["version"] == 2, str(out))
 	t.check("write: the Worker holds the plaintext file in server mode", rig["files"].puts.size() == 1 and rig["files"].puts[0] == data)
 	var listed = await saves.list()
-	t.check("list: the save with its metadata and file", listed.ok and listed.detail.size() == 1 and listed.detail[0]["id"] == "slot1" and _bare(listed.detail[0]["metadata"]) == {"playtime": 12, "chapter": "one"} and listed.detail[0]["file"]["size"] == 5000 and not listed.detail[0]["newer_format"],
-		str(listed.detail))
+	t.check(
+			"list: the save with its metadata and file",
+			listed.ok
+				and listed.detail.size() == 1
+				and listed.detail[0]["id"] == "slot1"
+				and _bare(listed.detail[0]["metadata"]) == {"playtime": 12, "chapter": "one"}
+				and listed.detail[0]["file"]["size"] == 5000
+				and not listed.detail[0]["newer_format"],
+			str(listed.detail)
+	)
 	var read = await saves.read("slot1")
 	t.check("read: the bytes and the metadata", read.ok and read.detail["bytes"] == data and read.detail["metadata"]["chapter"] == "one" and read.detail["file"]["format"] == "whole",
 		str(read.detail.get("file")))
