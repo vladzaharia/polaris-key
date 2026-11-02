@@ -326,7 +326,7 @@ func _unconfirmed_token(t: PKeyTestContext) -> void:
 		"nearby: a start that finds the mark drops the token and the mark",
 		r.store.token == "" and not r.sdk.core.cache.token_unconfirmed and not r.sdk.core.tokens.has_token(),
 		str(r.store.cache))
-	t.check("nearby: the documents fetched under it are gone too", r.sdk.core.cache.license == null)
+	t.check("nearby: nothing of it is cached after the drop", r.sdk.core.cache.license == null)
 
 	# A token that replaces an unconfirmed one is written before the mark goes.
 	r.sdk.core.tokens.set_unconfirmed_token(NEARBY_TOKEN)
@@ -359,6 +359,10 @@ func _confirm_and_decline(t: PKeyTestContext) -> void:
 	var s: PKeyNearbySignIn = (await r.sdk.identity.sign_in.start_nearby()).detail
 	await s.wait()
 	var core: PKeyCore = r.sdk.core
+	await r.sdk.sync()
+	t.check(
+		"nearby: a sync while the token is unconfirmed fetches nothing: the account's licence is not the device's yet",
+		r.bed.count("GET", "/license/document") == 0 and core.cache.license == null and r.sdk.identity.current() == null)
 	t.check("nearby: records are held until the confirmation", s.take_wrap_record().is_empty())
 	var held_wrap := PackedByteArray([1, 2, 3])
 	r.lan.req.record.emit(0x0030, held_wrap)
@@ -373,6 +377,7 @@ func _confirm_and_decline(t: PKeyTestContext) -> void:
 		core.cache.subject == SUBJECT and r.events.size() == 1 and r.events[0].get("kind") == "signedIn" and r.events[0].get("subject") == SUBJECT and not core.cache.explicit_sign_out,
 		str(r.events))
 	t.check("nearby: confirm releases the LAN records once and stops the deadline", r.lan.req.confirmed == 1 and r.live_timers() == 0)
+	t.check("nearby: confirm fetches the account's licence", r.bed.count("GET", "/license/document") >= 1 and core.cache.license != null and r.sdk.identity.current() != null)
 	t.check("nearby: Connect's signed-in gate no longer refuses it", core.tokens.has_token() and not core.tokens.unconfirmed())
 	var again: PKeyResult = await s.confirm_account()
 	t.check("nearby: confirming twice is a no-op", again.ok and r.events.size() == 1 and r.lan.req.confirmed == 1)
@@ -393,7 +398,6 @@ func _confirm_and_decline(t: PKeyTestContext) -> void:
 	d.bed.polls_n = [ready_answer()]
 	var ds: PKeyNearbySignIn = (await d.sdk.identity.sign_in.start_nearby()).detail
 	await ds.wait()
-	await d.sdk.sync()
 	var ends := [0]
 	ds.ended.connect(func() -> void: ends[0] += 1)
 	d.bed.signout_requests.clear()
@@ -537,6 +541,21 @@ func _races(t: PKeyTestContext) -> void:
 		str(cf))
 	await xs.decline_account()
 	t.check("nearby: a discard never signs out a later sign-in's token", x.store.token == OTHER_TOKEN and x.bed.signout_requests.is_empty())
+
+	# A later unconfirmed token (another nearby sign-in) keeps the mark: the confirm still names its own token.
+	var y := Rig.new()
+	await y.up()
+	y.bed.starts_n = [started_answer()]
+	y.bed.polls_n = [ready_answer()]
+	var ys: PKeyNearbySignIn = (await y.sdk.identity.sign_in.start_nearby()).detail
+	await ys.wait()
+	y.sdk.core.tokens.set_unconfirmed_token(OTHER_TOKEN)
+	var yf: PKeyResult = await ys.confirm_account()
+	t.check(
+		"nearby: confirm compares the held token even when another unconfirmed token holds the mark",
+		not yf.ok and y.sdk.core.tokens.unconfirmed() and y.store.token == OTHER_TOKEN and y.events.is_empty() and y.sdk.core.cache.subject == "")
+	y.sdk.queue_free()
+	y.free_all()
 
 	# An empty session subject is never the same person.
 	var e := Rig.new()

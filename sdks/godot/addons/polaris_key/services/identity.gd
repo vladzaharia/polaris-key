@@ -99,7 +99,7 @@ var redirect_entropy: Dictionary = {}
 ## `request(options)`, a coroutine answering a PKeyResult holding the request handle); null: the host's
 ## `cloud_connect.nearby`. `nearby_timer`: `func(seconds: float, fn: Callable) -> Callable` runs `fn` after
 ## `seconds` of a monotonic clock and returns the call that cancels it; empty: a scene-tree timer.
-## `nearby_acquisition_sync`: false skips the sync after the poll stored the token (replay recordings).
+## `nearby_acquisition_sync`: false skips the sync after the person confirmed the account (replay recordings).
 var nearby_lan: Object = null
 var nearby_timer: Callable = Callable()
 var nearby_acquisition_sync := true
@@ -432,6 +432,12 @@ func _nearby_confirm(subject: String, token: String) -> StringName:
 	if verdict == &"ok" and _account != null:
 		_account.note_signed_in(subject)
 	return verdict
+
+
+## The acquisition sync after a nearby sign-in was confirmed (`nearby_acquisition_sync` off skips it).
+func _nearby_acquired() -> void:
+	if nearby_acquisition_sync and on_acquired.is_valid():
+		await on_acquired.call()
 
 
 ## An unconfirmed nearby sign-in ended: the Worker is asked to sign out (best effort) and, whatever it answered,

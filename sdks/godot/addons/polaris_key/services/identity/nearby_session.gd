@@ -429,6 +429,8 @@ func confirm_account() -> PKeyResult:
 		return PKeyResult.failure(PKeyErrors.SIGN_IN_FAILED, "The sign-in ended before it was confirmed.")
 	# The chosen session is gone: no records, the server copy is the fallback.
 	_request.confirm_account()
+	# The account is the device's now: its licence is fetched (the sync an unconfirmed token never ran).
+	await _identity._nearby_acquired()
 	return PKeyResult.success()
 
 

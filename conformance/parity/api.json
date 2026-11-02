@@ -3348,6 +3348,11 @@
           "sdkOnly": true,
           "spelling": "SignInNamespace.startNearby",
           "reason": "Kotlin has the nearby channel of signIn.start as a verb of its own; the other SDKs pass channel nearby to signIn.start"
+        },
+        "godot": {
+          "sdkOnly": true,
+          "spelling": "PKeySignInNamespace.start_nearby",
+          "reason": "Godot has the nearby channel of signIn.start as a verb of its own, as Kotlin does (I-48.15); it answers a PKeyResult holding the PKeyNearbySignIn session"
         }
       },
       "layer": "client"
@@ -7285,8 +7290,8 @@
           "spelling": "NearbyNamespace.available"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "PKeyIdentity.nearby_available",
+          "reason": "D's check (I-48.15): the runtime can browse the network and discovery names nearby approval; the approving device's namespace follows in I-48.16"
         }
       },
       "layer": "client"

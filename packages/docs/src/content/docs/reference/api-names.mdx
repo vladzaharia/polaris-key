@@ -188,7 +188,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `identity.subject` | `identity.subject` | planned (I-10a) | `identity.subject` | `identity.subject` | `identity.subject` | `identity.subject` | `identity.account` |
 | `identity.signOut` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.account` |
 | `identity.signIn.start` | `identity.signIn.start` | `usePolarisAuth().signIn.start` | `identity.sign_in.start` | `SignInNamespace.start` | `SignInNamespace.start` | `PKeySignInNamespace.start` | `identity.devicecode` |
-| `identity.signIn.startNearby` | — | — | — | — | `SignInNamespace.startNearby` | — | — |
+| `identity.signIn.startNearby` | — | — | — | — | `SignInNamespace.startNearby` | `PKeySignInNamespace.start_nearby` | — |
 | `identity.signIn.handleRedirect` | `NativeRedirectSession.handleRedirect` | planned (I-15b) | `identity.sign_in.handle_redirect` | `SignInNamespace.handleRedirect` | `SignInNamespace.handleRedirect` | planned (I-15b) | `identity.redirect.native` |
 | `identity.signIn.session.reopen` | `identity.signIn.session.reopen` | `DeviceCodeSignInSession.reopen` | `identity.sign_in.session.reopen` | `SignInSession.reopen` | `SignInSession.reopen` | `PKeySignInSession.reopen` | `identity.devicecode` |
 | `identity.signIn.session.cancel` | `identity.signIn.session.cancel` | `SignInSession.cancel` | `identity.sign_in.session.cancel` | `SignInSession.cancel` | `SignInSession.cancel` | `PKeySignInSession.cancel` | `identity.devicecode` |
@@ -214,7 +214,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `identity.isAvailable` | — | — | — | — | — | `identity.is_available` | — |
 | `identity.openInBrowser` | — | — | — | — | — | `identity.open_in_browser` | — |
 | `identity.copyLink` | — | — | — | — | — | `identity.copy_link` | — |
-| `identity.nearby.available` | `identity.nearby.available` | `adapter.supports` | `identity.nearby.available` | `NearbyNamespace.available` | `NearbyNamespace.available` | planned (I-48) | `identity.nearby` |
+| `identity.nearby.available` | `identity.nearby.available` | `adapter.supports` | `identity.nearby.available` | `NearbyNamespace.available` | `NearbyNamespace.available` | `PKeyIdentity.nearby_available` | `identity.nearby` |
 | `identity.nearby.onRequest` | `identity.nearby.onRequest` | `adapter.nearby.approver` | `identity.nearby.on_request` | `NearbyNamespace.onRequest` | `NearbyNamespace.onRequest` | planned (I-48) | `identity.nearby` |
 | `identity.signIn.session.approvers` | `identity.signIn.session.approvers` | `session.state.approvers` | `identity.sign_in.session.approvers` | `NearbySignInSession.approvers` | `NearbySignInSession.approvers` | planned (I-48) | `identity.nearby` |
 | `identity.signIn.session.onApprovers` | `identity.signIn.session.onApprovers` | `session.subscribe` | `identity.sign_in.session.on_approvers` | `NearbySignInSession.onApprovers` | `NearbySignInSession.onApprovers` | planned (I-48) | `identity.nearby` |

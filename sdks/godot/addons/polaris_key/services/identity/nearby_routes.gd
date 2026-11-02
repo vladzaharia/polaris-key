@@ -348,11 +348,9 @@ func _poll_token(answer: Dictionary, status: int, held_at_start: String) -> Dict
 	# accepted. A mark that cannot be written fails the poll and stores nothing.
 	if not core.tokens.set_unconfirmed_token(token["access_token"]):
 		return _error(PKeyErrors.SIGN_IN_FAILED, "Nearby sign-in could not store the sign-in.", status)
-	# The previous person is no longer the stored subject under the new, unconfirmed token.
+	# The previous person is no longer the stored subject under the new, unconfirmed token. No sync runs yet:
+	# the account's licence is not the device's until the person confirms it.
 	core.cache.set_subject("")
-	var identity := _identity()
-	if identity.nearby_acquisition_sync and identity.on_acquired.is_valid():
-		await identity.on_acquired.call()
 	var lic: Variant = token["license"]
 	var license_id := ""
 	if lic is Dictionary and (lic as Dictionary).get("id") is String:

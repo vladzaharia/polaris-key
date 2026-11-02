@@ -151,10 +151,10 @@ func _confirm() -> void:
 		gate._leave_auto_sign_in()
 		gate.show_state(gate.sdk.status(), String(PKeyUiView.catalog().format("core.codes.sign-in-expired.message")))
 		return
-	# Confirmed: the session is the device's now; leaving the steps must not cancel it.
+	# Confirmed (the SDK fetched the account's licence): the session is the device's now; leaving the steps
+	# must not cancel it.
 	session = null
 	gate._end_auto()
-	await gate.sdk.sync(true)
 	gate.show_state(gate.sdk.status())
 
 

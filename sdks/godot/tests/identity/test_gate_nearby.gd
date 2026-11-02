@@ -90,7 +90,7 @@ func _flow(t: PKeyTestContext) -> void:
 	t.check("gate nearby: the title leads with the active mark while the sign-in is held", shown.begins_with("◆ ") and shown.contains("ada@example.com"), shown)
 	t.check("gate nearby: the token is held unconfirmed behind the screen", rig.sdk.core.tokens.unconfirmed() and rig.events.is_empty())
 	gate._on_auto_primary("nearby-done")
-	await B.until(func() -> bool: return not rig.sdk.core.tokens.unconfirmed(), 600)
+	await B.until(func() -> bool: return not gate.auto_step.visible and gate._nearby_flow.session == null, 900)
 	await tree.process_frame
 	t.check(
 		"gate nearby: Continue confirms: the token is a sign-in, the event fires, the steps are gone",
