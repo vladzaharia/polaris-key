@@ -1440,7 +1440,7 @@
       "jscpd:duplicate": 10
     },
     "packages/client-core/test/peerXfer.test.ts": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 10
     },
     "packages/client-core/test/presentation.test.ts": {
       "jscpd:duplicate": 1
@@ -1839,7 +1839,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/test/connect/transfer.test.ts": {
-      "jscpd:duplicate": 15
+      "jscpd:duplicate": 19
     },
     "packages/sdk-node/test/connect/transferLinks.test.ts": {
       "jscpd:duplicate": 9
@@ -2106,7 +2106,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/cloudSyncCollection.test.tsx": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 4
     },
     "packages/sdk-react/test/cloudSyncFiles.browser.test.ts": {
       "jscpd:duplicate": 1
@@ -2133,7 +2133,7 @@
       "jscpd:duplicate": 4
     },
     "packages/sdk-react/test/connectTransfer.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 6
     },
     "packages/sdk-react/test/copy.test.ts": {
       "jscpd:duplicate": 1
