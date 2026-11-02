@@ -9,6 +9,10 @@ sidebar:
 
 A collection is a named set of records a signed-in person holds across their devices: progress, a profile, a list of favorites. You declare it in the catalog; the SDK's `collection(name)` handle reads and writes its records. Settings and `saves` have their own APIs.
 
+1. Declare the collection in the catalog, with a policy.
+2. Ship the compiled mirror, or let the app read the served schema.
+3. Call `collection(name)` and read and write its records.
+
 ## Declare it
 
 Collections live in the catalog's `cloudSync` block, authored in `.pkey/schema`. Each member is described in [the catalog](/docs/features/managed-config/catalog/) and [Records and saves](/docs/features/cloud-sync/#records-and-saves); this page does not repeat them. The two that choose behavior are `conflict` (the policy) and `schema`.

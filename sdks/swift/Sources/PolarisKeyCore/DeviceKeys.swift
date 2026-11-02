@@ -29,6 +29,7 @@
 // error (locked, denied) is thrown, and none is taken for "no keys". `wipe()` is the way out.
 
 import Foundation
+
 #if canImport(Security)
     import Security
 #endif
@@ -134,55 +135,55 @@ protocol DeviceKeyWrapping: Sendable {
 // ── The Secure Enclave wrapper ───────────────────────────────────────────────────────
 
 #if canImport(Security)
-struct SecureEnclaveWrapper: DeviceKeyWrapping {
-    private static let info = Data("pkey-device-keys/1 wrap".utf8)
+    struct SecureEnclaveWrapper: DeviceKeyWrapping {
+        private static let info = Data("pkey-device-keys/1 wrap".utf8)
 
-    static var isAvailable: Bool { SecureEnclave.isAvailable }
+        static var isAvailable: Bool { SecureEnclave.isAvailable }
 
-    private func symmetricKey(_ shared: SharedSecret, ephemeral: Data) -> SymmetricKey {
-        shared.hkdfDerivedSymmetricKey(
-            using: SHA256.self, salt: Data(), sharedInfo: Self.info + ephemeral, outputByteCount: 32)
-    }
-
-    func wrap(_ plain: Data, aad: Data) throws -> WrappedKey {
-        var err: Unmanaged<CFError>?
-        guard
-            let access = SecAccessControlCreateWithFlags(
-                nil, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly, .privateKeyUsage, &err)
-        else { throw DeviceKeyError.wrap }
-        // Only a permanently absent SE is "unsupported" (the store may fall back); any other
-        // failure may pass and is `.wrap`.
-        guard Self.isAvailable else { throw DeviceKeyError.unsupported("secure-enclave") }
-        do {
-            let se = try SecureEnclave.P256.KeyAgreement.PrivateKey(accessControl: access)
-            let eph = P256.KeyAgreement.PrivateKey()
-            let epk = eph.publicKey.x963Representation
-            let shared = try eph.sharedSecretFromKeyAgreement(with: se.publicKey)
-            let box = try AES.GCM.seal(plain, using: symmetricKey(shared, ephemeral: epk), authenticating: aad)
-            guard let combined = box.combined else { throw DeviceKeyError.wrap }
-            return WrappedKey(handle: se.dataRepresentation, ephemeral: epk, sealed: combined)
-        } catch let e as DeviceKeyError {
-            throw e
-        } catch { throw DeviceKeyError.wrap }
-    }
-
-    func unwrap(_ w: WrappedKey, aad: Data) throws -> Data {
-        // Only a malformed ephemeral point is a format error. A handle the SE will not open, a
-        // failed agreement and a failed GCM open all rethrow as `.wrap`: they can be transient
-        // (locked, busy) or an attack, and none may cost the device its identity.
-        let epub: P256.KeyAgreement.PublicKey
-        do { epub = try P256.KeyAgreement.PublicKey(x963Representation: w.ephemeral) } catch {
-            throw DeviceKeyError.unreadable
+        private func symmetricKey(_ shared: SharedSecret, ephemeral: Data) -> SymmetricKey {
+            shared.hkdfDerivedSymmetricKey(
+                using: SHA256.self, salt: Data(), sharedInfo: Self.info + ephemeral, outputByteCount: 32)
         }
-        do {
-            let se = try SecureEnclave.P256.KeyAgreement.PrivateKey(dataRepresentation: w.handle)
-            let shared = try se.sharedSecretFromKeyAgreement(with: epub)
-            return try AES.GCM.open(
-                AES.GCM.SealedBox(combined: w.sealed), using: symmetricKey(shared, ephemeral: w.ephemeral),
-                authenticating: aad)
-        } catch { throw DeviceKeyError.wrap }
+
+        func wrap(_ plain: Data, aad: Data) throws -> WrappedKey {
+            var err: Unmanaged<CFError>?
+            guard
+                let access = SecAccessControlCreateWithFlags(
+                    nil, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly, .privateKeyUsage, &err)
+            else { throw DeviceKeyError.wrap }
+            // Only a permanently absent SE is "unsupported" (the store may fall back); any other
+            // failure may pass and is `.wrap`.
+            guard Self.isAvailable else { throw DeviceKeyError.unsupported("secure-enclave") }
+            do {
+                let se = try SecureEnclave.P256.KeyAgreement.PrivateKey(accessControl: access)
+                let eph = P256.KeyAgreement.PrivateKey()
+                let epk = eph.publicKey.x963Representation
+                let shared = try eph.sharedSecretFromKeyAgreement(with: se.publicKey)
+                let box = try AES.GCM.seal(plain, using: symmetricKey(shared, ephemeral: epk), authenticating: aad)
+                guard let combined = box.combined else { throw DeviceKeyError.wrap }
+                return WrappedKey(handle: se.dataRepresentation, ephemeral: epk, sealed: combined)
+            } catch let e as DeviceKeyError {
+                throw e
+            } catch { throw DeviceKeyError.wrap }
+        }
+
+        func unwrap(_ w: WrappedKey, aad: Data) throws -> Data {
+            // Only a malformed ephemeral point is a format error. A handle the SE will not open, a
+            // failed agreement and a failed GCM open all rethrow as `.wrap`: they can be transient
+            // (locked, busy) or an attack, and none may cost the device its identity.
+            let epub: P256.KeyAgreement.PublicKey
+            do { epub = try P256.KeyAgreement.PublicKey(x963Representation: w.ephemeral) } catch {
+                throw DeviceKeyError.unreadable
+            }
+            do {
+                let se = try SecureEnclave.P256.KeyAgreement.PrivateKey(dataRepresentation: w.handle)
+                let shared = try se.sharedSecretFromKeyAgreement(with: epub)
+                return try AES.GCM.open(
+                    AES.GCM.SealedBox(combined: w.sealed), using: symmetricKey(shared, ephemeral: w.ephemeral),
+                    authenticating: aad)
+            } catch { throw DeviceKeyError.wrap }
+        }
     }
-}
 #endif
 
 // ── Vaults ───────────────────────────────────────────────────────────────────────────

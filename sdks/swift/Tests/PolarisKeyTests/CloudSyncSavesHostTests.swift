@@ -49,7 +49,9 @@ private func ok(_ m: [String: JSONValue], _ version: Int) -> JSONValue {
 private let savesOptions = CloudSyncOptions(
     catalog: .object(
         (hMirror.objectValue ?? [:]).merging([
-            "cloudSync": .object(["collections": .array([.object(["name": .string("saves"), "conflict": .string("revision")])])])
+            "cloudSync": .object([
+                "collections": .array([.object(["name": .string("saves"), "conflict": .string("revision")])])
+            ])
         ]) { $1 }))
 
 final class CloudSyncSavesHostTests: XCTestCase {

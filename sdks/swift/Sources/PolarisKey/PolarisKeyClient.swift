@@ -23,15 +23,16 @@
 // local attacker to poison.
 
 import Foundation
-#if canImport(FoundationNetworking)
-    import FoundationNetworking
-#endif
 import PolarisKeyConfig
 import PolarisKeyCore
 import PolarisKeyIdentity
 import PolarisKeyLicense
 import PolarisKeyPlatform
 import PolarisKeyRelease
+
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
 
 public struct PolarisKeyClientOptions: Sendable {
     public let core: CoreOptions

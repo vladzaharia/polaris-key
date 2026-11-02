@@ -510,8 +510,10 @@ internal class CloudTransferTest {
         val first = Probe(content(150_000), "one", stallAt = 1)
         val h1 = a.transfer.send(s1.sa, first)
         val h2 = a.transfer.send(s2.sa, Probe(content(150_000), "two"))
-        val o1 = pending.receive()
-        val o2 = pending.receive()
+        // The two sessions' offers arrive in either order: tell them apart by name, not by arrival.
+        val shown = listOf(pending.receive(), pending.receive()).associateBy { it.name }
+        val o1 = shown.getValue("one")
+        val o2 = shown.getValue("two")
         o1.accept(File(dir(), "one.bin"))
         waitFor("the first transfer to hold its space") { partFiles(b.state).size == 1 }
         val two = File(dir(), "two.bin")

@@ -20,6 +20,7 @@
 //   * the keychain service tag is `pkey:<product>` (§8).
 
 import Foundation
+
 #if canImport(Security)
     import Security
 #endif
@@ -332,28 +333,28 @@ protocol KeychainAPI: Sendable {
 }
 
 #if canImport(Security)
-/// The real Security.framework calls.
-struct SystemKeychain: KeychainAPI {
-    func copyMatching(_ query: [String: Any]) -> (OSStatus, Data?) {
-        var item: CFTypeRef?
-        let status = withUnsafeMutablePointer(to: &item) {
-            SecItemCopyMatching(query as CFDictionary, $0)
+    /// The real Security.framework calls.
+    struct SystemKeychain: KeychainAPI {
+        func copyMatching(_ query: [String: Any]) -> (OSStatus, Data?) {
+            var item: CFTypeRef?
+            let status = withUnsafeMutablePointer(to: &item) {
+                SecItemCopyMatching(query as CFDictionary, $0)
+            }
+            return (status, item as? Data)
         }
-        return (status, item as? Data)
-    }
 
-    func add(_ attributes: [String: Any]) -> OSStatus {
-        SecItemAdd(attributes as CFDictionary, nil)
-    }
+        func add(_ attributes: [String: Any]) -> OSStatus {
+            SecItemAdd(attributes as CFDictionary, nil)
+        }
 
-    func update(_ query: [String: Any], _ attributes: [String: Any]) -> OSStatus {
-        SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-    }
+        func update(_ query: [String: Any], _ attributes: [String: Any]) -> OSStatus {
+            SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        }
 
-    func delete(_ query: [String: Any]) -> OSStatus {
-        SecItemDelete(query as CFDictionary)
+        func delete(_ query: [String: Any]) -> OSStatus {
+            SecItemDelete(query as CFDictionary)
+        }
     }
-}
 #endif
 
 /// Production store: the secret token lives in the OS keychain (generic password, service
@@ -463,19 +464,20 @@ public actor KeychainStore: Store, DeviceIdRebindable {
         let (status, token) = readItem(dataProtection: true)
         if status == errSecSuccess { return token }
         #if os(macOS)
-        if status == errSecItemNotFound || status == errSecMissingEntitlement {
-            let (legacyStatus, legacy) = readItem(dataProtection: false)
-            if legacyStatus == errSecItemNotFound { return nil }
-            guard legacyStatus == errSecSuccess else { throw StoreError.keychain(legacyStatus) }
-            // Migrate the legacy item into the data-protection keychain. An unentitled process
-            // also answers "not found" to the read above, so its migration write fails with
-            // −34018; a failed migration still returns the token and keeps the legacy item.
-            if status == errSecItemNotFound, let legacy,
-                writeItem(legacy, dataProtection: true) == errSecSuccess {
-                _ = keychain.delete(itemQuery(dataProtection: false))
+            if status == errSecItemNotFound || status == errSecMissingEntitlement {
+                let (legacyStatus, legacy) = readItem(dataProtection: false)
+                if legacyStatus == errSecItemNotFound { return nil }
+                guard legacyStatus == errSecSuccess else { throw StoreError.keychain(legacyStatus) }
+                // Migrate the legacy item into the data-protection keychain. An unentitled process
+                // also answers "not found" to the read above, so its migration write fails with
+                // −34018; a failed migration still returns the token and keeps the legacy item.
+                if status == errSecItemNotFound, let legacy,
+                    writeItem(legacy, dataProtection: true) == errSecSuccess
+                {
+                    _ = keychain.delete(itemQuery(dataProtection: false))
+                }
+                return legacy
             }
-            return legacy
-        }
         #endif
         // "No token" and "the keychain would not answer" are different facts: the first is
         // needs-activation, the second is a condition the user can fix.
@@ -487,17 +489,17 @@ public actor KeychainStore: Store, DeviceIdRebindable {
         let status = writeItem(token, dataProtection: true)
         if status == errSecSuccess {
             #if os(macOS)
-            // Best effort: no older token may linger in the legacy keychain for a later read.
-            _ = keychain.delete(itemQuery(dataProtection: false))
+                // Best effort: no older token may linger in the legacy keychain for a later read.
+                _ = keychain.delete(itemQuery(dataProtection: false))
             #endif
             return
         }
         #if os(macOS)
-        if status == errSecMissingEntitlement {
-            let legacy = writeItem(token, dataProtection: false)
-            guard legacy == errSecSuccess else { throw StoreError.keychain(legacy) }
-            return
-        }
+            if status == errSecMissingEntitlement {
+                let legacy = writeItem(token, dataProtection: false)
+                guard legacy == errSecSuccess else { throw StoreError.keychain(legacy) }
+                return
+            }
         #endif
         throw StoreError.keychain(status)
     }
@@ -509,10 +511,10 @@ public actor KeychainStore: Store, DeviceIdRebindable {
                 || status == errSecMissingEntitlement
         else { throw StoreError.keychain(status) }
         #if os(macOS)
-        let legacy = keychain.delete(itemQuery(dataProtection: false))
-        guard legacy == errSecSuccess || legacy == errSecItemNotFound else {
-            throw StoreError.keychain(legacy)
-        }
+            let legacy = keychain.delete(itemQuery(dataProtection: false))
+            guard legacy == errSecSuccess || legacy == errSecItemNotFound else {
+                throw StoreError.keychain(legacy)
+            }
         #endif
     }
 
@@ -533,30 +535,30 @@ public actor KeychainStore: Store, DeviceIdRebindable {
         let status = probeAttributes(dataProtection: true)
         if status == errSecSuccess { return StoreStatus(backend: .keychain) }
         #if os(macOS)
-        if status == errSecMissingEntitlement { return Self.legacyKeychainStatus }
-        if status == errSecItemNotFound {
-            var sentinel = itemQuery(dataProtection: true)
-            sentinel[kSecAttrAccount as String] = Self.entitlementProbeAccount
-            let probe = keychain.delete(sentinel)
-            if probe == errSecMissingEntitlement { return Self.legacyKeychainStatus }
-            if probe == errSecSuccess || probe == errSecItemNotFound {
-                if probeAttributes(dataProtection: false) == errSecSuccess {
-                    return StoreStatus(
-                        backend: .keychain,
-                        degraded: .init(
-                            reason: .legacyKeychain,
-                            detail:
-                                "the token is still in the file-based login keychain; "
-                                + "the next read migrates it to the data-protection keychain"))
+            if status == errSecMissingEntitlement { return Self.legacyKeychainStatus }
+            if status == errSecItemNotFound {
+                var sentinel = itemQuery(dataProtection: true)
+                sentinel[kSecAttrAccount as String] = Self.entitlementProbeAccount
+                let probe = keychain.delete(sentinel)
+                if probe == errSecMissingEntitlement { return Self.legacyKeychainStatus }
+                if probe == errSecSuccess || probe == errSecItemNotFound {
+                    if probeAttributes(dataProtection: false) == errSecSuccess {
+                        return StoreStatus(
+                            backend: .keychain,
+                            degraded: .init(
+                                reason: .legacyKeychain,
+                                detail:
+                                    "the token is still in the file-based login keychain; "
+                                    + "the next read migrates it to the data-protection keychain"))
+                    }
+                    return StoreStatus(backend: .keychain)
                 }
-                return StoreStatus(backend: .keychain)
+                return StoreStatus(
+                    backend: .keychain,
+                    degraded: .init(reason: .keyringError, detail: Self.describe(probe)))
             }
-            return StoreStatus(
-                backend: .keychain,
-                degraded: .init(reason: .keyringError, detail: Self.describe(probe)))
-        }
         #else
-        if status == errSecItemNotFound { return StoreStatus(backend: .keychain) }
+            if status == errSecItemNotFound { return StoreStatus(backend: .keychain) }
         #endif
         return StoreStatus(
             backend: .keychain,
@@ -571,13 +573,13 @@ public actor KeychainStore: Store, DeviceIdRebindable {
     }
 
     #if os(macOS)
-    private static let legacyKeychainStatus = StoreStatus(
-        backend: .keychain,
-        degraded: .init(
-            reason: .legacyKeychain,
-            detail:
-                "no data-protection keychain entitlement (errSecMissingEntitlement); "
-                + "the file-based login keychain is used"))
+        private static let legacyKeychainStatus = StoreStatus(
+            backend: .keychain,
+            degraded: .init(
+                reason: .legacyKeychain,
+                detail:
+                    "no data-protection keychain entitlement (errSecMissingEntitlement); "
+                    + "the file-based login keychain is used"))
     #endif
 
     private static func describe(_ status: OSStatus) -> String {
@@ -594,7 +596,8 @@ public actor KeychainStore: Store, DeviceIdRebindable {
         if let data = (try? readSecure(deviceURL)) ?? nil,
             let existing = String(data: data, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
-            !existing.isEmpty {
+            !existing.isEmpty
+        {
             return existing
         }
         let id = DeviceID.derive(productSlug: productSlug)
