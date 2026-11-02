@@ -55,7 +55,7 @@ public struct SignInOptions: Sendable {
     /// sent (last) and a person who continues without an account on a key's licence settles the
     /// session as `.activated`. Off by default and never sent unless set; the Worker drops it when
     /// the product or its launch gate does not offer it. Leave it off until the app renders the
-    /// `.activated` outcome (the kits do not yet). Ignored on the device-code channel.
+    /// `.activated` outcome (the kits do not yet). The device-code channel refuses it (`invalid-argument`).
     public var keyReturn: Bool
 
     public init(
@@ -169,6 +169,10 @@ public struct SignInNamespace: Sendable {
                 browser: options.browser)
             if options.browser != nil { try await session.show() }
             return session
+        }
+        if options.keyReturn {
+            throw PolarisError(
+                code: ErrorCode.invalidArgument, message: "keyReturn belongs to the redirect channel.")
         }
         let prompt = try await client.startDeviceCode(deviceName: options.deviceName, options: options)
         let session = SignInSession(client: client, prompt: prompt, browser: options.browser)
