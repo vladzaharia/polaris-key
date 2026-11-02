@@ -4,7 +4,7 @@
 
 /** The UI matrix version these models implement (`uiMatrixVersion`, the generated
  *  `UI_MATRIX_VERSION` of every SDK's constants). The runner refuses a file of another version. */
-export const UI_MATRIX_VERSION = 8;
+export const UI_MATRIX_VERSION = 9;
 
 /** UI-KITS.md §4.1: every component, must and should. */
 export const COMPONENTS = [

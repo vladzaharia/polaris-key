@@ -160,7 +160,7 @@
       "pr": {
         "include": [
           {
-            "os": "ubuntu-latest",
+            "os": "ubuntu-24.04",
             "python": "3.9"
           },
           {
@@ -173,7 +173,7 @@
       "main": {
         "include": [
           {
-            "os": "ubuntu-latest",
+            "os": "ubuntu-24.04",
             "python": "3.9"
           },
           {

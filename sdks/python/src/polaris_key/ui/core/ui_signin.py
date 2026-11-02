@@ -116,7 +116,8 @@ def _confirm_account_line(auto: Mapping[str, Any]) -> Optional[str]:
     else none."""
     if auto.get("email"):
         return "signin.auto.confirm.as"
-    return _CONFIRM_KIND_LINE.get(auto.get("kind"))
+    kind = auto.get("kind")
+    return _CONFIRM_KIND_LINE.get(kind) if isinstance(kind, str) else None
 
 
 def _auto_step_view(ctx: Context, auto: Mapping[str, Any], args: Mapping[str, Any], provider: str) -> View:

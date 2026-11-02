@@ -1848,7 +1848,8 @@ async function replay(t: Transcript): Promise<void> {
 
 // Features implemented on the desktop bridge only (excepted on the web runtime this replayer drives).
 const onDesktopBridgeOnly = (t: { features: string[] }): boolean =>
-  t.features.includes("identity.nearby");
+  t.features.includes("identity.nearby") ||
+  t.features.includes("identity.redirect.native");
 
 describe("HTTP transcripts: @polaris-key/react", () => {
   it("replays every transcript but the planned features': the cookie-free bearer engine closed the device-token ones", () => {
@@ -1878,10 +1879,10 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // transcripts and cloudsync-chunks* replay through the file transport (cloudSyncFile, cloudSyncChunk).
     // identity.keyreturn is LK-SKIP's redirect-web-key-return* transcripts: replayed here (.6b).
     // identity.devicecode.choice is UK-42.22.5's holders-add-to-account-device, replayed here.
-    // identity.redirect.native stays planned here (parity.json, I-15b): the pushed request and the
-    // loopback listener are a native app's, so the locker-redirect-native and redirect-native-*
-    // transcripts are not replayed by the web engine.
-    const plannedHere: string[] = ["identity.redirect.native"];
+    // identity.redirect.native is implemented on the desktop bridge only (parity.json, I-15b): the
+    // pushed request and the loopback listener are a native app's, so the locker-redirect-native
+    // and redirect-native-* transcripts are not replayed by the web engine (the Node runner does).
+    const plannedHere: string[] = [];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     // identity.gamecenter and identity.pgs are N/A on the web (parity.json), so exchange-gamecenter-*,
@@ -1898,6 +1899,9 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       // host plays both devices; this replayer drives the web engine, so the Node runner replays
       // the nearby-* transcripts.
       "identity.nearby",
+      // identity.redirect.native: the browser has no loopback listener or registered scheme
+      // (runtime-N/A on the web in parity.json); the Node runner replays redirect-native-*.
+      "identity.redirect.native",
       // connect.links is N/A (runtime) here too (CC-19.9): the contact store and the pairing sockets
       // are the host's; the Node and Python runners replay the connect-links-* and
       // connect-relay-ticket-contact transcripts.

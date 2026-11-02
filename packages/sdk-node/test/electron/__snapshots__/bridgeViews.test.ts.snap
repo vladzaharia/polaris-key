@@ -6991,6 +6991,220 @@ exports[`bridge views: signIn (ui.signin) > SignIn/confirm: Apple shared no emai
 }
 `;
 
+exports[`bridge views: signIn (ui.signin) > SignIn/confirm: Game Center shared no email, an existing license (sheet) 1`] = `
+{
+  "actions": [],
+  "args": {
+    "app": "Tidewater Studio",
+    "developer": "Harbor Audio",
+    "method": "Game Center",
+    "product": "Tidewater Studio",
+    "provider": "Game Center",
+  },
+  "component": "SignIn",
+  "copy": [
+    "signin.auto.confirm.asGameCenter",
+    "signin.auto.confirm.other",
+    "signin.auto.confirm.primary",
+    "signin.auto.confirm.title",
+    "signin.consent.license",
+    "signin.consent.licenseLine",
+  ],
+  "decisions": {
+    "errorSlot": null,
+    "focus": "heading",
+    "link": null,
+    "primary": "signin.auto.confirm.primary",
+    "qr": false,
+    "tone": null,
+  },
+  "isolate": [
+    "app",
+    "developer",
+    "product",
+  ],
+  "state": "confirm",
+}
+`;
+
+exports[`bridge views: signIn (ui.signin) > SignIn/confirm: Game Center shared no email, an existing license 1`] = `
+{
+  "actions": [],
+  "args": {
+    "app": "Tidewater Studio",
+    "developer": "Harbor Audio",
+    "method": "Game Center",
+    "product": "Tidewater Studio",
+    "provider": "Game Center",
+  },
+  "component": "SignIn",
+  "copy": [
+    "signin.auto.confirm.asGameCenter",
+    "signin.auto.confirm.other",
+    "signin.auto.confirm.primary",
+    "signin.auto.confirm.title",
+    "signin.consent.license",
+    "signin.consent.licenseLine",
+  ],
+  "decisions": {
+    "errorSlot": null,
+    "focus": "heading",
+    "link": null,
+    "primary": "signin.auto.confirm.primary",
+    "qr": false,
+    "tone": null,
+  },
+  "isolate": [
+    "app",
+    "developer",
+    "product",
+  ],
+  "state": "confirm",
+}
+`;
+
+exports[`bridge views: signIn (ui.signin) > SignIn/confirm: Play Games shared no email, an existing license (sheet) 1`] = `
+{
+  "actions": [],
+  "args": {
+    "app": "Tidewater Studio",
+    "developer": "Harbor Audio",
+    "method": "Google Play Games",
+    "product": "Tidewater Studio",
+    "provider": "Google Play Games",
+  },
+  "component": "SignIn",
+  "copy": [
+    "signin.auto.confirm.asPlayGames",
+    "signin.auto.confirm.other",
+    "signin.auto.confirm.primary",
+    "signin.auto.confirm.title",
+    "signin.consent.license",
+    "signin.consent.licenseLine",
+  ],
+  "decisions": {
+    "errorSlot": null,
+    "focus": "heading",
+    "link": null,
+    "primary": "signin.auto.confirm.primary",
+    "qr": false,
+    "tone": null,
+  },
+  "isolate": [
+    "app",
+    "developer",
+    "product",
+  ],
+  "state": "confirm",
+}
+`;
+
+exports[`bridge views: signIn (ui.signin) > SignIn/confirm: Play Games shared no email, an existing license 1`] = `
+{
+  "actions": [],
+  "args": {
+    "app": "Tidewater Studio",
+    "developer": "Harbor Audio",
+    "method": "Google Play Games",
+    "product": "Tidewater Studio",
+    "provider": "Google Play Games",
+  },
+  "component": "SignIn",
+  "copy": [
+    "signin.auto.confirm.asPlayGames",
+    "signin.auto.confirm.other",
+    "signin.auto.confirm.primary",
+    "signin.auto.confirm.title",
+    "signin.consent.license",
+    "signin.consent.licenseLine",
+  ],
+  "decisions": {
+    "errorSlot": null,
+    "focus": "heading",
+    "link": null,
+    "primary": "signin.auto.confirm.primary",
+    "qr": false,
+    "tone": null,
+  },
+  "isolate": [
+    "app",
+    "developer",
+    "product",
+  ],
+  "state": "confirm",
+}
+`;
+
+exports[`bridge views: signIn (ui.signin) > SignIn/confirm: no email and no known exchange names no account (sheet) 1`] = `
+{
+  "actions": [],
+  "args": {
+    "app": "Tidewater Studio",
+    "developer": "Harbor Audio",
+    "method": "Polaris Locker",
+    "product": "Tidewater Studio",
+    "provider": "Polaris Locker",
+  },
+  "component": "SignIn",
+  "copy": [
+    "signin.auto.confirm.other",
+    "signin.auto.confirm.primary",
+    "signin.auto.confirm.title",
+    "signin.consent.license",
+    "signin.consent.licenseLine",
+  ],
+  "decisions": {
+    "errorSlot": null,
+    "focus": "heading",
+    "link": null,
+    "primary": "signin.auto.confirm.primary",
+    "qr": false,
+    "tone": null,
+  },
+  "isolate": [
+    "app",
+    "developer",
+    "product",
+  ],
+  "state": "confirm",
+}
+`;
+
+exports[`bridge views: signIn (ui.signin) > SignIn/confirm: no email and no known exchange names no account 1`] = `
+{
+  "actions": [],
+  "args": {
+    "app": "Tidewater Studio",
+    "developer": "Harbor Audio",
+    "method": "Polaris Locker",
+    "product": "Tidewater Studio",
+    "provider": "Polaris Locker",
+  },
+  "component": "SignIn",
+  "copy": [
+    "signin.auto.confirm.other",
+    "signin.auto.confirm.primary",
+    "signin.auto.confirm.title",
+    "signin.consent.license",
+    "signin.consent.licenseLine",
+  ],
+  "decisions": {
+    "errorSlot": null,
+    "focus": "heading",
+    "link": null,
+    "primary": "signin.auto.confirm.primary",
+    "qr": false,
+    "tone": null,
+  },
+  "isolate": [
+    "app",
+    "developer",
+    "product",
+  ],
+  "state": "confirm",
+}
+`;
+
 exports[`bridge views: signIn (ui.signin) > SignIn/confirm: the account's email, a new license (sheet) 1`] = `
 {
   "actions": [],
