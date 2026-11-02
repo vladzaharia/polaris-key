@@ -1809,7 +1809,7 @@
       "jscpd:duplicate": 13
     },
     "packages/sdk-node/test/cloudSyncCollection.test.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 5
     },
     "packages/sdk-node/test/cloudSyncFixtures.ts": {
       "jscpd:duplicate": 4
@@ -2112,7 +2112,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/cloudSyncHost.test.ts": {
-      "jscpd:duplicate": 44
+      "jscpd:duplicate": 45
     },
     "packages/sdk-react/test/cloudSyncSaves.test.ts": {
       "jscpd:duplicate": 9
@@ -2172,7 +2172,7 @@
       "jscpd:duplicate": 3
     },
     "packages/sdk-react/test/kitConnect.test.tsx": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/sdk-react/test/kitDrive.test.tsx": {
       "jscpd:duplicate": 8

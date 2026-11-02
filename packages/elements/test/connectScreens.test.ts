@@ -24,7 +24,10 @@ import {
 beforeAll(() => {
   vi.stubGlobal(
     "ResizeObserver",
-    vi.fn(() => ({ observe: vi.fn(), disconnect: vi.fn() })),
+    class {
+      observe(): void {}
+      disconnect(): void {}
+    },
   );
 });
 afterEach(() => document.body.replaceChildren());
