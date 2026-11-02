@@ -221,6 +221,8 @@ class AadBlindLane extends FakeLane:
 
 func _wrong_aad_lane(t: PKeyTestContext) -> void:
 	var lane := AadBlindLane.new()
+	# A small bound ends the known answers before the 1 MiB one, so only the wrong-AAD answer can refuse it.
+	lane.limit = 1024
 	var chosen := PKeyPeerCrypto.select([lane])
 	PKeySyncAead.mobile_override = 1
 	PKeySyncAead.use_lane_for_tests(chosen)
