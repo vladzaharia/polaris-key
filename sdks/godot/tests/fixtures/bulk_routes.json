@@ -1,5 +1,5 @@
 {
-  "note": "Hand-written. The file routes the native bulk channels (Android, Apple) carry, as [method, path]. Read by the Kotlin, Swift and GDScript tests, and the Worker's route table test.",
+  "note": "Hand-written. The file routes the native bulk channels (Android, Apple) carry, as [method, path]. Read by the Kotlin, Swift and GDScript tests; packages/worker routes.ts names it beside the file routes.",
   "product": "demo",
   "collection": "c",
   "record": "r",
