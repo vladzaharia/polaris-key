@@ -149,6 +149,7 @@ suspend fun signIn(client: PolarisKeyClient, show: (code: String, address: Strin
         when (session.wait()) {
             is SignInOutcome.SignedIn -> "Signed in as ${client.license.getLicenseUser()?.subject}"
             is SignInOutcome.Choose -> "Choose the license to use."
+            is SignInOutcome.Activated -> "This device is activated."
             SignInOutcome.Expired -> "The code expired. Start again."
             SignInOutcome.Cancelled -> "Sign-in cancelled."
             is SignInOutcome.Pending -> "Still waiting."
@@ -556,6 +557,7 @@ fun ActivationForm(client: PolarisKeyClient, headline: String) {
                         when (session.wait()) {
                             is SignInOutcome.SignedIn -> "Signed in."
                             is SignInOutcome.Choose -> "Choose the license to use."
+                            is SignInOutcome.Activated -> "This device is activated."
                             is SignInOutcome.Pending -> "Still waiting."
                             SignInOutcome.Cancelled -> "Sign-in cancelled."
                             SignInOutcome.Expired -> "The code expired."

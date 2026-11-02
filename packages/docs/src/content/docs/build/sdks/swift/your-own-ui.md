@@ -139,6 +139,8 @@ func signIn(_ client: PolarisKeyClient) async -> String {
             return "Pick the license to use."  // redirect channel only
         case .choose(let identity, _):
             return "Continue as \(identity.name ?? identity.email ?? "this account")?"
+        case .activated:
+            return "This device is activated."  // a key return: only when you opt in
         case .expired:
             return "The code expired. Start again."
         case .cancelled, .pending:
