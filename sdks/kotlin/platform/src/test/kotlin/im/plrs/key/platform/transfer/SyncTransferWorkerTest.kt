@@ -64,7 +64,7 @@ class SyncTransferWorkerTest {
 
     @Test
     fun theSchedulerHoldsNoSaveName() {
-        val name = "saves:my-medical-notes"
+        val name = "saves:slot-1"
         // A transfer id that is not 64 lowercase hex characters is refused: a save's name, a credential, upper case, short or long.
         val upper = tid(name).uppercase()
         val bads =
@@ -85,7 +85,7 @@ class SyncTransferWorkerTest {
         // The hash is accepted, and neither the work's data nor its tags hold the name.
         SyncTransfers.enqueue(ctx, tid(name), owner)
         val work = wm.getWorkInfosByTag(TransferIds.ownerTag(owner)).get().single()
-        assertTrue(work.tags.none { it.contains("medical") })
+        assertTrue(work.tags.none { it.contains("slot-1") })
         assertTrue(wm.getWorkInfosForUniqueWork(TransferIds.uniqueName(tid(name))).get().isNotEmpty())
     }
 

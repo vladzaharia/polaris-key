@@ -206,8 +206,8 @@ package protocol BackgroundSessionPort: Sendable {
         }
 
         /// A read stops at its bound: the task is cancelled as soon as what it has written, or what the server
-        /// says it will send, is more than the task's limit. Nothing past the limit is ever accepted, so the
-        /// cancel only stops the disk filling while the app is suspended.
+        /// says it will send, is more than the task's limit. Nothing past the limit is ever accepted. This runs
+        /// while the app is running; the callback is not delivered while the app is suspended.
         package func urlSession(
             _ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64,
             totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64
