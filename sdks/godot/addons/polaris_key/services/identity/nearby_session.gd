@@ -14,7 +14,8 @@ extends RefCounted
 ##                          service-unavailable or error; asked again it answers the same one
 ##   confirm_account()      the person saw the signed-in account and says it is theirs
 ##   decline_account()      it is not: the held records are dropped and the device signs out
-##   take_wrap_record()     the KEYRING_WRAP record M sent, after the confirmation (held until then)
+##   wrap                   what became of the KEYRING_WRAP M sent: `none`, then `applied` or `refused`
+##   wrap_changed(state)    signal: `wrap` changed
 ##   cancel()               stop; the LAN request closes
 ##   ended                  signal: the sign-in ended unconfirmed (decline, cancel, the 300 s deadline)
 ##   approvers_changed(list), result(status)   signals
@@ -38,8 +39,10 @@ extends RefCounted
 ##    sign-out state wait for `confirm_account()`; a confirm after the end fails with `sign-in-failed`, and a
 ##    session with no subject is never the signed-in person;
 ##  - records `0x0030` to `0x003F` reach the session only after `confirm_account()` (the engine holds them).
-##    `KEYRING_WRAP` (0x0030) is held for the key ring and zeroed when the session ends; adopting it belongs to
-##    the approving-device work, not here;
+##    `KEYRING_WRAP` (0x0030) is held for the key ring and zeroed when the session ends; it is adopted
+##    (PKeySyncRing.adopt_wrap, which checks it against a fresh read of the ring and the pin) only after
+##    `confirm_account()`, and dropped on a decline, a cancel and the deadline. A ring that refuses it leaves the
+##    device locked: the server's copy and `unlock()` still work;
 ##  - the request handle, the proofs, the token and the code are in no `str()`, log or error message.
 
 signal approvers_changed(list: Array)
@@ -48,13 +51,18 @@ signal result(status: String)
 signal ended()
 ## `wait()` produced a terminal outcome: the same value `wait()` returns.
 signal outcome(result: PKeySignInOutcome)
+## What became of the wrap changed (`applied` or `refused`).
+signal wrap_changed(state: String)
 ## Internal: the pause was cut short, or the discard finished.
 signal woke
 signal discard_finished
+signal wrap_idle
 
 const CHANNEL := &"nearby"
 const KEYRING_WRAP_RECORD := 0x0030
 const WRAP_NONE := "none"
+const WRAP_APPLIED := "applied"
+const WRAP_REFUSED := "refused"
 
 ## Seconds the request lives, as the Worker said (300).
 var expires_in := 0
@@ -66,7 +74,7 @@ var device_name := ""
 var code := ""
 ## The minimum seconds between polls; a `slow_down` lengthens it.
 var interval := 0
-## What became of the wrap: always `none` here (adopting it is the approving-device work).
+## What became of the wrap M sent: `none` until one arrives and is taken, then `applied` or `refused`.
 var wrap := WRAP_NONE
 
 var _identity: PKeyIdentity
@@ -88,6 +96,7 @@ var _deadline: Callable = Callable()
 var _discarding := false
 var _discard_done := false
 var _wrap_record := PackedByteArray()
+var _applying := false
 var _sleep_gen := 0
 
 
@@ -258,6 +267,9 @@ func _on_record(record_type: int, body: PackedByteArray) -> void:
 		return
 	_zero_wrap()
 	_wrap_record = body.duplicate()
+	# A wrap that arrives after the confirmation is taken as it comes.
+	if _confirmed:
+		_apply_wrap()
 
 
 ## The KEYRING_WRAP record M sent, once the person confirmed the account; "" bytes before that. Taking it empties
@@ -268,6 +280,30 @@ func take_wrap_record() -> PackedByteArray:
 	var out := _wrap_record
 	_wrap_record = PackedByteArray()
 	return out
+
+
+## Adopt the held wrap once, after a sign-in the person confirmed. A ring that is missing, locked out or refuses it
+## is not an error here: the device stays locked and the server's copy is the fallback.
+func _apply_wrap() -> void:
+	if _applying:
+		await wrap_idle
+		return
+	if not _confirmed or _ended or _wrap_record.is_empty():
+		return
+	var ring := _identity._nearby_keyring()
+	if ring == null:
+		_zero_wrap()
+		return
+	_applying = true
+	# A wrap that lands while one is being adopted is taken after it.
+	while _confirmed and not _ended and not _wrap_record.is_empty():
+		var record := take_wrap_record()
+		var r: PKeyResult = await ring.adopt_wrap(record)
+		record.fill(0)
+		wrap = WRAP_APPLIED if r.ok and r.detail is Dictionary and (r.detail as Dictionary).get("kind") == "unlocked" else WRAP_REFUSED
+		wrap_changed.emit(wrap)
+	_applying = false
+	wrap_idle.emit()
 
 
 # -- the wait -------------------------------------------------------------------------------------
@@ -429,6 +465,7 @@ func confirm_account() -> PKeyResult:
 		return PKeyResult.failure(PKeyErrors.SIGN_IN_FAILED, "The sign-in ended before it was confirmed.")
 	# The chosen session is gone: no records, the server copy is the fallback.
 	_request.confirm_account()
+	await _apply_wrap()
 	# The account is the device's now: its licence is fetched (the sync an unconfirmed token never ran).
 	await _identity._nearby_acquired()
 	return PKeyResult.success()

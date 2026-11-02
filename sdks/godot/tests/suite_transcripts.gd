@@ -60,12 +60,13 @@ extends RefCounted
 # identity fragment; a recorded discovery is rebased onto the loopback server. Its `confirm` is
 # completed by `choiceComplete` with the consent the recording's request carries. Each exchange
 # step reports `tokenHeld` for that step alone: whether it stored a token.
-# `nearbyStart` and `nearbyPoll` (I-48.15, `identity.nearby`) are D's two routes (PKeyIdentityNearbyRoutes.start
-# and .poll) over the recorder's fixture device keys for `keyLabel`; `proofKeyLabel` signs the proof with another
-# pair, and `request` is the handle the poll is for. The nearby recordings replay while `identity.nearby` is
-# still planned in parity.json (the flip belongs to the approving-device slice). `nearbyApprove` is the signed-in
-# device's call: its recorded request is sent as recorded, so the Worker's state moves on for D's later steps;
-# the SDK's own approving-device client replaces that, and checks the step's `expect`, in I-48.16.
+# `nearbyStart` and `nearbyPoll` (`identity.nearby`) are D's two routes (PKeyIdentityNearbyRoutes.start and .poll)
+# over the recorder's fixture device keys for `keyLabel`; `proofKeyLabel` signs the proof with another pair, and
+# `request` is the handle the poll is for. `nearbyApprove` is the signed-in device M's call (I-48.16): a second SDK
+# of its own with the step's `approverDeviceId`, `approverToken` and the fixture keys of `approverKeyLabel`, over
+# the same recorded server, runs PKeyIdentityNearbyRoutes.approve for the vouch the recording names (D's ids and
+# keys, or the step's other agreement key), and what it observed is held to the step's `expect` like every other
+# step. M's discovery is the first recorded document, and the fresh read of N11 the last one.
 # `connectIdentity` and `connectDevices` (CC-14.1b, `connect.identity`) are PolarisKey.connect_client.identity(refresh)
 # and list_devices() over a memory state record (PKeyOptions.connect_state) and the fixture device keys of
 # `args.keyLabel` (format.ts: the Ed25519 seed is SHA-256(label), the agreement key is SHA-256(label +
@@ -104,7 +105,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 		var tr = PKeyTestFixtures.transcript(id)
 		if not t.check("%s parses" % id, tr is Dictionary and tr.get("transcriptVersion") == 1.0):
 			continue
-		if not PKeyTranscriptReplay.applies(tr, manifest) and not _plays_nearby_early(tr):
+		if not PKeyTranscriptReplay.applies(tr, manifest):
 			t.info("skip %s: parity.json does not claim %s" % [id, JSON.stringify(tr["features"])])
 			continue
 		var fails := await replay(tr)
@@ -114,11 +115,6 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _negative(t)
 	await _synthetic_update(t)
 	return true
-
-
-## The nearby recordings replay although `identity.nearby` is not yet claimed (see the header).
-static func _plays_nearby_early(tr: Dictionary) -> bool:
-	return tr["features"] == ["identity.nearby"]
 
 
 static func _ids() -> PackedStringArray:
@@ -213,6 +209,7 @@ static func replay(tr: Dictionary) -> Array:
 		if nearby_keys != null:
 			# The nearby recordings hold the routes, not the sync a stored token triggers after them.
 			sdk.identity.nearby_acquisition_sync = false
+			sdk.set_meta("pkey_nearby_replay", {"tr": tr, "server": server, "nearby_keys": nearby_keys, "clock": clock})
 		if redirects or device_choice:
 			# The recordings hold the token exchange, not the sync a sign-in triggers after it.
 			sdk.identity.redirect_acquisition_sync = false
@@ -248,9 +245,6 @@ static func replay(tr: Dictionary) -> Array:
 			if observed.get("url") is String and String(observed["url"]).begins_with(server.base_url() + "/"):
 				observed["url"] = tr["baseUrl"] + String(observed["url"]).substr(server.base_url().length())
 			fails.append_array(engine.end_step())
-			if step["action"] == "nearbyApprove":
-				# The approving device's call, played as recorded; its `expect` is I-48.16's (see the header).
-				continue
 			for key in step["expect"]:
 				if not _same(observed.get(key), step["expect"][key]):
 					fails.append("%s step %d (%s): %s: expected %s, got %s" % [tr["id"], i, step["action"], key, JSON.stringify(step["expect"][key]), JSON.stringify(observed.get(key))])
@@ -284,7 +278,7 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 		"nearbyStart", "nearbyPoll":
 			out.merge(await _nearby_step(sdk, store, step, nearby_keys), true)
 		"nearbyApprove":
-			await _nearby_approve(sdk, step)
+			out.merge(await _nearby_approve(sdk, step), true)
 		"exchange":
 			out.merge(await _exchange_step(sdk, step, exchange_keys), true)
 		"subject":
@@ -844,17 +838,79 @@ static func _nearby_step(sdk: Node, store: PKeyMemoryStore, step: Dictionary, ke
 	return out
 
 
-## `nearbyApprove`: the approving device's recorded request, sent as recorded (its device id and bearer, its body).
-static func _nearby_approve(sdk: Node, step: Dictionary) -> void:
+## `nearbyApprove`: M's call from an SDK of its own. See the header for the mapping.
+static func _nearby_approve(sdk: Node, step: Dictionary) -> Dictionary:
+	var ctx: Dictionary = sdk.get_meta("pkey_nearby_replay")
+	var tr: Dictionary = ctx["tr"]
+	var server: Object = ctx["server"]
+	var d_keys: PKeyFixtureDeviceKeys = ctx["nearby_keys"]
 	var a: Dictionary = step["args"]
-	for item in step["exchanges"]["items"]:
-		var req: Dictionary = item["request"]
-		var headers: Dictionary = sdk.core.headers({"Content-Type": "application/json", "Authorization": "Bearer %s" % String(a.get("approverToken", ""))})
-		headers[PKeyHeaders.DEVICE] = String(a.get("approverDeviceId", ""))
-		var body := PackedByteArray()
-		if req.get("body") is Dictionary and (req["body"] as Dictionary).has("json"):
-			body = JSON.stringify(req["body"]["json"]).to_utf8_buffer()
-		await sdk.core.transport.request(req["method"], sdk.core.base_url + String(req["path"]), headers, body)
+	var out := {}
+	var store := PKeyMemoryStore.new(String(a.get("approverDeviceId", "")), String(a.get("approverToken", "")))
+	var clock := [step.get("now", tr["now"])]
+	var opts := PKeyTestFixtures.options(server.base_url(), store, clock, tr["product"], tr["trust"], tr["initial"]["version"])
+	opts.expected_services = PackedStringArray(["license", "config", "identity"])
+	var m_keys := PKeyFixtureDeviceKeys.new(String(a.get("approverKeyLabel", "")))
+	opts.device_keys = m_keys
+	var m := PKeyTestFixtures.new_sdk()
+	m.configure(opts)
+	PKeyUiTheme.use_presentation(null)
+	# Core's own start: M's bearer is loaded, and no request is made outside the step.
+	await m.core.start()
+	var docs := _recorded_discoveries(tr)
+	m.core.discovery_manifest = _identity_rebased(docs[0], tr["baseUrl"], server.base_url()) if not docs.is_empty() else _nearby_discovery(server.base_url(), tr["product"])
+	var last: Dictionary = _identity_rebased(docs[docs.size() - 1], tr["baseUrl"], server.base_url()) if not docs.is_empty() else m.core.discovery_manifest
+	var routes: PKeyIdentityNearbyRoutes = m.identity.nearby_routes
+	# The fresh read of N11 is the recording's last document, not a request outside the step.
+	routes.discover_hook = func() -> void: m.core.discovery_manifest = last
+	if a.get("proofKeyLabel") is String or a.get("proofValue") is String:
+		var other: PKeyFixtureDeviceKeys = PKeyFixtureDeviceKeys.new(String(a["proofKeyLabel"])) if a.get("proofKeyLabel") is String else null
+		routes.proof_signer = func(port: Object, purpose: String, device_id: String, value: String) -> String:
+			var p := PKeyDeviceKeys.sign_device_proof(other if other != null else port, {"purpose": purpose, "product": tr["product"], "device_id": device_id, "value": String(a.get("proofValue", value))})
+			return p.detail["sig"] if p.ok else ""
+	# The vouch is what the recording sent: D's ids and keys, or the step's other agreement key.
+	var d_pub: Dictionary = d_keys.public_keys().detail
+	var agree: String = d_pub["agree_key"]
+	if a.get("agreeKeyLabel") is String:
+		agree = PKeyFixtureDeviceKeys.new(String(a["agreeKeyLabel"])).public_keys().detail["agree_key"]
+	var vouch := PKeyNearbyVouch.from_pick({"request": a.get("request", ""), "device_id": tr["initial"]["deviceId"], "sign_key": d_pub["sign_key"], "agree_key": agree})
+	var r: PKeyResult = await routes.approve(vouch, String(a.get("decision", "")), a.get("choice"))
+	if not r.ok:
+		if r.code == PKeyErrors.SERVICE_UNAVAILABLE:
+			out["result"] = "unavailable"
+		else:
+			out["result"] = "error"
+			out["code"] = String(r.code)
+	else:
+		var ans: Dictionary = r.detail
+		match String(ans["kind"]):
+			"approved":
+				out["result"] = "approved"
+				out["deviceLabel"] = ans["device_label"]
+			"choose":
+				out["result"] = "choose"
+				out["choices"] = ans["choices"]
+			"refused":
+				out["result"] = "refused"
+				out["status"] = ans["status"]
+				out["code"] = ans["code"]
+			_:
+				out["result"] = String(ans["kind"])
+	m.queue_free()
+	return out
+
+
+## The discovery documents the transcript recorded, in order.
+static func _recorded_discoveries(tr: Dictionary) -> Array:
+	var out: Array = []
+	for st: Dictionary in tr["steps"]:
+		if st["action"] != "discover":
+			continue
+		for item: Dictionary in st["exchanges"]["items"]:
+			if String(item["request"]["path"]).ends_with("/.well-known/polaris.json") and item["response"].get("body") is Dictionary:
+				out.append(item["response"]["body"])
+				break
+	return out
 
 
 ## `exchange`: the recording's platform token (a fake provider answers it) exchanged over the

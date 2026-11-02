@@ -5,7 +5,10 @@ extends RefCounted
 # (it may await); the suite ends with a coverage check that every group ran. The QR encoder is
 # the `qr` suite's.
 
-const GROUPS := ["flow", "confirm", "account", "redirect", "choice", "exchange", "auto_sign_in", "fedcm", "game_center_token", "gate_auto", "device_choice", "nearby", "gate_nearby"]
+const GROUPS := [
+	"flow", "confirm", "account", "redirect", "choice", "exchange", "auto_sign_in", "fedcm", "game_center_token", "gate_auto", "device_choice", "nearby", "gate_nearby",
+	"nearby_approve", "nearby_wrap", "nearby_flow", "nearby_e2e",
+]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

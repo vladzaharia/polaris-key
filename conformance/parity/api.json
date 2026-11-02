@@ -7291,7 +7291,7 @@
         },
         "godot": {
           "spelling": "PKeyIdentity.nearby_available",
-          "reason": "D's check (I-48.15): the runtime can browse the network and discovery names nearby approval; the approving device's namespace follows in I-48.16"
+          "reason": "takes the role as a string, 'requester' (the default, the new device) or 'approver': the runtime can use the network and discovery names the role's routes"
         }
       },
       "layer": "client"
@@ -7327,8 +7327,8 @@
           "spelling": "NearbyNamespace.onRequest"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "PKeyIdentityNearby.on_request",
+          "reason": "the approving device (I-48.16): a coroutine answering a PKeyResult holding the running approver; the handler is a Callable taking one PKeyNearbyAsk"
         }
       },
       "layer": "client"
@@ -7353,8 +7353,8 @@
           "spelling": "NearbySignInSession.approvers"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "PKeyNearbySignIn.approvers",
+          "reason": "a method that answers the list (I-48.15)"
         }
       },
       "layer": "client"
@@ -7384,8 +7384,9 @@
           "spelling": "NearbySignInSession.onApprovers"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "PKeyNearbySignIn.approvers_changed",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
         }
       },
       "layer": "client"
@@ -7411,8 +7412,8 @@
           "spelling": "NearbySignInSession.code"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "PKeyNearbySignIn.code",
+          "shape": "property"
         }
       },
       "layer": "client"
@@ -7437,8 +7438,8 @@
           "spelling": "NearbySignInSession.result"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "PKeyNearbySignIn.get_result",
+          "reason": "a method (a property cannot be a coroutine-free getter of the LAN request here)"
         }
       },
       "layer": "client"
@@ -7468,8 +7469,9 @@
           "spelling": "NearbySignInSession.onResult"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "PKeyNearbySignIn.result",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
         }
       },
       "layer": "client"
@@ -7500,8 +7502,7 @@
           "spelling": "NearbySignInSession.choose"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "PKeyNearbySignIn.choose"
         }
       },
       "layer": "client"
@@ -7526,8 +7527,7 @@
           "spelling": "NearbySignInSession.confirmAccount"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "PKeyNearbySignIn.confirm_account"
         }
       },
       "layer": "client"
@@ -7551,8 +7551,7 @@
           "spelling": "NearbySignInSession.declineAccount"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "PKeyNearbySignIn.decline_account"
         }
       },
       "layer": "client"
@@ -7576,8 +7575,8 @@
           "spelling": "NearbySignInSession.wrap"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "PKeyNearbySignIn.wrap",
+          "shape": "property"
         }
       },
       "layer": "client"
@@ -7605,8 +7604,9 @@
           "spelling": "NearbySignInSession.onWrap"
         },
         "godot": {
-          "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "PKeyNearbySignIn.wrap_changed",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
         }
       },
       "layer": "client"

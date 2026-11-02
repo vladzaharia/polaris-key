@@ -2,6 +2,13 @@
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Entry: Button "Approve a nearby device" [focus 1]
+== waiting ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Title: Label "Approve a Nearby Device"
+Card/Scroll/Body/Words/Lede: Label "On the new device, choose to sign in with a nearby device. Its request shows here."
+Card/Scroll/Body/Words/Status: Label "Waiting for a device to ask…"
+Card/Scroll/Body/Primary: Button "Cancel" [focus 1]
 == ask ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
@@ -12,6 +19,11 @@ Card/Scroll/Body/Codes/Code0: Button "482 913" [focus 1]
 Card/Scroll/Body/Codes/Code1: Button "107 356" [focus 2]
 Card/Scroll/Body/Codes/Code2: Button "759 204" [focus 3]
 Card/Scroll/Body/Deny: Button "Deny" [focus 4]
+== working ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Title: Label "Let \u2068Living room TV\u2069 sign in?"
+Card/Scroll/Body/Words/Status: Label "Working…"
 == approved ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
@@ -48,9 +60,20 @@ Card/Scroll/Body/Primary: Button "Manage devices" [focus 1]
 == choose ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Words/Title: Label "Choose a license for this device"
-Card/Scroll/Body/Words/Lede: Label "\u2068Polaris Key SDK\u2069 will use it on \u2068Living room TV\u2069."
-Card/Scroll/Body/Primary: Button "Use this license" [focus 1]
+Card/Scroll/Body/Words/Title: Label "Choose a license for \u2068Living room TV\u2069"
+Card/Scroll/Body/Words/Lede: Label "\u2068Polaris Key SDK\u2069 will use it."
+Card/Scroll/Body/Licences/Choice0: Button "\u2068Standard license\u2069" [focus 1]
+Card/Scroll/Body/Licences/Choice1: Button "\u2068Family license\u2069" [focus 2]
+Card/Scroll/Body/Deny: Button "Deny" [focus 3]
+== choose-new ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Title: Label "Choose a license for \u2068Living room TV\u2069"
+Card/Scroll/Body/Words/Lede: Label "\u2068Polaris Key SDK\u2069 will use it."
+Card/Scroll/Body/Licences/Choice0: Button "\u2068Standard license\u2069" [focus 1]
+Card/Scroll/Body/Licences/Choice1: Button "\u2068Family license\u2069" [focus 2]
+Card/Scroll/Body/Licences/Create: Button "Create a new free license" [focus 3]
+Card/Scroll/Body/Deny: Button "Deny" [focus 4]
 == account-required ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"

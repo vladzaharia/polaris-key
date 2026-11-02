@@ -1567,7 +1567,7 @@ static func capabilities() -> Dictionary:
 		"identity.autosignin": {"status": "implemented", "service": "identity", "na": []},
 		"identity.restore": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
 		"identity.link": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
-		"identity.nearby": {"status": "planned", "service": "identity", "na": [{"runtime": "web", "reason": "runtime"}]},
+		"identity.nearby": {"status": "implemented", "service": "identity", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"release.changelog": {"status": "implemented", "service": "release", "na": []},
 		"release.download": {"status": "implemented", "service": "release", "na": []},
 		"release.record": {"status": "implemented", "service": "release", "na": []},
@@ -1635,4 +1635,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "18faf40c292596d90fd5dbc3f4d4c69885873b966feb17bab952265738a93489"
+const CAPABILITY_DIGEST := "9447cfaf470eeef367b0e82e627769acc35798e0a1187ed7b22e6d2cd71f62e7"

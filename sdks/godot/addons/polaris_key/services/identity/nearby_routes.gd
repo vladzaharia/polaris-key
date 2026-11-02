@@ -19,6 +19,9 @@ extends RefCounted
 ##    person is no longer the stored subject under it;
 ##  - a 404 of `poll` is the same bytes whether the request is unknown or the routes went away (N11): it reads
 ##    as `unavailable` only after a fresh discovery read no longer names nearby approval;
+##  - `approve` (the approving device M) takes only a PKeyNearbyVouch, which only a verified request whose code the
+##    person picked can make, and sends exactly that request's `request`, `deviceId`, `signKey` and `agreeKey`;
+##    a 409 `device_keys_required` registers M's keys and retries once; a refusal is an answer, not a failure;
 ##  - the request handle, the proofs and the token are in no `str()`, log or error message.
 
 const LONGEST_RETRY := 60
@@ -29,6 +32,8 @@ static var _request_re: RegEx
 ## Conformance replay only: a proof by another key or over another value. `func(port, purpose, device_id,
 ## value) -> String` (the signature) or "" when it could not sign.
 var proof_signer: Callable = Callable()
+## Conformance replay only: how a fresh discovery read is made (`func() -> void`, awaited); empty: Core's own.
+var discover_hook: Callable = Callable()
 
 var _identity_ref: WeakRef = null
 
@@ -82,7 +87,10 @@ func endpoint(name: String, fresh := false) -> PKeyResult:
 	if core == null or not core.started:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
 	if fresh or core.discovery_manifest == null:
-		await core.discover()
+		if discover_hook.is_valid():
+			await discover_hook.call()
+		else:
+			await core.discover()
 	var off: Variant = core.require_service("identity", PKeyConstants.Feature.IDENTITY_NEARBY)
 	if off is PKeyResult:
 		return off
@@ -365,3 +373,117 @@ func _poll_token(answer: Dictionary, status: int, held_at_start: String) -> Dict
 
 static func _error(code: Variant, message: String, status: int, detail: Variant = null) -> Dictionary:
 	return {"kind": "error", "code": StringName(code), "message": message, "status": status, "detail": detail}
+
+
+# -- M: nearby/approve ------------------------------------------------------------------------------
+
+
+## `POST nearby/approve`: M's decision on D's request, with exactly the ids and keys of the verified `VOUCH_REQ`.
+## Needs M's confirmed bearer and its registered signing key. ok with the answer, a Dictionary with `kind`:
+##   approved {device_label}      choose {choices}      denied      unavailable (a 404 after a fresh discovery read
+##   lost `nearby`)      refused {status, code, retry_after}
+## and, in each, `finish`: {http, body, discovery_nearby} for PKeyPeerNearbyApprover.Approval.finish. A refusal is
+## an answer; only a missing endpoint, a missing sign-in and a local failure are a failure. A coroutine.
+func approve(vouch: PKeyNearbyVouch, decision: String, choice: Variant = null) -> PKeyResult:
+	var prepared := await _approve_prepare()
+	if not prepared.ok:
+		return prepared
+	var p: Dictionary = prepared.detail
+	var retried := false
+	var sent: PKeyResult
+	var status := 0
+	var answer: Variant = null
+	while true:
+		var body := {"request": vouch.request, "deviceId": vouch.device_id, "signKey": vouch.sign_key, "agreeKey": vouch.agree_key, "decision": decision}
+		if choice != null:
+			body["choice"] = choice
+		var proof := _proof(p["port"], "nearby-approve", p["device_id"], vouch.request)
+		if not proof.ok:
+			return proof
+		body["proof"] = proof.detail
+		var headers := _core().headers({"Content-Type": "application/json"})
+		headers["Authorization"] = "Bearer %s" % p["bearer"]
+		sent = await _core().transport.request("POST", p["url"], headers, PKeyJson.stringify(body).to_utf8_buffer())
+		if not sent.ok:
+			break
+		status = sent.detail["status"]
+		var parsed := PKeyJson.parse_bytes(sent.detail["body"])
+		answer = parsed["value"] if parsed["ok"] else null
+		if retried or status != 409 or refusal_code(status, answer) != PKeyConstants.ErrorCode.DEVICE_KEYS_REQUIRED:
+			break
+		retried = true
+		var registered := await _register_keys(p["port"], p["device_id"], p["bearer"])
+		if not registered.ok:
+			return registered
+	if not sent.ok:
+		if sent.code == PKeyErrors.LOCAL_ONLY:
+			return PKeyResult.failure(PKeyErrors.LOCAL_ONLY, sent.message)
+		# No answer: the caller closes (`finish` maps `http: null`).
+		return PKeyResult.success({"kind": "refused", "status": 0, "code": String(PKeyErrors.NETWORK), "retry_after": 0, "finish": {"http": null, "body": null, "discovery_nearby": true}})
+	return PKeyResult.success(await _approve_answer(sent, status, answer, retried))
+
+
+## What an approval needs before anything is sent: the endpoint, M's confirmed bearer and its signer. ok with
+## {url, bearer, port, device_id}.
+func _approve_prepare() -> PKeyResult:
+	var core := _core()
+	var url_r := await endpoint("nearbyApprove")
+	if not url_r.ok:
+		return url_r
+	if core.tokens.current() == "" or core.tokens.unconfirmed():
+		return PKeyResult.failure(PKeyConstants.ErrorCode.ACCOUNT_REQUIRED, "Sign in before approving a nearby device.")
+	var who := _signer()
+	if not who.ok:
+		return who
+	return PKeyResult.success({"url": url_r.detail, "bearer": core.tokens.current(), "port": who.detail["port"], "device_id": who.detail["device_id"]})
+
+
+func _approve_answer(sent: PKeyResult, status: int, answer: Variant, keys_retried: bool) -> Dictionary:
+	var raw: String = (sent.detail["body"] as PackedByteArray).get_string_from_utf8()
+	var finish := {"http": status, "body": raw if raw != "" else null, "discovery_nearby": true}
+	if status == 204:
+		return {"kind": "denied", "finish": {"http": 204, "body": null, "discovery_nearby": true}}
+	if status == 200:
+		var state: Variant = (answer as Dictionary).get("status") if answer is Dictionary else null
+		if state == "approved":
+			var label: Variant = (answer as Dictionary).get("deviceLabel")
+			return {"kind": "approved", "device_label": label if label is String else null, "finish": finish}
+		if state == "choose":
+			return {"kind": "choose", "choices": (answer as Dictionary).get("choices"), "finish": finish}
+		return {"kind": "refused", "status": 200, "code": String(PKeyErrors.INVALID_RESPONSE), "retry_after": 0, "finish": finish}
+	var code := refusal_code(status, answer)
+	# `finish` reads the code from a flat body; the Worker nests it. After the one keys retry a second
+	# `device_keys_required` must close, not ask for another retry: it is reported under a code the table
+	# does not map.
+	var reported := "device_keys_retried" if keys_retried and status == 409 and code == PKeyConstants.ErrorCode.DEVICE_KEYS_REQUIRED else code
+	var flat := {"http": status, "body": PKeyJson.stringify({"code": reported}), "discovery_nearby": true}
+	var header: Variant = sent.detail["headers"].get("retry-after") if sent.detail["headers"] is Dictionary else null
+	var retry := int((header as String).strip_edges()) if header is String and (header as String).strip_edges().is_valid_int() else 0
+	if status == 404:
+		# N11: the same bytes whether the request is unknown or the routes went away.
+		var again := await endpoint("nearbyApprove", true)
+		if not again.ok and again.code == PKeyErrors.SERVICE_UNAVAILABLE:
+			flat["discovery_nearby"] = false
+			return {"kind": "unavailable", "finish": flat}
+	return {"kind": "refused", "status": status, "code": code, "retry_after": retry, "finish": flat}
+
+
+## `PUT /<product>/devices/keys` with the `keys` proof, for M's approval that asked for them.
+func _register_keys(port: Object, device_id: String, bearer: String) -> PKeyResult:
+	var core := _core()
+	var built := PKeyDeviceKeys.build_keys_request(port, {
+		"product": core.product, "device_id": device_id, "issued_at": int(core.clock.now()),
+		"allow_ephemeral": core.options.allow_ephemeral_keys,
+	})
+	if not built.ok:
+		return PKeyResult.failure(PKeyErrors.SIGN_IN_FAILED, "This device's keys could not be registered.")
+	var headers := core.headers({"Content-Type": "application/json"})
+	headers["Authorization"] = "Bearer %s" % bearer
+	var sent := await core.transport.request("PUT", core.url("devices/keys"), headers, PKeyJson.stringify(built.detail["body"]).to_utf8_buffer())
+	if not sent.ok:
+		return PKeyResult.failure(sent.code if sent.code == PKeyErrors.LOCAL_ONLY else PKeyErrors.NETWORK, "This device's keys could not be registered.")
+	var status: int = sent.detail["status"]
+	if status < 200 or status >= 300:
+		var parsed := PKeyJson.parse_bytes(sent.detail["body"])
+		return PKeyResult.failure(StringName(refusal_code(status, parsed["value"] if parsed["ok"] else null)), "This device's keys could not be registered.", {"status": status})
+	return PKeyResult.success()

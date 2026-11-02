@@ -24,6 +24,9 @@ extends PKeyUiView
 signal manage_requested()
 ## The player chose Devices: the game opens a PKeyDeviceList.
 signal devices_requested()
+## The player chose Approve a nearby device: the game shows a PKeyNearbyApproval driven by a
+## PKeyNearbyApprovalFlow (the row is drawn only while `nearby_approval_offered`).
+signal nearby_approval_requested()
 ## The player chose Managed settings: the game opens its settings, on the managed group.
 signal managed_settings_requested()
 ## The player chose Check for updates.
@@ -57,6 +60,9 @@ var version := ""
 var cloud_sync := ""
 var cloud_sync_time := ""
 var services: Array = []
+## The "Approve a nearby device" row: this device is signed in, can advertise, and the product serves it.
+## `refresh_from_sdk()` reads it from the SDK; a game sets it to drive the pane without one.
+var nearby_approval_offered := false
 var loading := false
 var checked_note := ""
 ## Mask the email (`m•••@fennick.studio`) and reveal it while Manage has the focus: on by itself on a
@@ -149,6 +155,7 @@ func refresh_from_sdk() -> void:
 	channel_locked_by = f["channel_locked"]
 	version = f["version"]
 	services = PKeyAccountController.services(sdk)
+	nearby_approval_offered = signed_in and sdk.get("identity") != null and sdk.identity.nearby_available("approver")
 	loading = false
 	refresh_view()
 
@@ -206,7 +213,7 @@ func _render() -> void:
 	var sig := JSON.stringify([
 		state, tier, holder, signed_in, status, devices_used, devices_limit, auto_update, channel, channel_options,
 		channel_locked_by, version, cloud_sync, cloud_sync_time, services, manage_url, _checking, checked_note,
-		PKeyUiTheme.powered_by, mask_email, pad_only(),
+		PKeyUiTheme.powered_by, mask_email, pad_only(), nearby_approval_offered,
 	])
 	if sig != _signature and state != "loading":
 		_signature = sig
@@ -272,7 +279,7 @@ func _rebuild(t: PKeyUiCopy, state: String) -> void:
 	var held := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
 	var held_key := ""
 	for k in _controls:
-		for part in ["manage", "devices", "switch", "channel", "check", "version", "managed", "sign_out"]:
+		for part in ["manage", "devices", "nearby", "switch", "channel", "check", "version", "managed", "sign_out"]:
 			if _controls[k].has(part) and _controls[k][part] == held and held != null:
 				held_key = "%s|%s" % [k, part]
 	for ch in _list.get_children():
@@ -327,6 +334,10 @@ func _rebuild(t: PKeyUiCopy, state: String) -> void:
 			caption.set_meta(DATA_META, true)
 		r4["devices"] = dv
 		r4["meter"] = meter
+		any = true
+	if license and signed_in and nearby_approval_offered:
+		var rn := _link_row(first, "nearby", t.text("account_nearby"), func() -> void: nearby_approval_requested.emit())
+		rn["nearby"] = rn["button"]
 		any = true
 	if _on("sync") and cloud_sync != "":
 		var r5 := _row(first, "sync", t.text("account_cloud_sync"))
@@ -452,7 +463,7 @@ func _arrange(m: Dictionary) -> void:
 func _focus_chain() -> Array:
 	var out: Array = []
 	for k in _controls:
-		for part in ["manage", "devices", "switch", "channel", "check", "managed", "sign_out"]:
+		for part in ["manage", "devices", "nearby", "switch", "channel", "check", "managed", "sign_out"]:
 			if _controls[k].has(part):
 				out.append(_controls[k][part])
 	return out

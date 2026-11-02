@@ -18,7 +18,11 @@ extends RefCounted
 ##   sign_in.start_nearby(opts)            nearby sign-in on a new device (a PKeyResult holding a
 ##                                         PKeyNearbySignIn: the approvers, the code, `wait()`,
 ##                                         `confirm_account()`); opts {device_name}. See PKeyNearbySignIn
-##   nearby_available()                    this device can take part in nearby sign-in as the new device
+##   nearby_available(role)                this device can take part in nearby sign-in: role "requester" (the new
+##                                         device, the default) or "approver" (the signed-in device)
+##   nearby.on_request(handler, opts)      the signed-in device approves a new device nearby (a coroutine answering
+##                                         a PKeyResult holding the running approver; the handler gets a
+##                                         PKeyNearbyAsk per session); see PKeyIdentityNearby
 ##   auto_sign_in(opts)                    the automatic sign-in ladder (a coroutine answering a
 ##                                         PKeyAutoSignInResult); see PKeyIdentityAutoSignIn
 ##   install_platform_provider(provider)   add a platform sign-in (PKeyPlatformIdentityProvider) the
@@ -79,6 +83,8 @@ var on_change: Callable = Callable():
 
 ## `sign_in.start(opts)`.
 var sign_in: PKeySignInNamespace
+## `nearby.on_request(handler, opts)`: the approving device (PKeyIdentityNearby).
+var nearby: PKeyIdentityNearby
 ## `choice.licenses / devices / complete / cancel`: the licence choice after a redirect sign-in
 ## that asked `license_choice = "app"` (PKeyIdentityChoice).
 var choice: PKeyIdentityChoice
@@ -103,6 +109,8 @@ var redirect_entropy: Dictionary = {}
 var nearby_lan: Object = null
 var nearby_timer: Callable = Callable()
 var nearby_acquisition_sync := true
+## The key ring a nearby sign-in adopts a wrap into and an approval seals one from; null: the host's `keyring`.
+var nearby_keyring: Object = null
 
 ## Conformance replay only: false skips the forced sync after a redirect token (the `redirect-web-*`
 ## recordings hold the token exchange, not the sync that follows it).
@@ -125,6 +133,7 @@ func _init() -> void:
 	exchange = PKeyIdentityExchange.new(self)
 	ladder = PKeyIdentityAutoSignIn.new(self)
 	nearby_routes = PKeyIdentityNearbyRoutes.new(self)
+	nearby = PKeyIdentityNearby.new(self)
 
 
 ## Bind to Core (PolarisKey.configure). A sign-in in progress is cancelled.
@@ -347,9 +356,18 @@ func _nearby_lan() -> Object:
 	return connect.nearby if connect != null else null
 
 
-## Whether this device can take part in nearby sign-in as D: the runtime can browse the network and the product's
-## discovery (as last read) names nearby approval and its routes. No request is made.
-func nearby_available() -> bool:
+## The key ring, or null.
+func _nearby_keyring() -> Object:
+	if nearby_keyring != null:
+		return nearby_keyring
+	var ring: Variant = _host.get("keyring") if _host != null and is_instance_valid(_host) else null
+	return ring as Object
+
+
+## Whether this device can take part in nearby sign-in: as D (`role` "requester") the runtime can browse the network
+## and the product's discovery (as last read) names the start and poll routes; as M (`role` "approver") it can
+## advertise and discovery names the approve route. No request is made.
+func nearby_available(role := "requester") -> bool:
 	var core := _core()
 	var lan := _nearby_lan()
 	if core == null or not core.started or lan == null or not core.enabled("identity"):
@@ -358,7 +376,11 @@ func nearby_available() -> bool:
 		return false
 	var fragment := PKeyDiscovery.identity_from(core.discovery_manifest)
 	var ep: Dictionary = fragment.get("endpoints", {})
-	return fragment.get("nearby", false) == true and String(ep.get("nearbyStart", "")) != "" and String(ep.get("nearbyPoll", "")) != ""
+	if fragment.get("nearby", false) != true:
+		return false
+	if role == "approver":
+		return lan.has_method("on_request") and String(ep.get("nearbyApprove", "")) != ""
+	return String(ep.get("nearbyStart", "")) != "" and String(ep.get("nearbyPoll", "")) != ""
 
 
 ## `sign_in.start_nearby(opts)`: refuses before anything is sent when it cannot run (`nearby-unsupported` when

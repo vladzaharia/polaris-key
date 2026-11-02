@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature connect.protocol
+# @pkey-feature connect.protocol identity.nearby
 # The `vouch` rows of `peer-matrix.json` (WIRE-CONTRACT-V5 section 15.6.1; 165 rows: requests 80,
 # results 26, flows 30, finish 29) through PKeyPeerVouch, row for row as the Node, Python, Kotlin and
 # Swift runners do, plus what the corpus cannot say: building a request, the decoys, the failure

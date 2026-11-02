@@ -120,7 +120,10 @@ func all() -> Array:
 	for c in SIGN_IN_STEP_CASES:
 		out.append(["sign_in_step", c[0], sign_in_step.bind(c[1])])
 	# ── PKeyNearbyApproval (ui-matrix v7).
-	for c in ["entry", "ask", "approved", "not-nearby", "mismatch", "denied", "expired", "device-limit", "choose", "account-required", "rate-limited", "no-name", "hidden"]:
+	for c in [
+		"entry", "waiting", "ask", "working", "approved", "not-nearby", "mismatch", "denied", "expired", "device-limit",
+		"choose", "choose-new", "account-required", "rate-limited", "no-name", "hidden",
+	]:
 		out.append(["nearby", c, nearby.bind(c)])
 	# ── PKeySignInDialog.
 	out.append(["sign_in", "starting", sign_in.bind("starting")])
@@ -203,7 +206,7 @@ func all() -> Array:
 	for c in CHOICE_CASES:
 		out.append(["license_choice", c[0], license_choice.bind(c[1])])
 	# ── PKeyAccountTab (UI-KITS.md AccountAndLicense).
-	for c in [["signed in", "signed-in"], ["key only", "key-only"], ["offline", "offline"], ["loading", "loading"], ["channel set by the outlet", "locked-channel"], ["on a TV, the email masked", "masked"]]:
+	for c in [["signed in", "signed-in"], ["key only", "key-only"], ["offline", "offline"], ["loading", "loading"], ["channel set by the outlet", "locked-channel"], ["on a TV, the email masked", "masked"], ["Approve a nearby device offered", "nearby-entry"]]:
 		out.append(["account", c[0], account.bind(c[1])])
 	# ── PKeyUpdateProgress (UI-KITS.md UpdateProgress).
 	for c in [["queued: content", "queued-content"], ["queued: an app update", "queued-app"], ["downloading", "downloading"], ["downloading: no time left known", "downloading-no-eta"], ["downloading: verified, not yet installed", "verified"], ["installing", "installing"], ["paused: a metered connection", "paused"], ["failed", "failed"], ["done", "done"], ["compact", "compact"]]:
@@ -467,10 +470,15 @@ func nearby(kind: String) -> Control:
 		n.identity_on = false
 	elif kind == "no-name":
 		n.step = "approved"
+	elif kind == "choose-new":
+		n.step = "choose"
 	else:
 		n.step = kind
-	if kind == "ask":
+	if kind == "ask" or kind == "working":
 		n.codes = PackedStringArray(["482 913", "107 356", "759 204"])
+	if kind == "choose" or kind == "choose-new":
+		n.choices = PackedStringArray(["Standard license", "Family license"])
+		n.create_offered = kind == "choose-new"
 	n.refresh_view()
 	return n
 
@@ -922,6 +930,10 @@ func account(kind: String) -> Control:
 			a.signed_in = true
 			a.holder = "mara@fennick.studio"
 			a.mask_email = true
+		"nearby-entry":
+			a.signed_in = true
+			a.holder = "Mara Lindqvist"
+			a.nearby_approval_offered = true
 	a.refresh_view()
 	return a
 

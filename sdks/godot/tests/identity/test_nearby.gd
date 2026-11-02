@@ -60,6 +60,16 @@ class FakeRequest extends RefCounted:
 		closes += 1
 
 
+## A key ring that records the wraps it is asked to adopt.
+class FakeRing extends RefCounted:
+	var adopted: Array = []
+	var kind := "unlocked"
+
+	func adopt_wrap(record: Variant) -> PKeyResult:
+		adopted.append((record as PackedByteArray).duplicate())
+		return PKeyResult.success({"kind": kind})
+
+
 class FakeLan extends RefCounted:
 	var req := FakeRequest.new()
 	var supported := true
@@ -381,8 +391,12 @@ func _confirm_and_decline(t: PKeyTestContext) -> void:
 	t.check("nearby: Connect's signed-in gate no longer refuses it", core.tokens.has_token() and not core.tokens.unconfirmed())
 	var again: PKeyResult = await s.confirm_account()
 	t.check("nearby: confirming twice is a no-op", again.ok and r.events.size() == 1 and r.lan.req.confirmed == 1)
+	var ring := FakeRing.new()
+	r.sdk.identity.nearby_keyring = ring
 	r.lan.req.record.emit(0x0030, held_wrap)
-	t.check("nearby: the wrap handed over after the confirmation is taken once", s.take_wrap_record() == held_wrap and s.take_wrap_record().is_empty())
+	for i in 5:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+	t.check("nearby: the wrap handed over after the confirmation is adopted at once, and not kept", ring.adopted == [held_wrap] and s.take_wrap_record().is_empty() and s.wrap == "applied")
 	r.bed.signout_requests.clear()
 	await s.decline_account()
 	t.check("nearby: a decline after the confirmation is a no-op", r.bed.signout_requests.is_empty() and r.store.token == NEARBY_TOKEN and not s.is_ended() and r.lan.req.declined == 0)
