@@ -685,6 +685,10 @@
       "gdlint:function-variable-name": 1,
       "gdlint:max-line-length": 5
     },
+    "sdks/godot/tests/suite_cloud_sync_transfer.gd": {
+      "gdlint:max-file-lines": 1,
+      "gdlint:max-line-length": 2
+    },
     "sdks/godot/tests/suite_cloud_sync_ui.gd": {
       "gdlint:class-definitions-order": 2,
       "gdlint:max-file-lines": 1,
