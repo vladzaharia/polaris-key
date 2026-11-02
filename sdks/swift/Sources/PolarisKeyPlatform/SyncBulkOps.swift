@@ -366,9 +366,14 @@ final class SyncBulkChannel: BackgroundSink, @unchecked Sendable {
             }
         }
         let (pinned, dir, isClosed) = lock.withLock { (origin, spoolDir, closed) }
+        // The route is read as it is sent: the encoded path and query, with any percent escape refused.
+        guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+            !parts.percentEncodedPath.contains("%"), !(parts.percentEncodedQuery ?? "").contains("%")
+        else { return SyncBulkPolicy.refused }
         guard !isClosed, let pinned, let dir, pinned.matches(url),
             SyncBulkPolicy.routeOk(
-                product: product, path: url.path, query: url.query, put: put), url.fragment == nil
+                product: product, path: parts.percentEncodedPath, query: parts.percentEncodedQuery, put: put),
+            url.fragment == nil
         else { return SyncBulkPolicy.refused }
         var spool: String?
         if put {

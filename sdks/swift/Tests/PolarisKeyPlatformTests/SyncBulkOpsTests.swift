@@ -98,8 +98,8 @@ private final class Harness {
         call(op, [UInt8](try! JSONSerialization.data(withJSONObject: o)))
     }
 
-    func open(origin o: String = origin, keep: [String] = [], dir: String? = nil) -> [UInt8] {
-        json("sb_open", ["product": "djdl", "origin": o, "state_dir": dir ?? root.path, "keep": keep])
+    func open(origin o: String = origin, keep: [String] = [], dir: String? = nil, product: String = "djdl") -> [UInt8] {
+        json("sb_open", ["product": product, "origin": o, "state_dir": dir ?? root.path, "keep": keep])
     }
 
     func stage(_ piece: [UInt8], name: String? = nil) -> [UInt8] {
@@ -321,6 +321,55 @@ final class SyncBulkOpsTests: XCTestCase {
         // the same request id twice is refused
         let second = h.stagedName()
         XCTAssertEqual(h.head("sb_put", h.putHeader(spool: second)), [0])
+    }
+
+    func testTheRouteTableIsTheSharedOne() async throws {
+        var dir = URL(fileURLWithPath: #filePath)
+        for _ in 0..<4 { dir.deleteLastPathComponent() }  // .../sdks
+        let file = dir.appendingPathComponent("godot/tests/fixtures/bulk_routes.json")
+        let fx = try JSONSerialization.jsonObject(with: Data(contentsOf: file)) as! [String: Any]
+        let product = fx["product"] as! String
+        let allow = fx["allow"] as! [[String]]
+        let refuse = fx["refuse"] as! [[String]]
+        XCTAssertFalse(allow.isEmpty)
+        XCTAssertFalse(refuse.isEmpty)
+        let h = Harness()
+        _ = h.open(product: product)
+        _ = await h.awaitReconciled()
+        var req = 1
+        for row in allow + refuse {
+            let isAllow = allow.contains(row)
+            let (method, path) = (row[0], row[1])
+            guard method == "PUT" || method == "GET" else { continue }  // no op carries another method
+            req += 1
+            let url = origin + path
+            let got: [UInt8]
+            if method == "PUT" {
+                got = h.head("sb_put", h.putHeader(req: req, spool: h.stagedName(), url: url))
+            } else {
+                got = h.head("sb_get", h.getHeader(req: req, url: url))
+            }
+            if isAllow {
+                XCTAssertEqual(got, [1], "allow \(method) \(path)")
+            } else {
+                XCTAssertNotEqual(got, [1], "refuse \(method) \(path)")
+            }
+        }
+        XCTAssertEqual(h.session.tasks.count, allow.count)
+    }
+
+    func testTheRequestPastTheTaskBoundIsRefusedAndLeavesNoTask() async throws {
+        let h = Harness()
+        _ = h.open()
+        _ = await h.awaitReconciled()
+        for i in 1...300 {
+            XCTAssertEqual(h.head("sb_get", h.getHeader(req: i)), [1], "task \(i)")
+        }
+        XCTAssertEqual(h.head("sb_get", h.getHeader(req: 301)), [0])
+        XCTAssertEqual(h.session.tasks.count, 301)
+        XCTAssertTrue(h.session.tasks.last!.isCancelled)
+        let live = await h.session.liveTasks()
+        XCTAssertEqual(live.count, 300)
     }
 
     func testAGetIsBoundedAndTakesOnlyAVersionQuery() async throws {
