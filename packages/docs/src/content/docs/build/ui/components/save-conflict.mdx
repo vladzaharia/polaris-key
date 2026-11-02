@@ -37,6 +37,45 @@ Shown when the same save changed on two devices. Two cards, one per copy, carry 
     **Styled part and headless.** Given an `input.saveConflict` it is the plain part and the host drives it; `viewOf("SaveConflict", input)` returns the view.
 
   </TabItem>
+  <TabItem label="SwiftUI">
+    <KitStatus kit="swiftui" />
+
+    **Styled part.** `SaveConflictView(model:)` over `SaveConflictModel(conflict:inputs:host:)`, from `PolarisKeyUI` and `PolarisKeyUICore`. `KitSaveConflict` carries the two copies as display-ready text, `bothAvailable` and `newer`. The model applies a choice through `SaveConflictHost(keep:)`, one closure that throws when it could not. The kit is not bound to the saves client yet, so the host calls `resolve` with this device's bytes. `onKept`, `onCancel`, `onChooseAgain` and `onDone` on the model tell you where the person went.
+
+    ```swift
+    import Foundation
+    import PolarisKey
+    import PolarisKeyUI
+    import PolarisKeyUICore
+    import SwiftUI
+
+    @MainActor
+    func saveConflictScreen(client: PolarisKeyClient, conflict: SaveConflict, bytes: Data) -> some View {
+        let shown = KitSaveConflict(
+            step: .choose,
+            local: .init(when: "Today, 21:04"),
+            remote: .init(
+                when: "Yesterday, 18:30",
+                device: conflict.remote?.metadata.objectValue?["deviceLabel"]?.stringValue),
+            remoteDeleted: conflict.remote == nil,
+            bothAvailable: conflict.bothAvailable)
+        let host = SaveConflictHost { keep in
+            let choice: SaveKeep
+            switch keep {
+            case .local: choice = .local
+            case .remote: choice = .remote
+            case .both: choice = .both
+            }
+            let transfer = try await client.cloudSync.saves.resolve(conflict, keep: choice, bytes: bytes)
+            if case .failed(let error) = await transfer.outcome() { throw error }
+        }
+        return SaveConflictView(model: SaveConflictModel(conflict: shown, host: host))
+    }
+    ```
+
+    **Headless.** `KitStates.saveConflict(_:)`. [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme and the restyle hooks.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

@@ -347,7 +347,7 @@ A failed write or read carries one of these codes. A call that throws carries th
 
 The kits draw the conflict and the transfer strip for you. The [SaveConflict](/docs/build/ui/components/save-conflict/) page has the screen in each kit.
 
-- **SwiftUI** has no save screens yet. Build the choice from `SaveConflict`, `resolve` and the transfer events above.
+- **SwiftUI** has `SaveConflictView` over `SaveConflictModel`, and the Cloud Sync row shows a running, waiting or failed transfer. They are not wired to the client yet: give `SaveConflictHost` a closure that calls `saves.resolve` with this device's bytes, as the [SaveConflict](/docs/build/ui/components/save-conflict/) page shows.
 - **Compose** has `PolarisSaveConflict` over `PolarisSaveConflictState`, and `PolarisCloudSyncTransfer` for the strip. They are not wired to the client yet: give the state a `PolarisSaveResolver` that calls `saves.resolve` with this device's bytes.
 - **Godot** wires itself. `PKeySaveConflict` and the Cloud Sync strip follow `PolarisKey.cloud_sync.saves` through `PKeySaveScreensHost`. The game gives the host the one thing the SDK does not keep, this device's bytes:
 
