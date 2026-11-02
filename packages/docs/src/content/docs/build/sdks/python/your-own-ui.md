@@ -260,6 +260,15 @@ def finish(session, callback_url: str) -> Optional[str]:
 `complete` checks `state` and the issuer before it sends anything. A refusal raises under the
 Worker's code (`invalid_grant`, `rate_limited`, `sign-in-failed`) and leaves the device's token alone.
 
+### Continue without an account
+
+Pass `key_return=True` to `sign_in.start(channel="redirect", ...)` and the card offers **Continue
+without an account** to a person who has a license key. `complete` then settles `activated`: the
+token is stored as a key activation, the account the device held is forgotten, `subject` is `None`
+and `key_entries` is the license's count. No `signed_in` event fires. A refusal (`device_limit`,
+`key_entry_limit`, `license_owned`) carries `details`. The device-code channel refuses the option
+with `invalid-argument`. Leave it off until your UI renders `activated`.
+
 ### The license choice
 
 With `license_choice="app"`, a person who holds licenses settles `choose`. No token is stored until
