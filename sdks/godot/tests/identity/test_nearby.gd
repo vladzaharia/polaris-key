@@ -22,9 +22,9 @@ class LogStore extends PKeyMemoryStore:
 		log.append("token")
 		return super.set_token(p_token)
 
-	func write_cache(record: Dictionary) -> bool:
-		log.append("cache:mark=%s" % (record.get("tokenUnconfirmed") == true))
-		return super.write_cache(record)
+	func write_unconfirmed_mark(on: bool) -> bool:
+		log.append("cache:mark=%s" % on)
+		return super.write_unconfirmed_mark(on)
 
 
 ## The LAN request D holds: the approvers that answered, a code to show, and counters.
@@ -206,6 +206,7 @@ static func _proof_of(r: Rig, purpose: String, value: String, sig: String) -> Di
 func run(t: PKeyTestContext) -> void:
 	await _start_rules(t)
 	await _unconfirmed_token(t)
+	await _mark_and_deadline_rules(t)
 	await _confirm_and_decline(t)
 	await _triggers(t)
 	await _races(t)
@@ -656,3 +657,58 @@ func _poll_rules(t: PKeyTestContext) -> void:
 	for rig: Rig in [r, x, p, n, g]:
 		rig.sdk.queue_free()
 		rig.free_all()
+
+
+## The unconfirmed mark is its own record (fail closed), a failed confirm keeps the deadline, and a start never
+## sends an unconfirmed bearer.
+func _mark_and_deadline_rules(t: PKeyTestContext) -> void:
+	# An unreadable mark with a foreign-version cache: the orphan token is dropped, never kept as a sign-in.
+	var o := Rig.new()
+	await o.up(NEARBY_TOKEN)
+	o.store.mark = &"unreadable"
+	o.store.cache = {"v": 99}
+	await o.restart()
+	t.check("nearby: an unreadable mark over an unreadable cache still drops the orphan token", o.store.token == "" and not o.sdk.core.tokens.has_token(), str(o.store.token))
+	# A readable mark beside a cache with no version: the same.
+	var w := Rig.new()
+	await w.up(NEARBY_TOKEN)
+	w.store.mark = &"set"
+	w.store.cache = {"v": 1}
+	await w.restart()
+	t.check("nearby: the mark is kept apart from the cache record", w.store.token == "" and w.store.mark == &"none")
+	o.free_all()
+	w.free_all()
+
+	# A confirm whose record cannot be written fails and leaves the deadline armed.
+	var r := Rig.new()
+	await r.up()
+	r.bed.starts_n = [started_answer()]
+	r.bed.polls_n = [ready_answer()]
+	var s: PKeyNearbySignIn = (await r.sdk.identity.sign_in.start_nearby()).detail
+	await s.wait()
+	r.store.mark_write_fails = true
+	var c: PKeyResult = await s.confirm_account()
+	t.check("nearby: a confirm that cannot write fails and the token stays unconfirmed", not c.ok and r.sdk.core.tokens.unconfirmed() and r.events.is_empty(), str(c))
+	t.check("nearby: a failed confirm re-arms the deadline", r.live_timers() == 1, str(r.timers.size()))
+	r.store.mark_write_fails = false
+	r.fire_deadline()
+	await B.until(func(): return r.store.token == "")
+	t.check("nearby: the re-armed deadline discards the sign-in", r.store.token == "" and s.is_ended())
+	r.free_all()
+
+	# The start never carries an unconfirmed bearer.
+	var b := Rig.new()
+	await b.up()
+	b.sdk.core.tokens.set_unconfirmed_token(OTHER_TOKEN)
+	b.bed.starts_n = [started_answer()]
+	var sb: PKeyResult = await b.sdk.identity.sign_in.start_nearby()
+	var sent: Array = b.bed.sent("/nearby/start")
+	var headers: Dictionary = sent[0]["headers"] if not sent.is_empty() else {}
+	var has_auth := false
+	for k in headers:
+		if String(k).to_lower() == "authorization":
+			has_auth = true
+	t.check("nearby: start sends no bearer while the held token is unconfirmed", sb.ok and sent.size() == 1 and not has_auth, str(headers.keys()))
+	if sb.ok:
+		(sb.detail as PKeyNearbySignIn).cancel()
+	b.free_all()

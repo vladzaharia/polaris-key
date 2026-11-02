@@ -141,6 +141,14 @@ func read_cache() -> Variant:
 	return files.read_cache()
 
 
+func read_unconfirmed_mark() -> StringName:
+	return files.read_unconfirmed_mark()
+
+
+func write_unconfirmed_mark(on: bool) -> bool:
+	return files.write_unconfirmed_mark(on)
+
+
 func cache_unreadable() -> bool:
 	return files.cache_unreadable()
 

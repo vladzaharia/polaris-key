@@ -95,6 +95,8 @@ var feed_floors: Dictionary = {}
 var release_records: Dictionary = {}
 
 var _record = null
+## The store keeps the unconfirmed mark in a record of its own (else it rides in the cache record).
+var _mark_in_store := false
 
 
 func _init(p_store: PKeyStore, p_trust: PKeyTrust, p_clock: PKeyClock, p_product: String, p_device_id: String) -> void:
@@ -122,21 +124,26 @@ func etag(slice: String) -> String:
 func load_record() -> void:
 	trust.reset()
 	_reset_loaded()
+	# The unconfirmed mark is its own record, read whatever the cache holds: an unreadable or foreign-version
+	# cache never makes an orphan token look confirmed. A mark that cannot be read reads as set.
+	var mark := store.read_unconfirmed_mark()
+	_mark_in_store = mark != &"unsupported"
+	var marked := mark == &"set" or mark == &"unreadable"
 	var rec = store.read_cache()
 	if not (rec is Dictionary):
 		_record = null
 		explicit_sign_out = store.cache_unreadable()
-		token_unconfirmed = false
+		token_unconfirmed = marked
 		return
 	if not PKeyClaims.is_number(rec.get("v")) or float(rec["v"]) != VERSION:
 		_record = null
 		explicit_sign_out = true
-		token_unconfirmed = false
+		token_unconfirmed = marked
 		return
 	_record = _normalize(rec)
 	explicit_sign_out = PKeyClaims.is_true(_record.get("explicitSignOut"))
 	token_origin = _record.get("tokenOrigin", "")
-	token_unconfirmed = PKeyClaims.is_true(_record.get("tokenUnconfirmed"))
+	token_unconfirmed = marked if _mark_in_store else PKeyClaims.is_true(_record.get("tokenUnconfirmed"))
 	var now := clock.system_now()
 
 	# §4.1: the tombstones first, so the manifest, the documents and the bundle all verify against
@@ -344,10 +351,28 @@ func set_token_origin(value: String) -> bool:
 	return true
 
 
-## Write the unconfirmed mark and drop the token's origin in ONE record write. False when the record could not
-## be written; the state is then as it was.
+## Write the unconfirmed mark and drop the token's origin. The mark goes first, in its own record; a write that
+## fails leaves the state as it was. False when either could not be written.
 func mark_unconfirmed() -> bool:
 	var origin := token_origin
+	if not _mark_in_store:
+		return _mark_in_record(origin)
+	if not store.write_unconfirmed_mark(true):
+		return false
+	token_unconfirmed = true
+	token_origin = ""
+	if patch({"tokenOrigin": null}):
+		return true
+	token_unconfirmed = false
+	token_origin = origin
+	store.write_unconfirmed_mark(false)
+	if origin != "" and _record is Dictionary:
+		_record["tokenOrigin"] = origin
+	return false
+
+
+## The mark rides in the cache record (a store with no record of its own for it): one write for both.
+func _mark_in_record(origin: String) -> bool:
 	token_unconfirmed = true
 	token_origin = ""
 	if patch({"tokenUnconfirmed": true, "tokenOrigin": null}):
@@ -360,18 +385,32 @@ func mark_unconfirmed() -> bool:
 	return false
 
 
-## The person confirmed the account: the mark goes and the token is a sign-in, in ONE record write. False when
-## the record could not be written; the token then stays unconfirmed.
+## The person confirmed the account: the origin becomes `sign_in` and then the mark goes (a crash between leaves
+## a marked token, which the next start drops). False when either could not be written; the token then stays
+## unconfirmed.
 func confirm_unconfirmed() -> bool:
-	token_unconfirmed = false
+	if not _mark_in_store:
+		token_unconfirmed = false
+		token_origin = "sign_in"
+		if patch({"tokenUnconfirmed": null, "tokenOrigin": "sign_in"}):
+			return true
+		token_unconfirmed = true
+		token_origin = ""
+		_record["tokenUnconfirmed"] = true
+		_record.erase("tokenOrigin")
+		return false
 	token_origin = "sign_in"
-	if patch({"tokenUnconfirmed": null, "tokenOrigin": "sign_in"}):
-		return true
-	token_unconfirmed = true
-	token_origin = ""
-	_record["tokenUnconfirmed"] = true
-	_record.erase("tokenOrigin")
-	return false
+	if not patch({"tokenOrigin": "sign_in"}):
+		token_origin = ""
+		if _record is Dictionary:
+			_record.erase("tokenOrigin")
+		return false
+	if not store.write_unconfirmed_mark(false):
+		token_origin = ""
+		patch({"tokenOrigin": null})
+		return false
+	token_unconfirmed = false
+	return true
 
 
 ## Drop the unconfirmed mark alone (the token it described is gone or was replaced). True when it changed.
@@ -379,6 +418,12 @@ func set_token_unconfirmed(on: bool) -> bool:
 	if on == token_unconfirmed:
 		return false
 	token_unconfirmed = on
+	if _mark_in_store:
+		if not store.write_unconfirmed_mark(on):
+			# A mark that will not clear stays set (fail closed); one that will not be written is not held.
+			token_unconfirmed = not on
+			return false
+		return true
 	patch({"tokenUnconfirmed": true if on else null})
 	return true
 

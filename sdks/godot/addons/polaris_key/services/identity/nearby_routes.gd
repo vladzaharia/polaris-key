@@ -13,7 +13,7 @@ extends RefCounted
 ##    is `-`;
 ##  - D's `poll` is signed by the key D sent on `start`: the handle remembers that `signKey`, and a poll after
 ##    the device's keys changed is refused locally rather than sent;
-##  - `start` sends D's bearer when D holds a credential, and never invents one; `poll` sends none;
+##  - `start` sends D's bearer when D holds a confirmed credential (never an unconfirmed one), and never invents one; `poll` sends none;
 ##  - `poll` answers the token once. It is held UNCONFIRMED (PKeyTokenManager.set_unconfirmed_token): no
 ##    sign-in, no stored subject and no `signedIn` event until the person confirms the account. The previous
 ##    person is no longer the stored subject under it;
@@ -204,7 +204,7 @@ func _start_request(device_name: String) -> PKeyResult:
 	body["proof"] = proof.detail
 	# A device id that already holds a credential proves it by that bearer; none is ever invented.
 	var headers := core.headers({"Content-Type": "application/json"})
-	if core.tokens.has_token():
+	if core.tokens.has_token() and not core.tokens.unconfirmed():
 		headers["Authorization"] = "Bearer %s" % core.tokens.current()
 	return PKeyResult.success({"url": url_r.detail, "headers": headers, "body": body, "sign_key": sign_key})
 

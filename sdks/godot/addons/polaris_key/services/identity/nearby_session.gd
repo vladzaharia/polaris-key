@@ -454,6 +454,8 @@ func confirm_account() -> PKeyResult:
 	var verdict := _identity._nearby_confirm(_subject, _token)
 	if verdict == &"failed":
 		_confirmed = false
+		# Nothing was written: the request still lapses on its deadline.
+		_arm_deadline()
 		return PKeyResult.failure(PKeyErrors.SIGN_IN_FAILED, "The sign-in could not be confirmed.")
 	if verdict != &"ok":
 		# A later sign-in replaced this one's token: nothing of it is written, nothing signed out.
