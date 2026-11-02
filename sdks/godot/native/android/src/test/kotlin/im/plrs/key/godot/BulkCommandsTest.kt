@@ -276,24 +276,62 @@ class BulkCommandsTest {
     }
 
     @Test
-    fun theRoutePathTable() {
-        val chunk = "a".repeat(64)
-        val ok = listOf(
-            "PUT" to "/demo/sync/files/c/r/upload/u/parts/0",
-            "PUT" to "/demo/sync/files/c/r/upload/u/chunks/$chunk",
-            "PUT" to "/demo/sync/files/c/chunks/$chunk",
-            "PUT" to "/demo/sync/files/c/r",
-            "GET" to "/demo/sync/files/c/r?version=3",
-            "GET" to "/demo/sync/files/c/chunks/$chunk",
-        )
-        for ((m, p) in ok) assertTrue("$m $p", BulkCommands.pathAllowed("demo", m, p))
-        val no = listOf(
-            "PUT" to "/demo/sync/files/c/r?version=3",
-            "GET" to "/demo/sync/files/c/r/upload/u/parts/0",
-            "GET" to "/demo/sync/files/c/chunks/" + "A".repeat(64),
-            "PUT" to "/demo/sync/files/c/r/finalize",
-        )
-        for ((m, p) in no) assertFalse("$m $p", BulkCommands.pathAllowed("demo", m, p))
+    fun theRouteTableIsTheSharedOne() {
+        val fx = JSONObject(File("../../tests/fixtures/bulk_routes.json").readText())
+        val product = fx.getString("product")
+        fun rows(key: String) = fx.getJSONArray(key).let { a -> (0 until a.length()).map { a.getJSONArray(it).let { r -> r.getString(0) to r.getString(1) } } }
+        assertTrue(rows("allow").isNotEmpty() && rows("refuse").isNotEmpty())
+        for ((m, p) in rows("allow")) assertTrue("allow $m $p", BulkCommands.pathAllowed(product, m, p))
+        for ((m, p) in rows("refuse")) assertFalse("refuse $m $p", BulkCommands.pathAllowed(product, m, p))
+    }
+
+    @Test
+    fun aSingleUploadPutGoesOutWithItsStagedBody() {
+        open()
+        val body = ByteArray(40) { it.toByte() }
+        put(1, stage(body), path = "/demo/sync/files/saves/slot/upload/u1")
+        bulk.end(j("transfer" to tid))
+        run()
+        val e = events().single()
+        assertEquals("sb_done", e.getString("ev"))
+        val one = seen.single()
+        assertEquals("PUT", one.first)
+        assertEquals("/demo/sync/files/saves/slot/upload/u1", one.second)
+        assertEquals("40", one.third["content-length"])
+    }
+
+    @Test
+    fun anAnswerHeaderOutsideTheListNeverLeavesNativeCode() {
+        open()
+        handlers["/saves/slot"] = { ex -> reply(ex, 200, "ok".toByteArray(), "X-PKey-Foo" to "1", "ETag" to "e1") }
+        get(1)
+        bulk.end(j("transfer" to tid))
+        run()
+        val h = events().single().getJSONObject("headers")
+        assertEquals("e1", h.getString("etag"))
+        assertFalse(h.has("x-pkey-foo"))
+    }
+
+    @Test
+    fun aRequestCancelledWhileRunningRaisesNoEventAndKeepsNoAnswer() {
+        open()
+        val started = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        handlers["/saves/slot"] = { ex ->
+            started.countDown()
+            release.await(10, java.util.concurrent.TimeUnit.SECONDS)
+            reply(ex, 200, "late".toByteArray())
+        }
+        get(1)
+        bulk.end(j("transfer" to tid))
+        val runner = Thread { run() }
+        runner.start()
+        assertTrue(started.await(10, java.util.concurrent.TimeUnit.SECONDS))
+        assertEquals(BulkCommands.OK, bulk.cancel(j("transfer" to tid, "req" to 1))[0])
+        release.countDown()
+        runner.join(15_000)
+        assertTrue(events().isEmpty())
+        assertTrue(allFiles().none { it.name.startsWith("r-") })
     }
 
     // ── what the server can do to us ─────────────────────────────────────────────────────────

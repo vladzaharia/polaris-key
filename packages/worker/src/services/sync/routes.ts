@@ -8,6 +8,10 @@
  * U-05.13 adds the push, `POST /<p>/sync/ops`. U-10 adds the file routes under
  * `files/{collection}/{id}` (upload U-10.5 to .7, download and revisions U-10.8); every one answers `404` while the launch gate `launch.syncFiles` is off
  * (`handlers/files.ts`). A path no row matches is `null` (Core's not-found).
+ *
+ * The native bulk channels (Android, Apple) carry only some of the file routes; the rows they carry are
+ * listed in `sdks/godot/tests/fixtures/bulk_routes.json`, which the Kotlin, Swift and GDScript tests read.
+ * Renaming or re-methoding a file route here means editing that fixture too.
  */
 
 import { serviceRoutes } from "../../core/http/routes.js";
