@@ -432,7 +432,8 @@ public actor CloudSyncHost {
         }
         switch verb {
         case .put(let value, _): return spells(value)
-        case .update(let set, let remove): return (Array(set.keys) + remove).allSatisfy(field) && set.values.allSatisfy(spells)
+        case .update(let set, let remove):
+            return (Array(set.keys) + remove).allSatisfy(field) && set.values.allSatisfy(spells)
         case .add(let e), .remove(let e): return spells(e)
         case .delete: return true
         }

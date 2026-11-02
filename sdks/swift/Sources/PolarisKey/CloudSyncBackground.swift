@@ -35,14 +35,15 @@
 //
 // The token and the body are never logged or put in an error.
 
+import Foundation
+import PolarisKeyCore
+import PolarisKeyPlatform
+
 #if canImport(CryptoKit)
     import CryptoKit
 #else
     import Crypto
 #endif
-import Foundation
-import PolarisKeyCore
-import PolarisKeyPlatform
 
 #if canImport(FoundationNetworking)
     import FoundationNetworking

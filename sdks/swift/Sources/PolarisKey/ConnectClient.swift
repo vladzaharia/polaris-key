@@ -16,10 +16,11 @@
 // device's keys is never stored, and the held identity stays as it was.
 
 import Foundation
+import PolarisKeyCore
+
 #if canImport(FoundationNetworking)
     import FoundationNetworking
 #endif
-import PolarisKeyCore
 
 /// The verified identity this device holds.
 public struct ConnectIdentity: Sendable, Equatable {

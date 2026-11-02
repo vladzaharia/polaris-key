@@ -20,12 +20,13 @@
 // once (§3.10).
 
 import Foundation
-#if canImport(FoundationNetworking)
-    import FoundationNetworking
-#endif
 import PolarisKeyCore
 import PolarisKeyLicense
 import PolarisKeyPlatform
+
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
 
 /// Where `attest()` keeps the App Attest key id. The default is the Keychain
 /// (`SecureStore`, service `pkey:<product>`, account `app_attest_key` — the account Godot's
@@ -150,7 +151,8 @@ public final class DevicesClient: Sendable {
     @Sendable static func defaultOutletCheck() -> String? {
         #if os(iOS)
             if BundleEvidence.mainBundle().provisioned {
-                return "Only an App Store or TestFlight install can attest (this build carries a provisioning profile); it stays at the basic trust level."
+                return
+                    "Only an App Store or TestFlight install can attest (this build carries a provisioning profile); it stays at the basic trust level."
             }
         #endif
         return nil

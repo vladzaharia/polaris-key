@@ -20,9 +20,6 @@
     "sdks/swift/Sources/PolarisKey/ConnectSession.swift": {
       "swift-format:AlwaysUseLowerCamelCase": 1
     },
-    "sdks/swift/Sources/PolarisKey/DevicesClient.swift": {
-      "swift-format:LineLength": 1
-    },
     "sdks/swift/Sources/PolarisKey/PolarisKeyClient.swift": {
       "swift-format:AlwaysUseLowerCamelCase": 1
     },
@@ -93,10 +90,6 @@
     },
     "sdks/swift/Sources/PolarisKeyCore/Stages.swift": {
       "swift-format:AlwaysUseLowerCamelCase": 7
-    },
-    "sdks/swift/Sources/PolarisKeyCore/Store.swift": {
-      "swift-format:AddLines": 2,
-      "swift-format:Indentation": 54
     },
     "sdks/swift/Sources/PolarisKeyCore/Trust.swift": {
       "swift-format:AlwaysUseLowerCamelCase": 1

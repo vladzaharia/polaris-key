@@ -19,10 +19,11 @@
 //    zeroed in place; CryptoKit copies what it is given.
 
 import Foundation
+import PolarisKeyCore
+
 #if canImport(FoundationNetworking)
     import FoundationNetworking
 #endif
-import PolarisKeyCore
 
 /// What the contact relay needs: the LAN source (identity, contacts) plus a contact ticket.
 public struct ConnectContactRelaySource: Sendable {
