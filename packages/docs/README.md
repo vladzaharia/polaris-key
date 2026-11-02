@@ -90,6 +90,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 - Code blocks are compiled: `test/snippets/snippets.test.ts` holds covered pages to their SDK lane. See [AGENTS.md](../../AGENTS.md).
 - Console help links live in two tables gated against `dist/docs-slugs.json`: `../worker/test/docsLinks.test.ts`. See [AGENTS.md](../../AGENTS.md).
 - A moved page keeps its old path: `test/siteMap.test.ts` checks `old-pages.json` and every redirect. See [AGENTS.md](../../AGENTS.md).
+- `js-yaml` stays pinned to 4.3.2: astro 7.3.5 does `import yaml from 'js-yaml'`, which v5 no longer exports. Lift the pin when astro supports v5.
 - Docs-site CSP hashes come from the build: `../worker/test/docsCspParity.test.ts` compares `docsCsp.generated.ts` with `dist/`. See [AGENTS.md](../../AGENTS.md).
 
 ## Docs
