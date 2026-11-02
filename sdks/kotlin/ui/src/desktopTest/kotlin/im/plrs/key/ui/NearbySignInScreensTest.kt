@@ -160,6 +160,8 @@ class NearbySignInScreensTest {
             onNodeWithText("Continue", ignoreCase = true).performClick()
             until("done") { state.ui.value == PolarisNearbyUi.Done }
             assertEquals(1, a.run.confirms.get())
+            // The state shows Done first and then runs onSignedIn: wait for the call, not the screen.
+            until("signedIn") { signedIn.get() == 1 }
             assertEquals(1, signedIn.get())
         })
     }
