@@ -3537,6 +3537,16 @@
           "spelling": "SignInOptions.keyReturn",
           "shape": "property",
           "reason": "a member of SignInOptions"
+        },
+        "python": {
+          "spelling": "key_return",
+          "shape": "property",
+          "reason": "a keyword of sign_in.start"
+        },
+        "swift": {
+          "spelling": "keyReturn",
+          "shape": "property",
+          "reason": "an argument of the native redirect start"
         }
       },
       "layer": "client"

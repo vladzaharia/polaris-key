@@ -318,8 +318,12 @@ const PY_CLASS: Record<string, string> = {
 function renderPython(api: Api): string {
   const attrs: string[] = [];
   const params: string[] = [];
+  const startParams: string[] = [];
   for (const r of rowsFor(api, "python")) {
-    if (r.kind === "option") {
+    if (r.id === "identity.signIn.keyReturn") {
+      // A keyword of `sign_in.start(**opts)` (LK-SKIP.8), not a member: the request builder's signature carries it.
+      startParams.push(`(${q(r.id)}, ${q(camelToSnake(leafOf(r.id)))})`);
+    } else if (r.kind === "option") {
       // Dotted paths: the first segment is the constructor parameter.
       params.push(`(${q(r.id)}, ${q((r.path ?? r.name).split(".")[0]!)})`);
     } else if (r.id === "events") {
@@ -379,6 +383,7 @@ from polaris_key.connect.nearby import CloudNearby
 from polaris_key.connect.transfer import IncomingOffer, Transfer
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.auto_sign_in import NearbyNamespace
+from polaris_key.identity.native_redirect import push_request
 from polaris_key.identity.nearby_session import NearbySignInSession
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
@@ -404,6 +409,7 @@ CLASSES = {
 
 ${list("ATTRS", attrs)}
 ${list("OPTION_PARAMS", params)}
+${list("START_PARAMS", startParams)}
 ${list("REMOVED", gone)}
 
 @pytest.mark.parametrize("concept,cls,name", ATTRS)
@@ -415,15 +421,25 @@ def test_present(concept, cls, name):
 def test_option(concept, name):
     assert name in inspect.signature(PolarisKeyClient.__init__).parameters, concept
 ${
-  gone.length === 0
+  startParams.length === 0
     ? ""
     : `
+
+@pytest.mark.parametrize("concept,name", START_PARAMS)
+def test_start_param(concept, name):
+    assert name in inspect.signature(push_request).parameters, concept
+    assert name in (SignInNamespace.start.__doc__ or ""), concept
+`
+}${
+    gone.length === 0
+      ? ""
+      : `
 
 @pytest.mark.parametrize("concept,cls,name", REMOVED)
 def test_removed(concept, cls, name):
     assert not hasattr(CLASSES[cls], name), concept
 `
-}`;
+  }`;
 }
 
 // ── Swift ───────────────────────────────────────────────────────────────────────────────────────
@@ -459,6 +475,7 @@ const SWIFT_UNASSERTED = new Set([
   "commerce.products",
   "config.decode",
   "cloudSync.encryption", // CloudSyncOptions(encryption:), nested under PolarisKeyClientOptions.cloudSync
+  "identity.signIn.keyReturn", // an argument of the native redirect start (LK-SKIP.9), not a member
 ]);
 /** The handle's async properties: no key path reaches them, so each is read inside an async closure. */
 const SWIFT_ASYNC_HANDLE = new Set([

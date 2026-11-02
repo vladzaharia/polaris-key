@@ -11,6 +11,7 @@ from polaris_key.connect.nearby import CloudNearby
 from polaris_key.connect.transfer import IncomingOffer, Transfer
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.auto_sign_in import NearbyNamespace
+from polaris_key.identity.native_redirect import push_request
 from polaris_key.identity.nearby_session import NearbySignInSession
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
@@ -156,6 +157,9 @@ OPTION_PARAMS = [
     ("options.expectedServices", "expected_services"),
     ("cloudSync.encryption", "cloud_sync"),
 ]
+START_PARAMS = [
+    ("identity.signIn.keyReturn", "key_return"),
+]
 REMOVED = [
     ("config.get_config", "ConfigClient", "get_config"),
     ("client.get_config", "PolarisKeyClient", "get_config"),
@@ -179,6 +183,12 @@ def test_present(concept, cls, name):
 @pytest.mark.parametrize("concept,name", OPTION_PARAMS)
 def test_option(concept, name):
     assert name in inspect.signature(PolarisKeyClient.__init__).parameters, concept
+
+
+@pytest.mark.parametrize("concept,name", START_PARAMS)
+def test_start_param(concept, name):
+    assert name in inspect.signature(push_request).parameters, concept
+    assert name in (SignInNamespace.start.__doc__ or ""), concept
 
 
 @pytest.mark.parametrize("concept,cls,name", REMOVED)
