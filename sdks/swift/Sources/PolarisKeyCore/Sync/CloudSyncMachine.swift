@@ -1152,6 +1152,19 @@ public final class CloudSyncMachine {
         return Layer(value: value, from: origin, pending: pending)
     }
 
+    /// Every `(collection, id)` of the records the active partition holds, in id order; empty with no
+    /// subject (as `openKeys()`). A record tombstone names its id blinded, and only these map it back.
+    public func recordKeys() -> [(collection: String, id: String)] {
+        guard s.subject != nil else { return [] }
+        let p = s.partitions[activeName]!
+        var out: [(collection: String, id: String)] = []
+        for rk in syncSortedKeys(Set(p.records.keys).union(p.held.keys)) {
+            guard let i = rk.firstIndex(of: "/") else { continue }
+            out.append((String(rk[..<i]), String(rk[rk.index(after: i)...])))
+        }
+        return out
+    }
+
     func openKeys() -> [String] {
         var keys: [String] = []
         func add(_ k: String) { if route(k) == nil && !keys.contains(k) { keys.append(k) } }

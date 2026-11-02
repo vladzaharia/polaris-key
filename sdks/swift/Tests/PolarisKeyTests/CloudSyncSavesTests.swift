@@ -242,6 +242,8 @@ private final class Env: SavesEnvironment, @unchecked Sendable {
     var refusal: (any Error)?
     var label: String?
     var interrupted: [String] = []
+    /// Runs as the files are purged: what a test looks at before anything is deleted.
+    var atPurge: (@Sendable () -> Void)?
 
     init(context: SavesContext) { self.context = context }
 
@@ -258,7 +260,10 @@ private final class Env: SavesEnvironment, @unchecked Sendable {
         await context.engine.cancel(id: transferId)
     }
     func dropWaiting() { lock.withLock { droppedWaiting += 1 } }
-    func purgeFiles() async { lock.withLock { purged += 1 } }
+    func purgeFiles() async {
+        lock.withLock { purged += 1 }
+        atPurge?()
+    }
 }
 
 private final class Events: @unchecked Sendable {
@@ -826,6 +831,40 @@ final class CloudSyncSavesTests: XCTestCase {
         XCTAssertEqual(rig.env.droppedWaiting, 1)
         XCTAssertEqual(rig.env.purged, 1)
         XCTAssertTrue(rig.client.transfers().isEmpty)
+    }
+
+    func testAClosedChannelEndsTheTransferInsteadOfRetryingIt() async throws {
+        let attempts = LockedValue(0)
+        let t = SaveTransfer(
+            id: "saves:slot1", progress: LockedValue((0, 0)),
+            attempt: {
+                // A channel that stays closed answers `closed` every time; a retry would be a loop.
+                let n = attempts.with { count -> Int in
+                    count += 1
+                    return count
+                }
+                if n > 3 { throw TransferError(.rejected) }
+                throw TransferError(.closed)
+            },
+            release: {}, onSettle: { _ in })
+        t.start()
+        guard case .cancelled = await t.outcome() else { return XCTFail("a closed channel is a cancel") }
+        XCTAssertEqual(attempts.current, 1)
+        XCTAssertEqual(t.state, .cancelled)
+    }
+
+    func testPurgeStopsRunningSavesBeforeTheJournalIsCleared() async throws {
+        let rig = Rig(e2e: false)
+        rig.records.lock.withLock { rig.records.holdSet = true }
+        let t = try await rig.client.write("slot1", bytes: Data("x".utf8), metadata: obj([:]))
+        for _ in 0..<200 where rig.records.lock.withLock({ rig.records.sets.isEmpty }) {
+            try await Task.sleep(nanoseconds: 5_000_000)
+        }
+        let seen = LockedValue<Bool?>(nil)
+        rig.env.atPurge = { seen.set(t.cancelRequested) }
+        await rig.client.purge()
+        XCTAssertEqual(seen.current, true, "the cancel is set before the files are purged")
+        guard case .cancelled = await t.outcome() else { return XCTFail("not cancelled") }
     }
 
     func testARefusedEnvironmentThrowsFromEveryVerb() async throws {

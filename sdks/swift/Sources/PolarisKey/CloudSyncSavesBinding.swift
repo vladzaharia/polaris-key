@@ -16,6 +16,7 @@
 
 import Foundation
 import PolarisKeyCore
+import PolarisKeyPlatform
 
 let savesMaxRetryAfterSeconds = 3600.0
 
@@ -182,16 +183,16 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
     private let api: CloudSyncApi
     private let keyring: @Sendable () -> SyncKeyring
     private let options: SavesOptions
-    private let journal: FileJournal
+    let journal: FileJournal
     private let engine: FileTransferEngine
-    private let background: CloudSyncBackground?
+    let background: CloudSyncBackground?
     private let resumed = LockedValue<Set<String>>([])
     private let state = LockedValue<(records: MachineRecords?, host: CloudSyncHost?, subject: String?)>(
         (nil, nil, nil))
 
     init(
         core: CoreContext, api: CloudSyncApi, keyring: @escaping @Sendable () -> SyncKeyring, options: SavesOptions,
-        backgroundTokens: BackgroundTokens? = nil
+        backgroundTokens: BackgroundTokens? = nil, backgroundPort: (any BackgroundSessionPort)? = nil
     ) {
         self.core = core
         self.api = api
@@ -204,9 +205,16 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
         #if canImport(Darwin)
             if let backgroundTokens {
                 // Reconcile's ids (transfers to send again) join the journaled ones in `interruptedWrites`.
-                bulk = CloudSyncBackground(
-                    product: core.product, stateDir: core.dirs.state, journal: journal, tokens: backgroundTokens,
-                    onResume: { ids in resumed.with { $0.formUnion(ids) } })
+                let onResume: @Sendable ([String]) -> Void = { ids in resumed.with { $0.formUnion(ids) } }
+                if let backgroundPort {
+                    bulk = CloudSyncBackground(
+                        product: core.product, stateDir: core.dirs.state, journal: journal, port: backgroundPort,
+                        tokens: backgroundTokens, onResume: onResume)
+                } else {
+                    bulk = CloudSyncBackground(
+                        product: core.product, stateDir: core.dirs.state, journal: journal,
+                        tokens: backgroundTokens, onResume: onResume)
+                }
             }
         #endif
         background = bulk
@@ -229,8 +237,8 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
     func savesContext() async throws -> SavesContext {
         try await core.requireService(.sync, feature: Feature.syncSaves)
         if let background {
-            // A person is signed in and the ring is open: tasks may enqueue; reconcile once per context.
-            background.open()
+            // Reconcile once per context. It does nothing while the channel is closed: only a person's
+            // sign-in opens it again (`personSignedIn`).
             Task { await background.reconcile() }
         }
         guard let host = await api.startedHost() else { throw SavesError(.rejected, detail: "sync-not-started") }
@@ -260,6 +268,9 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
     func interruptedWrites() -> [String] {
         Array(Set(journal.list()).union(resumed.current)).filter { $0.hasPrefix("saves:") }
     }
+
+    /// A person signed in: the channel a sign-out closed may enqueue again.
+    func personSignedIn() { background?.open() }
 
     /// Lock, sign-out and forget: cancel every background task and delete the spool before anything else.
     func closeBackground() async { await background?.close() }

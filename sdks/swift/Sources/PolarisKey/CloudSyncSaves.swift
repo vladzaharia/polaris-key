@@ -301,11 +301,17 @@ public protocol SavesEnvironment: Sendable {
     func dropWaiting()
     /// Delete the person's transfer journal and chunk cache.
     func purgeFiles() async
+    /// A person signed in: the background channel, closed by the last sign-out, may enqueue again.
+    func personSignedIn()
     /// The device's display name, stored with each save; nil stores none.
     func deviceLabel() async -> String?
     /// The journal ids (`saves:<id>`) of uploads an earlier run left unfinished: journaled, or handed back by a
     /// background reconcile. The client reports each once; it never reads their content.
     func interruptedWrites() -> [String]
+}
+
+extension SavesEnvironment {
+    public func personSignedIn() {}
 }
 
 extension SavesEnvironment {
@@ -600,8 +606,9 @@ public final class SavesClient: Sendable {
         }
         env.dropWaiting()
         reported.with { $0.removeAll() }
-        // The server's upload is released best effort in the background: a sign-out never waits on the network.
-        for t in running { Task { await t.cancel() } }
+        // Every running transfer is told to stop before the files go; only the server's release (best effort,
+        // it may wait on the network) runs on in the background.
+        for t in running { t.requestCancel() }
         await env.purgeFiles()
     }
 
@@ -720,7 +727,7 @@ public final class SavesClient: Sendable {
         } catch let e as TransferError where e.reason == .conflict {
             return try await conflictOutcome(
                 records, ctx.codec.enc == "e2e", id, metadata, source.size, e.serverVersion)
-        } catch let e as TransferError where e.reason == .aborted {
+        } catch let e as TransferError where e.reason == .aborted || e.reason == .closed {
             throw e
         } catch is CancellationError {
             throw TransferError(.aborted)
@@ -855,6 +862,8 @@ public final class SaveTransfer: @unchecked Sendable {
     }
 
     public var state: SaveTransferState { lock.withLock { stateValue } }
+    /// A cancel has been asked (by the caller or by a purge); the settle may still be on its way.
+    var cancelRequested: Bool { lock.withLock { wanted == .cancel } }
     /// Plaintext bytes accounted for and the file's size.
     public var progress: (done: Int, total: Int) { progressBox.current }
 
@@ -885,6 +894,13 @@ public final class SaveTransfer: @unchecked Sendable {
     }
 
     public func cancel() async {
+        if requestCancel() { _ = await outcome() }
+    }
+
+    /// The synchronous half of a cancel: the flag, the stop, the running task. False when the transfer had
+    /// already settled. The release of the server's upload follows on the transfer's own task.
+    @discardableResult
+    func requestCancel() -> Bool {
         let (task, g, skip) = lock.withLock {
             () -> (Task<SaveOutcome, Error>?, CheckedContinuation<Void, Never>?, Bool) in
             if stateValue == .done || stateValue == .failed || stateValue == .conflict || stateValue == .cancelled {
@@ -895,12 +911,12 @@ public final class SaveTransfer: @unchecked Sendable {
             gate = nil
             return (current, g, false)
         }
-        if skip { return }
+        if skip { return false }
         // The wait for the metadata write ends only on this (a pause leaves it running).
         stop.set()
         task?.cancel()
         g?.resume()
-        _ = await outcome()
+        return true
     }
 
     private func want() -> Wanted { lock.withLock { wanted } }
@@ -924,6 +940,8 @@ public final class SaveTransfer: @unchecked Sendable {
                 return settle(outcome)
             } catch {
                 if want() == .cancel { return await cancelled() }
+                // A closed channel ends the transfer: it is a cancel, never a pause to retry from.
+                if (error as? TransferError)?.reason == .closed { return await cancelled() }
                 let aborted = (error as? TransferError)?.reason == .aborted || error is CancellationError
                 if !aborted { return settle(.failed(savesError(error))) }
                 if want() == .run { continue }

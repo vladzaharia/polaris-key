@@ -155,6 +155,24 @@ final class CloudSyncMachineCollectionTests: XCTestCase {
         XCTAssertEqual(m.record("prefs", "main"), SyncEffectiveValue(value: js("{\"a\":1}"), from: .cloud))
     }
 
+    func testRecordKeysListTheHeldRecordsAndNoneSignedOut() throws {
+        let m = try machine()
+        XCTAssertTrue(m.recordKeys().isEmpty)
+        m.setNetwork(.offline)
+        m.setNetwork(.online)
+        _ = m.takeRequests()
+        let body = js(
+            """
+            {"encryption":"server","cursor":5,"changes":[{"record":["prefs","b"],"version":5,"value":{"a":1}},
+              {"record":["tags","a"],"version":6,"value":["x"]}]}
+            """)
+        try m.receive(.answer(status: 200, body: body))
+        let keys = m.recordKeys().map { "\($0.collection)/\($0.id)" }
+        XCTAssertEqual(keys, ["prefs/b", "tags/a"])
+        _ = m.signOut()
+        XCTAssertTrue(m.recordKeys().isEmpty)
+    }
+
     func testAnOutcomeTapSeesWhatOnOutcomeSees() throws {
         let m = try machine()
         let seen = LockedValue<[Int]>([])

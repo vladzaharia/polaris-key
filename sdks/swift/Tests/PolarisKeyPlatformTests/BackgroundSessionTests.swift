@@ -25,6 +25,82 @@ final class BackgroundTagTests: XCTestCase {
     }
 }
 
+// MARK: The URLSession adapter's delegate (host, no session is run)
+
+#if canImport(Darwin)
+    final class BackgroundPortDelegateTests: XCTestCase {
+        private final class Sink: BackgroundSink, @unchecked Sendable {
+            let lock = NSLock()
+            var results: [BackgroundResult] = []
+            func taskFinished(_ result: BackgroundResult) { lock.withLock { results.append(result) } }
+            func sessionFinishedEvents() {}
+        }
+
+        private func quietSession() -> URLSession { URLSession(configuration: .ephemeral) }
+
+        func testADownloadIsCancelledPastItsLimit() {
+            let session = quietSession()
+            defer { session.invalidateAndCancel() }
+            let port = URLSessionBackgroundPort(identifier: "pkey.sync.delegatetest", defaultLimit: 100)
+            let url = URL(string: "https://127.0.0.1:9/never")!
+            // Within the limit, written or announced: the task goes on.
+            let ok = session.downloadTask(with: url)
+            port.urlSession(
+                session, downloadTask: ok, didWriteData: 100, totalBytesWritten: 100, totalBytesExpectedToWrite: 100)
+            port.urlSession(
+                session, downloadTask: ok, didWriteData: 1, totalBytesWritten: 1, totalBytesExpectedToWrite: -1)
+            XCTAssertEqual(ok.state, .suspended)
+            // More written than the limit.
+            let written = session.downloadTask(with: url)
+            port.urlSession(
+                session, downloadTask: written, didWriteData: 1, totalBytesWritten: 101, totalBytesExpectedToWrite: -1)
+            XCTAssertNotEqual(written.state, .suspended, "cancelled once it wrote past its limit")
+            // More announced than the limit.
+            let announced = session.downloadTask(with: url)
+            port.urlSession(
+                session, downloadTask: announced, didWriteData: 0, totalBytesWritten: 0,
+                totalBytesExpectedToWrite: 101)
+            XCTAssertNotEqual(announced.state, .suspended, "cancelled once the server announced too much")
+        }
+
+        func testThePortReceivesUploadAnswerBodies() {
+            let port = URLSessionBackgroundPort(identifier: "pkey.sync.delegatetest2", defaultLimit: 100)
+            XCTAssertTrue(
+                port.responds(to: #selector(URLSessionDataDelegate.urlSession(_:dataTask:didReceive:))),
+                "the session sends the answer body of an upload to the port")
+            XCTAssertTrue((port as AnyObject) is URLSessionDataDelegate)
+            let sink = Sink()
+            port.start(sink: sink)
+            let session = quietSession()
+            defer { session.invalidateAndCancel() }
+            let task = session.dataTask(with: URL(string: "https://127.0.0.1:9/never")!)
+            port.urlSession(session, dataTask: task, didReceive: Data("quota_exceeded".utf8))
+            port.urlSession(session, task: task, didCompleteWithError: nil)
+            let got = sink.lock.withLock { sink.results.first }
+            XCTAssertEqual(got.map { String(decoding: $0.body, as: UTF8.self) }, "quota_exceeded")
+        }
+
+        func testTheBackgroundSessionRefusesEveryRedirect() {
+            let port = URLSessionBackgroundPort(identifier: "pkey.sync.delegatetest3", defaultLimit: 100)
+            let session = quietSession()
+            defer { session.invalidateAndCancel() }
+            let task = session.dataTask(with: URL(string: "https://127.0.0.1:9/never")!)
+            for code in [301, 302, 307, 308] {
+                let response = HTTPURLResponse(
+                    url: task.originalRequest!.url!, statusCode: code, httpVersion: nil,
+                    headerFields: ["Location": "https://elsewhere.example/steal"])!
+                var followed: URLRequest?? = .some(nil)
+                port.urlSession(
+                    session, task: task, willPerformHTTPRedirection: response,
+                    newRequest: URLRequest(url: URL(string: "https://elsewhere.example/steal")!)
+                ) { followed = .some($0) }
+                XCTAssertNil(followed ?? nil, "the \(code) was followed")
+                XCTAssertNotNil(followed, "the completion handler was never called for \(code)")
+            }
+        }
+    }
+#endif
+
 // MARK: Simulator (CI macOS only)
 
 #if os(iOS)

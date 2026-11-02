@@ -141,6 +141,7 @@ actor CloudSyncApi {
     private let forgetRing: @Sendable () async throws -> Void
     private let lockRing: @Sendable () async -> Void
     private let purgeSaves: @Sendable () async -> Void
+    private let personSignedIn: @Sendable () -> Void
     private let recovery: @Sendable () async throws -> String
     private var hostValue: CloudSyncHost?
     private var attached = false
@@ -161,6 +162,7 @@ actor CloudSyncApi {
         forgetRing: @escaping @Sendable () async throws -> Void,
         lockRing: @escaping @Sendable () async -> Void = {},
         purgeSaves: @escaping @Sendable () async -> Void = {},
+        personSignedIn: @escaping @Sendable () -> Void = {},
         recovery: @escaping @Sendable () async throws -> String
     ) {
         self.core = core
@@ -171,6 +173,7 @@ actor CloudSyncApi {
         self.forgetRing = forgetRing
         self.lockRing = lockRing
         self.purgeSaves = purgeSaves
+        self.personSignedIn = personSignedIn
         self.recovery = recovery
         self.importMarker = core.dirs.state.appendingPathComponent("cloud-sync-imported.json")
         (queue, enqueue) = AsyncStream<Work>.makeStream()
@@ -344,6 +347,7 @@ actor CloudSyncApi {
             subject = nil
             return
         }
+        personSignedIn()
         if importing {
             try? FileManager.default.createDirectory(
                 at: importMarker.deletingLastPathComponent(), withIntermediateDirectories: true,
@@ -424,6 +428,15 @@ actor CloudSyncApi {
     /// root and the pin are removed. A removal that fails throws; the earlier steps are not undone.
     private func forgetPerson() async throws {
         try await Self.forgetInOrder(lock: lockRing, purgeSaves: purgeSaves, forget: forgetRing)
+    }
+
+    /// The lock step of a forget: the background channel is closed first, so nothing sealed under the root
+    /// goes out once the ring is locked.
+    static func lockClosingBackground(
+        closeBackground: @Sendable () async -> Void, lockRing: @Sendable () async -> Void
+    ) async {
+        await closeBackground()
+        await lockRing()
     }
 
     static func forgetInOrder(
