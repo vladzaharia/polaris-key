@@ -461,6 +461,7 @@ export class CloudSyncHost {
           ? { aliases: this.#opts.aliases }
           : {}),
         openKeys: this.#openKeys,
+        recordKeys: m.recordKeys(),
       });
     } catch {
       // Locked since the request left: the answer is dropped and the cursor stays.

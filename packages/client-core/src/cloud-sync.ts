@@ -1714,6 +1714,20 @@ export class CloudSyncMachine {
     return { value, from, pending };
   }
 
+  /**
+   * The `[collection, id]` pair of every record held in the active partition's snapshot; empty with
+   * no subject. The end-to-end host passes it so a tombstone can name the record it removes.
+   */
+  recordKeys(): Array<[string, string]> {
+    if (this.s.subject === null) return [];
+    const out: Array<[string, string]> = [];
+    for (const rk of Object.keys(this.active().records)) {
+      const i = rk.indexOf("/");
+      if (i > 0) out.push([rk.slice(0, i), rk.slice(i + 1)]);
+    }
+    return out;
+  }
+
   /** Every open setting the device knows of: in the snapshot, the journal or a draft. */
   private openKeys(): string[] {
     const keys = new Set<string>();

@@ -2,13 +2,14 @@ class_name PKeyChunkCache
 extends RefCounted
 ## The Cloud Sync chunk cache (U-23.G4, plan D-9): a port of Python `cloud_sync/chunk_cache.py`.
 ##
-## Holds chunk objects as stored (ciphertext in E2E mode, never plaintext), keyed by the 64-character
-## lowercase hex chunk id, so a download fetches only the chunks the device lacks. Entries are named from
-## the id alone, never from server text: `get`, `put` and `delete` refuse anything but such an id (they
-## answer null / false, so a bad name never reaches the file system). A cache is best effort: the engine
-## treats a miss as a fetch and opens every cached object again before use, so a damaged entry costs a
-## fetch. The budget is `budget(largest_save)` = max(256 MiB, twice the largest save). The directory is kept
-## out of OS backup (PKeyBackupExclusion) and purged with the person (`clear`).
+## Holds chunk objects as stored: ciphertext in end-to-end mode; in server mode the app's bytes, at the
+## same protection as the state file, keyed by the 64-character lowercase hex chunk id, so a download
+## fetches only the chunks the device lacks. Entries are named from the id alone, never from server text:
+## `get`, `put` and `delete` refuse anything but such an id (they answer null / false, so a bad name never
+## reaches the file system). A cache is best effort: the engine treats a miss as a fetch and opens every
+## cached object again before use, so a damaged entry costs a fetch. The budget is `budget(largest_save)`
+## = max(256 MiB, twice the largest save). The directory is kept out of OS backup (PKeyBackupExclusion)
+## and purged with the person (`clear`).
 
 const MIN_BYTES := 256 * 1024 * 1024
 const DIR_NAME := "cloud-sync-chunks"

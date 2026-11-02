@@ -642,6 +642,19 @@ func _downloads(t: PKeyTestContext) -> void:
 		return b
 	r = await _engine(srv2).download(req)
 	t.check("ranges: a Content-Range that does not match is refused", not r.ok and r.detail["reason"] == "bad-reply")
+	# A self-consistent 206 that starts one byte after the offset asked is refused at the first range.
+	var asked: Array = []
+	srv2.tamper_file = func(q: Dictionary, b: Dictionary) -> Dictionary:
+		asked.append(q["range"][0])
+		if b["status"] != 206 or q["range"][0] != 0:
+			return b
+		b["data"] = (b["data"] as PackedByteArray).slice(1)
+		b["content_range"] = [1, b["content_range"][1], b["content_range"][2]]
+		return b
+	sink = Sink.new()
+	req["sink"] = sink.put
+	r = await _engine(srv2).download(req)
+	t.check("a 206 for another offset than the one asked is refused at once", not r.ok and r.detail["reason"] == "bad-reply" and r.detail.get("detail", "") == "content-range" and asked.size() == 1 and sink.writes == 0, "%s %s" % [asked, str(r)])
 	# 200 from a server that ignores Range is taken from the start only.
 	srv2.tamper_file = func(_q: Dictionary, b: Dictionary) -> Dictionary: return {"status": 200, "data": big, "etag": b["etag"], "content_range": null}
 	sink = Sink.new()
@@ -803,6 +816,10 @@ func _journal(t: PKeyTestContext) -> void:
 	var names: Array = d.get_files() if d != null else []
 	t.check("journal path: an id with dots and slashes is a file named by a hash", names.size() == 1 and names[0] == Journal.file_name(evil) and names[0].length() == 69, str(names))
 	t.check("journal path: nothing is written outside the journal directory", not FileAccess.file_exists(dir.path_join("../../etc/passwd")))
+	if OS.has_feature("macos") or OS.has_feature("linuxbsd"):
+		var owner_rw := FileAccess.UNIX_READ_OWNER | FileAccess.UNIX_WRITE_OWNER
+		var owner_rwx := owner_rw | FileAccess.UNIX_EXECUTE_OWNER
+		t.check("the journal file is owner-only", FileAccess.get_unix_permissions(j.path_of(evil)) == owner_rw and FileAccess.get_unix_permissions(j.dir) == owner_rwx, "%o %o" % [FileAccess.get_unix_permissions(j.path_of(evil)), FileAccess.get_unix_permissions(j.dir)])
 	t.check("journal: the record reads back", j.get_record(evil) == rec)
 	t.check("journal: parse accepts it", Journal.parse(j.get_record(evil))["ok"])
 	t.check("journal: list returns the id", j.list() == [evil])

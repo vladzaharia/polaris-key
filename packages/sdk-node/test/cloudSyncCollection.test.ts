@@ -198,3 +198,49 @@ describe("a rebuilt machine", () => {
     client.close();
   });
 });
+
+describe("cloudSync.collection in end-to-end mode", () => {
+  it("a record tombstone removes the held record in end-to-end mode", async () => {
+    const w = new World();
+    const client = await open(w, mkdtempSync(join(tmpdir(), "pkey-ccoll-")), {
+      encryption: "e2e",
+      catalog: { ...CATALOG(1), cloudSync: CLOUD },
+    });
+    await client.keyring.create();
+    await client.cloudSyncHost.start();
+    client.events.safeEmit("identity", { kind: "signedIn", subject: SUBJECT });
+    await client.cloudSync.flush();
+    const prefs = await client.cloudSync.collection("notes.work");
+    expect(prefs.put("main", { t: "x" })).toEqual({ ok: true });
+    await client.cloudSync.flush();
+    const sent = pushes(w).at(-1)!.body!.mutations as Array<{
+      target: { record: [string, string] };
+      ct: string;
+    }>;
+    const wire = sent[0]!.target.record;
+    expect(wire[1]).not.toBe("main");
+    // The sealed record comes back on a pull: the machine holds it under its plain name.
+    w.pull = () =>
+      w.body({
+        cursor: 5,
+        changes: [
+          { record: wire, version: 150, ct: sent[0]!.ct, sealed: true },
+        ],
+      });
+    client.cloudSyncHost.machine.setNetwork("online");
+    await client.cloudSyncHost.touch();
+    await client.cloudSync.flush();
+    expect(client.cloudSyncHost.machine.recordKeys()).toEqual([
+      ["notes.work", "main"],
+    ]);
+    expect(prefs.get("main")).toBeDefined();
+    w.pull = () =>
+      w.body({ cursor: 9, tombstones: [{ record: wire, version: 200 }] });
+    client.cloudSyncHost.machine.setNetwork("online");
+    await client.cloudSyncHost.touch();
+    await client.cloudSync.flush();
+    expect(prefs.get("main")).toBeNull();
+    expect(client.cloudSyncHost.machine.recordKeys()).toEqual([]);
+    client.close();
+  });
+});

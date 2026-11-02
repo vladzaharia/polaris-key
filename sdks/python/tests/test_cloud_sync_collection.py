@@ -578,3 +578,31 @@ def test_two_handles_on_one_collection_do_not_silence_each_other(client: Any) ->
     off_b()
     assert a.put("n1", 1) == {"ok": True}
     assert any(e["type"] == "change" and e["ids"] == ["n1"] for e in seen)
+
+
+def test_a_record_tombstone_removes_the_held_record_in_e2e(tmp_path: Path) -> None:
+    w = RecordsWorld("e2e")
+    c = signed_in(w, tmp_path)
+    try:
+        c.keyring.create()
+        from polaris_key.core.b64url import b64url_encode
+
+        codec = c.keyring.codec
+        wire = ["notes", codec.blind("record", "notes", "main")]
+        # A sealed record is pulled: the machine holds it under its plain name.
+        w.pull = lambda url: w.body(
+            cursor=w.version + 5,
+            changes=[{"record": wire, "ct": b64url_encode(codec.seal("notes", "main", {"t": "x"})), "version": 150}],
+        )
+        pull_now(c)
+        with c.cloud_sync_host.locked() as machine:
+            assert machine.record_keys() == [("notes", "main")]
+        notes = c.cloud_sync.collection("notes")
+        assert notes.get("main") == {"value": {"t": "x"}, "from": "cloud"}
+        w.pull = lambda url: w.body(cursor=w.version + 9, tombstones=[{"record": wire, "version": 200}])
+        pull_now(c)
+        with c.cloud_sync_host.locked() as machine:
+            assert machine.record_keys() == []
+        assert notes.get("main") is None
+    finally:
+        c.close()

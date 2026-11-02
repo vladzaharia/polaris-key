@@ -1,7 +1,8 @@
-// The chunk cache port (U-22.2, plan D-9). It holds chunk objects as stored (ciphertext in E2E
-// mode, never plaintext), keyed by the 64-character hex chunk id, so a download fetches only the
-// chunks the device lacks. Hosts name entries from the id alone, never from server text: `get`,
-// `put` and `delete` take an id that already matches `SYNC_CHUNK_ID_PATTERN` (`isChunkCacheId`).
+// The chunk cache port (U-22.2, plan D-9). It holds chunk objects as stored: ciphertext in end-to-end
+// mode; in server mode the app's bytes, at the same protection as the state file, keyed by the
+// 64-character hex chunk id, so a download fetches only the chunks the device lacks. Hosts name entries
+// from the id alone, never from server text: `get`, `put` and `delete` take an id that already matches
+// `SYNC_CHUNK_ID_PATTERN` (`isChunkCacheId`).
 //
 // A cache is best effort: the engine treats a failing `get` as a miss and a failing `put` as
 // nothing, and it opens every cached object again before use, so a damaged entry costs a fetch.
