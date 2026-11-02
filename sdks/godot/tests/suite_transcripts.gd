@@ -11,6 +11,7 @@ extends RefCounted
 # @pkey-feature identity.exchange identity.gamecenter identity.pgs
 # @pkey-feature sync.files sync.files.delta sync.saves sync.records
 # @pkey-feature connect.identity connect.relay connect.links identity.redirect.native
+# @pkey-feature identity.keyreturn
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -394,6 +395,12 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 						out["scope"] = o.scope
 						out["subject"] = o.subject if o.subject != "" else null
 						out["licenseId"] = o.license_id if o.license_id != "" else null
+					PKeySignInOutcome.KIND_ACTIVATED:
+						out["result"] = "activated"
+						out["scope"] = ""
+						out["subject"] = o.subject if o.subject != "" else null
+						out["licenseId"] = o.license_id if o.license_id != "" else null
+						out["keyEntries"] = o.key_entries
 					PKeySignInOutcome.KIND_LICENSE_CHOICE:
 						out["result"] = "choose"
 					PKeySignInOutcome.KIND_CANCELLED:
@@ -401,6 +408,7 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 					_:
 						out["result"] = _redirect_result(String(o.code))
 						out["code"] = String(o.code)
+						_refusal_members(o, out)
 		"choiceLicenses", "choiceDevices", "choiceComplete", "choiceCancel":
 			out.merge(await _choice_step(sdk.identity.choice, step), true)
 		# The recorded action names stay (plans/I-10-slices.md D-6); they drive the session.
@@ -697,6 +705,9 @@ static func _redirect_session(sdk: Node, step: Dictionary) -> PKeySignInSession:
 	for pair in [["loginHint", "login_hint"], ["nameHint", "name_hint"], ["purpose", "purpose"]]:
 		if a.get(pair[0]) is String:
 			opts[pair[1]] = a[pair[0]]
+	# The recorded SDK sent key_return=allow (LK-SKIP).
+	if a.get("keyReturn") == true:
+		opts["key_return"] = true
 	return await sdk.identity.sign_in.start(opts)
 
 
@@ -960,9 +971,18 @@ static func _identity_rebased(manifest: Dictionary, from: String, to: String) ->
 
 ## `redirectComplete`'s `result` for a refusal's code (format.ts).
 static func _redirect_result(code: String) -> String:
-	if code in ["invalid_grant", "invalid_request", "invalid_client", "license_choice_required", "rate_limited"]:
+	if code in ["invalid_grant", "invalid_request", "invalid_client", "license_choice_required", "rate_limited", "device_limit", "license_owned", "key_entry_limit"]:
 		return code.replace("_", "-")
 	return "error"
+
+
+## The flat members a refusal carried, under the recording's names.
+static func _refusal_members(o: PKeySignInOutcome, out: Dictionary) -> void:
+	if not (o.detail is Dictionary):
+		return
+	for pair in [["limit", "limit"], ["device_count", "deviceCount"], ["manage_url", "manageUrl"], ["key_entries", "keyEntries"], ["sign_in_url", "signInUrl"]]:
+		if o.detail.has(pair[0]):
+			out[pair[1]] = o.detail[pair[0]]
 
 
 ## Discovery for the redirect conversations: Identity on, the authorize and token endpoints at the

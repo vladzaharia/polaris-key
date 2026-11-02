@@ -211,9 +211,8 @@
       "status": "implemented"
     },
     "identity.keyreturn": {
-      "status": "planned",
-      "wp": "I-15b",
-      "note": "LK-SKIP.11: the opt-in, the via rule and the activated outcome, with the replayer."
+      "status": "implemented",
+      "note": "LK-SKIP.11: identity.sign_in.start({channel: \"redirect\", key_return: true}), web (redirect_uri) and native (pushed request), sends key_return=allow last and never otherwise (a bare start is off; the device-code channel refuses it with invalid-argument). PKeyIdentityRedirect.parse_token_answer(status, body, {key_return}) reads a via:\"key\" body as kind activated only with the opt-in (without it, or with another via, malformed); the session stores the token as a key activation (origin key, so rung 1 of automatic sign-in does not count it), sets the stored subject to the answered value (null clears it), emits the identity event activated (never signedIn) and settles PKeySignInOutcome.KIND_ACTIVATED (license_id, key_entries, subject). device_limit, key_entry_limit and license_owned surface as a flat error outcome whose detail carries limit, device_count, manage_url, key_entries and sign_in_url (links must be https). The three redirect-web-key-return transcripts replay in tests/suite_transcripts.gd; tests/identity/test_key_return.gd maps each rule. The kits leave it off until their native redirect slice renders the outcome."
     },
     "identity.redirect.native": {
       "status": "implemented",

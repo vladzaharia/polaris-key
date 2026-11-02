@@ -26,6 +26,8 @@ extends RefCounted
 const KIND_SIGNED_IN := "signedIn"
 const KIND_SIGNED_OUT := "signedOut"
 const KIND_SUBJECT_CHANGED := "subjectChanged"
+## A key return bound the device on a key's licence: the subject is the answered value ("" = none).
+const KIND_ACTIVATED := "activated"
 
 ## `func(url: String) -> bool`, awaited by open_account(); true when it opened the page. Empty:
 ## the system browser (https only).
@@ -250,6 +252,14 @@ func note_signed_in(subject: String) -> void:
 	if subject != "":
 		_core().cache.set_subject(subject)
 	_notify(KIND_SIGNED_IN, subject, "")
+
+
+## A key-return sign-in activated the device: the stored subject becomes `subject` (a null answer is
+## ""), which clears an account the device held, and `activated` is raised, never `signedIn`.
+func note_activated(subject: String) -> void:
+	var previous := _core().cache.subject
+	_core().cache.set_subject(subject)
+	_notify(KIND_ACTIVATED, subject, previous)
 
 
 func _store_subject(value: String) -> void:

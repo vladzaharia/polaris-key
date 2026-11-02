@@ -40,7 +40,8 @@ extends RefCounted
 ##                                         `accountPortal`); ok with detail {url, opened}
 ##
 ## The account changes reach `PolarisKey.event("identity", {kind, subject, previous})`: kind
-## `signedIn` (a device-code sign-in ended signed in), `signedOut` (`sign_out()`) or
+## `signedIn` (a device-code sign-in ended signed in), `signedOut` (`sign_out()`), `activated` (a
+## redirect sign-in that opted in with `key_return = true` ended on a key; `subject` is null) or
 ## `subjectChanged`; `subject` and `previous` are the pairwise subject now and before, or null.
 ##
 ## Device-code sign-in sends no fingerprint, so a `strict` tier refuses it. It signs in only:
@@ -324,6 +325,8 @@ func _start(opts: Dictionary) -> PKeySignInSession:
 	var session: PKeySignInSession
 	if channel == "redirect":
 		session = await _begin_redirect(opts)
+	elif opts.get("key_return") is bool and opts["key_return"]:
+		return _failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "key_return belongs to the redirect channel; the device-code channel does not take it.")
 	else:
 		session = await _request_start(String(opts.get("device_name", "")), opts)
 	if not session.ok:
@@ -378,6 +381,7 @@ func _begin_redirect(opts: Dictionary) -> PKeySignInSession:
 		"login_hint": opts.get("login_hint"), "name_hint": opts.get("name_hint"), "purpose": opts.get("purpose"),
 		"state": redirect_entropy.get("state"), "code_verifier": redirect_entropy.get("code_verifier"),
 		"license_choice": opts.get("license_choice"), "choice_available": PKeyIdentityChoice.available(fragment),
+		"key_return": opts.get("key_return"),
 	})
 	if not started["ok"]:
 		return _failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, started["message"])
@@ -457,6 +461,7 @@ func _begin_native(opts: Dictionary) -> PKeySignInSession:
 		"return_uri": opts.get("return_uri"), "scope": opts.get("scope"),
 		"login_hint": opts.get("login_hint"), "name_hint": opts.get("name_hint"), "purpose": opts.get("purpose"),
 		"license_choice": opts.get("license_choice"), "choice_available": PKeyIdentityChoice.available(fragment),
+		"key_return": opts.get("key_return"),
 		"state": redirect_entropy.get("state"), "code_verifier": redirect_entropy.get("code_verifier"),
 	})
 	if not pushed["ok"]:
@@ -546,7 +551,7 @@ func _redeem(session: PKeySignInSession, pending: Dictionary, code: String, nati
 		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, r.code if r.code == PKeyErrors.LOCAL_ONLY else PKeyErrors.NETWORK, r.message)
 	var status := _status(r)
 	var parsed := PKeyJson.parse_bytes(r.detail["body"])
-	var answer := PKeyIdentityRedirect.parse_token_answer(status, parsed["value"] if parsed["ok"] else null)
+	var answer := PKeyIdentityRedirect.parse_token_answer(status, parsed["value"] if parsed["ok"] else null, {"key_return": pending.get("key_return") is bool and pending["key_return"]})
 	match answer["kind"]:
 		"malformed":
 			return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.INVALID_RESPONSE, "The token endpoint answered without a complete sign-in.", status)
@@ -563,9 +568,29 @@ func _redeem(session: PKeySignInSession, pending: Dictionary, code: String, nati
 				if header is String and (header as String).strip_edges().is_valid_int():
 					retry = mini(int((header as String).strip_edges()), 3600)
 			var refused := PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.SERVER_ERROR if status >= 500 else StringName(answer["error"]), "The token endpoint refused the sign-in (%s)." % answer["error"], status)
-			if retry != null:
-				refused.detail = {"retry_after_seconds": retry}
+			var extra: Dictionary = answer.get("details", {}) if status < 500 else {}
+			if retry != null or not extra.is_empty():
+				# The flat members of a refusal (device_limit, key_entry_limit, license_owned) ride along.
+				refused.detail = extra.duplicate()
+				if retry != null:
+					refused.detail["retry_after_seconds"] = retry
 			return refused
+		"activated":
+			# A key return: a key activation, never a sign-in. The token is stored as `activate` (a key's
+			# provenance, so rung 1 of automatic sign-in does not count it) and the stored subject is the
+			# answered value, so a null one clears an account the device held.
+			var key_stored := core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_ACTIVATE, true, PKeyTokenManager.ORIGIN_KEY)
+			var key_subject: String = answer["subject"] if answer["subject"] is String else ""
+			if _account != null:
+				_account.note_activated(key_subject)
+			var key_synced: PKeySyncResult = null
+			if redirect_acquisition_sync and on_acquired.is_valid():
+				key_synced = await on_acquired.call()
+				var key_problem := PKeyLicense.unverified(core, key_synced, "the key was accepted")
+				if not key_problem.is_empty():
+					return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, key_problem["code"], key_problem["message"], int(key_problem["status"]))
+			var key_license: Dictionary = answer["license"]
+			return PKeySignInOutcome.activated(String(key_license.get("id", "")) if key_license.get("id") is String else "", answer["key_entries"], key_subject, key_stored, key_synced)
 	var stored := core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_SIGNIN, true)
 	var subject: String = answer["subject"]
 	if _account != null:
