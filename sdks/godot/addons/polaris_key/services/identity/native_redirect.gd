@@ -107,6 +107,46 @@ static func choose_redirect_class(opts: Dictionary) -> Dictionary:
 	return {"kind": "unavailable", "code": unavailable, "reason": "no-class"}
 
 
+# ── The registered redirects (mobile) ────────────────────────────────────────────────────
+
+## Project settings holding the redirect a phone build registered (the Android export reads the same ones for the
+## intent filter). They are the defaults; `registered_schemes` / `registered_claimed` in the start options override
+## per key.
+const SETTING_SCHEME := "polaris_key/native_redirect/scheme"
+const SETTING_CLAIMED := "polaris_key/native_redirect/claimed_uri"
+
+
+## The redirects the project settings register, as full redirect URIs: {schemes: [...], claimed: [...]}. `settings`
+## ({scheme, claimed_uri}) stands in for the project settings (tests). A value that is no native redirect URI is dropped.
+static func settings_redirects(settings: Variant = null) -> Dictionary:
+	var scheme: Variant = ""
+	var claimed: Variant = ""
+	if settings is Dictionary:
+		scheme = settings.get("scheme", "")
+		claimed = settings.get("claimed_uri", "")
+	else:
+		scheme = ProjectSettings.get_setting(SETTING_SCHEME, "") if ProjectSettings.has_setting(SETTING_SCHEME) else ""
+		claimed = ProjectSettings.get_setting(SETTING_CLAIMED, "") if ProjectSettings.has_setting(SETTING_CLAIMED) else ""
+	var schemes: Array = []
+	var links: Array = []
+	if scheme is String and scheme != "":
+		var uri := native_redirect_uri("scheme", {"scheme": scheme})
+		if uri != "":
+			schemes.append(uri)
+	if claimed is String and claimed != "" and classify_native_redirect_uri(claimed) == "claimed":
+		links.append(claimed)
+	return {"schemes": schemes, "claimed": links}
+
+
+## The registration a start uses: each key of `opts` (`registered_schemes`, `registered_claimed`) overrides the default
+## from `defaults` ({schemes, claimed}, normally the opener's, i.e. the project settings).
+static func merge_registered(opts: Dictionary, defaults: Dictionary) -> Dictionary:
+	return {
+		"schemes": opts["registered_schemes"] if opts.has("registered_schemes") else defaults.get("schemes", []),
+		"claimed": opts["registered_claimed"] if opts.has("registered_claimed") else defaults.get("claimed", []),
+	}
+
+
 # ── 2. The redirect URI ──────────────────────────────────────────────────────────────────
 
 ## "loopback", "claimed" or "scheme", or "" when it is none (§12.12: `localhost`, another path, a

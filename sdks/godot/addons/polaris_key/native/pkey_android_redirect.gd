@@ -9,14 +9,14 @@ extends RefCounted
 ## The project registers a redirect in its project settings (`polaris_key/native_redirect/scheme`, a reverse-DNS
 ## scheme name, and/or `polaris_key/native_redirect/claimed_uri`, a verified `https://host/path` App Link); the
 ## export adds the matching intent filter to the plugin's redirect activity, and adds none when both are unset
-## (then the sign-in answers `redirect-unavailable` and the kit offers a code). The plugin is found by a call
+## (then the sign-in answers `redirect-unavailable` and the kit offers a code). Start options override per key. The plugin is found by a call
 ## (`capabilities`), never by `has_method`: a JNI singleton answers false to that.
 ##
 ## The delivery URL carries the authorization code: it passes through here once and is never printed or stored.
 
 ## The Android facade whose plugin does the work (PKeyAndroid.shared() unless a test sets it).
 var android: PKeyAndroid = null
-## Tests only: the registered redirects ({scheme, claimed_uri}) instead of the project settings.
+## Tests only: {scheme, claimed_uri} instead of the project settings.
 var settings: Variant = null
 
 var _session: WeakRef = null
@@ -29,39 +29,22 @@ func _facade() -> PKeyAndroid:
 	return android
 
 
-func _scheme() -> String:
-	var raw: Variant = settings.get("scheme") if settings is Dictionary else (ProjectSettings.get_setting(PKeyAndroidExport.REDIRECT_SCHEME_SETTING, "") if ProjectSettings.has_setting(PKeyAndroidExport.REDIRECT_SCHEME_SETTING) else "")
-	return PKeyAndroidExport.redirect_scheme(raw)
-
-
-func _claimed() -> String:
-	var raw: Variant = settings.get("claimed_uri") if settings is Dictionary else (ProjectSettings.get_setting(PKeyAndroidExport.REDIRECT_CLAIMED_SETTING, "") if ProjectSettings.has_setting(PKeyAndroidExport.REDIRECT_CLAIMED_SETTING) else "")
-	return PKeyAndroidExport.redirect_claimed(raw)
-
-
-## True when the plugin can open the page and take the redirect back (the build carries the plugin) AND the project
-## registered at least one redirect.
+## True when the plugin can open the page and take the redirect back (the build carries the plugin). Whether a
+## redirect is registered is the start's business: with none, no class applies and the sign-in answers
+## `redirect-unavailable`.
 func available() -> bool:
-	return _facade().auth_redirect_available() and (_scheme() != "" or _claimed() != "")
+	return _facade().auth_redirect_available()
 
 
-## The registered redirects as full redirect URIs: {schemes: [...], claimed: [...]}.
+## The redirects the project settings register (the defaults; start options override per key): {schemes, claimed}.
 func registered() -> Dictionary:
-	var schemes: Array = []
-	var claimed: Array = []
-	var s := _scheme()
-	if s != "":
-		schemes.append(PKeyNativeRedirect.native_redirect_uri("scheme", {"scheme": s}))
-	var c := _claimed()
-	if c != "" and PKeyNativeRedirect.classify_native_redirect_uri(c) == "claimed":
-		claimed.append(c)
-	return {"schemes": schemes.filter(func(u): return u != ""), "claimed": claimed}
+	return PKeyNativeRedirect.settings_redirects(settings)
 
 
-## Whether `redirect_uri` is one this build registered.
+## Whether `redirect_uri` is a scheme or claimed-HTTPS redirect this opener can take.
 func owns(redirect_uri: String) -> bool:
-	var r := registered()
-	return redirect_uri in r["schemes"] or redirect_uri in r["claimed"]
+	var cls := PKeyNativeRedirect.classify_native_redirect_uri(redirect_uri)
+	return cls == "scheme" or cls == "claimed"
 
 
 ## Wait for the redirect of `session` (a PKeySignInSession): the delivery goes to `session.handle_redirect`.
@@ -80,9 +63,9 @@ func open(session: PKeySignInSession, issuer_host: String) -> int:
 	var uri := session.redirect_uri
 	var scheme := ""
 	var claimed := ""
-	if session.redirect_class == "scheme" and uri in registered()["schemes"]:
-		scheme = _scheme()
-	elif session.redirect_class == "claimed" and uri in registered()["claimed"]:
+	if session.redirect_class == "scheme":
+		scheme = uri.get_slice(":", 0)
+	elif session.redirect_class == "claimed":
 		claimed = uri
 	else:
 		return ERR_UNAVAILABLE

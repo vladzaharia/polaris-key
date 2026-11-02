@@ -17,6 +17,7 @@ public enum PlatformBinaryOps {
         SyncBulkOps(
             sink: sink, registry: SyncBulkRegistry.shared, allowLoopbackHttp: environment["PKEY_APPLE_SELFTEST"] == "1"
         ).register(into: &ops)
+        WebAuthHost(sink: sink).register(into: &ops)
         #if canImport(Network)
             BonjourHost(sink: sink).register(into: &ops)
         #endif

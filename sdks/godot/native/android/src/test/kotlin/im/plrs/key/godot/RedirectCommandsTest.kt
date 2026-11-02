@@ -80,6 +80,11 @@ class RedirectCommandsTest {
             "https://user@key.example.test/authorize",
             "https://key.example.test/authorize#frag",
             "javascript:alert(1)",
+            "https://key.example.test:8443/authorize?x=1",
+            "https://key.example.test:80/authorize",
+            "https://key.example.test/auth orize",
+            "https://key.example.test\\@evil.test/authorize",
+            "https://key.example.test/authorize\n",
             "",
         )
         for (u in bad) {

@@ -147,11 +147,13 @@ class RedirectCommands(private val c: Commands, private val tabs: TabLauncher = 
     }
 
     companion object {
-        /** An HTTPS authorize page on [issuerHost] and nowhere else: no userinfo, no fragment, no port override. */
+        /** An HTTPS authorize page on [issuerHost] and nowhere else: no userinfo, fragment, odd port, whitespace, backslash or control character. */
         internal fun authorizeUrlOk(url: String, issuerHost: String): Boolean {
             if (url.isEmpty() || url.length > MAX_URL_LENGTH || issuerHost.isEmpty() || url.indexOf('#') >= 0) return false
+            if (url.any { it.isWhitespace() || it == '\\' || it.isISOControl() }) return false
             val u = Uri.parse(url)
-            return u.scheme == "https" && u.userInfo == null && u.host.equals(issuerHost, ignoreCase = true) && u.authority?.contains('@') == false
+            return u.scheme == "https" && u.userInfo == null && u.host.equals(issuerHost, ignoreCase = true) &&
+                u.authority?.contains('@') == false && (u.port == -1 || u.port == 443)
         }
 
         /** A claimed HTTPS redirect URI: a host, an exact path, no query, fragment or userinfo. */

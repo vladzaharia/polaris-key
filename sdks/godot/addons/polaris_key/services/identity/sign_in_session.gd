@@ -246,6 +246,14 @@ func handle_redirect(url: String) -> PKeySignInOutcome:
 	return await _settle_native()
 
 
+## The sheet ended with an error: the sign-in fails, nothing was redeemed.
+func _sheet_failed() -> PKeySignInOutcome:
+	if _settled != null or _cancelled or _native == null or _native.pending.is_empty():
+		return _settled
+	_native.arrive({"kind": "failed", "reason": "browser-failed"})
+	return await _settle_native()
+
+
 ## Native redirect: wait for the redirect (the listener, or `handle_redirect`), then redeem it.
 func _wait_native() -> PKeySignInOutcome:
 	if _running:

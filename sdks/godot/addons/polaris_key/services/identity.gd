@@ -93,11 +93,15 @@ var redirect_entropy: Dictionary = {}
 ## members of PKeyLoopbackListener: port, start, close, poll, is_closed) instead of a bound socket.
 var listener_factory: Callable = Callable()
 ## Tests only: "" reads the platform; "desktop", "android" or "other" forces whether a listener can be bound
-## (desktop) or the Android opener is used (android).
+## (desktop), or the Android or Apple opener is used ("android", "ios").
 var native_platform := ""
 ## The mobile opener of a native redirect sign-in (an object with available / registered / owns / attach / open /
-## cancel; PKeyAndroidRedirect on Android). Null reads the platform; hosts and tests may set their own.
+## cancel; PKeyAndroidRedirect on Android, PKeyAppleRedirect on iOS and macOS). Null reads the platform; hosts and
+## tests may set their own.
 var native_opener: Object = null
+## Tests and hosts: the system browser sheet behind the Apple opener (a PKeyAppleAuth, or a stand-in with `open`,
+## `cancel_sheet` and `sheet_id`). Null reads the process's, with the plugin.
+var auth_opener: Object = null
 ## Conformance replay only: false skips the forced sync after a redirect token (the `redirect-web-*`
 ## recordings hold the token exchange, not the sync that follows it).
 var redirect_acquisition_sync := true
@@ -438,16 +442,14 @@ func _begin_native(opts: Dictionary) -> PKeySignInSession:
 	var desktop := PKeyNativeRedirect.is_desktop() if native_platform == "" else native_platform == "desktop"
 	# A phone's redirect is the project's registered scheme or App Link, delivered by the OS (opts may name their own).
 	var opener := _mobile_opener()
-	var registered_schemes: Array = opts.get("registered_schemes", [])
-	var registered_claimed: Array = opts.get("registered_claimed", [])
-	if opener != null and not opts.has("registered_schemes") and not opts.has("registered_claimed"):
-		var mine: Dictionary = opener.registered()
-		registered_schemes = mine["schemes"]
-		registered_claimed = mine["claimed"]
+	var registered := PKeyNativeRedirect.merge_registered(opts, opener.registered() if opener != null else {})
 	var can_listen: bool = (not PKeyNativeRedirect.is_headless() if not opts.has("loopback") else opts["loopback"] == true) and desktop and return_page != ""
+	if can_listen and not opts.has("loopback") and OS.get_environment("APP_SANDBOX_CONTAINER_ID") != "" and not (registered["schemes"] as Array).is_empty() and opener != null:
+		# A sandboxed macOS export may not hold a listening socket: use the registered scheme.
+		can_listen = false
 	var choice := PKeyNativeRedirect.choose_redirect_class({
 		"request_endpoint": request_endpoint, "discovery": native, "can_listen": can_listen,
-		"registered_schemes": registered_schemes, "registered_claimed": registered_claimed,
+		"registered_schemes": registered["schemes"], "registered_claimed": registered["claimed"],
 	})
 	if choice["kind"] == "unavailable":
 		var gone := _failed(StringName(choice["code"]), "No native redirect can start here; sign in with a code instead (%s)." % choice["reason"])
@@ -530,14 +532,20 @@ func _begin_native(opts: Dictionary) -> PKeySignInSession:
 	return failure
 
 
-## The opener a phone's native redirect uses, or null (a desktop, the web, a build without the plugin, or a project
-## that registered no scheme or link: then no class applies and the sign-in answers `redirect-unavailable`).
+## The opener a phone's native redirect uses (PKeyAndroidRedirect on Android, PKeyAppleRedirect on iOS and macOS), or
+## null (the web, a build without the plugin or the sheet ops). Which redirect is registered is the start's business:
+## with none, no class applies and the sign-in answers `redirect-unavailable`.
 func _mobile_opener() -> Object:
 	if native_opener == null:
-		var on_android := OS.get_name() == "Android" if native_platform == "" else native_platform == "android"
-		if not on_android:
+		var os_name := OS.get_name() if native_platform == "" else {"android": "Android", "ios": "iOS"}.get(native_platform, "")
+		if os_name == "Android":
+			native_opener = PKeyAndroidRedirect.new()
+		elif os_name == "iOS" or os_name == "macOS":
+			var apple := PKeyAppleRedirect.new()
+			apple.auth = auth_opener
+			native_opener = apple
+		else:
 			return null
-		native_opener = PKeyAndroidRedirect.new()
 	return native_opener if native_opener.available() else null
 
 

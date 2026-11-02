@@ -584,6 +584,28 @@ func _android(t: PKeyTestContext) -> void:
 	# The registered redirects, from the project settings' shapes.
 	var o2 := PKeyAndroidRedirect.new()
 	o2.settings = {"scheme": "com.tidewater.studio", "claimed_uri": "https://game.example/open/pkey"}
-	t.check("android redirect: registered() names the scheme URI and the claimed link", o2.registered() == {"schemes": [SCHEME], "claimed": ["https://game.example/open/pkey"]} and o2.owns(SCHEME) and o2.owns("https://game.example/open/pkey") and not o2.owns("com.other.app:/pkey/callback"))
+	t.check("android redirect: registered() names the scheme URI and the claimed link", o2.registered() == {"schemes": [SCHEME], "claimed": ["https://game.example/open/pkey"]} and o2.owns(SCHEME) and o2.owns("https://game.example/open/pkey") and not o2.owns("http://game.example/open"))
 	o2.settings = {"scheme": "https", "claimed_uri": "http://game.example/open"}
 	t.check("android redirect: a reserved scheme and a non-HTTPS link register nothing", o2.registered() == {"schemes": [], "claimed": []})
+
+	# Registration model: project settings are the defaults; each start option overrides its own key.
+	rig = await _phone()
+	bed = rig[0]
+	fake = rig[1]
+	var d1: PKeySignInSession = await bed.sdk.identity.sign_in.start({"channel": "redirect", "registered_claimed": []})
+	t.check("registration: an override of the other key keeps the settings' scheme", d1.ok and d1.redirect_class == "scheme" and d1.redirect_uri == SCHEME, str(d1))
+	var d2: PKeySignInSession = await bed.sdk.identity.sign_in.start({"channel": "redirect", "registered_schemes": []})
+	t.check("registration: an empty override of the scheme key registers none: redirect-unavailable", not d2.ok and d2.code == &"redirect-unavailable", str(d2))
+	rig[2].free()
+	bed.free_all()
+	rig = await _phone("")
+	bed = rig[0]
+	fake = rig[1]
+	fake.auth_filters = [SCHEME]
+	var d3: PKeySignInSession = await bed.sdk.identity.sign_in.start({"channel": "redirect", "registered_schemes": [SCHEME]})
+	t.check("registration: with nothing in the settings the option registers the scheme", d3.ok and d3.redirect_class == "scheme" and fake.auth_opened.size() == 1, str(d3))
+	rig[2].free()
+	bed.free_all()
+	var apple := PKeyAppleRedirect.new()
+	apple.settings = {"scheme": "com.tidewater.studio", "claimed_uri": "https://game.example/open/pkey"}
+	t.check("registration: the Apple opener takes the scheme only", apple.registered() == {"schemes": [SCHEME], "claimed": []} and apple.owns(SCHEME) and not apple.owns("https://game.example/open/pkey"))
