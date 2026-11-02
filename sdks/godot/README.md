@@ -881,6 +881,10 @@ hook) is handed to `PolarisKey.identity.sign_in.handle_redirect(url)`. Mobile, w
 (SSH, CI, no display) and a product without the pushed-request endpoint fail with `redirect-unavailable`
 before anything is sent: offer the device code instead.
 
+- A desktop call to `sign_in.start` with no `redirect_uri` starts the native flow, so a web-mode caller passes `redirect_uri`.
+- `loopback: true` and the listener factory are test hooks; a game does not set them.
+- When the frame ticker cannot attach (no scene tree yet), call `session.wait()`: it drives the listener.
+
 ```gdscript
 var s := await PolarisKey.identity.sign_in.start({channel = "redirect"})
 if not s.ok and s.code == &"redirect-unavailable":

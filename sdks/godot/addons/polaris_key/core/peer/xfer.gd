@@ -434,6 +434,23 @@ class Machine extends RefCounted:
 		_accept(t)
 		return _out
 
+	## The host's room check failed when the person accepted: `CANCEL quota` for that one transfer and
+	## the session stays. A partial this transfer made at 0 bytes goes; one with bytes kept stays.
+	func no_room(at: float, id: String) -> Dictionary:
+		if not _begin(at):
+			return _out
+		var t = _tr.get(id)
+		if t == null or t.dir != "in" or (t.st != "asking" and not t.accepted):
+			return _out
+		_out["send"].append({"t": "CANCEL", "id": id, "reason": "quota"})
+		for p in _parts:
+			if p["ref"] == t.partial and int(p["bytes"]) == 0:
+				_eff({"discard": p["ref"]})
+				_parts = _parts.filter(func(x: Dictionary) -> bool: return x != p)
+				break
+		_end(t, true)
+		return _out
+
 	## The host cancels a transfer.
 	func cancel(at: float, id: String) -> Dictionary:
 		if not _begin(at):

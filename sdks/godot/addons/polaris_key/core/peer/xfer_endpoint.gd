@@ -251,6 +251,8 @@ func _invoke(c: Dictionary) -> Dictionary:
 			out = _machine.cancel(at, c["id"])
 		"fail":
 			out = _machine.fail(at, c["id"])
+		"no_room":
+			out = _machine.no_room(at, c["id"])
 		"tick":
 			out = _machine.tick(at)
 		"abandon":
@@ -264,14 +266,22 @@ func _invoke(c: Dictionary) -> Dictionary:
 ## Effects, then records, then events. A failed port ends the session and skips the rest of this output.
 func _perform(out: Dictionary, offered: String) -> void:
 	var failed := {}
+	var full := ""
 	if not _failed:
 		for e: Dictionary in out["partial"]:
 			var r: Variant = _apply.call(e) if _apply.is_valid() else null
 			if r is Callable:
 				r = await _worker(r)
 			if r is PKeyResult and not (r as PKeyResult).ok:
-				await _fail("the store refused an effect")
-				return
+				# No room for the transfer the person just accepted: it alone is cancelled.
+				var ref: Variant = e.get("create", e.get("truncate"))
+				if full == "" and ref != null and _no_room(r):
+					for p: Dictionary in _machine.partials():
+						if p["ref"] == ref:
+							full = String(p["id"])
+				if full == "":
+					await _fail("the store refused an effect")
+					return
 		if _place.is_valid():
 			for r: Dictionary in out["results"]:
 				if r.get("outcome") == "delivered" and r.get("again", false) != true:
@@ -282,6 +292,8 @@ func _perform(out: Dictionary, offered: String) -> void:
 		if _machine != null and not out["delivered"].is_empty():
 			_machine.remember_delivered(out["delivered"], _clock())
 		for s: Dictionary in out["send"]:
+			if full != "" and s["t"] == "ACCEPT" and s["id"] == full:
+				continue
 			if not await _perform_send(s, failed):
 				return
 	for id: String in out["withdraw"]:
@@ -295,6 +307,13 @@ func _perform(out: Dictionary, offered: String) -> void:
 	for id: String in failed:
 		if not _dead:
 			_queue.push_front({"k": "fail", "id": id})
+	if full != "" and not _dead:
+		_queue.push_front({"k": "no_room", "id": full})
+
+
+## True when the store refused for want of room (and for nothing else).
+static func _no_room(r: PKeyResult) -> bool:
+	return r.detail is Dictionary and (r.detail as Dictionary).get("reason") == "space"
 
 
 ## False when a port failed.
