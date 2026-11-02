@@ -25,6 +25,7 @@ import {
 } from "./drive.js";
 import type { AutoOutcome, SignInPrimitives } from "@polaris-key/ui-core";
 import { linkOfferOutcome, primitivesOf } from "./auto.js";
+import { PkLinkPairing, PkTransferOffer } from "./connect.js";
 import { PkElement, type PkActionDetail } from "./element.js";
 import { isHolder, readHolderFields } from "./holderViews.js";
 import { TAGS } from "./layout.js";
@@ -678,7 +679,11 @@ export const ELEMENTS: Readonly<Record<ScreenName, typeof PkElement>> =
           ? (PkSignIn as unknown as typeof PkElement)
           : c === "UpdatePrompt"
             ? (PkUpdatePrompt as unknown as typeof PkElement)
-            : componentClass(c),
+            : c === "LinkPairing"
+              ? (PkLinkPairing as unknown as typeof PkElement)
+              : c === "TransferOffer"
+                ? (PkTransferOffer as unknown as typeof PkElement)
+                : componentClass(c),
     ]),
   ) as Record<ScreenName, typeof PkElement>;
 

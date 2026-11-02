@@ -9152,14 +9152,14 @@
       "note": "Screen reader label; never shown. Names the pairing code both people compare. Arguments: {code} = the pairing code, spelled out by the kit."
     },
     "transferOffer.ask": {
-      "value": "{device} wants to send you {name}",
+      "value": "{device} wants to send you a file",
       "role": "title",
-      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose."
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label (text it chose). The file’s own name, size and type are drawn on a row below."
     },
     "transferOffer.askUnnamed": {
-      "value": "A paired device wants to send you {name}",
+      "value": "A paired device wants to send you a file",
       "role": "title",
-      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends."
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label."
     },
     "transferOffer.askBody": {
       "value": "Only accept what you expect.",

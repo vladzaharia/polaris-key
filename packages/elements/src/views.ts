@@ -26,6 +26,7 @@ import { copyPending } from "./copy.js";
 import { LAYOUTS, dialogControls, type Layout } from "./layout.js";
 import { platformLabel } from "./platforms.js";
 import { holderContent, isHolder } from "./holderViews.js";
+import { connectContent, isConnect } from "./connectViews.js";
 import { syncContent } from "./syncViews.js";
 import {
   actions,
@@ -90,6 +91,7 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
   const { view, input } = c;
   const keys = new Set(view.copy);
   if (isHolder(view.component)) return holderContent(c);
+  if (isConnect(view.component)) return connectContent(c);
   switch (view.component) {
     case "UnlockSync":
     case "RecoveryCode":
@@ -371,6 +373,8 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
         (view.state === "done" || view.state === "link-done")) ||
       (view.component as string) === "ActivateDone" ||
       (view.component === "SaveConflict" && view.state === "kept") ||
+      ((view.component as string) === "TransferOffer" &&
+        view.state === "done") ||
       ((view.component as string) === "AddToAccount" && view.state === "added")
         ? successMark()
         : view.component === "SignIn" &&

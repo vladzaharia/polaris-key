@@ -247,6 +247,8 @@ export interface TransferOfferSnapshot {
   step: TransferOfferStep | "closed";
   device?: string;
   name: string;
+  size?: number;
+  type?: string;
 }
 
 export interface TransferOfferOptions {
@@ -255,6 +257,9 @@ export interface TransferOfferOptions {
   device?: string | null;
   /** What it offers (text the contact chose). */
   name: string;
+  /** The size in bytes and the media type, when the contact said. */
+  size?: number;
+  type?: string;
   base?: UiInput;
   deliver?: Deliver;
 }
@@ -273,6 +278,8 @@ export class TransferOfferModel {
         step: "ask",
         name: options.name,
         ...(options.device ? { device: options.device } : {}),
+        ...(options.size !== undefined ? { size: options.size } : {}),
+        ...(options.type ? { type: options.type } : {}),
       },
       { deliver: options.deliver },
     );
@@ -283,11 +290,17 @@ export class TransferOfferModel {
   }
 
   input(): UiInput {
-    const { step, device, name } = this.store.get();
+    const { step, device, name, size, type } = this.store.get();
     if (step === "closed") return this.base;
     return {
       ...this.base,
-      transferOffer: { step, name, ...(device ? { device } : {}) },
+      transferOffer: {
+        step,
+        name,
+        ...(device ? { device } : {}),
+        ...(size !== undefined ? { size } : {}),
+        ...(type ? { type } : {}),
+      },
     };
   }
 

@@ -141,15 +141,20 @@ describe("<LinkPairing>", () => {
     );
     expect(f.log).toContain("confirm");
     // The other person may still be comparing against this screen: the code, the reported line and
-    // the categories stay, the wait is said in the status region, and Codes match is gone.
+    // the categories stay, the wait is said beside the dot, and Codes match is gone.
     expect(document.querySelector(".pair-code")?.textContent).toBe("123 456");
     expect(document.querySelector(".pair-reported")?.textContent).toBe(
       "Reported by the device: Maya's laptop",
     );
     expect(document.querySelector(".pair-cats")).toBeTruthy();
+    // The title is what a screen reader reads; the words beside the dot are not read again.
+    const wait = document.querySelector("[role=status]")!;
+    expect(wait.textContent?.toLowerCase()).toContain(
+      "waiting for them to confirm",
+    );
     expect(
-      document.querySelector("[role=status]")?.textContent?.toLowerCase(),
-    ).toContain("waiting for them to confirm");
+      wait.querySelector("[aria-hidden=true]:not(.pair-dot)"),
+    ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Codes match" })).toBeNull();
     act(() =>
       f.seen.o!.onLinked({ label: "Maya's laptop", categories: ["contacts"] }),
@@ -288,9 +293,7 @@ describe("<TransferOffer>", () => {
     expect(
       screen.getByText((_, el) =>
         el?.getAttribute("data-key") === "transferOffer.ask"
-          ? /Maya's laptop wants to send you holiday\.zip/.test(
-              el.textContent ?? "",
-            )
+          ? /Maya's laptop wants to send you a file/.test(el.textContent ?? "")
           : false,
       ),
     ).toBeTruthy();
@@ -316,10 +319,42 @@ describe("<TransferOffer>", () => {
     const name = `${"holiday-photos-".repeat(6)}final.zip`;
     render(<TransferOffer driver={d} device="Ana" name={name} />);
     const h = screen.getByRole("heading", { level: 1 });
-    expect(h.textContent).toContain("…");
-    expect(h.textContent).toContain("final.zip");
-    expect(h.textContent!.length).toBeLessThan(name.length);
-    expect(document.querySelector(".pair-file")?.textContent).toBe(name);
+    // The heading no longer carries the name; its row elides the middle and keeps the extension,
+    // and the whole name stays one hover away.
+    expect(h.textContent).toBe("Ana wants to send you a file");
+    const row = document.querySelector(".pair-file")!;
+    expect(row.textContent).toContain("…");
+    expect(row.textContent).toMatch(/final\.zip$/);
+    expect(row.textContent!.length).toBeLessThanOrEqual(48);
+    expect(row.getAttribute("title")).toBe(name);
+  });
+
+  it("shows the size and type under the name when the contact said", () => {
+    const { d } = driverOf();
+    render(
+      <TransferOffer
+        driver={d}
+        device="Ana"
+        name="a.zip"
+        size={4_200_000}
+        type="application/zip"
+      />,
+    );
+    expect(document.querySelector(".pair-meta")?.textContent).toBe(
+      "4.2 MB · application/zip",
+    );
+  });
+
+  it("Escape does nothing while receiving; Cancel stops it", async () => {
+    const d: TransferOfferDriver = {
+      accept: () => new Promise(() => {}),
+      decline: async () => {},
+    };
+    render(<TransferOffer driver={d} device="Ana" name="a.txt" />);
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    await waitFor(() => screen.getByRole("progressbar"));
+    fireEvent.keyDown(document.querySelector(".pk-root")!, { key: "Escape" });
+    expect(screen.getByRole("progressbar")).toBeTruthy();
   });
 
   it("receiving shows a progress bar and Cancel", async () => {
@@ -342,7 +377,7 @@ describe("<TransferOffer>", () => {
     expect(
       document.querySelector('[data-key="transferOffer.askUnnamed"]')
         ?.textContent,
-    ).toBe("A paired device wants to send you a.txt");
+    ).toBe("A paired device wants to send you a file");
   });
 });
 

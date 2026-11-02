@@ -124,6 +124,9 @@ export interface UseTransferOfferOptions {
   device?: string | null;
   /** What it offers. */
   name: string;
+  /** Its size in bytes and media type, when the contact said. */
+  size?: number;
+  type?: string;
   base?: UiInput;
 }
 
@@ -145,6 +148,8 @@ export function useTransferOffer(o: UseTransferOfferOptions): UseTransferOffer {
     driver: o.driver,
     device: o.device,
     name: o.name,
+    size: o.size,
+    type: o.type,
     base: o.base,
   });
   const model = ref.current;

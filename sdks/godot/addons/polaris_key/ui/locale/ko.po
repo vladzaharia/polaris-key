@@ -6173,15 +6173,15 @@ msgstr "연결이 끊어졌습니다. 연결된 것이 없습니다."
 msgid "a11y.linkCode"
 msgstr "연결 코드 {code}"
 
-#. {device} wants to send you {name}
-#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose.
+#. {device} wants to send you a file
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label (text it chose). The file’s own name, size and type are drawn on a row below.
 msgid "transferOffer.ask"
-msgstr "{device}에서 {name}을(를) 보내려고 합니다"
+msgstr "{device}에서 파일을 보내려고 합니다"
 
-#. A paired device wants to send you {name}
-#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
+#. A paired device wants to send you a file
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label.
 msgid "transferOffer.askUnnamed"
-msgstr "연락처에서 {name}을(를) 보내려고 합니다"
+msgstr "연락처에서 파일을 보내려고 합니다"
 
 #. Only accept what you expect.
 #. TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title.

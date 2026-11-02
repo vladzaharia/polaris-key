@@ -40,6 +40,7 @@ export const COMPONENT_FAMILIES = [
   "cloudSync",
   "saveConflict",
   "holders",
+  "connect",
 ] as const;
 
 /** A family's rows. `holders` also holds the SignIn and AccountAndLicense rows of UK-42 (the

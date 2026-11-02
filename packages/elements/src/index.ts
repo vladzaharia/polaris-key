@@ -32,6 +32,13 @@ export {
   type FormInput,
   type FormStep,
 } from "./signin.js";
+export {
+  PkLinkPairing,
+  PkTransferOffer,
+  type OfferAnswer,
+  type OfferInfo,
+  type OfferSource,
+} from "./connect.js";
 export { settingLabel } from "./views.js";
 export {
   HOLDER_LAYOUTS,

@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   categoryFallback,
+  connectEscape,
   LinkPairingModel,
   shortName,
   TransferOfferModel,
@@ -152,6 +153,25 @@ describe("LinkPairingModel", () => {
     expect(shortName("holiday.zip")).toBe("holiday.zip");
     expect(categoryFallback("tax-forms")).toBe("Tax forms");
     expect(categoryFallback("photos")).toBe("Photos");
+    expect(categoryFallback("voice_memos")).toBe("Voice memos");
+  });
+
+  it("Escape answers decline, cancel or done, and nothing while a transfer arrives", () => {
+    const esc = (input: object) =>
+      connectEscape(
+        viewOf("TransferOffer", {
+          ...BASE,
+          services: ["connect"],
+          ...input,
+        } as never),
+      );
+    expect(esc({ transferOffer: { step: "ask", name: "a" } })).toBe(
+      "transferOffer.decline",
+    );
+    expect(esc({ transferOffer: { step: "receiving", name: "a" } })).toBeNull();
+    expect(esc({ transferOffer: { step: "done", name: "a" } })).toBe(
+      "common.done",
+    );
   });
 
   it("decline closes that session and the window stays open", async () => {

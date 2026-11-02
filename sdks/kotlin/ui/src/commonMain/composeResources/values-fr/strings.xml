@@ -2340,10 +2340,10 @@
     <string name="linkPairing_failedClosed">La connexion s’est fermée. Rien n’a été associé.</string>
     <!-- Screen reader label; never shown. Names the pairing code both people compare. Arguments: {code} = the pairing code, spelled out by the kit. Arguments: 1=code. -->
     <string name="a11y_linkCode">Code d’association %1$s</string>
-    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose. Arguments: 1=device, 2=name. -->
-    <string name="transferOffer_ask">%1$s veut vous envoyer %2$s</string>
-    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends. Arguments: 1=name. -->
-    <string name="transferOffer_askUnnamed">Un contact veut vous envoyer %1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label (text it chose). The file’s own name, size and type are drawn on a row below. Arguments: 1=device. -->
+    <string name="transferOffer_ask">%1$s veut vous envoyer un fichier</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. -->
+    <string name="transferOffer_askUnnamed">Un contact veut vous envoyer un fichier</string>
     <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title. -->
     <string name="transferOffer_askBody">N’acceptez que ce que vous attendez.</string>
     <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Accepts the offer. -->

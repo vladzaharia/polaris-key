@@ -11,7 +11,7 @@
 //   - an offer shows the contact's label and the name it chose, both isolated text.
 
 import type { Context } from "../input.js";
-import type { ConnectScreenName } from "../vocabulary.js";
+import type { ConnectScreenName, ScreenName } from "../vocabulary.js";
 import { hiddenView, makeView, type View } from "../view.js";
 
 // ── LinkPairing ────────────────────────────────────────────────────────────────────────────────
@@ -148,9 +148,9 @@ export function shortName(name: string, limit = 40): string {
   return `${chars.slice(0, keep - tail).join("")}…${chars.slice(chars.length - tail).join("")}`;
 }
 
-/** A category id as words when the app gave it no label: "photos" → "Photos", "tax-forms" → "Tax forms". */
+/** A category id as words when the app gave it no label: "photos" → "Photos", "tax-forms" or "voice_memos" → "Tax forms", "Voice memos". */
 export function categoryFallback(id: string): string {
-  const words = id.replace(/-+/g, " ").trim();
+  const words = id.replace(/[-_]+/g, " ").trim();
   return words === "" ? id : words.charAt(0).toUpperCase() + words.slice(1);
 }
 
@@ -217,3 +217,21 @@ export const CONNECT_MODELS: Readonly<
   LinkPairing: linkPairingView,
   TransferOffer: transferOfferView,
 };
+
+/**
+ * The control Escape answers on the inter-account screens: decline a code or an offer, cancel a
+ * window, close a finished screen. `null` where Escape does nothing: a transfer in flight is
+ * stopped by its own Cancel, never by a stray key.
+ */
+export function connectEscape(view: View<ScreenName>): string | null {
+  if (view.component === "TransferOffer" && view.state === "receiving")
+    return null;
+  return (
+    [
+      "linkPairing.decline",
+      "transferOffer.decline",
+      "common.cancel",
+      "common.done",
+    ].find((k) => view.copy.includes(k)) ?? null
+  );
+}

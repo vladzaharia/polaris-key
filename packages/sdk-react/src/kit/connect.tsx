@@ -15,6 +15,9 @@
 import { useEffect, useInsertionEffect, useRef, type ReactNode } from "react";
 import {
   categoryFallback,
+  connectEscape,
+  formatBytes,
+  shortName,
   linkPairingView,
   transferOfferView,
   type ComponentName,
@@ -27,7 +30,14 @@ import {
 import { KitRoot, useKit, type KitAction, type KitProps } from "./component.js";
 import { spellOut, type Layout } from "./contract.js";
 import { useLinkPairing, useTransferOffer } from "./connectHooks.js";
-import { actions, plain, progressBar, text, type KitCtx } from "./parts.js";
+import {
+  actions,
+  plain,
+  progressBar,
+  successMark,
+  text,
+  type KitCtx,
+} from "./parts.js";
 import { CONNECT_LAYOUTS } from "./syncAssets.js";
 import { renderView } from "./views.js";
 
@@ -57,6 +67,15 @@ const CONNECT_CSS = `@layer polaris-key {
 }
 .pk-root .pair-actions {
   display: contents;
+}
+.pk-root .pair-offer {
+  display: grid;
+  gap: var(--pk-space-1);
+}
+.pk-root .pair-meta {
+  margin: 0;
+  color: var(--pk-text-muted);
+  overflow-wrap: anywhere;
 }
 .pk-root .pair-file {
   margin: 0;
@@ -169,7 +188,13 @@ function Screen(
   if (kit.view.state === "hidden") return null;
   const base = kit.ctxFor(kit.view);
   const layout: Layout = CONNECT_LAYOUTS[name];
-  const ctx: KitCtx = { ...base, layout, mark: null, content: null };
+  const done = name === "TransferOffer" && kit.view.state === "done";
+  const ctx: KitCtx = {
+    ...base,
+    layout,
+    mark: done ? successMark() : null,
+    content: null,
+  };
   const content = body ? body(ctx) : null;
   const esc = escape(kit.view);
   return (
@@ -204,16 +229,6 @@ export interface LinkPairingProps extends KitProps {
   /** Done, Cancel or Escape: the host closes the screen. */
   onClose?: () => void;
 }
-
-/** Escape declines a code, cancels a window, and closes a finished screen. */
-const pairEscape = (v: View): string | null =>
-  v.copy.includes("linkPairing.decline")
-    ? "linkPairing.decline"
-    : v.copy.includes("common.cancel")
-      ? "common.cancel"
-      : v.copy.includes("common.done")
-        ? "common.done"
-        : null;
 
 function Categories(props: {
   c: KitCtx;
@@ -319,16 +334,14 @@ function PairBody(props: {
       );
     case "confirm":
       // The other person may still be comparing against this screen: the code stays, and the wait is
-      // said in the status region.
+      // said beside the dot (the title, where focus lands, is what a screen reader reads).
       return (
         <>
           <CodeBlock c={c} />
           <Categories c={c} labels={labels} />
           <p className="pair-wait" role="status">
             <span className="pair-dot" aria-hidden="true" />
-            <span className="visually-hidden">
-              {plain(c, "linkPairing.waiting")}
-            </span>
+            <span aria-hidden="true">{plain(c, "linkPairing.waiting")}</span>
           </p>
           {act(["common.cancel"])}
         </>
@@ -373,7 +386,7 @@ export function LinkPairing(props: LinkPairingProps): ReactNode {
       {...props}
       name="LinkPairing"
       input={props.input ?? {}}
-      escape={pairEscape}
+      escape={connectEscape}
       body={(c) => <PairBody c={c} labels={props.categoryLabels} />}
       route={(a) => {
         if (a.key === "common.done" || a.key === "common.cancel")
@@ -408,7 +421,7 @@ function DrivenPairing(
       {...props}
       name="LinkPairing"
       input={pair.input}
-      escape={pairEscape}
+      escape={connectEscape}
       body={(c) => <PairBody c={c} labels={props.categoryLabels} />}
       route={(a) => {
         switch (a.key) {
@@ -441,28 +454,36 @@ export interface TransferOfferProps extends KitProps {
   device?: string | null;
   /** What it offers (text the contact chose). */
   name?: string;
+  /** Its size in bytes and media type, when the contact said. */
+  size?: number;
+  type?: string;
   /** Decline, Cancel, Done or Escape: the host closes the prompt. */
   onClose?: () => void;
 }
 
-const offerEscape = (v: View): string | null =>
-  v.copy.includes("transferOffer.decline")
-    ? "transferOffer.decline"
-    : v.copy.includes("common.cancel")
-      ? "common.cancel"
-      : v.copy.includes("common.done")
-        ? "common.done"
-        : null;
-
-/** The offer's own row: the whole file name, clamped, apart from the heading; a bar while receiving. */
+/** The offer's own row, apart from the heading: the name with its middle elided, then the size and
+ *  type when the contact said; a bar while receiving. */
 function offerBody(c: KitCtx): ReactNode {
-  const name = c.input.transferOffer?.name ?? "";
-  if (c.view.state === "ask" && name !== "")
+  const t = c.input.transferOffer;
+  const name = t?.name ?? "";
+  if (c.view.state === "ask" && name !== "") {
+    const facts = [
+      t?.size !== undefined ? formatBytes(t.size, c.copy.locale) : "",
+      t?.type ?? "",
+    ].filter(Boolean);
     return (
-      <p className="pair-file" data-part="file">
-        <bdi>{name}</bdi>
-      </p>
+      <div className="pair-offer" data-part="file">
+        <p className="pair-file" title={name}>
+          <bdi>{shortName(name, 48)}</bdi>
+        </p>
+        {facts.length ? (
+          <p className="meta pair-meta" data-part="file-meta">
+            <bdi>{facts.join(" · ")}</bdi>
+          </p>
+        ) : null}
+      </div>
     );
+  }
   if (c.view.state === "receiving") return progressBar(c, undefined);
   return null;
 }
@@ -479,7 +500,7 @@ export function TransferOffer(props: TransferOfferProps): ReactNode {
       {...props}
       name="TransferOffer"
       input={props.input ?? {}}
-      escape={offerEscape}
+      escape={connectEscape}
       body={offerBody}
       route={(a) => {
         if (
@@ -500,6 +521,8 @@ function DrivenOffer(
     driver: props.driver,
     device: props.device,
     name: props.name ?? "",
+    size: props.size,
+    type: props.type,
     base: props.input,
   });
   return (
@@ -507,7 +530,7 @@ function DrivenOffer(
       {...props}
       name="TransferOffer"
       input={offer.input}
-      escape={offerEscape}
+      escape={connectEscape}
       body={offerBody}
       route={(a) => {
         switch (a.key) {
