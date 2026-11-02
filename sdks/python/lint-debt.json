@@ -135,8 +135,7 @@
       "ruff:I001": 1
     },
     "sdks/python/src/polaris_key/identity/redirect.py": {
-      "mypy:union-attr": 3,
-      "ruff:I001": 1
+      "mypy:union-attr": 3
     },
     "sdks/python/src/polaris_key/license/__init__.py": {
       "ruff:I001": 1

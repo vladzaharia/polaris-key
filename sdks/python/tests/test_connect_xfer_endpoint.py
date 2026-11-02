@@ -59,7 +59,12 @@ def test_a_store_without_room_at_accept_cancels_that_transfer_with_quota_and_kee
             raise XferNoRoom(28, "no room")
 
     ep = XferEndpoint(
-        m, send=lambda t, b: sent.append((t, bytes(b))), close=closes.append, read=lambda *a: b"", apply=apply, events=ev
+        m,
+        send=lambda t, b: sent.append((t, bytes(b))),
+        close=closes.append,
+        read=lambda *a: b"",
+        apply=apply,
+        events=ev,
     )
     ep.receive(XFER["OFFER"], xfer_offer_body({"id": ID, "size": 10, "sha256": SHA, "chunk": 10}))
     ep.consent(ID, "accept")

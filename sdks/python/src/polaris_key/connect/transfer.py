@@ -445,7 +445,8 @@ class Transfer:
                 store.purge(key)
         except Exception as err:  # noqa: BLE001 - one peer's cleanup never ends the caller
             _log.warning(
-                "polaris_key: the kept transfers of a removed contact could not be deleted (%s); retrying at the next start",
+                "polaris_key: the kept transfers of a removed contact could not be deleted (%s); "
+                "retrying at the next start",
                 type(err).__name__,
             )
             with self._lock:
