@@ -156,8 +156,7 @@ public class IdentityClient(
     /** The link offer's memory (Link.kt) and its decline record. */
     internal val linkMemory = LinkMemory()
 
-    @Volatile
-    internal var declinedSlotValue: im.plrs.key.core.StateSlot? = null
+    internal val linkDeclined = LinkDeclined(core)
 
     /** The link offer (Link.kt): `pending`, `offer()`, `accept()`, `decline()`, `dismiss()`. */
     public val link: LinkClient get() = LinkClient(this)

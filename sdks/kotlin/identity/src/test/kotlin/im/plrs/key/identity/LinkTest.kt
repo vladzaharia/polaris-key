@@ -40,6 +40,10 @@ import org.junit.Assert.fail
 import org.junit.Test
 import java.io.File
 
+private const val TOKEN_OK =
+    """{"access_token":"pkeyt_signed","token_type":"Bearer","scope":"profile email","schemaVersion":1,""" +
+        """"device":{"id":"D"},"license":null,"subject":"ps_QQMMVm-ciTWvmWEIfhAVgQ"}"""
+
 @OptIn(ConformanceReplayOnly::class)
 class LinkTest {
     private class DurableMem(private val inner: InMemoryDeviceKeyStorage = InMemoryDeviceKeyStorage()) : DeviceKeyStorage by inner {
@@ -56,7 +60,7 @@ class LinkTest {
             sheets++
             return PlatformSubjectToken(token, nonce)
         }
-        override suspend fun signOutCleanup() {}
+        override suspend fun signOutCleanup() = Unit
         override suspend fun credentialRevoked(): Boolean = false
     }
 
@@ -67,8 +71,7 @@ class LinkTest {
     private val nonce1 = "-ajcZR-muye01GgH7qFEoDrU4G1DAv5L3MquJLU7_8Q"
     private val sub = "ps_QQMMVm-ciTWvmWEIfhAVgQ"
     private val grant = "sg_" + "B".repeat(43)
-    private val tokenOk = """{"access_token":"pkeyt_signed","token_type":"Bearer","scope":"profile email","schemaVersion":1,""" +
-        """"device":{"id":"D"},"license":null,"subject":"$sub"}"""
+    private val tokenOk = TOKEN_OK
     private val chooseBody = """{"status":"choose","grant":"$grant","expiresIn":300,"choices":{"state":"choose","choices":[]}}"""
 
     private class World(
@@ -84,9 +87,7 @@ class LinkTest {
         var offer: Pair<Int, String> =
             200 to """{"offer":[{"kind":"google","reach":null},{"kind":"apple","reach":null},{"kind":"other","reach":null}]}"""
         var link: Pair<Int, String> = 200 to """{"linked":{"kind":"apple","reach":"global"}}"""
-        var token: Pair<Int, String> =
-            200 to
-                """{"access_token":"pkeyt_signed","token_type":"Bearer","scope":"profile email","schemaVersion":1,"device":{"id":"D"},"license":null,"subject":"ps_QQMMVm-ciTWvmWEIfhAVgQ"}"""
+        var token: Pair<Int, String> = 200 to TOKEN_OK
     }
 
     private fun world(stateDir: File? = null, linkRoute: Boolean = true, held: String? = "pkeyt_old"): World {
@@ -244,11 +245,8 @@ class LinkTest {
         // Off product: another host, a host that merely starts with the product's, another product's path.
         for (off in listOf("https://evil.example/djdl/identity/token", "https://key.plrs.im.evil.example/djdl/identity/token")) {
             val x = world()
-            try {
-                x.client.redeemForm(off, "x=y", false)
-            } catch (e: PolarisException) {
-                // The scripted Worker answers 404 off its paths; only the request matters here.
-            }
+            // The scripted Worker answers 404 off its paths; only the request matters here.
+            runCatching { x.client.redeemForm(off, "x=y", false) }
             val sent = x.transport.requests().filter { it.url == off }
             assertEquals(1, sent.size)
             assertNull(sent.single().header("authorization"))
@@ -422,7 +420,7 @@ class LinkTest {
         val dir = java.nio.file.Files.createTempDirectory("pkey-link").toFile()
         try {
             val w = world(stateDir = dir)
-            for (i in 0 until 70) w.client.linkRemember("key$i")
+            for (i in 0 until 70) w.client.linkDeclined.remember("key$i")
             val lines = File(dir, "link-declined").readText().split('\n')
             assertEquals(64, lines.size)
             assertEquals("key69", lines.last())

@@ -26,28 +26,16 @@
 
 package im.plrs.key.identity
 
-import im.plrs.key.core.Base64Url
-import im.plrs.key.core.DeviceKeyPersistence
 import im.plrs.key.core.DeviceKeyPort
-import im.plrs.key.core.DeviceProofPurpose
-import im.plrs.key.core.DeviceProofs
 import im.plrs.key.core.ErrorCode
-import im.plrs.key.core.FileStateSlot
 import im.plrs.key.core.JsonText
-import im.plrs.key.core.MemoryStateSlot
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisResponse
-import im.plrs.key.core.StateSlot
 import im.plrs.key.core.arrayValue
 import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import java.io.File
-import java.security.MessageDigest
 
 /** One platform identity the account could add. [reach] is what the link would cover (`global` or `developer`), null until a link is made. */
 public data class LinkOfferEntry(val kind: String, val reach: String?)
@@ -134,18 +122,11 @@ public class LinkClient internal constructor(private val client: IdentityClient)
     public suspend fun offer(): LinkOfferResult {
         val url = client.linkReady(declinedAllowed = false) ?: return LinkOfferResult.Unavailable
         val response = client.linkSend(url, "GET", null)
-        if (response.status == 404) return LinkOfferResult.Unavailable
-        if (response.status != 200) throw client.linkFailure(response)
-        val rows = JsonText.parseOrNull(response.text).objectValue?.get("offer").arrayValue
-            ?: throw PolarisException(ErrorCode.badResponse, "the link offer answered without an offer.")
-        return LinkOfferResult.Ok(
-            rows.mapNotNull { row ->
-                val o = row.objectValue ?: return@mapNotNull null
-                val kind = o["kind"].stringValue?.takeIf { it in KINDS } ?: return@mapNotNull null
-                val reach = o["reach"].stringValue
-                LinkOfferEntry(kind, if (reach == "global" || reach == "developer") reach else null)
-            },
-        )
+        return when (response.status) {
+            HTTP_NOT_FOUND -> LinkOfferResult.Unavailable
+            HTTP_OK -> LinkOfferResult.Ok(parseOffer(response))
+            else -> throw linkFailure(response)
+        }
     }
 
     /**
@@ -160,34 +141,27 @@ public class LinkClient internal constructor(private val client: IdentityClient)
     public suspend fun acceptRecorded(linkHandle: String?, proofValue: String?): LinkAcceptResult = accept(linkHandle, proofValue)
 
     private suspend fun accept(linkHandle: String?, proofValue: String?): LinkAcceptResult {
-        val url = client.linkReady(declinedAllowed = true) ?: return LinkAcceptResult.Unavailable
-        val port = client.deviceKeyPort() ?: return LinkAcceptResult.Unavailable
-        if (port.persistence() == DeviceKeyPersistence.memory) return LinkAcceptResult.Unavailable
+        val ready = client.linkAcceptReady() ?: return LinkAcceptResult.Unavailable
         val explicit = linkHandle ?: client.linkHeldHandle()
         var result: LinkAcceptResult
         if (explicit != null) {
-            result = post(url, port, explicit, proofValue)
+            result = post(ready.url, ready.port, explicit, proofValue)
             // A handle that lapsed or was spent is no error for the person: the provider is asked in the same press.
-            if (linkHandle == null && result is LinkAcceptResult.Refused &&
-                (result.code == ErrorCode.invalidGrant || result.code == ErrorCode.notFound)
-            ) {
+            if (linkHandle == null && isLapsed(result)) {
                 client.linkMemory.dropHandle()
-                result = viaProvider(url, port)
+                result = viaProvider(ready.url, ready.port)
             }
         } else {
-            result = viaProvider(url, port)
+            result = viaProvider(ready.url, ready.port)
         }
         // Linking spends the handle and the step-up, so the next offer is empty (the Worker says so); the app closes the
         // offer with `dismiss()`. An identity another account holds spends them too. Every other answer leaves it where it
         // is: a stale step-up asks the person to sign in again, and a handle nobody issued or a proof that failed spends nothing.
-        when {
-            result is LinkAcceptResult.Linked -> client.linkMemory.dropHandle()
-
-            result is LinkAcceptResult.Refused && result.code == ErrorCode.linkConflict -> {
-                // An identity that belongs to another account is not offered again here (`offer()` answers Unavailable).
-                client.linkMemory.dropHandle()
-                client.linkDeclineKey()?.let { client.linkRemember(it) }
-            }
+        if (result is LinkAcceptResult.Linked) client.linkMemory.dropHandle()
+        if (result is LinkAcceptResult.Refused && result.code == ErrorCode.linkConflict) {
+            // An identity that belongs to another account is not offered again here (`offer()` answers Unavailable).
+            client.linkMemory.dropHandle()
+            client.linkDeclineKey()?.let { client.linkDeclined.remember(it) }
         }
         return result
     }
@@ -196,7 +170,7 @@ public class LinkClient internal constructor(private val client: IdentityClient)
     public suspend fun decline() {
         val key = client.linkDeclineKey()
         client.linkMemory.close()
-        if (key != null) client.linkRemember(key)
+        if (key != null) client.linkDeclined.remember(key)
     }
 
     /** Close the offer for now without remembering a decline. */
@@ -205,167 +179,50 @@ public class LinkClient internal constructor(private val client: IdentityClient)
     }
 
     private suspend fun post(url: String, port: DeviceKeyPort, handle: String, proofValue: String?): LinkAcceptResult {
-        if (!IdentityExchange.isHandle(handle)) return LinkAcceptResult.Refused(404, ErrorCode.notFound)
+        if (!LINK_HANDLE.matches(handle)) return LinkAcceptResult.Refused(HTTP_NOT_FOUND, ErrorCode.notFound)
         val proof = client.linkProof(port, proofValue ?: handle, "-")
         return send(url, mapOf("linkHandle" to JsonPrimitive(handle), "proof" to JsonPrimitive(proof)))
     }
 
     private suspend fun viaProvider(url: String, port: DeviceKeyPort): LinkAcceptResult {
-        val provider = client.platformProvider.get() ?: return LinkAcceptResult.Unavailable
-        val nonce = when (val step = client.requestExchangeNonce(provider.kind, port)) {
-            is NonceStep.Got -> step.nonce.take()
-            is NonceStep.Ended -> return LinkAcceptResult.Unavailable
-        }
-        val subject = try {
-            provider.sheet(nonce, client.audienceFor(provider.kind))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            return LinkAcceptResult.Unavailable
-        } ?: return LinkAcceptResult.Unavailable
-        if (subject.token.isEmpty()) throw PolarisException(ErrorCode.signInFailed, "the platform provider returned no token.")
-        val keys = try {
-            port.ensure()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            throw PolarisException(ErrorCode.deviceKeysUnreadable, "The device keys could not be read.")
-        }
-        val proof = client.linkProof(port, "$nonce.${keys.signKey}", IdentityExchange.tokenHash(subject.token))
-        val body = linkedMapOf(
-            "subjectToken" to JsonPrimitive(subject.token),
-            "nonce" to JsonPrimitive(nonce),
-            "signKey" to JsonPrimitive(keys.signKey),
-            "agreeKey" to JsonPrimitive(keys.agreeKey),
-            "proof" to JsonPrimitive(proof),
-        )
-        if (provider.kind == ExchangeKind.pgs) body["subjectTokenType"] = JsonPrimitive(IdentityExchange.subjectTokenType(provider.kind))
+        val body = client.linkProviderBody(port) ?: return LinkAcceptResult.Unavailable
         return send(url, body)
     }
 
     private suspend fun send(url: String, body: Map<String, JsonPrimitive>): LinkAcceptResult {
         val response = client.linkSend(url, "POST", JsonObject(body).toString().toByteArray(Charsets.UTF_8))
         val o = JsonText.parseOrNull(response.text).objectValue
-        if (response.status == 200) {
+        if (response.status == HTTP_OK) {
             val linked = o?.get("linked").objectValue
             val kind = linked?.get("kind").stringValue?.takeIf { it in KINDS }
                 ?: throw PolarisException(ErrorCode.badResponse, "the link answered without a link.")
             return LinkAcceptResult.Linked(kind, linked?.get("reach").stringValue)
         }
         val code = IdentityExchange.errorCode(o, response.status)
-        if (response.status < 500 && code in REFUSALS) return LinkAcceptResult.Refused(response.status, code)
-        throw client.linkFailure(response)
-    }
-
-    private companion object {
-        val KINDS = setOf("google", "apple", "gamecenter", "pgs")
-        val REFUSALS = setOf(ErrorCode.stepUpRequired, ErrorCode.linkConflict, ErrorCode.invalidGrant, ErrorCode.notFound)
+        if (response.status < HTTP_SERVER_ERROR && code in REFUSALS) return LinkAcceptResult.Refused(response.status, code)
+        throw linkFailure(response)
     }
 }
 
-private const val DECLINED_FILE = "link-declined"
-private const val DECLINED_CAP = 64
+private const val HTTP_OK = 200
+private const val HTTP_NOT_FOUND = 404
+private const val HTTP_SERVER_ERROR = 500
 
-/** The link route when an offer may be made now, else null and no request: no open offer, the offer belongs to another account, the person declined it, the product serves none, or no device token is held. */
-internal suspend fun IdentityClient.linkReady(declinedAllowed: Boolean): String? {
-    val owner = linkMemory.owner() ?: return null
-    val now = core.storedSubject()
-    if (now != null && now != owner) {
-        linkMemory.close()
-        return null
-    }
-    if (core.token() == null) return null
-    if (!declinedAllowed) {
-        val key = linkDeclineKey()
-        if (key != null && key in linkDeclinedSet()) return null
-    }
-    discoverIfNeeded()
-    val route = core.discoveryDocument()?.identity?.endpoints?.get("link")?.takeIf { it.isNotEmpty() } ?: return null
-    if (!route.startsWith(core.endpoints.url(""))) {
-        throw PolarisException(ErrorCode.badResponse, "an identity endpoint points outside this product.")
-    }
-    return route
-}
+/** `lh_` and 43 base64url characters. */
+private val LINK_HANDLE = Regex("lh_[A-Za-z0-9_-]{43}")
+private val KINDS = setOf("google", "apple", "gamecenter", "pgs")
+private val REFUSALS = setOf(ErrorCode.stepUpRequired, ErrorCode.linkConflict, ErrorCode.invalidGrant, ErrorCode.notFound)
 
-internal suspend fun IdentityClient.linkHeldHandle(): String? = linkMemory.held(core.now())
+private fun isLapsed(r: LinkAcceptResult): Boolean =
+    r is LinkAcceptResult.Refused && (r.code == ErrorCode.invalidGrant || r.code == ErrorCode.notFound)
 
-/** Hold the handle an exchange left, for its lifetime. */
-internal suspend fun IdentityClient.linkHold(outcome: ExchangeOutcome) {
-    if (outcome !is ExchangeOutcome.NeedsSignIn) return
-    val handle = outcome.linkHandle ?: return
-    val seconds = outcome.expiresInSeconds?.takeIf { it > 0 } ?: return
-    linkMemory.hold(handle, core.now() + seconds)
-}
-
-/** A licence choice completed: it opens the offer when its redirect started on this device. */
-internal fun IdentityClient.linkChoiceCompleted(grant: String, subject: String?) {
-    if (linkMemory.choiceCompleted(grant)) linkMemory.open(subject)
-}
-
-/** One request to the link route with the device token as bearer (the route is on this product: [linkReady] checked it). */
-internal suspend fun IdentityClient.linkSend(url: String, method: String, body: ByteArray?): PolarisResponse {
-    val token = core.token() ?: throw PolarisException(ErrorCode.noToken, "Sign in before linking.")
-    val headers = buildMap {
-        put("authorization", "Bearer $token")
-        if (body != null) put("content-type", "application/json")
-    }
-    return try {
-        core.request(url, method = method, headers = headers, body = body)
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: PolarisException) {
-        if (e.code == ErrorCode.localOnly) throw e
-        throw PolarisException(ErrorCode.networkError, "the link request could not be sent.")
-    } catch (e: Exception) {
-        throw PolarisException(ErrorCode.networkError, "the link request could not be sent.")
-    }
-}
-
-internal suspend fun IdentityClient.linkProof(port: DeviceKeyPort, value: String, tokenHash: String): String = try {
-    DeviceProofs.sign(port, DeviceProofPurpose.link, core.product, core.deviceId(), value, tokenHash).sig
-} catch (e: CancellationException) {
-    throw e
-} catch (e: Exception) {
-    throw PolarisException(ErrorCode.signInFailed, "the device proof could not be signed.")
-}
-
-/** A refusal that is not one of the link's own: the code and status only. */
-internal fun IdentityClient.linkFailure(response: PolarisResponse): PolarisException {
-    val code = IdentityExchange.errorCode(JsonText.parseOrNull(response.text).objectValue, response.status)
-    return PolarisException(code, "the link route refused the request (${response.status}).", httpStatus = response.status)
-}
-
-/** `sha256(issuer + sub)`, base64url; null while the subject is unknown. */
-internal suspend fun IdentityClient.linkDeclineKey(): String? {
-    val sub = core.storedSubject()?.takeIf { it.isNotEmpty() } ?: return null
-    val issuer = core.discoveryDocument()?.identity?.issuer ?: core.endpoints.url("identity")
-    return Base64Url.encode(MessageDigest.getInstance("SHA-256").digest((issuer + sub).toByteArray(Charsets.UTF_8)))
-}
-
-private fun IdentityClient.declinedSlot(): StateSlot = declinedSlotValue ?: synchronized(this) {
-    declinedSlotValue ?: (core.store.stateDirectory?.let { FileStateSlot(File(it, DECLINED_FILE)) } ?: MemoryStateSlot()).also {
-        declinedSlotValue = it
-    }
-}
-
-private suspend fun IdentityClient.linkDeclinedSet(): List<String> = try {
-    withContext(Dispatchers.IO) { declinedSlot().read() }?.split('\n')?.filter { it.isNotEmpty() } ?: emptyList()
-} catch (e: CancellationException) {
-    throw e
-} catch (e: Exception) {
-    emptyList()
-}
-
-internal suspend fun IdentityClient.linkRemember(key: String) {
-    val all = linkDeclinedSet().toMutableList()
-    if (key in all) return
-    all.add(key)
-    val kept = if (all.size > DECLINED_CAP) all.subList(all.size - DECLINED_CAP, all.size) else all
-    try {
-        withContext(Dispatchers.IO) { declinedSlot().write(kept.joinToString("\n")) }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        // A decline that could not be saved still closes the offer for this run.
+private fun parseOffer(response: PolarisResponse): List<LinkOfferEntry> {
+    val rows = JsonText.parseOrNull(response.text).objectValue?.get("offer").arrayValue
+        ?: throw PolarisException(ErrorCode.badResponse, "the link offer answered without an offer.")
+    return rows.mapNotNull { row ->
+        val o = row.objectValue
+        val kind = o?.get("kind").stringValue?.takeIf { it in KINDS }
+        val reach = o?.get("reach").stringValue
+        kind?.let { LinkOfferEntry(it, reach?.takeIf { r -> r == "global" || r == "developer" }) }
     }
 }

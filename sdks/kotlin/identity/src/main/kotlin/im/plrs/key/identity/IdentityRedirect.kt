@@ -480,7 +480,10 @@ internal suspend fun IdentityClient.redeemForm(tokenEndpoint: String, form: Stri
         if (held != null && tokenEndpoint.startsWith(core.endpoints.url(""))) put("authorization", "Bearer $held")
     }
     val response: PolarisResponse = try {
-        core.request(tokenEndpoint, method = "POST", headers = headers, body = form.toByteArray(Charsets.UTF_8))
+        core.request(
+            tokenEndpoint, method = "POST", headers = headers,
+            body = form.toByteArray(Charsets.UTF_8),
+        )
     } catch (e: CancellationException) {
         throw e
     } catch (e: PolarisException) {

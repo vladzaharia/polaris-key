@@ -11,7 +11,8 @@
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity connect.relay connect.links
 // @pkey-feature identity.redirect.native
 // @pkey-feature identity.exchange identity.pgs sync.keyring sync.settings identity.restore sync.files sync.files.delta sync.saves sync.records
-// @pkey-feature identity.nearby identity.link
+// @pkey-feature identity.nearby
+// @pkey-feature identity.link
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -98,10 +99,6 @@ import im.plrs.key.identity.ExchangeKind
 import im.plrs.key.identity.ExchangeNonce
 import im.plrs.key.identity.ExchangeOutcome
 import im.plrs.key.identity.LicenseChoice
-import im.plrs.key.identity.LinkAcceptResult
-import im.plrs.key.identity.LinkOfferResult
-import im.plrs.key.identity.PlatformIdentityProvider
-import im.plrs.key.identity.PlatformSubjectToken
 import im.plrs.key.identity.RedirectEntropy
 import im.plrs.key.identity.RestoreEnrolResult
 import im.plrs.key.identity.SignInChannel
@@ -149,7 +146,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -256,14 +252,6 @@ class FixtureKeyPort : DeviceKeyPort {
 
 /** An in-memory store with a state directory, for a transcript that seeds the update journal. */
 class ReplayStore(inner: InMemoryStore, override val stateDirectory: java.io.File?) : Store by inner
-
-/** The platform provider of a recorded `link` step: it hands back the recorded token whatever the nonce. */
-private class RecordedProvider(override val kind: ExchangeKind, private val token: String) : PlatformIdentityProvider {
-    override suspend fun silent(nonce: String, serverClientId: String?): PlatformSubjectToken? = null
-    override suspend fun sheet(nonce: String, serverClientId: String?): PlatformSubjectToken? = PlatformSubjectToken(token, nonce)
-    override suspend fun signOutCleanup() {}
-    override suspend fun credentialRevoked(): Boolean = false
-}
 
 object KotlinReplay {
     /** THE mapping from transcript verbs and `expect` keys onto the Kotlin SDK. */
@@ -522,44 +510,8 @@ object KotlinReplay {
                 out["tokenHeld"] = JsonPrimitive(store.getToken().let { it != null && it != before })
             }
 
-            // `client.identity.link` (I-45.10, `identity.link`): the offer and the accept, after a redirect sign-in this client made. A refusal is a result.
-            "linkOffer", "link" -> {
-                val label = args["keyLabel"].stringValue
-                if (label != null && session.keyLabel != label) {
-                    session.keys.use(label)
-                    session.keyLabel = label
-                }
-                client.identity.useDeviceKeys(session.keys)
-                // A step that names a server auth code is Play Games' link by token: the provider hands it back over the nonce.
-                args["serverAuthCode"].stringValue?.let { client.identity.installPlatformIdentity(RecordedProvider(ExchangeKind.pgs, it)) }
-                if (action == "linkOffer") {
-                    when (val r = client.identity.link.offer()) {
-                        is LinkOfferResult.Ok -> {
-                            out["result"] = JsonPrimitive("ok")
-                            out["offer"] = JsonArray(
-                                r.kinds.map { JsonObject(mapOf("kind" to JsonPrimitive(it.kind), "reach" to (it.reach?.let { v -> JsonPrimitive(v) } ?: JsonNull))) },
-                            )
-                        }
-
-                        LinkOfferResult.Unavailable -> out["result"] = JsonPrimitive("unavailable")
-                    }
-                } else {
-                    when (val r = client.identity.link.acceptRecorded(args["linkHandle"].stringValue, args["proofValue"].stringValue)) {
-                        is LinkAcceptResult.Linked -> {
-                            out["result"] = JsonPrimitive("ok")
-                            out["linked"] = JsonObject(mapOf("kind" to JsonPrimitive(r.kind), "reach" to (r.reach?.let { JsonPrimitive(it) } ?: JsonNull)))
-                        }
-
-                        is LinkAcceptResult.Refused -> {
-                            out["result"] = JsonPrimitive("refused")
-                            out["status"] = jsonInt(r.status.toLong())
-                            out["code"] = JsonPrimitive(r.code)
-                        }
-
-                        LinkAcceptResult.Unavailable -> out["result"] = JsonPrimitive("unavailable")
-                    }
-                }
-            }
+            // `client.identity.link` (I-45.10, `identity.link`): the offer and the accept after a redirect sign-in (LinkReplay.kt).
+            "linkOffer", "link" -> LinkReplay.step(client, session, args, action, out)
 
             // `identity.nearby` (V5 section 12.11.5): the new device D's routes (I-45.12) and the approving device M's (I-45.13).
             "nearbyStart", "nearbyPoll", "nearbyApprove" -> nearbyStep(client, step, session, out)
@@ -1381,22 +1333,6 @@ class TranscriptTest : ConformanceSuite() {
 
     @Test
     fun theTranscriptSetIsPresent() = assertTrue(transcripts.isNotEmpty())
-
-    /**
-     * `link-game` also pins Game Center, which this SDK does not run (`identity.gamecenter` is not applicable here):
-     * the conversation is replayed without the Game Center exchange and its link by handle, the Play Games half.
-     */
-    @Test
-    fun linkGameReplaysItsPlayGamesHalf() {
-        val t = transcripts.first { it.id == "link-game" }
-        val steps = t.steps
-        assertEquals("gamecenter", steps.first()["args"]!!.obj["kind"].stringValue)
-        val byHandle = steps.indexOfFirst { it["action"].stringValue == "link" && it["args"]!!.obj["linkHandle"] != null }
-        assertEquals("gamecenter", steps[byHandle]["expect"]!!.obj["linked"]!!.obj["kind"].stringValue)
-        assertEquals("pgs", steps.last()["expect"]!!.obj["linked"]!!.obj["kind"].stringValue)
-        val half = steps.filterIndexed { i, _ -> i != 0 && i != byHandle }
-        KotlinReplay.replay(Transcript(JsonObject(t.json + ("steps" to JsonArray(half)))))
-    }
 
     @Test
     fun replaysEveryApplicableTranscript() {
