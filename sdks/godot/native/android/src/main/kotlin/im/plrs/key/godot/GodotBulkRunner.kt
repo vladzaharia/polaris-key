@@ -232,7 +232,7 @@ class GodotBulkRunner(private val bulk: () -> BulkCommands?) : SyncTransferRunne
             val headers = JSONObject()
             for ((name, values) in conn.headerFields) {
                 val key = name?.lowercase() ?: continue
-                if ((key in BulkCommands.RESPONSE_HEADERS || key.startsWith("x-pkey-")) && values.isNotEmpty()) headers.put(key, values.last().take(HEADER_OUT_MAX))
+                if (key in BulkCommands.RESPONSE_HEADERS && values.isNotEmpty()) headers.put(key, values.last().take(HEADER_OUT_MAX))
             }
             cmds.emitDone(t, r, status, headers, out)
             out = null

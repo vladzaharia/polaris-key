@@ -35,6 +35,8 @@ class FakeChannel:
 	var is_available := true
 	var auto := Callable()
 	var heads: Array = []
+	## "PUT" or "GET" per head, in order.
+	var methods: Array = []
 	var bodies: Array = []
 	var holds := {}
 	var cancelled_reqs: Array = []
@@ -53,9 +55,11 @@ class FakeChannel:
 
 	func put(head: Dictionary, body: PackedByteArray) -> Dictionary:
 		bodies.append(body)
+		methods.append("PUT")
 		return await _serve(head)
 
 	func fetch(head: Dictionary) -> Dictionary:
+		methods.append("GET")
 		return await _serve(head)
 
 	func _serve(head: Dictionary) -> Dictionary:
@@ -90,12 +94,16 @@ class FakeChannel:
 
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _transport(t)
+	await _routes(t)
 	await _engine(t)
 	await _engine_cancel(t)
 	await _sign_out(t)
 	await _late_reply(t)
 	await _apple(t)
 	await _android(t)
+	await _apple_guards(t)
+	await _android_guards(t)
+	await _request_numbers(t)
 	await PKeyTestFixtures.frames(10)
 	return true
 
@@ -110,13 +118,13 @@ func _sha(b: PackedByteArray) -> String:
 	return PKeySyncHkdf.sha256(b).hex_encode()
 
 
-func _rig(ch: BulkChannel) -> Dictionary:
+func _rig(ch: BulkChannel, product := PRODUCT) -> Dictionary:
 	var host := Node.new()
 	(Engine.get_main_loop() as SceneTree).root.add_child(host)
 	# local-only: the PKeyTransport dials nothing, so a JSON call that wrongly stayed on it is visible.
 	var tr := FilesTransport.make_transport(host, true)
 	var ctx := func() -> Dictionary:
-		return {"product": PRODUCT, "token": "pkeyt_secret", "headers": _headers, "url": func(path: String) -> String: return "https://sync.example" + path}
+		return {"product": product, "token": "pkeyt_secret", "headers": _headers, "url": func(path: String) -> String: return "https://sync.example" + path}
 	var ft := FilesTransport.new(tr, ctx)
 	ft.set_channel(ch)
 	return {"ft": ft, "host": host}
@@ -236,6 +244,43 @@ func _transport(t: PKeyTestContext) -> void:
 	# no channel: nothing is routed, and an unavailable one is not used
 	ch.is_available = false
 	t.check("an unavailable channel is not batching", not ft.batching())
+	rig["host"].queue_free()
+
+
+## The callers' requests against the table every bulk channel shares (tests/fixtures/bulk_routes.json): what
+## they send is exactly the allowed rows, and each one is a files path.
+func _routes(t: PKeyTestContext) -> void:
+	var fx: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://tests/fixtures/bulk_routes.json"))
+	if not t.check("bulk: the shared route table is present", fx is Dictionary):
+		return
+	var product: String = fx["product"]
+	var ch := FakeChannel.new()
+	ch.auto = func(_h: Dictionary) -> Variant: return _ok()
+	var rig := _rig(ch, product)
+	var ft: FilesTransport = rig["ft"]
+	var target := {"collection": fx["collection"], "record": fx["record"], "transfer": "%s:%s" % [fx["collection"], fx["record"]]}
+	var body := PackedByteArray([1, 2, 3])
+	var sha := _sha(body)
+	await ft.put_single(target, fx["upload"], body, sha)
+	await ft.put_part(target, fx["upload"], 1, body, sha)
+	await ft.put_part(target, fx["upload"], PKeyConstants.SYNC_MAX_PARTS, body, sha)
+	await ft.put_chunk(target, fx["upload"], fx["chunk"], body, sha)
+	await ft.get_file(target, {"version": null, "range": null, "if_match": null})
+	await ft.get_file(target, {"version": 3, "range": null, "if_match": null})
+	await ft.get_chunk(fx["collection"], fx["chunk"], target["transfer"])
+	var sent := []
+	var all_files := true
+	for i in ch.heads.size():
+		var path: String = (ch.heads[i]["url"] as String).trim_prefix("https://sync.example")
+		sent.append([ch.methods[i], path])
+		all_files = all_files and FilesTransport.is_files_path(product, path)
+	var allowed := []
+	for row in fx["allow"]:
+		allowed.append([row[0], row[1]])
+	sent.sort()
+	allowed.sort()
+	t.check("bulk: the callers send exactly the shared route table", sent == allowed, "%s vs %s" % [sent, allowed])
+	t.check("bulk: every allowed route is a files path", all_files)
 	rig["host"].queue_free()
 
 
@@ -741,6 +786,40 @@ class Partial:
 		return PackedByteArray()
 
 
+## A plugin whose every bulk method answers a fixed status byte.
+class StatusPlugin:
+	extends RefCounted
+	var status := 0
+
+	# gdlint:ignore=function-name
+	func sbOpen(_h: PackedByteArray) -> PackedByteArray:
+		return PackedByteArray([status])
+
+	# gdlint:ignore=function-name
+	func sbStage(_h: PackedByteArray, _p: PackedByteArray) -> PackedByteArray:
+		return PackedByteArray([status])
+
+	# gdlint:ignore=function-name
+	func sbPut(_h: PackedByteArray) -> PackedByteArray:
+		return PackedByteArray([status])
+
+	# gdlint:ignore=function-name
+	func sbGet(_h: PackedByteArray) -> PackedByteArray:
+		return PackedByteArray([status])
+
+	# gdlint:ignore=function-name
+	func sbTake(_h: PackedByteArray) -> PackedByteArray:
+		return PackedByteArray([status])
+
+	# gdlint:ignore=function-name
+	func sbCancel(_h: PackedByteArray) -> PackedByteArray:
+		return PackedByteArray([status])
+
+	# gdlint:ignore=function-name
+	func sbEnd(_h: PackedByteArray) -> PackedByteArray:
+		return PackedByteArray([status])
+
+
 func _bulk_rig() -> Dictionary:
 	var fake := PKeyFakeAppleNative.Bulk.new()
 	var apple := PKeyApple.new()
@@ -932,6 +1011,103 @@ func _apple(t: PKeyTestContext) -> void:
 	(rig3["apple"] as PKeyApple).free()
 	bare.free()
 	other.free()
+
+
+func _android_guards(t: PKeyTestContext) -> void:
+	var plugin := StatusPlugin.new()
+	for status in [0, 1]:
+		plugin.status = status
+		t.check("android bulk: a plugin whose probe answers other than bad input gives no channel (status %d)" % status, PKeyAndroidBulk.create(_ctx, plugin, PKeyAndroid.new()) == null)
+	plugin.status = PKeyAndroidBulk.BAD_INPUT
+	t.check("android bulk: a plugin whose probe answers bad input gives a channel", PKeyAndroidBulk.create(_ctx, plugin, PKeyAndroid.new()) != null)
+
+	var rig: Dictionary = await _a_rig()
+	var f: PKeyFakeAndroidNative = rig["f"]
+	var ch: PKeyAndroidBulk = rig["ch"]
+	var head := _a_head(60)
+	(head["headers"] as Dictionary)["authorization"] = "Bearer other"
+	var got: Dictionary = await ch.put(head, PackedByteArray([1]))
+	t.check("android bulk: an authorization among the request headers is refused and nothing is queued",
+			got == {"fail": "network"} and f.sb_calls("sbStage").is_empty() and f.sb_calls("sbPut").is_empty() and f.sb_calls("sbGet").is_empty())
+	ch.close()
+	(rig["a"] as PKeyAndroid).free()
+
+
+func _apple_guards(t: PKeyTestContext) -> void:
+	# An event for a request that waits for a place is not its answer.
+	var rig := _bulk_rig()
+	var fake: PKeyFakeAppleNative.Bulk = rig["fake"]
+	var ch: PKeyAppleBulk = rig["ch"]
+	await ch.open([])
+	var tree := Engine.get_main_loop() as SceneTree
+	var go := func(i: int) -> void: await ch.fetch(_head(i))
+	for i in range(1, 301):
+		go.call(i)
+	await _until(func() -> bool: return fake.tasks.size() == 300)
+	go.call(400)
+	await PKeyTestFixtures.frames(2)
+	t.check("apple bulk: the 301st request waits for a place", ch._pending.has(400) and not ch._slots.has(400) and not fake.tasks.has(400))
+	fake.finish(400, 200)
+	await PKeyTestFixtures.frames(3)
+	t.check("apple bulk: an event for a request waiting for a place is dropped", ch._pending.has(400) and not (ch._pending[400].done as bool))
+	ch.close()
+	await tree.process_frame
+	(rig["apple"] as PKeyApple).free()
+
+	# What an earlier session left in the native queue is not this one's.
+	var rig2 := _bulk_rig()
+	var fake2: PKeyFakeAppleNative.Bulk = rig2["fake"]
+	var ch2: PKeyAppleBulk = rig2["ch"]
+	fake2.report = null
+	ch2.open_timeout_s = 0.05
+	fake2.queue_event("sb_reconciled", JSON.stringify({"resume": ["stale"], "cancelled": 9, "swept": 9}).to_utf8_buffer())
+	var opened: Dictionary = await ch2.open(["saves:a"])
+	t.check("apple bulk: events queued before open are dropped", opened == {"resume": ["saves:a"], "cancelled": 0, "swept": 0}, str(opened))
+	ch2.close()
+	(rig2["apple"] as PKeyApple).free()
+
+	# The header buffer is cleared once the call is made.
+	var rig3 := _bulk_rig()
+	var fake3: PKeyFakeAppleNative.Bulk = rig3["fake"]
+	var ch3: PKeyAppleBulk = rig3["ch"]
+	await ch3.open([])
+	var done := [0]
+	var one := func() -> void:
+		await ch3.put(_head(1), PackedByteArray([1, 2, 3]))
+		done[0] += 1
+	var two := func() -> void:
+		await ch3.fetch(_head(2))
+		done[0] += 1
+	one.call()
+	two.call()
+	await _until(func() -> bool: return fake3.puts.size() == 1 and fake3.gets.size() == 1)
+	var seen := 0
+	var zeroed := true
+	for h in fake3.held:
+		if h[0] == "sb_put" or h[0] == "sb_get":
+			seen += 1
+			zeroed = zeroed and (h[1] as PackedByteArray).size() > 4 and (h[1] as PackedByteArray).count(0) == (h[1] as PackedByteArray).size()
+	t.check("apple bulk: the request header buffer is zeroed after the call", seen == 2 and zeroed, str(seen))
+	ch3.close()
+	await tree.process_frame
+	(rig3["apple"] as PKeyApple).free()
+
+
+## The engine's request numbers never restart within a process: an answer left from before a sign-out cannot
+## match a request of the next session, on either channel.
+func _request_numbers(t: PKeyTestContext) -> void:
+	var ch := FakeChannel.new()
+	ch.auto = func(_h: Dictionary) -> Variant: return _ok()
+	var rig := _rig(ch)
+	var ft: FilesTransport = rig["ft"]
+	var body := PackedByteArray([1])
+	await ft.put_part(TARGET, "up_1", 1, body, _sha(body))
+	ft.close()
+	await ft.open_channel(["saves:slot1"])
+	await ft.put_part(TARGET, "up_1", 1, body, _sha(body))
+	var reqs: Array = ch.heads.map(func(h: Dictionary) -> int: return h["req"])
+	t.check("files: request numbers never restart after close and reopen", reqs.size() == 2 and reqs[1] > reqs[0], str(reqs))
+	rig["host"].queue_free()
 
 
 static func _contains(hay: PackedByteArray, needle: PackedByteArray) -> bool:

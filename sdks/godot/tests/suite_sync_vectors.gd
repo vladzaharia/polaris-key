@@ -58,6 +58,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_manifest(t, d["manifestCases"])
 	_cdc_edit(t, d["cdcEditCases"], d["deltaCases"])
 	_through_native_lane(t, d)
+	_wrong_aad_lane(t)
 	return true
 
 
@@ -207,6 +208,28 @@ class FaultyLane extends FakeLane:
 		if r == null and s.size() == 16:
 			return PackedByteArray()
 		return r
+
+
+## A native lane that leaves the additional data out of both calls.
+class AadBlindLane extends FakeLane:
+	func sync_seal(k: PackedByteArray, n: PackedByteArray, _a: PackedByteArray, p: PackedByteArray) -> PackedByteArray:
+		return super.sync_seal(k, n, PackedByteArray(), p)
+
+	func sync_open(k: PackedByteArray, n: PackedByteArray, _a: PackedByteArray, s: PackedByteArray) -> Variant:
+		return super.sync_open(k, n, PackedByteArray(), s)
+
+
+func _wrong_aad_lane(t: PKeyTestContext) -> void:
+	var lane := AadBlindLane.new()
+	# A small bound ends the known answers before the 1 MiB one, so only the wrong-AAD answer can refuse it.
+	lane.limit = 1024
+	var chosen := PKeyPeerCrypto.select([lane])
+	PKeySyncAead.mobile_override = 1
+	PKeySyncAead.use_lane_for_tests(chosen)
+	t.check("a native lane that opens under the wrong associated data is never chosen",
+			not lane.known_answers_ok() and chosen != lane and not PKeySyncAead.files_supported())
+	PKeySyncAead.mobile_override = -1
+	PKeySyncAead.use_lane_for_tests(null)
 
 
 func _hkdf(t: PKeyTestContext, rows: Array) -> void:

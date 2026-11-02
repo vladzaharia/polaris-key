@@ -175,7 +175,12 @@ class BulkCommands(
     internal fun emitDone(t: BulkTransfer, r: BulkRequest, status: Int, headers: JSONObject, bodyFile: File?) {
         val s: Session
         synchronized(lock) {
-            s = session ?: return
+            val live = session
+            if (live == null) {
+                bodyFile?.delete()
+                return
+            }
+            s = live
             if (t.cancelled || r.cancelled) {
                 bodyFile?.delete()
                 return
@@ -381,9 +386,13 @@ class BulkCommands(
             val rec = "$base/$SEG"
             val upload = "$rec/upload/$SEG"
             val hex = "[0-9a-f]{64}"
-            val putShapes = listOf("$upload/parts/[0-9]{1,4}", "$upload/chunks/$hex", rec, "$base/chunks/$hex")
+            val putShapes = listOf(upload, "$upload/parts/[0-9]{1,4}", "$upload/chunks/$hex")
             val getShapes = listOf(rec, "$base/chunks/$hex")
-            val shapes = if (method == "PUT") putShapes else getShapes
+            val shapes = when (method) {
+                "PUT" -> putShapes
+                "GET" -> getShapes
+                else -> return false
+            }
             if (shapes.none { Regex(it).matches(path) }) return false
             // The version query belongs to the record GET only.
             return query.isEmpty() || (method == "GET" && Regex(rec).matches(path) && QUERY.matches(query))

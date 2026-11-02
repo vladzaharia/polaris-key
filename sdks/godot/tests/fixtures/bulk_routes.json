@@ -1,0 +1,51 @@
+{
+  "note": "Hand-written. The file routes the native bulk channels (Android, Apple) carry, as [method, path]. Read by the Kotlin, Swift and GDScript tests, and the Worker's route table test.",
+  "product": "demo",
+  "collection": "c",
+  "record": "r",
+  "upload": "up_abcdefghijklmnopqrstuv",
+  "chunk": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "allow": [
+    ["PUT", "/demo/sync/files/c/r/upload/up_abcdefghijklmnopqrstuv"],
+    ["PUT", "/demo/sync/files/c/r/upload/up_abcdefghijklmnopqrstuv/parts/1"],
+    ["PUT", "/demo/sync/files/c/r/upload/up_abcdefghijklmnopqrstuv/parts/9999"],
+    [
+      "PUT",
+      "/demo/sync/files/c/r/upload/up_abcdefghijklmnopqrstuv/chunks/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    ],
+    ["GET", "/demo/sync/files/c/r"],
+    ["GET", "/demo/sync/files/c/r?version=3"],
+    [
+      "GET",
+      "/demo/sync/files/c/chunks/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    ]
+  ],
+  "refuse": [
+    ["PUT", "/demo/sync/files/c/r"],
+    [
+      "PUT",
+      "/demo/sync/files/c/chunks/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    ],
+    ["PUT", "/demo/sync/files/c/r/upload/up_abcdefghijklmnopqrstuv?version=1"],
+    ["GET", "/demo/sync/files/c/r/upload/up_abcdefghijklmnopqrstuv"],
+    ["GET", "/demo/sync/files/c/r/upload/up_abcdefghijklmnopqrstuv/parts/1"],
+    ["GET", "/demo/sync/files/c/r/revisions"],
+    ["PUT", "/demo/sync/files/c/r/begin"],
+    ["PUT", "/demo/sync/files/c/r/finalize"],
+    [
+      "PUT",
+      "/demo/sync/files/c/r/upload/up_abcdefghijklmnopqrstuv/parts/12345"
+    ],
+    [
+      "PUT",
+      "/demo/sync/files/c/r/upload/up_abcdefghijklmnopqrstuv/chunks/0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+    ],
+    ["PUT", "/demo/sync/files/c/../upload/up_abcdefghijklmnopqrstuv/parts/1"],
+    ["GET", "/demo/sync/files/../.."],
+    ["GET", "/demo/sync/files/c/.."],
+    ["PUT", "/demo/sync/files/c/r%2Fupload%2Fup_abcdefghijklmnopqrstuv"],
+    ["GET", "/demo/sync/files/c/r?version=1&x=2"],
+    ["GET", "/other/sync/files/c/r"],
+    ["POST", "/demo/sync/files/c/r/upload/up_abcdefghijklmnopqrstuv"]
+  ]
+}

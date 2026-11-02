@@ -211,6 +211,8 @@ class Bulk:
 	var auto_body := PackedByteArray()
 	## Every op in order: [op, payload bytes].
 	var payloads: Array = []
+	## The buffers as passed, not copies: a caller that zeroes one afterwards shows here. [op, buffer].
+	var held: Array = []
 	var ops: Array[String] = []
 	var open_args: Dictionary = {}
 	var staged := {}
@@ -225,6 +227,7 @@ class Bulk:
 	func cmd_bin(op: String, data: PackedByteArray) -> Variant:
 		ops.append(op)
 		payloads.append([op, data.duplicate()])
+		held.append([op, data])
 		match op:
 			"sb_open":
 				return _open(data)
@@ -307,6 +310,10 @@ class Bulk:
 		if c.has("spool"):
 			staged.erase(c["spool"])
 		return PackedByteArray([OK])
+
+	## An event left in the native queue, as an earlier session may have left it.
+	func queue_event(kind: String, data: PackedByteArray) -> void:
+		_events.append([kind, data])
 
 	func poll_bin() -> Variant:
 		var out := _events
