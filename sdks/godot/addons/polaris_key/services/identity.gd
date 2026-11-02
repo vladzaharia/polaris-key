@@ -94,6 +94,9 @@ var redirect_entropy: Dictionary = {}
 var listener_factory: Callable = Callable()
 ## Tests only: "" reads the platform; "desktop" or "other" forces whether a listener can be bound.
 var native_platform := ""
+## Tests and hosts: the system browser sheet opener for a registered-scheme sign-in (see
+## PKeyNativeSignIn.opener). Null reads the platform's: PKeyAppleAuth on iOS and macOS with the plugin.
+var auth_opener: Object = null
 ## Conformance replay only: false skips the forced sync after a redirect token (the `redirect-web-*`
 ## recordings hold the token exchange, not the sync that follows it).
 var redirect_acquisition_sync := true
@@ -164,6 +167,8 @@ func open_in_browser(session: PKeySignInSession) -> int:
 	# Only an https link ever reaches the browser, whatever the server sent.
 	if session == null or not PKeyOutletAdapter.is_https(session._page_url()):
 		return ERR_INVALID_PARAMETER
+	if session._native != null and session._native.opener != null:
+		return session._open_sheet()
 	return OS.shell_open(session._page_url())
 
 
@@ -430,6 +435,9 @@ func _begin_native(opts: Dictionary) -> PKeySignInSession:
 		return _failed(PKeyConstants.ErrorCode.SIGN_IN_UNAVAILABLE, "This product's discovery serves no redirect sign-in.")
 	var desktop := PKeyNativeRedirect.is_desktop() if native_platform == "" else native_platform == "desktop"
 	var can_listen: bool = (not PKeyNativeRedirect.is_headless() if not opts.has("loopback") else opts["loopback"] == true) and desktop and return_page != ""
+	if can_listen and not opts.has("loopback") and OS.get_environment("APP_SANDBOX_CONTAINER_ID") != "" and not (opts.get("registered_schemes", []) as Array).is_empty() and _sheet_opener() != null:
+		# A sandboxed macOS export may not hold a listening socket: use the registered scheme.
+		can_listen = false
 	var choice := PKeyNativeRedirect.choose_redirect_class({
 		"request_endpoint": request_endpoint, "discovery": native, "can_listen": can_listen,
 		"registered_schemes": opts.get("registered_schemes", []), "registered_claimed": opts.get("registered_claimed", []),
@@ -484,6 +492,10 @@ func _begin_native(opts: Dictionary) -> PKeySignInSession:
 			failure.detail = {"status": status}
 		else:
 			var n := PKeyNativeSignIn.new()
+			if choice["kind"] == "scheme":
+				n.opener = _sheet_opener()
+				n.opener_scheme = String(redirect_uri).get_slice(":", 0)
+				n.issuer_host = String(PKeyTransport.parse_url(issuer).get("host", ""))
 			n.pending = pushed["pending"]
 			n.redirect_class = pushed["pending"]["redirect_class"]
 			n.redirect_uri = redirect_uri
@@ -508,6 +520,13 @@ func _begin_native(opts: Dictionary) -> PKeySignInSession:
 	if listener != null:
 		listener.close()
 	return failure
+
+
+## The opener of the system browser sheet (PKeyAppleAuth on iOS and macOS with the plugin), or null.
+func _sheet_opener() -> Object:
+	if auth_opener != null:
+		return auth_opener
+	return PKeyAppleAuth.shared()
 
 
 ## A push that got no answer, as the failed session (null when there was one).

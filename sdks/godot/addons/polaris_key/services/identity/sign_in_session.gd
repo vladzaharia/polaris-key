@@ -246,6 +246,35 @@ func handle_redirect(url: String) -> PKeySignInOutcome:
 	return await _settle_native()
 
 
+## Native redirect, registered scheme: show the authorize URL in the system browser sheet. The OS hands
+## the redirect straight back, and it goes to `handle_redirect` like any other delivery. The person
+## closing the sheet leaves the sign-in waiting (`reopen()` shows it again); a sheet that failed ends
+## the sign-in. OK when the sheet was shown.
+func _open_sheet() -> int:
+	var n := _native
+	var me := weakref(self)
+	var on_done := func(url: String) -> void:
+		var s = me.get_ref()
+		if s != null:
+			s.handle_redirect(url)
+	var on_fail := func(reason: String) -> void:
+		var s = me.get_ref()
+		if s != null and reason != "cancelled":
+			s._sheet_failed()
+	if not n.opener.open(authorize_url, n.opener_scheme, n.issuer_host, on_done, on_fail):
+		return FAILED
+	n.sheet_id = n.opener.sheet_id
+	return OK
+
+
+## The sheet ended with an error: the sign-in fails, nothing was redeemed.
+func _sheet_failed() -> PKeySignInOutcome:
+	if _settled != null or _cancelled or _native == null or _native.pending.is_empty():
+		return _settled
+	_native.arrive({"kind": "failed", "reason": "browser-failed"})
+	return await _settle_native()
+
+
 ## Native redirect: wait for the redirect (the listener, or `handle_redirect`), then redeem it.
 func _wait_native() -> PKeySignInOutcome:
 	if _running:

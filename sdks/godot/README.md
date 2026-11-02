@@ -877,9 +877,19 @@ redeems the code from this device; the person sees the return page on the Worker
 error. `session.redirect_class` says which delivery ran, `session.reopen()` opens the SAME page again
 while the request lives (600 s), and `cancel()` closes the listener. A registered scheme or claimed
 link (`registered_schemes` / `registered_claimed` in the start options, your export's deep-link
-hook) is handed to `PolarisKey.identity.sign_in.handle_redirect(url)`. Mobile, web, a headless host
-(SSH, CI, no display) and a product without the pushed-request endpoint fail with `redirect-unavailable`
-before anything is sent: offer the device code instead.
+hook) is handed to `PolarisKey.identity.sign_in.handle_redirect(url)`. Web, a headless host
+(SSH, CI, no display), a phone without the platform plugin and a product without the pushed-request
+endpoint fail with `redirect-unavailable` before anything is sent: offer the device code instead.
+
+**Native redirect (iOS, and sandboxed macOS).** With the Apple plugin and a registered scheme
+(`registered_schemes: ["com.example.game:/pkey/callback"]`, listed in the product's discovery), `start`
+shows the authorize page in the system sheet (`ASWebAuthenticationSession`, `PKeyAppleAuth` over the
+`auth_open` and `auth_cancel` ops) and the OS hands the redirect straight back: it goes to
+`handle_redirect` for you, with the same state check, single use and device-bound redemption. The native
+side refuses any URL that is not https on the product's issuer host and returns only a URL at your
+scheme. A sheet the person closes leaves the sign-in waiting (`reopen()` shows it again); a sheet that
+fails ends it as `sign-in-failed`. The scheme needs no URL type in the export. A sandboxed macOS export
+(which may not hold a listening socket) takes this path when a scheme is registered.
 
 ```gdscript
 var s := await PolarisKey.identity.sign_in.start({channel = "redirect"})

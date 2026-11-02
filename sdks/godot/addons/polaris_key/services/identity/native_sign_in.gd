@@ -19,6 +19,13 @@ var listener: Object = null
 var return_page := ""
 ## The first accepted callback ({} until it arrives): a PKeyNativeRedirect.parse_native_callback result.
 var arrival: Dictionary = {}
+## The system browser sheet opener (a PKeyAppleAuth, or a stand-in with `open`, `cancel_sheet` and
+## `sheet_id`) when the OS hands the redirect back itself; null when the host opens the browser.
+var opener: Object = null
+## The registered scheme and the issuer's host the sheet is bound to; the id of the sheet shown.
+var opener_scheme := ""
+var issuer_host := ""
+var sheet_id := 0
 var closed := false
 var opened := false
 var _ticker: Node = null
@@ -65,6 +72,8 @@ func arrive(result: Dictionary) -> bool:
 ## Close the listener and stop accepting; the sign-in cannot receive another callback.
 func shut() -> void:
 	closed = true
+	if opener != null and sheet_id > 0:
+		opener.cancel_sheet(sheet_id)
 	if listener != null:
 		listener.close()
 	if _ticker != null and is_instance_valid(_ticker):
