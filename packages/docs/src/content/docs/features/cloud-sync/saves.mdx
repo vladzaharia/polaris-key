@@ -129,6 +129,177 @@ def load_game(client: PolarisKeyClient, id: str) -> object:
 The app's settings go in the client options: `cloud_sync={"saves": {"save_format_version": 2}}`. `max_bytes` and `delta` are there too, and default to 32 MiB and on.
 
   </TabItem>
+  <TabItem label="Swift">
+
+`client.cloudSync.saves` has `list()`, `read(_:options:)`, `write(_:bytes:metadata:options:)`, `resolve(_:keep:bytes:options:)`, `delete(_:baseVersion:)` and `revisions(_:)`, all `async throws`. `write` and `resolve` return a `SaveTransfer` at once: `await transfer.outcome()` settles on a `SaveOutcome` (`done`, `keptRemote`, `cancelled`, `failed` or `conflict`) and never throws. `pause()`, `resume()` and `cancel()` control it, `state` and `progress` read it, and `client.cloudSync.transfers()` lists the writes in flight. The SDK journals each transfer, so an interrupted one resumes.
+
+Metadata is a `JSONValue`, or any `Codable` of your own: `write(_:bytes:encoding:options:)` takes an `Encodable`, and `decodeMetadata(_:)` on a `SaveSummary` or `SaveContent` reads it back. A struct ignores the `savedAt` and `deviceLabel` members the SDK adds unless it declares them.
+
+```swift
+import Foundation
+import PolarisKey
+
+struct SaveMeta: Codable {
+    var chapter: Int
+    var formatVersion: Int
+}
+
+func saveGame(_ client: PolarisKeyClient, bytes: Data) async throws {
+    let saves = client.cloudSync.saves
+    let transfer = try await saves.write(
+        "slot-1", bytes: bytes, encoding: SaveMeta(chapter: 3, formatVersion: 2))
+    switch await transfer.outcome() {
+    case .done(let id, let version, _, _):
+        print("saved", id, version)
+    case .failed(let error):
+        // .transferFailed with detail "quota_exceeded", or .fileInvalid
+        print(error.code.rawValue, error.detail ?? "")
+    case .conflict(let conflict):
+        // Keep this device's copy; .remote keeps the other, .both needs a free slot.
+        let kept = try await saves.resolve(conflict, keep: .local, bytes: bytes)
+        _ = await kept.outcome()
+    case .keptRemote, .cancelled:
+        break
+    }
+}
+
+func loadGame(_ client: PolarisKeyClient, id: String) async throws -> Data? {
+    switch try await client.cloudSync.saves.read(id) {
+    case .ok(let save):
+        let meta = try save.decodeMetadata(SaveMeta.self)
+        print("chapter", meta.chapter)
+        return save.bytes
+    case .notFound:
+        return nil
+    case .newerFormat(let formatVersion, let supported):
+        print("save is format", formatVersion, "this build reads", supported)
+        return nil
+    }
+}
+
+func watchTransfers(_ client: PolarisKeyClient) async {
+    for await event in client.events {
+        guard case .cloudSync(let sync) = event else { continue }
+        switch sync {
+        case .transferProgress(let id, let done, let total): print(id, done, total)
+        case .transferDone(let id, let state): print(id, state)
+        case .transferFailed(let id, let code): print(id, code)
+        default: break
+        }
+    }
+}
+```
+
+The app's settings go in the client options: `PolarisKeyClientOptions(cloudSync: CloudSyncOptions(saves: SavesOptions(saveFormatVersion: 2)))`. `maxBytes` and `delta` are on `SavesOptions` too, and default to 32 MiB and on.
+
+  </TabItem>
+  <TabItem label="Kotlin">
+
+`client.cloudSync.saves` has `list()`, `read(id)`, `write(id, bytes, metadata)`, `writeAs(id, bytes, metadata)`, `resolve(conflict, keep, bytes)`, `delete(id)` and `revisions(id)`, all `suspend`. There are no Java future forms for saves yet. `write` and `resolve` return a `SaveTransfer` at once: `transfer.await()` settles on a `SaveResult` (`Done`, `KeptRemote`, `Cancelled`, `Failed` or `Conflict`) and never throws. `pause()`, `resume()` and `cancel()` control it, `state`, `done` and `total` read it, and `client.cloudSync.transfers()` lists the writes in flight. The SDK journals each transfer, so an interrupted one resumes.
+
+Metadata is a `JsonObject`, or a `@Serializable` type of your own: `writeAs` encodes one and `metadataAs<T>()` on a `SaveRead.Ok` decodes it. The SDK's `savedAt` and `deviceLabel` members are in the object, so decode with `ignoreUnknownKeys` or declare them.
+
+```kotlin
+import im.plrs.key.sdk.PolarisEvent
+import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.sdk.SaveKeep
+import im.plrs.key.sdk.SaveRead
+import im.plrs.key.sdk.SaveResult
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+
+suspend fun saveGame(client: PolarisKeyClient, bytes: ByteArray) {
+    val saves = client.cloudSync.saves
+    val transfer = saves.write(
+        "slot-1",
+        bytes,
+        buildJsonObject {
+            put("chapter", 3)
+            put("formatVersion", 2)
+        },
+    )
+    when (val result = transfer.await()) {
+        is SaveResult.Done -> println("saved ${result.id} ${result.version}")
+        // "transfer-failed" with detail "quota_exceeded", or "sync-file-invalid"
+        is SaveResult.Failed -> println("${result.error.code} ${result.error.detail}")
+        // Keep this device's copy; REMOTE keeps the other, BOTH needs a free slot.
+        is SaveResult.Conflict -> saves.resolve(result.conflict, SaveKeep.LOCAL, bytes).await()
+        is SaveResult.KeptRemote, SaveResult.Cancelled -> Unit
+    }
+}
+
+suspend fun loadGame(client: PolarisKeyClient, id: String): ByteArray? =
+    when (val save = client.cloudSync.saves.read(id)) {
+        is SaveRead.Ok -> save.bytes
+        SaveRead.NotFound -> null
+        is SaveRead.NewerFormat -> null
+    }
+
+suspend fun watchTransfers(client: PolarisKeyClient) {
+    client.events.collect { event ->
+        if (event !is PolarisEvent.CloudSync) return@collect
+        println(event.event)
+    }
+}
+```
+
+A product whose catalog declares no `saves` collection gets the typed product refusal on every call. The newest format your app reads goes in the client options: `cloudSync.saveFormatVersion = 2` on `CloudSyncHostOptions`. `maxBytes` and `delta` come from the collection's declaration.
+
+  </TabItem>
+  <TabItem label="Godot">
+
+`PolarisKey.cloud_sync.saves` is a `PKeySaves`. `list()`, `read(id, opts)`, `delete(id, base_version)` and `revisions(id)` are coroutines that answer a `PKeyResult`; the data is in `detail`. `write(id, bytes, metadata, opts)` and `resolve(conflict, keep, bytes, opts)` return a `PKeyTransfer` at once: `await transfer.wait()` (or the `finished` signal) settles on an outcome Dictionary with a `state` of `done`, `cancelled`, `failed` or `conflict`, and is never an error value. `pause()`, `resume()` and `cancel()` control it, and `PolarisKey.cloud_sync.transfers()` lists the writes in flight. The SDK journals each transfer, so an interrupted one resumes.
+
+Metadata is a Dictionary. `bytes` is a `PackedByteArray`, held whole in memory. A failed call has `code` `sync-file-invalid`, `sync-locked`, `invalid-argument` (a bad id or metadata) or `sync-failed`, with the saves code in `detail.reason`. A write's outcome carries `error.code` as in [Errors](#errors).
+
+```gdscript
+extends Node
+
+
+func save_game(bytes: PackedByteArray) -> void:
+	var saves: PKeySaves = PolarisKey.cloud_sync.saves
+	var transfer: PKeyTransfer = saves.write("slot-1", bytes, {"chapter": 3, "formatVersion": 2})
+	var outcome: Dictionary = await transfer.wait()
+	match outcome["state"]:
+		"failed":
+			# "transfer-failed" with detail "quota_exceeded", or "sync-file-invalid"
+			print(outcome["error"]["code"])
+		"conflict":
+			# Keep this device's copy; "remote" keeps the other, "both" needs a free slot.
+			var kept: PKeyTransfer = saves.resolve(outcome["conflict"], "local", bytes)
+			await kept.wait()
+
+
+func load_game(id: String) -> PackedByteArray:
+	var saves: PKeySaves = PolarisKey.cloud_sync.saves
+	var result: PKeyResult = await saves.read(id)
+	if result.ok:
+		return result.detail["bytes"]
+	print(result.code, " ", result.detail)  # "not-found" or "newer-format" is detail.reason
+	return PackedByteArray()
+
+
+func watch_transfers() -> void:
+	PolarisKey.event.connect(_on_event)
+
+
+func _on_event(kind: String, data: Dictionary) -> void:
+	if kind != "cloudSync":
+		return
+	match data.get("type"):
+		"transferProgress":
+			print(data["id"], " ", data["done"], " of ", data["total"])
+		"transferDone":
+			print(data["id"], " ", data["state"])
+		"transferFailed":
+			print(data["id"], " ", data["code"])
+```
+
+The app's settings are `PKeyOptions` fields: `cloud_sync_save_format_version = 2`, `cloud_sync_saves_max_bytes` and `cloud_sync_saves_delta`, which default to 32 MiB and on.
+
+On iOS and Android saves run with the Polaris Key native plugin. Without it every call answers unsupported with reason `dependency`; `PolarisKey.supports(PKeyConstants.Feature.SYNC_SAVES)` says which. Desktop needs nothing extra.
+
+  </TabItem>
 </Tabs>
 
 ## Metadata
@@ -154,11 +325,11 @@ Two devices that save from the same version conflict. `transfer.done` settles on
 | `remote` | Nothing is written. The SDK pulls the server copy, so the next `read` returns it              |
 | `both`   | This device's save is written as a new save in a free slot. Without one it fails `slots-full` |
 
-`conflict.bothAvailable` says whether a slot is free. A save deleted on another device conflicts too: there is then no other version, and keeping this device's copy creates the save again.
+`conflict.bothAvailable` (`both_available` in Godot) says whether a slot is free. A save deleted on another device conflicts too: there is then no other version (`remote` is nil or null), and keeping this device's copy creates the save again.
 
 ## Errors
 
-A failed write or read carries one of these codes. A call that throws carries the code as `code`; a write reports it in the outcome as `error`.
+A failed write or read carries one of these codes. A call that throws carries the code as `code` (`SavesError.code`, `SavesException.code`); a write reports it in the outcome as `error`. Swift spells them `fileInvalid`, `transferFailed`, `slotsFull`, `tooLarge`, `notFound`, `invalidSave` and `rejected`; Kotlin has the same words as constants on `SavesException`. A read of a missing save answers `notFound` instead of throwing, in every SDK.
 
 | Code                | Meaning                                                                                                                |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -171,6 +342,24 @@ A failed write or read carries one of these codes. A call that throws carries th
 | `rejected`          | The Worker refused the record write; `detail` has its code                                                             |
 
 `quota_exceeded` means the file does not fit the person's [quota](/docs/features/cloud-sync/#the-quota); free space or raise the tier. `entitlement_required` means the collection's `requires` flag, or file storage, is not granted. Both are Worker answers listed under [Cloud Sync files](/docs/features/cloud-sync/files/#errors). A canceled transfer is the state `cancelled`, not a failure.
+
+## Save screens
+
+The kits draw the conflict and the transfer strip for you. The [SaveConflict](/docs/build/ui/components/save-conflict/) page has the screen in each kit.
+
+- **SwiftUI** has no save screens yet. Build the choice from `SaveConflict`, `resolve` and the transfer events above.
+- **Compose** has `PolarisSaveConflict` over `PolarisSaveConflictState`, and `PolarisCloudSyncTransfer` for the strip. They are not wired to the client yet: give the state a `PolarisSaveResolver` that calls `saves.resolve` with this device's bytes.
+- **Godot** wires itself. `PKeySaveConflict` and the Cloud Sync strip follow `PolarisKey.cloud_sync.saves` through `PKeySaveScreensHost`. The game gives the host the one thing the SDK does not keep, this device's bytes:
+
+```gdscript
+func _ready() -> void:
+	var host: PKeySaveScreensHost = PKeySaveScreensHost.of(PolarisKey)
+	if host != null:
+		host.local_copy = func(conflict: Dictionary) -> PackedByteArray:
+			return FileAccess.get_file_as_bytes("user://%s.sav" % conflict["id"])
+```
+
+Without `local_copy`, Keep this version and Keep both fail and say so; Keep the other version needs no bytes. `saves.conflicts()` lists what is unsettled.
 
 ## What the SDK keeps
 
