@@ -2,7 +2,7 @@
 title: "Add sign-in to your app"
 description: "Sign people in with a Polaris Locker account, with the drop-in kit or with your own screens."
 type: "how-to"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-11-01"
 sidebar:
   order: 2
 ---
@@ -26,7 +26,7 @@ Before you start:
 2. **CLI** Optional: link your own provider with the `oidc:` block of `.pkey/product`, then select **Resync from repo** on **App sign-in**. Without it the product uses the platform provider.
 3. **CLI** Optional: map groups to tiers with `groupRoleMap`, or set an `autoIssue` policy with mode `oidcDefault` so people in no group land on a default tier.
 4. **Console** Optional: open **App sign-in** and set what customers can do: adding a license by key, showing the product in libraries and key reissue. Email codes and passkeys are always on.
-5. **App** Start the sign-in with the SDK's `signIn.start`, per the table. The `device-code` channel shows the user code and a QR code, then polls. The `redirect` channel gives you a URL to open and takes the callback URL back.
+5. **App** Start the sign-in with the SDK's `signIn.start`, per the table. The `device-code` channel shows the user code and a QR code, then polls. The `redirect` channel gives you a URL to open and takes the callback URL back; with no `redirectUri` it is the [native redirect](/docs/features/sign-in/native-redirect/), which opens the browser itself.
 6. **App** Read the outcome: `signedIn`, `choose` (the app shows the license choice), `cancelled` or `expired`. The SDK has stored the device token; refresh the license status.
 7. **Server** Optional: read the signed-in account on your backend, as [Your backend](#your-backend) shows. The license document carries `profile.user` with the account's pairwise subject (`ps_…`) while an account is signed in on that device.
 
@@ -39,7 +39,7 @@ Before you start:
 | Kotlin | `identity.signIn.start()`: `DeviceCode` or `Redirect`, with the device-code form in the Compose kit | [Kotlin](/docs/build/sdks/kotlin/your-own-ui/) |
 | Godot  | `identity.sign_in.start()`: `device-code` or `redirect`, with a dialog in the kit                   | [Godot](/docs/build/sdks/godot/your-own-ui/)   |
 
-A session has `wait` (device code), `complete(callbackUrl)` (redirect), `reopen` and `cancel`. Swift spells them `wait()`, `complete(callbackUrl:)`, `reopen()` and `cancel()`; Godot, `wait()`, `complete(callback_url)`, `reopen()` and `cancel()`. Use the [device flow](/docs/features/sign-in/device-flow/) where the host can't receive a redirect, and the [web redirect](/docs/features/sign-in/web-redirect/) where it can.
+A session has `wait` (device code), `complete(callbackUrl)` (redirect), `reopen` and `cancel`. Swift spells them `wait()`, `complete(callbackUrl:)`, `reopen()` and `cancel()`; Godot, `wait()`, `complete(callback_url)`, `reopen()` and `cancel()`. Use the [device flow](/docs/features/sign-in/device-flow/) where the host can't receive a redirect, and the [web redirect](/docs/features/sign-in/web-redirect/) where it can. A desktop or mobile app that opens the system browser uses the [native redirect](/docs/features/sign-in/native-redirect/): the same `redirect` channel with no `redirectUri`.
 
 ## After sign-in
 

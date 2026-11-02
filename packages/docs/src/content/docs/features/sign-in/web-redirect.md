@@ -2,12 +2,12 @@
 title: "Web redirect"
 description: "Sign a person in to your web app through authorize and token: PKCE, the Continue card, and the browser device token."
 type: "concept"
-lastReviewed: "2026-10-17"
+lastReviewed: "2026-11-01"
 sidebar:
   order: 3
 ---
 
-A web app sends the person's browser to Polaris Locker, the person confirms on the sign-in card, and the browser comes back with a one-time code. The app trades the code for a device token. The shape is OAuth 2.1's authorization code flow with PKCE. The token never appears in a URL.
+A web app sends the person's browser to Polaris Locker, the person confirms on the sign-in card, and the browser comes back with a one-time code. The app trades the code for a device token. The shape is OAuth 2.1's authorization code flow with PKCE. The token never appears in a URL. A desktop or mobile app uses the [native redirect](/docs/features/sign-in/native-redirect/) instead.
 
 It needs the product's Identity service on. With it off, `authorize` and `token` answer as an unknown route.
 

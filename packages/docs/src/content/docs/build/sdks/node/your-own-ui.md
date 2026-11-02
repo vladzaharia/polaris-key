@@ -6,7 +6,7 @@ sidebar:
 type: "reference"
 sdks: ["node"]
 lanes: ["library"]
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-11-01"
 ---
 
 The library returns typed results and draws nothing. This page gives, for each screen you build, the
@@ -258,6 +258,8 @@ an approval: the session closes and the new device is told. `onRequest` throws `
 while signed out, and the typed unsupported result where nearby approval is not served.
 
 ### Redirect sign-in
+
+An app on the person's own device usually wants the [native redirect](/docs/features/sign-in/native-redirect/): leave `redirectUri` out and the SDK opens the system browser and takes the code itself. The rest of this section is the web redirect.
 
 A host that opens a browser and receives its redirect (a desktop app with a registered `https:`
 address) uses `channel: "redirect"`. The session is single use: keep it until the browser returns.

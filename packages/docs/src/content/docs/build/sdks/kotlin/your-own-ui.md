@@ -4,7 +4,7 @@ description: "Draw your own screens on the Kotlin SDK: the state model, each cal
 sidebar:
   order: 2
 type: "reference"
-lastReviewed: "2026-10-28"
+lastReviewed: "2026-11-01"
 sdks: ["kotlin"]
 lanes: ["library"]
 ---
@@ -168,6 +168,8 @@ call throws `service-unavailable` before any request.
 with `code == ErrorCode.signInDenied`; a failure after approval throws `sign-in-failed`.
 
 ### Redirect sign-in
+
+An app on the person's own device usually wants the [native redirect](/docs/features/sign-in/native-redirect/): leave `redirectUri` out and the SDK opens the system browser and takes the code itself. The rest of this section is the web redirect.
 
 A host that opens a browser and receives its redirect (an app with a link on an `https:` address it
 registered) uses `SignInChannel.Redirect`. The session is single use: keep it until the browser
