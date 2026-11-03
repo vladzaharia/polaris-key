@@ -113,6 +113,7 @@ var _deny: Button
 var _status: Label
 var _primary: Button
 var _done: Button
+var _spacer: Control
 
 
 func _build() -> void:
@@ -152,6 +153,8 @@ func _build() -> void:
 		_choice_buttons.append(cb)
 	_create = button(licences, "Create", func() -> void: create_chosen.emit())
 	_create.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# On a phone's page Deny (and Done) dock to the bottom, in the thumb zone, as the sign-in steps' actions do.
+	_spacer = spacer(_body)
 	_deny = button(_body, "Deny", func() -> void: denied.emit(), "PKeyLink")
 	_deny.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	for b in [_primary, _done, _entry, _deny]:
@@ -175,33 +178,45 @@ func squeeze_max() -> int:
 	return 4
 
 
+func ring_inset() -> float:
+	return roundf(RING_PAD * float(layout_metrics().get("scale", 1.0)))
+
+
 func _arrange(m: Dictionary) -> void:
 	super(m)
 	# Short on room, the product header gives way before the card scrolls.
 	_product.visible = squeeze_level() < 1
-	# Room inside the scroll for a focus ring at its edge.
-	var edge := int(roundf(6.0 * float(m["scale"])))
-	for side in ["top", "bottom"]:
-		_pad.add_theme_constant_override("margin_" + side, edge)
+	# Room inside the scroll for a focus ring at any edge, at every squeeze level.
+	for side in ["top", "bottom", "left", "right"]:
+		_pad.add_theme_constant_override("margin_" + side, int(ring_inset()))
 	var tone := get_theme_color("font_color", "PKeyMuted")
 	var state: String = model.get("state", "")
 	var mark: Array = MARKS.get(state, ["info", "muted"])
 	match mark[1]:
 		"accent":
-			tone = get_theme_color("font_color", "PKeyAccent")
+			# The accent is the link's colour (a button type; PKeyAccent is not a theme type).
+			tone = get_theme_color("font_color", "PKeyLink")
 		"warning":
 			tone = get_theme_color("font_color", "PKeyWarning")
 	_glyph.set_meta(&"pkey_glyph", mark[0])
 	size_glyph(_glyph, 28.0, tone)
-	# A code is read across the room: about 1.5 times the body type, less as the room runs out.
+	# Squeezed, the gaps between the parts halve: the ring's inset stays.
+	tighten_gap(_body, squeeze_level() >= 3)
+	# Deny (the codes and the choice) and Done (two declined requests) sit at the page's foot on a phone.
+	var dock := phone_screen() and state in ["ask", "choose", "stopped"]
+	_spacer.visible = dock
+	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_body.move_child(_spacer, (_primary if state == "stopped" else _deny).get_index())
+	# A code is read across the room: the PKeyCode type (the heading weight) at about twice the body type,
+	# less as the room runs out.
 	var body_px := get_theme_font_size("font_size", "Button")
-	var grow := 1.5 if squeeze_level() < 2 else (1.25 if squeeze_level() < 3 else 1.0)
+	var grow := 2.0 if squeeze_level() < 2 else (1.6 if squeeze_level() < 3 else (1.25 if squeeze_level() < 4 else 1.0))
 	var code_px := mini(get_theme_font_size("font_size", "PKeyCode"), roundi(body_px * grow))
+	var code_font := get_theme_font("font", "PKeyCode")
 	for b in _code_buttons:
 		(b as Button).add_theme_font_size_override("font_size", code_px)
-		(b as Button).custom_minimum_size.y = roundf(float(code_px) * (1.6 if squeeze_level() < 2 else (1.3 if squeeze_level() < 3 else 1.15)))
-	_pad.add_theme_constant_override("margin_top", edge if squeeze_level() < 2 else (2 if squeeze_level() < 3 else 0))
-	_pad.add_theme_constant_override("margin_bottom", edge if squeeze_level() < 2 else (2 if squeeze_level() < 3 else 0))
+		(b as Button).add_theme_font_override("font", code_font)
+		(b as Button).custom_minimum_size.y = roundf(float(code_px) * (1.5 if squeeze_level() < 2 else (1.3 if squeeze_level() < 3 else 1.15)))
 
 
 func _screen_key() -> String:

@@ -194,13 +194,18 @@ var _spacer: Control
 var _primary: Button
 var _secondary: Button
 var _secondary2: Button
+var _ring_pad: MarginContainer
 
 
 func _build() -> void:
 	name = "PKeySignInStep"
 	# The largest gap sits between the body and the actions; groups are one step apart; a title and its
 	# subtitle sit together (SIGN-IN §3.19 rule 4).
-	_body = vbox(card_panel(), "Body", "PKeySections")
+	# The scroll's content keeps RING_PAD of room on every side, so a focus ring at its end shows whole.
+	_ring_pad = MarginContainer.new()
+	_ring_pad.name = "RingPad"
+	card_panel().add_child(_ring_pad)
+	_body = vbox(_ring_pad, "Body", "PKeySections")
 	var top := vbox(_body, "Top", "PKeyStack")
 	_product = product_header(top, "Product")
 	_product.card = true
@@ -268,12 +273,21 @@ func squeeze_max() -> int:
 	return 4
 
 
+func ring_inset() -> float:
+	return roundf(RING_PAD * float(layout_metrics().get("scale", 1.0)))
+
+
 func _arrange(m: Dictionary) -> void:
 	super(m)
 	# Short on room, the product header gives way before the card scrolls.
 	_product.visible = squeeze_level() < 1
 	# On a phone's page the actions dock to the bottom, in the thumb zone, as the refusal steps' do.
 	_spacer.visible = phone_screen()
+	# Room inside the scroll for a focus ring at any edge, at every squeeze level.
+	for side in ["top", "bottom", "left", "right"]:
+		_ring_pad.add_theme_constant_override("margin_" + side, int(ring_inset()))
+	# Squeezed, the gaps between the parts halve: the ring's inset stays.
+	tighten_gap(_body, squeeze_level() >= 3)
 	_fit_code(room_x())
 	_size_approver_rows()
 	if _qr != null:
