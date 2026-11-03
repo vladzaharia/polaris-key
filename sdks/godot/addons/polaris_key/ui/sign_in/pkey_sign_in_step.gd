@@ -50,7 +50,26 @@ const LAYOUT := {
 	"device-limit": ["core.codes.device_limit.title", ["core.codes.device_limit.message", "deviceLimit.noManage"], ["signin.auto.confirm.other", "common.cancel"]],
 }
 
-@export_enum("confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-choose", "nearby-none-found", "nearby-denied", "nearby-expired", "nearby-not-nearby", "nearby-failed", "nearby-rate-limited", "nearby-unavailable", "nearby-cancelled", "nearby-signed-out", "nearby-done", "device-limit") var step := "confirm":
+@export_enum(
+	"confirm",
+	"link-offer",
+	"link-done",
+	"link-conflict",
+	"nearby-prompt",
+	"nearby-wait",
+	"nearby-choose",
+	"nearby-none-found",
+	"nearby-denied",
+	"nearby-expired",
+	"nearby-not-nearby",
+	"nearby-failed",
+	"nearby-rate-limited",
+	"nearby-unavailable",
+	"nearby-cancelled",
+	"nearby-signed-out",
+	"nearby-done",
+	"device-limit"
+) var step := "confirm":
 	set(value):
 		step = value
 		refresh_view()
@@ -84,11 +103,6 @@ const LAYOUT := {
 	set(value):
 		device = value
 		refresh_view()
-## nearby-wait: still looking for devices (the status line shows).
-var searching := false:
-	set(value):
-		searching = value
-		refresh_view()
 ## The confirm step's license line: "none", "new" or "existing".
 @export_enum("none", "new", "existing") var license_line := "none":
 	set(value):
@@ -108,6 +122,11 @@ var searching := false:
 @export var provider := "":
 	set(value):
 		provider = value
+		refresh_view()
+## nearby-wait: still looking for devices (the status line shows).
+var searching := false:
+	set(value):
+		searching = value
 		refresh_view()
 ## The licence the consent anchors, for the confirm step's licence line: `{name, tierName, term, position,
 ## limit}` (`PKeyGateController.consent_step().anchor`; term is "perpetual" or the end as epoch seconds,

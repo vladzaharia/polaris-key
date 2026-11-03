@@ -26,6 +26,14 @@ const View := preload("res://addons/polaris_key/ui/model/view.gd")
 const DEFAULT_DEVICE_URL := PKeyConstants.DEVICE_CODE_PAGE
 const DEFAULT_TV_URL := PKeyConstants.TV_CODE_PAGE
 
+## The code each nearby ending takes its title and line from (a core code's title and message, or a full title
+## key and no line); the port of ui-core's `nearbyEnd`.
+const NEARBY_ENDS := {
+	"nearby-denied": "sign-in-denied", "nearby-expired": "sign-in-expired", "nearby-not-nearby": "not_nearby",
+	"nearby-failed": "network", "nearby-rate-limited": "rate_limited", "nearby-unavailable": "nearby-unsupported",
+	"nearby-cancelled": "core.codes.unauthorized.title", "nearby-signed-out": "core.gate.revoked.title",
+}
+
 
 ## The sign-in is possible here: Identity is on and the build offers it.
 static func _sign_in_on(ctx: RefCounted) -> bool:
@@ -333,15 +341,6 @@ static func _auto_step_view(ctx: RefCounted, auto: Dictionary, base_args: Dictio
 			copy = ["signin.nearby.done", "common.continue", "signin.nearby.notYou"]
 			primary = "common.continue"
 	return View.make(ctx, "SignIn", {"state": step, "copy": copy, "args": args, "primary": primary, "tone": tone, "focus": "heading"})
-
-
-## The code each nearby ending takes its title and line from (a core code's title and message, or a full title
-## key and no line); the port of ui-core's `nearbyEnd`.
-const NEARBY_ENDS := {
-	"nearby-denied": "sign-in-denied", "nearby-expired": "sign-in-expired", "nearby-not-nearby": "not_nearby",
-	"nearby-failed": "network", "nearby-rate-limited": "rate_limited", "nearby-unavailable": "nearby-unsupported",
-	"nearby-cancelled": "core.codes.unauthorized.title", "nearby-signed-out": "core.gate.revoked.title",
-}
 
 
 static func _nearby_end_copy(step: String) -> Array:

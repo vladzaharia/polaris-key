@@ -97,7 +97,11 @@ func _flow(t: PKeyTestContext) -> void:
 	await tree.process_frame
 	t.check("gate nearby: a ready poll shows nearby-done with the account", gate.auto_step.step == "nearby-done" and gate.auto_step.email == "ada@example.com" and gate.auto_step.pending)
 	var shown := String(gate.auto_step._title.text).replace("\u200b", "").replace("\u2068", "").replace("\u2069", "")
-	t.check("gate nearby: the active mark leads the title in its own accent label while the sign-in is held", gate.auto_step._mark.visible and gate.auto_step._mark.text == "◆" and shown.contains("ada@example.com") and not shown.contains("◆"), shown)
+	t.check(
+		"gate nearby: the active mark leads the title in its own accent label while the sign-in is held",
+		gate.auto_step._mark.visible and gate.auto_step._mark.text == "◆" and shown.contains("ada@example.com") and not shown.contains("◆"),
+		shown
+	)
 	t.check("gate nearby: the token is held unconfirmed behind the screen", rig.sdk.core.tokens.unconfirmed() and rig.events.is_empty())
 	gate._on_auto_primary("nearby-done")
 	await B.until(func() -> bool: return not gate.auto_step.visible and gate._nearby_flow.session == null, 900)
@@ -291,7 +295,10 @@ func _endings(t: PKeyTestContext) -> void:
 	await B.until(func() -> bool: return g4.auto_step.step == "nearby-done", 900)
 	g4._completing = true
 	await g4._on_auto_secondary("nearby-done")
-	t.check("gate nearby: Not you? during a confirm in flight leaves the screen and the session alone", g4.auto_step.step == "nearby-done" and g4._nearby_flow.session != null and rig4.store.token != "" and rig4.lan.req.declined == 0)
+	t.check(
+		"gate nearby: Not you? during a confirm in flight leaves the screen and the session alone",
+		g4.auto_step.step == "nearby-done" and g4._nearby_flow.session != null and rig4.store.token != "" and rig4.lan.req.declined == 0
+	)
 	t.check("gate nearby: Escape during a confirm in flight is held too", g4._cancel() and g4.auto_step.step == "nearby-done")
 	g4._completing = false
 	_free(g4, rig4)
@@ -322,7 +329,11 @@ func _search(t: PKeyTestContext) -> void:
 	await tree.process_frame
 	var rows: Array = gate.auto_step._approver_buttons
 	t.check("gate nearby: the list shows as the devices answer, two rows", rows.size() == 2 and gate.auto_step.step == "nearby-choose")
-	t.check("gate nearby: the focus lands on the first device when the list arrives", gate.get_viewport().gui_get_focus_owner() == rows[0] and gate.auto_step._initial_focus() == rows[0], str(gate.get_viewport().gui_get_focus_owner()))
+	t.check(
+		"gate nearby: the focus lands on the first device when the list arrives",
+		gate.get_viewport().gui_get_focus_owner() == rows[0] and gate.auto_step._initial_focus() == rows[0],
+		str(gate.get_viewport().gui_get_focus_owner())
+	)
 	t.check("gate nearby: a device the searching timer left alone is not dropped", gate.auto_step.step == "nearby-choose")
 	gate._cancel()
 	_free(gate, rig)
@@ -341,7 +352,11 @@ func _search(t: PKeyTestContext) -> void:
 	await B.until(func() -> bool: return g2.auto_step.step == "nearby-none-found", 600)
 	await tree.process_frame
 	var texts := _texts(g2.auto_step)
-	t.check("gate nearby: with no device after a while, nearby-none-found with Try again and Use a code instead", g2.auto_step.step == "nearby-none-found" and texts.has("No device found") and texts.has("Try again") and texts.has("Use a code instead"), str(texts))
+	t.check(
+		"gate nearby: with no device after a while, nearby-none-found with Try again and Use a code instead",
+		g2.auto_step.step == "nearby-none-found" and texts.has("No device found") and texts.has("Try again") and texts.has("Use a code instead"),
+		str(texts)
+	)
 	t.check("gate nearby: the search request is over", g2._nearby_flow.session == null and r2.lan.req.closes >= 1)
 	_free(g2, r2)
 
@@ -363,7 +378,11 @@ func _search(t: PKeyTestContext) -> void:
 	g3._nearby_flow.single_pick_after = 60.0
 	g3.auto_step.another_requested.emit()
 	await B.until(func() -> bool: return r3.bed.sent("/start").size() == before + 1 and g3.auto_step.step == "nearby-choose", 600)
-	t.check("gate nearby: Choose another device ends the request and looks again", r3.bed.sent("/start").size() == before + 1 and g3.auto_step.code == "", "%d/%d code=%s step=%s" % [r3.bed.sent("/start").size(), before, g3.auto_step.code, g3.auto_step.step])
+	t.check(
+		"gate nearby: Choose another device ends the request and looks again",
+		r3.bed.sent("/start").size() == before + 1 and g3.auto_step.code == "",
+		"%d/%d code=%s step=%s" % [r3.bed.sent("/start").size(), before, g3.auto_step.code, g3.auto_step.step]
+	)
 	g3._cancel()
 	_free(g3, r3)
 
