@@ -3675,6 +3675,16 @@ msgctxt "macos"
 msgid "signin.nearby.another"
 msgstr "別のデバイスを選ぶ"
 
+#. Sign in with a nearby device
+#. The sign-in form's row that starts nearby sign-in: a signed-in phone or computer on the same network approves this device. The approving device's screen tells the person to choose this row.
+msgid "signin.nearby.method"
+msgstr "近くのデバイスでサインイン"
+
+#. macos: Sign In with a Nearby Device
+msgctxt "macos"
+msgid "signin.nearby.method"
+msgstr "近くのデバイスでサインイン"
+
 #. No device found
 #. Nearby sign-in, on the device that signs in: no device answered after a while.
 msgid "signin.nearby.noneTitle"

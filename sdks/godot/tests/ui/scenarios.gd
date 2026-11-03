@@ -422,6 +422,12 @@ const SIGN_IN_STEP_CASES := [
 	["nearby prompt", "nearby-prompt"],
 	["nearby wait", "nearby-wait"],
 	["nearby done", "nearby-done"],
+	["nearby searching", "nearby-searching"],
+	["nearby choose", "nearby-choose"],
+	["nearby wait, the code on a named device", "nearby-wait-named"],
+	["nearby none found", "nearby-none-found"],
+	["nearby denied", "nearby-denied"],
+	["nearby signed out", "nearby-signed-out"],
 ]
 
 
@@ -453,6 +459,16 @@ func sign_in_step(kind: String) -> Control:
 		"nearby-wait":
 			s.step = "nearby-wait"
 			s.code = "482 913"
+		"nearby-wait-named":
+			s.step = "nearby-wait"
+			s.code = "482 913"
+			s.device = "Ana's laptop"
+		"nearby-searching":
+			s.step = "nearby-wait"
+			s.searching = true
+		"nearby-choose":
+			s.step = "nearby-choose"
+			s.approvers = [{"id": "A1", "label": "Ana's laptop", "platform": "macOS"}, {"id": "A2", "label": null, "platform": "android"}]
 		_:
 			s.step = kind
 	if kind == "confirm" or kind == "confirm-apple" or kind == "confirm-license":

@@ -254,7 +254,9 @@ func _build() -> void:
 	auto_step.primary_pressed.connect(_on_auto_primary)
 	auto_step.secondary_pressed.connect(_on_auto_secondary)
 	_nearby_flow = PKeyGateNearby.new(self)
+	activation.nearby_requested.connect(_nearby_flow.show_prompt)
 	auto_step.approver_chosen.connect(_nearby_flow.on_chosen)
+	auto_step.another_requested.connect(_nearby_flow.on_another)
 	_main.add_child(auto_step)
 	_spacer = spacer(_main)
 	_actions = actions_row(_main, "Actions", BoxContainer.ALIGNMENT_BEGIN)
@@ -515,6 +517,8 @@ func _render() -> void:
 	var wants_form: bool = (ctl["activation"] or expired_keying) and not net
 	var auto_on := _auto_on()
 	activation.visible = wants_form and not auto_on
+	# The form's "Sign in with a nearby device" row, whenever this device and the product can run it.
+	activation.nearby_offered = sdk != null and is_instance_valid(sdk) and sdk.get("identity") != null and sdk.identity.nearby_available()
 	auto_step.visible = auto_on and not net
 	license_choice.visible = screen == "license-choice"
 	# A refusal's own title leads its screen; only the Welcome form says what to do.
@@ -662,6 +666,9 @@ func _on_retry() -> void:
 
 func _cancel() -> bool:
 	if auto_step.visible:
+		# The SDK is settling the person's confirmation: Escape does not leave it half done.
+		if _nearby_flow.confirming():
+			return true
 		_leave_auto_sign_in()
 		return true
 	if license_choice.visible and license_choice._cancel():
@@ -779,6 +786,8 @@ func _end_auto() -> void:
 	_nearby_flow.end()
 	auto_step.approvers = []
 	auto_step.code = ""
+	auto_step.device = ""
+	auto_step.searching = false
 	auto_step.pending = false
 	_auto_state = ""
 	choosing = false

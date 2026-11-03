@@ -1269,10 +1269,27 @@ func _reveal_focus() -> void:
 			if _top_on_open:
 				(n as ScrollContainer).scroll_vertical = 0
 			else:
-				(n as ScrollContainer).ensure_control_visible(f)
+				_reveal_with_ring(n as ScrollContainer, f)
 		n = n.get_parent()
 	for v in _views():
 		(v as PKeyUiView)._revealed(f)
+
+
+## The focus ring's reach beyond a control's rectangle (logical pixels), kept in view with the control.
+const RING_PAD := 6.0
+
+
+## Scroll `sc` so the focused control and its ring show whole: the control's edges plus the ring's reach sit
+## inside the scroll area, not flush against (or under) its clip.
+func _reveal_with_ring(sc: ScrollContainer, f: Control) -> void:
+	var room := sc.get_global_rect()
+	var rect := f.get_global_rect()
+	# The ring's reach never asks for more than the room has to spare.
+	var pad := minf(RING_PAD, maxf(0.0, (room.size.y - rect.size.y) * 0.5))
+	if rect.position.y - pad < room.position.y:
+		sc.scroll_vertical -= int(ceil(room.position.y - (rect.position.y - pad)))
+	elif rect.end.y + pad > room.end.y:
+		sc.scroll_vertical += int(ceil((rect.end.y + pad) - room.end.y))
 
 
 ## A view that scrolls its own list (`MANUAL_SCROLL_META`) brings the focused control `f` into view

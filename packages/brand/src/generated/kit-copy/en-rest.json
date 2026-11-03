@@ -272,6 +272,7 @@
   "signin.nearby.expiredBody": "Start again on {device}.",
   "signin.nearby.pick": "Choose the device to ask.",
   "signin.nearby.another": "Choose another device",
+  "signin.nearby.method": "Sign in with a nearby device",
   "signin.nearby.noneTitle": "No device found",
   "signin.nearby.noneBody": "Open {app} on your other device and choose Approve a Nearby Device.",
   "signin.nearby.listenTitle": "Approve a Nearby Device",

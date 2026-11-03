@@ -3021,6 +3021,11 @@
       "role": "button",
       "note": "Nearby sign-in, waiting: asks again and lists the devices, to choose a different one."
     },
+    "signin.nearby.method": {
+      "value": "Sign in with a nearby device",
+      "role": "button",
+      "note": "The sign-in form's row that starts nearby sign-in: a signed-in phone or computer on the same network approves this device. The approving device's screen tells the person to choose this row."
+    },
     "signin.nearby.noneTitle": {
       "value": "No device found",
       "role": "title",

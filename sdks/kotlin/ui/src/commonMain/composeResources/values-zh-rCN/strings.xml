@@ -1352,6 +1352,9 @@
     <!-- Nearby sign-in, waiting: asks again and lists the devices, to choose a different one. -->
     <string name="signin_nearby_another">选择其他设备</string>
     <string name="signin_nearby_another__macos">选择其他设备</string>
+    <!-- The sign-in form's row that starts nearby sign-in: a signed-in phone or computer on the same network approves this device. The approving device's screen tells the person to choose this row. -->
+    <string name="signin_nearby_method">用附近的设备登录</string>
+    <string name="signin_nearby_method__macos">用附近的设备登录</string>
     <!-- Nearby sign-in, on the device that signs in: no device answered after a while. -->
     <string name="signin_nearby_noneTitle">未找到设备</string>
     <!-- Nearby sign-in: where to go on the other device. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->

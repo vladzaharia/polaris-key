@@ -68,6 +68,51 @@ Card/Scroll/Body/Actions/Secondary: Button "Use a code instead" [focus 1]
 == nearby done ==
 Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Top/Words/Title: Label "◆ Signed in as \u2068ada@​mail.​io\u2069"
+Card/Scroll/Body/Top/Words/Mark: Label "◆"
+Card/Scroll/Body/Top/Words/Title: Label "Signed in as \u2068ada@​mail.​io\u2069"
 Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
 Card/Scroll/Body/Actions/Secondary: Button "Not you?" [focus 2]
+== nearby searching ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Approve on your other device"
+Card/Scroll/Body/Top/Words/Line0: Label "Open \u2068Polaris Key SDK\u2069 on a phone or computer that's signed in and on this network."
+Card/Scroll/Body/Top/Words/Line2: Label "Looking for your other devices…"
+Card/Scroll/Body/Actions/Secondary: Button "Use a code instead" [focus 1]
+== nearby choose ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Approve on your other device"
+Card/Scroll/Body/Top/Words/Line0: Label "Choose the device to ask."
+Card/Scroll/Body/Top/Approvers/Approver0: Button [focus 1]
+Card/Scroll/Body/Top/Approvers/Approver1: Button [focus 2]
+Card/Scroll/Body/Actions/Secondary: Button "Use a code instead" [focus 3]
+== nearby wait, the code on a named device ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Approve on your other device"
+Card/Scroll/Body/Top/Words/Line0: Label "Open \u2068Polaris Key SDK\u2069 on \u2068Ana's laptop\u2069."
+Card/Scroll/Body/Top/Words/Line1: Label "Tap this code there:"
+Card/Scroll/Body/Top/NearbyCode: Label "482 913"
+Card/Scroll/Body/Actions/Secondary: Button "Choose another device" [focus 1]
+Card/Scroll/Body/Actions/Secondary2: Button "Use a code instead" [focus 2]
+== nearby none found ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "No device found"
+Card/Scroll/Body/Top/Words/Line0: Label "Open \u2068Polaris Key SDK\u2069 on your other device and choose Approve a Nearby Device."
+Card/Scroll/Body/Actions/Primary: Button "Try again" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "Use a code instead" [focus 2]
+== nearby denied ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Sign-in declined"
+Card/Scroll/Body/Top/Words/Line0: Label "Sign-in was declined. Start again."
+Card/Scroll/Body/Actions/Primary: Button "Try again" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "Use a code instead" [focus 2]
+== nearby signed out ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Signed out"
+Card/Scroll/Body/Actions/Primary: Button "Try again" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "Use a code instead" [focus 2]

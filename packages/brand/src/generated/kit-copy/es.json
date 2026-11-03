@@ -593,6 +593,7 @@
   "signin.nearby.expiredBody": "Empieza de nuevo en {device}.",
   "signin.nearby.pick": "Elige el dispositivo al que preguntar.",
   "signin.nearby.another": "Elegir otro dispositivo",
+  "signin.nearby.method": "Iniciar sesión con un dispositivo cercano",
   "signin.nearby.noneTitle": "No se encontró ningún dispositivo",
   "signin.nearby.noneBody": "Abre {app} en tu otro dispositivo y elige Aprobar un dispositivo cercano.",
   "signin.nearby.listenTitle": "Aprobar un dispositivo cercano",
