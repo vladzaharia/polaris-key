@@ -49,6 +49,8 @@ public enum class KitComponent(public val id: String) {
     recoveryCode("RecoveryCode"),
     ringChange("RingChange"),
     saveConflict("SaveConflict"),
+    linkPairing("LinkPairing"),
+    transferOffer("TransferOffer"),
     ;
 
     public companion object {
@@ -396,6 +398,8 @@ public object KitStates {
         KitComponent.recoveryCode -> recoveryCodeScreen(inputs)
         KitComponent.ringChange -> ringChangeScreen(inputs)
         KitComponent.saveConflict -> saveConflictScreen(inputs)
+        KitComponent.linkPairing -> linkPairingScreen(inputs)
+        KitComponent.transferOffer -> transferOfferScreen(inputs)
     }
 }
 

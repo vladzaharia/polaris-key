@@ -1,12 +1,12 @@
-// @pkey-feature ui.gate ui.activate ui.signin ui.devicelimit ui.devices ui.update ui.settings ui.paywall ui.theme ui.i18n
+// @pkey-feature ui.gate ui.activate ui.signin ui.devicelimit ui.devices ui.update ui.settings ui.paywall ui.theme ui.i18n ui.kit connect.links connect.transfer
 //
 // The Kotlin presentation core against conformance/corpus/v2/ui-matrix.json (plans/UK-02b.md §5):
-// every row of all twelve families, never skipping one. Component rows compare the component, the
+// every row of all thirteen families, never skipping one. Component rows compare the component, the
 // state, the sorted copy keys and the sorted actions; a `mustNot` row also asserts that none of its
 // forbidden states, copy keys or actions appear. `theme` rows compare the resolved name, accent
 // source, scheme, icon and preset; `i18n` rows the formatted string.
 //
-// Families: gate, activate, signIn, deviceLimit, devices, update, settings, paywall, cloudSync, saveConflict, theme, i18n.
+// Families: gate, activate, signIn, deviceLimit, devices, update, settings, paywall, cloudSync, saveConflict, connect, theme, i18n.
 package im.plrs.key.ui
 
 import im.plrs.key.core.UI_MATRIX_VERSION
@@ -48,6 +48,9 @@ class UIMatrixPresentationTest {
 
     // The saveConflict family: SaveConflict and the CloudSyncStatus transfer rows (U-22.K0).
     @Test fun saveConflictFamily() = runFamily("saveConflict")
+
+    // The connect family: LinkPairing and TransferOffer (CC-19.10).
+    @Test fun connectFamily() = runFamily("connect")
 
     @Test
     fun themeFamily() {
