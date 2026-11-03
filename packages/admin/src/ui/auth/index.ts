@@ -8,6 +8,9 @@ export { CODE_LENGTH, CodeCells } from "./CodeCells.js";
 export { PROVIDER_ORDER, ProviderRow, providerLabel } from "./ProviderRow.js";
 export type { AuthProvider } from "./ProviderRow.js";
 export {
+  AUTH_INPUT_CLASS,
+  AUTH_LINK_CLASS,
+  AUTH_PRIMARY_CLASS,
   AuthNotice,
   AuthTitle,
   OrDivider,

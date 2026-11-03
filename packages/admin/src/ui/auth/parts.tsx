@@ -27,6 +27,17 @@ export function AuthTitle({
   );
 }
 
+/** The step's one large action: 48 px, 16 px text, weight 500 (BRAND 9.4; SIGN-IN 3.1). */
+export const AUTH_PRIMARY_CLASS =
+  "h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-medium";
+
+/** The card's text input: 48 px at 16 px (SIGN-IN 3.1). */
+export const AUTH_INPUT_CLASS = "h-12 text-base";
+
+/** The card's link: neutral ink, coral underline, explicit focus outline (BRAND 15). */
+export const AUTH_LINK_CLASS =
+  "inline-flex min-h-11 items-center gap-1.5 rounded-md px-1 text-fg-strong underline decoration-2 underline-offset-4 transition-colors duration-(--pk-duration-fast) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+
 /** "or" between the email form and the other ways (§3.3). */
 export function OrDivider(): React.ReactElement {
   return (
@@ -56,7 +67,7 @@ export function QuietLinks({
     <div
       data-quiet-links
       className={
-        "-mb-3 flex items-center justify-center border-t border-border pt-3 text-fg-muted sm:-mb-5 " +
+        "-mb-3 flex items-center justify-center border-t border-border pt-3 sm:-mb-5 " +
         (stacked ? "flex-col text-base" : "flex-wrap gap-x-5 text-sm")
       }
     >
@@ -82,7 +93,10 @@ export function QuietLink({
       type="button"
       onClick={disabled ? undefined : onClick}
       aria-disabled={disabled || undefined}
-      className="aria-disabled:cursor-default aria-disabled:opacity-60 aria-disabled:hover:text-inherit inline-flex min-h-11 items-center gap-1.5 rounded-sm px-1 underline decoration-2 underline-offset-4 transition-colors duration-(--pk-duration-fast) hover:text-fg-strong"
+      className={cn(
+        AUTH_LINK_CLASS,
+        "aria-disabled:cursor-default aria-disabled:opacity-60",
+      )}
     >
       {icon}
       {children}
@@ -99,10 +113,7 @@ export function QuietAnchor({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <a
-      href={href}
-      className="inline-flex min-h-11 items-center gap-1.5 rounded-sm px-1 underline decoration-2 underline-offset-4 transition-colors duration-(--pk-duration-fast) hover:text-fg-strong"
-    >
+    <a href={href} className={AUTH_LINK_CLASS}>
       {children}
     </a>
   );
@@ -120,7 +131,7 @@ export function AuthNotice({
   return (
     <div
       role="alert"
-      className="flex items-start gap-3 rounded-md border border-border-strong bg-surface-sunken px-4 py-3 text-fg"
+      className="flex items-start gap-3 rounded-lg border border-border bg-surface-sunken px-4 py-3 text-fg"
     >
       <Info aria-hidden className="mt-0.5 size-5 shrink-0 text-fg-muted" />
       <p className="min-w-0 [overflow-wrap:anywhere]">{children}</p>

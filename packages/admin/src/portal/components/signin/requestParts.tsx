@@ -3,6 +3,7 @@ import { RadioGroup } from "radix-ui";
 import { cn } from "../../../lib/cn.js";
 import { t } from "../../../lib/copy.js";
 import { Avatar } from "../Avatar.js";
+import { AUTH_LINK_CLASS, AUTH_PRIMARY_CLASS } from "../../../ui/auth/parts.js";
 
 /**
  * The pieces the app card's steps share (PX-14a; SIGN-IN.md §3.6 to §3.9): the person row, a
@@ -12,8 +13,7 @@ import { Avatar } from "../Avatar.js";
  */
 
 /** The step's one primary: the neutral ink button the card uses everywhere. */
-export const PRIMARY_CLASS =
-  "h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold";
+export const PRIMARY_CLASS = AUTH_PRIMARY_CLASS;
 
 /** Person row: avatar, name, email and **Not you?**, which ends this account's part of the flow. */
 export function PersonRow({
@@ -30,7 +30,7 @@ export function PersonRow({
   return (
     <div
       data-person-row
-      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border bg-surface-sunken px-3 py-2"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-surface-sunken px-3 py-2"
     >
       <Avatar name={name} email={email} picture={picture} size={40} />
       <div className="min-w-[12ch] flex-[1_1_12ch]">
@@ -46,7 +46,7 @@ export function PersonRow({
       <button
         type="button"
         onClick={onNotYou}
-        className="inline-flex min-h-11 shrink-0 items-center rounded-sm px-1 text-sm underline decoration-2 underline-offset-4 hover:text-fg-strong"
+        className={cn(AUTH_LINK_CLASS, "shrink-0 text-sm")}
       >
         {t("signin.notYou")}
       </button>
@@ -65,7 +65,7 @@ export function NeutralCallout({
   return (
     <div
       data-callout
-      className="flex items-start gap-3 rounded-md border border-border bg-surface-sunken px-4 py-3 text-fg"
+      className="flex items-start gap-3 rounded-lg border border-border bg-surface-sunken px-4 py-3 text-fg"
     >
       <span
         aria-hidden
@@ -129,7 +129,7 @@ export const ChoiceGroup = React.forwardRef<
                 "before:absolute before:inset-y-0 before:start-0 before:w-[3px]",
                 "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
                 checked
-                  ? "border-border-strong bg-hover before:bg-[var(--pk-locker-accent)] forced-colors:border-[Highlight] forced-colors:outline forced-colors:outline-2 forced-colors:outline-[Highlight] forced-colors:before:bg-[Highlight]"
+                  ? "border-border-strong bg-hover before:bg-locker-accent forced-colors:border-[Highlight] forced-colors:outline forced-colors:outline-2 forced-colors:outline-[Highlight] forced-colors:before:bg-[Highlight]"
                   : "border-border-strong bg-surface-raised hover:bg-hover",
               )}
             >
