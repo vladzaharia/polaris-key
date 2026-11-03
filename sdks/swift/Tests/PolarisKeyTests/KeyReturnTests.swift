@@ -212,4 +212,29 @@ final class KeyReturnTests: XCTestCase {
         let e = try await refusal(#"{"error":"invalid_grant"}"#, status: 400)
         XCTAssertNil(e.details)
     }
+
+    func testALinkThatIsNotPlainHttpsIsDropped() async throws {
+        let script = try await refusal(#"{"error":"license_owned","signInUrl":"javascript:alert(1)"}"#)
+        XCTAssertNil(script.details)
+        let plain = try await refusal(#"{"error":"license_owned","signInUrl":"http://key.example/signin"}"#)
+        XCTAssertNil(plain.details)
+    }
+
+    func testTheDeviceCodeChannelRefusesTheOption() async throws {
+        let c = try await client()
+        do {
+            _ = try await c.identity.signIn.start(SignInOptions(keyReturn: true))
+            XCTFail("device code took keyReturn")
+        } catch let e as PolarisError {
+            XCTAssertEqual(e.code, ErrorCode.invalidArgument)
+        }
+    }
+
+    func testAKeyBodyWithoutASubjectMemberIsMalformed() throws {
+        let body = keyBody().replacingOccurrences(of: #""subject":null,"#, with: "")
+        let value = try JSONDecoder().decode(JSONValue.self, from: Data(body.utf8))
+        guard case .malformed = IdentityRedirect.parseTokenAnswer(status: 200, body: value, keyReturn: true) else {
+            return XCTFail("a key body with no subject member is malformed")
+        }
+    }
 }

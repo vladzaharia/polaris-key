@@ -614,6 +614,11 @@ class SignInNamespace:
         :class:`~polaris_key.identity.nearby_session.NearbySignInSession`: the typed N/A when the product
         or this runtime does not serve it. Any other channel answers the typed ``version`` N/A."""
         if channel == "device-code":
+            if opts.pop("key_return", False):
+                raise PolarisError(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "key_return belongs to the redirect channel.",
+                )
             return self._start(**opts)
         if channel == "redirect" and self._start_redirect is not None:
             return self._start_redirect(**opts)

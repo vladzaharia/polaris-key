@@ -1438,7 +1438,7 @@
         }
       ],
       "allowedNa": [],
-      "note": "LK-SKIP (WIRE-CONTRACT-V5 §12.4.2, §12.5): a host that opts in sends key_return=allow on authorize (last, after license_choice), and the card may then redeem a licence key into a code that names the key's licence and no account. Token answers the sign-in body plus via: \"key\", scope \"\", keyEntries and subject null (the key bind clears any binding; a client still accepts a pairwise-subject string). A client tells it apart by via: \"key\" and its own opt-in, never by subject alone; it stores the token as a key activation and emits activated, never signedIn. A Worker without the feature ignores the parameter and the card shows no skip. Pinned by redirect-web-key-return.json and redirect-web-key-return-limit.json; until an SDK implements it the row is planned and it never sends the parameter."
+      "note": "LK-SKIP (WIRE-CONTRACT-V5 §12.4.2, §12.5): a host that opts in sends key_return=allow on authorize (last, after license_choice), and the card may then redeem a licence key into a code that names the key's licence and no account. Token answers the sign-in body plus via: \"key\", scope \"\", keyEntries and subject null (the key bind clears any binding; a client still accepts a pairwise-subject string). A client tells it apart by via: \"key\" and its own opt-in, never by subject alone; it stores the token as a key activation and emits activated, never signedIn. A Worker without the feature ignores the parameter and the card shows no skip. Pinned by redirect-web-key-return.json, redirect-web-key-return-limit.json and redirect-web-key-return-refusals.json; until an SDK implements it the row is planned and it never sends the parameter."
     },
     {
       "id": "identity.exchange",

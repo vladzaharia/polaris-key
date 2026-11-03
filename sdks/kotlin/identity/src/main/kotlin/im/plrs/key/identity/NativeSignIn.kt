@@ -273,8 +273,7 @@ public suspend fun IdentityClient.replayNativeCallback(recorded: ReplayPending, 
         recorded.state,
         recorded.codeVerifier,
         endpoints,
-        recorded.licenseChoice,
-        recorded.keyReturn,
+        NativeOptIns(recorded.licenseChoice, recorded.keyReturn),
     )
     val links = NativeLinks("$base/authorize", Long.MAX_VALUE, null, null)
     return NativeFlow(this, pending, links, null, null).handleRedirect(callbackUrl)

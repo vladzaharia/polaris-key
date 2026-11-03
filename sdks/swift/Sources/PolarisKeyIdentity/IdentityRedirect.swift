@@ -114,7 +114,8 @@ public enum TokenAnswer: Sendable, Equatable {
 
 /// What a flat refusal of the token endpoint carries beside its code: `device_limit` (`limit`,
 /// `deviceCount`, `manageUrl`), `key_entry_limit` (`keyEntries`, `manageUrl`) and `license_owned`
-/// (`signInUrl`). A member that is absent or malformed is nil.
+/// (`signInUrl`). A member that is absent or malformed is nil; a link is kept only as a plain
+/// https link.
 public struct RefusalDetails: Sendable, Equatable {
     public let limit: Int?
     public let deviceCount: Int?
@@ -147,14 +148,12 @@ public struct RefusalDetails: Sendable, Equatable {
     }
 
     static func read(_ o: [String: JSONValue]) -> RefusalDetails? {
-        func text(_ key: String) -> String? {
-            guard let v = o[key]?.stringValue, !v.isEmpty else { return nil }
-            return v
-        }
+        // The links are shown to a person, so only a plain https link is kept (`ManageLink.read`).
+        func link(_ key: String) -> String? { ManageLink.read(o[key]?.stringValue) }
         let found = RefusalDetails(
             limit: count(o["limit"]), deviceCount: count(o["deviceCount"]),
-            manageUrl: text("manageUrl"), keyEntries: entries(o["keyEntries"]),
-            signInUrl: text("signInUrl"))
+            manageUrl: link("manageUrl"), keyEntries: entries(o["keyEntries"]),
+            signInUrl: link("signInUrl"))
         return found.isEmpty ? nil : found
     }
 }
@@ -200,7 +199,6 @@ public enum IdentityRedirect {
     public static let tokenContentType = "application/x-www-form-urlencoded"
 
     private static let grantPattern = #"sg_[A-Za-z0-9_-]{43}"#
-    private static let pairwiseSubjectPattern = #"ps_[A-Za-z0-9_-]{22}"#
     /// The value of the `key_return` authorize parameter (§12.4).
     public static let keyReturnAllow = "allow"
 
@@ -466,7 +464,7 @@ public enum IdentityRedirect {
             switch object["subject"] {
             case .null?: subject = nil
             case .string(let s)?:
-                guard wholeMatches(pairwiseSubjectPattern, s) != nil else { return .malformed }
+                guard wholeMatches(PAIRWISE_SUBJECT_PATTERN, s) != nil else { return .malformed }
                 subject = s
             default: return .malformed
             }

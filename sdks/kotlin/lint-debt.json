@@ -1327,26 +1327,22 @@
       "ktlint:standard:enum-entry-name-case": 9
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityRedirect.kt": {
-      "detekt:complexity.ComplexCondition": 5,
+      "detekt:complexity.ComplexCondition": 4,
       "detekt:complexity.CyclomaticComplexMethod": 3,
       "detekt:complexity.LongParameterList": 2,
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.SwallowedException": 2,
       "detekt:exceptions.TooGenericExceptionCaught": 2,
-      "detekt:style.MagicNumber": 17,
+      "detekt:style.MagicNumber": 16,
       "detekt:style.MaxLineLength": 1,
-      "detekt:style.ReturnCount": 6,
+      "detekt:style.ReturnCount": 5,
       "detekt:style.ThrowsCount": 3,
       "ktlint:standard:argument-list-wrapping": 13,
       "ktlint:standard:blank-line-between-when-conditions": 6,
-      "ktlint:standard:class-signature": 6,
       "ktlint:standard:import-ordering": 1
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityRestore.kt": {
       "detekt:exceptions.TooGenericExceptionCaught": 1
-    },
-    "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/NativeRedirect.kt": {
-      "detekt:complexity.LongParameterList": 1
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/RestoreLadder.kt": {
       "detekt:exceptions.SwallowedException": 2,

@@ -196,6 +196,15 @@ under the Worker's code (`invalid_grant`, `rate_limited` with `retryAfterSeconds
 `sign-in-failed`) and leaves the device's token alone. A second call with the same callback is
 refused without a request.
 
+### Continue without an account
+
+Set `keyReturn: true` in `SignInOptions` on the redirect channel and the card offers **Continue
+without an account** to a person who has a license key. `complete` then settles
+`.activated(SignInActivated)`: the token is stored as a key activation, the account the device held
+is forgotten, and `keyEntries` is the license's count. No `.signedIn` event fires. A refusal
+(`device_limit`, `key_entry_limit`, `license_owned`) carries `details`. The device-code channel
+refuses the option with `invalid-argument`. Leave it off until your UI renders `.activated`.
+
 ### The license choice
 
 With `licenseChoice: .app`, a person who holds licenses settles `.chooseLicense(PendingSignIn)`. No

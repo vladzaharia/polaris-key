@@ -270,8 +270,11 @@ export function handleOf(flow: DeviceCodeSignInSession): SignInSessionHandle {
             ...(r.identity?.email ? { email: r.identity.email } : {}),
           };
         case "activated":
-          // Only a redirect that opted in to a key return answers this, never a device code.
-          return { outcome: "signedIn" };
+          // Only a redirect that opted in to a key return answers this, never a device code; it is not
+          // a sign-in, so it fails the wait (the model shows sign-in-failed).
+          throw new Error(
+            "a device-code sign-in cannot settle as a key return",
+          );
         case "cancelled":
           return { outcome: "cancelled" };
         case "expired":

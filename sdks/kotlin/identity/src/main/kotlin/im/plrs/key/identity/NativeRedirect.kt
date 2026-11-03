@@ -88,6 +88,9 @@ public class NativeEndpoints(
     public val clientId: String,
 )
 
+/** What a native push asked for beyond a sign-in: `license_choice=app`, and `key_return=allow` ([SignInOptions.keyReturn]). */
+internal class NativeOptIns(val licenseChoice: Boolean = false, val keyReturn: Boolean = false)
+
 /** One pending native sign-in. A secret holder: [codeVerifier] is never logged or put in a URL. */
 public class NativePending internal constructor(
     public val redirectClass: NativeRedirectClass,
@@ -95,11 +98,14 @@ public class NativePending internal constructor(
     public val state: String,
     internal val codeVerifier: String,
     internal val endpoints: NativeEndpoints,
-    /** The push carried `license_choice=app`: the token endpoint may answer `choose`. */
-    internal val licenseChoice: Boolean = false,
-    /** The push carried `key_return=allow`: the token endpoint may answer [TokenAnswer.Activated]. */
-    internal val keyReturn: Boolean = false,
+    private val optIns: NativeOptIns = NativeOptIns(),
 ) {
+    /** The push carried `license_choice=app`: the token endpoint may answer `choose`. */
+    internal val licenseChoice: Boolean get() = optIns.licenseChoice
+
+    /** The push carried `key_return=allow`: the token endpoint may answer [TokenAnswer.Activated]. */
+    internal val keyReturn: Boolean get() = optIns.keyReturn
+
     public val clientId: String get() = endpoints.clientId
     public val issuer: String get() = endpoints.issuer
     public val authorizeEndpoint: String get() = endpoints.authorizeEndpoint
@@ -450,7 +456,7 @@ public object NativeRedirect {
             endpoints.requestEndpoint,
             IdentityRedirect.TOKEN_CONTENT_TYPE,
             PushRules.form(endpoints, redirectUri, state, verifier, options),
-            NativePending(redirectClass, redirectUri, state, verifier, endpoints, options.licenseChoiceApp, options.keyReturn),
+            NativePending(redirectClass, redirectUri, state, verifier, endpoints, NativeOptIns(options.licenseChoiceApp, options.keyReturn)),
         )
     }
 
