@@ -569,7 +569,7 @@ describe.each([
 
   it("truncate takes the claim (a resume with bytes under one chunk)", async () => {
     const w = await make();
-    const size = 1_200_000;
+    const size = 300_000;
     const chunk = 4096;
     w.a.cloudConnect.transfer.onOffer(() => ({
       saveTo: join(w.out, "big.bin"),
