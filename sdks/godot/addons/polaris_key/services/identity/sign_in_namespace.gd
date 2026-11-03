@@ -39,6 +39,15 @@ func _init(owner: PKeyIdentity) -> void:
 ##                     choice settles `complete()` as `license_choice` (grant, choices) and
 ##                     `PolarisKey.identity.choice.*` finishes it. Honoured only when discovery names
 ##                     the choice endpoints; otherwise the card chooses. Default: the card chooses
+##   key_return        redirect (web and native): true accepts a key return (WIRE-CONTRACT-V5 §12.4),
+##                     so the card offers "Continue without an account" and the request carries
+##                     `key_return=allow`. The sign-in may then settle `activated` (the device holds
+##                     the key's licence, no account; `license_id`, `key_entries`, `subject` the answer's value; the stored one is always cleared), never `signed_in`. Default off, and it is not sent unless
+##                     true; the device-code channel refuses it (`invalid-argument`). Leave it off
+##                     until your UI renders `activated`: the SDK's own kits leave it off. A refusal at the
+##                     token endpoint (`device_limit`, `key_entry_limit`, `license_owned`) is an
+##                     `error` outcome whose `detail` holds limit, device_count, manage_url,
+##                     key_entries, sign_in_url when served
 ##   scope             redirect: scopes asked for, a String or Array; default "profile email"
 ##   login_hint, name_hint, purpose
 ##                     redirect: prefill the card (WIRE-CONTRACT-V4 §12.4); they verify nothing.

@@ -180,7 +180,8 @@ static func _bad(message: String) -> Dictionary:
 ## purpose, license_choice ("app", sent only when choice_available), and the test hooks state /
 ## code_verifier. Member order is fixed: `response_type client_id redirect_uri state
 ## code_challenge code_challenge_method [scope] [nonce] [login_hint] [name_hint] [purpose]
-## [license_choice] [device_name] [return_uri]`.
+## [license_choice] [key_return] [device_name] [return_uri]`. `key_return` (true) sends
+## `key_return=allow` and is recorded in the pending request; it is never sent otherwise.
 ## {ok: true, url, content_type, body, pending: {redirect_class, redirect_uri, state, code_verifier,
 ## client_id, issuer, authorize_endpoint, token_endpoint, license_choice}} or {ok: false, message}.
 static func push_request(opts: Dictionary) -> Dictionary:
@@ -230,27 +231,33 @@ static func push_request(opts: Dictionary) -> Dictionary:
 	var sent_choice: bool = opts.get("license_choice") == "app" and opts.get("choice_available") == true
 	if sent_choice:
 		pairs.append(["license_choice", "app"])
+	var key_return: bool = opts.get("key_return") is bool and opts["key_return"]
+	if key_return:
+		pairs.append(["key_return", PKeyIdentityRedirect.KEY_RETURN_ALLOW])
 	if opts.get("device_name") is String and opts["device_name"] != "":
 		pairs.append(["device_name", opts["device_name"]])
 	if return_uri is String and return_uri != "":
 		pairs.append(["return_uri", return_uri])
+	var pending := {
+		"redirect_class": redirect_class,
+		"redirect_uri": opts["redirect_uri"],
+		"state": state,
+		"code_verifier": verifier,
+		"client_id": opts["client_id"],
+		"issuer": opts["issuer"],
+		"authorize_endpoint": opts["authorize_endpoint"],
+		"token_endpoint": opts["token_endpoint"],
+		# The push carried `license_choice=app`: the token endpoint may answer `choose`.
+		"license_choice": sent_choice,
+	}
+	if key_return:
+		pending["key_return"] = true
 	return {
 		"ok": true,
 		"url": opts["request_endpoint"],
 		"content_type": TOKEN_CONTENT_TYPE,
 		"body": _form_body(pairs),
-		"pending": {
-			"redirect_class": redirect_class,
-			"redirect_uri": opts["redirect_uri"],
-			"state": state,
-			"code_verifier": verifier,
-			"client_id": opts["client_id"],
-			"issuer": opts["issuer"],
-			"authorize_endpoint": opts["authorize_endpoint"],
-			"token_endpoint": opts["token_endpoint"],
-			# The push carried `license_choice=app`: the token endpoint may answer `choose`.
-			"license_choice": sent_choice,
-		},
+		"pending": pending,
 	}
 
 

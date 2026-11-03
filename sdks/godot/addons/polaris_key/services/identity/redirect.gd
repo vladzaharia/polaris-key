@@ -24,6 +24,8 @@ const STATE_MAX := 512
 ## The scope a sign-in asks for when the host names none.
 const DEFAULT_SCOPE := "profile email"
 const TOKEN_CONTENT_TYPE := "application/x-www-form-urlencoded"
+## The value of the `key_return` request parameter (WIRE-CONTRACT-V5 §12.4).
+const KEY_RETURN_ALLOW := "allow"
 
 static var _verifier_re: RegEx
 static var _state_re: RegEx
@@ -31,6 +33,7 @@ static var _scope_re: RegEx
 static var _grant_re: RegEx
 static var _origin_re: RegEx
 static var _redirect_re: RegEx
+static var _subject_re: RegEx
 
 
 static func _static_init() -> void:
@@ -40,6 +43,7 @@ static func _static_init() -> void:
 	_grant_re = RegEx.create_from_string("\\Asg_[A-Za-z0-9_-]{43}\\z")
 	_origin_re = RegEx.create_from_string("\\A([A-Za-z][A-Za-z0-9+.\\-]*)://([^/?#]*)([^?#]*)")
 	_redirect_re = RegEx.create_from_string("\\Ahttps://([^/?#]*)([^#]*)\\z")
+	_subject_re = PKeyClaims.whole(PKeyConstants.PAIRWISE_SUBJECT_PATTERN)
 
 
 # ── PKCE ─────────────────────────────────────────────────────────────────────────────────
@@ -147,10 +151,11 @@ static func _scope_string(scope: Variant) -> String:
 
 ## Build the authorize request. `opts`: authorize_endpoint, token_endpoint, issuer, client_id,
 ## redirect_uri (required), scope (String or Array; default "profile email"), login_hint,
-## name_hint, purpose ("signin" | "attach"), license_choice ("app"), choice_available, and the
-## test hooks state / code_verifier. Query order is fixed so every SDK emits the same bytes:
+## name_hint, purpose ("signin" | "attach"), license_choice ("app"), choice_available, key_return
+## (true: the app accepts a key return, so `key_return=allow` is sent, last; never sent otherwise),
+## and the test hooks state / code_verifier. Query order is fixed so every SDK emits the same bytes:
 ## `response_type client_id redirect_uri state code_challenge code_challenge_method scope
-## [login_hint] [name_hint] [purpose] [license_choice]`. A hint that is empty is not sent; a hint
+## [login_hint] [name_hint] [purpose] [license_choice] [key_return]`. A hint that is empty is not sent; a hint
 ## is sent verbatim (the Worker normalises, and drops a login hint that is not an email).
 ## Returns {ok: true, pending: {authorize_url, state, code_verifier, redirect_uri, client_id,
 ## issuer, token_endpoint, license_choice}} or {ok: false, message}.
@@ -190,8 +195,11 @@ static func start(opts: Dictionary) -> Dictionary:
 		pairs.append(["purpose", opts["purpose"]])
 	if opts.get("license_choice") == "app" and opts.get("choice_available") == true:
 		pairs.append(["license_choice", "app"])
+	var key_return: bool = opts.get("key_return") is bool and opts["key_return"]
+	if key_return:
+		pairs.append(["key_return", KEY_RETURN_ALLOW])
 	var base: String = opts["authorize_endpoint"]
-	return {"ok": true, "pending": {
+	var pending := {
 		"authorize_url": "%s%s%s" % [base, "&" if base.contains("?") else "?", _form_body(pairs)],
 		"state": state,
 		"code_verifier": verifier,
@@ -201,7 +209,11 @@ static func start(opts: Dictionary) -> Dictionary:
 		"token_endpoint": opts["token_endpoint"],
 		# The authorize request asked for `license_choice=app`: the token endpoint may answer `choose`.
 		"license_choice": opts.get("license_choice") == "app" and opts.get("choice_available") == true,
-	}}
+	}
+	if key_return:
+		# The token endpoint may answer `via: "key"`; only a request that asked can read it.
+		pending["key_return"] = true
+	return {"ok": true, "pending": pending}
 
 
 static func _bad(message: String) -> Dictionary:
@@ -299,16 +311,25 @@ static func token_form(pending: Dictionary, code: String, device_name := "") -> 
 
 
 ## Read the token endpoint's answer. `body` is the parsed JSON (anything when it was not JSON).
+## `opts.key_return` (from the pending request) is the opt-in for `via: "key"`.
 ##   {kind: "token", access_token, scope, subject, schema_version, device, license}
+##   {kind: "activated", access_token, subject (String, or null), schema_version, device, license,
+##    key_entries: {used, limit}}   a `via: "key"` body, read only with the opt-in
 ##   {kind: "choose", grant, expires_in, choices}    decided by `status` alone
-##   {kind: "refused", error, status, retry_after_seconds?}   a non-200, or a body with no `error`
-##                                                  (`server_error`)
-##   {kind: "malformed"}                             a 200 that lacks a member the call needs
-static func parse_token_answer(status: int, body: Variant) -> Dictionary:
+##   {kind: "refused", error, status, details?, retry_after_seconds?}   a non-200, or a body with no
+##                                                  `error` (`server_error`); `details` holds the flat
+##                                                  members present (limit, device_count, manage_url,
+##                                                  key_entries, sign_in_url)
+##   {kind: "malformed"}                             a 200 that lacks a member the call needs; a
+##                                                  `via` member without the opt-in, or other than "key"
+static func parse_token_answer(status: int, body: Variant, opts := {}) -> Dictionary:
 	if status != 200:
 		var b: Dictionary = body if body is Dictionary else {}
 		var error: String = b["error"] if b.get("error") is String and b["error"] != "" else "server_error"
 		var out := {"kind": "refused", "error": error, "status": status}
+		var details := _refusal_details(b)
+		if not details.is_empty():
+			out["details"] = details
 		var retry = b.get("retryAfter")
 		if PKeyClaims.is_number(retry) and not is_nan(float(retry)) and not is_inf(float(retry)) and float(retry) > 0.0:
 			out["retry_after_seconds"] = int(minf(ceilf(float(retry)), 3600.0))
@@ -323,6 +344,20 @@ static func parse_token_answer(status: int, body: Variant) -> Dictionary:
 	var token = body.get("access_token")
 	var subject = body.get("subject")
 	var license = body.get("license", false)
+	if body.has("via"):
+		if not (body["via"] is String) or body["via"] != "key" or not (opts.get("key_return") is bool and opts["key_return"]):
+			return {"kind": "malformed"}
+		var entries = _key_entries(body.get("keyEntries"))
+		var schema_key = body.get("schemaVersion")
+		if not (token is String) or token == "" or not (body.get("scope") is String) or body["scope"] != "" \
+				or not body.has("subject") or not (subject == null or (subject is String and _subject_re.search(subject) != null)) \
+				or not (body.get("device") is Dictionary) or not (license is Dictionary) or entries == null:
+			return {"kind": "malformed"}
+		return {
+			"kind": "activated", "access_token": token, "subject": subject,
+			"schema_version": int(schema_key) if PKeyClaims.is_number(schema_key) else 1,
+			"device": body["device"], "license": license, "key_entries": entries,
+		}
 	if not (token is String) or token == "" or not (body.get("scope") is String) or not (subject is String) or subject == "" \
 			or not (body.get("device") is Dictionary) or not (license == null or license is Dictionary):
 		return {"kind": "malformed"}
@@ -332,3 +367,35 @@ static func parse_token_answer(status: int, body: Variant) -> Dictionary:
 		"schema_version": int(schema) if PKeyClaims.is_number(schema) else 1,
 		"device": body["device"], "license": license,
 	}
+
+
+static func _is_count(v: Variant) -> bool:
+	return PKeyClaims.is_number(v) and float(v) >= 0.0 and float(v) == floorf(float(v)) and float(v) < 9007199254740992.0
+
+
+## {used, limit} of non-negative integers, or null.
+static func _key_entries(v: Variant) -> Variant:
+	if v is Dictionary and _is_count(v.get("used")) and _is_count(v.get("limit")):
+		return {"used": int(v["used"]), "limit": int(v["limit"])}
+	return null
+
+
+static func _is_https_link(v: Variant) -> bool:
+	return v is String and (v as String).begins_with("https://") and (v as String).length() > 8 and not (v as String).contains(" ")
+
+
+## The flat members a refusal can carry beside `error`, each only when it has the right type.
+static func _refusal_details(b: Dictionary) -> Dictionary:
+	var out := {}
+	if _is_count(b.get("limit")):
+		out["limit"] = int(b["limit"])
+	if _is_count(b.get("deviceCount")):
+		out["device_count"] = int(b["deviceCount"])
+	if _is_https_link(b.get("manageUrl")):
+		out["manage_url"] = b["manageUrl"]
+	var entries = _key_entries(b.get("keyEntries"))
+	if entries != null:
+		out["key_entries"] = entries
+	if _is_https_link(b.get("signInUrl")):
+		out["sign_in_url"] = b["signInUrl"]
+	return out

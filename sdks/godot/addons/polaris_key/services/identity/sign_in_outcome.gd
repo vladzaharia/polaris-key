@@ -13,6 +13,10 @@ extends PKeyResult
 ##                        `expires_in` seconds (300). `grant` is a credential: keep it out of logs
 ##   signed_in            signed in: the device token is stored and the forced sync has run
 ##                        (`sync`); `identity` names who the device is now signed in as
+##   activated            a redirect sign-in that opted in with `key_return = true` and ended on the
+##                        key return ("Continue without an account"): the device holds the key's
+##                        licence (`license_id`, `key_entries`) with no account; `subject` is the
+##                        stored subject now ("" clears it). It is not a sign-in: no `signed_in`
 ##   cancelled            `session.cancel()`, or a new `sign_in.start()` replaced the session
 ##   expired              the code lapsed on this client, or the server no longer knows it
 ##   denied               the player pressed Deny, or the provider refused
@@ -29,7 +33,7 @@ extends PKeyResult
 ## the Worker's own OAuth code (`invalid_grant`, `invalid_client`, `rate_limited`, ...; detail
 ## {retry_after_seconds} when it named one), `server-error` or a transport code.
 ##
-## `ok` is true for `pending`, `choose`, `license_choice` and `signed_in`; every other kind carries its typed
+## `ok` is true for `pending`, `choose`, `license_choice`, `signed_in` and `activated`; every other kind carries its typed
 ## `code` (`sign-in-denied`, `sign-in-expired`, `cancelled`, `service-unavailable`, `unauthorized`,
 ## `rate_limited`, `sign-in-failed`, ...). Show `identity` after `signed_in`: when someone else
 ## confirmed the flow with the user code and signed in as themselves, this is how the player sees
@@ -39,6 +43,7 @@ const KIND_PENDING := &"pending"
 const KIND_CHOOSE := &"choose"
 const KIND_LICENSE_CHOICE := &"license_choice"
 const KIND_SIGNED_IN := &"signed_in"
+const KIND_ACTIVATED := &"activated"
 const KIND_CANCELLED := &"cancelled"
 const KIND_EXPIRED := &"expired"
 const KIND_DENIED := &"denied"
@@ -60,12 +65,14 @@ var attached := ""
 var stored := false
 ## On `signed_in`: the forced sync that followed.
 var sync: PKeySyncResult = null
-## On `signed_in`: the account's pairwise subject when the Worker said, else "".
+## On `signed_in` and `activated`: the account's pairwise subject when the Worker said, else "".
 var subject := ""
 ## On `signed_in` from the redirect channel: the granted scope, space-delimited; "" otherwise.
 var scope := ""
-## On `signed_in` from the redirect channel: the licence the device runs on; "" when it has none.
+## On `signed_in` and `activated` from the redirect channel: the licence the device runs on; "" when it has none.
 var license_id := ""
+## On `activated`: the key's licence entries {used, limit}; {} otherwise.
+var key_entries: Dictionary = {}
 ## On `license_choice`: the grant that spends one choice. A credential: never log it.
 var grant := ""
 ## On `license_choice`: seconds the grant lives for.
@@ -110,6 +117,19 @@ static func signed_in(p_identity: Dictionary, p_attached: String, p_stored: bool
 	r.stored = p_stored
 	r.sync = p_sync
 	r.subject = p_subject
+	r.status = 200
+	return r
+
+
+## The key return: `p_subject` is the stored subject afterwards ("" when the answer said null).
+static func activated(p_license_id: String, p_key_entries: Dictionary, p_subject: String, p_stored: bool, p_sync: PKeySyncResult) -> PKeySignInOutcome:
+	var r := PKeySignInOutcome.new(true)
+	r.kind = KIND_ACTIVATED
+	r.license_id = p_license_id
+	r.key_entries = p_key_entries
+	r.subject = p_subject
+	r.stored = p_stored
+	r.sync = p_sync
 	r.status = 200
 	return r
 

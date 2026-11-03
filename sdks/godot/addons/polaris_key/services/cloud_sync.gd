@@ -454,7 +454,8 @@ func _on_identity(kind: String, subject: String) -> void:
 	await attach()
 	if host == null or not host.is_started():
 		return
-	if kind == "signedOut":
+	# A key return with no subject leaves the account the device held, as a sign-out does.
+	if kind == "signedOut" or (kind == "activated" and subject == ""):
 		await _leave()
 		return
 	if subject == "":
