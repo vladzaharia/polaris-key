@@ -725,9 +725,9 @@ export const KIT_COPY: Readonly<
     "signin.nearby.noneTitle": "No device found",
     "signin.nearby.noneBody":
       "Open {app} on your other device and choose Approve a Nearby Device.",
-    "signin.nearby.listenTitle": "Approve a Nearby Device",
+    "signin.nearby.listenTitle": "Approve a nearby device",
     "signin.nearby.listenBody":
-      "On the new device, choose to sign in with a nearby device. Its request shows here.",
+      "On the new device, choose Sign in with a nearby device.",
     "signin.nearby.pausedTitle": "Approvals paused",
     "signin.nearby.pausedBody":
       "Two requests were declined, so this device stopped listening.",

@@ -1369,9 +1369,9 @@
     <!-- Nearby sign-in: where to go on the other device. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
     <string name="signin_nearby_noneBody">Open %1$s on your other device and choose Approve a Nearby Device.</string>
     <!-- Nearby approval, on the signed-in device: the screen that waits for a request. -->
-    <string name="signin_nearby_listenTitle">Approve a Nearby Device</string>
+    <string name="signin_nearby_listenTitle">Approve a nearby device</string>
     <!-- Nearby approval: what to do on the new device so its request shows here. -->
-    <string name="signin_nearby_listenBody">On the new device, choose to sign in with a nearby device. Its request shows here.</string>
+    <string name="signin_nearby_listenBody">On the new device, choose Sign in with a nearby device.</string>
     <!-- Nearby approval: this device stopped listening after requests were declined. -->
     <string name="signin_nearby_pausedTitle">Approvals paused</string>
     <!-- Nearby approval: why it stopped (two declined requests in a short time); Start again listens again. -->

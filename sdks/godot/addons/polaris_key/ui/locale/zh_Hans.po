@@ -3695,12 +3695,12 @@ msgstr "未找到设备"
 msgid "signin.nearby.noneBody"
 msgstr "在你的另一台设备上打开 {app}，然后选择“批准附近的设备”。"
 
-#. Approve a Nearby Device
+#. Approve a nearby device
 #. Nearby approval, on the signed-in device: the screen that waits for a request.
 msgid "signin.nearby.listenTitle"
 msgstr "批准附近的设备"
 
-#. On the new device, choose to sign in with a nearby device. Its request shows here.
+#. On the new device, choose Sign in with a nearby device.
 #. Nearby approval: what to do on the new device so its request shows here.
 msgid "signin.nearby.listenBody"
 msgstr "在新设备上选择通过附近的设备登录。请求会显示在这里。"

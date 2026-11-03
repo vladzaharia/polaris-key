@@ -12,6 +12,9 @@ const KIND_EXPIRED := &"expired"
 const KIND_DEVICE_LIMIT := &"device-limit"
 const KIND_ACCOUNT_REQUIRED := &"account-required"
 const KIND_RATE_LIMITED := &"rate-limited"
+## The service or the network failed (a 5xx, no answer, the routes gone): nothing was approved, and it is not an
+## expired code.
+const KIND_FAILED := &"failed"
 const KIND_CHOOSE := &"choose"
 
 var kind: StringName = KIND_EXPIRED

@@ -3037,12 +3037,12 @@
       "note": "Nearby sign-in: where to go on the other device. Arguments: {app} = the app's name (never translated)."
     },
     "signin.nearby.listenTitle": {
-      "value": "Approve a Nearby Device",
+      "value": "Approve a nearby device",
       "role": "title",
       "note": "Nearby approval, on the signed-in device: the screen that waits for a request."
     },
     "signin.nearby.listenBody": {
-      "value": "On the new device, choose to sign in with a nearby device. Its request shows here.",
+      "value": "On the new device, choose Sign in with a nearby device.",
       "role": "body",
       "note": "Nearby approval: what to do on the new device so its request shows here."
     },

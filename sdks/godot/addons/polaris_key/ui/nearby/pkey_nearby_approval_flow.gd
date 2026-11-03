@@ -21,7 +21,7 @@ signal exited()
 signal devices_requested()
 signal sign_in_requested()
 
-const OUTCOMES := ["approved", "not-nearby", "mismatch", "denied", "expired", "device-limit", "account-required", "rate-limited"]
+const OUTCOMES := ["approved", "not-nearby", "mismatch", "denied", "expired", "device-limit", "account-required", "rate-limited", "failed"]
 
 var view: PKeyNearbyApproval
 var sdk: Node
@@ -68,12 +68,35 @@ func open() -> void:
 			r.detail.stop()
 		return
 	if not r.ok:
-		_ended("account-required" if r.code == PKeyConstants.ErrorCode.ACCOUNT_REQUIRED else "expired")
+		# Signed out reads as such; a service or network failure is not an expired code.
+		_ended("account-required" if r.code == PKeyConstants.ErrorCode.ACCOUNT_REQUIRED else "failed")
 		return
 	_approver = r.detail
-	_approver.stopped.connect(func(_reason: String) -> void:
-		if _open and not _closed:
-			_ended("expired"))
+	_approver.stopped.connect(_on_stopped)
+
+
+## The advert stopped on its own. Two declined requests (`budget`) say so and offer Start again; a sign-out and a
+## discovery failure are their own endings.
+func _on_stopped(reason: String) -> void:
+	if not _open or _closed:
+		return
+	match reason:
+		"budget":
+			_ask = null
+			_choose = null
+			view.step = "stopped"
+		"signed-out":
+			_ended("account-required")
+		_:
+			_ended("failed")
+
+
+## Start again after the advert paused: the failure budget counts from zero and the waiting screen returns.
+func _start_again() -> void:
+	if _closed or _approver == null or view.step != "stopped":
+		return
+	view.step = "waiting"
+	await _approver.reopen()
 
 
 ## A device asks: show its three codes. One at a time; the approver queues the rest.
@@ -86,10 +109,9 @@ func _on_ask(ask: PKeyNearbyAsk) -> void:
 	view.codes = ask.codes
 	view.step = "ask"
 	ask.closed.connect(func(_code: StringName, _by_peer: bool) -> void:
-		# The device left before the person answered: back to waiting.
+		# The device left before the person answered: say so, naming it (the screen keeps its name), with Done.
 		if _ask == ask and view.step == "ask" and not _closed:
-			_ask = null
-			view.step = "waiting")
+			_ended("expired"))
 
 
 ## The person tapped this code: the SDK approves only a code that matched.
@@ -98,7 +120,8 @@ func pick(code: String) -> void:
 	if _closed or view.step != "ask" or ask == null or not view.codes.has(code):
 		return
 	view.step = "working"
-	_stepped(await ask.pick(code))
+	var gen := _start_gen
+	_stepped(await ask.pick(code), gen)
 
 
 ## A licence of the choice (its position, from 0).
@@ -118,7 +141,8 @@ func _answer(choice: Dictionary) -> void:
 		return
 	_choose = null
 	view.step = "working"
-	_stepped(await step.choose(choice))
+	var gen := _start_gen
+	_stepped(await step.choose(choice), gen)
 
 
 ## Deny: before a code was picked it is "none of these match" (no route is called); at the licence choice it is the
@@ -130,7 +154,8 @@ func deny() -> void:
 	if step != null and view.step == "choose":
 		_choose = null
 		view.step = "working"
-		_stepped(await step.cancel())
+		var gen := _start_gen
+		_stepped(await step.cancel(), gen)
 		return
 	var ask := _ask
 	if ask != null and view.step == "ask":
@@ -139,8 +164,12 @@ func deny() -> void:
 		_ended("denied")
 
 
-func _stepped(step: PKeyNearbyStep) -> void:
-	if _closed:
+func _stepped(step: PKeyNearbyStep, gen: int) -> void:
+	if _closed or gen != _start_gen:
+		# The screen was left while the Worker was asked: a licence choice that comes back now is answered Deny,
+		# never dropped for the request to lapse.
+		if step.kind == PKeyNearbyStep.KIND_CHOOSE and step.choose != null:
+			step.choose.cancel()
 		return
 	if step.kind == PKeyNearbyStep.KIND_CHOOSE and step.choose != null:
 		var offered: Dictionary = step.choose.choices
@@ -179,6 +208,10 @@ func _stop_approver() -> void:
 
 func _primary(step: String) -> void:
 	match step:
+		"common.done", "leave":
+			leave()
+		"signin.nearby.startAgain", "stopped":
+			_start_again()
 		"devices.manage", "device-limit":
 			leave()
 			devices_requested.emit()
@@ -191,6 +224,7 @@ func _primary(step: String) -> void:
 
 ## Done or Cancel: the advert's prompt closes and `exited` is emitted. Leaving the codes or the choice answers Deny.
 func leave() -> void:
+	_start_gen += 1
 	_deny_on_leave()
 	_open = false
 	_stop_approver()
@@ -210,6 +244,7 @@ func _deny_on_leave() -> void:
 
 ## The screen is going away: the same as leaving, with nothing more to show.
 func close() -> void:
+	_start_gen += 1
 	_deny_on_leave()
 	_closed = true
 	_open = false

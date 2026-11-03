@@ -122,7 +122,7 @@ func all() -> Array:
 	# ── PKeyNearbyApproval (ui-matrix v7).
 	for c in [
 		"entry", "waiting", "ask", "working", "approved", "not-nearby", "mismatch", "denied", "expired", "device-limit",
-		"choose", "choose-new", "account-required", "rate-limited", "no-name", "hidden",
+		"choose", "choose-new", "account-required", "rate-limited", "stopped", "failed", "no-name", "hidden",
 	]:
 		out.append(["nearby", c, nearby.bind(c)])
 	# ── PKeySignInDialog.
@@ -950,6 +950,7 @@ func account(kind: String) -> Control:
 			a.signed_in = true
 			a.holder = "Mara Lindqvist"
 			a.nearby_approval_offered = true
+			a.nearby_approval_requested.connect(func() -> void: pass)
 	a.refresh_view()
 	return a
 

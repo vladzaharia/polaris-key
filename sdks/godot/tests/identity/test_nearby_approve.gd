@@ -65,9 +65,13 @@ class FakeApproval extends PKeyPeerNearbyApprover.Approval:
 class FakeApprover extends RefCounted:
 	signal stopped(reason: String)
 	var stops := 0
+	var reopens := 0
 
 	func stop() -> void:
 		stops += 1
+
+	func reopen() -> void:
+		reopens += 1
 
 
 ## The fake LAN half `on_request` runs over; it keeps the handler the SDK wrapped.
