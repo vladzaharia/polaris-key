@@ -69,14 +69,15 @@ afterEach(async () => {
 beforeAll(async () => {
   await Kit.preloadKitParts();
   // The brand fonts, as the kit suite loads them, so the baselines draw as the elements ones do.
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = new URL("../../../brand/fonts/fonts.css", import.meta.url).href;
-  document.head.append(link);
-  await new Promise<void>((resolve) => {
-    link.addEventListener("load", () => resolve(), { once: true });
-    link.addEventListener("error", () => resolve(), { once: true });
+  const fonts = Object.assign(document.createElement("link"), {
+    rel: "stylesheet",
+    href: new URL("../../../brand/fonts/fonts.css", import.meta.url).href,
   });
+  const settled = new Promise<void>((done) => {
+    fonts.onload = fonts.onerror = () => done();
+  });
+  document.head.append(fonts);
+  await settled;
 });
 
 const nextFrame = () =>

@@ -2067,10 +2067,10 @@
       "jscpd:duplicate": 8
     },
     "packages/sdk-react/test/browser/connect.browser.test.tsx": {
-      "jscpd:duplicate": 13
+      "jscpd:duplicate": 10
     },
     "packages/sdk-react/test/browser/holders.browser.test.tsx": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 7
     },
     "packages/sdk-react/test/browser/kit.browser.test.tsx": {
       "jscpd:duplicate": 7

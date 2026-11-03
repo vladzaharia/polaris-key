@@ -567,8 +567,7 @@ describe.each([
     );
   });
 
-  // Disabled 2026-11-03: flaky on CI (times out at the 20 s limit on ubuntu runners: 21-37 s on main c0bceaf707 and 4471390703 across the JS/TS and Pack jobs; 1.2 MB over 4 KiB chunks); re-enable once it sends fewer bytes like the resume test (400 KB).
-  it.skip("truncate takes the claim (a resume with bytes under one chunk)", async () => {
+  it("truncate takes the claim (a resume with bytes under one chunk)", async () => {
     const w = await make();
     const size = 300_000;
     const chunk = 4096;
@@ -742,24 +741,24 @@ describe.each([
     expect(readdirSync(w.out).sort()).toEqual(["q1", "q2"]);
   });
 
-  // Disabled 2026-11-03: flaky (timed out at the 20 s limit on 2 of 6 local runs of this file, over the LAN variant, and passed in under 1 s on the others and in CI run 41322447199); re-enable once the quota cancel is awaited by event rather than by timer.
-  it.skip("an accept that no longer fits cancels that transfer with quota and keeps the session", async () => {
+  it("an accept that no longer fits cancels that transfer with quota and keeps the session", async () => {
     const w = await make();
     w.a.cloudConnect.transfer.quotaBytes = 250_000;
-    const answers: ((v: { saveTo: string }) => void)[] = [];
     const byName = new Map<string, (v: { saveTo: string }) => void>();
+    let offers = 0;
     w.a.cloudConnect.transfer.onOffer(
       (o) =>
         new Promise((r) => {
-          const answer = r as (v: { saveTo: string }) => void;
-          answers.push(answer);
-          byName.set(o.name ?? "", answer);
+          byName.set(
+            o.name ?? `#${offers}`,
+            r as (v: { saveTo: string }) => void,
+          );
+          offers++;
         }),
     );
     // The senders hold their CHUNK records back, so the first accepted transfer stays open.
     let open!: () => void;
     const gate = new Promise<void>((r) => (open = r));
-    let held = 0;
     const orig = ConnectSession.prototype.xferPort;
     vi.spyOn(ConnectSession.prototype, "xferPort").mockImplementation(function (
       this: ConnectSession,
@@ -767,14 +766,20 @@ describe.each([
       const port = orig.call(this);
       if (port !== null && this.role === "initiator") {
         const send = port.send;
-        port.send = (type, body) => {
-          if (type !== 0x0022) return send(type, body);
-          held++;
-          return gate.then(() => send(type, body));
-        };
+        port.send = (type, body) =>
+          type === 0x0022
+            ? gate.then(() => send(type, body))
+            : send(type, body);
       }
       return port;
     });
+    // Count the CHUNK records held back, to know when the first accept has reserved its space.
+    let held = 0;
+    const holdThen = gate.then.bind(gate);
+    gate.then = ((...args: Parameters<typeof holdThen>) => (
+      held++,
+      holdThen(...args)
+    )) as typeof gate.then;
     const t = w.b.cloudConnect.transfer;
     const s1 = await w.b.cloudConnect.open(A);
     const s2 = await w.b.cloudConnect.open(A);
@@ -783,7 +788,7 @@ describe.each([
     const p2 = t.send(s2, content(150_000), { name: "two" });
     p1.catch(() => undefined);
     p2.catch(() => undefined);
-    await until(() => answers.length === 2);
+    await until(() => offers === 2);
     // The offers can arrive in either order: answer by name, not by arrival.
     byName.get("one")!({ saveTo: join(w.out, "one") });
     // The first sender reached its CHUNK, so its accept has reserved the space; only then the second.
@@ -796,8 +801,8 @@ describe.each([
     expect(existsSync(join(w.out, "two"))).toBe(false);
     // The same session takes a transfer that fits.
     const p3 = t.send(s2, content(1000), { name: "three" });
-    await until(() => answers.length === 3);
-    answers[2]!({ saveTo: join(w.out, "three") });
+    await until(() => offers === 3);
+    byName.get("three")!({ saveTo: join(w.out, "three") });
     await p3;
     expect(readFileSync(join(w.out, "three"))).toEqual(
       Buffer.from(content(1000)),
