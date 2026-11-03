@@ -154,6 +154,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
         items: leaves(
           "help/devices",
           "help/nearby-devices",
+          "help/pair-with-someone-nearby",
           "help/new-computer",
           "help/device-limit",
           "help/offline-activation",
@@ -430,6 +431,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "features/sign-in/add-sign-in",
           "features/sign-in/oidc",
           "features/sign-in/web-redirect",
+          "features/sign-in/native-redirect",
           "features/sign-in/device-flow",
           "features/sign-in/app-license-choice",
           "features/sign-in/nearby",
@@ -463,6 +465,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "features/cloud-connect/channels",
           "features/cloud-connect/relay",
           "features/cloud-connect/transfer",
+          "features/cloud-connect/pairing",
         ),
       },
       {
