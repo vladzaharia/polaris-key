@@ -510,7 +510,7 @@ final class PeerSessionTests: XCTestCase {
         let acct = PeerAccountContext(
             trust: [:], expectedAud: "x", certJws: devA.cert, ownSub: sub, ownDeviceId: devA.id, heldRing: { nil },
             discKeys: [rnd()])
-        var text = "\(a.s) \(String(reflecting: a.s)) \(a.events.value) \(b.events.value) \(acct)"
+        var text = "\(String(describing: a.s)) \(String(reflecting: a.s)) \(a.events.value) \(b.events.value) \(acct)"
         Swift.dump(b.events.value, to: &text)
         Swift.dump(acct, to: &text)
         XCTAssertFalse(text.contains("secret-body"))

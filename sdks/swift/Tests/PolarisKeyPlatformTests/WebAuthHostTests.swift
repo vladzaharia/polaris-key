@@ -29,9 +29,12 @@ private final class StubPresenter: WebAuthPresenting, @unchecked Sendable {
 }
 
 final class WebAuthHostTests: XCTestCase {
-    private let authorize = "https://key.plrs.im/authorize?client_id=app&request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3Aabc"
+    private let authorize =
+        "https://key.plrs.im/authorize?client_id=app&request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3Aabc"
 
-    private func make(_ presenter: StubPresenter = StubPresenter()) -> (ops: [String: PlatformBinaryOp], sink: PlatformEventSink, presenter: StubPresenter) {
+    private func make(_ presenter: StubPresenter = StubPresenter()) -> (
+        ops: [String: PlatformBinaryOp], sink: PlatformEventSink, presenter: StubPresenter
+    ) {
         let sink = PlatformEventSink()
         var ops: [String: PlatformBinaryOp] = [:]
         WebAuthHost(sink: sink, presenter: presenter).register(into: &ops)
@@ -42,8 +45,13 @@ final class WebAuthHostTests: XCTestCase {
         bytes.withUnsafeBufferPointer { ops[op]!($0) }
     }
 
-    private func open(_ ops: [String: PlatformBinaryOp], url: String? = nil, scheme: String = "demoapp", host: String = "key.plrs.im", ephemeral: Bool = false) -> [UInt8] {
-        let o: [String: Any] = ["url": url ?? authorize, "callback_scheme": scheme, "issuer_host": host, "prefers_ephemeral": ephemeral]
+    private func open(
+        _ ops: [String: PlatformBinaryOp], url: String? = nil, scheme: String = "demoapp", host: String = "key.plrs.im",
+        ephemeral: Bool = false
+    ) -> [UInt8] {
+        let o: [String: Any] = [
+            "url": url ?? authorize, "callback_scheme": scheme, "issuer_host": host, "prefers_ephemeral": ephemeral,
+        ]
         return run(ops, "auth_open", [UInt8](try! JSONSerialization.data(withJSONObject: o)))
     }
 
@@ -80,7 +88,9 @@ final class WebAuthHostTests: XCTestCase {
 
     func testRefusesBadSchemesAndHosts() {
         let m = make()
-        for scheme in ["", "https", "http", "file", "data", "javascript", "1abc", "Demo", "a b", String(repeating: "a", count: 65)] {
+        for scheme in [
+            "", "https", "http", "file", "data", "javascript", "1abc", "Demo", "a b", String(repeating: "a", count: 65),
+        ] {
             XCTAssertEqual(open(m.ops, scheme: scheme), [3], scheme)
         }
         XCTAssertEqual(open(m.ops, host: ""), [3])
