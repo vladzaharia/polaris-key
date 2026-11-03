@@ -159,6 +159,16 @@ describe("setting routes (§2.5)", () => {
     expect(m.takeEvents()).toEqual([]);
   });
 
+  it("answers bad_request, without throwing, for a value with no JSON spelling", () => {
+    const { m } = started();
+    for (const bad of [{ a: undefined }, () => 1, Symbol("x"), 1n])
+      expect(m.set(OPEN, bad as never)).toEqual({
+        ok: false,
+        error: "bad_request",
+      });
+    expect(m.status()).toEqual({ state: "idle", pending: 0 });
+  });
+
   it("bounds every value at 8 KiB of canonical JSON, open or declared", () => {
     const { m } = started();
     const atLimit = "x".repeat(SYNC_MAX_VALUE_BYTES - 2);
@@ -232,6 +242,15 @@ describe("setting routes (§2.5)", () => {
 });
 
 describe("importLocal (§2.5 Import)", () => {
+  it("skips a value with no JSON spelling and still imports the others", () => {
+    const { m } = started({ subject: null, contacted: false });
+    expect(
+      m.importLocal({ [VOL]: 0.3, [OPEN]: { a: undefined } as never }),
+    ).toEqual({ ok: true });
+    expect(m.get(VOL)).toEqual({ value: 0.3, from: "device" });
+    expect(m.get(OPEN).from).not.toBe("device");
+  });
+
   it("imports synced and open keys at the floor, local keys to the device, and skips the rest", () => {
     const { m } = started({ subject: null, contacted: false });
     expect(
