@@ -2306,6 +2306,16 @@
     },
     {
       "sdk": "godot",
+      "path": "store.read_unconfirmed_mark",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "store.write_unconfirmed_mark",
+      "reason": "the Store persistence port that app and backend code implement; not a client verb"
+    },
+    {
+      "sdk": "godot",
       "path": "store.status",
       "reason": "the Store persistence port that app and backend code implement; not a client verb"
     },
