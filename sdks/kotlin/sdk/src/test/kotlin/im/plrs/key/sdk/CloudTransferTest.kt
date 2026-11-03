@@ -26,6 +26,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import org.junit.Ignore
 import java.io.File
 import java.nio.file.Files
 import java.security.MessageDigest
@@ -488,6 +489,8 @@ internal class CloudTransferTest {
         assertEquals(TransferOutcome.delivered, handles[1].await().outcome)
     }
 
+    // Disabled 2026-11-03: flaky on CI (timed out waiting for the first transfer to hold its space on 3 JVM jobs of main ef2f602dd3, passes on the next main run); re-enable once the wait is event-driven rather than timed.
+    @Ignore("flaky on CI: first-transfer hold wait times out under load")
     @Test
     fun anAcceptThatNoLongerFitsCancelsThatTransferWithQuotaAndKeepsTheSession() = bounded {
         val scope = scope()
