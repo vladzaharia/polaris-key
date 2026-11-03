@@ -277,7 +277,7 @@ function NavLink({
       href={to}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "relative inline-flex items-center gap-2 px-1 text-md",
+        "relative inline-flex items-center gap-2 px-1 text-base",
         active
           ? "font-medium text-fg-strong after:absolute after:inset-x-0 after:-bottom-px after:rounded-full after:h-[3px] after:bg-locker-accent"
           : "text-fg-muted hover:text-fg-strong",
