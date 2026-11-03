@@ -557,7 +557,7 @@
       "gdlint:max-line-length": 8
     },
     "sdks/godot/tests/identity/test_native_redirect.gd": {
-      "gdlint:max-line-length": 33
+      "gdlint:max-line-length": 8
     },
     "sdks/godot/tests/identity/test_redirect.gd": {
       "gdlint:class-definitions-order": 1,
@@ -711,9 +711,6 @@
     },
     "sdks/godot/tests/suite_export_stamps.gd": {
       "gdlint:max-line-length": 3
-    },
-    "sdks/godot/tests/suite_identity.gd": {
-      "gdlint:max-line-length": 1
     },
     "sdks/godot/tests/suite_keyring.gd": {
       "gdlint:max-line-length": 3

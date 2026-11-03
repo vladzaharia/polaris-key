@@ -29,6 +29,12 @@ const RESERVED_SCHEMES := ["http", "https", "javascript", "data", "file"]
 ## Callback refusals that leave a sign-in waiting: a delivery that is not this sign-in's cannot end it.
 const NOT_THIS_SIGN_IN := ["malformed", "redirect-mismatch", "state-mismatch"]
 
+## Project settings holding the redirect a phone build registered (the Android export reads the same ones for the
+## intent filter). They are the defaults; `registered_schemes` / `registered_claimed` in the start options override
+## per key.
+const SETTING_SCHEME := "polaris_key/native_redirect/scheme"
+const SETTING_CLAIMED := "polaris_key/native_redirect/claimed_uri"
+
 static var _verifier_re: RegEx
 static var _printable_re: RegEx
 static var _scheme_re: RegEx
@@ -108,13 +114,6 @@ static func choose_redirect_class(opts: Dictionary) -> Dictionary:
 
 
 # ── The registered redirects (mobile) ────────────────────────────────────────────────────
-
-## Project settings holding the redirect a phone build registered (the Android export reads the same ones for the
-## intent filter). They are the defaults; `registered_schemes` / `registered_claimed` in the start options override
-## per key.
-const SETTING_SCHEME := "polaris_key/native_redirect/scheme"
-const SETTING_CLAIMED := "polaris_key/native_redirect/claimed_uri"
-
 
 ## The redirects the project settings register, as full redirect URIs: {schemes: [...], claimed: [...]}. `settings`
 ## ({scheme, claimed_uri}) stands in for the project settings (tests). A value that is no native redirect URI is dropped.

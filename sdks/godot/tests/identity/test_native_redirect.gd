@@ -49,14 +49,16 @@ func _helpers(t: PKeyTestContext) -> void:
 	var iss_q := ISS.uri_encode()
 	# classify and build
 	t.check("native: classifies a loopback", N.classify_native_redirect_uri(LOOP) == "loopback")
-	t.check("native: classifies [::1], a scheme and a claimed link", N.classify_native_redirect_uri("http://[::1]:5000/pkey/callback") == "loopback" and N.classify_native_redirect_uri(SCHEME) == "scheme" and N.classify_native_redirect_uri("https://app.example/open/pkey") == "claimed")
+	t.check("native: classifies [::1], a scheme and a claimed link", N.classify_native_redirect_uri("http://[::1]:5000/pkey/callback") == "loopback"
+		and N.classify_native_redirect_uri(SCHEME) == "scheme" and N.classify_native_redirect_uri("https://app.example/open/pkey") == "claimed")
 	for bad in ["http://localhost:49152/pkey/callback", "http://127.0.0.1/pkey/callback", "http://127.0.0.1:80/pkey/callback", "http://127.0.0.1:49152/other",
 			"http://127.0.0.1:49152/pkey/callback?x=1", "http://127.0.0.1:49152/pkey/callback#f", "http://user@127.0.0.1:49152/pkey/callback", "com.x:/other",
 			"com.x://pkey/callback", "https://user@app.example/open", "https://app.example/open#f", "https://app.example/", "javascript:/pkey/callback", "",
 			"http://127.0.0.1:049152/pkey/callback", 7]:
 		t.check("native: %s is no native redirect URI" % str(bad).left(48), N.classify_native_redirect_uri(bad) == "")
 	t.check("native: builds the loopback and scheme URIs", N.native_redirect_uri("loopback", {"port": 49152}) == LOOP and N.native_redirect_uri("scheme", {"scheme": "com.tidewater.studio"}) == SCHEME)
-	t.check("native: refuses port 80 and a reserved scheme", N.native_redirect_uri("loopback", {"port": 80}) == "" and N.native_redirect_uri("scheme", {"scheme": "https"}) == "" and N.native_redirect_uri("loopback", {"port": 0}) == "")
+	t.check("native: refuses port 80 and a reserved scheme", N.native_redirect_uri("loopback", {"port": 80}) == ""
+		and N.native_redirect_uri("scheme", {"scheme": "https"}) == "" and N.native_redirect_uri("loopback", {"port": 0}) == "")
 
 	# the class choice
 	var d := {"loopback": true, "schemes": [SCHEME], "claimedHttps": ["https://app.example/open"]}
@@ -66,15 +68,19 @@ func _helpers(t: PKeyTestContext) -> void:
 	t.check("native: then claimed HTTPS", N.choose_redirect_class({"request_endpoint": REQUEST_ENDPOINT, "discovery": {"loopback": false, "schemes": [], "claimedHttps": d["claimedHttps"]}, "can_listen": true, "registered_claimed": ["https://app.example/open"]}) == {"kind": "claimed", "redirect_uri": "https://app.example/open"})
 	var none := N.choose_redirect_class({"request_endpoint": REQUEST_ENDPOINT, "discovery": d, "can_listen": false, "registered_schemes": ["x:/pkey/callback"]})
 	t.check("native: a scheme discovery does not list is no class", none["kind"] == "unavailable" and none["code"] == "redirect-unavailable" and none["reason"] == "no-class", str(none))
-	t.check("native: no request endpoint, or no nativeRedirect, is request-not-served", N.choose_redirect_class({"request_endpoint": "", "discovery": d, "can_listen": true})["reason"] == "request-not-served" and N.choose_redirect_class({"request_endpoint": REQUEST_ENDPOINT, "discovery": null, "can_listen": true})["reason"] == "request-not-served")
+	t.check("native: no request endpoint, or no nativeRedirect, is request-not-served", N.choose_redirect_class({"request_endpoint": "", "discovery": d, "can_listen": true})["reason"] == "request-not-served"
+		and N.choose_redirect_class({"request_endpoint": REQUEST_ENDPOINT, "discovery": null, "can_listen": true})["reason"] == "request-not-served")
 
 	# the pushed request: the recording's bytes
 	var form := "response_type=code&client_id=djdl&redirect_uri=http%3A%2F%2F127.0.0.1%3A49152%2Fpkey%2Fcallback&state=" + STATE + "&code_challenge=" + CHALLENGE + "&code_challenge_method=S256&device_name=Ada%27s+Mac"
 	var p := N.push_request(_push_opts())
-	t.check("native: the loopback push is the recorded form", p["ok"] and p["body"] == form and p["url"] == REQUEST_ENDPOINT and p["content_type"] == "application/x-www-form-urlencoded", str(p.get("body")))
-	t.check("native: the pending request holds the verifier, the body does not", p["ok"] and p["pending"]["code_verifier"] == VERIFIER and not String(p["body"]).contains(VERIFIER) and p["pending"]["redirect_class"] == "loopback")
+	t.check("native: the loopback push is the recorded form", p["ok"] and p["body"] == form and p["url"] == REQUEST_ENDPOINT
+		and p["content_type"] == "application/x-www-form-urlencoded", str(p.get("body")))
+	t.check("native: the pending request holds the verifier, the body does not", p["ok"] and p["pending"]["code_verifier"] == VERIFIER
+		and not String(p["body"]).contains(VERIFIER) and p["pending"]["redirect_class"] == "loopback")
 	var ps := N.push_request(_push_opts({"redirect_uri": SCHEME, "return_uri": SCHEME}))
-	t.check("native: a scheme push carries return_uri last", ps["ok"] and String(ps["body"]).ends_with("&device_name=Ada%27s+Mac&return_uri=com.tidewater.studio%3A%2Fpkey%2Fcallback"), str(ps.get("body")))
+	t.check("native: a scheme push carries return_uri last", ps["ok"]
+		and String(ps["body"]).ends_with("&device_name=Ada%27s+Mac&return_uri=com.tidewater.studio%3A%2Fpkey%2Fcallback"), str(ps.get("body")))
 	var pc := N.push_request(_push_opts({"license_choice": "app", "choice_available": true}))
 	t.check("native: license_choice=app sits before the label", pc["ok"] and String(pc["body"]).ends_with("&license_choice=app&device_name=Ada%27s+Mac") and pc["pending"]["license_choice"] == true)
 	t.check("native: license_choice withheld without the choice endpoints", N.push_request(_push_opts({"license_choice": "app", "choice_available": false}))["body"] == form)
@@ -88,8 +94,11 @@ func _helpers(t: PKeyTestContext) -> void:
 	var ok := {"request_uri": RURI, "expires_in": 600}
 	t.check("native: parses the 201 answer", N.parse_pushed_answer(201, ok) == {"kind": "pushed", "request_uri": RURI, "expires_in": 600})
 	t.check("native: a 200 is not a pushed answer", N.parse_pushed_answer(200, ok)["kind"] == "refused")
-	t.check("native: a bad request_uri, a TTL past 600 and a missing body are malformed", N.parse_pushed_answer(201, {"request_uri": "urn:x", "expires_in": 600})["kind"] == "malformed" and N.parse_pushed_answer(201, {"request_uri": RURI, "expires_in": 601})["kind"] == "malformed" and N.parse_pushed_answer(201, null)["kind"] == "malformed")
-	t.check("native: a refusal reads flat, retry capped and rounded up", N.parse_pushed_answer(429, {"error": "rate_limited", "retryAfter": 4.2}) == {"kind": "refused", "error": "rate_limited", "status": 429, "retry_after_seconds": 5} and N.parse_pushed_answer(502, "x")["error"] == "server_error")
+	t.check("native: a bad request_uri, a TTL past 600 and a missing body are malformed", N.parse_pushed_answer(201, {"request_uri": "urn:x", "expires_in": 600})["kind"] == "malformed"
+		and N.parse_pushed_answer(201, {"request_uri": RURI, "expires_in": 601})["kind"] == "malformed"
+		and N.parse_pushed_answer(201, null)["kind"] == "malformed")
+	t.check("native: a refusal reads flat, retry capped and rounded up", N.parse_pushed_answer(429, {"error": "rate_limited", "retryAfter": 4.2}) == {"kind": "refused", "error": "rate_limited", "status": 429, "retry_after_seconds": 5}
+		and N.parse_pushed_answer(502, "x")["error"] == "server_error")
 
 	# the authorize URL
 	var au := N.authorize_url_for(AUTHORIZE, "djdl", RURI)
@@ -111,17 +120,22 @@ func _helpers(t: PKeyTestContext) -> void:
 		var r := N.parse_native_callback(pend, row[0])
 		t.check("native: callback %s is %s" % [str(row[0]).right(40), row[1]], r["kind"] == "failed" and r["reason"] == row[1] and r["code"] == "sign-in-failed", str(r))
 	var base_err := "%s?state=%s&iss=%s&request=%s" % [LOOP, STATE, iss_q, RQ]
-	t.check("native: access_denied cancels, another error fails naming it", N.parse_native_callback(pend, base_err + "&error=access_denied")["kind"] == "cancelled" and N.parse_native_callback(pend, base_err + "&error=server_error") == {"kind": "failed", "code": "sign-in-failed", "reason": "authorization-error", "error": "server_error"})
+	t.check("native: access_denied cancels, another error fails naming it", N.parse_native_callback(pend, base_err + "&error=access_denied")["kind"] == "cancelled"
+		and N.parse_native_callback(pend, base_err + "&error=server_error") == {"kind": "failed", "code": "sign-in-failed", "reason": "authorization-error", "error": "server_error"})
 	t.check("native: an extra parameter beside an error is refused", N.parse_native_callback(pend, base_err + "&error=access_denied&x=1")["reason"] == "unexpected-parameter")
 	var sp := {"state": STATE, "issuer": ISS, "redirect_uri": SCHEME}
 	var sbase := "%s?code=abc&state=%s&iss=%s" % [SCHEME, STATE, iss_q]
-	t.check("native: a scheme delivery needs no handle, a present one must be valid", N.parse_native_callback(sp, sbase) == {"kind": "code", "code": "abc"} and N.parse_native_callback(sp, sbase + "&request=bad")["reason"] == "request-invalid" and N.parse_native_callback(sp, sbase.replace("com.tidewater.studio", "com.other.app"))["reason"] == "redirect-mismatch")
+	t.check("native: a scheme delivery needs no handle, a present one must be valid", N.parse_native_callback(sp, sbase) == {"kind": "code", "code": "abc"}
+		and N.parse_native_callback(sp, sbase + "&request=bad")["reason"] == "request-invalid"
+		and N.parse_native_callback(sp, sbase.replace("com.tidewater.studio", "com.other.app"))["reason"] == "redirect-mismatch")
 	t.check("native: the redirect URI's scheme and host compare case-insensitively", N.parse_native_callback(pend, String(q.call("")).replace("http://127.0.0.1", "HTTP://127.0.0.1"))["kind"] == "code")
-	t.check("native: constant_time_equal", N.constant_time_equal("abc", "abc") and not N.constant_time_equal("abc", "abd") and not N.constant_time_equal("abc", "abcd") and not N.constant_time_equal("", "a") and N.constant_time_equal("", ""))
+	t.check("native: constant_time_equal", N.constant_time_equal("abc", "abc") and not N.constant_time_equal("abc", "abd")
+		and not N.constant_time_equal("abc", "abcd") and not N.constant_time_equal("", "a") and N.constant_time_equal("", ""))
 
 	# the token request
 	var tr := N.native_token_request(p["pending"], "C0DE", "TRANSCRIPTDEVICE0000000000000001")
-	t.check("native: the token form is the recorded one, no label", tr["body"] == "grant_type=authorization_code&client_id=djdl&code=C0DE&code_verifier=" + VERIFIER + "&redirect_uri=http%3A%2F%2F127.0.0.1%3A49152%2Fpkey%2Fcallback" and tr["url"] == TOKEN, str(tr.get("body")))
+	t.check("native: the token form is the recorded one, no label", tr["body"] == "grant_type=authorization_code&client_id=djdl&code=C0DE&code_verifier=" + VERIFIER + "&redirect_uri=http%3A%2F%2F127.0.0.1%3A49152%2Fpkey%2Fcallback"
+		and tr["url"] == TOKEN, str(tr.get("body")))
 	t.check("native: the token request names the pushing device", tr["headers"]["X-PKey-Device"] == "TRANSCRIPTDEVICE0000000000000001" and N.native_token_request(p["pending"], "C", "").is_empty())
 
 
@@ -204,12 +218,15 @@ func _listener(t: PKeyTestContext) -> void:
 	t.check("listener: an absolute-form target is a 404", _status(r).begins_with("HTTP/1.1 404") and acc.calls.is_empty(), r)
 	r = await _exchange(l, l.port, _req(_good_path("tidewater-state-0123456788"), host))
 	t.check("listener: a wrong state is a 404 and the listener keeps listening", _status(r).begins_with("HTTP/1.1 404") and acc.calls.size() == 1 and not l.is_closed(), r)
-	t.check("listener: the state is compared by the session in constant time, one flipped last character is refused", acc.calls.size() == 1 and N.parse_native_callback({"state": STATE, "issuer": ISS, "redirect_uri": LOOP}, LOOP + "?code=c&state=tidewater-state-0123456788&iss=" + ISS.uri_encode() + "&request=" + RQ)["reason"] == "state-mismatch")
+	t.check("listener: the state is compared by the session in constant time, one flipped last character is refused", acc.calls.size() == 1
+		and N.parse_native_callback({"state": STATE, "issuer": ISS, "redirect_uri": LOOP}, LOOP + "?code=c&state=tidewater-state-0123456788&iss=" + ISS.uri_encode() + "&request=" + RQ)["reason"] == "state-mismatch")
 
 	r = await _exchange(l, l.port, _req(_good_path(), host))
 	var lines := r.split("\r\n")
 	t.check("listener: the first good callback is ONE 303 to the return page", lines[0] == "HTTP/1.1 303 See Other" and lines.has("Location: %s?request=%s" % [RETURN_PAGE, RQ]), r)
-	t.check("listener: the 303 is no-store, no-referrer, bodyless, with no CORS or cookie header", lines.has("Cache-Control: no-store") and lines.has("Referrer-Policy: no-referrer") and lines.has("Content-Length: 0") and r.ends_with("\r\n\r\n") and not r.to_lower().contains("access-control") and not r.to_lower().contains("set-cookie"), r)
+	t.check("listener: the 303 is no-store, no-referrer, bodyless, with no CORS or cookie header", lines.has("Cache-Control: no-store")
+		and lines.has("Referrer-Policy: no-referrer") and lines.has("Content-Length: 0") and r.ends_with("\r\n\r\n")
+		and not r.to_lower().contains("access-control") and not r.to_lower().contains("set-cookie"), r)
 	t.check("listener: the callback URL reached the handler on the listener's own origin", acc.calls.back() == "http://127.0.0.1:%d%s" % [l.port, _good_path()])
 	for i in 30:
 		l.poll()
@@ -367,11 +384,16 @@ func _session(t: PKeyTestContext) -> void:
 			probe["held"] = TCPServer.new().listen(probe["port"], "127.0.0.1") != OK
 	var seen := []
 	var s := await _start(bed, {"login_hint": "ada@example.com", "scope": "profile email"})
-	t.check("native session: starts on the redirect channel as a loopback", s.ok and s.channel == &"redirect" and s.redirect_class == "loopback" and s.redirect_uri.begins_with("http://127.0.0.1:") and s.redirect_uri.ends_with("/pkey/callback"), str(s))
+	t.check("native session: starts on the redirect channel as a loopback", s.ok and s.channel == &"redirect" and s.redirect_class == "loopback"
+		and s.redirect_uri.begins_with("http://127.0.0.1:") and s.redirect_uri.ends_with("/pkey/callback"), str(s))
 	t.check("native session: the port was already held when the Worker received the push", probe["held"] and s.redirect_uri == "http://127.0.0.1:%d/pkey/callback" % probe["port"], str(probe))
 	var push: Dictionary = bed.push_requests[0] if bed.push_requests.size() == 1 else {}
-	t.check("native session: one form POST to request, carrying the device header and the SDK headers", bed.push_requests.size() == 1 and String(push["headers"].get("content-type", "")).begins_with("application/x-www-form-urlencoded") and push["headers"].get("x-pkey-device") == bed.F["device_id"] and push["headers"].has("x-pkey-sdk") and not push["headers"].has("authorization"), str(push.get("headers")))
-	t.check("native session: the push carries the challenge and never the verifier", String(push["body"]).contains("code_challenge_method=S256") and not String(push["body"]).contains("code_verifier") and String(push["body"]).contains("login_hint=ada%40example.com"))
+	t.check("native session: one form POST to request, carrying the device header and the SDK headers", bed.push_requests.size() == 1
+		and String(push["headers"].get("content-type", "")).begins_with("application/x-www-form-urlencoded")
+		and push["headers"].get("x-pkey-device") == bed.F["device_id"] and push["headers"].has("x-pkey-sdk")
+		and not push["headers"].has("authorization"), str(push.get("headers")))
+	t.check("native session: the push carries the challenge and never the verifier", String(push["body"]).contains("code_challenge_method=S256")
+		and not String(push["body"]).contains("code_verifier") and String(push["body"]).contains("login_hint=ada%40example.com"))
 	t.check("native session: authorize_url is client_id and request_uri only", s.authorize_url == "%s/authorize?client_id=djdl&request_uri=urn%%3Aietf%%3Aparams%%3Aoauth%%3Arequest_uri%%3AA1xUxaz50yGeWfx8JDSnAw" % root, s.authorize_url)
 	t.check("native session: expires in 600 s on the client's clock", s.expires_in == 600 and is_equal_approx(s.expires_at, bed.clock[0] + 600.0))
 	t.check("native session: the browser was not asked for (browser: false)", not s.opened)
@@ -381,15 +403,18 @@ func _session(t: PKeyTestContext) -> void:
 	var cb := "/pkey/callback?code=C0DE&state=%s&iss=%s&request=%s" % [state, root.uri_encode(), RQ]
 	var port: int = int(s.redirect_uri.get_slice(":", 2).get_slice("/", 0))
 	var reply := await _exchange(s._native.listener, port, _req(cb, "127.0.0.1:%d" % port))
-	t.check("native session: the browser is sent to the return page with the card's handle", _status(reply) == "HTTP/1.1 303 See Other" and reply.contains("Location: %s?request=%s\r\n" % [_return_page(bed), RQ]), reply)
+	t.check("native session: the browser is sent to the return page with the card's handle", _status(reply) == "HTTP/1.1 303 See Other"
+		and reply.contains("Location: %s?request=%s\r\n" % [_return_page(bed), RQ]), reply)
 	await B.until(func(): return box.size() == 1)
 	var o: PKeySignInOutcome = box[0] if box.size() == 1 else null
 	t.check("native session: wait() signs in", o != null and o.kind == PKeySignInOutcome.KIND_SIGNED_IN and o.subject == "ps_abc" and o.scope == "profile email" and o.license_id == "lic_1", str(o))
 	t.check("native session: the outcome signal fired once", seen.size() == 1 and seen[0] == o)
 	var req: Dictionary = bed.token_requests[0] if bed.token_requests.size() == 1 else {}
 	var body := String(req.get("body", ""))
-	t.check("native session: the code is redeemed from the pushing device", bed.token_requests.size() == 1 and req["headers"].get("x-pkey-device") == bed.F["device_id"] and not req["headers"].has("authorization"), str(req.get("headers")))
-	t.check("native session: the token form carries the verifier and the same redirect URI, no label", body.begins_with("grant_type=authorization_code&client_id=djdl&code=C0DE&code_verifier=") and body.contains("&redirect_uri=" + s.redirect_uri.uri_encode()) and not body.contains("device_name"), body.replace("code_verifier=", "cv="))
+	t.check("native session: the code is redeemed from the pushing device", bed.token_requests.size() == 1
+		and req["headers"].get("x-pkey-device") == bed.F["device_id"] and not req["headers"].has("authorization"), str(req.get("headers")))
+	t.check("native session: the token form carries the verifier and the same redirect URI, no label", body.begins_with("grant_type=authorization_code&client_id=djdl&code=C0DE&code_verifier=")
+		and body.contains("&redirect_uri=" + s.redirect_uri.uri_encode()) and not body.contains("device_name"), body.replace("code_verifier=", "cv="))
 	t.check("native session: the token is stored", bed.sdk.core.tokens.current() == TOKEN_OK["access_token"])
 	t.check("native session: the listener is closed and a settled session answers the same outcome", s._native.listener.is_closed() and await s.wait() == o and not s.reopen())
 	var again: PKeySignInOutcome = await s.handle_redirect(cb)
@@ -407,7 +432,8 @@ func _session(t: PKeyTestContext) -> void:
 	s2.cancel()
 	await B.until(func(): return box2.size() == 1)
 	t.check("native session: cancel() settles cancelled", box2.size() == 1 and box2[0].kind == PKeySignInOutcome.KIND_CANCELLED, str(box2))
-	t.check("native session: cancel() released the listener's port and dropped the pending request", s2._native.listener.is_closed() and TCPServer.new().listen(port2, "127.0.0.1") == OK and s2._native.pending.is_empty())
+	t.check("native session: cancel() released the listener's port and dropped the pending request", s2._native.listener.is_closed()
+		and TCPServer.new().listen(port2, "127.0.0.1") == OK and s2._native.pending.is_empty())
 	var late: PKeySignInOutcome = await s2.handle_redirect("http://127.0.0.1:%d/pkey/callback?code=C0DE&state=x&iss=y&request=%s" % [port2, RQ])
 	t.check("native session: a callback after cancel sends nothing", late.code == PKeyErrors.SIGN_IN_FAILED and bed.token_requests.is_empty())
 	bed.free_all()
@@ -421,7 +447,8 @@ func _session(t: PKeyTestContext) -> void:
 	var box3 := B.follow(s3)
 	var rep3 := await _exchange(s3._native.listener, port3, _req("/pkey/callback?error=access_denied&state=%s&iss=%s&request=%s" % [st3, root.uri_encode(), RQ], "127.0.0.1:%d" % port3))
 	await B.until(func(): return box3.size() == 1)
-	t.check("native session: access_denied settles cancelled with no token request", box3.size() == 1 and box3[0].kind == PKeySignInOutcome.KIND_CANCELLED and bed.token_requests.is_empty() and rep3.contains("cancelled=1"), rep3)
+	t.check("native session: access_denied settles cancelled with no token request", box3.size() == 1
+		and box3[0].kind == PKeySignInOutcome.KIND_CANCELLED and bed.token_requests.is_empty() and rep3.contains("cancelled=1"), rep3)
 	bed.free_all()
 
 	# Expiry: the pushed request's 600 s on the client's clock.
@@ -433,7 +460,9 @@ func _session(t: PKeyTestContext) -> void:
 	await B.until(func(): return s4.is_waiting())
 	bed.clock[0] += 601.0
 	await B.until(func(): return box4.size() == 1, 200)
-	t.check("native session: past 600 s wait() settles expired and closes the listener", box4.size() == 1 and box4[0].kind == PKeySignInOutcome.KIND_EXPIRED and box4[0].code == PKeyErrors.SIGN_IN_EXPIRED and TCPServer.new().listen(port4, "127.0.0.1") == OK, str(box4))
+	t.check("native session: past 600 s wait() settles expired and closes the listener", box4.size() == 1
+		and box4[0].kind == PKeySignInOutcome.KIND_EXPIRED and box4[0].code == PKeyErrors.SIGN_IN_EXPIRED
+		and TCPServer.new().listen(port4, "127.0.0.1") == OK, str(box4))
 	t.check("native session: reopen() after the lapse is false", not s4.reopen())
 	bed.free_all()
 
@@ -443,15 +472,18 @@ func _session(t: PKeyTestContext) -> void:
 	bed.sdk.identity.native_platform = "other"
 	var s5 := await _start(bed, {"loopback": false, "registered_schemes": [SCHEME], "return_uri": SCHEME})
 	t.check("native session: no listener means a registered scheme", s5.ok and s5.redirect_class == "scheme" and s5.redirect_uri == SCHEME and s5._native.listener == null, str(s5))
-	t.check("native session: the push names the scheme and its return_uri", String(bed.push_requests[0]["body"]).contains("redirect_uri=com.tidewater.studio%3A%2Fpkey%2Fcallback") and String(bed.push_requests[0]["body"]).ends_with("&return_uri=com.tidewater.studio%3A%2Fpkey%2Fcallback"), bed.push_requests[0]["body"])
+	t.check("native session: the push names the scheme and its return_uri", String(bed.push_requests[0]["body"]).contains("redirect_uri=com.tidewater.studio%3A%2Fpkey%2Fcallback")
+		and String(bed.push_requests[0]["body"]).ends_with("&return_uri=com.tidewater.studio%3A%2Fpkey%2Fcallback"), bed.push_requests[0]["body"])
 	var st5 := _param(bed.push_requests[0]["body"], "state")
 	var iss5 := root.uri_encode()
 	var wrong: PKeySignInOutcome = await bed.sdk.identity.sign_in.handle_redirect("%s?code=C0DE&state=wrong-state-0123456789&iss=%s" % [SCHEME, iss5])
-	t.check("native session: a delivery with another state is refused and leaves the sign-in waiting", wrong.code == PKeyErrors.SIGN_IN_FAILED and bed.token_requests.is_empty() and not s5._native.pending.is_empty())
+	t.check("native session: a delivery with another state is refused and leaves the sign-in waiting", wrong.code == PKeyErrors.SIGN_IN_FAILED
+		and bed.token_requests.is_empty() and not s5._native.pending.is_empty())
 	var other: PKeySignInOutcome = await bed.sdk.identity.sign_in.handle_redirect("com.other.app:/pkey/callback?code=C0DE&state=%s&iss=%s" % [st5, iss5])
 	t.check("native session: a delivery for another redirect URI is refused the same way", other.code == PKeyErrors.SIGN_IN_FAILED and bed.token_requests.is_empty())
 	var done: PKeySignInOutcome = await bed.sdk.identity.sign_in.handle_redirect("%s?code=C0DE&state=%s&iss=%s" % [SCHEME, st5, iss5])
-	t.check("native session: handle_redirect redeems the scheme delivery", done.kind == PKeySignInOutcome.KIND_SIGNED_IN and bed.token_requests.size() == 1 and bed.token_requests[0]["headers"].get("x-pkey-device") == bed.F["device_id"], str(done))
+	t.check("native session: handle_redirect redeems the scheme delivery", done.kind == PKeySignInOutcome.KIND_SIGNED_IN
+		and bed.token_requests.size() == 1 and bed.token_requests[0]["headers"].get("x-pkey-device") == bed.F["device_id"], str(done))
 	var twice: PKeySignInOutcome = await bed.sdk.identity.sign_in.handle_redirect("%s?code=C0DE&state=%s&iss=%s" % [SCHEME, st5, iss5])
 	t.check("native session: single use, a second delivery sends nothing", twice.code == PKeyErrors.SIGN_IN_FAILED and bed.token_requests.size() == 1)
 	bed.free_all()
@@ -461,7 +493,8 @@ func _session(t: PKeyTestContext) -> void:
 	root = _root(bed)
 	bed.sdk.identity.native_platform = "other"
 	var s6 := await _start(bed, {"loopback": true})
-	t.check("native session: a host that cannot listen and has no scheme answers redirect-unavailable before any request", not s6.ok and s6.code == &"redirect-unavailable" and bed.push_requests.is_empty(), str(s6))
+	t.check("native session: a host that cannot listen and has no scheme answers redirect-unavailable before any request", not s6.ok
+		and s6.code == &"redirect-unavailable" and bed.push_requests.is_empty(), str(s6))
 	bed.free_all()
 
 	# Discovery without the pushed-request endpoint, or without a return page for the listener.
@@ -470,7 +503,8 @@ func _session(t: PKeyTestContext) -> void:
 	var frag: Dictionary = bed.sdk.core.discovery_manifest["services"]["identity"]
 	frag["endpoints"].erase("request")
 	var s7 := await _start(bed)
-	t.check("native session: discovery with no request endpoint is redirect-unavailable", not s7.ok and s7.code == &"redirect-unavailable" and s7.detail.get("reason") == "request-not-served" and bed.push_requests.is_empty(), str(s7))
+	t.check("native session: discovery with no request endpoint is redirect-unavailable", not s7.ok and s7.code == &"redirect-unavailable"
+		and s7.detail.get("reason") == "request-not-served" and bed.push_requests.is_empty(), str(s7))
 	bed.free_all()
 	bed = await _bed("", false)
 	root = _root(bed)
@@ -487,7 +521,8 @@ func _session(t: PKeyTestContext) -> void:
 		held["port"] = int(m.get_string(1)) if m != null else 0
 	bed.pushes = [B.json(400, {"error": "redirect_uri_mismatch"})]
 	var s9 := await _start(bed)
-	t.check("native session: a refused push is the Worker's own code and nothing stays bound", not s9.ok and s9.code == &"redirect_uri_mismatch" and held["port"] > 0 and TCPServer.new().listen(held["port"], "127.0.0.1") == OK, str(s9))
+	t.check("native session: a refused push is the Worker's own code and nothing stays bound", not s9.ok and s9.code == &"redirect_uri_mismatch"
+		and held["port"] > 0 and TCPServer.new().listen(held["port"], "127.0.0.1") == OK, str(s9))
 	bed.pushes = [{"status": 429, "headers": {"Content-Type": "application/json", "Retry-After": "7"}, "body": "{\"error\":\"rate_limited\"}"}]
 	var s10 := await _start(bed)
 	t.check("native session: a 429 push carries Retry-After", not s10.ok and s10.code == &"rate_limited" and s10.detail.get("retry_after_seconds") == 7, str(s10.detail))
@@ -548,7 +583,9 @@ func _android(t: PKeyTestContext) -> void:
 	var droid: PKeyAndroid = rig[2]
 	var s: PKeySignInSession = await bed.sdk.identity.sign_in.start({"channel": "redirect"})
 	t.check("android redirect: the registered scheme is the class, with no listener", s.ok and s.redirect_class == "scheme" and s.redirect_uri == SCHEME and s._native.listener == null, str(s))
-	t.check("android redirect: the page opened through the plugin, on the issuer's host, for the scheme", s.opened and fake.auth_opened.size() == 1 and fake.auth_opened[0]["url"] == s.authorize_url and fake.auth_opened[0]["issuerHost"] == "key.plrs.im" and fake.auth_opened[0]["scheme"] == "com.tidewater.studio" and fake.auth_opened[0]["claimedUri"] == "", str(fake.auth_opened))
+	t.check("android redirect: the page opened through the plugin, on the issuer's host, for the scheme", s.opened and fake.auth_opened.size() == 1
+		and fake.auth_opened[0]["url"] == s.authorize_url and fake.auth_opened[0]["issuerHost"] == "key.plrs.im"
+		and fake.auth_opened[0]["scheme"] == "com.tidewater.studio" and fake.auth_opened[0]["claimedUri"] == "", str(fake.auth_opened))
 	t.check("android redirect: the push named the scheme", String(bed.push_requests[0]["body"]).contains("redirect_uri=com.tidewater.studio%3A%2Fpkey%2Fcallback"), bed.push_requests[0]["body"])
 	t.check("android redirect: Open browser again opens the same page", s.reopen() and fake.auth_opened.size() == 2 and fake.auth_opened[1]["url"] == s.authorize_url)
 	var box := B.follow(s)
@@ -565,7 +602,8 @@ func _android(t: PKeyTestContext) -> void:
 	await _pump(droid)
 	await B.until(func(): return box.size() == 1)
 	var o: PKeySignInOutcome = box[0] if box.size() == 1 else null
-	t.check("android redirect: handle_redirect redeemed it from this device", o != null and o.kind == PKeySignInOutcome.KIND_SIGNED_IN and bed.token_requests.size() == 1 and bed.token_requests[0]["headers"].get("x-pkey-device") == bed.F["device_id"], str(o))
+	t.check("android redirect: handle_redirect redeemed it from this device", o != null and o.kind == PKeySignInOutcome.KIND_SIGNED_IN
+		and bed.token_requests.size() == 1 and bed.token_requests[0]["headers"].get("x-pkey-device") == bed.F["device_id"], str(o))
 	t.check("android redirect: the same URL again is dropped (single use)", not fake.auth_deliver(good) and bed.token_requests.size() == 1)
 	t.check("android redirect: nothing waits natively once it settled", not fake.auth_deliver("%s?code=C0DE2&state=%s&iss=%s" % [SCHEME, state, iss]))
 	t.check("android redirect: str() holds no code", not str(s).contains("C0DE"))
@@ -622,7 +660,8 @@ func _android(t: PKeyTestContext) -> void:
 	# The registered redirects, from the project settings' shapes.
 	var o2 := PKeyAndroidRedirect.new()
 	o2.settings = {"scheme": "com.tidewater.studio", "claimed_uri": "https://game.example/open/pkey"}
-	t.check("android redirect: registered() names the scheme URI and the claimed link", o2.registered() == {"schemes": [SCHEME], "claimed": ["https://game.example/open/pkey"]} and o2.owns(SCHEME) and o2.owns("https://game.example/open/pkey") and not o2.owns("http://game.example/open"))
+	t.check("android redirect: registered() names the scheme URI and the claimed link", o2.registered() == {"schemes": [SCHEME], "claimed": ["https://game.example/open/pkey"]}
+		and o2.owns(SCHEME) and o2.owns("https://game.example/open/pkey") and not o2.owns("http://game.example/open"))
 	o2.settings = {"scheme": "https", "claimed_uri": "http://game.example/open"}
 	t.check("android redirect: a reserved scheme and a non-HTTPS link register nothing", o2.registered() == {"schemes": [], "claimed": []})
 

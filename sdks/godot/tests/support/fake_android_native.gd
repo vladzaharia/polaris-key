@@ -69,8 +69,6 @@ var auth_redirect := true
 var auth_filters: Array = []
 var auth_opened: Array = []
 var auth_launch_ok := true
-var _auth_waiting: Array = []
-var _auth_last := ""
 
 ## The bulk-body channel (U-41.6b): the plugin's byte[] ops, recorded. `bulk_open_ok` and `bulk_put_ok` set the
 ## status byte of sbOpen and of sbPut/sbGet; `sb_ops` lists `[name, header (parsed), piece size]` per call.
@@ -84,6 +82,8 @@ var sb_answers := {}
 var calls: Array[Dictionary] = []
 var _queue: Array[Dictionary] = []
 var _req := 0
+var _auth_waiting: Array = []
+var _auth_last := ""
 var _sb_names := 0
 
 

@@ -64,9 +64,19 @@ func _export(t: PKeyTestContext) -> void:
 	t.check("redirect export: no scheme or link registered adds nothing", E.redirect_elements("play", "", "") == "" and E.redirect_elements("direct", "", "") == "")
 	t.check("redirect export: a build with no plugin adds nothing", E.redirect_elements("none", "com.tidewater.studio", "") == "" and E.redirect_elements("", "com.tidewater.studio", "") == "")
 	var s := E.redirect_elements("play", "com.tidewater.studio", "")
-	t.check("redirect export: a scheme adds one filter on the redirect activity", s.contains("android:name=\"im.plrs.key.godot.PKeyGodotRedirectActivity\"") and s.contains("android:exported=\"true\"") and s.contains("android:scheme=\"com.tidewater.studio\"") and s.contains("android:path=\"/pkey/callback\"") and s.count("<intent-filter") == 1 and not s.contains("autoVerify"), s)
+	t.check("redirect export: a scheme adds one filter on the redirect activity", s.contains("android:name=\"im.plrs.key.godot.PKeyGodotRedirectActivity\"")
+		and s.contains("android:exported=\"true\"") and s.contains("android:scheme=\"com.tidewater.studio\"")
+		and s.contains("android:path=\"/pkey/callback\"") and s.count("<intent-filter") == 1 and not s.contains("autoVerify"), s)
 	var c := E.redirect_elements("direct", "", "https://game.example/open/pkey")
-	t.check("redirect export: a claimed link adds a verified HTTPS filter", c.contains("android:autoVerify=\"true\"") and c.contains("android:host=\"game.example\"") and c.contains("android:path=\"/open/pkey\"") and c.contains("android:scheme=\"https\"") and not c.contains("com.tidewater"), c)
+	t.check("redirect export: a claimed link adds a verified HTTPS filter", c.contains("android:autoVerify=\"true\"")
+		and c.contains("android:host=\"game.example\"") and c.contains("android:path=\"/open/pkey\"") and c.contains("android:scheme=\"https\"")
+		and not c.contains("com.tidewater"), c)
 	t.check("redirect export: both register two filters", E.redirect_elements("play", "com.tidewater.studio", "https://game.example/open/pkey").count("<intent-filter") == 2)
-	t.check("redirect export: scheme names are validated", E.redirect_scheme("com.tidewater.studio") == "com.tidewater.studio" and E.redirect_scheme("https") == "" and E.redirect_scheme("javascript") == "" and E.redirect_scheme("Bad Scheme") == "" and E.redirect_scheme("a\"><x") == "" and E.redirect_scheme(null) == "" and E.redirect_scheme("") == "")
-	t.check("redirect export: claimed links are validated", E.redirect_claimed("https://game.example/open") == "https://game.example/open" and E.redirect_claimed("http://game.example/open") == "" and E.redirect_claimed("https://game.example/") == "" and E.redirect_claimed("https://game.example/open?x=1") == "" and E.redirect_claimed("https://u@game.example/open") == "" and E.redirect_claimed("https://game.example:8443/open") == "" and E.redirect_claimed("https://game.example/o\"><x") == "" and E.redirect_claimed(null) == "")
+	t.check("redirect export: scheme names are validated", E.redirect_scheme("com.tidewater.studio") == "com.tidewater.studio"
+		and E.redirect_scheme("https") == "" and E.redirect_scheme("javascript") == "" and E.redirect_scheme("Bad Scheme") == ""
+		and E.redirect_scheme("a\"><x") == "" and E.redirect_scheme(null) == "" and E.redirect_scheme("") == "")
+	t.check("redirect export: claimed links are validated", E.redirect_claimed("https://game.example/open") == "https://game.example/open"
+		and E.redirect_claimed("http://game.example/open") == "" and E.redirect_claimed("https://game.example/") == ""
+		and E.redirect_claimed("https://game.example/open?x=1") == "" and E.redirect_claimed("https://u@game.example/open") == ""
+		and E.redirect_claimed("https://game.example:8443/open") == "" and E.redirect_claimed("https://game.example/o\"><x") == ""
+		and E.redirect_claimed(null) == "")
