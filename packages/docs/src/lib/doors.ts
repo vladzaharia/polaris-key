@@ -130,6 +130,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "help/code-didnt-arrive",
           "help/passkeys",
           "help/approve-a-sign-in",
+          "help/sign-in-automatically",
           "help/secure-your-account",
           "help/work-account",
           "help/messages/signing-in",
@@ -432,6 +433,8 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "features/sign-in/device-flow",
           "features/sign-in/app-license-choice",
           "features/sign-in/nearby",
+          "features/sign-in/automatic",
+          "features/sign-in/platform-setup",
           "features/sign-in/sessions",
           "features/sign-in/customer-portal",
           "features/sign-in/troubleshooting",
@@ -440,7 +443,12 @@ export const DOOR_TREES: readonly DoorTree[] = [
       {
         label: "Cloud Sync",
         collapsed: true,
-        items: leaves("features/cloud-sync/index", "features/cloud-sync/files"),
+        items: leaves(
+          "features/cloud-sync/index",
+          "features/cloud-sync/files",
+          "features/cloud-sync/collections",
+          "features/cloud-sync/saves",
+        ),
       },
       {
         label: "Commerce",
