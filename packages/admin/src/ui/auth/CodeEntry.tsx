@@ -2,7 +2,7 @@ import * as React from "react";
 import { Button } from "../Button.js";
 import { t } from "../../lib/copy.js";
 import { CODE_LENGTH, CodeCells } from "./CodeCells.js";
-import { QuietLink, QuietLinks } from "./parts.js";
+import { AUTH_PRIMARY_CLASS, QuietLink, QuietLinks } from "./parts.js";
 
 /** What a verify answers when it did not end the step: the line to show under the cells. */
 export interface CodeVerifyOutcome {
@@ -151,7 +151,7 @@ export function CodeEntry({
           type="submit"
           variant="neutral"
           size="lg"
-          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
+          className={AUTH_PRIMARY_CLASS}
           loading={verifying}
         >
           {submitLabel}

@@ -2,7 +2,11 @@ import * as React from "react";
 import { Cloud, ShieldCheck, UserRound } from "lucide-react";
 import type { AppConsentView } from "@polaris-key/protocol/identity";
 import { Button } from "../../../ui/Button.js";
-import { AuthNotice, AuthTitle } from "../../../ui/auth/index.js";
+import {
+  AUTH_LINK_CLASS,
+  AuthNotice,
+  AuthTitle,
+} from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
 import { Keep } from "../Keep.js";
 import {
@@ -11,6 +15,7 @@ import {
   licenseParts,
   type Chosen,
 } from "../../model/signInRequest.js";
+import { cn } from "../../../lib/cn.js";
 import { PersonRow, PRIMARY_CLASS } from "./requestParts.js";
 
 /**
@@ -85,7 +90,7 @@ export function ConsentStep({
               <button
                 type="button"
                 onClick={onChange}
-                className="inline-flex min-h-11 shrink-0 items-center rounded-sm px-1 text-sm underline decoration-2 underline-offset-4 hover:text-fg-strong"
+                className={cn(AUTH_LINK_CLASS, "shrink-0 text-sm")}
               >
                 {t("signin.consent.change")}
               </button>

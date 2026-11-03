@@ -2,6 +2,7 @@ import * as React from "react";
 import { Mail, Fingerprint } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import {
+  AUTH_LINK_CLASS,
   AuthTitle,
   OrDivider,
   QuietLink,
@@ -13,7 +14,9 @@ import {
   GoogleGlyph,
   SteamGlyph,
 } from "../../../ui/auth/ProviderGlyphs.js";
+import { cn } from "../../../lib/cn.js";
 import { t } from "../../../lib/copy.js";
+import { PRIMARY_CLASS } from "./requestParts.js";
 import { HttpError, type PortalEmailSent } from "../../api.js";
 import { initialsOf } from "../Avatar.js";
 import type { LastMethod } from "../../lastMethod.js";
@@ -112,11 +115,9 @@ export function HintStep({
     ) : (
       <Fingerprint aria-hidden className="size-5" />
     );
-  const primaryClass =
-    "h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold";
   return (
     <>
-      <div className="inline-flex max-w-full flex-wrap items-center gap-x-2 rounded-2xl border border-border-strong py-0.5 ps-1 pe-3 text-sm">
+      <div className="inline-flex max-w-full flex-wrap items-center gap-x-2 rounded-full border border-border py-0.5 ps-1 pe-1 text-sm">
         <span
           aria-hidden
           className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-hover text-xs font-medium text-fg-strong"
@@ -129,7 +130,7 @@ export function HintStep({
         <button
           type="button"
           onClick={onOther}
-          className="inline-flex min-h-11 shrink-0 items-center font-medium text-fg-strong underline decoration-2 underline-offset-4"
+          className={cn(AUTH_LINK_CLASS, "shrink-0 px-2")}
         >
           {t("signin.hint.change")}
         </button>
@@ -153,7 +154,7 @@ export function HintStep({
         </div>
       </div>
       {provider ? (
-        <Button asChild variant="neutral" size="lg" className={primaryClass}>
+        <Button asChild variant="neutral" size="lg" className={PRIMARY_CLASS}>
           <a href={hrefFor(provider)} onClick={() => onProvider(provider)}>
             {mark}
             {providerLabel(provider, "continue")}
@@ -163,7 +164,7 @@ export function HintStep({
         <Button
           variant="neutral"
           size="lg"
-          className={primaryClass}
+          className={PRIMARY_CLASS}
           loading={pk.busy}
           onClick={() => void pk.run()}
           iconStart={<Fingerprint aria-hidden />}
@@ -177,7 +178,7 @@ export function HintStep({
           <Button
             variant="outline"
             size="lg"
-            className={primaryClass}
+            className={PRIMARY_CLASS}
             loading={sending}
             onClick={() => void mail()}
             iconStart={<Mail aria-hidden />}
@@ -189,7 +190,7 @@ export function HintStep({
           <Button
             variant="outline"
             size="lg"
-            className={primaryClass}
+            className={PRIMARY_CLASS}
             loading={pk.busy}
             onClick={() => void pk.run()}
             iconStart={<Fingerprint aria-hidden />}
