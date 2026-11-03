@@ -9,7 +9,10 @@ extends PKeyUiView
 ## Steps: `entry` (the account menu's "Approve a nearby device"), `waiting` (listening; Cancel), `ask`, `working` (the Worker is
 ## being asked; nothing can be tapped), `choose` (a licence per button, a new one where the Worker
 ## offers it, and Deny) and the outcomes `approved`, `not-nearby`, `mismatch`, `denied`, `expired`,
-## `device-limit`, `account-required` and `rate-limited`, each a title that takes focus and one way on.
+## `device-limit`, `account-required`, `rate-limited`, `stopped` (two requests were declined; Start again) and
+## `failed` (the service or the network; nothing was approved), each a title with a glyph and one way on. The words
+## and the one way on are the model's (`ui/model/nearby.gd`); Escape and B answer Deny at the codes and the choice
+## and leave everywhere else.
 ## Hidden when the Identity service is off (`identity_on`). The digits 1 to n tap the n codes or licences.
 
 ## The account-menu entry was chosen.
@@ -27,21 +30,42 @@ signal primary_pressed(step: String)
 
 const MAX_CHOICES := 9
 
-## State -> [title key, body keys, primary key] for the outcomes; the title takes focus.
-const OUTCOMES := {
-	"approved": ["signin.nearby.approved", [], "common.done"],
-	"not-nearby": ["signin.nearby.notNearby", ["signin.nearby.notNearbyBody"], "common.done"],
-	"mismatch": ["signin.nearby.mismatch", [], "common.done"],
-	"denied": ["signin.approve.deniedDone", [], "common.done"],
-	"expired": ["core.codes.sign-in-expired.title", ["core.codes.sign-in-expired.message"], "common.done"],
-	"device-limit": ["core.codes.device_limit.title", ["core.codes.device_limit.message"], "devices.manage"],
-	"waiting": ["signin.nearby.listenTitle", ["signin.nearby.listenBody", "signin.cli.approveWaiting"], "common.cancel"],
-	"choose": ["signin.nearby.chooseTitle", ["signin.nearby.chooseLede"], ""],
-	"account-required": ["core.codes.account_required.title", ["core.codes.account_required.message"], "signin.key.signIn"],
-	"rate-limited": ["core.codes.rate_limited.title", ["core.codes.rate_limited.message"], "common.tryAgain"],
+## State -> [title key, body keys]: the order the model's copy is drawn in (the model keeps a sorted set). The way on
+## is the model's `decisions.primary`. `mismatch` leads with the short outcome and the model's sentence under it.
+const WORDS := {
+	"approved": ["signin.nearby.approved", []],
+	"not-nearby": ["signin.nearby.notNearby", ["signin.nearby.notNearbyBody"]],
+	"mismatch": ["signin.approve.deniedDone", ["signin.nearby.mismatch"]],
+	"denied": ["signin.approve.deniedDone", []],
+	"expired": ["core.codes.sign-in-expired.title", ["signin.nearby.expiredBody"]],
+	"device-limit": ["core.codes.device_limit.title", ["signin.nearby.deviceLimitBody"]],
+	"listening": ["signin.nearby.listenTitle", ["signin.nearby.listenBody", "signin.cli.approveWaiting"]],
+	"stopped": ["signin.nearby.pausedTitle", ["signin.nearby.pausedBody"]],
+	"failed": ["core.codes.network.title", ["signin.nearby.failedBody"]],
+	"choose": ["signin.nearby.chooseTitle", ["signin.nearby.chooseLede"]],
+	"ask": ["signin.nearby.ask", ["signin.nearby.askBody", "signin.approve.warning"]],
+	"account-required": ["core.codes.account_required.title", ["core.codes.account_required.message"]],
+	"rate-limited": ["core.codes.rate_limited.title", ["signin.nearby.rateLimitedBody"]],
 }
 
-@export_enum("entry", "waiting", "ask", "working", "approved", "not-nearby", "mismatch", "denied", "expired", "device-limit", "choose", "account-required", "rate-limited") var step := "entry":
+## State -> [glyph, tone]: an outcome is never colour alone.
+const MARKS := {
+	"approved": ["success", "accent"],
+	"mismatch": ["warning", "warning"],
+	"failed": ["warning", "warning"],
+	"denied": ["info", "muted"],
+	"not-nearby": ["info", "muted"],
+	"expired": ["info", "muted"],
+	"device-limit": ["info", "muted"],
+	"account-required": ["info", "muted"],
+	"rate-limited": ["info", "muted"],
+	"stopped": ["info", "muted"],
+}
+
+@export_enum(
+	"entry", "waiting", "ask", "working", "approved", "not-nearby", "mismatch", "denied", "expired", "device-limit", "choose",
+	"account-required", "rate-limited", "stopped", "failed"
+) var step := "entry":
 	set(value):
 		step = value
 		refresh_view()
@@ -75,32 +99,47 @@ var model: Dictionary = {}
 
 var _body: VBoxContainer
 var _product: PKeyProductHeader
+var _pad: MarginContainer
+var _title_row: Control
+var _glyph: TextureRect
 var _title: Label
 var _lede: Label
 var _entry: Button
-var _codes_row: BoxContainer
+var _codes_row: Control
 var _code_buttons: Array = []
 var _choice_buttons: Array = []
 var _create: Button
 var _deny: Button
 var _status: Label
 var _primary: Button
+var _done: Button
 
 
 func _build() -> void:
 	name = "PKeyNearbyApproval"
-	_body = vbox(card_panel(), "Body", "PKeyStack")
+	_pad = MarginContainer.new()
+	_pad.name = "Pad"
+	card_panel().add_child(_pad)
+	_body = vbox(_pad, "Body", "PKeyStack")
 	_product = product_header(_body, "Product")
 	_product.card = true
 	var words := vbox(_body, "Words", "PKeyTight")
-	_title = label(words, "Title", "PKeyTitle")
+	var head := glyph_label(words, "Title", "info", "PKeyTitle")
+	_title_row = head["row"]
+	_glyph = head["glyph"]
+	_title = head["label"]
 	_lede = label(words, "Lede", "PKeyMuted")
 	_status = label(words, "Status", "PKeyMuted")
+	loading_bar(_body)
 	_primary = button(_body, "Primary", func() -> void: primary_pressed.emit(step), "PKeyPrimary")
 	_primary.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	# Two declined requests: Start again is the way on, Done the way out.
+	_done = button(_body, "Done", func() -> void: primary_pressed.emit("leave"), "PKeyLink")
+	_done.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_entry = button(_body, "Entry", func() -> void: entry_pressed.emit(), "PKeyLink")
 	_entry.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_codes_row = actions_row(_body, "Codes", BoxContainer.ALIGNMENT_BEGIN)
+	# The codes are the hero: one full-width row each, in a large type of their own.
+	_codes_row = vbox(_body, "Codes", "PKeyTight")
 	for i in 3:
 		var b := button(_codes_row, "Code%d" % i, Callable())
 		b.pressed.connect(func() -> void: _on_code(i))
@@ -115,7 +154,7 @@ func _build() -> void:
 	_create.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_deny = button(_body, "Deny", func() -> void: denied.emit(), "PKeyLink")
 	_deny.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	for b in [_primary, _entry, _deny]:
+	for b in [_primary, _done, _entry, _deny]:
 		(b as Button).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
@@ -124,7 +163,8 @@ func _bleeds() -> bool:
 
 
 func _opens_at_top() -> bool:
-	return true
+	# At the licence choice the focus is Deny, below the list: it is brought into view, not the title.
+	return step != "choose"
 
 
 func _card_shown() -> bool:
@@ -139,6 +179,29 @@ func _arrange(m: Dictionary) -> void:
 	super(m)
 	# Short on room, the product header gives way before the card scrolls.
 	_product.visible = squeeze_level() < 1
+	# Room inside the scroll for a focus ring at its edge.
+	var edge := int(roundf(6.0 * float(m["scale"])))
+	for side in ["top", "bottom"]:
+		_pad.add_theme_constant_override("margin_" + side, edge)
+	var tone := get_theme_color("font_color", "PKeyMuted")
+	var state: String = model.get("state", "")
+	var mark: Array = MARKS.get(state, ["info", "muted"])
+	match mark[1]:
+		"accent":
+			tone = get_theme_color("font_color", "PKeyAccent")
+		"warning":
+			tone = get_theme_color("font_color", "PKeyWarning")
+	_glyph.set_meta(&"pkey_glyph", mark[0])
+	size_glyph(_glyph, 28.0, tone)
+	# A code is read across the room: about 1.5 times the body type, less as the room runs out.
+	var body_px := get_theme_font_size("font_size", "Button")
+	var grow := 1.5 if squeeze_level() < 2 else (1.25 if squeeze_level() < 3 else 1.0)
+	var code_px := mini(get_theme_font_size("font_size", "PKeyCode"), roundi(body_px * grow))
+	for b in _code_buttons:
+		(b as Button).add_theme_font_size_override("font_size", code_px)
+		(b as Button).custom_minimum_size.y = roundf(float(code_px) * (1.6 if squeeze_level() < 2 else (1.3 if squeeze_level() < 3 else 1.15)))
+	_pad.add_theme_constant_override("margin_top", edge if squeeze_level() < 2 else (2 if squeeze_level() < 3 else 0))
+	_pad.add_theme_constant_override("margin_bottom", edge if squeeze_level() < 2 else (2 if squeeze_level() < 3 else 0))
 
 
 func _screen_key() -> String:
@@ -146,31 +209,41 @@ func _screen_key() -> String:
 
 
 func _render() -> void:
-	var inp := {"nearbyApproval": {"step": step, "device": device if device != "" else null}}
+	var shown_step := "listening" if step == "waiting" else step
+	var inp := {"nearbyApproval": {"step": "ask" if step == "working" else shown_step, "device": device if device != "" else null}}
 	if not identity_on:
 		inp["services"] = ["license"]
 	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("NearbyApproval", inp)
 	var state: String = model.get("state", "hidden")
-	if (step == "working" or step == "waiting") and state != "hidden":
-		state = step
 	visible = state != "hidden"
 	# A missing device name reads "the new device".
 	var shown := device if device != "" else String(catalog().format("part.newDevice", {}))
 	var args := {"device": PKeyUiTheme.isolate(shown), "product": PKeyUiTheme.isolate(String(PKeyUiTheme.product_identity()["name"]))}
 	_product.refresh()
-	var ask := state == "ask"
-	var choose := state == "choose"
 	var working := step == "working"
-	var outcome: Array = OUTCOMES.get(state, ["", [], ""])
-	var body: Array = ["signin.nearby.askBody", "signin.approve.warning"] if ask else outcome[1]
-	cat_text(_title, "signin.nearby.ask" if ask or working else outcome[0], args)
+	var words: Array = WORDS.get(state, ["", []])
+	var body: Array = words[1]
+	var primary: Variant = (model.get("decisions", {}) as Dictionary).get("primary")
+	cat_text(_title, words[0], args)
 	cat_text(_lede, body[0] if body.size() > 0 else "", args)
 	cat_text(_status, "common.working" if working else (body[1] if body.size() > 1 else ""), args)
 	_status.theme_type_variation = &"PKeyMuted"
+	# The name starts the sentence, so an unnamed device reads "The new device", not "the new device".
+	if device == "":
+		_sentence_case(_title)
+		_sentence_case(_lede)
+	_title_row.visible = _title.text != "" and state != "entry"
+	_glyph.visible = _title_row.visible and MARKS.has(state)
 	cat_text(_entry, "signin.nearby.menu" if state == "entry" else "", args)
-	cat_text(_primary, outcome[2], args)
-	cat_text(_deny, "signin.approve.deny" if ask or choose else "", args)
+	cat_text(_primary, String(primary) if primary is String else "", args)
+	cat_text(_done, "common.done" if state == "stopped" else "", args)
+	cat_text(_deny, "signin.approve.deny" if state == "ask" or state == "choose" else "", args)
+	var ask := state == "ask" and not working
+	var choose := state == "choose"
 	_codes_row.visible = ask
+	# Waiting for a device, or for the Worker's answer: the thin bar says the screen is alive.
+	set_loading(working or state == "listening")
+	set_process(working or state == "listening")
 	for i in _code_buttons.size():
 		var b := _code_buttons[i] as Button
 		b.visible = ask and i < codes.size()
@@ -185,6 +258,17 @@ func _render() -> void:
 		# A licence name is the account's, drawn as given.
 		cb.set_meta(DATA_META, true)
 	cat_text(_create, "signin.choice.create" if choose and create_offered else "", args)
+
+
+func _process(_delta: float) -> void:
+	_tick_loading()
+
+
+## The text starts with an isolated name (a bidi mark first): capitalise its first letter.
+static func _sentence_case(l: Label) -> void:
+	var t := l.text
+	if t.length() > 1 and t.unicode_at(0) == 0x2068:
+		l.text = t.substr(0, 1) + t.substr(1, 1).to_upper() + t.substr(2)
 
 
 func _on_choice(i: int) -> void:
@@ -210,7 +294,7 @@ func _initial_focus() -> Control:
 
 
 func _focus_chain() -> Array:
-	return _code_buttons + _choice_buttons + [_create, _deny, _primary, _entry]
+	return _code_buttons + _choice_buttons + [_create, _deny, _primary, _done, _entry]
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -228,7 +312,16 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _cancel() -> bool:
-	if (step == "ask" or step == "choose") and visible:
-		denied.emit()
-		return true
-	return false
+	if not visible:
+		return false
+	match String(model.get("state", "")):
+		"ask", "choose":
+			if step == "ask" or step == "choose":
+				denied.emit()
+			return true
+		"entry", "hidden":
+			return false
+	# Waiting for the Worker's answer nothing can be left; everywhere else Escape and B are Done.
+	if step != "working":
+		primary_pressed.emit("leave")
+	return true

@@ -3703,12 +3703,12 @@ msgstr "No se encontró ningún dispositivo"
 msgid "signin.nearby.noneBody"
 msgstr "Abre {app} en tu otro dispositivo y elige Aprobar un dispositivo cercano."
 
-#. Approve a Nearby Device
+#. Approve a nearby device
 #. Nearby approval, on the signed-in device: the screen that waits for a request.
 msgid "signin.nearby.listenTitle"
 msgstr "Aprobar un dispositivo cercano"
 
-#. On the new device, choose to sign in with a nearby device. Its request shows here.
+#. On the new device, choose Sign in with a nearby device.
 #. Nearby approval: what to do on the new device so its request shows here.
 msgid "signin.nearby.listenBody"
 msgstr "En el dispositivo nuevo, elige iniciar sesión con un dispositivo cercano. Su solicitud aparece aquí."

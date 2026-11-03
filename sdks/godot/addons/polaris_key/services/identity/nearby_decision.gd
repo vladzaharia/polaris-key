@@ -47,8 +47,31 @@ func _wrap() -> void:
 	await _ring.put_wrap(_vouch.device_id, sealed.detail)
 
 
+## Codes that say the service or the network failed, as against a request that lapsed or was refused.
+static func _is_failure(code: String) -> bool:
+	return [
+		PKeyConstants.ErrorCode.NETWORK, PKeyConstants.ErrorCode.SERVER_ERROR, PKeyConstants.ErrorCode.SERVICE_UNAVAILABLE,
+		PKeyConstants.ErrorCode.NEARBY_UNSUPPORTED, PKeyConstants.ErrorCode.HTTP_ERROR, PKeyConstants.ErrorCode.INVALID_RESPONSE,
+		String(PKeyErrors.NETWORK), String(PKeyErrors.LOCAL_ONLY), String(PKeyErrors.SERVICE_UNAVAILABLE),
+	].has(code)
+
+
+## No answer to give: signed out, the service or the network failed, or the request lapsed.
+static func _unanswered(r: PKeyResult) -> PKeyNearbyStep:
+	if r.code == PKeyConstants.ErrorCode.ACCOUNT_REQUIRED:
+		return PKeyNearbyStep.of(PKeyNearbyStep.KIND_ACCOUNT_REQUIRED)
+	return PKeyNearbyStep.of(PKeyNearbyStep.KIND_FAILED if _is_failure(String(r.code)) else PKeyNearbyStep.KIND_EXPIRED)
+
+
+func _wrap_if_approved(answer: Dictionary) -> void:
+	if answer["kind"] == "approved":
+		await _wrap()
+
+
 static func _step_of(answer: Dictionary) -> PKeyNearbyStep:
 	var kind := String(answer["kind"])
+	if kind == "unavailable":
+		return PKeyNearbyStep.of(PKeyNearbyStep.KIND_FAILED)
 	if kind == "approved":
 		return PKeyNearbyStep.of(PKeyNearbyStep.KIND_APPROVED)
 	if kind == "denied":
@@ -63,6 +86,8 @@ static func _step_of(answer: Dictionary) -> PKeyNearbyStep:
 			return PKeyNearbyStep.of(PKeyNearbyStep.KIND_ACCOUNT_REQUIRED)
 		if code == PKeyConstants.ErrorCode.RATE_LIMITED:
 			return PKeyNearbyStep.of(PKeyNearbyStep.KIND_RATE_LIMITED)
+		if _is_failure(code):
+			return PKeyNearbyStep.of(PKeyNearbyStep.KIND_FAILED)
 	return PKeyNearbyStep.of(PKeyNearbyStep.KIND_EXPIRED)
 
 
@@ -73,14 +98,13 @@ func run(decision: String, choice: Variant, asks: int) -> PKeyNearbyStep:
 	if not r.ok:
 		# Nothing to answer with: the session closes and the person is told what it was.
 		_approval.close()
-		return PKeyNearbyStep.of(PKeyNearbyStep.KIND_ACCOUNT_REQUIRED if r.code == PKeyConstants.ErrorCode.ACCOUNT_REQUIRED else PKeyNearbyStep.KIND_EXPIRED)
+		return _unanswered(r)
 	var answer: Dictionary = r.detail
 	var fin: PKeyResult = _approval.finish(answer["finish"])
 	if not fin.ok:
 		# The LAN session ended meanwhile. The Worker's answer stands: an approval is an approval, and the new
 		# device's own poll signs it in. The stored wrap is the fallback for the lost channel.
-		if answer["kind"] == "approved":
-			await _wrap()
+		await _wrap_if_approved(answer)
 		return _step_of(answer)
 	var out: Dictionary = fin.detail
 	if out.has("wait"):
@@ -94,6 +118,5 @@ func run(decision: String, choice: Variant, asks: int) -> PKeyNearbyStep:
 		# A choice nobody can show, or a retry the route already spent: end it.
 		_approval.close()
 		return PKeyNearbyStep.of(PKeyNearbyStep.KIND_EXPIRED)
-	if answer["kind"] == "approved":
-		await _wrap()
+	await _wrap_if_approved(answer)
 	return _step_of(answer)

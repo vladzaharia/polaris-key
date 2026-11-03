@@ -25,7 +25,7 @@ signal manage_requested()
 ## The player chose Devices: the game opens a PKeyDeviceList.
 signal devices_requested()
 ## The player chose Approve a nearby device: the game shows a PKeyNearbyApproval driven by a
-## PKeyNearbyApprovalFlow (the row is drawn only while `nearby_approval_offered`).
+## PKeyNearbyApprovalFlow (the row is drawn only while `nearby_approval_offered` and the signal has a handler).
 signal nearby_approval_requested()
 ## The player chose Managed settings: the game opens its settings, on the managed group.
 signal managed_settings_requested()
@@ -139,6 +139,12 @@ func _screen_key() -> String:
 
 # ── Data ─────────────────────────────────────────────────────────────────────────────────────
 
+## The "Approve a nearby device" row is drawn only while the host listens for it (a row that does nothing
+## is worse than none): `nearby_approval_requested` has a handler.
+func _nearby_row() -> bool:
+	return nearby_approval_offered and not get_signal_connection_list(&"nearby_approval_requested").is_empty()
+
+
 ## Read the SDK: the tier, who is signed in, the seats, the channel and version, the services. The
 ## seat count comes from the roster when it was loaded (`show_devices()`), else the license's limit.
 func refresh_from_sdk() -> void:
@@ -213,7 +219,7 @@ func _render() -> void:
 	var sig := JSON.stringify([
 		state, tier, holder, signed_in, status, devices_used, devices_limit, auto_update, channel, channel_options,
 		channel_locked_by, version, cloud_sync, cloud_sync_time, services, manage_url, _checking, checked_note,
-		PKeyUiTheme.powered_by, mask_email, pad_only(), nearby_approval_offered,
+		PKeyUiTheme.powered_by, mask_email, pad_only(), _nearby_row(),
 	])
 	if sig != _signature and state != "loading":
 		_signature = sig
@@ -335,7 +341,7 @@ func _rebuild(t: PKeyUiCopy, state: String) -> void:
 		r4["devices"] = dv
 		r4["meter"] = meter
 		any = true
-	if license and signed_in and nearby_approval_offered:
+	if license and signed_in and _nearby_row():
 		var rn := _link_row(first, "nearby", t.text("account_nearby"), func() -> void: nearby_approval_requested.emit())
 		rn["nearby"] = rn["button"]
 		any = true

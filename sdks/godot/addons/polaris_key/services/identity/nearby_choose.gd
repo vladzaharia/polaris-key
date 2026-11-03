@@ -1,7 +1,7 @@
 class_name PKeyNearbyChoose
 extends RefCounted
 ## The licence choice of an approval: the licences the person may give the new device, and two ways on. Answered
-## once: a second answer fails `invalid-options`.
+## once: a second answer is `expired`; a choice that is not one of the two kinds answers Deny.
 ##
 ##   choices     the view the Worker sent ({state, choices: [{id, tierName, name, state, ...}], keep, preselected,
 ##               create, getLicense}); only `state == "free"` entries can be chosen
@@ -44,7 +44,8 @@ func choose(choice: Dictionary) -> PKeyNearbyStep:
 	elif choice.get("kind") == "license" and choice.get("license_id") is String:
 		wire = {"kind": "license", "licenseId": choice["license_id"]}
 	else:
-		return PKeyNearbyStep.of(PKeyNearbyStep.KIND_EXPIRED)
+		# Not a choice the person could make: the single use answers Deny, and the request does not lapse unseen.
+		return await _decision.run("deny", null, _asks + 1)
 	return await _decision.run("approve", wire, _asks + 1)
 
 
