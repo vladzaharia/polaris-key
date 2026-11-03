@@ -3562,6 +3562,11 @@
           "spelling": "keyReturn",
           "shape": "property",
           "reason": "an argument of the native redirect start"
+        },
+        "godot": {
+          "spelling": "sign_in.start({key_return})",
+          "shape": "property",
+          "reason": "a member of the options dictionary of sign_in.start"
         }
       },
       "layer": "client"

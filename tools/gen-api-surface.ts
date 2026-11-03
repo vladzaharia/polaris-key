@@ -732,6 +732,8 @@ const GODOT_OPTIONS = `"res://addons/polaris_key/core/options.gd"`;
 function renderGodot(api: Api): string {
   const rows: string[] = [];
   for (const r of rowsFor(api, "godot")) {
+    // A member of the options dictionary of `sign_in.start` (LK-SKIP.11), not a member of a script.
+    if (r.id === "identity.signIn.keyReturn") continue;
     let script: string | undefined;
     let how: string;
     if (r.kind === "option") {
