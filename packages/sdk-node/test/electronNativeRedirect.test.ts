@@ -270,6 +270,93 @@ describe("PolarisBridge: the native redirect sign-in", () => {
     expect(await listening(portC)).toBe(false);
   });
 
+  describe("ending a flow from the window", () => {
+    const end = (env: Setup, flowId: unknown, sender = 7) =>
+      (
+        env.ipc.handlers.get("polaris-key:invoke")! as (
+          ...a: unknown[]
+        ) => Promise<{ ok: boolean; value?: unknown; code?: string }>
+      )(
+        { sender: { id: sender }, senderFrame: { url: "app://main" } },
+        "identity",
+        "signIn.cancel",
+        { flowId },
+      );
+
+    it("the owner window ends the flow: the listener closes and a late callback is not served", async () => {
+      const env = await setup();
+      const begin = (await env.bridge.beginSignIn({
+        channel: "redirect",
+      } as never)) as unknown as { flowId: string };
+      const { port, state } = pushed(env);
+      expect(await listening(port)).toBe(true);
+      expect(
+        await env.bridge.invoke!("identity", "signIn.cancel", {
+          flowId: begin.flowId,
+        }),
+      ).toEqual({ ended: true });
+      expect(await listening(port)).toBe(false);
+      await expect(deliver(port, state)).rejects.toBeDefined();
+      expect(env.seen.some((s) => s.path.endsWith("/identity/token"))).toBe(
+        false,
+      );
+      expect(await env.bridge.pollSignIn(begin.flowId)).toEqual({
+        kind: "expired",
+      });
+    });
+
+    it("another window's flow id is refused and nothing ends", async () => {
+      const env = await setup();
+      const begin = (await env.bridge.beginSignIn({
+        channel: "redirect",
+      } as never)) as unknown as { flowId: string };
+      const { port } = pushed(env);
+      const r = await end(env, begin.flowId, 8);
+      expect(r.ok).toBe(false);
+      expect(r.code).toBe("flow-not-owned");
+      expect(await listening(port)).toBe(true);
+      expect(await env.bridge.pollSignIn(begin.flowId)).toEqual({
+        kind: "pending",
+      });
+    });
+
+    it("an unknown flow id is a no-op, a malformed one is refused, a refused sender ends nothing", async () => {
+      const env = await setup();
+      const begin = (await env.bridge.beginSignIn({
+        channel: "redirect",
+      } as never)) as unknown as { flowId: string };
+      const { port } = pushed(env);
+      expect(
+        await env.bridge.invoke!("identity", "signIn.cancel", {
+          flowId: "nope",
+        }),
+      ).toEqual({ ended: false });
+      await expect(
+        env.bridge.invoke!("identity", "signIn.cancel", { flowId: 5 }),
+      ).rejects.toMatchObject({ code: "invalid-argument" });
+      env.ipc.deny();
+      await expect(
+        env.bridge.invoke!("identity", "signIn.cancel", {
+          flowId: begin.flowId,
+        }),
+      ).rejects.toMatchObject({ code: "sender-refused" });
+      expect(await listening(port)).toBe(true);
+    });
+
+    it("after sign-out the flow is already gone, so the verb is a no-op", async () => {
+      const env = await setup();
+      const begin = (await env.bridge.beginSignIn({
+        channel: "redirect",
+      } as never)) as unknown as { flowId: string };
+      await env.bridge.signOut();
+      expect(
+        await env.bridge.invoke!("identity", "signIn.cancel", {
+          flowId: begin.flowId,
+        }),
+      ).toEqual({ ended: false });
+    });
+  });
+
   it("closing the bridge frees the listener", async () => {
     const env = await setup();
     await env.bridge.beginSignIn({ channel: "redirect" } as never);

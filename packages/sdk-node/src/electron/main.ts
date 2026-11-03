@@ -1157,6 +1157,27 @@ export function exposePolarisBridge(
       choiceCall(() => choiceHost.complete(e.sender, a)),
     "identity.choice.cancel": async (a, e) =>
       choiceCall(() => choiceHost.cancel(e.sender, a)),
+    // ── v6 (I-15b.8b): the window that began a sign-in flow ends it. Only the flow id crosses
+    //    IPC. An unknown or finished flow answers `ended: false`; another window's flow is
+    //    refused and nothing ends. ──
+    "identity.signIn.cancel": async (a, e) => {
+      const id = bag(a).flowId;
+      if (typeof id !== "string" || id === "" || id.length > 128)
+        throw new BridgeRefusal(
+          "invalid-argument",
+          "flowId must be a non-empty string.",
+        );
+      const flow = flows.get(id);
+      if (!flow) return { ended: false };
+      if (flow.windowId !== e.sender.id)
+        throw new BridgeRefusal(
+          "flow-not-owned",
+          "That sign-in was not begun by this window.",
+        );
+      choiceHost.dropFlow(id);
+      forgetFlow(id);
+      return { ended: true };
+    },
     // ── v4 (SP-13 config.local, SP-14 update-health events) ───────────────────────────
     "config.set": async (a) => {
       const b = bag(a);

@@ -64,7 +64,7 @@ A browser app has no native redirect: React in a browser uses the [web redirect]
 
 On a desktop the SDK binds the listener first, then pushes the request, then opens the browser. It answers only the one path, only on `127.0.0.1`, and closes after the first good callback, after 10 minutes or on `cancel`. The browser is then sent on to Polaris Locker's return page, and the app is told through `wait`.
 
-`reopen()` is the app's **Open browser again**: it opens the same page, never a second request. `cancel()` ends the sign-in and closes the listener. A request lasts 10 minutes; after that `wait` answers `expired` and the app starts again.
+`reopen()` is the app's **Open browser again**: it opens the same page, never a second request. `cancel()` ends the sign-in and closes the listener; in an Electron app the renderer's `cancel()` also tells the main process, which closes its listener at once. A request lasts 10 minutes; after that `wait` answers `expired` and the app starts again.
 
 The sign-in page names the device. Unless the app passes a `deviceName`, the SDK sends the computer's own name: the macOS computer name, Linux `PRETTY_HOSTNAME`, and "Windows PC" or "Windows laptop" for a generated Windows name. Pass an empty string to send none.
 
