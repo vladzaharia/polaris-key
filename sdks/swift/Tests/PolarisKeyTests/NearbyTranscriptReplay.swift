@@ -24,7 +24,7 @@ enum NearbyReplay {
             session.keys.use(label: label)
             session.keyLabel = label
         }
-        let transcript = await server.transcript
+        let transcript = server.transcript
         if step.action == "nearbyApprove" {
             await approve(step: step, transcript: transcript, session: session, server: server, into: &out)
             return

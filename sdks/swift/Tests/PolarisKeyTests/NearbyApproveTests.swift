@@ -239,7 +239,7 @@ private final class World: @unchecked Sendable {
             NearbyRequestOptions(request: nearbyRequestHandle, label: "Ben's Switch", redialSeconds: 0.05))
         requesterNet.up(approverNet)
         await nearbyUntil("listed") { await d.approvers().count == 1 }
-        return (d, try await d.choose(try await d.approvers()[0].id))
+        return (d, try await d.choose(await d.approvers()[0].id))
     }
 
     /// D shows `code`; M raises an ask.

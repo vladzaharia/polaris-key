@@ -299,7 +299,7 @@ private final class GuardedFileCodec: FileCodec, CustomReflectable, CustomString
     var enc: String { inner.enc }
     func chunkId(_ plain: Data) throws -> Data {
         try check()
-        return try inner.chunkId(plain)
+        return inner.chunkId(plain)
     }
     func chunkObjectBytes(_ plainLen: Int) -> Int { inner.chunkObjectBytes(plainLen) }
     func sealChunk(id: Data, plain: Data) throws -> Data {
@@ -308,7 +308,7 @@ private final class GuardedFileCodec: FileCodec, CustomReflectable, CustomString
     }
     func openChunk(id: Data, object: Data) throws -> FileOpened {
         try check()
-        return try inner.openChunk(id: id, object: object)
+        return inner.openChunk(id: id, object: object)
     }
     func storedSize(_ plainSize: Int) -> Int { inner.storedSize(plainSize) }
     func plainSize(_ storedSize: Int) -> Int? { inner.plainSize(storedSize) }
@@ -318,7 +318,7 @@ private final class GuardedFileCodec: FileCodec, CustomReflectable, CustomString
     }
     func openManifest(_ stored: Data) throws -> FileOpened {
         try check()
-        return try inner.openManifest(stored)
+        return inner.openManifest(stored)
     }
     func sealWhole(_ plain: Data) throws -> Data {
         try check()
@@ -326,7 +326,7 @@ private final class GuardedFileCodec: FileCodec, CustomReflectable, CustomString
     }
     func makeOpener() throws -> any FileOpener {
         try check()
-        return GuardedOpener(inner: try inner.makeOpener(), codec: self)
+        return GuardedOpener(inner: inner.makeOpener(), codec: self)
     }
 }
 

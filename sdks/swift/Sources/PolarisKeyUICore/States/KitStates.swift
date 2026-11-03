@@ -119,12 +119,21 @@ public enum KitFormat {
     /// The time left in words, "20 seconds" or "4 minutes": what "About {time} left" reads after
     /// (§4.3). One unit, rounded up, in the live locale.
     public static func timeLeft(_ seconds: Double) -> String {
-        let formatter = DateComponentsFormatter()
-        formatter.unitsStyle = .full
-        formatter.maximumUnitCount = 1
-        formatter.allowedUnits = seconds >= 3600 ? [.hour] : seconds >= 60 ? [.minute] : [.second]
-        formatter.zeroFormattingBehavior = .dropAll
-        return formatter.string(from: max(1, seconds.rounded(.up))) ?? duration(seconds)
+        #if canImport(Darwin)
+            let formatter = DateComponentsFormatter()
+            formatter.unitsStyle = .full
+            formatter.maximumUnitCount = 1
+            formatter.allowedUnits = seconds >= 3600 ? [.hour] : seconds >= 60 ? [.minute] : [.second]
+            formatter.zeroFormattingBehavior = .dropAll
+            return formatter.string(from: max(1, seconds.rounded(.up))) ?? duration(seconds)
+        #else
+            // swift-corelibs-foundation has no components formatter: one unit, rounded up, in English.
+            let total = Int(max(1, seconds.rounded(.up)))
+            let (n, unit) =
+                total >= 3600
+                ? ((total + 3599) / 3600, "hour") : total >= 60 ? ((total + 59) / 60, "minute") : (total, "second")
+            return "\(n) \(unit)\(n == 1 ? "" : "s")"
+        #endif
     }
 
     /// The time left as a catalog line, rounded up to whole minutes: "About 4 min", or "Less than a
@@ -190,11 +199,20 @@ public enum KitFormat {
 
     /// "today", "3 days ago": the relative time a device was last seen.
     public static func daysAgo(_ days: Int, from now: Date = Date()) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
-        formatter.dateTimeStyle = .named
-        return formatter.localizedString(
-            for: Calendar.current.date(byAdding: .day, value: -days, to: now) ?? now,
-            relativeTo: now)
+        #if canImport(Darwin)
+            let formatter = RelativeDateTimeFormatter()
+            formatter.unitsStyle = .full
+            formatter.dateTimeStyle = .named
+            return formatter.localizedString(
+                for: Calendar.current.date(byAdding: .day, value: -days, to: now) ?? now,
+                relativeTo: now)
+        #else
+            // swift-corelibs-foundation has no relative formatter: English.
+            switch days {
+            case ..<1: return "today"
+            case 1: return "yesterday"
+            default: return "\(days) days ago"
+            }
+        #endif
     }
 }

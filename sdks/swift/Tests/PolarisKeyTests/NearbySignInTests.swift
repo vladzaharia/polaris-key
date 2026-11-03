@@ -37,7 +37,7 @@ private final class LoggedStore: Store, @unchecked Sendable {
     var log: [String] { lock.withLock { events } }
     private func note(_ s: String) { lock.withLock { events.append(s) } }
 
-    func getToken() async throws -> String? { try await inner.getToken() }
+    func getToken() async throws -> String? { await inner.getToken() }
     func setToken(_ token: String) async throws {
         if failToken { throw StoreError.io(path: "token", code: 5) }
         note("token:set")

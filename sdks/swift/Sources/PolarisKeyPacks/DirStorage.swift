@@ -29,9 +29,9 @@ import Foundation
 import PolarisKeyCore
 
 #if canImport(Darwin)
-import Darwin
+    import Darwin
 #elseif canImport(Glibc)
-import Glibc
+    import Glibc
 #endif
 
 /// A POSIX failure on a pack path.
@@ -98,7 +98,7 @@ func listDirectory(_ path: String) throws -> [DirEntry]? {
 /// `fsync(2)`.
 private func syncFD(_ fd: Int32, _ path: String) throws {
     #if canImport(Darwin)
-    if fcntl(fd, F_FULLFSYNC) == 0 { return }
+        if fcntl(fd, F_FULLFSYNC) == 0 { return }
     #endif
     if fsync(fd) != 0 {
         let e = fail(path)
@@ -559,7 +559,9 @@ public final class DirPackStorage: PackStorage, @unchecked Sendable {
         return InstalledPayload(
             payload: whole,
             files: index?.files.map {
-                InstalledFile(path: $0.path, sha256: $0.sha256, size: $0.size, source: sliceSource(whole, $0.offset ?? 0, $0.size))
+                InstalledFile(
+                    path: $0.path, sha256: $0.sha256, size: $0.size, source: sliceSource(whole, $0.offset ?? 0, $0.size)
+                )
             })
     }
 
@@ -582,7 +584,9 @@ public final class DirPackStorage: PackStorage, @unchecked Sendable {
             entries = try measureTree(location)
         }
         let files = entries.map {
-            InstalledFile(path: $0.path, sha256: $0.sha256, size: $0.size, source: FileSource(path: location + "/" + $0.path, size: $0.size))
+            InstalledFile(
+                path: $0.path, sha256: $0.sha256, size: $0.size,
+                source: FileSource(path: location + "/" + $0.path, size: $0.size))
         }
         if index == nil { embeddedFiles.with { $0[location] = files } }
         return files
@@ -628,8 +632,14 @@ public final class DirPackStorage: PackStorage, @unchecked Sendable {
 
     public func freeDisk() throws -> Int {
         try mkdirs(root)
-        var s = statfs()
-        guard statfs(root, &s) == 0 else { throw fail(root) }
-        return Int(s.f_bavail) * Int(s.f_bsize)
+        #if canImport(Darwin)
+            var s = statfs()
+            guard statfs(root, &s) == 0 else { throw fail(root) }
+            return Int(s.f_bavail) * Int(s.f_bsize)
+        #else
+            guard let free = try FileManager.default.attributesOfFileSystem(forPath: root)[.systemFreeSize] as? NSNumber
+            else { throw fail(root) }
+            return free.intValue
+        #endif
     }
 }

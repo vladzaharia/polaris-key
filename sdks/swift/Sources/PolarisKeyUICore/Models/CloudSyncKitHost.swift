@@ -209,7 +209,12 @@ public final class CloudSyncKitHostModel {
     }
 
     private static func relative(_ date: Date) -> String {
-        RelativeDateTimeFormatter().localizedString(for: date, relativeTo: Date())
+        #if canImport(Darwin)
+            RelativeDateTimeFormatter().localizedString(for: date, relativeTo: Date())
+        #else
+            // swift-corelibs-foundation has no relative formatter: whole days, in English.
+            KitFormat.daysAgo(max(0, Int(Date().timeIntervalSince(date) / 86_400)))
+        #endif
     }
 
     // MARK: screens

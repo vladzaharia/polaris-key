@@ -26,237 +26,239 @@ import PolarisKeyPlatform
 
 #if canImport(Network)
     import Network
+#endif
 
-    public let connectLanMaxSessions = 64
-    private let identityTtlSeconds = 30
-    private let certMarginSeconds = 60
+public let connectLanMaxSessions = 64
+private let identityTtlSeconds = 30
+private let certMarginSeconds = 60
 
-    /// Browse names to roster devices: one dictionary per (15-minute epoch, key pair, roster), so a
-    /// forged `p1-` name costs one lookup and no HMAC. Rebuilt (at most 2 epochs x 2 keys x 127 devices
-    /// = 508 HMACs) when the epoch, the keys or the roster change. First match wins in the order
-    /// current epoch, newest key, roster order.
-    final class ConnectBrowseIndex: Sendable {
-        struct Hit: Equatable, Sendable {
-            let deviceId: String
-            /// 0 the current epoch, 1 the previous one.
-            let epochBack: Int
-            /// 0 the newest discovery key, 1 the previous one.
-            let keyIndex: Int
-        }
-        typealias NameFn = @Sendable (_ key: Data, _ epoch: Int, _ deviceId: String) throws -> String
+/// Browse names to roster devices: one dictionary per (15-minute epoch, key pair, roster), so a
+/// forged `p1-` name costs one lookup and no HMAC. Rebuilt (at most 2 epochs x 2 keys x 127 devices
+/// = 508 HMACs) when the epoch, the keys or the roster change. First match wins in the order
+/// current epoch, newest key, roster order.
+final class ConnectBrowseIndex: Sendable {
+    struct Hit: Equatable, Sendable {
+        let deviceId: String
+        /// 0 the current epoch, 1 the previous one.
+        let epochBack: Int
+        /// 0 the newest discovery key, 1 the previous one.
+        let keyIndex: Int
+    }
+    typealias NameFn = @Sendable (_ key: Data, _ epoch: Int, _ deviceId: String) throws -> String
 
-        private struct Built {
-            var epoch: Int
-            var table: [String: ConnectBrowseIndex.Hit]
-        }
-        private struct State {
-            var keys: [Data] = []
-            var roster: [String] = []
-            var loaded = false
-            var built: Built?
-        }
-        private let state = LockedValue(State())
-        private let name: NameFn
-        /// How many times the dictionary was built (a test reads it).
-        let builds = LockedValue(0)
+    private struct Built {
+        var epoch: Int
+        var table: [String: ConnectBrowseIndex.Hit]
+    }
+    private struct State {
+        var keys: [Data] = []
+        var roster: [String] = []
+        var loaded = false
+        var built: Built?
+    }
+    private let state = LockedValue(State())
+    private let name: NameFn
+    /// How many times the dictionary was built (a test reads it).
+    let builds = LockedValue(0)
 
-        init(
-            name: @escaping NameFn = { try PeerAdvert.accountInstance(discoveryKey: $0, epoch: $1, deviceId: $2) }
-        ) { self.name = name }
+    init(
+        name: @escaping NameFn = { try PeerAdvert.accountInstance(discoveryKey: $0, epoch: $1, deviceId: $2) }
+    ) { self.name = name }
 
-        /// The identity just loaded; a change of keys or roster drops the dictionary.
-        @discardableResult
-        func update(_ ident: PeerSource) -> Bool {
-            update(keys: ident.keys.all.map(\.bytes), roster: ident.roster.filter { $0 != ident.deviceId })
-        }
+    /// The identity just loaded; a change of keys or roster drops the dictionary.
+    @discardableResult
+    func update(_ ident: PeerSource) -> Bool {
+        update(keys: ident.keys.all.map(\.bytes), roster: ident.roster.filter { $0 != ident.deviceId })
+    }
 
-        @discardableResult
-        func update(keys: [Data], roster: [String]) -> Bool {
-            state.with { s in
-                if s.loaded && s.keys == keys && s.roster == roster { return false }
-                s.keys = keys
-                s.roster = roster
-                s.loaded = true
-                s.built = nil
-                return true
-            }
-        }
-
-        /// Forget the keys and the dictionary (stop and abort).
-        func clear() {
-            state.with { s in
-                s.keys = []
-                s.roster = []
-                s.loaded = false
-                s.built = nil
-            }
-        }
-
-        /// True while the index holds discovery-key bytes (a test reads it).
-        var holdsKeys: Bool { state.with { !$0.keys.isEmpty || $0.built != nil } }
-
-        func lookup(_ instance: String, now: Int) -> Hit? {
-            guard PeerAdvert.isInstanceName(instance) else { return nil }
-            return state.with { s in
-                guard s.loaded else { return nil }
-                ensure(&s, now: now)
-                return s.built?.table[instance]
-            }
-        }
-
-        /// Bring the dictionary to `now`'s epoch; true when it had to be rebuilt (a new epoch counts), so the
-        /// caller re-runs the browse filter.
-        func refresh(now: Int) -> Bool {
-            state.with { s in
-                guard s.loaded else { return false }
-                return ensure(&s, now: now)
-            }
-        }
-
-        @discardableResult
-        private func ensure(_ s: inout State, now: Int) -> Bool {
-            let epoch = peerAdvertEpoch(now)
-            if s.built?.epoch == epoch { return false }
-            var table: [String: Hit] = [:]
-            for epochBack in 0...1 {
-                for (i, key) in s.keys.prefix(2).enumerated() {
-                    for deviceId in s.roster.prefix(128) {
-                        guard let n = try? name(key, epoch - epochBack, deviceId), table[n] == nil else { continue }
-                        table[n] = Hit(deviceId: deviceId, epochBack: epochBack, keyIndex: i)
-                    }
-                }
-            }
-            s.built = Built(epoch: epoch, table: table)
-            builds.with { $0 += 1 }
+    @discardableResult
+    func update(keys: [Data], roster: [String]) -> Bool {
+        state.with { s in
+            if s.loaded && s.keys == keys && s.roster == roster { return false }
+            s.keys = keys
+            s.roster = roster
+            s.loaded = true
+            s.built = nil
             return true
         }
     }
 
-    /// Browse names to contacts (§15.4, §15.10): one dictionary per (15-minute epoch, contact list), built from
-    /// the contacts' secrets and the peers' agreeKeys for the current and the previous epoch, so a forged
-    /// `p1-` name costs one lookup and no HMAC. At most 72 contacts x 2 epochs = 144 HMACs a rebuild. The first
-    /// match wins in `contactTrialOrder`. It holds names and ids only, never a secret.
-    final class ConnectContactIndex: Sendable {
-        struct Hit: Equatable, Sendable {
-            let id: String
-            let pending: Bool
+    /// Forget the keys and the dictionary (stop and abort).
+    func clear() {
+        state.with { s in
+            s.keys = []
+            s.roster = []
+            s.loaded = false
+            s.built = nil
         }
-        private struct State {
-            var epoch = Int.min
-            var table: [String: Hit] = [:]
-        }
-        private let state = LockedValue(State())
+    }
 
-        /// Rebuild for `now`'s epoch from `contacts` (already in trial order).
-        func update(_ contacts: [ConnectLiveContact], now: Int) {
-            let epoch = peerAdvertEpoch(now)
-            var table: [String: Hit] = [:]
-            for c in contacts.prefix(maxContactSecrets) {
-                for back in 0...1 {
-                    let n = PeerContacts.instance(
-                        secret: c.secret, advertiserAgreeKey: c.agreeKeyBytes, epoch: epoch - back)
-                    if table[n] == nil { table[n] = Hit(id: c.id, pending: c.pending) }
+    /// True while the index holds discovery-key bytes (a test reads it).
+    var holdsKeys: Bool { state.with { !$0.keys.isEmpty || $0.built != nil } }
+
+    func lookup(_ instance: String, now: Int) -> Hit? {
+        guard PeerAdvert.isInstanceName(instance) else { return nil }
+        return state.with { s in
+            guard s.loaded else { return nil }
+            ensure(&s, now: now)
+            return s.built?.table[instance]
+        }
+    }
+
+    /// Bring the dictionary to `now`'s epoch; true when it had to be rebuilt (a new epoch counts), so the
+    /// caller re-runs the browse filter.
+    func refresh(now: Int) -> Bool {
+        state.with { s in
+            guard s.loaded else { return false }
+            return ensure(&s, now: now)
+        }
+    }
+
+    @discardableResult
+    private func ensure(_ s: inout State, now: Int) -> Bool {
+        let epoch = peerAdvertEpoch(now)
+        if s.built?.epoch == epoch { return false }
+        var table: [String: Hit] = [:]
+        for epochBack in 0...1 {
+            for (i, key) in s.keys.prefix(2).enumerated() {
+                for deviceId in s.roster.prefix(128) {
+                    guard let n = try? name(key, epoch - epochBack, deviceId), table[n] == nil else { continue }
+                    table[n] = Hit(deviceId: deviceId, epochBack: epochBack, keyIndex: i)
                 }
             }
-            state.with {
-                $0.epoch = epoch
-                $0.table = table
+        }
+        s.built = Built(epoch: epoch, table: table)
+        builds.with { $0 += 1 }
+        return true
+    }
+}
+
+/// Browse names to contacts (§15.4, §15.10): one dictionary per (15-minute epoch, contact list), built from
+/// the contacts' secrets and the peers' agreeKeys for the current and the previous epoch, so a forged
+/// `p1-` name costs one lookup and no HMAC. At most 72 contacts x 2 epochs = 144 HMACs a rebuild. The first
+/// match wins in `contactTrialOrder`. It holds names and ids only, never a secret.
+final class ConnectContactIndex: Sendable {
+    struct Hit: Equatable, Sendable {
+        let id: String
+        let pending: Bool
+    }
+    private struct State {
+        var epoch = Int.min
+        var table: [String: Hit] = [:]
+    }
+    private let state = LockedValue(State())
+
+    /// Rebuild for `now`'s epoch from `contacts` (already in trial order).
+    func update(_ contacts: [ConnectLiveContact], now: Int) {
+        let epoch = peerAdvertEpoch(now)
+        var table: [String: Hit] = [:]
+        for c in contacts.prefix(maxContactSecrets) {
+            for back in 0...1 {
+                let n = PeerContacts.instance(
+                    secret: c.secret, advertiserAgreeKey: c.agreeKeyBytes, epoch: epoch - back)
+                if table[n] == nil { table[n] = Hit(id: c.id, pending: c.pending) }
             }
         }
-
-        func lookup(_ instance: String, now: Int) -> Hit? {
-            guard PeerAdvert.isInstanceName(instance) else { return nil }
-            return state.with { $0.epoch == peerAdvertEpoch(now) ? $0.table[instance] : nil }
-        }
-
-        /// True when the table is for an older epoch than `now`'s (the service rebuilds it).
-        func stale(now: Int) -> Bool { state.with { $0.epoch != peerAdvertEpoch(now) } }
-
-        func clear() {
-            state.with {
-                $0.epoch = .min
-                $0.table = [:]
-            }
+        state.with {
+            $0.epoch = epoch
+            $0.table = table
         }
     }
 
-    /// A counter every holder of a cached identity reads: it moves when the identity changes anywhere (a refresh,
-    /// a pushed roster, a sign-out), so the LAN and relay services drop their 30 s copies together (N8).
-    public final class ConnectIdentityEpoch: Sendable {
-        private let n = LockedValue(0)
-        public init() {}
-        public var value: Int { n.current }
-        public func bump() { n.with { $0 &+= 1 } }
+    func lookup(_ instance: String, now: Int) -> Hit? {
+        guard PeerAdvert.isInstanceName(instance) else { return nil }
+        return state.with { $0.epoch == peerAdvertEpoch(now) ? $0.table[instance] : nil }
     }
 
-    /// What the LAN service needs of the client. `load` reads the held identity (it may touch the key store);
-    /// `now` is epoch seconds. `refresh` asks the Worker for a newer roster (throws on failure); `adoptRing`
-    /// stores a roster a peer pushed and `applyTrust` applies a trust manifest a peer pushed: each may be nil
-    /// (the document is then refused as `unsupported`).
-    public struct ConnectLanSource: Sendable {
-        public var load: @Sendable () async throws -> PeerSource
-        public var now: @Sendable () -> Int
-        public var refresh: (@Sendable () async throws -> Void)?
-        public var adoptRing: (@Sendable (String) async -> RingAdoption)?
-        public var applyTrust: (@Sendable (String) async -> PeerTrustResult)?
-        /// Moves when the identity changes; the services share it so one's change reaches the other.
-        public var changes: ConnectIdentityEpoch
-        /// The inter-account links (§15.10) in trial order, secrets decoded: empty while links are off (no cached
-        /// `interAccount`) or none are held.
-        public var contacts: (@Sendable () async -> [ConnectLiveContact])?
-        /// Called when the contacts changed (stored, promoted, removed, re-marked, or the gate moved).
-        public var onContacts: (@Sendable (@escaping @Sendable () -> Void) -> @Sendable () -> Void)?
-        /// A session opened under a contact: the first handshake of a pending one promotes it.
-        public var contactEstablished: (@Sendable (ConnectContactRef) async -> Void)?
+    /// True when the table is for an older epoch than `now`'s (the service rebuilds it).
+    func stale(now: Int) -> Bool { state.with { $0.epoch != peerAdvertEpoch(now) } }
 
-        public init(
-            load: @escaping @Sendable () async throws -> PeerSource, now: @escaping @Sendable () -> Int,
-            refresh: (@Sendable () async throws -> Void)? = nil,
-            adoptRing: (@Sendable (String) async -> RingAdoption)? = nil,
-            applyTrust: (@Sendable (String) async -> PeerTrustResult)? = nil,
-            changes: ConnectIdentityEpoch = ConnectIdentityEpoch(),
-            contacts: (@Sendable () async -> [ConnectLiveContact])? = nil,
-            onContacts: (@Sendable (@escaping @Sendable () -> Void) -> @Sendable () -> Void)? = nil,
-            contactEstablished: (@Sendable (ConnectContactRef) async -> Void)? = nil
-        ) {
-            self.contacts = contacts
-            self.onContacts = onContacts
-            self.contactEstablished = contactEstablished
-            self.load = load
-            self.now = now
-            self.refresh = refresh
-            self.adoptRing = adoptRing
-            self.applyTrust = applyTrust
-            self.changes = changes
-        }
-
-        /// The source over a `ConnectClient`. `applyTrust` is the host's trust custodian.
-        public static func client(
-            _ c: ConnectClient, now: @escaping @Sendable () -> Int = { Int(Date().timeIntervalSince1970) },
-            applyTrust: (@Sendable (String) async -> PeerTrustResult)? = nil
-        ) -> ConnectLanSource {
-            ConnectLanSource(
-                load: { try await c.peerSource() }, now: now,
-                refresh: {
-                    guard case .ready = await c.identity(refresh: true) else {
-                        throw ConnectLanError(.noIdentity, "The identity could not be refreshed.")
-                    }
-                },
-                adoptRing: { await c.adoptRing($0) }, applyTrust: applyTrust, changes: c.identityChanges,
-                contacts: { await c.liveContacts() }, onContacts: { fn in c.contactChanges.add(fn) },
-                contactEstablished: { ref in
-                    // The first handshake under a pending contact passed the pin: it replaces the held one.
-                    // Only the row whose secret opened the session is promoted; a replaced pending row is not.
-                    _ = try? await c.updateContacts { rows, _ in
-                        rows.contains {
-                            $0.pendingSince != nil && $0.agreeKey == ref.agreeKey
-                                && ConnectContacts.tag(Base64URL.decode($0.secret) ?? Data()) == ref.tag
-                        } ? ConnectContacts.promote(rows, agreeKey: ref.agreeKey, tag: ref.tag) : nil
-                    }
-                })
+    func clear() {
+        state.with {
+            $0.epoch = .min
+            $0.table = [:]
         }
     }
+}
 
+/// A counter every holder of a cached identity reads: it moves when the identity changes anywhere (a refresh,
+/// a pushed roster, a sign-out), so the LAN and relay services drop their 30 s copies together (N8).
+public final class ConnectIdentityEpoch: Sendable {
+    private let n = LockedValue(0)
+    public init() {}
+    public var value: Int { n.current }
+    public func bump() { n.with { $0 &+= 1 } }
+}
+
+/// What the LAN service needs of the client. `load` reads the held identity (it may touch the key store);
+/// `now` is epoch seconds. `refresh` asks the Worker for a newer roster (throws on failure); `adoptRing`
+/// stores a roster a peer pushed and `applyTrust` applies a trust manifest a peer pushed: each may be nil
+/// (the document is then refused as `unsupported`).
+public struct ConnectLanSource: Sendable {
+    public var load: @Sendable () async throws -> PeerSource
+    public var now: @Sendable () -> Int
+    public var refresh: (@Sendable () async throws -> Void)?
+    public var adoptRing: (@Sendable (String) async -> RingAdoption)?
+    public var applyTrust: (@Sendable (String) async -> PeerTrustResult)?
+    /// Moves when the identity changes; the services share it so one's change reaches the other.
+    public var changes: ConnectIdentityEpoch
+    /// The inter-account links (§15.10) in trial order, secrets decoded: empty while links are off (no cached
+    /// `interAccount`) or none are held.
+    public var contacts: (@Sendable () async -> [ConnectLiveContact])?
+    /// Called when the contacts changed (stored, promoted, removed, re-marked, or the gate moved).
+    public var onContacts: (@Sendable (@escaping @Sendable () -> Void) -> @Sendable () -> Void)?
+    /// A session opened under a contact: the first handshake of a pending one promotes it.
+    public var contactEstablished: (@Sendable (ConnectContactRef) async -> Void)?
+
+    public init(
+        load: @escaping @Sendable () async throws -> PeerSource, now: @escaping @Sendable () -> Int,
+        refresh: (@Sendable () async throws -> Void)? = nil,
+        adoptRing: (@Sendable (String) async -> RingAdoption)? = nil,
+        applyTrust: (@Sendable (String) async -> PeerTrustResult)? = nil,
+        changes: ConnectIdentityEpoch = ConnectIdentityEpoch(),
+        contacts: (@Sendable () async -> [ConnectLiveContact])? = nil,
+        onContacts: (@Sendable (@escaping @Sendable () -> Void) -> @Sendable () -> Void)? = nil,
+        contactEstablished: (@Sendable (ConnectContactRef) async -> Void)? = nil
+    ) {
+        self.contacts = contacts
+        self.onContacts = onContacts
+        self.contactEstablished = contactEstablished
+        self.load = load
+        self.now = now
+        self.refresh = refresh
+        self.adoptRing = adoptRing
+        self.applyTrust = applyTrust
+        self.changes = changes
+    }
+
+    /// The source over a `ConnectClient`. `applyTrust` is the host's trust custodian.
+    public static func client(
+        _ c: ConnectClient, now: @escaping @Sendable () -> Int = { Int(Date().timeIntervalSince1970) },
+        applyTrust: (@Sendable (String) async -> PeerTrustResult)? = nil
+    ) -> ConnectLanSource {
+        ConnectLanSource(
+            load: { try await c.peerSource() }, now: now,
+            refresh: {
+                guard case .ready = await c.identity(refresh: true) else {
+                    throw ConnectLanError(.noIdentity, "The identity could not be refreshed.")
+                }
+            },
+            adoptRing: { await c.adoptRing($0) }, applyTrust: applyTrust, changes: c.identityChanges,
+            contacts: { await c.liveContacts() }, onContacts: { fn in c.contactChanges.add(fn) },
+            contactEstablished: { ref in
+                // The first handshake under a pending contact passed the pin: it replaces the held one.
+                // Only the row whose secret opened the session is promoted; a replaced pending row is not.
+                _ = try? await c.updateContacts { rows, _ in
+                    rows.contains {
+                        $0.pendingSince != nil && $0.agreeKey == ref.agreeKey
+                            && ConnectContacts.tag(Base64URL.decode($0.secret) ?? Data()) == ref.tag
+                    } ? ConnectContacts.promote(rows, agreeKey: ref.agreeKey, tag: ref.tag) : nil
+                }
+            })
+    }
+}
+
+#if canImport(Network)
     /// Where the LAN service gets its network: a TCP listener, the advert, browse and dial. The system one
     /// is `SystemConnectLanNetwork`; a test supplies loopback TCP with a fake directory.
     public protocol ConnectLanNetwork: Sendable {

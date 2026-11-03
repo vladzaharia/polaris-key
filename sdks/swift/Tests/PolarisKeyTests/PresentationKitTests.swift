@@ -139,7 +139,7 @@
 
             // The SwiftUI kit's identity: the product's name and its verified icon, masked.
             let identity = PolarisProductIdentity.resolve(
-                theme: PolarisTheme(), presentation: model.presentation, bundle: .none)
+                theme: PolarisTheme(), presentation: model.presentation, bundle: PolarisProductIdentity.Bundled.none)
             XCTAssertEqual(identity.name, "Drift Kart")
             XCTAssertEqual(identity.developer, "Lanternworks")
             guard case .image(_, let masked) = identity.icon else {
@@ -152,11 +152,11 @@
             await none.reload()
             XCTAssertNil(none.presentation)
             let plain = PolarisProductIdentity.resolve(
-                theme: PolarisTheme(), presentation: none.presentation, bundle: .none)
+                theme: PolarisTheme(), presentation: none.presentation, bundle: PolarisProductIdentity.Bundled.none)
             guard case .monogram = plain.icon else { return XCTFail("no icon: the monogram") }
             XCTAssertEqual(
                 plain.name, PolarisProductIdentity.resolve(
-                    theme: PolarisTheme(), presentation: nil, bundle: .none
+                    theme: PolarisTheme(), presentation: nil, bundle: PolarisProductIdentity.Bundled.none
                 ).name)
         }
 

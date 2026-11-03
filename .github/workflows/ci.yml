@@ -826,8 +826,13 @@ jobs:
       image: swift:6.2.3-noble@sha256:6dd90eb2359663a2cde8f03e9951f488b23134b3b8fce20e9dcb6cada75dd803
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The portable targets: the SwiftUI kit (PolarisKeyUI, PolarisKeyUpdateUI) is Apple-only.
       - name: swift build
-        run: swift build --package-path sdks/swift
+        run: >-
+          swift build --package-path sdks/swift
+          --target PolarisKey --target PolarisKeyPacks --target PolarisKeyUICore --target PolarisKeyUpdate
+          --target PolarisKeyGameCenter --target PolarisKeyGameCenterSignIn
+          --target PolarisKeyGameCenterC --target PolarisKeyPlatformC
       - name: swift test (redirect, transport, backend)
         run: swift test --package-path sdks/swift --filter 'DelegatedExchange|RedirectPolicy|RedirectSession|Transport|Backend|LinuxRedirect'
 

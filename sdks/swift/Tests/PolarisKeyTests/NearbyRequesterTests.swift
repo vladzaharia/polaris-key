@@ -169,7 +169,7 @@ final class NearbyRequesterTests: XCTestCase {
         await r.listed(1)
         let results = NBox<[VouchStatus]>([])
         r.requester.onResult { s in results.mutate { $0.append(s) } }
-        let id = try await r.requester.approvers()[0].id
+        let id = await r.requester.approvers()[0].id
         let code = try await r.requester.choose(id)
         await nearbyUntil("prompt") { r.approvals.value.count == 1 }
         let a = r.approvals.value[0].approval
@@ -195,7 +195,7 @@ final class NearbyRequesterTests: XCTestCase {
         await r.listed(1)
         let closes = NBox<[String]>([])
         r.requester.onClose { c in closes.mutate { $0.append(c) } }
-        let code = try await r.requester.choose(try await r.requester.approvers()[0].id)
+        let code = try await r.requester.choose(await r.requester.approvers()[0].id)
         await nearbyUntil("prompt") { r.approvals.value.count == 1 }
         let a = r.approvals.value[0].approval
         let decoy = a.codes.first { $0 != code }!
@@ -208,7 +208,7 @@ final class NearbyRequesterTests: XCTestCase {
         await nearbyUntil("redial armed") { r.timers.armed(0.3) >= 1 }
         r.timers.fire(0.3)
         await r.listed(1)
-        let again = try await r.requester.choose(try await r.requester.approvers()[0].id)
+        let again = try await r.requester.choose(await r.requester.approvers()[0].id)
         await nearbyUntil("second prompt") { r.approvals.value.count == 2 }
         XCTAssertTrue(r.approvals.value[1].approval.codes.contains(again))
         await r.stopAll()
@@ -220,7 +220,7 @@ final class NearbyRequesterTests: XCTestCase {
         try await r.startRequester()
         r.upAll()
         await r.listed(1)
-        let code = try await r.requester.choose(try await r.requester.approvers()[0].id)
+        let code = try await r.requester.choose(await r.requester.approvers()[0].id)
         await nearbyUntil("prompt") { r.approvals.value.count == 1 }
         let a = r.approvals.value[0].approval
         let keys = try await r.keys.ensure()
@@ -238,7 +238,7 @@ final class NearbyRequesterTests: XCTestCase {
         r.requester.onRecord { rec in got.mutate { $0.append(rec) } }
         r.upAll()
         await r.listed(1)
-        let code = try await r.requester.choose(try await r.requester.approvers()[0].id)
+        let code = try await r.requester.choose(await r.requester.approvers()[0].id)
         await nearbyUntil("prompt") { r.approvals.value.count == 1 }
         let a = r.approvals.value[0].approval
         let keys = try await r.keys.ensure()
@@ -272,7 +272,7 @@ final class NearbyRequesterTests: XCTestCase {
         r.requester.onClose { c in closes.mutate { $0.append(c) } }
         r.upAll()
         await r.listed(1)
-        let code = try await r.requester.choose(try await r.requester.approvers()[0].id)
+        let code = try await r.requester.choose(await r.requester.approvers()[0].id)
         await nearbyUntil("prompt") { r.approvals.value.count == 1 }
         let a = r.approvals.value[0].approval
         let keys = try await r.keys.ensure()
@@ -370,14 +370,14 @@ final class NearbyRequesterTests: XCTestCase {
         try await r.startRequester()
         r.upAll()
         await r.listed(1)
-        let first = try await r.requester.approvers()[0].id
+        let first = await r.requester.approvers()[0].id
         XCTAssertEqual(r.timers.armed(20), 1)
         r.timers.fire(20)
         await nearbyUntil("replaced out") { await r.requester.approvers().isEmpty }
         await nearbyUntil("redial armed") { r.timers.armed(0.3) >= 1 }
         r.timers.fire(0.3)
         await r.listed(1)
-        let second = try await r.requester.approvers()[0].id
+        let second = await r.requester.approvers()[0].id
         XCTAssertNotEqual(first, second)
         await r.stopAll()
     }
@@ -388,7 +388,7 @@ final class NearbyRequesterTests: XCTestCase {
         try await r.startRequester()
         r.upAll()
         await r.listed(1)
-        _ = try await r.requester.choose(try await r.requester.approvers()[0].id)
+        _ = try await r.requester.choose(await r.requester.approvers()[0].id)
         XCTAssertEqual(r.timers.armed(20), 0)
         r.timers.fire(20)
         await nearbySettle()

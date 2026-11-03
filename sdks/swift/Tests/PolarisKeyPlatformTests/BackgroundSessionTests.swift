@@ -89,13 +89,13 @@ final class BackgroundTagTests: XCTestCase {
                 let response = HTTPURLResponse(
                     url: task.originalRequest!.url!, statusCode: code, httpVersion: nil,
                     headerFields: ["Location": "https://other.example/next"])!
-                var followed: URLRequest?? = .some(nil)
+                var followed: URLRequest?? = .none
                 port.urlSession(
                     session, task: task, willPerformHTTPRedirection: response,
                     newRequest: URLRequest(url: URL(string: "https://other.example/next")!)
                 ) { followed = .some($0) }
                 XCTAssertNil(followed ?? nil, "the \(code) was followed")
-                XCTAssertNotNil(followed, "the completion handler was never called for \(code)")
+                XCTAssertTrue(followed != nil, "the completion handler was never called for \(code)")
             }
         }
     }

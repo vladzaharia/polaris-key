@@ -198,9 +198,11 @@ public actor PolarisKeyClient {
     public nonisolated let devices: DevicesClient
     /// Cloud Connect identity (`identity()`, `held()`, `listDevices()`, `leave()`).
     public nonisolated let connect: ConnectClient
-    /// Cloud Connect: peers, sessions to the person's other devices (LAN first, then the relay), and the
-    /// pushed-document notices. Sign-out stops it before the credential goes.
-    public nonisolated let cloudConnect: CloudConnect
+    #if canImport(Network)
+        /// Cloud Connect: peers, sessions to the person's other devices (LAN first, then the relay), and the
+        /// pushed-document notices. Sign-out stops it before the credential goes.
+        public nonisolated let cloudConnect: CloudConnect
+    #endif
     /// Cloud Sync's settings API: `status()`, `flush()`, `newRecoveryCode()`; its events are `.cloudSync` on
     /// `events`. A product without the Sync service gets the typed N/A.
     public nonisolated let cloudSync: CloudSyncClient
@@ -314,21 +316,23 @@ public actor PolarisKeyClient {
         self.refreshIntervalSeconds = options.refreshIntervalSeconds
         let connect = ConnectClient(core: core, options: options.connect, accessGroup: options.core.keychainAccessGroup)
         self.connect = connect
-        let cloudConnect = CloudConnect(
-            connect: connect, discovery: { await core.discoveryDocument },
-            applyTrust: { await core.applyPeerTrust($0) },
-            nearby: NearbyDeps(
-                slug: core.product,
-                requireIdentity: { try await core.requireService(.identity, feature: Feature.identityNearby) },
-                identity: { fresh in
-                    if fresh { _ = await core.discover() }
-                    return await core.discoveryDocument?.identity
-                },
-                signedIn: { await identityClient.current() != nil }, signer: { try await connect.nearbySigner() },
-                approverNetwork: options.connect.nearbyApproverNetwork ?? SystemNearbyApproverNetwork(),
-                requesterNetwork: options.connect.nearbyRequesterNetwork ?? SystemNearbyRequesterNetwork()),
-            transferDirectory: core.dirs.state.appendingPathComponent("xfer", isDirectory: true))
-        self.cloudConnect = cloudConnect
+        #if canImport(Network)
+            let cloudConnect = CloudConnect(
+                connect: connect, discovery: { await core.discoveryDocument },
+                applyTrust: { await core.applyPeerTrust($0) },
+                nearby: NearbyDeps(
+                    slug: core.product,
+                    requireIdentity: { try await core.requireService(.identity, feature: Feature.identityNearby) },
+                    identity: { fresh in
+                        if fresh { _ = await core.discover() }
+                        return await core.discoveryDocument?.identity
+                    },
+                    signedIn: { await identityClient.current() != nil }, signer: { try await connect.nearbySigner() },
+                    approverNetwork: options.connect.nearbyApproverNetwork ?? SystemNearbyApproverNetwork(),
+                    requesterNetwork: options.connect.nearbyRequesterNetwork ?? SystemNearbyRequesterNetwork()),
+                transferDirectory: core.dirs.state.appendingPathComponent("xfer", isDirectory: true))
+            self.cloudConnect = cloudConnect
+        #endif
         let attachments = self.attachments
         let ring: @Sendable () -> SyncKeyring = {
             PolarisKeyClient.keyring(core: core, attachments: attachments, subject: { identityClient.account })
@@ -409,7 +413,9 @@ public actor PolarisKeyClient {
             // A released device holds no roster and no discovery key; if they cannot be removed
             // (a locked Keychain) the release stops.
             beforeRelease: {
-                await cloudConnect.stopForSignOut()  // Connect stops before the roster and the credential go
+                #if canImport(Network)
+                    await cloudConnect.stopForSignOut()  // Connect stops before the roster and the credential go
+                #endif
                 try await connect.leave()
                 // The principal leaves with the device: the ring forgets (a failure stops the release),
                 // then the synced data is purged.
@@ -440,7 +446,9 @@ public actor PolarisKeyClient {
         // synced data is purged (A-3). A root that cannot be deleted (a locked Keychain) stops the
         // sign-out.
         identity.onBeforeSignOut {
-            await cloudConnect.stopForSignOut()
+            #if canImport(Network)
+                await cloudConnect.stopForSignOut()
+            #endif
             try await connect.leave()
             try await api.beforeSignOut()
         }
@@ -448,7 +456,9 @@ public actor PolarisKeyClient {
             do {
                 // Fail closed: the held roster and K_disc go first, and if they cannot, nothing
                 // else is wiped.
-                await cloudConnect.stopForSignOut()
+                #if canImport(Network)
+                    await cloudConnect.stopForSignOut()
+                #endif
                 try await connect.leave()
                 try await core.clearAll()
             } catch {
@@ -900,8 +910,10 @@ public actor PolarisKeyClient {
         refreshTask?.cancel()
         refreshTask = nil
         // Bounded like the sign-out step: a hanging advert withdrawal cannot keep a closed client's sockets.
-        let cloud = cloudConnect
-        Task { await cloud.stopNearby() }
+        #if canImport(Network)
+            let cloud = cloudConnect
+            Task { await cloud.stopNearby() }
+        #endif
     }
 }
 

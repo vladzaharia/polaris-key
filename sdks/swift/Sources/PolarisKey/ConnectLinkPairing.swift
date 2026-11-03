@@ -329,7 +329,7 @@ import PolarisKeyPlatform
                 dialing.insert(name)
                 Task {
                     await self.dial(name, c.endpoint)
-                    await self.doneDialing(name)
+                    self.doneDialing(name)
                 }
             }
         }
