@@ -46,6 +46,8 @@ export function accountView(
     // keeps the key-only line.
     const holder = ctx.input.licenseHolder;
     const floating = license && !!holder && !holder.email;
+    // With Identity off, or a kit with no in-app channel (`addIn: "portal"`), Add opens the portal.
+    const viaPortal = !ctx.on("identity") || holder?.addIn === "portal";
     return makeView(ctx, "AccountAndLicense", {
       state: "key-only",
       copy: [
@@ -54,10 +56,8 @@ export function accountView(
         license && !floating && "account.keyOnly",
         floating && "account.notInAccount",
         floating &&
-          (ctx.on("identity")
-            ? "activate.recommend.action"
-            : "signin.key.addInLocker"),
-        floating && !ctx.on("identity") && "a11y.externalLink",
+          (viaPortal ? "signin.key.addInLocker" : "activate.recommend.action"),
+        floating && viaPortal && "a11y.externalLink",
         update && "account.updates",
         // A holder who never signed in has nothing to sign out of: the exit forgets the key.
         holder ? "account.removeKey" : "common.signOut",
