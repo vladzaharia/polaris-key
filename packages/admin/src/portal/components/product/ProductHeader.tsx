@@ -144,7 +144,8 @@ export function ProductHeader({
             product={product}
             action={action}
             lead
-            className="h-12 flex-1 px-6 desk:flex-none"
+            size="xl"
+            className="flex-1 desk:flex-none"
           />
           <ProductMenu
             slug={product.slug}

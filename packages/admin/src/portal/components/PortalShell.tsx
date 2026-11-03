@@ -14,7 +14,7 @@ import { formatDay } from "../date.js";
 
 /** The phone bar's current tab: strong ink and the 3 px coral selected marker (PORTAL.md §3, D9a). */
 const TAB_MARK =
-  "font-medium text-fg-strong before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:bg-[var(--pk-locker-accent)]";
+  "font-medium text-fg-strong before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:bg-locker-accent";
 
 /**
  * The signed-in frame (PORTAL.md §3.2, §5.2 `PortalShell`):
@@ -144,7 +144,7 @@ export function PortalShell({
             </span>
             <a
               href={href.account("data")}
-              className="inline-flex min-h-6 items-center font-medium text-fg-strong underline underline-offset-2"
+              className="inline-flex min-h-6 items-center text-fg-strong underline underline-offset-4"
             >
               {t("locker.delete.cancel")}
             </a>
@@ -279,7 +279,7 @@ function NavLink({
       className={cn(
         "relative inline-flex items-center gap-2 px-1 text-md",
         active
-          ? "font-medium text-fg-strong after:absolute after:inset-x-0 after:-bottom-px after:rounded-full after:h-[3px] after:bg-[var(--pk-locker-accent)]"
+          ? "font-medium text-fg-strong after:absolute after:inset-x-0 after:-bottom-px after:rounded-full after:h-[3px] after:bg-locker-accent"
           : "text-fg-muted hover:text-fg-strong",
       )}
     >

@@ -23,7 +23,7 @@ import { href } from "../router.js";
  */
 /** Neutral ink with the coral rule (D9a); the underline tells a link from the muted text. */
 const LINK =
-  "inline-flex min-h-11 items-center font-medium text-fg-strong underline decoration-[var(--pk-locker-accent)] decoration-2 underline-offset-4 hover:text-fg-strong";
+  "inline-flex min-h-11 items-center text-fg-strong underline decoration-2 underline-offset-4 hover:text-fg-strong";
 
 export function MissingLicense({
   hideActivate = false,

@@ -107,7 +107,7 @@ function NotOffered(): React.ReactElement {
   return (
     <section className="mx-auto flex max-w-xl flex-col items-center gap-4 py-16 text-center">
       <StationaryStar />
-      <h1 className="text-3xl font-semibold leading-tight text-fg-strong">
+      <h1 className="text-2xl font-semibold text-fg-strong">
         {t("locker.storefront.nothingTitle")}
       </h1>
       <p className="text-fg-muted">{t("locker.storefront.nothingBody")}</p>
@@ -363,8 +363,8 @@ function DecisionPanel({
               <StoreButtons product={product} lead />
             ) : canAdd ? (
               <Button
-                size="lg"
-                className="h-auto min-h-12 w-full whitespace-normal px-6 py-2 font-medium"
+                size="xl"
+                className="w-full"
                 loading={adding}
                 aria-describedby={error ? errorId : undefined}
                 onClick={onAdd}
@@ -388,8 +388,8 @@ function DecisionPanel({
                   <Button
                     asChild
                     variant="outline"
-                    size="lg"
-                    className="h-auto min-h-12 w-full whitespace-normal px-6 py-2 font-medium"
+                    size="xl"
+                    className="w-full"
                   >
                     <a ref={backRef} href={href.discover()}>
                       {t("locker.storefront.backDiscover")}
@@ -579,12 +579,8 @@ function StoreButtons({
             asChild
             // One solid lead per page: the first store; any others are outlined.
             variant={lead && i === 0 ? "primary" : lead ? "outline" : "quiet"}
-            size="lg"
-            className={cn(
-              lead
-                ? "h-auto min-h-12 w-full whitespace-normal px-6 py-2 font-medium"
-                : "h-11",
-            )}
+            size={lead ? "xl" : "lg"}
+            className={cn(lead ? "w-full" : "h-11")}
           >
             <a
               href={l.url}

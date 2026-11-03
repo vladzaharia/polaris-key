@@ -177,7 +177,6 @@ export function MethodRow({
             <Button
               ref={buttonRef}
               variant="outline"
-              className="h-auto min-h-11 whitespace-normal font-medium"
               aria-disabled={guarded || undefined}
               aria-describedby={guarded ? reasonId : undefined}
               aria-expanded={guarded ? undefined : false}

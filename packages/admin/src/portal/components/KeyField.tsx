@@ -95,7 +95,7 @@ export function KeyField({
       </label>
       <div
         className={cn(
-          "relative @container rounded-md border bg-surface-sunken focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-surface-overlay",
+          "relative @container rounded-md border bg-surface-sunken focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus",
           danger
             ? "border-danger"
             : verdict?.tone === "info"

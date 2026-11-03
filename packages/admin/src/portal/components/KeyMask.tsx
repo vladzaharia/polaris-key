@@ -23,7 +23,7 @@ export function KeyMask({
           : t("locker.key.forAria", { product: slug })
       }
       role="img"
-      className={cn("font-mono text-sm", className)}
+      className={cn("font-mono text-code", className)}
     >
       <span aria-hidden className="text-fg-subtle">
         pkey_

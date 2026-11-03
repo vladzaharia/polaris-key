@@ -204,7 +204,7 @@ export function ApproveDeviceDialog({
                     ? "pk-approve-err"
                     : undefined
                 }
-                className="h-12 font-mono text-lg tracking-widest"
+                className="h-14 font-mono text-2xl font-semibold tracking-widest"
               />
               {phase.kind === "enter" && phase.error ? (
                 <p

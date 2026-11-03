@@ -163,7 +163,7 @@ export function AccountPage({
           {/* Focus lands here after a navigation (the router, MO-05): no ring on a heading. */}
           <h1
             tabIndex={-1}
-            className="text-3xl font-semibold leading-tight text-fg-strong outline-none desk:text-display"
+            className="text-page-title-sm font-semibold text-fg-strong outline-none desk:text-page-title"
           >
             {t("locker.account.title")}
           </h1>
@@ -262,7 +262,7 @@ function SectionLink({
             ? "border-fg-strong bg-hover font-semibold text-fg-strong"
             : "border-border-strong text-fg-strong"
           : on
-            ? "bg-hover font-medium text-fg-strong before:absolute before:inset-y-1 before:start-0 before:w-[3px] before:rounded-full before:bg-accent before:content-[''] forced-colors:before:bg-[Highlight]"
+            ? "bg-hover font-medium text-fg-strong before:absolute before:inset-y-1 before:start-0 before:w-[3px] before:rounded-full before:bg-locker-accent before:content-[''] forced-colors:before:bg-[Highlight]"
             : "text-fg-muted hover:bg-hover hover:text-fg-strong",
       )}
     >

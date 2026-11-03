@@ -17,7 +17,7 @@ export function StarScreen({
       className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-surface-page px-4 text-center text-fg"
     >
       <StationaryStar />
-      <h1 className="text-xl font-semibold text-fg-strong">{title}</h1>
+      <h1 className="text-2xl font-semibold text-fg-strong">{title}</h1>
       {children}
     </main>
   );

@@ -218,11 +218,11 @@ function FreeDevice({
     pres.supportUrl ??
     (pres.supportEmail ? `mailto:${pres.supportEmail}` : null);
   const goBack = returnUrl ? (
-    <Button asChild size="lg" className="h-12 w-full font-medium sm:w-auto">
+    <Button asChild size="xl" className="w-full sm:w-auto">
       <a href={returnUrl}>{t("locker.activate.backTo", { product: name })}</a>
     </Button>
   ) : (
-    <Button asChild size="lg" className="h-12 w-full font-medium sm:w-auto">
+    <Button asChild size="xl" className="w-full sm:w-auto">
       <a href={href.product(product.product, "devices")}>
         {t("locker.freeDevice.seeDevices")}
       </a>
@@ -407,20 +407,15 @@ function FreeDevice({
       ) : null}
       <StickyActions>
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Button
-            asChild
-            size="lg"
-            variant="outline"
-            className="h-auto min-h-12 whitespace-normal py-2"
-          >
+          <Button asChild size="xl" variant="outline">
             <a href={returnUrl ?? href.product(product.product)}>
               {t("signin.cancel")}
             </a>
           </Button>
           <Button
             ref={removeRef}
-            size="lg"
-            className="h-auto min-h-12 whitespace-normal py-2 font-medium sm:flex-none"
+            size="xl"
+            className="sm:flex-none"
             loading={remove.isPending}
             disabledReason={
               pickedDevice ? undefined : t("locker.freeDevice.choose")

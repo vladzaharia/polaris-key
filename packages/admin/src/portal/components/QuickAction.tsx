@@ -47,7 +47,7 @@ export function QuickActionButton({
   twoLine?: boolean;
   /** "Download" for "Download for <OS>" in a container under 15rem (the compact tile). */
   shortLabel?: boolean;
-  size?: "md" | "lg";
+  size?: "md" | "lg" | "xl";
   className?: string;
 }): React.ReactElement | null {
   const start = useStartDownload();

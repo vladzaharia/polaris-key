@@ -227,7 +227,7 @@ export function DiscoverPage({
           <p className="max-w-prose text-fg-muted">
             {t("locker.discover.empty.body")}
           </p>
-          <Button asChild variant="action" size="lg" className="h-12">
+          <Button asChild variant="action" size="xl">
             <a href={href.library()}>
               <LayoutGrid aria-hidden />
               {t("locker.discover.empty.back")}
