@@ -22,7 +22,7 @@ import {
   useStepFocus,
 } from "../../../ui/auth/index.js";
 import { cn } from "../../../lib/cn.js";
-import { PRIMARY_CLASS } from "./requestParts.js";
+import { PRIMARY_CLASS, Unreachable } from "./requestParts.js";
 import { t, tParts } from "../../../lib/copy.js";
 import {
   portalApi,
@@ -31,7 +31,6 @@ import {
   type PortalGate,
   type PortalGateChoice,
 } from "../../api.js";
-import { portalErrorCopy } from "../../errors.js";
 import { useCapabilities } from "../../data.js";
 import { toast } from "../../../ui/toast.js";
 import { rememberNudge, rememberVia } from "../../lastMethod.js";
@@ -256,7 +255,6 @@ function GateUnreachable({
   error: unknown;
   onRetry: () => void;
 }): React.ReactElement {
-  const copy = portalErrorCopy(error, { account: true });
   const { ref, live } = useStepFocus("error");
   React.useEffect(() => {
     ref.current
@@ -265,18 +263,7 @@ function GateUnreachable({
   }, [ref]);
   return (
     <div ref={ref} className="space-y-5">
-      <div className="space-y-2">
-        <AuthTitle>{copy.title}</AuthTitle>
-        <p className="text-fg-muted">{copy.description}</p>
-      </div>
-      <Button
-        variant="neutral"
-        size="lg"
-        className={PRIMARY_CLASS}
-        onClick={onRetry}
-      >
-        {t("signin.retry")}
-      </Button>
+      <Unreachable error={error} onRetry={onRetry} />
       {live}
     </div>
   );

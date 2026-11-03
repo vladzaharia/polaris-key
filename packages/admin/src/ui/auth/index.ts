@@ -10,7 +10,6 @@ export type { AuthProvider } from "./ProviderRow.js";
 export {
   AUTH_INPUT_CLASS,
   AUTH_LINK_CLASS,
-  AUTH_PRIMARY_CLASS,
   AuthNotice,
   AuthTitle,
   OrDivider,

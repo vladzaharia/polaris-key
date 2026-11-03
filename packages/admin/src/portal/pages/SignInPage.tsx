@@ -7,14 +7,17 @@ import {
   KeyRound,
   Mail,
   ScanLine,
-  RefreshCw,
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { Input } from "../../ui/Input.js";
 import { cn } from "../../lib/cn.js";
 import { t, tParts } from "../../lib/copy.js";
-import { PRIMARY_CLASS } from "../components/signin/requestParts.js";
+import {
+  PRIMARY_CLASS,
+  RequestGone,
+  Unreachable,
+} from "../components/signin/requestParts.js";
 import { expiredCodeText, wrongCodeText } from "../copy/codeEntry.js";
 import {
   portalApi,
@@ -451,15 +454,7 @@ export function SignInPage({
       {(handle !== null && request.isPending) || caps.isPending ? (
         <MethodsSkeleton />
       ) : requestGone ? (
-        <>
-          <div className="space-y-2">
-            <Title>{t("signin.request.goneTitle")}</Title>
-            <p className="text-fg-muted">{t("signin.request.gone")}</p>
-          </div>
-          <Button asChild variant="neutral" size="lg" className={PRIMARY_CLASS}>
-            <a href="/">{t("signin.return.library")}</a>
-          </Button>
-        </>
+        <RequestGone />
       ) : caps.error || requestFailed ? (
         <Unreachable
           error={caps.error ?? request.error}
@@ -722,33 +717,6 @@ function MethodsSkeleton(): React.ReactElement {
       </div>
       <div aria-hidden className="h-12 rounded-md bg-hover" />
     </div>
-  );
-}
-
-function Unreachable({
-  error,
-  onRetry,
-}: {
-  error: unknown;
-  onRetry: () => void;
-}): React.ReactElement {
-  const copy = portalErrorCopy(error, { account: true });
-  return (
-    <>
-      <div className="space-y-2">
-        <Title>{copy.title}</Title>
-        <p className="text-fg-muted">{copy.description}</p>
-      </div>
-      <Button
-        variant="neutral"
-        size="lg"
-        className={PRIMARY_CLASS}
-        iconStart={<RefreshCw aria-hidden />}
-        onClick={onRetry}
-      >
-        {t("signin.retry")}
-      </Button>
-    </>
   );
 }
 

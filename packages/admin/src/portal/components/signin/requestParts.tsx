@@ -1,5 +1,9 @@
 import * as React from "react";
 import { RadioGroup } from "radix-ui";
+import { RefreshCw } from "lucide-react";
+import { Button } from "../../../ui/Button.js";
+import { AuthTitle } from "../../../ui/auth/index.js";
+import { portalErrorCopy } from "../../errors.js";
 import { cn } from "../../../lib/cn.js";
 import { t } from "../../../lib/copy.js";
 import { Avatar } from "../Avatar.js";
@@ -14,6 +18,49 @@ import { AUTH_LINK_CLASS, AUTH_PRIMARY_CLASS } from "../../../ui/auth/parts.js";
 
 /** The step's one primary: the neutral ink button the card uses everywhere. */
 export const PRIMARY_CLASS = AUTH_PRIMARY_CLASS;
+
+/** The request is gone (or never existed): say so and return to the library. */
+export function RequestGone(): React.ReactElement {
+  return (
+    <>
+      <div className="space-y-2">
+        <AuthTitle>{t("signin.request.goneTitle")}</AuthTitle>
+        <p className="text-fg-muted">{t("signin.request.gone")}</p>
+      </div>
+      <Button asChild variant="neutral" size="lg" className={PRIMARY_CLASS}>
+        <a href="/">{t("signin.return.library")}</a>
+      </Button>
+    </>
+  );
+}
+
+/** The request could not be reached: the error's own copy and a retry. */
+export function Unreachable({
+  error,
+  onRetry,
+}: {
+  error: unknown;
+  onRetry: () => void;
+}): React.ReactElement {
+  const copy = portalErrorCopy(error, { account: true });
+  return (
+    <>
+      <div className="space-y-2">
+        <AuthTitle>{copy.title}</AuthTitle>
+        <p className="text-fg-muted">{copy.description}</p>
+      </div>
+      <Button
+        variant="neutral"
+        size="lg"
+        className={PRIMARY_CLASS}
+        iconStart={<RefreshCw aria-hidden />}
+        onClick={onRetry}
+      >
+        {t("signin.retry")}
+      </Button>
+    </>
+  );
+}
 
 /** Person row: avatar, name, email and **Not you?**, which ends this account's part of the flow. */
 export function PersonRow({
