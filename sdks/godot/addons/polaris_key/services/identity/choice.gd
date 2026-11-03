@@ -133,6 +133,8 @@ func _complete(grant: String, choice: Variant, consent: Variant = null) -> PKeyC
 	var stored := core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_SIGNIN, true)
 	if identity._account != null:
 		identity._account.note_signed_in(answer["subject"])
+	# A grant this device's redirect left pending opens the link offer (any other grant is not ours).
+	identity.link._choice_completed(grant, answer["subject"])
 	var r := PKeyChoiceResult.made_ok()
 	r.stored = stored
 	r.subject = answer["subject"]

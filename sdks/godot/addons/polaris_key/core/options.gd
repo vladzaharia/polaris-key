@@ -104,6 +104,10 @@ var ring_vault: PKeySyncRingVault = null
 ## product's own record under `store_root`, sealed by the platform key where a native lane exists.
 ## Not an export: tests pass a scratch or memory one.
 var connect_state: PKeyConnectState = null
+## Where the link offer keeps the accounts that declined it (`PKeyLinkDeclinedStore`: sha256 hashes only).
+## Null: the product's own record under `store_root`, sealed by the platform key where a native lane exists.
+## Not an export: tests pass a scratch or memory one.
+var link_store: PKeyLinkDeclinedStore = null
 ## Cloud Connect with a memory-only device key store (G18). Off: `connect.identity()` refuses, because
 ## every restart would register a new key pair and the Worker allows four a day.
 var allow_ephemeral_keys := false

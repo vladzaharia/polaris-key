@@ -707,6 +707,7 @@ const GODOT_SCRIPT: Record<string, string> = {
   identity: `"res://addons/polaris_key/services/identity.gd"`,
   PKeySignInNamespace: `"res://addons/polaris_key/services/identity/sign_in_namespace.gd"`,
   PKeySignInSession: `"res://addons/polaris_key/services/identity/sign_in_session.gd"`,
+  PKeyIdentityLink: `"res://addons/polaris_key/services/identity/link.gd"`,
   PKeyCloudNearby: `"res://addons/polaris_key/services/connect/nearby.gd"`,
   PKeyCloudLinks: `"res://addons/polaris_key/services/connect/links.gd"`,
   PKeySaves: `"res://addons/polaris_key/services/cloud_sync/saves.gd"`,

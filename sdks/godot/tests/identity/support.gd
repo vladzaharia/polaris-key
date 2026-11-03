@@ -34,6 +34,9 @@ var choice_requests: Array = []
 var nonces: Array = []
 var nonce_requests: Array = []
 ## Answers for `POST …/identity/signout`: as `tokens`; empty answers `{released: false}`. Every request: {path, headers}.
+## Answers for `GET`/`POST …/identity/link`: as `tokens`. Every request: {method, path, body (parsed), headers}.
+var links: Array = []
+var link_requests: Array = []
 var signouts: Array = []
 var signout_requests: Array = []
 ## The options' device key port (null: the autoload builds its own).
@@ -97,6 +100,13 @@ func _answer(req: Dictionary) -> Dictionary:
 			return {"status": 500}
 		var n = nonces[0] if nonces.size() == 1 else nonces.pop_front()
 		return n.call(req) if n is Callable else n
+	if path.ends_with("/identity/link"):
+		var lp := PKeyJson.parse_bytes(req["body"])
+		link_requests.append({"method": req["method"], "path": path, "body": lp["value"] if lp["ok"] else null, "headers": req["headers"]})
+		if links.is_empty():
+			return {"status": 500}
+		var l = links[0] if links.size() == 1 else links.pop_front()
+		return l.call(req) if l is Callable else l
 	if path.ends_with("/identity/signout"):
 		signout_requests.append({"path": path, "headers": req["headers"]})
 		if signouts.is_empty():

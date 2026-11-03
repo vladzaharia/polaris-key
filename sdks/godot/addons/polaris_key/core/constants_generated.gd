@@ -1566,7 +1566,7 @@ static func capabilities() -> Dictionary:
 		"identity.pgs": {"status": "implemented", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"identity.autosignin": {"status": "implemented", "service": "identity", "na": []},
 		"identity.restore": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
-		"identity.link": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
+		"identity.link": {"status": "implemented", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
 		"identity.nearby": {"status": "planned", "service": "identity", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"release.changelog": {"status": "implemented", "service": "release", "na": []},
 		"release.download": {"status": "implemented", "service": "release", "na": []},
@@ -1635,4 +1635,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "91f29d39c10e9d6648f38b48c30e6f6babedbf9dcb9ffc1f64b955b416d74e07"
+const CAPABILITY_DIGEST := "2d3ac58aa7f38f1cc2a2534aff55e164148c286554c84ce9b604454952e975d9"
