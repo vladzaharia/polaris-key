@@ -569,7 +569,7 @@ describe.each([
 
   it("truncate takes the claim (a resume with bytes under one chunk)", async () => {
     const w = await make();
-    const size = 1_200_000;
+    const size = 300_000;
     const chunk = 4096;
     w.a.cloudConnect.transfer.onOffer(() => ({
       saveTo: join(w.out, "big.bin"),
@@ -745,16 +745,19 @@ describe.each([
     const w = await make();
     w.a.cloudConnect.transfer.quotaBytes = 250_000;
     const answers: ((v: { saveTo: string }) => void)[] = [];
+    const byName = new Map<string, (v: { saveTo: string }) => void>();
     w.a.cloudConnect.transfer.onOffer(
       (o) =>
         new Promise((r) => {
-          answers.push(r as (v: { saveTo: string }) => void);
-          void o;
+          const answer = r as (v: { saveTo: string }) => void;
+          answers.push(answer);
+          byName.set(o.name ?? "", answer);
         }),
     );
     // The senders hold their CHUNK records back, so the first accepted transfer stays open.
     let open!: () => void;
     const gate = new Promise<void>((r) => (open = r));
+    let held = 0;
     const orig = ConnectSession.prototype.xferPort;
     vi.spyOn(ConnectSession.prototype, "xferPort").mockImplementation(function (
       this: ConnectSession,
@@ -762,10 +765,11 @@ describe.each([
       const port = orig.call(this);
       if (port !== null && this.role === "initiator") {
         const send = port.send;
-        port.send = (type, body) =>
-          type === 0x0022
-            ? gate.then(() => send(type, body))
-            : send(type, body);
+        port.send = (type, body) => {
+          if (type !== 0x0022) return send(type, body);
+          held++;
+          return gate.then(() => send(type, body));
+        };
       }
       return port;
     });
@@ -778,9 +782,11 @@ describe.each([
     p1.catch(() => undefined);
     p2.catch(() => undefined);
     await until(() => answers.length === 2);
-    answers[0]!({ saveTo: join(w.out, "one") });
-    await sleep(40);
-    answers[1]!({ saveTo: join(w.out, "two") });
+    // The offers can arrive in either order: answer by name, not by arrival.
+    byName.get("one")!({ saveTo: join(w.out, "one") });
+    // The first sender reached its CHUNK, so its accept has reserved the space; only then the second.
+    await until(() => held > 0);
+    byName.get("two")!({ saveTo: join(w.out, "two") });
     await expect(p2).rejects.toMatchObject({ reason: "quota" });
     open();
     await p1;
