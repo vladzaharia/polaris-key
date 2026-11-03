@@ -12,12 +12,14 @@ every device-code sign-in), so a Python kit never reaches it.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, Dict, List, Mapping, Optional
 from urllib.parse import quote
 
 from ...constants_generated import DEVICE_CODE_PAGE, SIGN_IN_PROVIDER_NAME, TV_CODE_PAGE
 from .ui_activate import activation_copy, key_refusal_of, key_refusal_spec
 from .ui_contract import Context, platform_class, system_confirm
+from .ui_holders import activate_done_view, add_to_account_view
 from .ui_view import (
     LinkVerdict,
     View,
@@ -311,6 +313,16 @@ def _methods_view(ctx: Context, args: Mapping[str, Any]) -> View:
     return make_view(ctx, "SignIn", "methods", _methods_copy(ctx), args=args, primary=_methods_primary(ctx))
 
 
+def _holder_step_view(ctx: Context, step: str) -> View:
+    """The form's steps after a key with no account (UK-42): the holders' screens in the form's body,
+    under the form's own state names. Their copy, actions and decisions are the screens' own."""
+    view = activate_done_view(ctx) if step == "key-done" else add_to_account_view(ctx, "added" if step == "added" else None)
+    # A screen that is hidden here (a service is off) leaves the form on its first step.
+    if view.state == "hidden":
+        return hidden_view(ctx, "SignIn")
+    return replace(view, component="SignIn", state=step)
+
+
 def sign_in_view(ctx: Context) -> View:
     """The one sign-in form."""
     s = _mapping(ctx.input.get("signIn"))
@@ -337,6 +349,9 @@ def sign_in_view(ctx: Context) -> View:
     auto = _mapping(ctx.input.get("autoSignIn"))
     if auto:
         return _auto_step_view(ctx, auto, {**args, "developer": ident.developer, "email": auto.get("email")}, provider)
+    step = s.get("step")
+    if step in ("key-done", "attach", "added"):
+        return _holder_step_view(ctx, step)
     if s.get("outcome") == "expired" or (dc and (dc.get("phase") == "expired" or code_expired(dc.get("secondsLeft")))):
         return make_view(
             ctx,

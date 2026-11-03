@@ -37,7 +37,7 @@ def test_vocabulary_matches_the_generated_ui_matrix_version() -> None:
     assert set(COMPONENTS) == set(CATALOG["components"])
     matrix_components = {
         component
-        for family in ("gate", "activate", "signIn", "deviceLimit", "devices", "update", "settings", "paywall")
+        for family in ("gate", "activate", "signIn", "deviceLimit", "devices", "update", "settings", "paywall", "holders")
         for component in (row["expect"]["component"] for row in MATRIX[family])
     }
     assert matrix_components <= set(COMPONENTS)
