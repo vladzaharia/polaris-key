@@ -1,10 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Godot Android plugin v2: the engine instantiates the class named here at start-up and registers
-     it as the Engine singleton PolarisKeyAndroid. -->
+     it as the Engine singleton PolarisKeyAndroid.
+
+     The native redirect sign-in (I-48.17b): PKeyGodotRedirectActivity is declared NOT exported and with no intent
+     filter, so a game that registers no scheme or link exposes nothing. The Godot export adds the filter (and
+     exported=true) for the scheme or claimed link in the project settings (android_export.gd). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <meta-data
             android:name="org.godotengine.plugin.v2.PolarisKeyAndroid"
             android:value="im.plrs.key.godot.PolarisKeyAndroidPlugin" />
+        <activity
+            android:name="im.plrs.key.godot.PKeyGodotRedirectActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
     </application>
 </manifest>

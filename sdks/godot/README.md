@@ -877,9 +877,29 @@ redeems the code from this device; the person sees the return page on the Worker
 error. `session.redirect_class` says which delivery ran, `session.reopen()` opens the SAME page again
 while the request lives (600 s), and `cancel()` closes the listener. A registered scheme or claimed
 link (`registered_schemes` / `registered_claimed` in the start options, your export's deep-link
-hook) is handed to `PolarisKey.identity.sign_in.handle_redirect(url)`. Mobile, web, a headless host
-(SSH, CI, no display) and a product without the pushed-request endpoint fail with `redirect-unavailable`
-before anything is sent: offer the device code instead.
+hook) is handed to `PolarisKey.identity.sign_in.handle_redirect(url)`. The web, a headless host
+(SSH, CI, no display), a phone build without the platform plugin, a project that registers no redirect and a
+product without the pushed-request endpoint fail with `redirect-unavailable` before anything is sent: offer
+the device code instead.
+
+**Native redirect (iOS and Android).** With the platform plugin, the same call works on a phone through a
+redirect your game registers, in Project Settings (`[polaris_key]` in `project.godot`):
+`polaris_key/native_redirect/scheme` (a reverse-DNS scheme name; the redirect is
+`com.example.game:/pkey/callback`) and, on Android, `polaris_key/native_redirect/claimed_uri` (a verified App
+Link, `https://host/path`). `registered_schemes` / `registered_claimed` in the start options override these per
+key. The redirect must also be listed in the product's native redirect settings. The SDK opens the issuer's
+HTTPS page itself and hands the redirect the OS brings back to `handle_redirect`, which checks the redirect
+URI, `state` and `iss` and redeems the code from this device, once. The native side refuses any page that is not
+HTTPS on the issuer's host and delivers only a URL at your redirect.
+
+- **Android:** a Custom Tab (never a web view) opened through the `PolarisKeyAndroid` plugin. The export adds
+  the intent filter to the plugin's redirect activity for what the settings register, and nothing when both
+  are unset (the activity stays unexported). A host-less filter matches any path of the scheme; the exact
+  URI is enforced in code. Closing the tab delivers nothing and the sign-in keeps waiting (`reopen()`).
+- **iOS, and sandboxed macOS** (which may not hold a listening socket): the system sheet
+  (`ASWebAuthenticationSession`, `PKeyAppleAuth` over the `auth_open` and `auth_cancel` ops). A scheme only;
+  it needs no URL type in the export. A sheet the person closes leaves the sign-in waiting (`reopen()` shows it
+  again); one that fails ends it as `sign-in-failed`.
 
 - A desktop call to `sign_in.start` with no `redirect_uri` starts the native flow, so a web-mode caller passes `redirect_uri`.
 - `loopback: true` and the listener factory are test hooks; a game does not set them.

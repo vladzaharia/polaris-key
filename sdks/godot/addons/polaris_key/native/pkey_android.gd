@@ -47,6 +47,10 @@ signal nsd_event(event: Dictionary)
 ## A bulk-body channel event (U-41.6b): `sb_done` or `sb_fail`, routed by kind to PKeyAndroidBulk, which matches
 ## it to a request in flight and drops any other.
 signal bulk_event(event: Dictionary)
+## The native redirect sign-in's delivery (I-48.17b): `auth_done {url}`, once, when the browser's redirect reached the
+## game's redirect activity. The URL carries the authorization code: PKeyAndroidRedirect is the one consumer, and
+## nothing logs it.
+signal auth_event(event: Dictionary)
 
 const SINGLETON := "PolarisKeyAndroid"
 const PLAY_STORE := "com.android.vending"
@@ -314,6 +318,8 @@ func poll() -> int:
 				nsd_event.emit(ev)
 			"sb_done", "sb_fail":
 				bulk_event.emit(ev)
+			"auth_done":
+				auth_event.emit(ev)
 	return events.size()
 
 
@@ -599,6 +605,30 @@ func _gid(op: String, nonce: String, server_client_id: String) -> PKeyResult:
 	if not gate.ok:
 		return gate
 	return _wrap(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, await call_async({"op": op, "nonce": nonce, "serverClientId": server_client_id}, 300.0))
+
+
+# ── Native redirect sign-in (I-48.17b; PKeyAndroidRedirect drives these) ────────────────────
+
+## Whether the plugin can open the sign-in page and take the redirect back: the plugin answers `authRedirect`
+## in its capabilities (found by that call, never by `has_method`: a JNI singleton answers false to it).
+func auth_redirect_available() -> bool:
+	return is_available() and _cap("authRedirect") == true
+
+
+## Open `url` (the HTTPS authorize page on `issuer_host`) in the system browser, for a redirect to `scheme` (the
+## registered scheme name) and/or `claimed_uri` (the verified HTTPS link). Refused natively, with detail.reason,
+## for another host, an unregistered redirect or a manifest with no intent filter for it. The delivery arrives as
+## `auth_event`. Synchronous: success means the browser started.
+func auth_open(url: String, scheme: String, claimed_uri: String, issuer_host: String) -> PKeyResult:
+	var gate := availability(PKeyConstants.Feature.IDENTITY_REDIRECT_NATIVE)
+	if not gate.ok:
+		return gate
+	return _wrap(PKeyConstants.Feature.IDENTITY_REDIRECT_NATIVE, call_sync({"op": "auth_open", "url": url, "scheme": scheme, "claimedUri": claimed_uri, "issuerHost": issuer_host}))
+
+
+## Forget the waiting sign-in natively: a redirect that arrives afterwards is dropped.
+func auth_cancel() -> PKeyResult:
+	return _wrap(PKeyConstants.Feature.IDENTITY_REDIRECT_NATIVE, call_sync({"op": "auth_cancel"}))
 
 
 # ── Play Games (I-48.7b; the Play Games provider drives these) ───────────────────────────────

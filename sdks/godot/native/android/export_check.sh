@@ -23,6 +23,9 @@
 #   play    capabilities, Keystore, In-App Updates refused for a non-Play install (outlet), and Play
 #           Asset Delivery under local testing: fetch, COMPLETED, getPackLocation, mount
 #
+# Native redirect (I-48.17b): every export merges the redirect activity (not exported, no intent filter); a direct export
+# whose project settings register a scheme and a claimed link exports it with exactly those two filters.
+#
 # Background transfer (U-41.6b): every export carries androidx.work (WorkManager) in the dex and, with the
 # polaris_key/cloud_sync_background option off, NEITHER RUN_USER_INITIATED_JOBS nor POST_NOTIFICATIONS in the merged
 # manifest (D-10: the export adds them only when opted in); a third, debuggable direct export with the option on keeps both. With DEVICE=<an API 34+ emulator>
@@ -114,6 +117,8 @@ project() {
   [ -n "$outlet" ] || outlet="$([ "$flavor" = play ] && echo play || echo direct)"
   rm -rf "$B" && mkdir -p "$B/addons"
   cp -R "$HERE/e2e/game/." "$B/"
+  # Project settings for the export (the native redirect registration, I-48.17b): PROJECT_EXTRA is appended to project.godot.
+  if [ -n "${PROJECT_EXTRA:-}" ]; then printf '\n%s\n' "$PROJECT_EXTRA" >>"$B/project.godot"; fi
   rsync -a --exclude 'native/ios/' "$SDKG/addons/polaris_key" "$B/addons/"
   mkdir -p "$B/android/build"
   (cd "$B/android/build" && unzip -q "$TPL/android_source.zip")
@@ -200,6 +205,27 @@ dex_has() { # dex_has <apk> <regex> -> count
   echo "$n"
 }
 
+# The native redirect (I-48.17b): the redirect activity is always merged (not exported, no filter); with a scheme or
+# link registered it is exported with exactly that filter. $3 = scheme (or "") and $4 = claimed host (or "") expected.
+check_redirect() { # check_redirect <apk> <label> <scheme|""> <claimed host|"">
+  local apk="$1" label="$2" scheme="$3" host="$4" m act
+  m="$("$BT/aapt2" dump xmltree "$apk" --file AndroidManifest.xml)"
+  # The redirect activity's element: from its name line to the next activity or alias.
+  act="$(echo "$m" | awk '/E: activity/{on=0} /android:name.*PKeyGodotRedirectActivity/{on=1} on{print}')"
+  echo "$m" | grep -q 'im.plrs.key.godot.PKeyGodotRedirectActivity' && ok "$label: the redirect activity is merged" || { fail "$label: no PKeyGodotRedirectActivity in the merged manifest"; return; }
+  [ "$(dex_has "$apk" "Class descriptor *: 'Lim/plrs/key/godot/PKeyGodotRedirectActivity;'")" = 1 ] && ok "$label: redirect activity class packaged" || fail "$label: redirect activity class missing"
+  [ -n "$act" ] || { fail "$label: could not read the redirect activity from the manifest"; return; }
+  if [ -z "$scheme" ] && [ -z "$host" ]; then
+    echo "$act" | grep -q 'android.intent.action.VIEW' && fail "$label: an intent filter without a registered redirect" || ok "$label: no intent filter when nothing is registered"
+    echo "$act" | grep -q 'android:exported.*=false' && ok "$label: the redirect activity is not exported" || fail "$label: the redirect activity is exported with nothing registered"
+  else
+    echo "$act" | grep -q 'android.intent.action.VIEW' && ok "$label: the VIEW filter is present" || fail "$label: no VIEW filter for the registered redirect"
+    echo "$act" | grep -q 'android:exported.*=true' && ok "$label: the redirect activity is exported (registered)" || fail "$label: the redirect activity is not exported"
+    [ -z "$scheme" ] || { echo "$act" | grep -q "$scheme" && ok "$label: the scheme filter" || fail "$label: no filter for scheme $scheme"; }
+    [ -z "$host" ] || { echo "$act" | grep -q "$host" && ok "$label: the claimed link filter" || fail "$label: no filter for host $host"; }
+  fi
+}
+
 check_apk() { # check_apk <apk> <flavor> [bg: the cloud_sync_background option is on]
   local apk="$1" flavor="$2" bg="${3:-off}" perms manifest
   perms="$("$BT/aapt2" dump permissions "$apk")"
@@ -255,6 +281,9 @@ export_one play-v1 play 1 1 im.plrs.key.probe.play
 # to a loopback server (the plugin takes loopback http only from a debuggable app).
 PRESET_EXTRA=$'polaris_key/cloud_sync_background=true' MODE=debug CLEARTEXT=1 \
   export_one direct-bg direct 1 0 im.plrs.key.probe.bg
+# The native redirect registration (I-48.17b): a scheme and a claimed link in the project settings, on a direct export.
+PROJECT_EXTRA=$'[polaris_key]\n\nnative_redirect/scheme="com.example.probe"\nnative_redirect/claimed_uri="https://probe.example.test/open/pkey"' \
+  export_one direct-redirect direct 1 0 im.plrs.key.probe.redirect
 # The Play Games opt-in (I-48.7a): the library and the APP_ID meta-data arrive only with the option on.
 PRESET_EXTRA=$'polaris_key/play_games=true\npolaris_key/play_games_app_id="123456789012"' \
   export_one play-games play 1 1 im.plrs.key.probe.playgames
@@ -307,6 +336,8 @@ if [ -f "$OUT/play-v1.aab" ] && [ -f "$OUT/play-games.aab" ]; then
   [ "$(aab_dex "$OUT/play-v1.aab" "Class descriptor *: 'Landroidx/credentials/CredentialManager;'")" = 1 ] && ok "play: androidx/credentials packaged" || fail "play: androidx/credentials missing"
 fi
 check_apk "$OUT/direct-v1.apk" direct
+check_redirect "$OUT/direct-v1.apk" "direct (nothing registered)" "" ""
+[ -f "$OUT/direct-redirect.apk" ] && check_redirect "$OUT/direct-redirect.apk" "direct (registered)" "com.example.probe" "probe.example.test"
 [ -f "$OUT/direct-bg.apk" ] && check_apk "$OUT/direct-bg.apk" direct on
 if [ -n "${BUNDLETOOL:-}" ] && [ -f "$OUT/play-v1.aab" ]; then
   "$JAVA_HOME/bin/java" -jar "$BUNDLETOOL" build-apks --local-testing --overwrite --bundle "$OUT/play-v1.aab" \

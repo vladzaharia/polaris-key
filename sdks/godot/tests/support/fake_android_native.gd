@@ -61,6 +61,17 @@ var pgs_libraries := true
 var pgs_result := {"ok": true, "code": "4/transcript-server-auth-code"}
 var pgs_sign_in_result := {"ok": true, "authenticated": true}
 
+## The native redirect sign-in (I-48.17b), modelling Commands' auth_open / auth_cancel: `auth_filters` are the
+## redirect URIs the manifest routes to the redirect activity (the export's intent filters); `auth_opened` records
+## the pages opened ({url, scheme, claimedUri, issuerHost}); `auth_launch_ok` is whether a browser starts.
+## `auth_deliver(url)` is the OS handing the redirect over: queued as `auth_done` once, only while a sign-in waits.
+var auth_redirect := true
+var auth_filters: Array = []
+var auth_opened: Array = []
+var auth_launch_ok := true
+var _auth_waiting: Array = []
+var _auth_last := ""
+
 ## The bulk-body channel (U-41.6b): the plugin's byte[] ops, recorded. `bulk_open_ok` and `bulk_put_ok` set the
 ## status byte of sbOpen and of sbPut/sbGet; `sb_ops` lists `[name, header (parsed), piece size]` per call.
 var bulk_open_ok := true
@@ -209,7 +220,7 @@ func cmd(json: String) -> String:
 		"capabilities":
 			var caps := {"ok": true, "protocol": 1, "flavor": flavor, "sdk": 34, "package": "gg.vlad.diceroll", "keystore": true}
 			caps.merge({"inAppUpdates": flavor == "play", "assetPacks": flavor == "play", "packageInstaller": flavor == "direct"})
-			caps.merge({"playIntegrity": flavor == "play", "playGames": flavor == "play" and pgs_libraries, "googleId": flavor == "play" and google_libraries})
+			caps.merge({"playIntegrity": flavor == "play", "playGames": flavor == "play" and pgs_libraries, "googleId": flavor == "play" and google_libraries, "authRedirect": auth_redirect})
 			return JSON.stringify(caps)
 		"install_source":
 			return JSON.stringify({"ok": true, "installer": installer, "initiator": installer, "initiatorCertSha256": null, "packageSource": 0, "updateOwner": null, "selfUpdated": false, "sdk": 34})
@@ -238,6 +249,12 @@ func cmd(json: String) -> String:
 			if flavor != "play" or not google_libraries:
 				return _later(op, {"ok": false, "error": "unavailable", "reason": "outlet" if flavor != "play" else "dependency"})
 			return _later(op, google_result.duplicate(true))
+		"auth_open":
+			return JSON.stringify(_auth_open(q))
+		"auth_cancel":
+			_auth_waiting = []
+			_auth_last = ""
+			return JSON.stringify({"ok": true})
 		"pgs_code", "pgs_sign_in":
 			if not pgs_libraries:
 				return _later(op, {"ok": false, "error": "unavailable", "reason": "dependency"})
@@ -325,6 +342,38 @@ func cmd(json: String) -> String:
 
 static func _k(q: Dictionary) -> String:
 	return "%s/%s" % [q.get("product"), q.get("account")]
+
+
+func _auth_open(q: Dictionary) -> Dictionary:
+	var url := str(q.get("url", ""))
+	var host := str(q.get("issuerHost", "")).to_lower()
+	var m := RegEx.create_from_string("^https://([^/?#:@]+)(/[^#]*)?$").search(url)
+	if m == null or host == "" or m.get_string(1).to_lower() != host:
+		return {"ok": false, "error": "auth_refused", "reason": "url"}
+	var uris: Array = []
+	if str(q.get("scheme", "")) != "":
+		uris.append("%s:/pkey/callback" % q["scheme"])
+	if str(q.get("claimedUri", "")) != "":
+		uris.append(q["claimedUri"])
+	if uris.is_empty():
+		return {"ok": false, "error": "auth_refused", "reason": "unregistered"}
+	if not uris.any(func(u): return u in auth_filters):
+		return {"ok": false, "error": "auth_refused", "reason": "not-registered"}
+	if not auth_launch_ok:
+		return {"ok": false, "error": "auth_unavailable", "reason": "no-browser"}
+	auth_opened.append({"url": url, "scheme": q.get("scheme", ""), "claimedUri": q.get("claimedUri", ""), "issuerHost": host})
+	_auth_waiting = uris
+	_auth_last = ""
+	return {"ok": true}
+
+
+func auth_deliver(url: String) -> bool:
+	var base := url.get_slice("?", 0)
+	if _auth_waiting.is_empty() or not (base in _auth_waiting) or not url.contains("?") or url.contains("#") or url.length() > 4096 or url == _auth_last:
+		return false
+	_auth_last = url
+	_queue.append({"ev": "auth_done", "url": url})
+	return true
 
 
 static func _state(name: String, status: int) -> Dictionary:

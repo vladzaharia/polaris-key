@@ -15,6 +15,8 @@ extends RefCounted
 #   binary    the D-13 binary entry (CC-14b.2): PKeyApple.cmd_bin / poll_bin over a fake, and, when the
 #             macOS dylib is built and installed (native/macos/build_apple.sh --install, run with
 #             PKEY_APPLE_SELFTEST=1), over the real glue: bounds, empty answers, byte round trips
+#   auth      PKeyAppleAuth (I-48.17) over a fake binary entry: auth_open / auth_cancel and the
+#             auth_done / auth_fail events routed to the caller's callbacks
 #   export    PKeyAppleExport: auto/on/off per outlet kind, the Info.plist mark, the warnings
 
 const FOES := "gg.vlad.diceroll.pack.foes"
@@ -28,6 +30,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _game_center(t)
 	_keychain(t)
 	_binary(t)
+	_auth(t)
 	_export(t)
 	_export_entitlements(t)
 	return true
@@ -62,6 +65,89 @@ class FakeNoBin:
 
 	func cmd(_json: String) -> String:
 		return "{}"
+
+
+## A native object that models WebAuthHost's ops: one sheet at a time, events queued by the test.
+class FakeAuth:
+	extends RefCounted
+	var ops: Array = []
+	var inputs: Array = []
+	var events: Array = []
+	var is_open := false
+	var status := 1
+
+	func cmd_bin(op: String, data: PackedByteArray) -> Variant:
+		ops.append(op)
+		inputs.append(data.get_string_from_utf8())
+		if op == "auth_open":
+			if is_open:
+				return PackedByteArray([7])
+			if status == 1:
+				is_open = true
+			return PackedByteArray([status])
+		if op == "auth_cancel":
+			var was := is_open
+			is_open = false
+			return PackedByteArray([1 if was else 0])
+		return PackedByteArray()
+
+	func poll_bin() -> Variant:
+		var out := events
+		events = []
+		return out
+
+	## The native side closes its slot when it reports an end.
+	func event(kind: String, body: Dictionary) -> void:
+		is_open = false
+		events.append([kind, JSON.stringify(body).to_utf8_buffer()])
+
+
+func _auth(t: PKeyTestContext) -> void:
+	var fake := FakeAuth.new()
+	var a := _apple("ios", fake)
+	var auth := PKeyAppleAuth.create(a, null)
+	t.check("auth: a native with the binary entry gives an opener", auth != null and str(auth) == "PKeyAppleAuth(open=false)")
+	var no_bin := _apple("ios", FakeNoBin.new())
+	t.check("auth: no binary entry, no opener", PKeyAppleAuth.create(no_bin, null) == null)
+	no_bin.free()
+	var got := []
+	var failed := []
+	var on_done := func(u: String) -> void: got.append(u)
+	var on_fail := func(r: String) -> void: failed.append(r)
+	var opened: bool = auth.open("https://key.plrs.im/a", "demoapp", "key.plrs.im", on_done, on_fail, true)
+	var sent = JSON.parse_string(fake.inputs[0]) if not fake.inputs.is_empty() else null
+	var want := {"url": "https://key.plrs.im/a", "callback_scheme": "demoapp", "issuer_host": "key.plrs.im", "prefers_ephemeral": true}
+	t.check("auth: open sends the url, scheme, issuer host and ephemeral flag", opened and fake.ops == ["auth_open"] and sent == want)
+	t.check("auth: the sheet id advances", auth.sheet_id == 1)
+	fake.event("auth_done", {"url": "demoapp:/pkey/callback?code=x"})
+	auth.poll()
+	t.check("auth: auth_done goes to on_done once", got == ["demoapp:/pkey/callback?code=x"] and failed.is_empty())
+	fake.event("auth_done", {"url": "demoapp:/pkey/callback?code=y"})
+	auth.poll()
+	t.check("auth: an event with no sheet open is dropped", got.size() == 1)
+	auth.open("https://key.plrs.im/a", "demoapp", "key.plrs.im", on_done, on_fail)
+	fake.event("auth_fail", {"reason": "cancelled"})
+	auth.poll()
+	t.check("auth: auth_fail goes to on_fail with its reason", failed == ["cancelled"])
+	auth.open("https://key.plrs.im/a", "demoapp", "key.plrs.im", on_done, on_fail)
+	fake.events = [["auth_done", PackedByteArray([0xff, 0x7b])], ["auth_done", "{}".to_utf8_buffer()]]
+	auth.poll()
+	t.check("auth: an unreadable or url-less event is ignored", got.size() == 1 and failed.size() == 1)
+	var before := fake.ops.size()
+	auth.cancel_sheet(auth.sheet_id + 5)
+	t.check("auth: cancel_sheet of another id does nothing", fake.ops.size() == before)
+	auth.cancel_sheet(auth.sheet_id)
+	t.check("auth: cancel_sheet of the showing sheet sends auth_cancel", fake.ops[-1] == "auth_cancel" and not fake.is_open)
+	fake.event("auth_done", {"url": "demoapp:/pkey/callback?code=z"})
+	auth.poll()
+	t.check("auth: nothing is delivered after a cancel", got.size() == 1)
+	fake.status = 3
+	t.check("auth: a refusal from the native side is false", not auth.open("http://evil.example/", "demoapp", "key.plrs.im", on_done, on_fail))
+	fake.status = 1
+	auth.open("https://key.plrs.im/a", "demoapp", "key.plrs.im", on_done, on_fail)
+	auth.open("https://key.plrs.im/b", "demoapp", "key.plrs.im", on_done, on_fail)
+	t.check("auth: opening again closes the sheet showing first", fake.ops.slice(-3) == ["auth_open", "auth_cancel", "auth_open"], str(fake.ops))
+	a.free()
 
 
 func _binary(t: PKeyTestContext) -> void:

@@ -32,7 +32,10 @@ func _init(owner: PKeyIdentity) -> void:
 ##                     says which. Without a listener (mobile, web, a headless host) `registered_schemes`
 ##                     / `registered_claimed` (full redirect URIs) name the registered deliveries, which
 ##                     the host hands to `handle_redirect(url)`; with none the start fails with
-##                     `redirect-unavailable`. Also: `loopback` (false to skip the listener),
+##                     `redirect-unavailable`. On Android with the plugin, the project settings
+##                     `polaris_key/native_redirect/scheme` / `claimed_uri` name the registered redirect
+##                     and the SDK opens the page and takes the delivery itself (PKeyAndroidRedirect).
+##                     Also: `loopback` (false to skip the listener),
 ##                     `return_uri` (a registered scheme's redirect URI for "Return to <App>"),
 ##                     `browser` (false: do not open the browser; `session.reopen()` does)
 ##   license_choice    redirect: "app" shows the licence choice in the app: a token that would need a

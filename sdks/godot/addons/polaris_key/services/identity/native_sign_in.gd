@@ -19,6 +19,11 @@ var listener: Object = null
 var return_page := ""
 ## The first accepted callback ({} until it arrives): a PKeyNativeRedirect.parse_native_callback result.
 var arrival: Dictionary = {}
+## The mobile opener this sign-in was pushed with (an object with open / cancel, e.g. PKeyAndroidRedirect), or null:
+## the system browser is opened through it and the OS delivers the redirect to it. Null on a desktop.
+var opener: Object = null
+## The host the opener may open (the issuer's); "" with no opener.
+var issuer_host := ""
 var closed := false
 var opened := false
 var _ticker: Node = null
@@ -65,6 +70,8 @@ func arrive(result: Dictionary) -> bool:
 ## Close the listener and stop accepting; the sign-in cannot receive another callback.
 func shut() -> void:
 	closed = true
+	if opener != null:
+		opener.cancel()
 	if listener != null:
 		listener.close()
 	if _ticker != null and is_instance_valid(_ticker):
