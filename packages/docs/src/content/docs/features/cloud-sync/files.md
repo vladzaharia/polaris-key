@@ -43,6 +43,86 @@ A session lasts 24 hours and holds its bytes against the person's quota until it
 
 The Node, React and Python SDKs run all of this through [saves](/docs/features/cloud-sync/saves/): they begin the upload, resume it after an interruption and finalize it, then write the record. The transfer journal and the chunk cache are per person and are removed at sign-out. With `delta`, a new version sends only the chunks that changed.
 
+## Transfers in the background
+
+A save can keep uploading or downloading after the app leaves the foreground. It is off by default in every SDK. With it on, iOS hands the request to the system; Android runs a user-initiated job and shows a "Syncing" notification. Swift, Kotlin on Android and Godot on iOS and Android have it; the other SDKs and platforms transfer in the foreground only.
+
+The sign-in token reaches native code only inside each request, never in files, events or scheduler data. Android's scheduler holds a hashed transfer id and a hashed person tag, nothing else.
+
+An interrupted write is reported after a relaunch. Each `saves:<id>` upload that is in the transfer journal and that no live write holds arrives once as `transferFailed` with id `saves:<id>` and code `transfer-failed`. Call `write(id, bytes)` again to resume from the journal; parts that already finished are not sent again. The event, code and id are the same in Swift, Kotlin and Godot.
+
+### Swift
+
+Set `backgroundTransfers` on `CloudSyncOptions`, then pass the system's background-events callback to `PolarisKeyClient.handleBackgroundEvents` from the app delegate's `application(_:handleEventsForBackgroundURLSession:completionHandler:)`. It returns `false` for a session that is not Polaris Key's, so handle your own first or after. No Info.plist entry is needed.
+
+```swift
+import PolarisKey
+
+func syncOptions() -> CloudSyncOptions {
+    CloudSyncOptions(backgroundTransfers: true)
+}
+
+// In your UIApplicationDelegate:
+// application(_:handleEventsForBackgroundURLSession:completionHandler:)
+func handleBackgroundSession(identifier: String, completionHandler: @escaping @Sendable () -> Void) {
+    if !PolarisKeyClient.handleBackgroundEvents(identifier: identifier, completion: completionHandler) {
+        completionHandler()
+    }
+}
+```
+
+Pass the options as `PolarisKeyClientOptions(core:cloudSync:)`.
+
+### Kotlin on Android
+
+Set `CloudSyncHostOptions.backgroundTransfers`. `PolarisKeyAndroid.client` then installs the scheduler for you. The app declares two permissions itself, because neither AAR does:
+
+| Permission                | Without it                                                                                                                       |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `RUN_USER_INITIATED_JOBS` | The system refuses the job and the write runs as a WorkManager job instead: it waits for a network and a battery that is not low |
+| `POST_NOTIFICATIONS`      | The job still runs; on Android 13 and newer the "Syncing" notification is not shown until the person grants it at runtime        |
+
+`SyncTransfers.notifier` replaces the notification. Its text must not name a save.
+
+```kotlin android
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import im.plrs.key.platform.transfer.SyncTransfers
+import im.plrs.key.sdk.CloudSyncHostOptions
+
+fun syncOptions(): CloudSyncHostOptions = CloudSyncHostOptions().apply { backgroundTransfers = true }
+
+fun brandNotification() {
+    SyncTransfers.notifier { context ->
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(NotificationChannel("sync", "Sync", NotificationManager.IMPORTANCE_LOW))
+        Notification.Builder(context, "sync")
+            .setSmallIcon(android.R.drawable.stat_sys_upload)
+            .setContentTitle("Syncing your saves")
+            .setOngoing(true)
+            .build()
+    }
+}
+```
+
+Pass the options as `PolarisKeyClientOptions(cloudSync = ...)`.
+
+### Godot
+
+Set `PKeyOptions.cloud_sync_background_transfers`. iOS and Android need the Polaris Key native plugin; without a native lane, saves and files report `unsupported` with reason `dependency`. There is no iOS Info.plist entry.
+
+On Android, also set the export preset option `polaris_key/cloud_sync_background` (`PKEY_CLOUD_SYNC_BACKGROUND` in CI). Without it the export strips the job and notification permissions, and a transfer the person starts runs as a WorkManager job.
+
+```gdscript
+func background_options() -> PKeyOptions:
+	var opts: PKeyOptions = load("res://polaris_key.tres").duplicate()
+	opts.cloud_sync_background_transfers = true
+	return opts
+```
+
+Linux, Windows, macOS and web have no background transfer.
+
 ## Download
 
 `GET …/files/{collection}/{id}` returns the live file; `?version=` returns a kept older one, and `GET …/{id}/revisions` lists them. The answer is `application/octet-stream` with `Content-Disposition: attachment`, an `ETag` of the file's hash and `Range` support (`206`, `416`). Bytes come only through the Worker: there is no public or presigned URL. Deleting a record deletes its file and revisions.

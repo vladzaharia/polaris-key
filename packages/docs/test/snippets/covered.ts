@@ -177,6 +177,11 @@ export const COVERED_PAGES: Covered[] = [
     prose: false,
   },
   {
+    path: "packages/docs/src/content/docs/features/cloud-sync/files.md",
+    language: "kotlin",
+    prose: false,
+  },
+  {
     path: "packages/docs/src/content/docs/features/cloud-sync/saves.mdx",
     language: "ts",
     prose: false,
