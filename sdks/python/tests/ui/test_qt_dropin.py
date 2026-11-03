@@ -421,7 +421,7 @@ def test_renew_needs_a_page_to_open(pages):
 def test_channel_picker_is_locked_with_its_reason(pages):
     channel = rows(pages())["channel"]
     assert channel.control == "value" and channel.locked and channel.lock_label
-    assert channel.title == "Release channel" and channel.value.strip("⁨⁩") == "stable"
+    assert channel.title == "Release Channel" and channel.value.strip("⁨⁩") == "stable"
     assert plain(channel.meta) == "Tidewater Studio sets the channel."  # the app sets it: no store fixes it
     store = rows(pages(client=DropClient(outlet="steam")))["channel"]
     assert plain(store.meta) == "Steam sets the channel." and store.locked

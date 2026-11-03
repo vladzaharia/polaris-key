@@ -11,7 +11,7 @@ import CardGrid from "../../../../components/docs/CardGrid.astro";
 import Requires from "../../../../components/docs/Requires.astro";
 import { LinkCard } from "@astrojs/starlight/components";
 
-Sign-in proves who a person is to one product and turns that into a license, a browser session or a device token the rest of Polaris Key already understands. It also runs Polaris Locker, where people manage their licenses and devices across your products.
+Sign-in proves who a person is to one product and turns that into a license, a browser session or a device token. It also runs Polaris Locker, where people manage their licenses and devices.
 
 <Requires features={["sign-in"]} role="Product admin" />
 
@@ -41,22 +41,22 @@ Sign-in proves who a person is to one product and turns that into a license, a b
   <LinkCard
     title="Product sign-in provider"
     href="/docs/features/sign-in/oidc/"
-    description="Platform or custom provider, groups to tiers, claims."
+    description="Providers, groups to tiers, claims."
   />
   <LinkCard
     title="Device flow"
     href="/docs/features/sign-in/device-flow/"
-    description="Sign-in for a client with no browser redirect."
+    description="For a client with no browser redirect."
   />
   <LinkCard
     title="Web redirect"
     href="/docs/features/sign-in/web-redirect/"
-    description="Authorize and token with PKCE, and the license choice."
+    description="Authorize and token with PKCE."
   />
   <LinkCard
     title="Native redirect"
     href="/docs/features/sign-in/native-redirect/"
-    description="Sign-in for a desktop or mobile app through the system browser."
+    description="Desktop and mobile apps, through the system browser."
   />
   <LinkCard
     title="Browser sessions"
