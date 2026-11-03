@@ -6,7 +6,7 @@ sidebar:
 type: "reference"
 sdks: ["react"]
 lanes: ["library"]
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-11-01"
 ---
 
 The hooks return state and actions and draw nothing. This page gives the hook for each task, the
@@ -169,7 +169,7 @@ sign-in, `profile` holds the `name` and `email` to show next to a way to sign ou
 
 ## Redirect sign-in and the license choice
 
-`usePolarisAuth().signIn.start` also takes `channel: "redirect"`. The verifier waits in `sessionStorage`
+`usePolarisAuth().signIn.start` also takes `channel: "redirect"`. In a desktop app over the bridge, `channel: "redirect"` with no `redirectUri` is the [native redirect](/docs/features/sign-in/native-redirect/); the rest of this section is the browser's web redirect. The verifier waits in `sessionStorage`
 across the navigation, so `signIn.complete(callbackUrl)` works on the page the browser returns to. With
 `licenseChoice: "app"`, a person who holds licenses settles `choose`, and `useLicenseChoice(grant)`
 runs the choice.

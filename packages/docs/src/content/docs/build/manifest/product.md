@@ -2,7 +2,7 @@
 title: "Product manifest"
 description: "Declare the product, its services, origins, presentation, licensing and sign-in settings in .pkey/product."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-11-01"
 sidebar:
   order: 2
 ---
@@ -332,6 +332,10 @@ identity:
   keyEntry: { limit: 10, claimByKey: false }
   terms: { version: "2026-10", url: "https://example.com/terms" }
   redirectPaths: ["/auth/callback"]
+  nativeRedirect:
+    loopback: true
+    schemes: ["com.example.nightfall"]
+    claimedPaths: ["/pkey/callback"]
   platformSignIn:
     google:
       serverClientId: "1234-web.apps.googleusercontent.com"
@@ -351,6 +355,10 @@ identity:
   product. `version` is 1 to 32 characters of `A-Z a-z 0-9 . _ -`; `url` is an https URL.
 - `redirectPaths`: the paths a web app's sign-in may return to, matched exactly with an origin
   from `web.origins` (up to 16, each rooted at `/`, with no `?`, `#`, `*`, `//` or `..`).
+- `nativeRedirect`: how a desktop or mobile app returns from the browser. `loopback` (on when absent;
+  set `false` to refuse it), `schemes` (up to 4 reverse-DNS names) and `claimedPaths` (up to 8
+  paths on a `web.origins` entry, never also in `redirectPaths`). See
+  [Native redirect](/docs/features/sign-in/native-redirect/).
 - `platformSignIn`: the native audiences a sign-in with Google or Apple on the device is checked
   against. `google.serverClientId` is the web client id (the token's audience); `google.clientIds`
   are your Android and iOS client ids (up to 8) and need it. `apple.teamId` is your 10-character
@@ -365,7 +373,7 @@ identity:
   [Kotlin](/docs/build/sdks/kotlin/#restore-from-backup) sections.
 
 Each member is a claimable setting (`identity.keyEntry.limit`, `identity.keyEntry.claimByKey`,
-`identity.terms`, `identity.redirectPaths`, `identity.restore`): a console change claims it until you revert it.
+`identity.terms`, `identity.redirectPaths`, `identity.nativeRedirect.loopback`, `.schemes`, `.claimedPaths`, `identity.restore`): a console change claims it until you revert it.
 
 ## Cloud Connect settings: `connect`
 

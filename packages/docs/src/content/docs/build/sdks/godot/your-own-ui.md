@@ -2,7 +2,7 @@
 title: "Your own UI (Godot)"
 description: "Draw your own Godot screens on the Polaris Key addon: its four headless controllers, state-to-screen and copy-key mapping, signals, manual discovery, and update decisions."
 type: "reference"
-lastReviewed: "2026-10-28"
+lastReviewed: "2026-11-01"
 sidebar:
   order: 2
 sdks: ["godot"]
@@ -165,6 +165,8 @@ short URI, QR payload, and countdown. Ended maps `signed_in`, `expired`, `cancel
 screen. `session.reopen()` opens the page again.
 
 ### Redirect sign-in
+
+An app on the person's own device usually wants the [native redirect](/docs/features/sign-in/native-redirect/): leave `redirect_uri` out and the SDK opens the system browser and takes the code itself. The rest of this section is the web redirect.
 
 A game that opens a browser and receives its redirect (a web export, or a desktop game with an
 `https:` address it registered) passes `channel = "redirect"`. The session is single use: keep it
