@@ -14,7 +14,9 @@ extends RefCounted
 ##     `state` in constant time, `iss`, the code and the handle). A non-empty `location` is answered
 ##     with ONE `303` carrying `Location`, `Cache-Control: no-store`, `Referrer-Policy: no-referrer`
 ##     and `Content-Length: 0`: no body, no CORS headers, no cookies. `final` ends the listener.
-##   * At most MAX_CONNECTIONS open connections (the rest are dropped at once), each held for at most
+##   * A head holding a bare LF, a CR not followed by LF or a NUL is answered `404` unparsed.
+##   * At most MAX_CONNECTIONS open connections (a newcomer takes the place of the oldest one still
+##     waiting for its request; if every one has been answered it is dropped at once), each held for at most
 ##     `head_deadline` seconds while the request head arrives, at most MAX_HEAD bytes of it.
 ##   * The listener closes after the first accepted callback, after `lifetime` seconds (600, the
 ##     pushed request's own), or on `close()`. A closed listener has released its port.
@@ -95,7 +97,7 @@ func poll() -> void:
 		var peer := _server.take_connection()
 		if peer == null:
 			break
-		if _conns.size() >= MAX_CONNECTIONS:
+		if _conns.size() >= MAX_CONNECTIONS and not _evict_oldest():
 			peer.disconnect_from_host()
 			continue
 		_conns.append({"peer": peer, "buf": PackedByteArray(), "at": now, "answered": false})
@@ -103,6 +105,21 @@ func poll() -> void:
 		_serve(c, now)
 	if _done and _conns.is_empty():
 		close()
+
+
+## Makes room for a newcomer by dropping the oldest connection still waiting for its request (an
+## answered one is flushing its reply and stays). False when every connection has been answered.
+func _evict_oldest() -> bool:
+	var oldest: Variant = null
+	for c: Dictionary in _conns:
+		if c["answered"]:
+			continue
+		if oldest == null or int(c["at"]) < int((oldest as Dictionary)["at"]):
+			oldest = c
+	if oldest == null:
+		return false
+	_drop(oldest)
+	return true
 
 
 func _drop(c: Dictionary) -> void:
@@ -146,7 +163,8 @@ func _serve(c: Dictionary, now: int) -> void:
 	c["buf"] = PackedByteArray()
 	c["answered"] = true
 	c["at"] = now
-	_answer(c, buf.slice(0, end).get_string_from_utf8())
+	var head := buf.slice(0, end)
+	_answer(c, "" if _malformed(head) else head.get_string_from_utf8())
 
 
 ## The index of the first byte after the blank line ending the head, or -1.
@@ -155,6 +173,19 @@ static func _head_end(buf: PackedByteArray) -> int:
 		if buf[i] == 13 and buf[i + 1] == 10 and buf[i + 2] == 13 and buf[i + 3] == 10:
 			return i + 4
 	return -1
+
+
+## True when the head holds a NUL, a CR not followed by LF, or an LF not preceded by CR.
+static func _malformed(head: PackedByteArray) -> bool:
+	for i in head.size():
+		var b := head[i]
+		if b == 0:
+			return true
+		if b == 13 and (i + 1 >= head.size() or head[i + 1] != 10):
+			return true
+		if b == 10 and (i == 0 or head[i - 1] != 13):
+			return true
+	return false
 
 
 func _answer(c: Dictionary, head: String) -> void:

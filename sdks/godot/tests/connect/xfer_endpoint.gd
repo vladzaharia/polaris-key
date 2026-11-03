@@ -26,6 +26,7 @@ class Rig extends RefCounted:
 	var fail_apply := false
 	var fail_send := false
 	var fail_read := false
+	var no_room := false
 	var ep: PKeyPeerXferEndpoint
 	var machine: PKeyPeerXfer.Machine
 	var offload: Callable
@@ -113,6 +114,8 @@ class Rig extends RefCounted:
 		order.append("effect")
 		if fail_apply:
 			return PKeyResult.failure(&"store-failed", "no")
+		if no_room and (e.has("create") or e.has("truncate")):
+			return PKeyResult.failure(&"store-failed", "no room", {"reason": "space"})
 		if closing or e.has("write"):
 			return PKeyResult.success()
 		var d := e.duplicate()
@@ -288,6 +291,21 @@ func _failures(t: PKeyTestContext) -> void:
 	asking.ep.consent(ID_A, "accept")
 	t.check("failure: consenting into a failing store closes the session", asking.closes == [&"peer_bye"] and asking.errors == 1)
 	t.check("failure: and nothing is left live", asking.machine.live() == 0)
+	# No room at accept: that one transfer is cancelled with quota, no ACCEPT goes out, the session stays.
+	var full := Rig.new(_machine("ask"))
+	full.ep.receive(PKeyPeerXfer.OFFER, _offer_body(ID_A, 10, 4))
+	full.no_room = true
+	full.reset()
+	full.ep.consent(ID_A, "accept")
+	var sent_full: Array = []
+	for s in full.step["send"]:
+		sent_full.append(String(s["t"]) + ":" + String(s.get("reason", "")))
+	t.check("failure: no room at accept cancels that transfer with quota and sends no ACCEPT", sent_full == ["CANCEL:quota"], str(sent_full))
+	t.check("failure: and the session stays", full.closes.is_empty() and full.errors == 0 and not full.ep.is_dead())
+	t.check("failure: and nothing is left live or kept", full.machine.live() == 0 and full.machine.partials().is_empty())
+	full.no_room = false
+	full.ep.receive(PKeyPeerXfer.OFFER, _offer_body(ID_B, 10, 4))
+	t.check("failure: the next offer on the same session is asked", full.step["ask"] != null and full.step["ask"]["id"] == ID_B)
 	# A record that cannot be sent is a session failure too.
 	var tx := Rig.new(_machine())
 	tx.fail_send = true

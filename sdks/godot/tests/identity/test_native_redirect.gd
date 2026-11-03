@@ -143,12 +143,12 @@ static func _frame() -> void:
 
 ## Connect to `port`, send `request` (when not ""), and return the reply once the peer closes or
 ## `limit_ms` passes. The listener is polled each frame (no ticker in these checks).
-func _exchange(listener: PKeyLoopbackListener, port: int, request: String, limit_ms := 1500) -> String:
+func _exchange(listener: PKeyLoopbackListener, port: int, request: Variant, limit_ms := 1500) -> String:
 	var c := StreamPeerTCP.new()
 	if c.connect_to_host("127.0.0.1", port) != OK:
 		return "(refused)"
 	var out := PackedByteArray()
-	var sent := request == ""
+	var sent: bool = request is String and request == ""
 	var until := Time.get_ticks_msec() + limit_ms
 	while Time.get_ticks_msec() < until:
 		c.poll()
@@ -157,7 +157,7 @@ func _exchange(listener: PKeyLoopbackListener, port: int, request: String, limit
 			break
 		if st == StreamPeerTCP.STATUS_CONNECTED:
 			if not sent:
-				c.put_data(request.to_utf8_buffer())
+				c.put_data(request if request is PackedByteArray else (request as String).to_utf8_buffer())
 				sent = true
 			var n := c.get_available_bytes()
 			if n > 0:
@@ -273,6 +273,44 @@ func _listener(t: PKeyTestContext) -> void:
 	l5.close()
 	l5 = null
 	l.close()
+
+	# a head with a bare LF, a lone CR or a NUL is refused unparsed, and the real callback still works
+	var l6 := PKeyLoopbackListener.new()
+	var acc6 := Accepted.new()
+	l6.start(acc6.accept)
+	var host6 := "127.0.0.1:%d" % l6.port
+	r = await _exchange(l6, l6.port, "GET %s HTTP/1.1\nX:y\r\nHost: %s\r\n\r\n" % [_good_path(), host6])
+	t.check("listener: a request line with a bare LF is a 404 and never reaches the handler", _status(r).begins_with("HTTP/1.1 404") and acc6.calls.is_empty() and not l6.is_closed(), r)
+	r = await _exchange(l6, l6.port, "GET %s HTTP/1.1\r\nX:y\rz\r\nHost: %s\r\n\r\n" % [_good_path(), host6])
+	t.check("listener: a CR not followed by LF is a 404", _status(r).begins_with("HTTP/1.1 404") and acc6.calls.is_empty(), r)
+	var with_nul := ("GET %s HTTP/1.1\r\nX:y" % _good_path()).to_utf8_buffer()
+	with_nul.append(0)
+	with_nul.append_array(("z\r\nHost: %s\r\n\r\n" % host6).to_utf8_buffer())
+	r = await _exchange(l6, l6.port, with_nul)
+	t.check("listener: a NUL in the head is a 404", _status(r).begins_with("HTTP/1.1 404") and acc6.calls.is_empty(), r)
+	r = await _exchange(l6, l6.port, _req(_good_path(), host6))
+	t.check("listener: the real callback after them still succeeds", _status(r).begins_with("HTTP/1.1 303") and acc6.calls.size() == 1, r)
+	l6.close()
+
+	# at the cap the oldest unanswered connection makes way for the newcomer
+	var l7 := PKeyLoopbackListener.new()
+	var acc7 := Accepted.new()
+	l7.start(acc7.accept)
+	var idle7: Array = []
+	for i in PKeyLoopbackListener.MAX_CONNECTIONS:
+		var c7 := StreamPeerTCP.new()
+		c7.connect_to_host("127.0.0.1", l7.port)
+		idle7.append(c7)
+		for j in 3:
+			c7.poll()
+			l7.poll()
+			await _frame()
+	t.check("listener: eight idle connections fill the cap", l7._conns.size() == PKeyLoopbackListener.MAX_CONNECTIONS, str(l7._conns.size()))
+	r = await _exchange(l7, l7.port, _req(_good_path(), "127.0.0.1:%d" % l7.port))
+	t.check("listener: a ninth connection carrying the callback completes the sign-in", _status(r).begins_with("HTTP/1.1 303") and acc7.calls.size() == 1, r)
+	l7.close()
+	for c7 in idle7:
+		c7.disconnect_from_host()
 
 
 static func get_tree_wait(ms: int) -> void:
