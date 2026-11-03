@@ -2,7 +2,8 @@
 //
 // LK-SKIP.10: the key return of the redirect channel, web and native. The opt-in is never sent unless set; a
 // `via: "key"` body is an activation only with it; the session stores a key activation and clears the stored subject; the
-// refusals a key bind shares with `license/activate` surface with their details. The wire conversations are the transcripts' (redirect-web-key-return*).
+// refusals a key bind shares with `license/activate` surface with their details. The wire conversations are the
+// transcripts' (redirect-web-key-return*).
 
 package im.plrs.key.identity
 
