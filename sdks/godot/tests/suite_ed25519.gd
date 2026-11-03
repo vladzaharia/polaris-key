@@ -118,6 +118,7 @@ func _spin(f: Callable, want: Variant, iters: int, bad: Array, slot: int) -> voi
 ## Several threads making the base table the first time end with one whole, ordered table.
 func _warmup_threads(t: PKeyTestContext) -> void:
 	PKeyEd25519._bi = []
+	PKeyEd25519._warm_done = false
 	var threads: Array[Thread] = []
 	for i in 4:
 		var th := Thread.new()
