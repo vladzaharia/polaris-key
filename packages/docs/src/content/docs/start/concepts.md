@@ -2,7 +2,7 @@
 title: "Concepts and glossary"
 description: "The words the console, Polaris Locker and these docs use, the identifiers they keep in code and on the wire, and the nouns behind documents, devices and keys."
 type: "concept"
-lastReviewed: "2026-10-19"
+lastReviewed: "2026-11-01"
 ---
 
 This is the canonical glossary. The console, Polaris Locker and the docs use one word per concept and one concept per word, spelled in US English and sentence case. A word in the first column is what a reader sees. The identifier in the third column is what code, manifests and the wire call it. Identifiers keep their names when a word changes.
@@ -150,6 +150,8 @@ Each service issues its own signed document, and a client derives the license st
 ## Cloud Connect
 
 **Cloud Connect** lets one signed-in person's devices find each other and open an encrypted channel, on the local network or through a relay. It needs Identity. A **linked device** is a device on that person's roster, one the person is signed in on; removing a device unlinks it. A **relay** carries a channel's ciphertext between two linked devices that the local network does not connect, within a per-person day quota and a per-product month ceiling. End users see it as **Nearby Devices**.
+
+**Pairing** connects a device of one person to a device of another person, across two accounts, once and in person, after both compare a code. Two devices that did this are **paired**. It is the developer's opt-in (`interAccount`), it never merges accounts, and either person can remove it. The SDKs name the namespace `cloudConnect.links`. End users see it as **Pair with Someone Nearby**, and the result as **Paired**. See [Pairing](/docs/features/cloud-connect/pairing/).
 
 ## Release model
 

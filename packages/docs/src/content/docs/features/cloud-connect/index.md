@@ -2,12 +2,12 @@
 title: "Cloud Connect"
 description: "Link a person's devices and move data between them, over the local network or a relay. What Cloud Connect and Direct Transfer are, and what exists today."
 type: "concept"
-lastReviewed: "2026-10-26"
+lastReviewed: "2026-11-01"
 sidebar:
   order: 1
 ---
 
-Cloud Connect (service slug `connect`) lets one person's devices find each other and open an encrypted channel, on the local network or through a relay. It needs sign-in: the devices it links are the ones signed in to the same account. End users see it as **Nearby Devices**.
+Cloud Connect (service slug `connect`) lets one person's devices find each other and open an encrypted channel, on the local network or through a relay. It needs sign-in: the devices it links are the ones signed in to the same account. End users see it as **Nearby Devices**. With the product's opt-in, two people can also pair devices of different accounts, which end users see as **Pair with Someone Nearby**.
 
 **Direct Transfer** is the data that crosses such a channel: a file, a save or a setting sent from one of a person's devices to another without going through Cloud Sync's storage.
 
@@ -82,3 +82,4 @@ The **Cloud Connect** section has three pages.
 - [Sign-in](/docs/features/sign-in/): the account Cloud Connect links devices by.
 - [Cloud Sync](/docs/features/cloud-sync/): keeps one person's settings and saves across devices.
 - [Direct Transfer](/docs/features/cloud-connect/transfer/): send a file between devices, with consent per transfer, resume and limits.
+- [Pairing](/docs/features/cloud-connect/pairing/): pair two people's devices once, in person, so their apps can reach each other later.
