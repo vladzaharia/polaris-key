@@ -57,7 +57,9 @@ const LONE_SURROGATE =
  * Canonical JSON (WIRE-CONTRACT-V5 §13.10.3): sorted keys at every level (UTF-16 code-unit
  * order), no whitespace, non-ASCII text as itself, numbers as ECMAScript `Number::toString`.
  * A number that is not finite and a string or key with a lone surrogate are refused with a
- * `RangeError`, so every SDK refuses what it cannot spell identically.
+ * `RangeError`, so every SDK refuses what it cannot spell identically. A value JSON has no
+ * spelling for (`undefined`, a function, a symbol, a bigint; top level or nested) is refused with
+ * a `TypeError`, as Python refuses an unsupported type: nothing is dropped silently.
  */
 export function canonicalJson(v: SyncJson): string {
   if (Array.isArray(v)) return `[${v.map(canonicalJson).join(",")}]`;
@@ -67,6 +69,13 @@ export function canonicalJson(v: SyncJson): string {
       .map((k) => `${canonicalJson(k)}:${canonicalJson(v[k] as SyncJson)}`)
       .join(",")}}`;
   }
+  if (
+    v !== null &&
+    typeof v !== "string" &&
+    typeof v !== "number" &&
+    typeof v !== "boolean"
+  )
+    throw new TypeError(`canonical json: unsupported type (${typeof v})`);
   if (typeof v === "number" && !Number.isFinite(v))
     throw new RangeError("canonical json: number is not finite");
   if (typeof v === "string" && LONE_SURROGATE.test(v))

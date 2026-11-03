@@ -495,6 +495,13 @@ function canonicalJson(v: Json): string {
       .sort(byteOrder)
       .map((k) => `${JSON.stringify(k)}:${canonicalJson(v[k] as Json)}`)
       .join(",")}}`;
+  if (
+    v !== null &&
+    typeof v !== "string" &&
+    typeof v !== "number" &&
+    typeof v !== "boolean"
+  )
+    throw new TypeError(`canonical json: unsupported type (${typeof v})`);
   return JSON.stringify(v);
 }
 
