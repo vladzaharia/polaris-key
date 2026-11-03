@@ -17,6 +17,10 @@
 #                     selection; it runs by default only with the `ci` selection
 #   PKEY_UI_MATRIX_SHARDS  parallel shards of the UI matrix step (default 4, or 2 per path with PATHS=both; 1 = one process per path)
 #   PKEY_TEST_TIMEOUT seconds per step (default: 300)
+#   PKEY_TEST_PART    all (default) | editor | matrix | template: which heavy steps run, so CI can
+#                     spread them over runners. editor = the editor run + the build-stamp exports;
+#                     matrix = the UI resolution matrix; template = export + release-template run.
+#                     The import, uid-check and uid-pack steps run in every part.
 #   PKEY_CONTENT_CORPUS the content corpus directory the packs suite reads (default: the
 #                     checkout's conformance/corpus/v2/content; `content/` is not mirrored)
 #   PKEY_KEYRING_TESTS 1 runs the keyring suite's real-keyring contract (the CI keyring job, SP-27)
@@ -53,6 +57,16 @@ BUILD="$PROJECT/build"
 LOGS="$BUILD/logs"
 SUITES="${PKEY_TEST_SUITES:-ci}"
 TIMEOUT="${PKEY_TEST_TIMEOUT:-300}"
+PART="${PKEY_TEST_PART:-all}"
+case "$PART" in
+  all | editor | matrix | template) ;;
+  *)
+    echo "run_tests: PKEY_TEST_PART=$PART is not all, editor, matrix or template" >&2
+    exit 2
+    ;;
+esac
+# part <name>: true when this run owns that heavy step.
+part() { [ "$PART" = all ] || [ "$PART" = "$1" ]; }
 FATAL='SCRIPT ERROR|Parse Error|Failed to load script|Cannot get class|Invalid MainLoop'
 
 if [ -n "${GODOT_BIN:-}" ]; then
@@ -219,14 +233,16 @@ for d in dataA dataB; do
 done
 
 # 3. The editor run.
-step editor run "$GODOT" --headless --path "$PROJECT" -- --pkey-test "$SUITES" "$@" || exit 1
+if part editor; then
+  step editor run "$GODOT" --headless --path "$PROJECT" -- --pkey-test "$SUITES" "$@" || exit 1
+fi
 
 # 3b. The UI resolution matrix (tests/ui/matrix.gd): every drop-in screen laid out at every size,
 # look and locale, in the editor, as a step of its own so the editor step keeps its budget. It
 # grew with the matrix (UK-11, ui-matrix v3): on a slow runner it can exceed 900 s, so it gets its own
 # limit, PKEY_UI_MATRIX_TIMEOUT (default 1800 s), and the shared PKEY_TEST_TIMEOUT stays as it was.
 # Layout is the same engine code on a release template, so it runs once.
-if [ "$SUITES" = ci ] || [ "${PKEY_TEST_MATRIX:-0}" = 1 ]; then
+if part matrix && { [ "$SUITES" = ci ] || [ "${PKEY_TEST_MATRIX:-0}" = 1 ]; }; then
   # PKEY_UI_MATRIX_PATHS=both runs it once per presentation path (UI-KITS.md DL16): the scrim
   # (PKEY_UI_REDUCE_TRANSPARENCY=0, the see-through glass card) and the opaque page (=1). The engines
   # disagree on which one a headless run takes by default (4.4.1 the scrim, 4.7 on macOS the opaque
@@ -326,7 +342,7 @@ fi
 # 4. The build stamp (P1-11): the export plugin end to end, headless, as CI exports a game.
 STAMP_ENV="PKEY_BUILD_OUTLET=steam PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42"
 STAMPS="$BUILD/stamps"
-if [ "$SUITES" = ci ] || [ "${PKEY_TEST_STAMPS:-0}" = 1 ]; then
+if part editor && { [ "$SUITES" = ci ] || [ "${PKEY_TEST_STAMPS:-0}" = 1 ]; }; then
   DIST="$PROJECT/.pkey"
   mkdir -p "$STAMPS"
   # export_stamp <name> [VAR=value…]: one ZIP export with the stamp env plus the extra variables.
@@ -361,7 +377,7 @@ if [ "$SUITES" = ci ] || [ "${PKEY_TEST_STAMPS:-0}" = 1 ]; then
 fi
 
 # 5. The exported pack on a release template, stamped as CI stamps a Steam beta build.
-if [ -n "${GODOT_TEMPLATE:-}" ]; then
+if part template && [ -n "${GODOT_TEMPLATE:-}" ]; then
   # shellcheck disable=SC2086
   step export plain env -u PKEY_OUTLET_IDS $STAMP_ENV "$GODOT" --headless --path "$PROJECT" \
     --export-pack "Conformance (Linux)" "$BUILD/pkey_conformance.pck" || exit 1

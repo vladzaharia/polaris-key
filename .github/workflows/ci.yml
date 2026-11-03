@@ -415,13 +415,24 @@ jobs:
   # control at least 24 px, no browser serif, and every piece of text scaling with the root font.
   # In Playwright's image, like the console job, so the Chromium build is pinned.
   react-kit:
-    name: React kit (Chromium, responsive)
+    name: ${{ matrix.name }}
     needs: changes
     if: needs.changes.outputs.react-kit == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
+    # Two shards, because the browser run is one file after another and the baseline matrix grew
+    # past one job's budget: `kit` is kit.browser.test.tsx (the biggest file, about 9 minutes);
+    # `rest` is the Vitest projects and every other browser file.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: React kit (Chromium, responsive)
+            part: kit
+          - name: React kit (Chromium, responsive, desktop chromes)
+            part: rest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-js
@@ -432,8 +443,12 @@ jobs:
       # through the package's exports map, which points at dist.
       - run: pnpm exec turbo run build --filter=@polaris-key/react...
       # The Vitest workspace has React 18 and React 19 projects; keep both supported majors live.
-      - run: pnpm --filter @polaris-key/react test
-      - run: pnpm --filter @polaris-key/react test:browser
+      - if: matrix.part == 'rest'
+        run: pnpm --filter @polaris-key/react test
+      - if: matrix.part == 'kit'
+        run: pnpm --filter @polaris-key/react test:browser -- kit.browser.test.tsx
+      - if: matrix.part == 'rest'
+        run: pnpm --filter @polaris-key/react test:browser -- --exclude '**/kit.browser.test.tsx'
 
   # P1b-05 Part D: the same runner in Firefox 155.0, the build bundled with playwright 1.63.0 (the
   # engine S-04 measured), in Playwright's own image, which already carries that browser. Firefox
@@ -1643,6 +1658,9 @@ jobs:
           if [ -n "${{ matrix.suites }}" ]; then export PKEY_TEST_SUITES="${{ matrix.suites }}"; fi
           # The newest editor runs the UI matrix on both presentation paths (scrim and opaque page).
           if [ "${{ matrix.godot }}" = 4.7.2 ]; then export PKEY_UI_MATRIX_PATHS=both; fi
+          # The 4.7.2 engine's work is split over three runners (editor run + stamps, the UI
+          # matrix, the release template run); the other legs run it all (PKEY_TEST_PART unset).
+          if [ -n "${{ matrix.part }}" ]; then export PKEY_TEST_PART="${{ matrix.part }}"; fi
           sdks/godot/tools/run_tests.sh
       # Import, export and runs must leave the tree as committed: no rewritten file, no new .uid.
       - run: git diff --exit-code -- sdks/godot && test -z "$(git status --porcelain -- sdks/godot)"
