@@ -1357,7 +1357,6 @@
       "detekt:style.ThrowsCount": 1,
       "ktlint:standard:argument-list-wrapping": 10,
       "ktlint:standard:blank-line-between-when-conditions": 6,
-      "ktlint:standard:class-signature": 5,
       "ktlint:standard:max-line-length": 1,
       "ktlint:standard:statement-wrapping": 3
     },

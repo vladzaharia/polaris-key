@@ -96,7 +96,7 @@ class RedirectSessionTest {
         assertEquals(SignInOutcome.Pending(0), s.outcome)
 
         val outcome = s.complete(callback(state))
-        assertEquals(SignInOutcome.SignedIn("ps_abc", "profile email", "lic_1"), outcome)
+        assertEquals(SignInOutcome.SignedIn("ps_abc", "profile email", "lic_1", sameDevice = true), outcome)
         assertEquals(outcome, s.outcome)
         assertEquals("pkeyt_new", w.store.getToken())
         assertEquals("ps_abc", w.core.storedSubject())

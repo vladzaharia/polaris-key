@@ -340,11 +340,24 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
                     break
                 }
             }
+            // identity.link: the exchange that leaves the handle, then the redirect sign-in, then the link (V5 section 12.11.4).
+            val link = "identity.link" in transcript.features
             val identity = JsonObject(
                 mapOf(
                     "enabled" to JsonPrimitive(true),
                     "configured" to JsonPrimitive(true),
                     "issuer" to JsonPrimitive(issuer),
+                    *(
+                        if (link) {
+                            arrayOf(
+                                "exchange" to JsonObject(
+                                    mapOf("kinds" to JsonArray(listOf("google", "apple", "pgs").map { JsonPrimitive(it) })),
+                                ),
+                            )
+                        } else {
+                            emptyArray()
+                        }
+                        ),
                     *(if (account) arrayOf("account" to JsonPrimitive(true)) else emptyArray()),
                     *(if (deviceChoice) arrayOf("deviceChoice" to JsonPrimitive(true)) else emptyArray()),
                     *(
@@ -366,6 +379,10 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
                         buildMap {
                             put("authorize", JsonPrimitive("$base/identity/authorize"))
                             put("token", JsonPrimitive("$base/identity/token"))
+                            if (link) {
+                                put("nonce", JsonPrimitive("$base/identity/nonce"))
+                                put("link", JsonPrimitive("$base/identity/link"))
+                            }
                             if (native) {
                                 put("request", JsonPrimitive("$base/identity/request"))
                                 put("signinReturn", JsonPrimitive("${transcript.baseUrl}/signin/return"))

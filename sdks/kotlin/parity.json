@@ -255,15 +255,9 @@
       "note": "Rung 2 of autoSignIn on Android over Block Store (I-49.11): redeem, enrol after a sign-in and daily, sign-out deletion with a retry queue, AutoSignInOptions.restore and AndroidOptions.restore; the six restore transcripts are replayed (I-49.12). JVM desktop has no backup item."
     },
     "identity.link": {
-      "status": "planned",
-      "wp": "I-45",
-      "except": [
-        {
-          "runtime": "jvm",
-          "reason": "runtime"
-        }
-      ],
-      "note": "Link offer (I-43.3 transcripts, I-45)."
+      "status": "implemented",
+      "except": [{ "runtime": "jvm", "reason": "runtime" }],
+      "note": "client.identity.link (Link.kt, I-45.10; WIRE-CONTRACT-V5 section 12.11.4): pending, offer() (GET link with the device token), accept(linkHandle) (POST link with the held handle, else one provider sheet over a fresh nonce; proof purpose link by the device key), decline() and dismiss(), with the Java futures linkOffer, linkAccept and linkDecline. The offer opens only after a sign-in this device started (SignInOutcome.SignedIn.sameDevice: a redirect, native or not, or a licence choice that redirect left, and only with a subject); a device-code, exchange, nearby or restore sign-in never opens it, and without one offer() and accept() answer Unavailable with no request. The redirect redeem sends the held device token as Bearer to an on-product token endpoint only. The handle an exchange left is held in memory for its lifetime and spent by the attempt that uses it, except by step_up_required. pending stays true after Linked or a refusal until dismiss() or decline() (the kit calls dismiss() after Linked). A decline is sha256(issuer + sub) in the state directory (link-declined; on Android noBackupFilesDir), the hash only; a declined account gets Unavailable with no request, and a link_conflict is remembered the same way. Refusals are typed (step_up_required, link_conflict, not_found, invalid_grant). link-offer and link-errors replay in TranscriptTest; link-game replays its Play Games half (its Game Center step is Apple only). LinkTest and LinkFacadeTest map the rules."
     },
     "identity.nearby": {
       "status": "implemented",

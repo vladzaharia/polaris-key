@@ -2401,6 +2401,11 @@
     },
     {
       "sdk": "kotlin",
+      "path": "identity.link",
+      "reason": "the namespace the identity.link.* rows hang on (LinkClient); not an app verb itself"
+    },
+    {
+      "sdk": "kotlin",
       "path": "identity.hasPlatformBackup",
       "reason": "wiring: whether a backup store is installed (I-49.11); a property, not an app verb"
     },
@@ -3762,8 +3767,7 @@
           "spelling": "LinkNamespace.offer"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "LinkClient.offer"
         },
         "godot": {
           "planned": "I-48",
@@ -3787,8 +3791,7 @@
           "labels": ["linkHandle"]
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "LinkClient.accept"
         },
         "godot": {
           "planned": "I-48",
@@ -3817,8 +3820,7 @@
           "spelling": "LinkNamespace.decline"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "LinkClient.decline"
         },
         "godot": {
           "planned": "I-48",

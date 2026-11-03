@@ -13,6 +13,7 @@
 // @pkey-feature identity.redirect.native
 // @pkey-feature identity.exchange identity.pgs sync.keyring sync.settings identity.restore sync.files sync.files.delta sync.saves sync.records
 // @pkey-feature identity.nearby
+// @pkey-feature identity.link
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -525,6 +526,9 @@ object KotlinReplay {
                 }
                 out["tokenHeld"] = JsonPrimitive(store.getToken().let { it != null && it != before })
             }
+
+            // `client.identity.link` (I-45.10, `identity.link`): the offer and the accept after a redirect sign-in (LinkReplay.kt).
+            "linkOffer", "link" -> LinkReplay.step(client, session, args, action, out)
 
             // `identity.nearby` (V5 section 12.11.5): the new device D's routes (I-45.12) and the approving device M's (I-45.13).
             "nearbyStart", "nearbyPoll", "nearbyApprove" -> nearbyStep(client, step, session, out)
@@ -1559,6 +1563,7 @@ class TranscriptTest : ConformanceSuite() {
             // UK-42.11: keep sends the device's bearer; a redirect sign-in, then attach.
             "holders-add-to-account",
             // I-45.3: the platform-token exchange.
+            "link-offer", "link-errors",
             "discovery-identity-exchange", "exchange-silent", "exchange-confirm", "exchange-choose", "exchange-no-link",
             "exchange-errors", "exchange-disabled", "exchange-gate-off", "exchange-gate-off-stale",
             // I-45.5: Play Games' server auth code.

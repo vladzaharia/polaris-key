@@ -23,8 +23,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | React | `web`, `desktop-bridge` | 114 | 25 | 3 | 0 |
 | Python | `python` | 109 | 16 | 17 | 0 |
 | Swift | `macos`, `ios` | 123 | 10 | 8 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 123 | 9 | 10 | 0 |
-| Kotlin | `android`, `jvm` | 123 | 9 | 9 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 124 | 9 | 9 | 0 |
+| Kotlin | `android`, `jvm` | 124 | 9 | 8 | 1 |
 
 ## Core
 
@@ -125,13 +125,13 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `identity.choice` | Licence choice in the app: the choice.* primitives over a pending sign-in grant | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.devicecode.choice` | Device-code sign-in with the hints and the licence choice in the app (the choose poll answer) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.signin.hints` | Sign-in hints: login_hint, name_hint and purpose prefill the card | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `identity.keyreturn` | Key return: the Polaris Locker card's Continue without an account hands the app a device on the key's licence | transcripts | ✓ | ✓ | ✓ | ✓ | planned (I-15b) | ✓ | — |
+| `identity.keyreturn` | Key return: the Polaris Locker card's Continue without an account hands the app a device on the key's licence | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.exchange` | Platform sign-in: a Google or Apple ID token for a device token (the exchange) | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | ✓ | ✓; N/A (linux: runtime); N/A (windows: runtime) | ✓; N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 | `identity.gamecenter` | Platform sign-in: a Game Center identity-verification token for a device token (the exchange) | transcripts | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓ | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | N/A (android, jvm: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm: runtime |
 | `identity.pgs` | Platform sign-in: a Play Games server auth code for a device token (the exchange) | transcripts | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (macos: runtime); N/A (ios: runtime); N/A (web: runtime) | ✓; N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm: runtime |
 | `identity.autosignin` | Automatic sign-in: the ladder that signs a device in without a click | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.restore` | Silent restore: a new device of the same person signs in from the platform backup | transcripts | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓ | planned (I-49); N/A (linux: runtime); N/A (windows: runtime) | ✓; N/A (jvm: runtime) | node, python, web, jvm, windows, linux, desktop-bridge: runtime |
-| `identity.link` | The link offer: attach a platform identity to the account after a fresh sign-in | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | ✓ | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
+| `identity.link` | The link offer: attach a platform identity to the account after a fresh sign-in | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | ✓ | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | ✓; N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 | `identity.nearby` | Nearby approval: a signed-in device approves a device that cannot sign itself in | transcripts + `peer-matrix.json` `vouch` | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | planned (I-48); N/A (web: runtime) | ✓ | web: runtime |
 
 ## Release and update

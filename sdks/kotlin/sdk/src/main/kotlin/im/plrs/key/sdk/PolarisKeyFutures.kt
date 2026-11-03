@@ -42,6 +42,8 @@ import im.plrs.key.identity.ExchangeNonceResult
 import im.plrs.key.identity.ExchangeOutcome
 import im.plrs.key.identity.LicenseChoice
 import im.plrs.key.identity.LicenseChoiceView
+import im.plrs.key.identity.LinkAcceptResult
+import im.plrs.key.identity.LinkOfferResult
 import im.plrs.key.identity.NearbyApprovalStep
 import im.plrs.key.identity.NearbyAsk
 import im.plrs.key.identity.NearbyAskHandler
@@ -167,6 +169,19 @@ public class PolarisKeyFutures @JvmOverloads constructor(
         choice: LicenseChoice?,
         consent: ConsentInput? = null,
     ): CompletableFuture<ChoiceResult<ChoiceCompleted>> = call { client.identity.choice.complete(grant, choice, consent) }
+
+    /** `identity.link.offer()`: the platform identities the account could add after a sign-in this device started. */
+    public fun linkOffer(): CompletableFuture<LinkOfferResult> = call { client.identity.link.offer() }
+
+    /**
+     * `identity.link.accept(linkHandle)`: add the identity, with the held handle (or [linkHandle]) or one provider prompt.
+     * A refusal is a `LinkAcceptResult.Refused`; close the offer with `identity.link.dismiss()` after `Linked`.
+     */
+    @JvmOverloads
+    public fun linkAccept(linkHandle: String? = null): CompletableFuture<LinkAcceptResult> = call { client.identity.link.accept(linkHandle) }
+
+    /** `identity.link.decline()`: not again for this account on this device. */
+    public fun linkDecline(): CompletableFuture<Unit> = call { client.identity.link.decline() }
 
     /** `identity.exchangeNonce(kind)`: a single-use nonce for the platform provider to sign into its token. */
     public fun exchangeNonce(kind: ExchangeKind): CompletableFuture<ExchangeNonceResult> = call { client.identity.exchangeNonce(kind) }

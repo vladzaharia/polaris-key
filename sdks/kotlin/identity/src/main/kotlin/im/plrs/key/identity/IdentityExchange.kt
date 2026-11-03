@@ -401,7 +401,7 @@ internal suspend fun IdentityClient.exchangeTokens(
     }
     val form = IdentityExchange.form(core.product, subjectToken, spent, proof.signKey, proof.sig, IdentityExchange.subjectTokenType(kind))
     val res = exchangePost(url, contentType(IdentityRedirect.TOKEN_CONTENT_TYPE), form.toByteArray(Charsets.UTF_8))
-    return settleTokenAnswer(res, personInitiated, mayStore)
+    return settleTokenAnswer(res, personInitiated, mayStore).also { linkHold(it) }
 }
 
 /**

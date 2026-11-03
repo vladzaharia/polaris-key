@@ -8,6 +8,7 @@ import im.plrs.key.core.CoreOptions
 import im.plrs.key.core.PresentationSource
 import im.plrs.key.identity.ChoiceClient
 import im.plrs.key.identity.IdentityClient
+import im.plrs.key.identity.LinkClient
 import im.plrs.key.identity.SignInNamespace
 import im.plrs.key.identity.SignInSession
 import im.plrs.key.license.EntitlementsClient
@@ -70,6 +71,9 @@ internal suspend fun apiSurface() {
     ChoiceClient::complete  // identity.choice.complete
     ChoiceClient::cancel  // identity.choice.cancel
     IdentityClient::autoSignIn  // identity.autoSignIn
+    LinkClient::offer  // identity.link.offer
+    LinkClient::accept  // identity.link.accept
+    LinkClient::decline  // identity.link.decline
     IdentityClient::choice  // identity.useLicenseChoice
     IdentityClient::attach  // identity.attachLicense
     IdentityClient::openAccount  // identity.openAccount
