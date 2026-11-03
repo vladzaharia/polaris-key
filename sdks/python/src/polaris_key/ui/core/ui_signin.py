@@ -316,7 +316,10 @@ def _methods_view(ctx: Context, args: Mapping[str, Any]) -> View:
 def _holder_step_view(ctx: Context, step: str) -> View:
     """The form's steps after a key with no account (UK-42): the holders' screens in the form's body,
     under the form's own state names. Their copy, actions and decisions are the screens' own."""
-    view = activate_done_view(ctx) if step == "key-done" else add_to_account_view(ctx, "added" if step == "added" else None)
+    if step == "key-done":
+        view = activate_done_view(ctx)
+    else:
+        view = add_to_account_view(ctx, "added" if step == "added" else None)
     # A screen that is hidden here (a service is off) leaves the form on its first step.
     if view.state == "hidden":
         return hidden_view(ctx, "SignIn")
