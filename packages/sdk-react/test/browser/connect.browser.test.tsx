@@ -5,7 +5,8 @@
 // no sideways scroll, the primary is in the first viewport (200 % text reflows and scrolls), every
 // target is 24 px or more, axe finds nothing, the text follows the root font, the code is fully
 // visible and the categories sit above the confirm button. Keyboard: Tab reaches Codes match and
-// Not a match, and Escape declines. PKEY_KIT_SHOTS=<dir> writes each render to
+// Not a match, and Escape declines. PKEY_KIT_BASELINES=<dir> writes the 390 and 1440 dark/light
+// renders to <dir>/<Component>.<state>/<width>-<scheme>.png for ui:report. PKEY_KIT_SHOTS=<dir> writes each render to
 // <dir>/react.<Component>.<state>/<size>-<scheme>.png.
 
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -23,6 +24,7 @@ declare module "vitest/browser" {
   }
 }
 declare const __PKEY_KIT_SHOTS__: string;
+declare const __PKEY_KIT_BASELINES__: string;
 
 interface Row {
   name: string;
@@ -66,6 +68,15 @@ afterEach(async () => {
 });
 beforeAll(async () => {
   await Kit.preloadKitParts();
+  // The brand fonts, as the kit suite loads them, so the baselines draw as the elements ones do.
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = new URL("../../../brand/fonts/fonts.css", import.meta.url).href;
+  document.head.append(link);
+  await new Promise<void>((resolve) => {
+    link.addEventListener("load", () => resolve(), { once: true });
+    link.addEventListener("error", () => resolve(), { once: true });
+  });
 });
 
 const nextFrame = () =>
@@ -190,6 +201,14 @@ describe("the connect screens at the §7.1 rows", () => {
                 ).toBeTruthy();
             }
             expect(await axeFindings(kit)).toEqual([]);
+            if (
+              __PKEY_KIT_BASELINES__ &&
+              preset === "polaris-key" &&
+              (size.label === "390x844" || size.label === "1440x900")
+            )
+              await commands.kitShot(
+                `${__PKEY_KIT_BASELINES__}/${id}/${size.label.replace(/x\d+$/, "")}-${scheme}.png`,
+              );
             if (__PKEY_KIT_SHOTS__)
               await commands.kitShot(
                 `${__PKEY_KIT_SHOTS__}/react.${id}/${size.label}-${scheme}${preset === "native" ? "-native" : ""}.png`,
