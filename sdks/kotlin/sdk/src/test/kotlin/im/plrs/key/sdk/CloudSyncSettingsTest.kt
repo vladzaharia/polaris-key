@@ -47,6 +47,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -279,6 +280,10 @@ class CloudSyncSettingsTest {
         assertFalse(r.client.keyring.unlocked)
     }
 
+    @Ignore(
+        "Disabled 2026-11-03: flaky on CI runners (expected Local, was Idle on macos-15 only); " +
+            "re-enable once the forget-retry state wait is event-driven",
+    )
     @Test
     fun theForgetRetryNeverReachesTheNextPersonsSession() = runBlocking {
         // The reviewer's p2 shape: Alice leaves while the keystore refuses, Bob signs in with an unsynced edit while it
