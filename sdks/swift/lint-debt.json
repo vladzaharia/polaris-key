@@ -133,9 +133,7 @@
       "swift-format:AlwaysUseLowerCamelCase": 6
     },
     "sdks/swift/Sources/PolarisKeyPacks/DirStorage.swift": {
-      "swift-format:AlwaysUseLowerCamelCase": 2,
-      "swift-format:Indentation": 3,
-      "swift-format:LineLength": 2
+      "swift-format:AlwaysUseLowerCamelCase": 2
     },
     "sdks/swift/Sources/PolarisKeyPacks/Engine.swift": {
       "swift-format:AddLines": 7,
@@ -149,9 +147,6 @@
     "sdks/swift/Sources/PolarisKeyPacks/L10n.swift": {
       "swift-format:Indentation": 1,
       "swift-format:LineLength": 2
-    },
-    "sdks/swift/Sources/PolarisKeyPacks/PacksClient.swift": {
-      "swift-format:Indentation": 1
     },
     "sdks/swift/Sources/PolarisKeyPacks/Plan.swift": {
       "swift-format:AlwaysUseLowerCamelCase": 1

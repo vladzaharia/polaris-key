@@ -30,10 +30,9 @@
 
 import Foundation
 import PolarisKeyCore
-import os
 
 #if canImport(FoundationNetworking)
-import FoundationNetworking
+    import FoundationNetworking
 #endif
 
 /// Where the content stamp comes from.
@@ -87,28 +86,44 @@ public struct URLSessionPackObjectTransport: PackObjectTransport {
         if timeoutSeconds > 0 { req.timeoutInterval = timeoutSeconds }
         for (k, v) in headers { req.setValue(v, forHTTPHeaderField: k) }
         // The delegate drops `Authorization` from a redirect to another origin.
-        let (bytes, response) = try await session.bytes(for: req, delegate: RedirectAuthGuard(origin: url))
-        let http = response as? HTTPURLResponse
-        let stream = AsyncThrowingStream<[UInt8], Error> { continuation in
-            let task = Task {
-                do {
-                    var buf: [UInt8] = []
-                    buf.reserveCapacity(1 << 16)
-                    for try await b in bytes {
-                        buf.append(b)
-                        if buf.count >= 1 << 16 {
-                            continuation.yield(buf)
-                            buf.removeAll(keepingCapacity: true)
-                        }
-                    }
-                    if !buf.isEmpty { continuation.yield(buf) }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
-                }
+        #if canImport(FoundationNetworking)
+            // Linux has no `URLSession.bytes`: the exchange runs on a delegated session (the same
+            // one the Core transport uses) and the body arrives as one chunk.
+            let redirectGuard = RedirectAuthGuard(origin: url)
+            let (data, response) = try await DelegatedExchange.run(
+                req, configuration: session.configuration, limit: nil,
+                redirect: { _, task, response, next, done in
+                    done(redirectGuard.decide(from: response.url ?? task.currentRequest?.url, newRequest: next))
+                })
+            let http = response as? HTTPURLResponse
+            let stream = AsyncThrowingStream<[UInt8], Error> { continuation in
+                if !data.isEmpty { continuation.yield(Array(data)) }
+                continuation.finish()
             }
-            continuation.onTermination = { _ in task.cancel() }
-        }
+        #else
+            let (bytes, response) = try await session.bytes(for: req, delegate: RedirectAuthGuard(origin: url))
+            let http = response as? HTTPURLResponse
+            let stream = AsyncThrowingStream<[UInt8], Error> { continuation in
+                let task = Task {
+                    do {
+                        var buf: [UInt8] = []
+                        buf.reserveCapacity(1 << 16)
+                        for try await b in bytes {
+                            buf.append(b)
+                            if buf.count >= 1 << 16 {
+                                continuation.yield(buf)
+                                buf.removeAll(keepingCapacity: true)
+                            }
+                        }
+                        if !buf.isEmpty { continuation.yield(buf) }
+                        continuation.finish()
+                    } catch {
+                        continuation.finish(throwing: error)
+                    }
+                }
+                continuation.onTermination = { _ in task.cancel() }
+            }
+        #endif
         return ObjectResponse(
             status: http?.statusCode ?? 0, contentRange: http?.value(forHTTPHeaderField: "Content-Range"),
             etag: http?.value(forHTTPHeaderField: "ETag"), chunks: stream)
@@ -123,7 +138,7 @@ public struct URLSessionPackObjectTransport: PackObjectTransport {
 final class RedirectAuthGuard: NSObject, URLSessionTaskDelegate, Sendable {
     let origin: URL
     /// Whether this chain has left the origin.
-    private let left = OSAllocatedUnfairLock(initialState: false)
+    private let left = LockedValue(false)
 
     init(origin: URL) { self.origin = origin }
 
@@ -136,10 +151,15 @@ final class RedirectAuthGuard: NSObject, URLSessionTaskDelegate, Sendable {
         _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
         newRequest request: URLRequest
     ) async -> URLRequest? {
+        decide(from: response.url ?? task.currentRequest?.url, newRequest: request)
+    }
+
+    /// The redirect decision itself, synchronous so the Linux exchange can call it directly.
+    func decide(from: URL?, newRequest request: URLRequest) -> URLRequest? {
         guard let to = request.url else { return nil }
-        let from = response.url ?? task.currentRequest?.url ?? origin
+        let from = from ?? origin
         if from.scheme?.lowercased() == "https" && to.scheme?.lowercased() != "https" { return nil }
-        let stripped = left.withLock { gone -> Bool in
+        let stripped = left.with { gone -> Bool in
             if !Self.sameOrigin(origin, to) { gone = true }
             return gone
         }

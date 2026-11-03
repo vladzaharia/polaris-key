@@ -149,7 +149,7 @@ final class NearbyE2ETests: XCTestCase {
         let d = try await w.request()
         w.requesterNet.up(w.approverNet)
         await nearbyUntil("listed") { await d.approvers().count == 1 }
-        let code = try await d.choose(try await d.approvers()[0].id)
+        let code = try await d.choose(await d.approvers()[0].id)
         await nearbyUntil("prompt") { w.mApprovals.value.count == 1 }
         let a = w.mApprovals.value[0]
         let keys = try await w.dKeys.ensure()

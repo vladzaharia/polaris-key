@@ -37,23 +37,33 @@ public protocol AttestKeyStore: Sendable {
     func delete()
 }
 
-/// The Keychain-backed key store.
-public struct KeychainAttestKeyStore: AttestKeyStore {
-    public static let account = "app_attest_key"
-    private let store: SecureStore
+#if canImport(Security)
+    /// The Keychain-backed key store.
+    public struct KeychainAttestKeyStore: AttestKeyStore {
+        public static let account = "app_attest_key"
+        private let store: SecureStore
 
-    /// The Keychain service the key id lives under (`pkey:<state namespace>`); read by the tests
-    /// that pin which namespace a client's default key store was built for.
-    var service: String { store.service }
+        /// The Keychain service the key id lives under (`pkey:<state namespace>`); read by the tests
+        /// that pin which namespace a client's default key store was built for.
+        var service: String { store.service }
 
-    public init(product: String, backend: any KeychainBackend = SystemKeychainBackend()) {
-        self.store = SecureStore(product: product, backend: backend)
+        public init(product: String, backend: any KeychainBackend = SystemKeychainBackend()) {
+            self.store = SecureStore(product: product, backend: backend)
+        }
+
+        public func get() -> String? { store.get(account: Self.account)["value"]?.stringValue }
+        public func set(_ keyId: String) { _ = store.set(account: Self.account, value: keyId) }
+        public func delete() { _ = store.delete(account: Self.account) }
     }
-
-    public func get() -> String? { store.get(account: Self.account)["value"]?.stringValue }
-    public func set(_ keyId: String) { _ = store.set(account: Self.account, value: keyId) }
-    public func delete() { _ = store.delete(account: Self.account) }
-}
+#else
+    /// Without a Keychain (Linux) nothing can attest, so there is nothing to remember.
+    struct KeychainAttestKeyStore: AttestKeyStore {
+        init(product: String) {}
+        func get() -> String? { nil }
+        func set(_ keyId: String) {}
+        func delete() {}
+    }
+#endif
 
 /// `attest()`'s success: the trust level the Worker recorded.
 public struct AttestOutcome: Sendable, Equatable {

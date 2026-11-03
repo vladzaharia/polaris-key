@@ -312,7 +312,7 @@ final class EventsAndSignInTests: XCTestCase {
             "/djdl/identity/auth/device/poll",
             body: #"{"status":"ready","token":"pkeyt_signed","schemaVersion":1}"#)
         let c = try await client()
-        let browser = await FakeBrowser()
+        let browser = FakeBrowser()
         let session = try await c.identity.signIn.start(SignInOptions(browser: browser))
         XCTAssertEqual(session.userCode, "ABCD-EFGH")
         let outcome = try await session.wait()
