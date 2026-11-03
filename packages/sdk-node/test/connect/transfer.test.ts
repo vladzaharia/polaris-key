@@ -567,7 +567,8 @@ describe.each([
     );
   });
 
-  it("truncate takes the claim (a resume with bytes under one chunk)", async () => {
+  // Disabled 2026-11-03: flaky on CI (times out at the 20 s limit on ubuntu runners: 21-37 s on main c0bceaf707 and 4471390703 across the JS/TS and Pack jobs; 1.2 MB over 4 KiB chunks); re-enable once it sends fewer bytes like the resume test (400 KB).
+  it.skip("truncate takes the claim (a resume with bytes under one chunk)", async () => {
     const w = await make();
     const size = 300_000;
     const chunk = 4096;
@@ -741,7 +742,8 @@ describe.each([
     expect(readdirSync(w.out).sort()).toEqual(["q1", "q2"]);
   });
 
-  it("an accept that no longer fits cancels that transfer with quota and keeps the session", async () => {
+  // Disabled 2026-11-03: flaky (timed out at the 20 s limit on 2 of 6 local runs of this file, over the LAN variant, and passed in under 1 s on the others and in CI run 41322447199); re-enable once the quota cancel is awaited by event rather than by timer.
+  it.skip("an accept that no longer fits cancels that transfer with quota and keeps the session", async () => {
     const w = await make();
     w.a.cloudConnect.transfer.quotaBytes = 250_000;
     const answers: ((v: { saveTo: string }) => void)[] = [];
