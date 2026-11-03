@@ -70,7 +70,23 @@ import PackageDescription
 // to compile on iOS, and a guarded import with an unconditioned product still drags a macOS
 // XCFramework into an iOS link line.
 // Apple's swift-crypto, Linux only (see the dependency below).
-let linuxCrypto: Target.Dependency = .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux]))
+// SwiftPM resolves (clones) every declared package on every platform, whatever the product
+// conditions say, so the package itself is declared only when the manifest is evaluated on Linux:
+// a macOS resolve clones Sparkle alone (sdks/swift/tools/check-resolve-clones.sh).
+#if os(Linux)
+let linuxCrypto: [Target.Dependency] = [
+    .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux]))
+]
+let linuxPackages: [Package.Dependency] = [
+    // Exact pin: 4.5.2, released 2026-09-02 (GitHub releases API, apple/swift-crypto), kept at
+    // least 14 days old before adoption. 5.x declares swift-tools-version 6.2, which the Xcode 16.4
+    // (Swift 6.1) floor job cannot read.
+    .package(url: "https://github.com/apple/swift-crypto", exact: "4.5.2")
+]
+#else
+let linuxCrypto: [Target.Dependency] = []
+let linuxPackages: [Package.Dependency] = []
+#endif
 
 let package = Package(
     name: "PolarisKey",
@@ -122,18 +138,11 @@ let package = Package(
         // delta-patch symlink and privilege-escalation fixes (2.9.5/2.9.6) on top of
         // CVE-2025-0509 (2.6.4).
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.6"),
-        // Linux only: Apple's swift-crypto supplies the `Crypto` module, API-compatible with
-        // CryptoKit, which Linux lacks. Sources say `#if canImport(CryptoKit) import CryptoKit
-        // #else import Crypto #endif`, so Apple builds link nothing extra. Exact pin: 4.5.2,
-        // released 2026-09-02 (GitHub releases API, apple/swift-crypto), kept at least 14 days
-        // old before adoption. 5.x declares swift-tools-version 6.2, which the Xcode 16.4 (Swift
-        // 6.1) floor job cannot read, and SwiftPM resolves every dependency on every platform.
-        .package(url: "https://github.com/apple/swift-crypto", exact: "4.5.2"),
-    ],
+    ] + linuxPackages,
     targets: [
         .target(
             name: "PolarisKeyCore",
-            dependencies: [linuxCrypto],
+            dependencies: linuxCrypto,
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
@@ -154,8 +163,8 @@ let package = Package(
         .target(
             name: "PolarisKeyIdentity",
             dependencies: [
-                linuxCrypto, "PolarisKeyCore",
-            ],
+                "PolarisKeyCore"
+            ] + linuxCrypto,
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         // zstd 1.5.7's BSD-3-Clause C library, vendored from the official source release:
@@ -172,13 +181,13 @@ let package = Package(
         .target(
             name: "PolarisKeyPacks",
             dependencies: [
-                linuxCrypto, "PolarisKeyCore", "PolarisKeyPlatform", "PolarisKeyUpdate", "libzstd",
-            ],
+                "PolarisKeyCore", "PolarisKeyPlatform", "PolarisKeyUpdate", "libzstd",
+            ] + linuxCrypto,
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
             name: "PolarisKeyPlatform",
-            dependencies: [linuxCrypto],
+            dependencies: linuxCrypto,
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
@@ -206,7 +215,6 @@ let package = Package(
         .target(
             name: "PolarisKeyUpdate",
             dependencies: [
-                linuxCrypto,
                 // The umbrella adds `client.update` to `PolarisKeyClient`; packs stay optional.
                 "PolarisKey",
                 "PolarisKeyCore",
@@ -215,7 +223,7 @@ let package = Package(
                 .product(
                     name: "Sparkle", package: "Sparkle",
                     condition: .when(platforms: [.macOS])),
-            ],
+            ] + linuxCrypto,
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
@@ -279,12 +287,11 @@ let package = Package(
         .testTarget(
             name: "PolarisKeyTests",
             dependencies: [
-                linuxCrypto,
                 "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig",
                 "PolarisKeyIdentity", "PolarisKeyUI", "PolarisKeyUICore", "PolarisKeyUpdate",
                 "PolarisKeyUpdateUI", "PolarisKeyRelease", "PolarisKeyPacks", "PolarisKeyPlatform", "PolarisKeyGameCenter",
                 "PolarisKeyGameCenterSignIn", "libzstd",
-            ],
+            ] + linuxCrypto,
             // No resources: the tests read the SAME cross-language corpus the Node and Python
             // runners drive (`conformance/corpus/v2/`) and the HTTP transcripts
             // (`conformance/transcripts/`) in place, through `CorpusLocator` (`#filePath`), so
