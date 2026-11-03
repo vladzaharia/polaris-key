@@ -124,7 +124,6 @@ export function MakePrimaryTool({
     <Button
       ref={buttonRef}
       variant="outline"
-      className="h-11 font-medium"
       loading={mutation.isPending}
       aria-label={t("locker.methods.makePrimaryName", { email })}
       // A disclosure only when the click opens the panel (a stale sign-in).
@@ -285,7 +284,6 @@ export function RenamePasskeyTool({
     <Button
       ref={buttonRef}
       variant="outline"
-      className="h-11 font-medium"
       aria-label={t("locker.methods.renameName", { name: what })}
       aria-expanded={false}
       aria-controls={panelId}

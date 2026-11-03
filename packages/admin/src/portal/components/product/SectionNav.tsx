@@ -84,7 +84,7 @@ export function SectionNav({
                     : "inline-flex h-9 items-center whitespace-nowrap rounded-full border px-4 text-sm pointer-coarse:h-11",
                   variant === "toc"
                     ? on
-                      ? "border-[var(--pk-locker-accent)] font-medium text-fg-strong"
+                      ? "border-locker-accent font-medium text-fg-strong"
                       : "border-transparent text-fg-muted hover:text-fg-strong"
                     : on
                       ? "border-fg-strong bg-fg-strong font-medium text-surface-page"

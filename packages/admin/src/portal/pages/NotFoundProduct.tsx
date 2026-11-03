@@ -17,7 +17,7 @@ export function NotFoundProduct({
   return (
     <section className="mx-auto flex max-w-xl flex-col items-center gap-4 py-16 text-center">
       <StationaryStar />
-      <h1 className="text-3xl font-semibold leading-tight text-fg-strong">
+      <h1 className="text-2xl font-semibold text-fg-strong">
         {t("locker.notFound.heading")}
       </h1>
       <p className="text-fg-muted">

@@ -190,7 +190,7 @@ function SignInEmailOnly({
 }): React.ReactElement {
   return (
     <>
-      <h3 className="mb-2 text-xs font-semibold text-fg-muted">
+      <h3 className="mb-2 text-sm font-medium text-fg-muted">
         {t("signin.email.label")}
       </h3>
       <ul className="divide-y divide-border border-b border-border -mx-4 desk:-mx-5 bigtext:max-sm:mx-0 [&>li]:px-4 desk:[&>li]:px-5 bigtext:max-sm:[&>li]:px-0">
@@ -256,7 +256,7 @@ function callbackNotice(
 // and the section pills) plus this margin; 0.75rem under whatever sticks on a short screen
 // (product/Card.tsx).
 const GROUP_HEADING =
-  "text-xs font-medium text-fg-muted outline-none scroll-mt-[calc(9rem_-_var(--pk-scroll-top,0px))] desk:scroll-mt-[calc(6rem_-_var(--pk-scroll-top,0px))] short:scroll-mt-3";
+  "text-sm font-medium text-fg-muted outline-none scroll-mt-[calc(9rem_-_var(--pk-scroll-top,0px))] desk:scroll-mt-[calc(6rem_-_var(--pk-scroll-top,0px))] short:scroll-mt-3";
 
 function MethodGroups({
   account,

@@ -267,7 +267,7 @@ export function GetItPanel({
       ) : null}
       {withSources.length ? (
         <section className="mt-5 space-y-3">
-          <h3 className="text-md font-semibold text-fg-strong">
+          <h3 className="text-base font-semibold text-fg-strong">
             {C["getIt.otherWays"]}
           </h3>
           {withSources.map((g) => (
@@ -287,7 +287,7 @@ export function GetItPanel({
         <div className="mt-5 space-y-2">
           <h3
             id={`${product.slug}-also-yours-on`}
-            className="text-md font-semibold text-fg-strong"
+            className="text-base font-semibold text-fg-strong"
           >
             {C["getIt.alsoYoursOn"]}
           </h3>

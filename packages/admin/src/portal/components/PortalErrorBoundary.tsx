@@ -44,7 +44,7 @@ export class PortalErrorBoundary extends React.Component<
         className="flex max-w-xl flex-col items-start gap-3 rounded-xl border border-border bg-surface-raised p-6"
       >
         <AlertCircle aria-hidden className="size-6 text-danger" />
-        <h1 className="text-lg font-semibold text-fg-strong">
+        <h1 className="text-2xl font-semibold text-fg-strong">
           {t("locker.error.page.title")}
         </h1>
         <p className="text-fg-muted">{t("locker.error.page.body")}</p>

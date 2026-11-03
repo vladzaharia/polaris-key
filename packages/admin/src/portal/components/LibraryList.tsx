@@ -169,7 +169,7 @@ function LibraryRow({
       <td className="hidden px-2 py-3 desk:table-cell">
         <ProductStatusPill status={p.status} />
       </td>
-      <td className="hidden px-2 py-3 font-mono text-sm text-fg wide:table-cell">
+      <td className="hidden px-2 py-3 font-mono text-code text-fg wide:table-cell">
         {p.latestVersion ?? "–"}
       </td>
       <td

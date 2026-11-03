@@ -11,7 +11,7 @@
 
 /** What every button shares: shape, the press pattern, the focus ring, the disabled look. */
 export const BUTTON_BASE = [
-  "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-md font-normal",
+  "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-md",
   // The press pattern (src/motion.css `.pk-pressable`, S-23 §6.1): 0.98 on :active, never when
   // disabled or busy, with the colours at `micro`. Scale is paint only, so neighbours never move.
   "pk-pressable",
@@ -23,7 +23,7 @@ export const BUTTON_BASE = [
 /** Button variants by name. */
 export const BUTTON_VARIANTS = {
   primary:
-    "bg-accent text-accent-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-accent),oklch(from_var(--pk-accent-on)_calc(1_-_l)_0_0)_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
+    "font-medium bg-accent text-accent-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-accent),oklch(from_var(--pk-accent-on)_calc(1_-_l)_0_0)_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
   /**
    * The action-neutral primary (BRAND.md B2, SIGN-IN.md §3.1): near-white ink on dark,
    * near-black on light, the label in the page colour. The sign-in card's one filled
@@ -32,18 +32,18 @@ export const BUTTON_VARIANTS = {
   neutral:
     "bg-action text-action-on font-medium hover:not-disabled:not-aria-disabled:bg-action-hover active:not-disabled:not-aria-disabled:bg-action-pressed disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText]",
   secondary:
-    "bg-hover text-fg-strong hover:not-disabled:not-aria-disabled:bg-surface-sunken",
+    "font-medium bg-hover text-fg-strong hover:not-disabled:not-aria-disabled:bg-surface-sunken",
   outline:
-    "border border-border-strong bg-transparent text-fg hover:not-disabled:not-aria-disabled:bg-hover hover:not-disabled:not-aria-disabled:text-fg-strong",
+    "font-medium border border-border-strong bg-transparent text-fg hover:not-disabled:not-aria-disabled:bg-hover hover:not-disabled:not-aria-disabled:text-fg-strong",
   ghost:
-    "bg-transparent text-fg hover:not-disabled:not-aria-disabled:bg-hover hover:not-disabled:not-aria-disabled:text-fg-strong",
+    "font-medium bg-transparent text-fg hover:not-disabled:not-aria-disabled:bg-hover hover:not-disabled:not-aria-disabled:text-fg-strong",
   danger:
-    "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),oklch(from_var(--pk-danger-on)_calc(1_-_l)_0_0)_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
+    "font-medium bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),oklch(from_var(--pk-danger-on)_calc(1_-_l)_0_0)_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
   /** Deprecated alias of `danger`, kept for the legacy views until chunk 11. */
   destructive:
-    "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),oklch(from_var(--pk-danger-on)_calc(1_-_l)_0_0)_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
+    "font-medium bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),oklch(from_var(--pk-danger-on)_calc(1_-_l)_0_0)_10%)] disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 disabled:shadow-none aria-disabled:not-aria-busy:bg-action-disabled aria-disabled:not-aria-busy:text-action-disabled-on aria-disabled:not-aria-busy:opacity-100 aria-disabled:not-aria-busy:shadow-none",
   /** Underlined at rest, so it reads as a link beside the portal's other underlined links (B-020). */
-  link: "h-auto px-0 text-accent-fg underline underline-offset-4 hover:text-fg-strong",
+  link: "font-normal h-auto px-0 text-accent-fg underline underline-offset-4 hover:text-fg-strong",
   /**
    * The customer portal's outlined quick action (PORTAL.md §5.2): transparent, a
    * `border-border-strong` outline, a `text-fg-strong` label, the icon in `text-accent-fg`.
@@ -64,6 +64,8 @@ export const BUTTON_SIZES = {
   sm: "h-8 min-w-8 px-3 text-xs [&_svg]:size-4",
   md: "h-9 min-w-9 px-4 text-sm [&_svg]:size-4",
   lg: "h-10 min-w-10 px-6 text-sm [&_svg]:size-4",
+  /** The large action: 48 px, 16 px text (BRAND.md §9.4, SIGN-IN.md §3.1). */
+  xl: "h-12 min-w-12 px-6 text-base [&_svg]:size-5",
   /** Deprecated: a square icon button. Use `IconButton`. */
   icon: "size-9 text-sm [&_svg]:size-4",
 } as const;

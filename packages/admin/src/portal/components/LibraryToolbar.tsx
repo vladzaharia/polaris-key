@@ -88,7 +88,7 @@ export function LibraryToolbar({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <label className="relative flex h-8 pointer-coarse:h-[46px] focus-within:outline-2 focus-within:outline-solid focus-within:outline-offset-2 focus-within:outline-focus min-w-0 basis-full items-center rounded-md border border-border-strong bg-surface-page wide:w-80 wide:flex-none wide:basis-auto">
+      <label className="relative flex h-9 pointer-coarse:h-11 focus-within:outline-2 focus-within:outline-solid focus-within:outline-offset-2 focus-within:outline-focus min-w-0 basis-full items-center rounded-md border border-border-strong bg-surface-page wide:w-80 wide:flex-none wide:basis-auto">
         <Search
           aria-hidden
           className="pointer-events-none absolute start-3 size-4 text-fg-muted"
@@ -101,7 +101,7 @@ export function LibraryToolbar({
           placeholder={label}
           value={q}
           onChange={(e) => onChange({ q: e.target.value })}
-          className="h-full w-full min-w-0 bg-transparent ps-10 pe-10 text-md text-fg-strong outline-none placeholder:text-fg-subtle"
+          className="h-full w-full min-w-0 bg-transparent ps-10 pe-10 text-base text-fg-strong outline-none placeholder:text-fg-subtle"
         />
         <Kbd
           keys={
@@ -129,11 +129,11 @@ export function LibraryToolbar({
                 aria-pressed={on}
                 onClick={() => onChange({ filter: c.id })}
                 className={cn(
-                  "inline-flex h-8 pointer-coarse:h-11 shrink-0 items-center gap-2 rounded-full border px-3 text-md",
+                  "inline-flex h-8 pointer-coarse:h-11 shrink-0 items-center gap-2 rounded-full border px-3 text-base",
                   // Selected: the coral rule and its subtle plate, with a check (the mockup's
                   // `.filter.on`); the check and the pressed state carry it, not colour alone.
                   on
-                    ? "border-[var(--pk-locker-accent)] bg-accent-subtle font-medium text-fg-strong"
+                    ? "border-locker-accent bg-accent-subtle font-medium text-fg-strong"
                     : "border-border-strong text-fg-strong hover:bg-hover",
                 )}
               >
@@ -164,7 +164,7 @@ export function LibraryToolbar({
           <select
             value={sort}
             onChange={(e) => onChange({ sort: e.target.value as LibrarySort })}
-            className="h-9 pointer-coarse:h-11 min-w-0 max-w-full rounded-md border border-border-strong bg-surface-page px-3 text-md text-fg-strong"
+            className="h-9 pointer-coarse:h-11 min-w-0 max-w-full rounded-md border border-border-strong bg-surface-page px-3 text-base text-fg-strong"
           >
             <option value="recent">{t("locker.library.sortRecent")}</option>
             <option value="name">{t("locker.library.sortName")}</option>
