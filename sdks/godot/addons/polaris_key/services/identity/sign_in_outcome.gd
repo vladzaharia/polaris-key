@@ -15,8 +15,8 @@ extends PKeyResult
 ##                        (`sync`); `identity` names who the device is now signed in as
 ##   activated            a redirect sign-in that opted in with `key_return = true` and ended on the
 ##                        key return ("Continue without an account"): the device holds the key's
-##                        licence (`license_id`, `key_entries`) with no account; `subject` is the
-##                        stored subject now ("" clears it). It is not a sign-in: no `signed_in`
+##                        licence (`license_id`, `key_entries`) with no account; `subject` is ""
+##                        (the stored one is cleared). It is not a sign-in: no `signed_in`
 ##   cancelled            `session.cancel()`, or a new `sign_in.start()` replaced the session
 ##   expired              the code lapsed on this client, or the server no longer knows it
 ##   denied               the player pressed Deny, or the provider refused
@@ -65,7 +65,7 @@ var attached := ""
 var stored := false
 ## On `signed_in`: the forced sync that followed.
 var sync: PKeySyncResult = null
-## On `signed_in` and `activated`: the account's pairwise subject when the Worker said, else "".
+## On `signed_in`: the account's pairwise subject when the Worker said, else "" (always "" on `activated`).
 var subject := ""
 ## On `signed_in` from the redirect channel: the granted scope, space-delimited; "" otherwise.
 var scope := ""
@@ -121,7 +121,7 @@ static func signed_in(p_identity: Dictionary, p_attached: String, p_stored: bool
 	return r
 
 
-## The key return: `p_subject` is the stored subject afterwards ("" when the answer said null).
+## The key return: `p_subject` is "" (the stored subject is cleared and none is reported).
 static func activated(p_license_id: String, p_key_entries: Dictionary, p_subject: String, p_stored: bool, p_sync: PKeySyncResult) -> PKeySignInOutcome:
 	var r := PKeySignInOutcome.new(true)
 	r.kind = KIND_ACTIVATED

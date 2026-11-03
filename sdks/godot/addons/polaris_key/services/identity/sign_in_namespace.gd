@@ -45,7 +45,8 @@ func _init(owner: PKeyIdentity) -> void:
 ##   key_return        redirect (web and native): true accepts a key return (WIRE-CONTRACT-V5 §12.4),
 ##                     so the card offers "Continue without an account" and the request carries
 ##                     `key_return=allow`. The sign-in may then settle `activated` (the device holds
-##                     the key's licence, no account; `license_id`, `key_entries`, `subject` the answer's value; the stored one is always cleared), never `signed_in`. Default off, and it is not sent unless
+##                     the key's licence, no account; `license_id`, `key_entries`; `subject` is "" because the
+##                     stored one is cleared), never `signed_in`. Default off, and it is not sent unless
 ##                     true; the device-code channel refuses it (`invalid-argument`). Leave it off
 ##                     until your UI renders `activated`: the SDK's own kits leave it off. A refusal at the
 ##                     token endpoint (`device_limit`, `key_entry_limit`, `license_owned`) is an

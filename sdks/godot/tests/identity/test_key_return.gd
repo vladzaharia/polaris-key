@@ -145,7 +145,7 @@ func _session(t: PKeyTestContext) -> void:
 	bed.tokens = [B.json(200, named)]
 	s = await bed.sdk.identity.sign_in.start({"channel": "redirect", "redirect_uri": REDIRECT, "key_return": true})
 	var o2 := await s.complete(_callback(bed, _param(s.authorize_url, "state")))
-	t.check("key return session: a named subject is reported but the stored one is cleared", o2.kind == PKeySignInOutcome.KIND_ACTIVATED and o2.subject == SUBJECT and bed.sdk.core.cache.subject == "")
+	t.check("key return session: a named subject is cleared, reported and stored", o2.kind == PKeySignInOutcome.KIND_ACTIVATED and o2.subject == "" and bed.sdk.core.cache.subject == "")
 	bed.free_all()
 
 	# A key return keeps the explicit sign-out flag.

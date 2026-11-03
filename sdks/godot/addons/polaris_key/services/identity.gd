@@ -632,7 +632,6 @@ func _redeem(session: PKeySignInSession, pending: Dictionary, code: String, nati
 			# provenance, so rung 1 of automatic sign-in does not count it), it does not lower the
 			# explicit sign-out flag, and the stored subject is cleared: the device holds a key, no account.
 			var key_stored := core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_ACTIVATE, false, PKeyTokenManager.ORIGIN_KEY)
-			var key_subject: String = answer["subject"] if answer["subject"] is String else ""
 			if _account != null:
 				_account.note_activated("")
 			var key_synced: PKeySyncResult = null
@@ -642,7 +641,7 @@ func _redeem(session: PKeySignInSession, pending: Dictionary, code: String, nati
 				if not key_problem.is_empty():
 					return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, key_problem["code"], key_problem["message"], int(key_problem["status"]))
 			var key_license: Dictionary = answer["license"]
-			return PKeySignInOutcome.activated(String(key_license.get("id", "")) if key_license.get("id") is String else "", answer["key_entries"], key_subject, key_stored, key_synced)
+			return PKeySignInOutcome.activated(String(key_license.get("id", "")) if key_license.get("id") is String else "", answer["key_entries"], "", key_stored, key_synced)
 	var stored := core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_SIGNIN, true)
 	var subject: String = answer["subject"]
 	if _account != null:
