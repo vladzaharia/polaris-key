@@ -45,18 +45,22 @@ static var _bi: Array = []  # Array of [PackedInt64Array x3], built from BI once
 
 
 static var _warm_lock := Mutex.new()
+# The unlocked fast path reads this flag, never the Array: reading `_bi` while another thread
+# assigns it races the Array's reference count (4.4.1 crashes in Array::_ref).
+static var _warm_done := false
 
 
 static func warmup() -> void:
-	if not _bi.is_empty():
+	if _warm_done:
 		return
 	_warm_lock.lock()
-	if _bi.is_empty():
+	if not _warm_done:
 		# Built aside and published whole, so a reader never sees a part-filled table.
 		var built: Array = []
 		for e in BI:
 			built.append([PackedInt64Array(e[0]), PackedInt64Array(e[1]), PackedInt64Array(e[2])])
 		_bi = built
+		_warm_done = true
 	_warm_lock.unlock()
 
 
