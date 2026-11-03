@@ -284,7 +284,10 @@ def test_set_field_seals_under_id_nul_field_and_blinds_both_names() -> None:
     assert m["target"]["record"] == ["saves", wire_id()]
     got = C.open("saves", f"{ID}\0hp", b64url_decode(m["ct"]))
     assert got.ok and got.value == 10
-    assert "hp" not in json.dumps({k: v for k, v in m.items() if k != "editedHlc"}) and ID not in json.dumps(m)
+    # The ct is random (nonce) base64url, so a short name can appear in it by chance: scan the
+    # deterministic cleartext fields only; the ct is covered by the open() round trip above.
+    clear = json.dumps({k: v for k, v in m.items() if k not in ("editedHlc", "ct")})
+    assert "hp" not in clear and ID not in clear
 
 
 def test_remove_field_carries_the_blinded_field_and_no_ct() -> None:
