@@ -27,13 +27,11 @@ import { activateAndSync } from "./keyEntry.js";
 import { attach, IDENTITY_ON, seedAccount } from "./account.js";
 import { portalSession, registerWebApp } from "./webSignIn.js";
 import {
+  beginSignIn,
   platformIdentityWorld,
   PLAYER,
   playerSignsIn,
   pollSpec,
-  promptOf,
-  START,
-  type Started,
 } from "./identity.js";
 import { accountForSubject } from "../../../src/core/accounts/accountSubjects.js";
 import type { JsonValue } from "../format.js";
@@ -290,30 +288,14 @@ function deviceScenario(
           purpose: "attach",
           licenseChoice: "app",
         };
-        let started!: Started;
-        const begun: Record<string, JsonValue> = {};
-        await r.step(
+        const started = await beginSignIn(
+          r,
           {
-            action: "beginSignIn",
             note: "The start carries the hints, purpose attach and licenseChoice app beside the device id.",
             args: hints,
           },
-          async (s) => {
-            const body = { deviceId: DEVICE, ...hints };
-            const res = await s.send({
-              method: "POST",
-              path: START,
-              body,
-              expectBody: { json: body, match: "exact" },
-            });
-            expect(res.status).toBe(200);
-            started = (await res.json()) as Started;
-            Object.assign(begun, {
-              prompt: promptOf(started),
-              tokenHeld: true,
-            });
-          },
-          begun,
+          hints,
+          true,
         );
 
         await playerSignsIn(

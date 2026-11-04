@@ -40,6 +40,19 @@ const start = (a: Awaited<ReturnType<typeof mounted>>["adapter"], o = {}) =>
     ...o,
   } as never) as unknown as Promise<Session>;
 
+/** A pending redirect flow with a wait running against it. */
+async function pendingWait(
+  bridge: Awaited<ReturnType<typeof mounted>>["bridge"],
+  adapter: Awaited<ReturnType<typeof mounted>>["adapter"],
+) {
+  bridge.beginSignIn = vi.fn(async () => BEGIN);
+  bridge.pollSignIn = vi.fn(async () => ({ kind: "pending" }) as const);
+  const s = await start(adapter);
+  const waiting = s.wait();
+  await new Promise((r) => setTimeout(r, 0));
+  return { s, waiting };
+}
+
 describe("DesktopAdapter - native redirect sign-in", () => {
   it("forwards to the host with channel redirect and the hints, no URL comes back", async () => {
     const { bridge, adapter } = await mounted();
@@ -105,11 +118,7 @@ describe("DesktopAdapter - native redirect sign-in", () => {
 
   it("cancel ends a running wait as cancelled", async () => {
     const { bridge, adapter } = await mounted();
-    bridge.beginSignIn = vi.fn(async () => BEGIN);
-    bridge.pollSignIn = vi.fn(async () => ({ kind: "pending" }) as const);
-    const s = await start(adapter);
-    const waiting = s.wait();
-    await new Promise((r) => setTimeout(r, 0));
+    const { s, waiting } = await pendingWait(bridge, adapter);
     s.cancel();
     expect(await waiting).toEqual({ kind: "cancelled" });
     adapter.dispose();
@@ -121,11 +130,7 @@ describe("DesktopAdapter - native redirect sign-in", () => {
       throw new Error("refused");
     });
     (bridge as { invoke?: unknown }).invoke = invoke;
-    bridge.beginSignIn = vi.fn(async () => BEGIN);
-    bridge.pollSignIn = vi.fn(async () => ({ kind: "pending" }) as const);
-    const s = await start(adapter);
-    const waiting = s.wait();
-    await new Promise((r) => setTimeout(r, 0));
+    const { s, waiting } = await pendingWait(bridge, adapter);
     s.cancel();
     s.cancel();
     expect(await waiting).toEqual({ kind: "cancelled" });
@@ -160,11 +165,7 @@ describe("DesktopAdapter - native redirect sign-in", () => {
   it("cancel on a v6 host with no invoke sends nothing and still settles locally", async () => {
     const { bridge, adapter } = await mounted();
     (bridge as { invoke?: unknown }).invoke = undefined;
-    bridge.beginSignIn = vi.fn(async () => BEGIN);
-    bridge.pollSignIn = vi.fn(async () => ({ kind: "pending" }) as const);
-    const s = await start(adapter);
-    const waiting = s.wait();
-    await new Promise((r) => setTimeout(r, 0));
+    const { s, waiting } = await pendingWait(bridge, adapter);
     expect(() => s.cancel()).not.toThrow();
     expect(await waiting).toEqual({ kind: "cancelled" });
     adapter.dispose();

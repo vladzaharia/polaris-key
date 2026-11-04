@@ -87,6 +87,12 @@ async function setup(o: { request?: boolean; tokenGate?: Promise<void> } = {}) {
 type Setup = Awaited<ReturnType<typeof setup>>;
 
 /** What the push named: the loopback port and the state. */
+async function beginRedirect(env: Setup) {
+  return (await env.bridge.beginSignIn({
+    channel: "redirect",
+  } as never)) as unknown as { flowId: string };
+}
+
 function pushed(env: Setup) {
   const push = env.seen.find((s) => s.path.endsWith("/identity/request"))!;
   const form = new URLSearchParams(push.body!);
@@ -164,9 +170,7 @@ describe("PolarisBridge: the native redirect sign-in", () => {
 
   it("binds the flow to the window that began it", async () => {
     const env = await setup();
-    const begin = (await env.bridge.beginSignIn({
-      channel: "redirect",
-    } as never)) as unknown as { flowId: string };
+    const begin = await beginRedirect(env);
     const call = async (sender: number, ...args: unknown[]) =>
       (await (
         env.ipc.handlers.get("polaris-key:pollSignIn")! as (
@@ -196,9 +200,7 @@ describe("PolarisBridge: the native redirect sign-in", () => {
 
   it("Open browser again reopens the same URL without a new push", async () => {
     const env = await setup();
-    const begin = (await env.bridge.beginSignIn({
-      channel: "redirect",
-    } as never)) as unknown as { flowId: string };
+    const begin = await beginRedirect(env);
     const r = await env.bridge.beginSignIn({
       channel: "redirect",
       reopen: begin.flowId,
@@ -288,9 +290,7 @@ describe("PolarisBridge: the native redirect sign-in", () => {
 
     it("the owner window ends the flow: the listener closes and a late callback is not served", async () => {
       const env = await setup();
-      const begin = (await env.bridge.beginSignIn({
-        channel: "redirect",
-      } as never)) as unknown as { flowId: string };
+      const begin = await beginRedirect(env);
       const { port, state } = pushed(env);
       expect(await listening(port)).toBe(true);
       expect(
@@ -310,9 +310,7 @@ describe("PolarisBridge: the native redirect sign-in", () => {
 
     it("another window's flow id answers like an unknown one and nothing ends", async () => {
       const env = await setup();
-      const begin = (await env.bridge.beginSignIn({
-        channel: "redirect",
-      } as never)) as unknown as { flowId: string };
+      const begin = await beginRedirect(env);
       const { port } = pushed(env);
       const r = await end(env, begin.flowId, 8);
       expect(r).toEqual({ ok: true, value: { ended: false } });
@@ -324,9 +322,7 @@ describe("PolarisBridge: the native redirect sign-in", () => {
 
     it("an unknown flow id is a no-op, a malformed one is refused, a refused sender ends nothing", async () => {
       const env = await setup();
-      const begin = (await env.bridge.beginSignIn({
-        channel: "redirect",
-      } as never)) as unknown as { flowId: string };
+      const begin = await beginRedirect(env);
       const { port } = pushed(env);
       expect(
         await env.bridge.invoke!("identity", "signIn.cancel", {
@@ -350,9 +346,7 @@ describe("PolarisBridge: the native redirect sign-in", () => {
       const env = await setup({
         tokenGate: new Promise<void>((r) => (release = r)),
       });
-      const begin = (await env.bridge.beginSignIn({
-        channel: "redirect",
-      } as never)) as unknown as { flowId: string };
+      const begin = await beginRedirect(env);
       const { port, state } = pushed(env);
       const delivered = deliver(port, state);
       await vi.waitFor(() =>
@@ -378,9 +372,7 @@ describe("PolarisBridge: the native redirect sign-in", () => {
 
     it("after sign-out the flow is already gone, so the verb is a no-op", async () => {
       const env = await setup();
-      const begin = (await env.bridge.beginSignIn({
-        channel: "redirect",
-      } as never)) as unknown as { flowId: string };
+      const begin = await beginRedirect(env);
       await env.bridge.signOut();
       expect(
         await env.bridge.invoke!("identity", "signIn.cancel", {

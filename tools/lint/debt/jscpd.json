@@ -1974,7 +1974,7 @@
       "jscpd:duplicate": 4
     },
     "packages/sdk-react/src/desktop/bridgeSignIn.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/sdk-react/src/desktop/desktopAdapter.ts": {
       "jscpd:duplicate": 9
@@ -2389,9 +2389,6 @@
     },
     "packages/ui-core/src/browser/sdk/browser/bearer/session.ts": {
       "jscpd:duplicate": 10
-    },
-    "packages/ui-core/src/browser/sdk/browser/bearer/signInSessions.ts": {
-      "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/browser/boot.ts": {
       "jscpd:duplicate": 1
@@ -4785,7 +4782,7 @@
       "jscpd:duplicate": 3
     },
     "packages/worker/test/transcripts/scenarios/identity.ts": {
-      "jscpd:duplicate": 23
+      "jscpd:duplicate": 22
     },
     "packages/worker/test/transcripts/scenarios/keyEntry.ts": {
       "jscpd:duplicate": 16

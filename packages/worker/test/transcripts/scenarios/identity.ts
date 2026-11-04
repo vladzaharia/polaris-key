@@ -260,6 +260,34 @@ export function promptOf(b: Started): JsonValue {
   };
 }
 
+/** The recorded `beginSignIn` step: the start carries the device id (and `hints`), the prompt is recorded. */
+export async function beginSignIn(
+  r: TranscriptRecorder,
+  step: { note?: string; args?: Record<string, JsonValue> } = {},
+  hints: Record<string, JsonValue> = {},
+  tokenHeld = false,
+): Promise<Started> {
+  const body = { deviceId: DEVICE, ...hints };
+  let started!: Started;
+  const begun: Record<string, JsonValue> = {};
+  await r.step(
+    { action: "beginSignIn", ...step },
+    async (s) => {
+      const res = await s.send({
+        method: "POST",
+        path: START,
+        body,
+        expectBody: { json: body, match: "exact" },
+      });
+      expect(res.status).toBe(200);
+      started = (await res.json()) as Started;
+      Object.assign(begun, { prompt: promptOf(started), tokenHeld });
+    },
+    begun,
+  );
+  return started;
+}
+
 /** `POST …/device/poll`: the device code the start answered, and this device's id. The device
  *  code is server-chosen, so it is held literally: the client must echo it. */
 export function pollSpec(deviceCode: string) {
@@ -420,23 +448,7 @@ export const devicecodeDenied: Scenario = {
         },
       });
 
-      let started!: Started;
-      const begun: Record<string, JsonValue> = {};
-      await r.step(
-        { action: "beginSignIn" },
-        async (s) => {
-          const res = await s.send({
-            method: "POST",
-            path: START,
-            body: { deviceId: DEVICE },
-            expectBody: { json: { deviceId: DEVICE }, match: "exact" },
-          });
-          expect(res.status).toBe(200);
-          started = (await res.json()) as Started;
-          Object.assign(begun, { prompt: promptOf(started), tokenHeld: false });
-        },
-        begun,
-      );
+      const started = await beginSignIn(r);
 
       await r.step(
         { action: "pollSignIn", now: T0 + 2, note: "Pending." },
@@ -514,23 +526,7 @@ export const devicecodeFailed: Scenario = {
         },
       });
 
-      let started!: Started;
-      const begun: Record<string, JsonValue> = {};
-      await r.step(
-        { action: "beginSignIn" },
-        async (s) => {
-          const res = await s.send({
-            method: "POST",
-            path: START,
-            body: { deviceId: DEVICE },
-            expectBody: { json: { deviceId: DEVICE }, match: "exact" },
-          });
-          expect(res.status).toBe(200);
-          started = (await res.json()) as Started;
-          Object.assign(begun, { prompt: promptOf(started), tokenHeld: false });
-        },
-        begun,
-      );
+      const started = await beginSignIn(r);
 
       await r.step(
         { action: "pollSignIn", now: T0 + 2, note: "Pending." },
@@ -614,23 +610,7 @@ export const devicecodeMintRetry: Scenario = {
         },
       });
 
-      let started!: Started;
-      const begun: Record<string, JsonValue> = {};
-      await r.step(
-        { action: "beginSignIn" },
-        async (s) => {
-          const res = await s.send({
-            method: "POST",
-            path: START,
-            body: { deviceId: DEVICE },
-            expectBody: { json: { deviceId: DEVICE }, match: "exact" },
-          });
-          expect(res.status).toBe(200);
-          started = (await res.json()) as Started;
-          Object.assign(begun, { prompt: promptOf(started), tokenHeld: false });
-        },
-        begun,
-      );
+      const started = await beginSignIn(r);
 
       await r.step(
         { action: "pollSignIn", now: T0 + 2, note: "Pending." },
@@ -752,23 +732,7 @@ export const devicecodeExpired: Scenario = {
         },
       });
 
-      let started!: Started;
-      const begun: Record<string, JsonValue> = {};
-      await r.step(
-        { action: "beginSignIn" },
-        async (s) => {
-          const res = await s.send({
-            method: "POST",
-            path: START,
-            body: { deviceId: DEVICE },
-            expectBody: { json: { deviceId: DEVICE }, match: "exact" },
-          });
-          expect(res.status).toBe(200);
-          started = (await res.json()) as Started;
-          Object.assign(begun, { prompt: promptOf(started), tokenHeld: false });
-        },
-        begun,
-      );
+      const started = await beginSignIn(r);
 
       await r.step(
         { action: "pollSignIn", now: T0 + 2 },

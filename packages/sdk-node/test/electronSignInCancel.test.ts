@@ -1,75 +1,58 @@
 // The bridge verb that ends a sign-in flow from its window, for the device-code flow and the
 // choice ref a flow can hold. The redirect flow's cases are in electronNativeRedirect.test.ts.
 import { describe, expect, it, vi } from "vitest";
-import type { PolarisKeyClient } from "../src/client.js";
-import type { PolarisBridge } from "@polaris-key/react/desktop";
-import { PolarisEventEmitter } from "../src/core/events.js";
-import { exposePolarisBridge } from "../src/electron/main.js";
-import { createPreloadBridge } from "../src/electron/renderer.js";
-import { allowApp, ipcPair } from "./electronIpc.js";
-
-const GRANT = "sg_WORKER_GRANT_never_leaves_the_host_process_01";
+import { GRANT, signInHost } from "./electronSignInHarness.js";
 
 function setup(wait: () => Promise<unknown>) {
-  const events = new PolarisEventEmitter();
-  const choice = {
-    cancel: vi.fn(async () => ({ kind: "ok" })),
-    complete: vi.fn(async () => ({ kind: "ok" })),
-    licenses: vi.fn(async () => ({ kind: "ok", view: {} })),
+  return signInHost(
+    {
+      cancel: vi.fn(async () => ({ kind: "ok" })),
+      complete: vi.fn(async () => ({ kind: "ok" })),
+      licenses: vi.fn(async () => ({ kind: "ok", view: {} })),
+    },
+    wait,
+  );
+}
+
+const pendingWait = async () => ({ kind: "pending", interval: 2 });
+
+const chooseWait = async () => ({
+  kind: "choose",
+  grant: GRANT,
+  expiresIn: 300,
+  choices: { state: "choose", choices: [] },
+});
+
+const begin = async (h: ReturnType<typeof setup>, options?: object) =>
+  (await h.bridge.beginSignIn(options as never)) as { flowId: string };
+
+/** A flow that polled to `choose`, its choice ref held. */
+async function held(h: ReturnType<typeof setup>) {
+  const b = await begin(h, { licenseChoice: "app" });
+  const r = (await h.bridge.pollSignIn(b.flowId)) as {
+    kind: string;
+    grant: string;
   };
-  const session = {
-    userCode: "ABCD-EFGH",
-    verificationUri: "https://id.example.test/d",
-    verificationUriComplete: "https://id.example.test/d?c=1",
-    expiresIn: 600,
-    expiresAt: Math.floor(Date.now() / 1000) + 600,
-    interval: 2,
-    wait: vi.fn(wait),
-    cancel: vi.fn(),
-  };
-  const identity = {
-    signIn: { start: vi.fn(async () => session) },
-    choice,
-    signOut: vi.fn(async () => {
-      events.emit("identity", { kind: "signedOut", released: false });
-      return { released: false };
-    }),
-  };
-  const client = {
-    identity,
-    events,
-    presentationSource: () => ({ subscribe: () => () => undefined }),
-    presentation: () => null,
-    config: { localValues: () => ({}), entries: () => null },
-    capabilities: () => ({}),
-    getSyncState: () => ({ state: "licensed" }),
-  } as unknown as PolarisKeyClient;
-  const ipc = ipcPair();
-  const handle = exposePolarisBridge(client, {
-    ipcMain: ipc.ipcMain,
-    allowSender: allowApp,
-  });
-  return {
-    bridge: createPreloadBridge(ipc.ipcRenderer),
-    handle,
-    identity,
-    session,
-    choice,
-  };
+  return { b, r };
 }
 
 const end = (h: ReturnType<typeof setup>, flowId: string) =>
   h.bridge.invoke!("identity", "signIn.cancel", { flowId });
 
+/** The flow is gone: its poll is expired, ending it again is a no-op. Closes the host. */
+async function expectGone(h: ReturnType<typeof setup>, flowId: string) {
+  expect(await h.bridge.pollSignIn(flowId)).toEqual({ kind: "expired" });
+  expect(await end(h, flowId)).toEqual({ ended: false });
+  h.handle.close();
+}
+
 describe("ending a device-code flow from its window", () => {
   it("cancels the session; the next poll is expired", async () => {
-    const h = setup(async () => ({ kind: "pending", interval: 2 }));
-    const b = (await h.bridge.beginSignIn()) as { flowId: string };
+    const h = setup(pendingWait);
+    const b = await begin(h);
     expect(await end(h, b.flowId)).toEqual({ ended: true });
     expect(h.session.cancel).toHaveBeenCalledTimes(1);
-    expect(await h.bridge.pollSignIn(b.flowId)).toEqual({ kind: "expired" });
-    expect(await end(h, b.flowId)).toEqual({ ended: false });
-    h.handle.close();
+    await expectGone(h, b.flowId);
   });
 
   it("a poll in flight when the flow is ended answers expired and signs nothing out", async () => {
@@ -86,7 +69,7 @@ describe("ending a device-code flow from its window", () => {
     h.session.cancel.mockImplementation(() => {
       cancelled = true;
     });
-    const b = (await h.bridge.beginSignIn()) as { flowId: string };
+    const b = await begin(h);
     const polling = h.bridge.pollSignIn(b.flowId);
     await new Promise((r) => setTimeout(r, 0));
     expect(await end(h, b.flowId)).toEqual({ ended: true });
@@ -97,28 +80,15 @@ describe("ending a device-code flow from its window", () => {
   });
 
   it("sign-out ends the flow's choice and the flow", async () => {
-    const h = setup(async () => ({ kind: "pending", interval: 2 }));
-    const b = (await h.bridge.beginSignIn()) as { flowId: string };
+    const h = setup(pendingWait);
+    const b = await begin(h);
     await h.bridge.signOut();
-    expect(await h.bridge.pollSignIn(b.flowId)).toEqual({ kind: "expired" });
-    expect(await end(h, b.flowId)).toEqual({ ended: false });
-    h.handle.close();
+    await expectGone(h, b.flowId);
   });
 
   it("releases a held choice ref", async () => {
-    const h = setup(async () => ({
-      kind: "choose",
-      grant: GRANT,
-      expiresIn: 300,
-      choices: { state: "choose", choices: [] },
-    }));
-    const b = (await h.bridge.beginSignIn({
-      licenseChoice: "app",
-    })) as { flowId: string };
-    const r = (await h.bridge.pollSignIn(b.flowId)) as {
-      kind: string;
-      grant: string;
-    };
+    const h = setup(chooseWait);
+    const { b, r } = await held(h);
     if (r.kind !== "choose") throw new Error("expected choose");
     expect(await end(h, b.flowId)).toEqual({ ended: true });
     expect(
@@ -129,16 +99,8 @@ describe("ending a device-code flow from its window", () => {
   });
 
   it("a cancel while the held ref is idle ends the flow and stores nothing", async () => {
-    const h = setup(async () => ({
-      kind: "choose",
-      grant: GRANT,
-      expiresIn: 300,
-      choices: { state: "choose", choices: [] },
-    }));
-    const b = (await h.bridge.beginSignIn({
-      licenseChoice: "app",
-    })) as { flowId: string };
-    await h.bridge.pollSignIn(b.flowId);
+    const h = setup(chooseWait);
+    const { b } = await held(h);
     expect(await end(h, b.flowId)).toEqual({ ended: true });
     expect(h.choice.complete).not.toHaveBeenCalled();
     expect(h.identity.signOut).not.toHaveBeenCalled();
@@ -146,25 +108,14 @@ describe("ending a device-code flow from its window", () => {
   });
 
   it("a cancel while the completion is in flight is too late: the sign-in finishes and stays", async () => {
-    const h = setup(async () => ({
-      kind: "choose",
-      grant: GRANT,
-      expiresIn: 300,
-      choices: { state: "choose", choices: [] },
-    }));
+    const h = setup(chooseWait);
     let release!: () => void;
     const gate = new Promise<void>((r) => (release = r));
     h.choice.complete.mockImplementation(async () => {
       await gate;
       return { kind: "ok" };
     });
-    const b = (await h.bridge.beginSignIn({
-      licenseChoice: "app",
-    })) as { flowId: string };
-    const r = (await h.bridge.pollSignIn(b.flowId)) as {
-      kind: string;
-      grant: string;
-    };
+    const { b, r } = await held(h);
     const completing = h.bridge.invoke!("identity", "choice.complete", {
       grant: r.grant,
       choice: { kind: "keep" },
