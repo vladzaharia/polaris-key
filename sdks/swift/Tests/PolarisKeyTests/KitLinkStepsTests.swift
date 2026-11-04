@@ -52,6 +52,30 @@
             func credentialRevoked() async -> Bool { false }
         }
 
+        /// Holds the link offer's GET until the test lets it go.
+        private actor Gate {
+            private var waiting: [CheckedContinuation<Void, Never>] = []
+            private var open = false
+            func wait() async {
+                if open { return }
+                await withCheckedContinuation { waiting.append($0) }
+            }
+            func release() {
+                open = true
+                for continuation in waiting { continuation.resume() }
+                waiting = []
+            }
+        }
+
+        private struct HeldTransport: PolarisTransport {
+            let inner: StubTransport
+            let gate: Gate
+            func send(_ request: PolarisRequest) async throws -> PolarisResponse {
+                if request.method == "GET", request.url.path == "/djdl/identity/link" { await gate.wait() }
+                return try await inner.send(request)
+            }
+        }
+
         private final class Listeners: @unchecked Sendable {
             private let lock = NSLock()
             private(set) var made: [ReplayListener] = []
@@ -95,14 +119,16 @@
             )
         }
 
-        private func model(browser: FakeBrowser? = nil, store: InMemoryStore? = nil) async throws
+        private func model(
+            browser: FakeBrowser? = nil, store: InMemoryStore? = nil, transport: (any PolarisTransport)? = nil
+        ) async throws
             -> (PolarisKeyGateModel, PolarisKeyClient, Listeners, InMemoryStore)
         {
             let held = store ?? InMemoryStore(deviceId: "DEVICE00000000000000000000000001")
             let c = try await PolarisKeyClient.create(
                 options: PolarisKeyClientOptions(
                     productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
-                    pinnedKeys: [:], trustRefresh: false, store: held, transport: server.transport,
+                    pinnedKeys: [:], trustRefresh: false, store: held, transport: transport ?? server.transport,
                     expectedServices: [.license, .identity], fingerprint: false,
                     connect: ConnectOptions(keys: try LabelKeyPort(label: "kit-link-key-1"))))
             c.identity.redirectAcquisitionSync.set(false)
@@ -273,6 +299,7 @@
             let screen = m.signInScreen
             XCTAssertEqual(screen.state, .linkOffer)
             XCTAssertTrue(screen.shows("signin.linkOffer.stale"))
+            XCTAssertEqual(m.announcement?.key, "signin.linkOffer.stale", "the problem line is announced")
             XCTAssertTrue(screen.shows("signin.again"))
             XCTAssertFalse(screen.shows("signin.linkOffer.primary"))
             XCTAssertTrue(screen.shows("signin.linkOffer.decline"))
@@ -286,16 +313,94 @@
                     : StubServer.Reply(body: #"{"offer":[{"kind":"apple","reach":"developer"}]}"#)
             }
             m.linkSignInAgain()
+            // What is drawn: the hand-off, with the app held back (never the bare app).
+            XCTAssertTrue(m.holdsApp)
+            XCTAssertEqual(m.route, .signIn)
             try await settle { listeners.made.count == 2 && m.request != nil }
+            XCTAssertTrue(m.holdsApp)
+            XCTAssertEqual(m.signInScreen.state, .handoff)
+            XCTAssertEqual(m.handoff.state, .waiting)
             XCTAssertNotNil(listeners.made[1].deliver(callback(49153)))
             try await settle { m.signInScreen.state == .linkOffer }
             XCTAssertEqual(m.signInScreen.state, .linkOffer)
             XCTAssertTrue(m.signInScreen.shows("signin.linkOffer.primary"))
             XCTAssertFalse(m.signInScreen.shows("signin.linkOffer.stale"))
+            XCTAssertEqual(m.announcement?.key, "signin.linkOffer.title")
             await m.acceptLinkOffer()
             XCTAssertEqual(m.signInScreen.state, .linkDone)
             let posts = await server.requests(forPath: "/djdl/identity/link").filter { $0.method == "POST" }
             XCTAssertEqual(posts.count, 2)
+        }
+
+        func testCancelOnTheSecondSignInEndsTheLinkAndShowsTheApp() async throws {
+            await discovery()
+            let (m, c, listeners, store) = try await model()
+            c.identity.linkHold(handle: handle, expiresAt: Int.max)
+            try await signIn(m, listeners)
+            try await settle { m.signInScreen.state == .linkOffer }
+            await failLink(status: 401, code: "step_up_required")
+            await m.acceptLinkOffer()
+            m.linkSignInAgain()
+            try await settle { m.handoff.state == .waiting }
+            XCTAssertTrue(m.holdsApp)
+            m.cancelSignIn()
+            XCTAssertFalse(m.holdsApp)
+            XCTAssertEqual(m.route, .welcome)
+            XCTAssertFalse(c.identity.link.pending)
+            let kept = await store.readRecord(IdentityClient.linkDeclinedRecord)
+            XCTAssertNil(kept)
+        }
+
+        func testTheAppIsNeverDrawnWhileTheOfferIsBeingDecided() async throws {
+            await discovery()
+            let gate = Gate()
+            let held = HeldTransport(inner: server.transport, gate: gate)
+            let (m, _, listeners, _) = try await model(transport: held)
+            m.beginSignIn()
+            try await settle { !listeners.made.isEmpty && m.request != nil }
+            XCTAssertNotNil(listeners.made[0].deliver(callback()))
+            // The token is redeemed and the gate reloaded while the link GET is held.
+            try await settle { m.holdsApp }
+            var samples = 0
+            for _ in 0..<40 {
+                try await Task.sleep(nanoseconds: 10_000_000)
+                do {
+                    samples += 1
+                    XCTAssertTrue(m.holdsApp, "the app must not draw before the offer is decided")
+                    XCTAssertEqual(m.route, .signIn)
+                    XCTAssertNotEqual(m.signInScreen.state, .linkOffer)
+                }
+            }
+            XCTAssertGreaterThan(samples, 0)
+            XCTAssertTrue(m.holdsApp)
+            await gate.release()
+            try await settle { m.signInScreen.state == .linkOffer }
+            XCTAssertEqual(m.signInScreen.state, .linkOffer)
+            XCTAssertTrue(m.holdsApp)
+            XCTAssertEqual(m.route, .signIn)
+        }
+
+        func testNoOfferReleasesTheHoldAndShowsTheApp() async throws {
+            await discovery(offer: #"[{"kind":"google","reach":null}]"#)
+            let (m, _, listeners, _) = try await model()
+            try await signIn(m, listeners)
+            try await settle { !m.holdsApp && m.route == .welcome }
+            XCTAssertFalse(m.holdsApp)
+            XCTAssertEqual(m.route, .welcome)
+        }
+
+        func testLinkShowsProgressAndNoThanksIsOffWhileItRuns() async throws {
+            await discovery()
+            let (m, c, listeners, _) = try await model()
+            c.identity.linkHold(handle: handle, expiresAt: Int.max)
+            try await signIn(m, listeners)
+            try await settle { m.signInScreen.state == .linkOffer }
+            let task = Task { await m.acceptLinkOffer() }
+            // The stub answers at once; what is pinned is that a second press is ignored and the
+            // flag is down afterwards.
+            await task.value
+            XCTAssertFalse(m.linkWorking)
+            XCTAssertTrue(m.holdsApp || !m.linkStepActive)
         }
 
         func testARefusedDeviceLosesLinkAndNoThanksIsTheWayOn() async throws {
@@ -311,6 +416,7 @@
                 let screen = m.signInScreen
                 XCTAssertEqual(screen.state, .linkOffer, code)
                 XCTAssertTrue(screen.shows("signin.linkOffer.failed"), code)
+                XCTAssertEqual(m.announcement?.key, "signin.linkOffer.failed", code)
                 XCTAssertFalse(screen.shows("signin.linkOffer.primary"), code)
                 XCTAssertFalse(screen.shows("signin.again"), code)
                 XCTAssertTrue(screen.shows("signin.linkOffer.decline"), code)
@@ -339,6 +445,22 @@
             XCTAssertTrue(screen.shows("signin.linkOffer.primary"))
             XCTAssertFalse(screen.shows("signin.again"))
             XCTAssertTrue(c.identity.link.pending)
+            XCTAssertEqual(m.announcement?.key, "core.codes.network.message")
+        }
+
+        func testAServerErrorIsNotARefusalAndLinkStays() async throws {
+            await discovery()
+            let (m, c, listeners, _) = try await model()
+            c.identity.linkHold(handle: handle, expiresAt: Int.max)
+            try await signIn(m, listeners)
+            try await settle { m.signInScreen.state == .linkOffer }
+            await failLink(status: 503, code: "unavailable")
+            await m.acceptLinkOffer()
+            let screen = m.signInScreen
+            XCTAssertEqual(screen.state, .linkOffer)
+            XCTAssertTrue(screen.shows("core.codes.network.message"))
+            XCTAssertFalse(screen.shows("signin.linkOffer.failed"))
+            XCTAssertTrue(screen.shows("signin.linkOffer.primary"))
         }
 
         func testAnUnavailableAcceptEndsTheOfferQuietly() async throws {

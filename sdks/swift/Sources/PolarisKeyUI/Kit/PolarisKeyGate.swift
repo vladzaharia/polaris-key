@@ -94,7 +94,7 @@ public struct PolarisKeyGate<Content: View>: View {
         switch gate.state {
         case .licensed, .grace:
             // A sign-in this device just finished holds the app behind the link offer.
-            if model.linkStepActive { linkHold } else { content() }
+            if model.holdsApp { linkHold } else { content() }
         case .booting, .none:
             BootView(screen: gate)
         case .error:
