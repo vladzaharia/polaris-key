@@ -180,6 +180,9 @@ export function LibraryTile({
                 id={`tile-${product.slug}`}
                 className={cn(
                   "min-w-0 flex-1 break-words text-base/6 font-semibold text-fg-strong",
+                  // A tile under 9 rem has little width left beside the menu: 14 px keeps a
+                  // name like "Saltwind" whole at 320 px.
+                  "@max-[9rem]/tile:text-sm/6",
                 )}
               >
                 <a
