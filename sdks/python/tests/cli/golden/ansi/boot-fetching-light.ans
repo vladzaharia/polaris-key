@@ -14,5 +14,25 @@
 ⠹  Downloading content · 38 MB of 91 MB
 ── ascii · 60 ──
 [2m-[0m  Downloading content - 38 MB of 91 MB
+── truecolor · 40 ──
+[2m⠹[0m  Downloading content · 38 MB of 91 MB
+── ansi16 · 40 ──
+[2m⠹[0m  Downloading content · 38 MB of 91 MB
+── no-color · 40 ──
+⠹  Downloading content · 38 MB of 91 MB
+── ascii · 40 ──
+[2m-[0m  Downloading content - 38 MB of 91 MB
+── truecolor · 32 ──
+[2m⠹[0m  Downloading content · 38 MB
+[2m│[0m  of 91 MB
+── ansi16 · 32 ──
+[2m⠹[0m  Downloading content · 38 MB
+[2m│[0m  of 91 MB
+── no-color · 32 ──
+⠹  Downloading content · 38 MB
+│  of 91 MB
+── ascii · 32 ──
+[2m-[0m  Downloading content - 38 MB
+[2m|[0m  of 91 MB
 ── pipe · 80 ──
 Downloading content · 38 MB of 91 MB

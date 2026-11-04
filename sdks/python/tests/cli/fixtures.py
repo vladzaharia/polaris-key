@@ -102,12 +102,29 @@ def _sign_in(headless: bool, *steps: Tuple[str, object]) -> Callable[[Kit], List
     return draw
 
 
-def _gate(status: str, **kw: object) -> Callable[[Kit], List[Line]]:
+def _gate(status: str, floating: Optional[str] = None, **kw: object) -> Callable[[Kit], List[Line]]:
     def draw(k: Kit) -> List[Line]:
         # The product page the real `status` verb links to for a state no command fixes.
         portal = "https://polaris.locker/activate?product=tidewater"
         view = gate_view(status, now=NOW, developer=k.identity.developer, **kw)  # type: ignore[arg-type]
-        return screens.gate(k, view, "status", portal)
+        return screens.gate(k, view, "status", portal, floating)
+
+    return draw
+
+
+_PAGE = "https://polaris.locker/activate?product=tidewater"
+
+
+def _done(kind: str, url: Optional[str] = _PAGE, masked: str = "") -> Callable[[Kit], List[Line]]:
+    """A successful ``activate`` and the one line after it for a license the key alone holds (UK-43 D4)."""
+
+    def draw(k: Kit) -> List[Line]:
+        if masked and k.env.symbols == "ascii":
+            masked_ = masked.replace("\u2022", "*")
+        else:
+            masked_ = masked
+        rows = screens.holder_rows(k, kind, url, masked_)
+        return screens.activate(k, ActivateView("Activate", "done", "ok", key=KEY), "activate", rows, "Pro")
 
     return draw
 
@@ -152,7 +169,21 @@ FIXTURES: Tuple[Fixture, ...] = (
         "AccountAndLicense",
         "key-only",
         "status",
-        _gate("ok", tier="Pro", term="Lifetime", version="2.4.1", channel="stable"),
+        _gate("ok", tier="Pro", grace_until=1_791_201_600 + 14 * DAY, version="2.4.1", channel="stable"),
+    ),
+    Fixture(
+        "AccountAndLicense",
+        "key-only",
+        "status",
+        _gate(
+            "ok",
+            tier="Pro",
+            grace_until=1_791_201_600 + 14 * DAY,
+            version="2.4.1",
+            channel="stable",
+            floating="floating",
+        ),
+        "floating",
     ),
     Fixture("GraceBanner", "days-left", "status", _gate("grace", grace_until=NOW + 3 * DAY, **_ACCOUNT)),
     Fixture("GraceBanner", "last-day", "status", _gate("grace", grace_until=NOW + DAY // 2, **_ACCOUNT)),
@@ -378,7 +409,19 @@ FIXTURES: Tuple[Fixture, ...] = (
         "Activate",
         "done",
         "activate",
-        lambda k: screens.activate(k, ActivateView("Activate", "done", "ok", key=KEY), "activate"),
+        lambda k: screens.activate(k, ActivateView("Activate", "done", "ok", key=KEY), "activate", (), "Pro"),
+    ),
+    # ── ActivateDone: the line after a license the key alone holds (UK-43 D4) ──
+    Fixture("ActivateDone", "ready", "activate", _done("floating"), "floating"),
+    Fixture("ActivateDone", "ready", "activate", _done("floating", None), "floating-no-page"),
+    Fixture("ActivateDone", "ready", "activate", _done("identity-off"), "identity-off"),
+    Fixture("ActivateDone", "waiting", "activate", _done("waiting", None, "a\u2022\u2022\u2022@example.com")),
+    Fixture(
+        "ActivateDone",
+        "waiting",
+        "activate",
+        _done("waiting", None, "m\u2022\u2022\u2022@studio-ingenieria-sonora.example.com"),
+        "long-email",
     ),
     # ── DeviceLimit (browser mode, then Try again) ──
     Fixture("DeviceLimit", "browser-mode", "activate", lambda k: screens.device_limit(k, _LIMIT, "activate")),
@@ -685,7 +728,6 @@ OUT_OF_SCOPE = {
     "UnlockSync": "should tier; no CLI verb for unlocking synced data yet",
     "RecoveryCode": "should tier; no CLI verb for the recovery code yet",
     "RingChange": "should tier; no CLI verb for a linked-device change yet",
-    "ActivateDone": "should tier; the activate verb prints the result and the account hint in its own lines",
     "AddToAccount": "should tier; the terminal adds a key to an account through login, not a form",
     "SaveConflict": "should tier; a terminal has no synced save to choose between, and no CLI verb for it yet",
     "LinkPairing": "should tier; Cloud Connect pairing has no CLI verb yet",

@@ -217,6 +217,28 @@ export function breakPieces(
 }
 
 /**
+ * The pieces a word wider than a line (a masked address) is broken into: after `@` and `.`, as many
+ * to a piece as fit, and a part still too wide in runs of `width` cells. Joined, the text unchanged.
+ */
+export function wordPieces(text: string, width: number): string[] {
+  const w = Math.max(1, width);
+  const out: string[] = [];
+  let cur = "";
+  for (const atom of splitAt(text, /[@.]/)) {
+    if (cellWidth(cur + atom) <= w) {
+      cur += atom;
+      continue;
+    }
+    if (cur) out.push(cur);
+    cur = "";
+    if (cellWidth(atom) > w) out.push(...hardSplit(atom, w));
+    else cur = atom;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+/**
  * Wrap styled spans to `width` cells. Lines break at spaces (and between CJK characters); a `keep`
  * span that does not fit on a line of its own is cut in the middle; a URL or a code wraps at its
  * own break points and is never cut; a last line of one lone word takes the word before it along
@@ -371,6 +393,23 @@ function wrapPieces(spans: Line, width: number, ellipsis: string): Span[][] {
         if (w > 0 && w + pw > width) {
           newLine();
           if (/^\s+$/.test(p.text)) continue;
+        }
+        if (pw > width && !p.keep && !/\s/.test(p.text.trimEnd())) {
+          // A word wider than the line breaks at `@` or `.` and carries on under the rail.
+          const body = p.text.trimEnd();
+          const parts = wordPieces(body, width);
+          parts.forEach((text, i) => {
+            const last = i === parts.length - 1;
+            const piece = {
+              ...p,
+              text: last ? text + p.text.slice(body.length) : text,
+            };
+            const tw = cellWidth(text);
+            if (w > 0 && w + tw > width) newLine();
+            cur().push(piece);
+            w += cellWidth(piece.text);
+          });
+          continue;
         }
         if (pw > width && p.keep)
           p = { ...p, text: truncateMiddle(p.text, width, ellipsis) };

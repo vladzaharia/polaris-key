@@ -1,0 +1,113 @@
+── truecolor · 80 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m└[0m  Your license is active on this device.
+── ansi16 · 80 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m└[0m  Your license is active on this device.
+── no-color · 80 ──
+┌  [7m Tidewater Studio [0m · activate
+│
+◇  License key · pkey_tidewater_••••••
+✓  [1mActivated[0m · Pro license
+└  Your license is active on this device.
+── ascii · 80 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
+[2m|[0m
+[32mo[0m  License key[2m - pkey_tidewater_******[0m
+[32m+[0m  [1mActivated[0m[2m - Pro license[0m
+[2m`[0m  Your license is active on this device.
+── truecolor · 60 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m└[0m  Your license is active on this device.
+── ansi16 · 60 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m└[0m  Your license is active on this device.
+── no-color · 60 ──
+┌  [7m Tidewater Studio [0m · activate
+│
+◇  License key · pkey_tidewater_••••••
+✓  [1mActivated[0m · Pro license
+└  Your license is active on this device.
+── ascii · 60 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
+[2m|[0m
+[32mo[0m  License key[2m - pkey_tidewater_******[0m
+[32m+[0m  [1mActivated[0m[2m - Pro license[0m
+[2m`[0m  Your license is active on this device.
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m│[0m  Your license is active on
+[2m└[0m  this device.
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m│[0m  Your license is active on
+[2m└[0m  this device.
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · activate
+│
+◇  License key · pkey_tidewater_••••••
+✓  [1mActivated[0m · Pro license
+│  Your license is active on
+└  this device.
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
+[2m|[0m
+[32mo[0m  License key[2m - pkey_tidewater_******[0m
+[32m+[0m  [1mActivated[0m[2m - Pro license[0m
+[2m|[0m  Your license is active on
+[2m`[0m  this device.
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key
+[2m│[0m  [2mpkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m│[0m  Your license is active on
+[2m└[0m  this device.
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key
+[2m│[0m  [2mpkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m│[0m  Your license is active on
+[2m└[0m  this device.
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · activate
+│
+◇  License key
+│  pkey_tidewater_••••••
+✓  [1mActivated[0m · Pro license
+│  Your license is active on
+└  this device.
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
+[2m|[0m
+[32mo[0m  License key
+[2m|[0m  [2m- pkey_tidewater_******[0m
+[32m+[0m  [1mActivated[0m[2m - Pro license[0m
+[2m|[0m  Your license is active on
+[2m`[0m  this device.
+── pipe · 80 ──
+Tidewater Studio · activate
+License key · pkey_tidewater_••••••
+Activated · Pro license
+Your license is active on this device.

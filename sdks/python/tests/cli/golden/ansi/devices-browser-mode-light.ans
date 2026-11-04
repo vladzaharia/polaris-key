@@ -50,6 +50,70 @@
 [2m|[0m  Devices can't be managed from here. Manage them in
 [2m|[0m  your account.
 [2m`[0m  [2mManage your devices in your browser.[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mYour devices[0m
+[2m│[0m  Devices can't be managed from here.
+[2m│[0m  Manage them in your account.
+[2m└[0m  [2mManage your devices in your browser.[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices[0m
+[2m│[0m
+[36m◆[0m  [1mYour devices[0m
+[2m│[0m  Devices can't be managed from here.
+[2m│[0m  Manage them in your account.
+[2m└[0m  [2mManage your devices in your browser.[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · devices
+│
+◆  [1mYour devices[0m
+│  Devices can't be managed from here.
+│  Manage them in your account.
+└  Manage your devices in your browser.
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices[0m
+[2m|[0m
+[36m*[0m  [1mYour devices[0m
+[2m|[0m  Devices can't be managed from here.
+[2m|[0m  Manage them in your account.
+[2m`[0m  [2mManage your devices in your browser.[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mYour devices[0m
+[2m│[0m  Devices can't be managed from
+[2m│[0m  here. Manage them in
+[2m│[0m  your account.
+[2m│[0m  [2mManage your devices in[0m
+[2m└[0m  [2myour browser.[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices[0m
+[2m│[0m
+[36m◆[0m  [1mYour devices[0m
+[2m│[0m  Devices can't be managed from
+[2m│[0m  here. Manage them in
+[2m│[0m  your account.
+[2m│[0m  [2mManage your devices in[0m
+[2m└[0m  [2myour browser.[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · devices
+│
+◆  [1mYour devices[0m
+│  Devices can't be managed from
+│  here. Manage them in
+│  your account.
+│  Manage your devices in
+└  your browser.
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices[0m
+[2m|[0m
+[36m*[0m  [1mYour devices[0m
+[2m|[0m  Devices can't be managed from
+[2m|[0m  here. Manage them in
+[2m|[0m  your account.
+[2m|[0m  [2mManage your devices in[0m
+[2m`[0m  [2myour browser.[0m
 ── pipe · 80 ──
 Tidewater Studio · devices
 Your devices

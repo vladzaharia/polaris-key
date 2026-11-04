@@ -41,6 +41,8 @@ BORROWS: Dict[str, Dict[str, str]] = {
         "welcome.signIn": "the fix commands of needs-activation are Welcome's two paths",
     },
     "AccountAndLicense": {
+        "activate.recommend.title": "a license held by the key alone: where it can be kept, as after activate",
+        "activate.recommend.portal": "the same with Identity off",
         "part.status.ok": "the tier row opens with the status pill",
         "cli.status.license": "the status table's row labels, as the Node kit's",
         "cli.status.devices": "the status table's row labels, as the Node kit's",
@@ -104,7 +106,13 @@ BORROWS: Dict[str, Dict[str, str]] = {
         "signin.cli.ifNotOpened": "SIGN-IN.md §5.2 terminal hand-off copy",
         "signin.cli.opening": "SIGN-IN.md §5.2 terminal hand-off copy",
     },
+    "ActivateDone": {
+        "account.tier": "the success row names the tier, as the Node kit's",
+        "welcome.signIn": "waiting: the login command's label",
+        "activate.recommend.title": "floating: the one line after the success",
+    },
     "Activate": {
+        "account.tier": "the success row names the tier, as the Node kit's",
         "cli.keys.activate": "the key prompt's hints, in the Node kit's words",
         "cli.activate.otherProduct": "a key for another product is a warning",
         "cli.nothingChanged": "cancelling the prompt changes nothing",
@@ -229,7 +237,7 @@ def test_every_must_component_state_is_drawn_or_documented() -> None:
 
 @pytest.mark.parametrize("fx", FIXTURES, ids=[f.name for f in FIXTURES])
 def test_every_line_fits_80_and_60_columns(fx) -> None:
-    for label, e in variants("dark"):
+    for label, e in variants("dark", (80, 60)):
         lines, _ = render(fx, e)
         for line in lines:
             assert cell_len(line.text.rstrip()) <= e.width, f"{fx.name} [{label}] {line.text!r} is wider than {e.width}"

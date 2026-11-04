@@ -56,6 +56,79 @@ const DAY = 86_400;
 const now = NOW / 1000;
 const COMMON = ["Tidewater Studio", "tidewater"];
 
+const holderInfo = (email: string | null) => ({
+  licenseId: "l",
+  tier: "pro",
+  tierLabel: "Pro",
+  deviceLimit: 3,
+  profile: email ? { name: "", email } : null,
+  entitledChannels: [],
+  status: "ok",
+});
+const signedOut = { current: async () => null };
+const IDENTITY_OFF = {
+  license: { enabled: true },
+  config: { enabled: true },
+  release: { enabled: true },
+  distribution: { enabled: true },
+  update: { enabled: true },
+  identity: { enabled: false },
+  sync: { enabled: false },
+};
+/** `activate` on a piped key, signed out, with the license's holder as given. */
+function holderScenarios(): Scenario[] {
+  const activate = (
+    name: string,
+    email: string | null,
+    over: Parameters<typeof stubClient>[0] = {},
+    extra: string[] = [],
+  ): Scenario => ({
+    name,
+    narrow: true,
+    opts: { piped: `${KEY}\n` },
+    data: [
+      ...COMMON,
+      "activate",
+      "pkey_tidewater_",
+      "Pro",
+      "polaris.locker/activate?product=tidewater",
+      ...extra,
+    ],
+    run: (h) =>
+      activateFlow(
+        h.ctx,
+        stubClient({
+          licenseInfo: holderInfo(email),
+          identity: signedOut,
+          ...over,
+        }),
+      ),
+  });
+  return [
+    activate("activate-done-ready-floating", null),
+    activate("activate-done-ready-floating-no-page", null, {
+      portal: { enabled: false },
+    }),
+    activate("activate-done-waiting", "ada@example.com", {}, [
+      "a\u2022\u2022\u2022@example.com",
+      "tidewater login",
+    ]),
+    activate("activate-done-ready-identity-off", null, {
+      capabilities: IDENTITY_OFF,
+    }),
+    // A masked address wider than a narrow line breaks at "@" or "." under the rail.
+    activate(
+      "activate-done-waiting-long-email",
+      "maria.fernanda.de.la.cruz@studio-ingenieria-sonora.example.com",
+      {},
+      [
+        "m\u2022\u2022\u2022@studio-ingenieria-sonora.example.com",
+        "tidewater login",
+      ],
+    ),
+  ];
+}
+
 const statusScenario = (
   name: string,
   status: string,
@@ -367,6 +440,8 @@ export const SCENARIOS: Scenario[] = [
     data: [...COMMON, "activate", "pkey_tidewater_", "Pro"],
     run: (h) => activateFlow(h.ctx, stubClient()),
   },
+  // UK-43.19 (D4): a license held by the key alone is offered the account in one line.
+  ...holderScenarios(),
   {
     name: "activate-rejected-key-entries",
     opts: { piped: `${KEY}\n` },
@@ -730,19 +805,22 @@ export const SCENARIOS: Scenario[] = [
   statusScenario("account-and-license-signed-in", "ok", {
     graceUntil: now + 14 * DAY,
   }),
+  // A license sent to an address that no account holds yet: "Activated with a license key".
   statusScenario("account-and-license-key-only", "ok", {
     identity: null,
     graceUntil: now + 14 * DAY,
-    info: {
-      licenseId: "l",
-      tier: "pro",
-      tierLabel: "Pro",
-      deviceLimit: 3,
-      profile: null,
-      entitledChannels: [],
-      status: "ok",
-    },
+    info: holderInfo("ada@example.com"),
   }),
+  // UK-43.19: a license held by the key alone says so, and the page follows; narrow too.
+  {
+    ...statusScenario("account-and-license-key-only-floating", "ok", {
+      identity: null,
+      graceUntil: now + 14 * DAY,
+      link: true,
+      info: holderInfo(null),
+    }),
+    narrow: true,
+  },
   // A signed-in account whose profile has an empty name and email (a provider that shared
   // neither): the row says it is signed in; it never ends in a dangling separator.
   statusScenario("account-and-license-signed-in-empty-profile", "ok", {

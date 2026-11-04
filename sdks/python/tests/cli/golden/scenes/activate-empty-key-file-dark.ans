@@ -80,7 +80,8 @@ tidewater activate --key-file <path>
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
 [2m│[0m
 [33m▲[0m  [1mThe key file is empty[0m
-[2m│[0m  [2m~/.config/tidewater/license.key[0m
+[2m│[0m  [2m~/.config/tidewater/license.[0m
+[2m│[0m  [2mkey[0m
 [2m│[0m
 [2m│[0m  [1mtidewater activate[0m
 [2m└[0m      [1m--key-file <path>[0m
@@ -88,7 +89,8 @@ tidewater activate --key-file <path>
 ┌  [7m Tidewater Studio [0m · activate
 │
 ▲  [1mThe key file is empty[0m
-│  ~/.config/tidewater/license.key
+│  ~/.config/tidewater/license.
+│  key
 │
 │  [1mtidewater activate[0m
 └      [1m--key-file <path>[0m

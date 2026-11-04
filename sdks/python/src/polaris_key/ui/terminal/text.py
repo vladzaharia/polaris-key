@@ -219,6 +219,29 @@ def break_pieces(text: str, kind: str, width: int) -> List[str]:
     return out
 
 
+def word_pieces(text: str, width: int) -> List[str]:
+    """The pieces a word wider than a line (a masked address) is broken into: after ``@`` and
+    ``.``, as many to a piece as fit, and a part still too wide in runs of ``width`` cells.
+    Joined, the text unchanged."""
+    w = max(1, width)
+    out: List[str] = []
+    cur = ""
+    for atom in _split_at(text, "@."):
+        if cell_len(cur + atom) <= w:
+            cur += atom
+            continue
+        if cur:
+            out.append(cur)
+        cur = ""
+        if cell_len(atom) > w:
+            out += _hard_split(atom, w)
+        else:
+            cur = atom
+    if cur:
+        out.append(cur)
+    return out
+
+
 def _fragments(spans: Sequence[Span]) -> Iterable[Tuple[str, Span]]:
     for span in spans:
         if span.nobreak:
@@ -376,6 +399,23 @@ def wrap(spans: Sequence[Span], width: int, *, ellipsis: str = "…") -> List[Li
                     s0 = w[0]
                     w = [Span(middle(s0.text, width, ellipsis=ellipsis), s0.roles, s0.link, s0.src, True)]
                     n = _word_len(w, trailing=False)
+                first = w[0]
+                if n > width and not first.nobreak and not first.unit and first.src not in BREAKS:
+                    # A word wider than the line breaks at "@" or "." and carries on under the rail.
+                    body = first.text.rstrip(" ")
+                    parts = word_pieces(body, width)
+                    for idx, text in enumerate(parts):
+                        chunk = [Span(text, first.roles, first.link, first.src)]
+                        if idx == len(parts) - 1:
+                            if first.text != body:
+                                chunk.append(Span(first.text[len(body) :], first.roles, first.link, first.src))
+                            chunk += list(w[1:])
+                        if lines[-1] and used + cell_len(text) > width:
+                            new_line()
+                            used = 0
+                        lines[-1].append(chunk)
+                        used += _word_len(chunk)
+                    continue
                 if lines[-1] and used + n > width:
                     new_line()
                     used = 0

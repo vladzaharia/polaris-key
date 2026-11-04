@@ -62,6 +62,86 @@
 [2m|[0m
 [2m|[0m  [1mtidewater update apply[0m   [2mInstall[0m
 [2m`[0m  [1mtidewater changelog[0m      [2mWhat's new[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[38;2;114;202;190m◆[0m  [1m2.5 is available · 61 MB[0m
+[2m│[0m  [2mYou have 2.4.1[0m
+[2m│[0m
+[2m│[0m  [1mtidewater update apply[0m
+[2m│[0m    [2mInstall[0m
+[2m│[0m  [1mtidewater changelog[0m
+[2m└[0m    [2mWhat's new[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[36m◆[0m  [1m2.5 is available · 61 MB[0m
+[2m│[0m  [2mYou have 2.4.1[0m
+[2m│[0m
+[2m│[0m  [1mtidewater update apply[0m
+[2m│[0m    [2mInstall[0m
+[2m│[0m  [1mtidewater changelog[0m
+[2m└[0m    [2mWhat's new[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · update
+│
+◆  [1m2.5 is available · 61 MB[0m
+│  You have 2.4.1
+│
+│  [1mtidewater update apply[0m
+│    Install
+│  [1mtidewater changelog[0m
+└    What's new
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
+[2m|[0m
+[36m*[0m  [1m2.5 is available - 61 MB[0m
+[2m|[0m  [2mYou have 2.4.1[0m
+[2m|[0m
+[2m|[0m  [1mtidewater update apply[0m
+[2m|[0m    [2mInstall[0m
+[2m|[0m  [1mtidewater changelog[0m
+[2m`[0m    [2mWhat's new[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[38;2;114;202;190m◆[0m  [1m2.5 is available · 61 MB[0m
+[2m│[0m  [2mYou have 2.4.1[0m
+[2m│[0m
+[2m│[0m  [1mtidewater update apply[0m
+[2m│[0m    [2mInstall[0m
+[2m│[0m  [1mtidewater changelog[0m
+[2m└[0m    [2mWhat's new[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[36m◆[0m  [1m2.5 is available · 61 MB[0m
+[2m│[0m  [2mYou have 2.4.1[0m
+[2m│[0m
+[2m│[0m  [1mtidewater update apply[0m
+[2m│[0m    [2mInstall[0m
+[2m│[0m  [1mtidewater changelog[0m
+[2m└[0m    [2mWhat's new[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · update
+│
+◆  [1m2.5 is available · 61 MB[0m
+│  You have 2.4.1
+│
+│  [1mtidewater update apply[0m
+│    Install
+│  [1mtidewater changelog[0m
+└    What's new
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
+[2m|[0m
+[36m*[0m  [1m2.5 is available - 61 MB[0m
+[2m|[0m  [2mYou have 2.4.1[0m
+[2m|[0m
+[2m|[0m  [1mtidewater update apply[0m
+[2m|[0m    [2mInstall[0m
+[2m|[0m  [1mtidewater changelog[0m
+[2m`[0m    [2mWhat's new[0m
 ── pipe · 80 ──
 Tidewater Studio · update
 2.5 is available · 61 MB

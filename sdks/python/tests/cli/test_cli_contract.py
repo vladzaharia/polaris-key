@@ -318,6 +318,25 @@ class _StatusClient:
         return self._status in ("ok", "grace", "not-applicable")
 
 
+class _HolderClient(_ActivateClient):
+    """A key-activated device whose license no account holds (UK-43 D4): ``email`` is the address the
+    license was sent to (waiting), none when the key alone holds it (floating)."""
+
+    def __init__(self, email: Optional[str] = None, portal: Any = None, identity: bool = True) -> None:
+        super().__init__()
+        info = SimpleNamespace(tier="pro", tierLabel="Pro", profile=SimpleNamespace(email=email) if email else None)
+        self.license.license_info = lambda: info
+        self.identity = SimpleNamespace(current=lambda: None)
+        self.portal = lambda: portal
+        self.capabilities = lambda: {"identity": {"enabled": identity}}
+        who = None
+        self.license.get_profile = lambda: who
+        self.core = SimpleNamespace(version="2.4.1", channel="stable")
+
+    def is_licensed(self) -> bool:
+        return True
+
+
 class _Identity:
     """``sign_in.start()`` answers a session that waits for Esc (the cancelled outcome)."""
 
@@ -372,6 +391,12 @@ SITUATIONS: Dict[str, Callable[[Terminal], Any]] = {
     "status-channel-not-entitled-no-page": lambda t: flows.status(
         _StatusClient("channel-not-entitled", {"enabled": False}), t
     ),
+    # A license held by the key alone (UK-43 D4): the line after the success, and for `status` the row.
+    "activate-floating": lambda t: flows.activate(_HolderClient(), t, KEY),
+    "activate-floating-no-page": lambda t: flows.activate(_HolderClient(portal={"enabled": False}), t, KEY),
+    "activate-waiting": lambda t: flows.activate(_HolderClient("ada@example.com"), t, KEY),
+    "activate-identity-off": lambda t: flows.activate(_HolderClient(identity=False), t, KEY),
+    "status-floating": lambda t: flows.status(_HolderClient(), t),
     "network": lambda t: flows.devices(SimpleNamespace(product="tidewater", list_devices=_offline), t, ["list"]),
     "key-refused": lambda t: flows.activate(_ActivateClient(ActivationUnauthorized()), t, KEY),
     "device-limit": lambda t: flows.activate(
@@ -485,6 +510,13 @@ def test_outcomes(row: Dict[str, Any]) -> None:
     # The portal is off (core.portal): no link, "Contact {developer}" instead.
     if e.get("link") == "contact":
         assert "Contact " in shown and "/activate?product=" not in "".join(shown.split())
+    # Never the key in a terminal, and nothing extra under --json (UK-43 D4).
+    assert "#key=" not in stdout + t.err.getvalue()
+    if situation == "activate-floating-no-page" and not i["json"]:
+        assert "/activate?product=" not in "".join(shown.split())
+        assert C("activate.recommend.title", product="Tidewater Studio") not in shown
+    if situation == "activate-waiting" and not i["json"]:
+        assert "a\u2022\u2022\u2022@example.com" in shown
 
 
 def test_no_osc11_query_under_no_color() -> None:

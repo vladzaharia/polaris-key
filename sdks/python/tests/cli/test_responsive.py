@@ -709,6 +709,8 @@ _PARITY_NOW = 1_791_201_600
 def _status_client(status: str, *, tier: Optional[str] = "Pro") -> Any:
     info = SimpleNamespace(tier="pro", tierLabel=tier, profile=None)
     return SimpleNamespace(
+        product=PRODUCT,
+        capabilities=lambda: {"identity": {"enabled": True}},
         status=lambda: SimpleNamespace(status=status, graceUntil=_PARITY_NOW + 14 * 86_400, allowedRange=None),
         license=SimpleNamespace(
             get_profile=lambda: DocProfile(
@@ -735,9 +737,22 @@ def test_a_key_only_status_reads_the_same_in_both_kits(monkeypatch: pytest.Monke
     term = Term(80, 24)
     t = terminal(term, _values("short"), verb="status", keys=[])
     client = _status_client("ok")
-    client.license.get_profile = lambda: None  # activated with a key: no account, no holder
+    client.license.get_profile = lambda: None  # activated with a key: no account
+    client.license.license_info = lambda: SimpleNamespace(
+        tier="pro", tierLabel="Pro", profile=SimpleNamespace(email="ada@example.com")
+    )  # the license was sent to an address that no account holds yet
     t.finish(flows.status(client, t))
     assert _drawn(term) == PARITY["status-key-only"]
+
+
+def test_a_floating_status_reads_the_same_in_both_kits(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(flows, "_now", lambda: _PARITY_NOW)
+    term = Term(80, 24)
+    t = terminal(term, _values("short"), verb="status", keys=[])
+    client = _status_client("ok")
+    client.license.get_profile = lambda: None  # held by the key alone: no account, no address
+    t.finish(flows.status(client, t))
+    assert _drawn(term) == PARITY["status-floating"]
 
 
 def test_a_key_activated_holder_email_is_not_a_signed_in_account(monkeypatch: pytest.MonkeyPatch) -> None:

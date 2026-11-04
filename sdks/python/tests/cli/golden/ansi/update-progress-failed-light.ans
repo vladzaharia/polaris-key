@@ -66,6 +66,98 @@
 [2m|[0m  try again.
 [2m|[0m
 [2m`[0m  [1mtidewater packs ensure studio-presets[0m   [2mTry again[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · packs[0m
+[2m│[0m
+[31m✗[0m  [1mstudio-presets[0m
+[2m│[0m  Couldn't download
+[2m│[0m  A download was cut short. Check your
+[2m│[0m  connection and try again.
+[2m│[0m
+[2m│[0m  [1mtidewater packs ensure[0m
+[2m│[0m      [1mstudio-presets[0m
+[2m└[0m    [2mTry again[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · packs[0m
+[2m│[0m
+[31m✗[0m  [1mstudio-presets[0m
+[2m│[0m  Couldn't download
+[2m│[0m  A download was cut short. Check your
+[2m│[0m  connection and try again.
+[2m│[0m
+[2m│[0m  [1mtidewater packs ensure[0m
+[2m│[0m      [1mstudio-presets[0m
+[2m└[0m    [2mTry again[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · packs
+│
+✗  [1mstudio-presets[0m
+│  Couldn't download
+│  A download was cut short. Check your
+│  connection and try again.
+│
+│  [1mtidewater packs ensure[0m
+│      [1mstudio-presets[0m
+└    Try again
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - packs[0m
+[2m|[0m
+[31mx[0m  [1mstudio-presets[0m
+[2m|[0m  Couldn't download
+[2m|[0m  A download was cut short. Check your
+[2m|[0m  connection and try again.
+[2m|[0m
+[2m|[0m  [1mtidewater packs ensure[0m
+[2m|[0m      [1mstudio-presets[0m
+[2m`[0m    [2mTry again[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · packs[0m
+[2m│[0m
+[31m✗[0m  [1mstudio-presets[0m
+[2m│[0m  Couldn't download
+[2m│[0m  A download was cut short.
+[2m│[0m  Check your connection and
+[2m│[0m  try again.
+[2m│[0m
+[2m│[0m  [1mtidewater packs ensure[0m
+[2m│[0m      [1mstudio-presets[0m
+[2m└[0m    [2mTry again[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · packs[0m
+[2m│[0m
+[31m✗[0m  [1mstudio-presets[0m
+[2m│[0m  Couldn't download
+[2m│[0m  A download was cut short.
+[2m│[0m  Check your connection and
+[2m│[0m  try again.
+[2m│[0m
+[2m│[0m  [1mtidewater packs ensure[0m
+[2m│[0m      [1mstudio-presets[0m
+[2m└[0m    [2mTry again[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · packs
+│
+✗  [1mstudio-presets[0m
+│  Couldn't download
+│  A download was cut short.
+│  Check your connection and
+│  try again.
+│
+│  [1mtidewater packs ensure[0m
+│      [1mstudio-presets[0m
+└    Try again
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - packs[0m
+[2m|[0m
+[31mx[0m  [1mstudio-presets[0m
+[2m|[0m  Couldn't download
+[2m|[0m  A download was cut short.
+[2m|[0m  Check your connection and
+[2m|[0m  try again.
+[2m|[0m
+[2m|[0m  [1mtidewater packs ensure[0m
+[2m|[0m      [1mstudio-presets[0m
+[2m`[0m    [2mTry again[0m
 ── pipe · 80 ──
 Tidewater Studio · packs
 studio-presets

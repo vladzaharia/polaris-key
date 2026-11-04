@@ -131,7 +131,7 @@ def _unit(span: Span) -> Span:
     return replace(span, unit=True)
 
 
-def _account_rows(k: Kit, v: GateView) -> Lines:
+def _account_rows(k: Kit, v: GateView, floating: bool = False) -> Lines:
     """The board's table: one ✓ row per fact, the datum in bold and its detail in muted. Each name,
     email and date is a keep-unit, so a narrow line breaks between them, never inside."""
     seat = k.sep()
@@ -139,7 +139,7 @@ def _account_rows(k: Kit, v: GateView) -> Lines:
     if v.term:
         license_value += [seat, k.u(v.term, "term", "muted")]
     holder = v.email or v.holder
-    license_value += [seat, k.u(holder, "email", "muted")] if v.signed_in and holder else [seat, _unit(k.t("account.keyOnly", "muted"))]
+    license_value += [seat, k.u(holder, "email", "muted")] if v.signed_in and holder else [seat, _unit(k.t("account.notInAccount" if floating else "account.keyOnly", "muted"))]
     rows: List[Tuple[str, Span, Sequence[Span]]] = [("ok", k.t("cli.status.license"), license_value)]
     if v.seats_used is not None and v.seats_limit:
         rows.append(("ok", k.t("cli.status.devices"), [_unit(k.t("cli.status.seatsOf", "strong", used=v.seats_used, limit=v.seats_limit))]))
@@ -203,14 +203,20 @@ def contact_row(k: Kit) -> Lines:
     return k.body([k.t("status.contact", developer=k.identity.developer or k.product)])
 
 
-def gate(k: Kit, v: GateView, verb: str = "status", portal: Optional[str] = None) -> Lines:
+def gate(
+    k: Kit, v: GateView, verb: str = "status", portal: Optional[str] = None, floating: Optional[str] = None
+) -> Lines:
     """The ``status`` verb: the account summary when licensed, the grace line offline, the
     blocked state with its fix as a command, or the activation prompt. ``portal`` is the product
-    page, the way out of a state no command fixes (a version above the range, a missing channel)."""
+    page, the way out of a state no command fixes (a version above the range, a missing channel).
+    ``floating``: the license is held by the key alone (UK-43 D4), ``"floating"`` or, with Identity
+    off, ``"identity-off"``; the row says so and :func:`holder_rows` follows, never with ``#key=``."""
     body: Lines = []
     end: List[Span] = []
     if v.component == "AccountAndLicense":
-        body += _account_rows(k, v)
+        body += _account_rows(k, v, bool(floating))
+        if floating:
+            body += holder_rows(k, floating, portal)
     elif v.component == "GraceBanner":
         if v.state == "last-day":
             body += k.step("warn", [k.t("grace.lastDay", "strong", product=k.inline_product)])
@@ -348,17 +354,41 @@ def _key_done(k: Kit, key: Optional[str]) -> Lines:
     return k.argv_key_warning() + k.step("done", [k.t("part.keyField.label"), k.sep(), k.key(key)])
 
 
-def activate(k: Kit, v: ActivateView, verb: str = "activate") -> Lines:
-    """An activation's outcome: ``done``, or ``rejected`` with the result's copy."""
+def holder_rows(k: Kit, kind: str, url: Optional[str] = None, masked: str = "") -> Lines:
+    """The one line after a successful ``activate`` (UK-43 D4) for a license the key alone holds.
+    ``floating``: the recommendation title and the page; ``identity-off``: the portal reason and
+    the page; ``waiting``: the masked address and the ``login`` command row. Never ``#key=``."""
+    if kind == "waiting":
+        waiting = k.body([k.t("activate.waiting", maskedEmail=masked)])
+        return _gap(k) + waiting + _gap(k) + _fixes(k, [("login", "welcome.signIn")])
+    if not url:
+        return []
+    if kind == "floating":
+        title = k.t("activate.recommend.title", product=k.inline_product)
+    else:
+        title = k.t("activate.recommend.portal")
+    return _gap(k) + k.body([title]) + link_row(k, url)
+
+
+def activate(
+    k: Kit, v: ActivateView, verb: str = "activate", holder: Sequence[Line] = (), tier: Optional[str] = None
+) -> Lines:
+    """An activation's outcome: ``done``, or ``rejected`` with the result's copy. ``tier`` is the
+    license's tier on a success (``Activated · Pro license``); ``holder``: the rows after it
+    (:func:`holder_rows`)."""
     if v.component == "DeviceLimit":
         return device_limit(k, v, verb)
     body: Lines = _key_done(k, v.key)
-    if body:
+    if body and v.state != "done":
         body += _gap(k)
     end: List[Span] = []
     if v.state == "done":
-        body += k.step("ok", [k.t("core.activation.ok.title", "strong")])
+        title = [k.t("core.activation.ok.title", "strong")]
+        if tier:
+            title += [k.sep(), k.t("account.tier", "muted", tier=tier)]
+        body += k.step("ok", title)
         body += k.body([k.t("core.activation.ok.message")])
+        body += list(holder)
     elif v.kind == "key-entry-limit":
         body += k.step("warn", [k.t("core.activation.key-entry-limit.title", "strong")])
         body += k.body([k.t("core.activation.key-entry-limit.message")])

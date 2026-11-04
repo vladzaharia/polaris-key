@@ -121,7 +121,7 @@ def _variants(theme: str) -> List[Tuple[str, Any]]:
     from .golden_support import env
 
     narrow = [(f"{name} · {w}", env(color, sym, w, theme)) for w in (40, 32) for name, color, sym in (("truecolor", "truecolor", "unicode"), ("no-color", "none", "unicode"))]
-    return variants(theme) + narrow
+    return variants(theme, (80, 60)) + narrow
 
 
 def _document(draw: Callable[[Any], List[Line]], theme: str) -> str:
