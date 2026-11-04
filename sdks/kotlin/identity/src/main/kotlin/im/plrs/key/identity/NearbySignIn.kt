@@ -58,12 +58,14 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -278,9 +280,11 @@ public class NearbySignInSession internal constructor(
     /**
      * The one end path for an unconfirmed sign-in; idempotent and serialized. The held wrap is zeroed and dropped, the
      * LAN request declines and closes, the Worker is asked to sign out as a best effort, and whatever it answered the
-     * token, its mark and the stored identity go. It acts only on this session's own token.
+     * token, its mark and the stored identity go. It acts only on this session's own token. It runs to the end even
+     * when the caller is cancelled (a cancelled wait that finds the session ended calls it): the token is taken out
+     * of the session first, so an abandoned discard would leave it stored with no owner.
      */
-    private suspend fun discard() = discardLock.withLock {
+    private suspend fun discard() = withContext(NonCancellable) { discardLock.withLock {
         synchronized(lock) {
             held?.fill(0)
             held = null
@@ -321,7 +325,7 @@ public class NearbySignInSession internal constructor(
             signedIn = false
             shown = null
         }
-    }
+    } }
 
     // ── The poll ─────────────────────────────────────────────────────────────────────────────
 
