@@ -30,6 +30,9 @@ static func words(t: Dictionary, copy: PKeyUiCopy, _progress: Dictionary = {}) -
 	match String(t.get("kind", "")):
 		"update":
 			return {"title": copy.text("toast_update_available", String(t.get("version", ""))), "consequence": String(t.get("consequence", "")), "data": false}
+		"key-entries":
+			var left := int(t.get("left", -1))
+			return {"title": PKeyUiView.catalog().format("signin.key.entriesLeftShort", {"left": left}), "consequence": "", "data": true}
 		"copied":
 			return {"title": copy.text("copied"), "consequence": "", "data": false}
 		"warning", "success", "info":
