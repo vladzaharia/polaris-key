@@ -163,6 +163,8 @@
     "activate.otherEmail.verify": "そのメールアドレスを確認",
     "account.notInAccount": "アカウントにありません",
     "account.removeKey": "このデバイスからライセンスを削除",
+    "common.signOutOfflineTitle": "Polaris Locker に接続できません",
+    "common.signOutOffline": "Polaris Locker に接続できません。今サインアウトすると、Polaris Locker で削除するまで、このデバイスは使用中のままになります。",
     "signin.attach.header": "{product}をアカウントに追加",
     "signin.key.skipNote": "{product}は同じように使えます。いつでもアカウントに追加できます。",
     "offlineActivation.title": "オフラインアクティベーション",

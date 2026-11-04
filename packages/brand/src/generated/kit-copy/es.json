@@ -16,6 +16,8 @@
   "common.loading": "Cargando…",
   "common.signOut": "Cerrar sesión",
   "common.signOutAnyway": "Cerrar sesión de todos modos",
+  "common.signOutOfflineTitle": "No se puede conectar con Polaris Locker",
+  "common.signOutOffline": "No se puede conectar con Polaris Locker. Si cierras sesión ahora, este dispositivo seguirá en uso hasta que lo quites en Polaris Locker.",
   "common.manage": "Administrar",
   "common.reconnect": "Reconectar",
   "common.dismiss": "Descartar",

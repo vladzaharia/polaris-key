@@ -49,6 +49,11 @@
     <string name="common_signOut__macos">Sair</string>
     <!-- AccountAndLicense: offered after Sign out could not reach the service. Signs this device out of the product without telling the service; the device's seat stays in use until the person removes it in their account. -->
     <string name="common_signOutAnyway">Sair mesmo assim</string>
+    <string name="common_signOutAnyway__macos">Sair mesmo assim</string>
+    <!-- AccountAndLicense: the title of the alert shown when Sign out could not reach the service. Its buttons are Sign out anyway, Try again and Cancel. -->
+    <string name="common_signOutOfflineTitle">Não foi possível conectar ao Polaris Locker</string>
+    <!-- AccountAndLicense: the message of the alert shown when Sign out could not reach the service (a network error only). Names the cost of Sign out anyway: the device's seat stays in use until the person removes it in their account. "In use" is the seat count's word. -->
+    <string name="common_signOutOffline">Não foi possível conectar ao Polaris Locker. Se você sair agora, este dispositivo continuará em uso até você removê-lo no Polaris Locker.</string>
     <!-- Shared verb used across the kit's screens. Opens the person's Polaris Locker account in the browser. -->
     <string name="common_manage">Gerenciar</string>
     <!-- Shared verb used across the kit's screens. Tries to reach the licensing service again. -->

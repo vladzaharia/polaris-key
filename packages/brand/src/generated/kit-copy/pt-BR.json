@@ -16,6 +16,8 @@
   "common.loading": "Carregando…",
   "common.signOut": "Sair",
   "common.signOutAnyway": "Sair mesmo assim",
+  "common.signOutOfflineTitle": "Não foi possível conectar ao Polaris Locker",
+  "common.signOutOffline": "Não foi possível conectar ao Polaris Locker. Se você sair agora, este dispositivo continuará em uso até você removê-lo no Polaris Locker.",
   "common.manage": "Gerenciar",
   "common.reconnect": "Reconectar",
   "common.dismiss": "Dispensar",

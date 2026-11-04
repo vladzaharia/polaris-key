@@ -16,6 +16,8 @@
   "common.loading": "Wird geladen…",
   "common.signOut": "Abmelden",
   "common.signOutAnyway": "Trotzdem abmelden",
+  "common.signOutOfflineTitle": "Polaris Locker ist nicht erreichbar",
+  "common.signOutOffline": "Polaris Locker ist nicht erreichbar. Wenn Sie sich jetzt abmelden, bleibt dieses Gerät in Verwendung, bis Sie es in Polaris Locker entfernen.",
   "common.manage": "Verwalten",
   "common.reconnect": "Neu verbinden",
   "common.dismiss": "Ausblenden",

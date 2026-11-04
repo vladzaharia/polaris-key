@@ -92,6 +92,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "common.notNow": { macos: "Not Now" },
   "common.tryAgain": { macos: "Try Again" },
   "common.signOut": { macos: "Sign Out" },
+  "common.signOutAnyway": { macos: "Sign Out Anyway" },
   "part.qr.enlarge": { macos: "Show Larger" },
   "part.qr.scanInstead": { macos: "Scan with Your Phone Instead" },
   "boot.continueOffline": { godot: "Play offline", macos: "Continue Offline" },

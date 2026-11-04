@@ -112,10 +112,25 @@ msgctxt "macos"
 msgid "common.signOut"
 msgstr "Cerrar sesión"
 
-#. Sign Out Anyway
+#. Sign out anyway
 #. AccountAndLicense: offered after Sign out could not reach the service. Signs this device out of the product without telling the service; the device's seat stays in use until the person removes it in their account.
 msgid "common.signOutAnyway"
 msgstr "Cerrar sesión de todos modos"
+
+#. macos: Sign Out Anyway
+msgctxt "macos"
+msgid "common.signOutAnyway"
+msgstr "Cerrar sesión de todos modos"
+
+#. Can't reach Polaris Locker
+#. AccountAndLicense: the title of the alert shown when Sign out could not reach the service. Its buttons are Sign out anyway, Try again and Cancel.
+msgid "common.signOutOfflineTitle"
+msgstr "No se puede conectar con Polaris Locker"
+
+#. Can't reach Polaris Locker. If you sign out now, this device stays in use until you remove it in Polaris Locker.
+#. AccountAndLicense: the message of the alert shown when Sign out could not reach the service (a network error only). Names the cost of Sign out anyway: the device's seat stays in use until the person removes it in their account. "In use" is the seat count's word.
+msgid "common.signOutOffline"
+msgstr "No se puede conectar con Polaris Locker. Si cierras sesión ahora, este dispositivo seguirá en uso hasta que lo quites en Polaris Locker."
 
 #. Manage
 #. Shared verb used across the kit's screens. Opens the person's Polaris Locker account in the browser.

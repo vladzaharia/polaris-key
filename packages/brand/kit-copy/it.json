@@ -163,6 +163,8 @@
     "activate.otherEmail.verify": "Verifica quell’e-mail",
     "account.notInAccount": "In nessun account",
     "account.removeKey": "Rimuovi la licenza da questo dispositivo",
+    "common.signOutOfflineTitle": "Impossibile raggiungere Polaris Locker",
+    "common.signOutOffline": "Impossibile raggiungere Polaris Locker. Se esci ora, questo dispositivo resta in uso finché non lo rimuovi in Polaris Locker.",
     "signin.attach.header": "Aggiungi {product} al tuo account",
     "signin.key.skipNote": "{product} funziona allo stesso modo. Aggiungilo a un account quando vuoi.",
     "offlineActivation.title": "Attivazione offline",
