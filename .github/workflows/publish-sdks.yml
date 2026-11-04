@@ -795,9 +795,13 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
           PEP440: ${{ needs.version.outputs.pep440 }}
           CHANNEL: ${{ needs.version.outputs.channel }}
+        # maven.games is pending registration on production (owner step OS-27): its publish is
+        # refused (see the maven matrix), so the drift check skips it until production has re-read
+        # .pkey/release. Drop the --skip with the pending-registration flag.
         run: >-
           node tools/feed-drift.mjs --origin https://pkg.plrs.im --owner polaris-key
           --version "$VERSION" --pep440 "$PEP440" --channel "$CHANNEL" --timeout 600
+          --skip maven.games
       # P0-52: every @polaris-key pin of every package at this version is a version the feed
       # lists. Only this version's broken pins fail the run; a broken pin on an older version is
       # a warning here and an error in the daily feed-closure.yml. It runs after a red drift
