@@ -23,8 +23,8 @@ same rule as link/resync, reporting a missing one as `missing_schema`. Without t
 module the scaffolded catalog is empty (`schemaVersion: 1`, `entries: []`). The scaffolded tier
 names its profile with `profileId` and sets `policyDeviceLimit: 5` and no expiry; a tier `deviceLimit` is ignored and a tier
 `maxOfflineDays` sets the license expiry (`policyExpiryDays`), not offline grace, so `pkey
-validate` warns with `tier_ignored_field` for either. A tier's offline grace default is
-`policyOfflineGraceDays` (0 to 365 days; omitted, the product default applies).
+validate` warns with `tier_ignored_field` for either. A tier's `policyOfflineGraceDays` (0 to 365 days) is validated and stored but not applied: the
+offline window is the license's own value, else `licensing.defaultMaxOfflineDays`, so set it at the product level.
 
 A device limit is a whole number of devices: `licensing.defaultDeviceLimit` and a tier's
 `policyDeviceLimit` take 0 to 1000 (`MAX_DEVICE_LIMIT` in `@polaris-key/manifest`). A larger value

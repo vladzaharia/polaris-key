@@ -483,8 +483,8 @@ export interface ManifestTier {
   /** LX-08: higher is better (anchor choice, the OIDC group-map choice, `syncTierOnSignIn`).
    *  0 when omitted; not unique. */
   rank: number;
-  /** LX-08: the tier default for a licence's offline grace (0–365 days); null falls back to the
-   *  product default. Not `maxOfflineDays`, the legacy alias of `policyExpiryDays`. */
+  /** LX-08: stored, not applied yet (0–365 days, or null): the offline window is the licence's
+   *  own value, else the product default. Not `maxOfflineDays`, the legacy alias of `policyExpiryDays`. */
   policyOfflineGraceDays: number | null;
 }
 

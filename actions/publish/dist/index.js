@@ -1830,7 +1830,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "$ref": "#/$defs/nonNegativeInteger"
           },
           "policyOfflineGraceDays": {
-            "description": "The tier default for a licence's offline grace, in days (0-365); null (or omitted) falls back to the product default. Not maxOfflineDays, which is a legacy alias of policyExpiryDays.",
+            "description": "Stored for later use and not applied yet: the offline window is the licence's own value, else the product's defaultMaxOfflineDays. Days 0-365, or null. Not maxOfflineDays, which is a legacy alias of policyExpiryDays.",
             "anyOf": [
               { "type": "integer", "minimum": 0, "maximum": 365 },
               { "type": "null" }

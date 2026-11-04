@@ -1366,7 +1366,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "license",
     label: "Default offline window",
     description:
-      "How many days a device may run without reaching the server when neither its tier nor the license sets a window.",
+      "How many days a device may run without reaching the server when the license sets no window of its own.",
     keywords: ["grace", "offline", "graceUntil"],
     docs: "/docs/features/licensing/access/",
     ownership: "claimable",
