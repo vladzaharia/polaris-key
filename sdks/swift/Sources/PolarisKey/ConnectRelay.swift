@@ -1056,6 +1056,18 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
         if let svc, n > 0 { Task { await svc.release(n) } }
     }
 
+    /// Gives the service back up to `n` bytes of the room held for this session, as the writer hands a
+    /// record's bytes to the outbox: from there the outbox counts them, so holding them as well would
+    /// count the same bytes twice.
+    func releaseReserved(upTo n: Int) async {
+        let (svc, k) = state.with { s -> ((any RelayRoom)?, Int) in
+            let k = min(n, s.reserved)
+            s.reserved -= k
+            return (s.svc, k)
+        }
+        if let svc, k > 0 { await svc.release(k) }
+    }
+
     /// The socket is gone or the room dropped the peer: the link sees the end of the stream.
     func lose() {
         releaseReserved()
@@ -1091,6 +1103,7 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
         let (svc, peer, session) = state.with { ($0.svc, $0.peer, $0.session) }
         guard let svc, bytes.count > 2 else { return }
         await svc.sendSession(peer: peer, session: session, noise: bytes.dropFirst(2))
+        await releaseReserved(upTo: bytes.count - 2 + 128)
     }
 
     func close() async { lose() }
