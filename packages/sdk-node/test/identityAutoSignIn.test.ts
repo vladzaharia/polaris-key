@@ -254,6 +254,34 @@ describe("autoSignIn(): the explicit sign-out flag", () => {
     client.close();
   });
 
+  it("is set by deactivate(): a restart does not sign the device back in, and the next sign-in clears it", async () => {
+    const { client, store, dir } = await seededClient({
+      token: null,
+      extra,
+      routes: routes({
+        "POST /djdl/devices/deauthorize": () => json({}),
+      }),
+    });
+    await signIn(client);
+    await client.license.deactivate();
+    expect(await client.identity.autoSignIn()).toEqual({
+      kind: "needsSignIn",
+      reason: "signed_out",
+    });
+    const again = await restart(dir, store);
+    expect(await again.client.identity.autoSignIn()).toEqual({
+      kind: "needsSignIn",
+      reason: "signed_out",
+    });
+    await signIn(again.client);
+    // The device holds no licence after deactivating, so rung 1 is not met; the flag is what ended.
+    expect(await again.client.identity.autoSignIn()).not.toMatchObject({
+      reason: "signed_out",
+    });
+    again.client.close();
+    client.close();
+  });
+
   it("is not set by a sign-out the Worker refused", async () => {
     const { client } = await seededClient({
       token: null,

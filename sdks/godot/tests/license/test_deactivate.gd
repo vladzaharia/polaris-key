@@ -96,7 +96,7 @@ func _wipe_failure(t: PKeyTestContext) -> void:
 	var sdk = await _synced(store)
 	var r: PKeyResult = await sdk.license.deactivate()
 	t.check("deactivate: a wipe failure is returned, not swallowed", not r.ok and r.code == PKeyErrors.STORE_FAILED and r.detail == {"remote_attempted": true, "remote_ok": true, "wiped": false}, str(r))
-	t.check("deactivate: the cache is still wiped when the token is stuck", store.cache == null and sdk.core.cache.license == null)
+	t.check("deactivate: the cache is still wiped when the token is stuck", _flag_only(store) and sdk.core.cache.license == null and sdk.core.cache.explicit_sign_out)
 	sdk.queue_free()
 
 
@@ -111,6 +111,12 @@ func _no_token(t: PKeyTestContext) -> void:
 
 func _wiped(t: PKeyTestContext, label: String, sdk: Node, store: PKeyMemoryStore) -> void:
 	t.check("deactivate (%s): the token is gone" % label, store.token == "" and not sdk.core.tokens.has_token() and sdk.core.tokens.source() == "")
-	t.check("deactivate (%s): the verified cache is gone" % label, store.cache == null and sdk.core.cache.license == null and sdk.core.cache.config == null)
+	t.check("deactivate (%s): the verified cache is gone" % label, _flag_only(store) and sdk.core.cache.license == null and sdk.core.cache.config == null and sdk.core.cache.explicit_sign_out)
 	t.check("deactivate (%s): the device id stays" % label, store.device_id == h.F["device_id"] and sdk.core.device_id == h.F["device_id"])
 	t.check("deactivate (%s): the licence needs activation" % label, sdk.license.status()["status"] == "needs-activation" and sdk.license.activation() == &"")
+
+
+## The wipe leaves no verified document. What may remain is the sign-out flag (exactly as a
+## sign-out leaves it: cache.clear() keeps the flag, so no silent restore signs the device back in).
+func _flag_only(store: PKeyMemoryStore) -> bool:
+	return store.cache is Dictionary and store.cache == {"v": PKeyCache.VERSION, "explicitSignOut": true}

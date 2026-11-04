@@ -206,6 +206,9 @@ public class LicenseClient(
     public suspend fun deactivate() {
         beforeRelease?.invoke()
         core.token()?.let { LicenseEndpoints.deauthorize(core, it) }
+        // As a sign-out does: no silent restore may sign the person back in after the device was
+        // removed. Set first (fail closed); the next sign-in the person starts clears it.
+        core.setExplicitSignOut(true)
         core.clearAll()
         onDeactivated?.invoke()
     }

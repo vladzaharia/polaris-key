@@ -376,6 +376,14 @@ func _sign_out_rules(t: PKeyTestContext) -> void:
 	var after = await bed.sdk.identity.auto_sign_in()
 	t.check("sign-out: rung 1 does not count the device an account sign-out left activated", after.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and after.reason == "signed_out", str(after))
 	bed.free_all()
+	# deactivate() sets the same flag, so a launch does not sign the device back in.
+	bed = await _signed_in_bed()
+	bed.sdk.identity.install_platform_provider(Fake.new("google", []))
+	var gone = await bed.sdk.license.deactivate()
+	t.check("deactivate: sets the flag and wipes the token, whatever the seat release answered", bed.sdk.core.cache.explicit_sign_out and not bed.sdk.core.tokens.has_token(), str(gone))
+	var launch = await bed.sdk.identity.auto_sign_in()
+	t.check("deactivate: a launch does not sign in silently", launch.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and launch.reason == PKeyAutoSignInResult.REASON_SIGNED_OUT and not bed.sdk.core.tokens.has_token(), str(launch))
+	bed.free_all()
 	# A refused sign-out sets nothing.
 	bed = await _signed_in_bed()
 	bed.signouts = [B.json(500, {"error": "unavailable"})]

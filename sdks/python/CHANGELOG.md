@@ -6,6 +6,7 @@ only API (no deprecated aliases).
 
 ## Unreleased
 
+- **`deactivate()` sets the explicit sign-out flag.** Removing the device now ends automatic sign-in the way `signOut()` does: the flag is set before the wipe, survives a restart, and only a sign-in the person starts clears it, so a launch cannot sign the device straight back in. `client.deactivate()` and `license.deactivate()`.
 - **Key return on the redirect channel.** `sign_in.start(channel="redirect", key_return=True)` sends `key_return=allow` (last on the web request, before the device name on the native push); the session may then settle `activated` (`key_entries` set, `subject` `None`): the token is stored as a key activation, the account the device held is forgotten and no `signed_in` event fires. A `via: "key"` body is read only with the opt-in and only when it has a `subject` member. A refusal (`device_limit`, `key_entry_limit`, `license_owned`) carries `details`. The device-code channel refuses `key_return` with `invalid-argument`. `identity.keyreturn` is implemented.
 - **Relay `Retry-After` is capped before conversion.** Retry-After values from the relay are capped at one hour before they are converted to whole seconds; an unreadable value reads as absent.
 

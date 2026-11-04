@@ -261,6 +261,27 @@ def test_the_flag_survives_a_restart_and_a_sign_in_clears_it(clock, tmp_path: An
     again.close()
 
 
+def test_deactivate_sets_the_flag_and_a_restart_does_not_sign_in(clock, tmp_path: Any) -> None:
+    store = InMemoryStore(PRODUCT)
+    opts: Dict[str, Any] = dict(
+        store=store, expected_services=["license", "config", "identity"], state_dir=str(tmp_path)
+    )
+    w = _signed_in_worker()
+    c = _licensed(make_client(w, **opts))
+    c.identity.sign_in.start().wait()
+    c.deactivate()
+    assert c._tokens.explicit_sign_out is True
+    c.close()
+    again = _licensed(make_client(w, **opts))
+    r = again.identity.auto_sign_in()
+    assert (r.kind, r.reason) == ("needs_sign_in", "signed_out")
+    # The person's next sign-in ends it.
+    w.answers["poll"] = queue(READY)
+    again.identity.sign_in.start().wait()
+    assert again._tokens.explicit_sign_out is False
+    again.close()
+
+
 def test_a_sign_out_with_no_token_still_sets_the_flag() -> None:
     c = make(Worker(discovery()))
     c.identity.sign_out()

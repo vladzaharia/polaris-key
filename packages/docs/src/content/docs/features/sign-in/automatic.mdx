@@ -42,6 +42,8 @@ Past rung 4 the app's own sign-in takes over. After a sign-in the person started
 
 An explicit sign-out sets a flag on the device. While it is set, rungs 2 to 4 stay off and the call answers `needsSignIn` with reason `signedOut`. Only a sign-in the person starts clears it: a redirect, a device code, a completed license choice or a provider started from the sign-in form. Key activation does not. The ladder's own exchange never lowers the flag, and a sign-out during a prompt makes that run store nothing.
 
+Removing the device (`deactivate()`, or deauthorizing this device's own seat) sets the same flag, so a launch cannot sign the device straight back in.
+
 A sign-out also clears the platform's remembered account (Android's credential state, the browser's silent access) and the restore key.
 
 ## The kits run it
