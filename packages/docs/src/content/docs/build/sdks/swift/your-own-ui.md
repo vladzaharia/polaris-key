@@ -412,7 +412,7 @@ To hold an install while the app is busy, pass `relaunchGate:`. Sparkle asks it 
 installed and about to relaunch the app; return `true` to hold, and call `resume()` once when the
 relaunch may go on.
 
-```swift no-compile
+```text
 let sparkle = try await PolarisSparkle.start(
     client: client,
     relaunchGate: { _, resume in
