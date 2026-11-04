@@ -299,6 +299,123 @@ describe("the code step keeps what is shared above Codes match", () => {
     });
 });
 
+// UI-KITS "LinkPairing and TransferOffer": the code, confirm and ask states are two panes (start:
+// title, lede, code or offer; end: the reported line, the categories, the actions) in a window at
+// least 600 px wide and under 480 tall at 1x text, and on a TV always; the decision is in the first
+// viewport. Message states and 200 % text stay one column.
+describe("two panes in short landscape and on TV", () => {
+  const TV = { os: "android", formFactor: "tv" };
+  const SHORT = [
+    { label: "844x390", width: 844, height: 390, tv: false },
+    { label: "640x360", width: 640, height: 360, tv: false },
+    { label: "960x540-tv", width: 960, height: 540, tv: true },
+  ];
+  const STATES = [
+    ["LinkPairing", "code", ["linkPairing.confirm", "linkPairing.decline"]],
+    ["LinkPairing", "confirm", ["common.cancel"]],
+    ["TransferOffer", "ask", ["transferOffer.accept", "transferOffer.decline"]],
+  ] as const;
+  const rowOf = (component: string, state: string, tv: boolean): Row => {
+    const base = SCENES.find(
+      (r) => r.expect.component === component && r.expect.state === state,
+    )!;
+    return tv
+      ? { ...base, input: { ...base.input, platform: TV } as UiInput }
+      : base;
+  };
+  const columns = (card: Element) =>
+    getComputedStyle(card)
+      .gridTemplateColumns.split(" ")
+      .filter((c) => c !== "").length;
+  for (const [component, state, keys] of STATES)
+    for (const scheme of ["dark", "light"] as const)
+      for (const size of SHORT)
+        it(`${component}.${state} ${size.label} ${scheme}: two panes, decision in view`, async () => {
+          await page.viewport(size.width, size.height);
+          const kit = await mount(rowOf(component, state, size.tv), scheme, 16);
+          expect(columns(kit.querySelector(".card")!), "two columns").toBe(2);
+          const left = kit.querySelector(".pair-code, .pair-offer")!;
+          const right = kit.querySelector(".pair-end, .card > .actions")!;
+          const edge = right.getBoundingClientRect().left + 0.5;
+          expect(
+            left.getBoundingClientRect().right,
+            "the start pane is beside the end pane",
+          ).toBeLessThanOrEqual(edge);
+          expect(
+            kit.querySelector("h1")!.getBoundingClientRect().right,
+            "the title is in the start pane",
+          ).toBeLessThanOrEqual(edge);
+          for (const key of keys) {
+            const b = kit
+              .querySelector(`[data-key="${key}"]`)!
+              .getBoundingClientRect();
+            expect(b.top, key).toBeGreaterThanOrEqual(-0.5);
+            expect(
+              b.bottom,
+              `${key} is below the first viewport`,
+            ).toBeLessThanOrEqual(innerHeight + 0.5);
+            expect(b.right, key).toBeLessThanOrEqual(innerWidth + 0.5);
+          }
+          expect(
+            document.documentElement.scrollHeight,
+            "the screen scrolls",
+          ).toBeLessThanOrEqual(document.documentElement.clientHeight + 1);
+          if (state === "code") {
+            const cats = kit
+              .querySelector(".pair-cats")!
+              .getBoundingClientRect();
+            const ok = kit
+              .querySelector('[data-key="linkPairing.confirm"]')!
+              .getBoundingClientRect();
+            expect(
+              cats.bottom,
+              "categories before Codes match",
+            ).toBeLessThanOrEqual(ok.top + 0.5);
+          }
+          expect(await axeFindings(kit)).toEqual([]);
+          if (__PKEY_KIT_SHOTS__)
+            await commands.kitShot(
+              `${__PKEY_KIT_SHOTS__}/react.${component}.${state}/${size.label}-${scheme}.png`,
+            );
+        });
+
+  it("one column under 600 wide, at 200 % text and in a tall window", async () => {
+    for (const [w, h, px] of [
+      [560, 360, 16],
+      [844, 390, 32],
+      [390, 844, 16],
+    ] as const) {
+      await page.viewport(w, h);
+      const kit = await mount(
+        rowOf("TransferOffer", "ask", false),
+        "light",
+        px,
+      );
+      expect(columns(kit.querySelector(".card")!), `${w}x${h}@${px}`).toBe(1);
+      root?.unmount();
+      host?.remove();
+    }
+  });
+
+  it("a message state never splits", async () => {
+    await page.viewport(844, 390);
+    for (const [component, state] of [
+      ["LinkPairing", "open"],
+      ["LinkPairing", "linked"],
+      ["TransferOffer", "receiving"],
+    ] as const) {
+      const row = SCENES.find(
+        (r) => r.expect.component === component && r.expect.state === state,
+      );
+      if (!row) continue;
+      const kit = await mount(row, "light", 16);
+      expect(columns(kit.querySelector(".card")!), state).toBe(1);
+      root?.unmount();
+      host?.remove();
+    }
+  });
+});
+
 describe("keyboard", () => {
   it("nothing is focused on arrival; Tab reaches Codes match then Not a match", async () => {
     await page.viewport(1440, 900);
