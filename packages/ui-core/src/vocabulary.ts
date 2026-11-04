@@ -234,6 +234,7 @@ export const TOASTS = [
   "warning",
   "error",
   "progress",
+  "key-entries",
 ] as const;
 export type ToastKind = (typeof TOASTS)[number];
 export const PROGRESS_PHASES = [
