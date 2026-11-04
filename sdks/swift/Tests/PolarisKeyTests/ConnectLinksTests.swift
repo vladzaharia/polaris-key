@@ -8,6 +8,7 @@
 import Foundation
 import PolarisKeyCore
 import PolarisKeyPlatform
+import PolarisKeyUICore
 import XCTest
 
 @testable import PolarisKey
@@ -672,6 +673,22 @@ import XCTest
             await c.discover()
             let off = await c.cloudConnect.links.interAccount()
             XCTAssertFalse(off)
+        }
+
+        @MainActor private static func openKitWindow(_ links: CloudLinks) async -> (String, Bool) {
+            let model = LinkPairingModel(driver: .links(links), categories: ["photos"])
+            await model.start()
+            return (model.screen.stateName, model.screen.shows("core.codes.connect_links_disabled.message"))
+        }
+
+        /// CC-19.10: the kit's pairing window over `links.pair` shows "Pairing is off" while links are off.
+        func testTheKitPairingWindowSaysPairingIsOffWhileLinksAreOff() async throws {
+            let c = try await client()
+            await server.reply("/djdl/.well-known/polaris.json", status: 404, body: "")
+            await c.discover()
+            let (state, explains) = await Self.openKitWindow(c.cloudConnect.links)
+            XCTAssertEqual(state, "unavailable")
+            XCTAssertTrue(explains)
         }
 
         func testADiscoveryAnswerOlderThanADayNoLongerCounts() async throws {

@@ -33,6 +33,8 @@ public enum KitComponent: String, Sendable, CaseIterable, Codable {
     case recoveryCode = "RecoveryCode"
     case ringChange = "RingChange"
     case saveConflict = "SaveConflict"
+    case linkPairing = "LinkPairing"
+    case transferOffer = "TransferOffer"
 }
 
 /// What a control does, in the matrix's closed vocabulary (`vocabulary.actions`).

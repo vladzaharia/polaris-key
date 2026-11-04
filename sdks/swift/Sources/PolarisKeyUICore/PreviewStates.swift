@@ -141,7 +141,7 @@ extension PolarisKeyPreviewState {
     public static let all: [PolarisKeyPreviewState] =
         gate + welcome + signIn + nearby + activate + offlineActivation + deviceLimit + statusAndGrace + update
         + settings
-        + devicesAndPaywall + cloudSync + saveConflict
+        + devicesAndPaywall + cloudSync + saveConflict + connect
 
     /// The previews of one component.
     public static func of(_ component: KitComponent) -> [PolarisKeyPreviewState] {
@@ -858,5 +858,77 @@ extension PolarisKeyPreviewState {
                 $0.saveConflict = KitSaveConflict(
                     step: .failed, local: thisCopy, remote: otherCopy, keep: .local)
             }),
+    ]
+
+    // MARK: Connect (LinkPairing, TransferOffer): one preview per ui-matrix `connect` row
+
+    private static let pairCategories = ["contacts", "photos"]
+
+    private static func pairing(
+        _ state: String, variant: String? = nil, _ link: KitLinkPairing
+    ) -> PolarisKeyPreviewState {
+        .init(.linkPairing, state, variant: variant, base { $0.linkPairing = link })
+    }
+
+    private static func offer(
+        _ state: String, variant: String? = nil, _ offer: KitTransferOffer
+    ) -> PolarisKeyPreviewState {
+        .init(.transferOffer, state, variant: variant, base { $0.transferOffer = offer })
+    }
+
+    static let connect: [PolarisKeyPreviewState] = [
+        pairing("open", KitLinkPairing(step: .open, categories: pairCategories)),
+        pairing(
+            "code",
+            KitLinkPairing(
+                step: .code, device: "Maya's laptop", code: "123 456", categories: pairCategories)),
+        pairing(
+            "code", variant: "unnamed",
+            KitLinkPairing(step: .code, code: "123 456", categories: pairCategories)),
+        pairing(
+            "code", variant: "no-categories",
+            KitLinkPairing(step: .code, device: "Maya's laptop", code: "123 456", categories: [])),
+        pairing(
+            "confirm",
+            KitLinkPairing(
+                step: .confirm, device: "Maya's laptop", code: "123 456", categories: pairCategories)),
+        pairing(
+            "confirm", variant: "unnamed",
+            KitLinkPairing(step: .confirm, code: "123 456", categories: [])),
+        pairing(
+            "linked",
+            KitLinkPairing(step: .linked, device: "Maya's laptop", categories: pairCategories)),
+        pairing("linked", variant: "none", KitLinkPairing(step: .linked, categories: [])),
+        pairing(
+            "failed", variant: "declined",
+            KitLinkPairing(step: .failed, categories: pairCategories, reason: .declined)),
+        pairing(
+            "failed", variant: "timeout",
+            KitLinkPairing(step: .failed, categories: pairCategories, reason: .timeout)),
+        pairing(
+            "failed", variant: "full",
+            KitLinkPairing(step: .failed, categories: pairCategories, reason: .full)),
+        pairing(
+            "failed", variant: "closed",
+            KitLinkPairing(step: .failed, categories: pairCategories, reason: .closed)),
+        pairing("unavailable", KitLinkPairing(step: .unavailable)),
+        offer("ask", KitTransferOffer(step: .ask, name: "holiday.zip", device: "Maya's laptop")),
+        offer(
+            "ask", variant: "unnamed", KitTransferOffer(step: .ask, name: "holiday.zip")),
+        offer(
+            "ask", variant: "long-name",
+            KitTransferOffer(
+                step: .ask,
+                name:
+                    "Maya and the whole family on the long holiday by the sea in the south of France, all the photos and videos from every day.zip",
+                device: "Maya's laptop", size: 1_850_000_000, type: "application/zip")),
+        offer(
+            "receiving",
+            KitTransferOffer(step: .receiving, name: "holiday.zip", device: "Maya's laptop")),
+        offer(
+            "done", KitTransferOffer(step: .done, name: "holiday.zip", device: "Maya's laptop")),
+        offer(
+            "failed",
+            KitTransferOffer(step: .failed, name: "holiday.zip", device: "Maya's laptop")),
     ]
 }

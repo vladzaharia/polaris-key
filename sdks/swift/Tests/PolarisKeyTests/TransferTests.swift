@@ -6,6 +6,7 @@
 
 import Foundation
 import PolarisKeyCore
+import PolarisKeyUICore
 import XCTest
 
 @testable import PolarisKey
@@ -275,6 +276,64 @@ final class TransferTests: XCTestCase {
         XCTAssertEqual(receipts.current, [.delivered(id: sent.id, to: out)])
         // The partial file is gone once the content is delivered.
         XCTAssertEqual(xferFiles(b.store).filter(isStoreName), [])
+    }
+
+    // MARK: The kit's prompt (CC-19.10)
+
+    /// The kit's `TransferOfferCoordinator` asks each offer on screen (D-8) and answers the SDK's handler.
+    @MainActor func testTheKitPromptAcceptsAndDelivers() async throws {
+        let p = try await openPair()
+        let a = await side(p.a)
+        let b = await side(p.b)
+        let out = b.dir.appendingPathComponent("kit-received.bin")
+        let prompt = TransferOfferCoordinator(transfer: b.transfer, destination: { _ in out })
+        prompt.start()
+        let data = content(50_000)
+        let sending = Task {
+            try await a.transfer.send(
+                over: p.a, source: .data(data),
+                options: TransferSendOptions(name: "report.pdf", type: "application/pdf"))
+        }
+        for _ in 0..<500 where prompt.current == nil { try await Task.sleep(nanoseconds: 10_000_000) }
+        let model = try XCTUnwrap(prompt.current)
+        XCTAssertEqual(model.screen.stateName, "ask")
+        XCTAssertEqual(model.offer.name, "report.pdf")
+        XCTAssertEqual(model.offer.device, "Laptop")
+        XCTAssertEqual(model.offer.size, 50_000)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: out.path), "nothing is received before Accept")
+        await model.accept()
+        XCTAssertEqual(model.screen.stateName, "done")
+        XCTAssertEqual(try Data(contentsOf: out), data)
+        _ = try await sending.value
+        model.close()
+        XCTAssertNil(prompt.current)
+        prompt.stop()
+    }
+
+    @MainActor func testTheKitPromptDeclineAnswersTheSender() async throws {
+        let p = try await openPair()
+        let a = await side(p.a)
+        let b = await side(p.b)
+        let out = b.dir.appendingPathComponent("never.bin")
+        let prompt = TransferOfferCoordinator(transfer: b.transfer, destination: { _ in out })
+        prompt.start()
+        let sending = Task {
+            try await a.transfer.send(
+                over: p.a, source: .data(content(1000)), options: TransferSendOptions(name: "x.bin"))
+        }
+        for _ in 0..<500 where prompt.current == nil { try await Task.sleep(nanoseconds: 10_000_000) }
+        let model = try XCTUnwrap(prompt.current)
+        await model.decline()
+        XCTAssertNil(prompt.current)
+        do {
+            _ = try await sending.value
+            XCTFail("the sender must hear the decline")
+        } catch let error as DirectTransferError {
+            XCTAssertEqual(error.code, "transfer-cancelled")
+            XCTAssertEqual(error.reason, "declined")
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: out.path))
+        prompt.stop()
     }
 
     func testFileAndStreamSources() async throws {

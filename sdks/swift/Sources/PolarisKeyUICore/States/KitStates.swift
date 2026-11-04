@@ -39,6 +39,8 @@ public enum KitStates {
         case .recoveryCode: return recoveryCode(inputs).erased
         case .ringChange: return ringChange(inputs).erased
         case .saveConflict: return saveConflict(inputs).erased
+        case .linkPairing: return linkPairing(inputs).erased
+        case .transferOffer: return transferOffer(inputs).erased
         }
     }
 }

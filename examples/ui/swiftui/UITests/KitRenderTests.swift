@@ -167,6 +167,10 @@ final class KitRenderTests: XCTestCase {
         // The save screens (K.3): the conflict, its two variants and the transfer status.
         "SaveConflict.choose", "SaveConflict.choose.slots-full", "SaveConflict.choose.deleted",
         "CloudSyncStatus.transferring",
+        // The inter-account screens (CC-19.10): the code stage and confirm, the longest failure
+        // and an offer with a long file name.
+        "LinkPairing.code", "LinkPairing.confirm", "LinkPairing.failed.full",
+        "TransferOffer.ask.long-name",
     ]
 
     static let all = [
@@ -213,6 +217,13 @@ final class KitRenderTests: XCTestCase {
         "SaveConflict.keeping", "SaveConflict.kept", "SaveConflict.failed",
         "SaveConflict.choose.newer", "SaveConflict.keeping.deleted", "SaveConflict.kept.both",
         "SaveConflict.failed.deleted",
+        "LinkPairing.open", "LinkPairing.code", "LinkPairing.code.unnamed",
+        "LinkPairing.code.no-categories", "LinkPairing.confirm", "LinkPairing.confirm.unnamed",
+        "LinkPairing.linked", "LinkPairing.linked.none", "LinkPairing.failed.declined",
+        "LinkPairing.failed.timeout", "LinkPairing.failed.full", "LinkPairing.failed.closed",
+        "LinkPairing.unavailable", "TransferOffer.ask", "TransferOffer.ask.unnamed",
+        "TransferOffer.ask.long-name", "TransferOffer.receiving", "TransferOffer.done",
+        "TransferOffer.failed",
     ]
 
     /// The states rendered again in a launch pack, for the catalog's i18n proof.

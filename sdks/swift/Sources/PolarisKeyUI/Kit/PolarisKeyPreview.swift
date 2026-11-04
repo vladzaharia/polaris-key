@@ -178,6 +178,12 @@ public struct PolarisKeyPreview: View {
             RingChangeView(model: RingChangeModel(inputs: model.inputs))
         case .saveConflict:
             SaveConflictView(model: SaveConflictModel(inputs: model.inputs))
+        case .linkPairing:
+            LinkPairingView(
+                model: LinkPairingModel(inputs: model.inputs),
+                categoryLabels: ["contacts": "Contacts", "photos": "Photos"])
+        case .transferOffer:
+            TransferOfferView(model: TransferOfferModel(inputs: model.inputs))
         case .cloudSyncStatus:
             // A still: the buttons draw as the settings host (U-07) will wire them.
             PreviewSettingsHost {

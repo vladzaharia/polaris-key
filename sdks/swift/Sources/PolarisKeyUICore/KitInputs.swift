@@ -1018,6 +1018,73 @@ public struct KitCloudSync: Sendable, Codable, Equatable, Hashable {
     }
 }
 
+// MARK: - Connect (LinkPairing, TransferOffer)
+
+/// LinkPairing (ui-matrix `connect`): two people pair their devices once, nearby. `device` is the
+/// label the other device reported (unauthenticated display text); `categories` are the ids the app
+/// asks both people to approve.
+public struct KitLinkPairing: Sendable, Codable, Equatable, Hashable {
+    public enum Step: String, Sendable, Codable, CaseIterable {
+        case open, code, confirm, linked, failed, unavailable
+    }
+
+    public enum Reason: String, Sendable, Codable, CaseIterable {
+        case declined, timeout, full, closed
+    }
+
+    public var step: Step
+    public var device: String?
+    public var code: String?
+    public var categories: [String]
+    public var reason: Reason?
+
+    public init(
+        step: Step, device: String? = nil, code: String? = nil, categories: [String] = [],
+        reason: Reason? = nil
+    ) {
+        self.step = step
+        self.device = device
+        self.code = code
+        self.categories = categories
+        self.reason = reason
+    }
+
+    private enum CodingKeys: String, CodingKey { case step, device, code, categories, reason }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        step = try c.decode(Step.self, forKey: .step)
+        device = try c.decodeIfPresent(String.self, forKey: .device)
+        code = try c.decodeIfPresent(String.self, forKey: .code)
+        categories = try c.decodeIfPresent([String].self, forKey: .categories) ?? []
+        reason = try c.decodeIfPresent(Reason.self, forKey: .reason)
+    }
+}
+
+/// TransferOffer (ui-matrix `connect`): a contact offers something (D-8, consent per transfer).
+/// `device` and `name` are text the contact chose; `size` is in bytes.
+public struct KitTransferOffer: Sendable, Codable, Equatable, Hashable {
+    public enum Step: String, Sendable, Codable, CaseIterable {
+        case ask, receiving, done, failed
+    }
+
+    public var step: Step
+    public var name: String
+    public var device: String?
+    public var size: Int?
+    public var type: String?
+
+    public init(
+        step: Step, name: String, device: String? = nil, size: Int? = nil, type: String? = nil
+    ) {
+        self.step = step
+        self.name = name
+        self.device = device
+        self.size = size
+        self.type = type
+    }
+}
+
 // MARK: - Save conflict
 
 /// SaveConflict (ui-matrix `saveConflict`): the same save changed on two devices. `remote` is nil
@@ -1207,6 +1274,8 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
     public var recoveryCode: KitRecoveryCode?
     public var ringChange: KitRingChange?
     public var saveConflict: KitSaveConflict?
+    public var linkPairing: KitLinkPairing?
+    public var transferOffer: KitTransferOffer?
 
     public init(
         integrator: KitIntegrator? = nil, presentation: KitPresentation? = nil,
@@ -1226,7 +1295,8 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
         offers: KitOffers? = nil, toast: KitToast? = nil, error: KitError? = nil,
         cloudSync: KitCloudSync? = nil, unlockSync: KitUnlockSync? = nil,
         recoveryCode: KitRecoveryCode? = nil, ringChange: KitRingChange? = nil,
-        saveConflict: KitSaveConflict? = nil
+        saveConflict: KitSaveConflict? = nil, linkPairing: KitLinkPairing? = nil,
+        transferOffer: KitTransferOffer? = nil
     ) {
         self.integrator = integrator
         self.presentation = presentation
@@ -1269,6 +1339,8 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
         self.recoveryCode = recoveryCode
         self.ringChange = ringChange
         self.saveConflict = saveConflict
+        self.linkPairing = linkPairing
+        self.transferOffer = transferOffer
     }
 
     /// Whether `service` is on (an absent list means all are).
