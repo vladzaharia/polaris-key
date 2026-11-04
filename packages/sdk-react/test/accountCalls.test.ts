@@ -353,6 +353,14 @@ describe("bearer: the account calls", () => {
     expect(own).toBeDefined();
     await adapter.deauthorizeDevice(own!);
     expect(await flag!.get()).toBe(true);
+    // The property: a restore after the seat is gone stays quiet.
+    expect(
+      await (
+        adapter as unknown as {
+          autoSignIn(): Promise<{ kind: string; reason?: string }>;
+        }
+      ).autoSignIn(),
+    ).toEqual({ kind: "needsSignIn", reason: "signedOut" });
   });
 
   it("released: false keeps the key activation", async () => {

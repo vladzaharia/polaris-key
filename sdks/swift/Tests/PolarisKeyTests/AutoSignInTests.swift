@@ -422,9 +422,23 @@ final class AutoSignInTests: XCTestCase {
         let persisted = await store.readRecord("explicit-sign-out")
         XCTAssertNotNil(persisted)
 
-        let result = try await c.identity.autoSignIn()
+        // A relaunch: a new client over the same store, with a platform identity ready to sign in.
+        let relaunchProvider = FakeProvider()
+        let again = try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: [:], trustRefresh: false, store: store, transport: server.transport,
+                expectedServices: [.identity], fingerprint: false,
+                connect: ConnectOptions(keys: try LabelKeyPort(label: "transcript-device-key-1"))))
+        again.identity.redirectAcquisitionSync.set(false)
+        again.identity.installPlatformIdentity(relaunchProvider)
+        again.identity.installRestoreStore(backup)
+        let held = await again.core.explicitSignOut()
+        XCTAssertTrue(held)
+
+        let result = try await again.identity.autoSignIn()
         XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .signedOut))
-        XCTAssertEqual(provider.calls.current, [], "no rung ran")
+        XCTAssertEqual(relaunchProvider.calls.current, [], "no rung ran")
         let nonces = await count("/djdl/identity/nonce")
         XCTAssertEqual(nonces, 0)
     }
