@@ -121,6 +121,7 @@ struct SettingsSections: View {
             onReset: { key in Task { await model.resetValue(key) } })
         AccountAndLicenseSection(
             screen: model.account, onManage: {}, onSignOut: { Task { await model.signOut() } },
-            part: .bottom)
+            part: .bottom, signOutFailed: model.signOutFailed,
+            onSignOutAnyway: { Task { await model.signOutAnyway() } })
     }
 }

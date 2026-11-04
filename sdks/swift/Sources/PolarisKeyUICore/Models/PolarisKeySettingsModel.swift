@@ -118,6 +118,8 @@ public final class PolarisKeySettingsModel {
     /// The last check failed: `checkResult` is the failure line and the row offers Try again.
     public private(set) var checkFailed = false
     public private(set) var hasLoaded = false
+    /// `signOut()` could not reach the service: the pane offers Sign Out Anyway.
+    public private(set) var signOutFailed = false
 
     private var servicesOn: Set<KitService>?
     private var licensed: LicenseState?
@@ -234,12 +236,17 @@ public final class PolarisKeySettingsModel {
         if await client.core.licenseGateEnabled() { on.insert(.license) } else { on.remove(.license) }
         servicesOn = on
         licensed = await client.status()
+        // An account is the signed-in licence user, else a held token that came from a sign-in.
+        // `identity.current()` is the holder's name and email, which a licence-key activation
+        // has too, so it is never the signal.
         let current = await client.identity.current()
-        accountSignedIn = current != nil
+        let user = await client.license.getLicenseUser()
+        let provenance = await client.core.tokenProvenance()
+        accountSignedIn = user != nil || provenance == .signin
         let nearbyOffered = await client.identity.nearby.available(role: .approver)
-        canApproveNearby = current != nil && nearbyOffered
+        canApproveNearby = accountSignedIn && nearbyOffered
         nearbyApproval?.update(inputs: base)
-        holder = current?.name ?? current?.email
+        holder = accountSignedIn ? (current?.name ?? current?.email) : nil
         let info = await client.licenseInfo()
         tier = info?.tierLabel ?? info?.tier
         developer = client.presentation?.developerName ?? client.presentation?.name
@@ -484,13 +491,39 @@ public final class PolarisKeySettingsModel {
         handlers.selectChannel?(name)
     }
 
-    /// Sign out: release this device's seat and wipe its credential.
+    /// Sign out. An account signs out through `identity.signOut()`, which sets the explicit
+    /// sign-out flag so nothing silent restores it; when that cannot reach the service,
+    /// `signOutFailed` turns true and the pane offers Sign Out Anyway. A licence-key activation
+    /// has no account to leave: it keeps `deactivate()`.
     public func signOut() async {
         guard let client else { return }
+        signOutFailed = false
+        if accountSignedIn {
+            do {
+                try await client.identity.signOut()
+            } catch {
+                signOutFailed = true
+                return
+            }
+        } else {
+            try? await client.deactivate()
+        }
+        await reloadAccount()
+        handlers.signedOut?()
+    }
+
+    /// Sign Out Anyway, after `signOut()` failed offline: release the credential on this device
+    /// without telling the service (the seat stays in use until it is removed in the account).
+    public func signOutAnyway() async {
+        guard let client else { return }
+        signOutFailed = false
         try? await client.deactivate()
         await reloadAccount()
         handlers.signedOut?()
     }
+
+    /// Leave the offer to sign out anyway without acting on it.
+    public func dismissSignOutFailure() { signOutFailed = false }
 
     // MARK: Inputs
 

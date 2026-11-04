@@ -22,6 +22,7 @@
     "common.working": "처리 중…",
     "common.loading": "불러오는 중…",
     "common.signOut": "로그아웃",
+    "common.signOutAnyway": "그래도 로그아웃",
     "common.manage": "관리",
     "common.reconnect": "다시 연결",
     "common.dismiss": "닫기",

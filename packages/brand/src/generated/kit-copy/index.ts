@@ -29,6 +29,7 @@ export type KitCopyKey =
   | "common.working"
   | "common.loading"
   | "common.signOut"
+  | "common.signOutAnyway"
   | "common.manage"
   | "common.reconnect"
   | "common.dismiss"

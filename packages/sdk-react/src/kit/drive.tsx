@@ -433,8 +433,9 @@ function OpenedAccount(props: {
     ...(holder ? { licenseHolder: holder } : {}),
     gate: { status: state.status },
     account: {
-      // A floating license has no name or email: nobody is signed in (UK-42).
-      signedIn: caps.identity.enabled && !!name?.trim(),
+      // An account is the profile's `user` (the signed-in subject); a licence-key holder has a
+      // name or email too and is not signed in (UK-42).
+      signedIn: caps.identity.enabled && !!profile?.user,
       ...(name !== undefined ? { holder: name } : {}),
       ...(typeof tier === "string" ? { tier } : {}),
       canManage: manageUrl !== null,

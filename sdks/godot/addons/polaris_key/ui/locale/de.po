@@ -112,6 +112,11 @@ msgctxt "macos"
 msgid "common.signOut"
 msgstr "Abmelden"
 
+#. Sign Out Anyway
+#. AccountAndLicense: offered after Sign out could not reach the service. Signs this device out of the product without telling the service; the device's seat stays in use until the person removes it in their account.
+msgid "common.signOutAnyway"
+msgstr "Trotzdem abmelden"
+
 #. Manage
 #. Shared verb used across the kit's screens. Opens the person's Polaris Locker account in the browser.
 msgid "common.manage"

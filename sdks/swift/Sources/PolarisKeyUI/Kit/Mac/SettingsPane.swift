@@ -254,6 +254,14 @@
                 if model.account.shows("common.signOut") {
                     // No box of its own: the bare button, as the mockup has it.
                     Section {
+                        if model.signOutFailed {
+                            PaneText(
+                                CopyLine("core.codes.network-error.message"), .footnote,
+                                color: .danger)
+                            PaneButton(line: CopyLine("common.signOutAnyway"), style: style) {
+                                Task { await model.signOutAnyway() }
+                            }
+                        }
                     } footer: {
                         PaneButton(line: CopyLine("menu.signOut"), style: style) {
                             confirmingSignOut = true

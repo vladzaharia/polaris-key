@@ -149,6 +149,10 @@ public struct AccountAndLicenseSection: View {
     var devices: String?
     var onManage: () -> Void
     var onSignOut: () -> Void
+    /// Sign out could not reach the service: the line says so and Sign Out Anyway signs this device
+    /// out without it. nil draws neither.
+    var signOutFailed = false
+    var onSignOutAnyway: (() -> Void)?
     /// The account menu's "Approve a nearby device" row; nil draws none (the device is signed out, or the
     /// product or runtime offers no nearby approval).
     var onApproveNearby: (() -> Void)?
@@ -182,8 +186,11 @@ public struct AccountAndLicenseSection: View {
         onCheckNow: @escaping () -> Void = {}, canManage: Bool = true, canAutoUpdate: Bool = true,
         channel: KitChannelState = .hidden, onChannel: ((String) -> Void)? = nil,
         checking: Bool = false, checkNote: CopyLine? = nil, checkFailed: Bool = false,
-        part: Part = .all, onApproveNearby: (() -> Void)? = nil
+        part: Part = .all, onApproveNearby: (() -> Void)? = nil, signOutFailed: Bool = false,
+        onSignOutAnyway: (() -> Void)? = nil
     ) {
+        self.signOutFailed = signOutFailed
+        self.onSignOutAnyway = onSignOutAnyway
         self.onApproveNearby = onApproveNearby
         self.checkFailed = checkFailed
         self.canManage = canManage
@@ -375,6 +382,14 @@ public struct AccountAndLicenseSection: View {
                         Button(
                             strings.string("common.signOut"), role: .destructive, action: onSignOut)
                     }
+                    if signOutFailed, let onSignOutAnyway {
+                        PaneText(CopyLine("core.codes.network-error.message"), .footnote, color: .danger)
+                            .frame(minHeight: 44, alignment: .leading)
+                        Button(role: .destructive, action: onSignOutAnyway) {
+                            PaneText(CopyLine("common.signOutAnyway"), .body, color: .danger)
+                                .kitRowHeight(52, alignment: .leading)
+                        }
+                    }
                 } footer: {
                     // The attribution is the pane's last item, a section footer (UI-KITS §1.6).
                     if screen.shows("part.poweredBy") { PoweredBy() }
@@ -515,6 +530,21 @@ public struct DevicesSection: View {
                             row(device, style)
                         }
                     }
+                    // A device token manages only its own device (the Worker refuses another's
+                    // rename or remove): the others are managed in the account.
+                    if canManage, devices.contains(where: { !$0.current }) {
+                        Button(action: onManage) {
+                            HStack {
+                                PaneText(CopyLine("devices.manage"), .body, color: .accent)
+                                Spacer()
+                                Image(systemName: PolarisKitGlyph.newWindow)
+                                    .foregroundStyle(style.palette.textMuted)
+                                    .accessibilityLabel(strings.string("a11y.externalLink"))
+                            }
+                            .kitRowHeight(52)
+                        }
+                        .tint(style.palette.accentFg)
+                    }
                 }
                 if let failure {
                     PaneText(failure, .footnote, color: .danger)
@@ -571,17 +601,11 @@ public struct DevicesSection: View {
                             "when": .text(KitFormat.daysAgo(device.lastSeenDays)),
                         ])
             )
-            if onRename != nil || !device.current {
-                // Rename and Remove are visible, not only a swipe or a long press away.
+            // Rename and Remove act on this device only; another device's row has no actions.
+            if onRename != nil, device.current {
+                // Rename is visible, not only a swipe or a long press away.
                 Menu {
-                    if onRename != nil {
-                        Button(strings.string("devices.rename")) { beginRename(device) }
-                    }
-                    if !device.current {
-                        Button(strings.string("devices.remove"), role: .destructive) {
-                            removing = device
-                        }
-                    }
+                    Button(strings.string("devices.rename")) { beginRename(device) }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .font(.title3)
@@ -600,13 +624,7 @@ public struct DevicesSection: View {
         }
         .kitRowHeight(64)
         .swipeActions {
-            if !device.current {
-                Button(strings.string("devices.remove"), role: .destructive) { removing = device }
-                    .tint(style.palette.danger)
-                    .accessibilityLabel(
-                        strings.string("a11y.removeDevice", ["device": .text(name(device))]))
-            }
-            if onRename != nil {
+            if onRename != nil, device.current {
                 Button(strings.string("devices.rename")) { beginRename(device) }
                     .tint(style.palette.accentSolid)
                     .accessibilityLabel(

@@ -15,6 +15,7 @@
   "common.working": "Procesando…",
   "common.loading": "Cargando…",
   "common.signOut": "Cerrar sesión",
+  "common.signOutAnyway": "Cerrar sesión de todos modos",
   "common.manage": "Administrar",
   "common.reconnect": "Reconectar",
   "common.dismiss": "Descartar",

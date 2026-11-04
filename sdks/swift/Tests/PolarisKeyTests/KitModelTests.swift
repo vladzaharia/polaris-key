@@ -24,12 +24,17 @@ func renders<V: View>(_ view: V, width: CGFloat = 393, height: CGFloat = 852) ->
 }
 
 @MainActor
+final class SignedOutFlag { var fired = false }
+
+@MainActor
 final class KitModelTests: XCTestCase {
     private var server = StubServer()
 
     override func setUp() async throws {
         server = StubServer()
     }
+
+    private static let subject = "ps_" + String(repeating: "a", count: 22)
 
     private func client(services: [ServiceSlug] = [.license, .identity]) async throws
         -> PolarisKeyClient
@@ -90,6 +95,68 @@ final class KitModelTests: XCTestCase {
         for _ in 0..<50 where !done() {
             try await Task.sleep(nanoseconds: 20_000_000)
         }
+    }
+
+    /// A client holding a verified licence and a token whose origin is `provenance`.
+    private func licensedClient(
+        provenance: TokenProvenance, user: String? = nil
+    ) async throws -> PolarisKeyClient {
+        let signer = TestSigner(kid: "kit-key")
+        let t = Int(Date().timeIntervalSince1970)
+        let store = InMemoryStore(deviceId: "dev")
+        await store.setToken("pkeyt_held")
+        await store.writeRecord("token-origin", Data(provenance.rawValue.utf8))
+        let doc = Fixtures.license(
+            deviceId: "dev", licenseId: "lic_kit", issuedAt: t,
+            profile: DocProfile(
+                name: "Ada", firstName: "Ada", email: "a@e.com", activatedAt: 1,
+                user: user.map { SignedInUser(subject: $0) }))
+        await store.writeCache(CacheRecord(docs: [.license: signer.sign(doc)]))
+        return try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: signer.trust, trustRefresh: false, store: store,
+                transport: server.transport, expectedServices: [.license, .identity],
+                fingerprint: false))
+    }
+
+    func testSettingsDecidesSignedInFromTheAccountNotTheHolder() async throws {
+        let key = PolarisKeySettingsModel(client: try await licensedClient(provenance: .key))
+        await key.load()
+        XCTAssertEqual(key.account.state, .keyOnly, "a key activation is not an account")
+        XCTAssertNil(key.holder)
+        let account = PolarisKeySettingsModel(
+            client: try await licensedClient(provenance: .signin, user: Self.subject))
+        await account.load()
+        XCTAssertEqual(account.account.state, .signedIn, "a sign-in token is an account")
+    }
+
+    func testSignOutOfAnAccountThatCannotReachTheServiceOffersSignOutAnyway() async throws {
+        let c = try await licensedClient(provenance: .signin, user: Self.subject)
+        let signedOut = SignedOutFlag()
+        let model = PolarisKeySettingsModel(
+            client: c, handlers: KitSettingsHandlers(signedOut: { signedOut.fired = true }))
+        await model.load()
+        await model.signOut()
+        XCTAssertTrue(model.signOutFailed)
+        XCTAssertFalse(signedOut.fired, "a failed sign-out leaves the device signed in")
+        let held = await c.core.token
+        XCTAssertNotNil(held)
+        await model.signOutAnyway()
+        XCTAssertFalse(model.signOutFailed)
+        XCTAssertTrue(signedOut.fired)
+        let after = await c.core.token
+        XCTAssertNil(after)
+    }
+
+    func testSignOutOfAKeyActivationIsDeactivate() async throws {
+        let c = try await licensedClient(provenance: .key)
+        let model = PolarisKeySettingsModel(client: c)
+        await model.load()
+        await model.signOut()
+        XCTAssertFalse(model.signOutFailed)
+        let after = await c.core.token
+        XCTAssertNil(after)
     }
 
     func testTheModelFollowsClientChanges() async throws {

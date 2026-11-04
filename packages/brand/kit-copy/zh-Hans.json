@@ -22,6 +22,7 @@
     "common.working": "正在处理…",
     "common.loading": "正在加载…",
     "common.signOut": "退出登录",
+    "common.signOutAnyway": "仍然退出登录",
     "common.manage": "管理",
     "common.reconnect": "重新连接",
     "common.dismiss": "忽略",

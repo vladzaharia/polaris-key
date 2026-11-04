@@ -22,6 +22,7 @@
     "common.working": "Processando…",
     "common.loading": "Carregando…",
     "common.signOut": "Sair",
+    "common.signOutAnyway": "Sair mesmo assim",
     "common.manage": "Gerenciar",
     "common.reconnect": "Reconectar",
     "common.dismiss": "Dispensar",
