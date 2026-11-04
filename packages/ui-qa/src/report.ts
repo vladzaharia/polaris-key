@@ -152,7 +152,10 @@ export function collect(
       if (parts[0] === "matrix" && parts.length > 2) parts.shift();
       // Cloud Connect's and the account holders' baselines sit one folder down too:
       // connect/<component>-<state>-<slug>/ and holders/<nn>-<component>-<state>-<slug>/.
-      if ((parts[0] === "connect" || parts[0] === "holders") && parts.length > 2) {
+      if (
+        (parts[0] === "connect" || parts[0] === "holders") &&
+        parts.length > 2
+      ) {
         parts.shift();
         parts[0] = parts[0]!.replace(/^\d+-/, "");
       }
