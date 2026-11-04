@@ -471,7 +471,7 @@ describe("the chip, large text and the card's details (UX review)", () => {
       "@container (max-width: 16em){.button .ic{display:none}}",
     );
     expect(html).toContain(
-      "@container (max-width: 16em){.chip{border-radius:.625rem}.usual{flex-direction:column;align-items:flex-start}}",
+      "@container (max-width: 16em){.button span{text-align:center}.chip{border-radius:.625rem}.usual{flex-direction:column;align-items:flex-start}}",
     );
     expect(html).toContain("container-type:inline-size");
     // The same font smoothing as the SPA's body.

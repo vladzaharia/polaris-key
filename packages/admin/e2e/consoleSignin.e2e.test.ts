@@ -324,6 +324,23 @@ describe("the returning-person step, Change and the break-glass link (ST-30c.2)"
     },
   );
 
+  it("Escape on the returning-person step returns to the field with the address kept, and the tab title follows", async () => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await openHint(page);
+    expect(await page.title()).toBe("Welcome back · Polaris Key Console");
+    await page.keyboard.press("Escape");
+    await page.locator("#pk-main").waitFor({ state: "visible" });
+    expect(await page.getByLabel("Email").inputValue()).toBe("ada@example.com");
+    expect(
+      await page.evaluate(
+        () => document.activeElement === document.getElementById("email"),
+      ),
+    ).toBe(true);
+    expect(await page.title()).not.toContain("Welcome back");
+    await closeContext(context);
+  });
+
   it("the Emergency sign-in link opens the start card, and Continue starts a fresh-login flow", async () => {
     const context = await browser.newContext();
     const page = await context.newPage();

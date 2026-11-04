@@ -289,7 +289,7 @@ const AUTH_CARD_RULES = [
   `.ac-links a+a::before{content:"\\00b7" / "";position:absolute;inset-inline-start:-.75rem;color:var(--muted);text-decoration:none}`,
   `[data-brand=locker] .ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;color:var(--muted)}`,
   `[data-brand=locker] .ac-links a:hover{color:var(--strong)}`,
-  `@media (pointer: coarse){.ac-body .tertiary{margin-block:-.75rem}[data-brand=console] .ac-links{margin-top:.75rem}}`,
+  `@media (pointer: coarse){.ac-body .tertiary{margin-block:-.75rem}}`,
   `@media (pointer: coarse){.ac-links a{min-height:2.75rem}.quiet,.chip-change{min-height:2.75rem;min-width:2.75rem;justify-content:center}}`,
   // Selectable rows: the title is 16/24 (the React row's), the tier chip a full pill; a user code is strong ink.
   `[data-brand=locker] .choice-title{font-size:1rem;line-height:1.5rem;font-weight:400}`,
@@ -432,7 +432,7 @@ const CONSOLE_PAGE_CSS_TAIL = [
   // The known operator (D-S5), drawn as frame 13's pill, not as a field: it wraps so Change drops
   // to its own line under large text, and the address breaks at "@" and ".".
   `.ac-body .field-label{color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:500}`,
-  `.chip{display:inline-flex;flex-wrap:wrap;gap:0 .5rem;align-items:center;justify-self:start;max-width:100%;min-width:0;padding:.125rem .25rem;border:1px solid var(--edge);border-radius:1.75rem;background:transparent;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.chip{display:inline-flex;flex-wrap:wrap;gap:0 .5rem;align-items:center;justify-self:start;max-width:100%;min-width:0;padding:.125rem .25rem;border:1px solid var(--rule);border-radius:1.75rem;background:transparent;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.chip .ac-mono{width:1.75rem;height:1.75rem;border-radius:50%;background:var(--hover);border:0;font-size:.875rem}`,
   `.chip-email{min-width:0;overflow-wrap:break-word}`,
   `.chip:not(:has(.chip-change)) .chip-email{padding-inline-end:.5rem}`,
@@ -475,19 +475,20 @@ const CONSOLE_PAGE_CSS_TAIL = [
   // The Key brand row (SIGNIN-REDESIGN §5): the compact lockup on its 64 px canvas (222 x 64), a 1 px
   // rule 24 px tall with 12 px each side, and "Console" at 16/24, 400, muted. The canvas's own air
   // counts toward the 40 px gap to the card. Phones size the lockup by width, min(180px, 52vw).
+  `[data-brand=console] .ac-body h1{text-wrap:balance}[data-brand=console] .ac-body p{text-wrap:pretty}`,
   `[data-brand=console] .ac-brand svg{width:13.875rem;height:4rem}`,
   `@media (min-width: 40rem){[data-brand=console] .ac-brand{margin-top:-1.0625rem;margin-bottom:1.5rem}}`,
   // A short window: the canvas's own air counts, so the card starts as close as the Locker's (24 px).
-  `@media (max-height: 32rem){[data-brand=console] body{padding-top:.375rem}[data-brand=console] .ac-brand{margin-bottom:.4375rem}}`,
+  `@media (max-height: 32rem){[data-brand=console] body{padding-top:.375rem}[data-brand=console] .ac-brand{margin-top:0;margin-bottom:.4375rem}}`,
   `@media (max-width: 39.99rem){[data-brand=console] .ac-brand svg{width:min(180px,52vw);height:auto}[data-brand=console] .ac-brand .ac-surface{font-size:16px;line-height:24px}}`,
-  `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.375rem;background:var(--sunken);color:var(--strong);font:inherit}`,
+  `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.375rem;background:var(--sunken);color:var(--text);font:inherit}`,
   `.ac-body input[type=email]::placeholder{color:var(--subtle);opacity:1}`,
   // Fields: focus is the 1 px border in strong ink, no ring and no offset outline (SIGNIN-REDESIGN §4).
   `.ac-brand .ac-surface{margin-left:.75rem;padding-left:.75rem;border-left:1px solid var(--edge);color:var(--muted);font-size:1rem;line-height:1.5rem;font-weight:400}`,
   `@media (forced-colors: active){.ac-brand .ac-surface{color:CanvasText;border-color:CanvasText}}`,
   // the top edge with half a screen empty below; the phone layout keeps its own padding.
   // Large text (after the rules it overrides): the pill is a 10 px box and the hint panel stacks.
-  `@container (max-width: 16em){.chip{border-radius:.625rem}.usual{flex-direction:column;align-items:flex-start}}`,
+  `@container (max-width: 16em){.button span{text-align:center}.chip{border-radius:.625rem}.usual{flex-direction:column;align-items:flex-start}}`,
 ].join("");
 
 /** The stylesheet of a console page. */

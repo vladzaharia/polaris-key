@@ -29,10 +29,11 @@ import { mutate } from "../../mutations.js";
  * hint comes from the first-party `pk_last_method` cookie and nothing the server said
  * (`lastMethod.ts`). A method this card no longer offers never reaches this step.
  */
-/** "2 days ago", "last year": long units, never the compact "yr." of tables. */
+/** "2 days ago", "last year": long units, never the compact "yr." of tables. Under a minute: "" (the line is left out). */
 function whenText(ms: number): string {
   const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
   const s = Math.round((ms - Date.now()) / 1000);
+  if (Math.abs(s) < 60) return "";
   const units: [Intl.RelativeTimeFormatUnit, number][] = [
     ["year", 31_536_000],
     ["month", 2_592_000],
@@ -134,7 +135,7 @@ export function HintStep({
           <p className="font-medium text-fg-strong">
             {t("signin.hint.usual", { method: methodName })}
           </p>
-          {last.at ? (
+          {last.at && whenText(last.at * 1000) ? (
             <p className="text-sm/5 text-fg-muted">
               {t("signin.hint.when", { when: whenText(last.at * 1000) })}
             </p>

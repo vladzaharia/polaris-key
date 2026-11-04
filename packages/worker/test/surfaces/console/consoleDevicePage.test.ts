@@ -351,9 +351,9 @@ describe("the review card", () => {
     expect(page).toContain(">Deny</button>");
     expect(page).not.toContain("Cancel");
     expect(page).not.toContain("<dt>");
-    // The host once, "unverified" once, the date in the console's format, the cap on packages.
+    // The host, the unverified note once, the date in the console's format, the cap on packages.
     expect(page).toContain("ada-mbp.local");
-    expect(page.match(/>unverified</g)).toHaveLength(1);
+    expect(page.match(/Polaris Key can’t check them/g)).toHaveLength(1);
     expect(page).toContain("Ends Nov 21, 2023");
     expect(page).toContain("Can’t install packages");
     expect(page).toContain("Portugal (approximate)");

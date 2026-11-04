@@ -106,16 +106,17 @@ views.main.btn.addEventListener("click",press);
 var hint=document.getElementById("pk-hint"),mainEl=document.getElementById("pk-main"),hinted="";
 function initHint(){
 views.hint.btn.addEventListener("click",press);
-function show(h){hint.hidden=!h;mainEl.hidden=h;cur=h?"hint":"main";if(h){if(ctl)ctl.abort();say("");var t=document.getElementById("h-title");t.focus()}else{say("");email.focus();email.select();arm()}}
+var T0=document.title;
+function show(h){document.title=h?"Welcome back · Polaris Key Console":T0;hint.hidden=!h;mainEl.hidden=h;cur=h?"hint":"main";if(h){if(ctl)ctl.abort();say("");var t=document.getElementById("h-title");t.focus()}else{say("");email.focus();email.select();arm()}}
 function hex(buf){var a=new Uint8Array(buf),s="";for(var i=0;i<12;i++)s+=(a[i]<16?"0":"")+a[i].toString(16);return s}
-function ago(t){var s=Math.round((t*1000-Date.now())/1000),u=[["year",31536000],["month",2592000],["week",604800],["day",86400],["hour",3600],["minute",60]];try{var f=new Intl.RelativeTimeFormat("en",{numeric:"auto"});for(var i=0;i<u.length;i++)if(Math.abs(s)>=u[i][1])return f.format(Math.round(s/u[i][1]),u[i][0]);return f.format(0,"second")}catch(e){return"before"}}
+function ago(t){var s=Math.round((t*1000-Date.now())/1000);if(Math.abs(s)<60)return"just now";var u=[["year",31536000],["month",2592000],["week",604800],["day",86400],["hour",3600],["minute",60]];try{var f=new Intl.RelativeTimeFormat("en",{numeric:"auto"});for(var i=0;i<u.length;i++)if(Math.abs(s)>=u[i][1])return f.format(Math.round(s/u[i][1]),u[i][0]);return f.format(0,"second")}catch(e){return"before"}}
 function rec(){var m=document.cookie.split("; ").filter(function(c){return c.indexOf(CK+"=")===0})[0];if(!m)return null;var p=m.slice(CK.length+1).split(".");return p.length>=2&&p[0]==="passkey"?{h:p[1],at:Number(p[2])||0}:null}
 function submitSso(){stash("sso");form.submit()}
 function fill(addr,r){var n=null;try{n=localStorage.getItem(NAME+r.h)}catch(e){}
 document.getElementById("h-email").textContent=addr;
 document.getElementById("h-ini").textContent=(n||addr).charAt(0).toUpperCase()||"?";
 document.getElementById("h-title").textContent=n?"Welcome back, "+n:"Welcome back";
-var w=document.getElementById("h-when");if(r.at){w.textContent="On this browser, last time "+ago(r.at);w.hidden=false}else w.hidden=true}
+var w=document.getElementById("h-when");var g=r.at?ago(r.at):"";if(g&&g!=="just now"){w.textContent="On this browser, last time "+g;w.hidden=false}else w.hidden=true}
 form.addEventListener("submit",function(e){
 var addr=email.value.trim(),r=rec();
 if(!r||!addr||hinted===addr.toLowerCase()||!window.crypto||!crypto.subtle){stash("sso");return}
@@ -126,6 +127,7 @@ if(hex(d)===r.h){hinted=addr.toLowerCase();fill(addr,r);show(true)}else submitSs
 },submitSso)
 });
 document.getElementById("h-sso").addEventListener("click",submitSso);
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!hint.hidden&&!e.defaultPrevented)show(false)});
 document.getElementById("h-change").addEventListener("click",function(){show(false)});
 document.getElementById("h-other").addEventListener("click",function(){show(false)});
 }
@@ -139,4 +141,4 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
 
 /** `'sha256-…'` of `SIGNIN_SCRIPT` as the CSP names it; pinned by `test/surfaces/console/consoleCard.test.ts`. */
 export const SIGNIN_SCRIPT_HASH =
-  "'sha256-ghGtI+3C/DdP5RCl6WphvKN/MCx+Zbvu4fLQe8dp19I='";
+  "'sha256-4Lp8n0tsefGCRQWuN5PFQEsL7qOjpXSLU9AFK0M94lc='";

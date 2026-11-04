@@ -323,7 +323,7 @@ async function reviewCard(
       ? `<p role="alert">Approving needs a sign-in from the last five minutes.</p>`
       : "",
     `<p>pkey showed the code <span class="code">${escapeHtml(view.code)}</span> ${escapeHtml(ago(now, view.requestedAt))}.</p>`,
-    `<p class="note">${icon("info", true)}<span><span class="tag">unverified</span> pkey reported its name and host; Polaris Key can’t check them.</span></p>`,
+    `<p class="note">pkey reported its name and host; Polaris Key can’t check them.</p>`,
     `<div class="facts"><p class="fine">Limited to your roles</p>${await roleTags(db, principal)}${
       onlyRoot
         ? note(
@@ -351,9 +351,7 @@ async function reviewCard(
     header: appHeader({
       name,
       ...(version ? { action: version } : {}),
-      sub: [host, place, ago(now, view.requestedAt)]
-        .filter((p): p is string => !!p)
-        .join(" · "),
+      sub: [host, place].filter((p): p is string => !!p).join(" · "),
       glyph: "terminal",
     }),
     passport: {

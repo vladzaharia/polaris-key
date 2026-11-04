@@ -474,7 +474,7 @@ async function signinCard(
 /** A usable `login_hint`: one plausible address, never longer than an email may be. */
 export function loginHint(raw: string | null): string | null {
   const v = raw?.trim() ?? "";
-  return v.length > 0 && v.length <= 254 && /^[^\s@]+@[^\s@]+$/.test(v)
+  return v.length > 0 && v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
     ? v
     : null;
 }
@@ -563,6 +563,8 @@ async function startSignIn(
           returnTo: ctx.returnTo ?? null,
           stepUp: ctx.stepUp === true,
           breakGlass: ctx.breakGlass === true,
+          // A card POST keeps the address out of every URL, the way back included.
+          hint: viaPost ? null : (ctx.hint ?? null),
         }),
       },
       formOrigins: viaPost ? await idpFormOrigins(rp) : [],
