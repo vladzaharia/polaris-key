@@ -7,7 +7,8 @@ extends RefCounted
 ##   - the reasons are written once (`recommend_reasons`): Cloud Sync only when the product has it;
 ##     getting the license back and moving it to a new device only when Identity is on; with
 ##     Identity off the one line sends the person to the portal;
-##   - the holder is `licenseHolder.email`: empty is floating, set is waiting for that email, which
+##   - the holder is `licenseHolder.email`: empty is floating, set is waiting for that email, with Identity on (with it
+##     off the license is `ready` with the portal line), which
 ##     a screen shows masked (`mask_email`) and never in full;
 ##   - skipping is never a refusal: Start using is always the one primary.
 ##
@@ -74,7 +75,8 @@ static func _dict(v: Variant) -> Dictionary:
 
 ## The step after a license key activates: `<Product> is ready`, the license line, and the
 ## recommendation when no email holds the license; a license sent to an email that has no account
-## yet shows the waiting line instead.
+## yet shows the waiting line instead, but only with Identity on; with Identity off it stays
+## `ready` with the portal line.
 static func activate_done_view(ctx: RefCounted) -> Dictionary:
 	var done = ctx.input.get("activateDone")
 	if not ctx.on("license") or not (done is Dictionary):
@@ -94,7 +96,7 @@ static func activate_done_view(ctx: RefCounted) -> Dictionary:
 	var holder := _dict(ctx.input.get("licenseHolder"))
 	# A holder email too malformed to mask counts as none: no sentence renders with an empty email.
 	var masked := mask_email(holder.get("email"))
-	if not masked.is_empty():
+	if not masked.is_empty() and ctx.on("identity"):
 		args["maskedEmail"] = masked
 		return View.make(ctx, "ActivateDone", {
 			"state": "waiting",
