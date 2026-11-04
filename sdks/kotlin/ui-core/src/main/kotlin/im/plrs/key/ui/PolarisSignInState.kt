@@ -179,6 +179,7 @@ public fun PolarisKeyClient.signInActions(deviceName: String? = null, redirect: 
             }
         }
 
+        @Suppress("ReturnCount")
         override suspend fun beginRedirect(): PolarisRedirectSession? {
             val host = redirect ?: return null
             val session = try {
@@ -198,6 +199,7 @@ public fun PolarisKeyClient.signInActions(deviceName: String? = null, redirect: 
             }
         }
 
+        @Suppress("ReturnCount")
         override suspend fun linkOffer(): PolarisLinkEntry? {
             // The offer needs a provider this device can ask; without one, accept() would answer Unavailable.
             if (!identity.hasPlatformProvider) return null
@@ -216,6 +218,7 @@ public fun PolarisKeyClient.signInActions(deviceName: String? = null, redirect: 
  * The sign-in state holder. [start] asks for a code, shows it and waits for the person. Hold it
  * where it outlives a renderer so a rotation or navigation return resumes the same code.
  */
+@Suppress("TooManyFunctions")
 public class PolarisSignInState(
     private val actions: PolarisSignInActions,
     private val scope: CoroutineScope,
@@ -282,13 +285,7 @@ public class PolarisSignInState(
     public fun reopen() {
         val r = redirect ?: return
         scope.launch {
-            val opened = try {
-                r.reopen()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                false
-            }
+            val opened = attempt { r.reopen() }.getOrDefault(false)
             if (redirect === r && _ui.value is PolarisSignInUi.Redirecting) _ui.value = PolarisSignInUi.Redirecting(opened, link = r.link)
         }
     }
@@ -318,13 +315,7 @@ public class PolarisSignInState(
         if (now.busy) return
         _ui.value = now.copy(busy = true, problem = null)
         scope.launch {
-            val result = try {
-                actions.linkAccept()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                null
-            }
+            val result = attempt { actions.linkAccept() }.getOrNull()
             when {
                 result is LinkAcceptResult.Linked -> _ui.value = PolarisSignInUi.LinkDone(now.provider)
 
@@ -346,13 +337,7 @@ public class PolarisSignInState(
     public fun linkDecline() {
         if (_ui.value !is PolarisSignInUi.LinkOffer) return
         scope.launch {
-            try {
-                actions.linkDecline()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                actions.linkDismiss()
-            }
+            if (attempt { actions.linkDecline() }.isFailure) actions.linkDismiss()
             finish()
         }
     }
@@ -397,62 +382,52 @@ public class PolarisSignInState(
         job = scope.launch {
             val viaCode = codeOnly
             codeOnly = false
-            val started = if (viaCode) null else try {
-                actions.beginRedirect()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _ui.value = PolarisSignInUi.Failed
-                return@launch
+            val started = if (viaCode) Result.success(null) else attempt { actions.beginRedirect() }
+            val session = started.getOrNull()
+            when {
+                started.isFailure -> _ui.value = PolarisSignInUi.Failed
+
+                session != null -> {
+                    redirect = session
+                    _ui.value = PolarisSignInUi.Redirecting(session.opened, link = session.link)
+                    followRedirect(session)
+                }
+
+                else -> beginCode()
             }
-            if (started != null) {
-                redirect = started
-                _ui.value = PolarisSignInUi.Redirecting(started.opened, link = started.link)
-                followRedirect(started)
-                return@launch
-            }
-            val shown = try {
-                actions.begin()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _ui.value = PolarisSignInUi.Failed
-                return@launch
-            }
-            prompt = shown
-            _ui.value = PolarisSignInUi.Showing(shown, clock())
-            follow(shown)
         }
     }
 
-    /** Wait for the browser to bring the sign-in back, then offer the link or finish. */
-    private suspend fun followRedirect(r: PolarisRedirectSession) {
-        val settled = try {
-            r.wait()
+    @Suppress("ReturnCount")
+    private suspend fun beginCode() {
+        val shown = try {
+            actions.begin()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            if (redirect !== r) return
+            _ui.value = PolarisSignInUi.Failed
+            return
+        }
+        prompt = shown
+        _ui.value = PolarisSignInUi.Showing(shown, clock())
+        follow(shown)
+    }
+
+    /** Wait for the browser to bring the sign-in back, then offer the link or finish. */
+    @Suppress("ReturnCount")
+    private suspend fun followRedirect(r: PolarisRedirectSession) {
+        val waited = attempt { r.wait() }
+        if (redirect !== r) return
+        val settled = waited.getOrElse { e ->
             redirect = null
             _ui.value = if (e is SignInError && e.code == ErrorCode.signInDenied) PolarisSignInUi.Denied else PolarisSignInUi.Failed
             return
         }
-        if (redirect !== r) return
         when (settled) {
             is SignInOutcome.SignedIn -> {
                 redirect = null
                 // Only a sign-in the person started here is offered the link (the SDK checks it again).
-                val entry = if (settled.sameDevice) {
-                    try {
-                        actions.linkOffer()
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        null
-                    }
-                } else {
-                    null
-                }
+                val entry = if (settled.sameDevice) attempt { actions.linkOffer() }.getOrNull() else null
                 if (entry != null) _ui.value = PolarisSignInUi.LinkOffer(entry.provider, entry.reach) else finish()
             }
 
@@ -506,4 +481,14 @@ public class PolarisSignInState(
         _ui.value = settled
         if (settled == PolarisSignInUi.Done) onSignedIn()
     }
+}
+
+/** [block]'s result with any failure kept (the kit shows a typed state for it); cancellation always propagates. */
+@Suppress("TooGenericExceptionCaught")
+private suspend fun <T> attempt(block: suspend () -> T): Result<T> = try {
+    Result.success(block())
+} catch (e: CancellationException) {
+    throw e
+} catch (e: Exception) {
+    Result.failure(e)
 }

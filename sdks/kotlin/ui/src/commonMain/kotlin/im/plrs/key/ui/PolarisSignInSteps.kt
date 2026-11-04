@@ -19,6 +19,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /** What the hand-off and link steps ask of the state holder; the stateless screen takes them as one value. */
+@Suppress("LongParameterList")
 public class PolarisSignInSteps(
     public val onReopen: () -> Unit = {},
     public val onLinkCopied: () -> Unit = {},
@@ -58,6 +59,7 @@ internal fun rememberKitResolver(): (KitComponent, KitInputs) -> Pair<KitScreen,
 }
 
 /** The hand-off: the browser has the sign-in. */
+@Suppress("ktlint:standard:function-naming", "FunctionNaming")
 @Composable
 internal fun PolarisRedirectWait(ui: PolarisSignInUi.Redirecting, steps: PolarisSignInSteps, onCancel: () -> Unit, modifier: Modifier = Modifier) {
     val resolve = rememberKitResolver()
@@ -92,78 +94,90 @@ internal fun PolarisRedirectWait(ui: PolarisSignInUi.Redirecting, steps: Polaris
 }
 
 /** The link offer and its two results. */
+@Suppress("ktlint:standard:function-naming", "FunctionNaming")
 @Composable
 internal fun PolarisLinkStep(ui: PolarisSignInUi, steps: PolarisSignInSteps, modifier: Modifier = Modifier) {
-    val resolve = rememberKitResolver()
-    val opener = rememberPolarisOpener()
-    val locale = kitLocale()
     when (ui) {
         is PolarisSignInUi.LinkOffer -> when (ui.problem) {
             // A sign-in too old to link, or an offer this device was refused: the one way on is stated plainly.
-            PolarisSignInUi.LinkProblem.Stale, PolarisSignInUi.LinkProblem.Failed -> {
-                val stale = ui.problem == PolarisSignInUi.LinkProblem.Stale
-                val args = mapOf("provider" to CopyArgument.Text(ui.provider))
-                val catalog = KitCopy.bundled
-                PolarisMessageLayout(
-                    modifier = modifier,
-                    emblem = {},
-                    title = catalog.format("signin.linkOffer.title", locale, args),
-                    body = catalog.format(if (stale) "signin.linkOffer.stale" else "signin.linkOffer.failed", locale, args),
-                    titleStyle = { androidx.compose.material3.MaterialTheme.typography.titleMedium },
-                    actions = {
-                        if (stale) {
-                            PolarisPrimaryButton(catalog.format("signin.again", locale), steps.onLinkSignInAgain, initialFocus = true)
-                            Spacer(Modifier.height(PolarisSpace.controls))
-                            PolarisTextButton(catalog.format("signin.linkOffer.decline", locale), steps.onLinkDecline)
-                        } else {
-                            PolarisPrimaryButton(catalog.format("signin.linkOffer.decline", locale), steps.onLinkDecline, initialFocus = true)
-                        }
-                    },
-                )
-            }
+            PolarisSignInUi.LinkProblem.Stale, PolarisSignInUi.LinkProblem.Failed -> LinkProblemStep(ui, steps, modifier)
 
-            else -> {
-                val (screen, _) = remember(ui.provider, ui.reach) {
-                    resolve(KitComponent.signIn, linkStepInputs("link-offer", ui.provider, ui.reach))
-                }
-                androidx.compose.foundation.layout.Column(modifier) {
-                    if (ui.problem == PolarisSignInUi.LinkProblem.Network) {
-                        PolarisInlineNotice(KitCopy.bundled.format("core.codes.network.message", locale))
-                    }
-                    PolarisKitScreen(
-                        screen,
-                        onControl = { key ->
-                            if (!ui.busy) {
-                                when (key) {
-                                    "signin.linkOffer.primary" -> steps.onLinkAccept()
-                                    "signin.linkOffer.decline" -> steps.onLinkDecline()
-                                }
-                            }
-                        },
-                    )
-                }
-            }
+            else -> LinkOfferStep(ui, steps, modifier)
         }
 
-        is PolarisSignInUi.LinkDone -> {
-            val (screen, _) = remember(ui.provider) { resolve(KitComponent.signIn, linkStepInputs("link-done", ui.provider)) }
-            PolarisKitScreen(screen, modifier, onControl = { key -> if (key == "common.done") steps.onLinkFinished() })
-        }
+        is PolarisSignInUi.LinkDone -> LinkResultStep("link-done", ui.provider, steps, modifier)
 
-        is PolarisSignInUi.LinkConflict -> {
-            val (screen, _) = remember(ui.provider) { resolve(KitComponent.signIn, linkStepInputs("link-conflict", ui.provider)) }
-            PolarisKitScreen(
-                screen,
-                modifier,
-                onControl = { key ->
-                    when (key) {
-                        "common.done" -> steps.onLinkFinished()
-                        "signin.linkOffer.join" -> opener(JOIN_ACCOUNTS_URL)
-                    }
-                },
-            )
-        }
+        is PolarisSignInUi.LinkConflict -> LinkResultStep("link-conflict", ui.provider, steps, modifier)
 
         else -> Unit
     }
+}
+
+@Suppress("ktlint:standard:function-naming", "FunctionNaming")
+@Composable
+private fun LinkProblemStep(ui: PolarisSignInUi.LinkOffer, steps: PolarisSignInSteps, modifier: Modifier) {
+    val locale = kitLocale()
+    val stale = ui.problem == PolarisSignInUi.LinkProblem.Stale
+    val args = mapOf("provider" to CopyArgument.Text(ui.provider))
+    val catalog = KitCopy.bundled
+    PolarisMessageLayout(
+        modifier = modifier,
+        emblem = {},
+        title = catalog.format("signin.linkOffer.title", locale, args),
+        body = catalog.format(if (stale) "signin.linkOffer.stale" else "signin.linkOffer.failed", locale, args),
+        titleStyle = { androidx.compose.material3.MaterialTheme.typography.titleMedium },
+        actions = {
+            if (stale) {
+                PolarisPrimaryButton(catalog.format("signin.again", locale), steps.onLinkSignInAgain, initialFocus = true)
+                Spacer(Modifier.height(PolarisSpace.controls))
+                PolarisTextButton(catalog.format("signin.linkOffer.decline", locale), steps.onLinkDecline)
+            } else {
+                PolarisPrimaryButton(catalog.format("signin.linkOffer.decline", locale), steps.onLinkDecline, initialFocus = true)
+            }
+        },
+    )
+}
+
+@Suppress("ktlint:standard:function-naming", "FunctionNaming")
+@Composable
+private fun LinkOfferStep(ui: PolarisSignInUi.LinkOffer, steps: PolarisSignInSteps, modifier: Modifier) {
+    val (screen, _) = rememberKitResolver().let { resolve ->
+        remember(ui.provider, ui.reach) { resolve(KitComponent.signIn, linkStepInputs("link-offer", ui.provider, ui.reach)) }
+    }
+    androidx.compose.foundation.layout.Column(modifier) {
+        if (ui.problem == PolarisSignInUi.LinkProblem.Network) {
+            PolarisInlineNotice(KitCopy.bundled.format("core.codes.network.message", kitLocale()))
+        }
+        PolarisKitScreen(
+            screen,
+            onControl = { key ->
+                if (!ui.busy) {
+                    when (key) {
+                        "signin.linkOffer.primary" -> steps.onLinkAccept()
+                        "signin.linkOffer.decline" -> steps.onLinkDecline()
+                    }
+                }
+            },
+        )
+    }
+}
+
+/** `link-done` and `link-conflict`: Done ends the sign-in; a conflict also points to Help. */
+@Suppress("ktlint:standard:function-naming", "FunctionNaming")
+@Composable
+private fun LinkResultStep(step: String, provider: String, steps: PolarisSignInSteps, modifier: Modifier) {
+    val opener = rememberPolarisOpener()
+    val (screen, _) = rememberKitResolver().let { resolve ->
+        remember(step, provider) { resolve(KitComponent.signIn, linkStepInputs(step, provider)) }
+    }
+    PolarisKitScreen(
+        screen,
+        modifier,
+        onControl = { key ->
+            when (key) {
+                "common.done" -> steps.onLinkFinished()
+                "signin.linkOffer.join" -> opener(JOIN_ACCOUNTS_URL)
+            }
+        },
+    )
 }

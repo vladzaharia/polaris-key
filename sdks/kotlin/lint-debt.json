@@ -2720,17 +2720,14 @@
       "ktlint:standard:wrapping": 1
     },
     "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/PolarisSignInState.kt": {
-      "detekt:complexity.TooManyFunctions": 1,
-      "detekt:exceptions.InstanceOfCheckForException": 2,
-      "detekt:exceptions.SwallowedException": 6,
-      "detekt:exceptions.TooGenericExceptionCaught": 8,
+      "detekt:exceptions.InstanceOfCheckForException": 1,
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
       "detekt:style.MagicNumber": 2,
       "detekt:style.MaxLineLength": 1,
-      "detekt:style.ReturnCount": 3,
       "ktlint:standard:argument-list-wrapping": 4,
       "ktlint:standard:binary-expression-wrapping": 4,
-      "ktlint:standard:max-line-length": 1,
-      "ktlint:standard:multiline-if-else": 2
+      "ktlint:standard:max-line-length": 1
     },
     "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/PolarisSyncState.kt": {
       "detekt:complexity.TooManyFunctions": 1
@@ -3288,14 +3285,6 @@
       "ktlint:standard:import-ordering": 1,
       "ktlint:standard:multiline-if-else": 2,
       "ktlint:standard:no-consecutive-blank-lines": 1
-    },
-    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisSignInRedirect.kt": {
-      "detekt:complexity.CyclomaticComplexMethod": 1,
-      "detekt:complexity.LongMethod": 1,
-      "detekt:complexity.LongParameterList": 1,
-      "detekt:naming.FunctionNaming": 2,
-      "detekt:naming.MatchingDeclarationName": 1,
-      "ktlint:standard:function-naming": 2
     },
     "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisSkeleton.kt": {
       "detekt:naming.FunctionNaming": 3,
