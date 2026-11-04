@@ -10,7 +10,7 @@
  * lands its baselines; the default is ui-qa's flat `<state>-<theme>.png` at the top of the
  * directory. Vite needs each pattern and its options as literals, which is why the calls repeat.
  * React and elements commit `<Component>.<state>/<width>-<theme>.png`, so their lines take only
- * the 1440 px Polaris render of each state: not the 390 px, platform-chrome, `native` or
+ * the 390 px (phone) Polaris render of each state: not the 1440 px, platform-chrome, `native` or
  * `forced-colors` ones. The Vue, Svelte and Angular kits must narrow theirs the same way when
  * they commit baselines, or every variant is published.
  *
@@ -55,11 +55,11 @@ function repoPath(key: string): string {
 
 const GLOBS: Readonly<Record<string, Record<string, ImageMetadata>>> = {
   react: import.meta.glob<ImageMetadata>(
-    "../../../../packages/sdk-react/test/visual/__screenshots__/*/1440-{dark,light}.png",
+    "../../../../packages/sdk-react/test/visual/__screenshots__/*/390-{dark,light}.png",
     { eager: true, import: "default" },
   ),
   elements: import.meta.glob<ImageMetadata>(
-    "../../../../packages/elements/test/visual/__screenshots__/*/1440-{dark,light}.png",
+    "../../../../packages/elements/test/visual/__screenshots__/*/390-{dark,light}.png",
     { eager: true, import: "default" },
   ),
   vue: import.meta.glob<ImageMetadata>(

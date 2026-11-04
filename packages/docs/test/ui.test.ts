@@ -71,7 +71,7 @@ describe("docs subset", () => {
   const shows = (kit: string, component: string): boolean =>
     BASELINES.some((b) => b.kit === kit && b.component === component);
 
-  it("React and elements show their nested 1440 renders, each state in both themes", () => {
+  it("React and elements show their nested 390 renders, each state in both themes", () => {
     for (const kit of ["react", "elements"]) {
       for (const component of ["ActivateDone", "LinkPairing", "TransferOffer"])
         expect(shows(kit, component), `${kit} ${component}`).toBe(true);
@@ -107,11 +107,11 @@ describe("docs subset", () => {
       ).toBe(true);
   });
 
-  it("emits no variant render: 390, native, forced-colors, platform chrome, font scales", () => {
+  it("emits no variant render: 1440, native, forced-colors, platform chrome, font scales", () => {
     for (const b of BASELINES.filter(
       (x) => x.kit === "react" || x.kit === "elements",
     ))
-      expect(b.file, b.file).toMatch(/\/1440-(dark|light)\.png$/);
+      expect(b.file, b.file).toMatch(/\/390-(dark|light)\.png$/);
     for (const b of BASELINES.filter((x) => x.kit === "compose"))
       expect(b.file, b.file).toMatch(
         /\/phone-(branded|polaris)-(dark|light)\.png$/,
@@ -123,10 +123,10 @@ describe("baseline names", () => {
   const catalog = { ...CATALOG };
 
   it("map React's <Component>.<state>/<width>-<theme> and Compose's connect/ folders, in any case", () => {
-    expect(classify("ActivateDone.ready/1440-dark.png")).toMatchObject({
+    expect(classify("ActivateDone.ready/390-dark.png")).toMatchObject({
       component: "ActivateDone",
       state: "ready",
-      variant: "1440",
+      variant: "390",
     });
     for (const dir of [
       "connect/linkpairing-code-the-app-asks-for",
