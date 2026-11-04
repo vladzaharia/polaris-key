@@ -721,6 +721,13 @@ export function exposePolarisBridge(
     f?.native?.cancel();
     flows.delete(id);
   };
+  /** Undo a sign-in that finished after its flow was ended. */
+  const undoLate = (): void => {
+    client.identity.signOut().then(
+      () => pushState(),
+      () => undefined,
+    );
+  };
   // The restart an install staged, applied by `update.restart` (the function cannot cross IPC).
   let pendingRestart: (() => Promise<void>) | null = null;
   // The options of the last `update.decide`: an install re-derives the offer under the same ones
@@ -749,9 +756,13 @@ export function exposePolarisBridge(
   });
   /** End the native redirect flows (one window's, or all): their listeners close. */
   const endNativeFlows = (windowId?: number): void => {
-    for (const [id, f] of [...flows])
-      if (f.native && (windowId === undefined || f.windowId === windowId))
+    for (const [id, f] of [...flows]) {
+      // A sign-out ends every flow; a new begin ends only the window's earlier native one.
+      if (windowId === undefined) {
+        f.prompt?.cancel();
         forgetFlow(id);
+      } else if (f.native && f.windowId === windowId) forgetFlow(id);
+    }
   };
   const onIdentity = (e: { kind: string }): void => {
     if (e.kind === "signedOut") {
@@ -1158,8 +1169,8 @@ export function exposePolarisBridge(
     "identity.choice.cancel": async (a, e) =>
       choiceCall(() => choiceHost.cancel(e.sender, a)),
     // ── v6 (I-15b.8b): the window that began a sign-in flow ends it. Only the flow id crosses
-    //    IPC. An unknown or finished flow answers `ended: false`; another window's flow is
-    //    refused and nothing ends. ──
+    //    IPC. An unknown or finished flow answers `ended: false`, and so does another window's
+    //    flow (nothing ends), so the answer says nothing about which ids exist. ──
     "identity.signIn.cancel": async (a, e) => {
       const id = bag(a).flowId;
       if (typeof id !== "string" || id === "" || id.length > 128)
@@ -1168,14 +1179,18 @@ export function exposePolarisBridge(
           "flowId must be a non-empty string.",
         );
       const flow = flows.get(id);
-      if (!flow) return { ended: false };
-      if (flow.windowId !== e.sender.id)
-        throw new BridgeRefusal(
-          "flow-not-owned",
-          "That sign-in was not begun by this window.",
-        );
+      if (!flow || flow.windowId !== e.sender.id) return { ended: false };
       choiceHost.dropFlow(id);
+      flow.prompt?.cancel();
       forgetFlow(id);
+      // A redirect already redeeming cannot be stopped: if it still signs in, the token it
+      // stored is undone.
+      flow.native?.wait().then(
+        (o) => {
+          if (o.kind === "signedIn") undoLate();
+        },
+        () => undefined,
+      );
       return { ended: true };
     },
     // ── v4 (SP-13 config.local, SP-14 update-health events) ───────────────────────────
@@ -1328,7 +1343,14 @@ export function exposePolarisBridge(
           if (flow.result === undefined) return { kind: "pending" };
           if ("err" in flow.result) throw flow.result.err;
           r = flow.result.ok;
-        } else r = await flow.prompt!.wait({ once: true });
+        } else {
+          r = await flow.prompt!.wait({ once: true });
+          // The flow was ended while the poll was in flight: a sign-in it still finished is undone.
+          if (flows.get(flowId as string) !== flow) {
+            if (r.kind === "signedIn") undoLate();
+            return { kind: "expired" };
+          }
+        }
       } catch (e) {
         const code = (e as { code?: unknown }).code;
         // A native flow redeems its code once: whatever went wrong, it is over.

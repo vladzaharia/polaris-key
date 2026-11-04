@@ -301,9 +301,10 @@ export type BridgeActivation =
  * v6 never answers `choose`, so the renderer leaves `licenseChoice` off the sign-in there.
  *
  * A fifth verb, `("identity", "signIn.cancel")` with `{flowId}`, ends a sign-in flow (device-code
- * or native redirect) the calling window began: the host closes its listener and drops the flow.
- * It answers `{ended: true}`, or `{ended: false}` for an unknown or finished flow, and refuses
- * another window's flow with `flow-not-owned`. A session's `cancel()` sends it on a v6 host.
+ * or native redirect) the calling window began: the host closes its listener, cancels the
+ * session and drops the flow. It answers `{ended: true}`, or `{ended: false}` for an unknown,
+ * finished or another window's flow (the two are not told apart). A sign-in that was already
+ * finishing is undone. A session's `cancel()` sends it on a v6 host.
  *
  * Reserved, not yet used by this package: pack verbs (`("packs", …)`), telemetry extras and the
  * `onPackProgress` push below are declared for a later revision; nothing here calls or

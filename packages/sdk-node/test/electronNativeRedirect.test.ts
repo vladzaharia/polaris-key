@@ -6,7 +6,7 @@
 
 import http from "node:http";
 import net from "node:net";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { exposePolarisBridge } from "../src/electron/index.js";
 import { createPreloadBridge } from "../src/electron/renderer.js";
 import { allowApp, ipcPair } from "./electronIpc.js";
@@ -32,7 +32,7 @@ afterEach(() => {
   for (const c of closers.splice(0)) c();
 });
 
-async function setup(o: { request?: boolean } = {}) {
+async function setup(o: { request?: boolean; tokenGate?: Promise<void> } = {}) {
   const identity = {
     enabled: true,
     configured: true,
@@ -58,8 +58,11 @@ async function setup(o: { request?: boolean } = {}) {
         json({ product: PRODUCT, services: { identity } }),
       [`POST /${PRODUCT}/identity/request`]: () =>
         json({ request_uri: REQUEST_URI, expires_in: 600 }, 201),
-      [`POST /${PRODUCT}/identity/token`]: () => json(TOKEN_OK),
-      [`POST /${PRODUCT}/identity/signout`]: () => json({ released: false }),
+      [`POST /${PRODUCT}/identity/token`]: async () => {
+        await o.tokenGate;
+        return json(TOKEN_OK);
+      },
+      [`POST /${PRODUCT}/identity/signout`]: () => json({ released: true }),
     },
   });
   (
@@ -305,15 +308,14 @@ describe("PolarisBridge: the native redirect sign-in", () => {
       });
     });
 
-    it("another window's flow id is refused and nothing ends", async () => {
+    it("another window's flow id answers like an unknown one and nothing ends", async () => {
       const env = await setup();
       const begin = (await env.bridge.beginSignIn({
         channel: "redirect",
       } as never)) as unknown as { flowId: string };
       const { port } = pushed(env);
       const r = await end(env, begin.flowId, 8);
-      expect(r.ok).toBe(false);
-      expect(r.code).toBe("flow-not-owned");
+      expect(r).toEqual({ ok: true, value: { ended: false } });
       expect(await listening(port)).toBe(true);
       expect(await env.bridge.pollSignIn(begin.flowId)).toEqual({
         kind: "pending",
@@ -341,6 +343,34 @@ describe("PolarisBridge: the native redirect sign-in", () => {
         }),
       ).rejects.toMatchObject({ code: "sender-refused" });
       expect(await listening(port)).toBe(true);
+    });
+
+    it("a callback already being redeemed when the flow is ended leaves nothing stored", async () => {
+      let release!: () => void;
+      const env = await setup({
+        tokenGate: new Promise<void>((r) => (release = r)),
+      });
+      const begin = (await env.bridge.beginSignIn({
+        channel: "redirect",
+      } as never)) as unknown as { flowId: string };
+      const { port, state } = pushed(env);
+      const delivered = deliver(port, state);
+      await vi.waitFor(() =>
+        expect(env.seen.some((s) => s.path.endsWith("/identity/token"))).toBe(
+          true,
+        ),
+      );
+      expect(
+        await env.bridge.invoke!("identity", "signIn.cancel", {
+          flowId: begin.flowId,
+        }),
+      ).toEqual({ ended: true });
+      release();
+      await delivered;
+      // The redeem finishes after the listener answered; give it and the undo time to settle.
+      await vi.waitFor(() => expect(env.seen.length).toBeGreaterThan(2));
+      await new Promise((r) => setTimeout(r, 100));
+      expect(await env.store.getToken()).toBeNull();
     });
 
     it("after sign-out the flow is already gone, so the verb is a no-op", async () => {

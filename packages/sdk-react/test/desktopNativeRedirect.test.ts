@@ -157,6 +157,19 @@ describe("DesktopAdapter - native redirect sign-in", () => {
     adapter.dispose();
   });
 
+  it("cancel on a v6 host with no invoke sends nothing and still settles locally", async () => {
+    const { bridge, adapter } = await mounted();
+    (bridge as { invoke?: unknown }).invoke = undefined;
+    bridge.beginSignIn = vi.fn(async () => BEGIN);
+    bridge.pollSignIn = vi.fn(async () => ({ kind: "pending" }) as const);
+    const s = await start(adapter);
+    const waiting = s.wait();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(() => s.cancel()).not.toThrow();
+    expect(await waiting).toEqual({ kind: "cancelled" });
+    adapter.dispose();
+  });
+
   it("a sender the host refuses is a typed sign-in-unavailable, no session", async () => {
     const { bridge, adapter } = await mounted();
     bridge.beginSignIn = vi.fn(async () => {
