@@ -1629,6 +1629,9 @@ export class BrowserAdapter implements PolarisAdapter {
     if (current?.id === deviceId) {
       // This device's own seat: the deauthorization `signOut()` makes for a key-only product.
       if (this.bearer) {
+        // As `signOut()` does: no silent rung signs the device back in after it was removed.
+        this.signOutGeneration += 1;
+        await this.setExplicitSignOut(true);
         await this.forgetRing();
         await this.bearer.deactivate();
         this.applyBearer({ busy: noBusy(), error: noErrors() });

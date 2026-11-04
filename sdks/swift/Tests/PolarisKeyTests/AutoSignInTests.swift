@@ -412,6 +412,23 @@ final class AutoSignInTests: XCTestCase {
         XCTAssertNil(persisted)
     }
 
+    func testDeactivateSetsTheFlagAndALaunchDoesNotSignInSilently() async throws {
+        await discovery()
+        let provider = FakeProvider()
+        let (c, store) = try await client(token: "pkeyt_a", licensed: true, provider: provider)
+        try await c.deactivate()
+        let flag = await c.core.explicitSignOut()
+        XCTAssertTrue(flag)
+        let persisted = await store.readRecord("explicit-sign-out")
+        XCTAssertNotNil(persisted)
+
+        let result = try await c.identity.autoSignIn()
+        XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .signedOut))
+        XCTAssertEqual(provider.calls.current, [], "no rung ran")
+        let nonces = await count("/djdl/identity/nonce")
+        XCTAssertEqual(nonces, 0)
+    }
+
     func testAFailedSignOutLeavesTheFlagUnset() async throws {
         await discovery()
         await server.reply("/djdl/identity/signout", status: 500, body: "{}")
