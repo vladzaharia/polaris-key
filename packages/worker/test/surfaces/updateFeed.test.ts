@@ -776,7 +776,7 @@ describe("release notes in the feed", () => {
     );
     const xml = await res.text();
     expect(xml).toContain(
-      "<description><![CDATA[Faster exports and a fix for the queue.]]></description>",
+      '<description sparkle:format="plain-text"><![CDATA[Faster exports and a fix for the queue.]]></description>',
     );
   });
 
@@ -810,7 +810,7 @@ describe("release notes in the feed", () => {
             <pubDate>Fri, 02 Jan 2026 03:04:05 GMT</pubDate>
             <sparkle:version>1.2.3</sparkle:version>
             <sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>
-            <description><![CDATA[ok]]&gt;&lt;/description&gt;&lt;enclosure url=&apos;https://evil/x.dmg&apos;/&gt;&lt;description&gt;&lt;![CDATA[&lt;script&gt;alert(1)&lt;/script&gt;]]></description>
+            <description sparkle:format="plain-text"><![CDATA[ok]]]]><![CDATA[></description><enclosure url='https://evil/x.dmg'/><description><![CDATA[<script>alert(1)</script>]]></description>
             <enclosure url="https://key.plrs.im/djdl/release/dl/1.2.3/djdl-1.2.3-arm64.dmg" type="application/octet-stream" length="4096" />
           </item>
         </channel>
@@ -818,8 +818,11 @@ describe("release notes in the feed", () => {
       "
     `);
     // The two properties the snapshot is there to guard, stated outright:
-    expect(xml.match(/<enclosure /g)).toHaveLength(1);
-    expect(xml).not.toContain("<script>");
+    // Plain text is not escaped (Sparkle shows it verbatim), so the hostile characters stay
+    // in the feed but only inside CDATA; outside it there is exactly one enclosure and no script.
+    const markup = xml.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, "");
+    expect(markup.match(/<enclosure /g)).toHaveLength(1);
+    expect(markup).not.toContain("<script>");
     // Note what the snapshot shows: on THIS path the payload never reaches the CDATA
     // neutraliser, because `proseToHtml` has already escaped the `>` that would have closed the
     // section. The neutraliser is the layer beneath, for any future producer that hands

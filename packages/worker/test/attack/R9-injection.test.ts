@@ -1499,13 +1499,14 @@ describe("R9-08 renderAppcast CDATA `]]>` neutralization", () => {
       join(HERE, "..", "..", "src", "services", "update", "feed.ts"),
       "utf8",
     );
-    expect(feed).toContain("descriptionHtml: proseToHtml(summary)");
+    expect(feed).toContain("descriptionText: summary");
     expect(feed).toContain("extractSummary(release.body, cfg.summary_marker)");
     const renderer = readFileSync(
       join(HERE, "..", "..", "src", "services", "update", "appcast.ts"),
       "utf8",
     );
     expect(renderer).toContain("neutralizeCdata(item.descriptionHtml)");
+    expect(renderer).toContain("neutralizeCdata(item.descriptionText)");
   });
 
   it("FIXED: the wired summary is HTML-escaped before it reaches the feed", () => {

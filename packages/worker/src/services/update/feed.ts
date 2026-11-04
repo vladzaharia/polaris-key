@@ -69,7 +69,7 @@ import {
   serveReleaseSurface,
   type SurfaceContext,
 } from "../release/surface.js";
-import { buildAppcastItem, proseToHtml, renderAppcast } from "./appcast.js";
+import { buildAppcastItem, renderAppcast } from "./appcast.js";
 
 /** The surfaces this service serves. Release owns the other four. */
 export type UpdateSurfaceKind = "appcast" | "channelAppcast" | "version";
@@ -404,7 +404,7 @@ export async function computeAppcast(
   const minSys = operatorPolicy(cfg).minimumSystemVersion;
   const item = buildAppcastItem(release, dmg, edSignature, enclosureUrl, {
     title: `${binaryName} ${versionFromTag(release.tag_name)}`,
-    ...(summary ? { descriptionHtml: proseToHtml(summary) } : {}),
+    ...(summary ? { descriptionText: summary } : {}),
     ...(minSys ? { minimumSystemVersion: minSys } : {}),
   });
   const xml = renderAppcast({ channelTitle, link: origin, items: [item] });
