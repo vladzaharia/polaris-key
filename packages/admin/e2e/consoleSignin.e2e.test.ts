@@ -131,7 +131,7 @@ describe("console sign-in card in Chromium", () => {
       });
       const page = await context.newPage();
       await page.goto(`${origin}/manage/login`);
-      const nav = page.getByRole("navigation", { name: "Help and links" });
+      const nav = page.getByRole("navigation", { name: "Help and policies" });
       await nav.waitFor();
       const links = nav.getByRole("link");
       expect(await links.allTextContents()).toEqual(["Help", "Privacy"]);

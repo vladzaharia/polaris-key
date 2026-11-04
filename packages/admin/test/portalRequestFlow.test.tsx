@@ -341,6 +341,8 @@ describe("the request's hints and purpose (UK-42.14)", () => {
     renderPortal();
     await screen.findByRole("textbox", { name: "Email" });
     expect(screen.queryByText("Sign in with another device")).not.toBeNull();
+    // The device button is a method below the form: the "or" divides it from the email.
+    expect(screen.queryByText("or")).not.toBeNull();
   });
 
   // UK-42.22.12: a device-code request carries the same hints; the card reads them as it does for
