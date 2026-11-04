@@ -125,6 +125,27 @@ final class HolderScreensTests: XCTestCase {
         }
     }
 
+    func testNoHolderLabelIsFormattedWithAnEmptyArgument() {
+        for preview in PolarisKeyPreviewState.all
+        where preview.component == .addToAccount || preview.component == .activateDone {
+            let step =
+                preview.component == .activateDone
+                ? HolderStep(KitStates.activateDone(preview.inputs))
+                : HolderStep(KitStates.addToAccount(preview.inputs))
+            for generic in [false, true] {
+                for spec in step.buttons {
+                    let line = HolderActions.label(spec, step: step, generic: generic)
+                    for (name, value) in line.args {
+                        XCTAssertNotEqual(value, .text(""), "\(preview.id) \(line.key) \(name)")
+                    }
+                    if generic, spec.key == "signin.done.start" {
+                        XCTAssertEqual(line.key, "common.continue", preview.id)
+                    }
+                }
+            }
+        }
+    }
+
     func testALeadInIsSemiboldAndTheSentenceStaysWhole() {
         let runs = KitFormat.leadParts("**Sync your settings** across your devices")
         XCTAssertEqual(runs.map(\.strong), [true, false])

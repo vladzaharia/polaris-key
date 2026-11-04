@@ -251,13 +251,12 @@ struct HolderPage: View {
     @Environment(\.polarisKeyStrings) private var strings
     @Environment(\.dynamicTypeSize) private var dynamicType
 
-    /// At accessibility sizes the title names the product, so the header strip goes, and Done's actions
-    /// scroll with the content instead of covering a fifth of the screen.
+    /// At accessibility sizes the title names the product, so the header strip goes.
     private var large: Bool { dynamicType.isAccessibilitySize }
 
     var body: some View {
         kitStyle { style in
-            KitScreenScaffold(header: !large, dockActions: !(large && step.component == .activateDone)) {
+            KitScreenScaffold(header: !large) {
                 HolderHeading(step: step)
                     .accessibilityFocused($headingFocused)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -332,6 +331,8 @@ struct HolderBody: View {
 
     @FocusState private var focused: HolderField?
     @Environment(\.polarisKeyStrings) private var strings
+    /// The icon column of the account card grows with the text.
+    @ScaledMetric(relativeTo: .body) private var iconColumn: CGFloat = 22
     @AccessibilityFocusState private var addFocused: Bool
 
     var body: some View {
@@ -397,7 +398,7 @@ struct HolderBody: View {
                         HStack(alignment: .firstTextBaseline, spacing: style.space(.xs)) {
                             Image(systemName: Self.symbol(key))
                                 .foregroundStyle(style.palette.accentFg)
-                                .frame(width: 22)
+                                .frame(width: iconColumn)
                                 .accessibilityHidden(true)
                             KitText(line, .body)
                         }
@@ -539,7 +540,7 @@ struct HolderBody: View {
     @ViewBuilder private func wait(_ style: KitResolvedStyle) -> some View {
         // An account sign-in names the account it asks for.
         if let account = step.wait?.account, !account.isEmpty {
-            KitText(CopyLine("activate.waitingSignIn", ["maskedEmail": .text(account)]), .body)
+            KitText(CopyLine("activate.waitingSignIn", ["maskedEmail": .text(account)]), .body, plain: true)
         }
         if let code = step.wait?.code, !code.isEmpty {
             VStack(alignment: .leading, spacing: style.space(.xs)) {
@@ -650,7 +651,7 @@ private struct StaggerIn: ViewModifier {
 struct HolderActions: View {
     let step: HolderStep
     let handlers: HolderHandlers
-    /// Accessibility sizes: the product is already named above, so Start using stays generic.
+    /// Accessibility sizes: the product is already named above, so the start action is a short "Continue".
     var generic = false
     @Environment(\.polarisKeyStrings) private var strings
 
@@ -670,9 +671,13 @@ struct HolderActions: View {
     }
 
     private func label(_ spec: HolderButtonSpec) -> CopyLine {
+        Self.label(spec, step: step, generic: generic)
+    }
+
+    static func label(_ spec: HolderButtonSpec, step: HolderStep, generic: Bool) -> CopyLine {
         let line = step.line(spec.key) ?? CopyLine(spec.key)
         if generic, spec.key == "signin.done.start" {
-            return CopyLine(spec.key, line.args.merging(["product": .text("")]) { _, new in new })
+            return CopyLine("common.continue")
         }
         return line
     }
