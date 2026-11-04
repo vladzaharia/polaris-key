@@ -568,11 +568,12 @@ public final class PolarisKeyGateModel {
 
     private func toastKeyEntries(_ entries: KeyEntries?) {
         guard let entries else { return }
-        showToast(
-            .info,
-            CopyLine(
-                "signin.key.entriesLeftShort",
-                ["left": .number(max(0, entries.limit - entries.used))]))
+        // The line and its tone come from the catalog's Toast view (hidden with License or Identity off).
+        var i = KitInputs(platform: platform, services: servicesOn)
+        i.toast = KitToast(kind: "key-entries", left: max(0, entries.limit - entries.used))
+        let screen = KitStates.toast(i)
+        guard let line = screen.copy.first else { return }
+        showToast(.info, line)
     }
 
     // MARK: Done (UK-43)
