@@ -194,7 +194,7 @@ func _gate(t: PKeyTestContext) -> void:
 		and gate.license_choice.visible
 		and not gate.auto_step.visible,
 		str(chosen))
-	gate._on_auto_license_chosen({"kind": "license", "id": "lic_a"})
+	gate._choice_flow.on_chosen({"kind": "license", "id": "lic_a"})
 	await B.until(func() -> bool: return not bed.choice_requests.is_empty(), 300)
 	var pick: Dictionary = bed.choice_requests[0]["body"] if not bed.choice_requests.is_empty() else {}
 	t.check("gate auto: the pick is the grant's choice", pick.get("choice") == {"kind": "license", "licenseId": "lic_a"} and pick.get("grant") == GRANT, str(pick))
