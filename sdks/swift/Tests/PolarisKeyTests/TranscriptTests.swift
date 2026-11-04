@@ -1184,7 +1184,12 @@ enum SwiftReplay {
     }
 
     /// Replay `t` step by step; throws on the first step whose traffic or outcome disagrees.
-    static func replay(_ t: Transcript) async throws {
+    /// `drive` may take a step over (UK-43.4: the AddToAccount model runs a whole conversation as one
+    /// step); returning nil leaves the step to `act`.
+    static func replay(
+        _ t: Transcript,
+        driving drive: ((PolarisKeyClient, Transcript.Step) async throws -> [String: JSONValue]?)? = nil
+    ) async throws {
         let server = ReplayServer(t)
         let clock = ReplayClock(t.now)
         let store = InMemoryStore(productSlug: t.product, deviceId: t.initial.deviceId)
@@ -1255,9 +1260,16 @@ enum SwiftReplay {
         for i in t.steps.indices {
             let step = await server.beginStep(i)
             clock.now = step.now ?? t.now
-            let observed = try await act(
-                client, store: store, step: step, session: session, update: update,
-                objects: ReplayPackObjectTransport(server: server), server: server)
+            var driven: [String: JSONValue]?
+            if let drive { driven = try await drive(client, step) }
+            let observed: [String: JSONValue]
+            if let driven {
+                observed = driven
+            } else {
+                observed = try await act(
+                    client, store: store, step: step, session: session, update: update,
+                    objects: ReplayPackObjectTransport(server: server), server: server)
+            }
             try await server.endStep()
             for (key, want) in step.expect.sorted(by: { $0.key < $1.key }) {
                 guard let got = observed[key], got == want else {
