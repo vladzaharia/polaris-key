@@ -750,6 +750,53 @@ describe("the account pane's Not in an account row (UK-42.10)", () => {
     adapter.dispose();
   });
 
+  it("a key holder with a name and email is not signed in; a profile user is", async () => {
+    const holder = pane(
+      okBridgeState({
+        doc: makeDoc({
+          profile: {
+            name: "Ada Lovelace",
+            firstName: "Ada",
+            email: "ada@example.com",
+            activatedAt: 900,
+          },
+        }),
+      }),
+    );
+    await waitFor(() =>
+      expect(control(holder.container, "common.signOut")).not.toBeNull(),
+    );
+    expect(
+      holder.container.querySelector('[data-key="account.keyOnly"]'),
+    ).not.toBeNull();
+    expect(
+      holder.container.querySelector('[data-key="account.holder"]'),
+    ).toBeNull();
+    holder.adapter.dispose();
+    const account = pane(
+      okBridgeState({
+        doc: makeDoc({
+          profile: {
+            name: "Ada Lovelace",
+            firstName: "Ada",
+            email: "ada@example.com",
+            activatedAt: 900,
+            user: { subject: "a".repeat(43) },
+          },
+        }),
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        account.container.querySelector('[data-key="account.holder"]'),
+      ).not.toBeNull(),
+    );
+    expect(
+      account.container.querySelector('[data-key="account.keyOnly"]'),
+    ).toBeNull();
+    account.adapter.dispose();
+  });
+
   it("by default (the web switch) the row never opens the in-pane form", async () => {
     const { adapter, container } = pane(floating());
     await waitFor(() =>

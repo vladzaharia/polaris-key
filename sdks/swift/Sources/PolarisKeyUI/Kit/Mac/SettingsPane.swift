@@ -181,6 +181,7 @@
                 .onChange(of: route.request) { _, request in take(request) }
                 .onChange(of: model.checkResult) { _, line in announce(line) }
                 .onChange(of: model.deviceFailure) { _, line in announce(line) }
+                .onChange(of: model.signOutError) { _, line in announce(line) }
             }
         }
 
@@ -254,21 +255,55 @@
                 if model.account.shows("common.signOut") {
                     // No box of its own: the bare button, as the mockup has it.
                     Section {
+                        if let error = model.signOutError {
+                            PaneText(error, .footnote, color: .danger)
+                        }
                     } footer: {
-                        PaneButton(line: CopyLine("menu.signOut"), style: style) {
+                        PaneButton(
+                            line: CopyLine(model.account.state == .keyOnly ? "account.removeKey" : "menu.signOut"),
+                            style: style
+                        ) {
                             confirmingSignOut = true
                         }
                     }
                     .confirmationDialog(
-                        SignOutCopy.title(strings, product: style.identity.name),
-                        isPresented: $confirmingSignOut, titleVisibility: .visible
+                        model.account.state == .keyOnly
+                            ? strings.string("account.removeKey")
+                            : SignOutCopy.title(strings, product: style.identity.name),
+                        isPresented: $confirmingSignOut,
+                        titleVisibility: model.account.state == .keyOnly ? .hidden : .visible
                     ) {
-                        Button(strings.string("signin.signout.confirm"), role: .destructive) {
-                            Task { await model.signOut() }
+                        if model.account.state == .keyOnly {
+                            // A key alone has nobody to sign out: the exit forgets the key (as on iOS).
+                            Button(strings.string("account.removeKey"), role: .destructive) {
+                                Task { await model.signOut() }
+                            }
+                        } else {
+                            Button(strings.string("signin.signout.confirm"), role: .destructive) {
+                                Task { await model.signOut() }
+                            }
+                            Button(strings.string("common.cancel"), role: .cancel) {}
                         }
+                    } message: {
+                        if model.account.state != .keyOnly {
+                            Text(SignOutCopy.message(strings, product: style.identity.name, tier: model.tier))
+                        }
+                    }
+                    // Sign out could not reach the service: the choice is tied to the failure.
+                    .alert(
+                        strings.string("common.signOutOfflineTitle"),
+                        isPresented: Binding(
+                            get: { model.signOutFailed },
+                            set: { if !$0 { model.dismissSignOutFailure() } })
+                    ) {
+                        Button(strings.string("common.signOutAnyway"), role: .destructive) {
+                            Task { await model.signOutAnyway() }
+                        }
+                        Button(strings.string("common.tryAgain")) { Task { await model.signOut() } }
+                            .keyboardShortcut(.defaultAction)
                         Button(strings.string("common.cancel"), role: .cancel) {}
                     } message: {
-                        Text(SignOutCopy.message(strings, product: style.identity.name, tier: model.tier))
+                        Text(strings.string("common.signOutOffline"))
                     }
                 }
             }
@@ -279,9 +314,10 @@
                 ProductIcon(size: 40)
                 VStack(alignment: .leading, spacing: style.space(.xxs)) {
                     // The window's own header: the tier, then who, not the product name again.
-                    if model.account.shows("account.tier") {
+                    // Until the tier is known there is no tier word: never " license" alone.
+                    if model.account.shows("account.tier"), let tier = model.tier, !tier.isEmpty {
                         PaneText(
-                            CopyLine("account.tier", ["tier": .text(model.tier ?? "")]), .body,
+                            CopyLine("account.tier", ["tier": .text(tier)]), .body,
                             color: .default)
                         .fontWeight(.medium)
                     }
@@ -425,11 +461,6 @@
                 }
                 DevicesSection(
                     screen: model.devicesScreen, devices: model.deviceRows,
-                    onRemove: { device in
-                        if let index = model.deviceRows.firstIndex(of: device) {
-                            Task { await model.removeDevice(at: index) }
-                        }
-                    },
                     onRetry: { Task { await model.retryDevices() } },
                     onManage: { model.handlers.manage?() },
                     onRename: { device, name in

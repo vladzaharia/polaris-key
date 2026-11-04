@@ -443,6 +443,50 @@ final class AutoSignInTests: XCTestCase {
         XCTAssertEqual(nonces, 0)
     }
 
+    /// Sign out anyway (the kit's fallback when `signOut()` failed): the failure came from a
+    /// pre-sign-out hook, so the silent-restore item was never dropped. `signOutLocally()` then the
+    /// release leave nothing that could sign the person back in on the next launch.
+    func testSignOutAnywayAfterAHookFailureLeavesNothingToSignBackIn() async throws {
+        await discovery(restore: true)
+        await server.reply("/djdl/identity/signout", body: #"{"released":true}"#)
+        await server.route("/djdl/identity/restore") { _ in StubServer.Reply(status: 204, body: "") }
+        backup.item.set(itemA)
+        let provider = FakeProvider()
+        let (c, store) = try await client(token: "pkeyt_a", licensed: true, provider: provider)
+        struct Stopped: Error {}
+        _ = c.identity.onBeforeSignOut { throw Stopped() }
+        do {
+            _ = try await c.identity.signOut()
+            XCTFail("the hook stops the sign-out")
+        } catch {}
+        XCTAssertNotNil(backup.item.current, "a stopped sign-out leaves the restore item")
+
+        await c.identity.signOutLocally()
+        let flag = await c.core.explicitSignOut()
+        XCTAssertTrue(flag)
+        XCTAssertNil(backup.item.current, "the restore item is dropped")
+        XCTAssertEqual(provider.calls.current, ["cleanup"])
+        let pending = await store.readRecord("restore-delete-pending")
+        XCTAssertNotNil(pending, "its revocation is queued or delivered, never forgotten")
+
+        // A relaunch over the same store: a silent provider and the restore item's store are ready.
+        let relaunchProvider = FakeProvider()
+        let again = try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: [:], trustRefresh: false, store: store, transport: server.transport,
+                expectedServices: [.identity], fingerprint: false,
+                connect: ConnectOptions(keys: try LabelKeyPort(label: "transcript-device-key-1"))))
+        again.identity.redirectAcquisitionSync.set(false)
+        again.identity.installPlatformIdentity(relaunchProvider)
+        again.identity.installRestoreStore(backup)
+        let result = try await again.identity.autoSignIn()
+        XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .signedOut))
+        XCTAssertEqual(relaunchProvider.calls.current, [], "no provider rung ran")
+        let grants = await count("/djdl/identity/token")
+        XCTAssertEqual(grants, 0, "no silent restore")
+    }
+
     func testAFailedSignOutLeavesTheFlagUnset() async throws {
         await discovery()
         await server.reply("/djdl/identity/signout", status: 500, body: "{}")

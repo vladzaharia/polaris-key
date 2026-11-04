@@ -84,6 +84,21 @@
       "role": "button",
       "note": "Shared verb used across the kit's screens. Signs this device out of the product."
     },
+    "common.signOutAnyway": {
+      "value": "Sign out anyway",
+      "role": "button",
+      "note": "AccountAndLicense: offered after Sign out could not reach the service. Signs this device out of the product without telling the service; the device's seat stays in use until the person removes it in their account."
+    },
+    "common.signOutOfflineTitle": {
+      "value": "Can't reach Polaris Locker",
+      "role": "title",
+      "note": "AccountAndLicense: the title of the alert shown when Sign out could not reach the service. Its buttons are Sign out anyway, Try again and Cancel."
+    },
+    "common.signOutOffline": {
+      "value": "If you sign out anyway, this device stays in use until you remove it in Polaris Locker.",
+      "role": "body",
+      "note": "AccountAndLicense: the message of the alert shown when Sign out could not reach the service (a network error only). Names the cost of Sign out anyway: the device's seat stays in use until the person removes it in their account. \"In use\" is the seat count's word."
+    },
     "common.manage": {
       "value": "Manage",
       "role": "button",

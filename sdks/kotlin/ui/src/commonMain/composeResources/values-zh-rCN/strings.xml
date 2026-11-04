@@ -47,6 +47,13 @@
     <!-- Shared verb used across the kit's screens. Signs this device out of the product. -->
     <string name="common_signOut">退出登录</string>
     <string name="common_signOut__macos">退出登录</string>
+    <!-- AccountAndLicense: offered after Sign out could not reach the service. Signs this device out of the product without telling the service; the device's seat stays in use until the person removes it in their account. -->
+    <string name="common_signOutAnyway">仍然退出登录</string>
+    <string name="common_signOutAnyway__macos">仍然退出登录</string>
+    <!-- AccountAndLicense: the title of the alert shown when Sign out could not reach the service. Its buttons are Sign out anyway, Try again and Cancel. -->
+    <string name="common_signOutOfflineTitle">无法连接到 Polaris Locker</string>
+    <!-- AccountAndLicense: the message of the alert shown when Sign out could not reach the service (a network error only). Names the cost of Sign out anyway: the device's seat stays in use until the person removes it in their account. "In use" is the seat count's word. -->
+    <string name="common_signOutOffline">如果仍要退出登录，此设备会保持占用状态，直到你在 Polaris Locker 中将其移除。</string>
     <!-- Shared verb used across the kit's screens. Opens the person's Polaris Locker account in the browser. -->
     <string name="common_manage">管理</string>
     <!-- Shared verb used across the kit's screens. Tries to reach the licensing service again. -->

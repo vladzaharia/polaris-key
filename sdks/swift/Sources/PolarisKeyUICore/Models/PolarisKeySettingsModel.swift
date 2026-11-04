@@ -118,6 +118,12 @@ public final class PolarisKeySettingsModel {
     /// The last check failed: `checkResult` is the failure line and the row offers Try again.
     public private(set) var checkFailed = false
     public private(set) var hasLoaded = false
+    /// `signOut()` could not reach the service (a network error): the pane shows an alert that offers
+    /// Sign out anyway, Try again and Cancel.
+    public private(set) var signOutFailed = false
+    /// Any other sign-out failure (a refusal, a bad answer, a hook that stopped it): its own line.
+    /// Cleared by the next sign-out and by `load()`.
+    public private(set) var signOutError: CopyLine?
 
     private var servicesOn: Set<KitService>?
     private var licensed: LicenseState?
@@ -216,6 +222,8 @@ public final class PolarisKeySettingsModel {
 
     /// Everything the pane shows: account, devices and the catalog.
     public func load() async {
+        // A fresh read answers the last sign-out failure line: it is no longer news.
+        signOutError = nil
         await reloadAccount()
         async let roster: Void = loadDevices()
         async let catalog: Void = loadConfig()
@@ -234,12 +242,17 @@ public final class PolarisKeySettingsModel {
         if await client.core.licenseGateEnabled() { on.insert(.license) } else { on.remove(.license) }
         servicesOn = on
         licensed = await client.status()
+        // An account is the signed-in licence user, else a held token that came from a sign-in.
+        // `identity.current()` is the holder's name and email, which a licence-key activation
+        // has too, so it is never the signal.
         let current = await client.identity.current()
-        accountSignedIn = current != nil
+        let user = await client.license.getLicenseUser()
+        let provenance = await client.core.tokenProvenance()
+        accountSignedIn = user != nil || provenance == .signin
         let nearbyOffered = await client.identity.nearby.available(role: .approver)
-        canApproveNearby = current != nil && nearbyOffered
+        canApproveNearby = accountSignedIn && nearbyOffered
         nearbyApproval?.update(inputs: base)
-        holder = current?.name ?? current?.email
+        holder = accountSignedIn ? (current?.name ?? current?.email) : nil
         let info = await client.licenseInfo()
         tier = info?.tierLabel ?? info?.tier
         developer = client.presentation?.developerName ?? client.presentation?.name
@@ -484,12 +497,64 @@ public final class PolarisKeySettingsModel {
         handlers.selectChannel?(name)
     }
 
-    /// Sign out: release this device's seat and wipe its credential.
+    /// Sign out. An account signs out through `identity.signOut()`, which sets the explicit
+    /// sign-out flag so nothing silent restores it. When that cannot reach the service
+    /// (`network-error`), `signOutFailed` turns true and the pane asks whether to sign out anyway;
+    /// any other failure leaves the device signed in and sets `signOutError`. A licence-key
+    /// activation has no account to leave: it keeps `deactivate()`, and a failure there is
+    /// reported the same way.
     public func signOut() async {
         guard let client else { return }
-        try? await client.deactivate()
+        signOutFailed = false
+        signOutError = nil
+        do {
+            if accountSignedIn {
+                try await client.identity.signOut()
+            } else {
+                try await client.deactivate()
+            }
+        } catch {
+            if (error as? PolarisError)?.code == ErrorCode.networkError, accountSignedIn {
+                signOutFailed = true
+            } else {
+                signOutError = Self.errorLine(error)
+            }
+            return
+        }
         await reloadAccount()
         handlers.signedOut?()
+    }
+
+    /// Sign out anyway, after `signOut()` could not reach the service: this device is signed out
+    /// on the device alone (nothing signs it back in at the next launch), then its credential is
+    /// released without telling the service, so the seat stays in use until it is removed in the
+    /// account. `handlers.signedOut` runs only when the release succeeded.
+    public func signOutAnyway() async {
+        guard let client else { return }
+        signOutFailed = false
+        signOutError = nil
+        await client.identity.signOutLocally()
+        do {
+            try await client.deactivate()
+        } catch {
+            signOutError = Self.errorLine(error)
+            return
+        }
+        await reloadAccount()
+        handlers.signedOut?()
+    }
+
+    /// Leave the sign-out alert without acting on it.
+    public func dismissSignOutFailure() { signOutFailed = false }
+
+    /// An error as a line: its `core.codes` message, else the catalog's fallback.
+    static func errorLine(_ error: Error) -> CopyLine {
+        if let code = (error as? PolarisError)?.code,
+            KitCopy.bundled.has("core.codes.\(code).message")
+        {
+            return CopyLine("core.codes.\(code).message")
+        }
+        return CopyLine("core.fallback.message")
     }
 
     // MARK: Inputs

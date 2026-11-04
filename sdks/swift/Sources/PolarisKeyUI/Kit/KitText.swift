@@ -101,7 +101,7 @@ struct KitText: View {
 
 /// The text colours a part may use.
 enum KitTextColor {
-    case strong, `default`, muted, subtle, accent, danger, success
+    case strong, `default`, muted, subtle, accent, control, danger, success
 
     func resolve(_ p: KitPalette) -> Color {
         switch self {
@@ -110,6 +110,8 @@ enum KitTextColor {
         case .muted: return p.textMuted
         case .subtle: return p.textSubtle
         case .accent: return p.accentFg
+        /// A text button's colour: the accent itself, so it reads as a control.
+        case .control: return p.accentSolid
         case .danger: return p.danger
         case .success: return p.success
         }

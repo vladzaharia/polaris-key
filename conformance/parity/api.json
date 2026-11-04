@@ -2460,6 +2460,11 @@
       "reason": "wiring: hands one device key store to the exchange (identity) and Cloud Connect; not an app verb"
     },
     {
+      "sdk": "swift",
+      "path": "identity.signOutLocally",
+      "reason": "the kit's Sign out anyway fallback when signOut() could not reach the service: marks the device deliberately signed out, locally; not an app verb"
+    },
+    {
       "sdk": "kotlin",
       "path": "identity.installPlatformIdentity",
       "reason": "wiring: installs the platform provider the ladder uses and signOut cleans up after; not an app verb"

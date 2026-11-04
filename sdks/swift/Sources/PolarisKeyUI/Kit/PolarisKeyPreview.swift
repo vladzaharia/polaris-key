@@ -154,7 +154,7 @@ public struct PolarisKeyPreview: View {
             PreviewSettingsHost {
                 DevicesSection(
                     screen: KitStates.devices(model.inputs), devices: model.inputs.devices ?? [],
-                    onRemove: { _ in }, onRetry: {},
+                    onRetry: {},
                     onRename: model.inputs.edit?.kind == "rename" ? { _, _ in } : nil,
                     renaming: model.inputs.edit?.kind == "rename"
                         ? model.inputs.devices?.first { $0.name == model.inputs.edit?.device } : nil)

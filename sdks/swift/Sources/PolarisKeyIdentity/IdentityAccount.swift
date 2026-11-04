@@ -142,6 +142,15 @@ extension IdentityClient {
         return SignOutResult(released: released)
     }
 
+    /// Sign this device out on the device alone, without asking the service: the explicit sign-out
+    /// flag, the dropped restore item (its revocation queued for the next launch) and the provider's
+    /// cleanup, so that no silent rung signs the person back in. This is what a kit's Sign out anyway
+    /// runs when `signOut()` could not reach the service; the credential itself is released by the
+    /// deactivation that follows.
+    public func signOutLocally() async {
+        await markSignedOut(serverRevoked: false)
+    }
+
     /// Register a function `signOut()` awaits first (Cloud Sync's flush). A hook that throws
     /// stops the sign-out. Returns the remover.
     @discardableResult
