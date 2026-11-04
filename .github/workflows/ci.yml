@@ -739,10 +739,23 @@ jobs:
         run: node packages/cli/scripts/start-dev-ci.mjs start --lang swift
       - name: Check the pkey dev lane (variables, config, server)
         run: node packages/cli/scripts/start-dev-ci.mjs check
-      - name: swift build + test (warnings as errors)
+      # SwiftPM's global clone and artifact caches (the Sparkle binary), keyed on the resolved
+      # graph and the pinned Xcode. The build products are not cached: a fresh checkout stamps every
+      # source with a new mtime, so llbuild would rebuild them anyway.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/org.swift.swiftpm
+          key: swiftpm-${{ runner.os }}-xcode26.6-${{ hashFiles('sdks/swift/Package.resolved', 'sdks/swift/Package.swift') }}
+      # The libraries build strictly (the tests carry warnings of their own: code after a skip's
+      # throw, a deprecated Sparkle initialiser). Then the tests are built once and run in parallel
+      # without a second compile. Neither build writes the index store, which only an IDE reads.
+      - name: swift build + test (warnings as errors, parallel)
         run: |
-          swift build --package-path sdks/swift -Xswiftc -warnings-as-errors
-          swift test --package-path sdks/swift
+          swift build --package-path sdks/swift --disable-index-store -Xswiftc -warnings-as-errors
+          swift build --package-path sdks/swift --build-tests --disable-index-store
+          swift test --package-path sdks/swift --skip-build --parallel
       - name: Stop pkey dev (Swift live lane)
         if: always()
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang swift --job-status "${{ job.status }}"
@@ -788,7 +801,8 @@ jobs:
 
   # The hosted XCTest project on an iOS simulator. On this 3-vCPU runner a new simulator stays busy
   # for minutes and StoreKit Testing stalled inside that window, so the simulator boots first and
-  # PlatformHostTests/run.sh still waits for it to go quiet. It needs nothing the other Apple jobs
+  # PlatformHostTests/run.sh waits for it to go quiet (60 s while the flaky StoreKit purchase,
+  # refund and AppTransaction tests are disabled; the warm-up and the later waits return with them). It needs nothing the other Apple jobs
   # build, only Xcode, the simulator runtime and XcodeGen.
   apple-hosted:
     name: Apple platform hosted tests (macos-26, iOS simulator)
@@ -844,12 +858,12 @@ jobs:
       # The portable targets: the SwiftUI kit (PolarisKeyUI, PolarisKeyUpdateUI) is Apple-only.
       - name: swift build
         run: >-
-          swift build --package-path sdks/swift
+          swift build --package-path sdks/swift --disable-index-store
           --target PolarisKey --target PolarisKeyPacks --target PolarisKeyUICore --target PolarisKeyUpdate
           --target PolarisKeyGameCenter --target PolarisKeyGameCenterSignIn
           --target PolarisKeyGameCenterC --target PolarisKeyPlatformC
       - name: swift test (redirect, transport, backend)
-        run: swift test --package-path sdks/swift --filter 'DelegatedExchange|RedirectPolicy|RedirectSession|Transport|Backend|LinuxRedirect'
+        run: swift test --package-path sdks/swift --disable-index-store --filter 'DelegatedExchange|RedirectPolicy|RedirectSession|Transport|Backend|LinuxRedirect'
 
   # UK-08.8: the SwiftUI kit's macOS render suite (examples/ui/swiftui/UITests/KitRenderMacTests.swift:
   # `run.sh --mac`, XCUITest with the accessibility audit and the layout assertions on every render).
