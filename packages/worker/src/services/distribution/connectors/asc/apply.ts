@@ -40,7 +40,11 @@ import {
 } from "@polaris-key/manifest";
 import type { Db } from "../../../../db/types.js";
 import type { Env } from "../../../../platform/env.js";
-import type { CatalogRelease, ServiceHooks } from "../../../../core/hooks.js";
+import type {
+  CatalogBuild,
+  CatalogRelease,
+  ServiceHooks,
+} from "../../../../core/hooks.js";
 import {
   isAvailabilityState,
   reportAvailability,
@@ -498,12 +502,16 @@ async function releaseBuildFor(
   buildNumber: string | null,
   platform: string | null,
 ): Promise<{ release: CatalogRelease | null; releaseBuild: string }> {
-  const release = await releaseForVersion(run, versionString);
-  if (!release) return { release: null, releaseBuild: "" };
-  const builds = await run.hooks.releaseCatalog()!.builds(release.releaseId);
   const want = platform
     ? (ASC_PLATFORM_TO_RELEASE[platform] ?? platform)
     : null;
+  const release = await releaseForVersion(run, versionString);
+  if (!release) {
+    const hit = await releaseByBuildNumber(run, buildNumber, want);
+    if (!hit) return { release: null, releaseBuild: "" };
+    return { release: hit.release, releaseBuild: hit.build.buildId };
+  }
+  const builds = await run.hooks.releaseCatalog()!.builds(release.releaseId);
   const match = buildNumber
     ? builds.find(
         (b) =>
@@ -516,6 +524,30 @@ async function releaseBuildFor(
   if (!(await platformSpeaks(run, platform)))
     return { release: null, releaseBuild: "" };
   return { release, releaseBuild: "" };
+}
+
+/**
+ * The fallback link for a build whose version string names no release (an rc: TestFlight says
+ * `0.7.0`, Key published `0.7.0-rc.1`): the one app release with a build of the same platform and
+ * build number. The platform must be known and equal (a platform-independent build never
+ * joins), and more than one release answering is ambiguous, so it links nothing.
+ */
+async function releaseByBuildNumber(
+  run: AscRun,
+  buildNumber: string | null,
+  platform: string | null,
+): Promise<{ release: CatalogRelease; build: CatalogBuild } | null> {
+  if (!buildNumber || !platform) return null;
+  const catalog = run.hooks.releaseCatalog();
+  if (!catalog) return null;
+  const hits: { release: CatalogRelease; build: CatalogBuild }[] = [];
+  for (const release of await catalog.releases(APP_DELIVERABLE_ID)) {
+    const build = (await catalog.builds(release.releaseId)).find(
+      (b) => b.buildNumber === buildNumber && b.platform === platform,
+    );
+    if (build) hits.push({ release, build });
+  }
+  return hits.length === 1 ? hits[0]! : null;
 }
 
 /**

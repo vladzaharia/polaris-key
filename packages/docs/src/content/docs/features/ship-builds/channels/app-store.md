@@ -193,7 +193,9 @@ narrows what a key could reach if it were stolen.
 An App Store version belongs to the release whose version equals its version string (a leading
 `v` is ignored). A TestFlight build belongs to the release build whose `buildNumber` equals
 Apple's build number (`CFBundleVersion`) on the same platform, or to the whole release when none
-does. TestFlight usually holds several builds of one version, so the whole release reads the
+does. When no release has the build's version string (an rc published as `0.7.0-rc.1` whose
+TestFlight version reads `0.7.0`), the build joins the one release with a build of that number on
+the same platform; two such releases link nothing. TestFlight usually holds several builds of one version, so the whole release reads the
 state of its **newest** such build; older ones are kept as connector objects. On the
 `testflight` channel a build any tester can install reads `live`; an expired build reads `removed`.
 
