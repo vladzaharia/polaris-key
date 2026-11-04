@@ -164,4 +164,13 @@ class GateToastTest {
         frames()
         rule.onNodeWithText("Copied").assertIsDisplayed()
     }
+
+    @Test
+    fun theKeyEntriesLineComesFromTheToastView() {
+        val toast = keyEntriesToast(1, 3, "en")!!
+        assertEquals("2 key entries left", toast.message)
+        assertEquals(PolarisToastKind.Info, toast.kind)
+        assertEquals("0 key entries left", keyEntriesToast(5, 3, "en")!!.message)
+        assertEquals(0, toast.actions.size)
+    }
 }

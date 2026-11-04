@@ -61,6 +61,8 @@ import im.plrs.key.core.LicenseStatus
 import im.plrs.key.core.ManageLink
 import im.plrs.key.license.ActivationResult
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 // ── Composables ──────────────────────────────────────────────────────────────────────────────
 
@@ -130,7 +132,7 @@ public fun PolarisGate(
     LaunchedEffect(entries, usable, done) {
         val e = entries ?: return@LaunchedEffect
         if (!usable || done != null) return@LaunchedEffect
-        toast = PolarisToastSpec(keyEntriesLeftLine(e.used, e.limit, locale), PolarisToastKind.Info)
+        toast = keyEntriesToast(e.used, e.limit, locale)
         state.keyEntriesShown()
     }
     val copied = KitCopy.bundled.format("common.copied", locale)
@@ -189,12 +191,29 @@ internal fun signedInMessage(who: SignedInAs?, locale: String): String {
     }
 }
 
-/** "N key entries left" for a key with [used] of [limit] entries taken (never negative). */
-internal fun keyEntriesLeftLine(used: Long, limit: Long, locale: String): String = KitCopy.bundled.format(
-    "signin.key.entriesLeftShort",
-    locale,
-    mapOf("left" to CopyArgument.Number((limit - used).coerceIn(0, Int.MAX_VALUE.toLong()).toInt())),
-)
+/**
+ * The "N key entries left" toast for a key with [used] of [limit] entries taken (never negative), drawn from ui-core's
+ * Toast view (kind `key-entries`); null when that view is hidden. The line stays on screen for the kit's usual toast
+ * time ([POLARIS_TOAST_SECONDS]), a host concern: the view carries no timer.
+ */
+internal fun keyEntriesToast(used: Long, limit: Long, locale: String): PolarisToastSpec? {
+    val left = (limit - used).coerceIn(0, Int.MAX_VALUE.toLong())
+    val inputs = KitInputs.of(
+        mapOf("toast" to JsonObject(mapOf("kind" to JsonPrimitive("key-entries"), "left" to JsonPrimitive(left)))),
+    )
+    val view = KitStates.resolve(KitComponent.toast, inputs)
+    if (view.isHidden || view.copy.isEmpty()) return null
+    val kind = when (view.state) {
+        "success" -> PolarisToastKind.Success
+        "warning" -> PolarisToastKind.Warning
+        "error" -> PolarisToastKind.Error
+        else -> PolarisToastKind.Info
+    }
+    return PolarisToastSpec(KitCopy.bundled.format(view.copy.first(), locale), kind)
+}
+
+/** "N key entries left" text, for tests and hosts: the Toast view's line. */
+internal fun keyEntriesLeftLine(used: Long, limit: Long, locale: String): String = keyEntriesToast(used, limit, locale)?.message.orEmpty()
 
 /** Which screen a gate state shows; the key Crossfade animates between. */
 internal enum class GateScreen { Loading, Content, Grace, Activation, Message, SignIn, Auto, Nearby, KeyDone }

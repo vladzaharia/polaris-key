@@ -1,6 +1,8 @@
 // @pkey-feature ui.gate
 package im.plrs.key.ui
 
+import kotlinx.serialization.json.JsonPrimitive
+
 internal fun gateScreen(inputs: KitInputs): KitScreen {
     val context = KitContext(inputs)
     if (!inputs.isOn("license")) return screen(KitComponent.gate, "licensed")
@@ -198,10 +200,26 @@ internal fun toastScreen(inputs: KitInputs): KitScreen {
                 listOf(context.line("toast.updateAvailable", mapOf("product" to context.product, "version" to CopyArgument.Text(inputs.obj("update").string("version") ?: ""))), context.line("common.dismiss"), context.line("a11y.toastTimer")),
             )
         }
-        "copied" -> screen(KitComponent.toast, "success", listOf(context.line("common.copied")))
-        "warning" -> screen(KitComponent.toast, "warning", listOf(context.line("common.dismiss")))
-        "error" -> screen(KitComponent.toast, "error", context.codeLines(inputs.obj("error").string("code")) + context.line("common.dismiss"))
-        "progress" -> screen(KitComponent.toast, "with-progress", listOf(context.line("updateProgress.downloading", context.progressArgs()), context.line("toast.undo")))
-        else -> hidden(KitComponent.toast)
+        "key-entries" -> keyEntriesToastScreen(inputs, context)
+        else -> statusToastScreen(inputs, context)
     }
+}
+
+private fun statusToastScreen(inputs: KitInputs, context: KitContext): KitScreen = when (inputs.obj("toast").string("kind")) {
+    "copied" -> screen(KitComponent.toast, "success", listOf(context.line("common.copied")))
+    "warning" -> screen(KitComponent.toast, "warning", listOf(context.line("common.dismiss")))
+    "error" -> screen(KitComponent.toast, "error", context.codeLines(inputs.obj("error").string("code")) + context.line("common.dismiss"))
+    "progress" -> screen(KitComponent.toast, "with-progress", listOf(context.line("updateProgress.downloading", context.progressArgs()), context.line("toast.undo")))
+    else -> hidden(KitComponent.toast)
+}
+
+/** The key-entries Toast: hidden with License or Identity off, or when `left` is not an integer >= 0. */
+private fun keyEntriesToastScreen(inputs: KitInputs, context: KitContext): KitScreen {
+    val services = inputs.closedServices
+    val left = (inputs.obj("toast")?.get("left") as? JsonPrimitive)?.takeUnless { it.isString }?.content?.toDoubleOrNull()
+    val valid = left != null && left >= 0 && left == Math.floor(left) && left <= Int.MAX_VALUE
+    val shown = "license" in services && "identity" in services
+    if (!valid || !shown) return hidden(KitComponent.toast)
+    val args = mapOf("left" to CopyArgument.Number(left!!.toInt()))
+    return screen(KitComponent.toast, "info", listOf(context.line("signin.key.entriesLeftShort", args)))
 }

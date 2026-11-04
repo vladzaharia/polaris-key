@@ -2617,7 +2617,7 @@
       "detekt:style.ReturnCount": 2,
       "ktlint:standard:argument-list-wrapping": 166,
       "ktlint:standard:binary-expression-wrapping": 10,
-      "ktlint:standard:blank-line-between-when-conditions": 20,
+      "ktlint:standard:blank-line-between-when-conditions": 17,
       "ktlint:standard:max-line-length": 13,
       "ktlint:standard:multiline-if-else": 2
     },
