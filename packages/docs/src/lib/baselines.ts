@@ -9,9 +9,10 @@
  * size, preset and font scale the kit records. A kit narrows or widens its own line when it
  * lands its baselines; the default is ui-qa's flat `<state>-<theme>.png` at the top of the
  * directory. Vite needs each pattern and its options as literals, which is why the calls repeat.
- * The web kits' default also matches their 390 px, `native` and `forced-colors` renders, so UK-04
- * (elements) and UK-05 (React), and the Vue, Svelte and Angular kits after them, must narrow their
- * lines when they commit baselines, or every variant is published.
+ * React and elements commit `<Component>.<state>/<width>-<theme>.png`, so their lines take only
+ * the 1440 px Polaris render of each state: not the 390 px, platform-chrome, `native` or
+ * `forced-colors` ones. The Vue, Svelte and Angular kits must narrow theirs the same way when
+ * they commit baselines, or every variant is published.
  *
  * `DIRS` must equal ui-qa's BASELINE_DIRS, and every pattern must sit inside its kit's directory:
  * test/ui.test.ts checks both, so a kit that moves its baselines updates this file too.
@@ -54,11 +55,11 @@ function repoPath(key: string): string {
 
 const GLOBS: Readonly<Record<string, Record<string, ImageMetadata>>> = {
   react: import.meta.glob<ImageMetadata>(
-    "../../../../packages/sdk-react/test/visual/__screenshots__/*-{dark,light}.png",
+    "../../../../packages/sdk-react/test/visual/__screenshots__/*/1440-{dark,light}.png",
     { eager: true, import: "default" },
   ),
   elements: import.meta.glob<ImageMetadata>(
-    "../../../../packages/elements/test/visual/__screenshots__/*-{dark,light}.png",
+    "../../../../packages/elements/test/visual/__screenshots__/*/1440-{dark,light}.png",
     { eager: true, import: "default" },
   ),
   vue: import.meta.glob<ImageMetadata>(
@@ -77,9 +78,10 @@ const GLOBS: Readonly<Record<string, Record<string, ImageMetadata>>> = {
     "../../../../sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__/*-{dark,light}.png",
     { eager: true, import: "default" },
   ),
-  // Roborazzi's layout, <state>/<variant>-<theme>.png; the docs show the branded phone render.
+  // Roborazzi's layout, <state>/<variant>-<theme>.png; the docs show the branded phone render, and
+  // for the Cloud Connect screens (connect/<component>-<state>-<slug>/) the Polaris phone render.
   compose: import.meta.glob<ImageMetadata>(
-    "../../../../sdks/kotlin/ui/src/test/snapshots/*/phone-branded-{dark,light}.png",
+    "../../../../sdks/kotlin/ui/src/test/snapshots/{*/phone-branded,connect/*/phone-polaris}-{dark,light}.png",
     { eager: true, import: "default" },
   ),
   godot: import.meta.glob<ImageMetadata>(

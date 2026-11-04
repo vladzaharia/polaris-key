@@ -8,6 +8,8 @@
  *   devices-list-dark.png                  flat: <component>-<state>[-<variant>]-<theme>.png
  *   devices-list-390-light.png             a variant of the same state (a size, a preset)
  *   boot-consent/phone-branded-dark.png    Roborazzi: <component>-<state>/<variant>-<theme>.png
+  connect/linkpairing-code-x/phone-polaris-dark.png   Compose's Cloud Connect, one folder down
+  ActivateDone.ready/1440-dark.png       React, elements: <Component>.<state>/<width>-<theme>.png
  *   devices/phone-branded-light.png        no state: the component's default render
  *
  * The component is the longest catalog name that prefixes the file's name (so `sign-in-handoff-…`
@@ -83,6 +85,32 @@ function longestPrefix(
 }
 
 /**
+ * `linkpairing-code-…` for the component `link-pairing`: a name that spells the component without
+ * its hyphens (Compose's connect baselines do). Same result shape as longestPrefix.
+ */
+function squashed(
+  id: string,
+  candidates: readonly string[],
+): { match: string; rest: string } | null {
+  const segs = id.split("-");
+  let best: { match: string; rest: string } | null = null;
+  for (const c of candidates) {
+    const want = c.replace(/-/g, "");
+    let joined = "";
+    for (let i = 0; i < segs.length; i++) {
+      joined += segs[i];
+      if (joined === want) {
+        if (best === null || c.length > best.match.length)
+          best = { match: c, rest: segs.slice(i + 1).join("-") };
+        break;
+      }
+      if (!want.startsWith(joined)) break;
+    }
+  }
+  return best;
+}
+
+/**
  * Classify one baseline by its path inside the kit's baseline directory. Null for a file that
  * names no theme: the docs show baselines in pairs, dark and light.
  */
@@ -95,12 +123,34 @@ export function classify(
   const { rest, theme } = splitTheme(stem);
   if (theme === null) return null;
   const nested = parts.length > 1;
-  const name = nested ? parts[0]! : rest;
+  // Cloud Connect's Compose baselines sit one folder down: connect/<component>-<state>-<slug>/.
+  const dirs =
+    parts[0] === "connect" && parts.length > 2 ? parts.slice(1) : parts;
   const fileVariant = nested ? rest : "";
+  // React's and elements' state directories are <Component>.<state>: the dot is the boundary
+  // (`Activate.done` is not ActivateDone's default render).
+  const dot = nested ? dirs[0]!.indexOf(".") : -1;
+  if (dot > 0) {
+    const dir = dirs[0]!;
+    const hit = Object.keys(catalog).find(
+      (n) => kebab(n) === kebab(dir.slice(0, dot)),
+    );
+    const st = dir.slice(dot + 1);
+    return {
+      component: hit ?? null,
+      state: hit !== undefined && catalog[hit]!.includes(st) ? st : "",
+      variant: fileVariant,
+      name: dir,
+      theme,
+    };
+  }
+  const name = nested ? kebab(dirs[0]!) : rest;
 
   const names = Object.keys(catalog);
   const byKebab = new Map(names.map((n) => [kebab(n), n]));
-  const component = longestPrefix(name, [...byKebab.keys()]);
+  const component =
+    longestPrefix(name, [...byKebab.keys()]) ??
+    squashed(name, [...byKebab.keys()]);
   if (component === null) {
     return { component: null, state: "", variant: fileVariant, name, theme };
   }
