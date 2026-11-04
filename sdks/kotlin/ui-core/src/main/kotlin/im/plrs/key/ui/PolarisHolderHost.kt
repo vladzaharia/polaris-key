@@ -31,6 +31,8 @@ public class HolderFacts(
     /** Identity is on: the account steps can run in the app. */
     public val identity: Boolean = true,
     public val addIn: String = HOLDER_ADD_IN_APP,
+    /** The email the license waits for (unmasked, for a sign-in hint), or null while it floats. */
+    public val holderEmail: String? = null,
 ) {
     /** Add opens the portal: Identity is off, or the kit has no in-app channel. */
     public val portalOnly: Boolean get() = !identity || addIn == HOLDER_ADD_IN_PORTAL
@@ -63,7 +65,8 @@ public suspend fun PolarisKeyClient.holderFacts(addIn: String, deviceKind: Strin
         val done = linkedMapOf<String, kotlinx.serialization.json.JsonElement>()
         (info?.tierLabel ?: info?.tier)?.takeIf { it.isNotBlank() }?.let { done["tier"] = JsonPrimitive(it) }
         deviceKind?.let { done["deviceKind"] = JsonPrimitive(it) }
-        info?.deviceCount?.let { done["position"] = JsonPrimitive(it) }
+        // The license document carries no device count: the roster's, when it was reached (this device alone offline is not a count).
+        rosterPosition()?.let { done["position"] = JsonPrimitive(it) }
         info?.deviceLimit?.let { done["limit"] = JsonPrimitive(it) }
         members["activateDone"] = JsonObject(done)
     }
@@ -74,5 +77,13 @@ public suspend fun PolarisKeyClient.holderFacts(addIn: String, deviceKind: Strin
         doc?.identity?.accountPortal ?: portal,
         identity = "identity" in on,
         addIn = addIn,
+        holderEmail = profile?.email?.takeIf { it.isNotBlank() },
     )
 }
+
+/** This device's place among the license's devices (the roster's size), or null when the roster was not reached in time. */
+private suspend fun PolarisKeyClient.rosterPosition(): Int? = runCatching {
+    kotlinx.coroutines.withTimeoutOrNull(ROSTER_WAIT_MS) { listDevices() }
+}.getOrNull()?.takeIf { roster -> roster.isNotEmpty() && roster.none { it.offline } }?.size
+
+private const val ROSTER_WAIT_MS = 3_000L

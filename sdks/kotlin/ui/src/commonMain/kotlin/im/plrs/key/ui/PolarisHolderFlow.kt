@@ -39,11 +39,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import im.plrs.key.core.CUSTOMER_ORIGIN_DEFAULT
 import im.plrs.key.core.ManageLink
 import im.plrs.key.identity.NativeRedirectOptions
-import im.plrs.key.identity.SignInChannel
-import im.plrs.key.identity.SignInOptions
 import im.plrs.key.sdk.PolarisKeyClient
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -135,6 +135,8 @@ internal fun PolarisHolderSteps(
     val base = holderBase(client, facts)
     val opener = rememberPolarisOpener()
     val scope = rememberCoroutineScope()
+    val catalog = KitCopy.bundled
+    val locale = kitLocale()
     var stage by rememberSaveable {
         mutableStateOf(
             if (key != null) {
@@ -146,6 +148,45 @@ internal fun PolarisHolderSteps(
             },
         )
     }
+    // What the screens report beyond the state: the device-code page opened once, a page that did not open, a sign-in that runs.
+    var opened by remember { mutableStateOf(false) }
+    var openFailed by remember { mutableStateOf(false) }
+    var failed by remember { mutableStateOf<String?>(null) }
+    var working by remember { mutableStateOf(false) }
+    var job by remember { mutableStateOf<Job?>(null) }
+    val noBrowser = catalog.format("signin.handoff.noBrowser", locale)
+    // The device-code fallback opens its page through the host's opener inside the press that started it.
+    val pageOpener: (String) -> Boolean = { url ->
+        val ok = opener(url)
+        if (ok) opened = true
+        openFailed = !ok
+        ok
+    }
+    val driver = remember(client, options.native) { client.addToAccountDriver(options.native, pageOpener) }
+    val kind = holderDeviceKind()
+    // Held above the steps: Cancel or Back within the flow keeps what was typed.
+    val state = remember(driver, base, kind, fromSettings) { PolarisAddToAccountState(driver, scope, base, kind, fromSettings) }
+    val ui by state.ui.collectAsState()
+    val product = PolarisTheme.copy.productName
+    val signInFailed = catalog.format("activate.attach.failed", locale, mapOf("product" to CopyArgument.Text(product)))
+    fun signInAs(hint: String?) {
+        if (working) return
+        working = true
+        failed = null
+        options.armTab()
+        job = scope.launch {
+            val ok = client.signInToAccount(hint, options.native, pageOpener)
+            working = false
+            if (ok) onFinish() else failed = signInFailed
+        }
+    }
+    fun leave() {
+        job?.cancel()
+        working = false
+        failed = null
+        if (key != null) stage = HolderStage.Done else onFinish()
+    }
+    val problem = if (openFailed) noBrowser else failed
     when (stage) {
         HolderStage.Done -> {
             val screen = remember(base) { KitStates.resolve(KitComponent.activateDone, KitInputs.fromJson(base)) }
@@ -155,24 +196,28 @@ internal fun PolarisHolderSteps(
                 onAdd = {
                     when {
                         !screen.shows("signin.key.addInLocker") -> stage = HolderStage.Add
+
                         tv -> stage = HolderStage.Qr
-                        else -> opener.openPortal(facts.portal, key, tv)
+
+                        else -> {
+                            val shown = opener.openPortal(facts.portal, key, tv)
+                            openFailed = !shown
+                        }
                     }
                 },
+                // "Sign in as m•••@…": the sign-in for that address, never the blank form.
+                onWaitingSignIn = { signInAs(facts.holderEmail) },
+                extras = HolderExtras(problem = problem, working = working, noAddAction = facts.portal == null),
                 modifier = modifier,
             )
         }
 
-        HolderStage.Qr -> HolderQr(facts.portal, modifier, onBack = { if (key != null) stage = HolderStage.Done else onFinish() })
+        HolderStage.Qr -> HolderQr(facts.portal, modifier, onBack = ::leave)
 
         HolderStage.Add -> {
-            val driver = remember(client, options.native) { client.addToAccountDriver(options.native) }
-            val kind = holderDeviceKind()
-            val state = remember(driver, base, kind, fromSettings) { PolarisAddToAccountState(driver, scope, base, kind, fromSettings) }
-            val ui by state.ui.collectAsState()
-            val idle = ui.step != "busy"
-            // Back from an idle form goes back to Done; while the sign-in runs it does nothing (the screen's own handler).
-            val back = PolarisBackHandler(enabled = idle) { if (key != null) stage = HolderStage.Done else onFinish() }
+            val idle = ui.step != "busy" && !working
+            // Back from an idle form goes back to Done; from Added it goes on, as Start using does (Done would offer a second Add).
+            val back = PolarisBackHandler(enabled = idle) { if (ui.step == "added") onFinish() else leave() }
             fun arm() {
                 if (state.willOpenBrowser) options.armTab()
             }
@@ -182,37 +227,55 @@ internal fun PolarisHolderSteps(
                     onStartUsing = onFinish,
                     onDone = onFinish,
                     // Cancel on a running sign-in leaves it and keeps the form; Cancel anywhere else leaves the step.
-                    onCancel = { if (ui.step != "busy") (if (key != null) stage = HolderStage.Done else onFinish()) },
+                    onCancel = {
+                        val running = ui.step == "busy"
+                        job?.cancel()
+                        working = false
+                        failed = null
+                        openFailed = false
+                        if (!running) leave()
+                    },
                     onSubmit = {
+                        opened = false
+                        openFailed = false
                         arm()
                         state.submit()
                     },
                     onTryAgain = {
+                        opened = false
+                        openFailed = false
                         arm()
                         state.tryAgain()
                     },
-                    onVerify = { opener.openPortal(facts.account, null, tv) },
-                    onOtherAccount = { state.cancel() },
-                    onSignIn = {
-                        // Someone attached the license meanwhile: signing in as them brings it here.
-                        scope.launch {
-                            runCatching {
-                                client.identity.signIn.start(SignInOptions(channel = SignInChannel.Redirect, native = options.native))
-                            }
-                        }
+                    onReopen = {
+                        state.reopen()
                     },
+                    // Both ways into an account sign in for real and wait for it: finish when signed in, else say so here.
+                    onVerify = { openFailed = !opener.openPortal(facts.account, null, tv) },
+                    onOtherAccount = { signInAs(facts.holderEmail) },
+                    onSignIn = { signInAs(ui.email.takeIf { it.isNotBlank() }) },
+                    extras = HolderExtras(
+                        opened = opened || ui.address == null,
+                        problem = problem,
+                        working = working,
+                        noVerify = facts.account == null,
+                    ),
                 )
             }
         }
     }
 }
 
-/** The manage QR a TV shows for adding the license in the portal: the key-free link, scanned on a phone. */
+/**
+ * The manage QR a TV shows for adding the license in the portal: the key-free link, scanned on a phone. With no link it draws
+ * no "Scan" sentence: it says it could not open and gives the portal's address as text.
+ */
 @Composable
-private fun HolderQr(portal: String?, modifier: Modifier, onBack: () -> Unit) {
+internal fun HolderQr(portal: String?, modifier: Modifier, onBack: () -> Unit) {
     val catalog = KitCopy.bundled
     val locale = kitLocale()
     val back = PolarisBackHandler(enabled = true, onBack = onBack)
+    val link = portal?.takeIf { isSafeHttpsLink(it) }
     PolarisScaffold(
         modifier = modifier.then(back),
         anchor = PolarisAnchor.Top,
@@ -221,11 +284,15 @@ private fun HolderQr(portal: String?, modifier: Modifier, onBack: () -> Unit) {
             PolarisProductHeader()
             PolarisTitle(catalog.format("signin.key.addInLocker", locale))
             Spacer(Modifier.height(PolarisSpace.tight))
-            PolarisBody(catalog.format("signin.key.scan", locale))
-            if (portal != null && isSafeHttpsLink(portal)) {
+            if (link != null) {
+                PolarisBody(catalog.format("signin.key.scan", locale))
                 Spacer(Modifier.height(polarisWindow.section))
-                PolarisQr(portal, catalog.format("a11y.qrManage", locale), Modifier.size(polarisWindow.qrSize))
+                PolarisQr(link, catalog.format("a11y.qrManage", locale), Modifier.size(polarisWindow.qrSize))
+            } else {
+                HolderProblem(catalog.format("signin.handoff.noBrowser", locale))
             }
+            Spacer(Modifier.height(PolarisSpace.controls))
+            PolarisBody(catalog.format("signin.handoff.url", locale, mapOf("url" to CopyArgument.Text(link ?: CUSTOMER_ORIGIN_DEFAULT))))
         },
         actions = { PolarisPrimaryButton(catalog.format("common.done", locale), onClick = onBack, initialFocus = true) },
     )
@@ -253,7 +320,7 @@ internal fun PolarisGateKeyDone(
 }
 
 /** Settings' view of a floating license: the Add row's action, and the screen it opens in place of the list. */
-internal class FloatingAdd(val onAdd: (() -> Unit)?, val external: Boolean, val screen: (@Composable () -> Unit)?)
+internal class FloatingAdd(val onAdd: (() -> Unit)?, val external: Boolean, val screen: (@Composable () -> Unit)?, val problem: String? = null)
 
 /**
  * Add your name and email from Settings (UK-43): a license held by its key alone offers it. Identity off opens the portal in the
@@ -271,6 +338,8 @@ internal fun rememberFloatingAdd(
     var adding by rememberSaveable { mutableStateOf(false) }
     val opener = rememberPolarisOpener()
     val tv = isTelevision()
+    var openFailed by remember { mutableStateOf(false) }
+    val noBrowser = KitCopy.bundled.format("signin.handoff.noBrowser", kitLocale())
     if (client == null || facts == null) return FloatingAdd(null, false, null)
     val screen: (@Composable () -> Unit)? = if (adding) {
         {
@@ -291,9 +360,15 @@ internal fun rememberFloatingAdd(
         null
     }
     val external = facts.portalOnly && !tv
+    // A portal with no link behind it is not offered; one that does not open says so under the rows.
     return FloatingAdd(
-        onAdd = { if (external) opener.openPortal(facts.portal, null, tv) else adding = true },
+        onAdd = (
+            {
+                if (external) openFailed = !opener.openPortal(facts.portal, null, tv) else adding = true
+            }
+            ).takeUnless { external && facts.portal == null },
         external = external,
         screen = screen,
+        problem = noBrowser.takeIf { openFailed },
     )
 }

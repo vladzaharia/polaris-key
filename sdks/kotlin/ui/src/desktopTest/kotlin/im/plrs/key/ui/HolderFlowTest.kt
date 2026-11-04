@@ -214,4 +214,19 @@ class HolderFlowTest {
         assertFalse(opener.openPortal(null, "pkey_k", tv = false), "no link is a refusal, not a silent open")
         assertFalse(opener.openPortal("http://polaris.locker/activate", "pkey_k", tv = false), "the opener refuses a link that is not https")
     }
+
+    @Test
+    fun anAccountSignInThatCannotStartIsFalseNotSilent() {
+        // Identity is off: the sign-in refuses, and the screen gets false to say so (never a dropped session).
+        assertFalse(runBlocking { client(ServiceSlug.license).signInToAccount("ada@example.com") })
+    }
+
+    @Test
+    fun theHolderFactsCarryTheHolderEmailAndNoPositionOffline() {
+        val facts =
+            runBlocking { client(ServiceSlug.license, ServiceSlug.identity).holderFacts(HOLDER_ADD_IN_APP, "computer", PolarisKeyDone("pkey_k")) }
+        assertFalse(facts.portalOnly)
+        assertNull(facts.holderEmail)
+        assertTrue(facts.portal?.startsWith("https://") == true)
+    }
 }

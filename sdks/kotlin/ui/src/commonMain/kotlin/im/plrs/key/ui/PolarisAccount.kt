@@ -121,6 +121,7 @@ public fun PolarisAccount(
         onSignOut = onSignOut,
         onAddToAccount = add.onAdd,
         addExternal = add.external,
+        addProblem = add.problem,
         floating = floating,
         onRetrySettings = settings::load,
         onSet = settings::set,
@@ -147,6 +148,8 @@ public fun PolarisAccountScreen(
     /** "Add your name and email" (or "Add it in Polaris Locker" when [addExternal]) on a floating license; null draws none. */
     onAddToAccount: (() -> Unit)? = null,
     addExternal: Boolean = false,
+    /** The portal did not open: said under the rows, in the danger tone. */
+    addProblem: String? = null,
     /** The license is held by its key alone: the exit reads Remove license. */
     floating: Boolean = false,
     onRetrySettings: () -> Unit = {},
@@ -241,6 +244,10 @@ public fun PolarisAccountScreen(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(ConnectedGap)) {
                     rows.forEachIndexed { i, row -> row(polarisConnectedShape(i, rows.size, PolarisTheme.cardShape)) }
+                }
+                addProblem?.let {
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                    HolderProblem(it)
                 }
                 if (onSignOut != null) {
                     Spacer(Modifier.height(PolarisSpace.controls))

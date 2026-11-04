@@ -28,11 +28,13 @@
     "CyclomaticComplexMethod",
     "LongMethod",
     "LongParameterList",
+    "ReturnCount",
 )
 
 package im.plrs.key.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,6 +42,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
@@ -51,13 +54,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.heading
@@ -93,6 +100,25 @@ internal class HolderHandlers(
     val onOtherAccount: () -> Unit = {},
     /** Done, when the form was opened from Settings. */
     val onDone: () -> Unit = {},
+    /** "Sign in as <email>" on a license waiting for an email: the sign-in for that address, never the blank form. */
+    val onWaitingSignIn: () -> Unit = onAdd,
+)
+
+/**
+ * What the screens show beyond the state's own fields, set by the host that wires them.
+ *
+ * @param opened the page of a device-code wait has opened once (the button reads "again" only then).
+ * @param problem a problem on this screen, in the danger tone (a portal that did not open, a sign-in that did not finish).
+ * @param working an account sign-in runs from this step: its button is busy and the others are off.
+ * @param noAddAction the action that would open the portal has no link behind it, so it is not offered.
+ * @param noVerify "Verify that email" has no link behind it, so it is not offered.
+ */
+public class HolderExtras(
+    public val opened: Boolean = true,
+    public val problem: String? = null,
+    public val working: Boolean = false,
+    public val noAddAction: Boolean = false,
+    public val noVerify: Boolean = false,
 )
 
 /** Whether [screen] is one the holders draw: the two components, or the sign-in form's three holder steps. */
@@ -107,8 +133,21 @@ internal fun isHolderScreen(screen: KitScreen): Boolean = when (screen.component
  * stateless view: the host decides what Start using and the recommendation do.
  */
 @Composable
-public fun PolarisActivateDone(screen: KitScreen, onStartUsing: () -> Unit, onAdd: () -> Unit, modifier: Modifier = Modifier) {
-    PolarisHolderScreen(screen, modifier, handlers = HolderHandlers(onStartUsing = onStartUsing, onAdd = onAdd))
+public fun PolarisActivateDone(
+    screen: KitScreen,
+    onStartUsing: () -> Unit,
+    onAdd: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** "Sign in as <email>" on a license waiting for an email; by default the same as [onAdd]. */
+    onWaitingSignIn: () -> Unit = onAdd,
+    extras: HolderExtras = HolderExtras(),
+) {
+    PolarisHolderScreen(
+        screen,
+        modifier,
+        handlers = HolderHandlers(onStartUsing = onStartUsing, onAdd = onAdd, onWaitingSignIn = onWaitingSignIn),
+        extras = extras,
+    )
 }
 
 /**
@@ -130,6 +169,7 @@ public fun PolarisAddToAccount(
     onSubmit: () -> Unit = { state.submit() },
     onTryAgain: () -> Unit = { state.tryAgain() },
     onReopen: () -> Unit = { state.reopen() },
+    extras: HolderExtras = HolderExtras(),
 ) {
     val ui by state.ui.collectAsState()
     val screen = remember(ui) { state.screen() }
@@ -137,6 +177,7 @@ public fun PolarisAddToAccount(
         screen,
         modifier,
         ui = ui,
+        extras = extras,
         onNameChange = { state.setField(AddToAccountField.Name, it) },
         onEmailChange = { state.setField(AddToAccountField.Email, it) },
         handlers = HolderHandlers(
@@ -173,6 +214,7 @@ internal fun PolarisHolderScreen(
     onNameChange: (String) -> Unit = {},
     onEmailChange: (String) -> Unit = {},
     handlers: HolderHandlers = HolderHandlers(),
+    extras: HolderExtras = HolderExtras(),
 ) {
     if (screen.isHidden || !isHolderScreen(screen)) return
     val catalog = remember { KitCopy.bundled }
@@ -188,8 +230,9 @@ internal fun PolarisHolderScreen(
     val inFlight = adding && (step == "busy" || step == "waiting")
     val back = PolarisBackHandler(enabled = inFlight) {}
     // Each step is its own screen: focus and the screen reader start over on it.
-    key(step) {
-        val spec = remember(screen, lines, handlers) { holderSpec(screen, lines, handlers) }
+    // The form, its invalid and busy steps are one screen: the fields keep their cursor and focus while the step changes.
+    key(if (step == "invalid" || step == "busy" || step == "attach") "form" else step) {
+        val spec = remember(screen, lines, handlers, extras) { holderSpec(screen, lines, handlers, extras) }
         val mac = polarisWindow.isMac
         PolarisScaffold(
             modifier = modifier.then(back).then(if (mac) Modifier.polarisMacDefaultKeys(spec.default) else Modifier),
@@ -198,7 +241,7 @@ internal fun PolarisHolderScreen(
             dockActionsAtLargeType = true,
             content = {
                 PolarisProductHeader(product)
-                HolderBody(screen, lines, ui, onNameChange, onEmailChange, handlers)
+                HolderBody(screen, lines, ui, onNameChange, onEmailChange, handlers, extras)
             },
             actions = if (spec.primary == null && spec.secondary.isEmpty() && spec.quiet.isEmpty()) null else ({ HolderControls(spec) }),
         )
@@ -217,6 +260,11 @@ private class HolderSpec(
 }
 
 /** The catalog lines of one screen, formatted for the platform (macOS title case on buttons). */
+private const val DEVICE_LINE = "activate.done.device"
+
+/** Stands where the unknown term would be, so the line formats, and is cut out of the text after. */
+private const val TERM_MARK = "\u0001term\u0001"
+
 private class HolderLines(
     private val screen: KitScreen,
     private val catalog: KitCopy,
@@ -225,32 +273,65 @@ private class HolderLines(
 ) {
     private fun line(key: String) = screen.copy.firstOrNull { it.key == key }?.takeUnless(catalog::isDangling)
 
-    fun text(key: String): String? = line(key)?.let { catalog.format(it, locale, variant.takeIf { isMacVariantRole(key) }) }
+    fun text(key: String): String? = if (key ==
+        DEVICE_LINE
+    ) {
+        deviceLine()
+    } else {
+        line(key)?.let { catalog.format(it, locale, variant.takeIf { isMacVariantRole(key) }) }
+    }
+
+    /**
+     * The license line. The live license carries no term the kit can name, so a line missing only its term is said without it,
+     * and one missing its position (the roster was not reached) falls back to the tier alone.
+     */
+    private fun deviceLine(): String? {
+        val raw = screen.copy.firstOrNull { it.key == DEVICE_LINE } ?: return null
+        if (!catalog.isDangling(raw)) return catalog.format(raw, locale, null)
+        val withoutTerm = raw.copy(args = raw.args + ("term" to CopyArgument.Text(TERM_MARK)))
+        if (!catalog.isDangling(
+                withoutTerm,
+            )
+        ) {
+            return catalog.format(withoutTerm, locale, null).replace(Regex("\\s*·\\s*" + TERM_MARK), "").replace(TERM_MARK, "")
+        }
+        val tier = (raw.args["tier"] as? CopyArgument.Text)?.value?.takeIf { it.isNotBlank() } ?: return null
+        return catalog.format(CopyLine("account.tier", mapOf("tier" to CopyArgument.Text(tier))), locale, null)
+    }
 
     fun has(key: String): Boolean = line(key) != null
+
+    /** A catalog line that is not one of the screen's own (the wait's first button). */
+    fun any(key: String): String? = catalog.format(CopyLine(key), locale, null)
 
     fun arg(key: String, name: String): String? = (line(key)?.args?.get(name) as? CopyArgument.Text)?.value?.takeIf(String::isNotBlank)
 
     fun parts(key: String): List<LeadPart> = text(key)?.let(catalog::leadParts).orEmpty()
 }
 
-private fun holderSpec(screen: KitScreen, lines: HolderLines, h: HolderHandlers): HolderSpec {
+private fun holderSpec(screen: KitScreen, lines: HolderLines, h: HolderHandlers, x: HolderExtras): HolderSpec {
     fun button(key: String, onClick: () -> Unit, enabled: Boolean = true, busy: Boolean = false, external: Boolean = false) =
-        lines.text(key)?.let { HolderButton(it, onClick, enabled, busy, external) }
+        lines.text(key)?.let { HolderButton(it, onClick, enabled && !(x.working && !busy), busy, external) }
     val start = button("signin.done.start", h.onStartUsing)
+    // The wait's way back to the page: "Open browser" until it has opened once, "Open Polaris Locker again" after.
+    val reopen = if (x.opened) {
+        button("activate.attach.reopen", h.onReopen)
+    } else {
+        lines.any("signin.handoff.openBrowser")?.let { HolderButton(it, h.onReopen, external = true) }
+    }
     return when (screen.state) {
         "ready" -> HolderSpec(start, emptyList(), emptyList())
 
         "waiting" -> if (screen.component == KitComponent.activateDone) {
             // The license was sent to an email: signing in as it is the way to keep it; Start using stays the primary.
-            HolderSpec(start, listOfNotNull(button("activate.waitingSignIn", h.onAdd)), emptyList())
+            HolderSpec(start, listOfNotNull(button("activate.waitingSignIn", h.onWaitingSignIn, busy = x.working)), emptyList())
         } else {
             // The wait for the browser: the code is shown, the way back to the tab and the way out are live.
-            HolderSpec(null, listOfNotNull(button("activate.attach.reopen", h.onReopen), button("common.cancel", h.onCancel)), emptyList())
+            HolderSpec(null, listOfNotNull(reopen, button("common.cancel", h.onCancel)), emptyList())
         }
 
         "key-done" -> if (lines.has("activate.waiting")) {
-            HolderSpec(start, listOfNotNull(button("activate.waitingSignIn", h.onAdd)), emptyList())
+            HolderSpec(start, listOfNotNull(button("activate.waitingSignIn", h.onWaitingSignIn, busy = x.working)), emptyList())
         } else {
             HolderSpec(start, emptyList(), emptyList())
         }
@@ -275,18 +356,20 @@ private fun holderSpec(screen: KitScreen, lines: HolderLines, h: HolderHandlers)
         )
 
         "owned" -> HolderSpec(
-            button("signin.key.ownedSignIn", h.onSignIn),
+            button("signin.key.ownedSignIn", h.onSignIn, busy = x.working),
             listOfNotNull(button("common.cancel", h.onCancel)),
             emptyList(),
         )
 
-        "email-bound" -> HolderSpec(
-            start,
-            listOfNotNull(button("activate.otherEmail.verify", h.onVerify, external = true)),
-            listOfNotNull(button("signin.auto.confirm.other", h.onOtherAccount)),
-        )
+        // Verify that email leads (Use another account when no email is known); Start using is the quiet link.
+        "email-bound" -> {
+            val verify = if (x.noVerify) null else button("activate.otherEmail.verify", h.onVerify, external = true)
+            val other = button("signin.auto.confirm.other", h.onOtherAccount, busy = x.working)
+            HolderSpec(verify ?: other, listOfNotNull(other.takeIf { verify != null }), listOfNotNull(start))
+        }
 
-        "other-account" -> HolderSpec(start, listOfNotNull(button("common.tryAgain", h.onTryAgain)), emptyList())
+        // Try again leads; Start using is the quiet link.
+        "other-account" -> HolderSpec(button("common.tryAgain", h.onTryAgain), emptyList(), listOfNotNull(start))
 
         "failed" -> HolderSpec(
             button("common.tryAgain", h.onTryAgain),
@@ -311,11 +394,32 @@ private fun HolderBody(
     onNameChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     handlers: HolderHandlers,
+    extras: HolderExtras,
 ) {
     val step = screen.state
     val stateKey = step
+    HolderStepBody(screen, lines, ui, onNameChange, onEmailChange, handlers, extras, step, stateKey)
+    // A problem the host reports sits on this screen, in the danger tone (a page that did not open, a sign-in that did not finish).
+    extras.problem?.let {
+        ColumnScopeSpace(PolarisSpace.controls)
+        HolderProblem(it)
+    }
+}
+
+@Composable
+private fun HolderStepBody(
+    screen: KitScreen,
+    lines: HolderLines,
+    ui: PolarisAddToAccountUi,
+    onNameChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    handlers: HolderHandlers,
+    extras: HolderExtras,
+    step: String,
+    stateKey: String,
+) {
     when (step) {
-        "ready" -> DoneBody(lines, stateKey, handlers)
+        "ready" -> DoneBody(lines, stateKey, handlers, extras)
 
         "waiting" ->
             if (screen.component == KitComponent.activateDone) {
@@ -327,7 +431,7 @@ private fun HolderBody(
         "key-done" -> if (lines.has("activate.waiting")) {
             TitleAndBody(lines, "activate.done.title", listOf("activate.done.device", "activate.waiting"), stateKey)
         } else {
-            DoneBody(lines, stateKey, handlers)
+            DoneBody(lines, stateKey, handlers, extras)
         }
 
         "form", "attach", "invalid", "busy" -> FormBody(lines, step, stateKey, ui, onNameChange, onEmailChange, handlers)
@@ -365,7 +469,7 @@ private fun TitleAndBody(lines: HolderLines, titleKey: String, bodyKeys: List<St
 
 /** A problem on its own screen: the danger tone, announced, never a dialog and never a dead end. */
 @Composable
-private fun HolderProblem(text: String) {
+internal fun HolderProblem(text: String) {
     val scheme = MaterialTheme.colorScheme
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -389,6 +493,10 @@ private fun HolderProblem(text: String) {
 
 // ── ActivateDone ─────────────────────────────────────────────────────────────────────────────
 
+private const val BUSY_FIELD_ALPHA = 0.6f
+
+private const val LARGE_TYPE = 1.5f
+
 private val REASON_ICONS: Map<String, ImageVector> by lazy {
     mapOf(
         "activate.recommend.sync" to PolarisSymbols.Refresh,
@@ -399,7 +507,7 @@ private val REASON_ICONS: Map<String, ImageVector> by lazy {
 }
 
 @Composable
-private fun DoneBody(lines: HolderLines, stateKey: String, handlers: HolderHandlers) {
+private fun DoneBody(lines: HolderLines, stateKey: String, handlers: HolderHandlers, extras: HolderExtras) {
     lines.text("activate.done.title")?.let { PolarisTitle(it, key = stateKey) }
     lines.text("activate.done.device")?.let {
         ColumnScopeSpace(PolarisSpace.tight)
@@ -409,7 +517,7 @@ private fun DoneBody(lines: HolderLines, stateKey: String, handlers: HolderHandl
     val title = lines.text("activate.recommend.title")
     if (title != null) {
         ColumnScopeSpace(polarisWindow.section)
-        RecommendationCard(lines, title, reasons, handlers)
+        RecommendationCard(lines, title, reasons, handlers, extras)
         lines.text("activate.recommend.skip")?.let {
             ColumnScopeSpace(PolarisSpace.controls)
             Text(
@@ -427,7 +535,7 @@ private fun DoneBody(lines: HolderLines, stateKey: String, handlers: HolderHandl
  * (an icon and a sentence whose lead-in is SemiBold), then the action as a tonal button. Never the primary.
  */
 @Composable
-private fun RecommendationCard(lines: HolderLines, title: String, reasons: List<String>, handlers: HolderHandlers) {
+private fun RecommendationCard(lines: HolderLines, title: String, reasons: List<String>, handlers: HolderHandlers, extras: HolderExtras) {
     val scheme = MaterialTheme.colorScheme
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -436,19 +544,23 @@ private fun RecommendationCard(lines: HolderLines, title: String, reasons: List<
         contentColor = scheme.onSurface,
     ) {
         Column(Modifier.padding(PolarisSpace.medium), verticalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f).semantics { heading() },
-                )
-                lines.text("activate.recommend.badge")?.let { KitTag(it) }
+            val badge = lines.text("activate.recommend.badge")
+            val heading = Modifier.semantics { heading() }
+            if (LocalDensity.current.fontScale >= LARGE_TYPE) {
+                // At large type the badge stands on its own line above the title: no word of the title breaks to make room for it.
+                badge?.let { KitTag(it) }
+                Text(title, style = MaterialTheme.typography.titleMedium, modifier = heading)
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
+                    Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f).then(heading))
+                    badge?.let { KitTag(it) }
+                }
             }
             for (key in reasons) ReasonRow(lines, key)
             // Identity off, or a kit with no in-app channel: the action opens Polaris Locker (an external link).
             val portal = lines.has("signin.key.addInLocker")
             val label = lines.text(if (portal) "signin.key.addInLocker" else "activate.recommend.action")
-            if (label != null) {
+            if (label != null && !(portal && extras.noAddAction)) {
                 PolarisSecondaryButton(label, onClick = handlers.onAdd, external = portal)
             }
         }
@@ -499,12 +611,17 @@ private fun FormBody(
     val emailFocus = remember { FocusRequester() }
     val nameError = lines.text("activate.attach.nameRequired")
     val emailError = lines.text("signin.email.invalid")
-    // A step starts with the field to fill: the first wrong one after a failed Continue, else the name.
-    if (!busy) {
-        LaunchedEffect(step) {
-            runCatching { (if (nameError == null && emailError != null) emailFocus else nameFocus).requestFocus() }
+    // Focus moves twice only: to the name as the form opens, and to the first wrong field as a Continue turns invalid. Typing
+    // turns invalid back into the form and never moves it (the fields are one composition across both).
+    var opened by remember { mutableStateOf(false) }
+    LaunchedEffect(step) {
+        when {
+            step == "invalid" -> runCatching { (if (nameError == null && emailError != null) emailFocus else nameFocus).requestFocus() }
+            step != "busy" && !opened -> runCatching { nameFocus.requestFocus() }
         }
+        opened = true
     }
+    val dim = if (busy) Modifier.alpha(BUSY_FIELD_ALPHA) else Modifier
     // The title is the action that opened the form: text, not a button.
     lines.text("activate.recommend.action")?.let { PolarisTitle(it, key = stateKey) }
     lines.text("activate.attach.lede")?.let {
@@ -514,6 +631,7 @@ private fun FormBody(
     ColumnScopeSpace(polarisWindow.section)
     PolarisTextField(
         value = ui.name,
+        modifier = dim,
         onValueChange = onNameChange,
         label = lines.text("activate.attach.name").orEmpty(),
         enabled = !busy,
@@ -530,6 +648,7 @@ private fun FormBody(
     ColumnScopeSpace(PolarisSpace.controls)
     PolarisTextField(
         value = ui.email,
+        modifier = dim,
         onValueChange = onEmailChange,
         label = lines.text("signin.email.label").orEmpty(),
         enabled = !busy,
@@ -555,7 +674,10 @@ private fun FormBody(
     }
 }
 
-/** The wait for the browser: the title, the code to check against Polaris Locker's, and the instruction. */
+/**
+ * The wait for the browser: the title, the code to check against Polaris Locker's, where to type it (the address as text,
+ * and a QR on a large screen or a TV), and the instruction. A page that did not open says so on this screen.
+ */
 @Composable
 private fun WaitBody(lines: HolderLines, stateKey: String, ui: PolarisAddToAccountUi) {
     lines.text("activate.attach.waitTitle")?.let { PolarisTitle(it, key = stateKey) }
@@ -566,23 +688,31 @@ private fun WaitBody(lines: HolderLines, stateKey: String, ui: PolarisAddToAccou
             Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             ColumnScopeSpace(PolarisSpace.hairline)
         }
-        val copyLabel = lines.text("a11y.copyCode")
         val clipboard = rememberPolarisClipboard()
         val scope = rememberCoroutineScope()
+        // The copy button puts the code itself on the clipboard and names it in the copy-code words.
         PolarisUserCode(
             code,
             Modifier.fillMaxWidth(),
-            onCopy = copyLabel?.let { label ->
-                label to { value: String ->
-                    scope.launch { clipboard.setText(label, value) }
-                    Unit
-                }
+            onCopy = code to { value: String ->
+                scope.launch { clipboard.setText(lines.text("a11y.copyCode").orEmpty(), value) }
+                Unit
             },
+            copyLabel = lines.text("a11y.copyCode"),
+            copiedLabel = lines.text("common.copied"),
         )
     }
     lines.text("activate.attach.waitCheck")?.let {
         ColumnScopeSpace(PolarisSpace.controls)
         PolarisBody(it)
+    }
+    ui.address?.takeIf { isSafeHttpsLink(it) }?.let { address ->
+        ColumnScopeSpace(PolarisSpace.controls)
+        PolarisBody(KitCopy.bundled.format("signin.handoff.url", kitLocale(), mapOf("url" to CopyArgument.Text(address))))
+    }
+    ui.link?.takeIf { isSafeHttpsLink(it) && (polarisWindow.wide || polarisWindow.tv) }?.let { link ->
+        ColumnScopeSpace(polarisWindow.section)
+        PolarisQr(link, KitCopy.bundled.format("a11y.qr", kitLocale()), Modifier.size(polarisWindow.qrSize))
     }
 }
 
@@ -611,20 +741,24 @@ private fun HolderControls(spec: HolderSpec) {
                 busy = button.busy,
                 initialFocus = focus,
                 external = button.external,
+                ringColor = if (button.busy) MaterialTheme.colorScheme.onSurface else null,
             )
         } else {
             PolarisSecondaryButton(button.label, button.onClick, enabled = button.enabled, initialFocus = focus, external = button.external)
         }
     }
     if (window.variant.isDesktop && !tv) {
-        PolarisActionGroup(row = true, visualOrder = window.isMac) {
-            if (window.isMac) {
-                // Left to right: the others, then the default.
-                for (button in spec.secondary.asReversed()) draw(button, false)
-                if (primary != null) draw(primary, true)
-            } else {
-                if (primary != null) draw(primary, true)
-                for (button in spec.secondary) draw(button, false)
+        // The row ends where the fields end: it never reaches past the content column, and stacks when its labels do not fit there.
+        Box(Modifier.widthIn(max = PolarisEndColumnMaxWidth)) {
+            PolarisActionGroup(row = true, visualOrder = window.isMac) {
+                if (window.isMac) {
+                    // Left to right: the others in the order given, then the default, so Cancel sits directly left of it.
+                    for (button in spec.secondary) draw(button, false)
+                    if (primary != null) draw(primary, true)
+                } else {
+                    if (primary != null) draw(primary, true)
+                    for (button in spec.secondary) draw(button, false)
+                }
             }
         }
     } else {

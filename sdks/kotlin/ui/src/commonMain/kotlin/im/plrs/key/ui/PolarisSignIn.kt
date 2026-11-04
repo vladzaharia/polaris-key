@@ -378,7 +378,14 @@ public fun PolarisUserCode(code: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-internal fun PolarisUserCode(code: String, modifier: Modifier, onCopy: Pair<String, ((String) -> Unit)?>?) {
+internal fun PolarisUserCode(
+    code: String,
+    modifier: Modifier,
+    onCopy: Pair<String, ((String) -> Unit)?>?,
+    /** The copy button's words when it copies a code, not a link. */
+    copyLabel: String? = null,
+    copiedLabel: String? = null,
+) {
     val copy = PolarisTheme.copy
     val window = polarisWindow
     val size = when {
@@ -416,7 +423,7 @@ internal fun PolarisUserCode(code: String, modifier: Modifier, onCopy: Pair<Stri
                     .weight(1f)
                     .semantics { contentDescription = copy.format(copy.signInCodeDescription, spelled(code)) },
             )
-            if (onCopy != null) PolarisCopyLinkButton(onCopy.first, onCopy.second)
+            if (onCopy != null) PolarisCopyLinkButton(onCopy.first, onCopy.second, copyLabel, copiedLabel)
         }
     }
 }
@@ -426,7 +433,7 @@ internal fun PolarisUserCode(code: String, modifier: Modifier, onCopy: Pair<Stri
  * on another device they can paste to), and its label turns to "Link copied" for two seconds.
  */
 @Composable
-internal fun PolarisCopyLinkButton(link: String, onCopyLink: ((String) -> Unit)?) {
+internal fun PolarisCopyLinkButton(link: String, onCopyLink: ((String) -> Unit)?, copyLabel: String? = null, copiedLabel: String? = null) {
     val copy = PolarisTheme.copy
     val clipboard = rememberPolarisClipboard()
     val scope = rememberCoroutineScope()
@@ -455,7 +462,7 @@ internal fun PolarisCopyLinkButton(link: String, onCopyLink: ((String) -> Unit)?
     ) {
         Icon(
             imageVector = if (copied) PolarisCheckIcon else PolarisCopyIcon,
-            contentDescription = if (copied) copy.signInLinkCopied else copy.signInCopyLink,
+            contentDescription = if (copied) copiedLabel ?: copy.signInLinkCopied else copyLabel ?: copy.signInCopyLink,
             tint = PolarisTheme.accentText,
             modifier = Modifier.size(20.dp),
         )
