@@ -211,6 +211,11 @@ func _bleeds() -> bool:
 	return true
 
 
+## The browser wait opens at its title, as the steps do.
+func _opens_at_top() -> bool:
+	return state == "redirect"
+
+
 func squeeze_max() -> int:
 	return 4
 
@@ -340,6 +345,9 @@ func _arrange(m: Dictionary) -> void:
 	else:
 		_actions.custom_minimum_size.x = 0.0
 	_device.visible = _device.visible and level < 3
+	if state == "redirect" and level >= 3:
+		# Squeezed hard, the label wraps by word rather than break beside the glyph.
+		_open.icon = null
 	if state == "redirect":
 		# The wait for the browser: the thin indicator already says it, so the line gives way first, then the header.
 		_instructions.visible = _instructions.visible and level < 1
@@ -547,6 +555,7 @@ func show_prompt(p: PKeySignInSession) -> void:
 	prompt = p
 	copied = false
 	refresh_view()
+	_focus_lead.call_deferred(false)
 
 
 ## A native redirect sign-in is waiting for the browser to come back.
@@ -556,6 +565,22 @@ func show_redirect(p: PKeySignInSession) -> void:
 	copied = false
 	browser_failed = not p.opened
 	refresh_view()
+	_focus_lead.call_deferred(false)
+
+
+## A new screen replaced "starting": its primary (Open browser again, Open browser) takes the focus from Cancel, so a
+## habitual press never cancels the sign-in. `force`: also when nothing had it (after Use a code instead).
+func _focus_lead(force: bool) -> void:
+	if not is_inside_tree() or not is_visible_in_tree():
+		return
+	var lead := _initial_focus()
+	if lead == null or lead == _cancel_btn or not is_focusable(lead):
+		return
+	if _has_focus_inside():
+		if not lead.has_focus():
+			lead.grab_focus()
+	elif force:
+		ensure_focus(true)
 
 
 func show_confirm(c_: Dictionary) -> void:
@@ -608,6 +633,7 @@ func _render() -> void:
 	show_text(_status, status)
 	var args := {"app": PKeyUiTheme.isolate(String(PKeyUiTheme.product_identity()["name"]))}
 	if redirecting:
+		cat_text(_cancel_btn, "common.cancel")
 		# Finish in your browser (the browser opened), or the link to open by hand when it could not.
 		cat_text(_title, "signin.handoff.noBrowser" if browser_failed else "signin.handoff.title")
 		cat_text(_status, "signin.handoff.noBrowserBody" if browser_failed else "signin.handoff.browserBody", args)
@@ -658,6 +684,8 @@ func _render() -> void:
 	_copy.text = t.text("sign_in_copy_link")
 	if redirecting:
 		cat_text(_open, "signin.handoff.again")
+		cat_text(_copy, "signin.handoff.copyLink")
+		_copy.visible = browser_failed
 		cat_text(_use_code, "signin.handoff.useCode")
 	else:
 		show_text(_use_code, "")
@@ -670,7 +698,9 @@ func _render() -> void:
 	_continue.text = t.text("sign_in_continue")
 	_try_again.visible = failed
 	_try_again.text = t.text("sign_in_new_code") if expired else t.text("retry")
-	_cancel_btn.text = t.text("close") if ended else t.text("cancel")
+	if not redirecting:
+		_cancel_btn.remove_meta(CATALOG_META)
+		_cancel_btn.text = t.text("close") if ended else t.text("cancel")
 	set_process(pending or state == "starting" or redirecting)
 
 
@@ -736,7 +766,8 @@ func _on_use_code() -> void:
 	_session = null
 	if old != null:
 		old.cancel()
-	begin(false, true)
+	await begin(false, true)
+	_focus_lead(true)
 
 
 func _on_copy() -> void:

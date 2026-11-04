@@ -24,6 +24,7 @@ func run(t: PKeyTestContext) -> void:
 	await _dialog_native(t)
 	await _dialog_fallbacks(t)
 	await _gate_offer(t)
+	await _gate_hold(t)
 	await _gate_failures(t)
 	await _gate_conflict_and_decline(t)
 	await _no_offer(t)
@@ -117,7 +118,12 @@ func _dialog_native(t: PKeyTestContext) -> void:
 	d.finished.connect(func(r): ended.append(r))
 	d.closed.connect(func(): closed.append(true))
 	d.begin()
+	# The person is on Cancel (the only button while the sign-in starts) with the keyboard or a pad.
+	await tree.process_frame
+	d._cancel_btn.grab_focus()
 	await B.until(func(): return d.state == "redirect")
+	await B.until(func(): return d.get_viewport().gui_get_focus_owner() == d._open, 30)
+	t.check("link kit: the browser wait opens with Open browser again focused, never Cancel", d.get_viewport().gui_get_focus_owner() == d._open)
 	t.check("link kit: on a desktop the dialog starts the native redirect, not a code", d.state == "redirect" and d._session != null
 		and d._session.channel == &"redirect" and d._session.redirect_class == "loopback" and bed.starts.is_empty() and bed.push_requests.size() == 1)
 	t.check("link kit: the redirect state shows the browser wait, Open browser again, Use a code instead and Cancel",
@@ -263,6 +269,12 @@ func _gate_offer(t: PKeyTestContext) -> void:
 	await B.until(func(): return gate.auto_step.error_key != "")
 	t.check("link kit: a network failure keeps Link under the network line", gate._auto_state == "link-offer" and gate.auto_step.error_key == "core.codes.network.message"
 		and gate.auto_step._error.visible and gate.auto_step._primary.text.begins_with("Link ") and gate.auto_step._secondary.visible and not gate.auto_step.busy)
+	t.check("link kit: after a failed Link the primary has the focus again", gate.get_viewport().gui_get_focus_owner() == gate.auto_step._primary)
+	t.check("link kit: the problem line is a polite live region", not ("accessibility_live" in gate.auto_step._error) or int(gate.auto_step._error.get("accessibility_live")) == 1)
+	# Escape or B while Link runs does nothing.
+	gate._completing = true
+	t.check("link kit: Escape while Link is in flight changes nothing", gate._cancel() and gate.auto_step.visible and gate._auto_state == "link-offer")
+	gate._completing = false
 	bed.links = [B.json(200, {"linked": {"kind": "google", "reach": "global"}})]
 	gate._on_auto_primary("link-offer")
 	await B.until(func(): return gate._auto_state == "link-done")
@@ -273,6 +285,30 @@ func _gate_offer(t: PKeyTestContext) -> void:
 	gate._on_auto_primary("link-done")
 	await B.until(func(): return not gate.auto_step.visible)
 	t.check("link kit: Done ends the offer and closes it without a decline", gate._auto_state == "" and not bed.sdk.identity.link.pending and bed.sdk.identity.link.store.hashes() == [])
+	gate.queue_free()
+	await tree.process_frame
+	bed.free_all()
+
+
+func _gate_hold(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var bed := await _bed()
+	_fake_google(bed)
+	var gate := _stage_gate(bed)
+	# The sign-in dialog has finished ("Signed in.") and the offer is being asked for.
+	var dialog: PKeySignInDialog = gate.activation.sign_in_dialog
+	gate.activation.open_mode("sign-in")
+	dialog.show_result(PKeySignInOutcome.signed_in({}, "", true, null, "ps_abc"))
+	gate._link_hold = true
+	gate.refresh_view()
+	await tree.process_frame
+	await tree.process_frame
+	t.check("link kit: while the offer is asked for, the finished dialog is hidden and the busy card stands in",
+		not gate.activation.visible and gate.auto_step.visible and gate.auto_step.step == "finishing" and gate.auto_step.busy and gate.visible)
+	t.check("link kit: …it has no action and nothing to focus", not gate.auto_step._primary.visible and not gate.auto_step._secondary.visible
+		and gate.get_viewport().gui_get_focus_owner() == null)
+	t.check("link kit: …and Escape changes nothing", gate._cancel() and not gate.activation.visible and gate.auto_step.visible)
+	gate._end_auto()
 	gate.queue_free()
 	await tree.process_frame
 	bed.free_all()

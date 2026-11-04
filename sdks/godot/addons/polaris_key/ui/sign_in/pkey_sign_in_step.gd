@@ -30,10 +30,11 @@ const LAYOUT := {
 	"nearby-prompt": ["signin.nearby.promptTitle", ["signin.nearby.prePrompt"], ["common.notNow"]],
 	"nearby-wait": ["signin.nearby.title", ["signin.nearby.body", "signin.nearby.match"], ["signin.nearby.code"]],
 	"nearby-done": ["signin.nearby.done", [], ["signin.nearby.notYou"]],
+	"finishing": ["signin.handoff.finishing", [], []],
 	"device-limit": ["core.codes.device_limit.title", ["core.codes.device_limit.message", "deviceLimit.noManage"], ["signin.auto.confirm.other", "common.cancel"]],
 }
 
-@export_enum("confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-done", "device-limit") var step := "confirm":
+@export_enum("confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-done", "device-limit", "finishing") var step := "confirm":
 	set(value):
 		step = value
 		refresh_view()
@@ -158,6 +159,9 @@ func _build() -> void:
 	_gets_profile = label(_gets_group, "Profile")
 	_gets_pairwise = label(_gets_group, "Pairwise", "PKeyMuted")
 	_error = label(top, "Error", "PKeyError")
+	# A failed Link's line is the one announcement of that state.
+	if "accessibility_live" in _error:
+		_error.set("accessibility_live", 1)
 	_qr_box = vbox(top, "Remedy", "PKeyTight")
 	_qr = qr_tile(_qr_box)
 	_qr.get_parent().size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -195,7 +199,7 @@ func squeeze_max() -> int:
 func _arrange(m: Dictionary) -> void:
 	super(m)
 	# Short on room, the product header gives way before the card scrolls.
-	_product.visible = squeeze_level() < 1
+	_product.visible = squeeze_level() < (2 if step == "link-offer" and error_key != "" else 1)
 	# A failed Link's line, squeezed hard: the groups sit a stack gap apart rather than a section gap.
 	_body.theme_type_variation = &"PKeyStack" if step == "link-offer" and error_key != "" and squeeze_level() >= 3 else &"PKeySections"
 	# On a phone's page the actions dock to the bottom, in the thumb zone, as the refusal steps' do.
@@ -270,7 +274,11 @@ func _render() -> void:
 	var tier_name := tier if tier != "" else (String(anchor.get("tierName", "")) if anchor.get("tierName") is String else "")
 	if tier_name != "":
 		inp["account"] = {"tier": tier_name}
-	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("SignIn", inp)
+	if step == "finishing":
+		# The wait between the browser's return and the offer (or the game): the finishing line, no actions.
+		model = {"decisions": {"primary": null}, "copy": []}
+	else:
+		model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("SignIn", inp)
 	var id := PKeyUiTheme.product_identity()
 	var app := PKeyUiTheme.isolate(String(id["name"]))
 	var args := {
@@ -342,6 +350,12 @@ func _render() -> void:
 	cat_text(_secondary, sec[0] if sec.size() > 0 else "", args)
 	cat_text(_secondary2, sec[1] if sec.size() > 1 else "", args)
 	# The wait for the other device shows the thin indicator, never a spinner in the title.
+	# A link step is read once on arrival: the primary carries the title and the first line.
+	if "accessibility_description" in _primary and step in PKeyGateController.LINK_STEPS:
+		var said := _title.text
+		if _lines[0].visible and _lines[0].text != "":
+			said += ". " + _lines[0].text
+		_primary.set("accessibility_description", said)
 	# Linking in flight: neither Link nor No thanks can be pressed.
 	var linking := step == "link-offer" and busy
 	_primary.disabled = linking
@@ -349,13 +363,25 @@ func _render() -> void:
 	fx_error(error_key if step == "link-offer" else "")
 	set_loading(step == "nearby-wait" or busy)
 	set_process(step == "nearby-wait" or busy)
+	_reserve_bar()
+
+
+## The offer keeps the indicator's row (4 px) so Link going busy moves nothing under the pointer; it fades in
+## only while linking.
+func _reserve_bar() -> void:
+	# Squeezed, the row is not kept: the actions come first.
+	if _loading_bar == null or step != "link-offer" or squeeze_level() >= 2:
+		return
+	_loading_bar.custom_minimum_size.y = 4.0
+	_loading_bar.visible = true
+	_loading_bar.modulate.a = 1.0 if busy and Time.get_ticks_msec() - _loading_since >= 250 else 0.0
 
 
 ## The plain steps: the title, then the model's body lines in order.
 func _render_plain(copy: Array, row: Array, args: Dictionary) -> void:
 	var lines: Array = (row[1] as Array).filter(func(k): return copy.has(k))
 	# Out of room, the error line says what is wrong, and the explanation gives way before the actions scroll.
-	if error_key != "" and squeeze_level() >= 2:
+	if error_key != "" and squeeze_level() >= 3:
 		lines = []
 	for i in _lines.size():
 		cat_text(_lines[i], lines[i] if i < lines.size() else "", args)
@@ -402,3 +428,4 @@ func _focus_chain() -> Array:
 
 func _process(_delta: float) -> void:
 	_tick_loading()
+	_reserve_bar()

@@ -131,6 +131,8 @@ var _completing := false
 ## A sign-in this device started finished and the link offer is being asked for or shown: the gate holds
 ## (the game does not run under the offer) until it is answered.
 var _link_hold := false
+## The offer is being closed: the step stays (busy) until the licence state is read again.
+var _link_finishing := false
 ## The offer entry on screen ({kind, reach}) and how its last try failed ("", stale, refused, network).
 var _link_entry: Dictionary = {}
 var _link_problem := ""
@@ -296,7 +298,13 @@ func _activation_owns_screen() -> bool:
 
 ## An automatic sign-in step (confirm, device-limit) is on screen in the form's place.
 func _auto_on() -> bool:
-	return _auto_state == "confirm" or _auto_state == "device-limit" or _auto_state in PKeyGateController.LINK_STEPS
+	return _auto_state == "confirm" or _auto_state == "device-limit" or _auto_state in PKeyGateController.LINK_STEPS or _holding()
+
+
+## The offer is being asked for and no step is on screen: the busy "Finishing sign-in" card stands in, so the
+## finished sign-in dialog (and its Close) never shows under the hold.
+func _holding() -> bool:
+	return _link_hold and _auto_state == "" and not _link_resign
 
 
 ## The link offer holds the gate (being asked for, or one of its steps on screen).
@@ -522,6 +530,9 @@ func _render() -> void:
 	_glyph.visible = net
 	var expired_keying := screen == "expired" and _keying
 	var wants_form: bool = (ctl["activation"] or expired_keying) and not net
+	if _holding():
+		auto_step.step = "finishing"
+		auto_step.busy = true
 	var auto_on := _auto_on()
 	activation.visible = (wants_form or _link_resign) and not auto_on
 	auto_step.visible = auto_on and not net
@@ -674,6 +685,9 @@ func _on_retry() -> void:
 
 
 func _cancel() -> bool:
+	# The offer is being asked for, linked or closed: Escape and B change nothing.
+	if _holding() or _link_finishing or (_completing and _auto_state in PKeyGateController.LINK_STEPS):
+		return true
 	if auto_step.visible and _auto_state in PKeyGateController.LINK_STEPS:
 		# Escape on the offer closes it without remembering a decline.
 		_link_flow.finish(false)
@@ -793,6 +807,7 @@ func _apply_auto(result: PKeyAutoSignInResult) -> void:
 func _end_auto() -> void:
 	_auto_state = ""
 	_link_hold = false
+	_link_finishing = false
 	_link_entry = {}
 	_link_problem = ""
 	_link_resign = false

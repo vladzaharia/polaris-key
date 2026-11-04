@@ -71,6 +71,8 @@ func _link() -> void:
 		finish(false)
 	else:
 		gate.auto_step.error_key = PKeyGateController.link_problem_key(gate._link_problem)
+		# The swapped primary takes the focus the busy state dropped.
+		gate.ensure_focus(true)
 
 
 ## Sign in again from a stale offer: the regular sign-in runs with the link hold and the handle kept.
@@ -108,7 +110,10 @@ func finish(decline: bool) -> void:
 		gate.sdk.identity.link.decline()
 	else:
 		gate.sdk.identity.link.dismiss()
-	gate._end_auto()
+	# The step stays, busy, until the licence state is read again; then the gate goes on.
+	gate._link_finishing = true
+	gate.auto_step.busy = true
 	await gate.sdk.sync(true)
 	if is_instance_valid(gate):
+		gate._end_auto()
 		gate.show_state(gate.sdk.status())

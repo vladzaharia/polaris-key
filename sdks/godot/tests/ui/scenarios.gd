@@ -455,9 +455,11 @@ func sign_in_step(kind: String) -> Control:
 			s.also_gets = true
 		"link-offer-global":
 			s.step = "link-offer"
+			s.provider = "Google"
 			s.reach = "global"
 		"link-offer-developer":
 			s.step = "link-offer"
+			s.provider = "Google"
 			s.reach = "developer"
 		"link-offer-stale":
 			s.step = "link-offer"
@@ -480,6 +482,9 @@ func sign_in_step(kind: String) -> Control:
 		"nearby-wait":
 			s.step = "nearby-wait"
 			s.code = "482 913"
+		"link-done", "link-conflict":
+			s.step = kind
+			s.provider = "Google"
 		_:
 			s.step = kind
 	if kind.begins_with("confirm"):
