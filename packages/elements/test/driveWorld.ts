@@ -37,6 +37,8 @@ export interface World {
   posted: unknown[];
   /** The key route refuses with this body (a device limit), when set. */
   refuse?: { status: number; body: unknown };
+  /** The key route answers with these entries (Identity on). */
+  keyEntries?: { used: number; limit: number };
 }
 
 export function world(over: Partial<World> = {}): World {
@@ -88,7 +90,10 @@ export function fakeFetch(w: World): typeof fetch {
       w.posted.push(JSON.parse(String(init?.body ?? "{}")));
       if (w.refuse) return json(w.refuse.body, w.refuse.status);
       w.doc = { expiresAt: 4600, graceUntil: 90_000 };
-      return json({ ok: true }, 201);
+      return json(
+        { ok: true, ...(w.keyEntries ? { keyEntries: w.keyEntries } : {}) },
+        201,
+      );
     }
     if (url.includes("/identity/session"))
       return json({

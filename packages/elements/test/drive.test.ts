@@ -157,6 +157,32 @@ describe("<pk-gate config>: Welcome, Activate and the hosted sign-in", () => {
     expect(gate.shadowRoot!.querySelector("slot")).not.toBeNull();
   });
 
+  it("shows the key entries left as the Toast model's info line after a key", async () => {
+    const { gate } = await toKeyStep(
+      world({ keyEntries: { used: 1, limit: 3 } }),
+    );
+    await typeKey(gate, "pkey_acme_KEY");
+    control(gate, "activate.submit")!.click();
+    await settle(gate, () => control(gate, "signin.done.start") !== null);
+    const toast = gate.shadowRoot!.querySelector('[data-part="toast"]');
+    expect(toast?.getAttribute("data-key")).toBe("signin.key.entriesLeftShort");
+    expect(toast?.getAttribute("data-status")).toBe("neutral");
+    expect(toast?.textContent).toContain("2 key entries left");
+    control(gate, "signin.done.start")!.click();
+    await settle(gate, () => state(gate) === undefined);
+    expect(
+      gate.shadowRoot!.querySelector('[data-part="toast"]'),
+    ).not.toBeNull();
+  });
+
+  it("shows no entries line without keyEntries", async () => {
+    const { gate } = await toKeyStep(world());
+    await typeKey(gate, "pkey_acme_KEY");
+    control(gate, "activate.submit")!.click();
+    await settle(gate, () => control(gate, "signin.done.start") !== null);
+    expect(gate.shadowRoot!.querySelector('[data-part="toast"]')).toBeNull();
+  });
+
   it("backs out of Activate with Escape and gives focus back to its opener", async () => {
     const { gate } = await toKeyStep(world());
     gate.dispatchEvent(
