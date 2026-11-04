@@ -530,3 +530,47 @@ class ConnectBackTest {
         assertEquals(1, cancelled)
     }
 }
+
+/** The offer's file row at 360 dp and 200 % text: the wrapped name keeps its extension, with or without word breaks. */
+@RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = "w360dp-h640dp-mdpi")
+class ConnectLongNameTest {
+    @get:Rule
+    val rule = createComposeRule()
+
+    private fun check(name: String) {
+        val screen = KitStates.resolve(
+            KitComponent.transferOffer,
+            transferOfferInputs(PolarisTransferOfferUi(PolarisTransferOfferStep.Ask, name, "Maya's laptop"))!!,
+        )
+        val results = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        org.robolectric.RuntimeEnvironment.setFontScale(2f)
+        rule.setContent {
+            StockHost(false) {
+                PolarisTheme(branding = PolarisBranding.PolarisKey, copy = sampleCopy, darkTheme = false) {
+                    PolarisTransferOfferScreen(screen, name)
+                }
+            }
+        }
+        rule.waitForIdle()
+        val shown = "⁨${KitConnect.shortName(name, 48)}⁩"
+        val node = rule.onNodeWithText(shown, useUnmergedTree = true)
+        node.assertIsDisplayed()
+        val action = node.fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult]
+        assertTrue(action.action?.invoke(results) == true)
+        val layout = results.single()
+        assertTrue("the name is not cut off", !layout.hasVisualOverflow)
+        assertTrue("every character is drawn, the last line ends with the extension", layout.layoutInput.text.text.endsWith(".jpg.apk⁩"))
+        val last = layout.getLineEnd(layout.lineCount - 1, visibleEnd = true)
+        assertEquals("the last drawn character is the last of the text", layout.layoutInput.text.length, last)
+    }
+
+    @Test
+    fun aLongNameWithWordBreaksKeepsItsExtension() =
+        check("IMG 20261103 141522 holiday photo from the lake with the whole family and the dog.jpg.apk")
+
+    @Test
+    fun aLongNameWithNoWordBreaksKeepsItsExtension() =
+        check("IMG_20261103_141522_holiday-photo-from-the-lake-with-the-whole-family-and-the-dog.jpg.apk")
+}

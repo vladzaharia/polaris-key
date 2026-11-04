@@ -6,8 +6,8 @@
 // Rules the screens keep:
 //  - consent per transfer: Accept never takes the first focus. On a TV or with a keyboard the first focus is Decline, and a press
 //    that arrives as the prompt opens is ignored for 250 ms;
-//  - the heading carries the name shortened (the middle elided, the extension kept); the whole name sits on its own row, at most
-//    three lines, with the size and type when the contact said, all isolated text the contact chose;
+//  - the heading carries the name shortened (the middle elided, the extension kept); the name sits on its own row and wraps as
+//    far as it needs (never cut off), with the size and type when the contact said, all isolated text the contact chose;
 //  - a transfer in flight is stopped by its own Cancel; Back and Escape do nothing then, and decline an offer being asked;
 //  - a failed transfer says nothing was saved and never reads as received.
 @file:Suppress("ktlint:standard:function-naming", "FunctionNaming", "CyclomaticComplexMethod", "LongParameterList", "LongMethod")
@@ -29,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 
 /** The prompt on screen in [offers], or nothing. [onClose] runs when the person closes one (Decline, Done); the next one shows. */
 @Composable
@@ -143,7 +142,7 @@ public fun PolarisTransferOfferScreen(
     }
 }
 
-/** The offered file on its own row: the whole name (three lines at most), then the size and type when the contact said. */
+/** The offered file on its own row: the name with its middle elided (it wraps, never cut off), then the size and type when the contact said. */
 @Composable
 private fun OfferedFile(name: String, size: Long?, type: String?) {
     val facts = listOfNotNull(size?.let(KitFormat::bytes), type?.takeIf { it.isNotBlank() }?.let(KitConnect::isolate)).joinToString(" · ")
@@ -155,8 +154,6 @@ private fun OfferedFile(name: String, size: Long?, type: String?) {
                 modifier = Modifier.semantics { contentDescription = KitConnect.isolate(name) },
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
             )
             if (facts.isNotEmpty()) {
                 Spacer(Modifier.height(PolarisSpace.hairline))

@@ -50,15 +50,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
@@ -307,8 +303,8 @@ internal fun ConnectActions(buttons: List<ConnectButton>) {
     }
 }
 
-/** The title-safe band at the foot of a TV picture (5 % of 540 dp). */
-private val TV_SAFE_BOTTOM = 27.dp
+/** The title-safe band at the foot of a TV picture (5 % of 540 dp, and the focus ring). */
+private val TV_SAFE_BOTTOM = 31.dp
 
 /** A failure the person can act on: the warning glyph and the sentence. Not a live region: the heading's focus announces the state. */
 @Composable
