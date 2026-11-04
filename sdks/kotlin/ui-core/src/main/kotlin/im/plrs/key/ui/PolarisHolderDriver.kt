@@ -64,7 +64,7 @@ private class SessionHandle(private val session: SignInSession) : AddToAccountHa
     override val userCode: String? = session.userCode.takeIf { it.isNotEmpty() }
 
     override suspend fun wait(): AddToAccountWait = when (val o = session.wait()) {
-        is SignInOutcome.SignedIn -> AddToAccountWait.SignedIn()
+        is SignInOutcome.SignedIn -> AddToAccountWait.SignedIn(o.identity?.email)
 
         is SignInOutcome.Choose -> AddToAccountWait.Choose(o.grant)
 
