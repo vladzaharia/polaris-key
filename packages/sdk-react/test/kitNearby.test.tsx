@@ -71,8 +71,10 @@ describe("<NearbySignIn> on the desktop bridge", () => {
         }),
       );
     });
-    await shows(container, "signin.auto.confirm.primary");
-    expect(container.textContent).toContain("a@b.c");
+    await waitFor(() => {
+      expect(control(container, "signin.auto.confirm.primary")).not.toBeNull();
+      expect(container.textContent).toContain("a@b.c");
+    });
     fireEvent.click(control(container, "signin.auto.confirm.primary")!);
     await waitFor(() =>
       expect(bridge.nearbyConfirm).toHaveBeenCalledWith("s-1"),
@@ -189,8 +191,10 @@ describe("<NearbyApprover> on the desktop bridge", () => {
         }),
       );
     });
-    await shows(container, "signin.approve.deny");
-    expect(container.textContent).toContain("Studio PC");
+    await waitFor(() => {
+      expect(control(container, "signin.approve.deny")).not.toBeNull();
+      expect(container.textContent).toContain("Studio PC");
+    });
     const codes = [
       ...container.querySelectorAll<HTMLButtonElement>(
         'button[data-key="nearby.code"]',
