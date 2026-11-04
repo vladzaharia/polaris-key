@@ -1,13 +1,12 @@
-"""The AddToAccount model and its SDK driver over the recorded ``holders-add-to-account-device``
+"""The AddToAccount model and its SDK driver over the recorded ``holders-add-to-account-preview``
 conversation (UK-43.16), through ``test_transcripts.py``'s replayer.
 
 The recording is one flow the model drives end to end: key activation, then the sign-in the driver
 starts (no native redirect is advertised here, so ``channel="redirect"`` answers
 ``redirect-unavailable`` and the driver asks for a device code with the hints), the poll that answers
-``choose``, ``choice.complete`` keeping this device's license, and the confirmed attach. The four
-recorded steps after the activation are replayed as one ordered step, so the replayer asserts every
-request and nothing else is sent. The recording has no preview, which the model sends first, so the test
-adds one (see ``_merged``)."""
+``choose``, ``choice.complete`` keeping this device's license, the attach preview (``confirm: false``) and the
+confirmed attach. The five recorded steps after the activation are replayed as one ordered step, so the
+replayer asserts every request and nothing else is sent."""
 
 # @pkey-feature ui.kit.holders identity.devicecode.choice identity.attach
 
@@ -23,7 +22,7 @@ from transcript_replay import applies
 from polaris_key.identity.sign_in import SignInSession
 from polaris_key.ui.core.add_to_account import AddToAccountModel, driver_of
 
-TRANSCRIPT_ID = "holders-add-to-account-device"
+TRANSCRIPT_ID = "holders-add-to-account-preview"
 ORIGINAL = next(t for t in tt.TRANSCRIPTS if t["id"] == TRANSCRIPT_ID)
 BASE: Dict[str, Any] = {
     "platform": {"os": "macos", "formFactor": "mac"},
@@ -36,22 +35,8 @@ def _merged() -> Dict[str, Any]:
     """The transcript with everything after the activation as one ordered step."""
     t = copy.deepcopy(ORIGINAL)
     first, rest = t["steps"][0], t["steps"][1:]
-    assert [s["action"] for s in rest] == ["beginSignIn", "pollSignIn", "choiceComplete", "attach"]
+    assert [s["action"] for s in rest] == ["beginSignIn", "pollSignIn", "choiceComplete", "attach", "attach"]
     items = [item for s in rest for item in s["exchanges"]["items"]]
-    # The model previews before it attaches (`attach(confirm=False)` writes nothing). The recording
-    # holds no preview, so the test adds the Worker's preview answer (services/identity/attach.ts):
-    # the attach exchange with confirm false, and the licence's id and name.
-    attach = items[-1]
-    assert attach["request"]["body"]["json"] == {"confirm": True}
-    preview = copy.deepcopy(attach)
-    preview["request"]["body"]["json"] = {"confirm": False}
-    lic = attach["response"]["body"]["license"]
-    preview["response"]["body"] = {
-        "status": "confirm",
-        "license": {"id": lic["id"], "tierId": lic["tierId"], "name": lic["name"]},
-    }
-    preview.pop("capture", None)
-    items.insert(len(items) - 1, preview)
     args: Dict[str, Any] = {}
     for s in rest:
         args.update(s["args"])

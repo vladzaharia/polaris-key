@@ -117,9 +117,10 @@ straight from the corpus files, live at
 
 `conformance/transcripts/` holds the recorded conversations (see [Add a corpus case](/docs/contribute/corpus-cases/#http-transcripts)). One row for the device-code channel:
 
-| Transcript                      | Proves                                                                                                                                                                                                                                                | Features                                        |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `holders-add-to-account-device` | Add a floating license to an account over the device-code channel: the start carries the hints, `purpose: "attach"` and `licenseChoice: "app"`, the poll answers `choose` with a grant, then `keep` and `attach` put the same license in the account. | `identity.devicecode.choice`, `identity.attach` |
+| Transcript                       | Proves                                                                                                                                                                                                                                                | Features                                        |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `holders-add-to-account-device`  | Add a floating license to an account over the device-code channel: the start carries the hints, `purpose: "attach"` and `licenseChoice: "app"`, the poll answers `choose` with a grant, then `keep` and `attach` put the same license in the account. | `identity.devicecode.choice`, `identity.attach` |
+| `holders-add-to-account-preview` | The same flow with the preview an AddToAccount model sends first: `attach` with `confirm: false` answers `confirm` and the license's id, tier and name, then the confirmed `attach`.                                                                  | `identity.devicecode.choice`, `identity.attach` |
 
 ## Swift reads the checkout
 
