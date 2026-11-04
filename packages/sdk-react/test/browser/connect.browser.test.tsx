@@ -453,6 +453,10 @@ describe("two panes in short landscape and on TV", () => {
         expect(b.left, "in overscan").toBeGreaterThanOrEqual(960 * 0.05 - 0.5);
         expect(b.right, "in overscan").toBeLessThanOrEqual(960 * 0.95 + 0.5);
       }
+      if (__PKEY_KIT_SHOTS__)
+        await commands.kitShot(
+          `${__PKEY_KIT_SHOTS__}/react.${component}.${state}/960x540-tv@200-dark.png`,
+        );
     });
 
   it("one column under 600 wide, at 200 % text and in a tall window", async () => {
