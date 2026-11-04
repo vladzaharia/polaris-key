@@ -153,7 +153,7 @@ describe("registry auth (F-21)", () => {
     ).toBeNull();
   });
 
-  // 2026-11-03: skipped, load-swamped on CI (pass 2.6–10.8 s, fail at 13.4 s); see flaky-disabled.md
+  // 2026-11-03: skipped, load-swamped on CI (pass 2.6–10.8 s, fail at 13.4 s)
   it.skip("Licensed shows the Tokens link; nothing to save while the choice is the stored one", async () => {
     const log = bootSettings("licensed");
     const form = await general();
