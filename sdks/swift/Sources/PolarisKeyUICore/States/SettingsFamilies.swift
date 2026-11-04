@@ -46,11 +46,25 @@ extension KitStates {
         let tier = c.line("account.tier", ["tier": ""])
         let signedIn = on.contains(.identity) && (i.account?.signedIn ?? false)
         if !signedIn {
+            // A floating license (the holder is known and has no email, UK-42) says so, and offers
+            // Add your name and email: with Identity off, or a kit with no in-app channel, that
+            // opens the portal. A license waiting for an email keeps the key-only line.
+            let holder = i.licenseHolder
+            let floating = on.contains(.license) && holder != nil && (holder?.email ?? "").isEmpty
+            let viaPortal = !on.contains(.identity) || holder?.addIn == .portal
             var lines = [title]
             if on.contains(.license) { lines.append(tier) }
-            lines.append(c.line("account.keyOnly"))
+            if floating {
+                lines.append(c.line("account.notInAccount"))
+                lines.append(
+                    c.line(viaPortal ? "signin.key.addInLocker" : "activate.recommend.action"))
+                if viaPortal { lines.append(c.line("a11y.externalLink")) }
+            } else if on.contains(.license) {
+                lines.append(c.line("account.keyOnly"))
+            }
             if on.contains(.update) { lines.append(c.line("account.updates")) }
-            lines.append(c.line("common.signOut"))
+            // A holder who never signed in has nothing to sign out of: the exit forgets the key.
+            lines.append(c.line(holder != nil ? "account.removeKey" : "common.signOut"))
             return KitScreen(.keyOnly, lines)
         }
         var lines = [title]

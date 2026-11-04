@@ -401,6 +401,13 @@ public enum KitSignInEvent: String, Sendable, Codable, CaseIterable {
     case reopen
 }
 
+/// The sign-in form's steps that belong to activation without an account.
+public enum KitHolderFormStep: String, Sendable, Codable, CaseIterable {
+    case keyDone = "key-done"
+    case attach
+    case added
+}
+
 /// The sign-in session.
 public struct KitSignIn: Sendable, Codable, Equatable, Hashable {
     public var presentation: KitSignInPresentation
@@ -421,14 +428,18 @@ public struct KitSignIn: Sendable, Codable, Equatable, Hashable {
     /// matrix never sets them). Without both the line is "You're signed in".
     public var name: String?
     public var tier: String?
+    /// The form's step after a key with no account (UK-42): the holders' screens in its body.
+    public var step: KitHolderFormStep?
 
     public init(
         presentation: KitSignInPresentation = .inline, replace: KitReplaceMode = .inline,
         channel: KitSignInChannel = .browser, outcome: KitSignInOutcome? = nil,
         browserOpened: Bool? = nil, redeeming: Bool? = nil, event: KitSignInEvent? = nil,
         issuedNow: Bool? = nil, raced: Bool? = nil, grantExpired: Bool? = nil,
-        method: String? = nil, name: String? = nil, tier: String? = nil
+        method: String? = nil, name: String? = nil, tier: String? = nil,
+        step: KitHolderFormStep? = nil
     ) {
+        self.step = step
         self.method = method
         self.name = name
         self.tier = tier
@@ -456,10 +467,19 @@ public enum KitDeviceCodePhase: String, Sendable, Codable, CaseIterable {
 public struct KitDeviceCode: Sendable, Codable, Equatable, Hashable {
     public var phase: KitDeviceCodePhase
     public var secondsLeft: Int?
+    /// The RFC 8628 user code, shown and copied exactly as served.
+    public var userCode: String?
+    /// The server's verification address.
+    public var verificationUri: String?
 
-    public init(phase: KitDeviceCodePhase, secondsLeft: Int? = nil) {
+    public init(
+        phase: KitDeviceCodePhase, secondsLeft: Int? = nil, userCode: String? = nil,
+        verificationUri: String? = nil
+    ) {
         self.phase = phase
         self.secondsLeft = secondsLeft
+        self.userCode = userCode
+        self.verificationUri = verificationUri
     }
 }
 
@@ -1157,6 +1177,88 @@ public struct KitRingChange: Sendable, Codable, Equatable, Hashable {
 
 // MARK: - The inputs
 
+/// Where Add your name and email goes (UK-43): `portal` for a kit with no in-app channel.
+public enum KitAddIn: String, Sendable, Codable, CaseIterable {
+    case portal, app
+}
+
+/// Who holds the license that just activated. Empty email: floating, held by the key alone; set:
+/// waiting for that email to sign in (screens show it masked, `KitFormat.maskEmail`).
+public struct KitLicenseHolder: Sendable, Codable, Equatable, Hashable {
+    public var email: String?
+    public var addIn: KitAddIn?
+
+    public init(email: String? = nil, addIn: KitAddIn? = nil) {
+        self.email = email
+        self.addIn = addIn
+    }
+}
+
+/// ActivateDone's display facts (strings its supplier formatted).
+public struct KitActivateDone: Sendable, Codable, Equatable, Hashable {
+    public var tier: String?
+    public var term: String?
+    public var deviceKind: String?
+    public var position: Int?
+    public var limit: Int?
+    /// The person came back from AddToAccount (Cancel): focus returns to the control that opened it.
+    public var returned: Bool?
+    /// Wins over `licenseHolder.addIn` here.
+    public var addIn: KitAddIn?
+    /// The channel is still being read: the action shows busy until it is known.
+    public var addBusy: Bool?
+
+    public init(
+        tier: String? = nil, term: String? = nil, deviceKind: String? = nil, position: Int? = nil,
+        limit: Int? = nil, returned: Bool? = nil, addIn: KitAddIn? = nil, addBusy: Bool? = nil
+    ) {
+        self.tier = tier
+        self.term = term
+        self.deviceKind = deviceKind
+        self.position = position
+        self.limit = limit
+        self.returned = returned
+        self.addIn = addIn
+        self.addBusy = addBusy
+    }
+}
+
+/// AddToAccount's input: its step and the facts its lines name.
+public struct KitAddToAccount: Sendable, Codable, Equatable, Hashable {
+    public enum Step: String, Sendable, Codable, CaseIterable {
+        case form, invalid, busy, added, owned
+        case emailBound = "email-bound"
+        case otherAccount = "other-account"
+        case failed
+    }
+
+    public enum Field: String, Sendable, Codable, CaseIterable {
+        case name, email, both
+    }
+
+    public var step: Step
+    /// `invalid`: which field the person must fix.
+    public var field: Field?
+    public var deviceKind: String?
+    /// `other-account`: the email typed and the one of the account that signed in, already masked.
+    public var typedEmail: String?
+    public var signedEmail: String?
+    /// Opened from the app's Settings: `added` closes with Done.
+    public var fromSettings: Bool?
+
+    public init(
+        step: Step, field: Field? = nil, deviceKind: String? = nil, typedEmail: String? = nil,
+        signedEmail: String? = nil, fromSettings: Bool? = nil
+    ) {
+        self.step = step
+        self.field = field
+        self.deviceKind = deviceKind
+        self.typedEmail = typedEmail
+        self.signedEmail = signedEmail
+        self.fromSettings = fromSettings
+    }
+}
+
 /// Everything a kit screen is drawn from. Every member is optional in the matrix; the defaults
 /// here are the runtime's (this device, every service on, the Polaris Key preset).
 public struct KitInputs: Sendable, Codable, Equatable, Hashable {
@@ -1207,6 +1309,9 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
     public var recoveryCode: KitRecoveryCode?
     public var ringChange: KitRingChange?
     public var saveConflict: KitSaveConflict?
+    public var licenseHolder: KitLicenseHolder?
+    public var activateDone: KitActivateDone?
+    public var addToAccount: KitAddToAccount?
 
     public init(
         integrator: KitIntegrator? = nil, presentation: KitPresentation? = nil,
@@ -1226,7 +1331,8 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
         offers: KitOffers? = nil, toast: KitToast? = nil, error: KitError? = nil,
         cloudSync: KitCloudSync? = nil, unlockSync: KitUnlockSync? = nil,
         recoveryCode: KitRecoveryCode? = nil, ringChange: KitRingChange? = nil,
-        saveConflict: KitSaveConflict? = nil
+        saveConflict: KitSaveConflict? = nil, licenseHolder: KitLicenseHolder? = nil,
+        activateDone: KitActivateDone? = nil, addToAccount: KitAddToAccount? = nil
     ) {
         self.integrator = integrator
         self.presentation = presentation
@@ -1269,6 +1375,9 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
         self.recoveryCode = recoveryCode
         self.ringChange = ringChange
         self.saveConflict = saveConflict
+        self.licenseHolder = licenseHolder
+        self.activateDone = activateDone
+        self.addToAccount = addToAccount
     }
 
     /// Whether `service` is on (an absent list means all are).
