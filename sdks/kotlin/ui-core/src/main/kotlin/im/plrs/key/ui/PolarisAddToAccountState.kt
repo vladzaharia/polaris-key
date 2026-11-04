@@ -93,6 +93,8 @@ public class PolarisAddToAccountState(
     private val scope: CoroutineScope,
     private val base: JsonObject = JsonObject(emptyMap()),
     private val deviceKind: String? = null,
+    /** The form was opened from Settings: `added` closes with Done, not Start using. */
+    private val fromSettings: Boolean = false,
 ) {
     private val lock = Any()
     private val _ui = MutableStateFlow(PolarisAddToAccountUi())
@@ -124,6 +126,7 @@ public class PolarisAddToAccountState(
             s.signedEmail?.let { add["signedEmail"] = JsonPrimitive(it) }
         }
         deviceKind?.let { add["deviceKind"] = JsonPrimitive(it) }
+        if (fromSettings) add["fromSettings"] = JsonPrimitive(true)
         members["addToAccount"] = JsonObject(add)
         return KitInputs.of(members)
     }

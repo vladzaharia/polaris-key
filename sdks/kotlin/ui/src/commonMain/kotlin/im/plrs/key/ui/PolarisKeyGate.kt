@@ -33,12 +33,16 @@ public fun PolarisKeyGate(
     onQuit: (() -> Unit)? = null,
     /** False turns automatic sign-in off: the gate shows its own screens and runs no `autoSignIn()` (Q-12). */
     autoSignIn: Boolean = true,
+    /** False goes straight to the product after a license key activates, with no Done step (UK-43). */
+    keyDone: Boolean = true,
+    /** The Done step's account step: the native redirect setup and the tab to arm before the browser opens. */
+    holders: PolarisHolderOptions = PolarisHolderOptions(),
     content: @Composable () -> Unit,
 ) {
     val update = remember(client) { PolarisUpdateState() }
     val updateActions = remember(client) { client.updateActions() }
     PolarisKeyAppHost(
         client, modifier, bootOptions, onSignIn, packs, signIn, onQuit, update, updateActions,
-        optionalUpdateInDialog = true, autoSignIn = autoSignIn, content = content,
+        optionalUpdateInDialog = true, autoSignIn = autoSignIn, keyDone = keyDone, holders = holders, content = content,
     )
 }

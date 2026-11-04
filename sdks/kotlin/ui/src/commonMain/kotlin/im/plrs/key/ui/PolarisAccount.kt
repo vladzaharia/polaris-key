@@ -84,6 +84,13 @@ public fun PolarisAccount(
     onSignOut: (() -> Unit)? = null,
     /** "Approve a nearby device" (nearby sign-in, the approving side): offered where nearby approval can run here; null offers none. */
     nearby: PolarisNearbyApprovalState? = null,
+    /**
+     * The client the floating license is added through (UK-43). Defaults to the one PolarisKeyGate provides; null offers no
+     * Add row.
+     */
+    client: im.plrs.key.sdk.PolarisKeyClient? = LocalPolarisKey.current,
+    /** The account step's host setup (native redirect, the tab to arm). */
+    holders: PolarisHolderOptions = PolarisHolderOptions(),
 ) {
     val settingsUi by settings.ui.collectAsState()
     val devicesUi by devices.ui.collectAsState()
@@ -91,6 +98,13 @@ public fun PolarisAccount(
     androidx.compose.runtime.LaunchedEffect(devices) { devices.load() }
     var offered by androidx.compose.runtime.remember(nearby) { mutableStateOf(false) }
     androidx.compose.runtime.LaunchedEffect(nearby) { offered = nearby?.available() == true }
+    // A license held by its key alone: Settings offers Add your name and email (or the portal) and calls the exit Remove license.
+    val floating = client != null && settingsUi.license?.floating == true
+    val add = rememberFloatingAdd(client, floating, holders, modifier) { settings.load() }
+    add.screen?.let {
+        it()
+        return
+    }
     val approvalUi = nearby?.ui?.collectAsState()?.value
     if (nearby != null && approvalUi != null && approvalUi != PolarisApprovalUi.Closed) {
         // The approver replaces the account list until the person is done; leaving it answers Deny to what is on screen.
@@ -105,6 +119,9 @@ public fun PolarisAccount(
         navigationIcon = navigationIcon,
         onManageLicense = onManageLicense,
         onSignOut = onSignOut,
+        onAddToAccount = add.onAdd,
+        addExternal = add.external,
+        floating = floating,
         onRetrySettings = settings::load,
         onSet = settings::set,
         onReset = settings::reset,
@@ -127,6 +144,11 @@ public fun PolarisAccountScreen(
     navigationIcon: (@Composable () -> Unit)? = null,
     onManageLicense: (() -> Unit)? = null,
     onSignOut: (() -> Unit)? = null,
+    /** "Add your name and email" (or "Add it in Polaris Locker" when [addExternal]) on a floating license; null draws none. */
+    onAddToAccount: (() -> Unit)? = null,
+    addExternal: Boolean = false,
+    /** The license is held by its key alone: the exit reads Remove license. */
+    floating: Boolean = false,
     onRetrySettings: () -> Unit = {},
     onSet: ((String, JsonElement) -> Unit)? = null,
     onReset: ((String) -> Unit)? = null,
@@ -157,7 +179,9 @@ public fun PolarisAccountScreen(
         val back = PolarisBackHandler(enabled = !split && item != null) { chosen = null }
         val detailTitle = detailPaneTitle(open, copy, channelTitle)
         val manageLabel = KitCopy.bundled.format("menu.manageLicense", kitLocale())
-        val signOutLabel = KitCopy.bundled.format("common.signOut", kitLocale())
+        val signOutLabel = KitCopy.bundled.format(if (floating) "account.removeKey" else "common.signOut", kitLocale())
+        val addLabel = KitCopy.bundled.format(if (addExternal) "signin.key.addInLocker" else "activate.recommend.action", kitLocale())
+        val notInAccount = KitCopy.bundled.format("account.notInAccount", kitLocale())
         val nearbyLabel = KitCopy.bundled.format("signin.nearby.menu", kitLocale())
         // "N of M in use" once the roster is read and the licence states a limit; the catalog's line otherwise.
         val limit = settingsUi.license?.deviceLimit
@@ -188,6 +212,19 @@ public fun PolarisAccountScreen(
                         }
                     }
                     if (onManageLicense != null) add { shape -> AccountListItem(manageLabel, null, PolarisSymbols.OpenInNew, chevron = false, selected = false, shape = shape, onClick = onManageLicense) }
+                    if (onAddToAccount != null) {
+                        add { shape ->
+                            AccountListItem(
+                                title = addLabel,
+                                supporting = notInAccount,
+                                icon = if (addExternal) PolarisSymbols.OpenInNew else PolarisSymbols.Lock,
+                                chevron = false,
+                                selected = false,
+                                shape = shape,
+                                onClick = onAddToAccount,
+                            )
+                        }
+                    }
                     if (onApproveNearby != null) {
                         add { shape ->
                             AccountListItem(
