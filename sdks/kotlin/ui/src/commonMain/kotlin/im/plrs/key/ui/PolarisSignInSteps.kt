@@ -11,6 +11,7 @@ package im.plrs.key.ui
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -109,18 +110,23 @@ internal fun PolarisLinkStep(ui: PolarisSignInUi, steps: PolarisSignInSteps, mod
         else -> return
     }
     val (screen, _) = remember(inputs) { resolve(KitComponent.signIn, inputs) }
-    PolarisKitScreen(
-        screen,
-        modifier.then(back),
-        busy = (ui as? PolarisSignInUi.LinkOffer)?.busy == true,
-        onControl = { key ->
-            when (key) {
-                "signin.linkOffer.primary" -> steps.onLinkAccept()
-                "signin.linkOffer.decline" -> steps.onLinkDecline()
-                "signin.again" -> steps.onLinkSignInAgain()
-                "common.done" -> steps.onLinkFinished()
-                "signin.linkOffer.join" -> opener(JOIN_ACCOUNTS_URL)
-            }
-        },
-    )
+    val busy = (ui as? PolarisSignInUi.LinkOffer)?.busy == true
+    // Each step is built fresh: its title and primary take the focus again (the desktop keys, TalkBack's announcement),
+    // and so does the primary when a request ends and the offer stays (a problem shares the "link-offer" state).
+    key(screen.state, busy) {
+        PolarisKitScreen(
+            screen,
+            modifier.then(back),
+            busy = busy,
+            onControl = { key ->
+                when (key) {
+                    "signin.linkOffer.primary" -> steps.onLinkAccept()
+                    "signin.linkOffer.decline" -> steps.onLinkDecline()
+                    "signin.again" -> steps.onLinkSignInAgain()
+                    "common.done" -> steps.onLinkFinished()
+                    "signin.linkOffer.join" -> opener(JOIN_ACCOUNTS_URL)
+                }
+            },
+        )
+    }
 }

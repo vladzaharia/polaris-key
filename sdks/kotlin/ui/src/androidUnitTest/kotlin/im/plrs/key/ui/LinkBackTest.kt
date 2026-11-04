@@ -6,6 +6,8 @@ package im.plrs.key.ui
 
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -47,6 +49,22 @@ class LinkBackTest {
     @Test
     fun backOnTheOfferClosesItWithoutADecline() {
         assertEquals(listOf("close"), backOn(PolarisSignInUi.LinkOffer("Google", "global")))
+    }
+
+    @Test
+    fun theLinkedStepIsBuiltFreshAndBackStillFinishesIt() {
+        var ui by androidx.compose.runtime.mutableStateOf<PolarisSignInUi>(PolarisSignInUi.LinkOffer("Google", "global"))
+        val steps = PolarisSignInSteps(onLinkClose = { calls += "close" }, onLinkFinished = { calls += "finished" })
+        rule.setContent {
+            StockHost(false) { PolarisTheme(copy = sampleCopy, darkTheme = false) { show(ui, steps) } }
+        }
+        rule.waitForIdle()
+        rule.runOnIdle { ui = PolarisSignInUi.LinkDone("Google") }
+        rule.waitForIdle()
+        // The step after the round trip answers Back as Done, not as the offer's close.
+        rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        rule.waitForIdle()
+        assertEquals(listOf("finished"), calls.toList())
     }
 
     @Test
