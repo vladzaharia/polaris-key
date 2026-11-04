@@ -1991,6 +1991,11 @@
     },
     {
       "sdk": "godot",
+      "path": "identity.entry_for",
+      "reason": "picks which entry of the link offer this device can accept (the kit's step helper, over identity.link.offer's kinds); not an app verb"
+    },
+    {
+      "sdk": "godot",
       "path": "identity.exchange",
       "reason": "the exchange primitive under identity.autoSignIn (I-48.3), which carries the row; not an app verb"
     },

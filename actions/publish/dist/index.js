@@ -12314,6 +12314,27 @@ function breakPieces(text3, kind, width) {
   const second = kind === "url" ? first.flatMap((p) => cellWidth(p) > w ? splitAt(p, /-/, /\./) : [p]) : first;
   return second.flatMap((p) => cellWidth(p) > w ? hardSplit(p, w) : [p]);
 }
+function wordPieces(text3, width) {
+  const w = Math.max(1, width);
+  const out = [];
+  let cur = "";
+  for (const atom of splitAt(text3, /[@.]/)) {
+    if (cellWidth(cur + atom) <= w) {
+      cur += atom;
+      continue;
+    }
+    if (cur)
+      out.push(cur);
+    cur = "";
+    if (cellWidth(atom) > w)
+      out.push(...hardSplit(atom, w));
+    else
+      cur = atom;
+  }
+  if (cur)
+    out.push(cur);
+  return out;
+}
 function wrapSpans(spans, width, ellipsis = "…") {
   const lines4 = wrapPieces(shrinkToFit(spans, width, ellipsis), width, ellipsis);
   balanceLast(lines4, width);
@@ -12429,6 +12450,23 @@ function wrapPieces(spans, width, ellipsis) {
           newLine();
           if (/^\s+$/.test(p.text))
             continue;
+        }
+        if (pw > width && !p.keep && !/\s/.test(p.text.trimEnd())) {
+          const body = p.text.trimEnd();
+          const parts = wordPieces(body, width);
+          parts.forEach((text3, i) => {
+            const last = i === parts.length - 1;
+            const piece = {
+              ...p,
+              text: last ? text3 + p.text.slice(body.length) : text3
+            };
+            const tw = cellWidth(text3);
+            if (w > 0 && w + tw > width)
+              newLine();
+            cur().push(piece);
+            w += cellWidth(piece.text);
+          });
+          continue;
         }
         if (pw > width && p.keep)
           p = { ...p, text: truncateMiddle(p.text, width, ellipsis) };
