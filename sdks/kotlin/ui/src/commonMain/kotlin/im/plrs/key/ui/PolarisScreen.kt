@@ -783,11 +783,12 @@ internal fun Modifier.polarisFocusIndication(interaction: InteractionSource, sha
 
 /** The 16 dp ring a busy button shows beside its label (UI-KITS.md §1.5 rule 4). */
 @Composable
-private fun PolarisBusyRing() {
+private fun PolarisBusyRing(color: Color? = null) {
     CircularProgressIndicator(
-        modifier = Modifier.size(16.dp),
+        // A busy button is disabled, so its content is dimmed: a screen that needs the ring seen asks for full contrast and 20 dp.
+        modifier = Modifier.size(if (color != null) 20.dp else 16.dp),
         strokeWidth = 2.dp,
-        color = LocalContentColor.current,
+        color = color ?: LocalContentColor.current,
     )
     Spacer(Modifier.size(ButtonDefaults.IconSpacing))
 }
@@ -835,6 +836,8 @@ public fun PolarisPrimaryButton(
     external: Boolean = false,
     /** A destructive confirm (Remove): the error tone instead of the accent. */
     danger: Boolean = false,
+    /** The busy ring's colour at full contrast (the holders' Continue); null keeps the dimmed content colour. */
+    ringColor: Color? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val shape = polarisActionShape(suggested = true)
@@ -868,7 +871,7 @@ public fun PolarisPrimaryButton(
         interactionSource = interaction,
         modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
     ) {
-        if (busy) PolarisBusyRing()
+        if (busy) PolarisBusyRing(ringColor)
         // The glyph stays beside a label that wraps (GNOME at a large font scale), not pushed out of the pill.
         Text(text, textAlign = TextAlign.Center, modifier = if (external) Modifier.weight(1f, fill = false) else Modifier)
         if (external) PolarisNewWindowGlyph()

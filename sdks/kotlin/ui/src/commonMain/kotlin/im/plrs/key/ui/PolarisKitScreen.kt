@@ -234,6 +234,7 @@ public fun PolarisKitScreen(
                     onVerify = press("activate.otherEmail.verify"),
                     onOtherAccount = press("signin.auto.confirm.other"),
                     onDone = press("common.done"),
+                    onWaitingSignIn = press("activate.waitingSignIn"),
                 ),
             )
         }

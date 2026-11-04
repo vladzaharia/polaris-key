@@ -92,6 +92,13 @@ public fun PolarisGate(
      * it also keeps the ladder from running when [state] is the host's own (`PolarisGateState(autoSignIn = false)`).
      */
     autoSignIn: Boolean = true,
+    /**
+     * After a license key activates the gate shows the Done step (UK-43: "<Product> is ready", and once a quiet way to keep
+     * the license in an account) before the product. False goes straight to the product, as before.
+     */
+    keyDone: Boolean = true,
+    /** The account step's host setup (native redirect, the tab to arm). */
+    holders: PolarisHolderOptions = PolarisHolderOptions(),
     content: @Composable () -> Unit,
 ) {
     val gate by state.gate.collectAsState()
@@ -114,9 +121,15 @@ public fun PolarisGate(
     }
     // After a key activation: "N key entries left", once the product is showing.
     val entries by state.keyEntries.collectAsState()
-    LaunchedEffect(entries, usable) {
+    val done by state.keyDone.collectAsState()
+    val doneClient = client.takeIf { keyDone }
+    // Without a client (or with the step off) there is nothing to draw: the key is forgotten at once.
+    LaunchedEffect(done, doneClient) {
+        if (done != null && doneClient == null) state.finishKeyDone()
+    }
+    LaunchedEffect(entries, usable, done) {
         val e = entries ?: return@LaunchedEffect
-        if (!usable) return@LaunchedEffect
+        if (!usable || done != null) return@LaunchedEffect
         toast = PolarisToastSpec(keyEntriesLeftLine(e.used, e.limit, locale), PolarisToastKind.Info)
         state.keyEntriesShown()
     }
@@ -131,6 +144,9 @@ public fun PolarisGate(
         onSignIn = onSignIn,
         onRetry = state::refresh,
         signIn = signIn,
+        keyDone = done?.let { d ->
+            doneClient?.let { c -> { PolarisKeyDoneFlow(c, d, holders, onFinish = state::finishKeyDone) } }
+        },
         auto = state.auto.takeIf { autoSignIn },
         nearby = state.nearby.takeIf { autoSignIn },
         onUpdate = onUpdate,
@@ -181,7 +197,7 @@ internal fun keyEntriesLeftLine(used: Long, limit: Long, locale: String): String
 )
 
 /** Which screen a gate state shows; the key Crossfade animates between. */
-internal enum class GateScreen { Loading, Content, Grace, Activation, Message, SignIn, Auto, Nearby }
+internal enum class GateScreen { Loading, Content, Grace, Activation, Message, SignIn, Auto, Nearby, KeyDone }
 
 internal fun gateScreen(status: LicenseStatus?): GateScreen = when (status) {
     null -> GateScreen.Loading
@@ -215,6 +231,8 @@ public fun PolarisGateScreen(
     signIn: PolarisSignInState? = null,
     auto: PolarisAutoSignInState? = null,
     nearby: PolarisNearbySignInState? = null,
+    /** The Done step after a key activates, drawn instead of the product while the license is usable; null draws none. */
+    keyDone: (@Composable () -> Unit)? = null,
     onUpdate: (() -> Unit)? = null,
     toast: PolarisToastSpec? = null,
     onToastDismiss: () -> Unit = {},
@@ -241,7 +259,10 @@ public fun PolarisGateScreen(
     // Automatic sign-in's steps come before the gate's own stop; a usable licence ends them.
     val autoUi = auto?.ui?.collectAsState()?.value
     val autoShown = autoUi != null && autoUi.takesOver() && base != GateScreen.Content && base != GateScreen.Grace
+    val doneShown = keyDone != null && (base == GateScreen.Content || base == GateScreen.Grace)
     val screen = when {
+        doneShown -> GateScreen.KeyDone
+
         autoShown -> GateScreen.Auto
 
         base == GateScreen.Message && status == LicenseStatus.expired && anotherLicense ->
@@ -290,6 +311,8 @@ public fun PolarisGateScreen(
                     focusKey = focusKey,
                     onCopied = onLinkCopied,
                 )
+
+                GateScreen.KeyDone -> keyDone?.invoke()
 
                 GateScreen.Auto -> if (auto != null && autoUi != null) PolarisAutoSignInScreen(autoUi, auto)
 

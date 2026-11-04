@@ -402,6 +402,9 @@ internal fun PolarisUserCode(
     description: String? = null,
     /** Centre the code on its plate (LinkPairing); the sign-in code starts at the leading edge. */
     centered: Boolean = false,
+    /** The copy button's words when it copies a code, not a link. */
+    copyLabel: String? = null,
+    copiedLabel: String? = null,
 ) {
     val copy = PolarisTheme.copy
     val window = polarisWindow
@@ -440,7 +443,7 @@ internal fun PolarisUserCode(
                     .weight(1f)
                     .semantics { contentDescription = description ?: copy.format(copy.signInCodeDescription, spelled(code)) },
             )
-            if (onCopy != null) PolarisCopyLinkButton(onCopy.first, onCopy.second)
+            if (onCopy != null) PolarisCopyLinkButton(onCopy.first, onCopy.second, copyLabel, copiedLabel)
         }
     }
 }
@@ -450,7 +453,7 @@ internal fun PolarisUserCode(
  * on another device they can paste to), and its label turns to "Link copied" for two seconds.
  */
 @Composable
-internal fun PolarisCopyLinkButton(link: String, onCopyLink: ((String) -> Unit)?) {
+internal fun PolarisCopyLinkButton(link: String, onCopyLink: ((String) -> Unit)?, copyLabel: String? = null, copiedLabel: String? = null) {
     val copy = PolarisTheme.copy
     val clipboard = rememberPolarisClipboard()
     val scope = rememberCoroutineScope()
@@ -479,7 +482,7 @@ internal fun PolarisCopyLinkButton(link: String, onCopyLink: ((String) -> Unit)?
     ) {
         Icon(
             imageVector = if (copied) PolarisCheckIcon else PolarisCopyIcon,
-            contentDescription = if (copied) copy.signInLinkCopied else copy.signInCopyLink,
+            contentDescription = if (copied) copiedLabel ?: copy.signInLinkCopied else copyLabel ?: copy.signInCopyLink,
             tint = PolarisTheme.accentText,
             modifier = Modifier.size(20.dp),
         )

@@ -39,12 +39,16 @@ public fun PolarisKeyGate(
      * suits the desktop. Null signs in with a code only.
      */
     redirect: PolarisRedirect? = PolarisRedirect(),
+    /** False goes straight to the product after a license key activates, with no Done step (UK-43). */
+    keyDone: Boolean = true,
+    /** The Done step's account step: the native redirect setup and the tab to arm before the browser opens. */
+    holders: PolarisHolderOptions = PolarisHolderOptions(),
     content: @Composable () -> Unit,
 ) {
     val update = remember(client) { PolarisUpdateState() }
     val updateActions = remember(client) { client.updateActions() }
     PolarisKeyAppHost(
         client, modifier, bootOptions, onSignIn, packs, signIn, onQuit, update, updateActions,
-        optionalUpdateInDialog = true, autoSignIn = autoSignIn, redirect = redirect, content = content,
+        optionalUpdateInDialog = true, autoSignIn = autoSignIn, redirect = redirect, keyDone = keyDone, holders = holders, content = content,
     )
 }

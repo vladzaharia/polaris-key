@@ -78,6 +78,10 @@ public fun PolarisBoot(
     onSignIn: (() -> Unit)? = null,
     onUpdate: (() -> Unit)? = null,
     signIn: PolarisSignInState? = null,
+    /** After a license key activates, the Done step (UK-43) comes before the product; false goes straight to it. */
+    keyDone: Boolean = true,
+    /** The Done step's account step: the native redirect setup and the tab to arm. */
+    holders: PolarisHolderOptions = PolarisHolderOptions(),
     content: @Composable () -> Unit,
 ) {
     val ui by state.ui.collectAsState()
@@ -93,6 +97,7 @@ public fun PolarisBoot(
         }
     }
     val packUi = packs?.ui?.collectAsState()?.value
+    if (PolarisGateKeyDone(gate, LocalPolarisKey.current, keyDone, holders, modifier)) return
     PolarisBootScreen(
         ui = ui,
         modifier = modifier,

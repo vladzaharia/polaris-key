@@ -161,6 +161,19 @@ public class PolarisGateState(
     /** The entries of the key just activated (`used` of `limit`), until [keyEntriesShown]; null when the Worker sent none. */
     public val keyEntries: StateFlow<KeyEntries?> = _keyEntries.asStateFlow()
 
+    private val _keyDone = MutableStateFlow<PolarisKeyDone?>(null)
+
+    /**
+     * The key just activated, until [finishKeyDone]: the gate draws the Done step (UK-43) before the product. The
+     * key lives only here, in memory.
+     */
+    public val keyDone: StateFlow<PolarisKeyDone?> = _keyDone.asStateFlow()
+
+    /** Start using: the Done step is over and the key is forgotten. */
+    public fun finishKeyDone() {
+        _keyDone.value = null
+    }
+
     /** The line saying so has been shown. */
     public fun keyEntriesShown() {
         _keyEntries.value = null
@@ -213,6 +226,7 @@ public class PolarisGateState(
             if (result is ActivationResult.Ok) {
                 _activation.value = PolarisActivationUi()
                 _keyEntries.value = result.keyEntries
+                _keyDone.value = PolarisKeyDone(key, result.keyEntries)
             } else {
                 _activation.update {
                     it.copy(

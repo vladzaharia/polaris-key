@@ -173,4 +173,26 @@ class PolarisGateStateTest {
         gate.keyEntriesShown()
         assertNull(gate.keyEntries.value)
     }
+
+    @Test
+    fun anActivationHoldsTheKeyInMemoryUntilStartUsingAndNeverPrintsIt() = runTest {
+        val gate = PolarisGateState(FakeGate(LicenseState(LicenseStatus.needsActivation)), backgroundScope)
+        assertNull(gate.keyDone.value)
+        gate.onKeyChange(" pkey_djdl_SECRET ")
+        gate.activate()
+        runCurrent()
+        assertEquals("pkey_djdl_SECRET", gate.keyDone.value?.key)
+        assertFalse(gate.keyDone.value.toString().contains("SECRET"))
+        gate.finishKeyDone()
+        assertNull(gate.keyDone.value)
+    }
+
+    @Test
+    fun aRefusedActivationHoldsNoKey() = runTest {
+        val gate = PolarisGateState(FakeGate(LicenseState(LicenseStatus.needsActivation), ActivationResult.Unauthorized), backgroundScope)
+        gate.onKeyChange("pkey_bad")
+        gate.activate()
+        runCurrent()
+        assertNull(gate.keyDone.value)
+    }
 }

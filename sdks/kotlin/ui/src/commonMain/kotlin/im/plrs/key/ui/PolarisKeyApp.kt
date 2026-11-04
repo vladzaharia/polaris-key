@@ -137,6 +137,8 @@ internal fun PolarisKeyAppHost(
     optionalUpdateInDialog: Boolean,
     autoSignIn: Boolean = true,
     redirect: PolarisRedirect? = PolarisRedirect(),
+    keyDone: Boolean = true,
+    holders: PolarisHolderOptions = PolarisHolderOptions(),
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -180,6 +182,8 @@ internal fun PolarisKeyAppHost(
             onSignIn = onSignIn,
             onUpdate = { update.install(updateActions, scope, onQuit) },
             signIn = signInState,
+            keyDone = keyDone,
+            holders = holders,
         ) {
             val offer by update.offer.collectAsState()
             Column {

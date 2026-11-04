@@ -31,6 +31,11 @@ public data class PolarisLicenseSummary(
     val tierLabel: String? = null,
     /** The licence's device limit, when the document carries one. */
     val deviceLimit: Int? = null,
+    /**
+     * Floating: the license is held by its key alone (a holder is known, with no email and no account). Settings then offers
+     * Add your name and email and calls the exit Remove license.
+     */
+    val floating: Boolean = false,
 )
 
 /** How an editable row takes a new value, typed from the catalog entry's schema. */
@@ -191,6 +196,7 @@ public fun PolarisKeyClient.settingsActions(labels: Map<String, String> = emptyM
                 granted,
                 tierLabel = info?.tierLabel?.takeIf { it.isNotBlank() },
                 deviceLimit = info?.deviceLimit?.toInt()?.takeIf { it > 0 },
+                floating = profile != null && profile.email.isBlank() && profile.user == null,
             )
         }
 

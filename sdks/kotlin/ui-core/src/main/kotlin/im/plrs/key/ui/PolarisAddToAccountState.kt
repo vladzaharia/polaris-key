@@ -49,6 +49,12 @@ public sealed interface AddToAccountAttach {
 public interface AddToAccountHandle {
     /** The code the person checks against the one Polaris Locker shows, when the sign-in has one. */
     public val userCode: String? get() = null
+
+    /** Device code: the page the code is typed into, shown as text. */
+    public val address: String? get() = null
+
+    /** Device code: the same page with the code filled in (a QR, a link). */
+    public val link: String? get() = null
     public suspend fun wait(): AddToAccountWait
     public suspend fun reopen(): Boolean
     public fun cancel()
@@ -80,6 +86,9 @@ public data class PolarisAddToAccountUi(
     val email: String = "",
     /** `busy`: the code to check against Polaris Locker's, when the sign-in has one. */
     val userCode: String? = null,
+    /** `busy` with a code: where the code is typed in, as text, and the link a QR carries. */
+    val address: String? = null,
+    val link: String? = null,
 )
 
 private val EMAIL = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
@@ -93,6 +102,8 @@ public class PolarisAddToAccountState(
     private val scope: CoroutineScope,
     private val base: JsonObject = JsonObject(emptyMap()),
     private val deviceKind: String? = null,
+    /** The form was opened from Settings: `added` closes with Done, not Start using. */
+    private val fromSettings: Boolean = false,
 ) {
     private val lock = Any()
     private val _ui = MutableStateFlow(PolarisAddToAccountUi())
@@ -124,6 +135,7 @@ public class PolarisAddToAccountState(
             s.signedEmail?.let { add["signedEmail"] = JsonPrimitive(it) }
         }
         deviceKind?.let { add["deviceKind"] = JsonPrimitive(it) }
+        if (fromSettings) add["fromSettings"] = JsonPrimitive(true)
         members["addToAccount"] = JsonObject(add)
         return KitInputs.of(members)
     }
@@ -181,7 +193,7 @@ public class PolarisAddToAccountState(
                 val previous = handle
                 epoch++
                 handle = null
-                _ui.value = s.copy(step = "busy", field = null, userCode = null)
+                _ui.value = s.copy(step = "busy", field = null, userCode = null, address = null, link = null)
                 Start(name, email, epoch, previous)
             }
         }
@@ -220,7 +232,8 @@ public class PolarisAddToAccountState(
             handle = null
             signedIn = false
             signedEmail = null
-            _ui.value = _ui.value.copy(step = "form", field = null, userCode = null, typedEmail = null, signedEmail = null)
+            _ui.value =
+                _ui.value.copy(step = "form", field = null, userCode = null, address = null, link = null, typedEmail = null, signedEmail = null)
         }
         h?.let { quietly { it.cancel() } }
     }
@@ -230,7 +243,7 @@ public class PolarisAddToAccountState(
     private fun set(step: String, mine: Int) {
         synchronized(lock) {
             if (mine != epoch) return
-            _ui.value = _ui.value.copy(step = step, field = null, userCode = null)
+            _ui.value = _ui.value.copy(step = step, field = null, userCode = null, address = null, link = null)
         }
     }
 
@@ -298,7 +311,18 @@ public class PolarisAddToAccountState(
             }
             synchronized(lock) { handle = h }
             h.userCode?.takeIf { it.isNotEmpty() }?.let { code ->
-                synchronized(lock) { if (mine == epoch) _ui.value = _ui.value.copy(userCode = code) }
+                synchronized(lock) {
+                    if (mine == epoch) {
+                        _ui.value =
+                            _ui.value.copy(
+                                userCode = code,
+                                address = h.address?.takeIf {
+                                    it.isNotEmpty()
+                                },
+                                link = h.link?.takeIf { it.isNotEmpty() },
+                            )
+                    }
+                }
             }
             var settled: Boolean? = null
             while (settled == null) {
