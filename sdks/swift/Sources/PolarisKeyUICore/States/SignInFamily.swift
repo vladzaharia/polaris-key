@@ -22,6 +22,11 @@ public enum SignInState: String, KitStateID {
     case deviceLimit = "device-limit"
     /// The key step ended in a refusal only an account fixes.
     case keyRefused = "key-refused"
+    /// The form's steps after a key with no account (UK-42): ActivateDone's and AddToAccount's
+    /// bodies drawn in the form.
+    case keyDone = "key-done"
+    case attach
+    case added
     public static let component = KitComponent.signIn
 }
 
@@ -82,6 +87,7 @@ extension KitStates {
                 [c.line("signIn.methodError", s.method.map { ["method": .text($0)] } ?? [:])])
         }
         if let auto = i.autoSignIn { return autoStep(c, auto) }
+        if let step = s.step { return holderStep(step, i) }
         if s.outcome == .expired {
             return KitScreen(.expired, [c.line("signin.handoff.tooLong"), c.line("signin.again")])
         }

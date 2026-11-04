@@ -176,6 +176,9 @@ public struct PolarisKeyPreview: View {
             RecoveryCodeView(model: recovery)
         case .ringChange:
             RingChangeView(model: RingChangeModel(inputs: model.inputs))
+        case .activateDone, .addToAccount:
+            // The holder screens are UK-43.5; no preview state names these components yet.
+            EmptyView()
         case .saveConflict:
             SaveConflictView(model: SaveConflictModel(inputs: model.inputs))
         case .cloudSyncStatus:

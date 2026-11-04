@@ -102,7 +102,7 @@ public struct SignInView: View {
         case .done:
             return screen.line("signin.return.signedInTier") ?? CopyLine("signin.return.signedInShort")
         case .confirm, .linkOffer, .linkDone, .linkConflict, .nearbyPrompt, .nearbyWait,
-            .nearbyDone, .deviceLimit, .keyRefused:
+            .nearbyDone, .deviceLimit, .keyRefused, .keyDone, .attach, .added:
             // The first line names the step (the sentence, or the refusal's title).
             return screen.copy.first ?? CopyLine("signIn.title", productArg)
         case .expired:
@@ -266,6 +266,9 @@ public struct SignInView: View {
             }
         case .linkDone, .nearbyDone:
             EmptyView()
+        case .keyDone, .attach, .added:
+            // The holder steps (UK-42) are drawn by UK-43.5's screens.
+            EmptyView()
         case .done:
             if screen.shows("signin.desktop.toast") {
                 // "Signed in as <name> · <Tier> license"; without both, the plain sentence.
@@ -345,6 +348,9 @@ public struct SignInView: View {
                 }
                 cancelButton
             case .finishing:
+                EmptyView()
+            case .keyDone, .attach, .added:
+                // The holder steps (UK-42) are drawn by UK-43.5's screens.
                 EmptyView()
             case .done:
                 if screen.shows("signin.done.start") {

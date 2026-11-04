@@ -7,7 +7,7 @@
 // source, scheme, icon and preset; `i18n` rows the formatted string.
 //
 // Families: gate, activate, signIn, deviceLimit, devices, update, settings, paywall, cloudSync,
-// saveConflict,
+// saveConflict, holders,
 // theme, i18n.
 
 import Foundation
@@ -23,7 +23,7 @@ final class UIMatrixTests: XCTestCase {
 
     static let families = [
         "gate", "activate", "signIn", "deviceLimit", "devices", "update", "settings", "paywall",
-        "cloudSync", "saveConflict",
+        "cloudSync", "saveConflict", "holders",
     ]
 
     func testTheMatrixIsTheVersionTheCoreImplements() throws {
@@ -41,6 +41,7 @@ final class UIMatrixTests: XCTestCase {
     func testPaywallFamily() throws { try runFamily("paywall") }
     func testCloudSyncFamily() throws { try runFamily("cloudSync") }
     func testSaveConflictFamily() throws { try runFamily("saveConflict") }
+    func testHoldersFamily() throws { try runFamily("holders") }
 
     func testThemeFamily() throws {
         let matrix = try UIMatrix.load()
