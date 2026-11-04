@@ -706,9 +706,8 @@ func _cancel() -> bool:
 		return true
 	if auto_step.visible:
 		# The SDK is settling the person's confirmation: Escape does not leave it half done.
-		if _nearby_flow.confirming():
-			return true
-		_leave_auto_sign_in()
+		if not _nearby_flow.confirming():
+			_leave_auto_sign_in()
 		return true
 	if license_choice.visible and license_choice._cancel():
 		return true

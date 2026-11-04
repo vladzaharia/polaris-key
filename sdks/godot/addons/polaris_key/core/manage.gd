@@ -66,6 +66,14 @@ static func is_valid(raw: Variant) -> bool:
 	return raw is String and not _parse(raw).is_empty()
 
 
+## Open `raw` in the system browser when it is a valid link (the kit's one validating opener, DL14).
+## Returns the `OS.shell_open` error code, or ERR_INVALID_PARAMETER for anything else.
+static func open(raw: Variant) -> int:
+	if not is_valid(raw):
+		return ERR_INVALID_PARAMETER
+	return OS.shell_open(raw)
+
+
 ## The `manageUrl` of a refusal body: the top-level member, else one nested under `error`, or
 ## null. Anything that is not a valid link is dropped, never repaired.
 static func read(body: Variant) -> Variant:

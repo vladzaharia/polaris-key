@@ -349,7 +349,8 @@ func _sign_out_rules(t: PKeyTestContext) -> void:
 	bed.sdk.core.cache.set_explicit_sign_out(true)
 	bed.tokens = [B.json(200, X.TOKEN_OK)]
 	var explicit = await bed.sdk.identity.auto_sign_in({"explicit": true})
-	t.check("flag: opts.explicit runs past the flag and lowers it once a token is stored", explicit.kind == PKeyAutoSignInResult.KIND_SIGNED_IN and not bed.sdk.core.cache.explicit_sign_out, str(explicit))
+	var lowered: bool = explicit.kind == PKeyAutoSignInResult.KIND_SIGNED_IN and not bed.sdk.core.cache.explicit_sign_out
+	t.check("flag: opts.explicit runs past the flag and lowers it once a token is stored", lowered, str(explicit))
 	bed.free_all()
 	# A dismissed explicit sheet leaves the flag set; the next boot's ladder stays quiet (B1).
 	bed = await _bed(["google"])
@@ -382,7 +383,8 @@ func _sign_out_rules(t: PKeyTestContext) -> void:
 	var gone = await bed.sdk.license.deactivate()
 	t.check("deactivate: sets the flag and wipes the token, whatever the seat release answered", bed.sdk.core.cache.explicit_sign_out and not bed.sdk.core.tokens.has_token(), str(gone))
 	var launch = await bed.sdk.identity.auto_sign_in()
-	t.check("deactivate: a launch does not sign in silently", launch.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and launch.reason == PKeyAutoSignInResult.REASON_SIGNED_OUT and not bed.sdk.core.tokens.has_token(), str(launch))
+	var held_back: bool = launch.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and launch.reason == PKeyAutoSignInResult.REASON_SIGNED_OUT
+	t.check("deactivate: a launch does not sign in silently", held_back and not bed.sdk.core.tokens.has_token(), str(launch))
 	bed.free_all()
 	# A refused sign-out sets nothing.
 	bed = await _signed_in_bed()

@@ -105,7 +105,7 @@ func secondary(step: String) -> void:
 	if step == "link-offer":
 		finish(true)
 	elif step == "link-conflict":
-		OS.shell_open("%s/docs/help/join-accounts/#if-another-account-uses-the-address" % PKeyConstants.CUSTOMER_ORIGIN_DEFAULT)
+		PKeyManage.open("%s/docs/help/join-accounts/#if-another-account-uses-the-address" % PKeyConstants.CUSTOMER_ORIGIN_DEFAULT)
 
 
 ## The offer is over: `decline` remembers it for the account on this device; otherwise it is only closed.

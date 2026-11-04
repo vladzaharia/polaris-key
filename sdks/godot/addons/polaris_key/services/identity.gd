@@ -120,11 +120,10 @@ var native_opener: Object = null
 ## Tests and hosts: the system browser sheet behind the Apple opener (a PKeyAppleAuth, or a stand-in with `open`,
 ## `cancel_sheet` and `sheet_id`). Null reads the process's, with the plugin.
 var auth_opener: Object = null
-## Nearby sign-in seams. `nearby_lan`: the LAN half (an object with `lane_check(options) -> PKeyResult` and
-## `request(options)`, a coroutine answering a PKeyResult holding the request handle); null: the host's
-## `cloud_connect.nearby`. `nearby_timer`: `func(seconds: float, fn: Callable) -> Callable` runs `fn` after
-## `seconds` of a monotonic clock and returns the call that cancels it; empty: a scene-tree timer.
-## `nearby_acquisition_sync`: false skips the sync after the person confirmed the account (replay recordings).
+## Nearby sign-in seams. `nearby_lan`: the LAN half (`lane_check(options) -> PKeyResult`, and `request(options)`,
+## a coroutine answering a PKeyResult holding the request handle); null: the host's `cloud_connect.nearby`.
+## `nearby_timer`: `func(seconds: float, fn: Callable) -> Callable` runs `fn` later and returns the cancel call;
+## empty: a scene-tree timer. `nearby_acquisition_sync`: false skips the sync after the confirmation (replays).
 var nearby_lan: Object = null
 var nearby_timer: Callable = Callable()
 var nearby_acquisition_sync := true
@@ -197,7 +196,6 @@ func is_available() -> bool:
 		if fragment.has("configured") and not PKeyClaims.is_true(fragment["configured"]):
 			return false
 	return true
-
 
 
 ## Open the sign-in page in the system browser: `verification_uri_complete`, or `authorize_url` on
@@ -371,33 +369,25 @@ static func default_device_name() -> String:
 
 
 
-# ── Nearby sign-in (the new device D) ───────────────────────────────────────────────────
-
 ## The LAN half: the seam, else the host's `cloud_connect.nearby`; null when there is none.
 func _nearby_lan() -> Object:
-	if nearby_lan != null:
-		return nearby_lan
 	var connect: Variant = _host.get("cloud_connect") if _host != null and is_instance_valid(_host) else null
-	return connect.nearby if connect != null else null
+	return nearby_lan if nearby_lan != null else (connect.nearby if connect != null else null)
 
 
 ## The key ring, or null.
 func _nearby_keyring() -> Object:
-	if nearby_keyring != null:
-		return nearby_keyring
-	var ring: Variant = _host.get("keyring") if _host != null and is_instance_valid(_host) else null
-	return ring as Object
+	var host_ring: Variant = _host.get("keyring") if _host != null and is_instance_valid(_host) else null
+	return (nearby_keyring if nearby_keyring != null else host_ring) as Object
 
 
-## Whether this device can take part in nearby sign-in: as D (`role` "requester") the runtime can browse the network
-## and the product's discovery (as last read) names the start and poll routes; as M (`role` "approver") it can
-## advertise and discovery names the approve route. No request is made.
+## Whether this device can take part in nearby sign-in: as D (`role` "requester") it can browse the network and
+## discovery (as last read) names the start and poll routes; as M ("approver") it can advertise and discovery
+## names the approve route. No request is made.
 func nearby_available(role := "requester") -> bool:
 	var core := _core()
 	var lan := _nearby_lan()
-	if core == null or not core.started or lan == null or not core.enabled("identity"):
-		return false
-	if not (lan.lane_check({}) as PKeyResult).ok:
+	if core == null or not core.started or lan == null or not core.enabled("identity") or not (lan.lane_check({}) as PKeyResult).ok:
 		return false
 	var fragment := PKeyDiscovery.identity_from(core.discovery_manifest)
 	var ep: Dictionary = fragment.get("endpoints", {})
@@ -423,10 +413,9 @@ func _nearby_timer(seconds: float, fn: Callable) -> Callable:
 	return func() -> void: live[0] = false
 
 
-## The person confirmed a nearby sign-in's account: the held token (this session's own) becomes the sign-in, the
-## subject is stored and the `signedIn` event goes out, so Cloud Sync and Connect start now and not before
-## (section 12.11.5 rule 9). `&"ok"`, or why not (see PKeyTokenManager.confirm_unconfirmed). No await: the
-## compare and the write are one step.
+## The person confirmed a nearby sign-in's account: the held token becomes the sign-in, the subject is stored and
+## `signedIn` goes out, so Cloud Sync and Connect start now (section 12.11.5 rule 9). `&"ok"`, or why not
+## (see PKeyTokenManager.confirm_unconfirmed). No await: the compare and the write are one step.
 func _nearby_confirm(subject: String, token: String) -> StringName:
 	var core := _core()
 	if core == null or subject == "":
@@ -444,8 +433,7 @@ func _nearby_acquired() -> void:
 
 
 ## An unconfirmed nearby sign-in ended: the Worker is asked to sign out (best effort) and, whatever it answered,
-## the token, its mark and the documents it fetched go locally; the token goes before its mark. Only `token`,
-## this session's own, is touched: another sign-in that replaced it meanwhile is left alone.
+## the token and its documents go locally. Only `token` is touched: a sign-in that replaced it is left alone.
 func _nearby_discard_token(token: String) -> void:
 	var core := _core()
 	if core == null or core.tokens.current() != token:
