@@ -23,7 +23,7 @@ final class UIMatrixTests: XCTestCase {
 
     static let families = [
         "gate", "activate", "signIn", "deviceLimit", "devices", "update", "settings", "paywall",
-        "cloudSync", "saveConflict", "holders",
+        "cloudSync", "saveConflict", "holders", "connect",
     ]
 
     func testTheMatrixIsTheVersionTheCoreImplements() throws {
@@ -42,6 +42,7 @@ final class UIMatrixTests: XCTestCase {
     func testCloudSyncFamily() throws { try runFamily("cloudSync") }
     func testSaveConflictFamily() throws { try runFamily("saveConflict") }
     func testHoldersFamily() throws { try runFamily("holders") }
+    func testConnectFamily() throws { try runFamily("connect") }
 
     func testThemeFamily() throws {
         let matrix = try UIMatrix.load()

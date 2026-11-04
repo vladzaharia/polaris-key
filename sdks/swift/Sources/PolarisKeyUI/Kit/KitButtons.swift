@@ -37,6 +37,9 @@ struct KitButton: View {
     var danger = false
     /// Whether a quiet Cancel answers Escape; off where another button in the group owns it.
     var escapes = true
+    /// Whether a filled button is the Mac's Return key. Off for a consent (Codes match, Accept), which
+    /// is a deliberate press and never a stray Return.
+    var returnKey = true
     let action: () -> Void
 
     @Environment(\.polarisKeyStrings) private var strings
@@ -51,7 +54,7 @@ struct KitButton: View {
             .modifier(KitButtonSkin(kind: kind, style: style, compact: compact, hero: hero))
             .modifier(
                 KitMacKeys(
-                    defaultAction: kind == .primary && !busy,
+                    defaultAction: kind == .primary && !busy && returnKey,
                     cancelAction: escapes && kind == .quiet && line.key == "common.cancel")
             )
             .layoutValue(key: KitActionSlotKey.self, value: KitActionSlot(kind: kind, leading: leading))

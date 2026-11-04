@@ -6,6 +6,7 @@
 
 import Foundation
 import PolarisKeyCore
+import PolarisKeyUICore
 import XCTest
 
 @testable import PolarisKey
@@ -275,6 +276,105 @@ final class TransferTests: XCTestCase {
         XCTAssertEqual(receipts.current, [.delivered(id: sent.id, to: out)])
         // The partial file is gone once the content is delivered.
         XCTAssertEqual(xferFiles(b.store).filter(isStoreName), [])
+    }
+
+    // MARK: The kit's prompt (CC-19.10)
+
+    /// The kit's `TransferOfferCoordinator` asks each offer on screen (D-8) and answers the SDK's handler.
+    @MainActor func testTheKitPromptAcceptsAndDelivers() async throws {
+        let p = try await openPair()
+        let a = await side(p.a)
+        let b = await side(p.b)
+        let out = b.dir.appendingPathComponent("kit-received.bin")
+        let prompt = TransferOfferCoordinator(transfer: b.transfer, destination: { _ in out })
+        prompt.start()
+        let data = content(50_000)
+        let sending = Task {
+            try await a.transfer.send(
+                over: p.a, source: .data(data),
+                options: TransferSendOptions(name: "report.pdf", type: "application/pdf"))
+        }
+        for _ in 0..<500 where prompt.current == nil { try await Task.sleep(nanoseconds: 10_000_000) }
+        let model = try XCTUnwrap(prompt.current)
+        XCTAssertEqual(model.screen.stateName, "ask")
+        XCTAssertEqual(model.offer.name, "report.pdf")
+        XCTAssertEqual(model.offer.device, "Laptop")
+        XCTAssertEqual(model.offer.size, 50_000)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: out.path), "nothing is received before Accept")
+        await model.accept()
+        XCTAssertEqual(model.screen.stateName, "done")
+        XCTAssertEqual(try Data(contentsOf: out), data)
+        _ = try await sending.value
+        model.close()
+        XCTAssertNil(prompt.current)
+        prompt.stop()
+    }
+
+    /// A swipe-down answers the offer on screen (the view's onDisappear calls `decline()`), so the next
+    /// offer is shown, not left waiting behind it.
+    @MainActor func testDismissingAnOfferShowsTheNext() async throws {
+        let p = try await openPair()
+        let a = await side(p.a)
+        let b = await side(p.b)
+        let prompt = TransferOfferCoordinator(
+            transfer: b.transfer, destination: { _ in b.dir.appendingPathComponent("second.bin") })
+        prompt.start()
+        let first = Task {
+            try? await a.transfer.send(
+                over: p.a, source: .data(content(500)), options: TransferSendOptions(name: "first.bin"))
+        }
+        for _ in 0..<500 where prompt.current == nil { try await Task.sleep(nanoseconds: 10_000_000) }
+        let one = try XCTUnwrap(prompt.current)
+        XCTAssertEqual(one.offer.name, "first.bin")
+        // The second offer comes over another session, so both reach the one handler.
+        let q = try await openPair()
+        let a2 = await side(q.a)
+        _ = await b.transfer.adopt(q.b)
+        let second = Task {
+            try await a2.transfer.send(
+                over: q.a, source: .data(content(500)), options: TransferSendOptions(name: "second.bin"))
+        }
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertTrue(prompt.current === one, "the second offer waits its turn")
+        await one.decline()
+        for _ in 0..<500 where prompt.current === one || prompt.current == nil {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        let two = try XCTUnwrap(prompt.current)
+        XCTAssertEqual(two.offer.name, "second.bin")
+        await two.accept()
+        _ = try await second.value
+        two.close()
+        two.close()
+        XCTAssertNil(prompt.current)
+        _ = await first.value
+        prompt.stop()
+    }
+
+    @MainActor func testTheKitPromptDeclineAnswersTheSender() async throws {
+        let p = try await openPair()
+        let a = await side(p.a)
+        let b = await side(p.b)
+        let out = b.dir.appendingPathComponent("never.bin")
+        let prompt = TransferOfferCoordinator(transfer: b.transfer, destination: { _ in out })
+        prompt.start()
+        let sending = Task {
+            try await a.transfer.send(
+                over: p.a, source: .data(content(1000)), options: TransferSendOptions(name: "x.bin"))
+        }
+        for _ in 0..<500 where prompt.current == nil { try await Task.sleep(nanoseconds: 10_000_000) }
+        let model = try XCTUnwrap(prompt.current)
+        await model.decline()
+        XCTAssertNil(prompt.current)
+        do {
+            _ = try await sending.value
+            XCTFail("the sender must hear the decline")
+        } catch let error as DirectTransferError {
+            XCTAssertEqual(error.code, "transfer-cancelled")
+            XCTAssertEqual(error.reason, "declined")
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: out.path))
+        prompt.stop()
     }
 
     func testFileAndStreamSources() async throws {

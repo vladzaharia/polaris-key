@@ -35,6 +35,8 @@ public enum KitComponent: String, Sendable, CaseIterable, Codable {
     case saveConflict = "SaveConflict"
     case activateDone = "ActivateDone"
     case addToAccount = "AddToAccount"
+    case linkPairing = "LinkPairing"
+    case transferOffer = "TransferOffer"
 }
 
 /// What a control does, in the matrix's closed vocabulary (`vocabulary.actions`).

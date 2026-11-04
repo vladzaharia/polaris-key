@@ -562,6 +562,44 @@ final class KitRulesTests: XCTestCase {
         }
     #endif
 
+    // MARK: Inter-account screens (CC-19.10)
+
+    #if os(macOS)
+        /// Every LinkPairing and TransferOffer preview lays out, at a regular and an accessibility
+        /// text size, in both schemes: no crash, and a non-empty fitted size. The pictures are the
+        /// simulator baselines (examples/ui/swiftui/run.sh).
+        @MainActor func testConnectScreensLayOutAtEverySize() {
+            let previews =
+                PolarisKeyPreviewState.of(.linkPairing) + PolarisKeyPreviewState.of(.transferOffer)
+            XCTAssertEqual(previews.count, 19)
+            for preview in previews {
+                for size in [DynamicTypeSize.large, .accessibility3, .accessibility5] {
+                    for scheme in [ColorScheme.dark, .light] {
+                        let host = NSHostingView(
+                            rootView: PolarisKeyPreview(preview)
+                                .environment(\.dynamicTypeSize, size)
+                                .environment(\.colorScheme, scheme)
+                                .frame(width: 900, height: 640))
+                        host.frame = NSRect(x: 0, y: 0, width: 900, height: 640)
+                        host.layoutSubtreeIfNeeded()
+                        XCTAssertGreaterThan(host.fittingSize.height, 0, "\(preview.id) \(size)")
+                    }
+                }
+            }
+        }
+
+        /// The Mac words for the choices are title case, and the consent is not the Return key's job:
+        /// Accept and Codes match are filled, but `KitButton` is built without the default action.
+        func testTheConnectChoicesAreTitleCaseOnTheMac() {
+            let strings = KitStrings()
+            XCTAssertEqual(strings.string("linkPairing.confirm"), "Codes Match")
+            XCTAssertEqual(strings.string("linkPairing.decline"), "Not a Match")
+            XCTAssertEqual(strings.string("transferOffer.accept"), "Accept")
+            XCTAssertEqual(strings.string("transferOffer.decline"), "Decline")
+            XCTAssertEqual(strings.string("common.tryAgain"), "Try Again")
+        }
+    #endif
+
     // MARK: Baselines
 
     static var snapshots: URL {
