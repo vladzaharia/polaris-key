@@ -377,6 +377,14 @@ describe("two panes in short landscape and on TV", () => {
             ).toBeLessThanOrEqual(ok.top + 0.5);
           }
           expect(await axeFindings(kit)).toEqual([]);
+          // The cross-renderer baselines (ui:report diffs them against the elements kit's).
+          const baseline = { "844x390": "844", "960x540-tv": "960tv" }[
+            size.label
+          ];
+          if (__PKEY_KIT_BASELINES__ && baseline)
+            await commands.kitShot(
+              `${__PKEY_KIT_BASELINES__}/${component}.${state}/${baseline}-${scheme}.png`,
+            );
           if (__PKEY_KIT_SHOTS__)
             await commands.kitShot(
               `${__PKEY_KIT_SHOTS__}/react.${component}.${state}/${size.label}-${scheme}.png`,
