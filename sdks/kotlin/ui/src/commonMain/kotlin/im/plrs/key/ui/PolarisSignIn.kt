@@ -105,6 +105,17 @@ public fun PolarisSignIn(
             onCancel()
         },
         onRestart = state::restart,
+        steps = PolarisSignInSteps(
+            onReopen = state::reopen,
+            onLinkCopied = state::linkCopied,
+            redirectLink = { state.redirectLink },
+            onUseCode = state::useCode,
+            onLinkAccept = state::linkAccept,
+            onLinkDecline = state::linkDecline,
+            onLinkFinished = state::linkFinished,
+            onLinkSignInAgain = state::linkSignInAgain,
+            onLinkClose = state::linkClose,
+        ),
         onUseKey = onUseKey?.let { useKey ->
             {
                 leaving = live
@@ -135,6 +146,7 @@ public fun PolarisSignInScreen(
     showQr: Boolean = isTelevision(),
     onCopyLink: ((String) -> Unit)? = null,
     onUseKey: (() -> Unit)? = null,
+    steps: PolarisSignInSteps = PolarisSignInSteps(),
 ) {
     val copy = PolarisTheme.copy
     when (ui) {
@@ -147,6 +159,10 @@ public fun PolarisSignInScreen(
             actions = { PolarisTextButton(copy.cancel, onCancel, initialFocus = true) },
         )
         is PolarisSignInUi.Showing -> PolarisCodeView(ui, modifier, onOpenBrowser, onCancel, showQr, onCopyLink, onUseKey)
+
+        is PolarisSignInUi.Redirecting -> PolarisRedirectWait(ui, steps, onCancel, modifier)
+
+        is PolarisSignInUi.LinkOffer, is PolarisSignInUi.LinkDone, is PolarisSignInUi.LinkConflict -> PolarisLinkStep(ui, steps, modifier)
         // The last step keeps the product's header like every other (UI-KITS.md DL5, the SwiftUI adoption).
         PolarisSignInUi.Done -> PolarisScreen(modifier = modifier, showLogo = false) {
             PolarisProductHeader()
@@ -378,7 +394,15 @@ public fun PolarisUserCode(code: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-internal fun PolarisUserCode(code: String, modifier: Modifier, onCopy: Pair<String, ((String) -> Unit)?>?) {
+internal fun PolarisUserCode(
+    code: String,
+    modifier: Modifier,
+    onCopy: Pair<String, ((String) -> Unit)?>?,
+    /** What a screen reader says instead of the sign-in code line (LinkPairing says its own). */
+    description: String? = null,
+    /** Centre the code on its plate (LinkPairing); the sign-in code starts at the leading edge. */
+    centered: Boolean = false,
+) {
     val copy = PolarisTheme.copy
     val window = polarisWindow
     val size = when {
@@ -406,7 +430,7 @@ internal fun PolarisUserCode(code: String, modifier: Modifier, onCopy: Pair<Stri
                     fontSize = size,
                     lineHeight = size * 1.25f,
                     letterSpacing = 0.sp,
-                    textAlign = TextAlign.Start,
+                    textAlign = if (centered) TextAlign.Center else TextAlign.Start,
                 ),
                 color = { color },
                 maxLines = 1,
@@ -414,7 +438,7 @@ internal fun PolarisUserCode(code: String, modifier: Modifier, onCopy: Pair<Stri
                 autoSize = TextAutoSize.StepBased(minFontSize = 16.sp, maxFontSize = size, stepSize = 1.sp),
                 modifier = Modifier
                     .weight(1f)
-                    .semantics { contentDescription = copy.format(copy.signInCodeDescription, spelled(code)) },
+                    .semantics { contentDescription = description ?: copy.format(copy.signInCodeDescription, spelled(code)) },
             )
             if (onCopy != null) PolarisCopyLinkButton(onCopy.first, onCopy.second)
         }

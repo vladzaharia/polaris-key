@@ -38,16 +38,27 @@ static func account_view(ctx: RefCounted) -> Dictionary:
 	# A floating license shows no holder: it is never attached to an account behind the person's
 	# back (Must not), and the holder is only ever the account signed in on this device (S-19).
 	if not ctx.on("identity") or not View.truthy(account.get("signedIn")):
+		# A floating license (the holder is known and has no email, UK-42) says so, and offers Add
+		# your name and email: with Identity off, or a kit with no in-app channel (`addIn:
+		# "portal"`), that opens the portal. A license waiting for an email keeps the key-only line.
+		var has_holder: bool = ctx.input.get("licenseHolder") is Dictionary
+		var holder: Dictionary = ctx.member("licenseHolder")
+		var floating: bool = license and has_holder and not View.truthy(holder.get("email"))
+		var via_portal: bool = not ctx.on("identity") or holder.get("addIn") == "portal"
 		return View.make(ctx, "AccountAndLicense", {
 			"state": "key-only",
 			"copy": [
 				"account.title",
 				_when(license, "account.tier"),
-				_when(license, "account.keyOnly"),
+				_when(license and not floating, "account.keyOnly"),
+				_when(floating, "account.notInAccount"),
+				_when(floating, "signin.key.addInLocker" if via_portal else "activate.recommend.action"),
+				_when(floating and via_portal, "a11y.externalLink"),
 				_when(update, "account.updates"),
-				"common.signOut",
+				# A holder who never signed in has nothing to sign out of: the exit forgets the key.
+				"account.removeKey" if has_holder else "common.signOut",
 			],
-			"args": args,
+			"args": args.merged({"tier": account.get("tier")}),
 		})
 	return View.make(ctx, "AccountAndLicense", {
 		"state": "signed-in",

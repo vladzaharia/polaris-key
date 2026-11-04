@@ -49,7 +49,8 @@ static func run(core: PKeyCore, force := false) -> PKeySyncResult:
 	if core.local_only:
 		return PKeySyncResult.new(false, PKeyErrors.LOCAL_ONLY, "This client is local-only; sync is refused.")
 	var result := PKeySyncResult.new()
-	if not core.tokens.has_token():
+	# A nearby sign-in no person confirmed fetches nothing: its licence is not the device's yet.
+	if not core.tokens.has_token() or core.tokens.unconfirmed():
 		return result
 	core.tokens.begin_pass()
 

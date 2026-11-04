@@ -182,6 +182,7 @@ export interface UiMatrix {
   cloudSync: Row[];
   saveConflict: Row[];
   holders: Row[];
+  holdersFlow: HoldersFlow;
   connect: Row[];
   nearby: Row[];
   theme: ThemeRow[];
@@ -768,7 +769,7 @@ const INPUTS: Record<string, string> = {
   saveConflict:
     "SaveConflict: {step: choose | keeping | kept | failed, local?: {when?}, remote?: {when?, device?} | null, bothAvailable?, keep?: local | remote | both, newer?: local | remote}. `remote: null` means the other copy was deleted: Keep the other becomes Delete it here too and Keep both is not offered. `bothAvailable` is true only with a free slot of the 16; absent or false draws Keep both disabled, with its reason. `keep` is the choice being applied (keeping), applied (kept) or that failed; kept needs it. `newer`: `local | remote`, the version the app knows was saved later (its own metadata, never the display strings). It tags that card and chooses nothing; it is ignored when the other copy was deleted. `when` and `device` are display-ready.",
   licenseHolder:
-    "Who holds the license a key just activated: {email?}. No email (or an empty one): floating, held by the key alone. An email: the license was sent to it and no account holds it yet (waiting); screens mask it. Absent: the holder is not known and AccountAndLicense draws what it drew before.",
+    "Who holds the license a key just activated: {email?}. No email (or an empty one): floating, held by the key alone. An email: the license was sent to it and no account holds it yet (waiting); screens mask it. `addIn: portal` (UK-43.2): the kit has no in-app channel for Add your name and email, so the Add control of ActivateDone, SignIn `key-done` and AccountAndLicense's floating row says Add it in Polaris Locker (an external link) and opens the manage URL; absent or `app`: the in-app form. Absent: the holder is not known and AccountAndLicense draws what it drew before.",
   activateDone:
     "The Done step after a key activates: {tier?, term?, deviceKind?, position?, limit?}, the strings and numbers the license line shows. Absent: ActivateDone is hidden. The state is `waiting` with a `licenseHolder` email, else `ready`; the reasons follow the services (Cloud Sync only with sync, Get your license back and Move it with Identity, else the portal line).",
   addToAccount:
@@ -4014,6 +4015,14 @@ function holdersFamily(a: A): Draft[] {
       "ready",
       but(AD, "ready", SYNC, ...OTHERS, "activate.recommend.action"),
     ),
+    // No in-app channel (UK-43.2, `licenseHolder.addIn`): Add opens the manage URL, and says so.
+    row(
+      `${AD}/ready: no in-app channel, Add opens Polaris Locker`,
+      { activateDone: DONE, licenseHolder: { ...FLOATING, addIn: "portal" } },
+      AD,
+      "ready",
+      but(AD, "ready", PORTAL, "activate.recommend.action"),
+    ),
     row(
       `${AD}/waiting: the license was sent to an email`,
       { activateDone: DONE, licenseHolder: WAITING },
@@ -4104,14 +4113,43 @@ function holdersFamily(a: A): Draft[] {
       IN("key-done", { activateDone: DONE }),
       SI,
       "key-done",
-      but(SI, "key-done", "activate.waiting", "activate.waitingSignIn"),
+      but(
+        SI,
+        "key-done",
+        "activate.waiting",
+        "activate.waitingSignIn",
+        ...LOCKER,
+      ),
     ),
     row(
       `${SI}/key-done: no Cloud Sync line without Cloud Sync`,
       IN("key-done", { activateDone: DONE, services: NO_SYNC }),
       SI,
       "key-done",
-      but(SI, "key-done", SYNC, "activate.waiting", "activate.waitingSignIn"),
+      but(
+        SI,
+        "key-done",
+        SYNC,
+        "activate.waiting",
+        "activate.waitingSignIn",
+        ...LOCKER,
+      ),
+    ),
+    row(
+      `${SI}/key-done: no in-app channel, Add opens Polaris Locker`,
+      IN("key-done", {
+        activateDone: DONE,
+        licenseHolder: { ...FLOATING, addIn: "portal" },
+      }),
+      SI,
+      "key-done",
+      but(
+        SI,
+        "key-done",
+        "activate.waiting",
+        "activate.waitingSignIn",
+        "activate.recommend.action",
+      ),
     ),
     row(
       `${SI}/key-done: waiting for the email's account`,
@@ -4172,6 +4210,22 @@ function holdersFamily(a: A): Draft[] {
       ),
     ),
     row(
+      `${AL}/key-only: floating with no in-app channel, Add opens Polaris Locker`,
+      {
+        licenseHolder: { ...FLOATING, addIn: "portal" },
+        account: { signedIn: false },
+      },
+      AL,
+      "key-only",
+      but(
+        AL,
+        "key-only",
+        "account.keyOnly",
+        "activate.recommend.action",
+        "common.signOut",
+      ),
+    ),
+    row(
       `${AL}/key-only: floating with Identity off, Add opens the portal`,
       { licenseHolder: FLOATING, account: { signedIn: false }, ...NO_IDENTITY },
       AL,
@@ -4197,6 +4251,382 @@ function holdersFamily(a: A): Draft[] {
       ),
     ),
   ];
+}
+
+// ── holdersFlow (UK-43.2) ───────────────────────────────────────────────────────────────────
+
+/** One step the scripted sign-in answers (`SignInWait`): the others of ui-core carry no data here. */
+type FlowWait = {
+  outcome: "pending" | "signedIn" | "choose" | "cancelled" | "expired";
+  /** `signedIn`: the account's email, when the sign-in names it. */
+  email?: string;
+  /** `choose`: the grant the choice completes. */
+  grant?: string;
+};
+/** What attach answers: ok, a refusal by code, or `network` (the call throws). */
+type FlowAttach =
+  | { kind: "ok" }
+  | { kind: "refused"; code: string }
+  | "network";
+type FlowAction =
+  | "submit"
+  | "tryAgain"
+  | "cancel"
+  /** Continue is pressed, the sign-in is still open, then Cancel: whatever the sign-in answers
+   *  next is dropped (the epoch). */
+  | "submit-then-cancel";
+
+export interface FlowScenario {
+  name: string;
+  /** The typed values; absent members are Ada Lovelace / ada@example.com. */
+  fields?: { name?: string; email?: string };
+  driver: {
+    /** The sign-in's answers in order; once spent, `cancelled`. */
+    waits?: FlowWait[];
+    /** `choose`: what keeping this device's license answers. */
+    complete?: { outcome: "signedIn" | "raced"; issuedNow?: boolean };
+    /** The preview (`attach(false)`), in order; once spent, ok. */
+    preview?: FlowAttach[];
+    /** The write (`attach(true)`), in order; once spent, ok. */
+    attach?: FlowAttach[];
+    /** Starting the sign-in throws. */
+    signInError?: boolean;
+  };
+  actions: FlowAction[];
+  expect: {
+    /** The model's step after each action. */
+    steps: string[];
+    /** The driver's calls in order: signIn, complete:<grant>:keep, preview, attach, cancel. */
+    calls: string[];
+    /** The sign-in's hints, one per start. */
+    hints: { loginHint: string; nameHint: string; purpose: "attach" }[];
+    /** After the last action: the AddToAccount view's state and the input the model hands it. */
+    viewState: string;
+    field?: "name" | "email" | "both";
+    /** `other-account`: both masked, never full. */
+    typedEmail?: string;
+    signedEmail?: string;
+  };
+}
+
+export interface HoldersFlow {
+  description: string;
+  /** The context every scenario runs in: the holder AddToAccount reads, and the device kind. */
+  base: { licenseHolder: { email: string }; deviceKind: string };
+  maskEmail: { email: string | null; masked: string }[];
+  scenarios: FlowScenario[];
+}
+
+const FLOW_HINTS = [
+  {
+    loginHint: "ada@example.com",
+    nameHint: "Ada Lovelace",
+    purpose: "attach" as const,
+  },
+];
+
+function holdersFlow(): HoldersFlow {
+  const OK = { kind: "ok" } as const;
+  const refused = (code: string): FlowAttach => ({ kind: "refused", code });
+  const signedIn: FlowWait = { outcome: "signedIn" };
+  const S = (
+    name: string,
+    driver: FlowScenario["driver"],
+    actions: FlowAction[],
+    expect: FlowScenario["expect"],
+    fields?: FlowScenario["fields"],
+  ): FlowScenario => ({
+    name,
+    ...(fields ? { fields } : {}),
+    driver,
+    actions,
+    expect,
+  });
+  const WRITE = ["signIn", "preview", "attach"];
+  const scenarios: FlowScenario[] = [
+    S(
+      "form: nothing typed, Continue names both fields",
+      {},
+      ["submit"],
+      {
+        steps: ["invalid"],
+        calls: [],
+        hints: [],
+        viewState: "invalid",
+        field: "both",
+      },
+      { name: "", email: "" },
+    ),
+    S(
+      "form: no email names the email",
+      {},
+      ["submit"],
+      {
+        steps: ["invalid"],
+        calls: [],
+        hints: [],
+        viewState: "invalid",
+        field: "email",
+      },
+      { email: "" },
+    ),
+    S(
+      "form: a blank name names the name",
+      {},
+      ["submit"],
+      {
+        steps: ["invalid"],
+        calls: [],
+        hints: [],
+        viewState: "invalid",
+        field: "name",
+      },
+      { name: "  " },
+    ),
+    S(
+      "signed in with no choice goes to the preview, then attach",
+      {},
+      ["submit"],
+      {
+        steps: ["added"],
+        calls: WRITE,
+        hints: FLOW_HINTS,
+        viewState: "added",
+      },
+    ),
+    S(
+      "a choice keeps this device's license, then attaches",
+      {
+        waits: [{ outcome: "pending" }, { outcome: "choose", grant: "g1" }],
+      },
+      ["submit"],
+      {
+        steps: ["added"],
+        calls: ["signIn", "complete:g1:keep", "preview", "attach"],
+        hints: FLOW_HINTS,
+        viewState: "added",
+      },
+    ),
+    S(
+      "a choice that does not complete fails before any attach",
+      {
+        waits: [{ outcome: "choose", grant: "g" }],
+        complete: { outcome: "raced" },
+      },
+      ["submit"],
+      {
+        steps: ["failed"],
+        calls: ["signIn", "complete:g:keep"],
+        hints: FLOW_HINTS,
+        viewState: "failed",
+      },
+    ),
+    S(
+      "attach refused: license_owned",
+      { attach: [refused("license_owned")] },
+      ["submit"],
+      {
+        steps: ["owned"],
+        calls: WRITE,
+        hints: FLOW_HINTS,
+        viewState: "owned",
+      },
+    ),
+    S(
+      "attach refused: license_email_bound",
+      { attach: [refused("license_email_bound")] },
+      ["submit"],
+      {
+        steps: ["email-bound"],
+        calls: WRITE,
+        hints: FLOW_HINTS,
+        viewState: "email-bound",
+      },
+    ),
+    S(
+      "attach refused: account_required is a failure",
+      { attach: [refused("account_required")] },
+      ["submit"],
+      {
+        steps: ["failed"],
+        calls: WRITE,
+        hints: FLOW_HINTS,
+        viewState: "failed",
+      },
+    ),
+    S(
+      "attach refused: any other code is a failure",
+      { attach: [refused("unauthorized")] },
+      ["submit"],
+      {
+        steps: ["failed"],
+        calls: WRITE,
+        hints: FLOW_HINTS,
+        viewState: "failed",
+      },
+    ),
+    S(
+      "the preview refused: nothing is written",
+      { preview: [refused("license_owned")] },
+      ["submit"],
+      {
+        steps: ["owned"],
+        calls: ["signIn", "preview"],
+        hints: FLOW_HINTS,
+        viewState: "owned",
+      },
+    ),
+    S(
+      "another account signed in: nothing is written and both emails are masked",
+      { waits: [{ outcome: "signedIn", email: "jo@other.com" }] },
+      ["submit"],
+      {
+        steps: ["other-account"],
+        calls: ["signIn", "preview"],
+        hints: FLOW_HINTS,
+        viewState: "other-account",
+        typedEmail: "a•••@example.com",
+        signedEmail: "j•••@other.com",
+      },
+    ),
+    S(
+      "another account signed in: Try again returns to the form, the fields kept",
+      { waits: [{ outcome: "signedIn", email: "jo@other.com" }] },
+      ["submit", "tryAgain"],
+      {
+        steps: ["other-account", "form"],
+        calls: ["signIn", "preview"],
+        hints: FLOW_HINTS,
+        viewState: "form",
+      },
+    ),
+    S("the sign-in throws: failed", { signInError: true }, ["submit"], {
+      steps: ["failed"],
+      calls: ["signIn"],
+      hints: FLOW_HINTS,
+      viewState: "failed",
+    }),
+    S("attach throws: failed", { attach: ["network"] }, ["submit"], {
+      steps: ["failed"],
+      calls: WRITE,
+      hints: FLOW_HINTS,
+      viewState: "failed",
+    }),
+    S(
+      "Try again after a failed attach attaches again with no second sign-in",
+      { attach: ["network", OK] },
+      ["submit", "tryAgain"],
+      {
+        steps: ["failed", "added"],
+        calls: ["signIn", "preview", "attach", "preview", "attach"],
+        hints: FLOW_HINTS,
+        viewState: "added",
+      },
+    ),
+    S(
+      "Try again after account_required signs in again",
+      {
+        waits: [signedIn, signedIn],
+        attach: [refused("account_required"), OK],
+      },
+      ["submit", "tryAgain"],
+      {
+        steps: ["failed", "added"],
+        calls: [...WRITE, ...WRITE],
+        hints: [...FLOW_HINTS, ...FLOW_HINTS],
+        viewState: "added",
+      },
+    ),
+    S(
+      "Try again after an expired sign-in signs in again, the fields kept",
+      { waits: [{ outcome: "expired" }, signedIn] },
+      ["submit", "tryAgain"],
+      {
+        steps: ["failed", "added"],
+        // Try again lets the failed attempt's sign-in go before it starts another.
+        calls: ["signIn", "cancel", ...WRITE],
+        hints: [...FLOW_HINTS, ...FLOW_HINTS],
+        viewState: "added",
+      },
+    ),
+    S(
+      "a cancelled browser returns to the form",
+      { waits: [{ outcome: "cancelled" }] },
+      ["submit"],
+      {
+        steps: ["form"],
+        calls: ["signIn"],
+        hints: FLOW_HINTS,
+        viewState: "form",
+      },
+    ),
+    S(
+      "Cancel while the sign-in is open drops its late answer (the epoch)",
+      { waits: [{ outcome: "pending" }, signedIn] },
+      ["submit-then-cancel"],
+      {
+        steps: ["form"],
+        calls: ["signIn", "cancel"],
+        hints: FLOW_HINTS,
+        viewState: "form",
+      },
+    ),
+  ];
+  return {
+    description:
+      "AddToAccountModel's flow (UK-43.2), mirrored from ui-core's test/addToAccountModel.test.ts: a scripted driver answers (waits, complete, preview, attach), the actions are pressed in order, and the model's step after each, the driver's calls and hints, and the final view's state are pinned. Typed values are fields.name and fields.email (default Ada Lovelace, ada@example.com); they never appear in a view's input. calls: signIn (the start), complete:<grant>:keep, preview (attach with confirm false), attach (confirm true, no address), cancel (the sign-in is let go). A driver call past its script answers ok (preview, attach) or cancelled (waits). maskEmail pins the masking every screen uses: the first character, three dots, the domain; an address it cannot mask is the empty string.",
+    base: { licenseHolder: { email: "ada@example.com" }, deviceKind: "Mac" },
+    maskEmail: [
+      { email: "alex@example.com", masked: "a•••@example.com" },
+      { email: "éva@example.co.uk", masked: "é•••@example.co.uk" },
+      { email: "ada@example.com", masked: "a•••@example.com" },
+      { email: "jo@other.com", masked: "j•••@other.com" },
+      { email: "a@b.co", masked: "a•••@b.co" },
+      { email: "", masked: "" },
+      { email: "@example.com", masked: "" },
+      { email: "alex@", masked: "" },
+      { email: "alex", masked: "" },
+      { email: null, masked: "" },
+    ],
+    scenarios,
+  };
+}
+
+/** The flow section's structure: unique names, known steps and calls, sorted nothing. */
+function checkHoldersFlow(doc: UiMatrix): string[] {
+  const f = doc.holdersFlow;
+  if (!f || !Array.isArray(f.scenarios) || f.scenarios.length === 0)
+    return ["holdersFlow: no scenarios"];
+  const errors: string[] = [];
+  const steps = new Set([
+    "form",
+    "invalid",
+    "busy",
+    "added",
+    "owned",
+    "email-bound",
+    "other-account",
+    "failed",
+  ]);
+  const names = new Set<string>();
+  for (const sc of f.scenarios) {
+    const where = `holdersFlow "${sc.name}"`;
+    if (names.has(sc.name)) errors.push(`${where}: duplicate name`);
+    names.add(sc.name);
+    if (sc.expect.steps.length !== sc.actions.length)
+      errors.push(`${where}: one step per action`);
+    for (const st of [...sc.expect.steps, sc.expect.viewState])
+      if (!steps.has(st)) errors.push(`${where}: unknown step ${st}`);
+    for (const c of sc.expect.calls)
+      if (!/^(signIn|preview|attach|cancel|complete:[^:]+:keep)$/.test(c))
+        errors.push(`${where}: unknown call ${c}`);
+    if (sc.expect.steps[sc.expect.steps.length - 1] !== sc.expect.viewState)
+      errors.push(`${where}: the view state is the last step`);
+  }
+  for (const m of f.maskEmail)
+    if (m.masked.includes(m.email ?? "\u0000") && m.email)
+      errors.push(`holdersFlow: ${m.email} is masked to itself`);
+  return errors;
 }
 
 // ── cloudSync (U-42.0) ──────────────────────────────────────────────────────────────────────
@@ -6967,6 +7397,7 @@ function checkHolders(doc: UiMatrix, S: UiMatrixSources): string[] {
     shown.set(`${component}.${state}`, set);
   }
   errors.push(...coverageErrors("holders", HOLDERS_STATES, shown, S));
+  errors.push(...checkHoldersFlow(doc));
   for (const c of ["ActivateDone", "AddToAccount"])
     if (
       !rows.some((r) => r.expect.component === c && r.expect.state === "hidden")
@@ -7701,6 +8132,7 @@ export function buildUiMatrix(
     cloudSync: cloudSyncFamily(a).map(finish),
     saveConflict: saveConflictFamily(a).map(finish),
     holders: holdersFamily(a).map(finish),
+    holdersFlow: holdersFlow(),
     connect: connectFamily(a).map(finish),
     nearby: nearbyFamily(a).map(finish),
     theme: themeRows(),

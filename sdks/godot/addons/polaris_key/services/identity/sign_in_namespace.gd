@@ -79,3 +79,65 @@ func handle_redirect(url: String) -> PKeySignInOutcome:
 	if not (session is PKeySignInSession) or session._native == null:
 		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.SIGN_IN_FAILED, "No native redirect sign-in is waiting; start one first.")
 	return await session.handle_redirect(url)
+## Begin a nearby sign-in on this device, the new device D (WIRE-CONTRACT-V5 section 15.6.1): a signed-in device
+## nearby approves it. `opts`: `device_name` (the label the approver is shown). ok with a PKeyNearbySignIn
+## (the approvers, `choose`, `code`, `wait`, `confirm_account`, `decline_account`, `cancel`); otherwise the typed
+## failure: `nearby-unsupported` (this runtime cannot browse the network; no route was called),
+## `nearby-permission-denied`, `service-unavailable` (discovery names no nearby approval), `rate_limited`,
+## `invalid_grant`, ... A sign-in already running is cancelled first. A coroutine.
+##
+##   var r := await PolarisKey.identity.sign_in.start_nearby()
+##   if r.ok:
+##       var s: PKeyNearbySignIn = r.detail
+##       var code := (await s.choose(s.approvers()[0]["id"])).detail["code"]   # show it
+##       var outcome := await s.wait()                                         # signed_in, ...
+##       await s.confirm_account()                                             # only if it is the person's
+func start_nearby(opts: Dictionary = {}) -> PKeyResult:
+	var identity := _owner.get_ref() as PKeyIdentity if _owner != null else null
+	if identity == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
+	return await _start_nearby_session(identity, opts)
+
+
+## `sign_in.start_nearby(opts)`: refuses before anything is sent when it cannot run (`nearby-unsupported` when
+## this runtime cannot browse the network, the typed `service-unavailable` N/A when discovery names no nearby
+## approval). Then `nearby/start`, then the LAN request (a failure there leaves the Worker's request to lapse).
+## ok with a PKeyNearbySignIn. A session already running is cancelled first. A coroutine.
+func _start_nearby_session(identity: PKeyIdentity, opts: Dictionary) -> PKeyResult:
+	identity._cancel_active()
+	var core := identity._core()
+	if core == null or not core.started:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() before sign_in.start_nearby().")
+	var gen := identity._starts
+	var lan := identity._nearby_lan()
+	var lane := _nearby_lane(lan, opts)
+	if not lane.ok:
+		# An unsupported runtime never calls a route for it (rule 10).
+		return lane
+	var started := await identity.nearby_routes.start(String(opts.get("device_name", "")))
+	if not started.ok:
+		return started
+	var st: PKeyIdentityNearbyRoutes.Started = started.detail
+	var label := PKeyDeviceLabel.resolve(String(opts.get("device_name", "")), core.options)
+	var request_options: Dictionary = (opts.get("lan", {}) as Dictionary).duplicate()
+	request_options["request"] = st.request
+	request_options["expires_in"] = st.expires_in
+	if label != "":
+		request_options["label"] = label
+	var made: PKeyResult = await lan.request(request_options)
+	if not made.ok:
+		return made
+	var session := PKeyNearbySignIn.new(identity, identity.nearby_routes, st, made.detail, label, core.clock.system_now() + st.expires_in)
+	identity._active = weakref(session)
+	if gen != identity._starts:
+		# A newer start or a rebind landed while this one was in flight.
+		session.cancel()
+	return PKeyResult.success(session)
+
+
+## ok when the LAN half can browse here, else the typed `nearby-unsupported` (or the lane's own failure).
+static func _nearby_lane(lan: Object, opts: Dictionary) -> PKeyResult:
+	if lan != null:
+		return lan.lane_check(opts)
+	var detail := {"feature": PKeyConstants.Feature.IDENTITY_NEARBY, "reason": PKeyConstants.UnsupportedReason.RUNTIME, "detail": "This runtime cannot look for nearby devices."}
+	return PKeyResult.failure(PKeyConstants.ErrorCode.NEARBY_UNSUPPORTED, "Nearby sign-in is not available here.", detail)

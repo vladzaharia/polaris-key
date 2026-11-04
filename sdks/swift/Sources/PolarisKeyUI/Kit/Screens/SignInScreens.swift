@@ -66,6 +66,16 @@ public struct SignInView: View {
             }
             .animation(style.morph, value: screen.stateName)
             .onChange(of: screen.stateName) { _, _ in headingFocused = true }
+            .onAppear { headingFocused = true }
+            #if os(macOS)
+                // Escape on a link step closes it with no decline (never No thanks, never Join accounts).
+                .onExitCommand {
+                    if model.linkStepActive && !model.linkWorking {
+                        model.finishLink()
+                        onClose?()
+                    }
+                }
+            #endif
         }
     }
 
@@ -102,7 +112,7 @@ public struct SignInView: View {
         case .done:
             return screen.line("signin.return.signedInTier") ?? CopyLine("signin.return.signedInShort")
         case .confirm, .linkOffer, .linkDone, .linkConflict, .nearbyPrompt, .nearbyWait,
-            .nearbyDone, .deviceLimit, .keyRefused:
+            .nearbyDone, .deviceLimit, .keyRefused, .keyDone, .attach, .added:
             // The first line names the step (the sentence, or the refusal's title).
             return screen.copy.first ?? CopyLine("signIn.title", productArg)
         case .expired:
@@ -244,6 +254,8 @@ public struct SignInView: View {
                         if let code = model.inputs.autoSignIn?.code {
                             NearbyCodeDigits(code: code, label: strings.string(line))
                         }
+                    } else if Self.linkProblems.contains(line.key) {
+                        LinkProblemRow(line: line)
                     } else {
                         KitText(
                             line, .body,
@@ -265,6 +277,9 @@ public struct SignInView: View {
                 }
             }
         case .linkDone, .nearbyDone:
+            EmptyView()
+        case .keyDone, .attach, .added:
+            // The holder steps (UK-42) are drawn by UK-43.5's screens.
             EmptyView()
         case .done:
             if screen.shows("signin.desktop.toast") {
@@ -293,11 +308,16 @@ public struct SignInView: View {
         "signin.auto.confirm.primary", "signin.auto.confirm.other", "signin.linkOffer.primary",
         "signin.linkOffer.decline", "common.notNow", "signin.nearby.code", "signin.nearby.notYou",
         "common.continue", "common.done", "signin.linkOffer.join", "signin.deviceLimit.replace",
-        "a11y.externalLink", "common.cancel",
+        "a11y.externalLink", "common.cancel", "signin.again",
     ]
 
     /// The refusal's page when the server gave a valid one: the add-key page for the limit, the
     /// product's sign-in for a license another account holds (only when the kit cannot sign in).
+    /// The lines a failed Link adds under the offer.
+    static let linkProblems: Set<String> = [
+        "signin.linkOffer.stale", "signin.linkOffer.failed", "core.codes.network.message",
+    ]
+
     private func refusalLink(_ screen: KitScreen<SignInState>) -> URL? {
         let a = model.inputs.activation
         if screen.shows("core.activation.key-entry-limit.message") {
@@ -345,6 +365,9 @@ public struct SignInView: View {
                 }
                 cancelButton
             case .finishing:
+                EmptyView()
+            case .keyDone, .attach, .added:
+                // The holder steps (UK-42) are drawn by UK-43.5's screens.
                 EmptyView()
             case .done:
                 if screen.shows("signin.done.start") {
@@ -413,8 +436,18 @@ public struct SignInView: View {
                 autoButton("signin.auto.confirm.primary", .primary)
                 autoButton("signin.auto.confirm.other", .quiet)
             case .linkOffer:
-                autoButton("signin.linkOffer.primary", .primary, screen: screen)
-                autoButton("signin.linkOffer.decline", .quiet)
+                if screen.shows("signin.again") {
+                    autoButton("signin.again", .primary, screen: screen)
+                    autoButton("signin.linkOffer.decline", .quiet, shortcut: false)
+                } else if screen.shows("signin.linkOffer.primary") {
+                    autoButton(
+                        "signin.linkOffer.primary", .primary, screen: screen, busy: model.linkWorking)
+                    autoButton("signin.linkOffer.decline", .quiet, shortcut: false)
+                        .disabled(model.linkWorking)
+                } else {
+                    // A refused device: No thanks is the one way on, so it is the filled primary.
+                    autoButton("signin.linkOffer.decline", .primary, screen: screen)
+                }
             case .nearbyPrompt:
                 autoButton("common.continue", .primary)
                 autoButton("common.notNow", .quiet)
@@ -448,7 +481,7 @@ public struct SignInView: View {
                 autoButton("common.done", .primary)
             case .linkConflict:
                 autoButton("common.done", .primary)
-                autoButton("signin.linkOffer.join", .quiet)
+                autoButton("signin.linkOffer.join", .quiet, shortcut: false)
             case .keyRefused:
                 // Sign in finishes in the app (the account that holds the license); the page is a
                 // secondary, and the primary only where the kit has no sign-in to start.
@@ -498,10 +531,10 @@ public struct SignInView: View {
     /// A control of an automatic step: the line's label, the host told which it was.
     @ViewBuilder private func autoButton(
         _ key: String, _ kind: KitButtonKind, screen: KitScreen<SignInState>? = nil,
-        shortcut: Bool = true
+        shortcut: Bool = true, busy: Bool = false
     ) -> some View {
         let line = screen?.line(key) ?? model.signInScreen.line(key) ?? CopyLine(key)
-        KitButton(line: line, kind: kind) {
+        KitButton(line: line, kind: kind, busy: busy) {
             // The confirm step is the model's: Continue completes the grant, the other drops it.
             if model.signInScreen.state == .confirm {
                 if kind == .primary {
@@ -515,6 +548,27 @@ public struct SignInView: View {
                     Task { await model.nearbyContinue() }
                 } else {
                     model.nearbyNotNow()
+                }
+            } else if model.signInScreen.state == .linkOffer {
+                if key == "signin.linkOffer.decline" {
+                    Task {
+                        await model.declineLinkOffer()
+                        onClose?()
+                    }
+                } else if key == "signin.again" {
+                    model.linkSignInAgain()
+                } else {
+                    Task { await model.acceptLinkOffer() }
+                }
+            } else if model.signInScreen.state == .linkDone {
+                model.finishLink()
+                onClose?()
+            } else if model.signInScreen.state == .linkConflict {
+                if kind == .primary {
+                    model.finishLink()
+                    onClose?()
+                } else if let join = KitLinks.valid(PolarisKeyGateModel.joinAccountsUrl) {
+                    open(join)
                 }
             } else if model.signInScreen.state == .nearbyWait {
                 model.nearbyUseCode()
@@ -1278,6 +1332,29 @@ struct NearbyCodeDigits: View {
                 .minimumScaleFactor(0.6)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityLabel(label)
+        }
+    }
+}
+
+/// A failed Link's sentence under the offer: the kit's inline problem row (warning glyph, danger
+/// text), which takes VoiceOver focus when it arrives.
+private struct LinkProblemRow: View {
+    let line: CopyLine
+    @AccessibilityFocusState private var focused: Bool
+
+    var body: some View {
+        kitStyle { style in
+            Label {
+                KitText(line, .meta, color: .danger)
+            } icon: {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(style.palette.danger)
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, style.space(.md))
+            .accessibilityFocused($focused)
+            .onAppear { focused = true }
         }
     }
 }

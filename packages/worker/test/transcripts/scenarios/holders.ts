@@ -9,6 +9,9 @@
 //                            the same, over the device-code channel (UK-42.22, WIRE-CONTRACT-V5
 //                            §12.10.1): the start carries the hints and licenseChoice app, the poll
 //                            answers choose, keep with the device token, then attach (confirm).
+//   holders-add-to-account-preview
+//                            holders-add-to-account-device with the attach preview
+//                            ({confirm:false}, answer confirm) before the confirmed attach.
 
 import { expect } from "vitest";
 import { TranscriptRecorder } from "../recorder.js";
@@ -24,13 +27,11 @@ import { activateAndSync } from "./keyEntry.js";
 import { attach, IDENTITY_ON, seedAccount } from "./account.js";
 import { portalSession, registerWebApp } from "./webSignIn.js";
 import {
+  beginSignIn,
   platformIdentityWorld,
   PLAYER,
   playerSignsIn,
   pollSpec,
-  promptOf,
-  START,
-  type Started,
 } from "./identity.js";
 import { accountForSubject } from "../../../src/core/accounts/accountSubjects.js";
 import type { JsonValue } from "../format.js";
@@ -256,126 +257,161 @@ export const holdersAddToAccount: Scenario = {
  *  so the link sweep does not join the key licence to the new account before `attach` does. */
 const DEVICE_PLAYER = { ...PLAYER, email_verified: true };
 
-export const holdersAddToAccountDevice: Scenario = {
-  id: "holders-add-to-account-device",
-  record: () =>
-    pinned("holders-add-to-account-device", async (pin) => {
-      const w = await platformIdentityWorld();
-      const { key, licenseId } = await seedLicense(w);
-      const r = new TranscriptRecorder({
-        id: "holders-add-to-account-device",
-        description:
-          "Add a key-activated licence to an account over the device-code channel (UK-42.22, WIRE-CONTRACT-V5 §12.10.1, §12.5.1). The device activates by key and the licence is floating. beginSignIn() posts the device id with the hints (loginHint, nameHint), purpose attach and licenseChoice app. The person confirms the code and signs in at the (mocked) platform IdP, server-side and unrecorded. The poll answers status choose with a grant instead of a token and the flow is spent. The SDK completes with choice {kind: keep} and the device token, which keeps this device on its licence, and the answer names the same licence and the account's subject. attach({confirm:true}) adds the licence to the signed-in account (attached: claimed) with the same licence id.",
-        features: ["identity.devicecode.choice", "identity.attach"],
-        requires: ["license.activate"],
-        product: PRODUCT,
-        now: T0,
-        world: w,
-        pinned: pin,
-        initial: { deviceId: DEVICE, version: VERSION },
-      });
+function deviceScenario(
+  id: string,
+  description: string,
+  withPreview: boolean,
+): Scenario {
+  return {
+    id,
+    record: () =>
+      pinned(id, async (pin) => {
+        const w = await platformIdentityWorld();
+        const { key, licenseId } = await seedLicense(w);
+        const r = new TranscriptRecorder({
+          id,
+          description,
+          features: ["identity.devicecode.choice", "identity.attach"],
+          requires: ["license.activate"],
+          product: PRODUCT,
+          now: T0,
+          world: w,
+          pinned: pin,
+          initial: { deviceId: DEVICE, version: VERSION },
+        });
 
-      await activateKey(r, key);
+        await activateKey(r, key);
 
-      const hints = {
-        loginHint: "ada@example.com",
-        nameHint: "Ada",
-        purpose: "attach",
-        licenseChoice: "app",
-      };
-      let started!: Started;
-      const begun: Record<string, JsonValue> = {};
-      await r.step(
-        {
-          action: "beginSignIn",
-          note: "The start carries the hints, purpose attach and licenseChoice app beside the device id.",
-          args: hints,
-        },
-        async (s) => {
-          const body = { deviceId: DEVICE, ...hints };
-          const res = await s.send({
-            method: "POST",
-            path: START,
-            body,
-            expectBody: { json: body, match: "exact" },
-          });
-          expect(res.status).toBe(200);
-          started = (await res.json()) as Started;
-          Object.assign(begun, { prompt: promptOf(started), tokenHeld: true });
-        },
-        begun,
-      );
+        const hints = {
+          loginHint: "ada@example.com",
+          nameHint: "Ada",
+          purpose: "attach",
+          licenseChoice: "app",
+        };
+        const started = await beginSignIn(
+          r,
+          {
+            note: "The start carries the hints, purpose attach and licenseChoice app beside the device id.",
+            args: hints,
+          },
+          hints,
+          true,
+        );
 
-      await playerSignsIn(
-        w,
-        T0 + 6,
-        started.verificationUriComplete,
-        "approve",
-        DEVICE_PLAYER,
-      );
+        await playerSignsIn(
+          w,
+          T0 + 6,
+          started.verificationUriComplete,
+          "approve",
+          DEVICE_PLAYER,
+        );
 
-      let grant = "";
-      await r.step(
-        {
-          action: "pollSignIn",
-          now: T0 + 7,
-          note: "Signed in and approved: a grant (status choose), no token. The flow is spent.",
-        },
-        async (s) => {
-          const res = await s.send(pollSpec(started.deviceCode));
-          expect(res.status).toBe(200);
-          const body = (await res.json()) as {
-            status: string;
-            grant: string;
-            choices: { keep: boolean };
-          };
-          expect(body.status).toBe("choose");
-          expect(body.choices.keep).toBe(true);
-          grant = body.grant;
-        },
-        { result: "choose", tokenHeld: true },
-      );
+        let grant = "";
+        await r.step(
+          {
+            action: "pollSignIn",
+            now: T0 + 7,
+            note: "Signed in and approved: a grant (status choose), no token. The flow is spent.",
+          },
+          async (s) => {
+            const res = await s.send(pollSpec(started.deviceCode));
+            expect(res.status).toBe(200);
+            const body = (await res.json()) as {
+              status: string;
+              grant: string;
+              choices: { keep: boolean };
+            };
+            expect(body.status).toBe("choose");
+            expect(body.choices.keep).toBe(true);
+            grant = body.grant;
+          },
+          { result: "choose", tokenHeld: true },
+        );
 
-      const kept = await keepOnLicense(r, grant, licenseId);
-      // The buyer's address is verified on the account after the choice (as the person does on
-      // the portal), so the licence joins by attach and not by the link sweep before it.
-      const accountId = (await accountForSubject(w.db, PRODUCT, kept.subject))!;
-      expect(accountId).toBeTruthy();
-      await w.db.run(
-        "UPDATE accounts SET primary_email = ?, primary_email_verified_at = ? WHERE id = ?",
-        "ada@example.com",
-        T0,
-        accountId,
-      );
+        const kept = await keepOnLicense(r, grant, licenseId);
+        // The buyer's address is verified on the account after the choice (as the person does on
+        // the portal), so the licence joins by attach and not by the link sweep before it.
+        const accountId = (await accountForSubject(
+          w.db,
+          PRODUCT,
+          kept.subject,
+        ))!;
+        expect(accountId).toBeTruthy();
+        await w.db.run(
+          "UPDATE accounts SET primary_email = ?, primary_email_verified_at = ? WHERE id = ?",
+          "ada@example.com",
+          T0,
+          accountId,
+        );
 
-      await r.step(
-        {
-          action: "attach",
-          args: { confirm: true },
-          now: T0 + 120,
-          note: "Confirmed: the licence joins the signed-in account.",
-        },
-        async (s) => {
-          expect((await attach(s, true, true)).status).toBe(200);
-        },
-        {
-          result: "ok",
-          attached: "claimed",
-          subject: kept.subject,
-          tokenHeld: true,
-        },
-      );
-      const owner = await w.db.first<{ account_id: string }>(
-        "SELECT account_id FROM licenses WHERE product = ? AND id = ?",
-        PRODUCT,
-        licenseId,
-      );
-      expect(owner?.account_id).toBe(accountId);
-      return r.transcript();
-    }),
-};
+        if (withPreview) {
+          await r.step(
+            {
+              action: "attach",
+              args: { confirm: false },
+              now: T0 + 60,
+              note: "The preview names the licence and writes nothing.",
+            },
+            async (s) => {
+              expect((await attach(s, false)).status).toBe(200);
+            },
+            {
+              result: "confirm",
+              license: { id: licenseId, tierId: null, name: "Ada Lovelace" },
+              tokenHeld: true,
+            },
+          );
+        }
+
+        await r.step(
+          {
+            action: "attach",
+            args: { confirm: true },
+            now: T0 + 120,
+            note: "Confirmed: the licence joins the signed-in account.",
+          },
+          async (s) => {
+            expect((await attach(s, true, true)).status).toBe(200);
+          },
+          {
+            result: "ok",
+            attached: "claimed",
+            subject: kept.subject,
+            tokenHeld: true,
+          },
+        );
+        const owner = await w.db.first<{ account_id: string }>(
+          "SELECT account_id FROM licenses WHERE product = ? AND id = ?",
+          PRODUCT,
+          licenseId,
+        );
+        expect(owner?.account_id).toBe(accountId);
+        return r.transcript();
+      }),
+  };
+}
+
+const DEVICE_DESCRIPTION =
+  "Add a key-activated licence to an account over the device-code channel (UK-42.22, WIRE-CONTRACT-V5 §12.10.1, §12.5.1). The device activates by key and the licence is floating. beginSignIn() posts the device id with the hints (loginHint, nameHint), purpose attach and licenseChoice app. The person confirms the code and signs in at the (mocked) platform IdP, server-side and unrecorded. The poll answers status choose with a grant instead of a token and the flow is spent. The SDK completes with choice {kind: keep} and the device token, which keeps this device on its licence, and the answer names the same licence and the account's subject. attach({confirm:true}) adds the licence to the signed-in account (attached: claimed) with the same licence id.";
+
+export const holdersAddToAccountDevice = deviceScenario(
+  "holders-add-to-account-device",
+  DEVICE_DESCRIPTION,
+  false,
+);
+
+/** The same flow with the preview every kit's AddToAccount model sends first. */
+export const holdersAddToAccountPreview = deviceScenario(
+  "holders-add-to-account-preview",
+  DEVICE_DESCRIPTION.replace(
+    "attach({confirm:true}) adds",
+    "attach({confirm:false}) first previews the licence (status confirm, its id, tier and name; nothing is written), then attach({confirm:true}) adds",
+  ),
+  true,
+);
 
 export const HOLDERS_SCENARIOS: Scenario[] = [
   holdersAddToAccount,
   holdersAddToAccountDevice,
+  holdersAddToAccountPreview,
 ];

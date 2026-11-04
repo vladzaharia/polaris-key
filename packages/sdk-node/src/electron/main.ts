@@ -749,9 +749,13 @@ export function exposePolarisBridge(
   });
   /** End the native redirect flows (one window's, or all): their listeners close. */
   const endNativeFlows = (windowId?: number): void => {
-    for (const [id, f] of [...flows])
-      if (f.native && (windowId === undefined || f.windowId === windowId))
+    for (const [id, f] of [...flows]) {
+      // A sign-out ends every flow; a new begin ends only the window's earlier native one.
+      if (windowId === undefined) {
+        f.prompt?.cancel();
         forgetFlow(id);
+      } else if (f.native && f.windowId === windowId) forgetFlow(id);
+    }
   };
   const onIdentity = (e: { kind: string }): void => {
     if (e.kind === "signedOut") {
@@ -1157,6 +1161,25 @@ export function exposePolarisBridge(
       choiceCall(() => choiceHost.complete(e.sender, a)),
     "identity.choice.cancel": async (a, e) =>
       choiceCall(() => choiceHost.cancel(e.sender, a)),
+    // ── v6 (I-15b.8b): the window that began a sign-in flow ends it. Only the flow id crosses
+    //    IPC. An unknown or finished flow answers `ended: false`, and so does another window's
+    //    flow (nothing ends), so the answer says nothing about which ids exist. ──
+    "identity.signIn.cancel": async (a, e) => {
+      const id = bag(a).flowId;
+      if (typeof id !== "string" || id === "" || id.length > 128)
+        throw new BridgeRefusal(
+          "invalid-argument",
+          "flowId must be a non-empty string.",
+        );
+      const flow = flows.get(id);
+      if (!flow || flow.windowId !== e.sender.id) return { ended: false };
+      // The person has picked and the completion is in flight: it is too late to end.
+      if (choiceHost.isBusy(id)) return { ended: false };
+      choiceHost.dropFlow(id);
+      flow.prompt?.cancel();
+      forgetFlow(id);
+      return { ended: true };
+    },
     // ── v4 (SP-13 config.local, SP-14 update-health events) ───────────────────────────
     "config.set": async (a) => {
       const b = bag(a);
@@ -1307,7 +1330,12 @@ export function exposePolarisBridge(
           if (flow.result === undefined) return { kind: "pending" };
           if ("err" in flow.result) throw flow.result.err;
           r = flow.result.ok;
-        } else r = await flow.prompt!.wait({ once: true });
+        } else {
+          r = await flow.prompt!.wait({ once: true });
+          // The flow was ended while the poll was in flight. The session stores nothing once
+          // cancelled, so no sign-in can be seen here; answer expired whatever came back.
+          if (flows.get(flowId as string) !== flow) return { kind: "expired" };
+        }
       } catch (e) {
         const code = (e as { code?: unknown }).code;
         // A native flow redeems its code once: whatever went wrong, it is over.

@@ -7,6 +7,9 @@ var device_id := ""
 var cache: Variant = null
 ## How many times write_cache ran (tests assert one write per sync pass).
 var cache_writes := 0
+## The unconfirmed mark: `none`, `set` or `unreadable` (tests set it); `mark_write_fails` refuses a write.
+var mark: StringName = &"none"
+var mark_write_fails := false
 
 
 ## An empty `p_device_id` mints a random one for this store's lifetime.
@@ -44,6 +47,17 @@ func read_cache() -> Variant:
 func write_cache(record: Dictionary) -> bool:
 	cache_writes += 1
 	cache = record.duplicate(true)
+	return true
+
+
+func read_unconfirmed_mark() -> StringName:
+	return mark
+
+
+func write_unconfirmed_mark(on: bool) -> bool:
+	if mark_write_fails:
+		return false
+	mark = &"set" if on else &"none"
 	return true
 
 

@@ -84,6 +84,8 @@ public sealed interface SignInOutcome {
         val licenseId: String? = null,
         /** The sign-in was started and completed on this device (a redirect), so the link offer (`identity.link`) may follow. */
         val sameDevice: Boolean = false,
+        /** Device-code channel: who the Worker shows the device signed in as (name and verified email); null when it showed none. */
+        val identity: ShownIdentity? = null,
     ) : SignInOutcome {
         override val kind: String get() = "signedIn"
     }
@@ -336,7 +338,7 @@ public class SignInSession internal constructor(
             is SignInPoll.SlowDown -> SignInOutcome.Pending(
                 synchronized(lock) { pace = maxOf(pace, ended.interval); pace }, slowDown = true,
             )
-            is SignInPoll.Ready -> settle(Result.success(SignInOutcome.SignedIn(ended.subject)))
+            is SignInPoll.Ready -> settle(Result.success(SignInOutcome.SignedIn(ended.subject, identity = ended.identity)))
 
             is SignInPoll.Choose -> settle(Result.success(SignInOutcome.Choose(ended.grant, ended.expiresIn, ended.choices)))
             SignInPoll.Expired -> settle(Result.success(SignInOutcome.Expired))

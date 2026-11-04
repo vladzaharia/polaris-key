@@ -99,3 +99,23 @@ Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_check/Text/Action: Button "
 Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_version/Text/Label: Label "Version 2.5.0"
 Card/Scroll/Frame/Groups/Group_Managed/List/Rows/Row_managed/Text/Action: Button "Managed Settings" [focus 6]
 Card/Scroll/Frame/Groups/Group_SignOut/List/Rows/Row_sign_out/Text/Action: Button "Sign out" [focus 7]
+== Approve a nearby device offered ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Title: Label "Account and License"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_tier/Text/Label: Label "\u2068Pro\u2069 license"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_tier/Text/Sub: Label "Active"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_holder/Text/Label: Label "Signed in as \u2068Mara Lindqvist\u2069"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_holder/Control/Manage: Button "Manage" [focus 1]
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_devices/Text/Action: Button "Devices" [focus 2]
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_devices/Control/Caption: Label "2 of 3 in use"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_nearby/Text/Action: Button "Approve a nearby device" [focus 3]
+Card/Scroll/Frame/Groups/Group_Updates/Heading: Label "Updates"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Text/Label: Label "Update Automatically"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Control/Switch: CheckButton [pressed, focus 4]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Text/Label: Label "Release Channel"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Control/Channel: OptionButton "Stable" [items [Stable, Beta], focus 5]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_check/Text/Action: Button "Check for updates" [focus 6]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_version/Text/Label: Label "Version 2.5.0"
+Card/Scroll/Frame/Groups/Group_Managed/List/Rows/Row_managed/Text/Action: Button "Managed Settings" [focus 7]
+Card/Scroll/Frame/Groups/Group_SignOut/List/Rows/Row_sign_out/Text/Action: Button "Sign out" [focus 8]

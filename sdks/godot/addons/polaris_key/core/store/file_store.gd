@@ -21,6 +21,8 @@ extends PKeyStore
 const DEVICE_FILE := "device"
 const TOKEN_FILE := "token"
 const CACHE_FILE := "managed.json"
+## The unconfirmed mark of a nearby sign-in's token: its own file, so an unreadable cache never hides it.
+const MARK_FILE := "unconfirmed"
 const _OWNER_RW := FileAccess.UNIX_READ_OWNER | FileAccess.UNIX_WRITE_OWNER
 const _OWNER_RWX := FileAccess.UNIX_READ_OWNER | FileAccess.UNIX_WRITE_OWNER | FileAccess.UNIX_EXECUTE_OWNER
 
@@ -104,6 +106,17 @@ func write_cache(record: Dictionary) -> bool:
 
 func clear_cache() -> bool:
 	return _remove(CACHE_FILE)
+
+
+func read_unconfirmed_mark() -> StringName:
+	if not FileAccess.file_exists(path_of(MARK_FILE)):
+		return &"none"
+	var text = _read(MARK_FILE)
+	return &"set" if text is String and (text as String).strip_edges() == "1" else &"unreadable"
+
+
+func write_unconfirmed_mark(on: bool) -> bool:
+	return _write(MARK_FILE, "1") if on else _remove(MARK_FILE)
 
 
 func cache_unreadable() -> bool:

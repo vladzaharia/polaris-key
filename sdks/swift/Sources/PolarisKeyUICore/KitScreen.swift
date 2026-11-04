@@ -33,6 +33,10 @@ public enum KitComponent: String, Sendable, CaseIterable, Codable {
     case recoveryCode = "RecoveryCode"
     case ringChange = "RingChange"
     case saveConflict = "SaveConflict"
+    case activateDone = "ActivateDone"
+    case addToAccount = "AddToAccount"
+    case linkPairing = "LinkPairing"
+    case transferOffer = "TransferOffer"
 }
 
 /// What a control does, in the matrix's closed vocabulary (`vocabulary.actions`).
@@ -89,6 +93,9 @@ public enum KitAction: String, Sendable, CaseIterable, Codable, Comparable {
         "signin.key.addInLocker": .openManageURL,
         "signin.deviceLimit.replace": .openManageURL,
         "signin.key.ownedSignIn": .startSignIn,
+        "activate.waitingSignIn": .startSignIn,
+        "activate.recommend.action": .startSignIn,
+        "activate.otherEmail.verify": .openManageURL,
         "signin.key.signIn": .startSignIn,
         "signin.handoff.copyLink": .copyLink,
         "a11y.copyAddress": .copyLink,

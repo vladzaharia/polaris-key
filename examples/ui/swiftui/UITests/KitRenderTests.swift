@@ -149,6 +149,19 @@ final class KitRenderTests: XCTestCase {
                 "The rename field is focused on begin, so the system keyboard's prediction bar is on screen; its empty cells belong to the keyboard process, not the kit (the kit's own elements, Cancel, Save and the field, are named and at least 44 pt)."
             ),
             (
+                "Label not human-readable", "text", "holiday.zip",
+                ["TransferOffer.ask", "TransferOffer.ask.unnamed", "TransferOffer.receiving"],
+                "The contact's file name is the content (display data the contact chose); VoiceOver reads it."
+            ),
+            (
+                "Text clipped", "text", "", ["TransferOffer.ask.long-name"],
+                "The contact's file name is clamped to three lines with the middle elided on purpose (the extension stays); the heading carries the shortened name."
+            ),
+            (
+                "Text clipped", "text", "Pairing is off", ["LinkPairing.unavailable"],
+                "The title renders whole in the capture; the audit measures the heading's focus frame, which hugs the line."
+            ),
+            (
                 "Text clipped", "button", "", ["Welcome.default.extras"],
                 "The native preset's quiet links are system-font buttons that scale with Dynamic Type; the render shows each label whole."
             ),
@@ -167,6 +180,10 @@ final class KitRenderTests: XCTestCase {
         // The save screens (K.3): the conflict, its two variants and the transfer status.
         "SaveConflict.choose", "SaveConflict.choose.slots-full", "SaveConflict.choose.deleted",
         "CloudSyncStatus.transferring",
+        // The inter-account screens (CC-19.10): the code stage and confirm, the longest failure
+        // and an offer with a long file name.
+        "LinkPairing.code", "LinkPairing.confirm", "LinkPairing.failed.full",
+        "TransferOffer.ask.long-name",
     ]
 
     static let all = [
@@ -179,7 +196,8 @@ final class KitRenderTests: XCTestCase {
         "OfflineActivation.rejected-signature", "OfflineActivation.done", "SignIn.methods", "SignIn.handoff", "SignIn.finishing", "SignIn.choose",
         "SignIn.replace", "SignIn.key", "SignIn.key-refused", "SignIn.key-refused.license-owned",
         "SignIn.confirm", "SignIn.confirm.apple", "SignIn.confirm.gamecenter",
-        "SignIn.confirm.no-account", "SignIn.link-offer", "SignIn.link-offer.global",
+        "SignIn.confirm.no-account", "SignIn.link-offer", "SignIn.link-offer.global", "SignIn.link-offer.stale",
+        "SignIn.link-offer.failed", "SignIn.link-offer.network",
         "SignIn.link-done", "SignIn.link-conflict", "SignIn.nearby-prompt", "SignIn.nearby-wait",
         "SignIn.nearby-done", "NearbyApproval.entry", "NearbyApproval.ask",
         "NearbyApproval.approved", "NearbyApproval.not-nearby", "NearbyApproval.mismatch",
@@ -213,6 +231,13 @@ final class KitRenderTests: XCTestCase {
         "SaveConflict.keeping", "SaveConflict.kept", "SaveConflict.failed",
         "SaveConflict.choose.newer", "SaveConflict.keeping.deleted", "SaveConflict.kept.both",
         "SaveConflict.failed.deleted",
+        "LinkPairing.open", "LinkPairing.code", "LinkPairing.code.unnamed",
+        "LinkPairing.code.no-categories", "LinkPairing.confirm", "LinkPairing.confirm.unnamed",
+        "LinkPairing.linked", "LinkPairing.linked.none", "LinkPairing.failed.declined",
+        "LinkPairing.failed.timeout", "LinkPairing.failed.full", "LinkPairing.failed.closed",
+        "LinkPairing.unavailable", "TransferOffer.ask", "TransferOffer.ask.unnamed",
+        "TransferOffer.ask.long-name", "TransferOffer.receiving", "TransferOffer.done",
+        "TransferOffer.failed",
     ]
 
     /// The states rendered again in a launch pack, for the catalog's i18n proof.

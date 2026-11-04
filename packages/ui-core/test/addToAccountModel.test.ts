@@ -3,6 +3,8 @@
 // AddToAccountModel (UK-42.4): form → busy → added | owned | email-bound | failed, over the narrow
 // driver both gates implement. A fake driver stands in for the SDK.
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -302,4 +304,107 @@ describe("driverOf", () => {
     await expect(d.attach()).rejects.toThrow("planned");
     await expect(d.complete("g", { kind: "keep" })).rejects.toThrow("planned");
   });
+});
+
+// The corpus's holdersFlow section (UK-43.2): the same scenarios every native port replays.
+interface FlowScenario {
+  name: string;
+  fields?: { name?: string; email?: string };
+  driver: {
+    waits?: SignInWait[];
+    complete?: ChoiceComplete;
+    preview?: Array<AttachOutcome | "network">;
+    attach?: Array<AttachOutcome | "network">;
+    signInError?: boolean;
+  };
+  actions: Array<"submit" | "tryAgain" | "cancel" | "submit-then-cancel">;
+  expect: {
+    steps: string[];
+    calls: string[];
+    hints: AddToAccountHints[];
+    viewState: string;
+    field?: string;
+    typedEmail?: string;
+    signedEmail?: string;
+  };
+}
+const flow = JSON.parse(
+  readFileSync(
+    join(import.meta.dirname, "../../../conformance/corpus/v2/ui-matrix.json"),
+    "utf8",
+  ),
+).holdersFlow as {
+  base: { licenseHolder: { email: string }; deviceKind: string };
+  scenarios: FlowScenario[];
+};
+
+describe("ui-matrix.json holdersFlow", () => {
+  it.each(flow.scenarios.map((s) => [s.name, s] as const))(
+    "%s",
+    async (_name, sc) => {
+      const waits = [...(sc.driver.waits ?? [{ outcome: "signedIn" }])];
+      const preview = [...(sc.driver.preview ?? [])];
+      const attach = [...(sc.driver.attach ?? [])];
+      const calls: string[] = [];
+      const hints: AddToAccountHints[] = [];
+      const answer = (list: Array<AttachOutcome | "network">) => {
+        const r = list.shift() ?? { kind: "ok" as const };
+        if (r === "network") throw new Error("network");
+        return r;
+      };
+      const driver: AddToAccountDriver = {
+        async signIn(h) {
+          calls.push("signIn");
+          hints.push(h);
+          if (sc.driver.signInError) throw new Error("network");
+          return {
+            wait: async () =>
+              (waits.shift() as SignInWait | undefined) ?? {
+                outcome: "cancelled",
+              },
+            reopen: () => true,
+            cancel: () => {
+              calls.push("cancel");
+            },
+          };
+        },
+        async complete(grant, choice) {
+          calls.push(`complete:${grant}:${choice.kind}`);
+          return (
+            sc.driver.complete ?? { outcome: "signedIn", issuedNow: false }
+          );
+        },
+        async attach(confirm = true) {
+          calls.push(confirm ? "attach" : "preview");
+          return answer(confirm ? attach : preview);
+        },
+      };
+      const m = new AddToAccountModel({
+        driver,
+        base: { ...BASE, licenseHolder: flow.base.licenseHolder },
+        deviceKind: flow.base.deviceKind,
+      });
+      m.setField("name", sc.fields?.name ?? "Ada Lovelace");
+      m.setField("email", sc.fields?.email ?? "ada@example.com");
+      const steps: string[] = [];
+      for (const action of sc.actions) {
+        if (action === "submit-then-cancel") {
+          const p = m.submit();
+          await Promise.resolve();
+          await m.cancel();
+          await p;
+        } else await m[action]();
+        steps.push(m.snapshot.step);
+      }
+      expect(steps).toEqual(sc.expect.steps);
+      expect(calls).toEqual(sc.expect.calls);
+      expect(hints).toEqual(sc.expect.hints);
+      expect(m.view().state).toBe(sc.expect.viewState);
+      if (sc.expect.field) expect(m.snapshot.field).toBe(sc.expect.field);
+      if (sc.expect.typedEmail)
+        expect(m.snapshot.typedEmail).toBe(sc.expect.typedEmail);
+      if (sc.expect.signedEmail)
+        expect(m.snapshot.signedEmail).toBe(sc.expect.signedEmail);
+    },
+  );
 });

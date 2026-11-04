@@ -176,8 +176,17 @@ public struct PolarisKeyPreview: View {
             RecoveryCodeView(model: recovery)
         case .ringChange:
             RingChangeView(model: RingChangeModel(inputs: model.inputs))
+        case .activateDone, .addToAccount:
+            // The holder screens are UK-43.5; no preview state names these components yet.
+            EmptyView()
         case .saveConflict:
             SaveConflictView(model: SaveConflictModel(inputs: model.inputs))
+        case .linkPairing:
+            LinkPairingView(
+                model: LinkPairingModel(inputs: model.inputs),
+                categoryLabels: ["contacts": "Contacts", "photos": "Photos"])
+        case .transferOffer:
+            TransferOfferView(model: TransferOfferModel(inputs: model.inputs))
         case .cloudSyncStatus:
             // A still: the buttons draw as the settings host (U-07) will wire them.
             PreviewSettingsHost {

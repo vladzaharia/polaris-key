@@ -196,6 +196,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.nearby.notYou": { macos: "Not You?" },
   "signin.nearby.menu": { macos: "Approve a Nearby Device…" },
   "signin.nearby.another": { macos: "Choose Another Device" },
+  "signin.nearby.method": { macos: "Sign In with a Nearby Device" },
   "signin.nearby.startAgain": { macos: "Start Again" },
   "signin.key.addInLocker": { macos: "Add It in Polaris Locker" },
   "signin.return.stay": { macos: "Stay Here" },

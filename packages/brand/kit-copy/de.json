@@ -601,6 +601,7 @@
     "signin.nearby.expiredBody": "Beginnen Sie auf {device} von vorn.",
     "signin.nearby.pick": "Wählen Sie das Gerät, das gefragt werden soll.",
     "signin.nearby.another": "Anderes Gerät wählen",
+    "signin.nearby.method": "Mit einem Gerät in der Nähe anmelden",
     "signin.nearby.noneTitle": "Kein Gerät gefunden",
     "signin.nearby.noneBody": "Öffnen Sie {app} auf Ihrem anderen Gerät und wählen Sie „Gerät in der Nähe bestätigen“.",
     "signin.nearby.listenTitle": "Gerät in der Nähe bestätigen",

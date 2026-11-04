@@ -11,6 +11,13 @@ signal primary_pressed(step: String)
 ## The step's quiet action was chosen (Use another account, No thanks, Not now, Use a code instead,
 ## Not you?).
 signal secondary_pressed(step: String)
+## nearby-wait: the person chose one of the devices that answered (`approvers`).
+signal approver_chosen(approver_id: String)
+## nearby-wait with a code on screen: the person chose "Choose another device".
+signal another_requested()
+
+## The held sign-in's active mark (a black diamond).
+const MARK_GLYPH := "\u25c6"
 
 ## State -> [title key, body keys (shown when the model names them), secondary keys]; the
 ## primary is the model's. Every step has a title that takes focus and no Cancel.
@@ -28,12 +35,45 @@ const LAYOUT := {
 	"link-done": ["signin.linkOffer.done", [], []],
 	"link-conflict": ["signin.linkOffer.conflictTitle", ["signin.linkOffer.conflict"], ["signin.linkOffer.join"]],
 	"nearby-prompt": ["signin.nearby.promptTitle", ["signin.nearby.prePrompt"], ["common.notNow"]],
-	"nearby-wait": ["signin.nearby.title", ["signin.nearby.body", "signin.nearby.match"], ["signin.nearby.code"]],
+	"nearby-wait": [
+		"signin.nearby.title",
+		["signin.nearby.body", "signin.nearby.bodyOn", "signin.nearby.match", "signin.cli.nearbyLooking"],
+		["signin.nearby.another", "signin.nearby.code"],
+	],
+	"nearby-choose": ["signin.nearby.title", ["signin.nearby.pick"], ["signin.nearby.code"]],
+	"nearby-none-found": ["signin.nearby.noneTitle", ["signin.nearby.noneBody"], ["signin.nearby.code"]],
+	"nearby-denied": ["core.codes.sign-in-denied.title", ["core.codes.sign-in-denied.message"], ["signin.nearby.code"]],
+	"nearby-expired": ["core.codes.sign-in-expired.title", ["core.codes.sign-in-expired.message"], ["signin.nearby.code"]],
+	"nearby-not-nearby": ["core.codes.not_nearby.title", ["core.codes.not_nearby.message"], ["signin.nearby.code"]],
+	"nearby-failed": ["core.codes.network.title", ["core.codes.network.message"], ["signin.nearby.code"]],
+	"nearby-rate-limited": ["core.codes.rate_limited.title", ["core.codes.rate_limited.message"], ["signin.nearby.code"]],
+	"nearby-unavailable": ["core.codes.nearby-unsupported.title", ["core.codes.nearby-unsupported.message"], ["signin.nearby.code"]],
+	"nearby-cancelled": ["core.codes.unauthorized.title", [], ["signin.nearby.code"]],
+	"nearby-signed-out": ["core.gate.revoked.title", [], ["signin.nearby.code"]],
 	"nearby-done": ["signin.nearby.done", [], ["signin.nearby.notYou"]],
 	"device-limit": ["core.codes.device_limit.title", ["core.codes.device_limit.message", "deviceLimit.noManage"], ["signin.auto.confirm.other", "common.cancel"]],
 }
 
-@export_enum("confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-done", "device-limit") var step := "confirm":
+@export_enum(
+	"confirm",
+	"link-offer",
+	"link-done",
+	"link-conflict",
+	"nearby-prompt",
+	"nearby-wait",
+	"nearby-choose",
+	"nearby-none-found",
+	"nearby-denied",
+	"nearby-expired",
+	"nearby-not-nearby",
+	"nearby-failed",
+	"nearby-rate-limited",
+	"nearby-unavailable",
+	"nearby-cancelled",
+	"nearby-signed-out",
+	"nearby-done",
+	"device-limit"
+) var step := "confirm":
 	set(value):
 		step = value
 		refresh_view()
@@ -68,6 +108,11 @@ const LAYOUT := {
 	set(value):
 		code = value
 		refresh_view()
+## nearby-wait with a code: the device the code is tapped on (its name, or "" when it has none).
+@export var device := "":
+	set(value):
+		device = value
+		refresh_view()
 ## The confirm step's license line: "none", "new" or "existing".
 @export_enum("none", "new", "existing") var license_line := "none":
 	set(value):
@@ -88,6 +133,11 @@ const LAYOUT := {
 	set(value):
 		provider = value
 		refresh_view()
+## nearby-wait: still looking for devices (the status line shows).
+var searching := false:
+	set(value):
+		searching = value
+		refresh_view()
 ## The licence the consent anchors, for the confirm step's licence line: `{name, tierName, term, position,
 ## limit}` (`PKeyGateController.consent_step().anchor`; term is "perpetual" or the end as epoch seconds,
 ## position and limit the seat this device takes). {} when the consent names none.
@@ -107,12 +157,28 @@ var error_key := "":
 		error_key = value
 		refresh_view()
 
+## nearby-wait: the devices that answered, `[{id, label (String or null), platform}]`, until one is chosen
+## (each is a button; a pad reaches them in order). Empty once a code shows.
+var approvers: Array = []:
+	set(value):
+		approvers = value
+		refresh_view()
+## nearby-done: the sign-in is held for the person's confirmation. The title leads with the active mark
+## (`◆ Signed in as ...`): the account is not theirs yet.
+var pending := false:
+	set(value):
+		pending = value
+		refresh_view()
+
 var model: Dictionary = {}
 
 
 var _body: VBoxContainer
 var _product: PKeyProductHeader
 var _title: Label
+## nearby-done: the active mark before the title (accent), while the sign-in is held.
+var _mark: Label
+var _sec_keys: Array = ["", ""]
 var _lede: Label
 var _lines: Array = []
 ## The confirm step's two labelled groups (SIGN-IN §3.19): the licence, and what the app also gets.
@@ -124,6 +190,11 @@ var _gets_label: Label
 var _gets_profile: Label
 var _gets_pairwise: Label
 var _error: Label
+## nearby-wait: the code to tap on the approving device, and the devices to choose from.
+var _code_label: Label
+var _approver_box: VBoxContainer
+var _approver_buttons: Array = []
+var _approver_sig := ""
 ## The device limit's QR code for a device with only a pad (no browser to open).
 var _qr: PKeyQrRect
 var _qr_caption: Label
@@ -133,17 +204,26 @@ var _spacer: Control
 var _primary: Button
 var _secondary: Button
 var _secondary2: Button
+var _ring_pad: MarginContainer
 
 
 func _build() -> void:
 	name = "PKeySignInStep"
 	# The largest gap sits between the body and the actions; groups are one step apart; a title and its
 	# subtitle sit together (SIGN-IN §3.19 rule 4).
-	_body = vbox(card_panel(), "Body", "PKeySections")
+	# The scroll's content keeps RING_PAD of room on every side, so a focus ring at its end shows whole.
+	_ring_pad = MarginContainer.new()
+	_ring_pad.name = "RingPad"
+	card_panel().add_child(_ring_pad)
+	_body = vbox(_ring_pad, "Body", "PKeySections")
 	var top := vbox(_body, "Top", "PKeyStack")
 	_product = product_header(top, "Product")
 	_product.card = true
 	var words := vbox(top, "Words", "PKeyTight")
+	# The held sign-in's active mark sits on the line above the title, in the accent.
+	_mark = label(words, "Mark", "PKeyTitle", true)
+	_mark.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_mark.visible = false
 	_title = label(words, "Title", "PKeyTitle")
 	_lede = label(words, "Lede", "PKeyMuted")
 	# An address breaks at its "@" and "." (soft breaks), and only past those anywhere.
@@ -158,6 +238,9 @@ func _build() -> void:
 	_gets_profile = label(_gets_group, "Profile")
 	_gets_pairwise = label(_gets_group, "Pairwise", "PKeyMuted")
 	_error = label(top, "Error", "PKeyError")
+	_approver_box = vbox(top, "Approvers", "PKeyTight")
+	_code_label = label(top, "NearbyCode", "PKeyCode", true)
+	_code_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_qr_box = vbox(top, "Remedy", "PKeyTight")
 	_qr = qr_tile(_qr_box)
 	_qr.get_parent().size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -166,8 +249,8 @@ func _build() -> void:
 	_spacer = spacer(_body)
 	_actions = actions_row(_body, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_primary = button(_actions, "Primary", func() -> void: _on_primary(), "PKeyPrimary")
-	_secondary = button(_actions, "Secondary", func() -> void: secondary_pressed.emit(step), "PKeyLink")
-	_secondary2 = button(_actions, "Secondary2", func() -> void: secondary_pressed.emit(step), "PKeyLink")
+	_secondary = button(_actions, "Secondary", func() -> void: _on_secondary(0), "PKeyLink")
+	_secondary2 = button(_actions, "Secondary2", func() -> void: _on_secondary(1), "PKeyLink")
 	for b in [_primary, _secondary, _secondary2]:
 		(b as Button).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
@@ -177,6 +260,14 @@ func _on_primary() -> void:
 	if busy:
 		return
 	primary_pressed.emit(step)
+
+
+## A quiet action was pressed: "Choose another device" has its own signal, the rest are the step's.
+func _on_secondary(index: int) -> void:
+	if _sec_keys[index] == "signin.nearby.another":
+		another_requested.emit()
+	else:
+		secondary_pressed.emit(step)
 
 
 ## On a phone the step fills the page less the safe margins, like the refusal steps.
@@ -192,17 +283,45 @@ func squeeze_max() -> int:
 	return 4
 
 
+func ring_inset() -> float:
+	return roundf(RING_PAD * float(layout_metrics().get("scale", 1.0)))
+
+
 func _arrange(m: Dictionary) -> void:
 	super(m)
 	# Short on room, the product header gives way before the card scrolls.
 	_product.visible = squeeze_level() < 1
 	# On a phone's page the actions dock to the bottom, in the thumb zone, as the refusal steps' do.
 	_spacer.visible = phone_screen()
+	# Room inside the scroll for a focus ring at any edge, at every squeeze level.
+	for side in ["top", "bottom", "left", "right"]:
+		_ring_pad.add_theme_constant_override("margin_" + side, int(ring_inset()))
+	# Squeezed, the gaps between the parts halve: the ring's inset stays.
+	tighten_gap(_body, squeeze_level() >= 3)
+	_fit_code(room_x())
+	_size_approver_rows()
 	if _qr != null:
 		var q := qr_side(content_room().y * 0.4)
 		if squeeze_level() >= 1:
 			q = maxf(roundf(q * 0.7), QR_MIN_PHYSICAL / float(m["physical"]))
 		_qr.custom_minimum_size = Vector2(q, q)
+
+
+## The code at the theme's size while it fits the room on one line, smaller (never under the title's size)
+## when the column is narrower.
+func _fit_code(avail: float) -> void:
+	var base := get_theme_font_size("font_size", "PKeyCode")
+	if _code_label == null or _code_label.text == "" or avail < 8.0 or base <= 0:
+		return
+	var floor_size := mini(base, maxi(get_theme_font_size("font_size", "PKeyTitle"), 8))
+	var font := _code_label.get_theme_font("font")
+	var sz := base
+	while sz > floor_size and font.get_string_size(_code_label.text, HORIZONTAL_ALIGNMENT_CENTER, -1, sz).x > avail - 1.0:
+		sz -= 1
+	if sz == base:
+		_code_label.remove_theme_font_size_override("font_size")
+	else:
+		_code_label.add_theme_font_size_override("font_size", sz)
 
 
 func _screen_key() -> String:
@@ -262,6 +381,10 @@ func _render() -> void:
 		auto["alsoGets"] = true
 	if code != "":
 		auto["code"] = code
+	if device != "":
+		auto["device"] = device
+	if searching and step == "nearby-wait" and code == "":
+		auto["searching"] = true
 	if manage_url != "":
 		auto["manageUrl"] = manage_url
 	var tier_name := tier if tier != "" else (String(anchor.get("tierName", "")) if anchor.get("tierName") is String else "")
@@ -278,6 +401,7 @@ func _render() -> void:
 		"provider": PKeyUiTheme.isolate(provider if provider != "" else PKeyConstants.SIGN_IN_PROVIDER_NAME),
 		"tier": PKeyUiTheme.isolate(tier_name),
 		"code": code,
+		"device": PKeyUiTheme.isolate(device),
 	}
 	args.merge(license_args, true)
 	_product.refresh()
@@ -296,6 +420,7 @@ func _render() -> void:
 		_license_group.visible = false
 		_gets_group.visible = false
 		cat_text(_lede, "", args)
+	_render_nearby(args)
 	# Continue failed: its own line in the error colour, with Continue as the retry.
 	if error_key != "" and confirm:
 		cat_text(_error, error_key)
@@ -324,14 +449,110 @@ func _render() -> void:
 	cat_text(_qr_caption, "deviceLimit.scan" if _qr.visible else "")
 	_qr_box.visible = _qr.visible
 	var sec: Array = row[2].duplicate()
+	if step.begins_with("nearby"):
+		# The quiet actions the model names, in the layout's order.
+		sec = sec.filter(func(k): return copy.has(k))
 	if step == "device-limit" and outer_view() != self:
 		# Nested in the gate, whose Welcome is the sign-in form: "Use another account" already goes there.
 		sec.erase("common.cancel")
-	cat_text(_secondary, sec[0] if sec.size() > 0 else "", args)
-	cat_text(_secondary2, sec[1] if sec.size() > 1 else "", args)
+	_sec_keys = [sec[0] if sec.size() > 0 else "", sec[1] if sec.size() > 1 else ""]
+	cat_text(_secondary, _sec_keys[0], args)
+	cat_text(_secondary2, _sec_keys[1], args)
 	# The wait for the other device shows the thin indicator, never a spinner in the title.
-	set_loading(step == "nearby-wait" or busy)
-	set_process(step == "nearby-wait" or busy)
+	set_loading(step == "nearby-wait" or step == "nearby-choose" or busy)
+	set_process(step == "nearby-wait" or step == "nearby-choose" or busy)
+
+
+## nearby-wait: the devices that answered (until one is chosen), then the code to tap there. nearby-done: the
+## title leads with the active mark while the sign-in is held. Nothing else shows these.
+func _render_nearby(args: Dictionary) -> void:
+	var waiting := step == "nearby-wait"
+	var choosing := step == "nearby-choose" and not approvers.is_empty()
+	# The "tap this code" line belongs to a code that is on screen.
+	if waiting and code == "" and _lines.size() > 1:
+		cat_text(_lines[1], "", args)
+	_approver_box.visible = choosing
+	# The rows are rebuilt only when the list changes, so a focused row keeps the focus through a redraw.
+	var sig := JSON.stringify(approvers) if choosing else ""
+	if sig != _approver_sig:
+		_approver_sig = sig
+		for b: Button in _approver_buttons:
+			b.queue_free()
+		_approver_buttons.clear()
+	if choosing and _approver_buttons.is_empty():
+		for a: Dictionary in approvers:
+			_approver_buttons.append(_approver_row(String(a.get("id", "")), a))
+	_code_label.visible = waiting and code != ""
+	_code_label.text = code if waiting and code != "" else ""
+	# The held sign-in leads with the active mark, in the accent (the account is not theirs yet).
+	var marked := step == "nearby-done" and pending and _title.visible
+	_mark.visible = marked
+	_mark.text = MARK_GLYPH if marked else ""
+	if marked:
+		_mark.add_theme_color_override("font_color", get_theme_color(&"font_color", &"PKeyLink"))
+
+
+## One device to choose: its name on the left (body type) and the platform under it, muted. A device with no
+## name is called by its platform.
+func _approver_row(id: String, a: Dictionary) -> Button:
+	var names := approver_names(a)
+	var b := button(_approver_box, "Approver%d" % _approver_buttons.size(), func() -> void: approver_chosen.emit(id))
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT  # ui-lint: allow godot-rtl the row is a device name, data that reads from its own start
+	b.set_meta(DATA_META, true)
+	var col := VBoxContainer.new()
+	col.name = "Names"
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	col.offset_left = 16
+	col.offset_right = -16
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	b.add_child(col)
+	var name_label := label(col, "Name", "", true)
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_label.text = names[0]
+	var line := label(col, "Platform", "PKeyMuted", true)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.text = names[1]
+	line.visible = names[1] != ""
+	b.text = ""
+	name_for_reader(b, names[0] if names[1] == "" else "%s, %s" % [names[0], names[1]])
+	return b
+
+
+## Each row is as tall as its two lines (and a touch target), whatever the name wraps to; sized again as the
+## layout settles, since the wrap depends on the width the row gets.
+func _size_approver_rows() -> void:
+	for b: Button in _approver_buttons:
+		if not is_instance_valid(b) or b.is_queued_for_deletion() or b.get_child_count() == 0:
+			continue
+		var col := b.get_child(0) as Control
+		var squeezed := squeeze_level() >= 1
+		var want := maxf(col.get_combined_minimum_size().y + (12.0 if squeezed else 24.0), 44.0 if squeezed else 56.0)
+		if not is_equal_approx(b.custom_minimum_size.y, want):
+			b.custom_minimum_size.y = want
+
+
+## [name, platform line] for an approver `{id, label, platform}`.
+static func approver_names(a: Dictionary) -> Array:
+	var platform := platform_name(String(a.get("platform", "")))
+	var label_text := String(a["label"]) if a.get("label") is String and a["label"] != "" else ""
+	if label_text == "":
+		return [platform if platform != "" else "Device", ""]
+	return [label_text, platform]
+
+
+## A platform in words ("macos" is "Mac"); "" when unknown.
+static func platform_name(raw: String) -> String:
+	match raw.to_lower():
+		"macos": return "Mac"
+		"ios": return "iPhone"
+		"ipados": return "iPad"
+		"android": return "Android"
+		"windows": return "Windows"
+		"linux": return "Linux"
+		"tvos": return "Apple TV"
+		"unknown", "": return ""
+	return raw
 
 
 ## The plain steps: the title, then the model's body lines in order.
@@ -371,13 +592,18 @@ func _render_confirm(copy: Array, args: Dictionary, tier_known: bool, level: int
 
 
 func _initial_focus() -> Control:
+	for b: Button in _approver_buttons:
+		if is_instance_valid(b) and not b.is_queued_for_deletion() and is_focusable(b):
+			return b
 	if is_focusable(_primary):
 		return _primary
 	return _secondary if is_focusable(_secondary) else null
 
 
 func _focus_chain() -> Array:
-	return [_primary, _secondary, _secondary2]
+	var out: Array = _approver_buttons.filter(func(b): return is_instance_valid(b) and not b.is_queued_for_deletion())
+	out.append_array([_primary, _secondary, _secondary2])
+	return out
 
 
 func _process(_delta: float) -> void:

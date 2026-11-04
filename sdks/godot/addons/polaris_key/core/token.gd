@@ -89,6 +89,10 @@ func set_token(token: String, p_source := "", person := false, p_origin := "") -
 	_token = token
 	_source = p_source
 	var stored := store.set_token(token)
+	# A token that replaces an unconfirmed one is written first; only then does the mark go. A re-acquire
+	# (no origin) keeps it.
+	if cache != null and stored and origin != "" and cache.token_unconfirmed:
+		cache.set_token_unconfirmed(false)
 	if cache != null:
 		if origin != "":
 			cache.set_token_origin(origin)
@@ -103,7 +107,48 @@ func clear() -> bool:
 	var cache := _cache()
 	if cache != null:
 		cache.set_token_origin("")
-	return store.clear_token()
+	var cleared := store.clear_token()
+	# The mark goes after the token it describes: a crash leaves a mark over no token, never a bare token.
+	if cleared and cache != null:
+		cache.set_token_unconfirmed(false)
+	return cleared
+
+
+## True while the held token is a nearby sign-in's that no person confirmed (see PKeyCache.token_unconfirmed).
+func unconfirmed() -> bool:
+	var cache := _cache()
+	return _token != "" and cache != null and cache.token_unconfirmed
+
+
+## Hold a nearby sign-in's token under the unconfirmed mark. The mark is written BEFORE the token (a crash leaves
+## the old token or the marked one, never a bare one); a mark that cannot be written stores nothing. It is no
+## sign-in (no origin) until confirm_unconfirmed(). False when nothing was stored.
+func set_unconfirmed_token(token: String) -> bool:
+	var cache := _cache()
+	if cache == null or token == "" or not cache.mark_unconfirmed():
+		return false
+	if not store.set_token(token):
+		cache.set_token_unconfirmed(false)
+		return false
+	_token = token
+	_source = SOURCE_SIGNIN
+	return true
+
+
+## The person confirmed the account: `&"ok"` once the token is a sign-in (the mark is gone, the origin is
+## `sign_in`, the signed-out flag is lowered). The held token is compared to `expected` and the mark checked
+## in this one step, with no await: `&"mismatch"` (another token is held, so nothing is confirmed), `&"none"`
+## (nothing is unconfirmed) or `&"failed"` (the record could not be written; the token stays unconfirmed).
+func confirm_unconfirmed(expected: String) -> StringName:
+	if expected == "" or _token != expected:
+		return &"mismatch"
+	if not unconfirmed():
+		return &"none"
+	var cache := _cache()
+	if not cache.confirm_unconfirmed():
+		return &"failed"
+	cache.set_explicit_sign_out(false)
+	return &"ok"
 
 
 ## The ladder's store: only while no sign-out happened since `generation` was read and the flag is

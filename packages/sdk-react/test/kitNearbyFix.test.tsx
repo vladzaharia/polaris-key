@@ -294,7 +294,7 @@ describe("<NearbyApprover> screens", () => {
     const { container } = wrap(a, <NearbyApprover onClose={onClose} />);
     await waitFor(() => {
       expect(control(container, "common.done")).not.toBeNull();
-      expect(title(container)?.textContent).toBe("Approve a Nearby Device");
+      expect(title(container)?.textContent).toBe("Approve a nearby device");
       expect(container.querySelector('[role="status"]')).not.toBeNull();
     });
     fireEvent.keyDown(document.body, { key: "Escape" });

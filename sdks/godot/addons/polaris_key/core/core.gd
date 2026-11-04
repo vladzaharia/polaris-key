@@ -222,6 +222,10 @@ func start() -> PKeyResult:
 	cache.platform = update_platform()
 	cache.release_keys = options.pinned_release_keys
 	await cache.load_record()
+	# A start that finds the unconfirmed mark means the process ended on the confirm screen: the token goes
+	# (before its mark), and the documents it fetched with it.
+	if cache.token_unconfirmed and tokens.clear():
+		cache.clear()
 	started = true
 	return PKeyResult.success()
 

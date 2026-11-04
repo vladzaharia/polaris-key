@@ -513,6 +513,29 @@ describe("how a sign-in ends", () => {
     expect(await session.wait()).toEqual({ kind: "cancelled" });
   });
 
+  it("cancel() while a poll is in flight stores nothing and answers cancelled", async () => {
+    const p = plane({ [START]: [started()], [POLL]: [ready()] });
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const gated = (async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      if (new Request(input, init).url.endsWith(POLL)) await gate;
+      return p.fetchImpl(input, init);
+    }) as typeof fetch;
+    const { c, store } = await client(gated);
+    const session = await start(c);
+    const waiting = session.wait({ once: true });
+    await vi.advanceTimersByTimeAsync(10);
+    session.cancel();
+    release();
+    expect(await waiting).toEqual({ kind: "cancelled" });
+    expect(await store.getToken()).toBeNull();
+    expect(await c.identity.current()).toBeNull();
+    expect(p.calls.some((x) => x.path.endsWith("/signout"))).toBe(false);
+  });
+
   it("signed in stores the token and the subject, and raises the identity event", async () => {
     const subject = "ps_QQMMVm-ciTWvmWEIfhAVgQ";
     const events: unknown[] = [];

@@ -49,6 +49,18 @@ public enum class KitComponent(public val id: String) {
     recoveryCode("RecoveryCode"),
     ringChange("RingChange"),
     saveConflict("SaveConflict"),
+
+    @Suppress("EnumNaming", "ktlint:standard:enum-entry-name-case")
+    activateDone("ActivateDone"),
+
+    @Suppress("EnumNaming", "ktlint:standard:enum-entry-name-case")
+    addToAccount("AddToAccount"),
+
+    @Suppress("EnumNaming", "ktlint:standard:enum-entry-name-case")
+    linkPairing("LinkPairing"),
+
+    @Suppress("EnumNaming", "ktlint:standard:enum-entry-name-case")
+    transferOffer("TransferOffer"),
     ;
 
     public companion object {
@@ -90,6 +102,9 @@ public enum class KitAction(public val id: String) {
             "signin.key.addInLocker" to openManageUrl,
             "signin.deviceLimit.replace" to openManageUrl,
             "signin.key.ownedSignIn" to startSignIn,
+            "activate.waitingSignIn" to startSignIn,
+            "activate.recommend.action" to startSignIn,
+            "activate.otherEmail.verify" to openManageUrl,
             "signin.key.signIn" to startSignIn,
             "signin.handoff.copyLink" to copyLink,
             "a11y.copyAddress" to copyLink,
@@ -396,6 +411,10 @@ public object KitStates {
         KitComponent.recoveryCode -> recoveryCodeScreen(inputs)
         KitComponent.ringChange -> ringChangeScreen(inputs)
         KitComponent.saveConflict -> saveConflictScreen(inputs)
+        KitComponent.activateDone -> activateDoneScreen(inputs)
+        KitComponent.addToAccount -> addToAccountScreen(inputs)
+        KitComponent.linkPairing -> linkPairingScreen(inputs)
+        KitComponent.transferOffer -> transferOfferScreen(inputs)
     }
 }
 
@@ -535,7 +554,10 @@ internal val KitInputs.closedServices: Set<String>
 /** Formatting used only for catalog arguments; hosts may apply native locale formatting at draw time. */
 public object KitFormat {
     /** Formats bytes in the file-style unit vocabulary used by the catalog. */
-    public fun bytes(value: Int): String {
+    public fun bytes(value: Int): String = bytes(value.toLong())
+
+    /** Formats a byte count of any size in the file-style unit vocabulary used by the catalog. */
+    public fun bytes(value: Long): String {
         val units = arrayOf("B", "KB", "MB", "GB", "TB")
         var amount = value.toDouble().coerceAtLeast(0.0)
         var index = 0
@@ -567,6 +589,17 @@ public object KitFormat {
     /** Formats the local date [days] after [today] for a grace-period deadline. */
     public fun dayAfter(days: Int, today: LocalDate = LocalDate.now()): String =
         DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(today.plusDays(days.toLong()))
+
+    /**
+     * An email with its middle hidden: the first character, three dots and the domain
+     * (`a•••@example.com`). What a screen shows of an address it did not just type. An address with no
+     * local part or no domain, or none at all, is the empty string, so no half-hidden fragment shows.
+     */
+    public fun maskEmail(email: String?): String {
+        val at = email?.lastIndexOf('@') ?: -1
+        val domain = if (at > 0) email!!.substring(at + 1) else ""
+        return if (domain.isEmpty()) "" else "${String(Character.toChars(email!!.codePointAt(0)))}\u2022\u2022\u2022@$domain"
+    }
 
     /** Formats a normalized fraction as a rounded percentage. */
     public fun percent(value: Double): String = "${(value.coerceIn(0.0, 1.0) * 100).roundToInt()}%"

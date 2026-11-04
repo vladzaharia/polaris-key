@@ -132,7 +132,7 @@ func _copy_is_the_catalogs(t: PKeyTestContext) -> void:
 		"choice_title": "signin.choice.title", "choice_group": "signin.choice.group", "choice_continue": "signin.choice.continue", "choice_tag_current": "signin.choice.tag.current",
 		"choice_tag_full": "signin.choice.tag.full", "choice_keep": "signin.choice.keep", "choice_create": "signin.choice.create", "choice_all_full": "signin.choice.allFull",
 		"choice_raced": "signin.choice.raced", "replace_open": "signin.replace.open", "replace_confirm": "signin.replace.confirm",
-		"account_title": "account.title", "account_key_only": "account.keyOnly", "account_devices": "account.devices", "account_updates": "account.updates",
+		"account_title": "account.title", "account_key_only": "account.keyOnly", "account_devices": "account.devices", "account_nearby": "signin.nearby.menu", "account_updates": "account.updates",
 		"account_auto_update": "account.autoUpdate", "account_channel": "account.channel", "account_managed": "account.managedSettings", "account_offline": "account.offline",
 		"update_check_now": "update.checkNow", "manage": "common.manage", "dismiss": "common.dismiss", "copied": "common.copied", "loading": "common.loading",
 		"toast_undo": "toast.undo", "progress_content_title": "updateProgress.contentTitle", "progress_queued": "updateProgress.queued", "progress_installing": "updateProgress.installing",

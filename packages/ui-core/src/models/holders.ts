@@ -88,7 +88,9 @@ export function activateDoneView(
       primary: "signin.done.start",
     });
   }
-  const portal = !ctx.on("identity") || done.addIn === "portal";
+  const portal =
+    !ctx.on("identity") ||
+    (done.addIn ?? ctx.input.licenseHolder?.addIn) === "portal";
   return makeView(ctx, "ActivateDone", {
     state: "ready",
     copy: [

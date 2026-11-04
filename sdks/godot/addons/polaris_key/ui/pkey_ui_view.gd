@@ -551,7 +551,15 @@ static func name_for_reader(ctl: Control, text: String) -> void:
 func _name_controls() -> void:
 	for n in _focus_chain():
 		var ctl := n as Control
-		if ctl == null or not ("accessibility_name" in ctl) or String(ctl.get("accessibility_name")) != "":
+		if ctl == null or not ("accessibility_name" in ctl):
+			continue
+		# A name this method inferred is dropped once the control has text of its own (a button reads its text).
+		if ctl.has_meta(&"pkey_inferred_name"):
+			if ctl is BaseButton and String(ctl.get("text")) != "":
+				ctl.set("accessibility_name", "")
+				ctl.remove_meta(&"pkey_inferred_name")
+			continue
+		if String(ctl.get("accessibility_name")) != "":
 			continue
 		if (ctl is BaseButton and String(ctl.get("text")) != "") or ctl is LinkButton:
 			continue
@@ -576,6 +584,7 @@ func _name_controls() -> void:
 			caption = ctl.tooltip_text
 		if caption != "":
 			ctl.set("accessibility_name", caption)
+			ctl.set_meta(&"pkey_inferred_name", true)
 
 
 ## Link the visible, enabled controls into one wrapping chain (down/next and up/previous), and
@@ -1269,10 +1278,27 @@ func _reveal_focus() -> void:
 			if _top_on_open:
 				(n as ScrollContainer).scroll_vertical = 0
 			else:
-				(n as ScrollContainer).ensure_control_visible(f)
+				_reveal_with_ring(n as ScrollContainer, f)
 		n = n.get_parent()
 	for v in _views():
 		(v as PKeyUiView)._revealed(f)
+
+
+## The focus ring's reach beyond a control's rectangle (logical pixels), kept in view with the control.
+const RING_PAD := 6.0
+
+
+## Scroll `sc` so the focused control and its ring show whole: the control's edges plus the ring's reach sit
+## inside the scroll area, not flush against (or under) its clip.
+func _reveal_with_ring(sc: ScrollContainer, f: Control) -> void:
+	var room := sc.get_global_rect()
+	var rect := f.get_global_rect()
+	# The ring's reach never asks for more than the room has to spare.
+	var pad := minf(RING_PAD, maxf(0.0, (room.size.y - rect.size.y) * 0.5))
+	if rect.position.y - pad < room.position.y:
+		sc.scroll_vertical -= int(ceil(room.position.y - (rect.position.y - pad)))
+	elif rect.end.y + pad > room.end.y:
+		sc.scroll_vertical += int(ceil((rect.end.y + pad) - room.end.y))
 
 
 ## A view that scrolls its own list (`MANUAL_SCROLL_META`) brings the focused control `f` into view
@@ -1444,9 +1470,27 @@ func _card_shown() -> bool:
 
 ## The card's left plus right padding while it shows, else 0.
 func card_padding_x() -> float:
-	if _card_box == null or not _card_shown() or ((phone_bleed() or side_bleed()) and not phone_sheet()):
+	if _card_box == null:
 		return 0.0
-	return side_padding(_card_box) + scrollbar_width()
+	var inset := 2.0 * ring_inset()
+	if not _card_shown():
+		return inset
+	if (phone_bleed() or side_bleed()) and not phone_sheet():
+		return inset
+	return side_padding(_card_box) + scrollbar_width() + inset
+
+
+## The inset on each side of the card's scroll content that a view keeps for a focus ring at the edge of
+## the scroll (RING_PAD at the current scale); 0 for a view whose content has none.
+func ring_inset() -> float:
+	return 0.0
+
+
+## Halve (`on`) or restore a box's gap between children: what a squeezed layout gives back to the ring inset.
+func tighten_gap(box: BoxContainer, on: bool) -> void:
+	box.remove_theme_constant_override("separation")
+	if on:
+		box.add_theme_constant_override("separation", roundi(float(box.get_theme_constant("separation")) * 0.5))
 
 
 ## The width this view's content can take: the room the screen leaves, less the padding of every

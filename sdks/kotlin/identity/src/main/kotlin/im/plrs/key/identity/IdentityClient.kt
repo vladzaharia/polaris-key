@@ -86,7 +86,7 @@ internal sealed interface SignInPoll {
     data class SlowDown(val interval: Long) : SignInPoll
 
     /** Signed in: the device token is stored and the post-acquisition sync has run. */
-    data class Ready(val subject: String? = null) : SignInPoll
+    data class Ready(val subject: String? = null, val identity: ShownIdentity? = null) : SignInPoll
 
     /**
      * Only after a start with `licenseChoice = "app"` (UK-42.22, section 12.10): the person approved the code and a
@@ -428,7 +428,11 @@ public class IdentityClient(
         }
         afterSignIn()
         onAcquired?.invoke()
-        return SignInPoll.Ready(subject)
+        // Who the Worker shows the device is signed in as (name and verified email, nothing else).
+        val shown = body?.get("identity").objectValue?.let {
+            ShownIdentity(it["name"].stringValue?.takeIf { v -> v.isNotEmpty() }, it["email"].stringValue?.takeIf { v -> v.isNotEmpty() })
+        }?.takeIf { it.name != null || it.email != null }
+        return SignInPoll.Ready(subject, shown)
     }
 
     /** A poll `choose` (section 12.10): only a start that asked `licenseChoice: app` may be answered one, and it takes the redirect's grant shape. */

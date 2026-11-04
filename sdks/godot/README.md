@@ -985,8 +985,8 @@ Export options are opt-in: `polaris_key/apple_sign_in` (the Sign in with Apple e
 accepted it, and rungs 3 and 4 stay off until the person signs in again; the ladder's own exchange never
 clears it, and a sign-out during a prompt makes the run store nothing (`needs_sign_in` with reason
 `signed_out`). A provider whose credential was revoked at launch signs the device out the same way. No
-token, grant or link handle appears in a result's message, a `str()` or a log. The link offer and nearby
-approval are not built yet.
+token, grant or link handle appears in a result's message, a `str()` or a log. The link offer is not built
+yet; nearby sign-in is below.
 
 ## Key ring (`PolarisKey.keyring`)
 
@@ -1199,7 +1199,7 @@ the answers to the handles. Deciding handlers are methods; observers are signals
 func show_codes(_label: String, _platform: String, _codes: Array) -> void:
 	pass   # draw the label and the codes on your approval screen
 
-func show_list() -> void:
+func show_list(_list: Array) -> void:
 	pass   # redraw the approver list from req.approvers()
 
 func _on_approval(approval: PKeyPeerNearbyApprover.Approval) -> void:
@@ -1226,8 +1226,57 @@ func ask(request_handle: String) -> void:
   nearby approval, and `nearby-permission-denied` when the local-network permission is refused.
 - `nearby-unsupported` on web, below Android 14, on an older native binding, and for M on a lane that others cannot find
   (querier only). M also answers `account_required` while signed out.
-- Signing out stops every advert and request (after Connect, before its state is forgotten). `identity.nearby` stays
-  `planned` in `parity.json` until the sign-in flows on top of these calls land.
+- Signing out stops every advert and request (after Connect, before its state is forgotten).
+
+### Nearby sign-in (`PolarisKey.identity`)
+
+`identity.nearby` is implemented on both devices. The calls above carry the LAN half; these run the routes on top of
+them and hold the account until the person says it is theirs.
+
+```gdscript
+func show_list(_list: Array) -> void:
+	pass   # draw session.approvers
+
+
+func show_codes(_device: String, _codes: PackedStringArray) -> void:
+	pass   # draw the device and the three codes
+
+
+# D, the new device: the gate draws it with `offer_nearby`, or drive it yourself.
+func sign_in_nearby() -> void:
+	var made := await PolarisKey.identity.sign_in.start_nearby()
+	if not made.ok:
+		return   # nearby-unsupported (web, no lane) or the typed service-unavailable
+	var session: PKeyNearbySignIn = made.detail
+	session.approvers_changed.connect(show_list)
+	# on a tap: var shown := await session.choose(id); show shown.detail.code
+	var outcome := await session.wait()          # signed_in: the account is held UNCONFIRMED
+	if outcome.kind == PKeySignInOutcome.KIND_SIGNED_IN:
+		await session.confirm_account()          # or: await session.decline_account()
+
+# M, the signed-in device: advertise while "Approve a nearby device" is open.
+func approve_screen_opened() -> void:
+	var r := await PolarisKey.identity.nearby.on_request(_on_ask)   # {prompt = true} by default
+
+func _on_ask(ask: PKeyNearbyAsk) -> void:
+	show_codes(ask.device, ask.codes)            # three codes: the person taps the one D shows
+	# on a tap: var step := await ask.pick(code); step.kind is approved, mismatch, not-nearby, denied,
+	# expired, device-limit, account-required, rate-limited or choose (step.choose.choices; one tap per
+	# licence: await step.choose.choose({kind = "license", license_id = id}))
+	# "None of these match" or leaving the screen: ask.deny()
+```
+
+- `nearby/approve` is reached only from a `pick` that matched on that session and whose request verified, and it carries
+  that request's `deviceId` and keys. Leaving the codes or the licence choice answers Deny. A `404` reads as unavailable
+  only after a fresh discovery read has lost `nearby`.
+- With a key ring that holds the root, an approval seals the wrap to D's agreement key, sends it as `KEYRING_WRAP`
+  (0x0030) and only then stores it (`PolarisKey.keyring.seal_wrap_to`, `put_wrap`). D adopts the channel copy after
+  `confirm_account()` (`session.wrap` is `applied` or `refused`, with `wrap_changed`) and drops it on a decline; a
+  refused wrap leaves the device locked and the server copy and `unlock()` still work.
+- The kit: `PKeyNearbyApproval` with `PKeyNearbyApprovalFlow` (made from the view and `PolarisKey`; call `open()`)
+  is the approver screen, and `PKeyAccountTab` shows the "Approve a nearby device" row (`nearby_approval_requested`)
+  where the device is signed in, can advertise and the product serves it.
+- `PolarisKey.identity.nearby_available("approver")` says whether this device can take the approving side.
 
 ## Cloud Sync settings (`PolarisKey.cloud_sync`)
 

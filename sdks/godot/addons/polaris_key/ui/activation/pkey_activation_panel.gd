@@ -22,6 +22,16 @@ extends PKeyUiView
 signal activated()
 ## The panel switched between "main", "sign-in" and "offline" (`open_mode()`).
 signal mode_changed(mode: String)
+## The person chose "Sign in with a nearby device" (shown while `nearby_offered`): the host runs nearby sign-in.
+signal nearby_requested()
+
+## The device and the product can sign in nearby (`identity.nearby_available()`, set by the host): the form
+## shows a "Sign in with a nearby device" row beside the other sign-in methods.
+var nearby_offered := false:
+	set(value):
+		if value != nearby_offered:
+			nearby_offered = value
+			refresh_view()
 
 ## Offer "Continue free" (keyless enrolment, POST /license/enroll) where License runs. Off by
 ## default: only a product with a free tier turns it on.
@@ -110,6 +120,8 @@ var _sign_in: Button
 ## macOS and Android; hidden elsewhere, where `_sign_in` is the one Sign in.
 var _provider: Button
 var _msg_sign_in: Label
+## "Sign in with a nearby device", under Polaris Locker's button.
+var _nearby: Button
 var _free_block: VBoxContainer
 var _free: Button
 var _msg_free: Label
@@ -209,6 +221,8 @@ func _build() -> void:
 	_provider = button(_sign_in_block, "ProviderSignIn", _on_provider)
 	_provider.visible = false
 	_sign_in = button(_sign_in_block, "SignIn", _on_sign_in)
+	_nearby = button(_sign_in_block, "Nearby", func() -> void: _on_nearby())
+	_nearby.visible = false
 	_msg_sign_in = label(_sign_in_block, "SignInMessage")
 	# A store build with no way to activate here (key entry is the store's to forbid, no sign-in
 	# service): say where to get the game instead of showing an empty form.
@@ -535,6 +549,9 @@ func _render() -> void:
 	else:
 		_sign_in.remove_meta(CATALOG_META)
 		_sign_in.text = t.text("sign_in")
+	_nearby.visible = caps["sign_in"] and nearby_offered
+	if _nearby.visible:
+		cat_text(_nearby, "signin.nearby.method")
 	_free_block.visible = caps["continue_free"]
 	_free.visible = caps["continue_free"]
 	_free.text = t.text("continue_free")
@@ -707,8 +724,8 @@ func _focus_chain() -> Array:
 	if not limit.is_empty():
 		return [_manage, _again, _other_key]
 	if pad_only():
-		return [_provider, _sign_in, _key, _submit, _free, _offline, _restore]
-	return [_key, _submit, _provider, _sign_in, _free, _offline, _restore]
+		return [_provider, _sign_in, _nearby, _key, _submit, _free, _offline, _restore]
+	return [_key, _submit, _provider, _sign_in, _nearby, _free, _offline, _restore]
 
 
 ## Sign in on a pad-only device (no keyboard to type a key with); otherwise the key field.
@@ -727,7 +744,7 @@ func _initial_focus() -> Control:
 		return _sign_in
 	if is_focusable(_key):
 		return _key
-	for b in [_provider, _sign_in, _free, _offline]:
+	for b in [_provider, _sign_in, _nearby, _free, _offline]:
 		if is_focusable(b):
 			return b
 	return null
@@ -909,6 +926,17 @@ func _on_free() -> void:
 	var r: PKeyActivationResult = await sdk.license.enroll()
 	busy = false
 	show_result(r, "", "free")
+
+
+func _on_nearby() -> void:
+	if busy:
+		return
+	nearby_requested.emit()
+
+
+## Polaris Locker's nearby row (tests and the host's focus).
+func nearby_button() -> Button:
+	return _nearby
 
 
 func _on_sign_in() -> void:

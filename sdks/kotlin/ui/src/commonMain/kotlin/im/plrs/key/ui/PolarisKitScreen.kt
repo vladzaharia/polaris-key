@@ -56,6 +56,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import im.plrs.key.core.Presentation
@@ -125,6 +126,9 @@ private val rowOnlyKeys = setOf(
 internal fun isRowFragment(key: String): Boolean =
     key in rowOnlyKeys || key.startsWith("signin.choice.origin.") || key.startsWith("signin.choice.tag.")
 
+/** The link offer's problem lines (danger tone, a polite live region). */
+private val linkProblemKeys = setOf("signin.linkOffer.stale", "signin.linkOffer.failed")
+
 /** The lines whose own sentence reads without the missing name ("{method} sign-in didn't finish"). */
 private val sentenceWithoutName = setOf("signIn.methodError")
 
@@ -133,7 +137,7 @@ internal fun kitLineRole(key: String): KitLineRole = when {
 
     // A sentence that ends in "done" is the verdict, not the Done button (`common.done`); "Up to date"
     // after an update is a status, not an action.
-    key == "offlineActivation.done" || key == "updateProgress.done" -> KitLineRole.Text
+    key == "offlineActivation.done" || key == "updateProgress.done" || key == "signin.linkOffer.done" -> KitLineRole.Text
 
     key in controlKeys || KitAction.forCopyKey(key) != null || controlSuffix.containsMatchIn(key) -> KitLineRole.Control
 
@@ -194,6 +198,8 @@ public fun PolarisKitScreen(
     rows: KitRowData = KitRowData(),
     onContinue: (String) -> Unit = {},
     onControl: (String) -> Unit = {},
+    /** A request for this step is in flight: its primary shows progress and the other controls are off. */
+    busy: Boolean = false,
     /** Offered with the license choice when every license is on all its devices (the automatic sign-in). */
     onUseAnotherAccount: (() -> Unit)? = null,
     /** The new recovery code to draw on the RecoveryCode screen (from the host, shown once); without one that screen draws nothing. */
@@ -315,7 +321,7 @@ public fun PolarisKitScreen(
 
         else -> KitScreenBody(
             screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode,
-            addKeyUrl = addKeyUrl, progress = rows.progress, onControl = onControl,
+            addKeyUrl = addKeyUrl, progress = rows.progress, onControl = onControl, busy = busy,
         )
     }
 }
@@ -360,6 +366,7 @@ private fun KitScreenBody(
     addKeyUrl: String? = null,
     progress: Float? = null,
     onControl: (String) -> Unit = {},
+    busy: Boolean = false,
 ) {
     if (screen.isHidden) return
     val component = screen.component
@@ -460,16 +467,19 @@ private fun KitScreenBody(
     // Boot's "Not now" is paired with Download, so it stays a tonal secondary (UI-KITS.md: "never bare
     // text when paired"); everywhere else it is the quiet decline of an automatic step.
     val deviceLimitStep = component == KitComponent.signIn && screen.state == "device-limit"
+    // A refused link offer has no Link: No thanks is then its one (primary) action.
+    val soleDecline = component == KitComponent.signIn && screen.state == "link-offer" &&
+        controls.all { it.key == "signin.linkOffer.decline" }
     val isTertiary = { key: String ->
         (key in tertiaryKeys || (deviceLimitStep && key == "common.cancel")) &&
-            !(key == "common.notNow" && component == KitComponent.boot)
+            !(key == "common.notNow" && component == KitComponent.boot) && !(soleDecline && key == "signin.linkOffer.decline")
     }
     val tertiary = if (rowsOnly) emptyList() else controls.filter { isTertiary(it.key) }
     val buttons = if (rowsOnly) emptyList() else controls.filter { !isTertiary(it.key) }
     // macOS: a step screen's actions are a trailing row; the Welcome keeps its stacked hero buttons.
     val macRow = autoPlatformVariant() == PolarisPlatformVariant.MacOS && component != KitComponent.welcome && buttons.isNotEmpty()
     // The automatic steps' quiet links (Use another account, Cancel) share the trailing group's one axis on the Mac.
-    val quietInRow = macRow && component == KitComponent.signIn && (screen.state == "confirm" || deviceLimitStep)
+    val quietInRow = macRow && component == KitComponent.signIn && (screen.state == "confirm" || screen.state == "link-offer" || deviceLimitStep)
     val onDefault: (() -> Unit)? = if (macRow &&
         !activating
     ) {
@@ -503,7 +513,7 @@ private fun KitScreenBody(
                         PolarisSecondaryButton(line.text, onClick = {
                             onControl(line.key)
                             onAction(action)
-                        }, external = KitAction.leavesApp(line.key))
+                        }, external = KitAction.leavesApp(line.key), enabled = !busy)
                     }
                     for ((index, line) in buttons.withIndex().reversed()) {
                         val action = KitAction.forCopyKey(line.key)
@@ -516,12 +526,12 @@ private fun KitScreenBody(
                             PolarisPrimaryButton(line.text, onClick = {
                                 onControl(line.key)
                                 onAction(action)
-                            }, initialFocus = true, external = KitAction.leavesApp(line.key))
+                            }, initialFocus = true, external = KitAction.leavesApp(line.key), enabled = !busy, busy = busy)
                         } else {
                             PolarisSecondaryButton(line.text, onClick = {
                                 onControl(line.key)
                                 onAction(action)
-                            }, external = KitAction.leavesApp(line.key))
+                            }, external = KitAction.leavesApp(line.key), enabled = !busy)
                         }
                     }
                 }
@@ -552,9 +562,22 @@ private fun KitScreenBody(
                         if (isGoogleProviderLine(line.key, line.args)) {
                             PolarisGoogleButton(line.text, onClick = click, modifier = hero)
                         } else if (index == 0) {
-                            PolarisPrimaryButton(line.text, onClick = click, modifier = hero, external = KitAction.leavesApp(line.key))
+                            PolarisPrimaryButton(
+                                text = line.text,
+                                onClick = click,
+                                modifier = hero,
+                                external = KitAction.leavesApp(line.key),
+                                enabled = !busy,
+                                busy = busy,
+                            )
                         } else {
-                            PolarisSecondaryButton(line.text, onClick = click, modifier = hero, external = KitAction.leavesApp(line.key))
+                            PolarisSecondaryButton(
+                                text = line.text,
+                                onClick = click,
+                                modifier = hero,
+                                external = KitAction.leavesApp(line.key),
+                                enabled = !busy,
+                            )
                         }
                         if (index < buttons.lastIndex) Spacer(Modifier.height(PolarisSpace.controls))
                     }
@@ -568,7 +591,7 @@ private fun KitScreenBody(
                         PolarisTextButton(line.text, onClick = {
                             onControl(line.key)
                             onAction(KitAction.forCopyKey(line.key))
-                        })
+                        }, enabled = !busy)
                     }
                 }
             }
@@ -634,6 +657,18 @@ private fun KitScreenBody(
                         index == 0 && component == KitComponent.welcome && polarisWindow.isMac -> PolarisMacWelcomeTitle(line.text)
 
                         index == 0 -> PolarisTitle(line.text)
+
+                        // A failed link: the problem in danger tone, announced once when it appears.
+                        line.key in linkProblemKeys || (line.key == "core.codes.network.message" && screen.state == "link-offer") ->
+                            Text(
+                                line.text,
+                                style = MaterialTheme.typography.bodyLarge.copy(lineBreak = LineBreak.Paragraph),
+                                color = PolarisTheme.status.danger,
+                                modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+                            )
+
+                        // The browser has the sign-in: a small indicator shows the screen is alive.
+                        line.key == "signin.handoff.waiting" -> PolarisWaitingLine(line.text)
 
                         step != null -> PolarisStep(step, line.text)
 

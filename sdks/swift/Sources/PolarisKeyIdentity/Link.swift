@@ -55,7 +55,7 @@ public enum LinkAcceptResult: Sendable, Equatable {
 /// The offer's memory for one client: whether a same-device sign-in is waiting for an answer,
 /// whose, and the handle the exchange left.
 struct LinkState: Sendable {
-    /// The subject the offer belongs to; `""` when the sign-in did not say; nil when no offer is open.
+    /// The subject the offer belongs to; nil when no offer is open.
     var pendingFor: String?
     var handle: String?
     var handleExpiresAt = 0
@@ -252,10 +252,12 @@ extension IdentityClient {
         return url
     }
 
-    /// A sign-in this device started has completed: open the offer for its account.
+    /// A sign-in this device started has completed: open the offer for its account. An answer that
+    /// named no subject opens nothing: the offer could not be matched to an account later.
     func linkOpen(subject: String?) {
+        guard let subject, !subject.isEmpty else { return }
         linkState.with { state in
-            state.pendingFor = subject ?? ""
+            state.pendingFor = subject
         }
     }
 

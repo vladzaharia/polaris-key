@@ -22,6 +22,11 @@ public enum SignInState: String, KitStateID {
     case deviceLimit = "device-limit"
     /// The key step ended in a refusal only an account fixes.
     case keyRefused = "key-refused"
+    /// The form's steps after a key with no account (UK-42): ActivateDone's and AddToAccount's
+    /// bodies drawn in the form.
+    case keyDone = "key-done"
+    case attach
+    case added
     public static let component = KitComponent.signIn
 }
 
@@ -82,6 +87,7 @@ extension KitStates {
                 [c.line("signIn.methodError", s.method.map { ["method": .text($0)] } ?? [:])])
         }
         if let auto = i.autoSignIn { return autoStep(c, auto) }
+        if let step = s.step { return holderStep(step, i) }
         if s.outcome == .expired {
             return KitScreen(.expired, [c.line("signin.handoff.tooLong"), c.line("signin.again")])
         }
@@ -237,11 +243,21 @@ extension KitStates {
                 !perDeveloper
                 ? "signin.linkOffer.bodyGlobal"
                 : (hasDeveloper ? "signin.linkOffer.bodyDeveloper" : "signin.linkOffer.bodyApp")
+            // A failed Link keeps the offer and says why. Too old a sign-in swaps Link for Sign in
+            // again; a refused device loses Link (No thanks is the way on); a network failure
+            // keeps Link.
+            let stale = auto.linkError == "stale"
+            let refused = auto.linkError == "failed"
+            let note: String? =
+                auto.linkError == "network"
+                ? "core.codes.network.message"
+                : (stale ? "signin.linkOffer.stale" : (refused ? "signin.linkOffer.failed" : nil))
             return KitScreen(
                 .linkOffer,
                 lines(
-                    "signin.linkOffer.title", body, "signin.linkOffer.primary",
-                    "signin.linkOffer.decline"))
+                    "signin.linkOffer.title", body,
+                    stale ? "signin.again" : (refused ? nil : "signin.linkOffer.primary"),
+                    "signin.linkOffer.decline", note))
         case .linkDone:
             return KitScreen(.linkDone, lines("signin.linkOffer.done", "common.done"))
         case .linkConflict:

@@ -54,6 +54,7 @@ function setup(
     native?: Record<string, unknown>;
     request?: boolean;
     expiresIn?: number;
+    tokenGate?: Promise<void>;
   } = {},
 ) {
   const seen: Seen[] = [];
@@ -99,7 +100,10 @@ function setup(
             { request_uri: REQUEST_URI, expires_in: opts.expiresIn ?? 600 },
             201,
           );
-    if (url.pathname === `/${PRODUCT}/identity/token`) return json(TOKEN_OK);
+    if (url.pathname === `/${PRODUCT}/identity/token`) {
+      await opts.tokenGate;
+      return json(TOKEN_OK);
+    }
     return new Response("{}", { status: 404 });
   }) as typeof fetch;
   return { seen, store: new InMemoryStore(), fetchImpl };
@@ -438,6 +442,23 @@ describe("native redirect: the session", () => {
       code: "sign-in-failed",
     });
     expect(tokenCalls(env)).toHaveLength(1);
+  });
+
+  it("cancel() while the code is being redeemed stores nothing and ends cancelled", async () => {
+    let release!: () => void;
+    const env = setup({ tokenGate: new Promise<void>((r) => (release = r)) });
+    const { s } = await start(env);
+    const p = pushed(env);
+    const redeeming = s.handleRedirect(
+      `http://127.0.0.1:${p.port}/pkey/callback?${p.query()}`,
+    );
+    await vi.waitFor(() => expect(tokenCalls(env)).toHaveLength(1));
+    s.cancel();
+    release();
+    expect(await redeeming).toEqual({ kind: "cancelled" });
+    expect(await s.wait()).toEqual({ kind: "cancelled" });
+    expect(await env.store.getToken()).toBeNull();
+    expect(env.seen.some((x) => x.path.endsWith("/signout"))).toBe(false);
   });
 
   it("refuses a callback with a wrong state, a stray parameter or no request handle", async () => {

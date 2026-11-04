@@ -607,6 +607,7 @@ export type KitCopyKey =
   | "signin.nearby.expiredBody"
   | "signin.nearby.pick"
   | "signin.nearby.another"
+  | "signin.nearby.method"
   | "signin.nearby.noneTitle"
   | "signin.nearby.noneBody"
   | "signin.nearby.listenTitle"

@@ -3,22 +3,14 @@
 // verbs that finish it. The Worker's grant stays in the host; the renderer holds a ref bound to
 // its window.
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { PolarisBridge } from "@polaris-key/react/desktop";
-import type { PolarisKeyClient } from "../src/client.js";
-import { PolarisEventEmitter } from "../src/core/events.js";
 import {
   createChoiceHost,
   type ChoiceWindow,
 } from "../src/electron/choiceHost.js";
-import { exposePolarisBridge } from "../src/electron/main.js";
-import { createPreloadBridge } from "../src/electron/renderer.js";
 import { channelOf, DEFAULT_BRIDGE_CHANNEL } from "../src/electron/protocol.js";
-import { allowApp, ipcPair } from "./electronIpc.js";
-
-const GRANT = "sg_WORKER_GRANT_never_leaves_the_host_process_01";
+import { GRANT, signInHost } from "./electronSignInHarness.js";
 
 function setup() {
-  const events = new PolarisEventEmitter();
   let waits = 0;
   const choice = {
     licenses: vi.fn(async () => ({
@@ -38,49 +30,17 @@ function setup() {
     })),
     cancel: vi.fn(async () => ({ kind: "ok" })),
   };
-  const session = {
-    userCode: "ABCD-EFGH",
-    verificationUri: "https://id.example.test/d",
-    verificationUriComplete: "https://id.example.test/d?c=1",
-    expiresIn: 600,
-    expiresAt: Math.floor(Date.now() / 1000) + 600,
-    interval: 2,
-    wait: vi.fn(async () => {
-      waits++;
-      return waits < 2
-        ? { kind: "pending", interval: 2 }
-        : {
-            kind: "choose",
-            grant: GRANT,
-            expiresIn: 300,
-            choices: { state: "choose", choices: [{ id: "lic_1" }] },
-          };
-    }),
-    cancel: vi.fn(),
-  };
-  const identity = {
-    signIn: { start: vi.fn(async () => session) },
-    choice,
-    signOut: vi.fn(async () => {
-      events.emit("identity", { kind: "signedOut", released: false });
-      return { released: false };
-    }),
-  };
-  const client = {
-    identity,
-    events,
-    presentationSource: () => ({ subscribe: () => () => undefined }),
-    presentation: () => null,
-    config: { localValues: () => ({}), entries: () => null },
-    capabilities: () => ({}),
-    getSyncState: () => ({ state: "licensed" }),
-  } as unknown as PolarisKeyClient;
-  const ipc = ipcPair();
-  const handle = exposePolarisBridge(client, {
-    ipcMain: ipc.ipcMain,
-    allowSender: allowApp,
+  const { bridge, handle, identity, ipc } = signInHost(choice, async () => {
+    waits++;
+    return waits < 2
+      ? { kind: "pending", interval: 2 }
+      : {
+          kind: "choose",
+          grant: GRANT,
+          expiresIn: 300,
+          choices: { state: "choose", choices: [{ id: "lic_1" }] },
+        };
   });
-  const bridge: PolarisBridge = createPreloadBridge(ipc.ipcRenderer);
   /** A call as another window (id 8) would make it. */
   const asOther = async (method: string, ...args: unknown[]) => {
     const handler = ipc.handlers.get(
