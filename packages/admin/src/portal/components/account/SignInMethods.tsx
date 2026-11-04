@@ -849,7 +849,7 @@ function ConnectRow({
           <Button
             ref={buttonRef}
             variant="outline"
-            className="ms-auto h-11 font-medium"
+            className="ms-auto"
             loading={busy}
             aria-label={t("signin.provider.connect", { provider: name })}
             onClick={() => void connect()}
@@ -1051,7 +1051,7 @@ function AddEmail({
         <Button
           ref={buttonRef}
           variant="link"
-          className="h-11 font-medium ms-12 bigtext:max-sm:ms-0"
+          className="ms-12 bigtext:max-sm:ms-0"
           iconStart={<Plus aria-hidden />}
           aria-expanded={false}
           onClick={() => setStep({ kind: "enter" })}
@@ -1299,7 +1299,7 @@ function AddPasskey({
         <Button
           ref={buttonRef}
           variant="link"
-          className="h-11 font-medium ms-12 bigtext:max-sm:ms-0"
+          className="ms-12 bigtext:max-sm:ms-0"
           iconStart={<KeyRound aria-hidden />}
           loading={busy}
           aria-disabled={reason ? true : undefined}

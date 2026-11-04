@@ -21,6 +21,8 @@ import { isIssueStatus, ProductStatusPill } from "../ProductStatus.js";
 import { SectionCard } from "./Card.js";
 import { LicenseTerm, termPlot } from "./LicenseTerm.js";
 import { t } from "../../../lib/copy.js";
+import { cn } from "../../../lib/cn.js";
+import { LINK_CLASS } from "../../linkClass.js";
 
 /**
  * The License card (§4.20): the tier as a neutral pill at the top right of the card's header, the
@@ -283,7 +285,12 @@ function LicenseFacts({
             <div className="flex flex-wrap items-center gap-x-3">
               <KeyMask slug={product.slug} last4={key.last4} />
               <details className="text-xs text-fg-muted open:basis-full">
-                <summary className="inline-flex min-h-6 pointer-coarse:min-h-11 cursor-pointer items-center rounded-sm underline [text-decoration-style:dotted] underline-offset-2 hover:text-fg-strong">
+                <summary
+                  className={cn(
+                    LINK_CLASS,
+                    "inline-flex min-h-6 cursor-pointer items-center pointer-coarse:min-h-11",
+                  )}
+                >
                   {t("license.key.why")}
                 </summary>
                 <p className="mt-1">

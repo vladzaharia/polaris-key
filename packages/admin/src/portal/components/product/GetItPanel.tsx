@@ -366,11 +366,7 @@ function FileRow({
       <td className="px-5 py-3 text-end @max-[24rem]:block @max-[24rem]:pt-1 @max-[24rem]:text-start desk:px-6">
         {r.elsewhere ? (
           r.elsewhere.href ? (
-            <Button
-              asChild
-              variant="quiet"
-              className="min-h-11 whitespace-normal"
-            >
+            <Button asChild variant="quiet" className="whitespace-normal">
               <a href={r.elsewhere.href} target="_blank" rel="noreferrer">
                 {r.elsewhere.label}
                 <ExternalLink aria-hidden />

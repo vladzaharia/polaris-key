@@ -219,6 +219,8 @@ function lockerPalette(theme: "dark" | "light"): string {
     `--on-accent:${t.action.on}`,
     `--accent-subtle:${t.surface.sunken}`,
     `--focus:${t.text.strong}`,
+    // The selected-row fill the portal calls bg-hover: overlay on dark, one step down (sunken) on light.
+    `--hover:${theme === "dark" ? t.surface.overlay : t.surface.sunken}`,
   ].join(";");
 }
 
@@ -228,7 +230,7 @@ function lockerPalette(theme: "dark" | "light"): string {
  * link underline (2 px) carries the coral.
  */
 const AUTH_CARD_RULES = [
-  `[data-brand=locker] a:not(.button){color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:4px}`,
+  `[data-brand=locker] a:not(.button){border-radius:.375rem;color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:4px}`,
   `[data-brand=locker] .button{text-decoration:none}`,
   // ── The AuthCard's Worker twin (`renderAuthCard`; packages/admin/src/ui/auth/AuthCard.tsx is the
   // React original): the lockup above, one 28.5 rem card (22 px radius) with an optional header,
@@ -316,11 +318,18 @@ const AUTH_CARD_RULES = [
   `@media (forced-colors: active){[data-brand=locker] .button:not(.secondary):not(.link){border:3px solid Highlight;background:ButtonFace;color:ButtonText}}`,
   // The licence chooser: the selected row is a neutral 7 % fill with a coral 3 px marker (D9a);
   // a link inside a row is a 44 px target.
-  `[data-brand=locker] .choice:has(input:checked){border-color:var(--edge);background:color-mix(in srgb,var(--strong) 7%,var(--sunken));box-shadow:inset 3px 0 0 var(--mb)}`,
+  `[data-brand=locker] .choice{background:var(--raised)}`,
+  `[data-brand=locker] .choice:has(input:checked){border-color:var(--edge);background:var(--hover);box-shadow:inset 3px 0 0 var(--mb)}`,
+  // The portal row's pill and its 20 px ring radio (React ChoiceGroup / Pill), and the muted devices line.
+  `[data-brand=locker] .tag{padding:.125rem .5rem;border-color:var(--edge);color:var(--text);line-height:1rem;font-weight:500}`,
+  `[data-brand=locker] .choice input{appearance:none;width:1.25rem;height:1.25rem;margin:.125rem 0 0;border:2px solid var(--muted);border-radius:50%;background:transparent}`,
+  `[data-brand=locker] .choice input:checked{border-color:var(--strong);background:radial-gradient(circle,var(--strong) 0 .3125rem,transparent .3125rem)}`,
+  `@media (forced-colors: active){[data-brand=locker] .choice input{forced-color-adjust:none;border-color:ButtonText}[data-brand=locker] .choice input:checked{border-color:Highlight;background:radial-gradient(circle,Highlight 0 .3125rem,transparent .3125rem)}}`,
+  `[data-brand=locker] .choice-seats{color:var(--muted)}`,
   `@media (forced-colors: active){[data-brand=locker] .choice:has(input:checked){border-color:Highlight;border-left-width:3px}}`,
   `[data-brand=locker] ul.choices a{display:inline-flex;align-items:center;min-height:2.75rem}`,
   `[data-brand=locker] details.replace summary{display:flex;align-items:center;min-height:2.75rem}`,
-  `@media (max-width: 39.99rem){[data-brand=locker] body{padding:0 0 2rem}.ac-brand{height:3.5rem;align-items:center;margin:0;border-bottom:1px solid var(--rule)}main.ac{max-width:none;border-width:0 0 1px;border-radius:0;box-shadow:none;background:var(--raised)}.ac-head,.ac-body,.ac-foot{padding-left:1.25rem;padding-right:1.25rem}.ac-body{padding-top:1.5rem;padding-bottom:1.5rem}}`,
+  `@media (max-width: 30rem){[data-brand=locker] body{padding:0 0 2rem}.ac-brand{height:3.5rem;align-items:center;margin:0;border-bottom:1px solid var(--rule)}main.ac{max-width:none;border-width:0 0 1px;border-radius:0;box-shadow:none;background:var(--page)}.ac-head,.ac-body,.ac-foot{padding-left:1.25rem;padding-right:1.25rem}.ac-body{padding-top:1.5rem;padding-bottom:1.5rem}}`,
   // The hosted passport (SIGN-IN.md "the product passport"): at 960 px and wider with a width to
   // height ratio of at least 1.2, and while the page has room for 46 rem (a container query on the
   // body, so rem follows the root font size and 200 % text stacks the strip), the app sits in a
@@ -350,7 +359,7 @@ const AUTH_CARD_RULES = [
   `.tv .ac-foot,.tv .ac-head{padding-left:3rem;padding-right:3rem}`,
   `.tv .ac-body dl{font-size:1.5rem;line-height:2rem}`,
   `.tv .ac-body .small{font-size:1.25rem;line-height:1.75rem}`,
-  `@media (max-width: 39.99rem){.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:min(2rem,7vw)}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
+  `@media (max-width: 30rem){.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:min(2rem,7vw)}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
 ];
 
 const LOCKER_PAGE_CSS_TAIL = [
@@ -361,7 +370,10 @@ const LOCKER_PAGE_CSS_TAIL = [
   // which the console card shares with its brand attribute swapped: the console card keeps its
   // compact Key lockup at the brand size (BRAND_LOCKUP_HEIGHT.key). `/tv`'s 44 px TV lockup drops
   // to the same 23 px, which needs no width cap.
-  `@media (max-width: 39.99rem){.ac-brand svg{height:23px;width:auto}.tv .ac-brand svg{height:23px}}`,
+  `@media (max-width: 30rem){.ac-brand svg{height:23px;width:auto}.tv .ac-brand svg{height:23px}}`,
+  // Polaris Locker only: the card goes edge to edge on the raised surface under 40 rem, like the React AuthCard (max-sm).
+  // Not in `AUTH_CARD_RULES`: the console card copies those, and it keeps its floating card down to 30 rem.
+  `@media (max-width: 39.99rem){[data-brand=locker] body{padding:0 0 2rem}[data-brand=locker] .ac-brand{height:3.5rem;align-items:center;margin:0;border-bottom:1px solid var(--rule)}[data-brand=locker] .ac-brand svg{height:23px;width:auto}[data-brand=locker] main.ac{max-width:none;border-width:0 0 1px;border-radius:0;box-shadow:none;background:var(--raised)}[data-brand=locker] .ac-head,[data-brand=locker] .ac-body,[data-brand=locker] .ac-foot{padding-left:1.25rem;padding-right:1.25rem}[data-brand=locker] .ac-body{padding-top:1.5rem;padding-bottom:1.5rem}[data-brand=locker] .ac-links a{min-height:2.75rem;padding:.125rem .5rem}[data-brand=locker] .tv .ac-body{padding:1.5rem}[data-brand=locker] .tv .ac-brand svg{height:23px}}`,
 ].join("");
 
 /** The stylesheet of a Locker page: `BRAND_PAGE_CSS` and its tail. */

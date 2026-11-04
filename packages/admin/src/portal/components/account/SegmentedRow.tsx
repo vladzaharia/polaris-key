@@ -25,7 +25,7 @@ export function SegmentedRow<V extends string>({
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-4 first:pt-1 last:pb-1">
       <div className="min-w-0">
-        <p id={id} className="font-medium text-fg-strong">
+        <p id={id} className="font-semibold text-fg-strong">
           {label}
         </p>
         {note ? <p className="text-sm text-fg-muted">{note}</p> : null}

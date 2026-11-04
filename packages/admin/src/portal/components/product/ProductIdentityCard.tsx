@@ -37,7 +37,7 @@ export function ProductIdentityCard({
           <p className="text-fg-muted">{t("locker.identity.note")}</p>
         </div>
       </div>
-      <Button asChild variant="quiet" className="mt-4 h-10">
+      <Button asChild variant="quiet" className="mt-4">
         <a href={href.account("methods")}>{t("locker.identity.manage")}</a>
       </Button>
     </SectionCard>

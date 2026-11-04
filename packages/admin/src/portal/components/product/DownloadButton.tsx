@@ -57,7 +57,7 @@ export function DownloadButton({
             ? undefined
             : table
               ? "size-11 px-0 sm:h-11 sm:w-auto sm:px-4"
-              : "h-auto min-h-10 whitespace-normal"
+              : "whitespace-normal"
         }
         loading={start.isPending}
         aria-describedby={start.isError ? alertId : undefined}

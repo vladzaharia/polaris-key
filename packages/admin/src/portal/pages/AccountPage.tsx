@@ -398,7 +398,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
               <h3
                 ref={scheduledRef}
                 tabIndex={-1}
-                className="font-medium text-fg-strong outline-none"
+                className="font-semibold text-fg-strong outline-none"
               >
                 {tParts("locker.delete.scheduledTitle", ["date"]).map(
                   (part, i) =>

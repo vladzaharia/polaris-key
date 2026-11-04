@@ -804,11 +804,15 @@ function FinishForm({
             type="button"
             disabled={busy}
             onClick={() => editEmail(to)}
-            className={AUTH_LINK_CLASS}
+            className={cn(AUTH_LINK_CLASS, "text-base")}
           >
             {t("signin.code.differentEmail")}
           </button>
-          <button type="button" onClick={onCancel} className={AUTH_LINK_CLASS}>
+          <button
+            type="button"
+            onClick={onCancel}
+            className={cn(AUTH_LINK_CLASS, "text-base")}
+          >
             {t("signin.gate.cancel")}
           </button>
         </CodeEntry>
@@ -999,7 +1003,7 @@ function FinishForm({
                   setError(null);
                   requestAnimationFrame(() => emailRef.current?.focus());
                 }}
-                className={cn(AUTH_LINK_CLASS, "px-0 text-sm")}
+                className={cn(AUTH_LINK_CLASS, "px-0 text-base")}
               >
                 {t("signin.code.differentEmail")}
               </button>
@@ -1319,7 +1323,7 @@ function FinishForm({
 }
 
 /** A secondary action under the primary: the shared link, centred on its own line. */
-const STACKED_LINK = cn(AUTH_LINK_CLASS, "mx-auto flex w-fit");
+const STACKED_LINK = cn(AUTH_LINK_CLASS, "mx-auto flex w-fit text-base");
 
 /** A name suggestion: one pill, pressed when it is the name in the field. */
 function SuggestionChip({
