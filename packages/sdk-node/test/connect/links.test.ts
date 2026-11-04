@@ -398,14 +398,18 @@ describe("mode c on the LAN", () => {
     // The first mode-c handshake under the new secret promotes it.
     await startLan(w.a, w.net);
     await startLan(w.b, w.net);
+    // The held and the pending contact are found on the network independently. Until A has seen
+    // the pending one, open() dials the held one; that session is not what this test is about.
     let out!: ConnectSession;
     await until(async () => {
       try {
         out = await w.a.cloudConnect.links.open(idOfB);
-        return true;
       } catch {
         return false;
       }
+      if (out.contact?.pending === true) return true;
+      out.close();
+      return false;
     });
     expect(out.contact?.pending).toBe(true);
     await until(async () => (await w.a.connect.contactRows()).length === 1);
