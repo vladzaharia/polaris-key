@@ -94,6 +94,7 @@ public struct LinkPairingView: View {
     let categoryLabels: [String: String]
     @Environment(\.polarisKeyStrings) private var strings
     @AccessibilityFocusState private var focus: ConnectFocus?
+    @ScaledMetric(relativeTo: .title) private var codeSize: CGFloat = 32
 
     public init(model: LinkPairingModel, categoryLabels: [String: String] = [:]) {
         self.model = model
@@ -189,9 +190,11 @@ public struct LinkPairingView: View {
                 ProgressView().controlSize(.small).accessibilityHidden(true)
                 if announced { KitText(line, .body, color: .muted) }
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(strings.string(line)))
-            .accessibilityAddTraits(.updatesFrequently)
+            // After Codes match the title says the wait; the spinner beside the code is for the eye.
+            .accessibilityElement(children: announced ? .ignore : .combine)
+            .accessibilityLabel(Text(announced ? strings.string(line) : ""))
+            .accessibilityHidden(!announced)
+            .accessibilityAddTraits(announced ? .updatesFrequently : [])
         }
     }
 
@@ -201,8 +204,8 @@ public struct LinkPairingView: View {
             VStack(alignment: .leading, spacing: style.space(.sm)) {
                 if let code = model.link?.code {
                     Text(code)
-                        .font(style.codeFont(size: 32))
-                        .tracking(32 * 0.08)
+                        .font(style.codeFont(size: codeSize))
+                        .tracking(codeSize * 0.08)
                         .foregroundStyle(style.palette.textStrong)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)

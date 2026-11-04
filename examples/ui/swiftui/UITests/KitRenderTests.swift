@@ -149,6 +149,19 @@ final class KitRenderTests: XCTestCase {
                 "The rename field is focused on begin, so the system keyboard's prediction bar is on screen; its empty cells belong to the keyboard process, not the kit (the kit's own elements, Cancel, Save and the field, are named and at least 44 pt)."
             ),
             (
+                "Label not human-readable", "text", "holiday.zip",
+                ["TransferOffer.ask", "TransferOffer.ask.unnamed"],
+                "The contact's file name is the content (display data the contact chose); VoiceOver reads it."
+            ),
+            (
+                "Text clipped", "text", "", ["TransferOffer.ask.long-name"],
+                "The contact's file name is clamped to three lines with the middle elided on purpose (the extension stays); the heading carries the shortened name."
+            ),
+            (
+                "Text clipped", "text", "Pairing is off", ["LinkPairing.unavailable"],
+                "The title renders whole in the capture; the audit measures the heading's focus frame, which hugs the line."
+            ),
+            (
                 "Text clipped", "button", "", ["Welcome.default.extras"],
                 "The native preset's quiet links are system-font buttons that scale with Dynamic Type; the render shows each label whole."
             ),
