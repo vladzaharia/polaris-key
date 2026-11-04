@@ -151,6 +151,15 @@ public data class PolarisKeyClientOptions @JvmOverloads constructor(
     val keyring: KeyringOptions = KeyringOptions(),
     /** Cloud Sync's app-owned settings (U-07.K9): the mode (default end-to-end), the compiled catalog mirror and the renames. Never read from the Worker. */
     val cloudSync: CloudSyncHostOptions = CloudSyncHostOptions(),
+    /**
+     * Whether the client posts the device report (`POST devices/report`) after a sync and on
+     * `report()`. Default true. False sends no report at all (there is no reduced level) and
+     * `report()` answers false; pending update-health events stay pending. Node spells it
+     * `devices: { reports: false }`, Python `device_reports=False`, Swift
+     * `PolarisKeyClientOptions(deviceReports: false)`. Fingerprinting is a separate switch:
+     * `LicenseClientOptions(fingerprint)`.
+     */
+    val deviceReports: Boolean = true,
 )
 
 /**
@@ -239,6 +248,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public val core: CoreContext = CoreContext(options.core)
 
     private val probes = options.probes
+    private val deviceReports = options.deviceReports
     private val factsSource: DeviceFactsSource = options.factsSource ?: JvmDeviceFactsSource
     private val fingerprintEnabled = options.license.fingerprint
     private val fingerprintSource: FingerprintSource = options.license.fingerprintSource ?: JvmFingerprintSource
@@ -853,11 +863,13 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      * (R4-05), this host's software facts and the capability list, allowlisted keys only.
      * `sync()` already reports after every pass that warrants it. Best-effort: false when no
      * credential is held, the server refused, or the network failed; never throws at the host.
+     * False without any request when [PolarisKeyClientOptions.deviceReports] is off.
      */
     public suspend fun report(): Boolean = withContext(Dispatchers.IO) { reportOnIo() }
 
     /** [report]'s body: the facts, the pending journal and the post are blocking work (SP-50). */
     private suspend fun reportOnIo(): Boolean {
+        if (!deviceReports) return false
         val facts = try {
             factsSource.collect(probes).toJson()
         } catch (e: CancellationException) {
