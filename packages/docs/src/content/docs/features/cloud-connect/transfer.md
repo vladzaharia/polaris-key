@@ -15,6 +15,8 @@ Every offer goes to your `onOffer` handler, which decides that one transfer. The
 
 The handler gets the sender's label, the file's `name`, `type`, `size` and the data category. All of it is display data from the other device. The SDK never builds a path from `name`. Where the file goes is your choice: the destination you name in the answer.
 
+The [TransferOffer](/docs/build/ui/components/transfer-offer/) screen asks the person and answers for you.
+
 You can answer later: keep the offer, ask the person, and answer within 120 seconds. After that the SDK declines for you. The sender sees `declined`, or `timeout` when nobody answered.
 
 ## Receive

@@ -285,6 +285,4 @@ export const COMPONENTS_NOT_BUILT: readonly string[] = [
   "UnlockSync",
   "RecoveryCode",
   "RingChange",
-  // Direct-transfer offers (CC-19.9); LinkPairing has its page, TransferOffer follows.
-  "TransferOffer",
 ];

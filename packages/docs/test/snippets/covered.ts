@@ -206,6 +206,11 @@ export const COVERED_PAGES: Covered[] = [
     language: "kotlin",
     prose: false,
   },
+  {
+    path: `${BUILD}ui/components/transfer-offer.mdx`,
+    language: "kotlin",
+    prose: false,
+  },
   { path: "sdks/godot/README.md", language: "gdscript" },
   { path: `${BUILD}quickstart/godot.mdx`, language: "gdscript" },
   { path: `${BUILD}sdks/godot/your-own-ui.md`, language: "gdscript" },

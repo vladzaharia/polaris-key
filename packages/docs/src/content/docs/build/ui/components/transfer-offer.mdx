@@ -1,0 +1,167 @@
+---
+title: "TransferOffer"
+description: "A contact offers to send something: the person sees who and what, accepts or declines each transfer, then sees it arrive."
+type: "reference"
+lanes: ["kit"]
+lastReviewed: "2026-11-04"
+sidebar:
+  order: 36
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
+import StatesToHandle from "../../../../../components/docs/StatesToHandle.astro";
+
+The prompt for an incoming [Direct Transfer](/docs/features/cloud-connect/transfer/). It shows who offers what, with the size and type when the contact said, and nothing is received until the person presses Accept. Then a progress, and Done, or a failure that kept nothing. The contact's label and the file name are text the contact chose, so the screen shows them as such.
+
+Consent is per transfer: Accept never takes the first focus, and a press that arrives as the prompt opens is ignored. Escape declines an offer being asked and does nothing while a transfer runs; Cancel stops it.
+
+## States and copy
+
+<ComponentStates component="TransferOffer" />
+
+## States to handle
+
+An app that draws its own screen shows each of these.
+
+<StatesToHandle
+  states={[
+    { state: "Ask", copyKey: "transferOffer.ask" },
+    { state: "Receiving", copyKey: "transferOffer.receiving" },
+    { state: "Done", copyKey: "transferOffer.done" },
+    { state: "Failed", copyKey: "transferOffer.failed" },
+  ]}
+/>
+
+When the transfer fails nothing was saved, and the screen says so. Offers that arrive while one is on screen wait their turn.
+
+## Baselines
+
+<KitBaselines component="TransferOffer" />
+
+## In each kit
+
+<Tabs syncKey="ui-kit">
+  <TabItem label="React">
+    <KitStatus kit="react" />
+
+    **Drop-in.** `<TransferOffer driver={...} device="Maya's laptop" name="holiday.zip" />` from `@polaris-key/react/kit`. The driver's `accept` resolves when everything arrived and was saved, and rejects when it did not.
+
+    **Styled part.** The same component. `size` and `type` add the facts row; `onClose` runs for Decline, Done and Escape, and the host removes the prompt. Without `driver` it draws `input.transferOffer` and you do the rest.
+
+    **Headless.** `useTransferOffer({ driver, device, name, size, type })` returns `{ view, input, snapshot, accept, decline, cancel, close }`.
+
+    ```tsx
+    import { TransferOffer } from "@polaris-key/react/kit";
+
+    export function IncomingFile(props: {
+      from: string;
+      name: string;
+      size: number;
+      accept: () => Promise<void>;
+      decline: () => Promise<void>;
+      onClose: () => void;
+    }) {
+      return (
+        <TransferOffer
+          driver={{ accept: props.accept, decline: props.decline }}
+          device={props.from}
+          name={props.name}
+          size={props.size}
+          onClose={props.onClose}
+        />
+      );
+    }
+    ```
+
+    [React](/docs/build/ui/frameworks/react/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Web components">
+    <KitStatus kit="elements" />
+
+    **Drop-in.** `<pk-transfer-offer>` given `transfer` (the browser SDK's `cloudConnect.transfer`) and `receive`. Mount it once: it draws itself when an offer arrives and nothing while idle. `receive` takes the content after its hash matched; without it every offer is declined.
+
+    **Styled part.** The same element. It reports `pk-offer` when an offer is drawn and `pk-close` only when the last one was answered and none waits, so removing it on `pk-close` never loses an offer. Given `device` and `name` and a `driver` instead, it answers that one offer. Without either it draws `input.transferOffer` and reports `pk-action`.
+
+    **Headless.** `viewOf("TransferOffer", input)` from `@polaris-key/elements/headless`. The state machine is `TransferOfferModel` in `@polaris-key/ui-core`.
+
+    ```html
+    <pk-transfer-offer id="incoming"></pk-transfer-offer>
+    <script type="module">
+      const el = document.getElementById("incoming");
+      el.transfer = client.cloudConnect.transfer;
+      el.receive = (blob, offer) => save(blob, offer.name);
+      el.addEventListener("pk-close", () => el.remove());
+    </script>
+    ```
+
+    [Web components](/docs/build/ui/frameworks/elements/) has the theme and the sample.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** `PolarisTransferOffer(offers)` over `client.transferOffers(scope, destination)`. It draws the prompt on screen and nothing while idle; `destination` picks the file an accepted offer is written to, which must not exist yet.
+
+    **Styled part.** `PolarisTransferOfferScreen`, stateless, over `KitStates.resolve(KitComponent.transferOffer, inputs)` and your own callbacks. `name` is the file name, `size` and `type` add the facts row; `onClose` runs for Decline and Done, and the next waiting offer shows. Back and Escape do nothing while a transfer runs.
+
+    **Headless.** `PolarisTransferOfferState(actions, name, device, size, type, scope)` in `polaris-key-ui-core`; its `ui` flow holds the step. `PolarisTransferOffers.current` is the one on screen.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.remember
+    import androidx.compose.runtime.rememberCoroutineScope
+    import im.plrs.key.sdk.PolarisKeyClient
+    import im.plrs.key.ui.PolarisTransferOffer
+    import im.plrs.key.ui.transferOffers
+    import java.io.File
+
+    @Composable
+    fun IncomingFiles(client: PolarisKeyClient, downloads: File) {
+        val scope = rememberCoroutineScope()
+        val offers = remember(client) {
+            client.transferOffers(scope) { id, _ -> File(downloads, id) }
+        }
+        PolarisTransferOffer(offers)
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the desktop windows.
+
+  </TabItem>
+  <TabItem label="SwiftUI">
+    <KitStatus kit="swiftui" />
+
+    **Drop-in.** `TransferOfferView(model:)` over `TransferOfferModel`. `TransferOfferCoordinator` binds `client.cloudConnect.transfer` to one model at a time; draw its `current`. Without `start()` the SDK declines every offer.
+
+    **Styled part.** `TransferOfferView(model:)`, from `PolarisKeyUI`. `onClose` on the model runs when Decline or Done ends the prompt. A swipe-down answers or closes the offer, so the next one is not left waiting behind it.
+
+    **Headless.** `TransferOfferModel(offer:driver:)` and `KitStates.transferOffer(_:)`, from `PolarisKeyUICore`. `TransferOfferDriver` carries `accept`, `decline` and `cancel`.
+
+    ```swift
+    import PolarisKey
+    import PolarisKeyUI
+    import PolarisKeyUICore
+    import SwiftUI
+
+    @MainActor
+    func incomingFiles(client: PolarisKeyClient, downloads: URL) -> some View {
+        let offers = TransferOfferCoordinator(
+            transfer: client.cloudConnect.transfer,
+            destination: { _ in downloads.appendingPathComponent(UUID().uuidString) })
+        offers.start()
+        return Group {
+            if let model = offers.current { TransferOfferView(model: model) }
+        }
+    }
+    ```
+
+    [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme and the restyle hooks.
+
+  </TabItem>
+</Tabs>
+
+The Godot kit has no tab yet: the addon's `PolarisKey.cloud_connect.transfer` has no screen.
