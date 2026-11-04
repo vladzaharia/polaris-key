@@ -310,6 +310,16 @@ private class HolderLines(
 }
 
 private fun holderSpec(screen: KitScreen, lines: HolderLines, h: HolderHandlers, x: HolderExtras): HolderSpec {
+    val spec = stepSpec(screen, lines, h, x)
+    if (!x.working) return spec
+    // Cancel stays live through every sign-in, whatever else is busy: it lets go of the sign-in and leaves the person where they were.
+    val cancel = lines.any("common.cancel").orEmpty()
+    val live = spec.secondary.map { if (it.label == cancel) HolderButton(it.label, it.onClick) else it }
+    val secondary = if (live.any { it.label == cancel }) live else live + HolderButton(cancel, h.onCancel)
+    return HolderSpec(spec.primary, secondary, spec.quiet)
+}
+
+private fun stepSpec(screen: KitScreen, lines: HolderLines, h: HolderHandlers, x: HolderExtras): HolderSpec {
     fun button(key: String, onClick: () -> Unit, enabled: Boolean = true, busy: Boolean = false, external: Boolean = false) =
         lines.text(key)?.let { HolderButton(it, onClick, enabled && !(x.working && !busy), busy, external) }
     val start = button("signin.done.start", h.onStartUsing)
@@ -712,6 +722,12 @@ private fun WaitBody(lines: HolderLines, stateKey: String, ui: PolarisAddToAccou
     }
     ui.link?.takeIf { isSafeHttpsLink(it) && (polarisWindow.wide || polarisWindow.tv) }?.let { link ->
         ColumnScopeSpace(polarisWindow.section)
+        Text(
+            KitCopy.bundled.format("part.qr.scanInstead", kitLocale()),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        ColumnScopeSpace(PolarisSpace.hairline)
         PolarisQr(link, KitCopy.bundled.format("a11y.qr", kitLocale()), Modifier.size(polarisWindow.qrSize))
     }
 }
@@ -744,7 +760,14 @@ private fun HolderControls(spec: HolderSpec) {
                 ringColor = if (button.busy) MaterialTheme.colorScheme.onSurface else null,
             )
         } else {
-            PolarisSecondaryButton(button.label, button.onClick, enabled = button.enabled, initialFocus = focus, external = button.external)
+            PolarisSecondaryButton(
+                button.label,
+                button.onClick,
+                enabled = button.enabled,
+                busy = button.busy,
+                initialFocus = focus,
+                external = button.external,
+            )
         }
     }
     if (window.variant.isDesktop && !tv) {

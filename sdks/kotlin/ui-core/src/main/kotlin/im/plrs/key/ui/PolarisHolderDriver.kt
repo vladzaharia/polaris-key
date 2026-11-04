@@ -88,15 +88,28 @@ private class SessionHandle(private val session: SignInSession) : AddToAccountHa
 }
 
 /**
+ * A running account sign-in as the screens show it: the device-code channel's code, where it is typed in (as text) and the
+ * link a QR carries, and the way back to the page. A redirect session has no code; [reopen] still brings its tab back.
+ */
+public class AccountSignIn(
+    public val userCode: String?,
+    public val address: String?,
+    public val link: String?,
+    public val reopen: suspend () -> Boolean,
+)
+
+/**
  * Sign in to an account for the holders' steps that need one (someone else attached the license, the license's email
  * is another's, the license waits for an email): a redirect sign-in with [loginHint] (the device code where redirect is
- * unavailable), waited to its end. True when signed in, false when it did not finish: the caller shows the problem on
- * its own screen. Nothing here is fire and forget.
+ * unavailable), waited to its end. [onSession] gets the running session at once, so the screen can show its code and
+ * the way back to the page. True when signed in, false when it did not finish: the caller shows the problem on its own
+ * screen. Cancelling the calling coroutine cancels the session. Nothing here is fire and forget.
  */
 public suspend fun PolarisKeyClient.signInToAccount(
     loginHint: String?,
     native: NativeRedirectOptions? = null,
     opener: ((String) -> Boolean)? = null,
+    onSession: (AccountSignIn) -> Unit = {},
 ): Boolean {
     val identity = this.identity
     fun options(channel: SignInChannel) = SignInOptions(
@@ -105,15 +118,26 @@ public suspend fun PolarisKeyClient.signInToAccount(
         native = if (channel == SignInChannel.Redirect) native else null,
         opener = if (channel == SignInChannel.DeviceCode && opener != null) AccountOpener { opener(it) } else null,
     )
+    var session: SignInSession? = null
     return try {
-        val session = try {
+        val started = try {
             identity.signIn.start(options(SignInChannel.Redirect))
         } catch (e: PolarisException) {
             if (e.code != ErrorCode.redirectUnavailable) throw e
             identity.signIn.start(options(SignInChannel.DeviceCode))
         }
-        session.wait() is SignInOutcome.SignedIn
+        session = started
+        onSession(
+            AccountSignIn(
+                userCode = started.userCode.takeIf { it.isNotEmpty() },
+                address = started.verificationUri.takeIf { it.isNotEmpty() },
+                link = started.verificationUriComplete.takeIf { it.isNotEmpty() },
+                reopen = { started.reopen() },
+            ),
+        )
+        started.wait() is SignInOutcome.SignedIn
     } catch (e: kotlinx.coroutines.CancellationException) {
+        runCatching { session?.cancel() }
         throw e
     } catch (_: Exception) {
         false

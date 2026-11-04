@@ -15,6 +15,8 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onAllNodesWithText
@@ -260,7 +262,9 @@ class HolderFixesTest {
     @Test
     fun theTvQrWithNoLinkSaysSoAndNeverDrawsScan() = runDesktopComposeUiTest(900, 700) {
         show { HolderQr(null, androidx.compose.ui.Modifier, onBack = {}) }
-        onNodeWithText("We couldn't open your browser").assertExists()
+        // A TV opens nothing, so it never says it could not open a browser.
+        onAllNodesWithText("We couldn't open your browser").assertCountEquals(0)
+        onNodeWithText("That link doesn't open anything here.").assertExists()
         onAllNodesWithText("Scan to add this key", substring = true).assertCountEquals(0)
         onNodeWithText("Or go to https://polaris.locker").assertExists()
     }
@@ -296,5 +300,76 @@ class HolderFixesTest {
         val fieldRight = onAllNodes(hasSetTextAction())[0].fetchSemanticsNode().boundsInRoot.right
         val continueRight = onNodeWithText("Continue").fetchSemanticsNode().boundsInRoot.right
         assertTrue(continueRight <= fieldRight + 2f, "Continue ($continueRight) overhangs the fields ($fieldRight)")
+    }
+
+    @Test
+    fun anOwnedSignInThatRunsKeepsCancelLiveAndTheOthersOff() = runDesktopComposeUiTest(900, 700) {
+        var cancelled = 0
+        val driver = Driver(attach = AddToAccountAttach.Refused("license_owned"))
+        driver.run.answer.complete(AddToAccountWait.SignedIn("ada@example.com"))
+        val s = state(driver)
+        s.setField(AddToAccountField.Name, "Ada Lovelace")
+        s.setField(AddToAccountField.Email, "ada@example.com")
+        show { PolarisAddToAccount(s, onCancel = { cancelled++ }, extras = HolderExtras(working = true)) }
+        s.submit()
+        waitForIdle()
+        assertEquals("owned", s.ui.value.step)
+        onNodeWithText("Sign in to that account").assertIsNotEnabled()
+        onNodeWithText("Cancel").assertIsEnabled()
+        onNodeWithText("Cancel").performClick()
+        assertEquals(1, cancelled)
+    }
+
+    @Test
+    fun aWaitingDoneSignInShowsABusyButtonAndALiveCancel() = runDesktopComposeUiTest(900, 700) {
+        val inputs = base(
+            "license",
+            "identity",
+            extra = mapOf(
+                "licenseHolder" to JsonObject(mapOf("email" to JsonPrimitive("mary@example.com"), "addIn" to JsonPrimitive("app"))),
+                "activateDone" to JsonObject(mapOf("tier" to JsonPrimitive("Pro"))),
+            ),
+        )
+        val screen = KitStates.resolve(KitComponent.activateDone, KitInputs.fromJson(inputs))
+        var cancelled = 0
+        show { PolarisHolderScreen(screen, handlers = HolderHandlers(onCancel = { cancelled++ }), extras = HolderExtras(working = true)) }
+        onNodeWithText("Sign in as m•••@example.com", substring = true).assertIsNotEnabled()
+        onNodeWithText("Start using Tidewater Studio").assertIsNotEnabled()
+        onNodeWithText("Cancel").performClick()
+        assertEquals(1, cancelled)
+    }
+
+    @Test
+    fun anAccountSignInOnTheDeviceCodeChannelShowsTheCodeTheAddressAndALiveCancel() = runDesktopComposeUiTest(1400, 900) {
+        val inputs = JsonObject(
+            base("license", "identity") +
+                ("deviceCode" to JsonObject(mapOf("phase" to JsonPrimitive("waiting"), "userCode" to JsonPrimitive("WDJB-MJHT")))) +
+                ("addToAccount" to JsonObject(mapOf("step" to JsonPrimitive("busy")))),
+        )
+        val screen = KitStates.resolve(KitComponent.addToAccount, KitInputs.fromJson(inputs))
+        val ui =
+            PolarisAddToAccountUi(
+                step = "busy",
+                userCode = "WDJB-MJHT",
+                address = "https://polaris.locker/device",
+                link = "https://polaris.locker/device?code=WDJB-MJHT",
+            )
+        var cancelled = 0
+        var reopened = 0
+        show {
+            PolarisHolderScreen(
+                screen,
+                ui = ui,
+                handlers = HolderHandlers(onCancel = { cancelled++ }, onReopen = { reopened++ }),
+                extras = HolderExtras(opened = false),
+            )
+        }
+        onNodeWithText("Or go to https://polaris.locker/device").assertExists()
+        onNodeWithText("Scan with your phone instead").assertExists()
+        onNodeWithText("Open browser").performClick()
+        assertEquals(1, reopened)
+        onNodeWithText("Cancel").assertIsEnabled()
+        onNodeWithText("Cancel").performClick()
+        assertEquals(1, cancelled)
     }
 }
