@@ -1257,7 +1257,12 @@ object KotlinReplay {
 
     /** Replay [t] step by step; throws on the first step whose traffic or outcome disagrees. */
     @Suppress("CyclomaticComplexMethod")
-    fun replay(t: Transcript, servedFromRecording: Set<String> = emptySet()) = runBlocking {
+    fun replay(
+        t: Transcript,
+        servedFromRecording: Set<String> = emptySet(),
+        // A kit's own driver for a step (HoldersKitTranscriptTest): null answers fall through to [act].
+        stepOverride: (suspend (PolarisKeyClient, JsonObject) -> Map<String, JsonElement>?)? = null,
+    ) = runBlocking {
         val server = ReplayServer(t)
         var clock = t.now
         val memory = InMemoryStore(t.product, t.initial["deviceId"].stringValue!!)
@@ -1342,7 +1347,7 @@ object KotlinReplay {
                     server.serveBrowserExchanges()
                     step["expect"]!!.obj
                 } else {
-                    act(client, store, step, session, ReplayPackObjectTransport(server), server)
+                    stepOverride?.invoke(client, step) ?: act(client, store, step, session, ReplayPackObjectTransport(server), server)
                 }
                 server.endStep()
                 for ((key, want) in step["expect"]!!.obj.entries.sortedBy { it.key }) {

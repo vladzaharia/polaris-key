@@ -14,6 +14,9 @@ public enum class CopyVariant(public val id: String) {
     terminal("terminal"),
 }
 
+/** One run of a formatted line split on its `**` lead-in markers; [strong] is the lead-in. */
+public data class LeadPart(public val text: String, public val strong: Boolean)
+
 /**
  * The generated kit copy catalog, including all launch locales and host overrides.
  *
@@ -94,6 +97,14 @@ public class KitCopy(
     /** Formats one catalog [line] in [locale]. */
     public fun format(line: CopyLine, locale: String, variant: CopyVariant? = null): String =
         format(line.key, locale, line.args, variant)
+
+    /**
+     * Splits a formatted line on `**` into runs: odd-numbered pieces are the strong lead-in, as ui-core's
+     * `leadParts` splits them. A renderer draws each run itself and never hands the text to a markup
+     * parser.
+     */
+    public fun leadParts(text: String): List<LeadPart> =
+        text.split("**").mapIndexedNotNull { index, piece -> if (piece.isEmpty()) null else LeadPart(piece, index % 2 == 1) }
 
     /** Returns English message argument names, for avoiding partial visible lines. */
     public fun argumentNames(key: String): Set<String> =

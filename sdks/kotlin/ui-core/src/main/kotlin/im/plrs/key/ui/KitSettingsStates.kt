@@ -1,6 +1,8 @@
 // @pkey-feature ui.settings ui.paywall
 package im.plrs.key.ui
 
+import kotlinx.serialization.json.JsonObject
+
 internal fun accountAndLicenseScreen(inputs: KitInputs): KitScreen {
     val context = KitContext(inputs)
     val services = inputs.closedServices
@@ -17,14 +19,7 @@ internal fun accountAndLicenseScreen(inputs: KitInputs): KitScreen {
     }
     val tier = context.line("account.tier", mapOf("tier" to CopyArgument.Text("")))
     val signedIn = "identity" in services && inputs.obj("account").boolean("signedIn") == true
-    if (!signedIn) {
-        val lines = mutableListOf(title)
-        if ("license" in services) lines += tier
-        lines += context.line("account.keyOnly")
-        if ("update" in services) lines += context.line("account.updates")
-        lines += context.line("common.signOut")
-        return screen(KitComponent.accountAndLicense, "key-only", lines)
-    }
+    if (!signedIn) return keyOnlyScreen(context, inputs, title, tier)
     val lines = mutableListOf(title)
     if ("license" in services) lines += tier
     if (inputs.obj("account").string("holder") == "account") {
@@ -45,6 +40,18 @@ internal fun accountAndLicenseScreen(inputs: KitInputs): KitScreen {
     lines += context.line("common.signOut")
     if (inputs.obj("integrator").string("poweredBy") != null) lines += context.line("part.poweredBy")
     return screen(KitComponent.accountAndLicense, "signed-in", lines)
+}
+
+private fun keyOnlyScreen(context: KitContext, inputs: KitInputs, title: CopyLine, tier: CopyLine): KitScreen {
+    val services = inputs.closedServices
+    val holder = inputs.obj("licenseHolder")
+    val lines = mutableListOf(title)
+    if ("license" in services) lines += tier
+    lines += keyOnlyHolderLines(context, holder, "license" in services, "identity" in services)
+    if ("update" in services) lines += context.line("account.updates")
+    // A holder who never signed in has nothing to sign out of: the exit forgets the key.
+    lines += context.line(if (holder != null) "account.removeKey" else "common.signOut")
+    return screen(KitComponent.accountAndLicense, "key-only", lines)
 }
 
 internal fun settingsScreen(inputs: KitInputs): KitScreen {
@@ -157,4 +164,24 @@ internal fun entitlementGateScreen(inputs: KitInputs): KitScreen {
         "not-entitled",
         listOf(context.line("entitlement.locked", tier), context.line("entitlement.unlock")),
     )
+}
+
+/**
+ * The key-only holder rows. A floating license (the holder is known and has no email) says so and
+ * offers Add your name and email: with Identity off, or a kit with no in-app channel, that opens the
+ * portal. A license waiting for an email keeps the key-only line.
+ */
+private fun keyOnlyHolderLines(context: KitContext, holder: JsonObject?, license: Boolean, identity: Boolean): List<CopyLine> {
+    val floating = license && holder != null && holder.string("email").isNullOrEmpty()
+    return when {
+        !floating -> listOf(context.line("account.keyOnly"))
+
+        !identity || holder.string("addIn") == "portal" -> listOf(
+            context.line("account.notInAccount"),
+            context.line("signin.key.addInLocker"),
+            context.line("a11y.externalLink"),
+        )
+
+        else -> listOf(context.line("account.notInAccount"), context.line("activate.recommend.action"))
+    }
 }
