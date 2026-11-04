@@ -61,6 +61,15 @@ const axe = configureAxe({
   rules: { "color-contrast": { enabled: false } },
 });
 
+// The feed pages are inside the Distribution and Release section chunks (React.lazy, see
+// console/pages/index.tsx). Whichever test boots a feed page first would pay their cold transform
+// of several hundred modules inside its findBy wait, and on a loaded runner that alone exceeds the
+// wait, so the first test of the file failed and moved when others were skipped. Load them once at
+// file load: a top-level await, not a `beforeAll`, which `hookTimeout` would bind.
+await Promise.all([
+  import("../src/console/sections/distribution/index.js"),
+  import("../src/console/sections/release/index.js"),
+]);
 beforeEach(resetConsole);
 afterEach(() => {
   cleanup();
@@ -131,8 +140,7 @@ function bootSettings(
 }
 
 describe("registry auth (F-21)", () => {
-  // Disabled 2026-11-03: flaky on CI (role=form General not found within findBy on a loaded runner: failed on the main 34f6852758 rerun and on 4471390703 at 12.5 s, passed on c0bceaf707 and be55ce5f2a); re-enable once the form wait is event-driven.
-  it.skip("Access is two options in General: Public and Licensed, no Access section", async () => {
+  it("Access is two options in General: Public and Licensed, no Access section", async () => {
     bootSettings("public");
     const form = await general();
     const radios = within(form).getAllByRole("radio");
@@ -153,8 +161,7 @@ describe("registry auth (F-21)", () => {
     ).toBeNull();
   });
 
-  // 2026-11-03: skipped, load-swamped on CI (pass 2.6–10.8 s, fail at 13.4 s)
-  it.skip("Licensed shows the Tokens link; nothing to save while the choice is the stored one", async () => {
+  it("Licensed shows the Tokens link; nothing to save while the choice is the stored one", async () => {
     const log = bootSettings("licensed");
     const form = await general();
     expect(
