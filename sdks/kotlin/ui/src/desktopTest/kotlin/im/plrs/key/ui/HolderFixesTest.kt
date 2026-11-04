@@ -161,7 +161,12 @@ class HolderFixesTest {
     @Test
     fun theCopyButtonCopiesTheCode() = runDesktopComposeUiTest(900, 640) {
         val copied = mutableListOf<String>()
-        show { PolarisUserCode("WDJB-MJHT", androidx.compose.ui.Modifier, "WDJB-MJHT" to { copied += it }, "Copy code", "Copied") }
+        val onCopy = "WDJB-MJHT" to { value: String ->
+            copied += value
+            Unit
+        }
+        val words = CodeWords(copyLabel = "Copy code", copiedLabel = "Copied")
+        show { PolarisUserCode("WDJB-MJHT", androidx.compose.ui.Modifier, onCopy, words) }
         onAllNodes(hasContentDescription("Copy code"))[0].performClick()
         assertEquals(listOf("WDJB-MJHT"), copied)
     }

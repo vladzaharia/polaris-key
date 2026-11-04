@@ -2372,11 +2372,11 @@
       "ktlint:standard:wrapping": 1
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/DevicesTest.kt": {
-      "detekt:style.MaxLineLength": 3,
+      "detekt:style.MaxLineLength": 2,
       "ktlint:standard:argument-list-wrapping": 5,
-      "ktlint:standard:function-signature": 4,
+      "ktlint:standard:function-signature": 1,
       "ktlint:standard:import-ordering": 1,
-      "ktlint:standard:max-line-length": 3
+      "ktlint:standard:max-line-length": 2
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/EventsAndChannelTest.kt": {
       "detekt:style.MaxLineLength": 1,

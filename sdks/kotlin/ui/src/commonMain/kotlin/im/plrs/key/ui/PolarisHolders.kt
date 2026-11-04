@@ -708,8 +708,7 @@ private fun WaitBody(lines: HolderLines, stateKey: String, ui: PolarisAddToAccou
                 scope.launch { clipboard.setText(lines.text("a11y.copyCode").orEmpty(), value) }
                 Unit
             },
-            copyLabel = lines.text("a11y.copyCode"),
-            copiedLabel = lines.text("common.copied"),
+            words = CodeWords(copyLabel = lines.text("a11y.copyCode"), copiedLabel = lines.text("common.copied")),
         )
     }
     lines.text("activate.attach.waitCheck")?.let {

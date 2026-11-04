@@ -321,7 +321,8 @@ private fun PairCode(code: String, spoken: String?) {
     val light = MaterialTheme.colorScheme.background.luminance() > 0.5f
     // The light plate has a weak edge of its own: a hairline keeps the code a distinct object.
     val edge = if (light) Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.large) else Modifier
-    PolarisUserCode(code, Modifier.fillMaxWidth().then(edge), onCopy = null, description = spoken ?: KitConnect.spellOut(code), centered = true)
+    val words = CodeWords(description = spoken ?: KitConnect.spellOut(code))
+    PolarisUserCode(code, Modifier.fillMaxWidth().then(edge), onCopy = null, words = words, centered = true)
 }
 
 /** Which device reported the code: worded as reported, never as who it is; a missing name says so. */

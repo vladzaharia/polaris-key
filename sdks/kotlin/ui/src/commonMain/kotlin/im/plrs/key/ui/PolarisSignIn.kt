@@ -393,18 +393,23 @@ public fun PolarisUserCode(code: String, modifier: Modifier = Modifier) {
     PolarisUserCode(code, modifier, onCopy = null)
 }
 
+/** The words a code line says instead of its defaults; null keeps the sign-in's own. */
+internal class CodeWords(
+    /** What a screen reader says instead of the sign-in code line (LinkPairing says its own). */
+    val description: String? = null,
+    /** The copy button's words when it copies a code, not a link. */
+    val copyLabel: String? = null,
+    val copiedLabel: String? = null,
+)
+
 @Composable
 internal fun PolarisUserCode(
     code: String,
     modifier: Modifier,
     onCopy: Pair<String, ((String) -> Unit)?>?,
-    /** What a screen reader says instead of the sign-in code line (LinkPairing says its own). */
-    description: String? = null,
+    words: CodeWords = CodeWords(),
     /** Centre the code on its plate (LinkPairing); the sign-in code starts at the leading edge. */
     centered: Boolean = false,
-    /** The copy button's words when it copies a code, not a link. */
-    copyLabel: String? = null,
-    copiedLabel: String? = null,
 ) {
     val copy = PolarisTheme.copy
     val window = polarisWindow
@@ -441,9 +446,9 @@ internal fun PolarisUserCode(
                 autoSize = TextAutoSize.StepBased(minFontSize = 16.sp, maxFontSize = size, stepSize = 1.sp),
                 modifier = Modifier
                     .weight(1f)
-                    .semantics { contentDescription = description ?: copy.format(copy.signInCodeDescription, spelled(code)) },
+                    .semantics { contentDescription = words.description ?: copy.format(copy.signInCodeDescription, spelled(code)) },
             )
-            if (onCopy != null) PolarisCopyLinkButton(onCopy.first, onCopy.second, copyLabel, copiedLabel)
+            if (onCopy != null) PolarisCopyLinkButton(onCopy.first, onCopy.second, words.copyLabel, words.copiedLabel)
         }
     }
 }
