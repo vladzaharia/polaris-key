@@ -262,6 +262,9 @@ export class DeviceCodeSession {
           continue;
         throw e;
       }
+
+      // A cancel during the poll wins over any answer, `ready` and `choose` included.
+      if (this.#cancelled) return { kind: "cancelled" };
       // `choose`: the flow is spent on the Worker, so polling stops here (§12.10.1).
       if (poll.s === "ready" || poll.s === "choose") return poll.outcome;
       if (this.#cancelled) return { kind: "cancelled" };
@@ -393,6 +396,8 @@ export class DeviceCodeSession {
             ErrorCode.signInFailed,
             "device sign-in answered ready without a token.",
           );
+        // A cancel that arrived while the poll was in flight: the token is dropped unstored.
+        if (this.#cancelled) return { s: "expired" };
         await tokens.set(answer.token, "signin");
         await this.#deps.storeIdentity(identity);
         await this.#deps.onAcquired();

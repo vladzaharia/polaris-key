@@ -115,6 +115,61 @@ describe("DesktopAdapter - native redirect sign-in", () => {
     adapter.dispose();
   });
 
+  it("cancel asks a v6 host to end the flow by its id, once, and a refusal changes nothing", async () => {
+    const { bridge, adapter } = await mounted();
+    const invoke = vi.fn(async () => {
+      throw new Error("refused");
+    });
+    (bridge as { invoke?: unknown }).invoke = invoke;
+    bridge.beginSignIn = vi.fn(async () => BEGIN);
+    bridge.pollSignIn = vi.fn(async () => ({ kind: "pending" }) as const);
+    const s = await start(adapter);
+    const waiting = s.wait();
+    await new Promise((r) => setTimeout(r, 0));
+    s.cancel();
+    s.cancel();
+    expect(await waiting).toEqual({ kind: "cancelled" });
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(invoke).toHaveBeenCalledWith("identity", "signIn.cancel", {
+      flowId: "n1",
+    });
+    adapter.dispose();
+  });
+
+  it("cancel on a host below v6 sends nothing and still stops waiting", async () => {
+    const { bridge, adapter } = await mounted(5);
+    const invoke = vi.fn(async () => ({ ended: true }));
+    (bridge as { invoke?: unknown }).invoke = invoke;
+    bridge.beginSignIn = vi.fn(async () => ({
+      flowId: "d1",
+      verificationUrl: "https://k.test/v",
+      userCode: "ABCD",
+    }));
+    bridge.pollSignIn = vi.fn(async () => ({ kind: "pending" }) as const);
+    const s = (await adapter.signIn.start({
+      channel: "device-code",
+    } as never)) as unknown as Session;
+    const waiting = s.wait();
+    await new Promise((r) => setTimeout(r, 0));
+    s.cancel();
+    expect(await waiting).toEqual({ kind: "cancelled" });
+    expect(invoke).not.toHaveBeenCalled();
+    adapter.dispose();
+  });
+
+  it("cancel on a v6 host with no invoke sends nothing and still settles locally", async () => {
+    const { bridge, adapter } = await mounted();
+    (bridge as { invoke?: unknown }).invoke = undefined;
+    bridge.beginSignIn = vi.fn(async () => BEGIN);
+    bridge.pollSignIn = vi.fn(async () => ({ kind: "pending" }) as const);
+    const s = await start(adapter);
+    const waiting = s.wait();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(() => s.cancel()).not.toThrow();
+    expect(await waiting).toEqual({ kind: "cancelled" });
+    adapter.dispose();
+  });
+
   it("a sender the host refuses is a typed sign-in-unavailable, no session", async () => {
     const { bridge, adapter } = await mounted();
     bridge.beginSignIn = vi.fn(async () => {

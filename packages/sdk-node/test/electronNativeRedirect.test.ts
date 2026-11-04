@@ -6,7 +6,7 @@
 
 import http from "node:http";
 import net from "node:net";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { exposePolarisBridge } from "../src/electron/index.js";
 import { createPreloadBridge } from "../src/electron/renderer.js";
 import { allowApp, ipcPair } from "./electronIpc.js";
@@ -32,7 +32,7 @@ afterEach(() => {
   for (const c of closers.splice(0)) c();
 });
 
-async function setup(o: { request?: boolean } = {}) {
+async function setup(o: { request?: boolean; tokenGate?: Promise<void> } = {}) {
   const identity = {
     enabled: true,
     configured: true,
@@ -58,7 +58,10 @@ async function setup(o: { request?: boolean } = {}) {
         json({ product: PRODUCT, services: { identity } }),
       [`POST /${PRODUCT}/identity/request`]: () =>
         json({ request_uri: REQUEST_URI, expires_in: 600 }, 201),
-      [`POST /${PRODUCT}/identity/token`]: () => json(TOKEN_OK),
+      [`POST /${PRODUCT}/identity/token`]: async () => {
+        await o.tokenGate;
+        return json(TOKEN_OK);
+      },
       [`POST /${PRODUCT}/identity/signout`]: () => json({ released: false }),
     },
   });
@@ -268,6 +271,123 @@ describe("PolarisBridge: the native redirect sign-in", () => {
     expect(await listening(portC)).toBe(true);
     env.ipc.sender.destroy();
     expect(await listening(portC)).toBe(false);
+  });
+
+  describe("ending a flow from the window", () => {
+    const end = (env: Setup, flowId: unknown, sender = 7) =>
+      (
+        env.ipc.handlers.get("polaris-key:invoke")! as (
+          ...a: unknown[]
+        ) => Promise<{ ok: boolean; value?: unknown; code?: string }>
+      )(
+        { sender: { id: sender }, senderFrame: { url: "app://main" } },
+        "identity",
+        "signIn.cancel",
+        { flowId },
+      );
+
+    it("the owner window ends the flow: the listener closes and a late callback is not served", async () => {
+      const env = await setup();
+      const begin = (await env.bridge.beginSignIn({
+        channel: "redirect",
+      } as never)) as unknown as { flowId: string };
+      const { port, state } = pushed(env);
+      expect(await listening(port)).toBe(true);
+      expect(
+        await env.bridge.invoke!("identity", "signIn.cancel", {
+          flowId: begin.flowId,
+        }),
+      ).toEqual({ ended: true });
+      expect(await listening(port)).toBe(false);
+      await expect(deliver(port, state)).rejects.toBeDefined();
+      expect(env.seen.some((s) => s.path.endsWith("/identity/token"))).toBe(
+        false,
+      );
+      expect(await env.bridge.pollSignIn(begin.flowId)).toEqual({
+        kind: "expired",
+      });
+    });
+
+    it("another window's flow id answers like an unknown one and nothing ends", async () => {
+      const env = await setup();
+      const begin = (await env.bridge.beginSignIn({
+        channel: "redirect",
+      } as never)) as unknown as { flowId: string };
+      const { port } = pushed(env);
+      const r = await end(env, begin.flowId, 8);
+      expect(r).toEqual({ ok: true, value: { ended: false } });
+      expect(await listening(port)).toBe(true);
+      expect(await env.bridge.pollSignIn(begin.flowId)).toEqual({
+        kind: "pending",
+      });
+    });
+
+    it("an unknown flow id is a no-op, a malformed one is refused, a refused sender ends nothing", async () => {
+      const env = await setup();
+      const begin = (await env.bridge.beginSignIn({
+        channel: "redirect",
+      } as never)) as unknown as { flowId: string };
+      const { port } = pushed(env);
+      expect(
+        await env.bridge.invoke!("identity", "signIn.cancel", {
+          flowId: "nope",
+        }),
+      ).toEqual({ ended: false });
+      await expect(
+        env.bridge.invoke!("identity", "signIn.cancel", { flowId: 5 }),
+      ).rejects.toMatchObject({ code: "invalid-argument" });
+      env.ipc.deny();
+      await expect(
+        env.bridge.invoke!("identity", "signIn.cancel", {
+          flowId: begin.flowId,
+        }),
+      ).rejects.toMatchObject({ code: "sender-refused" });
+      expect(await listening(port)).toBe(true);
+    });
+
+    it("a callback already being redeemed when the flow is ended leaves nothing stored", async () => {
+      let release!: () => void;
+      const env = await setup({
+        tokenGate: new Promise<void>((r) => (release = r)),
+      });
+      const begin = (await env.bridge.beginSignIn({
+        channel: "redirect",
+      } as never)) as unknown as { flowId: string };
+      const { port, state } = pushed(env);
+      const delivered = deliver(port, state);
+      await vi.waitFor(() =>
+        expect(env.seen.some((s) => s.path.endsWith("/identity/token"))).toBe(
+          true,
+        ),
+      );
+      expect(
+        await env.bridge.invoke!("identity", "signIn.cancel", {
+          flowId: begin.flowId,
+        }),
+      ).toEqual({ ended: true });
+      release();
+      await delivered;
+      // The redeem finishes after the listener answered; give it and the undo time to settle.
+      await vi.waitFor(() => expect(env.seen.length).toBeGreaterThan(2));
+      await new Promise((r) => setTimeout(r, 100));
+      expect(await env.store.getToken()).toBeNull();
+      expect(env.seen.some((s) => s.path.endsWith("/identity/signout"))).toBe(
+        false,
+      );
+    });
+
+    it("after sign-out the flow is already gone, so the verb is a no-op", async () => {
+      const env = await setup();
+      const begin = (await env.bridge.beginSignIn({
+        channel: "redirect",
+      } as never)) as unknown as { flowId: string };
+      await env.bridge.signOut();
+      expect(
+        await env.bridge.invoke!("identity", "signIn.cancel", {
+          flowId: begin.flowId,
+        }),
+      ).toEqual({ ended: false });
+    });
   });
 
   it("closing the bridge frees the listener", async () => {

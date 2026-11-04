@@ -111,6 +111,8 @@ export const DEFAULT_INVOKE_VERBS = [
   "identity.choice.devices",
   "identity.choice.complete",
   "identity.choice.cancel",
+  // v6 (I-15b.8b): the renderer ends a sign-in flow it began. The argument is the flow id only.
+  "identity.signIn.cancel",
 ] as const;
 
 /** What every handler resolves. */

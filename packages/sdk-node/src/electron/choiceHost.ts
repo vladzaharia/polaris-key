@@ -211,6 +211,16 @@ export function createChoiceHost(deps: ChoiceHostDeps) {
         end(ref);
       }
     },
+    /** Is the ref this flow holds in the middle of a `complete`? Then it is too late to end. */
+    isBusy(flowId: string): boolean {
+      const ref = byFlow.get(flowId);
+      return ref !== undefined && recs.get(ref)?.busy === true;
+    },
+    /** The flow is over: release the ref it holds, if any. */
+    dropFlow(flowId: string): void {
+      const ref = byFlow.get(flowId);
+      if (ref) end(ref);
+    },
     dropAll(): void {
       for (const ref of [...recs.keys()]) end(ref);
     },

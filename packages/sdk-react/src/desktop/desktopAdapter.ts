@@ -41,6 +41,7 @@ import { createStore, type Store } from "../core/store.js";
 import { BeforeSignOutHooks } from "../core/account.js";
 import {
   BridgeDeviceCodeSession,
+  endHostFlow,
   type BridgeSignInHooks,
   type NativeRedirectDesktopSession,
 } from "./bridgeSignIn.js";
@@ -448,9 +449,10 @@ export class DesktopAdapter implements PolarisAdapter {
         ...(begin.expiresAt !== undefined
           ? { expiresAt: begin.expiresAt }
           : {}),
-        // The host owns the flow; cancelling ends this renderer's polling of it.
+        // Cancelling stops this renderer's polling and asks the host to end the flow.
         cancel: () => {
           stop.stopped = true;
+          endHostFlow(this.bridge, begin.flowId);
           this.setBusy("identity", false);
         },
       };

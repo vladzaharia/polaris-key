@@ -648,6 +648,8 @@ describe("PolarisBridge v5 over IPC (SP-N10, SP-31)", () => {
     // UK-42.22.7: the adapter's `choiceCall(method, args)` passes the method as a variable too.
     for (const m of ["licenses", "devices", "complete", "cancel"])
       calls.add(`identity.choice.${m}`);
+    // I-15b.8b: the sign-in session (bridgeSignIn.ts) ends its host flow through `invoke`.
+    calls.add("identity.signIn.cancel");
     expect([...calls].sort()).toEqual([...DEFAULT_INVOKE_VERBS].sort());
   });
 });

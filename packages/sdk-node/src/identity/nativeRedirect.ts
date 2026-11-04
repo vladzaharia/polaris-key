@@ -44,6 +44,7 @@ import { ErrorCode, Feature } from "../constants.generated.js";
 import { printAs } from "../core/redact.js";
 import {
   redeemCode,
+  RedeemCancelled,
   type RedirectDeps,
   type RedirectOutcome,
 } from "./redirect.js";
@@ -284,6 +285,8 @@ export class NativeRedirectSession {
   readonly #listener: CallbackListener | null;
   readonly #timer: ReturnType<typeof setTimeout>;
   #used = false;
+  /** A cancel that arrived while the code was being redeemed: the token is then not stored. */
+  #cancelRequested = false;
   #resolve!: (o: NativeRedirectOutcome) => void;
   #reject!: (e: unknown) => void;
   readonly #done: Promise<NativeRedirectOutcome>;
@@ -340,6 +343,7 @@ export class NativeRedirectSession {
 
   /** Stop: the listener closes, the pending request is dropped and `wait()` answers `cancelled`. */
   cancel(): void {
+    if (this.#used) this.#cancelRequested = true;
     this.#end({ kind: "cancelled" });
   }
 
@@ -405,6 +409,11 @@ export class NativeRedirectSession {
       this.#resolve(outcome);
       return outcome;
     } catch (e) {
+      if (e instanceof RedeemCancelled) {
+        const outcome: NativeRedirectOutcome = { kind: "cancelled" };
+        this.#resolve(outcome);
+        return outcome;
+      }
       this.#reject(e);
       throw e;
     }
@@ -436,6 +445,7 @@ export class NativeRedirectSession {
       },
       req.body,
       {},
+      () => this.#cancelRequested,
     );
   }
 }

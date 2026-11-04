@@ -39,6 +39,15 @@ const delay = (ms: number, signal?: AbortSignal): Promise<void> =>
 
 const CANCELLED = Symbol("cancelled");
 
+/** Ask a v6 host to end the flow it began (I-15b.8b). Best effort: an older host, or a refusal,
+ *  leaves the host's own expiry to end it, and the caller has already stopped waiting. */
+export function endHostFlow(bridge: PolarisBridge, flowId: string): void {
+  if ((bridge.version ?? 1) < 6 || !bridge.invoke) return;
+  void Promise.resolve(
+    bridge.invoke("identity", "signIn.cancel", { flowId }),
+  ).catch(() => undefined);
+}
+
 /** The native redirect sign-in the desktop host runs (I-15b.8; identity.redirect.native): the
  *  host's main process binds the loopback listener, opens the system browser and redeems the
  *  code. The renderer holds a flow id and sees the end, never a URL, code or verifier. It polls
@@ -106,6 +115,7 @@ export class BridgeDeviceCodeSession implements DeviceCodeSignInSession {
     this.#cancelled = true;
     this.#abort.abort(CANCELLED);
     this.#hooks.onStopped();
+    endHostFlow(this.#bridge, this.#flowId);
   }
 
   async wait(
