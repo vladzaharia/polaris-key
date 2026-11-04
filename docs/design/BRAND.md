@@ -803,8 +803,8 @@ one recipe per role.
   brand row with safe-area insets and no hairline, 24 px inline padding, no sticky actions.
 - **Focus** is one neutral `--pk-text-strong` ring in both brands (2 px at a 2 px offset).
 - **Brands differ only** in the lockup (Locker trimmed 26 px; Key compact 64 px, a 1 px rule and
-  "Console" at 16/24 400 muted), the coral 3 px selected marker (Locker), and the console's
-  "Next: sign in at {issuer}" fine print.
+  "Console" at 16/24 400 muted) and the coral 3 px selected marker (Locker). Worker cards render
+  with font smoothing (`antialiased`), as the React cards do.
 
 ---
 

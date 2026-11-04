@@ -74,7 +74,7 @@ export function AuthCard({
   receipt?: boolean;
   /** Under the card, outside it (the app card's Help · Privacy, next to its receipt footer). */
   after?: React.ReactNode;
-  /** Whose air counts toward the 40 px gap: the Key lockup's 64 px canvas carries its own (24 px more here). */
+  /** Whose air counts toward the 40 px gap and the top clamp: the Key lockup's 64 px canvas carries its own (17 px above the ink, 16 below). */
   brandAir?: "lockup" | "canvas";
   children: React.ReactNode;
 }): React.ReactElement {
@@ -150,7 +150,8 @@ export function AuthCard({
         className={cn(
           "relative z-10 flex h-[calc(3.5rem+env(safe-area-inset-top,0px))] items-center justify-center pt-[env(safe-area-inset-top,0px)] sm:h-auto sm:pt-[clamp(2.5rem,12vh,7.5rem)] short:pb-6 short:pt-6",
           brandAir === "canvas"
-            ? "sm:pb-6 short:pb-[7px] short:pt-1.5"
+            ? // The lockup's canvas carries its own air (17 px above the ink): the ink starts where Locker's does.
+              "sm:pt-[calc(clamp(2.5rem,12vh,7.5rem)-1.0625rem)] sm:pb-6 short:pb-[7px] short:pt-1.5"
             : "sm:pb-10",
         )}
       >

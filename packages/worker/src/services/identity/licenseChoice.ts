@@ -700,7 +700,7 @@ function replaceGroupBody(
     })
     .join("");
   const err = bad
-    ? `<p class="field-err" id="rg-err">${icon("x-circle", true)}<span>Choose a device to replace.</span></p>`
+    ? `<p class="field-err" id="rg-err">Choose a device to replace.</p>`
     : `<p class="sr-only" id="rg-err"></p>`;
   const other = bad ? "" : noticeHtml(input.notice);
   const iso = (n: string) => `\u2068${n}\u2069`;

@@ -686,7 +686,6 @@
   "signin.approve.denied": "该请求已被拒绝。请换一种方式登录。",
   "signin.approve.expired": "该代码已过期。请获取新代码。",
   "signin.console.title": "登录控制台",
-  "signin.console.next": "下一步：{host}上的{idp}",
   "signin.console.signedOut": "你已退出登录",
   "signin.console.sessionEnded": "你的会话已结束",
   "signin.console.sessionEndedBody": "请重新登录以继续。未保存的更改会保留在此标签页中。",

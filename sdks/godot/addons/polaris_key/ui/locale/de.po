@@ -4229,11 +4229,6 @@ msgstr "Dieser Code ist abgelaufen. Fordern Sie einen neuen Code an."
 msgid "signin.console.title"
 msgstr "Bei der Konsole anmelden"
 
-#. Next: {idp} at {host}
-#. Console operator sign-in (SIGN-IN.md §3.12). Arguments: {idp} = the identity provider's name; {host} = a host name.
-msgid "signin.console.next"
-msgstr "Weiter: {idp} auf {host}"
-
 #. You're signed out
 #. Console operator sign-in (SIGN-IN.md §3.12).
 msgid "signin.console.signedOut"

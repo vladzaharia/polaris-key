@@ -1563,8 +1563,6 @@
     <string name="signin_approve_expired">Dieser Code ist abgelaufen. Fordern Sie einen neuen Code an.</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
     <string name="signin_console_title">Bei der Konsole anmelden</string>
-    <!-- Console operator sign-in (SIGN-IN.md §3.12). Arguments: {idp} = the identity provider's name; {host} = a host name. Arguments: 1=idp, 2=host. -->
-    <string name="signin_console_next">Weiter: %1$s auf %2$s</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
     <string name="signin_console_signedOut">Sie sind abgemeldet</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->

@@ -49,6 +49,7 @@ import {
   renderConsoleNotice,
   renderConsoleSignin,
   signinState,
+  type SigninState,
   type NoticeAction,
 } from "./signinPage.js";
 import { SIGNIN_SCRIPT_HASH } from "./signinScript.js";
@@ -124,34 +125,22 @@ interface FlowRecord {
 export const ADMIN_FLOW_COOKIE = "__Host-pkey_admin_flow";
 
 /**
- * ST-30c.2 (D-S5): the last account signed in to the console, so the card can greet the operator
- * with "email · Change". It is a convenience and never authorises: the value is only ever
- * validated (`loginHint`), escaped and offered to the IdP as `login_hint`. Set on an account
- * sign-in (never break-glass), kept after sign-out, cleared by Change.
+ * The retired "last operator" cookie (ST-30c.2, D-S5). The returning-person step now reads only
+ * what the browser wrote itself (`lib/lastMethod.ts`), so nothing writes or reads this one. For one
+ * release the sign-in card's GET sends it back expired when a browser still holds it, so stored
+ * addresses leave browsers.
  */
 export const CONSOLE_HINT_COOKIE = "__Host-pkey_console_hint";
-const CONSOLE_HINT_TTL_SECONDS = 30 * 86400;
 
-export function consoleHintCookie(email: string | null): string {
+export function expireConsoleHintCookie(): string {
   return [
-    `${CONSOLE_HINT_COOKIE}=${email ? encodeURIComponent(email) : ""}`,
+    `${CONSOLE_HINT_COOKIE}=`,
     "Path=/",
     "HttpOnly",
     "Secure",
     "SameSite=Strict",
-    `Max-Age=${email ? CONSOLE_HINT_TTL_SECONDS : 0}`,
+    "Max-Age=0",
   ].join("; ");
-}
-
-/** The remembered address, or null when absent, malformed or tampered with. */
-function readConsoleHint(req: Request): string | null {
-  const raw = readCookie(req.headers.get("cookie"), CONSOLE_HINT_COOKIE);
-  if (!raw) return null;
-  try {
-    return loginHint(decodeURIComponent(raw));
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -336,6 +325,7 @@ function htmlError(
   opts: {
     lede?: string;
     action?: NoticeAction;
+    back?: { label: string; href: string };
     headers?: Record<string, string>;
     formOrigins?: readonly string[];
   } = {},
@@ -419,33 +409,33 @@ async function idpFormOrigins(rp: ConsoleRp): Promise<string[]> {
   return origins.filter((o): o is string => o !== null);
 }
 
-/** The card, served at `GET /manage/login` until Continue starts the sign-in. */
+/**
+ * The card, served at `GET /manage/login` until Continue starts the sign-in. `refused` is the
+ * card's own POST answered again (400): the address was empty or malformed, so the field says so,
+ * keeps what was typed and takes focus. Nothing starts and nothing is rate-counted.
+ */
 async function signinCard(
   req: Request,
   env: Env,
   db: Db | null,
   rp: ConsoleRp,
+  refused?: { ctx: Ctx; typed: string },
 ): Promise<Response> {
   const url = new URL(req.url);
-  const ctx = ctxOf(url);
-  const state = signinState(url);
-  let host = rp.issuer;
-  try {
-    host = new URL(rp.issuer).host;
-  } catch {
-    // an unparsable issuer is shown as configured
-  }
+  const ctx = refused?.ctx ?? ctxOf(url);
+  const state: SigninState = refused
+    ? refused.ctx.stepUp
+      ? "stepUp"
+      : "signin"
+    : signinState(url);
   const origins = await idpFormOrigins(rp);
-  // D-S5: "Change" clears the remembered address and shows the empty field.
-  const change = url.searchParams.get("change") === "1";
-  const remembered = change ? null : readConsoleHint(req);
   const caller =
     state === "stepUp"
       ? await resolveConsoleCaller(env, db, req, Math.floor(Date.now() / 1000))
       : null;
   const known = caller?.session.email ?? null;
   // The passkey button and its script (hash in the CSP) only where a ceremony can run: the console
-  // RP resolves for this request, and on a step-up the signed-in account holds a console passkey.
+  // RP resolves for this request and, on a step-up, the signed-in account holds a console passkey.
   let passkey = state !== "breakGlass" && consolePasskeyAvailable(env, req);
   if (passkey && state === "stepUp") {
     const aid =
@@ -465,20 +455,19 @@ async function signinCard(
     },
   );
   allowFormAction(headers, origins);
-  if (change) headers.append("set-cookie", consoleHintCookie(null));
+  // The retired last-operator cookie leaves browsers that still hold it.
+  if (readCookie(req.headers.get("cookie"), CONSOLE_HINT_COOKIE))
+    headers.append("set-cookie", expireConsoleHintCookie());
   return new Response(
     renderConsoleSignin({
       state,
       returnTo: ctx.returnTo ?? null,
-      issuerHost: host,
-      hint: ctx.hint ?? null,
-      // A typed address in the URL wins over the remembered one (it is the retry's field).
-      chip: ctx.hint ? null : remembered,
+      hint: refused ? refused.typed : (ctx.hint ?? null),
       knownEmail: known,
-      focusEmail: change,
+      ...(refused ? { invalid: true } : {}),
       passkey,
     }),
-    { status: 200, headers },
+    { status: refused ? 400 : 200, headers },
   );
 }
 
@@ -520,7 +509,16 @@ export async function handleAdminLogin(
       return htmlError(413, "We couldn’t start that sign-in", {
         action: { label: "Back to sign in", href: "/manage/login" },
       });
-    return startSignIn(req, env, rp, ctxOfForm(new URLSearchParams(raw)), 303);
+    const form = new URLSearchParams(raw);
+    const posted = ctxOfForm(form);
+    // Continue needs an address (an Emergency sign-in and the account chooser are the ones that ask for none): refuse
+    // here, before anything starts, with the field's own message.
+    if (!posted.breakGlass && !posted.other && !posted.hint)
+      return signinCard(req, env, db, rp, {
+        ctx: posted,
+        typed: (form.get("login_hint") ?? "").trim().slice(0, 254),
+      });
+    return startSignIn(req, env, rp, posted, 303);
   }
   const reqUrl = new URL(req.url);
   // Viewing the card is free; starting a sign-in is what the limit counts.
@@ -556,8 +554,17 @@ async function startSignIn(
   try {
     discovered = await discover(rp);
   } catch {
-    return htmlError(502, "Can’t reach the sign-in provider", {
+    return htmlError(502, "Single sign-on isn’t working right now", {
+      lede: "Try again, or use another way to sign in.",
       action: startAgain("Try again", ctx, viaPost),
+      back: {
+        label: "Back to sign in",
+        href: loginHref({
+          returnTo: ctx.returnTo ?? null,
+          stepUp: ctx.stepUp === true,
+          breakGlass: ctx.breakGlass === true,
+        }),
+      },
       formOrigins: viaPost ? await idpFormOrigins(rp) : [],
     });
   }
@@ -632,7 +639,7 @@ export function consoleRefusalCopy(reason: ConsoleRefusal): {
   if (reason === "method")
     return {
       title: "That sign-in can’t open this console",
-      lede: "Use your company account or a passkey. An email code can’t.",
+      lede: "Use single sign-on or a passkey. An email code can’t.",
     };
   return {
     title: "We couldn’t open your account",
@@ -871,16 +878,12 @@ export async function handleAdminCallback(
   // costs nothing and keeps "the callback only ever redirects to an allowlisted path" a local
   // property of this function rather than a cross-file invariant.
   const location = sanitizeReturnTo(flow.returnTo ?? null) ?? "/manage/";
-  const hintEmail = loginHint(signedIn.email || identity.email || null);
   return new Response(null, {
     status: 302,
     headers: new Headers([
       ["location", location],
       ["set-cookie", buildSessionCookie(token)],
       ["set-cookie", clearAccountRealmCookie(ADMIN_FLOW_COOKIE)],
-      ...(hintEmail
-        ? [["set-cookie", consoleHintCookie(hintEmail)] as [string, string]]
-        : []),
       ["cache-control", "no-store"],
     ]),
   });

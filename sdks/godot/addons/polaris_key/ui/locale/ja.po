@@ -4220,11 +4220,6 @@ msgstr "このコードの有効期限が切れました。新しいコードを
 msgid "signin.console.title"
 msgstr "コンソールにサインイン"
 
-#. Next: {idp} at {host}
-#. Console operator sign-in (SIGN-IN.md §3.12). Arguments: {idp} = the identity provider's name; {host} = a host name.
-msgid "signin.console.next"
-msgstr "次へ：{host}の{idp}"
-
 #. You're signed out
 #. Console operator sign-in (SIGN-IN.md §3.12).
 msgid "signin.console.signedOut"

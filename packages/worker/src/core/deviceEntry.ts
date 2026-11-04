@@ -25,7 +25,6 @@ import { methodNotAllowed } from "./errors.js";
 import { clientNetwork, clientWideNetwork, rateLimitOk } from "./rateLimit.js";
 import {
   callout,
-  icon,
   note,
   renderAuthCard,
   DEVICE_CARD_LINKS,
@@ -83,7 +82,7 @@ export function codeEntryBody(opts: {
     `<label for="user_code">Code</label>` +
     `<input id="user_code" name="user_code" type="text" required autofocus autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32" placeholder="XXXX-XXXX"${opts.typed ? ` value="${escapeHtml(opts.typed)}"` : ""}${opts.miss ? ` aria-invalid="true" aria-describedby="user_code-err"` : ""}>` +
     (opts.miss
-      ? `<p class="field-err" id="user_code-err">${icon("x-circle", true)}<span>${escapeHtml(MISS)}</span></p>`
+      ? `<p class="field-err" id="user_code-err">${escapeHtml(MISS)}</p>`
       : "") +
     `</div>` +
     note(

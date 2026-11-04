@@ -212,19 +212,25 @@ the person's device. A pending passkey ceremony is held for 5 minutes: its rando
 the relying party, plus the same-origin return path for a sign-in, or the account id and its user
 handle for adding a passkey.
 
-### The console sign-in card's remembered address (key.plrs.im/manage/login)
+### The sign-in cards' remembered method (polaris.locker and key.plrs.im/manage/login)
 
-The console's sign-in card remembers who signed in last, so an operator sees "email · Change"
-instead of an empty field. It is one cookie, set on the operator's own browser:
+Both sign-in cards remember, in the person's own browser, how they last signed in, so a returning
+person is greeted ("Welcome back") with their usual method first. Nothing is looked up on the
+server: the card compares the typed address with a record this browser wrote itself. The record
+names no one: the address is stored only as a salted hash, and the salt never leaves the browser.
 
-| Cookie                     | Holds                                        | Lifetime | Flags                                   | Cleared by                            |
-| -------------------------- | -------------------------------------------- | -------- | --------------------------------------- | ------------------------------------- |
-| `__Host-pkey_console_hint` | The email of the last account sign-in (text) | 30 days  | `HttpOnly`, `Secure`, `SameSite=Strict` | **Change** on the card, or its expiry |
+| Store                                                              | Holds                                                  | Lifetime      | Flags                                       | Cleared by                |
+| ------------------------------------------------------------------ | ------------------------------------------------------ | ------------- | ------------------------------------------- | ------------------------- |
+| Cookie `pk_last_method`                                            | Polaris Locker: method kind, salted address hash, time | 365 days      | `Path=/`, `SameSite=Lax`, `Secure`          | The person, or its expiry |
+| Cookie `pk_console_last_method`                                    | The console: `passkey` or `sso`, hash, time            | 365 days      | `Path=/manage`, `SameSite=Strict`, `Secure` | The person, or its expiry |
+| localStorage `pk-hint-salt`, `pk-hint-name:<hash>`                 | Locker's random salt, and the first name               | Until cleared | Browser storage                             | The person                |
+| localStorage `pk-console-hint-salt`, `pk-console-hint-name:<hash>` | The console's salt, and the first name                 | Until cleared | Browser storage                             | The person                |
+| sessionStorage `pk-signin-via`, `pk-console-signin-via`            | The method this tab is signing in with                 | The tab       | Browser storage                             | The next sign-in          |
 
-It is set only by an account sign-in, never by break-glass, and it survives sign-out on purpose.
-The Worker never stores it. It is read only to fill the card and to offer the address to the
-identity provider as `login_hint`; it grants nothing. On a shared computer the card shows the
-last operator's address until someone presses **Change**.
+The cookies are readable by the card's script (a salted hash is not a secret) and are never read by
+the Worker. They survive sign-out on purpose, grant nothing and only order the methods. An
+Emergency sign-in is never remembered. The console used to keep the last operator's address in a
+cookie (`__Host-pkey_console_hint`); that cookie is retired, and the card expires a stored copy.
 
 ### Product backends — the license document sent to the developer's own server
 

@@ -3486,11 +3486,6 @@
       "role": "title",
       "note": "Console operator sign-in (SIGN-IN.md §3.12)."
     },
-    "signin.console.next": {
-      "value": "Next: {idp} at {host}",
-      "role": "body",
-      "note": "Console operator sign-in (SIGN-IN.md §3.12). Arguments: {idp} = the identity provider's name; {host} = a host name."
-    },
     "signin.console.signedOut": {
       "value": "You're signed out",
       "role": "body",

@@ -360,7 +360,7 @@ describe("the passkey button (ST-30c.6)", () => {
       await page.waitForTimeout(3000);
       expect(optionsCalls).toBeLessThanOrEqual(2);
       expect(await page.locator("#pk-msg").isVisible()).toBe(false);
-      expect(await page.locator("#pk-msg-t").textContent()).toBe("");
+      expect(await page.locator("#pk-msg").textContent()).toBe("");
       await closeContext(context);
     },
   );
@@ -376,11 +376,13 @@ describe("the passkey button (ST-30c.6)", () => {
     await closeContext(context);
   });
 
-  it("a step-up offers Use your passkey beside Sign in again, and the same account's passkey confirms it", async () => {
+  it("a step-up offers Use your passkey beside single sign-on, and the same account's passkey confirms it", async () => {
     const { context, page, violations } = await open(ada);
     await signedIn(context, ada);
     await page.goto(`${origin}/manage/login?stepUp=1`);
-    await page.getByRole("button", { name: "Sign in again" }).waitFor();
+    await page
+      .getByRole("button", { name: "Continue with single sign-on" })
+      .waitFor();
     const use = page.getByRole("button", { name: "Use your passkey" });
     await use.waitFor();
     expect(await page.getByText("Sign in with a passkey").count()).toBe(0);
@@ -419,12 +421,12 @@ describe("the passkey button (ST-30c.6)", () => {
     [
       "method",
       403,
-      "This passkey doesn’t open the console yet. Use Continue, then choose Use for the console in Account → Sign-in methods.",
+      "This passkey doesn’t open the console yet. Use single sign-on, then choose Use for the console in Account → Sign-in methods.",
     ],
     [
       "idp_first",
       403,
-      "Your access needs a recent company sign-in. Use Continue this time.",
+      "Your access needs a recent single sign-on. Use it this time.",
     ],
     [
       "account",
@@ -436,7 +438,11 @@ describe("the passkey button (ST-30c.6)", () => {
       403,
       "Use a passkey of the account you’re signed in with.",
     ],
-    ["invalid", 401, "That passkey didn’t work. Try again, or use Continue."],
+    [
+      "invalid",
+      401,
+      "Your passkey didn’t work. Try again, or use another way.",
+    ],
     ["expired", 400, "This passkey request expired. Try again."],
     ["rate", 429, "Too many sign-in attempts. Wait a minute, then try again."],
   ];
@@ -455,14 +461,19 @@ describe("the passkey button (ST-30c.6)", () => {
     await closeContext(context);
   });
 
-  it("the message carries a glyph and the button points at it", async () => {
+  it("the message is plain text under the button, and the button points at it", async () => {
     const { context, page } = await open(nogrant);
     await page.goto(`${origin}/manage/login`);
     const button = page.getByRole("button", { name: "Sign in with a passkey" });
     expect(await button.getAttribute("aria-describedby")).toBe("pk-err");
     await button.click();
     await page.locator("#pk-msg").waitFor();
-    expect(await page.locator("#pk-msg svg").count()).toBe(1);
+    expect(await page.locator("#pk-msg svg").count()).toBe(0);
+    expect(
+      await page
+        .locator("#pk-msg")
+        .evaluate((el) => getComputedStyle(el).textAlign),
+    ).toBe("center");
     expect(await page.locator("#pk-msg").isVisible()).toBe(true);
     await closeContext(context);
   });
@@ -485,7 +496,9 @@ describe("the passkey button (ST-30c.6)", () => {
     const { context, page } = await open(null);
     await signedIn(context, nopass);
     const res = await page.goto(`${origin}/manage/login?stepUp=1`);
-    await page.getByRole("button", { name: "Sign in again" }).waitFor();
+    await page
+      .getByRole("button", { name: "Continue with single sign-on" })
+      .waitFor();
     expect(await page.locator("#pk").count()).toBe(0);
     expect(res!.headers()["content-security-policy"]).not.toContain(
       "script-src",
@@ -493,13 +506,15 @@ describe("the passkey button (ST-30c.6)", () => {
     await closeContext(context);
   });
 
-  it("a step-up with a passkey leads with it: the primary, then or, then the ghost Sign in again", async () => {
+  it("a step-up with a passkey leads with it: the primary, then or, then the ghost single sign-on", async () => {
     const { context, page } = await open(ada);
     await signedIn(context, ada);
     await page.goto(`${origin}/manage/login?stepUp=1`);
     const use = page.getByRole("button", { name: "Use your passkey" });
     await use.waitFor();
-    const again = page.getByRole("button", { name: "Sign in again" });
+    const again = page.getByRole("button", {
+      name: "Continue with single sign-on",
+    });
     const [u, a] = await Promise.all([use.boundingBox(), again.boundingBox()]);
     expect(u!.y).toBeLessThan(a!.y);
     const fill = (l: typeof use) =>
@@ -628,9 +643,11 @@ describe("the card without script, and keyboard (ST-30c.6)", () => {
     });
     await context.route(`${ISSUER}/**`, (route) => route.abort());
     await page.goto(`${origin}/manage/login`);
-    expect(await page.getByText("Sign in with a passkey").isVisible()).toBe(
-      false,
-    );
+    expect(
+      await page
+        .getByText("Sign in with a passkey", { exact: true })
+        .isVisible(),
+    ).toBe(false);
     expect(await page.locator("#pk").isVisible()).toBe(false);
     await page.getByLabel("Email").fill("ada@example.com");
     await page.getByRole("button", { name: "Continue" }).click();

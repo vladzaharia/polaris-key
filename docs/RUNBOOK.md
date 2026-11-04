@@ -205,7 +205,8 @@ at most Product admin or Console access, never Superadmin or Platform admin.
 
 - **The sign-in card.** `GET /manage/login` serves the Polaris Key Console card and starts no
   flow; the redirect to the IdP starts when the person presses Continue (`?go=1`), with the typed
-  email as the IdP's `login_hint`. `?signedOut=1`, `?ended=1` and `?stepUp=1` pick the card's
+  email as the IdP's `login_hint`. Continue refuses an empty or malformed address (400, the card
+  again, nothing started). `?signedOut=1`, `?ended=1` and `?stepUp=1` pick the card's
   copy only. Scripts and tests that need the redirect request `/manage/login?go=1`.
 - **Locked out.** Add the person to `PLATFORM_ADMIN_GROUP` in Pocket ID (the console client's
   provider, above) and have them sign in again at `/manage`. Their next sign-in carries the group.

@@ -32,7 +32,8 @@ describe("the shell", () => {
     expect(html).toContain('href="/assets/branding/locker/favicon.svg"');
     expect(html).toContain('aria-label="Polaris Locker"');
     expect(html).not.toContain("device</");
-    expect(html).toContain("<title>Polaris Locker</title>");
+    // The lockup is hidden from assistive tech (its wrapper names it once): no inner title.
+    expect(html).toContain('data-label="Polaris Locker"');
     expect(html).not.toContain("Polaris Key");
     expect(html).not.toContain("Polaris&nbsp;Key");
     expect(html).toContain(`<style>${BRAND_PAGE_CSS_LOCKER}</style>`);

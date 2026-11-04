@@ -168,11 +168,47 @@ describe("console sign-in card in Chromium", () => {
   );
 });
 
-// A `__Host-` cookie needs a secure origin, and the test server is plain http: the browser would
-// refuse to store it, so the hint is sent as a request header (what the Worker reads either way).
-const HINT_HEADER = { cookie: "__Host-pkey_console_hint=ada%40example.com" };
+/**
+ * What this browser remembers after a passkey sign-in (`lib/lastMethod.ts`): the record the
+ * returning-person step reads. Written the way the SPA writes it, on a page of this origin.
+ */
+async function rememberPasskey(
+  page: import("playwright").Page,
+  address: string,
+  name: string | null,
+) {
+  await page.evaluate(
+    async ([addr, first]) => {
+      localStorage.setItem("pk-console-hint-salt", "e2e");
+      const digest = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(`e2e:${addr!.toLowerCase()}`),
+      );
+      const h = Array.from(new Uint8Array(digest).slice(0, 12), (x) =>
+        x.toString(16).padStart(2, "0"),
+      ).join("");
+      const at = Math.floor(Date.now() / 1000) - 2 * 86_400;
+      document.cookie = `pk_console_last_method=passkey.${h}.${at}; Path=/`;
+      if (first) localStorage.setItem(`pk-console-hint-name:${h}`, first);
+    },
+    [address, name] as const,
+  );
+}
 
-describe("the known-operator chip, Change and the break-glass link (ST-30c.2)", () => {
+/** Type the address and press Continue: the returning-person step takes the card. */
+async function openHint(
+  page: import("playwright").Page,
+  address = "ada@example.com",
+  name: string | null = "Ada",
+) {
+  await page.goto(`${origin}/manage/login`);
+  await rememberPasskey(page, address, name);
+  await page.getByLabel("Email").fill(address);
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.locator("#pk-hint").waitFor({ state: "visible" });
+}
+
+describe("the returning-person step, Change and the break-glass link (ST-30c.2)", () => {
   const shot = async (
     page: import("playwright").Page,
     name: string,
@@ -186,9 +222,40 @@ describe("the known-operator chip, Change and the break-glass link (ST-30c.2)", 
     });
   };
 
-  it("the chip shows the remembered address; Continue sends it as login_hint, with no CSP violation", async () => {
+  it("the card shows no address until one is typed; the typed address greets by name, with no request", async () => {
     const context = await browser.newContext();
-    await context.setExtraHTTPHeaders(HINT_HEADER);
+    const page = await context.newPage();
+    const requests: string[] = [];
+    page.on("request", (r) => requests.push(`${r.method()} ${r.url()}`));
+    await page.goto(`${origin}/manage/login`);
+    expect(await page.locator(".chip:visible").count()).toBe(0);
+    expect(await page.getByLabel("Email").inputValue()).toBe("");
+    await rememberPasskey(page, "ada@example.com", "Ada");
+    requests.length = 0;
+    await page.getByLabel("Email").fill("ada@example.com");
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await page.getByRole("heading", { name: "Welcome back, Ada" }).waitFor();
+    // Nothing reached the server on the way: no POST, no lookup.
+    expect(requests).toEqual([]);
+    expect(await page.locator(".chip-email").textContent()).toBe(
+      "ada@example.com",
+    );
+    await page.getByText("You usually sign in with a passkey").waitFor();
+    await page.getByText(/On this browser, last time 2 days ago/).waitFor();
+    // Focus is on the title; the usual way is the primary, single sign-on the method button.
+    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe(
+      "H1",
+    );
+    await page.getByRole("button", { name: "Use a passkey" }).waitFor();
+    await page
+      .getByRole("button", { name: "Continue with single sign-on" })
+      .waitFor();
+    // Another address is not greeted: it goes on to the IdP as before.
+    await closeContext(context);
+  });
+
+  it("another address is not recognised: Continue goes on to the IdP, with no CSP violation", async () => {
+    const context = await browser.newContext();
     const page = await context.newPage();
     const violations: string[] = [];
     page.on("console", (m) => {
@@ -200,32 +267,62 @@ describe("the known-operator chip, Change and the break-glass link (ST-30c.2)", 
     });
     await context.route(`${ISSUER}/**`, (route) => route.abort());
     await page.goto(`${origin}/manage/login`);
-    await page.locator(".chip-email").waitFor();
-    expect(await page.locator(".chip-email").textContent()).toBe(
-      "ada@example.com",
-    );
-    await page.getByRole("button", { name: "Continue" }).click();
+    await rememberPasskey(page, "ada@example.com", "Ada");
+    await page.getByLabel("Email").fill("mara@example.com");
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    const idpUrl = new URL((await idpRequest).url());
+    expect(idpUrl.searchParams.get("login_hint")).toBe("mara@example.com");
+    expect(violations).toEqual([]);
+    await closeContext(context);
+  });
+
+  it("Continue with single sign-on on the step sends the typed address as login_hint, with no CSP violation", async () => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const violations: string[] = [];
+    page.on("console", (m) => {
+      if (/Content Security Policy|violates/i.test(m.text()))
+        violations.push(m.text());
+    });
+    const idpRequest = page.waitForRequest(`${ISSUER}/authorize**`, {
+      timeout: 15_000,
+    });
+    await context.route(`${ISSUER}/**`, (route) => route.abort());
+    await openHint(page);
+    await page
+      .getByRole("button", { name: "Continue with single sign-on" })
+      .click();
     const idpUrl = new URL((await idpRequest).url());
     expect(idpUrl.searchParams.get("login_hint")).toBe("ada@example.com");
     expect(violations).toEqual([]);
     await closeContext(context);
   });
 
-  it("Change clears the cookie and shows the empty field", async () => {
-    const context = await browser.newContext();
-    await context.setExtraHTTPHeaders(HINT_HEADER);
-    const page = await context.newPage();
-    await page.goto(`${origin}/manage/login`);
-    const changed = page.waitForResponse((r) => r.url().includes("change=1"));
-    await page.getByRole("link", { name: "Change" }).click();
-    const cleared = (await (await changed).allHeaders())["set-cookie"] ?? "";
-    expect(cleared).toContain("__Host-pkey_console_hint=;");
-    expect(cleared).toContain("Max-Age=0");
-    await page.getByLabel("Email").waitFor();
-    expect(new URL(page.url()).searchParams.get("change")).toBe("1");
-    expect(await page.getByLabel("Email").inputValue()).toBe("");
-    await closeContext(context);
-  });
+  it.each(["Change", "Other ways to sign in"])(
+    "%s returns to the field with the address kept and focused; the record stays",
+    async (name) => {
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      await openHint(page);
+      await page.getByRole("button", { name, exact: true }).click();
+      await page.locator("#pk-main").waitFor({ state: "visible" });
+      expect(await page.getByLabel("Email").inputValue()).toBe(
+        "ada@example.com",
+      );
+      // The field has focus (an email input exposes no selection range; the script selects it).
+      expect(
+        await page.evaluate(
+          () => document.activeElement === document.getElementById("email"),
+        ),
+      ).toBe(true);
+      expect(
+        await page.evaluate(() =>
+          document.cookie.includes("pk_console_last_method="),
+        ),
+      ).toBe(true);
+      await closeContext(context);
+    },
+  );
 
   it("the Emergency sign-in link opens the start card, and Continue starts a fresh-login flow", async () => {
     const context = await browser.newContext();
@@ -261,14 +358,12 @@ describe("the known-operator chip, Change and the break-glass link (ST-30c.2)", 
         colorScheme: scheme,
         viewport: { width, height },
       });
-      await context.setExtraHTTPHeaders(HINT_HEADER);
       const page = await context.newPage();
       for (const [name, path, ready] of [
-        ["signin-chip", "/manage/login", ".chip-email"],
-        ["signedout-chip", "/manage/login?signedOut=1", ".chip-email"],
-        ["ended-chip", "/manage/login?ended=1", ".chip-email"],
+        ["signin", "/manage/login", "#email"],
+        ["signedout", "/manage/login?signedOut=1", "#email"],
+        ["ended", "/manage/login?ended=1", "text=Your session ended."],
         ["breakglass", "/manage/login?breakGlass=1", "text=Every use is"],
-        ["change-empty", "/manage/login?change=1", "#email"],
       ] as const) {
         await page.goto(`${origin}${path}`);
         await page.locator(ready).first().waitFor();
@@ -279,12 +374,19 @@ describe("the known-operator chip, Change and the break-glass link (ST-30c.2)", 
         ).toBe(true);
         await shot(page, name, scheme, width);
       }
+      await openHint(page);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+      await shot(page, "returning", scheme, width);
       await closeContext(context);
     },
   );
 });
 
-describe("the chip under large text and the lockup (UX review fixes)", () => {
+describe("the returning-person step under large text and the lockup (UX review fixes)", () => {
   it.each([
     [360, 150],
     [360, 200],
@@ -296,12 +398,8 @@ describe("the chip under large text and the lockup (UX review fixes)", () => {
       const context = await browser.newContext({
         viewport: { width, height: 800 },
       });
-      await context.setExtraHTTPHeaders({
-        cookie:
-          "__Host-pkey_console_hint=vlad.zaharia%40polaris-engineering.dev",
-      });
       const page = await context.newPage();
-      await page.goto(`${origin}/manage/login`);
+      await openHint(page, "vlad.zaharia@polaris-engineering.dev", "Vlad");
       await page.evaluate(
         (p) => document.documentElement.style.setProperty("font-size", `${p}%`),
         pct,
@@ -322,10 +420,25 @@ describe("the chip under large text and the lockup (UX review fixes)", () => {
           () => document.documentElement.scrollWidth <= window.innerWidth,
         ),
       ).toBe(true);
+      // Large text: the pill is a 10 px box, the icons beside labels hide, the panel stacks.
+      const look = await page.evaluate(() => {
+        const pill = getComputedStyle(document.querySelector(".chip")!);
+        const ic = getComputedStyle(
+          document.querySelector("#h-go .ic")!,
+        ).display;
+        const panel = getComputedStyle(
+          document.querySelector(".usual")!,
+        ).flexDirection;
+        return [pill.borderTopLeftRadius, ic, panel];
+      });
+      // Every case here is under 16 em of card body: a 10 px (0.625 rem) box, no icon, a stacked panel.
+      expect(parseFloat(look[0]!)).toBeCloseTo((10 * pct) / 100, 0);
+      expect(look[1]).toBe("none");
+      expect(look[2]).toBe("column");
       if (process.env.PK_SHOTS_DIR) {
         mkdirSync(process.env.PK_SHOTS_DIR, { recursive: true });
         await page.screenshot({
-          path: `${process.env.PK_SHOTS_DIR}/text${pct}-chip-${width}.png`,
+          path: `${process.env.PK_SHOTS_DIR}/text${pct}-returning-${width}.png`,
         });
       }
       await closeContext(context);
@@ -410,17 +523,14 @@ describe("the chip under large text and the lockup (UX review fixes)", () => {
     const context = await browser.newContext({
       viewport: { width: 360, height: 800 },
     });
-    await context.setExtraHTTPHeaders({
-      cookie: "__Host-pkey_console_hint=vlad.zaharia%40polaris-eng.dev",
-    });
     const page = await context.newPage();
-    await page.goto(`${origin}/manage/login`);
+    await openHint(page, "vlad.zaharia@polaris-eng.dev", "Vlad");
     const email = (await page.locator(".chip-email").boundingBox())!;
     const change = (await page.locator(".chip-change").boundingBox())!;
     expect(change.y).toBeLessThan(email.y + email.height);
     if (process.env.PK_SHOTS_DIR)
       await page.screenshot({
-        path: `${process.env.PK_SHOTS_DIR}/chip-360-100.png`,
+        path: `${process.env.PK_SHOTS_DIR}/returning-360-100.png`,
         clip: { x: 0, y: 0, width: 360, height: 520 },
       });
     await closeContext(context);

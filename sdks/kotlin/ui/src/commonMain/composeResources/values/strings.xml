@@ -1563,8 +1563,6 @@
     <string name="signin_approve_expired">That code expired. Get a new code.</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
     <string name="signin_console_title">Sign in to the console</string>
-    <!-- Console operator sign-in (SIGN-IN.md §3.12). Arguments: {idp} = the identity provider's name; {host} = a host name. Arguments: 1=idp, 2=host. -->
-    <string name="signin_console_next">Next: %1$s at %2$s</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
     <string name="signin_console_signedOut">You're signed out</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->

@@ -474,27 +474,38 @@
     foot: footer("Drift Kart", "Pitlane Games"),
   });
 
-  // 13 Console: identifier-first, known operator chip
+  // 13 Console: identifier-first, no fine print (Locker's email step)
   F({
     id: "13-console",
     surface: "Console",
     body: `<h1>Sign in to the console</h1>
-      <div class="chip"><div class="avatar">VZ</div><span>vlad@zaharia.dev</span><span class="ch link">Change</span></div>
+      ${field("Email", "", { ph: "you@example.com" })}
       ${btn("primary", "Continue", "arrow")}
-      <p class="small">Next: Pocket ID at id.zaharia.dev</p>
       <div class="or">or</div>
       ${btn("secondary", `<span class="acc" style="color:var(--pk-accent-fg)">${I.passkey.replace("<svg", '<svg width="18" height="18"')}</span> Sign in with a passkey`)}`,
   });
 
-  // 14 Console: session ended in place
+  // 13b Console: the returning person (Locker's HintStep, passkey-usual)
+  F({
+    id: "13b-console-returning",
+    surface: "Console",
+    body: `<div class="chip"><div class="avatar">V</div><span>vlad@zaharia.dev</span><span class="ch link">Change</span></div>
+      <h1>Welcome back, Vlad</h1>
+      <div class="person"><div class="avatar">${I.passkey.replace("<svg", '<svg width="18" height="18"')}</div><div><div class="n">You usually sign in with a passkey</div><div class="e">On this browser, last time 2 days ago</div></div></div>
+      ${btn("primary", "Use a passkey")}
+      <div class="or">or</div>
+      ${btn("secondary", "Continue with single sign-on")}
+      <p class="small center"><span class="link">Other ways to sign in</span></p>`,
+  });
+
+  // 14 Console: session ended with no page open (a bookmark after the session lapsed)
   F({
     id: "14-console-session-ended",
     surface: "Console",
-    body: `<h1>Your session ended</h1>
-      <p class="lede">Sign in again to carry on. Your unsaved changes stay in this tab.</p>
-      <div class="chip"><div class="avatar">VZ</div><span>vlad@zaharia.dev</span><span class="ch link">Change</span></div>
-      ${btn("primary", "Continue", "arrow")}
-      <p class="small">Next: Pocket ID at id.zaharia.dev</p>`,
+    body: `<h1>Sign in to the console</h1>
+      <p class="small">Your session ended.</p>
+      ${field("Email", "", { ph: "you@example.com" })}
+      ${btn("primary", "Continue", "arrow")}`,
   });
 
   // 15 Worker page: expired or used code or link (no JS)

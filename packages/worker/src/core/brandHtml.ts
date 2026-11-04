@@ -128,7 +128,7 @@ export const BRAND_PAGE_CSS = [
   `@media (prefers-color-scheme: light){:root{${palette("light")}}}`,
   `*{box-sizing:border-box}`,
   `html{background:var(--page)}`,
-  `body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:3rem 1rem;background:var(--page);color:var(--text);font-family:${FONT.sans};font-synthesis:none;font-size:1rem;line-height:1.5;-webkit-text-size-adjust:100%;text-rendering:optimizeLegibility}`,
+  `body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:3rem 1rem;background:var(--page);color:var(--text);font-family:${FONT.sans};font-synthesis:none;font-size:1rem;line-height:1.5;-webkit-text-size-adjust:100%;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}`,
   `main{width:100%;max-width:28rem}`,
   // The console sign-in look (shared with the customer portal's login card and the console's
   // own boot screen): the brand block centred over one card, brand type, generous spacing. The
@@ -267,7 +267,10 @@ const AUTH_CARD_RULES = [
   `.ac-dev .ic{margin:0}`,
   `.ac-brand.quiet{opacity:.8}`,
   `.ac-passport{display:none}`,
-  `.ac-body{display:grid;gap:1.5rem;min-width:0;padding:2rem;overflow-wrap:anywhere}`,
+  `.ac-body{display:grid;gap:1.5rem;min-width:0;padding:2rem;overflow-wrap:anywhere;container-type:inline-size}`,
+  // Large text (the Worker cannot read the SPA's flag): under 16 em of body, icons beside a label
+  // hide, the identity pill is a 10 px box and the hint panel stacks. 150 % on a 390 px phone.
+  `@container (max-width: 16em){.button .ic{display:none}}`,
   `.ac-body>*{margin:0;min-width:0}`,
   `.ac-body h1{font-size:1.5rem;line-height:2rem;letter-spacing:0}`,
   `.ac-body h1+p{margin-top:-1rem;color:var(--muted);font-size:1rem;line-height:1.5rem}`,
@@ -282,8 +285,8 @@ const AUTH_CARD_RULES = [
   // Footer type: 14/20 at 400 in `--muted`, the link style; the middot is muted, aria-hidden to
   // assistive tech (`content: "·" / ""`), with 8 px each side.
   `.ac-links{display:flex;flex-wrap:wrap;justify-content:center;max-width:28.5rem;margin:1.5rem auto 0;padding:0 1rem;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
-  `.ac-links a+a{position:relative;margin-inline-start:1rem}`,
-  `.ac-links a+a::before{content:"\\00b7" / "";position:absolute;inset-inline-start:-.6875rem;color:var(--muted);text-decoration:none}`,
+  `.ac-links a+a{position:relative;margin-inline-start:1.25rem}`,
+  `.ac-links a+a::before{content:"\\00b7" / "";position:absolute;inset-inline-start:-.75rem;color:var(--muted);text-decoration:none}`,
   `[data-brand=locker] .ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;color:var(--muted)}`,
   `[data-brand=locker] .ac-links a:hover{color:var(--strong)}`,
   `@media (pointer: coarse){.ac-body .tertiary{margin-block:-.75rem}[data-brand=console] .ac-links{margin-top:.75rem}}`,
@@ -294,11 +297,12 @@ const AUTH_CARD_RULES = [
   `[data-brand=locker] .code{color:var(--strong)}`,
   `.ic.lg{width:2.5rem;height:2.5rem;color:var(--strong)}`,
   // The pkey login card: the code, big, in its own panel; the role tags in one wrapping row.
-  `.codepanel{display:grid;gap:.25rem;justify-items:center;padding:1rem;border:1px solid var(--rule);border-radius:.625rem;background:var(--sunken);text-align:center}`,
+  `.codepanel{display:grid;gap:.25rem;justify-items:center;padding:.75rem 1rem;border-radius:.625rem;background:var(--hover);text-align:center}`,
   `.codepanel p{margin:0;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.codepanel .code{color:var(--strong);font-size:1.5rem;line-height:2rem;font-weight:500}`,
   `.facts{display:grid;gap:.5rem;min-width:0}`,
   `.facts>*,.facts .fine{margin:0}`,
+  `.facts .fine{color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.tags{display:flex;flex-wrap:wrap;gap:.5rem;margin:0}`,
   `.tags .tag{display:inline-flex;gap:.375rem;align-items:center;max-width:100%;padding:.125rem .5rem;white-space:nowrap}`,
   `.tags .tag .muted{white-space:normal}`,
@@ -314,13 +318,13 @@ const AUTH_CARD_RULES = [
   `.ac-body form p{margin:0}`,
   `.ac-body form .note{margin-top:-.25rem}`,
   // A neutral callout (DL6: a refusal is information, not an alarm) and the one-line note.
-  `.callout{display:flex;gap:.75rem;align-items:flex-start;padding:.75rem 1rem;border:1px solid var(--rule);border-radius:.625rem;background:var(--sunken)}`,
+  `.callout{display:flex;gap:.75rem;align-items:flex-start;padding:.75rem 1rem;border-radius:.625rem;background:var(--hover)}`,
   `.callout>.ic{margin-top:.125rem;color:var(--muted)}`,
   `.callout-text{display:grid;gap:.125rem;min-width:0}`,
   `.callout-text p{margin:0;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.callout-text .callout-title{color:var(--strong);font-size:1rem;line-height:1.5rem;font-weight:500}`,
   // The person row (SIGN-IN.md §3.6): initial avatar, name, email and the quiet "Not you?" action.
-  `.person{display:flex;gap:.75rem;align-items:center;padding:.75rem .5rem .75rem 1rem;border:1px solid var(--rule);border-radius:.625rem;background:var(--sunken)}`,
+  `.person{display:flex;gap:.75rem;align-items:center;padding:.75rem .5rem .75rem 1rem;border-radius:.625rem;background:var(--hover)}`,
   `.person .ac-mono{width:2.5rem;height:2.5rem;border-radius:50%}`,
   `.person-text{display:grid;min-width:0;flex:1;font-size:.875rem;line-height:1.25rem;color:var(--muted)}`,
   `.person-name{color:var(--strong);font-size:1rem;line-height:1.5rem;font-weight:500}`,
@@ -338,9 +342,8 @@ const AUTH_CARD_RULES = [
   `.field{display:grid;gap:.5rem;min-width:0}`,
   `.field label,.field input{margin:0}`,
   `.ac-body input[type=text]{margin:0;min-height:3.5rem;text-align:center;font-size:min(1.5rem,6vw);line-height:2rem;font-weight:500;letter-spacing:.1em}`,
-  `.ac-body input[type=text][aria-invalid=true]{border-color:var(--danger-edge)}`,
-  `.field-err{display:flex;gap:.5rem;align-items:flex-start;color:var(--danger);font-size:.875rem;line-height:1.25rem}`,
-  `.field-err .ic{margin-top:.125rem}`,
+  `.ac-body input[type=text][aria-invalid=true],.ac-body input[type=email][aria-invalid=true]{border-color:var(--danger-edge)}`,
+  `.field-err{color:var(--danger);font-size:.875rem;line-height:1.25rem}`,
   `.ac-body dl{display:flex;flex-wrap:wrap;gap:.5rem 1rem;margin:0}`,
   `.ac-body dt{flex:0 0 6rem}`,
   `.ac-body dd{flex:1 1 calc(100% - 7rem);min-width:min(100%,12rem);overflow-wrap:break-word}`,
@@ -429,24 +432,37 @@ const CONSOLE_PAGE_CSS_TAIL = [
   // The known operator (D-S5), drawn as frame 13's pill, not as a field: it wraps so Change drops
   // to its own line under large text, and the address breaks at "@" and ".".
   `.ac-body .field-label{color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:500}`,
-  `.chip{display:inline-flex;flex-wrap:wrap;gap:.25rem .5rem;align-items:center;justify-self:start;max-width:100%;min-width:0;padding:.125rem .25rem;border:1px solid var(--edge);border-radius:1.75rem;background:transparent;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.chip{display:inline-flex;flex-wrap:wrap;gap:0 .5rem;align-items:center;justify-self:start;max-width:100%;min-width:0;padding:.125rem .25rem;border:1px solid var(--edge);border-radius:1.75rem;background:transparent;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.chip .ac-mono{width:1.75rem;height:1.75rem;border-radius:50%;background:var(--hover);border:0;font-size:.875rem}`,
   `.chip-email{min-width:0;overflow-wrap:break-word}`,
   `.chip:not(:has(.chip-change)) .chip-email{padding-inline-end:.5rem}`,
-  `.chip-change{display:inline-flex;align-items:center;flex:none;min-height:1.5rem;padding:0 .5rem;font-size:.875rem;line-height:1.25rem}`,
+  `.chip-change{display:inline-flex;align-items:center;flex:none;min-height:1.5rem;padding:0 .5rem;border:0;background:none;font:inherit;font-size:.875rem;line-height:1.25rem;cursor:pointer}`,
+  // The returning-person step's panel (Locker's HintStep): the inset skin, a glyph and two lines.
+  `.usual{display:flex;gap:.75rem;align-items:center;padding:.75rem 1rem;border-radius:.625rem;background:var(--hover)}`,
+  `.usual .ic{color:var(--strong)}`,
+  `.usual div{min-width:0}`,
+  `.usual p{margin:0}`,
+  `.usual-1{color:var(--strong);font-weight:500}`,
+  `.usual-2{color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.ac-body h1+p.sn{color:var(--text);font-size:.875rem;line-height:1.25rem}`,
+  `#pk-hint[hidden],#pk-main[hidden]{display:none}`,
   // The passkey button (ST-30c.6): hidden until the card's script finds WebAuthn; an "or" rule
   // above it; its refusal sits under it as text. No motion anywhere on the card.
   `.pk{display:block;min-width:0}`,
   `.pk[hidden]{display:none}`,
-  `.pk .or{display:flex;gap:.75rem;align-items:center;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.or{display:flex;gap:.75rem;align-items:center;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   // Borders, not fills: a fill vanishes under forced colours.
-  `.pk .or::before,.pk .or::after{content:"";flex:1;border-top:1px solid var(--rule)}`,
+  `.or::before,.or::after{content:"";flex:1;border-top:1px solid var(--rule)}`,
   // One run: the glyph sits beside the first line of a label that wraps, and the label starts at the glyph.
-  `.pk .button{align-items:center}`,
-  `.pk .button span{text-align:start}`,
-  `.pk .button[aria-disabled=true]{opacity:.6;cursor:progress}`,
+  `.pk .button,#pk-hint .button{align-items:center}`,
+  `.pk .button span,#pk-hint .button span{text-align:start}`,
+  `.pk .button[aria-disabled=true],#pk-hint .button[aria-disabled=true]{opacity:.6;cursor:progress}`,
   `.pk-err{display:grid;min-width:0}`,
-  `.pk-err .field-err{margin:.5rem 0 0}`,
+  `.pk-err .field-err{margin:.5rem 0 0;text-align:center}`,
+  // The returning-person step's error sits under its methods, start-aligned, 12 px off them; empty it is out of the flow and takes no room.
+  `.pk-err-start{margin-top:-.75rem}`,
+  `.pk-err-start:not(:has(.field-err:not([hidden]))){position:absolute;width:1px;height:1px;margin:0;overflow:hidden;clip:rect(0,0,0,0)}`,
+  `.pk-err-start .field-err{margin:0;text-align:start}`,
   // "or" is 24 px from what it divides (sign-in: below it; step-up: above it, the form follows).
   `.pk:not([data-step-up]) .or{margin:0 0 1.5rem}`,
   `.pk[data-step-up] .or{margin:1.5rem 0 0}`,
@@ -454,24 +470,24 @@ const CONSOLE_PAGE_CSS_TAIL = [
   // With a passkey on step-up, the passkey is the primary and the IdP round trip the ghost.
   `.pk:not([hidden])+form .button[type=submit]{border-color:var(--edge);background:transparent;color:var(--strong)}`,
   `@media (forced-colors: active){.pk:not([hidden])+form .button[type=submit]{border:1px solid ButtonText;background:ButtonFace;color:ButtonText}}`,
-  `@media (forced-colors: active){.pk .or::before,.pk .or::after{border-color:CanvasText}}`,
+  `@media (forced-colors: active){.or::before,.or::after{border-color:CanvasText}}`,
   // stranded at a wrap reads as a glitch. The gap separates them.
   // The Key brand row (SIGNIN-REDESIGN §5): the compact lockup on its 64 px canvas (222 x 64), a 1 px
   // rule 24 px tall with 12 px each side, and "Console" at 16/24, 400, muted. The canvas's own air
   // counts toward the 40 px gap to the card. Phones size the lockup by width, min(180px, 52vw).
   `[data-brand=console] .ac-brand svg{width:13.875rem;height:4rem}`,
-  `@media (min-width: 40rem){[data-brand=console] .ac-brand{margin-bottom:1.5rem}}`,
+  `@media (min-width: 40rem){[data-brand=console] .ac-brand{margin-top:-1.0625rem;margin-bottom:1.5rem}}`,
   // A short window: the canvas's own air counts, so the card starts as close as the Locker's (24 px).
   `@media (max-height: 32rem){[data-brand=console] body{padding-top:.375rem}[data-brand=console] .ac-brand{margin-bottom:.4375rem}}`,
   `@media (max-width: 39.99rem){[data-brand=console] .ac-brand svg{width:min(180px,52vw);height:auto}[data-brand=console] .ac-brand .ac-surface{font-size:16px;line-height:24px}}`,
   `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.375rem;background:var(--sunken);color:var(--strong);font:inherit}`,
   `.ac-body input[type=email]::placeholder{color:var(--subtle);opacity:1}`,
   // Fields: focus is the 1 px border in strong ink, no ring and no offset outline (SIGNIN-REDESIGN §4).
-  `.ac-body .fine{color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
-  `.ac-body form .fine{margin:-.25rem 0 0}`,
   `.ac-brand .ac-surface{margin-left:.75rem;padding-left:.75rem;border-left:1px solid var(--edge);color:var(--muted);font-size:1rem;line-height:1.5rem;font-weight:400}`,
   `@media (forced-colors: active){.ac-brand .ac-surface{color:CanvasText;border-color:CanvasText}}`,
   // the top edge with half a screen empty below; the phone layout keeps its own padding.
+  // Large text (after the rules it overrides): the pill is a 10 px box and the hint panel stacks.
+  `@container (max-width: 16em){.chip{border-radius:.625rem}.usual{flex-direction:column;align-items:flex-start}}`,
 ].join("");
 
 /** The stylesheet of a console page. */
@@ -527,6 +543,11 @@ export interface BrandPageOptions {
   header?: string;
   /** Locker only: TRUSTED markup above the `<h1>` inside the card body (the person row, `personRow`). */
   preface?: string;
+  /**
+   * TRUSTED markup for a second step, rendered `hidden` as a sibling body (`#pk-hint`) that the
+   * page's script swaps in for the first (`#pk-main`): the console's returning-person step.
+   */
+  alt?: string;
   /** Locker only: initial focus on the `<h1>` (`tabindex=-1`), so a carried-over Enter presses nothing. */
   focusHeading?: boolean;
   /** Locker only: the card's footer line, plain text beside an icon. */
@@ -591,6 +612,9 @@ const ICON_PATHS = {
   // lucide "fingerprint-pattern": the glyph of ST-30c.4's Add a passkey.
   fingerprint:
     '<path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/>',
+  // lucide "building-2": single sign-on, as on Polaris Locker's method buttons.
+  building:
+    '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
   terminal:
     '<polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/>',
 } as const;
@@ -895,13 +919,14 @@ export function renderAuthCard(opts: AuthCardOptions): string {
     wide ? `<main class="ac ac-wide">` : `<main class="ac">`,
     header,
     wide ? passportPane(opts.passport!) : "",
-    `<div class="ac-body">`,
+    opts.alt ? `<div class="ac-body" id="pk-main">` : `<div class="ac-body">`,
     opts.preface ?? "",
     opts.focusHeading
       ? `<h1 tabindex="-1" autofocus>${escapeHtml(opts.heading)}</h1>`
       : `<h1>${escapeHtml(opts.heading)}</h1>`,
     opts.body ?? "",
     `</div>`,
+    opts.alt ?? "",
     opts.footer
       ? `<footer class="ac-foot">${icon(opts.footer.icon, true)}<span>${escapeHtml(opts.footer.text)}</span></footer>`
       : "",

@@ -686,7 +686,6 @@
   "signin.approve.denied": "Cette demande a été refusée. Utilisez un autre moyen de vous connecter.",
   "signin.approve.expired": "Ce code a expiré. Obtenez-en un nouveau.",
   "signin.console.title": "Se connecter à la console",
-  "signin.console.next": "Étape suivante : {idp} sur {host}",
   "signin.console.signedOut": "Vous êtes déconnecté",
   "signin.console.sessionEnded": "Votre session a pris fin",
   "signin.console.sessionEndedBody": "Reconnectez-vous pour continuer. Vos modifications non enregistrées restent dans cet onglet.",

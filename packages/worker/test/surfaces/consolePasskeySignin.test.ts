@@ -355,7 +355,7 @@ describe("SM-1: a passkey nobody marked strong opens nothing", () => {
 });
 
 describe("a strong passkey signs in", () => {
-  it("opens a v2 session (amr passkey, console TTL), audits it and sets the hint", async () => {
+  it("opens a v2 session (amr passkey, console TTL), audits it and sets no hint cookie", async () => {
     const m = await member(1, { binding: true });
     await dropIdp(m);
     const { res } = await signInWith(m, { returnTo: "/manage/" });
@@ -368,10 +368,8 @@ describe("a strong passkey signs in", () => {
     expect(claims.aid).toBe(m.accountId);
     expect(claims.authAt).toBe(NOW + 1);
     expect(claims.stepUpAt).toBeUndefined();
-    const jar = cookiesOf(res);
-    expect(jar[CONSOLE_HINT_COOKIE]).toBe(
-      encodeURIComponent("op1@example.com"),
-    );
+    // The old last-operator cookie is retired: the SPA remembers the method in the browser.
+    expect(cookiesOf(res)[CONSOLE_HINT_COOKIE]).toBeUndefined();
     // The ceremony cookie is spent.
     expect(setCookies(res).join("\n")).toMatch(
       new RegExp(`${CONSOLE_PASSKEY_COOKIE}=;.*Max-Age=0`),

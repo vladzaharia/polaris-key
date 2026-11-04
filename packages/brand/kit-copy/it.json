@@ -694,7 +694,6 @@
     "signin.approve.denied": "La richiesta è stata rifiutata. Usa un altro modo per accedere.",
     "signin.approve.expired": "Il codice è scaduto. Ottieni un nuovo codice.",
     "signin.console.title": "Accedi alla console",
-    "signin.console.next": "Avanti: {idp} su {host}",
     "signin.console.signedOut": "Sei uscito",
     "signin.console.sessionEnded": "La sessione è terminata",
     "signin.console.sessionEndedBody": "Accedi di nuovo per continuare. Le modifiche non salvate restano in questa scheda.",

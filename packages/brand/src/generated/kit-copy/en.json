@@ -686,7 +686,6 @@
   "signin.approve.denied": "That request was denied. Use another way to sign in.",
   "signin.approve.expired": "That code expired. Get a new code.",
   "signin.console.title": "Sign in to the console",
-  "signin.console.next": "Next: {idp} at {host}",
   "signin.console.signedOut": "You're signed out",
   "signin.console.sessionEnded": "Your session ended",
   "signin.console.sessionEndedBody": "Sign in again to carry on. Your unsaved changes stay in this tab.",
