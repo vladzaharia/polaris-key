@@ -32,25 +32,19 @@ export function LibraryEmpty({
       >
         <PolarisMark kind="locker" size={24} theme={theme} />
       </span>
-      <h2 id="empty-h" className="text-xl font-semibold text-fg-strong">
+      <h2 id="empty-h" className="text-2xl font-semibold text-fg-strong">
         {t("locker.library.empty.title")}
       </h2>
       <div className="flex flex-wrap justify-center gap-3">
         <Button
-          size="lg"
-          className="h-auto min-h-12 whitespace-normal font-medium"
+          size="xl"
           iconStart={<KeyRound aria-hidden />}
           onClick={() => activate.open()}
         >
           {t("common.activateLicense")}
         </Button>
         {discoverCount ? (
-          <Button
-            asChild
-            size="lg"
-            variant="outline"
-            className="h-auto min-h-12 whitespace-normal"
-          >
+          <Button asChild size="xl" variant="outline">
             <a href={href.discover()}>
               <Sparkles aria-hidden />
               {t("locker.library.empty.discover", { count: discoverCount })}

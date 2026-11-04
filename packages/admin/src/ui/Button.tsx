@@ -80,6 +80,12 @@ export const buttonVariants = cva(
         class:
           "console:whitespace-nowrap console:cramped:whitespace-normal conbig:gap-1 conbig:px-2 conbig:[&>svg:not(:only-child)]:hidden h-auto min-h-10 whitespace-normal py-1.5 text-center bigtext:gap-1 bigtext:px-2 bigtext:[&>svg:not(:only-child)]:hidden",
       },
+      {
+        variant: [...WRAPPING],
+        size: "xl",
+        class:
+          "console:whitespace-nowrap console:cramped:whitespace-normal conbig:gap-1 conbig:px-2 conbig:[&>svg:not(:only-child)]:hidden h-auto min-h-12! whitespace-normal py-2 text-center bigtext:gap-1 bigtext:px-2 bigtext:[&>svg:not(:only-child)]:hidden",
+      },
     ],
     defaultVariants: { variant: "primary", size: "md" },
   },

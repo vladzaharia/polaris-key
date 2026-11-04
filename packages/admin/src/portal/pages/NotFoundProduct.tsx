@@ -5,6 +5,7 @@ import { Button } from "../../ui/Button.js";
 import { StationaryStar } from "../../ui/EmptyState.js";
 import { useActivate } from "../activate.js";
 import { href, useDocumentTitle } from "../router.js";
+import { LINK_CLASS } from "../linkClass.js";
 
 /** A product that isn't in the library (§4.28): never "portal api 404". */
 export function NotFoundProduct({
@@ -17,7 +18,7 @@ export function NotFoundProduct({
   return (
     <section className="mx-auto flex max-w-xl flex-col items-center gap-4 py-16 text-center">
       <StationaryStar />
-      <h1 className="text-3xl font-semibold leading-tight text-fg-strong">
+      <h1 className="text-2xl font-semibold text-fg-strong">
         {t("locker.notFound.heading")}
       </h1>
       <p className="text-fg-muted">
@@ -32,11 +33,11 @@ export function NotFoundProduct({
         )}
       </p>
       <div className="flex flex-wrap justify-center gap-3">
-        <Button asChild variant="outline" size="lg">
+        <Button asChild variant="outline" size="xl">
           <a href={href.library()}>{t("locker.discover.empty.back")}</a>
         </Button>
         <Button
-          size="lg"
+          size="xl"
           iconStart={<KeyRound aria-hidden />}
           onClick={() => activate.open()}
         >
@@ -45,10 +46,7 @@ export function NotFoundProduct({
       </div>
       <p className="text-sm text-fg-muted">
         {t("locker.notFound.otherEmail")}{" "}
-        <a
-          href={href.account("methods")}
-          className="font-medium text-accent-fg hover:underline"
-        >
+        <a href={href.account("methods")} className={LINK_CLASS}>
           {t("locker.notFound.addEmail")}
         </a>
       </p>

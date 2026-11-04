@@ -162,7 +162,7 @@ export function MethodRow({
           {icon}
         </span>
         <div className="min-w-0 flex-1 basis-48">
-          <p className="flex flex-wrap items-center gap-x-2 font-medium text-fg-strong">
+          <p className="flex flex-wrap items-center gap-x-2 font-semibold text-fg-strong">
             <span className="min-w-0 break-words">{title}</span>
             {badge}
           </p>
@@ -177,7 +177,6 @@ export function MethodRow({
             <Button
               ref={buttonRef}
               variant="outline"
-              className="h-auto min-h-11 whitespace-normal font-medium"
               aria-disabled={guarded || undefined}
               aria-describedby={guarded ? reasonId : undefined}
               aria-expanded={guarded ? undefined : false}

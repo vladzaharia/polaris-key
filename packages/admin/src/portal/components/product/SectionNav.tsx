@@ -60,9 +60,7 @@ export function SectionNav({
           : "sticky top-14 z-20 -mx-4 min-w-0 overflow-x-auto overscroll-x-contain border-b border-border bg-surface-page px-4 py-2 desk:top-16 desk:-mx-6 desk:px-6 wide:hidden short:top-0 bigtext:max-desk:static",
       )}
     >
-      <ul
-        className={variant === "toc" ? "border-s border-border" : "flex gap-2"}
-      >
+      <ul className={variant === "toc" ? "space-y-1" : "flex gap-2"}>
         {sections.map((s) => {
           const on = s === current;
           const count = counts?.[s];
@@ -80,14 +78,14 @@ export function SectionNav({
                 data-edge={variant === "toc" ? "marker" : undefined}
                 className={cn(
                   variant === "toc"
-                    ? "-ms-px block border-s-[3px] py-2 ps-4 text-sm"
+                    ? "relative flex items-center rounded-md px-3 py-2 text-sm pointer-coarse:min-h-11"
                     : "inline-flex h-9 items-center whitespace-nowrap rounded-full border px-4 text-sm pointer-coarse:h-11",
                   variant === "toc"
                     ? on
-                      ? "border-[var(--pk-locker-accent)] font-medium text-fg-strong"
-                      : "border-transparent text-fg-muted hover:text-fg-strong"
+                      ? "bg-hover font-medium text-fg-strong before:absolute before:inset-y-1 before:start-0 before:w-[3px] before:rounded-full before:bg-locker-accent before:content-[''] forced-colors:before:bg-[Highlight]"
+                      : "text-fg-muted hover:bg-hover hover:text-fg-strong"
                     : on
-                      ? "border-fg-strong bg-fg-strong font-medium text-surface-page"
+                      ? "border-fg-strong bg-hover font-semibold text-fg-strong"
                       : "border-border-strong text-fg-strong",
                 )}
               >

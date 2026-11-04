@@ -1,4 +1,6 @@
 import * as React from "react";
+import { AUTH_LINK_CLASS } from "../../../ui/auth/index.js";
+import { cn } from "../../../lib/cn.js";
 import { t } from "../../../lib/copy.js";
 import { HELP_LINKS } from "../../helpLinks.js";
 
@@ -11,10 +13,7 @@ export function LegalNav(): React.ReactElement {
       // links wrap on a narrow window.
       className="text-center"
     >
-      <a
-        href={HELP_LINKS.help}
-        className="inline-flex min-h-11 items-center align-middle underline underline-offset-4 hover:text-fg-strong"
-      >
+      <a href={HELP_LINKS.help} className={cn(AUTH_LINK_CLASS, "align-middle")}>
         {t("locker.shell.helpLink")}
       </a>
       <span aria-hidden className="px-1 align-middle">
@@ -22,7 +21,7 @@ export function LegalNav(): React.ReactElement {
       </span>
       <a
         href={HELP_LINKS.privacy}
-        className="inline-flex min-h-11 items-center align-middle underline underline-offset-4 hover:text-fg-strong"
+        className={cn(AUTH_LINK_CLASS, "align-middle")}
       >
         {t("locker.shell.privacy")}
       </a>

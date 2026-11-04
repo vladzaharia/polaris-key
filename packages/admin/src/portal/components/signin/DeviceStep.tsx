@@ -4,6 +4,7 @@ import { Button } from "../../../ui/Button.js";
 import { Spinner } from "../../../ui/Spinner.js";
 import { AuthNotice, AuthTitle, useStepFocus } from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
+import { PRIMARY_CLASS } from "./requestParts.js";
 import {
   portalApi,
   HttpError,
@@ -148,7 +149,7 @@ export function DeviceStep({
             <div className="text-center sm:text-start">
               <p
                 data-device-code
-                className="font-mono text-3xl font-medium tracking-widest text-fg-strong"
+                className="font-mono text-2xl font-semibold tracking-widest text-fg-strong"
               >
                 {state.start.code}
               </p>
@@ -159,7 +160,7 @@ export function DeviceStep({
           </div>
           <div
             role="status"
-            className="flex items-center gap-3 rounded-md border border-border-strong bg-hover px-4 py-3 text-sm text-fg"
+            className="flex items-center gap-3 rounded-lg border border-border bg-surface-sunken px-4 py-3 text-fg"
           >
             <Spinner label="" className="text-fg-muted" />
             {t("signin.approve.waiting")}
@@ -189,7 +190,7 @@ export function DeviceStep({
           <Button
             variant="neutral"
             size="lg"
-            className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
+            className={PRIMARY_CLASS}
             onClick={again}
           >
             {state.kind === "error"
@@ -204,7 +205,7 @@ export function DeviceStep({
               : "ghost"
           }
           size="lg"
-          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
+          className={PRIMARY_CLASS}
           onClick={onOther}
         >
           {t("signin.approve.other")}

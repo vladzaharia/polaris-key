@@ -164,7 +164,7 @@ function EntryGetIt({
             })}
           </span>
         </p>
-        <Button asChild variant="quiet" size="lg" className="h-11">
+        <Button asChild variant="quiet" size="lg">
           <a
             href={website}
             target="_blank"

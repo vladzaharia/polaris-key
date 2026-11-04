@@ -16,6 +16,7 @@ import { formatRelative } from "../lib/format.js";
 import { Button, type ButtonVariant } from "./Button.js";
 import { CopyDetails } from "./CopyDetails.js";
 import { Dialog, DialogBody, DialogFooter } from "./Dialog.js";
+import { CONTROL_INPUT } from "./inputBase.js";
 
 export { confirmBlocked, NEEDS_REASON } from "./confirmReasons.js";
 
@@ -276,7 +277,7 @@ export function ConfirmDialog({
           // sets what the action does beside what it asks for: the reason and the typed field
           // sit at the top of their column, in view without a scroll, over the pinned footer.
           className={cn(
-            "space-y-4 text-sm short:space-y-2 short:[&_textarea]:min-h-12 max-sm:flex-none max-sm:overflow-y-visible",
+            "space-y-4 text-base console:text-sm short:space-y-2 short:[&_textarea]:min-h-12 max-sm:flex-none max-sm:overflow-y-visible",
             sideBySide &&
               "short:grid short:grid-cols-2 short:items-start short:gap-x-4 short:space-y-0",
           )}
@@ -362,9 +363,12 @@ export function ConfirmDialog({
               {children}
               {typedConfirmation ? (
                 <div className="space-y-1.5">
-                  <label htmlFor={typedId} className="block text-sm text-fg">
+                  <label
+                    htmlFor={typedId}
+                    className="block text-sm font-medium text-fg-strong console:font-normal console:text-fg"
+                  >
                     {typedConfirmation.label}{" "}
-                    <code className="rounded-xs bg-surface-sunken px-1 font-mono text-xs text-fg-strong">
+                    <code className="rounded-xs bg-surface-sunken px-1 font-mono text-code text-fg-strong console:text-xs">
                       {typedConfirmation.value}
                     </code>
                   </label>
@@ -382,10 +386,7 @@ export function ConfirmDialog({
                         void confirm();
                       }
                     }}
-                    className={cn(
-                      "h-9 pointer-coarse:h-11 w-full rounded-md border border-border-strong bg-surface-sunken px-3 font-mono text-sm text-fg",
-                      "focus-visible:outline-2 focus-visible:outline-focus",
-                    )}
+                    className={cn(CONTROL_INPUT, "font-mono console:text-sm")}
                   />
                 </div>
               ) : null}

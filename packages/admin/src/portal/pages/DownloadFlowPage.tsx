@@ -297,7 +297,12 @@ function DownloadBody({
               ) : null}
               {/* The separator rides on the end of the line before it (a no-break space), so a
                   wrapped line never starts with one. */}
-              <p ref={buildRef} tabIndex={-1} data-build="" className="text-md">
+              <p
+                ref={buildRef}
+                tabIndex={-1}
+                data-build=""
+                className="text-base"
+              >
                 <span className="font-medium text-fg-strong [overflow-wrap:anywhere]">
                   {os}, {chosen.title}
                 </span>

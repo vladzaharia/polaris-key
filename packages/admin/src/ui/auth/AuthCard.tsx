@@ -401,11 +401,11 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
           <div className="min-w-0 passport:contents">
             <p
               className={cn(
-                "text-fg-strong passport:pt-4 passport:text-lg/6",
+                "text-lg/6 text-fg-strong passport:pt-4",
                 PANE_TEXT,
               )}
             >
-              <span className="font-medium">{name}</span>
+              <span className="font-semibold">{name}</span>
               {developer ? ` · ${developer}` : null}
             </p>
             {where ? null : (
@@ -463,7 +463,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
         {code ? (
           <p
             data-code-panel
-            className="mt-3 rounded-md bg-surface-sunken px-4 py-3 text-sm text-fg-muted passport:mx-6 passport:mt-4 passport:grid passport:border passport:border-border passport:bg-surface-raised"
+            className="mt-3 rounded-lg bg-surface-sunken px-4 py-3 text-sm text-fg-muted passport:mx-6 passport:mt-4 passport:grid passport:border passport:border-border passport:bg-surface-raised"
           >
             {tParts("signin.header.codePanel", ["code"], {}).map((part, i) => (
               <React.Fragment key={i}>
@@ -477,7 +477,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
                     {part.replace(/^[\s·]+|[\s·]+$/g, "")}
                   </span>
                 ) : (
-                  <span className="font-mono text-base font-semibold tracking-wider text-fg-strong passport:block passport:text-xl/7">
+                  <span className="font-mono font-semibold tracking-widest text-fg-strong passport:block">
                     {code}
                   </span>
                 )}

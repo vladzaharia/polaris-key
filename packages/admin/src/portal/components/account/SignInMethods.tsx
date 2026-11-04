@@ -190,7 +190,7 @@ function SignInEmailOnly({
 }): React.ReactElement {
   return (
     <>
-      <h3 className="mb-2 text-xs font-semibold text-fg-muted">
+      <h3 className="mb-2 text-sm font-medium text-fg-muted">
         {t("signin.email.label")}
       </h3>
       <ul className="divide-y divide-border border-b border-border -mx-4 desk:-mx-5 bigtext:max-sm:mx-0 [&>li]:px-4 desk:[&>li]:px-5 bigtext:max-sm:[&>li]:px-0">
@@ -198,7 +198,7 @@ function SignInEmailOnly({
           <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
             <Mail aria-hidden className="size-5" />
           </span>
-          <p className="min-w-0 flex-1 break-words font-medium [overflow-wrap:anywhere] text-fg-strong">
+          <p className="min-w-0 flex-1 break-words font-semibold [overflow-wrap:anywhere] text-fg-strong">
             {account.email}
           </p>
         </li>
@@ -256,7 +256,7 @@ function callbackNotice(
 // and the section pills) plus this margin; 0.75rem under whatever sticks on a short screen
 // (product/Card.tsx).
 const GROUP_HEADING =
-  "text-xs font-medium text-fg-muted outline-none scroll-mt-[calc(9rem_-_var(--pk-scroll-top,0px))] desk:scroll-mt-[calc(6rem_-_var(--pk-scroll-top,0px))] short:scroll-mt-3";
+  "text-sm font-medium text-fg-muted outline-none scroll-mt-[calc(9rem_-_var(--pk-scroll-top,0px))] desk:scroll-mt-[calc(6rem_-_var(--pk-scroll-top,0px))] short:scroll-mt-3";
 
 function MethodGroups({
   account,
@@ -669,12 +669,7 @@ function MethodGroups({
               </Button>
             </p>
           ))}
-          <Button
-            variant="outline"
-            size="sm"
-            className="max-sm:min-h-11"
-            onClick={() => navigate("#/account/link")}
-          >
+          <Button variant="outline" onClick={() => navigate("#/account/link")}>
             {t("signin.join.title")}
           </Button>
         </div>
@@ -845,7 +840,7 @@ function ConnectRow({
           )}
         </span>
         <div className="min-w-0 flex-1 basis-40">
-          <p className="break-words font-medium text-fg-strong">{name}</p>
+          <p className="break-words font-semibold text-fg-strong">{name}</p>
           <p className="text-sm text-fg-muted">
             {t("locker.methods.notConnectedRow")}
           </p>
@@ -854,7 +849,7 @@ function ConnectRow({
           <Button
             ref={buttonRef}
             variant="outline"
-            className="ms-auto h-11 font-medium"
+            className="ms-auto"
             loading={busy}
             aria-label={t("signin.provider.connect", { provider: name })}
             onClick={() => void connect()}
@@ -1056,7 +1051,7 @@ function AddEmail({
         <Button
           ref={buttonRef}
           variant="link"
-          className="h-11 font-medium ms-12 bigtext:max-sm:ms-0"
+          className="ms-12 bigtext:max-sm:ms-0"
           iconStart={<Plus aria-hidden />}
           aria-expanded={false}
           onClick={() => setStep({ kind: "enter" })}
@@ -1304,7 +1299,7 @@ function AddPasskey({
         <Button
           ref={buttonRef}
           variant="link"
-          className="h-11 font-medium ms-12 bigtext:max-sm:ms-0"
+          className="ms-12 bigtext:max-sm:ms-0"
           iconStart={<KeyRound aria-hidden />}
           loading={busy}
           aria-disabled={reason ? true : undefined}

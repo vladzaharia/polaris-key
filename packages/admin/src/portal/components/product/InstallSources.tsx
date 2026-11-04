@@ -103,7 +103,7 @@ function InstallSourceItem({
       <div className="min-w-0 flex-1 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-medium text-fg-strong">{name}</p>
+            <p className="font-semibold text-fg-strong">{name}</p>
             {s.version ? (
               <p className="text-sm text-fg-muted">{versionLine(s.version)}</p>
             ) : null}
@@ -214,7 +214,7 @@ function CopyField({
       {caption ? <p className="text-xs text-fg-muted">{caption}</p> : null}
       {/* The button sits beside the value while the value keeps 16rem, else under it (a phone). */}
       <div className="flex flex-wrap items-start gap-2 rounded-lg border border-border bg-surface-sunken py-1.5 ps-3 pe-1.5">
-        <code className="min-w-[min(100%,16rem)] flex-1 break-words py-1 font-mono text-xs leading-5 text-fg-strong">
+        <code className="min-w-[min(100%,16rem)] flex-1 break-words py-1 font-mono text-code leading-5 text-fg-strong">
           <Breakable text={value} />
         </code>
         <CopyButton

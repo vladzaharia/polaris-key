@@ -656,7 +656,7 @@ function PictureTileRadio({
       className={cn(
         "group pk-pressable relative flex min-h-36 min-w-0 cursor-pointer flex-col items-center gap-1 rounded-lg border border-border bg-surface-raised p-3 text-center hover:border-border-strong",
         "has-[:checked]:border-accent has-[:checked]:bg-accent-subtle",
-        "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-surface-page",
+        "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus",
       )}
     >
       <input

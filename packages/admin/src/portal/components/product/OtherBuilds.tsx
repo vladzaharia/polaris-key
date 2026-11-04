@@ -251,7 +251,7 @@ function BuildRow({
             href={row.elsewhere.href}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border-strong px-3 py-1.5 text-sm font-medium text-fg-strong hover:bg-hover"
+            className="inline-flex min-h-9 items-center gap-2 rounded-md border border-border-strong px-3 py-1.5 text-sm font-medium text-fg-strong hover:bg-hover"
           >
             {row.elsewhere.label}
             <ExternalLink aria-hidden className="size-4" />

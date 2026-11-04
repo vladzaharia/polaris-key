@@ -29,8 +29,7 @@ export function EmailDownloadButton({
   const os = osName(platform);
   return (
     <Button
-      size="lg"
-      className="h-12 px-6"
+      size="xl"
       loading={email.isPending}
       iconStart={<Mail aria-hidden />}
       aria-label={emailName(productName, os)}

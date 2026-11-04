@@ -231,13 +231,14 @@ function PortalErrorState({
         ) : null}
         <CopyDetails
           variant="ghost"
+          size="md"
           copy={{ action: "copy-details", details: voice.details(error) }}
         />
       </div>
       {backTo ? (
         <a
           href={backTo.href}
-          className="inline-flex min-h-6 items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong pointer-coarse:min-h-11"
+          className="inline-flex min-h-6 items-center gap-2 rounded-md text-fg-strong underline decoration-2 underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus pointer-coarse:min-h-11"
         >
           <ArrowLeft aria-hidden className="size-4" />
           {backTo.label}
@@ -248,7 +249,7 @@ function PortalErrorState({
   if (page === undefined) return panel;
   return (
     <div className="space-y-6">
-      <h1 className="text-headline font-semibold leading-tight text-fg-strong [overflow-wrap:anywhere] desk:text-4xl">
+      <h1 className="text-2xl font-semibold text-fg-strong [overflow-wrap:anywhere]">
         {page}
       </h1>
       {panel}

@@ -267,7 +267,7 @@ export function GetItPanel({
       ) : null}
       {withSources.length ? (
         <section className="mt-5 space-y-3">
-          <h3 className="text-md font-semibold text-fg-strong">
+          <h3 className="text-base font-semibold text-fg-strong">
             {C["getIt.otherWays"]}
           </h3>
           {withSources.map((g) => (
@@ -287,7 +287,7 @@ export function GetItPanel({
         <div className="mt-5 space-y-2">
           <h3
             id={`${product.slug}-also-yours-on`}
-            className="text-md font-semibold text-fg-strong"
+            className="text-base font-semibold text-fg-strong"
           >
             {C["getIt.alsoYoursOn"]}
           </h3>
@@ -341,7 +341,7 @@ function FileRow({
             {/* Wraps, never cut short (§4.20, like a device's name). */}
             <span
               data-platform-name=""
-              className="block break-words font-medium text-fg-strong"
+              className="block break-words text-base font-semibold text-fg-strong"
             >
               {r.platform ? `${osName(r.platform)} · ${r.title}` : r.title}
             </span>
@@ -366,11 +366,7 @@ function FileRow({
       <td className="px-5 py-3 text-end @max-[24rem]:block @max-[24rem]:pt-1 @max-[24rem]:text-start desk:px-6">
         {r.elsewhere ? (
           r.elsewhere.href ? (
-            <Button
-              asChild
-              variant="quiet"
-              className="min-h-11 whitespace-normal"
-            >
+            <Button asChild variant="quiet" className="whitespace-normal">
               <a href={r.elsewhere.href} target="_blank" rel="noreferrer">
                 {r.elsewhere.label}
                 <ExternalLink aria-hidden />

@@ -144,7 +144,7 @@ export function LicenseChoiceStep({
       children: (
         <>
           <span className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-fg-strong">
+            <span className="font-semibold text-fg-strong">
               {t("signin.choice.create")}
             </span>
             <Pill>{t("signin.choice.tag.new")}</Pill>
@@ -271,7 +271,7 @@ function RowBody({ m }: { m: RowModel }): React.ReactElement {
   return (
     <>
       <span className="flex flex-wrap items-center gap-2">
-        <span className="font-medium text-fg-strong [overflow-wrap:anywhere]">
+        <span className="font-semibold text-fg-strong [overflow-wrap:anywhere]">
           {m.title}
         </span>
         {m.tag === "current" ? (

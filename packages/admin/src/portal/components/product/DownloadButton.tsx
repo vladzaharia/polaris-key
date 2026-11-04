@@ -51,13 +51,13 @@ export function DownloadButton({
     >
       <Button
         variant={lead ? "primary" : "quiet"}
-        size={lead ? "lg" : "md"}
+        size={lead ? "xl" : "md"}
         className={
           lead
-            ? "h-auto min-h-12 whitespace-normal px-6"
+            ? undefined
             : table
               ? "size-11 px-0 sm:h-11 sm:w-auto sm:px-4"
-              : "h-auto min-h-10 whitespace-normal"
+              : "whitespace-normal"
         }
         loading={start.isPending}
         aria-describedby={start.isError ? alertId : undefined}

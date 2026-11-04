@@ -10,10 +10,12 @@ export function CopyDetails({
   copy,
   always = false,
   variant,
+  size,
 }: {
   copy: { action?: string; details?: Record<string, unknown> };
   always?: boolean;
   variant?: CopyButtonProps["variant"];
+  size?: CopyButtonProps["size"];
 }): React.ReactElement | null {
   if (!always && copy.action !== "copy-details") return null;
   return (
@@ -23,6 +25,7 @@ export function CopyDetails({
       showLabel
       text="Copy details"
       variant={variant}
+      size={size}
     />
   );
 }

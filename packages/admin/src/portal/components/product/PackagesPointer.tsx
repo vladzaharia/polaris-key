@@ -3,6 +3,8 @@ import { t } from "../../../lib/copy.js";
 import { ArrowRight, Package } from "lucide-react";
 import { href } from "../../router.js";
 import { SectionCard } from "./Card.js";
+import { cn } from "../../../lib/cn.js";
+import { LINK_CLASS } from "../../linkClass.js";
 
 /**
  * Packages on a product page (portal-11): one pointer row. Tokens and setup live only in
@@ -37,7 +39,10 @@ export function PackagesPointer({
         </p>
         <a
           href={href.account("packages")}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-1 text-sm font-medium text-fg-strong underline underline-offset-2 hover:text-accent-fg"
+          className={cn(
+            LINK_CLASS,
+            "inline-flex min-h-11 items-center gap-1.5 px-1 text-sm",
+          )}
         >
           {t("locker.packagesPointer.link")}
           <ArrowRight aria-hidden className="size-4" />

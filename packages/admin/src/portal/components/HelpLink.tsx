@@ -19,7 +19,7 @@ export function HelpLink({
     <a
       href={href}
       className={cn(
-        "inline-flex items-center text-sm font-medium text-fg-strong underline underline-offset-4 hover:text-fg-strong min-h-11",
+        "inline-flex items-center text-sm font-normal rounded-md text-fg-strong underline decoration-2 underline-offset-4 min-h-11",
         className,
       )}
     >

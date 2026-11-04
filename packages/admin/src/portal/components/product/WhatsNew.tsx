@@ -44,7 +44,7 @@ export function WhatsNew({
       }
     >
       {notes && notes.summary.length ? (
-        <div data-notes="" className="text-md text-fg">
+        <div data-notes="" className="text-base text-fg">
           <div className="space-y-3">
             <Markdown blocks={notes.summary} />
           </div>
@@ -61,7 +61,7 @@ export function WhatsNew({
                 aria-expanded={full}
                 aria-controls={restId}
                 onClick={() => setFull((v) => !v)}
-                className="mt-3 inline-flex min-h-6 items-center gap-1 pointer-coarse:min-h-11 text-sm font-medium text-accent-fg underline decoration-2 underline-offset-4 hover:text-fg-strong"
+                className="mt-3 inline-flex min-h-6 items-center gap-1 pointer-coarse:min-h-11 text-sm rounded-md font-normal text-fg-strong underline decoration-2 underline-offset-4"
               >
                 {full ? t("locker.notes.less") : t("locker.notes.full")}
                 <ChevronDown
@@ -78,7 +78,7 @@ export function WhatsNew({
       {earlier.length ? (
         <div className="mt-6">
           <div className="flex items-center justify-between border-b border-border pb-2">
-            <h3 className="text-md font-semibold text-fg-strong">
+            <h3 className="text-base font-semibold text-fg-strong">
               {t("locker.notes.earlier")}
             </h3>
             {earlier.length > 3 ? (

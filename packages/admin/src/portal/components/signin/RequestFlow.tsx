@@ -40,7 +40,12 @@ import { ReplaceDeviceStep } from "./ReplaceDeviceStep.js";
 import { ReplacedDone } from "./ReplacedDone.js";
 import { ReturnStep } from "./ReturnStep.js";
 import { RequestFooter, RequestHeader } from "./RequestHeader.js";
-import { PersonRow, PRIMARY_CLASS } from "./requestParts.js";
+import {
+  PersonRow,
+  PRIMARY_CLASS,
+  RequestGone,
+  Unreachable,
+} from "./requestParts.js";
 import { qk } from "../../queries.js";
 import { mutate } from "../../mutations.js";
 
@@ -273,15 +278,7 @@ export function RequestFlow({
       req.error instanceof HttpError && req.error.status !== 404 ? (
         <Unreachable error={req.error} onRetry={() => void req.refetch()} />
       ) : (
-        <>
-          <div className="space-y-2">
-            <AuthTitle>{t("signin.request.goneTitle")}</AuthTitle>
-            <p className="text-fg-muted">{t("signin.request.gone")}</p>
-          </div>
-          <Button asChild variant="neutral" size="lg" className={PRIMARY_CLASS}>
-            <a href="/">{t("signin.return.library")}</a>
-          </Button>
-        </>
+        <RequestGone />
       );
   } else if (
     (cardChooses && licenses.isPending) ||
@@ -454,32 +451,6 @@ function refusalText(err: unknown): string {
   }
   const copy = portalErrorCopy(err, { account: true });
   return copy.line;
-}
-
-function Unreachable({
-  error,
-  onRetry,
-}: {
-  error: unknown;
-  onRetry: () => void;
-}): React.ReactElement {
-  const copy = portalErrorCopy(error, { account: true });
-  return (
-    <>
-      <div className="space-y-2">
-        <AuthTitle>{copy.title}</AuthTitle>
-        <p className="text-fg-muted">{copy.description}</p>
-      </div>
-      <Button
-        variant="neutral"
-        size="lg"
-        className={PRIMARY_CLASS}
-        onClick={onRetry}
-      >
-        {t("signin.retry")}
-      </Button>
-    </>
-  );
 }
 
 function httpsOrNull(raw: string | null): string | null {

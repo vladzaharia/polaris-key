@@ -3,7 +3,12 @@ import { ErrorState } from "../../ui/ErrorState.js";
 import { Info } from "lucide-react";
 import { DeviceGlyph } from "../components/product/DeviceRowParts.js";
 import { Button } from "../../ui/Button.js";
-import { RadioCards } from "../../ui/RadioCards.js";
+import { LINK_CLASS } from "../linkClass.js";
+import {
+  ChoiceGroup,
+  DeviceChoiceBody,
+  Pill,
+} from "../components/signin/requestParts.js";
 import { announce } from "../../ui/LiveRegion.js";
 import { SuccessCheck } from "../../ui/motion/index.js";
 import { formatRelative } from "../../lib/format.js";
@@ -30,7 +35,6 @@ import { isNotFound, portalErrorCopy } from "../errors.js";
 import { consumeHeadingFocus } from "../focus.js";
 import { deviceOsName, presentationFrom } from "../model/library.js";
 import { deviceSeats } from "../model/product.js";
-import { StatusPill } from "../../ui/StatusPill.js";
 import { allowedReturn } from "../model/returnUrl.js";
 import {
   focusPageHeading,
@@ -218,11 +222,11 @@ function FreeDevice({
     pres.supportUrl ??
     (pres.supportEmail ? `mailto:${pres.supportEmail}` : null);
   const goBack = returnUrl ? (
-    <Button asChild size="lg" className="h-12 w-full font-medium sm:w-auto">
+    <Button asChild size="xl" className="w-full sm:w-auto">
       <a href={returnUrl}>{t("locker.activate.backTo", { product: name })}</a>
     </Button>
   ) : (
-    <Button asChild size="lg" className="h-12 w-full font-medium sm:w-auto">
+    <Button asChild size="xl" className="w-full sm:w-auto">
       <a href={href.product(product.product, "devices")}>
         {t("locker.freeDevice.seeDevices")}
       </a>
@@ -350,36 +354,36 @@ function FreeDevice({
               device: t("locker.methods.anotherDevice"),
             })}
       </p>
-      <RadioCards
-        aria-labelledby="free-lede"
-        name="free-device"
-        columns={1}
-        indicator="check"
-        value={picked}
+      <ChoiceGroup
+        id="free-device"
+        label={t("signin.choice.freeDevice")}
+        value={picked ?? ""}
         onChange={setPicked}
-        options={holders.map((d) => ({
-          value: d.deviceId,
-          icon: <DeviceGlyph platform={d.platform} />,
-          label: (
-            <span className="inline-flex flex-wrap items-center gap-2">
-              <span className="font-medium text-fg-strong">
-                {deviceName(d)}
-              </span>
-              {d.deviceId === leastRecent && holders.length > 1 ? (
-                <StatusPill tone="neutral" icon={false} size="sm">
-                  {t("signin.replace.leastRecent")}
-                </StatusPill>
-              ) : null}
-            </span>
-          ),
-          description: [
+        options={holders.map((d) => {
+          const meta = [
             deviceOsName(d.platform),
             d.appVersion,
             lastSeenText(d.lastSeen),
           ]
             .filter(Boolean)
-            .join(" · "),
-        }))}
+            .join(" · ");
+          return {
+            value: d.deviceId,
+            label: [deviceName(d), meta].join(", "),
+            children: (
+              <DeviceChoiceBody
+                glyph={<DeviceGlyph platform={d.platform} />}
+                name={deviceName(d)}
+                tags={
+                  d.deviceId === leastRecent && holders.length > 1 ? (
+                    <Pill>{t("signin.replace.leastRecent")}</Pill>
+                  ) : null
+                }
+                meta={meta}
+              />
+            ),
+          };
+        })}
       />
       {pickedDevice ? (
         <p id="free-consequence" className="flex gap-3 text-sm text-fg-muted">
@@ -407,20 +411,15 @@ function FreeDevice({
       ) : null}
       <StickyActions>
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Button
-            asChild
-            size="lg"
-            variant="outline"
-            className="h-auto min-h-12 whitespace-normal py-2"
-          >
+          <Button asChild size="xl" variant="outline">
             <a href={returnUrl ?? href.product(product.product)}>
               {t("signin.cancel")}
             </a>
           </Button>
           <Button
             ref={removeRef}
-            size="lg"
-            className="h-auto min-h-12 whitespace-normal py-2 font-medium sm:flex-none"
+            size="xl"
+            className="sm:flex-none"
             loading={remove.isPending}
             disabledReason={
               pickedDevice ? undefined : t("locker.freeDevice.choose")
@@ -445,7 +444,7 @@ function FreeDevice({
             href={support}
             target="_blank"
             rel="noreferrer"
-            className="font-medium text-accent-fg underline decoration-2 underline-offset-4 hover:text-fg-strong"
+            className={LINK_CLASS}
           >
             {t("locker.freeDevice.ask", {
               developer: pres.developer ?? t("license.developerFallback"),

@@ -34,6 +34,7 @@ import { href, useDocumentTitle } from "../router.js";
 import { t } from "../../lib/copy.js";
 import { platformConsumerName } from "../../lib/vocab/platforms.js";
 import { qk } from "../queries.js";
+import { LINK_CLASS } from "../linkClass.js";
 
 /**
  * The storefront product page, `#/discover/:product` (PS-05; notes/S-21 §6.5): a product the
@@ -107,18 +108,18 @@ function NotOffered(): React.ReactElement {
   return (
     <section className="mx-auto flex max-w-xl flex-col items-center gap-4 py-16 text-center">
       <StationaryStar />
-      <h1 className="text-3xl font-semibold leading-tight text-fg-strong">
+      <h1 className="text-2xl font-semibold text-fg-strong">
         {t("locker.storefront.nothingTitle")}
       </h1>
       <p className="text-fg-muted">{t("locker.storefront.nothingBody")}</p>
       <div className="flex flex-wrap justify-center gap-3">
-        <Button asChild variant="outline" size="lg">
+        <Button asChild variant="outline" size="xl">
           <a href={href.discover()}>
             <Compass aria-hidden />
             {t("locker.storefront.browse")}
           </a>
         </Button>
-        <Button asChild variant="quiet" size="lg">
+        <Button asChild variant="quiet" size="xl">
           <a href={href.library()}>
             <LayoutGrid aria-hidden />
             {t("locker.discover.empty.back")}
@@ -329,10 +330,12 @@ function DecisionPanel({
                 <label
                   key={p.kind}
                   className={cn(
-                    "flex min-h-11 cursor-pointer gap-3 rounded-lg border p-2 @max-[20rem]:gap-2 @max-[20rem]:p-2",
+                    "relative flex min-h-14 cursor-pointer gap-3 overflow-hidden rounded-md border px-3 py-3 @max-[20rem]:gap-2",
+                    "before:absolute before:inset-y-0 before:start-0 before:w-[3px]",
+                    "focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus",
                     chosen === p.kind
-                      ? "border-border-strong bg-surface-sunken"
-                      : "border-border hover:bg-hover",
+                      ? "border-border-strong bg-hover before:bg-locker-accent forced-colors:border-[Highlight] forced-colors:before:bg-[Highlight]"
+                      : "border-border-strong bg-surface-raised hover:bg-hover",
                   )}
                 >
                   <input
@@ -363,8 +366,8 @@ function DecisionPanel({
               <StoreButtons product={product} lead />
             ) : canAdd ? (
               <Button
-                size="lg"
-                className="h-auto min-h-12 w-full whitespace-normal px-6 py-2 font-medium"
+                size="xl"
+                className="w-full"
                 loading={adding}
                 aria-describedby={error ? errorId : undefined}
                 onClick={onAdd}
@@ -388,8 +391,8 @@ function DecisionPanel({
                   <Button
                     asChild
                     variant="outline"
-                    size="lg"
-                    className="h-auto min-h-12 w-full whitespace-normal px-6 py-2 font-medium"
+                    size="xl"
+                    className="w-full"
                   >
                     <a ref={backRef} href={href.discover()}>
                       {t("locker.storefront.backDiscover")}
@@ -446,7 +449,7 @@ function AlsoOn({
               store: s.label,
               product: product.name,
             })}
-            className="rounded-sm font-medium text-fg-strong underline decoration-fg-subtle underline-offset-[3px] hover:decoration-fg-strong"
+            className={LINK_CLASS}
           >
             {s.label}
           </a>
@@ -537,7 +540,9 @@ function PathLines({ path }: { path: PortalObtainPath }): React.ReactElement {
       : pathTermsLine(path);
   return (
     <span className="min-w-0">
-      <span className="block font-medium text-fg-strong">{copy.text}</span>
+      <span className="block text-base font-semibold text-fg-strong">
+        {copy.text}
+      </span>
       <span className="block text-sm text-fg-muted">{line}</span>
     </span>
   );
@@ -579,12 +584,8 @@ function StoreButtons({
             asChild
             // One solid lead per page: the first store; any others are outlined.
             variant={lead && i === 0 ? "primary" : lead ? "outline" : "quiet"}
-            size="lg"
-            className={cn(
-              lead
-                ? "h-auto min-h-12 w-full whitespace-normal px-6 py-2 font-medium"
-                : "h-11",
-            )}
+            size={lead ? "xl" : "lg"}
+            className={lead ? "w-full" : undefined}
           >
             <a
               href={l.url}

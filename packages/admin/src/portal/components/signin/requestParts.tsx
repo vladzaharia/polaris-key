@@ -1,8 +1,13 @@
 import * as React from "react";
 import { RadioGroup } from "radix-ui";
+import { RefreshCw } from "lucide-react";
+import { Button } from "../../../ui/Button.js";
+import { AuthTitle } from "../../../ui/auth/index.js";
+import { portalErrorCopy } from "../../errors.js";
 import { cn } from "../../../lib/cn.js";
 import { t } from "../../../lib/copy.js";
 import { Avatar } from "../Avatar.js";
+import { AUTH_LINK_CLASS, AUTH_PRIMARY_CLASS } from "../../../ui/auth/parts.js";
 
 /**
  * The pieces the app card's steps share (PX-14a; SIGN-IN.md §3.6 to §3.9): the person row, a
@@ -12,8 +17,50 @@ import { Avatar } from "../Avatar.js";
  */
 
 /** The step's one primary: the neutral ink button the card uses everywhere. */
-export const PRIMARY_CLASS =
-  "h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold";
+export const PRIMARY_CLASS = AUTH_PRIMARY_CLASS;
+
+/** The request is gone (or never existed): say so and return to the library. */
+export function RequestGone(): React.ReactElement {
+  return (
+    <>
+      <div className="space-y-2">
+        <AuthTitle>{t("signin.request.goneTitle")}</AuthTitle>
+        <p className="text-fg-muted">{t("signin.request.gone")}</p>
+      </div>
+      <Button asChild variant="neutral" size="lg" className={PRIMARY_CLASS}>
+        <a href="/">{t("signin.return.library")}</a>
+      </Button>
+    </>
+  );
+}
+
+/** The request could not be reached: the error's own copy and a retry. */
+export function Unreachable({
+  error,
+  onRetry,
+}: {
+  error: unknown;
+  onRetry: () => void;
+}): React.ReactElement {
+  const copy = portalErrorCopy(error, { account: true });
+  return (
+    <>
+      <div className="space-y-2">
+        <AuthTitle>{copy.title}</AuthTitle>
+        <p className="text-fg-muted">{copy.description}</p>
+      </div>
+      <Button
+        variant="neutral"
+        size="lg"
+        className={PRIMARY_CLASS}
+        iconStart={<RefreshCw aria-hidden />}
+        onClick={onRetry}
+      >
+        {t("signin.retry")}
+      </Button>
+    </>
+  );
+}
 
 /** Person row: avatar, name, email and **Not you?**, which ends this account's part of the flow. */
 export function PersonRow({
@@ -30,7 +77,7 @@ export function PersonRow({
   return (
     <div
       data-person-row
-      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border bg-surface-sunken px-3 py-2"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-surface-sunken px-3 py-2"
     >
       <Avatar name={name} email={email} picture={picture} size={40} />
       <div className="min-w-[12ch] flex-[1_1_12ch]">
@@ -46,7 +93,7 @@ export function PersonRow({
       <button
         type="button"
         onClick={onNotYou}
-        className="inline-flex min-h-11 shrink-0 items-center rounded-sm px-1 text-sm underline decoration-2 underline-offset-4 hover:text-fg-strong"
+        className={cn(AUTH_LINK_CLASS, "shrink-0 text-sm")}
       >
         {t("signin.notYou")}
       </button>
@@ -65,7 +112,7 @@ export function NeutralCallout({
   return (
     <div
       data-callout
-      className="flex items-start gap-3 rounded-md border border-border bg-surface-sunken px-4 py-3 text-fg"
+      className="flex items-start gap-3 rounded-lg border border-border bg-surface-sunken px-4 py-3 text-fg"
     >
       <span
         aria-hidden
@@ -129,7 +176,7 @@ export const ChoiceGroup = React.forwardRef<
                 "before:absolute before:inset-y-0 before:start-0 before:w-[3px]",
                 "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
                 checked
-                  ? "border-border-strong bg-hover before:bg-[var(--pk-locker-accent)] forced-colors:border-[Highlight] forced-colors:outline forced-colors:outline-2 forced-colors:outline-[Highlight] forced-colors:before:bg-[Highlight]"
+                  ? "border-border-strong bg-hover before:bg-locker-accent forced-colors:border-[Highlight] forced-colors:outline forced-colors:outline-2 forced-colors:outline-[Highlight] forced-colors:before:bg-[Highlight]"
                   : "border-border-strong bg-surface-raised hover:bg-hover",
               )}
             >
@@ -216,5 +263,38 @@ export function InkMeter({
         />
       ))}
     </div>
+  );
+}
+
+/**
+ * A device row's content, shared by sign-in's Replace a device and the portal's Free a device:
+ * the glyph, the name (16, weight 600), its tags, and the meta line (14).
+ */
+export function DeviceChoiceBody({
+  glyph,
+  name,
+  tags,
+  meta,
+}: {
+  glyph: React.ReactNode;
+  name: React.ReactNode;
+  tags?: React.ReactNode;
+  meta: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <span className="flex items-start gap-2">
+      <span className="mt-0.5 shrink-0 text-fg-muted [&_svg]:size-4">
+        {glyph}
+      </span>
+      <span className="min-w-0 space-y-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-fg-strong [overflow-wrap:anywhere]">
+            {name}
+          </span>
+          {tags}
+        </span>
+        <span className="block text-sm text-fg-muted">{meta}</span>
+      </span>
+    </span>
   );
 }

@@ -6,6 +6,8 @@ import { useLibrary } from "../library.js";
 import { isDownloadAction, quickAction } from "../model/library.js";
 import { href } from "../router.js";
 import { QuickActionButton } from "./QuickAction.js";
+import { cn } from "../../lib/cn.js";
+import { LINK_CLASS } from "../linkClass.js";
 
 /**
  * A just-added Discover tile's actions (portal.discover): the product's covered build for this
@@ -62,7 +64,10 @@ export function DiscoverAddedActions({
       <a
         id={openId}
         href={href.product(slug)}
-        className="relative inline-flex min-h-6 items-center gap-1.5 rounded-sm text-sm font-medium text-accent-fg underline decoration-accent-fg underline-offset-[3px] pointer-coarse:min-h-11"
+        className={cn(
+          LINK_CLASS,
+          "relative inline-flex min-h-6 items-center gap-1.5 text-sm pointer-coarse:min-h-11",
+        )}
       >
         {t("locker.discover.go", { product: name })}
         <ArrowRight aria-hidden className="size-3.5" />

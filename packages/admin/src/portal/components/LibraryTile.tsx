@@ -179,8 +179,7 @@ export function LibraryTile({
               <h3
                 id={`tile-${product.slug}`}
                 className={cn(
-                  "min-w-0 flex-1 break-words font-semibold leading-snug text-fg-strong",
-                  tiny ? "text-sm" : "text-base",
+                  "min-w-0 flex-1 break-words text-base/6 font-semibold text-fg-strong",
                 )}
               >
                 <a
@@ -238,7 +237,7 @@ export function LibraryTile({
               size="md"
               className={cn(
                 // The label wraps rather than clips at large text; the menu keeps its own square.
-                "h-auto min-h-10 min-w-0 flex-1 basis-24 whitespace-normal py-1.5 text-center pointer-coarse:min-h-11",
+                "min-w-0 flex-1 basis-24 whitespace-normal text-center",
                 narrow && "[&_svg]:hidden",
               )}
             />

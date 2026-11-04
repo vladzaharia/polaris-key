@@ -31,7 +31,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
+import { BRAND, ELEVATION, FONT, THEME_TOKENS } from "@polaris-key/brand";
 import { LOCKER_LOCKUP_PALETTES, lockupMetrics } from "@polaris-key/brand/svg";
 import { escapeHtml } from "../platform/html.js";
 import { WORKER_HELP_LINKS } from "./helpLinks.js";
@@ -101,6 +101,7 @@ function palette(theme: "dark" | "light"): string {
     `--danger-edge:${danger.border}`,
     `--danger-subtle:${danger.subtle}`,
     `--focus:${t.focus}`,
+    `--elev3:${ELEVATION[theme]["3"]}`,
     `--mb:${BRAND.violet[theme]}`,
     `--ms:${BRAND.star[theme]}`,
     `--mt:${BRAND.text[theme]}`,
@@ -147,11 +148,11 @@ export const BRAND_PAGE_CSS = [
   `h1+p{color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `p{margin:0 0 1rem}`,
   `.muted{color:var(--muted)}`,
-  `.alert{margin:0 0 1rem;padding:.75rem 1rem;border:1px solid var(--danger-edge);border-radius:6px;background:var(--danger-subtle);color:var(--strong)}`,
-  `dl{display:grid;grid-template-columns:6rem 1fr;gap:.5rem 1rem;margin:1.5rem 0;padding:1rem;border-radius:6px;background:var(--sunken)}`,
+  `.alert{margin:0 0 1rem;padding:.75rem 1rem;border:1px solid var(--danger-edge);border-radius:.625rem;background:var(--danger-subtle);color:var(--strong)}`,
+  `dl{display:grid;grid-template-columns:6rem 1fr;gap:.5rem 1rem;margin:1.5rem 0;padding:1rem;border-radius:.625rem;background:var(--sunken)}`,
   `dt{color:var(--muted)}`,
   `dd{margin:0;color:var(--strong);overflow-wrap:anywhere}`,
-  `.code{font-family:${FONT.mono};font-weight:600;letter-spacing:.08em;white-space:nowrap}`,
+  `.code{font-family:${FONT.mono};font-weight:600;letter-spacing:.1em;white-space:nowrap}`,
   `form{margin:0}`,
   `label{display:block;margin:1.5rem 0 .5rem;color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:500}`,
   `input[type=text]{display:block;width:100%;min-height:44px;padding:0 .75rem;margin:0 0 1rem;border:1px solid var(--edge);border-radius:6px;background:var(--sunken);color:var(--strong);font-family:${FONT.mono};font-size:1.25rem;letter-spacing:.08em;text-transform:uppercase}`,
@@ -165,12 +166,12 @@ export const BRAND_PAGE_CSS = [
   `.button.danger{border-color:var(--danger-edge);background:var(--danger-subtle);color:var(--strong)}`,
   `.stack{display:grid;gap:.5rem}`,
   `.small{font-size:.875rem;line-height:1.25rem}`,
-  `.notice{margin:0 0 1rem;padding:.75rem 1rem;border:1px solid var(--rule);border-radius:6px;background:var(--sunken);color:var(--strong)}`,
+  `.notice{margin:0 0 1rem;padding:.75rem 1rem;border:1px solid var(--rule);border-radius:.625rem;background:var(--sunken);color:var(--strong)}`,
   `.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}`,
   // The license chooser's rows (I-26): radio cards, the console's RadioCards look.
   `fieldset.choices{margin:0;padding:0;border:0;min-width:0}`,
   `ul.choices{display:grid;gap:.5rem;margin:0;padding:0;list-style:none}`,
-  `.choice{display:flex;gap:.75rem;align-items:flex-start;margin:0;padding:.75rem 1rem;border:1px solid var(--edge);border-radius:6px;background:var(--sunken);color:var(--text);font-size:1rem;font-weight:400;cursor:pointer}`,
+  `.choice{display:flex;gap:.75rem;align-items:flex-start;margin:0;padding:.75rem;border:1px solid var(--edge);border-radius:6px;background:var(--sunken);color:var(--text);font-size:1rem;font-weight:400;cursor:pointer}`,
   `.choice:has(input:checked){border-color:var(--accent);background:var(--accent-subtle)}`,
   `.choice input{flex:none;width:1rem;height:1rem;margin:.25rem 0 0;accent-color:var(--accent)}`,
   `.choice.is-disabled{cursor:default;border-style:dashed}`,
@@ -218,6 +219,8 @@ function lockerPalette(theme: "dark" | "light"): string {
     `--on-accent:${t.action.on}`,
     `--accent-subtle:${t.surface.sunken}`,
     `--focus:${t.text.strong}`,
+    // The selected-row fill the portal calls bg-hover: overlay on dark, one step down (sunken) on light.
+    `--hover:${theme === "dark" ? t.surface.overlay : t.surface.sunken}`,
   ].join(";");
 }
 
@@ -227,7 +230,7 @@ function lockerPalette(theme: "dark" | "light"): string {
  * link underline (2 px) carries the coral.
  */
 const AUTH_CARD_RULES = [
-  `[data-brand=locker] a:not(.button){color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
+  `[data-brand=locker] a:not(.button){border-radius:.375rem;color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:4px}`,
   `[data-brand=locker] .button{text-decoration:none}`,
   // ── The AuthCard's Worker twin (`renderAuthCard`; packages/admin/src/ui/auth/AuthCard.tsx is the
   // React original): the lockup above, one 28.5 rem card (22 px radius) with an optional header,
@@ -236,27 +239,27 @@ const AUTH_CARD_RULES = [
   `[data-brand=locker] body{display:block;place-items:normal;min-height:100dvh;padding:clamp(1.5rem,7vh,3.5rem) 1rem 3rem}`,
   `.ac-brand{display:flex;justify-content:center;margin:0 0 1.5rem;color:var(--strong)}`,
   `.ac-brand svg{display:block;max-width:100%;height:auto}`,
-  `main.ac{display:block;width:100%;max-width:28.5rem;min-width:0;margin:0 auto;overflow:hidden;border:1px solid var(--rule);border-radius:1.375rem;background:var(--raised);box-shadow:0 8px 24px rgb(0 0 0 / .18)}`,
-  `.ac-head{display:flex;gap:1rem;align-items:center;min-width:0;padding:1rem 1.75rem;border-bottom:1px solid var(--rule)}`,
-  `.ac-head img,.ac-mono{display:block;flex:none;width:48px;height:48px;border-radius:11px;object-fit:cover}`,
+  `main.ac{display:block;width:100%;max-width:28.5rem;min-width:0;margin:0 auto;overflow:hidden;border:1px solid var(--rule);border-radius:1.375rem;background:var(--raised);box-shadow:var(--elev3)}`,
+  `.ac-head{display:flex;gap:1rem;align-items:center;min-width:0;padding:1rem 1.5rem;border-bottom:1px solid var(--rule)}`,
+  `.ac-head img,.ac-mono{display:block;flex:none;width:56px;height:56px;border-radius:14px;object-fit:cover}`,
   `.ac-head-title strong{font-weight:600}`,
   `.ac-mono{display:grid;place-items:center;background:var(--sunken);border:1px solid var(--rule);color:var(--strong);font-weight:600}`,
   `.ac-head-text{display:grid;min-width:0;overflow-wrap:anywhere}`,
   `.ac-head-text p{margin:0}`,
-  `.ac-head-title{color:var(--strong);font-size:1rem;line-height:1.5rem}`,
+  `.ac-head-title{color:var(--strong);font-size:1.125rem;line-height:1.5rem}`,
   `.ac-head-sub{color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.ac-dev{display:flex;gap:.375rem;align-items:center}`,
   `.ac-dev .ic{margin:0}`,
   `.ac-brand.quiet{opacity:.8}`,
   `.ac-passport{display:none}`,
-  `.ac-body{display:grid;gap:1.25rem;min-width:0;padding:2rem 1.75rem;overflow-wrap:anywhere}`,
+  `.ac-body{display:grid;gap:1.25rem;min-width:0;padding:2rem 1.5rem;overflow-wrap:anywhere}`,
   `.ac-body>*{margin:0;min-width:0}`,
   `.ac-body h1{font-size:1.5rem;line-height:2rem;letter-spacing:0}`,
-  `.ac-body h1+p{font-size:.9375rem;line-height:1.375rem}`,
+  `.ac-body h1+p{font-size:1rem;line-height:1.5rem}`,
   `.ac-body label{margin:0 0 .5rem}`,
   `.ac-body .actions{margin:0}`,
   `.ac-body .actions.stack,.ac-body .stack{gap:.5rem}`,
-  `.ac-foot{display:flex;gap:.75rem;align-items:flex-start;padding:1rem 1.75rem;border-top:1px solid var(--rule);color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
+  `.ac-foot{display:flex;gap:.75rem;align-items:flex-start;padding:1rem 1.5rem;border-top:1px solid var(--rule);color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
   `.ac-foot svg{margin-top:.125rem}`,
   // Under the card: Help and Privacy, quiet, with 24 px targets.
   `.ac-links{display:flex;flex-wrap:wrap;justify-content:center;gap:.25rem 1.5rem;max-width:28.5rem;margin:1.25rem auto 0;padding:0 1.25rem}`,
@@ -264,9 +267,13 @@ const AUTH_CARD_RULES = [
   `.ac-links a+a::before{content:"\\00b7" / "";position:absolute;inset-inline-start:-1.0625rem;color:var(--muted)}`,
   `.ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;padding:.125rem .25rem;font-size:.875rem;line-height:1.25rem}`,
   `@media (max-width: 30rem){.ac-links a{min-height:2.75rem;padding:.125rem .5rem}}`,
+  // Selectable rows: the title is 16/24 (the React row's), the tier chip a full pill; a user code is strong ink.
+  `[data-brand=locker] .choice-title{font-size:1rem;line-height:1.5rem}`,
+  `[data-brand=locker] .tag{border-radius:9999px}`,
+  `[data-brand=locker] .code{color:var(--strong)}`,
   `.ic.lg{width:2.5rem;height:2.5rem;color:var(--strong)}`,
   // The pkey login card: the code, big, in its own panel; the role tags in one wrapping row.
-  `.codepanel{display:grid;gap:.25rem;justify-items:center;padding:1rem;border:1px solid var(--rule);border-radius:.75rem;background:var(--sunken);text-align:center}`,
+  `.codepanel{display:grid;gap:.25rem;justify-items:center;padding:1rem;border:1px solid var(--rule);border-radius:.625rem;background:var(--sunken);text-align:center}`,
   `.codepanel p{margin:0;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.codepanel .code{color:var(--strong);font-size:1.5rem;line-height:2rem}`,
   `.facts{display:grid;gap:.5rem;min-width:0}`,
@@ -274,33 +281,33 @@ const AUTH_CARD_RULES = [
   `.tags{display:flex;flex-wrap:wrap;gap:.5rem;margin:0}`,
   `.tags .tag{display:inline-flex;gap:.375rem;align-items:center;max-width:100%;padding:.125rem .5rem;white-space:nowrap}`,
   `.tags .tag .muted{white-space:normal}`,
-  `.person a.quiet{display:inline-flex;align-items:center;flex:none;min-height:2.75rem;padding:0 .5rem;color:var(--strong);font-size:.875rem;text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
+  `.person a.quiet{display:inline-flex;align-items:center;flex:none;min-height:2.75rem;padding:0 .5rem;color:var(--strong);font-size:.875rem;text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:4px}`,
   `.ic{flex:none;width:1.25rem;height:1.25rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}`,
   `.ic.sm{width:1rem;height:1rem}`,
   // Buttons: 48 px, ink fill, one primary per step. `.link` is the quiet third action.
-  `[data-brand=locker] .button{min-height:3rem;gap:.5rem;border-radius:.5rem;font-size:1rem;line-height:1.5rem;font-weight:600}`,
+  `[data-brand=locker] .button{min-height:3rem;padding:.5rem 1.5rem;gap:.5rem;border-radius:.375rem;font-size:1rem;line-height:1.5rem;font-weight:500}`,
   `[data-brand=locker] .button.secondary{border-color:var(--edge);background:transparent;color:var(--strong)}`,
-  `[data-brand=locker] .button.link{border-color:transparent;background:transparent;color:var(--strong);min-height:2.75rem}`,
-  `[data-brand=locker] .button.link:hover{text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em;filter:none}`,
+  `[data-brand=locker] .button.link{border-color:transparent;background:transparent;color:var(--strong);min-height:2.75rem;text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:4px;font-weight:400}`,
+  `[data-brand=locker] .button.link:hover{filter:none}`,
   `.ac-body form{display:grid;gap:1.25rem;min-width:0}`,
   // A neutral callout (DL6: a refusal is information, not an alarm) and the one-line note.
-  `.callout{display:flex;gap:.75rem;align-items:flex-start;padding:1rem;border:1px solid var(--rule);border-radius:.75rem;background:var(--sunken)}`,
+  `.callout{display:flex;gap:.75rem;align-items:flex-start;padding:.75rem 1rem;border:1px solid var(--rule);border-radius:.625rem;background:var(--sunken)}`,
   `.callout>.ic{margin-top:.125rem;color:var(--muted)}`,
   `.callout-text{display:grid;gap:.125rem;min-width:0}`,
   `.callout-text p{margin:0;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
-  `.callout-text .callout-title{color:var(--strong);font-size:.9375rem;line-height:1.375rem;font-weight:600}`,
+  `.callout-text .callout-title{color:var(--strong);font-size:1rem;line-height:1.5rem;font-weight:600}`,
   // The person row (SIGN-IN.md §3.6): initial avatar, name, email and the quiet "Not you?" action.
-  `.person{display:flex;gap:.75rem;align-items:center;padding:.5rem .5rem .5rem .75rem;border:1px solid var(--rule);border-radius:.75rem;background:var(--sunken)}`,
+  `.person{display:flex;gap:.75rem;align-items:center;padding:.5rem .5rem .5rem .75rem;border:1px solid var(--rule);border-radius:.625rem;background:var(--sunken)}`,
   `.person .ac-mono{width:2.5rem;height:2.5rem;border-radius:50%}`,
   `.person-text{display:grid;min-width:0;flex:1;font-size:.875rem;line-height:1.25rem;color:var(--muted)}`,
   `.person-name{color:var(--strong);font-weight:600}`,
-  `.person .quiet{flex:none;min-height:2.75rem;padding:0 .5rem;border:0;background:none;color:var(--strong);font:inherit;font-size:.875rem;text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em;cursor:pointer}`,
+  `.person .quiet{flex:none;min-height:2.75rem;padding:0 .5rem;border:0;background:none;color:var(--strong);font:inherit;font-size:.875rem;text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:4px;cursor:pointer}`,
   `.note{display:flex;gap:.5rem;align-items:flex-start;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.note>.ic{margin-top:.125rem}`,
   // The code field: big mono caps, centred; its error sits under it, never above the form.
   `.field{display:grid;gap:.5rem;min-width:0}`,
   `.field label,.field input{margin:0}`,
-  `.ac-body input[type=text]{margin:0;min-height:3.5rem;text-align:center;font-size:min(1.5rem,6vw);letter-spacing:.04em}`,
+  `.ac-body input[type=text]{margin:0;min-height:3.5rem;text-align:center;font-size:min(1.5rem,6vw);font-weight:600;letter-spacing:.1em}`,
   `.ac-body input[type=text][aria-invalid=true]{border-color:var(--danger-edge)}`,
   `.field-err{display:flex;gap:.5rem;align-items:flex-start;color:var(--danger);font-size:.875rem;line-height:1.25rem}`,
   `.field-err .ic{margin-top:.125rem}`,
@@ -311,7 +318,14 @@ const AUTH_CARD_RULES = [
   `@media (forced-colors: active){[data-brand=locker] .button:not(.secondary):not(.link){border:3px solid Highlight;background:ButtonFace;color:ButtonText}}`,
   // The licence chooser: the selected row is a neutral 7 % fill with a coral 3 px marker (D9a);
   // a link inside a row is a 44 px target.
-  `[data-brand=locker] .choice:has(input:checked){border-color:var(--edge);background:color-mix(in srgb,var(--strong) 7%,var(--sunken));box-shadow:inset 3px 0 0 var(--mb)}`,
+  `[data-brand=locker] .choice{background:var(--raised)}`,
+  `[data-brand=locker] .choice:has(input:checked){border-color:var(--edge);background:var(--hover);box-shadow:inset 3px 0 0 var(--mb)}`,
+  // The portal row's pill and its 20 px ring radio (React ChoiceGroup / Pill), and the muted devices line.
+  `[data-brand=locker] .tag{padding:.125rem .5rem;border-color:var(--edge);color:var(--text);line-height:1rem;font-weight:500}`,
+  `[data-brand=locker] .choice input{appearance:none;width:1.25rem;height:1.25rem;margin:.125rem 0 0;border:2px solid var(--muted);border-radius:50%;background:transparent}`,
+  `[data-brand=locker] .choice input:checked{border-color:var(--strong);background:radial-gradient(circle,var(--strong) 0 .3125rem,transparent .3125rem)}`,
+  `@media (forced-colors: active){[data-brand=locker] .choice input{forced-color-adjust:none;border-color:ButtonText}[data-brand=locker] .choice input:checked{border-color:Highlight;background:radial-gradient(circle,Highlight 0 .3125rem,transparent .3125rem)}}`,
+  `[data-brand=locker] .choice-seats{color:var(--muted)}`,
   `@media (forced-colors: active){[data-brand=locker] .choice:has(input:checked){border-color:Highlight;border-left-width:3px}}`,
   `[data-brand=locker] ul.choices a{display:inline-flex;align-items:center;min-height:2.75rem}`,
   `[data-brand=locker] details.replace summary{display:flex;align-items:center;min-height:2.75rem}`,
@@ -357,6 +371,9 @@ const LOCKER_PAGE_CSS_TAIL = [
   // compact Key lockup at the brand size (BRAND_LOCKUP_HEIGHT.key). `/tv`'s 44 px TV lockup drops
   // to the same 23 px, which needs no width cap.
   `@media (max-width: 30rem){.ac-brand svg{height:23px;width:auto}.tv .ac-brand svg{height:23px}}`,
+  // Polaris Locker only: the card goes edge to edge on the raised surface under 40 rem, like the React AuthCard (max-sm).
+  // Not in `AUTH_CARD_RULES`: the console card copies those, and it keeps its floating card down to 30 rem.
+  `@media (max-width: 39.99rem){[data-brand=locker] body{padding:0 0 2rem}[data-brand=locker] .ac-brand{height:3.5rem;align-items:center;margin:0;border-bottom:1px solid var(--rule)}[data-brand=locker] .ac-brand svg{height:23px;width:auto}[data-brand=locker] main.ac{max-width:none;border-width:0 0 1px;border-radius:0;box-shadow:none;background:var(--raised)}[data-brand=locker] .ac-head,[data-brand=locker] .ac-body,[data-brand=locker] .ac-foot{padding-left:1.25rem;padding-right:1.25rem}[data-brand=locker] .ac-body{padding-top:1.5rem;padding-bottom:1.5rem}[data-brand=locker] .ac-links a{min-height:2.75rem;padding:.125rem .5rem}[data-brand=locker] .tv .ac-body{padding:1.5rem}[data-brand=locker] .tv .ac-brand svg{height:23px}}`,
 ].join("");
 
 /** The stylesheet of a Locker page: `BRAND_PAGE_CSS` and its tail. */

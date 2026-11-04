@@ -7,12 +7,17 @@ import {
   KeyRound,
   Mail,
   ScanLine,
-  RefreshCw,
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { Input } from "../../ui/Input.js";
+import { cn } from "../../lib/cn.js";
 import { t, tParts } from "../../lib/copy.js";
+import {
+  PRIMARY_CLASS,
+  RequestGone,
+  Unreachable,
+} from "../components/signin/requestParts.js";
 import { expiredCodeText, wrongCodeText } from "../copy/codeEntry.js";
 import {
   portalApi,
@@ -24,6 +29,8 @@ import {
   type PortalSsoNext,
 } from "../api.js";
 import {
+  AUTH_INPUT_CLASS,
+  AUTH_LINK_CLASS,
   AuthCard,
   AuthTitle as Title,
   CardHeader,
@@ -447,20 +454,7 @@ export function SignInPage({
       {(handle !== null && request.isPending) || caps.isPending ? (
         <MethodsSkeleton />
       ) : requestGone ? (
-        <>
-          <div className="space-y-2">
-            <Title>{t("signin.request.goneTitle")}</Title>
-            <p className="text-fg-muted">{t("signin.request.gone")}</p>
-          </div>
-          <Button
-            asChild
-            variant="neutral"
-            size="lg"
-            className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
-          >
-            <a href="/">{t("signin.return.library")}</a>
-          </Button>
-        </>
+        <RequestGone />
       ) : caps.error || requestFailed ? (
         <Unreachable
           error={caps.error ?? request.error}
@@ -726,33 +720,6 @@ function MethodsSkeleton(): React.ReactElement {
   );
 }
 
-function Unreachable({
-  error,
-  onRetry,
-}: {
-  error: unknown;
-  onRetry: () => void;
-}): React.ReactElement {
-  const copy = portalErrorCopy(error, { account: true });
-  return (
-    <>
-      <div className="space-y-2">
-        <Title>{copy.title}</Title>
-        <p className="text-fg-muted">{copy.description}</p>
-      </div>
-      <Button
-        variant="neutral"
-        size="lg"
-        className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
-        iconStart={<RefreshCw aria-hidden />}
-        onClick={onRetry}
-      >
-        {t("signin.retry")}
-      </Button>
-    </>
-  );
-}
-
 function startErrorText(err: unknown): string {
   if (err instanceof HttpError) {
     // The Worker's 429 carries no wait yet.
@@ -974,7 +941,7 @@ function MethodsStep({
               }}
               aria-invalid={invalid || undefined}
               aria-describedby={error ? errorId : undefined}
-              className="h-12 text-base"
+              className={AUTH_INPUT_CLASS}
             />
             {/* B-067: no reserved line; it opens a 48 px gap above Continue. */}
             {error ? (
@@ -987,7 +954,7 @@ function MethodsStep({
             type="submit"
             variant="neutral"
             size="lg"
-            className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
+            className={PRIMARY_CLASS}
             loading={sending}
             iconEnd={<ArrowRight aria-hidden />}
           >
@@ -1016,7 +983,7 @@ function MethodsStep({
           asChild
           variant={magic || providers.length ? "secondary" : "neutral"}
           size="lg"
-          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center"
+          className={PRIMARY_CLASS}
         >
           <a href={ssoHref} onClick={() => stashCarriedKey()}>
             <ShieldCheck aria-hidden />
@@ -1038,7 +1005,7 @@ function MethodsStep({
             type="button"
             variant="ghost"
             size="lg"
-            className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-medium"
+            className={PRIMARY_CLASS}
             loading={passkeyBusy}
             onClick={() => void withPasskey()}
             iconStart={<Fingerprint aria-hidden />}
@@ -1101,7 +1068,7 @@ function ConnectionButton({
       asChild
       variant={primary ? "neutral" : "secondary"}
       size="lg"
-      className="h-auto min-h-12 w-full whitespace-normal py-2 text-center"
+      className={PRIMARY_CLASS}
     >
       <a
         href={href}
@@ -1279,7 +1246,7 @@ function IdChip({
           type="button"
           onClick={onChange}
           aria-label={t("signin.code.changeEmail")}
-          className="inline-flex min-h-11 shrink-0 items-center rounded-full px-2 font-medium text-fg-strong underline decoration-2 underline-offset-4"
+          className={cn(AUTH_LINK_CLASS, "shrink-0 px-2")}
         >
           {t("signin.consent.change")}
         </button>
@@ -1380,12 +1347,7 @@ function SsoStep({
         ) : null}
       </div>
       <div className="space-y-3">
-        <Button
-          asChild
-          variant="neutral"
-          size="lg"
-          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
-        >
+        <Button asChild variant="neutral" size="lg" className={PRIMARY_CLASS}>
           <a
             href={connectionHref(connection.id, email, product)}
             onClick={() => stashCarriedKey()}
@@ -1399,7 +1361,7 @@ function SsoStep({
             ref={codeRef}
             variant="outline"
             size="lg"
-            className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
+            className={PRIMARY_CLASS}
             loading={sending}
             disabledReason={
               wait > 0 ? t("signin.sso.wait", { time: clock }) : undefined
@@ -1444,7 +1406,7 @@ function RefusedStep({
       <Button
         variant="neutral"
         size="lg"
-        className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
+        className={PRIMARY_CLASS}
         onClick={onChangeEmail}
       >
         {t("signin.code.differentEmail")}
@@ -1551,7 +1513,7 @@ function KeyStep({
           variant="neutral"
           size="lg"
           loading={checking}
-          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
+          className={PRIMARY_CLASS}
           iconEnd={<ArrowRight aria-hidden />}
         >
           {t("signin.continue")}

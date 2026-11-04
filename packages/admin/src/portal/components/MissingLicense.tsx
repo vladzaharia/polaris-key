@@ -4,6 +4,7 @@ import { ChevronUp } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { useActivate } from "../activate.js";
 import { href } from "../router.js";
+import { LINK_CLASS } from "../linkClass.js";
 
 /**
  * "Missing a license?" (B12, PX-35): the other ways a license reaches the account, as a slim
@@ -22,8 +23,7 @@ import { href } from "../router.js";
  * it.
  */
 /** Neutral ink with the coral rule (D9a); the underline tells a link from the muted text. */
-const LINK =
-  "inline-flex min-h-11 items-center font-medium text-fg-strong underline decoration-[var(--pk-locker-accent)] decoration-2 underline-offset-4 hover:text-fg-strong";
+const LINK = `${LINK_CLASS} inline-flex min-h-11 items-center`;
 
 export function MissingLicense({
   hideActivate = false,

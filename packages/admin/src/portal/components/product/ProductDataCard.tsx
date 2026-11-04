@@ -147,7 +147,7 @@ function SupportCodeRow({
               tabIndex={-1}
               className="rounded-md outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-focus"
             >
-              <code className="select-all break-normal rounded-md box-decoration-clone bg-surface-sunken px-3 py-1.5 font-mono text-lg tracking-widest text-fg-strong">
+              <code className="select-all break-normal rounded-md box-decoration-clone bg-surface-sunken px-3 py-1.5 font-mono text-lg font-semibold tracking-widest text-fg-strong">
                 {code}
               </code>
             </div>

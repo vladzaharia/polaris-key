@@ -4,7 +4,7 @@
  * 36 px tall (32 px minimum hit target, 36 px on coarse pointers).
  */
 export const CONTROL_INPUT = [
-  "h-9 w-full min-w-0 rounded-md border border-border-strong bg-surface-sunken px-3 text-sm text-fg",
+  "h-9 w-full min-w-0 rounded-md border border-border-strong bg-surface-sunken px-3 text-base console:text-sm text-fg",
   // Not `transition-colors`: that also eases the outline's colour, and focus rings never animate (S-23 §6.5).
   "transition-[color,background-color,border-color] duration-(--pk-duration-fast) ease-standard",
   "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",

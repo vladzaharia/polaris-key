@@ -6,7 +6,7 @@ import { Dialog, DialogBody, DialogFooter } from "../../ui/Dialog.js";
 import { Input } from "../../ui/Input.js";
 import { formatRelative } from "../../lib/format.js";
 import { PORTAL_FMT } from "../date.js";
-import { t } from "../../lib/copy.js";
+import { t, tParts } from "../../lib/copy.js";
 import { HttpError, type PortalDeviceLoginRequest } from "../api.js";
 import { isStepUpRequired, portalErrorCopy } from "../errors.js";
 import { StepUpInline } from "./account/StepUpInline.js";
@@ -204,7 +204,7 @@ export function ApproveDeviceDialog({
                     ? "pk-approve-err"
                     : undefined
                 }
-                className="h-12 font-mono text-lg tracking-widest"
+                className="h-14 font-mono text-2xl font-semibold tracking-widest"
               />
               {phase.kind === "enter" && phase.error ? (
                 <p
@@ -236,7 +236,18 @@ export function ApproveDeviceDialog({
                 ? t("signin.approve.askPackages", {
                     host: phase.request.client!.host,
                   })
-                : t("signin.approve.askBody", { code: phase.request.code })}
+                : tParts("signin.approve.askBody", ["code"]).map((part, i) =>
+                    typeof part === "string" ? (
+                      part
+                    ) : (
+                      <span
+                        key={i}
+                        className="font-mono font-semibold tracking-widest text-fg-strong"
+                      >
+                        {phase.request.code}
+                      </span>
+                    ),
+                  )}
             </p>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
               <dt className="text-fg-muted">{t("signin.approve.device")}</dt>

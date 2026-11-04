@@ -13,6 +13,8 @@ import { Button } from "../../../ui/Button.js";
 import { Checkbox } from "../../../ui/Checkbox.js";
 import { Input } from "../../../ui/Input.js";
 import {
+  AUTH_INPUT_CLASS,
+  AUTH_LINK_CLASS,
   AuthTitle,
   CodeEntry,
   type CodeResendOutcome,
@@ -20,6 +22,7 @@ import {
   useStepFocus,
 } from "../../../ui/auth/index.js";
 import { cn } from "../../../lib/cn.js";
+import { PRIMARY_CLASS, Unreachable } from "./requestParts.js";
 import { t, tParts } from "../../../lib/copy.js";
 import {
   portalApi,
@@ -28,7 +31,6 @@ import {
   type PortalGate,
   type PortalGateChoice,
 } from "../../api.js";
-import { portalErrorCopy } from "../../errors.js";
 import { useCapabilities } from "../../data.js";
 import { toast } from "../../../ui/toast.js";
 import { rememberNudge, rememberVia } from "../../lastMethod.js";
@@ -104,7 +106,7 @@ function TermsLink({
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="-my-3 py-3 underline decoration-2 underline-offset-4"
+      className="-my-3 rounded-md py-3 text-fg-strong underline decoration-2 underline-offset-4"
     >
       {children}
     </a>
@@ -253,7 +255,6 @@ function GateUnreachable({
   error: unknown;
   onRetry: () => void;
 }): React.ReactElement {
-  const copy = portalErrorCopy(error, { account: true });
   const { ref, live } = useStepFocus("error");
   React.useEffect(() => {
     ref.current
@@ -262,18 +263,7 @@ function GateUnreachable({
   }, [ref]);
   return (
     <div ref={ref} className="space-y-5">
-      <div className="space-y-2">
-        <AuthTitle>{copy.title}</AuthTitle>
-        <p className="text-fg-muted">{copy.description}</p>
-      </div>
-      <Button
-        variant="neutral"
-        size="lg"
-        className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
-        onClick={onRetry}
-      >
-        {t("signin.retry")}
-      </Button>
+      <Unreachable error={error} onRetry={onRetry} />
       {live}
     </div>
   );
@@ -596,10 +586,6 @@ function FinishForm({
   };
 
   const pending = gate.email.pending ?? gate.join?.email ?? null;
-  const primaryClass =
-    "h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold";
-  const linkBtn =
-    "inline-flex min-h-11 items-center rounded-sm px-1 underline decoration-2 underline-offset-4 hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
   // The passkey step: one tap, an outcome line, then onward.
   if (view === "passkey" && after) {
@@ -630,7 +616,7 @@ function FinishForm({
                 type="button"
                 variant="neutral"
                 size="lg"
-                className={primaryClass}
+                className={PRIMARY_CLASS}
                 loading={busy}
                 onClick={() => void addPasskey()}
               >
@@ -640,7 +626,7 @@ function FinishForm({
                 type="button"
                 variant="ghost"
                 size="lg"
-                className={primaryClass}
+                className={PRIMARY_CLASS}
                 disabled={busy}
                 onClick={() => void onPassed(after.next, after.nudge)}
               >
@@ -653,7 +639,7 @@ function FinishForm({
               type="button"
               variant="neutral"
               size="lg"
-              className={primaryClass}
+              className={PRIMARY_CLASS}
               onClick={() => void onPassed(after.next, after.nudge)}
             >
               {t("signin.continue")}
@@ -689,7 +675,7 @@ function FinishForm({
             <Button
               variant="neutral"
               size="lg"
-              className={primaryClass}
+              className={PRIMARY_CLASS}
               loading={busy}
               onClick={() =>
                 void run(async () => {
@@ -702,34 +688,41 @@ function FinishForm({
             </Button>
           ) : null}
           {emailAsked ? (
-            <Button
-              variant={proven ? "ghost" : "neutral"}
-              size="lg"
-              className={primaryClass}
-              disabled={busy}
-              onClick={() => editEmail(pending)}
-            >
-              {t("signin.code.differentEmail")}
-            </Button>
+            proven ? (
+              <button
+                type="button"
+                className={STACKED_LINK}
+                disabled={busy}
+                onClick={() => editEmail(pending)}
+              >
+                {t("signin.code.differentEmail")}
+              </button>
+            ) : (
+              <Button
+                variant="neutral"
+                size="lg"
+                className={PRIMARY_CLASS}
+                disabled={busy}
+                onClick={() => editEmail(pending)}
+              >
+                {t("signin.code.differentEmail")}
+              </Button>
+            )
           ) : null}
           {emailAsked || proven ? (
-            <Button
-              variant="ghost"
-              size="lg"
-              className={cn(
-                primaryClass,
-                "underline decoration-2 underline-offset-4",
-              )}
+            <button
+              type="button"
+              className={STACKED_LINK}
               disabled={busy}
               onClick={onCancel}
             >
               {t("signin.gate.cancel")}
-            </Button>
+            </button>
           ) : (
             <Button
               variant="neutral"
               size="lg"
-              className={primaryClass}
+              className={PRIMARY_CLASS}
               disabled={busy}
               onClick={onCancel}
             >
@@ -811,11 +804,15 @@ function FinishForm({
             type="button"
             disabled={busy}
             onClick={() => editEmail(to)}
-            className={linkBtn}
+            className={cn(AUTH_LINK_CLASS, "text-base")}
           >
             {t("signin.code.differentEmail")}
           </button>
-          <button type="button" onClick={onCancel} className={linkBtn}>
+          <button
+            type="button"
+            onClick={onCancel}
+            className={cn(AUTH_LINK_CLASS, "text-base")}
+          >
             {t("signin.gate.cancel")}
           </button>
         </CodeEntry>
@@ -856,7 +853,7 @@ function FinishForm({
           setTyped(v);
           if (emailInvalid) setError(null);
         }}
-        className="h-12 text-base"
+        className={AUTH_INPUT_CLASS}
         aria-invalid={emailInvalid || undefined}
         aria-describedby={
           [
@@ -882,7 +879,7 @@ function FinishForm({
 
   const termsPanel =
     platformTerms || productTerms ? (
-      <div className="space-y-3 rounded-lg border border-border bg-surface-sunken p-3">
+      <div className="space-y-3 rounded-lg border border-border bg-surface-sunken px-4 py-3">
         {platformTerms ? (
           <div>
             <Checkbox
@@ -1006,7 +1003,7 @@ function FinishForm({
                   setError(null);
                   requestAnimationFrame(() => emailRef.current?.focus());
                 }}
-                className={cn(linkBtn, "px-0 text-sm text-fg-muted")}
+                className={cn(AUTH_LINK_CLASS, "px-0 text-base")}
               >
                 {t("signin.code.differentEmail")}
               </button>
@@ -1096,7 +1093,7 @@ function FinishForm({
                 {...(nameHint?.trim() ? { placeholder: nameHint.trim() } : {})}
                 aria-invalid={nameError || undefined}
                 aria-describedby={`${nameId}-hint${nameError ? ` ${nameId}-err` : ""}`}
-                className="h-12 text-base"
+                className={AUTH_INPUT_CLASS}
               />
               {nameError ? (
                 <p
@@ -1119,63 +1116,41 @@ function FinishForm({
                   <ul className="flex flex-wrap gap-2">
                     {appChip ? (
                       <li key="app-hint">
-                        <button
-                          type="button"
-                          aria-pressed={appChip.name === name.trim()}
-                          onClick={() => {
+                        <SuggestionChip
+                          on={appChip.name === name.trim()}
+                          onPick={() => {
                             setName(appChip.name);
                             setNameError(false);
                           }}
-                          className={cn(
-                            "inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border px-3 text-sm text-fg-strong hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-                            appChip.name === name.trim()
-                              ? "border-fg-strong bg-hover"
-                              : "border-border-strong",
-                          )}
-                        >
-                          <AppWindow aria-hidden className="size-4 shrink-0" />
-                          <span className="min-w-0 [overflow-wrap:anywhere]">
-                            {appChip.label}
-                          </span>
-                          {appChip.name === name.trim() ? (
-                            <Check aria-hidden className="size-4 shrink-0" />
-                          ) : null}
-                        </button>
+                          icon={
+                            <AppWindow
+                              aria-hidden
+                              className="size-4 shrink-0"
+                            />
+                          }
+                          label={appChip.label}
+                        />
                       </li>
                     ) : null}
-                    {suggestions.map((s) => {
-                      const on = s.name === name.trim();
-                      return (
-                        <li key={`${s.source}:${s.name}`}>
-                          <button
-                            type="button"
-                            aria-pressed={on}
-                            onClick={() => {
-                              setName(s.name);
-                              setNameError(false);
-                            }}
-                            className={cn(
-                              "inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border px-3 text-sm text-fg-strong hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-                              on
-                                ? "border-fg-strong bg-hover"
-                                : "border-border-strong",
-                            )}
-                          >
-                            {s.source === "email" ? (
+                    {suggestions.map((s) => (
+                      <li key={`${s.source}:${s.name}`}>
+                        <SuggestionChip
+                          on={s.name === name.trim()}
+                          onPick={() => {
+                            setName(s.name);
+                            setNameError(false);
+                          }}
+                          icon={
+                            s.source === "email" ? (
                               <Mail aria-hidden className="size-4 shrink-0" />
                             ) : (
                               <ProviderMark kind={s.source} />
-                            )}
-                            <span className="min-w-0 [overflow-wrap:anywhere]">
-                              {s.name}
-                            </span>
-                            {on ? (
-                              <Check aria-hidden className="size-4 shrink-0" />
-                            ) : null}
-                          </button>
-                        </li>
-                      );
-                    })}
+                            )
+                          }
+                          label={s.name}
+                        />
+                      </li>
+                    ))}
                   </ul>
                 </div>
               ) : null}
@@ -1327,24 +1302,54 @@ function FinishForm({
             type="submit"
             variant="neutral"
             size="lg"
-            className={primaryClass}
+            className={PRIMARY_CLASS}
             loading={busy}
           >
             {primary}
           </Button>
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="lg"
-            className={cn(primaryClass, "-mb-2")}
+            className={STACKED_LINK}
             disabled={busy}
             onClick={onCancel}
           >
             {t("signin.gate.cancel")}
-          </Button>
+          </button>
         </div>
       </form>
       {live}
     </div>
+  );
+}
+
+/** A secondary action under the primary: the shared link, centred on its own line. */
+const STACKED_LINK = cn(AUTH_LINK_CLASS, "mx-auto flex w-fit text-base");
+
+/** A name suggestion: one pill, pressed when it is the name in the field. */
+function SuggestionChip({
+  on,
+  onPick,
+  icon,
+  label,
+}: {
+  on: boolean;
+  onPick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}): React.ReactElement {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onPick}
+      className={cn(
+        "inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border px-3 text-sm text-fg-strong hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+        on ? "border-fg-strong bg-hover" : "border-border-strong",
+      )}
+    >
+      {icon}
+      <span className="min-w-0 [overflow-wrap:anywhere]">{label}</span>
+      {on ? <Check aria-hidden className="size-4 shrink-0" /> : null}
+    </button>
   );
 }

@@ -552,16 +552,13 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/src/portal/components/signin/FinishStep.tsx": {
-      "jscpd:duplicate": 2
-    },
-    "packages/admin/src/portal/components/signin/RequestFlow.tsx": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/admin/src/portal/model/library.ts": {
       "jscpd:duplicate": 1
     },
     "packages/admin/src/portal/pages/SignInPage.tsx": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 2
     },
     "packages/admin/src/ui/Dialog.tsx": {
       "jscpd:duplicate": 1

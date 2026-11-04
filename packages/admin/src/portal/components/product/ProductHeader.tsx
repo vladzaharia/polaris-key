@@ -9,6 +9,7 @@ import { ProductIcon } from "../ProductIcon.js";
 import { ProductMenu } from "../ProductMenu.js";
 import { isIssueStatus, ProductStatusPill } from "../ProductStatus.js";
 import { QuickActionButton } from "../QuickAction.js";
+import { LINK_CLASS } from "../../linkClass.js";
 
 /**
  * The product header (§4.20): back to Library, the banner (16:9 full-bleed on phones, a centred
@@ -54,7 +55,10 @@ export function ProductHeader({
     <div className="@container space-y-0">
       <a
         href={href.library()}
-        className="mb-6 mt-3 inline-flex min-h-6 items-center gap-2 rounded-sm text-sm text-fg underline decoration-accent-fg decoration-1 underline-offset-4 hover:text-fg-strong pointer-coarse:min-h-11"
+        className={cn(
+          LINK_CLASS,
+          "mb-6 mt-3 inline-flex min-h-6 items-center gap-2 text-sm pointer-coarse:min-h-11",
+        )}
       >
         <ArrowLeft aria-hidden className="size-4" />
         {t("locker.library.title")}
@@ -144,7 +148,8 @@ export function ProductHeader({
             product={product}
             action={action}
             lead
-            className="h-12 flex-1 px-6 desk:flex-none"
+            size="xl"
+            className="flex-1 desk:flex-none"
           />
           <ProductMenu
             slug={product.slug}

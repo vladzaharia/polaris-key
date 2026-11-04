@@ -1,7 +1,8 @@
 import * as React from "react";
 import { CircleCheck } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
-import { AuthTitle } from "../../../ui/auth/index.js";
+import { AUTH_LINK_CLASS, AuthTitle } from "../../../ui/auth/index.js";
+import { cn } from "../../../lib/cn.js";
 import { t } from "../../../lib/copy.js";
 import { PRIMARY_CLASS } from "./requestParts.js";
 
@@ -99,7 +100,7 @@ export function ReturnStep({
             <button
               type="button"
               onClick={() => setStopped(true)}
-              className="inline-flex min-h-6 items-center rounded-sm underline decoration-2 underline-offset-4 hover:text-fg-strong"
+              className={cn(AUTH_LINK_CLASS, "min-h-6 px-0")}
             >
               {t("signin.return.stay")}
             </button>
@@ -107,10 +108,7 @@ export function ReturnStep({
         ) : null}
         {!yours || stopped || !timing ? (
           <p>
-            <a
-              href="/"
-              className="inline-flex min-h-6 items-center rounded-sm underline decoration-2 underline-offset-4 hover:text-fg-strong"
-            >
+            <a href="/" className={cn(AUTH_LINK_CLASS, "min-h-6 px-0")}>
               {t("signin.return.library")}
             </a>
           </p>

@@ -122,7 +122,7 @@ function SessionList({
       <div className="ms-12 mt-1 bigtext:max-sm:ms-0">
         <Button
           variant="link"
-          className="h-auto min-h-11 pointer-coarse:min-h-11 max-w-full whitespace-normal py-2 text-start font-medium [overflow-wrap:anywhere]"
+          className="h-auto min-h-11 pointer-coarse:min-h-11 max-w-full whitespace-normal py-2 text-start font-normal [overflow-wrap:anywhere]"
           iconStart={<ScanLine aria-hidden />}
           onClick={() => {
             window.location.hash = href.account("sessions", { approve: "" });
@@ -169,7 +169,7 @@ function SessionRow({
           )}
         </span>
         <div className="min-w-0 flex-1 basis-40">
-          <p className="flex flex-wrap items-center gap-x-2 font-medium text-fg-strong">
+          <p className="flex flex-wrap items-center gap-x-2 font-semibold text-fg-strong">
             <span className="min-w-0 break-words">{name}</span>
             {session.current ? (
               <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs font-medium text-fg-strong">
@@ -182,7 +182,7 @@ function SessionRow({
         {session.current ? null : (
           <Button
             variant="ghost"
-            className="ms-auto h-10 font-medium max-sm:h-11"
+            className="ms-auto"
             loading={end.isPending}
             aria-label={t("locker.sessions.signOutOne", { name, when: meta })}
             onClick={() =>

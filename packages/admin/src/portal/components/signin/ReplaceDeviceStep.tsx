@@ -15,6 +15,7 @@ import {
 import { useSignInDevices } from "../../requestData.js";
 import {
   ChoiceGroup,
+  DeviceChoiceBody,
   NeutralCallout,
   Pill,
   PRIMARY_CLASS,
@@ -104,13 +105,11 @@ export function ReplaceDeviceStep({
     value: d.id,
     label: [d.label, d.meta].join(", "),
     children: (
-      <span className="flex items-start gap-2">
-        <DeviceGlyph kind={d.kind} />
-        <span className="min-w-0 space-y-1">
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-fg-strong [overflow-wrap:anywhere]">
-              {d.label}
-            </span>
+      <DeviceChoiceBody
+        glyph={<DeviceGlyph kind={d.kind} />}
+        name={d.label}
+        tags={
+          <>
             {d.leastRecent ? (
               <Pill>{t("signin.replace.leastRecent")}</Pill>
             ) : null}
@@ -118,10 +117,10 @@ export function ReplaceDeviceStep({
             {d.thisBrowser ? (
               <Pill>{t("signin.replace.thisBrowser")}</Pill>
             ) : null}
-          </span>
-          <span className="block text-sm text-fg-muted">{d.meta}</span>
-        </span>
-      </span>
+          </>
+        }
+        meta={d.meta}
+      />
     ),
   }));
 
@@ -209,5 +208,5 @@ function DeviceGlyph({
   kind: "phone" | "tv" | "computer";
 }): React.ReactElement {
   const Glyph = kind === "phone" ? Smartphone : kind === "tv" ? Tv : Laptop;
-  return <Glyph aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-muted" />;
+  return <Glyph aria-hidden />;
 }

@@ -103,7 +103,7 @@ export function DeviceRowHead({
             line follows the page's start edge; `bdi` shapes the name in its own direction. */}
         <p
           data-device-name=""
-          className="flex flex-wrap items-center gap-x-2 gap-y-1 break-words text-start font-medium text-fg-strong"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 break-words text-start font-semibold text-fg-strong"
         >
           {/* `min-w-0` and `anywhere`: in a flex line a long label with no break point would
               otherwise hold the row wider than a 320 px screen (WCAG 1.4.10). */}
@@ -132,7 +132,7 @@ export function DeviceRowHead({
           size="md"
           // In a very narrow card (320 px, or text at 200 %), under the icon and name too, so the
           // button has the row's whole width (WCAG 1.4.10). In px: a rem query scales with the text.
-          className="col-start-2 h-10 justify-self-start max-sm:h-11 @max-[280px]:col-span-2 @max-[280px]:col-start-1 @[20rem]:col-start-3 @[20rem]:row-start-1"
+          className="col-start-2 justify-self-start @max-[280px]:col-span-2 @max-[280px]:col-start-1 @[20rem]:col-start-3 @[20rem]:row-start-1"
           aria-label={t("locker.freeDevice.removeName", { device: name })}
           aria-expanded={false}
           aria-controls={panelId}

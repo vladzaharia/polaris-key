@@ -1,4 +1,5 @@
 import { ErrorState } from "../../ui/ErrorState.js";
+import { LINK_CLASS } from "../linkClass.js";
 import { t, tParts } from "../../lib/copy.js";
 import * as React from "react";
 import { flushSync } from "react-dom";
@@ -163,10 +164,7 @@ function LibraryBody({
             {discoverCount ? (
               <>
                 {" "}
-                <a
-                  href={href.discover()}
-                  className="font-medium text-accent-fg underline underline-offset-2"
-                >
+                <a href={href.discover()} className={LINK_CLASS}>
                   {t("locker.library.more", { count: discoverCount })}
                 </a>
               </>

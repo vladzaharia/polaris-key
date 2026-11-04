@@ -169,7 +169,7 @@ function LibraryRow({
       <td className="hidden px-2 py-3 desk:table-cell">
         <ProductStatusPill status={p.status} />
       </td>
-      <td className="hidden px-2 py-3 font-mono text-sm text-fg wide:table-cell">
+      <td className="hidden px-2 py-3 font-mono text-code text-fg wide:table-cell">
         {p.latestVersion ?? "–"}
       </td>
       <td
@@ -194,7 +194,6 @@ function LibraryRow({
           action={action}
           lead={p.justAdded && isDownloadAction(action)}
           size="md"
-          className="h-10"
         />
       </td>
       <td className="w-0 py-3 pe-4 desk:pe-5 bigtext:max-desk:hidden">
