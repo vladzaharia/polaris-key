@@ -149,10 +149,16 @@ public struct AccountAndLicenseSection: View {
     var devices: String?
     var onManage: () -> Void
     var onSignOut: () -> Void
-    /// Sign out could not reach the service: the line says so and Sign Out Anyway signs this device
-    /// out without it. nil draws neither.
+    /// Sign out could not reach the service: an alert asks whether to sign out anyway (this device
+    /// is signed out without the service), try again, or cancel. Drawn only when `onSignOutAnyway`
+    /// is set.
     var signOutFailed = false
     var onSignOutAnyway: (() -> Void)?
+    var onSignOutRetry: (() -> Void)?
+    /// The alert closed (by any of its buttons).
+    var onDismissSignOutFailure: (() -> Void)?
+    /// Another reason sign-out did not happen (a refusal, a hook that stopped it): its own line.
+    var signOutError: CopyLine?
     /// The account menu's "Approve a nearby device" row; nil draws none (the device is signed out, or the
     /// product or runtime offers no nearby approval).
     var onApproveNearby: (() -> Void)?
@@ -187,10 +193,14 @@ public struct AccountAndLicenseSection: View {
         channel: KitChannelState = .hidden, onChannel: ((String) -> Void)? = nil,
         checking: Bool = false, checkNote: CopyLine? = nil, checkFailed: Bool = false,
         part: Part = .all, onApproveNearby: (() -> Void)? = nil, signOutFailed: Bool = false,
-        onSignOutAnyway: (() -> Void)? = nil
+        onSignOutAnyway: (() -> Void)? = nil, onSignOutRetry: (() -> Void)? = nil,
+        onDismissSignOutFailure: (() -> Void)? = nil, signOutError: CopyLine? = nil
     ) {
         self.signOutFailed = signOutFailed
         self.onSignOutAnyway = onSignOutAnyway
+        self.onSignOutRetry = onSignOutRetry
+        self.onDismissSignOutFailure = onDismissSignOutFailure
+        self.signOutError = signOutError
         self.onApproveNearby = onApproveNearby
         self.checkFailed = checkFailed
         self.canManage = canManage
@@ -369,26 +379,39 @@ public struct AccountAndLicenseSection: View {
         Group {
             if screen.shows("common.signOut") {
                 Section {
+                    // A license held by a key alone has nobody to sign out: the exit forgets the key.
+                    let exit = CopyLine(screen.state == .keyOnly ? "account.removeKey" : "common.signOut")
                     Button(role: .destructive) {
                         confirmingSignOut = true
                     } label: {
-                        PaneText(CopyLine("common.signOut"), .body, color: .danger)
+                        PaneText(exit, .body, color: .danger)
                             .kitRowHeight(52, alignment: .leading)
                     }
                     .confirmationDialog(
-                        strings.string("common.signOut"), isPresented: $confirmingSignOut,
+                        strings.string(exit), isPresented: $confirmingSignOut,
                         titleVisibility: .hidden
                     ) {
-                        Button(
-                            strings.string("common.signOut"), role: .destructive, action: onSignOut)
+                        Button(strings.string(exit), role: .destructive, action: onSignOut)
                     }
-                    if signOutFailed, let onSignOutAnyway {
-                        PaneText(CopyLine("core.codes.network-error.message"), .footnote, color: .danger)
-                            .frame(minHeight: 44, alignment: .leading)
-                        Button(role: .destructive, action: onSignOutAnyway) {
-                            PaneText(CopyLine("common.signOutAnyway"), .body, color: .danger)
-                                .kitRowHeight(52, alignment: .leading)
+                    .alert(
+                        strings.string("common.signOutOfflineTitle"),
+                        isPresented: Binding(
+                            get: { signOutFailed && onSignOutAnyway != nil },
+                            set: { if !$0 { onDismissSignOutFailure?() } })
+                    ) {
+                        Button(strings.string("common.signOutAnyway"), role: .destructive) {
+                            onSignOutAnyway?()
                         }
+                        if let onSignOutRetry {
+                            Button(strings.string("common.tryAgain"), action: onSignOutRetry)
+                        }
+                        Button(strings.string("common.cancel"), role: .cancel) {}
+                    } message: {
+                        Text(strings.string("common.signOutOffline"))
+                    }
+                    if let signOutError {
+                        PaneText(signOutError, .footnote, color: .danger)
+                            .frame(minHeight: 44, alignment: .leading)
                     }
                 } footer: {
                     // The attribution is the pane's last item, a section footer (UI-KITS §1.6).
@@ -450,11 +473,11 @@ public struct AccountAndLicenseSection: View {
     }
 }
 
-/// The license's devices as a section: rename inline, remove with a confirm (never a dead end).
+/// The license's devices as a section: this device renames inline; every other device is managed
+/// in the account, where Manage devices leads (never a dead end).
 public struct DevicesSection: View {
     let screen: KitScreen<DevicesState>
     let devices: [KitDevice]
-    var onRemove: (KitDevice) -> Void
     var onRetry: () -> Void
     var onManage: () -> Void
     /// Rename in place; nil: the host cannot save a name, so no Rename is drawn.
@@ -463,8 +486,6 @@ public struct DevicesSection: View {
     var failure: CopyLine?
     /// Draws the browser-mode "Manage devices" link only when the host can open it.
     var canManage = true
-    /// The device a Remove waits on, confirmed first (it signs that device out).
-    @State private var removing: KitDevice?
     /// The device being renamed, and the name typed so far.
     @State private var renaming: KitDevice?
     @State private var draft = ""
@@ -475,7 +496,6 @@ public struct DevicesSection: View {
 
     public init(
         screen: KitScreen<DevicesState>, devices: [KitDevice],
-        onRemove: @escaping (KitDevice) -> Void,
         onRetry: @escaping () -> Void, onManage: @escaping () -> Void = {},
         onRename: ((KitDevice, String) -> Void)? = nil, failure: CopyLine? = nil,
         canManage: Bool = true, renaming: KitDevice? = nil
@@ -487,7 +507,6 @@ public struct DevicesSection: View {
         self.canManage = canManage
         self.screen = screen
         self.devices = devices
-        self.onRemove = onRemove
         self.onRetry = onRetry
         self.onManage = onManage
     }
@@ -551,6 +570,12 @@ public struct DevicesSection: View {
                 }
             } header: {
                 PaneText(CopyLine("devices.title"), .footnote, color: .muted)
+            } footer: {
+                // Other devices have no actions here; with no way to open the account, say where.
+                let listing = [.list, .renaming, .confirming].contains(screen.state)
+                if listing, !canManage, devices.contains(where: { !$0.current }) {
+                    PaneText(CopyLine("devices.browser"), .footnote, color: .muted)
+                }
             }
             .onChange(of: failure) { _, line in
                 guard line?.key == "devices.renameFailed", let (device, typed) = lastRename else {
@@ -559,25 +584,6 @@ public struct DevicesSection: View {
                 draft = typed
                 renaming = device
                 focused = true
-            }
-            .confirmationDialog(
-                removing.map {
-                    strings.string(
-                        "devices.removeConfirm",
-                        [
-                            "device": .text($0.name ?? strings.string("devices.unnamed")),
-                            "product": .text(style.identity.name),
-                        ])
-                } ?? "",
-                isPresented: Binding(
-                    get: { removing != nil }, set: { if !$0 { removing = nil } }),
-                titleVisibility: .visible
-            ) {
-                Button(strings.string("devices.remove"), role: .destructive) {
-                    if let device = removing { onRemove(device) }
-                    removing = nil
-                }
-                Button(strings.string("common.cancel"), role: .cancel) { removing = nil }
             }
         }
     }
@@ -603,23 +609,18 @@ public struct DevicesSection: View {
             )
             // Rename and Remove act on this device only; another device's row has no actions.
             if onRename != nil, device.current {
-                // Rename is visible, not only a swipe or a long press away.
-                Menu {
-                    Button(strings.string("devices.rename")) { beginRename(device) }
+                // Rename is visible, not only a swipe or a long press away: one action, one button.
+                Button {
+                    beginRename(device)
                 } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.title3)
-                        .foregroundStyle(style.palette.textMuted)
+                    PaneText(CopyLine("devices.rename"), .body, color: .accent)
                         .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
                 }
-                #if os(macOS)
-                    // One control: the ellipsis opens the menu; no second chevron beside it.
-                    .menuStyle(.borderlessButton)
-                    .menuIndicator(.hidden)
-                    .fixedSize()
-                #endif
-                .accessibilityLabel(name(device))
+                .buttonStyle(.borderless)
+                .tint(style.palette.accentFg)
+                .accessibilityLabel(
+                    strings.string("a11y.renameDevice", ["device": .text(name(device))]))
             }
         }
         .kitRowHeight(64)

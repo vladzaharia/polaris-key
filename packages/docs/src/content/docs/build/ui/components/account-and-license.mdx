@@ -61,9 +61,9 @@ device**, because a holder who never signed in has nothing to sign out of. The R
   <TabItem label="SwiftUI">
     <KitStatus kit="swiftui" />
 
-    **Drop-in.** Sections a host drops into its own `Form` or `List`: the product row, Manage (external link), Devices, Cloud Sync, Updates and Sign out in its own group, confirmed in the system dialog. The pane is signed in only for an account (`license.getLicenseUser()`, else a sign-in token), not for a license-key activation. Signing out of an account is `identity.signOut()`; offline it offers **Sign Out Anyway**, which releases this device without the service. A key activation signs out with `deactivate()`.
+    **Drop-in.** Sections a host drops into its own `Form` or `List`: the product row, Manage (external link), Devices, Cloud Sync, Updates and Sign out in its own group, confirmed in the system dialog. The pane is signed in only for an account (`license.getLicenseUser()`, else a sign-in token), not for a license-key activation. Signing out of an account is `identity.signOut()`; when it cannot reach the service an alert offers **Sign out anyway**, which signs this device out on the device alone (`identity.signOutLocally()`, so nothing signs it back in) and releases it without the service, **Try again** and Cancel. Any other failure shows its own line. A license held by a key alone reads **Remove license from this device** and releases it with `deactivate()`.
 
-    **Styled part.** `AccountAndLicenseSection(screen:tier:holder:version:devices:autoUpdate:onManage:onSignOut:onCheckNow:)`, with `signOutFailed:` and `onSignOutAnyway:` for the offline offer.
+    **Styled part.** `AccountAndLicenseSection(screen:tier:holder:version:devices:autoUpdate:onManage:onSignOut:onCheckNow:)`, with `signOutFailed:`, `onSignOutAnyway:`, `onSignOutRetry:`, `onDismissSignOutFailure:` and `signOutError:` for the offline alert.
 
     **Headless.** `KitStates.accountAndLicense(_:)`: with no one signed in it is `key-only`, never another account's holder.
 

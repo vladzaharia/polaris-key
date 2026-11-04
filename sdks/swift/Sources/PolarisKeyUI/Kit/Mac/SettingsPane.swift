@@ -181,6 +181,7 @@
                 .onChange(of: route.request) { _, request in take(request) }
                 .onChange(of: model.checkResult) { _, line in announce(line) }
                 .onChange(of: model.deviceFailure) { _, line in announce(line) }
+                .onChange(of: model.signOutError) { _, line in announce(line) }
             }
         }
 
@@ -254,16 +255,14 @@
                 if model.account.shows("common.signOut") {
                     // No box of its own: the bare button, as the mockup has it.
                     Section {
-                        if model.signOutFailed {
-                            PaneText(
-                                CopyLine("core.codes.network-error.message"), .footnote,
-                                color: .danger)
-                            PaneButton(line: CopyLine("common.signOutAnyway"), style: style) {
-                                Task { await model.signOutAnyway() }
-                            }
+                        if let error = model.signOutError {
+                            PaneText(error, .footnote, color: .danger)
                         }
                     } footer: {
-                        PaneButton(line: CopyLine("menu.signOut"), style: style) {
+                        PaneButton(
+                            line: CopyLine(model.account.state == .keyOnly ? "account.removeKey" : "menu.signOut"),
+                            style: style
+                        ) {
                             confirmingSignOut = true
                         }
                     }
@@ -278,6 +277,21 @@
                     } message: {
                         Text(SignOutCopy.message(strings, product: style.identity.name, tier: model.tier))
                     }
+                    // Sign out could not reach the service: the choice is tied to the failure.
+                    .alert(
+                        strings.string("common.signOutOfflineTitle"),
+                        isPresented: Binding(
+                            get: { model.signOutFailed },
+                            set: { if !$0 { model.dismissSignOutFailure() } })
+                    ) {
+                        Button(strings.string("common.signOutAnyway"), role: .destructive) {
+                            Task { await model.signOutAnyway() }
+                        }
+                        Button(strings.string("common.tryAgain")) { Task { await model.signOut() } }
+                        Button(strings.string("common.cancel"), role: .cancel) {}
+                    } message: {
+                        Text(strings.string("common.signOutOffline"))
+                    }
                 }
             }
         }
@@ -287,9 +301,10 @@
                 ProductIcon(size: 40)
                 VStack(alignment: .leading, spacing: style.space(.xxs)) {
                     // The window's own header: the tier, then who, not the product name again.
-                    if model.account.shows("account.tier") {
+                    // Until the tier is known there is no tier word: never " license" alone.
+                    if model.account.shows("account.tier"), let tier = model.tier, !tier.isEmpty {
                         PaneText(
-                            CopyLine("account.tier", ["tier": .text(model.tier ?? "")]), .body,
+                            CopyLine("account.tier", ["tier": .text(tier)]), .body,
                             color: .default)
                         .fontWeight(.medium)
                     }
@@ -433,11 +448,6 @@
                 }
                 DevicesSection(
                     screen: model.devicesScreen, devices: model.deviceRows,
-                    onRemove: { device in
-                        if let index = model.deviceRows.firstIndex(of: device) {
-                            Task { await model.removeDevice(at: index) }
-                        }
-                    },
                     onRetry: { Task { await model.retryDevices() } },
                     onManage: { model.handlers.manage?() },
                     onRename: { device, name in

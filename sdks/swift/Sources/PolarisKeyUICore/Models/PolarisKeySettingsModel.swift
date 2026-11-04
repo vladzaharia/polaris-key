@@ -118,8 +118,12 @@ public final class PolarisKeySettingsModel {
     /// The last check failed: `checkResult` is the failure line and the row offers Try again.
     public private(set) var checkFailed = false
     public private(set) var hasLoaded = false
-    /// `signOut()` could not reach the service: the pane offers Sign Out Anyway.
+    /// `signOut()` could not reach the service (a network error): the pane shows an alert that offers
+    /// Sign out anyway, Try again and Cancel.
     public private(set) var signOutFailed = false
+    /// Any other sign-out failure (a refusal, a bad answer, a hook that stopped it): its own line.
+    /// Cleared by the next sign-out and by `load()`.
+    public private(set) var signOutError: CopyLine?
 
     private var servicesOn: Set<KitService>?
     private var licensed: LicenseState?
@@ -218,6 +222,8 @@ public final class PolarisKeySettingsModel {
 
     /// Everything the pane shows: account, devices and the catalog.
     public func load() async {
+        // A fresh read answers the last sign-out failure line: it is no longer news.
+        signOutError = nil
         await reloadAccount()
         async let roster: Void = loadDevices()
         async let catalog: Void = loadConfig()
@@ -492,38 +498,64 @@ public final class PolarisKeySettingsModel {
     }
 
     /// Sign out. An account signs out through `identity.signOut()`, which sets the explicit
-    /// sign-out flag so nothing silent restores it; when that cannot reach the service,
-    /// `signOutFailed` turns true and the pane offers Sign Out Anyway. A licence-key activation
-    /// has no account to leave: it keeps `deactivate()`.
+    /// sign-out flag so nothing silent restores it. When that cannot reach the service
+    /// (`network-error`), `signOutFailed` turns true and the pane asks whether to sign out anyway;
+    /// any other failure leaves the device signed in and sets `signOutError`. A licence-key
+    /// activation has no account to leave: it keeps `deactivate()`, and a failure there is
+    /// reported the same way.
     public func signOut() async {
         guard let client else { return }
         signOutFailed = false
-        if accountSignedIn {
-            do {
+        signOutError = nil
+        do {
+            if accountSignedIn {
                 try await client.identity.signOut()
-            } catch {
-                signOutFailed = true
-                return
+            } else {
+                try await client.deactivate()
             }
-        } else {
-            try? await client.deactivate()
+        } catch {
+            if (error as? PolarisError)?.code == ErrorCode.networkError, accountSignedIn {
+                signOutFailed = true
+            } else {
+                signOutError = Self.errorLine(error)
+            }
+            return
         }
         await reloadAccount()
         handlers.signedOut?()
     }
 
-    /// Sign Out Anyway, after `signOut()` failed offline: release the credential on this device
-    /// without telling the service (the seat stays in use until it is removed in the account).
+    /// Sign out anyway, after `signOut()` could not reach the service: this device is signed out
+    /// on the device alone (nothing signs it back in at the next launch), then its credential is
+    /// released without telling the service, so the seat stays in use until it is removed in the
+    /// account. `handlers.signedOut` runs only when the release succeeded.
     public func signOutAnyway() async {
         guard let client else { return }
         signOutFailed = false
-        try? await client.deactivate()
+        signOutError = nil
+        await client.identity.signOutLocally()
+        do {
+            try await client.deactivate()
+        } catch {
+            signOutError = Self.errorLine(error)
+            return
+        }
         await reloadAccount()
         handlers.signedOut?()
     }
 
-    /// Leave the offer to sign out anyway without acting on it.
+    /// Leave the sign-out alert without acting on it.
     public func dismissSignOutFailure() { signOutFailed = false }
+
+    /// An error as a line: its `core.codes` message, else the catalog's fallback.
+    static func errorLine(_ error: Error) -> CopyLine {
+        if let code = (error as? PolarisError)?.code,
+            KitCopy.bundled.has("core.codes.\(code).message")
+        {
+            return CopyLine("core.codes.\(code).message")
+        }
+        return CopyLine("core.fallback.message")
+    }
 
     // MARK: Inputs
 

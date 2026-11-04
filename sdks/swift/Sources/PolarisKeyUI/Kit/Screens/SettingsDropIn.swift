@@ -80,6 +80,7 @@ struct SettingsSections: View {
             // The pane's results reach VoiceOver as they land (DL7).
             .onChange(of: model.checkResult) { _, line in announce(line) }
             .onChange(of: model.deviceFailure) { _, line in announce(line) }
+            .onChange(of: model.signOutError) { _, line in announce(line) }
     }
 
     private func announce(_ line: CopyLine?) {
@@ -101,11 +102,6 @@ struct SettingsSections: View {
                 ? { model.nearbyApproval?.onOpen?() } : nil)
         DevicesSection(
             screen: model.devicesScreen, devices: model.deviceRows,
-            onRemove: { device in
-                if let index = model.deviceRows.firstIndex(of: device) {
-                    Task { await model.removeDevice(at: index) }
-                }
-            },
             onRetry: { Task { await model.retryDevices() } },
             onManage: { model.handlers.manage?() },
             onRename: { device, name in
@@ -122,6 +118,9 @@ struct SettingsSections: View {
         AccountAndLicenseSection(
             screen: model.account, onManage: {}, onSignOut: { Task { await model.signOut() } },
             part: .bottom, signOutFailed: model.signOutFailed,
-            onSignOutAnyway: { Task { await model.signOutAnyway() } })
+            onSignOutAnyway: { Task { await model.signOutAnyway() } },
+            onSignOutRetry: { Task { await model.signOut() } },
+            onDismissSignOutFailure: { model.dismissSignOutFailure() },
+            signOutError: model.signOutError)
     }
 }
