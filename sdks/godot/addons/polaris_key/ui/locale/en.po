@@ -127,10 +127,10 @@ msgstr "Sign Out Anyway"
 msgid "common.signOutOfflineTitle"
 msgstr "Can't reach Polaris Locker"
 
-#. Can't reach Polaris Locker. If you sign out now, this device stays in use until you remove it in Polaris Locker.
+#. If you sign out anyway, this device stays in use until you remove it in Polaris Locker.
 #. AccountAndLicense: the message of the alert shown when Sign out could not reach the service (a network error only). Names the cost of Sign out anyway: the device's seat stays in use until the person removes it in their account. "In use" is the seat count's word.
 msgid "common.signOutOffline"
-msgstr "Can't reach Polaris Locker. If you sign out now, this device stays in use until you remove it in Polaris Locker."
+msgstr "If you sign out anyway, this device stays in use until you remove it in Polaris Locker."
 
 #. Manage
 #. Shared verb used across the kit's screens. Opens the person's Polaris Locker account in the browser.

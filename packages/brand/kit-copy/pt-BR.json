@@ -164,7 +164,7 @@
     "account.notInAccount": "Sem conta",
     "account.removeKey": "Remover a licença deste dispositivo",
     "common.signOutOfflineTitle": "Não foi possível conectar ao Polaris Locker",
-    "common.signOutOffline": "Não foi possível conectar ao Polaris Locker. Se você sair agora, este dispositivo continuará em uso até você removê-lo no Polaris Locker.",
+    "common.signOutOffline": "Se você sair mesmo assim, este dispositivo continuará em uso até você removê-lo no Polaris Locker.",
     "signin.attach.header": "Adicionar {product} à sua conta",
     "signin.key.skipNote": "{product} funciona do mesmo jeito. Adicione a uma conta quando quiser.",
     "offlineActivation.title": "Ativação offline",

@@ -17,7 +17,7 @@
   "common.signOut": "退出登录",
   "common.signOutAnyway": "仍然退出登录",
   "common.signOutOfflineTitle": "无法连接到 Polaris Locker",
-  "common.signOutOffline": "无法连接到 Polaris Locker。如果现在退出登录，此设备会保持占用状态，直到你在 Polaris Locker 中将其移除。",
+  "common.signOutOffline": "如果仍要退出登录，此设备会保持占用状态，直到你在 Polaris Locker 中将其移除。",
   "common.manage": "管理",
   "common.reconnect": "重新连接",
   "common.dismiss": "忽略",

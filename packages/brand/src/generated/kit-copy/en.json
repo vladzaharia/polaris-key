@@ -17,7 +17,7 @@
   "common.signOut": "Sign out",
   "common.signOutAnyway": "Sign out anyway",
   "common.signOutOfflineTitle": "Can't reach Polaris Locker",
-  "common.signOutOffline": "Can't reach Polaris Locker. If you sign out now, this device stays in use until you remove it in Polaris Locker.",
+  "common.signOutOffline": "If you sign out anyway, this device stays in use until you remove it in Polaris Locker.",
   "common.manage": "Manage",
   "common.reconnect": "Reconnect",
   "common.dismiss": "Dismiss",

@@ -164,7 +164,7 @@
     "account.notInAccount": "不在账户中",
     "account.removeKey": "从此设备移除许可证",
     "common.signOutOfflineTitle": "无法连接到 Polaris Locker",
-    "common.signOutOffline": "无法连接到 Polaris Locker。如果现在退出登录，此设备会保持占用状态，直到你在 Polaris Locker 中将其移除。",
+    "common.signOutOffline": "如果仍要退出登录，此设备会保持占用状态，直到你在 Polaris Locker 中将其移除。",
     "signin.attach.header": "将{product}添加到你的账户",
     "signin.key.skipNote": "{product}的使用方式完全相同。你可以随时将其添加到账户。",
     "offlineActivation.title": "离线激活",

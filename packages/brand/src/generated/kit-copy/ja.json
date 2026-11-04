@@ -17,7 +17,7 @@
   "common.signOut": "サインアウト",
   "common.signOutAnyway": "それでもサインアウト",
   "common.signOutOfflineTitle": "Polaris Locker に接続できません",
-  "common.signOutOffline": "Polaris Locker に接続できません。今サインアウトすると、Polaris Locker で削除するまで、このデバイスは使用中のままになります。",
+  "common.signOutOffline": "このままサインアウトすると、Polaris Locker で削除するまで、このデバイスは使用中のままになります。",
   "common.manage": "管理",
   "common.reconnect": "再接続",
   "common.dismiss": "閉じる",

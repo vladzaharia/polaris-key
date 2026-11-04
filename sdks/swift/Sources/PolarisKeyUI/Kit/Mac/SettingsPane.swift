@@ -267,15 +267,27 @@
                         }
                     }
                     .confirmationDialog(
-                        SignOutCopy.title(strings, product: style.identity.name),
-                        isPresented: $confirmingSignOut, titleVisibility: .visible
+                        model.account.state == .keyOnly
+                            ? strings.string("account.removeKey")
+                            : SignOutCopy.title(strings, product: style.identity.name),
+                        isPresented: $confirmingSignOut,
+                        titleVisibility: model.account.state == .keyOnly ? .hidden : .visible
                     ) {
-                        Button(strings.string("signin.signout.confirm"), role: .destructive) {
-                            Task { await model.signOut() }
+                        if model.account.state == .keyOnly {
+                            // A key alone has nobody to sign out: the exit forgets the key (as on iOS).
+                            Button(strings.string("account.removeKey"), role: .destructive) {
+                                Task { await model.signOut() }
+                            }
+                        } else {
+                            Button(strings.string("signin.signout.confirm"), role: .destructive) {
+                                Task { await model.signOut() }
+                            }
+                            Button(strings.string("common.cancel"), role: .cancel) {}
                         }
-                        Button(strings.string("common.cancel"), role: .cancel) {}
                     } message: {
-                        Text(SignOutCopy.message(strings, product: style.identity.name, tier: model.tier))
+                        if model.account.state != .keyOnly {
+                            Text(SignOutCopy.message(strings, product: style.identity.name, tier: model.tier))
+                        }
                     }
                     // Sign out could not reach the service: the choice is tied to the failure.
                     .alert(
@@ -288,6 +300,7 @@
                             Task { await model.signOutAnyway() }
                         }
                         Button(strings.string("common.tryAgain")) { Task { await model.signOut() } }
+                            .keyboardShortcut(.defaultAction)
                         Button(strings.string("common.cancel"), role: .cancel) {}
                     } message: {
                         Text(strings.string("common.signOutOffline"))

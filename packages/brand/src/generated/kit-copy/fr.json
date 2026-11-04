@@ -17,7 +17,7 @@
   "common.signOut": "Se déconnecter",
   "common.signOutAnyway": "Se déconnecter quand même",
   "common.signOutOfflineTitle": "Impossible de joindre Polaris Locker",
-  "common.signOutOffline": "Impossible de joindre Polaris Locker. Si vous vous déconnectez maintenant, cet appareil reste utilisé jusqu’à ce que vous le retiriez dans Polaris Locker.",
+  "common.signOutOffline": "Si vous vous déconnectez malgré tout, cet appareil reste utilisé jusqu’à ce que vous le retiriez dans Polaris Locker.",
   "common.manage": "Gérer",
   "common.reconnect": "Se reconnecter",
   "common.dismiss": "Ignorer",

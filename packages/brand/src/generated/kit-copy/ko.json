@@ -17,7 +17,7 @@
   "common.signOut": "로그아웃",
   "common.signOutAnyway": "그래도 로그아웃",
   "common.signOutOfflineTitle": "Polaris Locker에 연결할 수 없습니다",
-  "common.signOutOffline": "Polaris Locker에 연결할 수 없습니다. 지금 로그아웃하면 Polaris Locker에서 제거할 때까지 이 기기는 사용 중으로 남습니다.",
+  "common.signOutOffline": "그래도 로그아웃하면 Polaris Locker에서 제거할 때까지 이 기기는 사용 중으로 남습니다.",
   "common.manage": "관리",
   "common.reconnect": "다시 연결",
   "common.dismiss": "닫기",

@@ -48,7 +48,7 @@ export const KIT_COPY: Readonly<
     "common.signOutAnyway": "Sign out anyway",
     "common.signOutOfflineTitle": "Can't reach Polaris Locker",
     "common.signOutOffline":
-      "Can't reach Polaris Locker. If you sign out now, this device stays in use until you remove it in Polaris Locker.",
+      "If you sign out anyway, this device stays in use until you remove it in Polaris Locker.",
     "common.manage": "Manage",
     "common.reconnect": "Reconnect",
     "common.dismiss": "Dismiss",
@@ -2019,7 +2019,7 @@ export const KIT_COPY: Readonly<
     "common.signOutAnyway": "Trotzdem abmelden",
     "common.signOutOfflineTitle": "Polaris Locker ist nicht erreichbar",
     "common.signOutOffline":
-      "Polaris Locker ist nicht erreichbar. Wenn Sie sich jetzt abmelden, bleibt dieses Gerät in Verwendung, bis Sie es in Polaris Locker entfernen.",
+      "Wenn Sie sich trotzdem abmelden, bleibt dieses Gerät in Verwendung, bis Sie es in Polaris Locker entfernen.",
     "common.manage": "Verwalten",
     "common.reconnect": "Neu verbinden",
     "common.dismiss": "Ausblenden",
@@ -4134,7 +4134,7 @@ export const KIT_COPY: Readonly<
     "common.signOutAnyway": "Se déconnecter quand même",
     "common.signOutOfflineTitle": "Impossible de joindre Polaris Locker",
     "common.signOutOffline":
-      "Impossible de joindre Polaris Locker. Si vous vous déconnectez maintenant, cet appareil reste utilisé jusqu’à ce que vous le retiriez dans Polaris Locker.",
+      "Si vous vous déconnectez malgré tout, cet appareil reste utilisé jusqu’à ce que vous le retiriez dans Polaris Locker.",
     "common.manage": "Gérer",
     "common.reconnect": "Se reconnecter",
     "common.dismiss": "Ignorer",
@@ -6229,7 +6229,7 @@ export const KIT_COPY: Readonly<
     "common.signOutAnyway": "Cerrar sesión de todos modos",
     "common.signOutOfflineTitle": "No se puede conectar con Polaris Locker",
     "common.signOutOffline":
-      "No se puede conectar con Polaris Locker. Si cierras sesión ahora, este dispositivo seguirá en uso hasta que lo quites en Polaris Locker.",
+      "Si cierras sesión de todos modos, este dispositivo seguirá en uso hasta que lo quites en Polaris Locker.",
     "common.manage": "Administrar",
     "common.reconnect": "Reconectar",
     "common.dismiss": "Descartar",
@@ -8312,7 +8312,7 @@ export const KIT_COPY: Readonly<
     "common.signOutAnyway": "Sair mesmo assim",
     "common.signOutOfflineTitle": "Não foi possível conectar ao Polaris Locker",
     "common.signOutOffline":
-      "Não foi possível conectar ao Polaris Locker. Se você sair agora, este dispositivo continuará em uso até você removê-lo no Polaris Locker.",
+      "Se você sair mesmo assim, este dispositivo continuará em uso até você removê-lo no Polaris Locker.",
     "common.manage": "Gerenciar",
     "common.reconnect": "Reconectar",
     "common.dismiss": "Dispensar",
@@ -10355,7 +10355,7 @@ export const KIT_COPY: Readonly<
     "common.signOutAnyway": "Esci comunque",
     "common.signOutOfflineTitle": "Impossibile raggiungere Polaris Locker",
     "common.signOutOffline":
-      "Impossibile raggiungere Polaris Locker. Se esci ora, questo dispositivo resta in uso finché non lo rimuovi in Polaris Locker.",
+      "Se esci comunque, questo dispositivo resta in uso finché non lo rimuovi in Polaris Locker.",
     "common.manage": "Gestisci",
     "common.reconnect": "Riconnetti",
     "common.dismiss": "Ignora",
@@ -12419,7 +12419,7 @@ export const KIT_COPY: Readonly<
     "common.signOutAnyway": "それでもサインアウト",
     "common.signOutOfflineTitle": "Polaris Locker に接続できません",
     "common.signOutOffline":
-      "Polaris Locker に接続できません。今サインアウトすると、Polaris Locker で削除するまで、このデバイスは使用中のままになります。",
+      "このままサインアウトすると、Polaris Locker で削除するまで、このデバイスは使用中のままになります。",
     "common.manage": "管理",
     "common.reconnect": "再接続",
     "common.dismiss": "閉じる",
@@ -14501,7 +14501,7 @@ export const KIT_COPY: Readonly<
     "common.signOutAnyway": "그래도 로그아웃",
     "common.signOutOfflineTitle": "Polaris Locker에 연결할 수 없습니다",
     "common.signOutOffline":
-      "Polaris Locker에 연결할 수 없습니다. 지금 로그아웃하면 Polaris Locker에서 제거할 때까지 이 기기는 사용 중으로 남습니다.",
+      "그래도 로그아웃하면 Polaris Locker에서 제거할 때까지 이 기기는 사용 중으로 남습니다.",
     "common.manage": "관리",
     "common.reconnect": "다시 연결",
     "common.dismiss": "닫기",
@@ -16491,7 +16491,7 @@ export const KIT_COPY: Readonly<
     "common.signOutAnyway": "仍然退出登录",
     "common.signOutOfflineTitle": "无法连接到 Polaris Locker",
     "common.signOutOffline":
-      "无法连接到 Polaris Locker。如果现在退出登录，此设备会保持占用状态，直到你在 Polaris Locker 中将其移除。",
+      "如果仍要退出登录，此设备会保持占用状态，直到你在 Polaris Locker 中将其移除。",
     "common.manage": "管理",
     "common.reconnect": "重新连接",
     "common.dismiss": "忽略",

@@ -237,9 +237,10 @@ public struct AccountAndLicenseSection: View {
                         Text(style.identity.name)
                             .fontWeight(.medium)
                             .foregroundStyle(.primary)
-                        if screen.shows("account.tier") {
+                        // Until the tier is known there is no tier word: never " license" alone.
+                        if screen.shows("account.tier"), let tier, !tier.isEmpty {
                             PaneText(
-                                CopyLine("account.tier", ["tier": .text(tier ?? "")]), .meta,
+                                CopyLine("account.tier", ["tier": .text(tier)]), .meta,
                                 color: .muted)
                         }
                         if screen.shows("account.holder"), let holder {
@@ -613,7 +614,7 @@ public struct DevicesSection: View {
                 Button {
                     beginRename(device)
                 } label: {
-                    PaneText(CopyLine("devices.rename"), .body, color: .accent)
+                    PaneText(CopyLine("devices.rename"), .body, color: .control)
                         .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
                 }

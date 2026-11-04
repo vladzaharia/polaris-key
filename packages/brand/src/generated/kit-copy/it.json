@@ -17,7 +17,7 @@
   "common.signOut": "Esci",
   "common.signOutAnyway": "Esci comunque",
   "common.signOutOfflineTitle": "Impossibile raggiungere Polaris Locker",
-  "common.signOutOffline": "Impossibile raggiungere Polaris Locker. Se esci ora, questo dispositivo resta in uso finché non lo rimuovi in Polaris Locker.",
+  "common.signOutOffline": "Se esci comunque, questo dispositivo resta in uso finché non lo rimuovi in Polaris Locker.",
   "common.manage": "Gestisci",
   "common.reconnect": "Riconnetti",
   "common.dismiss": "Ignora",

@@ -164,7 +164,7 @@
     "account.notInAccount": "계정에 없음",
     "account.removeKey": "이 기기에서 라이선스 제거",
     "common.signOutOfflineTitle": "Polaris Locker에 연결할 수 없습니다",
-    "common.signOutOffline": "Polaris Locker에 연결할 수 없습니다. 지금 로그아웃하면 Polaris Locker에서 제거할 때까지 이 기기는 사용 중으로 남습니다.",
+    "common.signOutOffline": "그래도 로그아웃하면 Polaris Locker에서 제거할 때까지 이 기기는 사용 중으로 남습니다.",
     "signin.attach.header": "{product}을(를) 계정에 추가",
     "signin.key.skipNote": "{product}은(는) 똑같이 작동합니다. 언제든 계정에 추가할 수 있습니다.",
     "offlineActivation.title": "오프라인 활성화",

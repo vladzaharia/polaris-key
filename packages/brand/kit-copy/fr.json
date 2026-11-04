@@ -164,7 +164,7 @@
     "account.notInAccount": "Dans aucun compte",
     "account.removeKey": "Retirer la licence de cet appareil",
     "common.signOutOfflineTitle": "Impossible de joindre Polaris Locker",
-    "common.signOutOffline": "Impossible de joindre Polaris Locker. Si vous vous déconnectez maintenant, cet appareil reste utilisé jusqu’à ce que vous le retiriez dans Polaris Locker.",
+    "common.signOutOffline": "Si vous vous déconnectez malgré tout, cet appareil reste utilisé jusqu’à ce que vous le retiriez dans Polaris Locker.",
     "signin.attach.header": "Ajouter {product} à votre compte",
     "signin.key.skipNote": "{product} fonctionne de la même façon. Ajoutez-le à un compte quand vous voulez.",
     "offlineActivation.title": "Activation hors ligne",
