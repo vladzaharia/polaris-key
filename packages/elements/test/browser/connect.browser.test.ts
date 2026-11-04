@@ -41,6 +41,7 @@ const SCENES = ROWS.filter(
 const SIZES = [
   { label: "390x844", width: 390, height: 844, rootPx: 16 },
   { label: "844x390", width: 844, height: 390, rootPx: 16 },
+  { label: "640x360", width: 640, height: 360, rootPx: 16 },
   { label: "1440x900", width: 1440, height: 900, rootPx: 16 },
   { label: "390x844@200", width: 390, height: 844, rootPx: 32 },
 ] as const;
@@ -156,6 +157,157 @@ describe("the connect screens at the §7.1 rows", () => {
             );
         });
       }
+});
+
+// UI-KITS "LinkPairing and TransferOffer": two panes in a window at least 600 px wide and under
+// 480 tall at 1x text, and on a TV; one column at 200 % text and in portrait. The decisions sit in
+// the first viewport, and the reading order is still start pane, then end pane.
+describe("two panes in a short landscape window and on a TV", () => {
+  const TV = {
+    os: "android",
+    formFactor: "tv",
+  } as unknown as UiInput["platform"];
+  const SPLIT = SCENES.filter(
+    (r) =>
+      (r.expect.component === "LinkPairing" &&
+        (r.expect.state === "code" || r.expect.state === "confirm")) ||
+      (r.expect.component === "TransferOffer" && r.expect.state === "ask"),
+  );
+  const CASES = [
+    {
+      label: "844x390",
+      width: 844,
+      height: 390,
+      rootPx: 16,
+      tv: false,
+      two: true,
+    },
+    {
+      label: "640x360",
+      width: 640,
+      height: 360,
+      rootPx: 16,
+      tv: false,
+      two: true,
+    },
+    {
+      label: "960x540 TV",
+      width: 960,
+      height: 540,
+      rootPx: 16,
+      tv: true,
+      two: true,
+    },
+    {
+      label: "1024x600 not short",
+      width: 1024,
+      height: 600,
+      rootPx: 16,
+      tv: false,
+      two: false,
+    },
+    {
+      label: "390x844 portrait",
+      width: 390,
+      height: 844,
+      rootPx: 16,
+      tv: false,
+      two: false,
+    },
+    {
+      label: "844x390@200",
+      width: 844,
+      height: 390,
+      rootPx: 32,
+      tv: false,
+      two: false,
+    },
+    {
+      label: "960x540 TV@200",
+      width: 960,
+      height: 540,
+      rootPx: 32,
+      tv: true,
+      two: false,
+    },
+  ];
+  for (const row of SPLIT)
+    for (const c of CASES)
+      for (const scheme of ["dark", "light"] as const)
+        it(`${row.expect.component}.${row.expect.state} ${c.label} ${scheme}`, async () => {
+          await page.viewport(c.width, c.height);
+          const r = c.tv
+            ? ({ ...row, input: { ...row.input, platform: TV } } as Row)
+            : row;
+          const el = await mount(r, scheme, c.rootPx);
+          const kit = el.shadowRoot!.querySelector<HTMLElement>(".pk-root")!;
+          const box = (sel: string) =>
+            kit.querySelector<HTMLElement>(sel)!.getBoundingClientRect();
+          const start = box(
+            row.expect.component === "LinkPairing"
+              ? ".pair-code"
+              : ".pair-offer",
+          );
+          const end = box(".btn");
+          if (c.two) {
+            expect(end.left, "the actions are in the end pane").toBeGreaterThan(
+              start.right - 1,
+            );
+            const first = kit.querySelector<HTMLElement>(
+              ".card > :not(.split):not(.shimmer)",
+            )!;
+            const endFirst = kit.querySelector<HTMLElement>(
+              row.expect.component === "LinkPairing"
+                ? ".pair-reported"
+                : ".actions",
+            )!;
+            expect(
+              Math.abs(
+                endFirst.getBoundingClientRect().top -
+                  first.getBoundingClientRect().top,
+              ),
+              "both panes start at the top",
+            ).toBeLessThan(2);
+          } else expect(end.left, "one column").toBeLessThan(start.right);
+          if (c.two) {
+            const actions = [
+              ...kit.querySelectorAll<HTMLElement>(".btn"),
+            ].filter(visible);
+            expect(actions.length).toBeGreaterThan(0);
+            for (const b of actions) {
+              const br = b.getBoundingClientRect();
+              expect(
+                br.top,
+                "an action is above the first viewport",
+              ).toBeGreaterThanOrEqual(-0.5);
+              expect(
+                br.bottom,
+                "an action is below the first viewport",
+              ).toBeLessThanOrEqual(innerHeight + 0.5);
+            }
+            const cats = kit.querySelector(".pair-cats");
+            const confirm = kit.querySelector(
+              '[data-key="linkPairing.confirm"]',
+            );
+            if (cats && confirm)
+              expect(
+                cats.compareDocumentPosition(confirm) &
+                  Node.DOCUMENT_POSITION_FOLLOWING,
+                "the categories come before Codes match",
+              ).toBeTruthy();
+            expect(
+              document.documentElement.scrollWidth,
+              "sideways scroll",
+            ).toBeLessThanOrEqual(document.documentElement.clientWidth + 1);
+            expect(kit.getBoundingClientRect().height).toBeLessThanOrEqual(
+              innerHeight + 1,
+            );
+          }
+          if (__PKEY_KIT_SHOTS__)
+            await shoot(
+              `${__PKEY_KIT_SHOTS__}/elements.panes.${row.expect.component}.${row.expect.state}/${c.label.replace(/ /g, "_")}-${scheme}.png`,
+            );
+        });
 });
 
 describe("the code step keeps what is shared above Codes match", () => {
