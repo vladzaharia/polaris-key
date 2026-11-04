@@ -20,6 +20,7 @@ import {
   REDRIVE_GRACE_SECONDS,
   REDRIVE_WINDOW_SECONDS,
 } from "../../../src/services/distribution/connectors/asc/poll.js";
+import { upsertBuild } from "../../../src/services/release/model.js";
 import { webhookFixture } from "../../ascFake.js";
 import {
   ascWorld,
@@ -332,6 +333,53 @@ describe("the poll", () => {
         "SELECT release_id, build_id, state FROM dist_connector_objects WHERE object_id = 'bld-110-40'",
       ),
     ).toEqual({ release_id: "v1.1.0", build_id: "", state: "removed" });
+  });
+
+  describe("rc linking by (platform, buildNumber)", () => {
+    const linked = (w: AscWorld) =>
+      w.db.first<{ release_id: string | null; build_id: string }>(
+        "SELECT release_id, build_id FROM dist_connector_objects WHERE object_id = 'bld-110-42'",
+      );
+
+    it("links a build whose version string names no release to the release with that platform's build number", async () => {
+      const w = await ascWorld();
+      w.fake.set("preReleaseVersions", "prv-110", { version: "9.9.9" });
+      await poll(w);
+      expect(await linked(w)).toEqual({
+        release_id: "v1.1.0",
+        build_id: "ios",
+      });
+    });
+
+    it("does not join across platforms", async () => {
+      const w = await ascWorld();
+      w.fake.set("preReleaseVersions", "prv-110", {
+        version: "9.9.9",
+        platform: "MAC_OS",
+      });
+      await poll(w);
+      expect((await linked(w))?.release_id ?? null).toBeNull();
+    });
+
+    it("links nothing when two releases carry the build number", async () => {
+      const w = await ascWorld();
+      await upsertBuild(
+        w.db,
+        {
+          product: SLUG,
+          releaseId: "v1.0.0",
+          buildId: "ios",
+          platform: "ios",
+          arch: "arm64",
+          format: "ipa",
+          buildNumber: "42",
+        },
+        NOW,
+      );
+      w.fake.set("preReleaseVersions", "prv-110", { version: "9.9.9" });
+      await poll(w);
+      expect((await linked(w))?.release_id ?? null).toBeNull();
+    });
   });
 
   it("a Universal Purchase app's macOS version of a release does not fight its iOS version", async () => {
