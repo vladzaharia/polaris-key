@@ -613,7 +613,18 @@ class LiveRegion:
 
     @staticmethod
     def _widths(lines: Sequence[Line]) -> List[int]:
-        return [cell_len(clean(line.text).rstrip()) for line in lines]
+        return [LiveRegion._width(line) for line in lines]
+
+    @staticmethod
+    def _width(line: Line) -> int:
+        """Cells the line takes once drawn: ``to_ansi`` trims trailing spaces of a span with no role,
+        but keeps a styled one (the key field's cursor cell), which takes a cell of its own and
+        wraps the line when the text before it fills the row."""
+        spans = _merge(line.spans)
+        while spans and not spans[-1].roles and spans[-1].text.rstrip(" ") != spans[-1].text:
+            trimmed = spans[-1].text.rstrip(" ")
+            spans = spans[:-1] + ([Span(trimmed)] if trimmed else [])
+        return cell_len(clean("".join(s.text for s in spans)))
 
     def __enter__(self) -> "LiveRegion":
         if not self._redraws:
