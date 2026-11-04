@@ -309,7 +309,9 @@ def _cli_client(**kw: Any):
 def test_cli_activate_then_status_then_deactivate() -> None:
     c = _cli_client()
     r = core.activate(c, "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv")
-    assert r.code == 0 and Copy("en")("core.activation.ok.title") in r.lines
+    # The title line carries the tier after the title ("Activated · Pro license").
+    title = Copy("en")("core.activation.ok.title")
+    assert r.code == 0 and any(line.startswith(title) for line in r.lines)
 
     st = core.status(c)
     assert st.code == 0
