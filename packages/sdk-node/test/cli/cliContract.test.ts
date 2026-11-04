@@ -562,6 +562,56 @@ Object.assign(SITUATIONS, {
   "approve-json": (): Setup => ({ interactive: true }),
 });
 
+// ── a license held by the key alone (UK-43.19, D4) ────────────────────────────────────────
+
+const holderInfo = (email?: string) => ({
+  licenseId: "lic_tw",
+  tier: "pro",
+  tierLabel: "Pro",
+  deviceLimit: 3,
+  profile: email ? { name: "", email } : null,
+  entitledChannels: ["stable"],
+  status: "ok",
+});
+/** Signed out, with the license document's holder as given: floating (none) or waiting (an address). */
+const keyAlone = (
+  over: Parameters<typeof stubClient>[0] = {},
+  email?: string,
+): PolarisKeyClient =>
+  stubClient({
+    licenseInfo: holderInfo(email),
+    identity: { current: async () => null },
+    ...over,
+  });
+const NO_IDENTITY = {
+  license: { enabled: true },
+  config: { enabled: true },
+  release: { enabled: true },
+  distribution: { enabled: true },
+  update: { enabled: true },
+  identity: { enabled: false },
+  sync: { enabled: false },
+};
+Object.assign(SITUATIONS, {
+  "activate-floating": (): Setup => ({
+    piped: `${KEY}\n`,
+    client: keyAlone(),
+  }),
+  "activate-floating-no-page": (): Setup => ({
+    piped: `${KEY}\n`,
+    client: keyAlone({ portal: { enabled: false } }),
+  }),
+  "activate-waiting": (): Setup => ({
+    piped: `${KEY}\n`,
+    client: keyAlone({}, "ada@example.com"),
+  }),
+  "activate-identity-off": (): Setup => ({
+    piped: `${KEY}\n`,
+    client: keyAlone({ capabilities: NO_IDENTITY }),
+  }),
+  "status-floating": (): Setup => ({ client: keyAlone() }),
+});
+
 const verbOf = (id: string): CliVerb => {
   const v = CLI_VERBS.find((x) => x.path.join(" ") === id);
   if (!v) throw new Error(`no kit verb ${id}`);
@@ -655,6 +705,18 @@ describe("ui-matrix.json cli: outcomes", () => {
         expect(plain(stdout)).toContain(
           "polaris.locker/activate?product=tidewater",
         );
+      // Never the key in a terminal: the page's link carries no fragment (UK-43 D4).
+      expect(plain(`${stdout}${t.stderr.text()}`)).not.toContain("#key=");
+      // A success with the page off has nothing to add: no link, no contact row.
+      if (r.input.situation === "activate-floating-no-page" && !r.input.json) {
+        expect(plain(stdout)).not.toContain("/activate?product=");
+        expect(plain(stdout)).not.toContain(
+          EN["activate.recommend.title"]!.replace(
+            "{product}",
+            "Tidewater Studio",
+          ),
+        );
+      }
       // The portal is off (core.portal): no link, "Contact {developer}" instead.
       if (e.link === "contact") {
         expect(plain(stdout)).toMatch(/Contact \S/);
