@@ -688,8 +688,13 @@ class NearbyApproverTest {
         start(options(clock = FakeClock()))
         val d1 = chosen()
         waitApprovals(1)
+        // D seeing its own close is not the approver seeing it: the one waiting session per address is
+        // freed only when the approver's session ends, and a dial before that is refused.
+        val gone = java.util.concurrent.CountDownLatch(1)
+        approvals[0].onClose { gone.countDown() }
         d1.close()
         d1.waitFor { d1.closed != null }
+        d1.waitFor("the approver to see the close") { gone.await(10, java.util.concurrent.TimeUnit.MILLISECONDS) }
         assertEquals(emptyList<NearbyStopReason>(), stops.toList())
         val d2 = chosen()
         waitApprovals(2)
