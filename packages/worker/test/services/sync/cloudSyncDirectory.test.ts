@@ -331,7 +331,7 @@ describe("directory flush (U-05.9)", () => {
     expect(erasureLeftovers(w.ns, NAME(A))).toEqual(ERASED_LEFTOVERS);
   });
 
-  describe("the merge marker's cleanup alarm (SR-2)", () => {
+  describe("the merge marker's cleanup alarm", () => {
     const mergeDelete = async (w: Awaited<ReturnType<typeof world>>) => {
       const doc = (
         await callCloudSync<"exportAll">(
@@ -605,7 +605,7 @@ describe("the flush is idempotent under an at-least-once alarm (U-05.9 B1)", () 
     expect(w.ns.instance(NAME(A)).storage.alarm).toBeNull();
   });
 
-  it("the object a stale push left for an erased product erases itself at its alarm (SR-2 B2)", async () => {
+  it("the object a stale push left for an erased product erases itself at its alarm", async () => {
     const w = await world();
     await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
     const inst = w.ns.instance(NAME(A));
@@ -692,7 +692,7 @@ describe("alarm robustness (U-05.9 N-items)", () => {
   });
 });
 
-describe("housekeeping and the SR-1 write guard (U-05.9)", () => {
+describe("housekeeping and the write guard (U-05.9)", () => {
   const exportOf = async (w: Awaited<ReturnType<typeof world>>, s: string) =>
     (
       await callCloudSync<"exportAll">(

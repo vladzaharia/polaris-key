@@ -516,7 +516,7 @@ describe("pk-save-conflict (U-22.K2)", () => {
   });
 });
 
-describe("pk-save-conflict, UX2", () => {
+describe("pk-save-conflict", () => {
   const choose = (extra: Record<string, unknown> = {}) => ({
     saveConflict: {
       step: "choose" as const,

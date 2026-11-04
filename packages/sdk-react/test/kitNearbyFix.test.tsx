@@ -50,7 +50,7 @@ const text = (c: HTMLElement) => c.textContent ?? "";
 const title = (c: HTMLElement) =>
   c.querySelector<HTMLElement>('[data-part="title"]');
 
-describe("<NearbySignIn> endings and choices (UXR-47b)", () => {
+describe("<NearbySignIn> endings and choices", () => {
   it.each([
     ["denied", "Sign-in declined"],
     ["expired", "Code expired"],
@@ -259,7 +259,7 @@ describe("<NearbySignIn> endings and choices (UXR-47b)", () => {
   });
 });
 
-describe("<NearbyApprover> screens (UXR-47b)", () => {
+describe("<NearbyApprover> screens", () => {
   const start = (over: Partial<PolarisBridge> = {}) =>
     v5({
       approverStart: vi.fn(async () => ({ listening: true, asks: [] })),
@@ -282,7 +282,7 @@ describe("<NearbyApprover> screens (UXR-47b)", () => {
     expect(title(container)?.textContent).toBe("Approve a Nearby Device");
     expect(container.querySelector('[role="status"]')).not.toBeNull();
     fireEvent.keyDown(document.body, { key: "Escape" });
-    expect(onClose).toHaveBeenCalled();
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
     a.dispose();
   });
 

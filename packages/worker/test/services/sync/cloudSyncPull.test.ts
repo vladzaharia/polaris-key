@@ -477,7 +477,7 @@ describe("GET /<p>/sync: who may ask", () => {
     expect(w.ns.calls).toEqual([]);
   });
 
-  it("is 404 for a soft-deleted product, and the handler refuses it before the object (SR-2)", async () => {
+  it("is 404 for a soft-deleted product, and the handler refuses it before the object", async () => {
     const product = (await loadProduct(w.env, w.db, SLUG))!;
     await w.db.run(
       "UPDATE products SET status = 'deleted' WHERE slug = ?",

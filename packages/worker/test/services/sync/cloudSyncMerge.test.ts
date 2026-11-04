@@ -190,7 +190,7 @@ describe("absorb: the join", () => {
     );
   });
 
-  it("a merged object refuses every later push and absorb with 410 absorbed, reads empty, and an erasure removes the marker (SR-1 N3)", async () => {
+  it("a merged object refuses every later push and absorb with 410 absorbed, reads empty, and an erasure removes the marker", async () => {
     const { ns, env } = world();
     await setOne(env, "from", "a", 1, at(1), C2, "d2");
     await merge(env, "from", "to");
@@ -235,7 +235,7 @@ describe("absorb: the join", () => {
     ).rejects.toMatchObject({ status: 410, code: "absorbed" });
   });
 
-  it("a write that does not move the sequence (a conflict-only push) between export and delete keeps the object (SR-1 N2)", async () => {
+  it("a write that does not move the sequence (a conflict-only push) between export and delete keeps the object", async () => {
     const { env } = world();
     await setOne(env, "from", "k", 1, at(5), C2, "d2");
     const doc = (await exportCloudSync(env, { product: P, subject: "from" }))!;

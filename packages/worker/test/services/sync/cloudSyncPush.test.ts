@@ -907,7 +907,7 @@ describe("POST /<p>/sync/ops: the object's refusals are mapped, never copied", (
     expect(s.seen.at(-1)!.subject).toBe(other);
   });
 
-  it("a device re-bound to an unrelated person is never replayed into that person's object (SR-2)", async () => {
+  it("a device re-bound to an unrelated person is never replayed into that person's object", async () => {
     const w = await world();
     const { s, other } = await rebindDuringPush(w, false);
     const res = await push(w, [set("audio.gain", 1)]);
@@ -957,7 +957,7 @@ describe("POST /<p>/sync/ops: the object's refusals are mapped, never copied", (
   });
 });
 
-describe("POST /<p>/sync/ops: a deleted or erasing product is refused before the object (SR-2)", () => {
+describe("POST /<p>/sync/ops: a deleted or erasing product is refused before the object", () => {
   const direct = (w: World, product: Product) =>
     handlePush({
       req: new Request(`${BASE}/${SLUG}/sync/ops`, {
