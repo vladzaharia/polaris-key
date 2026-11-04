@@ -132,6 +132,14 @@ public final class PolarisKeySettingsModel {
     private var saveFailed = false
     private var accountSignedIn = false
     private var developer: String?
+    private var presentation: KitPresentation?
+    /// A license held by its key alone (a holder is known, with no email and no account), UK-43.
+    public private(set) var floating = false
+    /// Add your name and email: the account step (or the manage QR on a TV) over the settings pane, while it runs.
+    public private(set) var holders: HolderFlowModel?
+    /// The portal did not open: said under the rows, in the danger tone.
+    public private(set) var addProblem: CopyLine?
+    private var adding = false
     /// The nearby approval screen over this client's Identity, or nil for a preview model.
     public private(set) var nearbyApproval: NearbyApprovalModel?
     /// The account menu offers "Approve a nearby device": signed in, the product serves it, the runtime can.
@@ -240,6 +248,14 @@ public final class PolarisKeySettingsModel {
         canApproveNearby = current != nil && nearbyOffered
         nearbyApproval?.update(inputs: base)
         holder = current?.name ?? current?.email
+        let profile = await client.license.getProfile()
+        let keyOnly = profile != nil && (profile?.email ?? "").isEmpty && profile?.user == nil
+        floating = current == nil && keyOnly
+        if let p = client.presentation {
+            presentation = KitPresentation(
+                name: p.name, developerName: p.developerName, accent: p.accent,
+                accentDark: p.accentDark, icon: false)
+        }
         let info = await client.licenseInfo()
         tier = info?.tierLabel ?? info?.tier
         developer = client.presentation?.developerName ?? client.presentation?.name
@@ -484,6 +500,61 @@ public final class PolarisKeySettingsModel {
         handlers.selectChannel?(name)
     }
 
+    // MARK: Add your name and email (UK-43)
+
+    /// A floating license offers Add: the row says "Add it in Polaris Locker" (and opens the page) when Identity is
+    /// off, "Add your name and email" (the account step, in the app) otherwise; a TV shows the manage QR.
+    public var addOpensPortal: Bool {
+        guard let servicesOn else { return false }
+        return !servicesOn.contains(.identity) && !inputs.platform.isTV
+    }
+
+    /// The row is offered: a floating license, and (when Add opens the page) a page to open.
+    public var canAdd: Bool {
+        guard client != nil, floating, hasLoaded else { return false }
+        return !addOpensPortal || portalLink != nil
+    }
+
+    private var portalLink: String? {
+        guard let client else { return nil }
+        return PortalLink.link(
+            served: nil, portal: nil, baseUrl: client.core.endpoints.baseUrl,
+            product: client.core.endpoints.product)
+    }
+
+    /// Add, from Settings. `scope` is the gate's inputs when the pane sits inside one (the product's
+    /// identity the screens name); `open` opens a page and says whether it did.
+    public func beginAdd(scope: KitInputs? = nil, open: (URL) -> Bool) async {
+        guard let client, canAdd, !adding, holders == nil else { return }
+        adding = true
+        defer { adding = false }
+        addProblem = nil
+        var base = (scope ?? KitInputs(presentation: presentation, bundle: inputs.bundle, platform: inputs.platform))
+            .holderBase
+        if base.presentation == nil { base.presentation = presentation }
+        let facts = await HolderFacts.read(client: client, base: base, activated: false)
+        if addOpensPortal {
+            // Never with a key: Settings holds none.
+            guard let link = facts.portalTarget(key: nil), let url = KitLinks.valid(link), open(url) else {
+                addProblem = CopyLine("signin.handoff.noBrowser")
+                return
+            }
+            return
+        }
+        holders = HolderFlowModel.live(client: client, facts: facts, key: nil, native: nativeRedirect) {
+            [weak self] in
+            guard let self else { return }
+            self.holders = nil
+            Task { await self.reloadAccount() }
+        }
+    }
+
+    /// The system refused the page Add opened: said under the rows.
+    public func addOpenFailed() { addProblem = CopyLine("signin.handoff.noBrowser") }
+
+    /// The host's native redirect setup for the account step; the default leaves the SDK's.
+    public var nativeRedirect = NativeRedirectOptions()
+
     /// Sign out: release this device's seat and wipe its credential.
     public func signOut() async {
         guard let client else { return }
@@ -505,6 +576,8 @@ public final class PolarisKeySettingsModel {
         if !hasLoaded { i.loading = true }
         if let licensed, licensed.status == .grace { i.gate = KitGate(status: .grace) }
         i.account = KitAccount(signedIn: accountSignedIn, holder: accountSignedIn ? "account" : nil)
+        // A floating license says so, and offers Add; the exit reads "Remove license from this device".
+        if floating { i.licenseHolder = KitLicenseHolder(email: "", addIn: HolderFacts.addIn(for: i.platform)) }
         return i
     }
 

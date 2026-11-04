@@ -114,6 +114,8 @@ public final class AddToAccountModel {
     /// Everything else the views read (platform, presentation, services, `licenseHolder`).
     private let base: KitInputs
     private let deviceKind: String?
+    /// Opened from Settings: the app is already running, so Added closes with Done.
+    private let fromSettings: Bool
     private var handle: (any AddToAccountHandle)?
     // Bumped when an attempt ends, so a late answer from an old one is dropped.
     private var epoch = 0
@@ -122,10 +124,14 @@ public final class AddToAccountModel {
     // The email of the account that signed in, when the sign-in named it.
     private var signedInEmail: String?
 
-    public init(driver: any AddToAccountDriver, base: KitInputs = KitInputs(), deviceKind: String? = nil) {
+    public init(
+        driver: any AddToAccountDriver, base: KitInputs = KitInputs(), deviceKind: String? = nil,
+        fromSettings: Bool = false
+    ) {
         self.driver = driver
         self.base = base
         self.deviceKind = deviceKind
+        self.fromSettings = fromSettings
         self.host = HolderHostState(driver: driver)
     }
 
@@ -140,7 +146,8 @@ public final class AddToAccountModel {
         i.addToAccount = KitAddToAccount(
             step: step, field: field, deviceKind: deviceKind,
             typedEmail: step == .otherAccount ? typedEmail : nil,
-            signedEmail: step == .otherAccount ? signedEmail : nil)
+            signedEmail: step == .otherAccount ? signedEmail : nil,
+            fromSettings: fromSettings ? true : nil)
         return i
     }
 

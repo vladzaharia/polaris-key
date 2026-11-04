@@ -154,6 +154,8 @@
         @State private var page: AccountPage = .account
         @State private var confirmingSignOut = false
         @Environment(\.polarisKeyStrings) private var strings
+        @Environment(PolarisKeyGateModel.self) private var gate: PolarisKeyGateModel?
+        @Environment(\.openURL) private var openURL
         private let route = PolarisKeySettingsRoute.shared
 
         var body: some View {
@@ -176,6 +178,10 @@
                     } else {
                         NSApp.keyWindow?.performClose(nil)
                     }
+                }
+                // Add your name and email, in a sheet over the pane, until it is done.
+                .sheet(isPresented: Binding(get: { model.holders != nil }, set: { _ in })) {
+                    if let flow = model.holders { HolderFlowView(flow: flow) }
                 }
                 .task { take(route.request) }
                 .onChange(of: route.request) { _, request in take(request) }
@@ -202,10 +208,13 @@
 
         // MARK: Account page
 
+        private var removing: Bool { model.account.shows("account.removeKey") }
+
         @ViewBuilder private func account(_ style: KitResolvedStyle) -> some View {
             Form {
                 Section {
                     licenseHeader(style)
+                    addRow(style)
                     if let counts = model.seatCounts, model.devicesScreen.state != .browserMode {
                         Button {
                             page = .devices
@@ -251,27 +260,66 @@
                     onChange: { key, value in Task { await model.setValue(key, value) } },
                     options: model.selectOptions, onRetry: { Task { await model.retryConfig() } },
                     onReset: { key in Task { await model.resetValue(key) } })
-                if model.account.shows("common.signOut") {
+                if model.account.shows("common.signOut") || model.account.shows("account.removeKey") {
                     // No box of its own: the bare button, as the mockup has it.
                     Section {
                     } footer: {
-                        PaneButton(line: CopyLine("menu.signOut"), style: style) {
+                        PaneButton(
+                            line: CopyLine(removing ? "account.removeKey" : "menu.signOut"),
+                            style: style
+                        ) {
                             confirmingSignOut = true
                         }
                     }
                     .confirmationDialog(
-                        SignOutCopy.title(strings, product: style.identity.name),
+                        removing
+                            ? strings.string("account.removeKey")
+                            : SignOutCopy.title(strings, product: style.identity.name),
                         isPresented: $confirmingSignOut, titleVisibility: .visible
                     ) {
-                        Button(strings.string("signin.signout.confirm"), role: .destructive) {
+                        Button(
+                            strings.string(removing ? "account.removeKey" : "signin.signout.confirm"),
+                            role: .destructive
+                        ) {
                             Task { await model.signOut() }
                         }
                         Button(strings.string("common.cancel"), role: .cancel) {}
                     } message: {
-                        Text(SignOutCopy.message(strings, product: style.identity.name, tier: model.tier))
+                        // A license held by its key alone has no account to sign out of: no sentence about one.
+                        if !removing {
+                            Text(SignOutCopy.message(strings, product: style.identity.name, tier: model.tier))
+                        }
                     }
                 }
             }
+        }
+
+        /// A floating license is not in an account: Add your name and email (or the page that does it, ↗), and why.
+        @ViewBuilder private func addRow(_ style: KitResolvedStyle) -> some View {
+            if model.canAdd, model.account.shows("account.notInAccount") {
+                HStack {
+                    VStack(alignment: .leading, spacing: style.space(.xxs)) {
+                        PaneText(
+                            CopyLine(model.addOpensPortal ? "signin.key.addInLocker" : "activate.recommend.action"),
+                            .body, color: .default)
+                        PaneText(CopyLine("account.notInAccount"), .meta, color: .muted)
+                    }
+                    Spacer()
+                    PaneButton(
+                        line: CopyLine(model.addOpensPortal ? "signin.key.addInLocker" : "activate.recommend.action"),
+                        style: style, glyph: model.addOpensPortal ? PolarisKitGlyph.newWindow : nil
+                    ) {
+                        let scope = gate?.inputs
+                        let opener = openURL
+                        Task { @MainActor in
+                            let open = holderOpening(opener) { [model] in model.addOpenFailed() }
+                            await model.beginAdd(scope: scope, open: open)
+                        }
+                    }
+                }
+                .accessibilityElement(children: .contain)
+            }
+            if let problem = model.addProblem { HolderProblemLine(line: problem) }
         }
 
         @ViewBuilder private func licenseHeader(_ style: KitResolvedStyle) -> some View {

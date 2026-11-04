@@ -2138,7 +2138,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.kit.manage": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.kit.keyentry": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.kit.account": CapabilityRow(status: "implemented", service: "sdk", na: []),
-    "ui.kit.holders": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.kit.holders": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.cli.mount": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.cli.contract": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
@@ -2161,4 +2161,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "9f2005d31729024f74a44218c781c61d5755756bbf10685939482228b910bbca"
+public let CAPABILITY_DIGEST = "506b5358172421bdfe3ec03d8d8820040ce481cc01bd2013b3774c159a4f82ff"

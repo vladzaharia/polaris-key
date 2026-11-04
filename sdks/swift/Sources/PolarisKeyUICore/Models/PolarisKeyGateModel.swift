@@ -54,13 +54,18 @@ public struct KitGateOptions: Sendable, Equatable {
     /// product serves it. Off by default: the developer opts in (CC-01-auto-sign-in D-A14). The host can also call
     /// `offerNearby()` from its own button.
     public var nearbySignIn: Bool
+    /// After a license key activates, show the Done step (UK-43: "<Product> is ready", and once a quiet way to keep
+    /// the license in an account) before the product. False goes straight to the product, as before.
+    public var keyDone: Bool
 
     public init(
         keyEntry: Bool = true, offlineActivation: Bool = false, trial: Bool = false,
         restore: Bool = false, enroll: Bool = false,
         signInPresentation: KitSignInPresentation = .inline, replace: KitReplaceMode = .inline,
-        integrator: KitIntegrator? = nil, autoSignIn: Bool = true, nearbySignIn: Bool = false
+        integrator: KitIntegrator? = nil, autoSignIn: Bool = true, nearbySignIn: Bool = false,
+        keyDone: Bool = true
     ) {
+        self.keyDone = keyDone
         self.autoSignIn = autoSignIn
         self.nearbySignIn = nearbySignIn
         self.keyEntry = keyEntry
@@ -230,6 +235,11 @@ public final class PolarisKeyGateModel {
     /// LicenseChoice screen is drawn from it; `selectLicense`, `confirmLicenseChoice`,
     /// `openChoiceReplace`, `replaceChoiceDevice` and `cancelLicenseChoice` drive it.
     public private(set) var choice: LicenseChoiceModel?
+    /// The key just activated, until Start using: the gate draws the Done step (UK-43) before the product. The key
+    /// lives only here, in memory, and `description` redacts it.
+    public private(set) var keyDone: PolarisKeyDone?
+    /// The Done step and what it leads to, while `keyDone` is set.
+    public private(set) var holders: HolderFlowModel?
     /// What the host can act on; Trial, Restore and Continue free draw only with a handler.
     public var handlers: KitGateHandlers {
         didSet { rebuild() }
@@ -545,16 +555,52 @@ public final class PolarisKeyGateModel {
         rebuild()
         announce(activate.copy.first)
         if result.isOK {
+            var entries: KeyEntries?
+            if case .ok(_, _, let left) = result { entries = left }
+            // The Done step comes first, with the key held in memory; the license is read once it is up.
+            if options.keyDone { await beginKeyDone(key: key, entries: entries) }
             await reload()
             // "{n} key entries left" once the app shows (SIGN-IN.md §4.5).
-            if case .ok(_, _, let entries?) = result {
-                showToast(
-                    .info,
-                    CopyLine(
-                        "signin.key.entriesLeftShort",
-                        ["left": .number(max(0, entries.limit - entries.used))]))
-            }
+            if keyDone == nil { toastKeyEntries(entries) }
         }
+    }
+
+    private func toastKeyEntries(_ entries: KeyEntries?) {
+        guard let entries else { return }
+        showToast(
+            .info,
+            CopyLine(
+                "signin.key.entriesLeftShort",
+                ["left": .number(max(0, entries.limit - entries.used))]))
+    }
+
+    // MARK: Done (UK-43)
+
+    private func beginKeyDone(key: String, entries: KeyEntries?) async {
+        guard let client else { return }
+        let facts = await HolderFacts.read(client: client, base: inputs.holderBase, activated: true)
+        keyDone = PolarisKeyDone(key: key, entries: entries)
+        holders = HolderFlowModel.live(
+            client: client, facts: facts, key: key, native: nativeRedirect
+        ) { [weak self] in
+            self?.finishKeyDone()
+            // An account sign-in may have finished: the license is read again.
+            Task { await self?.reload() }
+        }
+    }
+
+    /// The host's native redirect setup for the account step (its registered schemes, its opener); the default leaves
+    /// the SDK's.
+    public var nativeRedirect = NativeRedirectOptions()
+
+    /// Start using: the Done step is over and the key is forgotten.
+    public func finishKeyDone() {
+        let done = keyDone
+        keyDone = nil
+        holders = nil
+        // The key is forgotten, here too.
+        if keyText != "" { keyText = "" }
+        toastKeyEntries(done?.entries)
     }
 
     // MARK: Offline activation
@@ -1445,6 +1491,8 @@ public final class PolarisKeyGateModel {
     public func signOut() async {
         guard let client else { return }
         try? await client.deactivate()
+        keyDone = nil
+        holders = nil
         route = .welcome
         await reload()
     }

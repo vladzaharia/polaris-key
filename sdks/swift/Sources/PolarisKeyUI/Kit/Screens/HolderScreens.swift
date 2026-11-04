@@ -720,13 +720,18 @@ public struct ActivateDoneView: View {
         var h = HolderHandlers()
         h.start = onStart
         h.add = {
-            if let url = KitLinks.valid(portalLink),
-                KitStates.activateDone(inputs).shows("signin.key.addInLocker")
-            {
-                opener(url) { ok in if !ok { host.problem = .openFailed } }
-            } else {
+            #if os(tvOS)
+                // A TV opens nothing: the flow shows the manage QR.
                 onAdd()
-            }
+            #else
+                if let url = KitLinks.valid(portalLink),
+                    KitStates.activateDone(inputs).shows("signin.key.addInLocker")
+                {
+                    opener(url) { ok in if !ok { host.problem = .openFailed } }
+                } else {
+                    onAdd()
+                }
+            #endif
         }
         h.signInAs = {
             Task {
@@ -914,17 +919,24 @@ struct HolderPreview: View {
     }
 }
 
-/// The form's body for a holder step. The gate wires the typed values and actions (UK-43.6); until
-/// then the form draws as the matrix names it.
+/// The form's body for a holder step. With the gate's flow the typed values and actions are live;
+/// without one the form draws as the matrix names it.
 struct HolderSignInBody: View {
     let inputs: KitInputs
     let state: SignInState?
     let onStart: () -> Void
+    var flow: HolderFlowModel?
+    @Environment(\.openURL) private var opener
     @State private var name = ""
     @State private var email = ""
 
     var body: some View {
-        if let step = holderStep(state, inputs) {
+        if let flow {
+            let live = HolderFormLive(flow: flow, state: state, opener: opener, onStart: onStart)
+            if let step = live.step {
+                HolderBody(step: step, fields: live.fields, handlers: live.handlers)
+            }
+        } else if let step = holderStep(state, inputs) {
             HolderBody(
                 step: step, fields: HolderFields(name: $name, email: $email),
                 handlers: HolderHandlers(start: onStart))
@@ -937,10 +949,83 @@ struct HolderSignInActions: View {
     let inputs: KitInputs
     let state: SignInState?
     let onStart: () -> Void
+    var flow: HolderFlowModel?
+    @Environment(\.openURL) private var opener
 
     var body: some View {
-        if let step = holderStep(state, inputs) {
+        if let flow {
+            let live = HolderFormLive(flow: flow, state: state, opener: opener, onStart: onStart)
+            if let step = live.step { HolderActions(step: step, handlers: live.handlers) }
+        } else if let step = holderStep(state, inputs) {
             HolderActions(step: step, handlers: HolderHandlers(start: onStart, done: onStart))
         }
+    }
+}
+
+/// A holder step of the sign-in form over the gate's flow: its screen, its typed values and its actions.
+@MainActor struct HolderFormLive {
+    let flow: HolderFlowModel
+    let state: SignInState?
+    let opener: OpenURLAction
+    let onStart: () -> Void
+
+    var step: HolderStep? {
+        switch state {
+        case .keyDone:
+            let screen = KitStates.activateDone(flow.doneInputs)
+            return screen.state == nil
+                ? nil
+                : HolderStep(
+                    screen, extras: HolderExtras(working: flow.doneHost.working), problem: flow.doneHost.problem)
+        case .attach, .added:
+            let model = flow.add
+            let screen = KitStates.addToAccount(model.inputs, asAdded: state == .added)
+            return screen.state == nil
+                ? nil
+                : HolderStep(
+                    screen, field: model.field,
+                    wait: model.userCode.map { HolderWait(code: $0, address: model.address, link: model.link) },
+                    extras: HolderExtras(
+                        working: model.step == .busy, opened: model.opened, noVerify: flow.verifyLink == nil),
+                    problem: model.host.problem ?? (model.openFailed ? .openFailed : nil))
+        default:
+            return nil
+        }
+    }
+
+    var fields: HolderFields {
+        HolderFields(
+            name: Binding(get: { flow.add.name }, set: { flow.add.setField(.name, $0) }),
+            email: Binding(get: { flow.add.email }, set: { flow.add.setField(.email, $0) }))
+    }
+
+    var handlers: HolderHandlers {
+        var h = HolderHandlers()
+        let flow = flow
+        let onStart = onStart
+        h.start = {
+            flow.finish()
+            onStart()
+        }
+        h.done = h.start
+        h.add = { flow.openAdd() }
+        h.submit = { Task { await flow.add.submit() } }
+        h.tryAgain = { Task { await flow.add.tryAgain() } }
+        h.cancel = { flow.cancelAdd() }
+        h.reopen = { Task { await flow.add.reopen() } }
+        h.verify = {
+            if let link = flow.verifyLink, let url = KitLinks.valid(link),
+                holderOpening(opener, failed: { flow.add.host.problem = .openFailed })(url)
+            {
+                return
+            }
+            flow.add.host.problem = .openFailed
+        }
+        h.signIn = { Task { if await flow.add.host.signIn() { flow.finish() } } }
+        h.otherAccount = h.signIn
+        h.signInAs = {
+            Task { if await flow.doneHost.signIn(loginHint: flow.facts.holderEmail) { flow.finish() } }
+        }
+        return h
     }
 }
