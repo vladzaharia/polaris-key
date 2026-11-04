@@ -283,7 +283,7 @@ func _process(_delta: float) -> void:
 static func _sentence_case(l: Label) -> void:
 	var t := l.text
 	if t.length() > 1 and t.unicode_at(0) == 0x2068:
-		l.text = t.substr(0, 1) + t.substr(1, 1).to_upper() + t.substr(2)
+		l.text = t.substr(0, 1) + t.substr(1, 1).to_upper() + t.substr(2)  # ui-lint: allow godot-uppercase one letter of a sentence, not an all-caps label
 
 
 func _on_choice(i: int) -> void:

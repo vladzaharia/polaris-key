@@ -16,6 +16,9 @@ signal approver_chosen(approver_id: String)
 ## nearby-wait with a code on screen: the person chose "Choose another device".
 signal another_requested()
 
+## The held sign-in's active mark (a black diamond).
+const MARK_GLYPH := "\u25c6"
+
 ## State -> [title key, body keys (shown when the model names them), secondary keys]; the
 ## primary is the model's. Every step has a title that takes focus and no Cancel.
 const LAYOUT := {
@@ -484,7 +487,7 @@ func _render_nearby(args: Dictionary) -> void:
 	# The held sign-in leads with the active mark, in the accent (the account is not theirs yet).
 	var marked := step == "nearby-done" and pending and _title.visible
 	_mark.visible = marked
-	_mark.text = "\u25c6" if marked else ""
+	_mark.text = MARK_GLYPH if marked else ""
 	if marked:
 		_mark.add_theme_color_override("font_color", get_theme_color(&"font_color", &"PKeyLink"))
 
@@ -494,7 +497,7 @@ func _render_nearby(args: Dictionary) -> void:
 func _approver_row(id: String, a: Dictionary) -> Button:
 	var names := approver_names(a)
 	var b := button(_approver_box, "Approver%d" % _approver_buttons.size(), func() -> void: approver_chosen.emit(id))
-	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT  # ui-lint: allow godot-rtl the row is a device name, data that reads from its own start
 	b.set_meta(DATA_META, true)
 	var col := VBoxContainer.new()
 	col.name = "Names"
@@ -512,7 +515,7 @@ func _approver_row(id: String, a: Dictionary) -> Button:
 	line.text = names[1]
 	line.visible = names[1] != ""
 	b.text = ""
-	b.accessibility_name = names[0] if names[1] == "" else "%s, %s" % [names[0], names[1]]
+	name_for_reader(b, names[0] if names[1] == "" else "%s, %s" % [names[0], names[1]])
 	return b
 
 
