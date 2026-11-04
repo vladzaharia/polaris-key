@@ -23,6 +23,7 @@ import {
   NOW_SEC,
   entry,
   makeConfig,
+  makeDoc,
   makeFakeBridge,
   okBridgeState,
   services,
@@ -75,7 +76,15 @@ function mount(o: {
                 "release",
                 "identity",
               ),
-              profile: { name: "Mara Lindqvist" },
+              doc: makeDoc({
+                profile: {
+                  name: "Mara Lindqvist",
+                  firstName: "Mara",
+                  email: "mara@acme.test",
+                  activatedAt: 900,
+                  user: { subject: "a".repeat(43) },
+                },
+              }),
             }
           : {}),
         config: makeConfig({ "audio.dither": entry("default", true) }),
