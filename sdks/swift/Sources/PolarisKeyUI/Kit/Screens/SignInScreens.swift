@@ -516,6 +516,25 @@ public struct SignInView: View {
                 } else {
                     model.nearbyNotNow()
                 }
+            } else if model.signInScreen.state == .linkOffer {
+                if kind == .primary {
+                    Task { await model.acceptLinkOffer() }
+                } else {
+                    Task {
+                        await model.declineLinkOffer()
+                        onClose?()
+                    }
+                }
+            } else if model.signInScreen.state == .linkDone {
+                model.finishLink()
+                onClose?()
+            } else if model.signInScreen.state == .linkConflict {
+                if kind == .primary {
+                    model.finishLink()
+                    onClose?()
+                } else if let join = KitLinks.valid(PolarisKeyGateModel.joinAccountsUrl) {
+                    open(join)
+                }
             } else if model.signInScreen.state == .nearbyWait {
                 model.nearbyUseCode()
             } else if model.signInScreen.state == .nearbyDone {

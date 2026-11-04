@@ -450,7 +450,7 @@
     },
     "ui.signin": {
       "status": "implemented",
-      "note": "The signIn family (SignIn with its automatic steps and key refusal, SignInHandoff, LicenseChoice, NearbyApproval) in UIMatrixTests (ui-matrix v7); NearbyApprovalView over NearbyApprovalModel (states only; the nearby protocol is CC-15); the one sign-in form (SignInView) over the SDK's device-code primitives, every state rendered. The in-app license choice draws from I-04's views once the SDK carries the grant (I-10a)."
+      "note": "The signIn family (SignIn with its automatic steps and key refusal, SignInHandoff, LicenseChoice, NearbyApproval) in UIMatrixTests (ui-matrix v7); NearbyApprovalView over NearbyApprovalModel (states only; the nearby protocol is CC-15); the one sign-in form (SignInView) over the SDK: rung 6 starts the native redirect (signIn.start with channel redirect and no redirect URI; ASWebAuthenticationSession on iOS, the loopback listener on a Mac) with Open browser again = reopen() and Cancel, and falls to the device code where the SDK answers redirect-unavailable, on tvOS and on Sign in with a code; after a same-device sign-in the link-offer, link-done and link-conflict steps run over client.identity.link (Link accepts, No thanks declines, Done and leaving the sheet dismiss), and the gate holds the app behind them (KitLinkStepsTests); every state rendered. The in-app license choice draws from I-04's views once the SDK carries the grant (I-10a)."
     },
     "ui.devicelimit": {
       "status": "implemented",

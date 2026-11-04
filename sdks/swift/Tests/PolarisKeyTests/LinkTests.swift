@@ -234,4 +234,67 @@ final class LinkTests: XCTestCase {
             XCTAssertFalse(error.message.contains(handle))
         }
     }
+
+    // Lead additions from the I-44.10 review.
+
+    private func redeem(_ c: PolarisKeyClient, tokenEndpoint: String) async throws {
+        let pending = RedirectPending(
+            authorizeUrl: "", state: String(repeating: "s", count: 24),
+            codeVerifier: String(repeating: "v", count: 43), redirectUri: "https://app.example/cb",
+            clientId: "djdl", issuer: "\(api)/identity", tokenEndpoint: tokenEndpoint, choiceApp: false,
+            keyReturn: false)
+        _ = try await c.identity.redeemRedirect(pending, code: "C0DE", deviceName: nil)
+    }
+
+    func testTheTokenRequestCarriesTheDeviceTokenOnlyToThisProduct() async throws {
+        await discovery()
+        let token =
+            #"{"access_token":"pkeyt_new","token_type":"Bearer","scope":"profile","schemaVersion":1,"device":{"id":"D"},"license":null,"subject":"\#(subject)"}"#
+        await server.reply("/djdl/identity/token", body: token)
+        await server.reply("/elsewhere/token", body: token)
+        let (c, _) = try await client()
+        try await redeem(c, tokenEndpoint: "https://other.example/elsewhere/token")
+        let off = await server.requests(forPath: "/elsewhere/token")
+        XCTAssertEqual(off.count, 1)
+        XCTAssertNil(off.first?.headers["authorization"])
+        let (d, _) = try await client()
+        try await redeem(d, tokenEndpoint: "\(api)/identity/token")
+        let on = await server.requests(forPath: "/djdl/identity/token")
+        XCTAssertEqual(on.first?.headers["authorization"], "Bearer pkeyt_signedin")
+    }
+
+    func testASignInThatNamedNoSubjectOpensNoOffer() async throws {
+        await discovery()
+        let (c, _) = try await client()
+        c.identity.linkOpen(subject: nil)
+        XCTAssertFalse(c.identity.link.pending)
+        c.identity.linkOpen(subject: "")
+        XCTAssertFalse(c.identity.link.pending)
+        let offered = try await c.identity.link.offer()
+        XCTAssertEqual(offered, .unavailable)
+        let sent = await linkRequests()
+        XCTAssertTrue(sent.isEmpty)
+    }
+
+    func testAcceptIsUnavailableWhenTheDeviceKeysDieWithTheProcess() async throws {
+        await discovery()
+        let held = InMemoryStore(deviceId: deviceId)
+        await held.setToken("pkeyt_signedin")
+        let c = try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: [:], trustRefresh: false, store: held, transport: server.transport,
+                expectedServices: [.identity], fingerprint: false,
+                connect: ConnectOptions(keys: try LabelKeyPort(label: "k", kind: .memory))))
+        c.identity.linkOpen(subject: subject)
+        let port = try await c.identity.exchangePort()
+        XCTAssertNil(port)
+        let accepted = try await c.identity.link.accept(linkHandle: handle)
+        XCTAssertEqual(accepted, .unavailable)
+        let sent = await linkRequests()
+        XCTAssertTrue(sent.isEmpty)
+        // The offer itself needs no keys.
+        let offered = try await c.identity.link.offer()
+        guard case .ok = offered else { return XCTFail("\(offered)") }
+    }
 }

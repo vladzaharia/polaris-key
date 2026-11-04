@@ -2476,6 +2476,11 @@
     },
     {
       "sdk": "swift",
+      "path": "identity.installedPlatformIdentity",
+      "reason": "wiring: the kit reads which platform provider is installed to word the link offer and to see whether it can be made (I-44.11); not an app verb"
+    },
+    {
+      "sdk": "swift",
       "path": "identity.platformSession",
       "reason": "wiring: hands the platform provider its session once a sign-in completes (I-44.3); not an app verb"
     },

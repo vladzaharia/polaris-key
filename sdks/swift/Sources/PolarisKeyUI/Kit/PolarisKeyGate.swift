@@ -93,7 +93,8 @@ public struct PolarisKeyGate<Content: View>: View {
         let gate = model.gate
         switch gate.state {
         case .licensed, .grace:
-            content()
+            // A sign-in this device just finished holds the app behind the link offer.
+            if model.linkStepActive { linkHold } else { content() }
         case .booting, .none:
             BootView(screen: gate)
         case .error:
@@ -121,6 +122,21 @@ public struct PolarisKeyGate<Content: View>: View {
         Binding(
             get: { model.options.signInPresentation == .sheet && model.route == .signIn },
             set: { shown in if !shown { model.backToWelcome() } })
+    }
+
+    /// The link steps over the app: the form as the sheet it was started in, or inline.
+    @ViewBuilder private var linkHold: some View {
+        if model.options.signInPresentation == .sheet {
+            content()
+                .sheet(isPresented: signInSheet) {
+                    PolarisKeyScope(model: model) {
+                        SignInView(model: model, providers: providers) { model.backToWelcome() }
+                    }
+                    .kitSignInSheetShape()
+                }
+        } else {
+            SignInView(model: model, providers: providers)
+        }
     }
 
     @ViewBuilder private var activation: some View {

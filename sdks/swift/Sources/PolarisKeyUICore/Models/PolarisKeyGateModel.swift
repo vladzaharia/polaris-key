@@ -647,21 +647,31 @@ public final class PolarisKeyGateModel {
         pending = .signIn
         rebuild()
         signInTask?.cancel()
+        // A session still waiting (a redirect whose person asked for a code) ends first: its
+        // socket closes and its request drops.
+        session?.cancel()
+        session = nil
         signInTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let session = try await client.identity.signIn.start()
+                let session = try await self.startSession(client, code: code)
                 try Task.checkCancellation()
                 self.session = session
+                let native = session.channel == .redirect
+                let page = session.authorizeUrl ?? session.verificationUriComplete
                 self.request = KitSignInRequest(
-                    userCode: session.userCode, verificationUri: session.verificationUri,
-                    verificationUriComplete: session.verificationUriComplete,
-                    expiresAt: session.expiresAt)
+                    userCode: session.userCode,
+                    verificationUri: native ? page : session.verificationUri,
+                    verificationUriComplete: page, expiresAt: session.expiresAt)
                 self.pending = nil
                 self.signIn?.outcome = .pending
                 if code {
                     self.signIn?.channel = .deviceCode
                     self.deviceCode = KitDeviceCode(phase: .waiting, secondsLeft: self.secondsLeft)
+                } else if native {
+                    // Rung 6: the SDK's own system browser (a sheet, or the default browser behind
+                    // the loopback listener); the same page again is `reopen()`.
+                    self.signIn?.browserOpened = await session.reopen()
                 } else {
                     let opened = await self.openBrowser(session.verificationUriComplete)
                     self.signIn?.browserOpened = opened
@@ -680,20 +690,54 @@ public final class PolarisKeyGateModel {
         }
     }
 
+    /// The session this form runs: the native redirect (rung 6: ASWebAuthenticationSession on iOS,
+    /// the loopback listener on a Mac, no redirect URI of the host's) where the SDK has one, else
+    /// the device code. A code the person asked for, tvOS and an SDK answer of
+    /// `redirect-unavailable` (nothing was sent) take the code.
+    private func startSession(_ client: PolarisKeyClient, code: Bool) async throws -> SignInSession {
+        #if os(tvOS) || os(watchOS)
+            let wantsRedirect = false
+        #else
+            let wantsRedirect = !code
+        #endif
+        if wantsRedirect {
+            do {
+                return try await client.identity.signIn.start(
+                    SignInOptions(
+                        channel: .redirect, browser: browser,
+                        native: NativeRedirectOptions(openBrowser: false)))
+            } catch let error as PolarisError where error.code == ErrorCode.redirectUnavailable {
+                // Fall through to the code.
+            }
+        }
+        return try await client.identity.signIn.start()
+    }
+
     /// "Open browser again": the same request's page, never a second request.
     public func reopenBrowser() {
         guard let session else { return }
         signIn?.event = .reopen
         Task { [weak self] in
-            let opened = await self?.openBrowser(session.verificationUriComplete) ?? false
+            let opened: Bool
+            if session.channel == .redirect {
+                opened = await session.reopen()
+            } else {
+                opened = await self?.openBrowser(session.verificationUriComplete) ?? false
+            }
             self?.signIn?.browserOpened = opened
             self?.rebuild()
         }
     }
 
-    /// "Use a code instead": the same request's code, in place.
+    /// "Use a code instead": the same request's code, in place. A native redirect session has no
+    /// code: it ends and a device-code request takes its place.
     public func useCode() {
-        guard session != nil else { return }
+        guard let session else { return }
+        if session.channel == .redirect {
+            signIn?.event = .useCode
+            beginSignIn(code: true)
+            return
+        }
         signIn?.channel = .deviceCode
         signIn?.event = .useCode
         deviceCode = KitDeviceCode(phase: .waiting, secondsLeft: secondsLeft)
@@ -712,6 +756,11 @@ public final class PolarisKeyGateModel {
 
     /// Cancel the sign-in: the form returns to its first step; nothing binds.
     public func cancelSignIn() {
+        if linkStepActive {
+            // Leaving the link offer is Not now, not No thanks: nothing is remembered.
+            client?.identity.link.dismiss()
+            autoSignIn = nil
+        }
         endNearby()
         dropConsent()
         dropLimit()
@@ -780,6 +829,7 @@ public final class PolarisKeyGateModel {
                 signIn?.redeeming = nil
                 signIn?.outcome = Self.kitOutcome(outcome)
                 signIn?.issuedNow = false
+                if ready.sameDevice, await presentLinkOffer() { return }
                 rebuild()
                 announce(signInScreen.copy.first)
                 if let name = signedInName {
@@ -908,6 +958,7 @@ public final class PolarisKeyGateModel {
             await readSignedInTier()
             signIn?.outcome = .signedIn
             signIn?.issuedNow = false
+            if await presentLinkOffer() { return }
             rebuild()
             announce(signInScreen.copy.first)
             if let name = signedInName { toastSignedIn(name: name, tier: signedInTier) }
@@ -922,6 +973,92 @@ public final class PolarisKeyGateModel {
     /// The kit's error code for a failed start or wait.
     private static func signInCode(_ error: Error) -> String {
         (error as? PolarisError)?.code ?? (error as? SignInError)?.code ?? "sign-in-failed"
+    }
+
+    // MARK: Link offer (identity.link; I-44.11)
+
+    /// The link steps hold the form: a sign-in this device started has finished and the app waits
+    /// behind the offer, its Done, or its conflict.
+    public var linkStepActive: Bool {
+        guard let step = autoSignIn?.step else { return false }
+        return step == .linkOffer || step == .linkDone || step == .linkConflict
+    }
+
+    /// Where Join accounts goes: Help's page on the Polaris Locker site.
+    public static let joinAccountsUrl =
+        "\(CUSTOMER_ORIGIN_DEFAULT)/docs/help/join-accounts/#if-another-account-uses-the-address"
+
+    @ObservationIgnored private var linkBusy = false
+
+    /// After a same-device sign-in: the offer, when the SDK makes one for the platform provider
+    /// installed here. True when the link-offer step is showing (the sign-in's toast then waits
+    /// for it); false when there is no offer and the form ends as it did.
+    private func presentLinkOffer() async -> Bool {
+        guard let client, client.identity.link.pending else { return false }
+        let provider = client.identity.installedPlatformIdentity ?? rowProvider
+        guard case .ok(let rows)? = try? await client.identity.link.offer(),
+            let row = rows.first(where: { $0.kind == provider.kind.rawValue })
+        else {
+            client.identity.link.dismiss()
+            return false
+        }
+        // The provider that asks for the one account sheet must be the one the offer names.
+        if client.identity.installedPlatformIdentity == nil {
+            client.identity.installPlatformIdentity(provider)
+        }
+        signInProvider = Self.providerName(provider.kind)
+        let reach: KitLinkReach =
+            row.reach == "global" ? .global : (row.reach == "developer" ? .developer : .unknown)
+        autoSignIn = KitAutoSignIn(step: .linkOffer, reach: reach, kind: provider.kind.rawValue)
+        route = .signIn
+        rebuild()
+        announce(signInScreen.copy.first)
+        return true
+    }
+
+    /// Link on the offer: one request (the handle, or one provider sheet), then Done or the
+    /// conflict. Any other answer ends the offer quietly: the person is signed in, and the offer is
+    /// not remembered as declined.
+    public func acceptLinkOffer() async {
+        guard let client, autoSignIn?.step == .linkOffer, !linkBusy else { return }
+        linkBusy = true
+        defer { linkBusy = false }
+        let kind = autoSignIn?.kind
+        let result = try? await client.identity.link.accept()
+        guard autoSignIn?.step == .linkOffer else { return }
+        switch result {
+        case .linked?:
+            // Linking spends the handle; the offer is closed here (`link.pending` stays true until then).
+            client.identity.link.dismiss()
+            autoSignIn = KitAutoSignIn(step: .linkDone, kind: kind)
+        case .refused(_, let code)? where code == ErrorCode.linkConflict:
+            client.identity.link.dismiss()
+            autoSignIn = KitAutoSignIn(step: .linkConflict, kind: kind)
+        default:
+            finishLink()
+            return
+        }
+        rebuild()
+        announce(signInScreen.copy.first)
+    }
+
+    /// No thanks: not again for this account on this device.
+    public func declineLinkOffer() async {
+        guard let client, autoSignIn?.step == .linkOffer, !linkBusy else { return }
+        await client.identity.link.decline()
+        finishLink()
+    }
+
+    /// The link steps are over (Done, No thanks, or the offer ended): the app shows, with the
+    /// sign-in's toast.
+    public func finishLink() {
+        guard linkStepActive else { return }
+        client?.identity.link.dismiss()
+        autoSignIn = nil
+        route = .welcome
+        rebuild()
+        announce(nil)
+        if let name = signedInName { toastSignedIn(name: name, tier: signedInTier) }
     }
 
     // MARK: Automatic sign-in (CC-01-auto-sign-in, I-44.6)
@@ -1161,6 +1298,8 @@ public final class PolarisKeyGateModel {
         switch raw.lowercased() {
         case "apple": return "Apple"
         case "google": return "Google"
+        case "gamecenter": return "Game Center"
+        case "pgs": return "Play Games"
         default: return raw.isEmpty ? nil : raw
         }
     }
