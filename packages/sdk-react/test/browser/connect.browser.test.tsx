@@ -355,6 +355,10 @@ describe("two panes in short landscape and on TV", () => {
               `${key} is below the first viewport`,
             ).toBeLessThanOrEqual(innerHeight + 0.5);
             expect(b.right, key).toBeLessThanOrEqual(innerWidth + 0.5);
+            expect(b.width, `${key} is as wide as its pane`).toBeCloseTo(
+              right.getBoundingClientRect().width,
+              0,
+            );
           }
           expect(
             document.documentElement.scrollHeight,
@@ -378,6 +382,70 @@ describe("two panes in short landscape and on TV", () => {
               `${__PKEY_KIT_SHOTS__}/react.${component}.${state}/${size.label}-${scheme}.png`,
             );
         });
+
+  it("a card taller than the window starts at the top edge and the window scrolls", async () => {
+    const base = rowOf("TransferOffer", "ask", false);
+    const row: Row = {
+      ...base,
+      input: {
+        ...base.input,
+        transferOffer: {
+          ...(base.input as { transferOffer: object }).transferOffer,
+          device:
+            "Maya's very long named travelling laptop in the spare room upstairs",
+        },
+      } as UiInput,
+    };
+    for (const scheme of ["dark", "light"] as const)
+      for (const [w, h] of [
+        [640, 360],
+        [844, 390],
+      ] as const) {
+        await page.viewport(w, h);
+        const kit = await mount(row, scheme, 16);
+        const card = kit.querySelector(".card")!.getBoundingClientRect();
+        const accept = kit
+          .querySelector('[data-key="transferOffer.accept"]')!
+          .getBoundingClientRect();
+        // Document coordinates: focus on the heading may have scrolled the window.
+        expect(card.top + scrollY, `${w}x${h} card top`).toBeGreaterThanOrEqual(
+          -0.5,
+        );
+        expect(
+          accept.top + scrollY,
+          `${w}x${h} Accept top`,
+        ).toBeGreaterThanOrEqual(-0.5);
+        expect(
+          accept.bottom,
+          `${w}x${h} Accept is reachable by scrolling`,
+        ).toBeLessThanOrEqual(document.documentElement.scrollHeight + 0.5);
+        root?.unmount();
+        host?.remove();
+      }
+  });
+
+  for (const [component, state] of [
+    ["LinkPairing", "code"],
+    ["LinkPairing", "confirm"],
+    ["TransferOffer", "ask"],
+  ] as const)
+    it(`${component}.${state} on a TV at 200 % text: two panes inside the title-safe area`, async () => {
+      await page.viewport(960, 540);
+      const kit = await mount(rowOf(component, state, true), "dark", 32);
+      expect(columns(kit.querySelector(".card")!), "two columns").toBe(2);
+      const targets = [
+        kit.querySelector(".pair-code, .pair-offer")!,
+        kit.querySelector("[data-key].btn, .btn")!,
+      ];
+      const sw = document.documentElement.scrollHeight;
+      for (const el of targets) {
+        const b = el.getBoundingClientRect();
+        expect(b.top, "above the top edge").toBeGreaterThanOrEqual(0.5);
+        expect(b.bottom, "unreachable").toBeLessThanOrEqual(sw + 0.5);
+        expect(b.left, "in overscan").toBeGreaterThanOrEqual(960 * 0.05 - 0.5);
+        expect(b.right, "in overscan").toBeLessThanOrEqual(960 * 0.95 + 0.5);
+      }
+    });
 
   it("one column under 600 wide, at 200 % text and in a tall window", async () => {
     for (const [w, h, px] of [

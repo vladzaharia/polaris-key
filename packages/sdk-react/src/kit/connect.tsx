@@ -54,7 +54,20 @@ import { renderView } from "./views.js";
 function panes(root: string): string {
   const lp = `${root}[data-component="LinkPairing"] .stage[data-kind="screen"] .card:has(> .pair-end)`;
   const to = `${root}[data-component="TransferOffer"][data-state="ask"] .stage[data-kind="screen"] .card`;
+  const stage = `${root}[data-component="LinkPairing"] .stage[data-kind="screen"]:has(.pair-end),
+${root}[data-component="TransferOffer"][data-state="ask"] .stage[data-kind="screen"]`;
+  // A TV keeps its title-safe area (5 % each side) at any text size.
+  const safe =
+    root === ".pk-root.pk-tv"
+      ? `
+  padding-inline: max(var(--pk-space-6), 5vw);
+  padding-block: max(var(--pk-space-6), 5vh);`
+      : "";
   return `
+${stage} {
+  /* safe: a card taller than the window starts at its top edge and the window scrolls. */
+  align-content: safe center;${safe}
+}
 ${lp},
 ${to} {
   inline-size: min(46rem, 100%);
@@ -87,6 +100,8 @@ ${to} > .actions {
   padding: 0;
   background: none;
   flex-direction: column;
+  justify-content: stretch;
+  grid-template-columns: minmax(0, 1fr);
 }
 ${to} > .actions::before {
   content: none;
