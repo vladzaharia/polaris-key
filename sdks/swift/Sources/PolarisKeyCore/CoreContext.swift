@@ -335,6 +335,8 @@ public actor CoreContext {
     /// `PresentationSource` the UI kits read (plans/HA-13.md). Re-parsed after every successful
     /// discovery; `start()` loads the last member from disk. A local-only client never fetches.
     public nonisolated let presentationSource: ProductPresentationSource
+    /// Discovery's `core.portal`: this session's member, else the last one persisted (`portal.json`).
+    public nonisolated let portalStore: PortalStore
     private nonisolated let eventSink = LockedValue<(@Sendable (CoreEvent) -> Void)?>(nil)
 
     /// Where module events go (the facade's `client.events`).
@@ -434,6 +436,8 @@ public actor CoreContext {
             directory: dirs.data.appendingPathComponent("presentation", isDirectory: true),
             fetcher: transport is NoNetworkTransport
                 ? nil : (options.presentationIconFetcher ?? URLSessionIconFetcher()))
+        self.portalStore = PortalStore(
+            product: options.productSlug, baseUrl: endpoints.baseUrl, directory: dirs.data)
         self.requestTimeoutSeconds = options.requestTimeoutSeconds
         self.expectedServices = options.expectedServices
         self.deviceNameOption = options.deviceName
@@ -460,6 +464,7 @@ public actor CoreContext {
         loadCache(await store.readCache())
         // The last presentation, so an offline start still shows the product. Files only.
         presentationSource.loadCached()
+        portalStore.loadCached()
     }
 
     // ── Identity + credential ────────────────────────────────────────────────────────────
@@ -955,6 +960,7 @@ public actor CoreContext {
             discoveredServices = document.servicesMap
             // No member (or an invalid one) clears it; a failed discovery keeps the last.
             presentationSource.accept(document.presentation)
+            portalStore.accept(document.portal)
         }
         for fn in discoveryObservers.current { await fn(result) }
         return result

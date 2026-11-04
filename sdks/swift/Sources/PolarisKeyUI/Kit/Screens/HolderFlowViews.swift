@@ -37,7 +37,8 @@ public struct HolderFlowView: View {
         case .done:
             ActivateDoneView(
                 inputs: flow.doneInputs, host: flow.doneHost, portalLink: flow.doneLink,
-                onStart: { flow.finish() }, onAdd: { flow.openAdd() }, onSignedIn: { flow.finish() })
+                onStart: { flow.finish() }, onAdd: { flow.openAdd() }, onSignedIn: { flow.finish() },
+                onOtherAccount: { flow.showOtherAccount(expected: $0, signed: $1) })
         case .qr:
             HolderQrView(link: flow.qrLink, onBack: { flow.leave() })
         case .add:
@@ -65,6 +66,15 @@ struct HolderQrView: View {
     let onBack: () -> Void
     @Environment(\.polarisKeyStrings) private var strings
 
+    /// The address to type: host and path, no query.
+    static func address(_ link: String?) -> String {
+        guard let url = KitLinks.valid(link), let host = url.host else {
+            return KitLinks.display(CUSTOMER_ORIGIN_DEFAULT)
+        }
+        let path = url.path == "/" ? "" : url.path
+        return host + path
+    }
+
     var body: some View {
         kitStyle { style in
             KitScreenScaffold(header: true) {
@@ -74,14 +84,14 @@ struct HolderQrView: View {
             } content: {
                 VStack(alignment: .leading, spacing: style.space(.md)) {
                     if let url = KitLinks.valid(link) {
-                        KitText("signin.key.scan", [:], .body)
+                        // Not "add this key": the QR carries no key, the person types it on the phone.
+                        KitText(CopyLine("part.qr.scanInstead"), .body, plain: true)
                         PolarisQRCode(url.absoluteString, accessibilityLabel: strings.string("a11y.qrManage"))
                             .frame(width: 240, height: 240)
                     } else {
                         HolderProblemLine(line: CopyLine(HolderProblem.linkUnavailable.key))
                     }
-                    let shown = KitLinks.valid(link)?.absoluteString ?? CUSTOMER_ORIGIN_DEFAULT
-                    KitText(CopyLine("signin.handoff.url", ["url": .text(KitLinks.display(shown))]), .body)
+                    KitText(CopyLine("signin.handoff.url", ["url": .text(Self.address(link))]), .body)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } actions: {

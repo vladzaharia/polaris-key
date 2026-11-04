@@ -43,6 +43,17 @@ public final class HolderHostState {
     public private(set) var address: String?
     public private(set) var link: String?
 
+    /// The email the running sign-in was asked for (the hint), shown masked on the wait.
+    public private(set) var hint: String?
+    /// The sign-in ended on an account other than the one asked for: both emails, until `takeMismatch()`.
+    public private(set) var mismatch: Mismatch?
+
+    /// An account other than the expected one signed in.
+    public struct Mismatch: Sendable, Equatable {
+        public let expected: String
+        public let signed: String
+    }
+
     private let driver: (any AddToAccountDriver)?
     private var handle: (any AddToAccountHandle)?
     private var epoch = 0
@@ -52,16 +63,26 @@ public final class HolderHostState {
     /// The sign-in shows a code to check: the wait screen replaces the screen it ran on.
     public var waiting: Bool { working && !(userCode ?? "").isEmpty }
 
+    /// The mismatch the last sign-in ended on, once.
+    public func takeMismatch() -> Mismatch? {
+        defer { mismatch = nil }
+        return mismatch
+    }
+
     /// Sign in to an account, with `loginHint` when the license's email is known. True when it ended
-    /// signed in; otherwise the problem is on the screen, or the person cancelled.
+    /// signed in; otherwise the problem is on the screen, or the person cancelled. With `expect`, a
+    /// sign-in that names a different account is not a success: `mismatch` holds both. A sign-in that
+    /// names no account (a redirect one) is never claimed to match: it finishes as before.
     @discardableResult
-    public func signIn(loginHint: String? = nil) async -> Bool {
+    public func signIn(loginHint: String? = nil, expect: String? = nil) async -> Bool {
         guard let driver, !working else { return false }
         epoch += 1
         let mine = epoch
         working = true
         problem = nil
+        mismatch = nil
         reset()
+        hint = (loginHint ?? "").isEmpty ? nil : loginHint
         defer { if mine == epoch { working = false } }
         do {
             let hints = AddToAccountHints(
@@ -88,8 +109,14 @@ public final class HolderHostState {
                 guard mine == epoch else { return false }
                 switch answer {
                 case .pending: continue
-                case .signedIn:
+                case .signedIn(let signed):
                     handle = nil
+                    if let expect, !expect.isEmpty, let signed, !signed.isEmpty,
+                        signed.lowercased() != expect.lowercased()
+                    {
+                        mismatch = Mismatch(expected: expect, signed: signed)
+                        return false
+                    }
                     return true
                 case .choose(let grant):
                     guard try await driver.complete(grant: grant) else {
@@ -130,6 +157,7 @@ public final class HolderHostState {
         working = false
         problem = nil
         reset()
+        hint = nil
     }
 
     private func reset() {

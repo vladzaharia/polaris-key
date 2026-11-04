@@ -69,6 +69,7 @@ func apiSurface() async {
     _ = \PolarisKeyClient.events  // cloudSync.transferEvent
     _ = CloudSyncClient.collection(_:)  // cloudSync.collection
     _ = PolarisKeyClient.discover  // client.discover
+    _ = \PolarisKeyClient.portal  // client.portal
     _ = \PolarisKeyClient.presentation  // client.presentation
     _ = PolarisKeyClient.presentationIcon  // client.presentationIcon
     _ = \PolarisKeyClient.presentationSource  // client.presentationSource

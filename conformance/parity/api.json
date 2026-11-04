@@ -4697,7 +4697,11 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {
+          "shape": "property",
+          "reason": "a stored property in Swift"
+        }
       },
       "layer": "client"
     },

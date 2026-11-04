@@ -518,7 +518,7 @@ public final class PolarisKeySettingsModel {
     private var portalLink: String? {
         guard let client else { return nil }
         return PortalLink.link(
-            served: nil, portal: nil, baseUrl: client.core.endpoints.baseUrl,
+            served: nil, portal: client.portal, baseUrl: client.core.endpoints.baseUrl,
             product: client.core.endpoints.product)
     }
 

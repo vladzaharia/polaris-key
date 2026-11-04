@@ -297,13 +297,9 @@
         /// A floating license is not in an account: Add your name and email (or the page that does it, ↗), and why.
         @ViewBuilder private func addRow(_ style: KitResolvedStyle) -> some View {
             if model.canAdd, model.account.shows("account.notInAccount") {
+                // The row says where the license is; the button is the one action (each said once).
                 HStack {
-                    VStack(alignment: .leading, spacing: style.space(.xxs)) {
-                        PaneText(
-                            CopyLine(model.addOpensPortal ? "signin.key.addInLocker" : "activate.recommend.action"),
-                            .body, color: .default)
-                        PaneText(CopyLine("account.notInAccount"), .meta, color: .muted)
-                    }
+                    PaneText(CopyLine("account.notInAccount"), .body, color: .default)
                     Spacer()
                     PaneButton(
                         line: CopyLine(model.addOpensPortal ? "signin.key.addInLocker" : "activate.recommend.action"),

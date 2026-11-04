@@ -48,6 +48,14 @@ extension KitFormat {
         return "\(Character(first))\u{2022}\u{2022}\u{2022}@\(domain)"
     }
 
+    /// The license line as drawn: a segment whose value is unknown (an argument the state could not give,
+    /// left as `{term}`) is dropped, never drawn with its brace. Nil when nothing is left.
+    public static func deviceLine(_ text: String) -> String? {
+        let parts = text.components(separatedBy: " · ").filter { !$0.contains("{") && !$0.isEmpty }
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: " · ")
+    }
+
     /// Split a formatted reason on `**` into runs; the odd-numbered pieces are the strong lead-in
     /// (ui-core's `leadParts`). A renderer draws each run itself and never hands the string to a
     /// markup parser.
@@ -107,7 +115,8 @@ extension KitStates {
         // With Identity off, or a kit with no in-app channel, the action opens polaris.locker, so
         // it says that (an external link).
         keys.append(portal ? "signin.key.addInLocker" : "activate.recommend.action")
-        if portal { keys.append("a11y.externalLink") }
+        // A TV opens its in-app QR, not a browser: no ↗ and no external-link hint.
+        if portal && !i.platform.isTV { keys.append("a11y.externalLink") }
         keys += ["activate.recommend.skip", "signin.done.start"]
         return KitScreen(.ready, keys.map { c.line($0, args) })
     }

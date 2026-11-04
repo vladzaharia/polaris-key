@@ -561,6 +561,11 @@ public actor PolarisKeyClient {
     /// disk at `start()`). Display data only: the integrator's theme always wins over it.
     public nonisolated var presentation: Presentation? { core.presentationSource.current() }
 
+    /// Discovery's `core.portal` (WIRE-CONTRACT-V4 §5.7): the product page in the customer portal, whether
+    /// the portal is on, as this session's discovery said (else the last one, from disk). Nil is unknown,
+    /// which is not off. `PortalLink.link(served:portal:baseUrl:product:)` turns it into the link a kit draws.
+    public nonisolated var portal: PortalMember? { core.portalStore.current() }
+
     /// The verified icon for a hero drawn at `points` on a `scale` screen, or nil (no member, no
     /// icon, nothing decodable here, or a fetch or hash that failed: the kit then shows its
     /// fallback). Cached by hash; never sends a credential.

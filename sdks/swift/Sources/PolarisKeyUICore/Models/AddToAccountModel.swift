@@ -151,19 +151,61 @@ public final class AddToAccountModel {
         return i
     }
 
+    /// The email the license waits for, else the one typed: what an account sign-in is asked to use.
+    public var holderEmail: String? {
+        let held = (base.licenseHolder?.email ?? "").trimmed
+        return held.isEmpty ? nil : held
+    }
+
+    /// An account other than the expected one signed in (from Done, or from owned and email-bound): the
+    /// license is added nowhere, and Try again goes back to the form. Both emails show masked.
+    public func showOtherAccount(expected: String, signed: String) {
+        endAttempt()
+        signedIn = false
+        clearWait()
+        typedEmail = KitFormat.maskEmail(expected)
+        signedEmail = KitFormat.maskEmail(signed)
+        step = .otherAccount
+        field = nil
+    }
+
+    /// "Sign in to that account" and "Use another account": an account sign-in over this model's driver. It names the
+    /// account it was asked for (the license's email, else the one typed) and is not done on any other: where the
+    /// signed-in account is known and differs it lands on `other-account`. True when the sign-in ended on the account.
+    public func signInToAccount() async -> Bool {
+        // The typed email is only a hint; the license's own is what the account is checked against.
+        let hint = holderEmail ?? (email.trimmed.isEmpty ? nil : email.trimmed)
+        let ok = await host.signIn(loginHint: hint, expect: holderEmail)
+        if !ok, let m = host.takeMismatch() { showOtherAccount(expected: m.expected, signed: m.signed) }
+        return ok
+    }
+
     /// The screen for the current step.
     public var screen: KitScreen<AddToAccountState> { KitStates.addToAccount(inputs) }
 
-    /// The person typed in a field; an `invalid` step goes back to `form`. A busy attempt ignores typing.
+    /// The person typed in a field. An `invalid` step clears the error of the field that changed (the other's
+    /// stays); a write of the value already there changes nothing (a macOS field writes when it takes focus,
+    /// which is not typing). A busy attempt ignores typing.
     public func setField(_ which: AddToAccountField, _ value: String) {
         if step == .busy { return }
         switch which {
-        case .name: name = value
-        case .email: email = value
+        case .name:
+            if name == value { return }
+            name = value
+        case .email:
+            if email == value { return }
+            email = value
         }
         if step == .invalid {
-            step = .form
-            field = nil
+            // Only the field that changed stops being wrong.
+            switch (field ?? .both, which) {
+            case (.name, .name), (.email, .email):
+                step = .form
+                field = nil
+            case (.both, .name): field = .email
+            case (.both, .email): field = .name
+            default: break
+            }
         }
     }
 

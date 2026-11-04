@@ -122,12 +122,17 @@ public struct ProductDiscoveryDocument: Sendable, Equatable {
     /// `core.presentation`, normalised (`PresentationRules.parsePresentation`), or nil when the
     /// document carries none. Unsigned display data: nothing gates on it (WIRE-CONTRACT-V4 §5.5).
     public let presentation: Presentation?
+    /// `core.portal`, normalised (`PortalLink.parse`), or nil when the document carries none (unknown,
+    /// which is not off). Unsigned display data: nothing gates on it (WIRE-CONTRACT-V4 §5.7).
+    public let portal: PortalMember?
 
     public init(
         product: String, name: String? = nil, baseUrl: String? = nil,
         protocolVersion: Int? = nil, core: DiscoveryCore? = nil, trust: DiscoveryTrust? = nil,
-        services: [ServiceSlug: ServiceFragment], presentation: Presentation? = nil
+        services: [ServiceSlug: ServiceFragment], presentation: Presentation? = nil,
+        portal: PortalMember? = nil
     ) {
+        self.portal = portal
         self.product = product
         self.name = name
         self.baseUrl = baseUrl
@@ -378,7 +383,8 @@ public enum Discovery {
                 services: services,
                 // A malformed member is dropped field by field; it never refuses the document.
                 presentation: PresentationRules.parsePresentation(
-                    core: obj["core"], docName: obj["name"], product: product)))
+                    core: obj["core"], docName: obj["name"], product: product),
+                portal: PortalLink.parse(core: obj["core"])))
     }
 
     private static func parseCore(_ obj: [String: JSONValue]?) -> DiscoveryCore? {

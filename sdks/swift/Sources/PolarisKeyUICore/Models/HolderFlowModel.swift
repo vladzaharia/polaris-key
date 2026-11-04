@@ -146,10 +146,15 @@ public struct HolderFacts: Sendable, Equatable {
             i.activateDone = done
         }
         let baseUrl = client.core.endpoints.baseUrl
+        // The portal's own member decides: off, or no usable link, is no link (never the legacy guess once
+        // the Worker has answered), and a self-hosted Worker sends people to the customer site it published.
         let portal = PortalLink.link(
-            served: nil, portal: nil, baseUrl: baseUrl, product: client.core.endpoints.product)
+            served: nil, portal: client.portal, baseUrl: baseUrl,
+            product: client.core.endpoints.product)
+        // Verify opens the account page where an email is verified: only the one Identity published.
+        let account = ManageLink.isValid(doc?.identity?.accountPortal) ? doc?.identity?.accountPortal : nil
         return HolderFacts(
-            base: i, portal: portal, account: doc?.identity?.accountPortal ?? portal,
+            base: i, portal: portal, account: account,
             apiOrigin: baseUrl, identity: on.contains(.identity), addIn: addIn,
             holderEmail: holderEmail,
             floating: profile != nil && holderEmail == nil && profile?.user == nil, deviceKind: kind)
@@ -280,6 +285,25 @@ public final class HolderFlowModel {
         } else {
             finish()
         }
+    }
+
+    /// "Sign in as <email>" from Done: an account sign-in for the license's email. It ends the flow when it
+    /// signed in; on another account it lands on `other-account`, the license added nowhere. A redirect
+    /// sign-in names no account, so it is never claimed to match.
+    public func signInAs() async {
+        let email = facts.holderEmail
+        if await doneHost.signIn(loginHint: email, expect: email) {
+            finish()
+        } else if let m = doneHost.takeMismatch() {
+            showOtherAccount(expected: m.expected, signed: m.signed)
+        }
+    }
+
+    /// The account step on `other-account`.
+    public func showOtherAccount(expected: String, signed: String) {
+        add.showOtherAccount(expected: expected, signed: signed)
+        returned = false
+        stage = .add
     }
 
     /// Start using (or an account sign-in finished, or Added closed): the flow ends and the key is forgotten.

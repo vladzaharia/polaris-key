@@ -803,7 +803,8 @@ extension PolarisKeyPreviewState {
         .license, .config, .release, .distribution, .update, .commerce,
     ]
     private static let doneFacts = KitActivateDone(
-        tier: "Pro", term: "Lifetime", deviceKind: "computer", position: 1, limit: 3)
+        tier: "Pro", term: "Lifetime", deviceKind: HolderFacts.deviceKind(for: .current), position: 1,
+        limit: 3)
     private static let waitCode = KitDeviceCode(
         phase: .waiting, userCode: "WDJB-MJHT", verificationUri: "https://polaris.locker/device")
 
@@ -812,7 +813,7 @@ extension PolarisKeyPreviewState {
         fromSettings: Bool? = nil, typed: String? = nil, signed: String? = nil
     ) -> KitAddToAccount {
         KitAddToAccount(
-            step: step, field: field, deviceKind: "computer", typedEmail: typed,
+            step: step, field: field, deviceKind: HolderFacts.deviceKind(for: .current), typedEmail: typed,
             signedEmail: signed, fromSettings: fromSettings)
     }
 

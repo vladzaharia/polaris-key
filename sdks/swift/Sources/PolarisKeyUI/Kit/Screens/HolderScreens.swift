@@ -56,6 +56,8 @@ struct HolderExtras: Equatable {
 
 /// A code sign-in's wait: the code, its page as text, and the link its QR carries.
 struct HolderWait: Equatable {
+    /// The account the sign-in was asked for, masked (an account sign-in; nil for the add-to-account wait).
+    var account: String?
     var code: String?
     var address: String?
     var link: String?
@@ -247,10 +249,15 @@ struct HolderPage: View {
 
     @AccessibilityFocusState private var headingFocused: Bool
     @Environment(\.polarisKeyStrings) private var strings
+    @Environment(\.dynamicTypeSize) private var dynamicType
+
+    /// At accessibility sizes the title names the product, so the header strip goes, and Done's actions
+    /// scroll with the content instead of covering a fifth of the screen.
+    private var large: Bool { dynamicType.isAccessibilitySize }
 
     var body: some View {
         kitStyle { style in
-            KitScreenScaffold(header: true) {
+            KitScreenScaffold(header: !large, dockActions: !(large && step.component == .activateDone)) {
                 HolderHeading(step: step)
                     .accessibilityFocused($headingFocused)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -259,7 +266,7 @@ struct HolderPage: View {
                     .id(step.group)
                     .transition(style.reduceMotion ? .identity : .opacity)
             } actions: {
-                HolderActions(step: step, handlers: handlers)
+                HolderActions(step: step, handlers: handlers, generic: large)
             }
             .animation(style.morph, value: step.group)
             .onAppear { headingFocused = !returned }
@@ -350,10 +357,9 @@ struct HolderBody: View {
         }
     }
 
-    // A problem on the screen: the host's, or the missing portal link.
-    private var visibleProblem: HolderProblem? {
-        step.problem ?? (step.noPortalAction ? .linkUnavailable : nil)
-    }
+    // A problem on the screen: the host's. A missing portal link is no problem on Done (nobody pressed
+    // anything): the offer is left out. The QR step says so itself.
+    private var visibleProblem: HolderProblem? { step.problem }
 
     @ViewBuilder private func paragraphs(_ keys: [String]) -> some View {
         ForEach(keys, id: \.self) { key in
@@ -364,7 +370,13 @@ struct HolderBody: View {
     // MARK: ActivateDone
 
     @ViewBuilder private func ready(_ style: KitResolvedStyle) -> some View {
-        if let device = step.line("activate.done.device") { KitText(device, .body, color: .muted) }
+        if let device = step.line("activate.done.device") { HolderDeviceLine(line: device) }
+        if !step.noPortalAction { recommendation(style) }
+    }
+
+    /// The card that recommends an account, and the line that skips it. Left out where its one action
+    /// has no page to open.
+    @ViewBuilder private func recommendation(_ style: KitResolvedStyle) -> some View {
         VStack(alignment: .leading, spacing: style.space(.sm)) {
             // The badge sits on its own line: the title is never squeezed beside it.
             if let badge = step.line("activate.recommend.badge") {
@@ -429,9 +441,11 @@ struct HolderBody: View {
     /// no in-app channel it opens Polaris Locker (↗). With no page to open it is left out.
     @ViewBuilder private func addAction(_ style: KitResolvedStyle) -> some View {
         let portal = step.line("signin.key.addInLocker")
+        // ↗ only where the action opens a browser: a TV opens its in-app QR.
+        let external = portal != nil && step.line("a11y.externalLink") != nil
         if let line = portal ?? step.line("activate.recommend.action"), !step.noPortalAction {
             KitButton(
-                line: line, kind: .secondary, glyph: portal == nil ? nil : PolarisKitGlyph.externalArrow
+                line: line, kind: .secondary, glyph: external ? PolarisKitGlyph.externalArrow : nil
             ) { handlers.add() }
             .accessibilityFocused($addFocused)
             .onAppear { addFocused = returned }
@@ -523,6 +537,10 @@ struct HolderBody: View {
     // MARK: The wait
 
     @ViewBuilder private func wait(_ style: KitResolvedStyle) -> some View {
+        // An account sign-in names the account it asks for.
+        if let account = step.wait?.account, !account.isEmpty {
+            KitText(CopyLine("activate.waitingSignIn", ["maskedEmail": .text(account)]), .body)
+        }
         if let code = step.wait?.code, !code.isEmpty {
             VStack(alignment: .leading, spacing: style.space(.xs)) {
                 KitText("part.code.label", [:], .meta, color: .muted)
@@ -534,7 +552,7 @@ struct HolderBody: View {
         KitText(CopyLine("signin.handoff.url", ["url": .text(address)]), .body)
         if let link = step.wait?.link, KitLinks.valid(link) != nil, HolderWide.isWide {
             VStack(alignment: .leading, spacing: style.space(.xs)) {
-                KitText("part.qr.scanInstead", [:], .meta, color: .muted)
+                KitText(CopyLine("part.qr.scanInstead"), .meta, color: .muted, plain: true)
                 PolarisQRCode(link, accessibilityLabel: strings.string("a11y.qr"))
                     .frame(width: 180, height: 180)
             }
@@ -632,6 +650,8 @@ private struct StaggerIn: ViewModifier {
 struct HolderActions: View {
     let step: HolderStep
     let handlers: HolderHandlers
+    /// Accessibility sizes: the product is already named above, so Start using stays generic.
+    var generic = false
     @Environment(\.polarisKeyStrings) private var strings
 
     var body: some View {
@@ -639,7 +659,7 @@ struct HolderActions: View {
         KitActionStack {
             ForEach(Array(specs.enumerated()), id: \.offset) { _, spec in
                 KitButton(
-                    line: step.line(spec.key) ?? CopyLine(spec.key), kind: spec.kind, busy: spec.busy,
+                    line: label(spec), kind: spec.kind, busy: spec.busy,
                     glyph: spec.external ? PolarisKitGlyph.externalArrow : nil
                 ) { handlers.run(spec.action) }
                 .disabled(!spec.enabled)
@@ -647,6 +667,32 @@ struct HolderActions: View {
             }
         }
         .animation(nil, value: specs.map(\.key))
+    }
+
+    private func label(_ spec: HolderButtonSpec) -> CopyLine {
+        let line = step.line(spec.key) ?? CopyLine(spec.key)
+        if generic, spec.key == "signin.done.start" {
+            return CopyLine(spec.key, line.args.merging(["product": .text("")]) { _, new in new })
+        }
+        return line
+    }
+}
+
+/// The license line ("Pro · this Mac is device 1 of 3."), without a segment whose value is unknown: a
+/// brace never reaches the screen.
+struct HolderDeviceLine: View {
+    let line: CopyLine
+    @Environment(\.polarisKeyStrings) private var strings
+
+    var body: some View {
+        if let text = KitFormat.deviceLine(strings.string(line)) {
+            kitStyle { style in
+                Text(verbatim: text)
+                    .font(style.font(.body))
+                    .foregroundStyle(style.palette.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }
 
@@ -661,6 +707,8 @@ public struct ActivateDoneView: View {
     let onStart: () -> Void
     let onAdd: () -> Void
     let onSignedIn: () -> Void
+    /// The sign-in a waiting license started ended on another account: the license's email, then the one signed in.
+    let onOtherAccount: ((String, String) -> Void)?
     /// The one opener: only a link `KitLinks` accepts (https, or loopback http) reaches it.
     @Environment(\.openURL) private var opener
 
@@ -674,8 +722,9 @@ public struct ActivateDoneView: View {
     public init(
         inputs: KitInputs, host: HolderHostState, portalLink: String? = nil,
         onStart: @escaping () -> Void, onAdd: @escaping () -> Void,
-        onSignedIn: (() -> Void)? = nil
+        onSignedIn: (() -> Void)? = nil, onOtherAccount: ((String, String) -> Void)? = nil
     ) {
+        self.onOtherAccount = onOtherAccount
         self.inputs = inputs
         self.host = host
         self.portalLink = portalLink
@@ -705,16 +754,7 @@ public struct ActivateDoneView: View {
     }
 
     /// The account sign-in's wait is the add-to-account wait.
-    private var waitStep: HolderStep {
-        var i = inputs
-        i.addToAccount = KitAddToAccount(step: .busy)
-        i.deviceCode = KitDeviceCode(
-            phase: .waiting, userCode: host.userCode, verificationUri: host.address)
-        return HolderStep(
-            KitStates.addToAccount(i),
-            wait: HolderWait(code: host.userCode, address: host.address, link: host.link),
-            extras: HolderExtras(working: true, opened: host.opened), problem: host.problem)
-    }
+    private var waitStep: HolderStep { holderWaitStep(inputs, host: host) }
 
     private var handlers: HolderHandlers {
         var h = HolderHandlers()
@@ -734,14 +774,32 @@ public struct ActivateDoneView: View {
             #endif
         }
         h.signInAs = {
+            let email = inputs.licenseHolder?.email
             Task {
-                if await host.signIn(loginHint: inputs.licenseHolder?.email) { onSignedIn() }
+                if await host.signIn(loginHint: email, expect: email) {
+                    onSignedIn()
+                } else if let m = host.takeMismatch() {
+                    onOtherAccount?(m.expected, m.signed)
+                }
             }
         }
         h.reopen = { Task { await host.reopen() } }
         h.cancel = { host.cancel() }
         return h
     }
+}
+
+/// An account sign-in's wait over a holder screen: the add-to-account wait, with the account it asks for named.
+@MainActor func holderWaitStep(_ inputs: KitInputs, host: HolderHostState) -> HolderStep {
+    var i = inputs
+    i.addToAccount = KitAddToAccount(step: .busy)
+    i.deviceCode = KitDeviceCode(phase: .waiting, userCode: host.userCode, verificationUri: host.address)
+    return HolderStep(
+        KitStates.addToAccount(i),
+        wait: HolderWait(
+            account: KitFormat.maskEmail(host.hint), code: host.userCode, address: host.address,
+            link: host.link),
+        extras: HolderExtras(working: true, opened: host.opened), problem: host.problem)
 }
 
 // MARK: - AddToAccount
@@ -791,7 +849,9 @@ public struct AddToAccountView: View {
                 phase: .waiting, userCode: host.userCode, verificationUri: host.address)
             return HolderStep(
                 KitStates.addToAccount(i),
-                wait: HolderWait(code: host.userCode, address: host.address, link: host.link),
+                wait: HolderWait(
+                    account: KitFormat.maskEmail(host.hint), code: host.userCode,
+                    address: host.address, link: host.link),
                 extras: HolderExtras(working: true, opened: host.opened), problem: host.problem)
         }
         let wait: HolderWait? =
@@ -850,8 +910,9 @@ public struct AddToAccountView: View {
         h.verify = {
             if let onVerify, !onVerify() { model.host.problem = .openFailed }
         }
+        // Names the account (the license's email, else the one typed) and is not done on any other.
         let signIn: () -> Void = {
-            Task { if await model.host.signIn() { onSignedIn() } }
+            Task { if await model.signInToAccount() { onSignedIn() } }
         }
         h.signIn = signIn
         h.otherAccount = signIn
@@ -972,11 +1033,14 @@ struct HolderSignInActions: View {
     var step: HolderStep? {
         switch state {
         case .keyDone:
+            // "Sign in as …" in progress is the same wait the gate's Done step shows.
+            if flow.doneHost.waiting { return holderWaitStep(flow.doneInputs, host: flow.doneHost) }
             let screen = KitStates.activateDone(flow.doneInputs)
             return screen.state == nil
                 ? nil
                 : HolderStep(
-                    screen, extras: HolderExtras(working: flow.doneHost.working), problem: flow.doneHost.problem)
+                    screen, extras: HolderExtras(working: flow.doneHost.working),
+                    problem: flow.doneHost.problem)
         case .attach, .added:
             let model = flow.add
             let screen = KitStates.addToAccount(model.inputs, asAdded: state == .added)
@@ -1011,8 +1075,10 @@ struct HolderSignInActions: View {
         h.add = { flow.openAdd() }
         h.submit = { Task { await flow.add.submit() } }
         h.tryAgain = { Task { await flow.add.tryAgain() } }
-        h.cancel = { flow.cancelAdd() }
-        h.reopen = { Task { await flow.add.reopen() } }
+        h.cancel = { flow.doneHost.working ? flow.doneHost.cancel() : flow.cancelAdd() }
+        h.reopen = {
+            Task { if flow.doneHost.waiting { await flow.doneHost.reopen() } else { await flow.add.reopen() } }
+        }
         h.verify = {
             if let link = flow.verifyLink, let url = KitLinks.valid(link),
                 holderOpening(opener, failed: { flow.add.host.problem = .openFailed })(url)
@@ -1021,11 +1087,9 @@ struct HolderSignInActions: View {
             }
             flow.add.host.problem = .openFailed
         }
-        h.signIn = { Task { if await flow.add.host.signIn() { flow.finish() } } }
+        h.signIn = { Task { if await flow.add.signInToAccount() { flow.finish() } } }
         h.otherAccount = h.signIn
-        h.signInAs = {
-            Task { if await flow.doneHost.signIn(loginHint: flow.facts.holderEmail) { flow.finish() } }
-        }
+        h.signInAs = { Task { await flow.signInAs() } }
         return h
     }
 }
