@@ -60,7 +60,7 @@ function push(
 
 const only = (r: MutationResult[]) => r[0] as MutationResult;
 
-describe("merge: the member name bound (SR-1 B1)", () => {
+describe("merge: the member name bound", () => {
   it("refuses a name over 1 KiB of UTF-8 as value_invalid, on both ops, at quota 0, and stores nothing", () => {
     const store = new MemoryStore();
     const long = "x".repeat(SYNC_MAX_UNION_ELEMENT_BYTES + 1);

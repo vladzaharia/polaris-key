@@ -577,7 +577,7 @@ describe("admin api", () => {
     ).not.toBeNull();
   });
 
-  it("product deletion runs the Cloud Sync purge before the per-device token deletes (SR-1 N6)", async () => {
+  it("product deletion runs the Cloud Sync purge before the per-device token deletes", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = adminEnv(kv, ["djdl"]);

@@ -2139,7 +2139,7 @@ describe("PolarisBridge v5: automatic and nearby sign-in (I-47b)", () => {
     expect(a.pick).toHaveBeenCalledTimes(1);
   });
 
-  it("says why the advert stopped, and the same window starting again reopens it (UXR-47b B4)", async () => {
+  it("says why the advert stopped, and the same window starting again reopens it", async () => {
     const { bridge, ask, states, stopOnItsOwn, reopen, label } = host();
     await bridge.approverStart!();
     // The device is named for the other side, never by its host name.

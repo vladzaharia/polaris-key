@@ -318,7 +318,7 @@ describe("SaveConflict follows the saves", () => {
     opener.remove();
   });
 
-  it("mounts the keeping status empty, then fills it (UX2-web 6)", async () => {
+  it("mounts the keeping status empty, then fills it", async () => {
     const f = fakeSaves();
     f.setConflicts([CONFLICT]);
     const { container } = inProvider(f.saves, <SaveConflict />);

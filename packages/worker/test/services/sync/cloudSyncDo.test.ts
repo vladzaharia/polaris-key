@@ -381,7 +381,7 @@ describe("CloudSyncDO: push and pull", () => {
     expect(tables(ns, nameOf(P, ALICE))).toEqual([]);
   });
 
-  it("answers 400 to a push without a family or without limits, and to a platform write with an empty family; creates nothing (SR-1 N1)", async () => {
+  it("answers 400 to a push without a family or without limits, and to a platform write with an empty family; creates nothing", async () => {
     const ns = new CloudSyncNamespaceMock();
     ids = 1;
     const base = {
@@ -424,7 +424,7 @@ describe("CloudSyncDO: push and pull", () => {
     expect((await call(ns, P, ALICE, base)).body.outcome.ok).toBe(true);
   });
 
-  it("one setMember on a 256-member row writes a small, constant number of rows (SR-1 B2)", async () => {
+  it("one setMember on a 256-member row writes a small, constant number of rows", async () => {
     const ns = new CloudSyncNamespaceMock();
     ids = 1;
     for (let b = 0; b < 3; b++) {
@@ -553,7 +553,7 @@ describe("CloudSyncDO: push and pull", () => {
   });
 });
 
-describe("CloudSyncDO: isolation (SR-1)", () => {
+describe("CloudSyncDO: isolation", () => {
   async function seeded() {
     const ns = new CloudSyncNamespaceMock();
     ids = 1;
@@ -811,7 +811,7 @@ describe("CloudSyncDO: exportAll and deleteAll", () => {
   });
 });
 
-describe("cloudSyncObjectName (SR-1 N8)", () => {
+describe("cloudSyncObjectName", () => {
   it("is product:subject for the two grammars, and throws for anything outside them", async () => {
     const { cloudSyncObjectName } =
       await import("../../../src/services/sync/do/client.js");
@@ -834,7 +834,7 @@ describe("cloudSyncObjectName (SR-1 N8)", () => {
   });
 });
 
-describe("settingsPageAfter (SR-1 N12)", () => {
+describe("settingsPageAfter", () => {
   it("pages in storage: the same rows as the memory store, tombstones and families included, and never more than the limit", async () => {
     const { SqlTestStore } = await import("../../cloudSyncSqlTestStore.js");
     const { MemoryStore } =

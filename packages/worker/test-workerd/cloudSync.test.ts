@@ -375,7 +375,7 @@ describe("account-merge absorb under workerd (U-05.8)", () => {
   });
 });
 
-describe("atomic batches and incremental merge writes under workerd (SR-1)", () => {
+describe("atomic batches and incremental merge writes under workerd", () => {
   it("an atomic batch with one refusal rolls the nested savepoint back whole and leaves a clean round trip", async () => {
     const pin = { product: "wd", subject: "sub_atomic" };
     await pushTo(pin, "kept");
@@ -532,7 +532,7 @@ describe("directory flush alarm under workerd (U-05.9)", () => {
     ).toBe(true);
   });
 
-  it("an object whose product was erased erases itself at its alarm (SR-2 B2)", async () => {
+  it("an object whose product was erased erases itself at its alarm", async () => {
     await seedProduct(env, new D1Db(env.DB), "wdgone", {
       schemaVersion: 1,
       entries: [],

@@ -496,7 +496,7 @@ describe("login: nearby first", () => {
     });
   });
 
-  it("a label from the other device is text, never an escape (SR-47)", async () => {
+  it("a label from the other device is text, never an escape", async () => {
     const evil = {
       id: "a1",
       label: "Ana\u001b]52;c;ZXZpbA==\u0007's ‮laptop\u001b[2J\u009b",
@@ -718,7 +718,7 @@ describe("devices approve", () => {
     }
   });
 
-  it("an unnamed device is 'the new device', and a hostile name is only text (SR-47)", async () => {
+  it("an unnamed device is 'the new device', and a hostile name is only text", async () => {
     const unnamed = await run({ interactive: true }, async (h) => {
       const done = devicesApproveFlow(
         h.ctx,

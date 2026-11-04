@@ -792,7 +792,7 @@ describe("resolveInState: legacy and store views over D1", () => {
     expect(await pick(db, "legacy")).toBe("v1.0.0");
   });
 
-  it("a state loaded for the store view reads neither absent nor floors, and refuses the legacy view (SR-P1 N4)", async () => {
+  it("a state loaded for the store view reads neither absent nor floors, and refuses the legacy view", async () => {
     const db = await setup();
     await floor(db, "stable", "1.2.0", "v1.2.0");
     await markAbsent(db, "v1.2.0");
