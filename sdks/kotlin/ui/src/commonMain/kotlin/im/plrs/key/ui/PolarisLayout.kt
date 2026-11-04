@@ -14,6 +14,10 @@
 //                  always with at least 560 dp to split. From 480 dp tall (not compact height, not TV) the
 //                   start pane holds the product art alone on a sunken panel and the end pane holds the
 //                   title, lede and controls (DL1); the short and TV forms keep content | controls.
+//   connectPanes   LinkPairing's code and confirm states and TransferOffer's ask state (UI-KITS.md, "LinkPairing and
+//                   TransferOffer"): two panes in a window 600 dp wide or more and under 480 dp tall at under 1.5x text,
+//                   and on TV always. The start pane holds the title, lede and the code (or the offer); the end pane
+//                   the reported device, the categories and the actions. One column everywhere else.
 //   listDetail     the account screen (Settings, Devices) at `wide`: the list in the start pane, the
 //                   chosen item in the end pane; narrower, the list then the item with Back.
 //   card           a message screen sets itself on a card: on TV and in a wide landscape window.
@@ -63,6 +67,13 @@ internal class PolarisWindow(
 
     /** Content beside its controls (screens with a control group only). */
     val twoPane: Boolean get() = width >= TWO_PANE_MIN_WIDTH && (compactHeight || tv || wideLandscape)
+
+    /**
+     * LinkPairing's code and confirm states and TransferOffer's ask state in two panes: a window 600 dp wide or more and under
+     * 480 dp tall at under 1.5x text ([fontScale]), and on TV always. Never in portrait, in a narrower window or at large type.
+     */
+    fun connectPanes(fontScale: Float): Boolean =
+        twoPane && (tv || (width >= CONNECT_PANES_MIN_WIDTH && compactHeight && fontScale < POLARIS_DOCK_FONT_SCALE))
 
     /** A message screen on a card: on TV and in a wide landscape window. */
     val card: Boolean get() = tv || (width >= WIDE_WIDTH && width > height && !compactHeight)
@@ -116,6 +127,7 @@ internal class PolarisWindow(
         val LARGE_WIDTH: Dp = 1600.dp
         val LARGE_HEIGHT: Dp = 900.dp
         val TWO_PANE_MIN_WIDTH: Dp = 560.dp
+        val CONNECT_PANES_MIN_WIDTH: Dp = 600.dp
         const val WIDE_RATIO: Float = 1.4f
 
         /** A phone in portrait: what a screen outside a kit scaffold lays out for. */

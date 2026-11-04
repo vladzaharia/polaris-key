@@ -89,7 +89,7 @@ public fun PolarisTransferOfferScreen(
         "receiving" -> null
         else -> onDone
     }
-    val armed = rememberArmed(screen.state, window.tv)
+    val armed = rememberArmed(screen.state, isTelevision())
     val host = modifier.then(PolarisBackHandler(enabled = true, onBack = escape ?: {}))
     fun text(key: String): String = lines.text(key).orEmpty()
     // The platform's wording (macOS title case) is for buttons only (S4).
@@ -103,21 +103,29 @@ public fun PolarisTransferOfferScreen(
     } else {
         null
     }
-    ConnectStep(host, title, screen.state, badge) {
-        when (screen.state) {
-            "ask" -> {
-                Spacer(Modifier.height(PolarisSpace.tight))
-                PolarisBody(text("transferOffer.askBody"), textAlign = TextAlign.Start)
-                Spacer(Modifier.height(PolarisSpace.medium))
-                if (name.isNotEmpty()) OfferedFile(name, size, type)
-                Spacer(Modifier.height(window.section))
-                // Consent is a deliberate press: the first focus is Decline.
+    // Only the ask splits: the offer on the start side, the choice on the end side. The other states are messages.
+    val end = if (screen.state == "ask") {
+        ConnectEnd(
+            // Consent is a deliberate press: the first focus is Decline.
+            actions = {
                 ConnectActions(
                     listOf(
                         ConnectButton(button("transferOffer.accept"), { if (armed) onAccept() }, primary = true),
                         ConnectButton(button("transferOffer.decline"), { if (armed) onDecline() }, focus = true),
                     ),
                 )
+            },
+        )
+    } else {
+        null
+    }
+    ConnectStep(host, title, screen.state, badge, end) {
+        when (screen.state) {
+            "ask" -> {
+                Spacer(Modifier.height(PolarisSpace.tight))
+                PolarisBody(text("transferOffer.askBody"), textAlign = TextAlign.Start)
+                Spacer(Modifier.height(PolarisSpace.medium))
+                if (name.isNotEmpty()) OfferedFile(name, size, type)
             }
 
             "receiving" -> {

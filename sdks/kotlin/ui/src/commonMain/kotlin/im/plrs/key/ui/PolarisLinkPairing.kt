@@ -127,7 +127,7 @@ public fun PolarisLinkPairingScreen(
         else -> onDone
     }
     // A press that arrives as the code opens (the one that was heading elsewhere) is ignored for 250 ms on a TV.
-    val armed = rememberArmed(screen.state, window.tv)
+    val armed = rememberArmed(screen.state, isTelevision())
     val host = modifier.then(PolarisBackHandler(enabled = true, onBack = escape))
     fun text(key: String): String = lines.text(key).orEmpty()
     // The platform's wording (macOS title case) is for buttons only (S4).
@@ -153,45 +153,59 @@ public fun PolarisLinkPairingScreen(
             ConnectActions(listOf(ConnectButton(button("common.cancel"), onCancel, focus = true)))
         }
 
-        "code" -> ConnectStep(host, text("linkPairing.codeTitle"), screen.state) {
+        "code" -> ConnectStep(
+            host,
+            text("linkPairing.codeTitle"),
+            screen.state,
+            end = ConnectEnd(
+                detail = {
+                    ReportedLine(lines)
+                    Spacer(Modifier.height(PolarisSpace.medium))
+                    Shares(lines, categories, categoryLabels)
+                },
+                // The categories above come first; the choice follows. The first focus is the safe verb, never Codes match.
+                actions = {
+                    ConnectActions(
+                        listOf(
+                            ConnectButton(button("linkPairing.confirm"), { if (armed) onConfirm() }, primary = true),
+                            ConnectButton(button("linkPairing.decline"), { if (armed) onDecline() }, focus = true),
+                        ),
+                    )
+                },
+            ),
+        ) {
             Spacer(Modifier.height(PolarisSpace.tight))
             PolarisBody(text("linkPairing.codeBody"), textAlign = TextAlign.Start)
             Spacer(Modifier.height(PolarisSpace.medium))
             PairCode(code.orEmpty(), lines.text("a11y.linkCode"))
-            Spacer(Modifier.height(PolarisSpace.medium))
-            ReportedLine(lines)
-            Spacer(Modifier.height(PolarisSpace.medium))
-            Shares(lines, categories, categoryLabels)
-            Spacer(Modifier.height(window.section))
-            // The categories above come first; the choice follows. The first focus is the safe verb, never Codes match.
-            ConnectActions(
-                listOf(
-                    ConnectButton(button("linkPairing.confirm"), { if (armed) onConfirm() }, primary = true),
-                    ConnectButton(button("linkPairing.decline"), { if (armed) onDecline() }, focus = true),
-                ),
-            )
         }
 
-        "confirm" -> ConnectStep(host, text("linkPairing.waiting"), screen.state) {
+        "confirm" -> ConnectStep(
+            host,
+            text("linkPairing.waiting"),
+            screen.state,
+            end = ConnectEnd(
+                detail = {
+                    ReportedLine(lines)
+                    Spacer(Modifier.height(PolarisSpace.medium))
+                    Shares(lines, categories, categoryLabels)
+                    Spacer(Modifier.height(PolarisSpace.group))
+                    // The title above is what a screen reader reads; the wait is said again here only to the eye.
+                    PolarisWaitIndicator()
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                    Text(
+                        text("linkPairing.waiting"),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
+                    )
+                },
+                actions = { ConnectActions(listOf(ConnectButton(button("common.cancel"), onCancel, focus = true))) },
+            ),
+        ) {
             // The other person may still be comparing against this screen: the code, the reported line and the categories stay.
             Spacer(Modifier.height(PolarisSpace.medium))
             PairCode(code.orEmpty(), lines.text("a11y.linkCode"))
-            Spacer(Modifier.height(PolarisSpace.medium))
-            ReportedLine(lines)
-            Spacer(Modifier.height(PolarisSpace.medium))
-            Shares(lines, categories, categoryLabels)
-            Spacer(Modifier.height(PolarisSpace.group))
-            // The title above is what a screen reader reads; the wait is said again here only to the eye.
-            PolarisWaitIndicator()
-            Spacer(Modifier.height(PolarisSpace.controls))
-            Text(
-                text("linkPairing.waiting"),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
-            )
-            Spacer(Modifier.height(window.section))
-            ConnectActions(listOf(ConnectButton(button("common.cancel"), onCancel, focus = true)))
         }
 
         "linked" -> ConnectStep(host, text("linkPairing.linkedTitle"), screen.state) {
@@ -228,17 +242,35 @@ public fun PolarisLinkPairingScreen(
 
 // ── Parts shared by the two screens ──────────────────────────────────────────────────────────────
 
-/** One step: the product header, the heading (announced once per state) and the content, with the actions inside it. */
+/**
+ * The end pane of a step that splits ([ConnectStep]'s `end`): [detail] (the reported device, the categories, a wait) then the
+ * [actions]. In one column they follow the content in that order; in two panes they are the end pane, top-aligned.
+ */
+internal class ConnectEnd(val detail: (@Composable ColumnScope.() -> Unit)? = null, val actions: @Composable ColumnScope.() -> Unit)
+
+/**
+ * One step: the product header, the heading (announced once per state) and the content, with the actions inside it. A step with an
+ * [end] splits in two panes when the window asks for it ([PolarisWindow.connectPanes]): the header, title and [content] on the start
+ * side, the [end] on the other. The view order is the same either way, so the categories still come before Codes match.
+ */
 @Composable
 internal fun ConnectStep(
     modifier: Modifier,
     title: String,
     state: String,
     badge: (@Composable () -> Unit)? = null,
+    end: ConnectEnd? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    // No `actions` slot: they would dock below the scroll, and Codes match must not be on screen before the categories.
-    PolarisScaffold(modifier = modifier, anchor = PolarisAnchor.Top, contentAlign = TextAlign.Start) {
+    val fontScale = LocalDensity.current.fontScale
+    // No `actions` slot in a column: they would dock below the scroll, and Codes match must not be on screen before the categories.
+    PolarisScaffold(
+        modifier = modifier,
+        anchor = PolarisAnchor.Top,
+        contentAlign = TextAlign.Start,
+        paneDetail = { window -> if (window.connectPanes(fontScale)) end?.detail else null },
+        paneActions = { window -> if (window.connectPanes(fontScale)) end?.actions else null },
+    ) {
         PolarisProductHeader()
         if (badge != null) {
             Spacer(Modifier.height(PolarisSpace.medium))
@@ -247,6 +279,15 @@ internal fun ConnectStep(
         }
         PolarisTitle(title, key = state)
         content()
+        val window = polarisWindow
+        if (end != null && !window.connectPanes(fontScale)) {
+            if (end.detail != null) {
+                Spacer(Modifier.height(PolarisSpace.medium))
+                end.detail.invoke(this)
+            }
+            Spacer(Modifier.height(window.section))
+            end.actions(this)
+        }
     }
 }
 

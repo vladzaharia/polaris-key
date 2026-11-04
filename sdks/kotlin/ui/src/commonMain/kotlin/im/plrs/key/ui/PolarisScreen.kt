@@ -110,9 +110,9 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineBreak
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
@@ -262,6 +262,8 @@ internal fun PolarisScaffold(
     actions: (@Composable ColumnScope.() -> Unit)? = null,
     /** The actions for this window, when only some windows pair them with the content in two panes (else [content] carries them). */
     paneActions: ((PolarisWindow) -> (@Composable ColumnScope.() -> Unit)?)? = null,
+    /** [detail] for this window, when only some windows head the end pane with it (else [content] carries it). */
+    paneDetail: ((PolarisWindow) -> (@Composable ColumnScope.() -> Unit)?)? = null,
     /** At large type (font scale 1.5 and up) the actions dock below the scrolling body, so the primary stays in the first viewport. */
     dockActionsAtLargeType: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
@@ -270,6 +272,7 @@ internal fun PolarisScaffold(
     val artName = LocalPolarisArtName.current
     PolarisSurface(modifier) { window, maxHeight ->
         val actions = actions ?: paneActions?.invoke(window)
+        val detail = detail ?: paneDetail?.invoke(window)
         val logo = theme.logo?.takeIf { showLogo }
         if (LocalPolarisEmbedded.current) {
             // The detail pane of a list-detail screen: one start-aligned column that scrolls on its own.
