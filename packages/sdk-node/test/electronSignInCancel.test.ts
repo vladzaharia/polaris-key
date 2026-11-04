@@ -14,6 +14,7 @@ function setup(wait: () => Promise<unknown>) {
   const events = new PolarisEventEmitter();
   const choice = {
     cancel: vi.fn(async () => ({ kind: "ok" })),
+    complete: vi.fn(async () => ({ kind: "ok" })),
     licenses: vi.fn(async () => ({ kind: "ok", view: {} })),
   };
   const session = {
@@ -124,6 +125,55 @@ describe("ending a device-code flow from its window", () => {
       await h.bridge.invoke!("identity", "choice.licenses", { grant: r.grant }),
     ).toMatchObject({ kind: "refused", code: "invalid_grant" });
     expect(h.choice.licenses).not.toHaveBeenCalled();
+    h.handle.close();
+  });
+
+  it("a cancel while the held ref is idle ends the flow and stores nothing", async () => {
+    const h = setup(async () => ({
+      kind: "choose",
+      grant: GRANT,
+      expiresIn: 300,
+      choices: { state: "choose", choices: [] },
+    }));
+    const b = (await h.bridge.beginSignIn({
+      licenseChoice: "app",
+    })) as { flowId: string };
+    await h.bridge.pollSignIn(b.flowId);
+    expect(await end(h, b.flowId)).toEqual({ ended: true });
+    expect(h.choice.complete).not.toHaveBeenCalled();
+    expect(h.identity.signOut).not.toHaveBeenCalled();
+    h.handle.close();
+  });
+
+  it("a cancel while the completion is in flight is too late: the sign-in finishes and stays", async () => {
+    const h = setup(async () => ({
+      kind: "choose",
+      grant: GRANT,
+      expiresIn: 300,
+      choices: { state: "choose", choices: [] },
+    }));
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    h.choice.complete.mockImplementation(async () => {
+      await gate;
+      return { kind: "ok" };
+    });
+    const b = (await h.bridge.beginSignIn({
+      licenseChoice: "app",
+    })) as { flowId: string };
+    const r = (await h.bridge.pollSignIn(b.flowId)) as {
+      kind: string;
+      grant: string;
+    };
+    const completing = h.bridge.invoke!("identity", "choice.complete", {
+      grant: r.grant,
+      choice: { kind: "keep" },
+    });
+    await new Promise((x) => setTimeout(x, 0));
+    expect(await end(h, b.flowId)).toEqual({ ended: false });
+    release();
+    expect(await completing).toMatchObject({ kind: "ok" });
+    expect(h.identity.signOut).not.toHaveBeenCalled();
     h.handle.close();
   });
 });

@@ -1173,6 +1173,8 @@ export function exposePolarisBridge(
         );
       const flow = flows.get(id);
       if (!flow || flow.windowId !== e.sender.id) return { ended: false };
+      // The person has picked and the completion is in flight: it is too late to end.
+      if (choiceHost.isBusy(id)) return { ended: false };
       choiceHost.dropFlow(id);
       flow.prompt?.cancel();
       forgetFlow(id);
