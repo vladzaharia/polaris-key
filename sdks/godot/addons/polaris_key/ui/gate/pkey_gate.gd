@@ -128,6 +128,12 @@ var _auto_bar := true
 var _replacing := false
 ## Continue (or a choice) is in flight: more presses are ignored.
 var _completing := false
+## A sign-in this device started finished and the link offer is being asked for or shown: the gate holds
+## (the game does not run under the offer) until it is answered.
+var _link_hold := false
+## The offer entry on screen ({kind, reach}) and whether its last try said the sign-in is stale.
+var _link_entry: Dictionary = {}
+var _link_stale := false
 ## After "Use another account" the focus goes to Polaris Locker's sign-in, not the key field.
 var _focus_sign_in := false
 
@@ -284,7 +290,12 @@ func _activation_owns_screen() -> bool:
 
 ## An automatic sign-in step (confirm, device-limit) is on screen in the form's place.
 func _auto_on() -> bool:
-	return _auto_state == "confirm" or _auto_state == "device-limit"
+	return _auto_state == "confirm" or _auto_state == "device-limit" or _auto_state in PKeyGateController.LINK_STEPS
+
+
+## The link offer holds the gate (being asked for, or one of its steps on screen).
+func _linking() -> bool:
+	return _link_hold or _auto_state in PKeyGateController.LINK_STEPS
 
 
 ## The card's content width (logical pixels): what the activation panel wants while a dialog of
@@ -461,11 +472,11 @@ func _render() -> void:
 	var url := PKeyUpdatePromptController.update_url(update_result, _outlet(), release_url)
 	var ctl := PKeyGateController.controls_for(screen, url != "")
 	var cp := PKeyGateController.copy_for(screen, st, status.get("allowed_range"))
-	var is_usable := PKeyGateController.is_usable_screen(screen)
+	var is_usable := PKeyGateController.is_usable_screen(screen) and not _linking()
 	var net := screen == "error" and network_error
 	var inline := screen == "error" and not network_error
 	if not embedded:
-		visible = screen != "usable"
+		visible = screen != "usable" or _linking()
 	# Loading shows nothing for its first 250 ms, then the identity, a muted label and the shimmer
 	# (DL7); a license check that finishes sooner never flashes a card.
 	var waiting := screen == "loading"
@@ -584,6 +595,9 @@ func _on_update_available(r: PKeyResult) -> void:
 
 
 func _on_activated() -> void:
+	# A sign-in this device started (the browser) can end on the link offer; any other activation goes on.
+	if await _offer_link():
+		return
 	if sdk != null and sdk.has_method("status"):
 		show_state(sdk.status())
 
@@ -653,6 +667,10 @@ func _on_retry() -> void:
 
 
 func _cancel() -> bool:
+	if auto_step.visible and _auto_state in PKeyGateController.LINK_STEPS:
+		# Escape on the offer closes it without remembering a decline.
+		_finish_link(false)
+		return true
 	if auto_step.visible:
 		_leave_auto_sign_in()
 		return true
@@ -767,6 +785,9 @@ func _apply_auto(result: PKeyAutoSignInResult) -> void:
 ## The automatic sign-in's step is over: nothing of it stays on screen.
 func _end_auto() -> void:
 	_auto_state = ""
+	_link_hold = false
+	_link_entry = {}
+	_link_stale = false
 	choosing = false
 	_auto_result = null
 	_replacing = false
@@ -792,6 +813,9 @@ func _show_auto(step: String) -> void:
 ## step, Replace opens the Worker's manage page (the sign-in runs again when the person is back);
 ## where there is no link, or no browser, the primary is Try again.
 func _on_auto_primary(step: String) -> void:
+	if step in PKeyGateController.LINK_STEPS:
+		await _on_link_primary(step)
+		return
 	if step == "device-limit":
 		var url := PKeyGateController.manage_link(_auto_result)
 		if url != "" and not PKeyUiView.pad_only():
@@ -808,7 +832,10 @@ func _on_auto_primary(step: String) -> void:
 
 
 ## Use another account: give the grant up and show the regular form, on Polaris Locker's sign-in.
-func _on_auto_secondary(_step: String) -> void:
+func _on_auto_secondary(step: String) -> void:
+	if step in PKeyGateController.LINK_STEPS:
+		_on_link_secondary(step)
+		return
 	_leave_auto_sign_in()
 
 
@@ -892,3 +919,79 @@ func _complete_auto(choice: Variant, consent: Variant) -> void:
 		sdk.identity.choice.cancel(grant)
 	_end_auto()
 	show_state(sdk.status(), failure)
+
+
+# ── The link offer (I-48.14) ─────────────────────────────────────────────────────────────────
+
+## After a sign-in this device started, ask whether an identity could be linked and show the offer. True when
+## it is on screen (the gate holds); false when there is none (the product, the gate, the person's earlier
+## decline, or no provider here), and nothing was sent unless the SDK had an offer open.
+func _offer_link() -> bool:
+	if sdk == null or not is_instance_valid(sdk) or sdk.get("identity") == null or not sdk.identity.link.pending:
+		return false
+	_link_hold = true
+	var link: PKeyIdentityLink = sdk.identity.link
+	var offer: PKeyLinkResult = await link.offer()
+	if not is_instance_valid(self):
+		return true
+	var entry := link.entry_for(offer.kinds) if offer.kind == PKeyLinkResult.KIND_OFFER else {}
+	if entry.is_empty():
+		link.dismiss()
+		_link_hold = false
+		return false
+	_link_entry = entry
+	_link_stale = false
+	auto_step.provider = PKeyGateController.link_provider(String(entry.get("kind", "")))
+	auto_step.reach = PKeyGateController.link_reach(entry)
+	auto_step.error_key = ""
+	auto_step.busy = false
+	_show_auto("link-offer")
+	return true
+
+
+## Link {provider} on the offer; Done on the other two.
+func _on_link_primary(step: String) -> void:
+	if step != "link-offer":
+		_finish_link(false)
+		return
+	if _completing:
+		return
+	if _link_stale:
+		# The sign-in is too old to link: its line is on screen; Link again ends the offer without a decline,
+		# so the next sign-in can offer it.
+		_finish_link(false)
+		return
+	_completing = true
+	auto_step.busy = true
+	var r: PKeyLinkResult = await sdk.identity.link.accept()
+	_completing = false
+	if not is_instance_valid(self):
+		return
+	auto_step.busy = false
+	var next := PKeyGateController.link_next(r)
+	if next == "link-offer":
+		_link_stale = PKeyGateController.link_stale(r)
+		auto_step.error_key = PKeyGateController.link_failure_key(r)
+		return
+	auto_step.error_key = ""
+	_show_auto(next)
+
+
+## No thanks declines the offer for this account on this device; Join accounts opens Help.
+func _on_link_secondary(step: String) -> void:
+	if step == "link-offer":
+		_finish_link(true)
+	elif step == "link-conflict":
+		OS.shell_open("%s/docs/help/join-accounts/#if-another-account-uses-the-address" % PKeyConstants.CUSTOMER_ORIGIN_DEFAULT)
+
+
+## The offer is over: `decline` remembers it for the account on this device; otherwise it is only closed.
+func _finish_link(decline: bool) -> void:
+	if decline:
+		sdk.identity.link.decline()
+	else:
+		sdk.identity.link.dismiss()
+	_end_auto()
+	await sdk.sync(true)
+	if is_instance_valid(self):
+		show_state(sdk.status())

@@ -297,8 +297,8 @@ func _render() -> void:
 		_gets_group.visible = false
 		cat_text(_lede, "", args)
 	# Continue failed: its own line in the error colour, with Continue as the retry.
-	if error_key != "" and confirm:
-		cat_text(_error, error_key)
+	if error_key != "" and (confirm or step == "link-offer"):
+		cat_text(_error, error_key, args)
 	else:
 		cat_text(_error, "")
 	# The primary: the model's, except a device limit the person cannot fix here (no link, or no browser
@@ -337,6 +337,9 @@ func _render() -> void:
 ## The plain steps: the title, then the model's body lines in order.
 func _render_plain(copy: Array, row: Array, args: Dictionary) -> void:
 	var lines: Array = (row[1] as Array).filter(func(k): return copy.has(k))
+	# Out of room, the error line says what is wrong, and the explanation gives way before the actions scroll.
+	if error_key != "" and squeeze_level() >= 2:
+		lines = []
 	for i in _lines.size():
 		cat_text(_lines[i], lines[i] if i < lines.size() else "", args)
 

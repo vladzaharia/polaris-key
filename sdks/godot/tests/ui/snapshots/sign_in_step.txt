@@ -58,6 +58,22 @@ Card/Scroll/Body/Top/Words/Title: Label "Sign in with \u2068Polaris Locker\u2069
 Card/Scroll/Body/Top/Words/Line0: Label "Then apps from \u2068Drift Studio\u2069 can sign you in automatically."
 Card/Scroll/Body/Actions/Primary: Button "Link \u2068Polaris Locker\u2069" [focus 1]
 Card/Scroll/Body/Actions/Secondary: Button "No thanks" [focus 2]
+== link offer, the sign-in is too old ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Sign in with \u2068Google\u2069 next time?"
+Card/Scroll/Body/Top/Words/Line0: Label "Then \u2068Polaris Key SDK\u2069 and other apps that use Polaris Locker can sign you in automatically."
+Card/Scroll/Body/Top/Error: Label "Sign in again to link \u2068Google\u2069."
+Card/Scroll/Body/Actions/Primary: Button "Link \u2068Google\u2069" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "No thanks" [focus 2]
+== link offer, it could not be linked ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Sign in with \u2068Google\u2069 next time?"
+Card/Scroll/Body/Top/Words/Line0: Label "Then \u2068Polaris Key SDK\u2069 and other apps that use Polaris Locker can sign you in automatically."
+Card/Scroll/Body/Top/Error: Label "Couldn't link \u2068Google\u2069 on this device."
+Card/Scroll/Body/Actions/Primary: Button "Link \u2068Google\u2069" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "No thanks" [focus 2]
 == link done ==
 Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"

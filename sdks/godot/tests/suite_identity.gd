@@ -8,7 +8,7 @@ extends RefCounted
 
 const GROUPS := [
 	"flow", "confirm", "account", "redirect", "choice", "exchange", "auto_sign_in", "fedcm",
-	"game_center_token", "gate_auto", "device_choice", "native_redirect", "key_return", "link", "native_sheet",
+	"game_center_token", "gate_auto", "device_choice", "native_redirect", "key_return", "link", "native_sheet", "link_kit",
 ]
 
 

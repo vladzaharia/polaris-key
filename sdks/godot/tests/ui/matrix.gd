@@ -90,6 +90,22 @@ const TIGHT_CASES := [
 	# A step that opens at its top (title in view, KF-godot): at 36 px on a 360 px canvas the primary is
 	# a scroll away (asserted reachable by pad); it never opens scrolled past its title.
 	["sign_in.auto_link", "native36", "640x360"],
+	# The browser wait: the same structure as the device-code view, so the same exemptions (36 px type on a
+	# short canvas breaks the product's name; on a phone the buttons are a scroll away, reachable by pad).
+	["sign_in.redirect", "native36", "1170x2532@3"],
+	["sign_in.redirect_no_browser", "native36", "1170x2532@3"],
+	["sign_in.redirect", "native36", "640x360"],
+	["sign_in.redirect_no_browser", "native36", "640x360"],
+	["sign_in.redirect", "native", "pixel-art canvas_items 640x360 keep"],
+	["sign_in.redirect", "custom", "pixel-art canvas_items 640x360 keep"],
+	["sign_in.redirect_no_browser", "native", "pixel-art canvas_items 640x360 keep"],
+	["sign_in.redirect_no_browser", "custom", "pixel-art canvas_items 640x360 keep"],
+	# The link steps on a 360 px canvas with a game's own large type or unspaced Japanese: the primary is a scroll
+	# away (reachable by pad, asserted), as the link offer's above.
+	["sign_in.link_stale", "native36", "640x360"],
+	["sign_in.link_stale", "custom", "pixel-art canvas_items 640x360 keep"],
+	["sign_in.link_conflict", "native36", "640x360"],
+	["sign_in.link_conflict", "custom", "pixel-art canvas_items 640x360 keep"],
 	["nearby.ask", "native", "pixel-art canvas_items 640x360 keep"],
 	["nearby.ask", "custom", "pixel-art canvas_items 640x360 keep"],
 	# The Cloud Sync screens (U-42.5) in a game's own look on a short or narrow canvas (18-22 px type on 360 px, 28 or 36 px type):
@@ -353,6 +369,11 @@ const SCREENS := [
 	["activation.key_limit_qr", "activation", "key-entry limit, add it in Polaris Locker (QR)", "full", "pad"],
 	["activation.license_owned", "activation", "license in another account", "full"],
 	["sign_in.auto_link", "sign_in_step", "link offer, per developer", "full"],
+	["sign_in.redirect", "sign_in", "redirect, waiting for the browser", "full"],
+	["sign_in.redirect_no_browser", "sign_in", "redirect, the browser did not open", "full"],
+	["sign_in.link_stale", "sign_in_step", "link offer, the sign-in is too old", "full"],
+	["sign_in.link_done", "sign_in_step", "link done", "full"],
+	["sign_in.link_conflict", "sign_in_step", "link conflict", "full"],
 	["sign_in.auto_confirm", "sign_in_step", "confirm, the account's email", "full"],
 	["sign_in.nearby_wait", "sign_in_step", "nearby wait", "full"],
 	["nearby.ask", "nearby", "ask", "full"],

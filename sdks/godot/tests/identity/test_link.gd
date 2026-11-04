@@ -29,6 +29,7 @@ func run(t: PKeyTestContext) -> void:
 	await _provider_path(t)
 	await _conflict_is_remembered(t)
 	await _decline_record(t)
+	await _decline_without_an_offer(t)
 	await _closing(t)
 	await _nothing_prints(t)
 	await _sealed_record(t)
@@ -129,6 +130,20 @@ func _bearer_on_the_redirect_token_request(t: PKeyTestContext) -> void:
 	t.check("link: an off-product token endpoint gets no bearer", seen.size() == 1 and not seen[0].has("authorization"))
 	other.queue_free()
 	bed.free_all()
+	# Same origin, a token endpoint outside this product: no bearer either.
+	bed = await _bed(B.TOKEN)
+	var near := {
+		"authorize_url": "", "state": "tidewater-state-0123456789", "code_verifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+		"redirect_uri": REDIRECT, "client_id": "djdl", "issuer": "https://key.plrs.im/djdl/identity",
+		"token_endpoint": "%s/other/identity/token" % bed.server.base_url(), "license_choice": false,
+	}
+	var near_session := PKeySignInSession.new(true)
+	near_session.channel = &"redirect"
+	near_session._identity = bed.sdk.identity
+	await bed.sdk.identity._redeem(near_session, near, "C0DE")
+	t.check("link: a same-origin token endpoint outside the product gets no bearer",
+		bed.token_requests.size() == 1 and not bed.token_requests[0]["headers"].has("authorization"), str(bed.token_requests.size()))
+	bed.free_all()
 
 
 func _no_subject_opens_nothing(t: PKeyTestContext) -> void:
@@ -178,6 +193,21 @@ func _offer(t: PKeyTestContext) -> void:
 	bed.sdk.core.discovery_manifest["services"]["identity"]["endpoints"]["link"] = "https://evil.example/djdl/identity/link"
 	var off: PKeyLinkResult = await bed.sdk.identity.link.offer()
 	t.check("link: an off-product link route is invalid-response and sends nothing", off.kind == PKeyLinkResult.KIND_FAILED and off.code == PKeyErrors.INVALID_RESPONSE and _link_count(bed) == 0)
+	bed.free_all()
+	# Same origin, a path outside this product: refused the same way, and no bearer goes to it.
+	bed = await _bed()
+	await _sign_in(bed)
+	bed.sdk.core.discovery_manifest["services"]["identity"]["endpoints"]["link"] = "%s/other/identity/link" % bed.server.base_url()
+	var sibling: PKeyLinkResult = await bed.sdk.identity.link.offer()
+	t.check("link: a same-origin link route outside the product is invalid-response and sends nothing",
+		sibling.kind == PKeyLinkResult.KIND_FAILED and sibling.code == PKeyErrors.INVALID_RESPONSE and _link_count(bed) == 0)
+	# A product whose name only starts with this one's is not under it (the trailing slash).
+	bed.sdk.core.discovery_manifest["services"]["identity"]["endpoints"]["link"] = "%s/%sx/identity/link" % [bed.server.base_url(), bed.F["product"]]
+	var prefix: PKeyLinkResult = await bed.sdk.identity.link.offer()
+	t.check("link: a route under a longer product name is refused", prefix.kind == PKeyLinkResult.KIND_FAILED and _link_count(bed) == 0)
+	bed.sdk.core.discovery_manifest["services"]["identity"]["endpoints"]["link"] = "%s/%s/../other/identity/link" % [bed.server.base_url(), bed.F["product"]]
+	var dots: PKeyLinkResult = await bed.sdk.identity.link.offer()
+	t.check("link: a route with a dot segment is refused", dots.kind == PKeyLinkResult.KIND_FAILED and _link_count(bed) == 0)
 	bed.free_all()
 
 
@@ -321,6 +351,19 @@ func _decline_record(t: PKeyTestContext) -> void:
 	t.check("link: an unreadable record reads as declined", broken.is_declined(k))
 	t.check("link: and remember() replaces it", broken.remember(k).ok and broken.hashes() == [k])
 	broken.clear()
+
+
+func _decline_without_an_offer(t: PKeyTestContext) -> void:
+	var bed := await _bed()
+	bed.sdk.core.cache.set_subject(SUBJECT)
+	var link: PKeyIdentityLink = bed.sdk.identity.link
+	await link.decline()
+	t.check("link: decline() with no open offer records nothing", link.store.hashes() == [] and link._memory_declined.is_empty())
+	await _sign_in(bed)
+	bed.links = [B.json(200, OFFER)]
+	var o := await link.offer()
+	t.check("link: and a later offer for the signed-in account is still made", o.kind == PKeyLinkResult.KIND_OFFER, str(o))
+	bed.free_all()
 
 
 func _closing(t: PKeyTestContext) -> void:

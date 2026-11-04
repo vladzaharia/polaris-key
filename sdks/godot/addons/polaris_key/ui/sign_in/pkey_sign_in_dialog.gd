@@ -18,6 +18,11 @@ extends PKeyUiView
 ## largest type on the screen and a QR code at the theme's `qr_size`, never under
 ## QR_MIN_PHYSICAL on screen.
 ##
+## Rung 6 (native redirect): on a desktop `begin()` starts the SDK's native redirect sign-in (a loopback
+## listener, the system browser) and shows "Finish in your browser" with Open browser again, Use a code
+## instead and Cancel (state `redirect`). Where the SDK answers `redirect-unavailable` (a phone, the web, a
+## headless or pad-only device) the device code below runs as before.
+##
 ## By device: on a phone it leads with what the player can do there (Open browser, Copy link, the
 ## code and the address) and never shows a QR code, since the phone opens the browser itself; a
 ## desktop or tablet adds the QR code for another device; on a pad-only device (a TV, a console, a
@@ -39,9 +44,14 @@ signal platform_answer(result: PKeyAutoSignInResult)
 @export var device_name := ""
 ## Hold at the signed-in identity for the player's acceptance (and offer the licence attach).
 @export var confirm_identity := false
+## Desktop: sign in through the browser the SDK opens (native redirect), the device code when it answers
+## `redirect-unavailable`. false keeps the device code everywhere.
+@export var use_native_redirect := true
 ## On iOS, macOS and Android the form's button is the platform's own sign-in (see begin()); false
 ## keeps the device code and the redirect everywhere.
 @export var use_platform_row := true
+## More options for the native redirect start (`sign_in.start`): `return_uri`, `loopback`, `browser`, ...
+var redirect_options: Dictionary = {}
 ## The platform to pick the row for ("" is this build's; tests set it).
 var platform_override := ""
 ## The platform every dialog without its own override answers for ("" is this build's); the test runner
@@ -62,6 +72,8 @@ var prompt: PKeySignInSession = null
 var confirmation: Dictionary = {}
 var result: PKeySignInOutcome = null
 var copied := false
+## A native redirect sign-in is waiting (state `redirect`) and the browser could not be opened.
+var browser_failed := false
 
 var _session: PKeySignInSession = null
 var _root: VBoxContainer
@@ -95,6 +107,7 @@ var _actions: BoxContainer
 var _open: Button
 var _copy: Button
 var _use_key: Button
+var _use_code: Button
 var _continue: Button
 var _try_again: Button
 var _cancel_btn: Button
@@ -183,7 +196,11 @@ func _build() -> void:
 	_continue = button(_actions, "Continue", _on_continue, "PKeyPrimary")
 	_try_again = button(_actions, "TryAgain", begin, "PKeyPrimary")
 	_copy = button(_actions, "CopyLink", _on_copy)
+	_use_code = button(_actions, "UseCode", _on_use_code)
 	_cancel_btn = button(_actions, "Cancel", _on_cancel)
+	# The browser wait's longer labels wrap rather than push the card past a narrow screen.
+	for b in [_open, _copy, _use_code]:
+		(b as Button).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_hint_bar = hint_bar(_info, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "key": "part.hint.select"}, {"action": PKeyInputGlyphs.BACK, "key": "common.cancel"}])
 
 
@@ -288,7 +305,7 @@ func _column_mode() -> bool:
 	var m := layout_metrics()
 	var room: Vector2 = m["room"]
 	# (Not while a QR code shows: its tile is as wide as the column the actions would take.)
-	if squeeze_level() < 2 or _side_by_side() or _qr_wanted() or phone_screen():
+	if squeeze_level() < 2 or _side_by_side() or _qr_wanted() or phone_screen() or state == "redirect":
 		return false
 	# ... and only while the text column left beside the actions still holds the user code.
 	if room_x() - role("card_width") * 0.5 - role("column_gap") < _code_min_width(false):
@@ -297,7 +314,7 @@ func _column_mode() -> bool:
 
 
 func _arrange(m: Dictionary) -> void:
-	_hint_bar.enabled = state in ["pending", "confirm"]
+	_hint_bar.enabled = state in ["pending", "confirm", "redirect"]
 	super(m)
 	var phone := phone_bleed()
 	# Squeezed, the header sits a tight gap above the title (DL3: spacing gives way before the code).
@@ -323,6 +340,14 @@ func _arrange(m: Dictionary) -> void:
 	else:
 		_actions.custom_minimum_size.x = 0.0
 	_device.visible = _device.visible and level < 3
+	if state == "redirect":
+		# The wait for the browser: the thin indicator already says it, so the line gives way first, then the header.
+		_instructions.visible = _instructions.visible and level < 1
+		_product.visible = _product.visible and level < 3
+		# Out of room, the buttons say what the sentence under "couldn't open" does (Copy link, Use a code instead).
+		_status.visible = _status.visible and not (browser_failed and level >= 4)
+	# Squeezed hard, the groups of the wait sit a stack gap apart rather than a section gap.
+	_info.theme_type_variation = &"PKeyStack" if state == "redirect" and level >= 3 else &"PKeySections"
 	_timing.visible = _expires.visible or _device.visible
 	# The address under the sentence on a pad; after the code otherwise.
 	if _qr_wanted():
@@ -424,7 +449,7 @@ func begin_platform() -> void:
 
 ## Start a sign-in through `sdk.identity.sign_in` and follow it to the end: Polaris Locker's device
 ## code or redirect, or with `platform` the provider's own sheet first (`begin_platform()`). A coroutine.
-func begin(platform := false) -> void:
+func begin(platform := false, code_only := false) -> void:
 	show_starting()
 	if sdk == null or sdk.get("identity") == null:
 		show_result(PKeySignInOutcome.ended(PKeySignInOutcome.KIND_SERVICE_UNAVAILABLE, PKeyErrors.NOT_CONFIGURED, "No SDK."))
@@ -434,15 +459,38 @@ func begin(platform := false) -> void:
 	var identity: PKeyIdentity = sdk.identity
 	if platform and await _platform_row(identity):
 		return
-	var session: PKeySignInSession = await identity.sign_in.start({"device_name": device_name, "confirm_identity": confirm_identity})
-	if not is_instance_valid(self):
-		return
+	var session: PKeySignInSession = null
+	if not code_only and _native_wanted():
+		# Rung 6: no redirect URI, so the SDK binds the loopback listener and opens the browser itself.
+		var opts := {"channel": "redirect", "device_name": device_name}
+		opts.merge(redirect_options, true)
+		# Native only: a registered https redirect is the host's own flow, not this dialog's.
+		opts["channel"] = "redirect"
+		opts.erase("redirect_uri")
+		session = await identity.sign_in.start(opts)
+		if not is_instance_valid(self):
+			return
+		if not session.ok and session.code == PKeyConstants.ErrorCode.REDIRECT_UNAVAILABLE:
+			session = null
+	if session == null:
+		session = await identity.sign_in.start({"device_name": device_name, "confirm_identity": confirm_identity})
+		if not is_instance_valid(self):
+			return
 	_session = session
 	if not session.ok:
 		show_result(await session.wait())
 		return
-	show_prompt(session)
+	if session.channel == &"redirect":
+		show_redirect(session)
+	else:
+		show_prompt(session)
 	_follow(session)
+
+
+## The native redirect is tried here: not on a device with only a pad (no browser to open), and not when the
+## game turned it off. The SDK still answers `redirect-unavailable` where no class applies.
+func _native_wanted() -> bool:
+	return use_native_redirect and not _pad()
 
 
 ## On iOS, macOS and Android the form has the platform's own button beside Polaris Locker's (Apple's
@@ -501,6 +549,15 @@ func show_prompt(p: PKeySignInSession) -> void:
 	refresh_view()
 
 
+## A native redirect sign-in is waiting for the browser to come back.
+func show_redirect(p: PKeySignInSession) -> void:
+	state = "redirect"
+	prompt = null
+	copied = false
+	browser_failed = not p.opened
+	refresh_view()
+
+
 func show_confirm(c_: Dictionary) -> void:
 	state = "confirm"
 	confirmation = c_
@@ -534,6 +591,7 @@ func _render() -> void:
 	var ended := state == "ended" and result != null
 	var expired := ended and (result.kind == PKeySignInOutcome.KIND_EXPIRED)
 	var failed := ended and not result.ok
+	var redirecting := state == "redirect"
 	_product.visible = show_product
 	if show_product:
 		_product.refresh()
@@ -548,16 +606,28 @@ func _render() -> void:
 	elif pending and copied:
 		status = t.text("sign_in_copied")
 	show_text(_status, status)
+	var args := {"app": PKeyUiTheme.isolate(String(PKeyUiTheme.product_identity()["name"]))}
+	if redirecting:
+		# Finish in your browser (the browser opened), or the link to open by hand when it could not.
+		cat_text(_title, "signin.handoff.noBrowser" if browser_failed else "signin.handoff.title")
+		cat_text(_status, "signin.handoff.noBrowserBody" if browser_failed else "signin.handoff.browserBody", args)
+	else:
+		for n in [_title, _status, _open, _copy]:
+			(n as Control).remove_meta(CATALOG_META)
 	_status.theme_type_variation = "PKeyError" if failed and not expired else "PKeyMuted"
 	fx_error(status if failed and not expired else "")
-	set_loading(state == "starting")
+	set_loading(state == "starting" or (redirecting and not browser_failed))
 	# Never a fragment above the address. With a QR code (a pad) one whole sentence leads and the
 	# address is on a line of its own below it; without one the code leads and the address follows it
 	# as "Or go to polaris.locker/device" (the Open browser button is the first way). The line never
 	# says "scan" without a QR code.
 	var short := PKeySignInController.short_uri(prompt.verification_uri) if pending else ""
 	var qr_line := _qr_wanted()
-	show_text(_instructions, t.text("sign_in_scan_tv") if pending and qr_line else "")
+	if redirecting and not browser_failed:
+		cat_text(_instructions, "signin.handoff.waiting")
+	else:
+		_instructions.remove_meta(CATALOG_META)
+		show_text(_instructions, t.text("sign_in_scan_tv") if pending and qr_line else "")
 	show_text(_url, (short if qr_line else t.text("sign_in_go_to", short)) if pending else "")
 	show_text(_code, prompt.user_code if pending else "")
 	_qr.text = prompt.verification_uri_complete if pending else ""
@@ -582,11 +652,16 @@ func _render() -> void:
 	var has_link := pending and PKeyOutletAdapter.is_https(prompt.verification_uri_complete)
 	var pad := _pad()
 	# A pad-only device has no browser: the code and the QR code are the screen, with a way to a key.
-	_open.visible = has_link and not pad
+	_open.visible = (has_link and not pad) or redirecting
 	_open.text = t.text("sign_in_open_browser")
-	leaves_app(_open)
-	_copy.visible = has_link and not pad
+	_copy.visible = (has_link and not pad) or (redirecting and browser_failed)
 	_copy.text = t.text("sign_in_copy_link")
+	if redirecting:
+		cat_text(_open, "signin.handoff.again")
+		cat_text(_use_code, "signin.handoff.useCode")
+	else:
+		show_text(_use_code, "")
+	leaves_app(_open)
 	_use_key.visible = (pending or state == "starting") and pad
 	_use_key.text = t.text("sign_in_use_key")
 	_attach.visible = confirming and confirmation.get("attachable") == true
@@ -596,11 +671,11 @@ func _render() -> void:
 	_try_again.visible = failed
 	_try_again.text = t.text("sign_in_new_code") if expired else t.text("retry")
 	_cancel_btn.text = t.text("close") if ended else t.text("cancel")
-	set_process(pending or state == "starting")
+	set_process(pending or state == "starting" or redirecting)
 
 
 func _focus_chain() -> Array:
-	return [_attach, _open, _use_key, _continue, _try_again, _copy, _cancel_btn]
+	return [_attach, _open, _use_key, _continue, _try_again, _copy, _use_code, _cancel_btn]
 
 
 ## A code on its way or on screen leads with its primary, never Cancel (a habitual A press must not
@@ -639,16 +714,40 @@ func _set_ring() -> void:
 
 
 func _on_open() -> void:
+	if state == "redirect":
+		# The same authorize page again while the pushed request lives; a failed open names the link instead.
+		if _session != null and not _session.reopen():
+			browser_failed = true
+			refresh_view()
+		elif browser_failed:
+			browser_failed = false
+			refresh_view()
+		return
 	if sdk != null and sdk.get("identity") != null:
 		sdk.identity.open_in_browser(prompt)
 	elif prompt != null and PKeyOutletAdapter.is_https(prompt.verification_uri_complete):
 		OS.shell_open(prompt.verification_uri_complete)
 
 
+## Use a code instead: the redirect sign-in is cancelled and the device code starts.
+func _on_use_code() -> void:
+	var old := _session
+	# Forget it first: its cancelled outcome must not close the dialog.
+	_session = null
+	if old != null:
+		old.cancel()
+	begin(false, true)
+
+
 func _on_copy() -> void:
-	if prompt == null:
+	var link := ""
+	if state == "redirect" and _session != null:
+		link = _session.authorize_url
+	elif prompt != null:
+		link = prompt.verification_uri_complete
+	if link == "":
 		return
-	DisplayServer.clipboard_set(prompt.verification_uri_complete)
+	DisplayServer.clipboard_set(link)
 	copied = true
 	note_copied()
 	refresh_view()
@@ -676,8 +775,12 @@ func _on_cancel() -> void:
 		_session.cancel()
 	# Cancelling closes the dialog (it fades out first); the flow's own cancelled result changes nothing more.
 	close_then(func() -> void:
+		# The session's own cancelled outcome may have closed the dialog already: once.
+		var already := state == "cancelled"
 		if not ended:
 			state = "cancelled"
+		if already:
+			return
 		closed.emit()
 		restore_opener())
 
