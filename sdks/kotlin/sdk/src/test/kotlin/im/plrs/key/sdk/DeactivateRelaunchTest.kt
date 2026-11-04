@@ -32,17 +32,30 @@ class DeactivateRelaunchTest {
     private class CountingProvider : PlatformIdentityProvider {
         var calls = 0
         override val kind: ExchangeKind = ExchangeKind.google
-        override suspend fun silent(nonce: String, serverClientId: String?): PlatformSubjectToken? { calls++; return null }
-        override suspend fun sheet(nonce: String, serverClientId: String?): PlatformSubjectToken? { calls++; return null }
-        override suspend fun signOutCleanup() {}
+        override suspend fun silent(nonce: String, serverClientId: String?): PlatformSubjectToken? {
+            calls++
+            return null
+        }
+        override suspend fun sheet(nonce: String, serverClientId: String?): PlatformSubjectToken? {
+            calls++
+            return null
+        }
+        override suspend fun signOutCleanup() {
+            // This provider holds no session of its own to clean up.
+        }
         override suspend fun credentialRevoked(): Boolean = false
     }
 
     private fun launch(dir: java.io.File) = CoreContext(
         CoreOptions(
-            productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
-            store = FileStore("djdl", dir), transport = ScriptedTransport { respond(404) },
-            clock = { 1_700_000_000L }, deviceName = "Test Device",
+            productSlug = "djdl",
+            version = "1.0.0",
+            pinnedKeys = signer.trust,
+            trustRefresh = false,
+            store = FileStore("djdl", dir),
+            transport = ScriptedTransport { respond(404) },
+            clock = { 1_700_000_000L },
+            deviceName = "Test Device",
         ),
     )
 

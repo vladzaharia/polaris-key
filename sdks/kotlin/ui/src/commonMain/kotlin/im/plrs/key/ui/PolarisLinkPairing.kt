@@ -369,7 +369,10 @@ private fun ConsentTag(text: String) {
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f),
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
-        Box(Modifier.heightIn(min = 32.dp).padding(horizontal = PolarisSpace.controls, vertical = PolarisSpace.hairline), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.heightIn(min = 32.dp).padding(horizontal = PolarisSpace.controls, vertical = PolarisSpace.hairline),
+            contentAlignment = Alignment.Center,
+        ) {
             Text(text, style = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp))
         }
     }

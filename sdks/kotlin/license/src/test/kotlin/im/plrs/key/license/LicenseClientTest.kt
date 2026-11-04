@@ -12,8 +12,8 @@ package im.plrs.key.license
 import im.plrs.key.core.CoreContext
 import im.plrs.key.core.CoreOptions
 import im.plrs.key.core.ErrorCode
-import im.plrs.key.core.HardwareFingerprint
 import im.plrs.key.core.FileStore
+import im.plrs.key.core.HardwareFingerprint
 import im.plrs.key.core.InMemoryStore
 import im.plrs.key.core.LicenseStatus
 import im.plrs.key.core.PolarisException
@@ -47,8 +47,13 @@ class LicenseClientTest {
         val transport = ScriptedTransport(handler)
         val core = CoreContext(
             CoreOptions(
-                productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
-                store = store, transport = transport, clock = { now },
+                productSlug = "djdl",
+                version = "1.0.0",
+                pinnedKeys = signer.trust,
+                trustRefresh = false,
+                store = store,
+                transport = transport,
+                clock = { now },
                 // PX-W13: a fixed device label, so request bodies do not depend on the host name.
                 deviceName = deviceName,
             ),
@@ -110,15 +115,14 @@ class LicenseClientTest {
         response: PolarisResponse,
         options: LicenseClientOptions = LicenseClientOptions(fingerprintSource = { fingerprint }),
         deviceName: String? = "Test Device",
-    ) =
-        runBlocking {
-            val store = InMemoryStore("djdl", "dev1")
-            var acquired = 0
-            val (core, transport) = core(store, deviceName) { response }
-            core.start()
-            val result = LicenseClient(core, options) { acquired++ }.activateWithKey("pkey_djdl_key")
-            Triple(result, transport.requests().single(), Triple(store.getToken(), core.tokenSource(), acquired))
-        }
+    ) = runBlocking {
+        val store = InMemoryStore("djdl", "dev1")
+        var acquired = 0
+        val (core, transport) = core(store, deviceName) { response }
+        core.start()
+        val result = LicenseClient(core, options) { acquired++ }.activateWithKey("pkey_djdl_key")
+        Triple(result, transport.requests().single(), Triple(store.getToken(), core.tokenSource(), acquired))
+    }
 
     @Test
     fun activationStoresTheTokenAndRaisesTheEvent() {
@@ -147,6 +151,7 @@ class LicenseClientTest {
     }
 
     // @pkey-feature license.manage
+
     /** PX-W8: device-limit carries the validated portal link from either envelope; an invalid or
      *  absent one (or an unknown member) keeps the counts and is never an auth failure. */
     @Test
@@ -172,6 +177,7 @@ class LicenseClientTest {
     }
 
     // @pkey-feature identity.keyentry
+
     /** I-10b.14: ok carries keyEntries or none; key-entry-limit and license-owned are typed, keep
      *  their validated links, and are never an auth failure. */
     @Test
@@ -184,7 +190,11 @@ class LicenseClientTest {
         )
         assertNull((activateAgainst(respond(200, """{"token":"pkeyt_new","schemaVersion":1}""")).first as ActivationResult.Ok).keyEntries)
         assertNull(
-            (activateAgainst(respond(200, """{"token":"pkeyt_new","schemaVersion":1,"keyEntries":{"used":-1,"limit":2}}""")).first as ActivationResult.Ok).keyEntries,
+            (
+                activateAgainst(
+                    respond(200, """{"token":"pkeyt_new","schemaVersion":1,"keyEntries":{"used":-1,"limit":2}}"""),
+                ).first as ActivationResult.Ok
+                ).keyEntries,
         )
         val limit = activateAgainst(
             respond(403, """{"error":"key_entry_limit","manageUrl":"$activate","keyEntries":{"used":2,"limit":2}}"""),
@@ -220,7 +230,10 @@ class LicenseClientTest {
             ActivationResult.FingerprintRequired,
             activateAgainst(respond(403, """{"error":{"code":"fingerprint_required"}}""")).first,
         )
-        assertEquals(ActivationResult.DeviceLimit(3, 2), activateAgainst(respond(403, """{"error":"device_limit","limit":3,"deviceCount":2}""")).first)
+        assertEquals(
+            ActivationResult.DeviceLimit(3, 2),
+            activateAgainst(respond(403, """{"error":"device_limit","limit":3,"deviceCount":2}""")).first,
+        )
         assertEquals(
             ActivationResult.DeviceLimit(5, 5),
             activateAgainst(respond(403, """{"error":{"code":"device_limit","limit":5,"deviceCount":5}}""")).first,
@@ -260,7 +273,10 @@ class LicenseClientTest {
         // Unknown 403s keep the server's code.
         assertEquals(ActivationResult.Refused("registration_closed", 403, null), map(403, """{"error":{"code":"registration_closed"}}"""))
         assertEquals(ActivationResult.LicenseOwned(null), map(403, """{"error":"license_owned","message":"sign in"}"""))
-        assertEquals(ActivationResult.Refused(ErrorCode.badRequest, 400, "missing device id"), map(400, """{"error":"bad_request","message":"missing device id"}"""))
+        assertEquals(
+            ActivationResult.Refused(ErrorCode.badRequest, 400, "missing device id"),
+            map(400, """{"error":"bad_request","message":"missing device id"}"""),
+        )
         assertEquals(ActivationResult.Refused(ErrorCode.unknown, 403, null), map(403, "not json"))
         // A 5xx is `server-error`, a transport failure `network`; neither leaks the body as copy.
         val server = map(500, """{"error":"enroll_failed"}""")
@@ -271,7 +287,9 @@ class LicenseClientTest {
             ActivationResult.HardwareMismatch(null, null), ActivationResult.EnrollDisabled, ActivationResult.EnrollClaimed,
             ActivationResult.LicenseDisabled, ActivationResult.LicenseExpired, ActivationResult.AttestationRequired,
             ActivationResult.RateLimited(null), server,
-        )) assertTrue("${r.code}", r.code in im.plrs.key.core.ERROR_CODE_VALUES)
+        )) {
+            assertTrue("${r.code}", r.code in im.plrs.key.core.ERROR_CODE_VALUES)
+        }
         assertNull(ActivationResult.Ok("pkeyt_x", 1).code)
     }
 
@@ -324,8 +342,10 @@ class LicenseClientTest {
         val profile = JsonObject(mapOf("name" to JsonPrimitive("Ada Lovelace"), "firstName" to JsonPrimitive("Ada")))
         val client = licensed(
             mapOf(
-                "license.tier" to JsonPrimitive("pro"), "license.tierLabel" to JsonPrimitive("Pro"),
-                "deviceLimit" to JsonPrimitive(3), "channels" to JsonArray(listOf(JsonPrimitive("stable"), JsonPrimitive("beta"))),
+                "license.tier" to JsonPrimitive("pro"),
+                "license.tierLabel" to JsonPrimitive("Pro"),
+                "deviceLimit" to JsonPrimitive(3),
+                "channels" to JsonArray(listOf(JsonPrimitive("stable"), JsonPrimitive("beta"))),
             ),
             profile,
         )
@@ -368,9 +388,14 @@ class LicenseClientTest {
         val dir = java.nio.file.Files.createTempDirectory("pkey-deactivate").toFile().also { it.deleteOnExit() }
         val first = CoreContext(
             CoreOptions(
-                productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
-                store = FileStore("djdl", dir), transport = ScriptedTransport { respond(200, "{}") },
-                clock = { now }, deviceName = "Test Device",
+                productSlug = "djdl",
+                version = "1.0.0",
+                pinnedKeys = signer.trust,
+                trustRefresh = false,
+                store = FileStore("djdl", dir),
+                transport = ScriptedTransport { respond(200, "{}") },
+                clock = { now },
+                deviceName = "Test Device",
             ),
         )
         first.start()
@@ -379,9 +404,14 @@ class LicenseClientTest {
         // A relaunch: a new context over the same directory reads the flag back, so a silent restore stays quiet.
         val second = CoreContext(
             CoreOptions(
-                productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
-                store = FileStore("djdl", dir), transport = ScriptedTransport { respond(200, "{}") },
-                clock = { now }, deviceName = "Test Device",
+                productSlug = "djdl",
+                version = "1.0.0",
+                pinnedKeys = signer.trust,
+                trustRefresh = false,
+                store = FileStore("djdl", dir),
+                transport = ScriptedTransport { respond(200, "{}") },
+                clock = { now },
+                deviceName = "Test Device",
             ),
         )
         second.start()
