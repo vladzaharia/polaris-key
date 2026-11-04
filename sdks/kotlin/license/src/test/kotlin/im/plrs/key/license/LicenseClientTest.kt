@@ -13,6 +13,7 @@ import im.plrs.key.core.CoreContext
 import im.plrs.key.core.CoreOptions
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.HardwareFingerprint
+import im.plrs.key.core.FileStore
 import im.plrs.key.core.InMemoryStore
 import im.plrs.key.core.LicenseStatus
 import im.plrs.key.core.PolarisException
@@ -345,5 +346,45 @@ class LicenseClientTest {
         assertNull(store.getToken())
         assertEquals("/djdl/license/deauthorize", transport.requests().single().path)
         assertEquals(LicenseStatus.needsActivation, LicenseClient(core).status().status)
+    }
+
+    @Test
+    fun deactivationSetsTheExplicitSignOutFlagUntilThePersonSignsInAgain() = runBlocking {
+        val store = InMemoryStore("djdl", "dev1").also { it.setToken("pkeyt_held") }
+        val (core, _) = core(store) { respond(200, "{}") }
+        core.start()
+        assertFalse(core.explicitSignOut())
+        LicenseClient(core).deactivate()
+        assertNull(store.getToken())
+        assertTrue(core.explicitSignOut())
+        // The restore ladders read this flag (`AutoSignIn`, `RestoreLadder`) and stay quiet while it is set;
+        // it persists in the store's state directory like a sign-out's. A sign-in the person starts clears it.
+        core.setToken("pkeyt_new", TokenSource.signin, personInitiated = true)
+        assertFalse(core.explicitSignOut())
+    }
+
+    @Test
+    fun theDeactivationFlagSurvivesARelaunchOverTheSameDirectory() = runBlocking {
+        val dir = java.nio.file.Files.createTempDirectory("pkey-deactivate").toFile().also { it.deleteOnExit() }
+        val first = CoreContext(
+            CoreOptions(
+                productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
+                store = FileStore("djdl", dir), transport = ScriptedTransport { respond(200, "{}") },
+                clock = { now }, deviceName = "Test Device",
+            ),
+        )
+        first.start()
+        first.setToken("pkeyt_held", TokenSource.signin)
+        LicenseClient(first).deactivate()
+        // A relaunch: a new context over the same directory reads the flag back, so a silent restore stays quiet.
+        val second = CoreContext(
+            CoreOptions(
+                productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
+                store = FileStore("djdl", dir), transport = ScriptedTransport { respond(200, "{}") },
+                clock = { now }, deviceName = "Test Device",
+            ),
+        )
+        second.start()
+        assertTrue(second.explicitSignOut())
     }
 }

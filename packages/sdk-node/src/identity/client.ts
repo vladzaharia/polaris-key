@@ -195,6 +195,12 @@ export class IdentityClient {
     });
   }
 
+  /** `deactivate()` sets the same explicit sign-out flag `signOut()` does, so a silent restore
+   *  cannot sign the device back in; a sign-in the person starts clears it. @internal */
+  markDeactivated(): Promise<void> {
+    return this.signInState.signedOut();
+  }
+
   private readonly account: Account;
   private readonly signInState: SignInState;
   #routes: NearbyRoutes | undefined;

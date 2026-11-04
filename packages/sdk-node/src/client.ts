@@ -531,6 +531,7 @@ export class PolarisKeyClient {
       await this.cloudConnect.transfer.purge().catch(() => undefined);
       await this.keyring.forget();
       await this.identity.forget();
+      await this.identity.markDeactivated();
       await this.cloudSyncApi.onDeactivated().catch(() => undefined);
       this.noteLicense();
     };

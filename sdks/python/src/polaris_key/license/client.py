@@ -233,6 +233,9 @@ class LicenseClient:
             deauthorize(self._ctx, token)
         if self._on_deactivated is not None:
             self._on_deactivated()
+        # As a sign-out does: nothing automatic may sign the person back in after removing the
+        # device. The flag goes first (fail closed) and the person's next sign-in clears it.
+        self._tokens.set_explicit_sign_out(True)
         self.wipe_local()
 
     def wipe_local(self) -> None:

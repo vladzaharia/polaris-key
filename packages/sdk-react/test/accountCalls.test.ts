@@ -147,14 +147,19 @@ async function server(opts: { account?: boolean } = {}): Promise<Server> {
   };
 }
 
-async function bearer(s: Server) {
+async function bearer(
+  s: Server,
+  store?: (factory: IDBFactory) => ReturnType<typeof indexedDbStore>,
+) {
   const factory = new IDBFactory();
   await indexedDbOfflineStore(factory)!.write("acme", { deviceId: DEVICE });
   const adapter = browserAdapter({
     ...BEARER,
     trust: { pinnedKeys: { [s.key.kid]: s.key.raw } },
     fetchImpl: s.fetchImpl,
-    store: indexedDbStore("acme", { factory, persistence: PERSISTED })!,
+    store:
+      store?.(factory) ??
+      indexedDbStore("acme", { factory, persistence: PERSISTED })!,
   });
   await settled(adapter);
   return adapter;
@@ -329,6 +334,33 @@ describe("bearer: the account calls", () => {
     expect(own).toBeDefined();
     await adapter.deauthorizeDevice(own!);
     expect(sent).toBe(0);
+  });
+
+  it("deauthorizing this device's own seat sets the explicit sign-out flag the silent ladder reads", async () => {
+    const s = await server({ account: false });
+    let flag: { get(): Promise<boolean> } | undefined;
+    const adapter = await bearer(s, (factory) => {
+      const store = indexedDbStore("acme", {
+        factory,
+        persistence: PERSISTED,
+      })!;
+      flag = store.explicitSignOut;
+      return store;
+    });
+    await adapter.activateWithKey("pkey_good");
+    expect(await flag!.get()).toBe(false);
+    const own = adapter.currentDevice()?.id;
+    expect(own).toBeDefined();
+    await adapter.deauthorizeDevice(own!);
+    expect(await flag!.get()).toBe(true);
+    // The property: a restore after the seat is gone stays quiet.
+    expect(
+      await (
+        adapter as unknown as {
+          autoSignIn(): Promise<{ kind: string; reason?: string }>;
+        }
+      ).autoSignIn(),
+    ).toEqual({ kind: "needsSignIn", reason: "signedOut" });
   });
 
   it("released: false keeps the key activation", async () => {

@@ -236,6 +236,9 @@ public actor LicenseClient {
             if let token = await core.token {
                 await LicenseEndpoints.deauthorize(core, token: token)
             }
+            // As a sign-out does: no silent restore may sign the person back in after the
+            // device was removed. Set first (fail closed); the next sign-in the person starts clears it.
+            await core.setExplicitSignOut(true)
             try await core.clearAll()
         } catch {
             await onReleased?()

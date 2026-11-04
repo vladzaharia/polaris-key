@@ -265,6 +265,9 @@ func deactivate() -> PKeyResult:
 	var remote: PKeyResult = null
 	if token != "":
 		remote = await PKeyLicenseEndpoints.deauthorize(core, token)
+	# As a sign-out does: no silent restore may sign the person back in after the device was
+	# removed. Set first (fail closed); the next sign-in the person starts clears it.
+	core.cache.set_explicit_sign_out(true)
 	var wiped := core.tokens.clear()
 	wiped = core.cache.clear() and wiped
 	if on_changed.is_valid():
