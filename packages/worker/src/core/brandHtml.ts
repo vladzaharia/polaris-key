@@ -355,7 +355,7 @@ const AUTH_CARD_RULES = [
   // the raised surface; a 56 px brand row under the safe-area inset with no hairline; 24 px inline
   // padding, 8 px above the step (24 px under a header strip, which keeps the one hairline) and 24
   // px below; the footer follows the content. The Locker lockup drops to 23 px, the Key's is sized by width.
-  `@media (max-width: 39.99rem){[data-brand=locker],[data-brand=locker] body{background:var(--raised)}[data-brand=locker] body{padding:0}[data-brand=locker] .ac-brand{box-sizing:content-box;height:3.5rem;padding-top:env(safe-area-inset-top,0px);align-items:center;margin:0;border:0}[data-brand=locker] .ac-brand svg{height:23px;width:auto}[data-brand=locker] main.ac{max-width:none;margin:0;border:0;border-radius:0;box-shadow:none;background:var(--raised)}[data-brand=locker] .ac-head,[data-brand=locker] .ac-foot{padding-left:1.5rem;padding-right:1.5rem}[data-brand=locker] .ac-body{padding:.5rem 1.5rem 1.5rem}[data-brand=locker] .ac-head~.ac-body{padding-top:1.5rem}[data-brand=locker] .ac-links{margin:0;padding:1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom,0px))}[data-brand=locker] .tv .ac-body{padding:1.5rem}[data-brand=locker] .tv .ac-brand svg{height:23px}}`,
+  `@media (max-width: 39.99rem){[data-brand=locker],[data-brand=locker] body{background:var(--raised)}[data-brand=locker] body{padding:0}[data-brand=locker] .ac-brand{box-sizing:content-box;height:3.5rem;padding-top:env(safe-area-inset-top,0px);align-items:center;margin:0;border:0}[data-brand=locker] main.ac{max-width:none;margin:0;border:0;border-radius:0;box-shadow:none;background:var(--raised)}[data-brand=locker] .ac-head,[data-brand=locker] .ac-foot{padding-left:1.5rem;padding-right:1.5rem}[data-brand=locker] .ac-body{padding:.5rem 1.5rem 1.5rem}[data-brand=locker] .ac-head~.ac-body{padding-top:1.5rem}[data-brand=locker] .ac-links{margin:0;padding:1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom,0px))}[data-brand=locker] .tv .ac-body{padding:1.5rem}}`,
   // The hosted passport (SIGN-IN.md "the product passport"): at 960 px and wider with a width to
   // height ratio of at least 1.2, and while the page has room for 46 rem (a container query on the
   // body, so rem follows the root font size and 200 % text stacks the strip), the app sits in a
@@ -392,6 +392,9 @@ const LOCKER_PAGE_CSS_TAIL = [
   `:root[data-brand=locker]{${lockerPalette("dark")}}`,
   `@media (prefers-color-scheme: light){:root[data-brand=locker]{${lockerPalette("light")}}}`,
   ...AUTH_CARD_RULES,
+  // Phones: the Locker lockup drops to 23 px (the portal header's) in its 56 px row, `/tv`'s too.
+  // Only here, not in `AUTH_CARD_RULES`, which the console card copies: its Key lockup is sized by width.
+  `@media (max-width: 39.99rem){[data-brand=locker] .ac-brand svg,[data-brand=locker] .tv .ac-brand svg{height:23px;width:auto}}`,
 ].join("");
 
 /** The stylesheet of a Locker page: `BRAND_PAGE_CSS` and its tail. */

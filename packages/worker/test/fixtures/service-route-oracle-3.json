@@ -2298,7 +2298,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32999:ed604cb684158830"
+    "body": "33354:4bab629cf5593bb3"
   },
   "HEAD /djdl/identity/authorize": {
     "status": 405,
@@ -2395,7 +2395,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32999:ed604cb684158830"
+    "body": "33354:4bab629cf5593bb3"
   },
   "HEAD /djdl/identity/authorize/": {
     "status": 405,
@@ -2492,7 +2492,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32999:ed604cb684158830"
+    "body": "33354:4bab629cf5593bb3"
   },
   "HEAD /djdl/identity/authorize?client_id=c&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&response_type=code": {
     "status": 405,
@@ -2589,7 +2589,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32732:e8be05f95fb93e43"
+    "body": "33087:1d95313aea0eb13d"
   },
   "HEAD /djdl/identity/auth/choose": {
     "status": 405,
@@ -2606,7 +2606,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32732:e8be05f95fb93e43"
+    "body": "33087:1d95313aea0eb13d"
   },
   "POST+body /djdl/identity/auth/choose": {
     "status": 403,
@@ -2615,7 +2615,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32732:e8be05f95fb93e43"
+    "body": "33087:1d95313aea0eb13d"
   },
   "PUT /djdl/identity/auth/choose": {
     "status": 405,
@@ -2688,7 +2688,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "33791:86125d89e07267c7"
+    "body": "34022:4e26011daa388aba"
   },
   "HEAD /djdl/identity/auth/device": {
     "status": 405,
@@ -2705,7 +2705,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "33791:86125d89e07267c7"
+    "body": "34022:4e26011daa388aba"
   },
   "POST+body /djdl/identity/auth/device": {
     "status": 200,
@@ -2714,7 +2714,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "33791:86125d89e07267c7"
+    "body": "34022:4e26011daa388aba"
   },
   "PUT /djdl/identity/auth/device": {
     "status": 405,
@@ -5207,7 +5207,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32999:ed604cb684158830"
+    "body": "33354:4bab629cf5593bb3"
   },
   "HEAD+commerce-off /djdl/identity/authorize": {
     "status": 405,
@@ -5304,7 +5304,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32999:ed604cb684158830"
+    "body": "33354:4bab629cf5593bb3"
   },
   "HEAD+commerce-off /djdl/identity/authorize/": {
     "status": 405,
@@ -5401,7 +5401,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32999:ed604cb684158830"
+    "body": "33354:4bab629cf5593bb3"
   },
   "HEAD+commerce-off /djdl/identity/authorize?client_id=c&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&response_type=code": {
     "status": 405,
@@ -5498,7 +5498,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32732:e8be05f95fb93e43"
+    "body": "33087:1d95313aea0eb13d"
   },
   "HEAD+commerce-off /djdl/identity/auth/choose": {
     "status": 405,
@@ -5515,7 +5515,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32732:e8be05f95fb93e43"
+    "body": "33087:1d95313aea0eb13d"
   },
   "POST+body+commerce-off /djdl/identity/auth/choose": {
     "status": 403,
@@ -5524,7 +5524,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32732:e8be05f95fb93e43"
+    "body": "33087:1d95313aea0eb13d"
   },
   "PUT+commerce-off /djdl/identity/auth/choose": {
     "status": 405,
@@ -5597,7 +5597,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "33791:86125d89e07267c7"
+    "body": "34022:4e26011daa388aba"
   },
   "HEAD+commerce-off /djdl/identity/auth/device": {
     "status": 405,
@@ -5614,7 +5614,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "33791:86125d89e07267c7"
+    "body": "34022:4e26011daa388aba"
   },
   "POST+body+commerce-off /djdl/identity/auth/device": {
     "status": 200,
@@ -5623,7 +5623,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "33791:86125d89e07267c7"
+    "body": "34022:4e26011daa388aba"
   },
   "PUT+commerce-off /djdl/identity/auth/device": {
     "status": 405,
@@ -7988,7 +7988,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32999:ed604cb684158830"
+    "body": "33354:4bab629cf5593bb3"
   },
   "HEAD+license-off /djdl/identity/authorize": {
     "status": 405,
@@ -8085,7 +8085,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32999:ed604cb684158830"
+    "body": "33354:4bab629cf5593bb3"
   },
   "HEAD+license-off /djdl/identity/authorize/": {
     "status": 405,
@@ -8182,7 +8182,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32999:ed604cb684158830"
+    "body": "33354:4bab629cf5593bb3"
   },
   "HEAD+license-off /djdl/identity/authorize?client_id=c&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&response_type=code": {
     "status": 405,
@@ -8279,7 +8279,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32732:e8be05f95fb93e43"
+    "body": "33087:1d95313aea0eb13d"
   },
   "HEAD+license-off /djdl/identity/auth/choose": {
     "status": 405,
@@ -8296,7 +8296,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32732:e8be05f95fb93e43"
+    "body": "33087:1d95313aea0eb13d"
   },
   "POST+body+license-off /djdl/identity/auth/choose": {
     "status": 403,
@@ -8305,7 +8305,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "32732:e8be05f95fb93e43"
+    "body": "33087:1d95313aea0eb13d"
   },
   "PUT+license-off /djdl/identity/auth/choose": {
     "status": 405,
@@ -8378,7 +8378,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "33791:86125d89e07267c7"
+    "body": "34022:4e26011daa388aba"
   },
   "HEAD+license-off /djdl/identity/auth/device": {
     "status": 405,
@@ -8395,7 +8395,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "33791:86125d89e07267c7"
+    "body": "34022:4e26011daa388aba"
   },
   "POST+body+license-off /djdl/identity/auth/device": {
     "status": 200,
@@ -8404,7 +8404,7 @@
       "cache-control": "no-store"
     },
     "cookies": [],
-    "body": "33791:86125d89e07267c7"
+    "body": "34022:4e26011daa388aba"
   },
   "PUT+license-off /djdl/identity/auth/device": {
     "status": 405,
