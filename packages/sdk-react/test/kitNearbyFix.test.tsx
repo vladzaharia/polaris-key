@@ -54,6 +54,23 @@ const text = (c: HTMLElement) => c.textContent ?? "";
 const title = (c: HTMLElement) =>
   c.querySelector<HTMLElement>('[data-part="title"]');
 
+async function endedScreen(container: HTMLElement, heading: string) {
+  await waitFor(() => {
+    expect(control(container, "common.tryAgain")).not.toBeNull();
+    expect(title(container)?.textContent).toBe(heading);
+  });
+}
+
+async function openWaiting(
+  a: DesktopAdapter,
+  onClose: () => void,
+  code: string,
+) {
+  const r = wrap(a, <NearbySignIn prompt={false} onClose={onClose} />);
+  await waitFor(() => expect(text(r.container)).toContain(code));
+  return r;
+}
+
 describe("<NearbySignIn> endings and choices", () => {
   it.each([
     ["denied", "Sign-in declined"],
@@ -68,11 +85,7 @@ describe("<NearbySignIn> endings and choices", () => {
       });
       const a = await adapterOf(bridge);
       const onClose = vi.fn();
-      const { container } = wrap(
-        a,
-        <NearbySignIn prompt={false} onClose={onClose} />,
-      );
-      await waitFor(() => expect(text(container)).toContain("111 222"));
+      const { container } = await openWaiting(a, onClose, "111 222");
       await act(async () => {
         bridge.push(emptyBridgeState({ nearby: { requester: req(phase) } }));
       });
@@ -132,10 +145,7 @@ describe("<NearbySignIn> endings and choices", () => {
     const { container } = wrap(a, <NearbySignIn prompt={false} />);
     await shows(container, "common.cancel");
     fireEvent.click(control(container, "common.cancel")!);
-    await waitFor(() => {
-      expect(control(container, "common.tryAgain")).not.toBeNull();
-      expect(title(container)?.textContent).toBe("Not signed in");
-    });
+    await endedScreen(container, "Not signed in");
     a.dispose();
 
     const b = v5({
@@ -147,10 +157,7 @@ describe("<NearbySignIn> endings and choices", () => {
     await act(async () => {
       b.push(emptyBridgeState({}));
     });
-    await waitFor(() => {
-      expect(control(two.container, "common.tryAgain")).not.toBeNull();
-      expect(title(two.container)?.textContent).toBe("Not signed in");
-    });
+    await endedScreen(two.container, "Not signed in");
     a2.dispose();
   });
 
@@ -212,9 +219,8 @@ describe("<NearbySignIn> endings and choices", () => {
       <NearbySignIn prompt={false} noneFoundMs={60} />,
     );
     await waitFor(() => expect(text(container)).toContain("Looking for"));
+    await endedScreen(container, "No device found");
     await waitFor(() => {
-      expect(control(container, "common.tryAgain")).not.toBeNull();
-      expect(title(container)?.textContent).toBe("No device found");
       expect(text(container)).toContain("Approve a Nearby Device");
     });
     a.dispose();
@@ -246,11 +252,7 @@ describe("<NearbySignIn> endings and choices", () => {
     });
     const a = await adapterOf(bridge);
     const onClose = vi.fn();
-    const { container } = wrap(
-      a,
-      <NearbySignIn prompt={false} onClose={onClose} />,
-    );
-    await waitFor(() => expect(text(container)).toContain("111 222"));
+    const { container } = await openWaiting(a, onClose, "111 222");
     (document.activeElement as HTMLElement | null)?.blur();
     fireEvent.keyDown(document.body, { key: "Escape" });
     await waitFor(() =>
@@ -265,11 +267,7 @@ describe("<NearbySignIn> endings and choices", () => {
     });
     const a = new DesktopAdapter({ bridge, now: () => NOW_SEC });
     const onClose = vi.fn();
-    const { container } = wrap(
-      a,
-      <NearbySignIn prompt={false} onClose={onClose} />,
-    );
-    await waitFor(() => expect(text(container)).toContain("555 666"));
+    const { container } = await openWaiting(a, onClose, "555 666");
     expect(onClose).not.toHaveBeenCalled();
     a.dispose();
   });

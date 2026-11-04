@@ -2193,7 +2193,7 @@
       "jscpd:duplicate": 2
     },
     "packages/sdk-react/test/kitNearbyFix.test.tsx": {
-      "jscpd:duplicate": 8
+      "jscpd:duplicate": 5
     },
     "packages/sdk-react/test/kitNext.test.tsx": {
       "jscpd:duplicate": 2

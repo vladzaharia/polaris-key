@@ -4,13 +4,10 @@
  */
 
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const runner = readFileSync(
-  join(ROOT, "sdks", "godot", "tests", "runner.gd"),
+  new URL("../sdks/godot/tests/runner.gd", import.meta.url),
   "utf8",
 );
 
