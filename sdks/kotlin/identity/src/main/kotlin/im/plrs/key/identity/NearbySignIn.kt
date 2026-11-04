@@ -284,48 +284,50 @@ public class NearbySignInSession internal constructor(
      * when the caller is cancelled (a cancelled wait that finds the session ended calls it): the token is taken out
      * of the session first, so an abandoned discard would leave it stored with no owner.
      */
-    private suspend fun discard() = withContext(NonCancellable) { discardLock.withLock {
-        synchronized(lock) {
-            held?.fill(0)
-            held = null
+    private suspend fun discard() = withContext(NonCancellable) {
+        discardLock.withLock {
+            synchronized(lock) {
+                held?.fill(0)
+                held = null
+            }
+            try {
+                req.declineAccount()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The chosen session is gone.
+            }
+            closeLan()
+            val own: String? = synchronized(lock) {
+                if (!signedIn) return@withLock
+                token.also { token = null }
+            }
+            val holds = own != null && core.token() == own
+            if (!holds) {
+                // Another sign-in holds the device now: this session ends without touching it.
+                synchronized(lock) { signedIn = false }
+                return@withLock
+            }
+            try {
+                client.signOut()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The Worker could not be asked: the device still drops the token below.
+            }
+            try {
+                core.dropHeldToken(own!!)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // A token that cannot be removed keeps its mark: the next start drops it.
+            }
+            synchronized(lock) {
+                signedIn = false
+                shown = null
+            }
         }
-        try {
-            req.declineAccount()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // The chosen session is gone.
-        }
-        closeLan()
-        val own: String? = synchronized(lock) {
-            if (!signedIn) return@withLock
-            token.also { token = null }
-        }
-        val holds = own != null && core.token() == own
-        if (!holds) {
-            // Another sign-in holds the device now: this session ends without touching it.
-            synchronized(lock) { signedIn = false }
-            return@withLock
-        }
-        try {
-            client.signOut()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // The Worker could not be asked: the device still drops the token below.
-        }
-        try {
-            core.dropHeldToken(own!!)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // A token that cannot be removed keeps its mark: the next start drops it.
-        }
-        synchronized(lock) {
-            signedIn = false
-            shown = null
-        }
-    } }
+    }
 
     // ── The poll ─────────────────────────────────────────────────────────────────────────────
 
