@@ -5,6 +5,7 @@ extends RefCounted
 ## (ui-matrix.json `settings` family, AccountAndLicense) a view reads. No node here, so a game
 ## drawing its own account page reuses it as is.
 
+const Holders := preload("res://addons/polaris_key/ui/model/holders.gd")
 const Models := preload("res://addons/polaris_key/ui/model/models.gd")
 
 ## The enforced entitlements that name the tier and the seats (`license.tierLabel`, `license.tier`,
@@ -99,8 +100,5 @@ static func status_key(status: String) -> String:
 
 
 ## An email masked for a screen others can see (`m•••@fennick.studio`) and revealed on focus.
-static func mask_email(email: String) -> String:
-	var at := email.find("@")
-	if at < 1:
-		return email
-	return email.substr(0, 1) + "•••" + email.substr(at)
+static func mask_email(email: Variant) -> String:
+	return Holders.mask_email(email)

@@ -27,6 +27,7 @@ extends RefCounted
 ##   copy.format("devices.count", {"count": 3})   # "3 devices"
 
 const Errors := preload("res://addons/polaris_key/ui/model/errors.gd")
+const Holders := preload("res://addons/polaris_key/ui/model/holders.gd")
 const Vocabulary := preload("res://addons/polaris_key/ui/model/vocabulary.gd")
 const _Self := preload("res://addons/polaris_key/ui/model/copy_format.gd")
 
@@ -557,6 +558,13 @@ static func _read_po(text: String, launch_locale: String) -> Dictionary:
 
 ## A select names every form factor but `other` (the bare msgid); a platform variant never does
 ## (`tv` is both a form factor and a variant platform).
+## A reason line whose first words are marked `**like this**` in the catalog, split into runs
+## `[{text, strong}]` (ui-core's `leadParts`). A renderer draws the strong runs bold and never
+## hands the string to a markup parser.
+static func lead_parts(text: String) -> Array:
+	return Holders.lead_parts(text)
+
+
 static func _is_select(ctx: Dictionary) -> bool:
 	for ff in Vocabulary.FORM_FACTORS:
 		if ff != "other" and not ctx.has(ff):
