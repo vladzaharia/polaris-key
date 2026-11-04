@@ -1,9 +1,10 @@
 // Helpers shared by the nearby kit tests: a fake v5 bridge, an adapter over it, the provider.
 import { vi } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { expect } from "vitest";
 
 import { PolarisKeyProvider } from "@polaris-key/react";
+import { NearbyApprover, NearbySignIn } from "@polaris-key/react/kit";
 import { DesktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type {
   BridgeNearbyRequester,
@@ -55,3 +56,49 @@ export const req = (
   approvers: [{ id: "ref-1", device: "Mac", platform: "macos" }],
   ...extra,
 });
+
+// Pay the cold first-render cost (module init, component compile, the copy table's first lookups)
+// before any test's own 1 s wait starts. Call it from `beforeAll`; it is outside every test's timing.
+export async function warmUpNearby(): Promise<void> {
+  const bridge = v5({
+    nearbyStart: vi.fn(async () => req("choose-approver")),
+    nearbyCancel: vi.fn(async () => undefined),
+    approverStart: vi.fn(async () => ({ listening: true, asks: [] })),
+    approverStop: vi.fn(async () => undefined),
+  });
+  const a = await adapterOf(bridge);
+  const patient = { timeout: 8000 };
+  const signIn = wrap(a, <NearbySignIn settleMs={0} />);
+  await waitFor(
+    () => expect(control(signIn.container, "common.continue")).not.toBeNull(),
+    patient,
+  );
+  cleanup();
+  const approver = wrap(a, <NearbyApprover />);
+  await waitFor(() => expect(bridge.approverStart).toHaveBeenCalled(), patient);
+  await act(async () => {
+    bridge.push(
+      emptyBridgeState({
+        nearby: {
+          approver: {
+            listening: true,
+            asks: [
+              {
+                askId: "warm-1",
+                device: "Warm-up PC",
+                platform: "windows",
+                codes: ["111 111", "222 222", "333 333"],
+              },
+            ],
+          },
+        },
+      }),
+    );
+  });
+  await waitFor(
+    () =>
+      expect(control(approver.container, "signin.approve.deny")).not.toBeNull(),
+    patient,
+  );
+  cleanup();
+}

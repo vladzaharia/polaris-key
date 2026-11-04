@@ -29,11 +29,15 @@ import {
   req,
   shows,
   v5,
+  warmUpNearby,
   wrap,
   type Fake,
 } from "./nearbyHelpers.js";
 
-beforeAll(stubResizeObserver);
+beforeAll(async () => {
+  stubResizeObserver();
+  await warmUpNearby();
+});
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();

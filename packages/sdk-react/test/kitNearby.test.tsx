@@ -22,9 +22,20 @@ import type {
 } from "../src/desktop/bridge.js";
 import { stubResizeObserver } from "./autoFixtures.js";
 import { emptyBridgeState } from "./fixtures.js";
-import { adapterOf, control, req, shows, v5, wrap } from "./nearbyHelpers.js";
+import {
+  adapterOf,
+  control,
+  req,
+  shows,
+  v5,
+  warmUpNearby,
+  wrap,
+} from "./nearbyHelpers.js";
 
-beforeAll(stubResizeObserver);
+beforeAll(async () => {
+  stubResizeObserver();
+  await warmUpNearby();
+});
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
