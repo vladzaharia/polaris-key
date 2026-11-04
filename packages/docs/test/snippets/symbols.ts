@@ -74,6 +74,7 @@ export const NOT_EXPORTS = new Set([
   "PolarisSaveResolver",
   "PolarisKeyUI",
   "PolarisKeyUICore",
+  "PolarisRedirect",
   // NestJS's own exception class, named beside the server package's onRefusal.
   "HttpException",
 ]);

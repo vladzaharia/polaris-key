@@ -1199,7 +1199,7 @@ the answers to the handles. Deciding handlers are methods; observers are signals
 func show_codes(_label: String, _platform: String, _codes: Array) -> void:
 	pass   # draw the label and the codes on your approval screen
 
-func show_list() -> void:
+func show_list(_list: Array) -> void:
 	pass   # redraw the approver list from req.approvers()
 
 func _on_approval(approval: PKeyPeerNearbyApprover.Approval) -> void:
@@ -1234,6 +1234,14 @@ func ask(request_handle: String) -> void:
 them and hold the account until the person says it is theirs.
 
 ```gdscript
+func show_list(_list: Array) -> void:
+	pass   # draw session.approvers
+
+
+func show_codes(_device: String, _codes: PackedStringArray) -> void:
+	pass   # draw the device and the three codes
+
+
 # D, the new device: the gate draws it with `offer_nearby`, or drive it yourself.
 func sign_in_nearby() -> void:
 	var made := await PolarisKey.identity.sign_in.start_nearby()
@@ -1265,7 +1273,7 @@ func _on_ask(ask: PKeyNearbyAsk) -> void:
   (0x0030) and only then stores it (`PolarisKey.keyring.seal_wrap_to`, `put_wrap`). D adopts the channel copy after
   `confirm_account()` (`session.wrap` is `applied` or `refused`, with `wrap_changed`) and drops it on a decline; a
   refused wrap leaves the device locked and the server copy and `unlock()` still work.
-- The kit: `PKeyNearbyApproval` with `PKeyNearbyApprovalFlow` (`PKeyNearbyApprovalFlow.new(view, PolarisKey).open()`)
+- The kit: `PKeyNearbyApproval` with `PKeyNearbyApprovalFlow` (made from the view and `PolarisKey`; call `open()`)
   is the approver screen, and `PKeyAccountTab` shows the "Approve a nearby device" row (`nearby_approval_requested`)
   where the device is signed in, can advertise and the product serves it.
 - `PolarisKey.identity.nearby_available("approver")` says whether this device can take the approving side.
