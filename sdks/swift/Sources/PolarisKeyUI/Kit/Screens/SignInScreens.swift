@@ -293,7 +293,7 @@ public struct SignInView: View {
         "signin.auto.confirm.primary", "signin.auto.confirm.other", "signin.linkOffer.primary",
         "signin.linkOffer.decline", "common.notNow", "signin.nearby.code", "signin.nearby.notYou",
         "common.continue", "common.done", "signin.linkOffer.join", "signin.deviceLimit.replace",
-        "a11y.externalLink", "common.cancel",
+        "a11y.externalLink", "common.cancel", "signin.again",
     ]
 
     /// The refusal's page when the server gave a valid one: the add-key page for the limit, the
@@ -413,7 +413,11 @@ public struct SignInView: View {
                 autoButton("signin.auto.confirm.primary", .primary)
                 autoButton("signin.auto.confirm.other", .quiet)
             case .linkOffer:
-                autoButton("signin.linkOffer.primary", .primary, screen: screen)
+                if screen.shows("signin.again") {
+                    autoButton("signin.again", .primary, screen: screen)
+                } else if screen.shows("signin.linkOffer.primary") {
+                    autoButton("signin.linkOffer.primary", .primary, screen: screen)
+                }
                 autoButton("signin.linkOffer.decline", .quiet)
             case .nearbyPrompt:
                 autoButton("common.continue", .primary)
@@ -518,7 +522,11 @@ public struct SignInView: View {
                 }
             } else if model.signInScreen.state == .linkOffer {
                 if kind == .primary {
-                    Task { await model.acceptLinkOffer() }
+                    if model.signInScreen.shows("signin.again") {
+                        model.linkSignInAgain()
+                    } else {
+                        Task { await model.acceptLinkOffer() }
+                    }
                 } else {
                     Task {
                         await model.declineLinkOffer()

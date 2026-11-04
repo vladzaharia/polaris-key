@@ -36,6 +36,17 @@
             let kind: ExchangeKind = .apple
             struct Nothing: Error {}
             func silent(nonce: String) async throws -> PlatformSubjectToken { throw Nothing() }
+            func sheet(nonce: String) async throws -> PlatformSubjectToken {
+                PlatformSubjectToken(token: "apple.id.token", nonce: nonce)
+            }
+            func signOutCleanup() async {}
+            func credentialRevoked() async -> Bool { false }
+        }
+
+        private final class FailingProvider: PlatformIdentityProvider, @unchecked Sendable {
+            let kind: ExchangeKind = .apple
+            struct Nothing: Error {}
+            func silent(nonce: String) async throws -> PlatformSubjectToken { throw Nothing() }
             func sheet(nonce: String) async throws -> PlatformSubjectToken { throw Nothing() }
             func signOutCleanup() async {}
             func credentialRevoked() async -> Bool { false }
@@ -62,7 +73,7 @@
             await server.reply(
                 "/djdl/.well-known/polaris.json",
                 body:
-                    #"{"product":"djdl","services":{"identity":{"enabled":true,"configured":true,"issuer":"\#(api)/identity",\#(nativeMember)"endpoints":{"authorize":"\#(api)/identity/authorize","token":"\#(api)/identity/token","link":"\#(api)/identity/link"\#(request)}},"license":{"enabled":true,"configured":true}}}"#
+                    #"{"product":"djdl","services":{"identity":{"enabled":true,"configured":true,"issuer":"\#(api)/identity","exchange":{"kinds":["apple"]},"nonce":"\#(api)/identity/nonce",\#(nativeMember)"endpoints":{"authorize":"\#(api)/identity/authorize","token":"\#(api)/identity/token","link":"\#(api)/identity/link","nonce":"\#(api)/identity/nonce"\#(request)}},"license":{"enabled":true,"configured":true}}}"#
             )
             await server.reply(
                 "/djdl/identity/request", status: 201,
@@ -73,6 +84,8 @@
                     #"{"access_token":"pkeyt_new","token_type":"Bearer","scope":"profile email","schemaVersion":1,"device":{"id":"D"},"license":null,"subject":"\#(subject)"}"#
             )
             await server.reply("/djdl/identity/link", body: #"{"offer":\#(offer)}"#)
+            await server.reply(
+                "/djdl/identity/nonce", body: #"{"nonce":"\#(String(repeating: "N", count: 43))","expiresIn":300}"#)
             await server.reply(
                 "/djdl/auth/device/start", body: "{}")
             await server.reply(
@@ -241,17 +254,100 @@
             XCTAssertEqual(m.route, .welcome)
         }
 
-        func testAStaleStepUpEndsTheOfferQuietlyWithoutADecline() async throws {
+        private func failLink(status: Int, code: String) async {
+            await server.route("/djdl/identity/link") { request in
+                request.method == "POST"
+                    ? StubServer.Reply(status: status, body: #"{"error":{"code":"\#(code)"}}"#)
+                    : StubServer.Reply(body: #"{"offer":[{"kind":"apple","reach":"developer"}]}"#)
+            }
+        }
+
+        func testAStaleStepUpKeepsTheOfferWithSignInAgainAndLinkIsOneTapAfter() async throws {
             await discovery()
             let (m, c, listeners, store) = try await model()
             c.identity.linkHold(handle: handle, expiresAt: Int.max)
             try await signIn(m, listeners)
             try await settle { m.signInScreen.state == .linkOffer }
+            await failLink(status: 401, code: "step_up_required")
+            await m.acceptLinkOffer()
+            let screen = m.signInScreen
+            XCTAssertEqual(screen.state, .linkOffer)
+            XCTAssertTrue(screen.shows("signin.linkOffer.stale"))
+            XCTAssertTrue(screen.shows("signin.again"))
+            XCTAssertFalse(screen.shows("signin.linkOffer.primary"))
+            XCTAssertTrue(screen.shows("signin.linkOffer.decline"))
+            XCTAssertTrue(c.identity.link.pending)
+            let kept = await store.readRecord(IdentityClient.linkDeclinedRecord)
+            XCTAssertNil(kept)
+            // Sign in again: a fresh sign-in, then the offer is back with Link and the handle held.
             await server.route("/djdl/identity/link") { request in
                 request.method == "POST"
-                    ? StubServer.Reply(status: 401, body: #"{"error":{"code":"step_up_required"}}"#)
-                    : StubServer.Reply(body: #"{"offer":[]}"#)
+                    ? StubServer.Reply(body: #"{"linked":{"kind":"apple","reach":"developer"}}"#)
+                    : StubServer.Reply(body: #"{"offer":[{"kind":"apple","reach":"developer"}]}"#)
             }
+            m.linkSignInAgain()
+            try await settle { listeners.made.count == 2 && m.request != nil }
+            XCTAssertNotNil(listeners.made[1].deliver(callback(49153)))
+            try await settle { m.signInScreen.state == .linkOffer }
+            XCTAssertEqual(m.signInScreen.state, .linkOffer)
+            XCTAssertTrue(m.signInScreen.shows("signin.linkOffer.primary"))
+            XCTAssertFalse(m.signInScreen.shows("signin.linkOffer.stale"))
+            await m.acceptLinkOffer()
+            XCTAssertEqual(m.signInScreen.state, .linkDone)
+            let posts = await server.requests(forPath: "/djdl/identity/link").filter { $0.method == "POST" }
+            XCTAssertEqual(posts.count, 2)
+        }
+
+        func testARefusedDeviceLosesLinkAndNoThanksIsTheWayOn() async throws {
+            for (status, code) in [(404, "not_found"), (400, "invalid_grant")] {
+                server = StubServer()
+                await discovery()
+                let (m, c, listeners, _) = try await model()
+                c.identity.linkHold(handle: handle, expiresAt: Int.max)
+                try await signIn(m, listeners)
+                try await settle { m.signInScreen.state == .linkOffer }
+                await failLink(status: status, code: code)
+                await m.acceptLinkOffer()
+                let screen = m.signInScreen
+                XCTAssertEqual(screen.state, .linkOffer, code)
+                XCTAssertTrue(screen.shows("signin.linkOffer.failed"), code)
+                XCTAssertFalse(screen.shows("signin.linkOffer.primary"), code)
+                XCTAssertFalse(screen.shows("signin.again"), code)
+                XCTAssertTrue(screen.shows("signin.linkOffer.decline"), code)
+                await m.declineLinkOffer()
+                XCTAssertFalse(m.linkStepActive, code)
+                XCTAssertFalse(c.identity.link.pending, code)
+            }
+        }
+
+        func testANetworkFailureKeepsLinkWithTheNetworkLine() async throws {
+            await discovery()
+            let (m, c, listeners, _) = try await model()
+            c.identity.linkHold(handle: handle, expiresAt: Int.max)
+            try await signIn(m, listeners)
+            try await settle { m.signInScreen.state == .linkOffer }
+            await server.route("/djdl/identity/link") { request in
+                request.method == "POST"
+                    ? StubServer.Reply(status: 503, body: "{}")
+                    : StubServer.Reply(body: #"{"offer":[{"kind":"apple","reach":"developer"}]}"#)
+            }
+            await server.drop("/djdl/identity/link")
+            await m.acceptLinkOffer()
+            let screen = m.signInScreen
+            XCTAssertEqual(screen.state, .linkOffer)
+            XCTAssertTrue(screen.shows("core.codes.network.message"))
+            XCTAssertTrue(screen.shows("signin.linkOffer.primary"))
+            XCTAssertFalse(screen.shows("signin.again"))
+            XCTAssertTrue(c.identity.link.pending)
+        }
+
+        func testAnUnavailableAcceptEndsTheOfferQuietly() async throws {
+            await discovery()
+            let (m, c, listeners, store) = try await model()
+            c.identity.installPlatformIdentity(FailingProvider())
+            try await signIn(m, listeners)
+            try await settle { m.signInScreen.state == .linkOffer }
+            // No handle held and the provider's sheet fails: nothing to link with.
             await m.acceptLinkOffer()
             XCTAssertFalse(m.linkStepActive)
             XCTAssertFalse(c.identity.link.pending)

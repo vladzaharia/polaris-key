@@ -1024,8 +1024,24 @@ public final class PolarisKeyGateModel {
         linkBusy = true
         defer { linkBusy = false }
         let kind = autoSignIn?.kind
-        let result = try? await client.identity.link.accept()
+        let result: LinkAcceptResult?
+        var failure: String?
+        do {
+            result = try await client.identity.link.accept()
+        } catch let error as PolarisError {
+            result = nil
+            failure = error.code == IdentityClient.networkError ? "network" : "failed"
+        } catch {
+            result = nil
+            failure = "failed"
+        }
         guard autoSignIn?.step == .linkOffer else { return }
+        if let failure {
+            autoSignIn?.linkError = failure
+            rebuild()
+            announce(signInScreen.copy.last)
+            return
+        }
         switch result {
         case .linked?:
             // Linking spends the handle; the offer is closed here (`link.pending` stays true until then).
@@ -1034,12 +1050,25 @@ public final class PolarisKeyGateModel {
         case .refused(_, let code)? where code == ErrorCode.linkConflict:
             client.identity.link.dismiss()
             autoSignIn = KitAutoSignIn(step: .linkConflict, kind: kind)
+        case .refused(_, let code)? where code == ErrorCode.stepUpRequired:
+            // The sign-in is too old: Sign in again, then Link is one tap (the handle is kept).
+            autoSignIn?.linkError = "stale"
+        case .refused?:
+            autoSignIn?.linkError = "failed"
         default:
             finishLink()
             return
         }
         rebuild()
         announce(signInScreen.copy.first)
+    }
+
+    /// Sign in again on a stale offer: a fresh sign-in of this device; the offer, and the handle it
+    /// holds, come back when it completes.
+    public func linkSignInAgain() {
+        guard autoSignIn?.step == .linkOffer, autoSignIn?.linkError == "stale" else { return }
+        autoSignIn = nil
+        beginSignIn()
     }
 
     /// No thanks: not again for this account on this device.
