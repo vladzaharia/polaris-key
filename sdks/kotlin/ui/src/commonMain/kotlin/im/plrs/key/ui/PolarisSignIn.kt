@@ -378,7 +378,15 @@ public fun PolarisUserCode(code: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-internal fun PolarisUserCode(code: String, modifier: Modifier, onCopy: Pair<String, ((String) -> Unit)?>?) {
+internal fun PolarisUserCode(
+    code: String,
+    modifier: Modifier,
+    onCopy: Pair<String, ((String) -> Unit)?>?,
+    /** What a screen reader says instead of the sign-in code line (LinkPairing says its own). */
+    description: String? = null,
+    /** Centre the code on its plate (LinkPairing); the sign-in code starts at the leading edge. */
+    centered: Boolean = false,
+) {
     val copy = PolarisTheme.copy
     val window = polarisWindow
     val size = when {
@@ -406,7 +414,7 @@ internal fun PolarisUserCode(code: String, modifier: Modifier, onCopy: Pair<Stri
                     fontSize = size,
                     lineHeight = size * 1.25f,
                     letterSpacing = 0.sp,
-                    textAlign = TextAlign.Start,
+                    textAlign = if (centered) TextAlign.Center else TextAlign.Start,
                 ),
                 color = { color },
                 maxLines = 1,
@@ -414,7 +422,7 @@ internal fun PolarisUserCode(code: String, modifier: Modifier, onCopy: Pair<Stri
                 autoSize = TextAutoSize.StepBased(minFontSize = 16.sp, maxFontSize = size, stepSize = 1.sp),
                 modifier = Modifier
                     .weight(1f)
-                    .semantics { contentDescription = copy.format(copy.signInCodeDescription, spelled(code)) },
+                    .semantics { contentDescription = description ?: copy.format(copy.signInCodeDescription, spelled(code)) },
             )
             if (onCopy != null) PolarisCopyLinkButton(onCopy.first, onCopy.second)
         }

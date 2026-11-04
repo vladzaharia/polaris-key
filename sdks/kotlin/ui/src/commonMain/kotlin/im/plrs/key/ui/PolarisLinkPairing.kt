@@ -11,19 +11,31 @@
 //  - a label the other device sent is isolated and worded as reported by the device; a missing label says so;
 //  - Back or Escape declines a code, cancels a window and closes a finished screen;
 //  - the wait after "Codes match" is a status region beside the code, which stays on screen.
-@file:Suppress("ktlint:standard:function-naming", "FunctionNaming", "CyclomaticComplexMethod", "LongParameterList", "LongMethod")
+@file:Suppress("ktlint:standard:function-naming", "FunctionNaming", "CyclomaticComplexMethod", "LongParameterList", "LongMethod", "MagicNumber")
 
 package im.plrs.key.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.relocation.BringIntoViewResponder
+import androidx.compose.foundation.relocation.bringIntoViewResponder
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -33,7 +45,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -41,7 +57,9 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
 /**
@@ -133,7 +151,7 @@ public fun PolarisLinkPairingScreen(
                 text("linkPairing.searching"),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+                modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(window.section))
             ConnectActions(listOf(ConnectButton(button("common.cancel"), onCancel, focus = true)))
@@ -192,10 +210,9 @@ public fun PolarisLinkPairingScreen(
         "failed" -> {
             // Pairing cannot succeed until a pairing is removed when one device is full: Done leads, Try again stays.
             val full = lines.has("linkPairing.failedFull")
-            val danger = lines.has("linkPairing.failedClosed")
             ConnectStep(host, text("linkPairing.failedTitle"), screen.state) {
                 Spacer(Modifier.height(PolarisSpace.tight))
-                if (danger) PolarisErrorLine(failedBody.orEmpty()) else PolarisBody(failedBody.orEmpty(), textAlign = TextAlign.Start)
+                ConnectNotice(failedBody.orEmpty())
                 Spacer(Modifier.height(window.section))
                 val retry = ConnectButton(button("common.tryAgain"), onRetry, primary = !full, focus = !full)
                 val done = ConnectButton(button("common.done"), onDone, primary = full, focus = full)
@@ -217,10 +234,21 @@ public fun PolarisLinkPairingScreen(
 
 /** One step: the product header, the heading (announced once per state) and the content, with the actions inside it. */
 @Composable
-internal fun ConnectStep(modifier: Modifier, title: String, state: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun ConnectStep(
+    modifier: Modifier,
+    title: String,
+    state: String,
+    badge: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     // No `actions` slot: they would dock below the scroll, and Codes match must not be on screen before the categories.
     PolarisScaffold(modifier = modifier, anchor = PolarisAnchor.Top, contentAlign = TextAlign.Start) {
         PolarisProductHeader()
+        if (badge != null) {
+            Spacer(Modifier.height(PolarisSpace.medium))
+            badge()
+            Spacer(Modifier.height(PolarisSpace.medium))
+        }
         PolarisTitle(title, key = state)
         content()
     }
@@ -246,6 +274,7 @@ internal class ConnectButton(val text: String, val onClick: () -> Unit, val prim
  * The actions after the content. A stack with the primary first (Android, Windows, Linux); on the Mac a trailing row with Cancel
  * directly left of the default, emitted left to right so Tab runs the same way. No default key: Return never confirms here.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun ConnectActions(buttons: List<ConnectButton>) {
     @Composable
@@ -256,29 +285,47 @@ internal fun ConnectActions(buttons: List<ConnectButton>) {
             PolarisSecondaryButton(button.text, button.onClick, initialFocus = button.focus)
         }
     }
-    if (polarisWindow.isMac) {
-        PolarisActionGroup(row = true, visualOrder = true) { for (button in buttons.reversed()) draw(button) }
-    } else {
-        buttons.forEachIndexed { index, button ->
-            draw(button)
-            if (index < buttons.lastIndex) Spacer(Modifier.height(PolarisSpace.controls))
+    // On a TV the focused control is brought into view with the title-safe margin below it, so it never sits in the overscan.
+    val margin = with(LocalDensity.current) { TV_SAFE_BOTTOM.toPx() }
+    val tv = polarisWindow.tv
+    val responder = remember(margin, tv) {
+        object : BringIntoViewResponder {
+            override fun calculateRectForParent(localRect: Rect): Rect = if (tv) localRect.copy(bottom = localRect.bottom + margin) else localRect
+
+            override suspend fun bringChildIntoView(localRect: () -> Rect?) = Unit
+        }
+    }
+    Column(Modifier.fillMaxWidth().bringIntoViewResponder(responder)) {
+        if (polarisWindow.isMac) {
+            PolarisActionGroup(row = true, visualOrder = true) { for (button in buttons.reversed()) draw(button) }
+        } else {
+            buttons.forEachIndexed { index, button ->
+                draw(button)
+                if (index < buttons.lastIndex) Spacer(Modifier.height(PolarisSpace.controls))
+            }
         }
     }
 }
 
-/** The code both people compare: monospace, large, on a card; read digit by digit. */
+/** The title-safe band at the foot of a TV picture (5 % of 540 dp). */
+private val TV_SAFE_BOTTOM = 27.dp
+
+/** A failure the person can act on: the warning glyph and the sentence. Not a live region: the heading's focus announces the state. */
+@Composable
+internal fun ConnectNotice(text: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls), verticalAlignment = Alignment.Top) {
+        Icon(PolarisSymbols.Warning, contentDescription = null, tint = PolarisTheme.status.danger, modifier = Modifier.size(20.dp))
+        Text(text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+    }
+}
+
+/** The code both people compare: the kit's hero code (kit mono, medium, one line), centred, with no copy button; read through a11y.linkCode. */
 @Composable
 private fun PairCode(code: String, spoken: String?) {
-    val read = spoken ?: KitConnect.spellOut(code)
-    PolarisSection(title = null) {
-        Text(
-            code,
-            style = MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily.Monospace, letterSpacing = 0.08.em),
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(PolarisSpace.medium).clearAndSetSemantics { contentDescription = read },
-        )
-    }
+    val light = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    // The light plate has a weak edge of its own: a hairline keeps the code a distinct object.
+    val edge = if (light) Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.large) else Modifier
+    PolarisUserCode(code, Modifier.fillMaxWidth().then(edge), onCopy = null, description = spoken ?: KitConnect.spellOut(code), centered = true)
 }
 
 /** Which device reported the code: worded as reported, never as who it is; a missing name says so. */
@@ -288,7 +335,10 @@ private fun ReportedLine(lines: KitLines) {
     Text(line, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth())
 }
 
-/** What each of the two people shares: the label, then the categories as tags; or the line that nothing is shared yet. */
+/**
+ * What each of the two people shares: the label, then the categories as tags; or the line that nothing is shared yet. The group is one
+ * item to a screen reader ("Each of you shares: Contacts, Photos").
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Shares(lines: KitLines, categories: List<String>, labels: Map<String, String>) {
@@ -297,12 +347,34 @@ private fun Shares(lines: KitLines, categories: List<String>, labels: Map<String
         lines.text("linkPairing.sharesNone")?.let { PolarisBody(it, textAlign = TextAlign.Start) }
         return
     }
-    Text(heading, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
-    Spacer(Modifier.height(PolarisSpace.tight))
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(PolarisSpace.tight),
-        verticalArrangement = Arrangement.spacedBy(PolarisSpace.tight),
+    val names = categories.map { labels[it] ?: KitConnect.categoryFallback(it) }
+    Column(Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = "$heading: ${names.joinToString(", ")}" }) {
+        Text(
+            heading,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(PolarisSpace.tight))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(PolarisSpace.tight),
+            verticalArrangement = Arrangement.spacedBy(PolarisSpace.tight),
+        ) {
+            for (name in names) ConsentTag(KitConnect.isolate(name))
+        }
+    }
+}
+
+/** A category tag at reading size: 14 sp, 6 x 12 dp, at least 32 dp tall. */
+@Composable
+private fun ConsentTag(text: String) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
-        for (id in categories) KitTag(KitConnect.isolate(labels[id] ?: KitConnect.categoryFallback(id)))
+        Box(Modifier.heightIn(min = 32.dp).padding(horizontal = 12.dp, vertical = 6.dp), contentAlignment = Alignment.Center) {
+            Text(text, style = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp))
+        }
     }
 }

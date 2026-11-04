@@ -26,6 +26,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 
@@ -89,7 +91,7 @@ public fun PolarisTransferOfferScreen(
         else -> onDone
     }
     val armed = rememberArmed(screen.state, window.tv)
-    val host = modifier.then(PolarisBackHandler(enabled = escape != null, onBack = escape ?: {}))
+    val host = modifier.then(PolarisBackHandler(enabled = true, onBack = escape ?: {}))
     fun text(key: String): String = lines.text(key).orEmpty()
     // The platform's wording (macOS title case) is for buttons only (S4).
     val variant = polarisCopyVariant()
@@ -97,7 +99,12 @@ public fun PolarisTransferOfferScreen(
     fun button(key: String): String = catalog.format(key, locale, variant = variant)
     val title = listOf("transferOffer.ask", "transferOffer.askUnnamed", "transferOffer.receiving", "transferOffer.done", "transferOffer.failed")
         .firstNotNullOfOrNull(lines::text).orEmpty()
-    ConnectStep(host, title, screen.state) {
+    val badge: (@Composable () -> Unit)? = if (screen.state == "done") {
+        { PolarisIconBadge(PolarisSymbols.Check, PolarisTheme.status.successContainer, PolarisTheme.status.success) }
+    } else {
+        null
+    }
+    ConnectStep(host, title, screen.state, badge) {
         when (screen.state) {
             "ask" -> {
                 Spacer(Modifier.height(PolarisSpace.tight))
@@ -122,15 +129,13 @@ public fun PolarisTransferOfferScreen(
             }
 
             "done" -> {
-                Spacer(Modifier.height(PolarisSpace.medium))
-                PolarisIconBadge(PolarisSymbols.Check, PolarisTheme.status.successContainer, PolarisTheme.status.success)
                 Spacer(Modifier.height(window.section))
                 ConnectActions(listOf(ConnectButton(button("common.done"), onDone, primary = true, focus = true)))
             }
 
             "failed" -> {
                 Spacer(Modifier.height(PolarisSpace.tight))
-                PolarisErrorLine(text("transferOffer.failedBody"))
+                ConnectNotice(text("transferOffer.failedBody"))
                 Spacer(Modifier.height(window.section))
                 ConnectActions(listOf(ConnectButton(button("common.done"), onDone, primary = true, focus = true)))
             }
@@ -144,8 +149,10 @@ private fun OfferedFile(name: String, size: Long?, type: String?) {
     val facts = listOfNotNull(size?.let(KitFormat::bytes), type?.takeIf { it.isNotBlank() }?.let(KitConnect::isolate)).joinToString(" · ")
     PolarisSection(title = null) {
         Column(Modifier.fillMaxWidth().padding(PolarisSpace.medium)) {
+            // The middle is elided so the extension always shows; the whole name is what a screen reader says.
             Text(
-                KitConnect.isolate(name),
+                KitConnect.isolate(KitConnect.shortName(name, FILE_ROW_LIMIT)),
+                modifier = Modifier.semantics { contentDescription = KitConnect.isolate(name) },
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 3,
@@ -158,3 +165,6 @@ private fun OfferedFile(name: String, size: Long?, type: String?) {
         }
     }
 }
+
+/** The most characters of a file name the offer row draws. */
+private const val FILE_ROW_LIMIT = 48

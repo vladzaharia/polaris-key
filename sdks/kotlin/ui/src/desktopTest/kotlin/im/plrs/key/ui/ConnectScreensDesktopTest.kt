@@ -46,7 +46,7 @@ class ConnectScreensDesktopTest {
             assertEquals(decline.top, confirm.top, "one row")
             assertTrue(decline.right <= confirm.left, "Not a Match | Codes Match")
             // The categories still come first, in reading order.
-            assertTrue(onNodeWithText("Each of you shares").getBoundsInRoot().bottom <= confirm.top)
+            assertTrue(onNodeWithText("Each of you shares", useUnmergedTree = true).getBoundsInRoot().bottom <= confirm.top)
         })
     }
 

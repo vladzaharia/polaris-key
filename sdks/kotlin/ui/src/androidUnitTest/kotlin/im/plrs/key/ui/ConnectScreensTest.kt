@@ -179,7 +179,7 @@ class ConnectScreensTest {
         rule.waitForIdle()
     }
 
-    private fun top(text: String) = rule.onNodeWithText(text).fetchSemanticsNode().boundsInRoot.top
+    private fun top(text: String) = rule.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top
 
     private fun pairing(
         step: String,
@@ -242,7 +242,7 @@ class ConnectScreensTest {
                 categoryLabels = mapOf("tax-forms" to "Tax documents"),
             )
         }
-        rule.onNodeWithText("⁨Tax documents⁩").assertIsDisplayed()
+        rule.onNodeWithText("⁨Tax documents⁩", useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test
@@ -298,7 +298,7 @@ class ConnectScreensTest {
         show { PolarisLinkPairingScreen(pairing("linked", code = null), null, listOf("contacts", "photos")) }
         rule.onNodeWithText("Paired").assertIsDisplayed()
         rule.onNodeWithText("Paired with ⁨Maya's laptop⁩.").assertIsDisplayed()
-        rule.onNodeWithText("⁨Photos⁩").assertIsDisplayed()
+        rule.onNodeWithText("⁨Photos⁩", useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test
@@ -308,11 +308,28 @@ class ConnectScreensTest {
         show { PolarisTransferOfferScreen(offer("ask", long), long, size = 1_200_000, type = "application/zip", onAccept = { accepted++ }) }
         val shortened = KitConnect.shortName(long)
         rule.onNodeWithText("⁨Maya's laptop⁩ wants to send you a file").assertIsDisplayed()
-        rule.onNodeWithText("⁨$long⁩").assertIsDisplayed()
+        // The row draws the name with its middle elided; the extension shows.
+        rule.onNodeWithText("⁨${KitConnect.shortName(long, 48)}⁩").assertIsDisplayed()
+        rule.onNodeWithContentDescription("⁨$long⁩").assertExists()
         rule.onNodeWithText("1.2 MB · ⁨application/zip⁩").assertIsDisplayed()
         assertTrue(shortened.endsWith(".zip") && shortened.contains('…'))
         rule.onNodeWithText("Accept").performClick()
         assertEquals(1, accepted)
+    }
+
+    @Test
+    fun aLongCameraNameKeepsItsExtensionInTheRow() {
+        val name = "IMG_20261103_141522_holiday-photo-from-the-lake-with-the-whole-family-and-the-dog.jpg.apk"
+        show { PolarisTransferOfferScreen(offer("ask", name), name) }
+        val row = KitConnect.shortName(name, 48)
+        assertTrue(row.endsWith(".jpg.apk") && row.contains('…'))
+        rule.onNodeWithText("⁨$row⁩").assertIsDisplayed()
+    }
+
+    @Test
+    fun theCategoriesAreOneItemToAScreenReader() {
+        show { PolarisLinkPairingScreen(pairing("code"), "123 456", listOf("contacts", "photos")) }
+        rule.onNodeWithContentDescription("Each of you shares: Contacts, Photos").assertIsDisplayed()
     }
 
     @Test
@@ -473,5 +490,43 @@ class ConnectTvFocusTest {
         rule.mainClock.advanceTimeBy(100)
         rule.onNodeWithText("Decline").assertIsFocused()
         rule.onNodeWithText("Accept").assertIsNotFocused()
+    }
+}
+
+/** Android Back while a transfer runs leaves the screen up: only its own Cancel stops it. */
+@RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = "w411dp-h891dp-mdpi")
+class ConnectBackTest {
+    @get:Rule
+    val rule = androidx.compose.ui.test.junit4.createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun backWhileReceivingChangesNothingAndCancelStaysAvailable() {
+        var cancelled = 0
+        var done = 0
+        val screen = KitStates.resolve(
+            KitComponent.transferOffer,
+            transferOfferInputs(PolarisTransferOfferUi(PolarisTransferOfferStep.Receiving, "holiday.zip", "Maya's laptop"))!!,
+        )
+        rule.setContent {
+            StockHost(false) {
+                PolarisTheme(branding = PolarisBranding.PolarisKey, copy = sampleCopy, darkTheme = false) {
+                    PolarisTransferOfferScreen(screen, "holiday.zip", onCancel = { cancelled++ }, onDone = { done++ })
+                }
+            }
+        }
+        rule.waitForIdle()
+        // The handler is on, so Back is taken here and never reaches the host's activity.
+        assertTrue(rule.activity.onBackPressedDispatcher.hasEnabledCallbacks())
+        rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        rule.waitForIdle()
+        assertTrue(!rule.activity.isFinishing)
+        rule.onNodeWithText("Receiving ⁨holiday.zip⁩").assertIsDisplayed()
+        rule.onNodeWithText("Cancel").assertIsDisplayed()
+        assertEquals(0, cancelled)
+        assertEquals(0, done)
+        rule.onNodeWithText("Cancel").performClick()
+        assertEquals(1, cancelled)
     }
 }
