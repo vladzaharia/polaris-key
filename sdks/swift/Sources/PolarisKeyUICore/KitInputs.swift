@@ -883,11 +883,16 @@ public struct KitOffers: Sendable, Codable, Equatable, Hashable {
     }
 }
 
-/// The toast being shown: `update`, `copied`, `warning`, `error` or `progress`.
+/// The toast being shown: `update`, `copied`, `warning`, `error`, `progress` or `key-entries`.
 public struct KitToast: Sendable, Codable, Equatable, Hashable {
     public var kind: String
+    /// `key-entries`: the key entries the license has left.
+    public var left: Int?
 
-    public init(kind: String) { self.kind = kind }
+    public init(kind: String, left: Int? = nil) {
+        self.kind = kind
+        self.left = left
+    }
 }
 
 /// A `core.codes` code a step failed with.

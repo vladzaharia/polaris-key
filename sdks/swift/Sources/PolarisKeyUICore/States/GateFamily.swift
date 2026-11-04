@@ -276,6 +276,11 @@ extension KitStates {
                         ["product": c.product, "version": .text(i.update?.version ?? "")]),
                     c.line("common.dismiss"), c.line("a11y.toastTimer"),
                 ])
+        case "key-entries":
+            guard i.isOn(.license), i.isOn(.identity), let left = i.toast?.left, left >= 0 else {
+                return .hidden
+            }
+            return KitScreen(.info, [c.line("signin.key.entriesLeftShort", ["left": .number(left)])])
         case "copied":
             return KitScreen(.success, [c.line("common.copied")])
         case "warning":
