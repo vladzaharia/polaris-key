@@ -45,7 +45,8 @@ internal fun activateDoneScreen(inputs: KitInputs): KitScreen {
     val args = activateDoneArgs(context, done, inputs.obj("activation"))
     // A holder email too malformed to mask counts as none: no sentence renders with an empty email.
     val masked = KitFormat.maskEmail(inputs.obj("licenseHolder").string("email"))
-    return if (masked.isNotEmpty()) {
+    // Waiting needs Identity on: with it off a holder email still draws the ready state with the portal line.
+    return if (masked.isNotEmpty() && "identity" in inputs.closedServices) {
         val waitingArgs = args + ("maskedEmail" to CopyArgument.Text(masked))
         val keys = listOf("activate.done.title", "activate.done.device", "activate.waiting", "activate.waitingSignIn", "signin.done.start")
         screen(KitComponent.activateDone, "waiting", keys.map { context.line(it, waitingArgs) })

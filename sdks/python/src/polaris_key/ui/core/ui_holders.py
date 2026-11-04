@@ -8,7 +8,7 @@ rows pin:
 * the reasons are written once (:func:`recommend_reasons`): Cloud Sync only when the product has it;
   getting the license back and moving it to a new device only when Identity is on; with Identity off
   the one line sends the person to the portal;
-* the holder is ``licenseHolder.email``: empty is floating, set is waiting for that email, which a
+* the holder is ``licenseHolder.email``: empty is floating, set is waiting for that email (with Identity on), which a
   screen shows masked (:func:`~polaris_key.ui.core.format.mask_email`) and never in full;
 * skipping is never a refusal: Start using is always the one primary.
 
@@ -78,7 +78,8 @@ def _holder_addin(ctx: Context) -> Any:
 def activate_done_view(ctx: Context) -> View:
     """The step after a license key activates: ``<Product> is ready``, the license line, and the
     recommendation when no email holds the license; a license sent to an email that has no account
-    yet shows the waiting line instead."""
+    yet shows the waiting line instead.
+    With Identity off a holder email still draws the ready state with the portal line."""
     done = ctx.input.get("activateDone")
     if not ctx.on("license") or not isinstance(done, Mapping):
         return hidden_view(ctx, "ActivateDone")
@@ -95,7 +96,7 @@ def activate_done_view(ctx: Context) -> View:
     }
     # A holder email too malformed to mask counts as none: no sentence renders with an empty email.
     masked = mask_email(_mapping(ctx.input.get("licenseHolder")).get("email"))
-    if masked:
+    if masked and ctx.on("identity"):
         return make_view(
             ctx,
             "ActivateDone",
