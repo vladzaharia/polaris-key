@@ -43,8 +43,8 @@ var sdk: Node:
 
 ## Opened from Settings: no Done step, and Added closes with Done.
 var from_settings := false
-## Opens a URL (String) -> Error; replaced by a test. The default is the engine's.
-var open_url: Callable = func(url: String) -> int: return OS.shell_open(url)
+## Opens a URL (String) -> Error; replaced by a test. The default is the kit's validating opener.
+var open_url: Callable = func(url: String) -> int: return PKeyManage.open(url)
 ## Opens a device-code page (PKeySignInSession) -> bool; empty uses the SDK's validated opener.
 var open_page: Callable = Callable()
 

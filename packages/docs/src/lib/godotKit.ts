@@ -275,6 +275,12 @@ export const GODOT_COMPONENTS: Readonly<Record<string, GodotComponent>> = {
 export const INTERNAL: Readonly<Record<string, string>> = {
   PKeyEntitlementBadge:
     '"Included with" chips a game places beside its own UI; the catalog has no component for them (the framework page lists the scene)',
+  PKeyActivateDone:
+    "The step after a license key activates (ui-matrix `holders`); the catalog has no component of its own, the host's PKeyHolderFlow drives it",
+  PKeyAddToAccount:
+    "Adds a name and an email to the license a key activated (ui-matrix `holders`); the catalog has no component of its own, the host's PKeyHolderFlow drives it",
+  PKeyHolderQr:
+    "The manage QR a TV or console shows for adding the license in Polaris Locker; the catalog has no component of its own, the host's PKeyHolderFlow drives it",
   PKeyNearbyApproval:
     "The signed-in device's side of nearby sign-in (three codes, number matching); the catalog has no component of its own, the host's PKeyNearbyApprovalFlow drives it",
   PKeySignInStep:
