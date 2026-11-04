@@ -282,7 +282,14 @@ func _gate_offer(t: PKeyTestContext) -> void:
 	t.check("link kit: Link sends the handle with a proof and moves to link-done", gate._auto_state == "link-done" and post["method"] == "POST"
 		and post["body"].get("linkHandle") == HANDLE and post["body"].has("proof") and gate.auto_step.step == "link-done" and gate.auto_step.error_key == "")
 	t.check("link kit: link-done is one decision, Done", gate.auto_step.model.get("decisions", {}).get("primary") == "common.done" and not gate.auto_step._secondary.visible)
+	var presses := []
+	gate.auto_step.primary_pressed.connect(func(step): presses.append(step))
 	gate._on_auto_primary("link-done")
+	t.check("link kit: after Done the finishing card shows, busy, with no control", gate.auto_step.step == "finishing" and gate.auto_step.busy
+		and not gate.auto_step._primary.visible and not gate.auto_step._secondary.visible and not gate.auto_step._secondary2.visible)
+	gate.auto_step._on_primary()
+	gate._on_auto_primary("link-done")
+	t.check("link kit: a second Enter or A after Done does nothing", presses.is_empty() and gate._link_finishing and gate._cancel())
 	await B.until(func(): return not gate.auto_step.visible)
 	t.check("link kit: Done ends the offer and closes it without a decline", gate._auto_state == "" and not bed.sdk.identity.link.pending and bed.sdk.identity.link.store.hashes() == [])
 	gate.queue_free()
@@ -295,20 +302,36 @@ func _gate_hold(t: PKeyTestContext) -> void:
 	var bed := await _bed()
 	_fake_google(bed)
 	var gate := _stage_gate(bed)
-	# The sign-in dialog has finished ("Signed in.") and the offer is being asked for.
+	# The link GET is held: the fake Worker answers it, then stops until resumed.
+	bed.links = [func(_req) -> Dictionary:
+		bed.server.set_process(false)
+		return B.json(200, OFFER)]
+	gate.activation._on_sign_in()
 	var dialog: PKeySignInDialog = gate.activation.sign_in_dialog
-	gate.activation.open_mode("sign-in")
-	dialog.show_result(PKeySignInOutcome.signed_in({}, "", true, null, "ps_abc"))
-	gate._link_hold = true
-	gate.refresh_view()
+	await B.until(func(): return dialog.state == "redirect")
+	_return_to(bed, dialog)
+	# Every frame from the finished sign-in to the request being held: the finished dialog never shows.
+	var stale_shown := 0
+	var seen_ended := false
+	for i in 900:
+		await tree.process_frame
+		if dialog.state == "ended":
+			seen_ended = true
+		if seen_ended and gate.activation.is_visible_in_tree():
+			stale_shown += 1
+		if not bed.link_requests.is_empty():
+			break
 	await tree.process_frame
 	await tree.process_frame
-	t.check("link kit: while the offer is asked for, the finished dialog is hidden and the busy card stands in",
-		not gate.activation.visible and gate.auto_step.visible and gate.auto_step.step == "finishing" and gate.auto_step.busy and gate.visible)
-	t.check("link kit: …it has no action and nothing to focus", not gate.auto_step._primary.visible and not gate.auto_step._secondary.visible
-		and gate.get_viewport().gui_get_focus_owner() == null)
-	t.check("link kit: …and Escape changes nothing", gate._cancel() and not gate.activation.visible and gate.auto_step.visible)
-	gate._end_auto()
+	t.check("link kit: the finished sign-in dialog never shows while the offer is asked for", seen_ended and stale_shown == 0 and not bed.link_requests.is_empty(), str(stale_shown))
+	t.check("link kit: the busy Finishing card stands in, with no action and nothing focused", not gate.activation.visible and gate.auto_step.visible
+		and gate.auto_step.step == "finishing" and gate.auto_step.busy and not gate.auto_step._primary.visible and not gate.auto_step._secondary.visible
+		and gate.get_viewport().gui_get_focus_owner() == null and gate.visible)
+	t.check("link kit: Escape changes nothing while the offer is asked for", gate._cancel() and not gate.activation.is_visible_in_tree() and gate.auto_step.visible)
+	bed.links = [B.json(200, OFFER)]
+	bed.server.set_process(true)
+	await B.until(func(): return gate._auto_state == "link-offer", 900)
+	t.check("link kit: then the offer shows", gate._auto_state == "link-offer" and gate.auto_step.step == "link-offer")
 	gate.queue_free()
 	await tree.process_frame
 	bed.free_all()

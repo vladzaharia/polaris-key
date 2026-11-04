@@ -17,6 +17,8 @@ func offer() -> bool:
 	if gate.sdk == null or not is_instance_valid(gate.sdk) or gate.sdk.get("identity") == null or not gate.sdk.identity.link.pending:
 		return false
 	gate._link_hold = true
+	# The busy card replaces the finished dialog for the whole request.
+	gate.refresh_view()
 	var link: PKeyIdentityLink = gate.sdk.identity.link
 	var answer: PKeyLinkResult = await link.offer()
 	if not is_instance_valid(gate):
@@ -40,6 +42,8 @@ func offer() -> bool:
 ## "link-offer"): stale swaps Link for Sign in again, refused leaves No thanks as the primary, a network failure
 ## keeps Link, and an answer with no offer ends quietly.
 func primary(step: String) -> void:
+	if gate._link_finishing:
+		return
 	if step != "link-offer":
 		finish(false)
 	elif gate._completing:
@@ -106,12 +110,16 @@ func secondary(step: String) -> void:
 
 ## The offer is over: `decline` remembers it for the account on this device; otherwise it is only closed.
 func finish(decline: bool) -> void:
+	if gate._link_finishing:
+		return
 	if decline:
 		gate.sdk.identity.link.decline()
 	else:
 		gate.sdk.identity.link.dismiss()
 	# The step stays, busy, until the licence state is read again; then the gate goes on.
 	gate._link_finishing = true
+	gate.auto_step.error_key = ""
+	gate.auto_step.step = "finishing"
 	gate.auto_step.busy = true
 	await gate.sdk.sync(true)
 	if is_instance_valid(gate):

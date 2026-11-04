@@ -354,8 +354,14 @@ func _render() -> void:
 	if "accessibility_description" in _primary and step in PKeyGateController.LINK_STEPS:
 		var said := _title.text
 		if _lines[0].visible and _lines[0].text != "":
-			said += ". " + _lines[0].text
+			said += (" " if said.right(1) in [".", "?", "!", "\u2026", ":"] else ". ") + _lines[0].text
 		_primary.set("accessibility_description", said)
+	elif "accessibility_description" in _primary and step != "device-limit":
+		# A later step does not inherit the last one's.
+		_primary.set("accessibility_description", "")
+	# The finishing card announces itself once (it has no control to carry the words).
+	if "accessibility_live" in _title:
+		_title.set("accessibility_live", 1 if step == "finishing" else 0)
 	# Linking in flight: neither Link nor No thanks can be pressed.
 	var linking := step == "link-offer" and busy
 	_primary.disabled = linking
