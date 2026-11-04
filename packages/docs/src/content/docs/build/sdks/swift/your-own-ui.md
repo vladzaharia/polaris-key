@@ -408,6 +408,32 @@ does not throw while a committed feed is left to decide from. For your own updat
 `userDriver:` (an `SPUUserDriver`) to `PolarisSparkle.start`; it changes the UI only, never the feed,
 the signature check or the install.
 
+To hold an install while the app is busy, pass `relaunchGate:`. Sparkle asks it once the update is
+installed and about to relaunch the app; return `true` to hold, and call `resume()` once when the
+relaunch may go on.
+
+```swift no-compile
+let sparkle = try await PolarisSparkle.start(
+    client: client,
+    relaunchGate: { _, resume in
+        guard recorder.isRecording else { return false }
+        recorder.onStop = resume
+        return true
+    })
+```
+
+To see the other `SPUUpdaterDelegate` callbacks, pass `hostDelegate:`. It receives every callback
+the SDK does not answer itself, plus `didDownloadUpdate` and `willInstallUpdate` after the SDK
+journals them. The SDK keeps the feed URL and the allowed channels; the host's answers to those are
+never asked. A `relaunchGate` answers `shouldPostponeRelaunchForUpdate` before the host delegate.
+
+A sandboxed Developer ID app needs Sparkle's installer setup: `SUEnableInstallerLauncherService`
+set to `YES` in `Info.plist`, a `com.apple.security.temporary-exception.mach-lookup.global-name`
+entitlement naming `$(PRODUCT_BUNDLE_IDENTIFIER)-spks` and `$(PRODUCT_BUNDLE_IDENTIFIER)-spki`, and
+`SUEnableDownloaderService` when the app lacks `com.apple.security.network.client`. Without them
+Sparkle starts and fails when it installs, so `PolarisSparkle.start` reads the app's entitlements
+and throws `SparkleSandboxError.notConfigured`, naming what is missing.
+
 ## Tests
 
 The client takes its store and transport through `PolarisKeyClientOptions`, so a test runs offline

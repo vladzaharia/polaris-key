@@ -19,18 +19,68 @@ import PolarisKeyCore
 #if os(macOS)
     import Sparkle
 
+    /// Holds an update's relaunch. Sparkle asks once the update is installed and about to
+    /// relaunch the app. Return `true` to hold it and call `resume` exactly once when it may
+    /// go on (from any thread); return `false` to let it relaunch now.
+    public typealias PolarisSparkleRelaunchGate =
+        @Sendable (_ item: SUAppcastItem, _ resume: @escaping @Sendable () -> Void) -> Bool
+
     /// A Sparkle delegate whose feed, channels and journal follow the client.
+    ///
+    /// A host delegate (`PolarisSparkle.start(hostDelegate:)`) sees every other
+    /// `SPUUpdaterDelegate` callback. Where both answer, the SDK wins for the feed URL and the
+    /// allowed channels (the host's answers to those two are never asked); `didDownloadUpdate`
+    /// and `willInstallUpdate` are journaled and then also forwarded; the relaunch gate, when
+    /// given, answers `shouldPostponeRelaunchForUpdate` before the host delegate does.
     public final class PolarisSparkleLiveDelegate: NSObject, SPUUpdaterDelegate, @unchecked Sendable {
         private let state = LockedValue<(feed: String?, channels: Set<String>)>((nil, ["stable"]))
         private let journal: UpdateJournal
         private let channel: String
         private let installedVersion: String
+        private let host: (any SPUUpdaterDelegate)?
+        private let relaunchGate: PolarisSparkleRelaunchGate?
 
-        init(journal: UpdateJournal, channel: String, installedVersion: String) {
+        init(
+            journal: UpdateJournal, channel: String, installedVersion: String,
+            host: (any SPUUpdaterDelegate)? = nil, relaunchGate: PolarisSparkleRelaunchGate? = nil
+        ) {
             self.journal = journal
             self.channel = channel
             self.installedVersion = installedVersion
+            self.host = host
+            self.relaunchGate = relaunchGate
             super.init()
+        }
+
+        // Every selector the SDK does not implement goes to the host delegate.
+        public override func responds(to selector: Selector!) -> Bool {
+            if super.responds(to: selector) { return true }
+            return (host as? NSObject)?.responds(to: selector) ?? false
+        }
+
+        public override func forwardingTarget(for selector: Selector!) -> Any? {
+            if let host = host as? NSObject, host.responds(to: selector) { return host }
+            return super.forwardingTarget(for: selector)
+        }
+
+        public func updater(
+            _ updater: SPUUpdater, shouldPostponeRelaunchForUpdate item: SUAppcastItem,
+            untilInvokingBlock installHandler: @escaping () -> Void
+        ) -> Bool {
+            if let relaunchGate {
+                let once = LockedValue<Bool>(false)
+                let resume: @Sendable () -> Void = {
+                    let first = once.with { done -> Bool in
+                        defer { done = true }
+                        return !done
+                    }
+                    if first { installHandler() }
+                }
+                return relaunchGate(item, resume)
+            }
+            return host?.updater?(
+                updater, shouldPostponeRelaunchForUpdate: item, untilInvokingBlock: installHandler)
+                ?? false
         }
 
         func apply(_ feed: UpdateFeed?) {
@@ -45,10 +95,12 @@ import PolarisKeyCore
 
         public func updater(_ updater: SPUUpdater, didDownloadUpdate item: SUAppcastItem) {
             record(UpdateEvent.updateDownloaded, item)
+            host?.updater?(updater, didDownloadUpdate: item)
         }
 
         public func updater(_ updater: SPUUpdater, willInstallUpdate item: SUAppcastItem) {
             record(UpdateEvent.updateApplied, item)
+            host?.updater?(updater, willInstallUpdate: item)
         }
 
         private func record(_ event: String, _ item: SUAppcastItem) {
@@ -111,15 +163,29 @@ import PolarisKeyCore
         /// `bundle` is the bundle the updater reads and replaces when a `userDriver` is given. With
         /// no `userDriver` the standard controller always updates `Bundle.main` and `bundle` only
         /// supplies the `SUPublicEDKey` check, so pass a custom `bundle` together with a driver.
+        ///
+        /// `hostDelegate` receives every `SPUUpdaterDelegate` callback the SDK does not answer
+        /// itself, and also `didDownloadUpdate` and `willInstallUpdate`. The SDK keeps the feed
+        /// URL and the allowed channels: the host's answers to those are ignored. Sparkle holds
+        /// its delegate weakly and `PolarisSparkle` holds the host delegate strongly. `relaunchGate`
+        /// holds the relaunch after an install (for example while recording); it answers
+        /// `updater(_:shouldPostponeRelaunchForUpdate:untilInvokingBlock:)` before `hostDelegate`.
+        ///
+        /// Also throws `SparkleSandboxError` for a sandboxed app that lacks Sparkle's installer
+        /// setup. `entitlements` reads the task's entitlements, and exists for tests.
         public static func start(
             client: PolarisKeyClient, channel: String? = nil, bundle: Foundation.Bundle = .main,
-            userDriver: (any SPUUserDriver)? = nil
+            userDriver: (any SPUUserDriver)? = nil, hostDelegate: (any SPUUpdaterDelegate)? = nil,
+            relaunchGate: PolarisSparkleRelaunchGate? = nil,
+            entitlements: SparkleSandbox.EntitlementReader = SparkleSandbox.currentTask
         ) async throws -> PolarisSparkle {
             try SparkleAnchor.assertPresent(in: bundle)
+            try SparkleSandbox.assertConfigured(in: bundle, entitlements: entitlements)
             let channel = channel ?? client.core.channel
             if await client.core.discoveryDocument == nil { _ = await client.discover() }
             let delegate = PolarisSparkleLiveDelegate(
-                journal: client.core.journal, channel: channel, installedVersion: client.core.version)
+                journal: client.core.journal, channel: channel, installedVersion: client.core.version,
+                host: hostDelegate, relaunchGate: relaunchGate)
             let sparkle = PolarisSparkle(
                 client: client, channel: channel, delegate: delegate, bundle: bundle,
                 userDriver: userDriver)
