@@ -849,7 +849,8 @@ describe("the engine over the Node parts", () => {
     const v1 = await upload(data, "w1");
     expect(v1).toMatchObject({ version: 1, format: "chunks" });
     const firstPuts = world.stats.chunkPuts;
-    expect(firstPuts).toBeGreaterThan(4);
+    // Random data chunks content-defined; 4 MiB at a 1 MiB maximum is never fewer than 4 chunks.
+    expect(firstPuts).toBeGreaterThanOrEqual(4);
 
     const edited = Uint8Array.from(data);
     edited[2_000_000] = edited[2_000_000]! ^ 0xff;
