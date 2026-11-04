@@ -143,6 +143,14 @@ describe("<pk-gate config>: status", () => {
   });
 });
 
+async function keyToDone(w: ReturnType<typeof world>) {
+  const { gate } = await toKeyStep(w);
+  await typeKey(gate, "pkey_acme_KEY");
+  control(gate, "activate.submit")!.click();
+  await settle(gate, () => control(gate, "signin.done.start") !== null);
+  return gate;
+}
+
 describe("<pk-gate config>: Welcome, Activate and the hosted sign-in", () => {
   it("takes a key through Activate and lets the app in", async () => {
     const { gate, w } = await toKeyStep(world());
@@ -158,12 +166,7 @@ describe("<pk-gate config>: Welcome, Activate and the hosted sign-in", () => {
   });
 
   it("shows the key entries left as the Toast model's info line after a key", async () => {
-    const { gate } = await toKeyStep(
-      world({ keyEntries: { used: 1, limit: 3 } }),
-    );
-    await typeKey(gate, "pkey_acme_KEY");
-    control(gate, "activate.submit")!.click();
-    await settle(gate, () => control(gate, "signin.done.start") !== null);
+    const gate = await keyToDone(world({ keyEntries: { used: 1, limit: 3 } }));
     const toast = gate.shadowRoot!.querySelector('[data-part="toast"]');
     expect(toast?.getAttribute("data-key")).toBe("signin.key.entriesLeftShort");
     expect(toast?.getAttribute("data-status")).toBe("neutral");
@@ -176,10 +179,7 @@ describe("<pk-gate config>: Welcome, Activate and the hosted sign-in", () => {
   });
 
   it("shows no entries line without keyEntries", async () => {
-    const { gate } = await toKeyStep(world());
-    await typeKey(gate, "pkey_acme_KEY");
-    control(gate, "activate.submit")!.click();
-    await settle(gate, () => control(gate, "signin.done.start") !== null);
+    const gate = await keyToDone(world());
     expect(gate.shadowRoot!.querySelector('[data-part="toast"]')).toBeNull();
   });
 
