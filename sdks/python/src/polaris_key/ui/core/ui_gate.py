@@ -345,6 +345,21 @@ def toast_view(ctx: Context) -> View:
             args={"version": update.get("version")},
             focus=None,
         )
+    if kind == "key-entries":
+        left = toast.get("left")
+        if isinstance(left, float) and left.is_integer():
+            left = int(left)
+        if (
+            not ctx.on("license")
+            or not ctx.on("identity")
+            or isinstance(left, bool)
+            or not isinstance(left, int)
+            or left < 0
+        ):
+            return hidden_view(ctx, "Toast")
+        return make_view(
+            ctx, "Toast", "info", ("signin.key.entriesLeftShort",), args={"left": left}, focus=None
+        )
     if kind == "signedIn":
         # After a sign-in the gate ran: "Signed in as Ada · Pro license" (UI-KITS 1198-1200, D-63..D-65);
         # without a tier, "Signed in as Ada". Not in the ui-matrix: a kit that shows it says so.
