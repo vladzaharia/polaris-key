@@ -240,11 +240,28 @@
             "part": "template"
           },
           {
-            "name": "Godot SDK (4.4.1 editor, floor)",
+            "name": "Godot SDK (4.4.1 editor A)",
             "os": "ubuntu-latest",
             "godot": "4.4.1",
             "template": "",
-            "suites": ""
+            "suites": "",
+            "part": "editor-a"
+          },
+          {
+            "name": "Godot SDK (4.4.1 editor B)",
+            "os": "ubuntu-latest",
+            "godot": "4.4.1",
+            "template": "",
+            "suites": "",
+            "part": "editor-b"
+          },
+          {
+            "name": "Godot SDK (4.4.1 UI matrix)",
+            "os": "ubuntu-latest",
+            "godot": "4.4.1",
+            "template": "",
+            "suites": "",
+            "part": "matrix"
           }
         ]
       },
@@ -283,25 +300,92 @@
             "part": "template"
           },
           {
-            "name": "Godot SDK (4.6.3 editor + release template)",
+            "name": "Godot SDK (4.6.3 editor A)",
+            "os": "ubuntu-latest",
+            "godot": "4.6.3",
+            "template": "",
+            "suites": "",
+            "part": "editor-a"
+          },
+          {
+            "name": "Godot SDK (4.6.3 editor B)",
+            "os": "ubuntu-latest",
+            "godot": "4.6.3",
+            "template": "",
+            "suites": "",
+            "part": "editor-b"
+          },
+          {
+            "name": "Godot SDK (4.6.3 UI matrix)",
+            "os": "ubuntu-latest",
+            "godot": "4.6.3",
+            "template": "",
+            "suites": "",
+            "part": "matrix"
+          },
+          {
+            "name": "Godot SDK (4.6.3 release template)",
             "os": "ubuntu-latest",
             "godot": "4.6.3",
             "template": "--template",
-            "suites": ""
+            "suites": "",
+            "part": "template"
           },
           {
-            "name": "Godot SDK (4.5.2 editor + release template)",
+            "name": "Godot SDK (4.5.2 editor A)",
+            "os": "ubuntu-latest",
+            "godot": "4.5.2",
+            "template": "",
+            "suites": "",
+            "part": "editor-a"
+          },
+          {
+            "name": "Godot SDK (4.5.2 editor B)",
+            "os": "ubuntu-latest",
+            "godot": "4.5.2",
+            "template": "",
+            "suites": "",
+            "part": "editor-b"
+          },
+          {
+            "name": "Godot SDK (4.5.2 UI matrix)",
+            "os": "ubuntu-latest",
+            "godot": "4.5.2",
+            "template": "",
+            "suites": "",
+            "part": "matrix"
+          },
+          {
+            "name": "Godot SDK (4.5.2 release template)",
             "os": "ubuntu-latest",
             "godot": "4.5.2",
             "template": "--template",
-            "suites": ""
+            "suites": "",
+            "part": "template"
           },
           {
-            "name": "Godot SDK (4.4.1 editor, floor)",
+            "name": "Godot SDK (4.4.1 editor A)",
             "os": "ubuntu-latest",
             "godot": "4.4.1",
             "template": "",
-            "suites": ""
+            "suites": "",
+            "part": "editor-a"
+          },
+          {
+            "name": "Godot SDK (4.4.1 editor B)",
+            "os": "ubuntu-latest",
+            "godot": "4.4.1",
+            "template": "",
+            "suites": "",
+            "part": "editor-b"
+          },
+          {
+            "name": "Godot SDK (4.4.1 UI matrix)",
+            "os": "ubuntu-latest",
+            "godot": "4.4.1",
+            "template": "",
+            "suites": "",
+            "part": "matrix"
           },
           {
             "name": "Godot SDK (4.7.2 editor, Windows smoke)",
