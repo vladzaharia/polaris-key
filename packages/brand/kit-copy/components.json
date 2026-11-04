@@ -375,6 +375,8 @@
             "activate.recommend.recover",
             "activate.recommend.devices",
             "activate.recommend.action",
+            "signin.key.addInLocker",
+            "a11y.externalLink",
             "activate.recommend.skip",
             "signin.done.start",
             "activate.waiting",

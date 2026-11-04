@@ -4,6 +4,8 @@
 // `key-done`, `attach` and `added` steps and the floating AccountAndLicense row. Written against
 // the states the plan lists, ahead of the matrix's `holders` family (UK-42.2).
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -28,6 +30,45 @@ const add = (
   step: NonNullable<UiInput["addToAccount"]>,
   o: Partial<UiInput> = {},
 ) => viewOf("AddToAccount", { ...base, addToAccount: step, ...o });
+
+describe("maskEmail vectors (ui-matrix.json holdersFlow)", () => {
+  const vectors = (
+    JSON.parse(
+      readFileSync(
+        join(
+          import.meta.dirname,
+          "../../../conformance/corpus/v2/ui-matrix.json",
+        ),
+        "utf8",
+      ),
+    ) as {
+      holdersFlow: { maskEmail: { email: string | null; masked: string }[] };
+    }
+  ).holdersFlow.maskEmail;
+  it.each(vectors.map((v) => [String(v.email), v] as const))("%s", (_n, v) => {
+    expect(maskEmail(v.email)).toBe(v.masked);
+  });
+});
+
+describe("licenseHolder.addIn (UK-43.2)", () => {
+  it("portal turns every Add control into Add it in Polaris Locker", () => {
+    const holder = { email: "", addIn: "portal" as const };
+    for (const v of [
+      done({ licenseHolder: holder }),
+      viewOf("AccountAndLicense", {
+        ...base,
+        licenseHolder: holder,
+        account: { signedIn: false },
+      }),
+    ]) {
+      expect(v.copy).toEqual(
+        expect.arrayContaining(["signin.key.addInLocker", "a11y.externalLink"]),
+      );
+      expect(v.copy).not.toContain("activate.recommend.action");
+      expect(v.actions).toContain("open-manage-url");
+    }
+  });
+});
 
 describe("maskEmail", () => {
   it("keeps the first character and the domain", () => {

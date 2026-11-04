@@ -61,6 +61,7 @@ describe(`${MATRIX_FILE}: the version`, () => {
       ...Object.keys(FAMILIES),
       "cloudSync",
       "saveConflict",
+      "holders",
       "connect",
       "nearby",
       "theme",
@@ -78,6 +79,8 @@ for (const [family, feature] of Object.entries({
   // U-22.K0: the save screens (SaveConflict, CloudSyncStatus's transfer states). Same: ui-core only
   // until the native kits learn them (U-23 K.3 to K.5).
   saveConflict: "ui.settings",
+  // UK-42.2 / UK-43.2: activation without an account (the React kit draws these rows too).
+  holders: "ui.signin",
   // CC-19.9: the inter-account screens, also only ui-core's until the native kits take them.
   connect: "ui.settings",
   // UXR-47b: the nearby sign-in screens the desktop kit added; ui-core only.

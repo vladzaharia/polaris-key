@@ -161,6 +161,11 @@ export interface LicenseHolderInput {
   /** The address the license was sent to. Empty or absent: floating, held by the key alone; set:
    *  waiting for that email to sign in. The models mask it themselves (`maskEmail`). */
   email?: string;
+  /** Where Add your name and email goes for this license (UK-43.2). `portal`: the kit has no in-app
+   *  channel, so every Add control says it opens Polaris Locker (an external link) and the action
+   *  opens the manage URL. Absent or `app`: the in-app form. `activateDone.addIn` says the same
+   *  for ActivateDone alone and wins there. */
+  addIn?: "portal" | "app";
 }
 
 /** ActivateDone's display facts (strings its supplier formatted, like `ActivationInput`). */
