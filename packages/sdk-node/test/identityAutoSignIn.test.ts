@@ -100,6 +100,20 @@ const stateOf = (c: Client): string =>
   (c.identity as unknown as { ctx: { dirs: { state: string } } }).ctx.dirs
     .state;
 
+/** Each token write's value of `marked()` at the moment the write lands. */
+function recordMarks(
+  store: { setToken(t: string | null): Promise<void> },
+  marked: () => boolean,
+): boolean[] {
+  const seen: boolean[] = [];
+  const set = store.setToken.bind(store);
+  store.setToken = async (t) => {
+    seen.push(marked());
+    await set(t);
+  };
+  return seen;
+}
+
 describe("autoSignIn(): rung 1", () => {
   it("a token that no sign-in produced is not a sign-in", async () => {
     const { client, seen } = await seededClient({
@@ -184,12 +198,7 @@ describe("autoSignIn(): rung 1", () => {
       }
     };
     expect(marked()).toBe(true);
-    const seen: boolean[] = [];
-    const set = store.setToken.bind(store);
-    store.setToken = async (t) => {
-      seen.push(marked());
-      await set(t);
-    };
+    const seen = recordMarks(store, marked);
     await tokensOf(client).set("pkeyt_key", "activate");
     expect(seen).toEqual([false]);
     client.close();
@@ -344,12 +353,7 @@ describe("autoSignIn(): the unconfirmed nearby token (V5 15.6.1 rule 12, D-21)",
         return false;
       }
     };
-    const seen: boolean[] = [];
-    const set = store.setToken.bind(store);
-    store.setToken = async (t) => {
-      seen.push(marked());
-      await set(t);
-    };
+    const seen = recordMarks(store, marked);
     await tokensOf(client).set("pkeyt_nearby", "signin", { unconfirmed: true });
     expect(seen).toEqual([true]);
     const t = tokensOf(client);

@@ -2025,7 +2025,7 @@
       "jscpd:duplicate": 2
     },
     "packages/sdk-react/test/accountCalls.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/autoSignIn.test.ts": {
       "jscpd:duplicate": 2
@@ -2241,7 +2241,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/signInSession.test.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 4
     },
     "packages/sdk-react/test/storeNamespace.test.ts": {
       "jscpd:duplicate": 1

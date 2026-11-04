@@ -40,6 +40,7 @@ import {
   stubClient,
 } from "./harness.js";
 import { Screen } from "./screen.js";
+import { IDENTITY_OFF } from "./scenarios.js";
 import { PolarisError } from "@polaris-key/client-core";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -583,15 +584,6 @@ const keyAlone = (
     identity: { current: async () => null },
     ...over,
   });
-const NO_IDENTITY = {
-  license: { enabled: true },
-  config: { enabled: true },
-  release: { enabled: true },
-  distribution: { enabled: true },
-  update: { enabled: true },
-  identity: { enabled: false },
-  sync: { enabled: false },
-};
 Object.assign(SITUATIONS, {
   "activate-floating": (): Setup => ({
     piped: `${KEY}\n`,
@@ -607,7 +599,7 @@ Object.assign(SITUATIONS, {
   }),
   "activate-identity-off": (): Setup => ({
     piped: `${KEY}\n`,
-    client: keyAlone({ capabilities: NO_IDENTITY }),
+    client: keyAlone({ capabilities: IDENTITY_OFF }),
   }),
   "status-floating": (): Setup => ({ client: keyAlone() }),
 });

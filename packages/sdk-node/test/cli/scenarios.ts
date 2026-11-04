@@ -66,15 +66,17 @@ const holderInfo = (email: string | null) => ({
   status: "ok",
 });
 const signedOut = { current: async () => null };
-const IDENTITY_OFF = {
-  license: { enabled: true },
-  config: { enabled: true },
-  release: { enabled: true },
-  distribution: { enabled: true },
-  update: { enabled: true },
-  identity: { enabled: false },
-  sync: { enabled: false },
-};
+export const IDENTITY_OFF = Object.fromEntries(
+  [
+    "license",
+    "config",
+    "release",
+    "distribution",
+    "update",
+    "identity",
+    "sync",
+  ].map((slug) => [slug, { enabled: !["identity", "sync"].includes(slug) }]),
+);
 /** `activate` on a piped key, signed out, with the license's holder as given. */
 function holderScenarios(): Scenario[] {
   const activate = (
