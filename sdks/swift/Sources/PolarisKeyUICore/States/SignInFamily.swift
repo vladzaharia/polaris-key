@@ -243,11 +243,21 @@ extension KitStates {
                 !perDeveloper
                 ? "signin.linkOffer.bodyGlobal"
                 : (hasDeveloper ? "signin.linkOffer.bodyDeveloper" : "signin.linkOffer.bodyApp")
+            // A failed Link keeps the offer and says why. Too old a sign-in swaps Link for Sign in
+            // again; a refused device loses Link (No thanks is the way on); a network failure
+            // keeps Link.
+            let stale = auto.linkError == "stale"
+            let refused = auto.linkError == "failed"
+            let note: String? =
+                auto.linkError == "network"
+                ? "core.codes.network.message"
+                : (stale ? "signin.linkOffer.stale" : (refused ? "signin.linkOffer.failed" : nil))
             return KitScreen(
                 .linkOffer,
                 lines(
-                    "signin.linkOffer.title", body, "signin.linkOffer.primary",
-                    "signin.linkOffer.decline"))
+                    "signin.linkOffer.title", body,
+                    stale ? "signin.again" : (refused ? nil : "signin.linkOffer.primary"),
+                    "signin.linkOffer.decline", note))
         case .linkDone:
             return KitScreen(.linkDone, lines("signin.linkOffer.done", "common.done"))
         case .linkConflict:

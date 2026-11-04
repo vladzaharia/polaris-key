@@ -941,13 +941,18 @@ public struct KitAutoSignIn: Sendable, Codable, Equatable, Hashable {
     public var limit: Int?
     /// The device-limit step: the refusal's `manageUrl`, where a device is replaced.
     public var manageUrl: String?
+    /// The link offer after a failed Link (kit-side: the matrix never sets it): `stale` (sign in
+    /// again), `failed` (this device was refused; No thanks is the way on) or `network` (Link stays).
+    public var linkError: String?
 
     public init(
         step: KitAutoSignInStep, email: String? = nil, reach: KitLinkReach? = nil,
         license: String? = nil, alsoGets: Bool? = nil, code: String? = nil,
         licenseName: String? = nil, term: Int? = nil, device: String? = nil,
-        position: Int? = nil, limit: Int? = nil, manageUrl: String? = nil, kind: String? = nil
+        position: Int? = nil, limit: Int? = nil, manageUrl: String? = nil, kind: String? = nil,
+        linkError: String? = nil
     ) {
+        self.linkError = linkError
         self.kind = kind
         self.manageUrl = manageUrl
         self.licenseName = licenseName

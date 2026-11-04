@@ -176,6 +176,10 @@ extension IdentityClient {
         platformProvider.set(provider)
     }
 
+    /// The provider `installPlatformIdentity` left on this client, if any (the kit reads it to
+    /// word the link offer and to see whether it can be made).
+    public var installedPlatformIdentity: (any PlatformIdentityProvider)? { platformProvider.current }
+
     /// Run the ladder. A refusal is a result; only cancelling the task throws.
     public func autoSignIn(_ options: AutoSignInOptions = AutoSignInOptions()) async throws -> AutoSignInResult {
         restoreSetup.with {
