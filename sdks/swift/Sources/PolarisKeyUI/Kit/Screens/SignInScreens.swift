@@ -267,8 +267,8 @@ public struct SignInView: View {
         case .linkDone, .nearbyDone:
             EmptyView()
         case .keyDone, .attach, .added:
-            // The holder steps (UK-42) are drawn by UK-43.5's screens.
-            EmptyView()
+            // The holder steps (UK-42): the holder screens' bodies, under the form's heading.
+            HolderSignInBody(inputs: model.inputs, state: screen.state, onStart: { onClose?() })
         case .done:
             if screen.shows("signin.desktop.toast") {
                 // "Signed in as <name> · <Tier> license"; without both, the plain sentence.
@@ -350,8 +350,7 @@ public struct SignInView: View {
             case .finishing:
                 EmptyView()
             case .keyDone, .attach, .added:
-                // The holder steps (UK-42) are drawn by UK-43.5's screens.
-                EmptyView()
+                HolderSignInActions(inputs: model.inputs, state: screen.state, onStart: { onClose?() })
             case .done:
                 if screen.shows("signin.done.start") {
                     KitButton(line: screen.lineOrKey("signin.done.start"), kind: .primary) {

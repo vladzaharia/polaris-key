@@ -90,7 +90,7 @@ struct KitText: View {
 
     var body: some View {
         kitStyle { style in
-            Text(strings.string(line))
+            KitLeadText(strings.string(line))
                 .font(weight.map { style.font(role).weight($0) } ?? style.font(role))
                 .foregroundStyle(color.resolve(style.palette))
                 .multilineTextAlignment(resolvedAlignment)
@@ -120,4 +120,23 @@ extension KitScreen {
     /// The line for `key` with the state's arguments, or the bare key's line when the state does
     /// not carry it (a part drawn outside its state).
     func lineOrKey(_ key: String) -> CopyLine { line(key) ?? CopyLine(key) }
+}
+
+/// A formatted line as `Text`. A reason's lead-in sits between `**` marks (`KitFormat.leadParts`):
+/// each run is its own `Text`, the lead-in semibold, joined into one so VoiceOver reads a sentence.
+/// The string is never handed to a markup parser.
+struct KitLeadText: View {
+    let string: String
+
+    init(_ string: String) { self.string = string }
+
+    var body: some View {
+        if string.contains("**") {
+            KitFormat.leadParts(string).reduce(Text(verbatim: "")) { joined, run in
+                joined + (run.strong ? Text(verbatim: run.text).fontWeight(.semibold) : Text(verbatim: run.text))
+            }
+        } else {
+            Text(verbatim: string)
+        }
+    }
 }

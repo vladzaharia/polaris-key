@@ -167,6 +167,8 @@ final class KitRenderTests: XCTestCase {
         // The save screens (K.3): the conflict, its two variants and the transfer status.
         "SaveConflict.choose", "SaveConflict.choose.slots-full", "SaveConflict.choose.deleted",
         "CloudSyncStatus.transferring",
+        // The holder screens (UK-43.5): AX5 is where a title could break mid-word.
+        "ActivateDone.ready", "AddToAccount.form", "AddToAccount.waiting", "AddToAccount.email-bound",
     ]
 
     static let all = [
@@ -213,6 +215,15 @@ final class KitRenderTests: XCTestCase {
         "SaveConflict.keeping", "SaveConflict.kept", "SaveConflict.failed",
         "SaveConflict.choose.newer", "SaveConflict.keeping.deleted", "SaveConflict.kept.both",
         "SaveConflict.failed.deleted",
+        // Activation without an account (UK-43.5).
+        "ActivateDone.ready", "ActivateDone.ready.no-cloud-sync",
+        "ActivateDone.ready.identity-off", "ActivateDone.ready.portal", "ActivateDone.waiting",
+        "AddToAccount.form", "AddToAccount.invalid", "AddToAccount.invalid.name",
+        "AddToAccount.invalid.email", "AddToAccount.busy", "AddToAccount.waiting",
+        "AddToAccount.added", "AddToAccount.added.no-cloud-sync",
+        "AddToAccount.added.from-settings", "AddToAccount.owned", "AddToAccount.email-bound",
+        "AddToAccount.other-account", "AddToAccount.failed", "SignIn.key-done", "SignIn.attach",
+        "SignIn.attach.invalid", "SignIn.added",
     ]
 
     /// The states rendered again in a launch pack, for the catalog's i18n proof.

@@ -59,9 +59,18 @@ public protocol AddToAccountHandle: AnyObject, Sendable {
     /// The code the person checks against the one Polaris Locker shows, when the sign-in has one.
     var userCode: String? { get }
     func wait() async throws -> AddToAccountWait
+    /// The page the person goes to when the sign-in is a code (`polaris.locker/device`); nil for a redirect.
+    var verificationUri: String? { get }
+    /// The same page with the code filled in: what the QR carries.
+    var verificationUriComplete: String? { get }
     /// Bring the browser tab back; false when nothing could open.
     func reopen() async -> Bool
     func cancel()
+}
+
+extension AddToAccountHandle {
+    public var verificationUri: String? { nil }
+    public var verificationUriComplete: String? { nil }
 }
 
 /// The narrow interface both gates implement.
@@ -91,6 +100,15 @@ public final class AddToAccountModel {
     public private(set) var email = ""
     /// `busy`: the code to check against Polaris Locker's, when the sign-in has one.
     public private(set) var userCode: String?
+    /// The code's page, as text, and the link its QR carries.
+    public private(set) var address: String?
+    public private(set) var link: String?
+    /// The page has opened once: the wait's button says "Open browser" until then.
+    public private(set) var opened = false
+    /// The last open failed: the screen says so, in the danger tone.
+    public private(set) var openFailed = false
+    /// Account sign-ins (owned, email-bound) and their wait: the same screen, run over this model's driver.
+    public let host: HolderHostState
 
     private let driver: any AddToAccountDriver
     /// Everything else the views read (platform, presentation, services, `licenseHolder`).
@@ -108,6 +126,7 @@ public final class AddToAccountModel {
         self.driver = driver
         self.base = base
         self.deviceKind = deviceKind
+        self.host = HolderHostState(driver: driver)
     }
 
     // MARK: - What the views read
@@ -116,7 +135,7 @@ public final class AddToAccountModel {
     public var inputs: KitInputs {
         var i = base
         if step == .busy, let code = userCode, !code.isEmpty {
-            i.deviceCode = KitDeviceCode(phase: .waiting, userCode: code)
+            i.deviceCode = KitDeviceCode(phase: .waiting, userCode: code, verificationUri: address)
         }
         i.addToAccount = KitAddToAccount(
             step: step, field: field, deviceKind: deviceKind,
@@ -179,7 +198,11 @@ public final class AddToAccountModel {
     /// Bring the browser tab back while the sign-in runs. Call it inside the press.
     public func reopen() async {
         guard let handle else { return }
-        _ = await handle.reopen()
+        let mine = epoch
+        let ok = await handle.reopen()
+        guard current(mine) else { return }
+        opened = opened || ok
+        openFailed = !ok
     }
 
     /// Cancel: back to the form with the fields kept, any sign-in in flight let go.
@@ -190,10 +213,11 @@ public final class AddToAccountModel {
         signedInEmail = nil
         step = .form
         field = nil
-        userCode = nil
+        clearWait()
         typedEmail = nil
         signedEmail = nil
         old?.cancel()
+        host.cancel()
     }
 
     // MARK: - The attempt
@@ -209,7 +233,15 @@ public final class AddToAccountModel {
         guard current(mine) else { return }
         step = next
         field = nil
+        clearWait()
+    }
+
+    private func clearWait() {
         userCode = nil
+        address = nil
+        link = nil
+        opened = false
+        openFailed = false
     }
 
     private func run(name: String, email: String) async {
@@ -220,7 +252,7 @@ public final class AddToAccountModel {
         previous?.cancel()
         step = .busy
         field = nil
-        userCode = nil
+        clearWait()
         do {
             if !signedIn {
                 guard try await signIn(name: name, email: email, mine: mine) else { return }
@@ -266,7 +298,19 @@ public final class AddToAccountModel {
             return false
         }
         handle = opened
-        if let code = opened.userCode, !code.isEmpty { userCode = code }
+        if let code = opened.userCode, !code.isEmpty {
+            userCode = code
+            address = opened.verificationUri.flatMap { $0.isEmpty ? nil : $0 }
+            link = opened.verificationUriComplete.flatMap { $0.isEmpty ? nil : $0 }
+            // A code sign-in opens nothing by itself: open its page now, and say so when that fails.
+            let ok = await opened.reopen()
+            guard current(mine) else { return false }
+            self.opened = ok
+            openFailed = !ok
+        } else {
+            // A redirect sign-in opened its own browser when it started.
+            self.opened = true
+        }
         while true {
             let answer = try await opened.wait()
             guard current(mine) else { return false }

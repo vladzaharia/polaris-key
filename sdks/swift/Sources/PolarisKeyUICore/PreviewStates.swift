@@ -141,7 +141,7 @@ extension PolarisKeyPreviewState {
     public static let all: [PolarisKeyPreviewState] =
         gate + welcome + signIn + nearby + activate + offlineActivation + deviceLimit + statusAndGrace + update
         + settings
-        + devicesAndPaywall + cloudSync + saveConflict
+        + devicesAndPaywall + cloudSync + saveConflict + holders
 
     /// The previews of one component.
     public static func of(_ component: KitComponent) -> [PolarisKeyPreviewState] {
@@ -789,6 +789,124 @@ extension PolarisKeyPreviewState {
                 $0.ringChange = KitRingChange(
                     by: "Maya's MacBook",
                     served: .init(ringId: "ring_9f3a", epoch: 2, rootKid: "kid_b21c"), failed: true)
+            }),
+    ]
+
+    // MARK: Holders (UK-43): activation without an account
+
+    /// The services with Cloud Sync off: the reasons lose their sync line.
+    private static let noSyncServices: Set<KitService> = [
+        .license, .config, .release, .distribution, .update, .identity, .commerce, .connect,
+    ]
+    /// Identity off: no account to add the license to.
+    private static let noIdentityServices: Set<KitService> = [
+        .license, .config, .release, .distribution, .update, .commerce,
+    ]
+    private static let doneFacts = KitActivateDone(
+        tier: "Pro", term: "Lifetime", deviceKind: "computer", position: 1, limit: 3)
+    private static let waitCode = KitDeviceCode(
+        phase: .waiting, userCode: "WDJB-MJHT", verificationUri: "https://polaris.locker/device")
+
+    private static func attach(
+        _ step: KitAddToAccount.Step, field: KitAddToAccount.Field? = nil,
+        fromSettings: Bool? = nil, typed: String? = nil, signed: String? = nil
+    ) -> KitAddToAccount {
+        KitAddToAccount(
+            step: step, field: field, deviceKind: "computer", typedEmail: typed,
+            signedEmail: signed, fromSettings: fromSettings)
+    }
+
+    static let holders: [PolarisKeyPreviewState] = [
+        .init(.activateDone, "ready", base { $0.activateDone = doneFacts }),
+        .init(
+            .activateDone, "ready", variant: "no-cloud-sync",
+            base {
+                $0.activateDone = doneFacts
+                $0.services = noSyncServices
+            }),
+        .init(
+            .activateDone, "ready", variant: "identity-off",
+            base {
+                $0.activateDone = doneFacts
+                $0.services = noIdentityServices
+                $0.capabilities.signIn = false
+            }),
+        .init(
+            .activateDone, "ready", variant: "portal",
+            base {
+                $0.activateDone = doneFacts
+                $0.licenseHolder = KitLicenseHolder(email: "", addIn: .portal)
+            }),
+        .init(
+            .activateDone, "waiting",
+            base {
+                $0.activateDone = doneFacts
+                $0.licenseHolder = KitLicenseHolder(email: "maya@example.com")
+            }),
+        .init(.addToAccount, "form", base { $0.addToAccount = attach(.form) }),
+        .init(
+            .addToAccount, "invalid", base { $0.addToAccount = attach(.invalid, field: .both) }),
+        .init(
+            .addToAccount, "invalid", variant: "name",
+            base { $0.addToAccount = attach(.invalid, field: .name) }),
+        .init(
+            .addToAccount, "invalid", variant: "email",
+            base { $0.addToAccount = attach(.invalid, field: .email) }),
+        .init(.addToAccount, "busy", base { $0.addToAccount = attach(.busy) }),
+        .init(
+            .addToAccount, "waiting",
+            base {
+                $0.addToAccount = attach(.busy)
+                $0.deviceCode = waitCode
+            }),
+        .init(.addToAccount, "added", base { $0.addToAccount = attach(.added) }),
+        .init(
+            .addToAccount, "added", variant: "no-cloud-sync",
+            base {
+                $0.addToAccount = attach(.added)
+                $0.services = noSyncServices
+            }),
+        .init(
+            .addToAccount, "added", variant: "from-settings",
+            base { $0.addToAccount = attach(.added, fromSettings: true) }),
+        .init(.addToAccount, "owned", base { $0.addToAccount = attach(.owned) }),
+        .init(
+            .addToAccount, "email-bound",
+            base {
+                $0.addToAccount = attach(.emailBound)
+                $0.licenseHolder = KitLicenseHolder(email: "maya@example.com")
+            }),
+        .init(
+            .addToAccount, "other-account",
+            base {
+                $0.addToAccount = attach(
+                    .otherAccount, typed: KitFormat.maskEmail("maya@example.com"),
+                    signed: KitFormat.maskEmail("jo@example.com"))
+            }),
+        .init(.addToAccount, "failed", base { $0.addToAccount = attach(.failed) }),
+        .init(
+            .signIn, "key-done",
+            base {
+                $0.signIn = KitSignIn(step: .keyDone)
+                $0.activateDone = doneFacts
+            }),
+        .init(
+            .signIn, "attach",
+            base {
+                $0.signIn = KitSignIn(step: .attach)
+                $0.addToAccount = attach(.form)
+            }),
+        .init(
+            .signIn, "attach", variant: "invalid",
+            base {
+                $0.signIn = KitSignIn(step: .attach)
+                $0.addToAccount = attach(.invalid, field: .both)
+            }),
+        .init(
+            .signIn, "added",
+            base {
+                $0.signIn = KitSignIn(step: .added)
+                $0.addToAccount = attach(.added)
             }),
     ]
 

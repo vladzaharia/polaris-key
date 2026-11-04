@@ -12,6 +12,11 @@
 import PolarisKeyUICore
 import SwiftUI
 
+extension PolarisKitGlyph {
+    /// ↗, beside an action that opens Polaris Locker in the browser (the holder screens).
+    static let externalArrow = "arrow.up.right"
+}
+
 /// What a button is in its group.
 public enum KitButtonKind: Sendable {
     case primary, secondary, quiet, destructive
@@ -60,7 +65,7 @@ struct KitButton: View {
             .accessibilityIdentifier(kind == .primary ? "pkey.primary" : "")
             .accessibilityValue(busy ? Text(strings.string("a11y.busy")) : Text(""))
             .accessibilityHint(
-                glyph == PolarisKitGlyph.newWindow
+                glyph == PolarisKitGlyph.newWindow || glyph == PolarisKitGlyph.externalArrow
                     ? Text(strings.string(PolarisKitGlyph.newWindowCopyKey)) : Text(""))
         }
     }
