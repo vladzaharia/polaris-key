@@ -101,6 +101,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -1197,6 +1198,8 @@ internal fun PolarisTextField(
     /** A long code: the Material field wraps over up to three lines in monospace instead of scrolling one line. */
     multiline: Boolean = false,
     visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
+    /** What the field holds, for autofill and the keyboard's suggestions (Android's Material field; the desktop chromes have no autofill). */
+    fieldContentType: androidx.compose.ui.autofill.ContentType? = null,
 ) {
     val branded = PolarisTheme.current.branding == PolarisBranding.PolarisKey
     val shape = PolarisTheme.fieldShape
@@ -1244,6 +1247,7 @@ internal fun PolarisTextField(
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+                    .then(if (fieldContentType != null) Modifier.semantics { contentType = fieldContentType } else Modifier)
                     .then(if (branded) Modifier.clip(shape) else Modifier),
             )
         }

@@ -208,6 +208,30 @@ public fun PolarisKitScreen(
     when {
         screen.isHidden -> Unit
 
+        // Activation without an account (UK-43.9): ActivateDone, AddToAccount and the sign-in form's key-done, attach and added steps.
+        isHolderScreen(screen) -> {
+            fun press(key: String): () -> Unit = {
+                onControl(key)
+                onAction(KitAction.forCopyKey(key))
+            }
+            PolarisHolderScreen(
+                screen,
+                modifier,
+                handlers = HolderHandlers(
+                    onStartUsing = press("signin.done.start"),
+                    onAdd = press(if (screen.shows("signin.key.addInLocker")) "signin.key.addInLocker" else "activate.recommend.action"),
+                    onSubmit = press("common.continue"),
+                    onTryAgain = press("common.tryAgain"),
+                    onReopen = press("signin.handoff.again"),
+                    onCancel = press("common.cancel"),
+                    onSignIn = press("signin.key.ownedSignIn"),
+                    onVerify = press("activate.otherEmail.verify"),
+                    onOtherAccount = press("signin.auto.confirm.other"),
+                    onDone = press("common.done"),
+                ),
+            )
+        }
+
         screen.component == KitComponent.licenseChoice && choices != null && choices.choices.isNotEmpty() && screen.state in LicenseChoiceRowStates ->
             PolarisLicenseChoice(
                 screen,
