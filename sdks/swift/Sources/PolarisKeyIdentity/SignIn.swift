@@ -99,7 +99,10 @@ func defaultSignInBrowser() -> (any SignInBrowser)? {
 
         public func open(_ url: URL) async throws {
             let provider = AnchorProvider(anchor: Self.currentAnchor())
-            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: nil) { _, _ in }
+            // The system calls this on a background queue, so it must not be main-actor isolated.
+            let completion: @Sendable (URL?, (any Error)?) -> Void = { _, _ in }
+            let session = ASWebAuthenticationSession(
+                url: url, callbackURLScheme: nil, completionHandler: completion)
             session.presentationContextProvider = provider
             session.prefersEphemeralWebBrowserSession = false
             self.anchor = provider
