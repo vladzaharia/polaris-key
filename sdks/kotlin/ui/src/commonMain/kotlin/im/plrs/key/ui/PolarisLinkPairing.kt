@@ -306,6 +306,9 @@ internal fun ConnectActions(buttons: List<ConnectButton>) {
 /** The title-safe band at the foot of a TV picture (5 % of 540 dp, and the focus ring). */
 private val TV_SAFE_BOTTOM = 31.dp
 
+/** The vertical padding inside a chip (6 dp: the chip is 32 dp tall at rest and grows with the text). */
+private val CHIP_VERTICAL_PADDING = 6.dp
+
 /** A failure the person can act on: the warning glyph and the sentence. Not a live region: the heading's focus announces the state. */
 @Composable
 internal fun ConnectNotice(text: String) {
@@ -371,7 +374,7 @@ private fun ConsentTag(text: String) {
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
         Box(
-            Modifier.heightIn(min = 32.dp).padding(horizontal = PolarisSpace.controls, vertical = PolarisSpace.hairline),
+            Modifier.heightIn(min = 32.dp).padding(horizontal = PolarisSpace.controls, vertical = CHIP_VERTICAL_PADDING),
             contentAlignment = Alignment.Center,
         ) {
             Text(text, style = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp))

@@ -345,13 +345,22 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
         "maven.server-ktor",
       ]),
     );
-    // No tag gate and no drift skip: every deliverable publishes on every build.
+    // No tag gate: every deliverable publishes on every build. The drift check skips exactly the
+    // deliverables whose publish is refused while they wait for production registration.
     for (const c of publishCalls())
       expect(c.job.with?.["publish-on"], c.id).toBeUndefined();
     const check = (wf.jobs.drift!.steps ?? []).find((s) =>
       s.run?.includes("tools/feed-drift.mjs"),
     );
-    expect(check?.run).not.toContain("--skip");
+    const pending = [
+      ...String(wf.jobs.maven!.with?.["pending-registration"] ?? "").matchAll(
+        /matrix\.artifact == '([a-z0-9-]+)'/g,
+      ),
+    ].map((m) => `maven.${m[1]}`);
+    const skipped = [...(check?.run ?? "").matchAll(/--skip (\S+)/g)].flatMap(
+      (m) => m[1]!.split(","),
+    );
+    expect(skipped.sort()).toEqual(pending.sort());
     expect(check?.env?.SKIP).toBeUndefined();
     const closure = (wf.jobs["npm-install"]!.steps ?? []).find((s) =>
       s.run?.includes("tools/feed-closure.mjs"),

@@ -55,7 +55,7 @@ private object HolderCases {
         val wait = inputsOf(raw, null)
             .with("addToAccount", JsonObject(mapOf("step" to JsonPrimitive("busy"), "deviceKind" to JsonPrimitive("computer"))))
             .with("deviceCode", JsonObject(mapOf("phase" to JsonPrimitive("waiting"), "userCode" to JsonPrimitive("WDJB-MJHT"))))
-        cases += HolderCase("wait-code", KitStates.resolve(KitComponent.addToAccount, wait))
+        cases += HolderCase("addtoaccount-waiting-code", KitStates.resolve(KitComponent.addToAccount, wait))
         cases
     }
 }
@@ -91,7 +91,7 @@ class HoldersSnapshotTest(private val dark: Boolean) {
         val tv = SnapshotVariant("tv-polaris", PolarisBranding.PolarisKey, dark, widthDp = 960, heightDp = 540, tv = true)
         val large = SnapshotVariant("phone-polaris-font200", PolarisBranding.PolarisKey, dark, fontScale = 2f)
         val theme = if (dark) "dark" else "light"
-        rule.capture("holders/form-tv/$theme", tv) { PolarisKitScreen(form.screen) }
-        rule.capture("holders/form-font200/$theme", large) { PolarisKitScreen(form.screen) }
+        rule.capture("holders/addtoaccount-form-tv/$theme", tv) { PolarisKitScreen(form.screen) }
+        rule.capture("holders/addtoaccount-form-font200/$theme", large) { PolarisKitScreen(form.screen) }
     }
 }

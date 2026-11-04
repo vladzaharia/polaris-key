@@ -104,7 +104,10 @@ private final class Plane: PolarisTransport, @unchecked Sendable {
         if lock.withLock({ heldPath == path }) {
             await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
                 let resumeNow = lock.withLock { () -> Bool in
-                    if heldPath == path { heldWaiters.append(c); return false }
+                    if heldPath == path {
+                        heldWaiters.append(c)
+                        return false
+                    }
                     return true
                 }
                 if resumeNow { c.resume() }

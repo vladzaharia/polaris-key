@@ -585,12 +585,13 @@ private fun KitScreenBody(
                             Modifier
                         }
                         if (isGoogleProviderLine(line.key, line.args)) {
-                            PolarisGoogleButton(line.text, onClick = click, modifier = hero)
+                            PolarisGoogleButton(line.text, onClick = click, modifier = hero, initialFocus = index == 0)
                         } else if (index == 0) {
                             PolarisPrimaryButton(
                                 text = line.text,
                                 onClick = click,
                                 modifier = hero,
+                                initialFocus = true,
                                 external = KitAction.leavesApp(line.key),
                                 enabled = !busy,
                                 busy = busy,

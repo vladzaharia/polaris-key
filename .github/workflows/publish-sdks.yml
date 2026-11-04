@@ -580,12 +580,16 @@ jobs:
 
   # ── Godot: the polaris_key addon ────────────────────────────────────────────────────────────
   godot-test:
-    name: Test the Godot SDK (4.7.2 editor + release template)
+    name: Test the Godot SDK (4.7.2 ${{ matrix.part }})
     needs: version
     runs-on: ubuntu-latest
-    # The whole run_tests.sh lane takes ~26 minutes on a hosted runner (editor ~6, ui-matrix ~13,
-    # template ~6); ci.yml's godot job allows 60.
+    # The same four parts as ci.yml's godot job (run_tests.sh PKEY_TEST_PART), one runner each, so
+    # no step nears its limit.
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [editor-a, editor-b, matrix, template]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -598,11 +602,11 @@ jobs:
           # ci.yml's godot job sets the same: the `ci` selection's editor step takes ~6 minutes on
           # a hosted runner, past run_tests.sh's default 300 s per step (the ui-matrix step has its
           # own limit).
-          GODOT_BIN="$D/godot" GODOT_TEMPLATE="$D/linux_release.x86_64" PKEY_TEST_TIMEOUT=900 sdks/godot/tools/run_tests.sh
+          GODOT_BIN="$D/godot" GODOT_TEMPLATE="$D/linux_release.x86_64" PKEY_TEST_TIMEOUT=900 PKEY_TEST_PART="${{ matrix.part }}" sdks/godot/tools/run_tests.sh
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: godot-test-logs
+          name: godot-test-logs-${{ matrix.part }}
           path: sdks/godot/build/logs/
 
   godot-package:
@@ -795,9 +799,13 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
           PEP440: ${{ needs.version.outputs.pep440 }}
           CHANNEL: ${{ needs.version.outputs.channel }}
+        # maven.games is pending registration on production (owner step OS-27): its publish is
+        # refused (see the maven matrix), so the drift check skips it until production has re-read
+        # .pkey/release. Drop the --skip with the pending-registration flag.
         run: >-
           node tools/feed-drift.mjs --origin https://pkg.plrs.im --owner polaris-key
           --version "$VERSION" --pep440 "$PEP440" --channel "$CHANNEL" --timeout 600
+          --skip maven.games
       # P0-52: every @polaris-key pin of every package at this version is a version the feed
       # lists. Only this version's broken pins fail the run; a broken pin on an older version is
       # a warning here and an error in the daily feed-closure.yml. It runs after a red drift

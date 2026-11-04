@@ -69,12 +69,14 @@ import PolarisKeyCore
         ) -> Bool {
             if let relaunchGate {
                 let once = LockedValue<Bool>(false)
+                // Sparkle hands the block over unmarked; it is invoked at most once, from whichever thread resumes.
+                nonisolated(unsafe) let install = installHandler
                 let resume: @Sendable () -> Void = {
                     let first = once.with { done -> Bool in
                         defer { done = true }
                         return !done
                     }
-                    if first { installHandler() }
+                    if first { install() }
                 }
                 return relaunchGate(item, resume)
             }

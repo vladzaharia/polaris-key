@@ -39,7 +39,7 @@ static func nearby_approval_view(ctx: RefCounted) -> Dictionary:
 		"choose": [["signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.approve.deny"], null, null],
 		"account-required": [["core.codes.account_required.title", "core.codes.account_required.message", "signin.key.signIn"], "signin.key.signIn", "neutral"],
 		"rate-limited": [["core.codes.rate_limited.title", "signin.nearby.rateLimitedBody", "common.done"], "common.done", "neutral"],
-		# The approver's own screen (UXR-47b B3): what it does, that it is listening, and the way out.
+		# The approver's own screen: what it does, that it is listening, and the way out.
 		"listening": [["signin.nearby.listenTitle", "signin.nearby.listenBody", "signin.cli.approveWaiting", "common.done"], "common.done", "neutral"],
 		# Two declined requests in ten minutes stop the advert: say so.
 		"stopped": [["signin.nearby.pausedTitle", "signin.nearby.pausedBody", "signin.nearby.startAgain", "common.done"], "signin.nearby.startAgain", "neutral"],

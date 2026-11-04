@@ -347,7 +347,7 @@ static func _auto_step_view(ctx: RefCounted, auto: Dictionary, base_args: Dictio
 			primary = "common.tryAgain"
 			tone = "neutral"
 		"nearby-denied", "nearby-expired", "nearby-not-nearby", "nearby-failed", "nearby-rate-limited", "nearby-unavailable", "nearby-cancelled", "nearby-signed-out":
-			# How a request ended (UXR-47b B1): a title, a line, Try again and Use a code instead.
+			# How a request ended: a title, a line, Try again and Use a code instead.
 			copy = _nearby_end_copy(step)
 			primary = "common.tryAgain"
 			tone = "neutral"

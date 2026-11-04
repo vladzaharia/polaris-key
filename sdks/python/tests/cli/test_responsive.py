@@ -847,3 +847,47 @@ def test_the_landscape_offline_request_leaves_no_rail_below_the_closing_row() ->
     end = next(i for i, r in enumerate(rows) if r.startswith("└"))
     assert any("█" in r or "▀" in r for r in rows), "the QR sits beside the text"
     assert [r for r in rows[end + 1 :] if r.startswith("│")] == []
+
+
+# ── The masked key field, redrawn in place at every length ───────────────────────────────────
+
+TYPED = "pkey_tidewater_7Q2Mx9cLr4TbV0aZ3WPLDA7Q2Mx9cLr4TbV0aZ3WPLDA"
+
+
+def _entry_client() -> SimpleNamespace:
+    licence = SimpleNamespace(activate_with_key=lambda key: None)
+    return SimpleNamespace(product=PRODUCT, license=licence, status=lambda: None)
+
+
+def _headers(term: Term) -> int:
+    return sum(1 for r, _ in term.all() if r.startswith("┌"))
+
+
+@pytest.mark.parametrize("cols", [32, 34, 36, 38, 40, 44])
+def test_typing_a_key_redraws_in_place_after_every_character(cols: int) -> None:
+    """The key field's cursor cell takes a cell of its own: a masked line that fills the row to its
+    last cell wraps once the cursor is drawn, and the next frame must erase that row too. Every
+    frame, one character at a time, leaves one header and the field on rows of its own."""
+    term = Term(cols, 24)
+    seen: List[int] = []
+
+    def check_then(ch: str) -> Callable[[], str]:
+        def step() -> str:
+            seen.append(_headers(term))
+            return ch
+
+        return step
+
+    keys = [check_then(c) for c in TYPED] + [check_then("esc")]
+    t = terminal(term, SHORT, verb="activate", keys=keys)
+    flows.activate(_entry_client(), t, None)
+    assert seen == [1] * (len(TYPED) + 1), seen
+
+
+@pytest.mark.parametrize("cols", [32, 40])
+def test_pasting_a_key_in_one_piece_draws_one_header(cols: int) -> None:
+    term = Term(cols, 24)
+    seen: List[int] = []
+    t = terminal(term, SHORT, verb="activate", keys=[TYPED, lambda: (seen.append(_headers(term)), "esc")[1]])
+    flows.activate(_entry_client(), t, None)
+    assert seen == [1]

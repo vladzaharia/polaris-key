@@ -250,7 +250,7 @@ describe("the changes job outputs", () => {
         expect(out[lane], lane).toBe("true");
       expect(out.full).toBe("true");
       expect(JSON.parse(out["python-matrix"]!).include).toHaveLength(3);
-      expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(9);
+      expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(17);
     },
   );
 
@@ -265,7 +265,7 @@ describe("the changes job outputs", () => {
       os: "macos-15",
       python: "3.12",
     });
-    expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(9);
+    expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(17);
     expect(JSON.parse(out["kotlin-desktop-matrix"]!).os).toHaveLength(3);
     expect(JSON.parse(out["kotlin-emulator-matrix"]!)["api-level"]).toEqual([
       24, 34, 36,
@@ -385,7 +385,7 @@ describe("the ci-scope command", () => {
       for (const lane of Object.keys(scope.lanes))
         expect(out[lane], lane).toBe("true");
       expect(JSON.parse(out["python-matrix"]!).include).toHaveLength(3);
-      expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(9);
+      expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(17);
       expect(JSON.parse(out["kotlin-desktop-matrix"]!).os).toHaveLength(3);
       expect(JSON.parse(out["kotlin-emulator-matrix"]!)["api-level"]).toEqual([
         24, 34, 36,

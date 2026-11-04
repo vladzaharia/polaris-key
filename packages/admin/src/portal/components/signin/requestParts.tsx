@@ -172,7 +172,7 @@ export const ChoiceGroup = React.forwardRef<
               aria-label={o.label}
               data-checked={checked ? "" : undefined}
               className={cn(
-                "relative flex min-h-14 w-full items-start gap-3 overflow-hidden rounded-md border px-3 py-3 text-start",
+                "@container/choice relative flex min-h-14 w-full items-start gap-3 overflow-hidden rounded-md border px-3 py-3 text-start",
                 "before:absolute before:inset-y-0 before:start-0 before:w-[3px]",
                 "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
                 checked
@@ -283,7 +283,9 @@ export function DeviceChoiceBody({
 }): React.ReactElement {
   return (
     <span className="flex items-start gap-2">
-      <span className="mt-0.5 shrink-0 text-fg-muted [&_svg]:size-4">
+      {/* The glyph goes when the row is under 14 rem (320 px with text at 200 %): it would leave
+          the name and the meta line a few letters wide. */}
+      <span className="mt-0.5 shrink-0 text-fg-muted @max-[14rem]/choice:hidden [&_svg]:size-4">
         {glyph}
       </span>
       <span className="min-w-0 space-y-1">
