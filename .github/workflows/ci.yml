@@ -1576,14 +1576,18 @@ jobs:
   # `--script` and `--main-pack`; the runner is the project's main loop, so both run it the same
   # way. Four Linux engines (P1-12): the 4.7.2, 4.6.3 and 4.5.2 editors, each
   # with its official linux_release.x86_64 template, and the 4.4.1 editor (the source-compatible
-  # floor); each engine is split over runners (editor A, editor B, UI matrix, release template). The README's tested matrix names exactly these engines. run_tests.sh also exports the
+  # floor); each engine is split over runners (the editor, the UI matrix, the release template), and
+  # the editor and template legs run the `ci` selection as four parallel Godot processes, one per
+  # vCPU, each with its own HOME (run_tests.sh PKEY_TEST_PARALLEL=1, the ci_p1..ci_p4 sets). The UI
+  # matrix is one job per presentation path (4.7.2: scrim and opaque) and, for 4.7.2 and 4.4.1, two
+  # jobs per path, each running half of the 8 shards (ui_shards / ui_range in tools/ci-scope.json). The README's tested matrix names exactly these engines. run_tests.sh also exports the
   # harness preset headless with PKEY_BUILD_OUTLET=steam, PKEY_BUILD_CHANNEL=beta and
   # PKEY_BUILD_NUMBER=42 (the P1-11 build stamp): the export_stamps suite checks the stamps in the
   # editor and the build_stamp suite asserts the stamp and the pkey_* feature tags on the release
   # template. No path filter: a required check behind a filter never reports. Only first-party
   # actions; every engine download is checked against the upstream SHA-512 in
-  # sdks/godot/tools/godot.sha512, which also keys the cache. The `ci` selection's editor step takes
-  # 4-5 minutes on a hosted runner and the UI resolution matrix step 6-10, past run_tests.sh's
+  # sdks/godot/tools/godot.sha512, which also keys the cache. A parallel `ci` process takes up to
+  # 4-5 minutes on a hosted runner and a UI matrix shard 6-10, past run_tests.sh's
   # default 300 s per step: PKEY_TEST_TIMEOUT gives each step 900 s, as the local gate does.
   godot:
     name: ${{ matrix.name }}
@@ -1614,9 +1618,10 @@ jobs:
       - name: UI kit source lint (godot)
         run: node packages/ui-qa/bin/kit-lint.mjs --kit=godot
       # P0-46.7: gdlint (gdtoolkit, pinned in sdks/godot/tools/lint-requirements.txt) against
-      # sdks/godot/lint-debt.json. One leg only (Linux, newest editor): the lint needs no engine.
+      # sdks/godot/lint-debt.json. One leg only (Linux, newest engine's editor leg): the lint needs no
+      # engine. tools/godotCiSplit.test.ts holds it to exactly one leg of each matrix.
       - name: GDScript lint (gdlint)
-        if: runner.os == 'Linux' && matrix.godot == '4.7.2'
+        if: runner.os == 'Linux' && matrix.godot == '4.7.2' && matrix.part == 'editor'
         run: sdks/godot/tools/lint.sh check
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -1633,9 +1638,10 @@ jobs:
       # empties sdks/godot/build. The editor run and the exported-pack run use the one server; the
       # suite is written for that.
       # Only the legs that run `dev_live` start the server: the `matrix` part runs only the UI matrix
-      # (run_tests.sh) and `editor-b` runs `ci_b`, which does not hold `dev_live` (runner.gd keeps it in
-      # `ci_a`), so both skip the dev steps: `stop` fails a leg whose lane never ran.
-      # tools/godotCiSplit.test.ts holds this condition to the suite sets.
+      # (run_tests.sh), so it skips the dev steps: `stop` fails a leg whose lane never ran. The editor
+      # and template legs run `dev_live` in one of their parallel processes (`ci_p4`), which reaches
+      # the server through the exported variables. tools/godotCiSplit.test.ts holds this condition to
+      # the suite sets.
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         if: runner.os == 'Linux'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -1644,15 +1650,15 @@ jobs:
           node-version: 22
           cache: pnpm
       - name: Build the pkey dev server (the CLI and the Worker's dependencies)
-        if: runner.os == 'Linux' && matrix.part != 'matrix' && matrix.part != 'editor-b'
+        if: runner.os == 'Linux' && matrix.part != 'matrix'
         run: |
           pnpm install --frozen-lockfile --filter=@polaris-key/worker...
           pnpm exec turbo run build --filter=@polaris-key/worker^...
       - name: Start pkey dev (Godot live lane)
-        if: runner.os == 'Linux' && matrix.part != 'matrix' && matrix.part != 'editor-b'
+        if: runner.os == 'Linux' && matrix.part != 'matrix'
         run: node packages/cli/scripts/start-dev-ci.mjs start --lang godot
       - name: Check the pkey dev lane (variables, config, server)
-        if: runner.os == 'Linux' && matrix.part != 'matrix' && matrix.part != 'editor-b'
+        if: runner.os == 'Linux' && matrix.part != 'matrix'
         run: node packages/cli/scripts/start-dev-ci.mjs check
       - run: |
           D="$HOME/.cache/pkey-godot/${{ matrix.godot }}"
@@ -1660,22 +1666,27 @@ jobs:
           export PKEY_TEST_TIMEOUT=900
           if [ -n "${{ matrix.template }}" ]; then export GODOT_TEMPLATE="$D/linux_release.x86_64"; fi
           if [ -n "${{ matrix.suites }}" ]; then export PKEY_TEST_SUITES="${{ matrix.suites }}"; fi
-          # The newest editor runs the UI matrix on both presentation paths (scrim and opaque page).
-          if [ "${{ matrix.godot }}" = 4.7.2 ]; then export PKEY_UI_MATRIX_PATHS=both; fi
-          # Every Linux engine's work is split over runners (the editor run in two halves, A with
-          # the stamps and B, the UI matrix, the release template run where the engine has one); the
-          # Windows and macOS smoke legs run it all (PKEY_TEST_PART unset).
-          if [ -n "${{ matrix.part }}" ]; then export PKEY_TEST_PART="${{ matrix.part }}"; fi
+          # The UI matrix legs say which presentation path (scrim 0, opaque page 1, or the engine's
+          # own) and which of the path's shards they run (tools/ci-scope.json): the newest engine
+          # covers both paths, each path in two jobs.
+          if [ -n "${{ matrix.ui_paths }}" ]; then export PKEY_UI_MATRIX_PATHS="${{ matrix.ui_paths }}"; fi
+          if [ -n "${{ matrix.ui_shards }}" ]; then export PKEY_UI_MATRIX_SHARDS="${{ matrix.ui_shards }}"; fi
+          if [ -n "${{ matrix.ui_range }}" ]; then export PKEY_UI_MATRIX_SHARD_RANGE="${{ matrix.ui_range }}"; fi
+          # Every Linux engine's work is split over runners (the editor run with the stamps, the UI
+          # matrix, the release template run where the engine has one), and the editor and template
+          # run the `ci` selection as four parallel processes; the Windows and macOS smoke legs
+          # run it all (PKEY_TEST_PART unset).
+          if [ -n "${{ matrix.part }}" ]; then export PKEY_TEST_PART="${{ matrix.part }}"; export PKEY_TEST_PARALLEL=1; fi
           sdks/godot/tools/run_tests.sh
       # Import, export and runs must leave the tree as committed: no rewritten file, no new .uid.
       - run: git diff --exit-code -- sdks/godot && test -z "$(git status --porcelain -- sdks/godot)"
       - name: Stop pkey dev (Godot live lane)
-        if: always() && runner.os == 'Linux' && matrix.part != 'matrix' && matrix.part != 'editor-b'
+        if: always() && runner.os == 'Linux' && matrix.part != 'matrix'
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang godot --job-status "${{ job.status }}"
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: godot-logs-${{ matrix.godot }}-${{ matrix.os }}
+          name: godot-logs-${{ matrix.godot }}-${{ matrix.os }}-${{ matrix.part || 'smoke' }}-${{ matrix.ui_paths }}-${{ matrix.ui_range }}
           path: sdks/godot/build/logs/
 
   # The one required check. `always()` so it reports when a lane failed or was skipped: a lane the
