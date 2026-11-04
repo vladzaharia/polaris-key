@@ -90,7 +90,7 @@ export function codeEntryBody(opts: {
       "shield",
       "Only use a code your own device shows, not one somebody sent you.",
     ) +
-    `<button class="button" type="submit">Continue${icon("arrow-right")}</button></form>`
+    `<button class="button" type="submit">Continue</button></form>`
   );
 }
 

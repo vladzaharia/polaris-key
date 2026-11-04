@@ -86,7 +86,7 @@ export function ReplaceDeviceStep({
         </div>
         <Button
           variant="neutral"
-          size="lg"
+          size="xl"
           className={PRIMARY_CLASS}
           onClick={() => void q.refetch()}
         >
@@ -136,7 +136,7 @@ export function ReplaceDeviceStep({
   };
 
   return (
-    <form noValidate onSubmit={submit} className="space-y-5">
+    <form noValidate onSubmit={submit} className="space-y-6">
       <div className="space-y-2">
         <AuthTitle>{t("signin.replace.heading")}</AuthTitle>
         <p className="flex flex-wrap items-center gap-2 text-fg-muted">
@@ -145,7 +145,7 @@ export function ReplaceDeviceStep({
           {m.title.toLowerCase().endsWith(m.pill.toLowerCase()) ? null : (
             <Pill>{m.pill}</Pill>
           )}
-          {m.devices ? <span className="text-sm">{m.devices}</span> : null}
+          {m.devices ? <span className="text-sm/5">{m.devices}</span> : null}
         </p>
         <p className="text-fg-muted">
           {t("signin.replace.lede", { thisDevice })}
@@ -174,7 +174,7 @@ export function ReplaceDeviceStep({
             error={error}
           />
           {picked?.activeNow ? (
-            <p className="flex items-start gap-2 text-sm text-fg-strong">
+            <p className="flex items-start gap-2 text-sm/5 text-fg-muted">
               <Info
                 aria-hidden
                 className="mt-0.5 size-4 shrink-0 text-fg-muted"
@@ -182,13 +182,13 @@ export function ReplaceDeviceStep({
               {t("signin.replace.inUse", { device: picked.label })}
             </p>
           ) : null}
-          <p className="text-sm text-fg-muted">
+          <p className="text-sm/5 text-fg-muted">
             {t("signin.choice.replaceSafety", { app })}
           </p>
           <Button
             type="submit"
             variant="neutral"
-            size="lg"
+            size="xl"
             className={PRIMARY_CLASS}
           >
             {t("signin.choice.replaceAndSignIn")}

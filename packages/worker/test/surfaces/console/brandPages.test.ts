@@ -119,8 +119,9 @@ async function expectBrandedPage(
       /<nav class="ac-links" aria-label="Help and privacy"><a href="\/docs\/help\/(approve-a-sign-in\/)?">Help<\/a><a href="\/docs\/help\/your-data\/">Privacy<\/a><\/nav>/,
     );
     expect(html).not.toContain("Terms");
-    expect(styles[0]![1]).toContain(
-      ".ac-links a{display:inline-flex;align-items:center;min-height:1.5rem",
+    // Footer type: the muted link style, a 24 px target and, under a coarse pointer, 44 px.
+    expect(styles[0]![1]).toMatch(
+      /\.ac-links a\{display:inline-flex;align-items:center;min-height:1\.5rem;color:var\(--muted\)\}/,
     );
   }
   expect(html).not.toContain('class="lockup"');
@@ -479,8 +480,12 @@ describe("the console sign-in card (GET /manage/login)", () => {
     expect(html).not.toContain('name="go"');
     expect(html).toContain('name="returnTo" value="/manage/#/p/alpha"');
     // Help and Privacy sit under the card: public Polaris Key pages, never customer Help (operators are not customers).
+    // Emergency sign-in is the card's last line (the tertiary line), not a footer link.
     expect(html).toContain(
-      '<nav class="ac-links" aria-label="Help and links"><a href="/docs/">Help</a><a href="/docs/reference/what-apps-collect/">Privacy</a><a href="/manage/login?breakGlass=1&amp;returnTo=%2Fmanage%2F%23%2Fp%2Falpha">Emergency sign-in</a></nav>',
+      '<nav class="ac-links" aria-label="Help and links"><a href="/docs/">Help</a><a href="/docs/reference/what-apps-collect/">Privacy</a></nav>',
+    );
+    expect(html).toContain(
+      '<p class="tertiary"><a href="/manage/login?breakGlass=1&amp;returnTo=%2Fmanage%2F%23%2Fp%2Falpha">Emergency sign-in</a></p>',
     );
     expect(html).toContain("Next: sign in at id.example");
   });
@@ -721,7 +726,13 @@ describe("the console sign-in error cards", () => {
 describe("the phone header rules are scoped to the Locker card", () => {
   it("the console card keeps its Key lockup at the brand size (no unscoped 23 px rule)", () => {
     const css = BRAND_PAGE_CSS_CONSOLE;
-    expect(css).not.toContain(".ac-brand svg{height:23px");
-    expect(BRAND_PAGE_CSS_LOCKER).toContain(".ac-brand svg{height:23px");
+    expect(css).not.toContain("[data-brand=locker] .ac-brand svg{height:23px");
+    expect(BRAND_PAGE_CSS_LOCKER).toContain(
+      "[data-brand=locker] .ac-brand svg{height:23px",
+    );
+    // The console's phone lockup is sized by width, from the same 40 rem breakpoint.
+    expect(css).toContain(
+      "@media (max-width: 39.99rem){[data-brand=console] .ac-brand svg{width:min(180px,52vw);height:auto}}",
+    );
   });
 });

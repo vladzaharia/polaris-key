@@ -29,7 +29,7 @@ function focusStep(body: HTMLElement, h1: HTMLElement | null): void {
  * header and every string arrive from the host, so the portal and the Worker's pages share it.
  *
  * The frame: the lockup above, the
- * 28.5 rem card (radius 22 px, elevation 3) with its optional persistent `header`, the step
+ * 28.5 rem card (radius 18 px, elevation 3, 32 px padding) with its optional persistent `header`, the step
  * `children` (one primary each) and the passthrough `footer`, on the plain page (the Locker look
  * has no star field, LK-06). Phones: the card goes edge to edge under a 56 px lockup row. No
  * "Polaris Key · key.plrs.im" line under the card.
@@ -134,15 +134,20 @@ export function AuthCard({
   }, [focusKey, stepKey]);
 
   return (
-    <div className="relative flex min-h-dvh flex-col bg-surface-page text-fg">
-      <div className="relative z-10 flex h-14 items-center justify-center border-b border-border sm:h-auto sm:border-0 sm:pb-4 sm:pt-24 short:pt-10">
+    // The family's one ring: the card root re-points `--pk-focus` to `--pk-text-strong` (§8), so the
+    // portal and the console wear the same neutral ring; fields use their own inset ring.
+    <div className="relative flex min-h-dvh flex-col bg-surface-raised text-fg [--pk-focus:var(--pk-text-strong)] sm:bg-surface-page">
+      {/* The brand row (§3, §8): on a phone a 56 px row under the safe-area inset, no hairline;
+          from `sm` the lockup's top sits at clamp(2.5rem, 12vh, 7.5rem) and its ink 40 px above
+          the card (24 px each on a short window). */}
+      <div className="relative z-10 flex h-[calc(3.5rem+env(safe-area-inset-top,0px))] items-center justify-center pt-[env(safe-area-inset-top,0px)] sm:h-auto sm:pb-10 sm:pt-[clamp(2.5rem,12vh,7.5rem)] short:pb-6 short:pt-6">
         {brand}
       </div>
       <main className="@container relative z-10 flex flex-1 flex-col items-center sm:px-4">
         <div
           data-passport={header ? "" : undefined}
           className={cn(
-            "w-full overflow-hidden bg-surface-raised max-sm:flex-1 sm:mb-6 sm:max-w-[28.5rem] sm:rounded-[1.375rem] sm:border sm:border-border sm:shadow-elevation-3",
+            "w-full overflow-hidden bg-surface-raised sm:mb-6 sm:max-w-[28.5rem] sm:rounded-xl sm:border sm:border-border sm:shadow-elevation-3",
             // The passport: the header becomes a 17.5 rem start pane beside the form pane.
             header &&
               "passport:grid passport:max-w-[46rem] passport:grid-cols-[17.5rem_minmax(0,1fr)] passport:grid-rows-[1fr_auto]",
@@ -170,7 +175,9 @@ export function AuthCard({
               key={stepKey}
               data-step={stepKey}
               className={cn(
-                "space-y-5 px-5 py-6 sm:px-6 sm:py-8",
+                "space-y-6 px-6 pb-6 sm:p-8",
+                // 8 px under the brand row; 24 px under a header strip and its hairline.
+                header ? "pt-6" : "pt-2",
                 moved &&
                   (direction === "back"
                     ? "animate-pk-step-back"
@@ -184,7 +191,7 @@ export function AuthCard({
           {footer ? (
             <div
               className={cn(
-                "border-t border-border px-5 py-4 text-sm text-fg-muted sm:px-6",
+                "border-t border-border px-6 py-4 text-sm/5 text-fg-muted sm:px-8",
                 // The trust receipt anchors at the pane's foot (the pane never ends in a void).
                 header &&
                   (receipt
@@ -197,7 +204,7 @@ export function AuthCard({
           ) : null}
         </div>
         {after ? (
-          <div className="mb-6 text-sm text-fg-muted max-sm:px-5 max-sm:pb-2">
+          <div className="mb-6 text-sm/5 text-fg-muted max-sm:mb-0 max-sm:px-6 max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] max-sm:pt-6">
             {after}
           </div>
         ) : null}
@@ -340,7 +347,7 @@ function Icon({
 }
 
 const WHERE =
-  "flex items-start gap-1.5 text-sm text-fg-muted passport:px-6 passport:pt-1";
+  "flex items-start gap-1.5 text-sm/5 text-fg-muted passport:px-6 passport:pt-1";
 const PANE_TEXT = "passport:px-6";
 
 function Where({
@@ -368,7 +375,7 @@ function Where({
 export function HeaderSkeleton(): React.ReactElement {
   return (
     <div aria-hidden data-header="loading" className={OUTER}>
-      <div className="flex items-center gap-4 px-5 py-4 sm:px-6 passport:contents">
+      <div className="flex items-center gap-4 px-6 py-4 sm:px-8 passport:contents">
         <Icon art={false}>
           <div className="size-14 rounded-[14px] bg-hover" />
         </Icon>
@@ -396,20 +403,20 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
     return (
       <div data-header={variant} className={hasArt ? OUTER : OUTER_NO_ART}>
         <PaneArt src={art} />
-        <div className="flex items-center gap-4 px-5 py-4 sm:px-6 passport:contents">
+        <div className="flex items-center gap-4 px-6 py-4 sm:px-8 passport:contents">
           <Icon art={hasArt}>{icon}</Icon>
           <div className="min-w-0 passport:contents">
             <p
               className={cn(
-                "text-lg/6 text-fg-strong passport:pt-4",
+                "text-base/6 text-fg-strong passport:pt-4",
                 PANE_TEXT,
               )}
             >
-              <span className="font-semibold">{name}</span>
+              <span className="font-medium">{name}</span>
               {developer ? ` · ${developer}` : null}
             </p>
             {where ? null : (
-              <p className={cn("text-sm text-fg-muted", PANE_TEXT)}>
+              <p className={cn("text-sm/5 text-fg-muted", PANE_TEXT)}>
                 {t("signin.header.contextLine")}
               </p>
             )}
@@ -423,13 +430,13 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
   return (
     <div data-header={variant} className={hasArt ? OUTER : OUTER_NO_ART}>
       <PaneArt src={art} />
-      <div className="px-5 py-4 sm:px-6 passport:contents">
+      <div className="px-6 py-4 sm:px-8 passport:contents">
         <div className="flex items-center gap-4 passport:contents">
           <Icon art={hasArt}>{icon}</Icon>
           <div className="min-w-0 passport:contents">
             <p
               className={cn(
-                "text-lg/6 text-fg-strong [overflow-wrap:anywhere] passport:text-balance passport:pt-4",
+                "text-base/6 text-fg-strong [overflow-wrap:anywhere] passport:text-balance passport:pt-4",
                 PANE_TEXT,
               )}
             >
@@ -441,7 +448,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
                 typeof part === "string" ? (
                   part
                 ) : (
-                  <strong key={i} className="font-semibold">
+                  <strong key={i} className="font-medium">
                     {name}
                   </strong>
                 ),
@@ -450,7 +457,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
             {developer ? (
               <p
                 className={cn(
-                  "text-sm text-fg-muted [overflow-wrap:anywhere]",
+                  "text-sm/5 text-fg-muted [overflow-wrap:anywhere]",
                   PANE_TEXT,
                 )}
               >
@@ -463,7 +470,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
         {code ? (
           <p
             data-code-panel
-            className="mt-3 rounded-lg bg-surface-sunken px-4 py-3 text-sm text-fg-muted passport:mx-6 passport:mt-4 passport:grid passport:border passport:border-border passport:bg-surface-raised"
+            className="mt-3 rounded-lg bg-surface-sunken px-4 py-3 text-sm/5 text-fg-muted passport:mx-6 passport:mt-4 passport:grid passport:border passport:border-border passport:bg-surface-raised"
           >
             {tParts("signin.header.codePanel", ["code"], {}).map((part, i) => (
               <React.Fragment key={i}>
@@ -477,7 +484,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
                     {part.replace(/^[\s·]+|[\s·]+$/g, "")}
                   </span>
                 ) : (
-                  <span className="font-mono font-semibold tracking-widest text-fg-strong passport:block">
+                  <span className="font-mono font-medium tracking-widest text-fg-strong passport:block passport:text-2xl/8">
                     {code}
                   </span>
                 )}

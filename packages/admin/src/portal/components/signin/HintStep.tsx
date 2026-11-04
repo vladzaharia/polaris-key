@@ -3,6 +3,7 @@ import { Mail, Fingerprint } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import {
   AUTH_LINK_CLASS,
+  AUTH_METHOD_CLASS,
   AuthTitle,
   OrDivider,
   QuietLink,
@@ -117,16 +118,14 @@ export function HintStep({
     );
   return (
     <>
-      <div className="inline-flex max-w-full flex-wrap items-center gap-x-2 rounded-full border border-border py-0.5 ps-1 pe-1 text-sm">
+      <div className="inline-flex max-w-full flex-wrap items-center gap-x-2 rounded-full border border-border py-0.5 ps-1 pe-1 text-sm/5 text-fg-muted">
         <span
           aria-hidden
-          className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-hover text-xs font-medium text-fg-strong"
+          className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-hover text-sm/5 font-medium text-fg-strong"
         >
           {initialsOf(last.name, email)}
         </span>
-        <span className="min-w-0 [overflow-wrap:break-word] text-fg-strong">
-          {email}
-        </span>
+        <span className="min-w-0 [overflow-wrap:break-word]">{email}</span>
         <button
           type="button"
           onClick={onOther}
@@ -140,21 +139,21 @@ export function HintStep({
           ? t("signin.hint.welcome", { name: last.name })
           : t("signin.hint.welcomeNoName")}
       </AuthTitle>
-      <div className="flex items-center gap-3 rounded-md bg-hover px-4 py-3">
+      <div className="flex items-center gap-3 rounded-lg bg-hover px-4 py-3">
         <span className="shrink-0 text-fg-strong">{mark}</span>
         <div className="min-w-0">
           <p className="font-medium text-fg-strong">
             {t("signin.hint.usual", { method: methodName })}
           </p>
           {last.at ? (
-            <p className="text-sm text-fg-muted">
+            <p className="text-sm/5 text-fg-muted">
               {t("signin.hint.when", { when: whenText(last.at * 1000) })}
             </p>
           ) : null}
         </div>
       </div>
       {provider ? (
-        <Button asChild variant="neutral" size="lg" className={PRIMARY_CLASS}>
+        <Button asChild variant="neutral" size="xl" className={PRIMARY_CLASS}>
           <a href={hrefFor(provider)} onClick={() => onProvider(provider)}>
             {mark}
             {providerLabel(provider, "continue")}
@@ -163,7 +162,7 @@ export function HintStep({
       ) : last.kind === "passkey" ? (
         <Button
           variant="neutral"
-          size="lg"
+          size="xl"
           className={PRIMARY_CLASS}
           loading={pk.busy}
           onClick={() => void pk.run()}
@@ -177,8 +176,8 @@ export function HintStep({
         {last.kind !== "email" ? (
           <Button
             variant="outline"
-            size="lg"
-            className={PRIMARY_CLASS}
+            size="xl"
+            className={AUTH_METHOD_CLASS}
             loading={sending}
             onClick={() => void mail()}
             iconStart={<Mail aria-hidden />}
@@ -189,8 +188,8 @@ export function HintStep({
         {passkeyAvailable && last.kind !== "passkey" ? (
           <Button
             variant="outline"
-            size="lg"
-            className={PRIMARY_CLASS}
+            size="xl"
+            className={AUTH_METHOD_CLASS}
             loading={pk.busy}
             onClick={() => void pk.run()}
             iconStart={<Fingerprint aria-hidden />}
@@ -200,7 +199,7 @@ export function HintStep({
         ) : null}
       </div>
       {error || pk.error ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm/5 text-danger">
           {error ?? pk.error}
         </p>
       ) : null}

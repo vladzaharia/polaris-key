@@ -8,22 +8,27 @@ import * as React from "react";
 import { PolarisLockup } from "@polaris-key/brand/react";
 import { useTheme } from "../../components/theme.js";
 import { Button } from "../../ui/Button.js";
-import { AuthCard, AuthTitle } from "../../ui/auth/index.js";
+import { AUTH_METHOD_CLASS, AuthCard, AuthTitle } from "../../ui/auth/index.js";
+import { AUTH_PRIMARY_CLASS } from "../../ui/auth/parts.js";
 
 export function ConsoleBrand(): React.ReactElement {
   const { theme } = useTheme();
+  // The brand row (SIGNIN-REDESIGN §5, §8): the compact lockup on its 64 px canvas (a phone sizes
+  // it by width, min(180px, 52vw)), a 1 px rule 24 px tall, and "Console" at 16/24, 400, muted.
   return (
     <header className="inline-flex items-center text-fg-strong">
       <PolarisLockup
         kind="key"
         layout="compact"
         theme={theme}
-        height={40}
+        height={64}
         title=""
+        className="max-sm:h-auto max-sm:w-[min(180px,52vw)]"
       />
+      <span aria-hidden className="mx-3 h-6 w-px shrink-0 bg-border-strong" />
       <span
         aria-hidden
-        className="ms-3 border-s border-border-strong ps-3 text-base text-fg-muted forced-colors:text-[CanvasText]"
+        className="text-base/6 font-normal text-fg-muted forced-colors:text-[CanvasText]"
       >
         Console
       </span>
@@ -61,20 +66,20 @@ export function ConsoleOffline({
           ? "Something went wrong on the server"
           : "Can't reach Polaris Key"}
       </AuthTitle>
-      <p aria-live="polite" className="text-sm text-fg-muted empty:hidden">
+      <p aria-live="polite" className="text-base/6 text-fg-muted empty:hidden">
         {again
           ? serverError
             ? "Still something went wrong on the server."
             : "Still can't reach Polaris Key."
           : ""}
       </p>
-      <div className="space-y-2">
+      <div className="space-y-3">
         <Button
           variant="neutral"
-          size="lg"
+          size="xl"
           loading={busy}
           aria-busy={busy}
-          className="h-auto min-h-12 w-full py-2 text-base font-semibold"
+          className={AUTH_PRIMARY_CLASS}
           onClick={retry}
         >
           Try again
@@ -82,8 +87,8 @@ export function ConsoleOffline({
         <Button
           asChild
           variant="outline"
-          size="lg"
-          className="h-auto min-h-12 w-full py-2 text-base font-semibold"
+          size="xl"
+          className={AUTH_METHOD_CLASS}
         >
           <a href={`/manage/login?returnTo=${encodeURIComponent(back)}`}>
             Sign in again
@@ -103,14 +108,14 @@ export function ConsoleRefused(): React.ReactElement {
   return (
     <AuthCard brand={<ConsoleBrand />} stepKey="refused" focusKey={1}>
       <AuthTitle>This account can't open the console</AuthTitle>
-      <p className="text-sm text-fg-muted">
+      <p className="text-fg-muted">
         Ask an admin to add you, or sign in with another account.
       </p>
       <Button
         asChild
         variant="neutral"
-        size="lg"
-        className="h-auto min-h-12 w-full py-2 text-base font-semibold"
+        size="xl"
+        className={AUTH_PRIMARY_CLASS}
       >
         <a href={`/manage/login?returnTo=${encodeURIComponent(back)}`}>
           Sign in with another account

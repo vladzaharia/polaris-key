@@ -2,7 +2,12 @@ import * as React from "react";
 import { Button } from "../Button.js";
 import { t } from "../../lib/copy.js";
 import { CODE_LENGTH, CodeCells } from "./CodeCells.js";
-import { AUTH_PRIMARY_CLASS, QuietLink, QuietLinks } from "./parts.js";
+import {
+  AUTH_LABEL_CLASS,
+  AUTH_PRIMARY_CLASS,
+  QuietLink,
+  QuietLinks,
+} from "./parts.js";
 
 /** What a verify answers when it did not end the step: the line to show under the cells. */
 export interface CodeVerifyOutcome {
@@ -115,17 +120,14 @@ export function CodeEntry({
     <>
       <form
         noValidate
-        className="space-y-4"
+        className="space-y-3"
         onSubmit={(e) => {
           e.preventDefault();
           void submit(code);
         }}
       >
-        <div className="space-y-1.5">
-          <label
-            htmlFor={inputId}
-            className="text-sm font-medium text-fg-strong"
-          >
+        <div className="space-y-2">
+          <label htmlFor={inputId} className={AUTH_LABEL_CLASS}>
             {t("signin.approve.codeLabel")}
           </label>
           <CodeCells
@@ -141,16 +143,16 @@ export function CodeEntry({
             }}
           />
           {error ? (
-            <p id={errorId} role="alert" className="text-sm text-danger">
+            <p id={errorId} role="alert" className="text-sm/5 text-danger">
               {error}
             </p>
           ) : null}
+          {hint ? <p className="text-sm/5 text-fg-muted">{hint}</p> : null}
         </div>
-        {hint ? <p className="text-sm text-fg-muted">{hint}</p> : null}
         <Button
           type="submit"
           variant="neutral"
-          size="lg"
+          size="xl"
           className={AUTH_PRIMARY_CLASS}
           loading={verifying}
         >
@@ -163,8 +165,8 @@ export function CodeEntry({
         className={
           status
             ? status.tone === "success"
-              ? "text-sm text-success"
-              : "text-sm text-fg-muted"
+              ? "text-sm/5 text-success"
+              : "text-sm/5 text-fg-muted"
             : "sr-only"
         }
       >
@@ -172,7 +174,7 @@ export function CodeEntry({
       </div>
       <QuietLinks>
         {capped ? null : wait > 0 ? (
-          <span className="inline-flex min-h-11 items-center px-1 text-fg-muted">
+          <span className="inline-flex min-h-6 items-center text-fg-muted pointer-coarse:min-h-11">
             {t("signin.code.resendIn", { time: clock })}
           </span>
         ) : (

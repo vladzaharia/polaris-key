@@ -153,29 +153,21 @@ export function renderConsoleSignin(opts: {
     opts.state === "stepUp" ? hidden("stepUp", "1") : "",
     bg ? hidden("breakGlass", "1") : "",
     identifier,
-    `<button class="button" type="submit">${escapeHtml(c.cta)}${icon("arrow-right")}</button>`,
-    `</form>`,
+    `<button class="button" type="submit">${escapeHtml(c.cta)}</button>`,
+    // Secondary, 8 px under the primary it explains.
     `<p class="fine">Next: sign in at ${escapeHtml(opts.issuerHost)}</p>`,
+    `</form>`,
     offerPasskey && opts.state !== "stepUp"
       ? passkeyBlock(opts.state, opts.returnTo)
       : "",
-  ].join("");
-  // The emergency link is quiet: one more item under the card, on the states that start a sign-in.
-  const links =
+    // The card's last line (SIGNIN-REDESIGN §5, §6): a door to another start, not a way to sign in.
     opts.state === "stepUp"
-      ? CONSOLE_CARD_LINKS
+      ? ""
       : bg
-        ? [
-            ...CONSOLE_CARD_LINKS,
-            { label: "Back to sign in", href: ctxQuery({}) },
-          ]
-        : [
-            ...CONSOLE_CARD_LINKS,
-            {
-              label: "Emergency sign-in",
-              href: ctxQuery({ breakGlass: "1" }),
-            },
-          ];
+        ? `<p class="tertiary"><a href="${escapeHtml(ctxQuery({}))}">Back to sign in</a></p>`
+        : `<p class="tertiary"><a href="${escapeHtml(ctxQuery({ breakGlass: "1" }))}">Emergency sign-in</a></p>`,
+  ].join("");
+  const links = CONSOLE_CARD_LINKS;
   return renderAuthCard({
     brand: "console",
     title: c.h1,

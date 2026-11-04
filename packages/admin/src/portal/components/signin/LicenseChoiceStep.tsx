@@ -5,7 +5,13 @@ import type {
   LicenseChoiceView,
 } from "@polaris-key/protocol/identity";
 import { Button } from "../../../ui/Button.js";
-import { AuthTitle, QuietLink, QuietLinks } from "../../../ui/auth/index.js";
+import {
+  AUTH_LINK_CLASS,
+  AUTH_METHOD_CLASS,
+  AuthTitle,
+  QuietLink,
+  QuietLinks,
+} from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
 import {
   classifyChoice,
@@ -144,16 +150,14 @@ export function LicenseChoiceStep({
       children: (
         <>
           <span className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-fg-strong">
-              {t("signin.choice.create")}
-            </span>
+            <span className="text-fg-strong">{t("signin.choice.create")}</span>
             <Pill>{t("signin.choice.tag.new")}</Pill>
           </span>
-          <span className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+          <span className="flex flex-wrap items-center gap-2 text-sm/5 text-fg-muted">
             <Pill>{view.create.tierName}</Pill>
             <span>{t("signin.choice.devices", { used: 1, limit: 1 })}</span>
           </span>
-          <span className="block text-sm text-fg-muted">
+          <span className="block text-sm/5 text-fg-muted">
             {t("signin.choice.createMeta")}
           </span>
         </>
@@ -170,7 +174,7 @@ export function LicenseChoiceStep({
       ? t("signin.replace.open")
       : t("signin.choice.continue");
   return (
-    <form noValidate onSubmit={submit} className="space-y-5">
+    <form noValidate onSubmit={submit} className="space-y-6">
       <PersonRow {...person} onNotYou={onNotYou} />
       <div className="space-y-2">
         <AuthTitle>{t("signin.choice.title")}</AuthTitle>
@@ -181,7 +185,7 @@ export function LicenseChoiceStep({
         </p>
       </div>
       {notice ? (
-        <p role="status" className="text-sm text-fg">
+        <p role="status" className="text-sm/5 text-fg">
           {notice}
         </p>
       ) : null}
@@ -202,13 +206,14 @@ export function LicenseChoiceStep({
           {stand.map((m) => (
             <li
               key={m.id}
-              className="space-y-2 rounded-md border border-border bg-surface-sunken px-3 py-3"
+              className="space-y-2 rounded-lg border border-border bg-surface-sunken px-4 py-3"
             >
               <RowBody m={m} />
               {m.canReplace ? (
                 <Button
                   variant="outline"
-                  className="min-h-11 w-full"
+                  size="xl"
+                  className={AUTH_METHOD_CLASS}
                   onClick={() => {
                     const row = view.choices.find((c) => c.id === m.id);
                     if (row) onReplace(row);
@@ -217,10 +222,7 @@ export function LicenseChoiceStep({
                   {t("signin.replace.open")}
                 </Button>
               ) : m.freeDeviceUrl ? (
-                <a
-                  href={m.freeDeviceUrl}
-                  className="inline-flex min-h-11 items-center text-sm underline decoration-2 underline-offset-4"
-                >
+                <a href={m.freeDeviceUrl} className={AUTH_LINK_CLASS}>
                   {t("signin.choice.freeDevice")}
                 </a>
               ) : null}
@@ -245,7 +247,7 @@ export function LicenseChoiceStep({
         <Button
           type="submit"
           variant="neutral"
-          size="lg"
+          size="xl"
           className={PRIMARY_CLASS}
         >
           {primary}
@@ -253,10 +255,7 @@ export function LicenseChoiceStep({
       )}
       <QuietLinks>
         {keyHref ? (
-          <a
-            href={keyHref}
-            className="inline-flex min-h-11 items-center rounded-sm px-1 underline decoration-2 underline-offset-4 hover:text-fg-strong"
-          >
+          <a href={keyHref} className={AUTH_LINK_CLASS}>
             {t("signin.choice.keyInstead")}
           </a>
         ) : null}
@@ -271,7 +270,7 @@ function RowBody({ m }: { m: RowModel }): React.ReactElement {
   return (
     <>
       <span className="flex flex-wrap items-center gap-2">
-        <span className="font-semibold text-fg-strong [overflow-wrap:anywhere]">
+        <span className="text-fg-strong [overflow-wrap:anywhere]">
           {m.title}
         </span>
         {m.tag === "current" ? (
@@ -279,11 +278,11 @@ function RowBody({ m }: { m: RowModel }): React.ReactElement {
         ) : null}
         {m.tag === "full" ? <Pill>{t("signin.choice.tag.full")}</Pill> : null}
       </span>
-      <span className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+      <span className="flex flex-wrap items-center gap-2 text-sm/5 text-fg-muted">
         <Pill>{m.pill}</Pill>
         {m.devices ? <span>{m.devices}</span> : null}
       </span>
-      <span className="block text-sm text-fg-muted">{m.meta}</span>
+      <span className="block text-sm/5 text-fg-muted">{m.meta}</span>
       {m.meter ? (
         <InkMeter
           used={m.meter.used}

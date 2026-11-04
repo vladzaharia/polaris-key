@@ -1193,10 +1193,10 @@ PORTAL §9 link here.
 
 **One card for every sign-in surface.** `ui/auth/AuthCard` renders: the brand row above the card,
 an optional **persistent card header** (product context or an app's request), the body (one step,
-one primary), an optional **card footer** (passthrough), and Help · Privacy · Terms below. The
+one primary), an optional **card footer** (passthrough), and Help · Privacy below. The
 "Polaris Key · key.plrs.im" footer line goes (SH 3.1). Measures are PORTAL §4.1's: 28.5 rem card,
-radius 22 px, elevation-3, 48–52 px controls, top-aligned at 10 vh on the static star field, edge to
-edge on phones.
+radius 18 px, elevation-3, 48 px controls, the lockup's top at `clamp(2.5rem, 12vh, 7.5rem)` and 40 px from its ink to the card, edge to
+edge on phones (BRAND §7.9).
 
 **The steps** (each one a component inside the card; the header and footer persist across them):
 
@@ -1215,12 +1215,12 @@ edge on phones.
 choice at sign-in", §F). Their frames are SIGN-IN.md frames 05–09 and 18–22; this section keeps
 no second copy of their rules.
 
-| Variant         | Brand row                  | Header                                               | Methods                                                                                                                                                                                                                                                                                             |
-| --------------- | -------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Portal**      | Polaris Locker             | Product context when a developer link sent you       | Identifier-first email · Continue · or · provider row (Apple, Google, Steam; logo only) · Sign in with a passkey · Have a license key? · Sign in with another device                                                                                                                                |
-| **Console**     | Polaris Key │ Console      | none                                                 | **Identifier-first email**, the same field; for a known operator it is prefilled as a chip ("vlad@zaharia.dev · Change"). Continue routes to that operator's sign-in: the operator IdP (Pocket ID on the reference deployment, any OIDC SSO) or a passkey. "Sign in with a passkey" sits under "or" |
-| **Passthrough** | Polaris Locker             | "**<App>** wants you to sign in" · developer · where | The portal methods for that product's providers, Have a license key?, then the step list above; lock footer                                                                                                                                                                                         |
-| **Worker page** | Polaris Key (or │ Console) | as above                                             | Server-rendered, no JS: forms that POST (send a new code, retry sign-in, enter a device code)                                                                                                                                                                                                       |
+| Variant         | Brand row                  | Header                                               | Methods                                                                                                                                                                                                                                                                                                                                     |
+| --------------- | -------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Portal**      | Polaris Locker             | Product context when a developer link sent you       | Identifier-first email · Continue · or · provider row (Apple, Google, Steam; logo only) · Sign in with a passkey · Continue with single sign-on · Sign in with another device; Have a license key? is the tertiary line                                                                                                                     |
+| **Console**     | Polaris Key │ Console      | none                                                 | **Identifier-first email**, the same field; for a known operator it is prefilled as a chip ("vlad@zaharia.dev · Change"). Continue routes to that operator's sign-in: the operator IdP (Pocket ID on the reference deployment, any OIDC SSO) or a passkey. "Sign in with a passkey" sits under "or"; Emergency sign-in is the tertiary line |
+| **Passthrough** | Polaris Locker             | "**<App>** wants you to sign in" · developer · where | The portal methods for that product's providers, Have a license key?, then the step list above; lock footer                                                                                                                                                                                                                                 |
+| **Worker page** | Polaris Key (or │ Console) | as above                                             | Server-rendered, no JS: forms that POST (send a new code, retry sign-in, enter a device code)                                                                                                                                                                                                                                               |
 
 ![Console sign-in](experience/02-signin-console-desktop-dark.png)
 
@@ -1246,8 +1246,8 @@ console never offers Apple, Google or Steam, and "Have a license key?" does not 
 - **Not configured:** "Admin sign-in isn't set up" with the docs link (CL 6).
 
 **Worker pages render the same card markup without JS.** `brandHtml.ts` gains `renderAuthCard()`:
-the same classes and measures as `AuthCard` (28.5 rem, radius 22 px, 24 px h1, 48 px medium-weight (500) buttons,
-the compact lockup with **no bit**, top-aligned, Help · Privacy · Terms). The `surface` eyebrows
+the same classes and measures as `AuthCard` (28.5 rem, radius 18 px, 24 px h1, 48 px medium-weight (500) buttons,
+the compact lockup with **no bit**, Help · Privacy). The `surface` eyebrows
 ("ACCOUNT", "DEVICE") go; the console variant uses the "│ Console" brand row. A unit test compares
 `BRAND_PAGE_CSS` measures with the `AuthCard` tokens. Pages covered: expired or used code or link
 ("That code or link has expired", with **Send a new code**), "Confirm sign-in, requested at <time>

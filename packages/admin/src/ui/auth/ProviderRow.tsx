@@ -2,13 +2,15 @@ import * as React from "react";
 import { cn } from "../../lib/cn.js";
 import { AppleGlyph, GoogleGlyph, SteamGlyph } from "./ProviderGlyphs.js";
 import { t } from "../../lib/copy.js";
+import { AUTH_METHOD_ELEMENT_CLASS } from "./parts.js";
 
 /**
  * The provider row (PORTAL.md §4.1, owner decision 2026-10-04): Apple, Google and Steam as
  * logo-only, equal-width buttons in ONE row at every breakpoint, always in that order. Each is
  * named "Continue with <Provider>" (or "Connect <Provider>" when adding a method), repeated as
  * the tooltip; the row is a group labelled "Or continue with". Three split the row in thirds,
- * two in halves, and one keeps a half-row width, centred. No other providers.
+ * two in halves, and one keeps a half-row width, centred. No other providers. Each tile wears the
+ * method-button skin (48 px, 20 px marks; SIGNIN-REDESIGN §4); the row stays logo-only (O-6).
  */
 /** The providers the row can show (the portal's `AuthProvider`). */
 export type AuthProvider = "apple" | "google" | "steam";
@@ -76,17 +78,17 @@ export function ProviderRow({
             aria-label={label}
             title={label}
             className={cn(
-              "provider-btn inline-flex h-[3.25rem] items-center justify-center rounded-md text-fg-strong",
-              "hover:bg-hover",
+              AUTH_METHOD_ELEMENT_CLASS,
+              "px-0",
               list.length === 1 && "col-span-2 mx-auto w-[calc(50%-0.375rem)]",
             )}
           >
             {p === "apple" ? (
-              <AppleGlyph className="size-6" />
+              <AppleGlyph className="size-5" />
             ) : p === "google" ? (
-              <GoogleGlyph className="size-6" />
+              <GoogleGlyph className="size-5" />
             ) : (
-              <SteamGlyph className="size-6" />
+              <SteamGlyph className="size-5" />
             )}
           </a>
         );

@@ -349,7 +349,7 @@ describe("the break-glass link and start card", () => {
   it("the sign-in card links 'Emergency sign-in' quietly under the card; step-up and the start card do not", async () => {
     const html = await (await card("?returnTo=/manage/")).text();
     expect(html).toContain(
-      '<a href="/manage/login?breakGlass=1&amp;returnTo=%2Fmanage%2F">Emergency sign-in</a>',
+      '<p class="tertiary"><a href="/manage/login?breakGlass=1&amp;returnTo=%2Fmanage%2F">Emergency sign-in</a></p>',
     );
     expect(await (await card("?stepUp=1")).text()).not.toContain(
       "Emergency sign-in</a>",
@@ -368,12 +368,15 @@ describe("the break-glass link and start card", () => {
     expect(html).toContain(
       "For when your account can’t sign in. Superadmins only.",
     );
-    // The elevated fact sits in a callout with a glyph, and Back to sign in is in the links row.
+    // The elevated fact sits in a callout with a glyph, and Back to sign in is the tertiary line.
     expect(html).toContain(
       '<p class="callout-title">Every use is recorded and every Superadmin is emailed.</p>',
     );
-    expect(html).toMatch(
-      /<nav class="ac-links" aria-label="Help and links">.*Back to sign in<\/a><\/nav>/,
+    expect(html).toContain(
+      '<p class="tertiary"><a href="/manage/login?">Back to sign in</a></p>',
+    );
+    expect(html).toContain(
+      '<nav class="ac-links" aria-label="Help and links"><a href="/docs/">Help</a>',
     );
     expect(html).not.toContain('<p class="fine"><a');
     expect(html).toContain('name="breakGlass" value="1"');
@@ -546,18 +549,20 @@ describe("the chip, large text and the card's details (UX review)", () => {
     expect(emoji).toContain('aria-hidden="true">😀</span>');
   });
 
-  it("the links landmark covers every link, with no separator dots; the lockup is 4 rem from 30 rem", async () => {
+  it('the links landmark is Help · Privacy with a muted aria-hidden middot; the lockup is 4 rem, "Console" is 16/24 at 400', async () => {
     const html = await (await card("")).text();
     expect(html).toContain('aria-label="Help and links"');
     expect(html).toContain(
-      "[data-brand=console] .ac-links a+a::before{content:none}",
+      "[data-brand=console] .ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;color:var(--muted)}",
     );
+    expect(html).toContain('content:"\\00b7" / ""');
+    expect(html).not.toContain("a+a::before{content:none}");
     expect(html).toContain(
       "[data-brand=console] .ac-brand svg{width:13.875rem;height:4rem}",
     );
     expect(html).toContain("width:min(180px,52vw);height:auto");
     expect(html).toContain(
-      "font-size:1.25rem;line-height:1.75rem;font-weight:500",
+      ".ac-brand .ac-surface{margin-left:.75rem;padding-left:.75rem;border-left:1px solid var(--edge);color:var(--muted);font-size:1rem;line-height:1.5rem;font-weight:400}",
     );
   });
 

@@ -9,11 +9,12 @@ export { PROVIDER_ORDER, ProviderRow, providerLabel } from "./ProviderRow.js";
 export type { AuthProvider } from "./ProviderRow.js";
 export {
   AUTH_INPUT_CLASS,
+  AUTH_LABEL_CLASS,
   AUTH_LINK_CLASS,
+  AUTH_METHOD_CLASS,
   AuthNotice,
   AuthTitle,
   OrDivider,
-  QuietAnchor,
   QuietLink,
   QuietLinks,
   useStepFocus,

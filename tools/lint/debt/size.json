@@ -161,9 +161,6 @@
     "packages/worker/src/services/identity/portal/selfService.ts": {
       "size:over-800": 1
     },
-    "packages/worker/src/services/identity/productOidc/deviceFlow.ts": {
-      "size:over-800": 1
-    },
     "packages/worker/src/services/license/admin/licenses.ts": {
       "size:over-800": 1
     },

@@ -1,6 +1,6 @@
-// The phone breakpoints of the sign-in card: the Polaris Locker card goes edge to edge on the raised
-// surface under 40 rem (the React AuthCard's max-sm); the console card keeps its floating 22 px
-// card down to 30 rem and its page-coloured strip below that.
+// The phone breakpoint of the sign-in card (SIGNIN-REDESIGN §8): both brands, the Polaris Locker card
+// and the console card, go full bleed on the raised surface under 40 rem, with no card chrome. The
+// console's separate 30 rem page-coloured strip is gone.
 import { describe, expect, it } from "vitest";
 import { renderAuthCard } from "../../src/core/brandHtml.js";
 import { renderConsoleSignin } from "../../src/console/signinPage.js";
@@ -17,22 +17,24 @@ function fullBleed(html: string): Array<{ at: string; rule: string }> {
     .map((m) => ({ at: m[1]!, rule: m[2]! }));
 }
 
-describe("sign-in card phone breakpoints", () => {
-  it("the console card is a full-bleed strip only under 30 rem, on the page colour", () => {
+describe("sign-in card phone breakpoint", () => {
+  it("the console card is a full-bleed strip on the raised surface under 40 rem, with no 30 rem strip", () => {
     const html = renderConsoleSignin({
       state: "signin",
       returnTo: null,
       issuerHost: "idp.example",
     } as Parameters<typeof renderConsoleSignin>[0]);
     const strips = fullBleed(html);
-    expect(strips.length).toBeGreaterThan(0);
-    for (const s of strips) {
-      expect(s.at).toBe("30rem");
-      expect(s.rule).toContain("background:var(--page)");
-    }
-    // At 520 px (above 30 rem) no rule flattens the card: it stays the floating 22 px card.
-    expect(html).toContain("border-radius:1.375rem");
-    expect(html).not.toContain("39.99rem");
+    expect(strips).toHaveLength(1);
+    expect(strips[0]!.at).toBe("39.99rem");
+    expect(strips[0]!.rule).toContain(
+      "[data-brand=console] main.ac{max-width:none",
+    );
+    expect(strips[0]!.rule).toContain("background:var(--raised)");
+    expect(strips[0]!.rule).not.toContain("background:var(--page)");
+    // Above 40 rem the card is the floating 18 px card (the --pk-radius-xl token).
+    expect(html).toContain("border-radius:1.125rem");
+    expect(html).not.toContain("border-radius:1.375rem");
   });
 
   it("the Locker card is a full-bleed strip on the raised surface under 40 rem", () => {
@@ -43,6 +45,9 @@ describe("sign-in card phone breakpoints", () => {
       "[data-brand=locker] main.ac{max-width:none",
     );
     expect(at40[0]!.rule).toContain("background:var(--raised)");
-    expect(at40[0]!.rule).toContain(".ac-links a{min-height:2.75rem");
+    // The brand row carries no hairline on a phone, and the footer follows the content.
+    expect(at40[0]!.rule).toContain("margin:0;border:0}");
+    expect(at40[0]!.rule).toContain("safe-area-inset-bottom");
+    expect(fullBleed(html)).toHaveLength(1);
   });
 });

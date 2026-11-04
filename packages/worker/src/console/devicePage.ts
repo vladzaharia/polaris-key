@@ -134,7 +134,7 @@ function refreshTo(location: string, env: Env): Response {
     brand: "console",
     title: "Continuing",
     heading: "Continuing",
-    body: `<p>One moment.</p><p class="actions"><a class="button" href="${escapeHtml(location)}">Continue${icon("arrow-right")}</a></p>`,
+    body: `<p>One moment.</p><p class="actions"><a class="button" href="${escapeHtml(location)}">Continue</a></p>`,
     focusHeading: true,
     links: CONSOLE_CARD_LINKS,
   }).replace(
@@ -315,7 +315,7 @@ async function reviewCard(
   const cancel = post({ ...fields, decision: "deny" }, "Cancel", "secondary");
   const actions = steppedUp
     ? post({ ...fields, decision: "approve" }, "Approve", "") + cancel
-    : `<a class="button" href="${escapeHtml(signInTo(view.code, true))}">Sign in again to approve${icon("arrow-right")}</a>` +
+    : `<a class="button" href="${escapeHtml(signInTo(view.code, true))}">Sign in again to approve</a>` +
       cancel;
   const body = [
     // The step-up message sits where the subtitle does, and is announced when the page loads.
@@ -380,7 +380,7 @@ function entryCard(opts: { message?: string; value?: string } = {}): Card {
       `${opts.value ? ` value="${escapeHtml(opts.value)}"` : ""}` +
       `${opts.message ? ` aria-invalid="true"` : ""} aria-describedby="${opts.message ? "code-err " : ""}code-hint">` +
       `<span class="hint" id="code-hint">Like ${CODE_HINT}, as pkey login printed it.</span>${err}</div>` +
-      `<button class="button" type="submit">Continue${icon("arrow-right")}</button></form>`,
+      `<button class="button" type="submit">Continue</button></form>`,
   };
 }
 
@@ -447,7 +447,7 @@ function noAccessCard(session: AdminSession, code: string | null): Card {
         name: session.name || session.email,
         email: session.email,
       }) +
-      `<p class="actions"><a class="button" href="${escapeHtml(otherAccount(code))}">Use another account${icon("arrow-right")}</a></p>`,
+      `<p class="actions"><a class="button" href="${escapeHtml(otherAccount(code))}">Use another account</a></p>`,
   };
 }
 

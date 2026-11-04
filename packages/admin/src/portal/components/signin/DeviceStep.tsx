@@ -2,7 +2,13 @@ import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../../ui/Button.js";
 import { Spinner } from "../../../ui/Spinner.js";
-import { AuthNotice, AuthTitle, useStepFocus } from "../../../ui/auth/index.js";
+import {
+  AuthNotice,
+  AuthTitle,
+  QuietLink,
+  QuietLinks,
+  useStepFocus,
+} from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
 import { PRIMARY_CLASS } from "./requestParts.js";
 import {
@@ -119,7 +125,7 @@ export function DeviceStep({
   const asking = state.kind === "starting" || state.kind === "waiting";
 
   return (
-    <div ref={ref} className="space-y-5">
+    <div ref={ref} className="space-y-6">
       <div className="space-y-2">
         <AuthTitle>{t("signin.approve.title")}</AuthTitle>
         {asking ? (
@@ -133,7 +139,7 @@ export function DeviceStep({
           aria-label={t("signin.approve.starting")}
           className="flex flex-col items-center gap-4 sm:flex-row"
         >
-          <div aria-hidden className="size-42 rounded-md bg-hover" />
+          <div aria-hidden className="size-40 rounded-md bg-hover" />
           <div aria-hidden className="h-8 w-40 rounded-md bg-hover" />
         </div>
       ) : state.kind === "waiting" ? (
@@ -142,27 +148,27 @@ export function DeviceStep({
             <img
               src={state.start.qr}
               alt=""
-              width={168}
-              height={168}
-              className="size-42 shrink-0 rounded-md bg-white p-2"
+              width={160}
+              height={160}
+              className="size-40 shrink-0 rounded-md bg-white p-2"
             />
             <div className="text-center sm:text-start">
               <p
                 data-device-code
-                className="font-mono text-2xl font-semibold tracking-widest text-fg-strong"
+                className="font-mono text-2xl/8 font-medium tracking-widest text-fg-strong"
               >
                 {state.start.code}
               </p>
-              <p className="text-sm text-fg-muted">
+              <p className="text-sm/5 text-fg-muted">
                 {t("signin.approve.works", { time: mmss(left) })}
               </p>
             </div>
           </div>
           <div
             role="status"
-            className="flex items-center gap-3 rounded-lg border border-border bg-surface-sunken px-4 py-3 text-fg"
+            className="flex items-center gap-3 rounded-lg border border-border bg-surface-sunken px-4 py-3 text-sm/5 text-fg-muted"
           >
-            <Spinner label="" className="text-fg-muted" />
+            <Spinner label="" className="size-4 text-fg-muted" />
             {t("signin.approve.waiting")}
           </div>
         </>
@@ -185,32 +191,32 @@ export function DeviceStep({
         {announce}
       </div>
       {live}
-      <div className="space-y-3">
-        {state.kind === "expired" || state.kind === "error" ? (
-          <Button
-            variant="neutral"
-            size="lg"
-            className={PRIMARY_CLASS}
-            onClick={again}
-          >
-            {state.kind === "error"
-              ? t("signin.retry")
-              : t("signInHandoff.newCode")}
-          </Button>
-        ) : null}
+      {state.kind === "expired" || state.kind === "error" ? (
         <Button
-          variant={
-            state.kind === "denied" || state.kind === "disabled"
-              ? "neutral"
-              : "ghost"
-          }
-          size="lg"
+          variant="neutral"
+          size="xl"
+          className={PRIMARY_CLASS}
+          onClick={again}
+        >
+          {state.kind === "error"
+            ? t("signin.retry")
+            : t("signInHandoff.newCode")}
+        </Button>
+      ) : null}
+      {state.kind === "denied" || state.kind === "disabled" ? (
+        <Button
+          variant="neutral"
+          size="xl"
           className={PRIMARY_CLASS}
           onClick={onOther}
         >
           {t("signin.approve.other")}
         </Button>
-      </div>
+      ) : (
+        <QuietLinks>
+          <QuietLink onClick={onOther}>{t("signin.approve.other")}</QuietLink>
+        </QuietLinks>
+      )}
     </div>
   );
 }

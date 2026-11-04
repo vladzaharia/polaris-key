@@ -134,18 +134,19 @@ describe("console sign-in card in Chromium", () => {
       const nav = page.getByRole("navigation", { name: "Help and links" });
       await nav.waitFor();
       const links = nav.getByRole("link");
-      expect(await links.allTextContents()).toEqual([
-        "Help",
-        "Privacy",
-        "Emergency sign-in",
-      ]);
+      expect(await links.allTextContents()).toEqual(["Help", "Privacy"]);
+      // Emergency sign-in is the card's last line (the tertiary line), inside the card.
+      await page
+        .locator("main.ac")
+        .getByRole("link", { name: "Emergency sign-in" })
+        .waitFor();
       expect(await links.nth(0).getAttribute("href")).toBe("/docs/");
       expect(await links.nth(1).getAttribute("href")).toBe(
         "/docs/reference/what-apps-collect/",
       );
       // Under the card, in the first viewport, targets of at least 24 px, no sideways scroll.
       const card = (await page.locator("main.ac").boundingBox())!;
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 2; i++) {
         const b = (await links.nth(i).boundingBox())!;
         expect(b.y).toBeGreaterThanOrEqual(card.y + card.height);
         expect(b.y + b.height).toBeLessThanOrEqual(height);
@@ -331,7 +332,7 @@ describe("the chip under large text and the lockup (UX review fixes)", () => {
     },
   );
 
-  it("the lockup is 64 px tall from 30 rem and 52 px on phones, and 'Console' is 20 px / 500", async () => {
+  it("the lockup is 64 px tall from 30 rem and 52 px on phones, and 'Console' is 16 px / 400", async () => {
     const context = await browser.newContext({
       viewport: { width: 1440, height: 900 },
     });
@@ -350,7 +351,7 @@ describe("the chip under large text and the lockup (UX review fixes)", () => {
           s.fontWeight,
         ];
       });
-    expect(await size()).toEqual([222, 64, "20px", "500"]);
+    expect(await size()).toEqual([222, 64, "16px", "400"]);
     await page.setViewportSize({ width: 390, height: 844 });
     expect((await size()).slice(0, 2)).toEqual([180, 52]);
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -360,7 +361,7 @@ describe("the chip under large text and the lockup (UX review fixes)", () => {
     // Label and wordmark grow together (both in rem).
     const big = await size();
     expect(big[0]).toBe(444);
-    expect(big[2]).toBe("40px");
+    expect(big[2]).toBe("32px");
     await closeContext(context);
   });
 

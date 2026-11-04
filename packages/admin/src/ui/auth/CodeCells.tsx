@@ -35,11 +35,11 @@ export function CodeCells({
           <div
             key={i}
             className={cn(
-              "flex h-14 items-center justify-center rounded-md border bg-surface-sunken font-mono text-2xl font-semibold text-fg-strong",
+              "flex h-14 items-center justify-center rounded-md border bg-surface-sunken font-mono text-2xl/8 font-medium text-fg-strong",
               invalid
                 ? "border-danger"
                 : focused && i === at
-                  ? "border-border-strong outline-2 outline-offset-2 outline-focus"
+                  ? "border-fg-strong ring-1 ring-inset ring-fg-strong"
                   : "border-border-strong",
             )}
           >

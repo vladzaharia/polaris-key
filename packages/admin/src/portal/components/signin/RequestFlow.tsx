@@ -4,6 +4,7 @@ import type { LicenseChoice } from "@polaris-key/protocol/identity";
 import { Button } from "../../../ui/Button.js";
 import { Spinner } from "../../../ui/Spinner.js";
 import {
+  AUTH_LINK_CLASS,
   AuthCard,
   AuthTitle,
   QuietLink,
@@ -496,8 +497,6 @@ function NoneStep({
   onCancel: () => void;
   error: string | null;
 }): React.ReactElement {
-  const linkClass =
-    "inline-flex min-h-11 items-center rounded-sm px-1 underline decoration-2 underline-offset-4 hover:text-fg-strong";
   return (
     <>
       <PersonRow {...person} onNotYou={onOther} />
@@ -506,16 +505,16 @@ function NoneStep({
         <p className="text-fg-muted">{t("signin.none.body")}</p>
       </div>
       {error ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm/5 text-danger">
           {error}
         </p>
       ) : null}
       {keyHref ? (
-        <Button asChild variant="neutral" size="lg" className={PRIMARY_CLASS}>
+        <Button asChild variant="neutral" size="xl" className={PRIMARY_CLASS}>
           <a href={keyHref}>{t("signin.choice.keyInstead")}</a>
         </Button>
       ) : purchaseUrl ? (
-        <Button asChild variant="neutral" size="lg" className={PRIMARY_CLASS}>
+        <Button asChild variant="neutral" size="xl" className={PRIMARY_CLASS}>
           <a href={purchaseUrl} target="_blank" rel="noopener noreferrer">
             {t("signin.none.get", { product })}
           </a>
@@ -523,7 +522,7 @@ function NoneStep({
       ) : (
         <Button
           variant="neutral"
-          size="lg"
+          size="xl"
           className={PRIMARY_CLASS}
           onClick={onOther}
         >
@@ -536,7 +535,7 @@ function NoneStep({
             href={purchaseUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={linkClass}
+            className={AUTH_LINK_CLASS}
           >
             {t("signin.none.get", { product })}
           </a>

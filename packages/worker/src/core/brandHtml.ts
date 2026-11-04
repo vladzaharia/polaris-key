@@ -139,11 +139,11 @@ export const BRAND_PAGE_CSS = [
   `.mb{fill:var(--mb)}.ms{fill:var(--ms)}.mt{fill:var(--mt)}`,
   // The app the page is about (a refusal names it): its icon and name above the card, as the
   // hosted card's header strip does.
-  `.app{display:flex;justify-content:center;align-items:center;gap:.75rem;margin:0 0 1rem;color:var(--strong);font-size:1.125rem;line-height:1.5rem;font-weight:600;overflow-wrap:anywhere}`,
+  `.app{display:flex;justify-content:center;align-items:center;gap:.75rem;margin:0 0 1rem;color:var(--strong);font-size:1rem;line-height:1.5rem;font-weight:500;overflow-wrap:anywhere}`,
   `.app img{display:block;flex:none;width:40px;height:40px;border-radius:9px;object-fit:cover}`,
   `.card>:last-child{margin-bottom:0}`,
   `.card{padding:2rem;border:1px solid var(--rule);border-radius:8px;background:var(--raised);box-shadow:0 1px 2px rgb(0 0 0 / .12)}`,
-  `.eyebrow{margin:0 0 .5rem;color:var(--muted);font-size:.75rem;line-height:1rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase}`,
+  `.eyebrow{margin:0 0 .5rem;color:var(--muted);font-size:.875rem;line-height:1.25rem;font-weight:500}`,
   `h1{margin:0 0 .5rem;color:var(--strong);font-size:1.25rem;line-height:1.75rem;font-weight:600;letter-spacing:-.01em}`,
   `h1+p{color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `p{margin:0 0 1rem}`,
@@ -152,7 +152,7 @@ export const BRAND_PAGE_CSS = [
   `dl{display:grid;grid-template-columns:6rem 1fr;gap:.5rem 1rem;margin:1.5rem 0;padding:1rem;border-radius:.625rem;background:var(--sunken)}`,
   `dt{color:var(--muted)}`,
   `dd{margin:0;color:var(--strong);overflow-wrap:anywhere}`,
-  `.code{font-family:${FONT.mono};font-weight:600;letter-spacing:.1em;white-space:nowrap}`,
+  `.code{font-family:${FONT.mono};font-weight:500;letter-spacing:.1em;white-space:nowrap}`,
   `form{margin:0}`,
   `label{display:block;margin:1.5rem 0 .5rem;color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:500}`,
   `input[type=text]{display:block;width:100%;min-height:44px;padding:0 .75rem;margin:0 0 1rem;border:1px solid var(--edge);border-radius:6px;background:var(--sunken);color:var(--strong);font-family:${FONT.mono};font-size:1.25rem;letter-spacing:.08em;text-transform:uppercase}`,
@@ -165,7 +165,7 @@ export const BRAND_PAGE_CSS = [
   `.button.secondary{border-color:var(--edge);background:transparent;color:var(--strong)}`,
   `.button.danger{border-color:var(--danger-edge);background:var(--danger-subtle);color:var(--strong)}`,
   `.stack{display:grid;gap:.5rem}`,
-  `.small{font-size:.875rem;line-height:1.25rem}`,
+  `.small{color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.notice{margin:0 0 1rem;padding:.75rem 1rem;border:1px solid var(--rule);border-radius:.625rem;background:var(--sunken);color:var(--strong)}`,
   `.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}`,
   // The license chooser's rows (I-26): radio cards, the console's RadioCards look.
@@ -179,14 +179,14 @@ export const BRAND_PAGE_CSS = [
   // §3.14).
   `.choice.compact{padding:.5rem .75rem;margin:.5rem 0 0}`,
   `.choice-body{display:grid;gap:.125rem;min-width:0}`,
-  `.choice-title{display:flex;flex-wrap:wrap;gap:.375rem;align-items:center;color:var(--strong);font-weight:600}`,
+  `.choice-title{display:flex;flex-wrap:wrap;gap:.375rem;align-items:center;color:var(--strong);font-weight:400}`,
   `.choice-meta{color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.choice-seats{min-width:0;color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:400}`,
   `.choice-title.tiered{flex-wrap:nowrap;align-items:baseline}`,
   `.choice-title.tiered .tag{flex:none}`,
-  `.hint{display:block;color:var(--muted);font-size:.75rem;line-height:1rem}`,
+  `.hint{display:block;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.choice-note{color:var(--danger);font-size:.875rem;line-height:1.25rem}`,
-  `.tag{padding:0 .375rem;border:1px solid var(--rule);border-radius:4px;color:var(--muted);font-size:.75rem;line-height:1.125rem;font-weight:400}`,
+  `.tag{padding:0 .375rem;border:1px solid var(--rule);border-radius:4px;color:var(--muted);font-size:.75rem;line-height:1rem;font-weight:500}`,
   `details.replace{margin:.5rem 0 0;padding:0 0 0 1rem;border-left:2px solid var(--rule)}`,
   `details.replace summary{color:var(--accent-fg);font-size:.875rem;line-height:1.25rem;cursor:pointer}`,
   `details.replace .button{margin:.75rem 0 0}`,
@@ -206,108 +206,130 @@ export const BRAND_PAGE_CSS = [
   `@media (max-width: 30rem){.tv .card{padding:1.5rem}.tv h1{font-size:2rem;line-height:2.5rem}.tv input[type=text]{font-size:1.75rem}}`,
 ].join("");
 
-/** The Locker identity's palette per theme: the lockup's three inks, and the neutral-ink action. */
-function lockerPalette(theme: "dark" | "light"): string {
+/**
+ * The neutral-ink roles both card brands share: the action fill, the focus ring, the selected-row
+ * fill the portal calls bg-hover (overlay on dark, one step down on light). Coral and violet are
+ * identity only, never a state (D9a).
+ */
+function neutralInk(theme: "dark" | "light"): string[] {
   const t = THEME_TOKENS[theme];
-  const ink = LOCKER_LOCKUP_PALETTES[theme];
   return [
-    `--mb:${ink.body}`,
-    `--ms:${ink.star}`,
-    `--mt:${ink.text}`,
     `--accent:${t.action.fill}`,
     `--accent-fg:${t.text.strong}`,
     `--on-accent:${t.action.on}`,
     `--accent-subtle:${t.surface.sunken}`,
     `--focus:${t.text.strong}`,
-    // The selected-row fill the portal calls bg-hover: overlay on dark, one step down (sunken) on light.
     `--hover:${theme === "dark" ? t.surface.overlay : t.surface.sunken}`,
+  ];
+}
+
+/** The Locker identity's palette per theme: the lockup's three inks, and the neutral-ink action. */
+function lockerPalette(theme: "dark" | "light"): string {
+  const ink = LOCKER_LOCKUP_PALETTES[theme];
+  return [
+    `--mb:${ink.body}`,
+    `--ms:${ink.star}`,
+    `--mt:${ink.text}`,
+    ...neutralInk(theme),
   ].join(";");
 }
 
 /**
  * What a Locker page adds to `BRAND_PAGE_CSS` (a build constant, so its hash is too): the Locker
  * inks, and D9a: coral is identity only, so actions, focus and link text are neutral ink and the
- * link underline (2 px) carries the coral.
+ * link underline is a thin neutral line (BRAND §7.9).
  */
 const AUTH_CARD_RULES = [
-  `[data-brand=locker] a:not(.button){border-radius:.375rem;color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:4px}`,
+  // The one link style (BRAND §7.9, SIGN-IN §3.1.1): 400, `--text`, a 1 px `--edge` underline at
+  // 3 px with skip-ink; `--strong` on hover; the family's ring. Never coral, never violet.
+  `[data-brand=locker] a:not(.button),[data-brand=locker] .quiet,[data-brand=locker] .chip-change{border-radius:.25rem;color:var(--text);font-weight:400;text-decoration:underline;text-decoration-color:var(--edge);text-decoration-thickness:1px;text-underline-offset:3px;text-decoration-skip-ink:auto;transition:color .12s,text-decoration-color .12s}`,
+  `[data-brand=locker] a:not(.button):hover,[data-brand=locker] .quiet:hover,[data-brand=locker] .chip-change:hover{color:var(--strong);text-decoration-color:var(--strong)}`,
   `[data-brand=locker] .button{text-decoration:none}`,
   // ── The AuthCard's Worker twin (`renderAuthCard`; packages/admin/src/ui/auth/AuthCard.tsx is the
   // React original): the lockup above, one 28.5 rem card (22 px radius) with an optional header,
   // the step body (one primary), and an optional footer. Phones: the card goes edge to edge
   // under a 56 px lockup row (36 px tall lockup, 196 px wide: the guide's 180 minimum).
-  `[data-brand=locker] body{display:block;place-items:normal;min-height:100dvh;padding:clamp(1.5rem,7vh,3.5rem) 1rem 3rem}`,
-  `.ac-brand{display:flex;justify-content:center;margin:0 0 1.5rem;color:var(--strong)}`,
+  `[data-brand=locker] body{display:block;place-items:normal;min-height:100dvh;padding:clamp(2.5rem,12vh,7.5rem) 1rem 3rem}`,
+  `.ac-brand{display:flex;justify-content:center;margin:0 0 2.5rem;color:var(--strong)}`,
+  `@media (max-height: 32rem){[data-brand=locker] body{padding-top:1.5rem}.ac-brand{margin-bottom:1.5rem}}`,
   `.ac-brand svg{display:block;max-width:100%;height:auto}`,
-  `main.ac{display:block;width:100%;max-width:28.5rem;min-width:0;margin:0 auto;overflow:hidden;border:1px solid var(--rule);border-radius:1.375rem;background:var(--raised);box-shadow:var(--elev3)}`,
-  `.ac-head{display:flex;gap:1rem;align-items:center;min-width:0;padding:1rem 1.5rem;border-bottom:1px solid var(--rule)}`,
+  `main.ac{display:block;width:100%;max-width:28.5rem;min-width:0;margin:0 auto;overflow:hidden;border:1px solid var(--rule);border-radius:1.125rem;background:var(--raised);box-shadow:var(--elev3)}`,
+  `.ac-head{display:flex;gap:1rem;align-items:center;min-width:0;padding:1rem 2rem;border-bottom:1px solid var(--rule)}`,
   `.ac-head img,.ac-mono{display:block;flex:none;width:56px;height:56px;border-radius:14px;object-fit:cover}`,
-  `.ac-head-title strong{font-weight:600}`,
-  `.ac-mono{display:grid;place-items:center;background:var(--sunken);border:1px solid var(--rule);color:var(--strong);font-weight:600}`,
+  `.ac-head-title strong{font-weight:500}`,
+  `.ac-mono{display:grid;place-items:center;background:var(--sunken);border:1px solid var(--rule);color:var(--strong);font-weight:500}`,
   `.ac-head-text{display:grid;min-width:0;overflow-wrap:anywhere}`,
   `.ac-head-text p{margin:0}`,
-  `.ac-head-title{color:var(--strong);font-size:1.125rem;line-height:1.5rem}`,
+  `.ac-head-title{color:var(--strong);font-size:1rem;line-height:1.5rem}`,
   `.ac-head-sub{color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.ac-dev{display:flex;gap:.375rem;align-items:center}`,
   `.ac-dev .ic{margin:0}`,
   `.ac-brand.quiet{opacity:.8}`,
   `.ac-passport{display:none}`,
-  `.ac-body{display:grid;gap:1.25rem;min-width:0;padding:2rem 1.5rem;overflow-wrap:anywhere}`,
+  `.ac-body{display:grid;gap:1.5rem;min-width:0;padding:2rem;overflow-wrap:anywhere}`,
   `.ac-body>*{margin:0;min-width:0}`,
   `.ac-body h1{font-size:1.5rem;line-height:2rem;letter-spacing:0}`,
-  `.ac-body h1+p{font-size:1rem;line-height:1.5rem}`,
-  `.ac-body label{margin:0 0 .5rem}`,
+  `.ac-body h1+p{margin-top:-1rem;color:var(--muted);font-size:1rem;line-height:1.5rem}`,
+  `.ac-body label{margin:0}`,
   `.ac-body .actions{margin:0}`,
-  `.ac-body .actions.stack,.ac-body .stack{gap:.5rem}`,
-  `.ac-foot{display:flex;gap:.75rem;align-items:flex-start;padding:1rem 1.5rem;border-top:1px solid var(--rule);color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
+  `.ac-body .actions.stack,.ac-body .stack{gap:.75rem}`,
+  `.ac-foot{display:flex;gap:.75rem;align-items:flex-start;padding:1rem 2rem;border-top:1px solid var(--rule);color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
   `.ac-foot svg{margin-top:.125rem}`,
   // Under the card: Help and Privacy, quiet, with 24 px targets.
-  `.ac-links{display:flex;flex-wrap:wrap;justify-content:center;gap:.25rem 1.5rem;max-width:28.5rem;margin:1.25rem auto 0;padding:0 1.25rem}`,
-  `.ac-links a+a{position:relative}`,
-  `.ac-links a+a::before{content:"\\00b7" / "";position:absolute;inset-inline-start:-1.0625rem;color:var(--muted)}`,
-  `.ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;padding:.125rem .25rem;font-size:.875rem;line-height:1.25rem}`,
-  `@media (max-width: 30rem){.ac-links a{min-height:2.75rem;padding:.125rem .5rem}}`,
+  // Footer type: 14/20 at 400 in `--muted`, the link style; the middot is muted, aria-hidden to
+  // assistive tech (`content: "·" / ""`), with 8 px each side.
+  `.ac-links{display:flex;flex-wrap:wrap;justify-content:center;max-width:28.5rem;margin:1.5rem auto 0;padding:0 1rem;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.ac-links a+a{position:relative;margin-inline-start:1rem}`,
+  `.ac-links a+a::before{content:"\\00b7" / "";position:absolute;inset-inline-start:-.6875rem;color:var(--muted);text-decoration:none}`,
+  `[data-brand=locker] .ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;color:var(--muted)}`,
+  `[data-brand=locker] .ac-links a:hover{color:var(--strong)}`,
+  `@media (pointer: coarse){.ac-links a,.quiet,.chip-change{min-height:2.75rem;min-width:2.75rem;justify-content:center}}`,
   // Selectable rows: the title is 16/24 (the React row's), the tier chip a full pill; a user code is strong ink.
-  `[data-brand=locker] .choice-title{font-size:1rem;line-height:1.5rem}`,
+  `[data-brand=locker] .choice-title{font-size:1rem;line-height:1.5rem;font-weight:400}`,
   `[data-brand=locker] .tag{border-radius:9999px}`,
   `[data-brand=locker] .code{color:var(--strong)}`,
   `.ic.lg{width:2.5rem;height:2.5rem;color:var(--strong)}`,
   // The pkey login card: the code, big, in its own panel; the role tags in one wrapping row.
   `.codepanel{display:grid;gap:.25rem;justify-items:center;padding:1rem;border:1px solid var(--rule);border-radius:.625rem;background:var(--sunken);text-align:center}`,
   `.codepanel p{margin:0;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
-  `.codepanel .code{color:var(--strong);font-size:1.5rem;line-height:2rem}`,
+  `.codepanel .code{color:var(--strong);font-size:1.5rem;line-height:2rem;font-weight:500}`,
   `.facts{display:grid;gap:.5rem;min-width:0}`,
   `.facts>*,.facts .fine{margin:0}`,
   `.tags{display:flex;flex-wrap:wrap;gap:.5rem;margin:0}`,
   `.tags .tag{display:inline-flex;gap:.375rem;align-items:center;max-width:100%;padding:.125rem .5rem;white-space:nowrap}`,
   `.tags .tag .muted{white-space:normal}`,
-  `.person a.quiet{display:inline-flex;align-items:center;flex:none;min-height:2.75rem;padding:0 .5rem;color:var(--strong);font-size:.875rem;text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:4px}`,
+  `.person a.quiet{display:inline-flex;align-items:center;flex:none;min-height:1.5rem;padding:0 .5rem;font-size:.875rem;line-height:1.25rem}`,
   `.ic{flex:none;width:1.25rem;height:1.25rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}`,
   `.ic.sm{width:1rem;height:1rem}`,
   // Buttons: 48 px, ink fill, one primary per step. `.link` is the quiet third action.
   `[data-brand=locker] .button{min-height:3rem;padding:.5rem 1.5rem;gap:.5rem;border-radius:.375rem;font-size:1rem;line-height:1.5rem;font-weight:500}`,
+  // The method button (SIGNIN-REDESIGN §4): one skin for every alternative way in and every decline.
   `[data-brand=locker] .button.secondary{border-color:var(--edge);background:transparent;color:var(--strong)}`,
-  `[data-brand=locker] .button.link{border-color:transparent;background:transparent;color:var(--strong);min-height:2.75rem;text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:4px;font-weight:400}`,
-  `[data-brand=locker] .button.link:hover{filter:none}`,
-  `.ac-body form{display:grid;gap:1.25rem;min-width:0}`,
+  `[data-brand=locker] .button.secondary:hover{background:var(--hover);filter:none}`,
+  `.ac-body form{display:grid;gap:.75rem;min-width:0}`,
   // A neutral callout (DL6: a refusal is information, not an alarm) and the one-line note.
   `.callout{display:flex;gap:.75rem;align-items:flex-start;padding:.75rem 1rem;border:1px solid var(--rule);border-radius:.625rem;background:var(--sunken)}`,
   `.callout>.ic{margin-top:.125rem;color:var(--muted)}`,
   `.callout-text{display:grid;gap:.125rem;min-width:0}`,
   `.callout-text p{margin:0;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
-  `.callout-text .callout-title{color:var(--strong);font-size:1rem;line-height:1.5rem;font-weight:600}`,
+  `.callout-text .callout-title{color:var(--strong);font-size:1rem;line-height:1.5rem;font-weight:500}`,
   // The person row (SIGN-IN.md §3.6): initial avatar, name, email and the quiet "Not you?" action.
-  `.person{display:flex;gap:.75rem;align-items:center;padding:.5rem .5rem .5rem .75rem;border:1px solid var(--rule);border-radius:.625rem;background:var(--sunken)}`,
+  `.person{display:flex;gap:.75rem;align-items:center;padding:.75rem .5rem .75rem 1rem;border:1px solid var(--rule);border-radius:.625rem;background:var(--sunken)}`,
   `.person .ac-mono{width:2.5rem;height:2.5rem;border-radius:50%}`,
   `.person-text{display:grid;min-width:0;flex:1;font-size:.875rem;line-height:1.25rem;color:var(--muted)}`,
-  `.person-name{color:var(--strong);font-weight:600}`,
-  `.person .quiet{flex:none;min-height:2.75rem;padding:0 .5rem;border:0;background:none;color:var(--strong);font:inherit;font-size:.875rem;text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:4px;cursor:pointer}`,
+  `.person-name{color:var(--strong);font-size:1rem;line-height:1.5rem;font-weight:500}`,
+  `.person .quiet{flex:none;min-height:1.5rem;padding:0 .5rem;border:0;background:none;font:inherit;font-size:.875rem;line-height:1.25rem;cursor:pointer}`,
   `.note{display:flex;gap:.5rem;align-items:flex-start;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.note>.ic{margin-top:.125rem}`,
+  // The tertiary line: one centred line of exits, items 24 px apart (SIGNIN-REDESIGN §6).
+  `.tertiary{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;font-size:.875rem;line-height:1.25rem}`,
+  `.tertiary a,.tertiary .quiet{display:inline-flex;align-items:center;min-height:1.5rem}`,
+  `button.quiet{padding:0;border:0;background:none;font:inherit;font-size:.875rem;line-height:1.25rem;cursor:pointer}`,
+  `@media (pointer: coarse){.tertiary a,.tertiary .quiet{min-height:2.75rem;min-width:2.75rem;justify-content:center}}`,
   // The code field: big mono caps, centred; its error sits under it, never above the form.
   `.field{display:grid;gap:.5rem;min-width:0}`,
   `.field label,.field input{margin:0}`,
-  `.ac-body input[type=text]{margin:0;min-height:3.5rem;text-align:center;font-size:min(1.5rem,6vw);font-weight:600;letter-spacing:.1em}`,
+  `.ac-body input[type=text]{margin:0;min-height:3.5rem;text-align:center;font-size:min(1.5rem,6vw);line-height:2rem;font-weight:500;letter-spacing:.1em}`,
   `.ac-body input[type=text][aria-invalid=true]{border-color:var(--danger-edge)}`,
   `.field-err{display:flex;gap:.5rem;align-items:flex-start;color:var(--danger);font-size:.875rem;line-height:1.25rem}`,
   `.field-err .ic{margin-top:.125rem}`,
@@ -329,7 +351,11 @@ const AUTH_CARD_RULES = [
   `@media (forced-colors: active){[data-brand=locker] .choice:has(input:checked){border-color:Highlight;border-left-width:3px}}`,
   `[data-brand=locker] ul.choices a{display:inline-flex;align-items:center;min-height:2.75rem}`,
   `[data-brand=locker] details.replace summary{display:flex;align-items:center;min-height:2.75rem}`,
-  `@media (max-width: 30rem){[data-brand=locker] body{padding:0 0 2rem}.ac-brand{height:3.5rem;align-items:center;margin:0;border-bottom:1px solid var(--rule)}main.ac{max-width:none;border-width:0 0 1px;border-radius:0;box-shadow:none;background:var(--page)}.ac-head,.ac-body,.ac-foot{padding-left:1.25rem;padding-right:1.25rem}.ac-body{padding-top:1.5rem;padding-bottom:1.5rem}}`,
+  // Phones (under 40 rem, both brands; SIGNIN-REDESIGN §8): no card chrome, the whole viewport is
+  // the raised surface; a 56 px brand row under the safe-area inset with no hairline; 24 px inline
+  // padding, 8 px above the step (24 px under a header strip, which keeps the one hairline) and 24
+  // px below; the footer follows the content. The Locker lockup drops to 23 px, the Key's is sized by width.
+  `@media (max-width: 39.99rem){[data-brand=locker],[data-brand=locker] body{background:var(--raised)}[data-brand=locker] body{padding:0}[data-brand=locker] .ac-brand{box-sizing:content-box;height:3.5rem;padding-top:env(safe-area-inset-top,0px);align-items:center;margin:0;border:0}[data-brand=locker] .ac-brand svg{height:23px;width:auto}[data-brand=locker] main.ac{max-width:none;margin:0;border:0;border-radius:0;box-shadow:none;background:var(--raised)}[data-brand=locker] .ac-head,[data-brand=locker] .ac-foot{padding-left:1.5rem;padding-right:1.5rem}[data-brand=locker] .ac-body{padding:.5rem 1.5rem 1.5rem}[data-brand=locker] .ac-head~.ac-body{padding-top:1.5rem}[data-brand=locker] .ac-links{margin:0;padding:1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom,0px))}[data-brand=locker] .tv .ac-body{padding:1.5rem}[data-brand=locker] .tv .ac-brand svg{height:23px}}`,
   // The hosted passport (SIGN-IN.md "the product passport"): at 960 px and wider with a width to
   // height ratio of at least 1.2, and while the page has room for 46 rem (a container query on the
   // body, so rem follows the root font size and 200 % text stacks the strip), the app sits in a
@@ -337,7 +363,7 @@ const AUTH_CARD_RULES = [
   // over its lower edge, name, developer), the receipt at the foot (the device line, then the
   // safety line): the pane never ends in a void. Narrower, taller or larger text: the strip.
   `body{container-type:inline-size}`,
-  `@media (min-width: 60rem) and (min-aspect-ratio: 6/5){@container (min-width: 46rem){main.ac-wide{max-width:46rem;display:grid;grid-template-columns:minmax(0,17.5rem) minmax(0,1fr);grid-template-rows:1fr auto}main.ac-wide .ac-head{display:none}main.ac-wide .ac-passport{display:flex;flex-direction:column;grid-column:1;grid-row:1;min-width:0;border-right:1px solid var(--rule);background:var(--sunken);color:var(--muted)}main.ac-wide .ac-body{grid-column:2;grid-row:1 / 3;align-content:start}main.ac-wide .ac-foot{grid-column:1;grid-row:2;padding-inline:1.5rem;border-top:0;border-right:1px solid var(--rule);background:var(--sunken)}.ac-art{display:block;width:100%;aspect-ratio:16/10;max-height:40%;object-fit:cover;flex:none}.ac-passport>:not(.ac-art){margin-inline:1.5rem}.ac-passport>:first-child:not(.ac-art){margin-top:2rem}.ac-art+img,.ac-art+.ac-mono{margin-top:-1.75rem;box-shadow:0 0 0 4px var(--sunken)}.ac-passport>img:not(.ac-art),.ac-passport>.ac-mono{flex:none;width:56px;height:56px;border-radius:14px;background:var(--raised)}.ac-pass-text{display:grid;gap:.25rem;margin-top:1rem;overflow-wrap:anywhere}.ac-pass-text p{margin:0}.ac-pass-text .ac-head-title{font-size:1.125rem;line-height:1.5rem;text-wrap:balance}.ac-pass-where{margin-top:.25rem;padding:0 0 1rem;align-items:flex-start}.ac-pass-where .ic{margin-top:.125rem}.ac-passport.ac-noart{justify-content:center;align-items:center;text-align:center}.ac-passport.ac-noart>:first-child{margin-top:0}.ac-passport.ac-noart>img,.ac-passport.ac-noart>.ac-mono{width:96px;height:96px;border-radius:24px;font-size:2.5rem}.ac-passport.ac-noart .ac-pass-where{justify-content:center;align-items:center;padding-bottom:0}}}`,
+  `@media (min-width: 60rem) and (min-aspect-ratio: 6/5){@container (min-width: 46rem){main.ac-wide{max-width:46rem;display:grid;grid-template-columns:minmax(0,17.5rem) minmax(0,1fr);grid-template-rows:1fr auto}main.ac-wide .ac-head{display:none}main.ac-wide .ac-passport{display:flex;flex-direction:column;grid-column:1;grid-row:1;min-width:0;border-right:1px solid var(--rule);background:var(--sunken);color:var(--muted)}main.ac-wide .ac-body{grid-column:2;grid-row:1 / 3;align-content:start}main.ac-wide .ac-foot{grid-column:1;grid-row:2;padding-inline:1.5rem;border-top:0;border-right:1px solid var(--rule);background:var(--sunken)}.ac-art{display:block;width:100%;aspect-ratio:16/10;max-height:40%;object-fit:cover;flex:none}.ac-passport>:not(.ac-art){margin-inline:1.5rem}.ac-passport>:first-child:not(.ac-art){margin-top:2rem}.ac-art+img,.ac-art+.ac-mono{margin-top:-1.75rem;box-shadow:0 0 0 4px var(--sunken)}.ac-passport>img:not(.ac-art),.ac-passport>.ac-mono{flex:none;width:56px;height:56px;border-radius:14px;background:var(--raised)}.ac-pass-text{display:grid;gap:.25rem;margin-top:1rem;overflow-wrap:anywhere}.ac-pass-text p{margin:0}.ac-pass-text .ac-head-title{font-size:1rem;line-height:1.5rem;text-wrap:balance}.ac-pass-where{margin-top:.25rem;padding:0 0 1rem;align-items:flex-start}.ac-pass-where .ic{margin-top:.125rem}.ac-passport.ac-noart{justify-content:center;align-items:center;text-align:center}.ac-passport.ac-noart>:first-child{margin-top:0}.ac-passport.ac-noart>img,.ac-passport.ac-noart>.ac-mono{width:96px;height:96px;border-radius:24px;font-size:2.5rem}.ac-passport.ac-noart .ac-pass-where{justify-content:center;align-items:center;padding-bottom:0}}}`,
   `@media (forced-colors: active){main.ac-wide .ac-passport,main.ac-wide .ac-foot{border-right-color:CanvasText;background:Canvas;color:CanvasText}}`,
   // The TV variant (`/tv`): read from a sofa, typed with a remote. Large type and targets, the
   // same card.
@@ -366,14 +392,6 @@ const LOCKER_PAGE_CSS_TAIL = [
   `:root[data-brand=locker]{${lockerPalette("dark")}}`,
   `@media (prefers-color-scheme: light){:root[data-brand=locker]{${lockerPalette("light")}}}`,
   ...AUTH_CARD_RULES,
-  // Phones: the Locker lockup drops to 23 px (the portal header's) in its 56 px bar. Only here, not in `AUTH_CARD_RULES`,
-  // which the console card shares with its brand attribute swapped: the console card keeps its
-  // compact Key lockup at the brand size (BRAND_LOCKUP_HEIGHT.key). `/tv`'s 44 px TV lockup drops
-  // to the same 23 px, which needs no width cap.
-  `@media (max-width: 30rem){.ac-brand svg{height:23px;width:auto}.tv .ac-brand svg{height:23px}}`,
-  // Polaris Locker only: the card goes edge to edge on the raised surface under 40 rem, like the React AuthCard (max-sm).
-  // Not in `AUTH_CARD_RULES`: the console card copies those, and it keeps its floating card down to 30 rem.
-  `@media (max-width: 39.99rem){[data-brand=locker] body{padding:0 0 2rem}[data-brand=locker] .ac-brand{height:3.5rem;align-items:center;margin:0;border-bottom:1px solid var(--rule)}[data-brand=locker] .ac-brand svg{height:23px;width:auto}[data-brand=locker] main.ac{max-width:none;border-width:0 0 1px;border-radius:0;box-shadow:none;background:var(--raised)}[data-brand=locker] .ac-head,[data-brand=locker] .ac-body,[data-brand=locker] .ac-foot{padding-left:1.25rem;padding-right:1.25rem}[data-brand=locker] .ac-body{padding-top:1.5rem;padding-bottom:1.5rem}[data-brand=locker] .ac-links a{min-height:2.75rem;padding:.125rem .5rem}[data-brand=locker] .tv .ac-body{padding:1.5rem}[data-brand=locker] .tv .ac-brand svg{height:23px}}`,
 ].join("");
 
 /** The stylesheet of a Locker page: `BRAND_PAGE_CSS` and its tail. */
@@ -385,14 +403,7 @@ export const BRAND_PAGE_CSS_LOCKER = BRAND_PAGE_CSS + LOCKER_PAGE_CSS_TAIL;
  * neutral-ink action, focus and link text. One set of rules, two palettes: no fork.
  */
 function consolePalette(theme: "dark" | "light"): string {
-  const t = THEME_TOKENS[theme];
-  return [
-    `--accent:${t.action.fill}`,
-    `--accent-fg:${t.text.strong}`,
-    `--on-accent:${t.action.on}`,
-    `--accent-subtle:${t.surface.sunken}`,
-    `--focus:${t.text.strong}`,
-  ].join(";");
+  return neutralInk(theme).join(";");
 }
 const CONSOLE_PAGE_CSS_TAIL = [
   `:root[data-brand=console]{${consolePalette("dark")}}`,
@@ -404,48 +415,49 @@ const CONSOLE_PAGE_CSS_TAIL = [
   `.ac-brand>div{display:flex;align-items:center}`,
   // The known operator (D-S5), drawn as frame 13's pill, not as a field: it wraps so Change drops
   // to its own line under large text, and the address breaks at "@" and ".".
-  `.ac-body .field-label{color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:600}`,
-  `.chip{display:flex;flex-wrap:wrap;gap:.25rem .75rem;align-items:center;min-width:0;min-height:3rem;padding:.25rem .5rem .25rem .75rem;border:1px solid var(--edge);border-radius:1.75rem;background:transparent;color:var(--strong)}`,
+  `.ac-body .field-label{color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:500}`,
+  `.chip{display:flex;flex-wrap:wrap;gap:.25rem .75rem;align-items:center;min-width:0;min-height:3rem;padding:.25rem .5rem .25rem .75rem;border:1px solid var(--edge);border-radius:1.75rem;background:transparent;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   `.chip .ac-mono{width:1.75rem;height:1.75rem;border-radius:50%;font-size:.75rem}`,
   `.chip-email{flex:1 1 10rem;min-width:0;overflow-wrap:break-word}`,
-  `.chip-change{display:inline-flex;align-items:center;flex:none;min-height:2.75rem;padding:0 .5rem;font-size:.875rem;font-weight:600;color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
+  `.chip-change{display:inline-flex;align-items:center;flex:none;min-height:1.5rem;padding:0 .5rem;font-size:.875rem;line-height:1.25rem}`,
   `.chip-change:focus-visible{outline-offset:-2px}`,
   // The passkey button (ST-30c.6): hidden until the card's script finds WebAuthn; an "or" rule
   // above it; its refusal sits under it as text. No motion anywhere on the card.
-  `.pk{display:grid;gap:1rem;min-width:0}`,
+  `.pk{display:block;min-width:0}`,
   `.pk[hidden]{display:none}`,
-  `.pk .or{display:flex;gap:1rem;align-items:center;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.pk .or{display:flex;gap:.75rem;align-items:center;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   // Borders, not fills: a fill vanishes under forced colours.
   `.pk .or::before,.pk .or::after{content:"";flex:1;border-top:1px solid var(--rule)}`,
   // One run: the glyph sits beside the first line of a label that wraps, and the label starts at the glyph.
-  `.pk .button{align-items:flex-start;padding-block:.75rem}`,
-  `.pk .button .ic{margin-top:.125rem}`,
+  `.pk .button{align-items:center}`,
   `.pk .button span{text-align:start}`,
   `.pk .button[aria-disabled=true]{opacity:.6;cursor:progress}`,
   `.pk-err{display:grid;min-width:0}`,
-  `.pk-err .field-err{margin:0}`,
+  `.pk-err .field-err{margin:.5rem 0 0}`,
+  // "or" is 24 px from what it divides (sign-in: below it; step-up: above it, the form follows).
+  `.pk:not([data-step-up]) .or{margin:0 0 1.5rem}`,
+  `.pk[data-step-up] .or{margin:1.5rem 0 0}`,
   `.pk-err .field-err[hidden]{display:none}`,
   // With a passkey on step-up, the passkey is the primary and the IdP round trip the ghost.
   `.pk:not([hidden])+form .button[type=submit]{border-color:var(--edge);background:transparent;color:var(--strong)}`,
   `@media (forced-colors: active){.pk:not([hidden])+form .button[type=submit]{border:1px solid ButtonText;background:ButtonFace;color:ButtonText}}`,
   `@media (forced-colors: active){.pk .or::before,.pk .or::after{border-color:CanvasText}}`,
-  // The links row has no separator dots here: a dot cannot be told from a link's name, and one
   // stranded at a wrap reads as a glitch. The gap separates them.
-  `[data-brand=console] .ac-links a+a::before{content:none}`,
-  // The lockup at frame 13's size: native 64 px (222 x 64) from 30 rem, in rem so it grows with
-  // the text. On phones both stay in px (and capped by the width) so a scaled root font cannot clip
-  // the row or make "Console" larger than the wordmark.
+  // The Key brand row (SIGNIN-REDESIGN §5): the compact lockup on its 64 px canvas (222 x 64), a 1 px
+  // rule 24 px tall with 12 px each side, and "Console" at 16/24, 400, muted. The canvas's own air
+  // counts toward the 40 px gap to the card. Phones size the lockup by width, min(180px, 52vw).
   `[data-brand=console] .ac-brand svg{width:13.875rem;height:4rem}`,
-  `[data-brand=console] .ac-brand .ac-surface{font-size:1.25rem;line-height:1.75rem;font-weight:500}`,
-  `@media (max-width: 30rem){[data-brand=console] .ac-brand svg{width:min(180px,52vw);height:auto}[data-brand=console] .ac-brand .ac-surface{font-size:16px;line-height:24px;font-weight:400}}`,
-  `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.5rem;background:var(--sunken);color:var(--strong);font:inherit}`,
+  `[data-brand=console] .ac-brand{margin-bottom:1.5rem}`,
+  `@media (max-width: 39.99rem){[data-brand=console] .ac-brand svg{width:min(180px,52vw);height:auto}[data-brand=console] .ac-brand .ac-surface{font-size:16px;line-height:24px}}`,
+  `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.375rem;background:var(--sunken);color:var(--strong);font:inherit}`,
   `.ac-body input[type=email]::placeholder{color:var(--muted);opacity:1}`,
+  // Fields: the calm 1 px inset focus ring, no offset outline (SIGNIN-REDESIGN §4).
+  `.ac-body input[type=email]:focus-visible,.ac-body input[type=text]:focus-visible{outline:none;border-color:var(--strong);box-shadow:inset 0 0 0 1px var(--strong)}`,
   `.ac-body .fine{color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
-  `.ac-brand .ac-surface{margin-left:.75rem;padding-left:.75rem;border-left:1px solid var(--edge);color:var(--muted);font-size:1rem;line-height:1.5rem}`,
+  `.ac-body form .fine{margin-top:-.25rem}`,
+  `.ac-brand .ac-surface{margin-left:.75rem;padding-left:.75rem;border-left:1px solid var(--edge);color:var(--muted);font-size:1rem;line-height:1.5rem;font-weight:400}`,
   `@media (forced-colors: active){.ac-brand .ac-surface{color:CanvasText;border-color:CanvasText}}`,
-  // On a tall window the card sits near the optical centre (about 40% from the top), not under
   // the top edge with half a screen empty below; the phone layout keeps its own padding.
-  `@media (min-width: 30.0625rem) and (min-height: 44rem){[data-brand=console] body{padding-top:clamp(1.5rem,16vh,11rem)}}`,
 ].join("");
 
 /** The stylesheet of a console page. */
@@ -565,7 +577,6 @@ const ICON_PATHS = {
   // lucide "fingerprint-pattern": the glyph of ST-30c.4's Add a passkey.
   fingerprint:
     '<path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/>',
-  "arrow-right": '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
   terminal:
     '<polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/>',
 } as const;
