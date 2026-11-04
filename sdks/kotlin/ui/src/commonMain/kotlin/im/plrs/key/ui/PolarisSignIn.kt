@@ -105,6 +105,16 @@ public fun PolarisSignIn(
             onCancel()
         },
         onRestart = state::restart,
+        steps = PolarisSignInSteps(
+            onReopen = state::reopen,
+            onLinkCopied = state::linkCopied,
+            redirectLink = { state.redirectLink },
+            onUseCode = state::useCode,
+            onLinkAccept = state::linkAccept,
+            onLinkDecline = state::linkDecline,
+            onLinkFinished = state::linkFinished,
+            onLinkSignInAgain = state::linkSignInAgain,
+        ),
         onUseKey = onUseKey?.let { useKey ->
             {
                 leaving = live
@@ -135,6 +145,7 @@ public fun PolarisSignInScreen(
     showQr: Boolean = isTelevision(),
     onCopyLink: ((String) -> Unit)? = null,
     onUseKey: (() -> Unit)? = null,
+    steps: PolarisSignInSteps = PolarisSignInSteps(),
 ) {
     val copy = PolarisTheme.copy
     when (ui) {
@@ -147,6 +158,10 @@ public fun PolarisSignInScreen(
             actions = { PolarisTextButton(copy.cancel, onCancel, initialFocus = true) },
         )
         is PolarisSignInUi.Showing -> PolarisCodeView(ui, modifier, onOpenBrowser, onCancel, showQr, onCopyLink, onUseKey)
+
+        is PolarisSignInUi.Redirecting -> PolarisRedirectWait(ui, steps, onCancel, modifier)
+
+        is PolarisSignInUi.LinkOffer, is PolarisSignInUi.LinkDone, is PolarisSignInUi.LinkConflict -> PolarisLinkStep(ui, steps, modifier)
         // The last step keeps the product's header like every other (UI-KITS.md DL5, the SwiftUI adoption).
         PolarisSignInUi.Done -> PolarisScreen(modifier = modifier, showLogo = false) {
             PolarisProductHeader()

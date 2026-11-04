@@ -370,3 +370,30 @@ private fun providerName(wire: String): String = when (wire) {
     "apple" -> "Apple"
     else -> wire.replaceFirstChar { it.uppercaseChar() }
 }
+
+/**
+ * The browser hand-off (rung 6, `SignInHandoff`): the system browser has the sign-in. [opened] false is the
+ * no-browser step; [copied] the link-copied one.
+ */
+public fun redirectWaitInputs(opened: Boolean = true, copied: Boolean = false): KitInputs {
+    val extra = buildList {
+        add("outcome" to JsonPrimitive("pending"))
+        if (!opened) add("browserOpened" to JsonPrimitive(false))
+        if (copied) add("event" to JsonPrimitive("copy-link"))
+    }
+    return KitInputs.of(mapOf("signIn" to JsonObject(browserSignIn().toMap() + extra)))
+}
+
+/** The link offer's steps (`link-offer`, `link-done`, `link-conflict`) for [provider] (its display name); [reach] is `global` or `developer`. */
+public fun linkStepInputs(step: String, provider: String, reach: String? = null): KitInputs = KitInputs.of(
+    mapOf(
+        "provider" to JsonPrimitive(provider),
+        "signIn" to browserSignIn(),
+        "autoSignIn" to JsonObject(
+            buildMap {
+                put("step", JsonPrimitive(step))
+                reach?.let { put("reach", JsonPrimitive(it)) }
+            },
+        ),
+    ),
+)
