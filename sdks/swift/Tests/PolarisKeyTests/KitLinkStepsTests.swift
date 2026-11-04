@@ -127,9 +127,14 @@
             let held = store ?? InMemoryStore(deviceId: "DEVICE00000000000000000000000001")
             let c = try await PolarisKeyClient.create(
                 options: PolarisKeyClientOptions(
-                    productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
-                    pinnedKeys: [:], trustRefresh: false, store: held, transport: transport ?? server.transport,
-                    expectedServices: [.license, .identity], fingerprint: false,
+                    core: CoreOptions(
+                        productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                        pinnedKeys: [:], trustRefresh: false, store: held, transport: transport ?? server.transport,
+                        expectedServices: [.license, .identity],
+                        // No device label: the macOS computer name is read through the Contacts store, which a CI
+                        // runner without a GUI session never answers (each sign-in then stalls for ~30 s).
+                        deviceName: ""),
+                    license: LicenseClientOptions(fingerprint: false),
                     connect: ConnectOptions(keys: try LabelKeyPort(label: "kit-link-key-1"))))
             c.identity.redirectAcquisitionSync.set(false)
             c.identity.redirectEntropy.set((state: state, codeVerifier: verifier))
