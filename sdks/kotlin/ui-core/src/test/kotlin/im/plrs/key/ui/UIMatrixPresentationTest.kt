@@ -1,4 +1,5 @@
-// @pkey-feature ui.gate ui.activate ui.signin ui.devicelimit ui.devices ui.update ui.settings ui.paywall ui.theme ui.i18n ui.kit connect.links connect.transfer
+// @pkey-feature ui.gate ui.activate ui.signin ui.devicelimit ui.devices ui.update ui.settings ui.paywall ui.theme ui.i18n
+// @pkey-feature ui.kit connect.links connect.transfer
 //
 // The Kotlin presentation core against conformance/corpus/v2/ui-matrix.json (plans/UK-02b.md §5):
 // every row of all thirteen families, never skipping one. Component rows compare the component, the

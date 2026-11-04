@@ -8,7 +8,7 @@
 //    [cancel] closes the window;
 //  - a failure of a session the person never saw (no code was shown) changes nothing on screen;
 //  - an epoch is bumped whenever a window ends, so a late callback from an old window is dropped.
-@file:Suppress("TooGenericExceptionCaught", "SwallowedException", "TooManyFunctions")
+@file:Suppress("TooGenericExceptionCaught", "SwallowedException", "TooManyFunctions", "LongParameterList")
 
 package im.plrs.key.ui
 
@@ -120,7 +120,9 @@ public class PolarisLinkPairingState(
             val live = { synchronized(lock) { mine == epoch } }
             try {
                 val opened = actions.pair(
-                    categories, label, seconds,
+                    categories,
+                    label,
+                    seconds,
                     onCode = { arrived -> onCode(mine, arrived) },
                     onLinked = { who, cats -> onLinked(mine, who, cats) },
                     onFailed = { why -> onFailed(mine, why) },

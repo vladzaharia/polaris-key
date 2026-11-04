@@ -539,7 +539,10 @@ internal val KitInputs.closedServices: Set<String>
 /** Formatting used only for catalog arguments; hosts may apply native locale formatting at draw time. */
 public object KitFormat {
     /** Formats bytes in the file-style unit vocabulary used by the catalog. */
-    public fun bytes(value: Int): String {
+    public fun bytes(value: Int): String = bytes(value.toLong())
+
+    /** Formats a byte count of any size in the file-style unit vocabulary used by the catalog. */
+    public fun bytes(value: Long): String {
         val units = arrayOf("B", "KB", "MB", "GB", "TB")
         var amount = value.toDouble().coerceAtLeast(0.0)
         var index = 0

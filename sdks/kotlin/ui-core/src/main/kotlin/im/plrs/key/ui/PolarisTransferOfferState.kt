@@ -6,7 +6,7 @@
 //  - consent per transfer: [accept] and [decline] each answer the host's offer once, a second answer is ignored;
 //  - the contact's label and the name it chose are text the contact picked: they are display data, never proof of who is sending;
 //  - [cancel] stops a transfer in flight and it ends as failed, nothing kept; a late result from the SDK is dropped.
-@file:Suppress("TooGenericExceptionCaught", "SwallowedException", "TooManyFunctions")
+@file:Suppress("TooGenericExceptionCaught", "SwallowedException", "TooManyFunctions", "LongParameterList")
 
 package im.plrs.key.ui
 

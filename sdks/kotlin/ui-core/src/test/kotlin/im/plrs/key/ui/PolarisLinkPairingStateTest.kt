@@ -77,7 +77,9 @@ class PolarisLinkPairingStateTest {
         cleanup = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
     )
 
-    private fun PolarisLinkPairingState.screen() = PolarisLinkPairingState.inputsFor(ui.value)?.let { KitStates.resolve(KitComponent.linkPairing, it) }
+    private fun PolarisLinkPairingState.screen() = PolarisLinkPairingState.inputsFor(ui.value)?.let {
+        KitStates.resolve(KitComponent.linkPairing, it)
+    }
 
     @Test
     fun idleDrawsNothing() {

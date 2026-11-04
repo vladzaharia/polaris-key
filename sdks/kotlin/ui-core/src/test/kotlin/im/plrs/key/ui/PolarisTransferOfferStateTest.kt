@@ -43,7 +43,9 @@ class PolarisTransferOfferStateTest {
     private fun offer(actions: Actions, name: String = "holiday.zip", device: String? = "Maya's laptop", onClosed: () -> Unit = {}) =
         PolarisTransferOfferState(actions, name, device, size = 1_200_000, type = "application/zip", scope = scope, onClosed = onClosed)
 
-    private fun PolarisTransferOfferState.screen() = PolarisTransferOfferState.inputsFor(ui.value)?.let { KitStates.resolve(KitComponent.transferOffer, it) }
+    private fun PolarisTransferOfferState.screen() = PolarisTransferOfferState.inputsFor(ui.value)?.let {
+        KitStates.resolve(KitComponent.transferOffer, it)
+    }
 
     @Test
     fun theOfferAsksFirstAndReceivesNothing() {
@@ -73,7 +75,7 @@ class PolarisTransferOfferStateTest {
         val a = object : PolarisTransferOfferActions {
             override suspend fun accept() = error("closed")
 
-            override suspend fun decline() {}
+            override suspend fun decline() = Unit
         }
         val s = PolarisTransferOfferState(a, "holiday.zip", scope = scope)
         s.accept()
@@ -114,7 +116,7 @@ class PolarisTransferOfferStateTest {
         val name = "a-very-long-holiday-photo-collection-from-the-whole-family-trip-2026.zip"
         val s = offer(Actions(), name)
         val shown = (s.screen()!!.copy.first { it.key == "transferOffer.ask" }.args["name"] as CopyArgument.Text).value
-        assertEquals(KitConnect.shortName(name), shown)
+        assertEquals(KitConnect.isolate(KitConnect.shortName(name)), shown)
         assertEquals(40, KitConnect.shortName(name).length)
         assertTrue(KitConnect.shortName(name).endsWith(".zip"))
     }

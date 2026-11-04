@@ -2633,10 +2633,10 @@
       "detekt:complexity.CyclomaticComplexMethod": 2,
       "detekt:complexity.LongMethod": 1,
       "detekt:complexity.TooManyFunctions": 1,
-      "detekt:naming.EnumNaming": 65,
+      "detekt:naming.EnumNaming": 67,
       "detekt:style.MagicNumber": 8,
       "detekt:style.ReturnCount": 1,
-      "ktlint:standard:enum-entry-name-case": 65,
+      "ktlint:standard:enum-entry-name-case": 67,
       "ktlint:standard:property-naming": 3
     },
     "sdks/kotlin/ui-core/src/main/kotlin/im/plrs/key/ui/KitRows.kt": {
