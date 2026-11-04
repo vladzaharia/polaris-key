@@ -7,7 +7,8 @@
 //   - the reasons are written once (`recommendReasons`): Cloud Sync only when the product has it;
 //     getting the license back and moving it to a new device only when Identity is on; with
 //     Identity off the one line sends the person to the portal;
-//   - the holder is `licenseHolder.email`: empty is floating, set is waiting for that email, which
+//   - the holder is `licenseHolder.email`: empty is floating, set is waiting for that email with
+//     Identity on (with Identity off it is ready, one portal line), which
 //     a screen shows masked (`KitFormat.maskEmail`) and never in full;
 //   - skipping is never a refusal: Start using is always the one primary.
 
@@ -89,7 +90,9 @@ extension KitStates {
         if let n = done.position { args["n"] = .number(n) }
         if let limit = done.limit { args["limit"] = .number(limit) }
         let masked = KitFormat.maskEmail(i.licenseHolder?.email)
-        if !masked.isEmpty {
+        // Waiting needs Identity: with it off the license sent to an email still draws ready, with
+        // the one portal line.
+        if !masked.isEmpty, on.contains(.identity) {
             args["maskedEmail"] = .text(masked)
             return KitScreen(
                 .waiting,
