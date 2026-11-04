@@ -17,8 +17,11 @@
 #                     selection; it runs by default only with the `ci` selection
 #   PKEY_UI_MATRIX_SHARDS  parallel shards of the UI matrix step (default 4, or 2 per path with PATHS=both; 1 = one process per path)
 #   PKEY_TEST_TIMEOUT seconds per step (default: 300)
-#   PKEY_TEST_PART    all (default) | editor | matrix | template: which heavy steps run, so CI can
-#                     spread them over runners. editor = the editor run + the build-stamp exports;
+#   PKEY_TEST_PART    all (default) | editor | editor-a | editor-b | matrix | template: which heavy
+#                     steps run, so CI can spread them over runners. editor = the editor run + the
+#                     build-stamp exports; editor-a / editor-b = the same split in two: with the `ci`
+#                     selection each runs its half of it (the ci_a and ci_b sets in tests/runner.gd,
+#                     disjoint, together `ci`) and editor-a also runs the build-stamp exports;
 #                     matrix = the UI resolution matrix; template = export + release-template run.
 #                     The import, uid-check and uid-pack steps run in every part.
 #   PKEY_CONTENT_CORPUS the content corpus directory the packs suite reads (default: the
@@ -59,14 +62,24 @@ SUITES="${PKEY_TEST_SUITES:-ci}"
 TIMEOUT="${PKEY_TEST_TIMEOUT:-300}"
 PART="${PKEY_TEST_PART:-all}"
 case "$PART" in
-  all | editor | matrix | template) ;;
+  all | editor | editor-a | editor-b | matrix | template) ;;
   *)
-    echo "run_tests: PKEY_TEST_PART=$PART is not all, editor, matrix or template" >&2
+    echo "run_tests: PKEY_TEST_PART=$PART is not all, editor, editor-a, editor-b, matrix or template" >&2
     exit 2
     ;;
 esac
 # part <name>: true when this run owns that heavy step.
-part() { [ "$PART" = all ] || [ "$PART" = "$1" ]; }
+# `editor` is also owned by both halves of the split editor run (editor-a, editor-b).
+part() {
+  [ "$PART" = all ] || [ "$PART" = "$1" ] && return 0
+  [ "$1" = editor ] && { [ "$PART" = editor-a ] || [ "$PART" = editor-b ]; } && return 0
+  return 1
+}
+# The split editor run's half of the default selection.
+case "$PART:$SUITES" in
+  editor-a:ci) SUITES=ci_a ;;
+  editor-b:ci) SUITES=ci_b ;;
+esac
 FATAL='SCRIPT ERROR|Parse Error|Failed to load script|Cannot get class|Invalid MainLoop'
 
 if [ -n "${GODOT_BIN:-}" ]; then
@@ -342,7 +355,7 @@ fi
 # 4. The build stamp (P1-11): the export plugin end to end, headless, as CI exports a game.
 STAMP_ENV="PKEY_BUILD_OUTLET=steam PKEY_BUILD_CHANNEL=beta PKEY_BUILD_NUMBER=42"
 STAMPS="$BUILD/stamps"
-if part editor && { [ "$SUITES" = ci ] || [ "${PKEY_TEST_STAMPS:-0}" = 1 ]; }; then
+if part editor && [ "$PART" != editor-b ] && { [ "$SUITES" = ci ] || [ "$SUITES" = ci_a ] || [ "${PKEY_TEST_STAMPS:-0}" = 1 ]; }; then
   DIST="$PROJECT/.pkey"
   mkdir -p "$STAMPS"
   # export_stamp <name> [VAR=value…]: one ZIP export with the stamp env plus the extra variables.

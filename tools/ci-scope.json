@@ -208,12 +208,20 @@
       "pr": {
         "include": [
           {
-            "name": "Godot SDK (4.7.2 editor)",
+            "name": "Godot SDK (4.7.2 editor A)",
             "os": "ubuntu-latest",
             "godot": "4.7.2",
             "template": "",
             "suites": "",
-            "part": "editor"
+            "part": "editor-a"
+          },
+          {
+            "name": "Godot SDK (4.7.2 editor B)",
+            "os": "ubuntu-latest",
+            "godot": "4.7.2",
+            "template": "",
+            "suites": "",
+            "part": "editor-b"
           },
           {
             "name": "Godot SDK (4.7.2 UI matrix)",
@@ -243,12 +251,20 @@
       "main": {
         "include": [
           {
-            "name": "Godot SDK (4.7.2 editor)",
+            "name": "Godot SDK (4.7.2 editor A)",
             "os": "ubuntu-latest",
             "godot": "4.7.2",
             "template": "",
             "suites": "",
-            "part": "editor"
+            "part": "editor-a"
+          },
+          {
+            "name": "Godot SDK (4.7.2 editor B)",
+            "os": "ubuntu-latest",
+            "godot": "4.7.2",
+            "template": "",
+            "suites": "",
+            "part": "editor-b"
           },
           {
             "name": "Godot SDK (4.7.2 UI matrix)",
