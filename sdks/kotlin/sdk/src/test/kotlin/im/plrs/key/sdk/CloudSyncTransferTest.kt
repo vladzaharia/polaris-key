@@ -557,7 +557,8 @@ class CloudSyncTransferTest {
         val data = noise(2 * MIB + 12_345)
         engine(s, j).uploadChunked(chunkedReq("c1", data, codec))
         val first = s.chunkPuts.size
-        assertTrue(first >= 4)
+        assertTrue(first >= 2)
+        assertEquals("every distinct chunk is sent once", s.chunks.size, first)
         assertTrue(j.list().isEmpty())
         assertEquals("chunks", (s.beginRequests[0]["format"] as JsonPrimitive).content)
         assertEquals("none", (s.beginRequests[0]["enc"] as JsonPrimitive).content)
@@ -713,7 +714,9 @@ class CloudSyncTransferTest {
         engine(s).download(dl(data, sink, stored = manifest, codec = codec, format = "chunks", cache = cache, size = data.size))
         assertArrayEquals(data, sink.data)
         val fetched = s.chunkGets.size
-        assertTrue(fetched >= 4)
+        // Random data chunks content-defined, so the count varies: the first read fetches every stored chunk once.
+        assertTrue(s.chunks.size >= 2)
+        assertEquals("the first read fetches every chunk the manifest lists, once", s.chunks.size, fetched)
         val again = Collected()
         engine(s).download(dl(data, again, stored = manifest, codec = codec, format = "chunks", cache = cache, size = data.size))
         assertArrayEquals(data, again.data)

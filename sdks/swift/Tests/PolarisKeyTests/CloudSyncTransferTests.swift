@@ -629,7 +629,8 @@ final class CloudSyncTransferTests: XCTestCase {
         let data = noise(2 * mib + 12_345)
         try await engine(s, j).uploadChunked(chunkedReq("c1", data, codec))
         let first = s.chunkPuts.count
-        XCTAssertGreaterThanOrEqual(first, 4)
+        XCTAssertGreaterThanOrEqual(first, 2)
+        XCTAssertEqual(first, s.chunks.count, "every distinct chunk is sent once")
         XCTAssertTrue(j.list().isEmpty)
         guard case .object(let b) = s.beginRequests[0] else { return XCTFail() }
         XCTAssertEqual(b["format"], .string("chunks"))
@@ -824,7 +825,9 @@ final class CloudSyncTransferTests: XCTestCase {
         try await engine(s).download(req)
         XCTAssertEqual(sink.data, data)
         let fetched = s.chunkGets.count
-        XCTAssertGreaterThanOrEqual(fetched, 4)
+        // Random data chunks content-defined, so the count varies; the property is that every distinct chunk is fetched once.
+        XCTAssertGreaterThanOrEqual(s.chunks.count, 2)
+        XCTAssertEqual(fetched, s.chunks.count, "the first read fetches every chunk the manifest lists, once")
         let again = Collected()
         var req2 = req
         req2.sink = { again.add($0) }
