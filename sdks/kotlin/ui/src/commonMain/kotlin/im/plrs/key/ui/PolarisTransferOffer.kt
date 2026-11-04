@@ -123,7 +123,7 @@ public fun PolarisTransferOfferScreen(
 
             "done" -> {
                 Spacer(Modifier.height(PolarisSpace.medium))
-                PolarisIconBadge(PolarisSymbols.Check, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
+                PolarisIconBadge(PolarisSymbols.Check, PolarisTheme.status.successContainer, PolarisTheme.status.success)
                 Spacer(Modifier.height(window.section))
                 ConnectActions(listOf(ConnectButton(button("common.done"), onDone, primary = true, focus = true)))
             }
