@@ -124,10 +124,7 @@ export function renderConsoleSignin(opts: {
     : opts.knownEmail
       ? hidden("login_hint", opts.knownEmail)
       : chip
-        ? `${hidden("login_hint", chip)}<div class="field"><span class="field-label" id="email-label">Email</span>` +
-          `<div class="chip" role="group" aria-labelledby="email-label"><span class="ac-mono" aria-hidden="true">${escapeHtml(initialsOf(chip))}</span>` +
-          `<span class="chip-email">${escapeHtml(chip).replace(/[@.]/g, "<wbr>$&")}</span>` +
-          `<a class="chip-change" href="${escapeHtml(ctxQuery({ change: "1", ...stateFlag }))}">Change</a></div></div>`
+        ? hidden("login_hint", chip)
         : `<div class="field"><label for="email">Email</label>` +
           `<input id="email" type="email" name="login_hint" autofocus placeholder="you@example.com" autocomplete="${offerPasskey ? "username webauthn" : "username"}" autocapitalize="none" spellcheck="false" maxlength="254"${opts.hint ? ` value="${escapeHtml(opts.hint)}"` : ""}></div>`;
   const body = [
@@ -140,10 +137,6 @@ export function renderConsoleSignin(opts: {
           "Every use is recorded and every Superadmin is emailed.",
         )
       : "",
-    // A step-up names who is confirming, once, above both ways in.
-    opts.state === "stepUp" && opts.knownEmail
-      ? `<p class="fine">Signing in as ${escapeHtml(opts.knownEmail)}</p>`
-      : "",
     // On a step-up the passkey leads (the primary), so its block sits before the form; elsewhere it follows.
     offerPasskey && opts.state === "stepUp"
       ? passkeyBlock(opts.state, opts.returnTo)
@@ -153,7 +146,7 @@ export function renderConsoleSignin(opts: {
     opts.state === "stepUp" ? hidden("stepUp", "1") : "",
     bg ? hidden("breakGlass", "1") : "",
     identifier,
-    `<button class="button" type="submit">${escapeHtml(c.cta)}</button>`,
+    `<button class="button" type="submit"${chip ? " autofocus" : ""}>${escapeHtml(c.cta)}</button>`,
     // Secondary, 8 px under the primary it explains.
     `<p class="fine">Next: sign in at ${escapeHtml(opts.issuerHost)}</p>`,
     `</form>`,
@@ -173,13 +166,35 @@ export function renderConsoleSignin(opts: {
     title: c.h1,
     heading: c.h1,
     body,
-    focusHeading: bg || Boolean(chip) || Boolean(opts.knownEmail),
+    // The remembered address puts focus on Continue; a step-up's title takes it.
+    focusHeading: bg || Boolean(opts.knownEmail),
+    // The identity pill (m7): who is signing in, above the title. A step-up's is fixed: no Change.
+    preface: chip
+      ? identityPill(chip, ctxQuery({ change: "1", ...stateFlag }))
+      : opts.state === "stepUp" && opts.knownEmail
+        ? identityPill(opts.knownEmail, null)
+        : "",
     links,
   });
 }
 
 /**
- * The chip's avatar letters, by the console's own rule (the shell's initials): the first code
+ * The identity pill, the Locker hint step's: an initial avatar, the address (it breaks at "@" and
+ * "."), and a Change link unless the identity is fixed (a step-up). It sits above the title.
+ */
+function identityPill(email: string, changeHref: string | null): string {
+  return (
+    `<div class="chip"><span class="ac-mono" aria-hidden="true">${escapeHtml(initialsOf(email))}</span>` +
+    `<span class="chip-email">${escapeHtml(email).replace(/[@.]/g, "<wbr>$&")}</span>` +
+    (changeHref
+      ? `<a class="chip-change" href="${escapeHtml(changeHref)}">Change</a>`
+      : "") +
+    `</div>`
+  );
+}
+
+/**
+ * The pill's avatar letters, by the console's own rule (the shell's initials): the first code
  * point of the first two words of the address's local part ("vlad.zaharia" gives "VZ"), else "?".
  */
 function initialsOf(email: string): string {

@@ -9,6 +9,7 @@ import {
 import { cn } from "../../lib/cn.js";
 import { keyParts, normaliseKey } from "../model/key.js";
 import { t } from "../../lib/copy.js";
+import { AUTH_LABEL_CLASS } from "../../ui/auth/parts.js";
 
 /**
  * The license-key field (PORTAL.md §4.17): monospace and paste-first (a Paste button while
@@ -58,6 +59,7 @@ export function KeyField({
   onBlur?: () => void;
 }): React.ReactElement {
   const ref = React.useRef<HTMLTextAreaElement>(null);
+  const wrapRef = React.useRef<HTMLDivElement>(null);
   const [pasteHint, setPasteHint] = React.useState(false);
   const errorId = `${id}-error`;
   const helpId = `${id}-help`;
@@ -90,12 +92,13 @@ export function KeyField({
 
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="text-sm font-medium text-fg-strong">
+      <label htmlFor={id} className={AUTH_LABEL_CLASS}>
         {t("part.keyField.label")}
       </label>
       <div
+        ref={wrapRef}
         className={cn(
-          "relative @container rounded-md border bg-surface-sunken focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus",
+          "relative @container rounded-md border bg-surface-sunken has-[textarea:focus-visible]:border-fg-strong",
           danger
             ? "border-danger"
             : verdict?.tone === "info"
@@ -112,7 +115,7 @@ export function KeyField({
           // A key is a token: it may break anywhere (the reflow checks leave tokens alone).
           data-token=""
           className={cn(
-            "min-h-[3.25rem] whitespace-pre-wrap py-3 ps-4 pe-24 font-mono text-base leading-6 [overflow-wrap:anywhere] [word-break:break-all]",
+            "min-h-[2.875rem] whitespace-pre-wrap py-2.5 ps-4 pe-24 font-mono text-base leading-6 [overflow-wrap:anywhere] [word-break:break-all]",
             value !== "" && "@max-[17rem]:pe-4",
           )}
         >
@@ -145,7 +148,11 @@ export function KeyField({
           inputMode="text"
           aria-invalid={danger ? true : undefined}
           aria-describedby={describedBy}
-          onBlur={onBlur}
+          onBlur={(e) => {
+            if (e.relatedTarget && wrapRef.current?.contains(e.relatedTarget))
+              return;
+            onBlur?.();
+          }}
           onPaste={(e) => {
             e.preventDefault();
             onChange(normaliseKey(e.clipboardData.getData("text")), "paste");
@@ -158,11 +165,11 @@ export function KeyField({
             }
           }}
           className={cn(
-            "absolute inset-0 size-full resize-none overflow-hidden bg-transparent py-3 ps-4 pe-24 font-mono text-base leading-6 text-transparent caret-fg-strong outline-none [overflow-wrap:anywhere] [word-break:break-all]",
+            "absolute inset-0 size-full resize-none overflow-hidden bg-transparent py-2.5 ps-4 pe-24 font-mono text-base leading-6 text-transparent caret-fg-strong outline-none [overflow-wrap:anywhere] [word-break:break-all]",
             value !== "" && "@max-[17rem]:pe-4",
           )}
         />
-        <div className="absolute end-2 top-2.5 flex items-center">
+        <div className="absolute inset-y-0 end-1 flex items-center">
           {value === "" ? (
             <button
               type="button"

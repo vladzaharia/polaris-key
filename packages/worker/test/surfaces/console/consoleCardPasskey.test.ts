@@ -211,11 +211,11 @@ describe("where the passkey block appears", () => {
     expect(html).toContain(">Use your passkey</span>");
     expect(html).toContain('<button class="button" type="button" id="pk-go"');
     expect(html).toContain(">or</div>");
-    // "Signing in as" names the account once, above both ways in.
-    expect(html.indexOf("Signing in as")).toBeLessThan(
-      html.indexOf('id="pk-go"'),
-    );
-    expect(html.match(/Signing in as/g)).toHaveLength(1);
+    // The identity pill names the account once, above the title and both ways in, with no Change.
+    expect(html.indexOf('class="chip"')).toBeLessThan(html.indexOf("<h1"));
+    expect(html.match(/class="chip"/g)).toHaveLength(1);
+    expect(html).not.toContain('class="chip-change"');
+    expect(html).not.toContain("Signing in as");
     expect(html.indexOf('id="pk-go"')).toBeLessThan(
       html.indexOf(">Sign in again<"),
     );

@@ -24,7 +24,7 @@ export function ConsoleBrand(): React.ReactElement {
   // The brand row (SIGNIN-REDESIGN §5, §8): the compact lockup on its 64 px canvas (a phone sizes
   // it by width, min(180px, 52vw)), a 1 px rule 24 px tall, and "Console" at 16/24, 400, muted.
   return (
-    <header className="inline-flex items-center text-fg-strong">
+    <div className="inline-flex items-center text-fg-strong">
       <PolarisLockup
         kind="key"
         layout="compact"
@@ -41,7 +41,7 @@ export function ConsoleBrand(): React.ReactElement {
         Console
       </span>
       <span className="sr-only">Polaris Key Console</span>
-    </header>
+    </div>
   );
 }
 

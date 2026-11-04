@@ -875,6 +875,7 @@ function FinishForm({
         {platformTerms ? (
           <div>
             <Checkbox
+              className="pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-2.5 pointer-coarse:[&_label]:py-2.5"
               ref={platformRef}
               checked={platformOk}
               onCheckedChange={(v) => {
@@ -898,6 +899,7 @@ function FinishForm({
         {productTerms ? (
           <div>
             <Checkbox
+              className="pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-2.5 pointer-coarse:[&_label]:py-2.5"
               ref={productRef}
               checked={productOk}
               onCheckedChange={(v) => {
@@ -1154,6 +1156,19 @@ function FinishForm({
               <legend className={AUTH_LABEL_CLASS}>
                 {t("signin.gate.picture")}
               </legend>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png,image/jpeg"
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) void pickFile(file);
+                }}
+              />
               <div
                 className={cn(
                   "grid gap-2",
@@ -1236,19 +1251,6 @@ function FinishForm({
                   </span>
                 </button>
               </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/png,image/jpeg"
-                className="sr-only"
-                tabIndex={-1}
-                aria-hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (file) void pickFile(file);
-                }}
-              />
               {pictureError ? (
                 <p role="alert" className="text-sm/5 text-danger">
                   {pictureError}
@@ -1261,9 +1263,10 @@ function FinishForm({
         {(isNew && gate.profile.birthdate) ||
         termsPanel ||
         (passkeyOffer && isNew) ? (
-          <div className="space-y-3">
+          <div className="space-y-3 pointer-coarse:space-y-0">
             {isNew && gate.profile.birthdate ? (
               <Checkbox
+                className="pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-2.5 pointer-coarse:[&_label]:py-2.5"
                 descriptionClassName={AUTH_HELP_CLASS}
                 checked={birth}
                 onCheckedChange={setBirth}
@@ -1276,6 +1279,7 @@ function FinishForm({
             {termsPanel}
             {passkeyOffer && isNew ? (
               <Checkbox
+                className="pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-2.5 pointer-coarse:[&_label]:py-2.5"
                 checked={passkey}
                 onCheckedChange={setPasskey}
                 label={

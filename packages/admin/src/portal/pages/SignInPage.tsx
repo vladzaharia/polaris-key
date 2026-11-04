@@ -1015,7 +1015,7 @@ function MethodsStep({
           >
             <a href={ssoHref} onClick={() => stashCarriedKey()}>
               <Building2 aria-hidden />
-              {ssoLabel}
+              <span>{ssoLabel}</span>
             </a>
           </Button>
         ) : null}

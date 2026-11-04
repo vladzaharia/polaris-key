@@ -158,7 +158,12 @@ export function Button({
   ) : (
     <>
       {loading ? <Spinner className="size-4" label="" /> : iconStart}
-      {children}
+      {/* A wrapped label is an element, so the large-text rule can tell the icon from a lone one. */}
+      {(iconStart || loading || iconEnd) && typeof children === "string" ? (
+        <span>{children}</span>
+      ) : (
+        children
+      )}
       {iconEnd}
     </>
   );

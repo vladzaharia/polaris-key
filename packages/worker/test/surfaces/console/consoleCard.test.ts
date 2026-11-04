@@ -536,9 +536,13 @@ describe("the chip, large text and the card's details (UX review)", () => {
     expect(html).toContain(
       "vlad<wbr>.zaharia<wbr>@polaris-engineering<wbr>.dev",
     );
-    expect(html).toMatch(/\.chip\{display:flex;flex-wrap:wrap/);
-    expect(html).toContain(".chip-email{flex:1 1 10rem");
-    expect(html).toContain(".chip-change:focus-visible{outline-offset:-2px}");
+    expect(html).toMatch(/\.chip\{display:inline-flex;flex-wrap:wrap/);
+    expect(html).toContain(".chip-email{min-width:0");
+    // The Change link focuses like every other link: no inset ring.
+    expect(html).not.toContain(".chip-change:focus-visible");
+    // One pill above the title, no "Email" label and no field look.
+    expect(html.indexOf('class="chip"')).toBeLessThan(html.indexOf("<h1"));
+    expect(html).not.toContain('id="email-label"');
     // The house initials: the first two words of the local part, by code point.
     expect(html).toContain(
       '<span class="ac-mono" aria-hidden="true">VZ</span>',
@@ -576,7 +580,9 @@ describe("the chip, large text and the card's details (UX review)", () => {
     expect(plain).toMatch(/<input id="email"[^>]* autofocus/);
     expect(plain).toContain("<h1>Sign in to the console</h1>");
     const chip = await (await card("", `${HINT}=a%40b.io`)).text();
-    expect(chip).toContain('<h1 tabindex="-1" autofocus>');
+    // The remembered address: Continue takes focus, not the heading.
+    expect(chip).toContain("<h1>Sign in to the console</h1>");
+    expect(chip).toContain('<button class="button" type="submit" autofocus>');
   });
 
   it("the refusal and the mint refusal say 'emergency sign-in', one name for one thing", async () => {

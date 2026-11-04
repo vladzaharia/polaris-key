@@ -15,11 +15,8 @@ export function FooterNav({
   help: string;
   privacy: string;
 }): React.ReactElement {
-  // No min-width on a coarse pointer: it padded "Help" (30 to 44 px) but not "Privacy", so the dot sat unevenly.
-  const link = cn(
-    AUTH_LINK_CLASS,
-    "text-fg-muted align-middle pointer-coarse:min-w-0!",
-  );
+  // No min-width on any pointer: the portal floor padded "Help" (30 to 44 px) but not "Privacy", so the dot sat unevenly.
+  const link = cn(AUTH_LINK_CLASS, "text-fg-muted align-middle min-w-0!");
   return (
     <nav
       aria-label={t("locker.shell.help")}

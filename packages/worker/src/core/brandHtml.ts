@@ -286,6 +286,7 @@ const AUTH_CARD_RULES = [
   `.ac-links a+a::before{content:"\\00b7" / "";position:absolute;inset-inline-start:-.6875rem;color:var(--muted);text-decoration:none}`,
   `[data-brand=locker] .ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;color:var(--muted)}`,
   `[data-brand=locker] .ac-links a:hover{color:var(--strong)}`,
+  `@media (pointer: coarse){.ac-body .tertiary{margin-block:-.75rem}[data-brand=console] .ac-links{margin-top:.75rem}}`,
   `@media (pointer: coarse){.ac-links a{min-height:2.75rem}.quiet,.chip-change{min-height:2.75rem;min-width:2.75rem;justify-content:center}}`,
   // Selectable rows: the title is 16/24 (the React row's), the tier chip a full pill; a user code is strong ink.
   `[data-brand=locker] .choice-title{font-size:1rem;line-height:1.5rem;font-weight:400}`,
@@ -310,6 +311,8 @@ const AUTH_CARD_RULES = [
   `[data-brand=locker] .button.secondary{border-color:var(--edge);background:transparent;color:var(--strong)}`,
   `[data-brand=locker] .button.secondary:hover{background:var(--hover);filter:none}`,
   `.ac-body form{display:grid;gap:.75rem;min-width:0}`,
+  `.ac-body form p{margin:0}`,
+  `.ac-body form .note{margin-top:-.25rem}`,
   // A neutral callout (DL6: a refusal is information, not an alarm) and the one-line note.
   `.callout{display:flex;gap:.75rem;align-items:flex-start;padding:.75rem 1rem;border:1px solid var(--rule);border-radius:.625rem;background:var(--sunken)}`,
   `.callout>.ic{margin-top:.125rem;color:var(--muted)}`,
@@ -426,11 +429,11 @@ const CONSOLE_PAGE_CSS_TAIL = [
   // The known operator (D-S5), drawn as frame 13's pill, not as a field: it wraps so Change drops
   // to its own line under large text, and the address breaks at "@" and ".".
   `.ac-body .field-label{color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:500}`,
-  `.chip{display:flex;flex-wrap:wrap;gap:.25rem .75rem;align-items:center;min-width:0;min-height:3rem;padding:.25rem .5rem .25rem .75rem;border:1px solid var(--edge);border-radius:1.75rem;background:transparent;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
-  `.chip .ac-mono{width:1.75rem;height:1.75rem;border-radius:50%;font-size:.75rem}`,
-  `.chip-email{flex:1 1 10rem;min-width:0;overflow-wrap:break-word}`,
+  `.chip{display:inline-flex;flex-wrap:wrap;gap:.25rem .5rem;align-items:center;justify-self:start;max-width:100%;min-width:0;padding:.125rem .25rem;border:1px solid var(--edge);border-radius:1.75rem;background:transparent;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.chip .ac-mono{width:1.75rem;height:1.75rem;border-radius:50%;background:var(--hover);border:0;font-size:.875rem}`,
+  `.chip-email{min-width:0;overflow-wrap:break-word}`,
+  `.chip:not(:has(.chip-change)) .chip-email{padding-inline-end:.5rem}`,
   `.chip-change{display:inline-flex;align-items:center;flex:none;min-height:1.5rem;padding:0 .5rem;font-size:.875rem;line-height:1.25rem}`,
-  `.chip-change:focus-visible{outline-offset:-2px}`,
   // The passkey button (ST-30c.6): hidden until the card's script finds WebAuthn; an "or" rule
   // above it; its refusal sits under it as text. No motion anywhere on the card.
   `.pk{display:block;min-width:0}`,
@@ -458,6 +461,8 @@ const CONSOLE_PAGE_CSS_TAIL = [
   // counts toward the 40 px gap to the card. Phones size the lockup by width, min(180px, 52vw).
   `[data-brand=console] .ac-brand svg{width:13.875rem;height:4rem}`,
   `@media (min-width: 40rem){[data-brand=console] .ac-brand{margin-bottom:1.5rem}}`,
+  // A short window: the canvas's own air counts, so the card starts as close as the Locker's (24 px).
+  `@media (max-height: 32rem){[data-brand=console] body{padding-top:.375rem}[data-brand=console] .ac-brand{margin-bottom:.4375rem}}`,
   `@media (max-width: 39.99rem){[data-brand=console] .ac-brand svg{width:min(180px,52vw);height:auto}[data-brand=console] .ac-brand .ac-surface{font-size:16px;line-height:24px}}`,
   `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.375rem;background:var(--sunken);color:var(--strong);font:inherit}`,
   `.ac-body input[type=email]::placeholder{color:var(--subtle);opacity:1}`,
@@ -886,7 +891,7 @@ export function renderAuthCard(opts: AuthCardOptions): string {
     opts.variant === "tv" ? `<body class="tv">` : `<body>`,
     consoleCard
       ? `<header class="ac-brand"><div role="img" aria-label="Polaris Key Console">${hideLockup(consoleLockup)}<span class="ac-surface" aria-hidden="true">Console</span></div></header>`
-      : `<header class="${inApp ? "ac-brand quiet" : "ac-brand"}"><div role="img" aria-label="Polaris Locker">${lockerLockup}</div></header>`,
+      : `<header class="${inApp ? "ac-brand quiet" : "ac-brand"}"><div role="img" aria-label="Polaris Locker">${hideLockup(lockerLockup)}</div></header>`,
     wide ? `<main class="ac ac-wide">` : `<main class="ac">`,
     header,
     wide ? passportPane(opts.passport!) : "",

@@ -2,9 +2,9 @@ import * as React from "react";
 import { Mail, Fingerprint } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import {
-  AUTH_LINK_CLASS,
   AUTH_METHOD_CLASS,
   AuthTitle,
+  IdentityPill,
   OrDivider,
   QuietLink,
   QuietLinks,
@@ -15,7 +15,6 @@ import {
   GoogleGlyph,
   SteamGlyph,
 } from "../../../ui/auth/ProviderGlyphs.js";
-import { cn } from "../../../lib/cn.js";
 import { t } from "../../../lib/copy.js";
 import { PRIMARY_CLASS } from "./requestParts.js";
 import { HttpError, type PortalEmailSent } from "../../api.js";
@@ -118,28 +117,18 @@ export function HintStep({
     );
   return (
     <>
-      <div className="inline-flex max-w-full flex-wrap items-center gap-x-2 rounded-full bigtext:rounded-lg border border-border py-0.5 ps-1 pe-1 text-sm/5 text-fg-muted">
-        <span
-          aria-hidden
-          className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-hover text-sm/5 font-medium text-fg-strong"
-        >
-          {initialsOf(last.name, email)}
-        </span>
-        <span className="min-w-0 [overflow-wrap:break-word]">{email}</span>
-        <button
-          type="button"
-          onClick={onOther}
-          className={cn(AUTH_LINK_CLASS, "shrink-0 px-2")}
-        >
-          {t("signin.hint.change")}
-        </button>
-      </div>
+      <IdentityPill
+        initials={initialsOf(last.name, email)}
+        email={email}
+        changeLabel={t("signin.hint.change")}
+        onChange={onOther}
+      />
       <AuthTitle>
         {last.name
           ? t("signin.hint.welcome", { name: last.name })
           : t("signin.hint.welcomeNoName")}
       </AuthTitle>
-      <div className="flex items-center gap-3 rounded-lg bg-hover px-4 py-3">
+      <div className="flex items-center gap-3 rounded-lg bg-hover px-4 py-3 bigtext:flex-col bigtext:items-start">
         <span className="shrink-0 text-fg-strong">{mark}</span>
         <div className="min-w-0">
           <p className="font-medium text-fg-strong">

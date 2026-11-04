@@ -20,5 +20,6 @@ export {
   QuietLinks,
   useStepFocus,
 } from "./parts.js";
+export { IdentityPill } from "./IdentityPill.js";
 export { CodeEntry } from "./CodeEntry.js";
 export type { CodeResendOutcome, CodeVerifyOutcome } from "./CodeEntry.js";

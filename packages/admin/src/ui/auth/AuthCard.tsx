@@ -146,14 +146,16 @@ export function AuthCard({
       {/* The brand row (§3, §8): on a phone a 56 px row under the safe-area inset, no hairline;
           from `sm` the lockup's top sits at clamp(2.5rem, 12vh, 7.5rem) and its ink 40 px above
           the card (24 px each on a short window). */}
-      <div
+      <header
         className={cn(
           "relative z-10 flex h-[calc(3.5rem+env(safe-area-inset-top,0px))] items-center justify-center pt-[env(safe-area-inset-top,0px)] sm:h-auto sm:pt-[clamp(2.5rem,12vh,7.5rem)] short:pb-6 short:pt-6",
-          brandAir === "canvas" ? "sm:pb-6" : "sm:pb-10",
+          brandAir === "canvas"
+            ? "sm:pb-6 short:pb-[7px] short:pt-1.5"
+            : "sm:pb-10",
         )}
       >
         {brand}
-      </div>
+      </header>
       <main className="@container relative z-10 flex flex-col items-center sm:px-4">
         <div
           data-passport={header ? "" : undefined}
@@ -220,7 +222,7 @@ export function AuthCard({
       </main>
       {/* Outside <main>, as the Worker's twin: the footer nav is its own landmark. */}
       {after ? (
-        <div className="relative z-10 mb-6 text-center text-sm/5 text-fg-muted max-sm:mb-0 max-sm:px-6 max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
+        <div className="relative z-10 mb-6 text-center pointer-coarse:-mt-3 text-sm/5 text-fg-muted max-sm:mb-0 max-sm:px-6 max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
           {after}
         </div>
       ) : null}
