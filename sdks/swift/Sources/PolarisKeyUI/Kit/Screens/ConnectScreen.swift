@@ -117,6 +117,20 @@ public struct LinkPairingView: View {
                 if let line = announcement(screen, state) { announce(strings.string(line)) }
             }
             .interactiveDismissDisabled(state == .confirm)
+            .background(escapeCloses(state))
+            // A swipe-down must not leave the window open for the other person.
+            .onDisappear { Task { await model.cancel() } }
+        }
+    }
+
+    /// Escape closes a finished screen (the Mac's sheet has no other key for it). The other states
+    /// answer Escape through their own Cancel or Not a match.
+    @ViewBuilder private func escapeCloses(_ state: LinkPairingState) -> some View {
+        if state == .linked || state == .failed || state == .unavailable {
+            Button("") { Task { await model.finish() } }
+                .keyboardShortcut(.cancelAction)
+                .opacity(0).frame(width: 0, height: 0)
+                .accessibilityHidden(true)
         }
     }
 
@@ -168,8 +182,15 @@ public struct LinkPairingView: View {
                     codeBlock(screen)
                     shares(screen)
                     // The wait, in a status region beside the dot; the title above is what focus reads.
-                    if let wait = screen.line("linkPairing.waiting") { waiting(wait, announced: false) }
+                    if let wait = screen.line("linkPairing.waiting") {
+                        waiting(wait, announced: false).padding(.top, style.space(.xs))
+                    }
                 case .linked:
+                    // Who was paired comes first: the label is the device's own word, so it is the person's
+                    // last look at which device they trusted.
+                    if let who = screen.line("linkPairing.linkedWith") ?? screen.line("linkPairing.linkedBody") {
+                        KitText(who, .body)
+                    }
                     shares(screen)
                 case .failed:
                     if let reason = screen.copy.dropFirst().first { KitText(reason, .body) }
@@ -188,9 +209,9 @@ public struct LinkPairingView: View {
         kitStyle { style in
             HStack(spacing: style.space(.sm)) {
                 ProgressView().controlSize(.small).accessibilityHidden(true)
-                if announced { KitText(line, .body, color: .muted) }
+                KitText(line, .body, color: .muted)
             }
-            // After Codes match the title says the wait; the spinner beside the code is for the eye.
+            // After Codes match the title says the wait, so the line is for the eye only.
             .accessibilityElement(children: announced ? .ignore : .combine)
             .accessibilityLabel(Text(announced ? strings.string(line) : ""))
             .accessibilityHidden(!announced)
@@ -209,6 +230,7 @@ public struct LinkPairingView: View {
                         .foregroundStyle(style.palette.textStrong)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
+                        .padding(.horizontal, style.space(.md))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, style.space(.md))
                         .background(
@@ -279,11 +301,14 @@ public struct LinkPairingView: View {
             case .failed:
                 // "Full" cannot succeed until a pairing is removed: Done leads, Try again stays.
                 let full = model.link?.reason == .full
+                if full {
+                    KitButton(line: CopyLine("common.done"), kind: .primary) { Task { await model.finish() } }
+                }
                 KitButton(line: CopyLine("common.tryAgain"), kind: full ? .secondary : .primary) {
                     Task { await model.start() }
                 }
-                KitButton(line: CopyLine("common.done"), kind: full ? .primary : .quiet) {
-                    Task { await model.finish() }
+                if !full {
+                    KitButton(line: CopyLine("common.done"), kind: .quiet) { Task { await model.finish() } }
                 }
             }
         }
@@ -317,6 +342,25 @@ public struct TransferOfferView: View {
                 }
             }
             .interactiveDismissDisabled(state == .receiving)
+            .background(escapeCloses(state))
+            // A swipe-down answers or closes the offer, so the next one is not left waiting behind it.
+            .onDisappear {
+                switch model.offer.step {
+                case .ask: Task { await model.decline() }
+                case .done, .failed: model.close()
+                case .receiving: break
+                }
+            }
+        }
+    }
+
+    /// Escape closes a finished transfer.
+    @ViewBuilder private func escapeCloses(_ state: TransferOfferState) -> some View {
+        if state == .done || state == .failed {
+            Button("") { model.close() }
+                .keyboardShortcut(.cancelAction)
+                .opacity(0).frame(width: 0, height: 0)
+                .accessibilityHidden(true)
         }
     }
 
@@ -348,9 +392,13 @@ public struct TransferOfferView: View {
                     // The title carries a shortened name; the whole one is on its own row.
                     offerRow(style)
                 case .receiving:
+                    // What was accepted stays on screen, with a bar that moves until bytes are counted.
+                    offerRow(style)
                     ProgressView()
+                        .progressViewStyle(.linear)
                         .tint(style.palette.accentSolid)
-                        .accessibilityLabel(Text(strings.string("common.updateProgressLabel")))
+                        // The title ("Receiving holiday.zip") says it, once; the 4 pt bar is not a target.
+                        .accessibilityHidden(true)
                 case .done:
                     EmptyView()
                 case .failed:
@@ -361,29 +409,33 @@ public struct TransferOfferView: View {
     }
 
     /// The name the contact chose, clamped to three lines with the middle elided, then size and type.
-    private func offerRow(_ style: KitResolvedStyle) -> some View {
+    private func offerRow(_ style: KitResolvedStyle) -> AnyView {
         let offer = model.offer
         let facts = [offer.size.map { KitFormat.bytes($0) } ?? "", offer.type ?? ""]
             .filter { !$0.isEmpty }
-        return VStack(alignment: .leading, spacing: style.space(.xxs)) {
-            Text(verbatim: offer.name)
-                .font(style.font(.body))
-                .foregroundStyle(style.palette.textStrong)
-                .lineLimit(3)
-                .truncationMode(.middle)
-            if !facts.isEmpty {
-                Text(verbatim: facts.joined(separator: " · "))
-                    .font(style.font(.meta))
-                    .foregroundStyle(style.palette.textMuted)
+        guard !offer.name.isEmpty || !facts.isEmpty else { return AnyView(EmptyView()) }
+        return AnyView(
+            VStack(alignment: .leading, spacing: style.space(.xxs)) {
+                if !offer.name.isEmpty {
+                    Text(verbatim: offer.name)
+                        .font(style.font(.body))
+                        .foregroundStyle(style.palette.textStrong)
+                        .lineLimit(3)
+                        .truncationMode(.middle)
+                }
+                if !facts.isEmpty {
+                    Text(verbatim: facts.joined(separator: " · "))
+                        .font(style.font(.meta))
+                        .foregroundStyle(style.palette.textMuted)
+                }
             }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(style.space(.md))
-        .background(
-            RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
-                .fill(style.palette.sunken)
-        )
-        .accessibilityElement(children: .combine)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(style.space(.md))
+            .background(
+                RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
+                    .fill(style.palette.sunken)
+            )
+            .accessibilityElement(children: .combine))
     }
 
     @ViewBuilder private func actions(_ state: TransferOfferState) -> some View {

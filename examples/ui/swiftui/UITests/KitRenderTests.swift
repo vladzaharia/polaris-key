@@ -150,7 +150,7 @@ final class KitRenderTests: XCTestCase {
             ),
             (
                 "Label not human-readable", "text", "holiday.zip",
-                ["TransferOffer.ask", "TransferOffer.ask.unnamed"],
+                ["TransferOffer.ask", "TransferOffer.ask.unnamed", "TransferOffer.receiving"],
                 "The contact's file name is the content (display data the contact chose); VoiceOver reads it."
             ),
             (

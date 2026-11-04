@@ -363,6 +363,7 @@ public final class TransferOfferModel {
 
     /// Done: close the prompt.
     public func close() {
+        guard !closed else { return }
         closed = true
         onClose?()
     }
@@ -454,7 +455,7 @@ public final class TransferOfferModel {
             active[id] = pending
             let model = TransferOfferModel(
                 offer: KitTransferOffer(
-                    step: .ask, name: offer.name ?? "", device: offer.peer.label,
+                    step: .ask, name: offer.name ?? offer.type ?? "", device: offer.peer.label,
                     size: offer.size, type: offer.type),
                 driver: TransferOfferDriver(
                     accept: { [weak self] in try await self?.accepted(id, dest) },

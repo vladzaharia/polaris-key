@@ -276,4 +276,13 @@ final class TransferOfferModelTests: XCTestCase {
         XCTAssertEqual(kitCategoryFallback("tax-forms"), "Tax forms")
         XCTAssertEqual(kitCategoryFallback("voice_memos"), "Voice memos")
     }
+
+    func testCloseTellsTheHostOnce() {
+        let m = TransferOfferModel(offer: offer)
+        var told = 0
+        m.onClose = { told += 1 }
+        m.close()
+        m.close()
+        XCTAssertEqual(told, 1)
+    }
 }

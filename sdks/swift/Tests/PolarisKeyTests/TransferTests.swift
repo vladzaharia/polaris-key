@@ -310,6 +310,47 @@ final class TransferTests: XCTestCase {
         prompt.stop()
     }
 
+    /// A swipe-down answers the offer on screen (the view's onDisappear calls `decline()`), so the next
+    /// offer is shown, not left waiting behind it.
+    @MainActor func testDismissingAnOfferShowsTheNext() async throws {
+        let p = try await openPair()
+        let a = await side(p.a)
+        let b = await side(p.b)
+        let prompt = TransferOfferCoordinator(
+            transfer: b.transfer, destination: { _ in b.dir.appendingPathComponent("second.bin") })
+        prompt.start()
+        let first = Task {
+            try? await a.transfer.send(
+                over: p.a, source: .data(content(500)), options: TransferSendOptions(name: "first.bin"))
+        }
+        for _ in 0..<500 where prompt.current == nil { try await Task.sleep(nanoseconds: 10_000_000) }
+        let one = try XCTUnwrap(prompt.current)
+        XCTAssertEqual(one.offer.name, "first.bin")
+        // The second offer comes over another session, so both reach the one handler.
+        let q = try await openPair()
+        let a2 = await side(q.a)
+        _ = await b.transfer.adopt(q.b)
+        let second = Task {
+            try await a2.transfer.send(
+                over: q.a, source: .data(content(500)), options: TransferSendOptions(name: "second.bin"))
+        }
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertTrue(prompt.current === one, "the second offer waits its turn")
+        await one.decline()
+        for _ in 0..<500 where prompt.current === one || prompt.current == nil {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        let two = try XCTUnwrap(prompt.current)
+        XCTAssertEqual(two.offer.name, "second.bin")
+        await two.accept()
+        _ = try await second.value
+        two.close()
+        two.close()
+        XCTAssertNil(prompt.current)
+        _ = await first.value
+        prompt.stop()
+    }
+
     @MainActor func testTheKitPromptDeclineAnswersTheSender() async throws {
         let p = try await openPair()
         let a = await side(p.a)
