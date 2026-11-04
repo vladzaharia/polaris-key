@@ -24,6 +24,7 @@ func run(t: PKeyTestContext) -> void:
 	await _dialog_native(t)
 	await _dialog_fallbacks(t)
 	await _gate_offer(t)
+	await _gate_failures(t)
 	await _gate_conflict_and_decline(t)
 	await _no_offer(t)
 
@@ -71,7 +72,7 @@ func _stage_gate(bed: B) -> PKeyGateView:
 ## Deliver the browser's return to the dialog's running native sign-in.
 func _return_to(bed: B, dialog: PKeySignInDialog) -> void:
 	var s := dialog._session
-	var body := String(bed.push_requests[0]["body"])
+	var body := String(bed.push_requests.back()["body"])
 	var state := ""
 	for part in body.split("&"):
 		if part.begins_with("state="):
@@ -89,10 +90,18 @@ func _controller(t: PKeyTestContext) -> void:
 	t.check("link kit: a linked answer is link-done", ctl.link_next(PKeyLinkResult.linked("google", null)) == "link-done")
 	t.check("link kit: a conflict is link-conflict", ctl.link_next(PKeyLinkResult.refused(PKeyConstants.ErrorCode.LINK_CONFLICT, 409)) == "link-conflict")
 	var stale := PKeyLinkResult.refused(PKeyConstants.ErrorCode.STEP_UP_REQUIRED, 401)
-	t.check("link kit: any other answer keeps the offer, a stale one says sign in again", ctl.link_next(stale) == "link-offer"
-		and ctl.link_next(PKeyLinkResult.failed(PKeyErrors.NETWORK, "x")) == "link-offer" and ctl.link_next(PKeyLinkResult.unavailable()) == "link-offer"
-		and ctl.link_failure_key(stale) == "signin.linkOffer.stale" and ctl.link_failure_key(PKeyLinkResult.failed(PKeyErrors.NETWORK, "x")) == "signin.linkOffer.failed"
-		and ctl.link_stale(stale) and not ctl.link_stale(null))
+	t.check("link kit: any other answer keeps the offer", ctl.link_next(stale) == "link-offer"
+		and ctl.link_next(PKeyLinkResult.failed(PKeyErrors.NETWORK, "x")) == "link-offer" and ctl.link_next(PKeyLinkResult.unavailable()) == "link-offer")
+	t.check("link kit: a stale sign-in is stale, with its own line", ctl.link_problem(stale) == "stale" and ctl.link_problem_key("stale") == "signin.linkOffer.stale")
+	t.check("link kit: a refusal (not_found, invalid_grant) or a refused proof is refused",
+		ctl.link_problem(PKeyLinkResult.refused(PKeyConstants.ErrorCode.NOT_FOUND, 404)) == "refused"
+		and ctl.link_problem(PKeyLinkResult.refused(PKeyConstants.ErrorCode.INVALID_GRANT, 400)) == "refused"
+		and ctl.link_problem(PKeyLinkResult.failed(PKeyErrors.SIGN_IN_FAILED, "x")) == "refused" and ctl.link_problem_key("refused") == "signin.linkOffer.failed")
+	t.check("link kit: no answer or a server failure is the network line", ctl.link_problem(PKeyLinkResult.failed(PKeyErrors.NETWORK, "x")) == "network"
+		and ctl.link_problem(PKeyLinkResult.failed(PKeyErrors.SERVER_ERROR, "x")) == "network" and ctl.link_problem_key("network") == "core.codes.network.message")
+	t.check("link kit: unavailable ends quietly; a conflict or a link is no problem", ctl.link_problem(PKeyLinkResult.unavailable()) == "unavailable"
+		and ctl.link_problem(PKeyLinkResult.refused(PKeyConstants.ErrorCode.LINK_CONFLICT, 409)) == "" and ctl.link_problem(PKeyLinkResult.linked("google", null)) == ""
+		and ctl.link_problem_key("unavailable") == "")
 
 
 func _dialog_native(t: PKeyTestContext) -> void:
@@ -243,17 +252,17 @@ func _gate_offer(t: PKeyTestContext) -> void:
 		gate.auto_step._primary.text)
 	# Linking: the handle the exchange left is sent, then link-done.
 	bed.sdk.identity.link._hold(HANDLE, int(bed.clock[0]) + 600)
-	bed.links = [B.json(401, {"error": {"code": "step_up_required"}})]
-	gate._on_auto_primary("link-offer")
-	await B.until(func(): return gate.auto_step.error_key != "")
-	t.check("link kit: a stale step-up keeps the offer with the sign-in-again line", gate._auto_state == "link-offer" and gate.auto_step.error_key == "signin.linkOffer.stale"
-		and gate.auto_step._error.visible and gate.auto_step._error.text.contains("Google") and not gate.auto_step.busy, gate.auto_step._error.text)
-	gate.auto_step.error_key = ""
-	gate._link_stale = false
+	# While Link runs, neither button can be pressed.
+	gate.auto_step.busy = true
+	t.check("link kit: while linking, Link and No thanks are disabled", gate.auto_step._primary.disabled and gate.auto_step._secondary.disabled)
+	gate.auto_step.busy = false
+	t.check("link kit: …and enabled again after", not gate.auto_step._primary.disabled and not gate.auto_step._secondary.disabled)
+	# No answer: the network line, Link stays.
 	bed.links = [B.json(500, {})]
 	gate._on_auto_primary("link-offer")
 	await B.until(func(): return gate.auto_step.error_key != "")
-	t.check("link kit: another failure says it could not link and keeps the offer", gate._auto_state == "link-offer" and gate.auto_step.error_key == "signin.linkOffer.failed")
+	t.check("link kit: a network failure keeps Link under the network line", gate._auto_state == "link-offer" and gate.auto_step.error_key == "core.codes.network.message"
+		and gate.auto_step._error.visible and gate.auto_step._primary.text.begins_with("Link ") and gate.auto_step._secondary.visible and not gate.auto_step.busy)
 	bed.links = [B.json(200, {"linked": {"kind": "google", "reach": "global"}})]
 	gate._on_auto_primary("link-offer")
 	await B.until(func(): return gate._auto_state == "link-done")
@@ -265,6 +274,82 @@ func _gate_offer(t: PKeyTestContext) -> void:
 	await B.until(func(): return not gate.auto_step.visible)
 	t.check("link kit: Done ends the offer and closes it without a decline", gate._auto_state == "" and not bed.sdk.identity.link.pending and bed.sdk.identity.link.store.hashes() == [])
 	gate.queue_free()
+	await tree.process_frame
+	bed.free_all()
+
+
+func _gate_failures(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var bed := await _bed()
+	_fake_google(bed)
+	var gate := _stage_gate(bed)
+	await _offer_step(bed, gate)
+	var link: PKeyIdentityLink = bed.sdk.identity.link
+	link._hold(HANDLE, int(bed.clock[0]) + 600)
+	# Too old a sign-in: the same step, the stale line, Sign in again as the primary, No thanks beside it.
+	bed.links = [B.json(401, {"error": {"code": "step_up_required"}})]
+	gate._on_auto_primary("link-offer")
+	await B.until(func(): return gate.auto_step.error_key != "")
+	var again := String(PKeyUiView.catalog().format("signin.again"))
+	t.check("link kit: a stale step-up keeps the offer with the stale line and Sign in again", gate._auto_state == "link-offer"
+		and gate.auto_step.error_key == "signin.linkOffer.stale" and gate.auto_step._error.visible and gate.auto_step._error.text.contains("Google")
+		and gate.auto_step._primary.text == again and gate.auto_step._secondary.visible, gate.auto_step._primary.text)
+	# Sign in again runs a fresh sign-in; the hold and the handle stay; the offer returns.
+	bed.links = [B.json(200, OFFER)]
+	gate._on_auto_primary("link-offer")
+	var dialog: PKeySignInDialog = gate.activation.sign_in_dialog
+	await B.until(func(): return dialog.state == "redirect")
+	t.check("link kit: Sign in again starts the sign-in with the hold and the handle kept", gate.activation.visible and not gate.auto_step.visible
+		and gate._link_hold and link._handle == HANDLE and bed.push_requests.size() == 2)
+	_return_to(bed, dialog)
+	await B.until(func(): return gate._auto_state == "link-offer", 900)
+	t.check("link kit: when it finishes the offer is back with Link one tap away", gate._auto_state == "link-offer" and gate.auto_step.error_key == ""
+		and gate.auto_step._primary.text.begins_with("Link ") and link._handle == HANDLE and link.pending)
+	# A refusal: Link goes, No thanks is the primary and declines.
+	# (The SDK tries the platform provider when a handle was refused, so the refusal is set as the gate would on it;
+	# the answer-to-problem mapping is the controller test's.)
+	gate._link_problem = "refused"
+	gate.auto_step.error_key = PKeyGateController.link_problem_key("refused")
+	var no_thanks := String(PKeyUiView.catalog().format("signin.linkOffer.decline"))
+	t.check("link kit: a refusal shows the failed line, drops Link and makes No thanks the primary", gate._auto_state == "link-offer"
+		and gate.auto_step.error_key == "signin.linkOffer.failed" and gate.auto_step._primary.text == no_thanks and not gate.auto_step._secondary.visible)
+	gate._on_auto_primary("link-offer")
+	await B.until(func(): return not gate.auto_step.visible)
+	t.check("link kit: No thanks there declines for the account", link.store.hashes().size() == 1 and not link.pending and gate._auto_state == "")
+	gate.queue_free()
+	await tree.process_frame
+	bed.free_all()
+
+	# Unavailable (no offer is open any more) ends quietly: no step, no line.
+	bed = await _bed()
+	_fake_google(bed)
+	gate = _stage_gate(bed)
+	await _offer_step(bed, gate)
+	bed.sdk.identity.link.dismiss()
+	gate._on_auto_primary("link-offer")
+	await B.until(func(): return not gate.auto_step.visible)
+	t.check("link kit: an offer that is gone ends quietly", gate._auto_state == "" and gate.auto_step.error_key == "" and not gate.auto_step.visible)
+	gate.queue_free()
+	await tree.process_frame
+	bed.free_all()
+
+	# Cancelling Sign in again lets the offer go and the gate carries on.
+	bed = await _bed()
+	_fake_google(bed)
+	gate = _stage_gate(bed)
+	await _offer_step(bed, gate)
+	bed.sdk.identity.link._hold(HANDLE, int(bed.clock[0]) + 600)
+	bed.links = [B.json(401, {"error": {"code": "step_up_required"}})]
+	gate._on_auto_primary("link-offer")
+	await B.until(func(): return gate.auto_step.error_key != "")
+	gate._on_auto_primary("link-offer")
+	dialog = gate.activation.sign_in_dialog
+	await B.until(func(): return dialog.state == "redirect")
+	dialog._on_cancel()
+	await B.until(func(): return not gate._link_hold, 600)
+	t.check("link kit: cancelling Sign in again lets the offer go", not gate._link_hold and not gate._link_resign and not bed.sdk.identity.link.pending)
+	if is_instance_valid(gate):
+		gate.queue_free()
 	await tree.process_frame
 	bed.free_all()
 

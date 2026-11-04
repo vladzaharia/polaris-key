@@ -199,13 +199,33 @@ static func link_next(result: PKeyLinkResult) -> String:
 	return "link-offer"
 
 
-## The catalog line under the offer when the link did not happen: a stale sign-in asks for a new one.
-static func link_failure_key(result: PKeyLinkResult) -> String:
-	if result != null and result.kind == PKeyLinkResult.KIND_REFUSED and result.code == PKeyConstants.ErrorCode.STEP_UP_REQUIRED:
-		return "signin.linkOffer.stale"
-	return "signin.linkOffer.failed"
+## How a failed Link ends (ui-core "link-offer"): `stale` (a sign-in too old: Sign in again), `refused` (Link
+## goes, No thanks is the primary), `network` (Link stays), `unavailable` (ends quietly), or "" for a answer
+## that is not a failure (linked, or a conflict, which has its own step).
+static func link_problem(result: PKeyLinkResult) -> String:
+	if result == null:
+		return ""
+	match result.kind:
+		PKeyLinkResult.KIND_REFUSED:
+			if result.code == PKeyConstants.ErrorCode.STEP_UP_REQUIRED:
+				return "stale"
+			return "" if result.code == PKeyConstants.ErrorCode.LINK_CONFLICT else "refused"
+		PKeyLinkResult.KIND_FAILED:
+			if result.code in [PKeyErrors.NETWORK, PKeyErrors.LOCAL_ONLY, PKeyErrors.SERVER_ERROR]:
+				return "network"
+			return "refused"
+		PKeyLinkResult.KIND_UNAVAILABLE:
+			return "unavailable"
+	return ""
 
 
-## True when a refusal means the sign-in has to run again before the link can (`step_up_required`).
-static func link_stale(result: PKeyLinkResult) -> bool:
-	return result != null and result.kind == PKeyLinkResult.KIND_REFUSED and result.code == PKeyConstants.ErrorCode.STEP_UP_REQUIRED
+## The catalog line under the offer for a problem ("" for none).
+static func link_problem_key(problem: String) -> String:
+	match problem:
+		"stale":
+			return "signin.linkOffer.stale"
+		"refused":
+			return "signin.linkOffer.failed"
+		"network":
+			return "core.codes.network.message"
+	return ""

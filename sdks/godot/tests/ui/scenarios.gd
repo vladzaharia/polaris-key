@@ -421,6 +421,7 @@ const SIGN_IN_STEP_CASES := [
 	["link offer, per developer", "link-offer-developer"],
 	["link offer, the sign-in is too old", "link-offer-stale"],
 	["link offer, it could not be linked", "link-offer-failed"],
+	["link offer, no connection", "link-offer-network"],
 	["link done", "link-done"],
 	["link conflict", "link-conflict"],
 	["nearby prompt", "nearby-prompt"],
@@ -468,6 +469,11 @@ func sign_in_step(kind: String) -> Control:
 			s.provider = "Google"
 			s.reach = "global"
 			s.error_key = "signin.linkOffer.failed"
+		"link-offer-network":
+			s.step = "link-offer"
+			s.provider = "Google"
+			s.reach = "global"
+			s.error_key = "core.codes.network.message"
 		"nearby-done":
 			s.step = "nearby-done"
 			s.email = "ada@mail.io"

@@ -18,7 +18,7 @@ extends RefCounted
 const MATRIX := preload("res://tests/ui/matrix.gd")
 const DIR := "res://tests/ui/snapshots/png"
 ## [screen id of MATRIX.SCREENS]: one representative state per component.
-const SCREENS := ["sign_in", "sign_in.pad", "sign_in.redirect", "sign_in.redirect_no_browser", "sign_in.auto_link", "sign_in.link_stale", "sign_in.link_done", "sign_in.link_conflict", "gate", "gate.device_limit", "activation", "offline", "settings", "update.notes", "update.banner", "devices", "license_choice", "account", "paywall", "device_limit", "boot.consent"]
+const SCREENS := ["sign_in", "sign_in.pad", "sign_in.redirect", "sign_in.redirect_no_browser", "sign_in.auto_link", "sign_in.link_stale", "sign_in.link_refused", "sign_in.link_network", "sign_in.link_done", "sign_in.link_conflict", "gate", "gate.device_limit", "activation", "offline", "settings", "update.notes", "update.banner", "devices", "license_choice", "account", "paywall", "device_limit", "boot.consent"]
 ## [label of MATRIX.SIZES, short name].
 const SIZES := [["1280x720", "tv"], ["750x1334@2", "phone"]]
 const THEMES := ["dark", "light"]

@@ -102,6 +102,13 @@ const TIGHT_CASES := [
 	["sign_in.redirect_no_browser", "custom", "pixel-art canvas_items 640x360 keep"],
 	# The link steps on a 360 px canvas with a game's own large type or unspaced Japanese: the primary is a scroll
 	# away (reachable by pad, asserted), as the link offer's above.
+	["sign_in.link_refused", "native36", "640x360"],
+	["sign_in.link_refused", "custom", "pixel-art canvas_items 640x360 keep"],
+	["sign_in.link_network", "native28", "640x360"],
+	["sign_in.link_network", "native36", "640x360"],
+	["sign_in.link_network", "native36", "1280x720"],
+	["sign_in.link_network", "native36", "1170x2532@3"],
+	["sign_in.link_network", "custom", "pixel-art canvas_items 640x360 keep"],
 	["sign_in.link_stale", "native36", "640x360"],
 	["sign_in.link_stale", "custom", "pixel-art canvas_items 640x360 keep"],
 	["sign_in.link_conflict", "native36", "640x360"],
@@ -372,6 +379,8 @@ const SCREENS := [
 	["sign_in.redirect", "sign_in", "redirect, waiting for the browser", "full"],
 	["sign_in.redirect_no_browser", "sign_in", "redirect, the browser did not open", "full"],
 	["sign_in.link_stale", "sign_in_step", "link offer, the sign-in is too old", "full"],
+	["sign_in.link_refused", "sign_in_step", "link offer, it could not be linked", "full"],
+	["sign_in.link_network", "sign_in_step", "link offer, no connection", "full"],
 	["sign_in.link_done", "sign_in_step", "link done", "full"],
 	["sign_in.link_conflict", "sign_in_step", "link conflict", "full"],
 	["sign_in.auto_confirm", "sign_in_step", "confirm, the account's email", "full"],

@@ -196,6 +196,8 @@ func _arrange(m: Dictionary) -> void:
 	super(m)
 	# Short on room, the product header gives way before the card scrolls.
 	_product.visible = squeeze_level() < 1
+	# A failed Link's line, squeezed hard: the groups sit a stack gap apart rather than a section gap.
+	_body.theme_type_variation = &"PKeyStack" if step == "link-offer" and error_key != "" and squeeze_level() >= 3 else &"PKeySections"
 	# On a phone's page the actions dock to the bottom, in the thumb zone, as the refusal steps' do.
 	_spacer.visible = phone_screen()
 	if _qr != null:
@@ -206,7 +208,8 @@ func _arrange(m: Dictionary) -> void:
 
 
 func _screen_key() -> String:
-	return step
+	# A failed Link is a new state of the offer: its line is announced once, when it appears.
+	return "%s|%s" % [step, error_key] if step == "link-offer" and error_key != "" else step
 
 
 ## This device as a phrase inside a sentence ("this Mac"), from the platform's form factor.
@@ -304,6 +307,13 @@ func _render() -> void:
 	# The primary: the model's, except a device limit the person cannot fix here (no link, or no browser
 	# on a pad), where it is Try again: the sign-in runs once more.
 	var primary_key := String(model["decisions"].get("primary") if model.get("decisions") != null and model["decisions"].get("primary") != null else "")
+	# A failed Link keeps the offer (ui-core "link-offer"): too old a sign-in swaps Link for Sign in again; a refused
+	# one drops Link and No thanks is the primary.
+	var refused := step == "link-offer" and error_key == "signin.linkOffer.failed"
+	if step == "link-offer" and error_key == "signin.linkOffer.stale":
+		primary_key = "signin.again"
+	elif refused:
+		primary_key = "signin.linkOffer.decline"
 	var limit_qr := step == "device-limit" and pad_only() and primary_key != ""
 	var limit_retry := step == "device-limit" and (primary_key == "" or limit_qr)
 	if limit_retry:
@@ -327,9 +337,16 @@ func _render() -> void:
 	if step == "device-limit" and outer_view() != self:
 		# Nested in the gate, whose Welcome is the sign-in form: "Use another account" already goes there.
 		sec.erase("common.cancel")
+	if refused:
+		sec = []
 	cat_text(_secondary, sec[0] if sec.size() > 0 else "", args)
 	cat_text(_secondary2, sec[1] if sec.size() > 1 else "", args)
 	# The wait for the other device shows the thin indicator, never a spinner in the title.
+	# Linking in flight: neither Link nor No thanks can be pressed.
+	var linking := step == "link-offer" and busy
+	_primary.disabled = linking
+	_secondary.disabled = linking
+	fx_error(error_key if step == "link-offer" else "")
 	set_loading(step == "nearby-wait" or busy)
 	set_process(step == "nearby-wait" or busy)
 
