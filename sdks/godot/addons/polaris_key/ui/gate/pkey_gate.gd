@@ -35,6 +35,9 @@ signal continue_offline_requested()
 signal renew_requested()
 ## The player chose a license on the license-choice screen: `{kind, id}` (PKeyLicenseChoice.chosen).
 signal license_chosen(selection: Dictionary)
+## The Done step after a key ended (Start using, or an account signed in): the key is forgotten and the
+## product shows. A host that watches the license (PKeyBoot) reads it again.
+signal key_done_finished()
 ## The automatic sign-in the gate started at boot finished (`auto_sign_in`): the ladder's answer.
 signal auto_sign_in_finished(result: PKeyAutoSignInResult)
 
@@ -62,6 +65,10 @@ signal auto_sign_in_finished(result: PKeyAutoSignInResult)
 ## consent step, a licence choice the choice screen, a full licence its own step; anything else leaves
 ## the form as it is. false turns it off (Q-12), and `start_auto_sign_in()` runs it by hand.
 @export var auto_sign_in := true
+## Draw the Done step ("{product} is ready" and the way to keep the license in an account) after a key
+## activates, before the product shows. The key is held in memory until Start using (UK-43.14). false
+## shows the product at once, as before.
+@export var key_done := true
 ## Retry emits `retry_requested` only; the owner decides (PKeyBoot).
 var managed_retry := false
 ## Owned by another scene (PKeyBoot): the owner feeds `show_state()` and decides visibility.
@@ -83,6 +90,8 @@ var outlet := ""
 var screen := "loading"
 
 var activation: PKeyActivationPanel
+## The Done step and the account steps after a key (UK-43.14); hidden until a key activates.
+var holders: PKeyHolderFlow
 ## A sign-in that found several licenses asks which this device uses: the gate's license-choice
 ## screen (`show_license_choice()`).
 var license_choice: PKeyLicenseChoice
@@ -225,6 +234,9 @@ func _build() -> void:
 	activation.confirm_identity = confirm_identity
 	activation.show_product = false
 	activation.activated.connect(_on_activated)
+	activation.key_accepted.connect(_on_key_accepted)
+	# A hold flag changed: the gate draws again (the product shows once the key's step is over).
+	activation.key_flight_ended.connect(refresh_view)
 	activation.sign_in_dialog.finished.connect(_on_signed_in)
 	activation.sign_in_dialog.platform_answer.connect(_on_platform_answer)
 	# Sign-in and offline activation take the whole card: the gate re-renders around them.
@@ -243,6 +255,9 @@ func _build() -> void:
 	license_choice.other_account_requested.connect(_on_auto_other_account)
 	license_choice.key_requested.connect(_on_auto_other_account)
 	_main.add_child(license_choice)
+	holders = PKeyHolderFlow.new()
+	holders.finished.connect(_on_holders_finished)
+	_main.add_child(holders)
 	auto_step = PKeySignInStep.new()
 	auto_step.visible = false
 	auto_step.primary_pressed.connect(_on_auto_primary)
@@ -279,7 +294,7 @@ func _two_panes() -> bool:
 ## The activation panel's own sub-screens (sign-in, offline activation, a full license) lead with
 ## their own header: the gate's pane gives way.
 func _activation_owns_screen() -> bool:
-	return _auto_on() or (activation.visible and (activation.mode != "main" or activation.in_limit_view()))
+	return _auto_on() or holders.is_open() or (activation.visible and (activation.mode != "main" or activation.in_limit_view()))
 
 
 ## An automatic sign-in step (confirm, device-limit) is on screen in the form's place.
@@ -290,7 +305,7 @@ func _auto_on() -> bool:
 ## The card's content width (logical pixels): what the activation panel wants while a dialog of
 ## it shows, two panes' worth, or one column.
 func _content_wanted() -> float:
-	if _auto_on():
+	if _auto_on() or holders.is_open():
 		return role("card_width") - 2.0 * role("card_padding")
 	if _activation_owns_screen():
 		return activation.preferred_width()
@@ -446,7 +461,8 @@ func _tr_product(t: PKeyUiCopy, key: String) -> String:
 
 
 func _screen_key() -> String:
-	return "%s|%s|%s|%s|%s|%s" % [screen, activation.mode, "limit" if activation.in_limit_view() else "", "net" if network_error else "", "key" if _keying else "", _auto_state]
+	var hold := "%s|%s" % [holders._screen_key() if holders.is_open() else "", "flight" if activation.key_in_flight else ""]
+	return "%s|%s|%s|%s|%s|%s|%s" % [screen, activation.mode, "limit" if activation.in_limit_view() else "", "net" if network_error else "", "key" if _keying else "", _auto_state, hold]
 
 
 ## An automatic sign-in step opens at its title, with its primary in the first viewport.
@@ -458,6 +474,12 @@ func _render() -> void:
 	var t := c()
 	var st := String(status.get("status", ""))
 	screen = PKeyGateController.screen_for(st, loading, error, allow_grace, choosing)
+	# A key just activated holds the product back: the form stays (busy) until the key answers, then the
+	# Done step has the card, whatever the license state says in the meantime.
+	if holders.is_open():
+		screen = "key-done"
+	elif activation.key_in_flight and PKeyGateController.is_usable_screen(screen):
+		screen = "activation"
 	var url := PKeyUpdatePromptController.update_url(update_result, _outlet(), release_url)
 	var ctl := PKeyGateController.controls_for(screen, url != "")
 	var cp := PKeyGateController.copy_for(screen, st, status.get("allowed_range"))
@@ -508,6 +530,7 @@ func _render() -> void:
 	var auto_on := _auto_on()
 	activation.visible = wants_form and not auto_on
 	auto_step.visible = auto_on and not net
+	holders.visible = holders.is_open()
 	license_choice.visible = screen == "license-choice"
 	# A refusal's own title leads its screen; only the Welcome form says what to do.
 	activation.show_lede = screen == "activation" or screen == "error"
@@ -540,6 +563,8 @@ func _render() -> void:
 
 func _focus_chain() -> Array:
 	var out: Array = []
+	if holders.is_open():
+		out.append_array(holders._focus_chain())
 	if auto_step.visible:
 		out.append_array(auto_step._focus_chain())
 	if activation.visible:
@@ -566,10 +591,9 @@ func ensure_focus(force := false) -> bool:
 func _initial_focus() -> Control:
 	if _focus_sign_in and activation.visible and activation.mode == "main" and is_focusable(activation.locker_sign_in_button()):
 		return activation.locker_sign_in_button()
-	if auto_step.visible:
-		return auto_step._initial_focus()
-	if license_choice.visible:
-		return license_choice._initial_focus()
+	var own: Control = _own_step_focus()
+	if own != null:
+		return own
 	if activation.visible:
 		return activation._initial_focus()
 	for b in [_renew, _other, _update, _retry, _offline_btn]:
@@ -578,9 +602,45 @@ func _initial_focus() -> Control:
 	return null
 
 
+## The focus of the step that has the card to itself (the key's Done, an automatic sign-in step, the
+## license choice), or null.
+func _own_step_focus() -> Control:
+	if holders.is_open():
+		return holders._initial_focus()
+	if auto_step.visible:
+		return auto_step._initial_focus()
+	if license_choice.visible:
+		return license_choice._initial_focus()
+	return null
+
+
 func _on_update_available(r: PKeyResult) -> void:
 	update_result = r
 	refresh_view()
+
+
+## True while a key's step is in the way of the product: the key is being activated, or its Done step
+## is on screen. A host that moves on once the license is usable (PKeyBoot) waits for `key_done_finished`.
+func holding_done() -> bool:
+	return holders.is_open() or activation.key_in_flight
+
+
+## The key typed activated the license: show the Done step with the key held in memory.
+func _on_key_accepted(key: String) -> void:
+	if not key_done or sdk == null or not is_instance_valid(sdk) or sdk.get("license") == null:
+		return
+	holders.sdk = sdk
+	holders.begin_done(key)
+	refresh_view()
+
+
+func _on_holders_finished() -> void:
+	holders.close()
+	if sdk != null and sdk.has_method("status"):
+		show_state(sdk.status())
+	else:
+		refresh_view()
+	key_done_finished.emit()
 
 
 func _on_activated() -> void:
@@ -653,6 +713,8 @@ func _on_retry() -> void:
 
 
 func _cancel() -> bool:
+	if holders.is_open():
+		return holders._cancel()
 	if auto_step.visible:
 		_leave_auto_sign_in()
 		return true

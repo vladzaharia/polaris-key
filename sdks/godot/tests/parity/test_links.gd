@@ -15,7 +15,9 @@ func run(t: PKeyTestContext) -> void:
 
 	var h := PKeyLicenseTestSupport.new()
 	var sdk = await h.sdk(PKeyMemoryStore.new(h.F["device_id"]))
-	t.check("portal: no client-side builder (owner Q6)", sdk.get("portal") == null)
+	# UK-43.14: the product page comes from discovery's `core.portal` (DISC-01), never from a guess: with
+	# none served the SDK holds no member (owner Q6's rule for the link a screen draws).
+	t.check("portal: no member until discovery serves one", sdk.portal() == null)
 	var panel := PKeyActivationPanel.new()
 	panel.sdk = sdk
 	t.check("portal: Replace a device has no URL until the server supplies manageUrl", panel.manage_url == "")

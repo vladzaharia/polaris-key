@@ -60,6 +60,17 @@ signal sign_in_pressed()
 	set(value):
 		holder_email = value
 		refresh_view()
+## A catalog key for a problem line (the portal link is missing or was refused, a sign-in did not
+## finish); "" for none. Drawn in the danger tone, a polite live region.
+@export var problem_key := "":
+	set(value):
+		problem_key = value
+		refresh_view()
+## The portal has no link behind it: Add opens nothing, so it is not offered.
+@export var no_add_action := false:
+	set(value):
+		no_add_action = value
+		refresh_view()
 ## The person came back from the browser: focus returns to the action they left from.
 @export var returned := false:
 	set(value):
@@ -101,6 +112,8 @@ var _reason_glyphs: Array = []
 var _reason_lines: Array = []
 var _add: Button
 var _skip: Label
+var _problem: Label
+var _problem_glyph: TextureRect
 var _spacer: Control
 var _actions: BoxContainer
 var _primary: Button
@@ -152,6 +165,11 @@ func _build() -> void:
 	_add = button(rec, "Add", func() -> void: _press(add_pressed))
 	_add.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_skip = label(top, "Skip", "PKeyMuted")
+	var problem := glyph_label(top, "Problem", "warning", "PKeyError")
+	_problem = problem["label"]
+	_problem_glyph = problem["glyph"]
+	if "accessibility_live" in _problem:
+		_problem.set("accessibility_live", 1)
 	_spacer = spacer(_body)
 	_actions = actions_row(_body, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_primary = button(_actions, "Primary", func() -> void: _press(start_pressed), "PKeyPrimary")
@@ -204,6 +222,7 @@ func _arrange(m: Dictionary) -> void:
 	_head.move_child(_badge, 0 if _head.vertical else 1)
 	for g in _reason_glyphs:
 		size_glyph(g, 18.0, get_theme_color("font_color", "PKeyMuted"))
+	size_glyph(_problem_glyph, 20.0, get_theme_color("font_color", "PKeyError"))
 	_spacer.visible = phone_screen()
 
 
@@ -226,7 +245,7 @@ func _tighten_card() -> void:
 
 
 func _screen_key() -> String:
-	return "%s|%s" % [model.get("state", ""), busy]
+	return "%s|%s|%s" % [model.get("state", ""), busy, problem_key]
 
 
 ## The model input of this step (ui-matrix `holders`).
@@ -281,11 +300,26 @@ func _render() -> void:
 	var waiting := state == "waiting"
 	cat_text(_title, "activate.done.title" if state != "hidden" else "", args)
 	# The device line needs every part; a missing one leaves the line out.
-	var device_known := true
-	for k in ["tier", "term", "deviceKind", "n", "limit"]:
-		device_known = device_known and args.has(k)
+	# A license that names no term says the line without it; one with no seat (the roster was not
+	# reached) falls back to the tier alone.
 	var level := squeeze_level()
-	cat_text(_device, "activate.done.device" if state != "hidden" and device_known and level < 3 else "", args)
+	var device_line := ""
+	if state != "hidden" and level < 3 and copy.has("activate.done.device"):
+		var seat_known := true
+		for k in ["tier", "deviceKind", "n", "limit"]:
+			seat_known = seat_known and args.has(k)
+		if seat_known:
+			var line_args := args.duplicate()
+			var no_term := not line_args.has("term")
+			if no_term:
+				line_args["term"] = "\u0001term\u0001"
+			device_line = String(catalog().format("activate.done.device", line_args))
+			if no_term:
+				device_line = device_line.replace(" · \u0001term\u0001", "").replace("\u0001term\u0001", "")
+		elif args.has("tier"):
+			device_line = String(catalog().format("account.tier", {"tier": args["tier"]}))
+	_device.set_meta(CATALOG_META, true)
+	show_text(_device, device_line)
 	cat_text(_waiting, "activate.waiting" if waiting else "", args)
 	_mark.visible = state != "hidden" and level < 1
 	# The recommendation: a quiet card, only the reasons the model names.
@@ -300,14 +334,18 @@ func _render() -> void:
 		(_reason_glyphs[i] as Control).visible = on
 	var portal := copy.has("signin.key.addInLocker")
 	var add_key := "signin.key.addInLocker" if portal else "activate.recommend.action"
-	cat_text(_add, add_key if ready and not busy else "", args)
+	cat_text(_add, add_key if ready and not busy and not no_add_action else "", args)
 	# Opens Polaris Locker in the browser: the new-window glyph, described to a screen reader.
-	leaves_app(_add, portal and ready and not busy)
+	leaves_app(_add, portal and ready and not busy and not no_add_action)
 	if not portal and "accessibility_description" in _add:
 		_add.set("accessibility_description", "")
 	cat_text(_skip, "activate.recommend.skip" if ready and copy.has("activate.recommend.skip") and level < 3 else "", args)
 	cat_text(_primary, "signin.done.start" if state != "hidden" and not busy else "", args)
 	cat_text(_sign_in, "activate.waitingSignIn" if waiting and not busy else "", args)
+	cat_text(_problem, problem_key if state != "hidden" else "", args)
+	_problem_glyph.visible = _problem.visible
+	_problem_glyph.set_meta(&"pkey_glyph", "warning")
+	fx_error(problem_key if state != "hidden" else "")
 	_actions.visible = state != "hidden" and not busy
 	set_loading(busy)
 	set_process(busy)

@@ -75,6 +75,27 @@ const EMAIL_MAX := 254
 	set(value):
 		user_code = value
 		refresh_view()
+## `busy` with a code: where to type it (the sign-in page's address) and the page with the code filled
+## in (a QR code on a wide window or a TV). Empty draws neither.
+@export var address := "":
+	set(value):
+		address = value
+		refresh_view()
+@export var link := "":
+	set(value):
+		link = value
+		refresh_view()
+## The wait's page has opened once: its button reads "Open Polaris Locker again", not "Open browser".
+@export var opened := true:
+	set(value):
+		opened = value
+		refresh_view()
+## A catalog key for a problem line this step carries beyond its own (a page that did not open, a
+## sign-in that did not finish); "" for none. Drawn in the danger tone, a polite live region.
+@export var problem_key := "":
+	set(value):
+		problem_key = value
+		refresh_view()
 ## Opened from Settings: added closes with Done, not Start using.
 @export var from_settings := false:
 	set(value):
@@ -108,6 +129,9 @@ var _code_block: VBoxContainer
 var _code_caption: Label
 var _code: Label
 var _check: Label
+var _address: Label
+var _qr_caption: Label
+var _qr: PKeyQrRect
 var _problem: Label
 var _problem_glyph: TextureRect
 var _status: Label
@@ -149,6 +173,9 @@ func _build() -> void:
 	_code_caption = label(_code_block, "CodeCaption", "PKeyMuted")
 	_code = label(_code_block, "Code", "PKeyCode", true)
 	_check = label(_code_block, "Check", "PKeyMuted")
+	_address = label(_code_block, "Address", "PKeyMuted")
+	_qr_caption = label(_code_block, "QrCaption", "PKeyMuted")
+	_qr = qr_tile(_code_block)
 	var problem := glyph_label(top, "Problem", "warning", "PKeyError")
 	_problem = problem["label"]
 	_problem_glyph = problem["glyph"]
@@ -232,7 +259,11 @@ func _fit_code() -> void:
 
 
 func _screen_key() -> String:
-	return String(model.get("state", ""))
+	return "%s|%s" % [model.get("state", ""), problem_key]
+
+
+static func _is_https(url: String) -> bool:
+	return url.begins_with("https://") and not url.contains(" ")
 
 
 func _kind() -> String:
@@ -333,12 +364,25 @@ func _render() -> void:
 	_code.visible = waiting and user_code != ""
 	name_for_reader(_code, String(catalog().format("a11y.code", {"code": user_code})) if _code.visible else "")
 	cat_text(_check, "activate.attach.waitCheck" if waiting else "", args)
+	# Where to type the code, and a QR code of the page with it filled in on a wide window or a TV.
+	var shown_address := PKeySignInController.short_uri(address) if waiting and _is_https(address) else ""
+	cat_text(_address, "signin.handoff.url" if shown_address != "" else "", {"url": shown_address})
+	var qr_on := waiting and _is_https(link) and (pad_only() or (bool(layout_metrics().get("wide", false)) and not phone_screen()))
+	cat_text(_qr_caption, "part.qr.scanInstead" if qr_on else "", args)
+	_qr.text = link if qr_on else ""
+	_qr.visible = qr_on
+	_qr.get_parent().visible = qr_on
+	if qr_on:
+		var side := qr_side()
+		_qr.custom_minimum_size = Vector2(side, side)
+		name_for_reader(_qr, String(catalog().format("a11y.qr")))
 	# A failure: its own line, in the danger tone, with a glyph; never colour alone.
-	cat_text(_problem, "activate.attach.failed" if state == "failed" else "", args)
+	var problem_line := problem_key if problem_key != "" and state != "hidden" else ("activate.attach.failed" if state == "failed" else "")
+	cat_text(_problem, problem_line, args)
 	_problem_glyph.visible = _problem.visible
 	_problem_glyph.set_meta(&"pkey_glyph", "warning")
 	cat_text(_status, "common.working" if state == "busy" else "", args)
-	var first_problem := "activate.attach.nameRequired" if bad_name else ("signin.email.invalid" if bad_email else ("activate.attach.failed" if state == "failed" else ""))
+	var first_problem := "activate.attach.nameRequired" if bad_name else ("signin.email.invalid" if bad_email else problem_line)
 	fx_error(first_problem if tone_danger else "")
 	# The actions of the step.
 	var primary_key := String(model.get("decisions", {}).get("primary") if model.get("decisions", {}).get("primary") != null else "")
@@ -349,7 +393,7 @@ func _render() -> void:
 			primary_key = ""
 			links = ["signin.handoff.again", "common.cancel"]
 		"waiting":
-			second_key = "activate.attach.reopen"
+			second_key = "activate.attach.reopen" if opened else "signin.handoff.openBrowser"
 			links = ["common.cancel"]
 		"owned", "form", "invalid", "failed":
 			links = ["common.cancel"]
@@ -369,8 +413,10 @@ func _render() -> void:
 
 
 func _set_action(b: Button, key: String, copy: Array, args: Dictionary) -> void:
-	cat_text(b, key if copy.has(key) else "", args)
-	b.set_meta(&"pkey_key", key if copy.has(key) else "")
+	# The wait's first button reads "Open browser" until the page has opened once (a kit string beyond the model's copy).
+	var known := copy.has(key) or (key == "signin.handoff.openBrowser" and copy.has("activate.attach.reopen"))
+	cat_text(b, key if known else "", args)
+	b.set_meta(&"pkey_key", key if known else "")
 
 
 ## The primary reads the step's title and its first line to a screen reader, and carries nothing
@@ -445,7 +491,7 @@ func _route(key: String) -> void:
 			retry_pressed.emit()
 		"common.cancel":
 			cancelled.emit()
-		"signin.handoff.again", "activate.attach.reopen":
+		"signin.handoff.again", "activate.attach.reopen", "signin.handoff.openBrowser":
 			reopen_pressed.emit()
 		"signin.done.start", "common.done":
 			start_pressed.emit()
@@ -499,5 +545,9 @@ func _cancel() -> bool:
 			cancelled.emit()
 			return true
 		"busy", "waiting":
+			return true
+		"added":
+			# Nothing is in flight: Back goes on, as Start using does.
+			start_pressed.emit()
 			return true
 	return false

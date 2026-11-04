@@ -238,6 +238,7 @@ func _build() -> void:
 	gate.embedded = true
 	gate.managed_retry = true
 	gate.retry_requested.connect(retry)
+	gate.key_done_finished.connect(_on_host_changed)
 	# This view already draws the ground and its padding; the embedded gate adds neither.
 	gate.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	add_child(gate)
@@ -521,6 +522,10 @@ func _enter(stage: String, _previous: String) -> void:
 func _on_host_changed() -> void:
 	# The licence may have moved while the gate waits for the player: read it again.
 	if state["stage"] != "gate" or state["outcome"] != WAITING:
+		return
+	# A key just activated: the gate shows its Done step first; the boot moves on when it is over
+	# (`key_done_finished`), not at the license change the key caused.
+	if gate.holding_done():
 		return
 	var gen := _gen
 	var e = await host.gate_status()

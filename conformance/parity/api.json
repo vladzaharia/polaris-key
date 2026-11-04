@@ -4697,7 +4697,8 @@
       "kind": "method",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "godot": {}
       },
       "layer": "client"
     },
