@@ -50,6 +50,7 @@ import {
   type FormStep,
 } from "./contractForm.js";
 import { GLYPHS, text, type Chrome } from "./parts.js";
+import { keyEntriesToast, ToastLine, type GateToast } from "./toastLine.js";
 import { patched } from "./adaptBase.js";
 import { withChoice } from "./licenseRows.js";
 import { renderView } from "./views.js";
@@ -360,10 +361,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
   // The host hears the sign-in finished once per sign-in (it can finish its own task).
   const doneSent = useRef(false);
   /** The toast an existing license leaves in the page when its sheet closes. */
-  const [toast, setToast] = useState<{
-    key: string;
-    args: Record<string, string | number>;
-  } | null>(null);
+  const [toast, setToast] = useState<GateToast | null>(null);
   const finish = () => {
     if (doneSent.current) return;
     doneSent.current = true;
@@ -693,12 +691,12 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       input.activation?.result === "ok"
         ? input.activation.keyEntries
         : undefined;
+    const line = entries
+      ? keyEntriesToast(Math.max(0, entries.limit - entries.used))
+      : null;
     if (entries)
       // In a sheet it waits for the sheet to close: the Done step is what shows meanwhile.
-      (sheet && props.open ? setPending : setToast)({
-        key: "signin.key.entriesLeftShort",
-        args: { left: Math.max(0, entries.limit - entries.used) },
-      });
+      (sheet && props.open ? setPending : setToast)(line);
     else if (sheet && props.open && !input.signIn?.issuedNow) {
       const holder = input.account?.holder?.trim();
       const tier = input.account?.tier;
@@ -852,20 +850,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
             : undefined
       }
     >
-      {toast ? (
-        <div
-          className="toast pk-flash"
-          role="status"
-          data-part="toast"
-          data-key={toast.key}
-          data-status="success"
-        >
-          {GLYPHS.success()}
-          <span className="texts">
-            <span>{text(c, toast.key, toast.args)}</span>
-          </span>
-        </div>
-      ) : null}
+      {toast ? <ToastLine c={c} toast={toast} /> : null}
       {sheet ? (
         <dialog
           ref={dialogRef}

@@ -670,6 +670,7 @@ describe("what a finished activation or sign-in leaves over the app", () => {
       return t!;
     });
     expect(toast.textContent).toContain("2 key entries left");
+    expect(toast.getAttribute("data-status")).toBe("neutral");
     expect(m.container.querySelector('[data-testid="app"]')).not.toBeNull();
     m.adapter.dispose();
   });

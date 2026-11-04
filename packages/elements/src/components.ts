@@ -31,6 +31,7 @@ import { isHolder, readHolderFields } from "./holderViews.js";
 import { TAGS } from "./layout.js";
 import {
   actionOf,
+  GLYPHS,
   LAYOUTS,
   placeKeys,
   text,
@@ -403,10 +404,11 @@ export class PkGate extends PkElement {
     </p>`;
     const screen = gateScreen(view, this.driven ? this.step : "home");
     // The steps after a key with no account hold the window over the license.
-    if (this.holderStep && screen) return sub(screen);
+    if (this.holderStep && screen)
+      return html`${this.keyEntriesLine(c)}${sub(screen)}`;
     switch (view.state) {
       case "licensed":
-        return nothing;
+        return this.keyEntriesLine(c);
       case "grace":
         return html`${announce}${sub("GraceBanner")}`;
       case "needs-activation":
@@ -415,6 +417,28 @@ export class PkGate extends PkElement {
       default:
         return renderView(c);
     }
+  }
+
+  /** "{left} key entries left" after a key activation: ui-core's Toast view, drawn as the toast
+   *  part (nothing while the view is hidden). */
+  private keyEntriesLine(c: RenderCtx): unknown {
+    const toast = this.driven ? this.snapshot?.toast : null;
+    if (!toast) return nothing;
+    const view = viewOf("Toast", { ...c.input, toast }) as unknown as View;
+    const key = view.copy[0];
+    if (view.state === "hidden" || key === undefined) return nothing;
+    const tc = { ...c, view };
+    return html`<div
+      class="toast pk-flash"
+      role="status"
+      part="toast"
+      data-part="toast"
+      data-key=${key}
+      data-status=${view.state === "success" ? "success" : "neutral"}
+    >
+      ${view.state === "success" ? GLYPHS.success() : GLYPHS.info()}
+      <span class="texts"><span>${text(tc, key)}</span></span>
+    </div>`;
   }
 
   private get step(): GateStep {

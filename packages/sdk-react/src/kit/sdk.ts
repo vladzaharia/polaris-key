@@ -40,6 +40,7 @@ import type {
 
 import type { AddFlow } from "./holderGate.js";
 import { openLink, safeLink } from "./links.js";
+import { keyEntriesToast, type GateToast } from "./toastLine.js";
 
 export { gateInput, type GateStep };
 
@@ -71,11 +72,7 @@ export interface SdkGate {
   toast: GateToast | null;
 }
 
-/** A toast's copy key and arguments (the entries left, or who signed in under which tier). */
-export interface GateToast {
-  key: string;
-  args: Record<string, string | number>;
-}
+export type { GateToast } from "./toastLine.js";
 
 /** The SDK-driven gate, or `null` outside `<PolarisKeyProvider>` (the gate then takes `input`). */
 export function useSdkGate(
@@ -604,11 +601,7 @@ export function useSdkGate(
               .then((r) => {
                 // After a key activation: the entries it leaves (identity on).
                 const e = r.keyEntries;
-                if (e)
-                  setToast({
-                    key: "signin.key.entriesLeftShort",
-                    args: { left: Math.max(0, e.limit - e.used) },
-                  });
+                if (e) setToast(keyEntriesToast(Math.max(0, e.limit - e.used)));
                 // No account: the license is floating, held by the key alone. ActivateDone.
                 if (alive.current) keyActivated(v);
                 activating.current = false;

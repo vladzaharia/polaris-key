@@ -180,6 +180,9 @@ export interface GateSnapshot {
   update: UpdateOffer | null;
   /** The update prompt's input, when there is one to show. */
   updateInput: UiInput | null;
+  /** The line a key activation leaves for a few seconds: the Toast model's input (kind
+   *  `key-entries`), or `null`. */
+  toast: NonNullable<UiInput["toast"]> | null;
 }
 
 export interface GateDriverOptions {
@@ -332,6 +335,9 @@ export class GateDriver {
   private heldKey: string | null = null;
   /** A key activation is in flight: the state it causes must not end the Done step. */
   private activating = false;
+  /** The entries a key activation left, shown as a Toast for a few seconds. */
+  private keyLeft: number | null = null;
+  private keyLeftTimer: ReturnType<typeof setTimeout> | null = null;
   private addModel: AddToAccountModel | null = null;
   private addUnsub: (() => void) | null = null;
   private addSession: SignInSessionHandle | null = null;
@@ -453,6 +459,10 @@ export class GateDriver {
       opener: this.opener,
       update,
       updateInput,
+      toast:
+        this.keyLeft === null
+          ? null
+          : { kind: "key-entries", left: this.keyLeft },
     };
   }
 
@@ -492,6 +502,8 @@ export class GateDriver {
     this.handle = null;
     this.setTimer(undefined);
     this.dropHolder();
+    if (this.keyLeftTimer !== null) clearTimeout(this.keyLeftTimer);
+    this.keyLeftTimer = null;
     if (typeof window !== "undefined") {
       window.removeEventListener("popstate", this.onPop);
       window.removeEventListener("focus", this.onBack);
@@ -658,6 +670,19 @@ export class GateDriver {
   private dropHolder(): void {
     this.heldKey = null;
     this.dropAdd();
+  }
+
+  /** After a key activation: the entries it leaves (Identity on), for a few seconds. */
+  private showKeyEntries(e: { used: number; limit: number } | null): void {
+    if (this.keyLeftTimer !== null) clearTimeout(this.keyLeftTimer);
+    this.keyLeftTimer = null;
+    this.keyLeft = e ? Math.max(0, e.limit - e.used) : null;
+    if (this.keyLeft === null) return;
+    this.keyLeftTimer = setTimeout(() => {
+      this.keyLeft = null;
+      this.keyLeftTimer = null;
+      this.changed();
+    }, 6000);
   }
 
   /** A key activated here: the gate shows ActivateDone with the key held in memory. */
@@ -927,9 +952,10 @@ export class GateDriver {
         if (v) {
           this.activating = true;
           void this.adapter
-            .submitKey(v)
-            .then(() => {
+            .activateWithKey(v)
+            .then((r) => {
               this.activating = false;
+              this.showKeyEntries(r.keyEntries);
               // No account: the license is floating, held by the key alone. ActivateDone.
               if (this.attached) this.keyActivated(v);
             })

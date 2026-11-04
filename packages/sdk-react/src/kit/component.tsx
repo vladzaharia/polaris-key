@@ -66,7 +66,8 @@ import {
 } from "./contract.js";
 
 import { PolarisContext } from "../react/context.js";
-import { GLYPHS, text, type Chrome, type KitCtx } from "./parts.js";
+import { text, type Chrome, type KitCtx } from "./parts.js";
+import { ToastLine, type GateToast } from "./toastLine.js";
 import type { AddIn, AutoOutcome } from "@polaris-key/ui-core";
 import type { PolarisAdapter } from "../core/index.js";
 import { useSdkGate, type SdkStep } from "./sdk.js";
@@ -768,24 +769,8 @@ export function KitRoot(props: {
 }
 
 /** The line a sign-in or key activation leaves over the app (the form's own toast, signin.tsx). */
-function toastStrip(
-  c: KitCtx,
-  t: { key: string; args: Record<string, string | number> },
-): ReactNode {
-  return (
-    <div
-      className="toast pk-flash"
-      role="status"
-      data-part="toast"
-      data-key={t.key}
-      data-status="success"
-    >
-      {GLYPHS.success()}
-      <span className="texts">
-        <span>{text(c, t.key, t.args)}</span>
-      </span>
-    </div>
-  );
+function toastStrip(c: KitCtx, t: GateToast): ReactNode {
+  return <ToastLine c={c} toast={t} />;
 }
 
 /** The props of `<PolarisKeyGate>`: a kit component's, and the app it gates. */

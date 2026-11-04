@@ -12,7 +12,12 @@ import {
   safeLink,
 } from "../src/browser/index.js";
 import type { PolarisAdapter } from "../src/browser/sdk/core/index.js";
-import { activateDoneView, addToAccountView, contextOf } from "../src/index.js";
+import {
+  activateDoneView,
+  addToAccountView,
+  contextOf,
+  viewOf,
+} from "../src/index.js";
 
 describe("parseGateConfig", () => {
   it("reads the attribute's JSON and the object alike", () => {
@@ -84,6 +89,8 @@ interface FakeOptions {
   waits?: Array<Record<string, unknown>>;
   attach?: Array<Record<string, unknown>>;
   activateFails?: boolean;
+  /** What the key activation answers as `keyEntries` (Identity on). */
+  keyEntries?: { used: number; limit: number };
   portal?: Record<string, unknown>;
   /** Discovery's `identity.deviceChoice` (UK-42.22): the Add channel follows it. */
   deviceChoice?: boolean;
@@ -146,6 +153,10 @@ function fakeClient(o: FakeOptions = {}) {
           activatedAt: 1,
         },
       });
+    },
+    activateWithKey: async (key: string) => {
+      await client.submitKey(key);
+      return { keyEntries: o.keyEntries ?? null };
     },
     discovery: async () => {
       await o.discoveryHold;
@@ -336,6 +347,21 @@ describe("GateDriver: a key with no account", () => {
     g.d.act("signin.done.start");
     expect(g.d.snapshot().step).toBe("home");
     g.d.detach();
+  });
+
+  it("leaves the key entries as a Toast view after a key activation", async () => {
+    const g = gate({ keyEntries: { used: 1, limit: 3 } });
+    await activate(g);
+    const toast = g.d.snapshot().toast;
+    expect(toast).toEqual({ kind: "key-entries", left: 2 });
+    const v = viewOf("Toast", { ...g.d.snapshot().input, toast: toast! });
+    expect(v.state).toBe("info");
+    expect(v.copy).toEqual(["signin.key.entriesLeftShort"]);
+    g.d.detach();
+    const none = gate();
+    await activate(none);
+    expect(none.d.snapshot().toast).toBeNull();
+    none.d.detach();
   });
 
   it("refuses with the typed states, and Cancel goes back to Done", async () => {
