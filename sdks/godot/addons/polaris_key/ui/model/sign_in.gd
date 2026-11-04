@@ -74,7 +74,8 @@ static func verification_target(ctx: RefCounted, shown: String) -> String:
 ## `SignInState`.
 const SIGN_IN_STATES := [
 	"methods", "handoff", "code", "finishing", "choose", "replace", "key", "key-refused", "done", "error", "expired",
-	"key-done", "attach", "added", "confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-choose", "nearby-none-found", "nearby-denied", "nearby-expired", "nearby-not-nearby",
+	"key-done", "attach", "added", "confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait",
+	"nearby-choose", "nearby-none-found", "nearby-denied", "nearby-expired", "nearby-not-nearby",
 	"nearby-failed", "nearby-rate-limited", "nearby-unavailable", "nearby-cancelled", "nearby-signed-out", "nearby-done", "device-limit", "hidden",
 ]
 
