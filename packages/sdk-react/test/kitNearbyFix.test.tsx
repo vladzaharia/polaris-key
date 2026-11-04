@@ -76,10 +76,12 @@ describe("<NearbySignIn> endings and choices", () => {
       await act(async () => {
         bridge.push(emptyBridgeState({ nearby: { requester: req(phase) } }));
       });
-      await shows(container, "common.tryAgain");
-      expect(title(container)?.textContent).toBe(heading);
-      expect(control(container, "signin.nearby.code")).not.toBeNull();
-      expect(onClose).toHaveBeenCalledWith({ kind: "ended", phase });
+      await waitFor(() => {
+        expect(control(container, "common.tryAgain")).not.toBeNull();
+        expect(title(container)?.textContent).toBe(heading);
+        expect(control(container, "signin.nearby.code")).not.toBeNull();
+        expect(onClose).toHaveBeenCalledWith({ kind: "ended", phase });
+      });
       a.dispose();
     },
   );
@@ -111,11 +113,13 @@ describe("<NearbySignIn> endings and choices", () => {
       a,
       <NearbySignIn prompt={false} onClose={onClose} />,
     );
-    await shows(container, "common.tryAgain");
-    expect(title(container)?.textContent).toBe("Can't connect");
-    expect(onClose).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: "failed" }),
-    );
+    await waitFor(() => {
+      expect(control(container, "common.tryAgain")).not.toBeNull();
+      expect(title(container)?.textContent).toBe("Can't connect");
+      expect(onClose).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "failed" }),
+      );
+    });
     a.dispose();
   });
 
@@ -128,8 +132,10 @@ describe("<NearbySignIn> endings and choices", () => {
     const { container } = wrap(a, <NearbySignIn prompt={false} />);
     await shows(container, "common.cancel");
     fireEvent.click(control(container, "common.cancel")!);
-    await shows(container, "common.tryAgain");
-    expect(title(container)?.textContent).toBe("Not signed in");
+    await waitFor(() => {
+      expect(control(container, "common.tryAgain")).not.toBeNull();
+      expect(title(container)?.textContent).toBe("Not signed in");
+    });
     a.dispose();
 
     const b = v5({
@@ -141,8 +147,10 @@ describe("<NearbySignIn> endings and choices", () => {
     await act(async () => {
       b.push(emptyBridgeState({}));
     });
-    await shows(two.container, "common.tryAgain");
-    expect(title(two.container)?.textContent).toBe("Not signed in");
+    await waitFor(() => {
+      expect(control(two.container, "common.tryAgain")).not.toBeNull();
+      expect(title(two.container)?.textContent).toBe("Not signed in");
+    });
     a2.dispose();
   });
 
@@ -167,9 +175,11 @@ describe("<NearbySignIn> endings and choices", () => {
         'button[data-key="nearby.approver"]',
       )!,
     );
-    await waitFor(() => expect(text(container)).toContain("111 222"));
-    expect(text(container)).toContain("Open this app on Ana's laptop.");
-    expect(control(container, "signin.nearby.another")).not.toBeNull();
+    await waitFor(() => {
+      expect(text(container)).toContain("111 222");
+      expect(text(container)).toContain("Open this app on Ana's laptop.");
+      expect(control(container, "signin.nearby.another")).not.toBeNull();
+    });
     a.dispose();
   });
 
@@ -202,9 +212,11 @@ describe("<NearbySignIn> endings and choices", () => {
       <NearbySignIn prompt={false} noneFoundMs={60} />,
     );
     await waitFor(() => expect(text(container)).toContain("Looking for"));
-    await shows(container, "common.tryAgain");
-    expect(title(container)?.textContent).toBe("No device found");
-    expect(text(container)).toContain("Approve a Nearby Device");
+    await waitFor(() => {
+      expect(control(container, "common.tryAgain")).not.toBeNull();
+      expect(title(container)?.textContent).toBe("No device found");
+      expect(text(container)).toContain("Approve a Nearby Device");
+    });
     a.dispose();
   });
 
@@ -282,9 +294,11 @@ describe("<NearbyApprover> screens", () => {
     const a = await adapterOf(bridge);
     const onClose = vi.fn();
     const { container } = wrap(a, <NearbyApprover onClose={onClose} />);
-    await shows(container, "common.done");
-    expect(title(container)?.textContent).toBe("Approve a Nearby Device");
-    expect(container.querySelector('[role="status"]')).not.toBeNull();
+    await waitFor(() => {
+      expect(control(container, "common.done")).not.toBeNull();
+      expect(title(container)?.textContent).toBe("Approve a Nearby Device");
+      expect(container.querySelector('[role="status"]')).not.toBeNull();
+    });
     fireEvent.keyDown(document.body, { key: "Escape" });
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     a.dispose();
@@ -293,8 +307,10 @@ describe("<NearbyApprover> screens", () => {
   it("without a host handler there is no dead Done", async () => {
     const a = await adapterOf(start());
     const { container } = wrap(a, <NearbyApprover />);
-    await waitFor(() => expect(title(container)).not.toBeNull());
-    expect(control(container, "common.done")).toBeNull();
+    await waitFor(() => {
+      expect(title(container)).not.toBeNull();
+      expect(control(container, "common.done")).toBeNull();
+    });
     a.dispose();
   });
 
@@ -322,8 +338,10 @@ describe("<NearbyApprover> screens", () => {
     const { container } = wrap(a, <NearbyApprover onClose={() => {}} />);
     await waitFor(() => expect(approverStart).toHaveBeenCalledTimes(1));
     await push(bridge, { listening: false, stopped: "budget", asks: [] });
-    await shows(container, "signin.nearby.startAgain");
-    expect(title(container)?.textContent).toBe("Approvals paused");
+    await waitFor(() => {
+      expect(control(container, "signin.nearby.startAgain")).not.toBeNull();
+      expect(title(container)?.textContent).toBe("Approvals paused");
+    });
     fireEvent.click(control(container, "signin.nearby.startAgain")!);
     await waitFor(() => expect(approverStart).toHaveBeenCalledTimes(2));
     a.dispose();
@@ -349,8 +367,10 @@ describe("<NearbyApprover> screens", () => {
       listening: true,
       asks: [{ ...ASK, askId: "ask-2", device: "Second PC" }],
     });
-    await waitFor(() => expect(text(container)).toContain("Second PC"));
-    expect(control(container, "nearby.code")).not.toBeNull();
+    await waitFor(() => {
+      expect(text(container)).toContain("Second PC");
+      expect(control(container, "nearby.code")).not.toBeNull();
+    });
     a.dispose();
   });
 
