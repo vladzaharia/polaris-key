@@ -213,6 +213,11 @@ func show_update(version: String, actions: Array = []) -> void:
 	push({"kind": "update", "version": version, "actions": actions})
 
 
+## "{left} key entries left" as the catalog's Toast view (info, the line only, the 6 s timer).
+func show_key_entries(left: int) -> void:
+	push({"kind": "key-entries", "left": left})
+
+
 func show_copied() -> void:
 	push({"kind": "copied"})
 
@@ -327,6 +332,8 @@ func _input_for_model() -> Dictionary:
 		return inp
 	inp["toast"] = {"kind": PKeyToastController.model_kind(kind)}
 	match kind:
+		"key-entries":
+			inp["toast"]["left"] = current.get("left")
 		"update":
 			inp["update"] = {"action": "binary", "version": current.get("version", "")}
 		"error":
@@ -353,7 +360,7 @@ func _render() -> void:
 	show_text(_consequence, words["consequence"])
 	# A game's own warning and the core's heading are data, not the kit's copy.
 	for l in [_title, _consequence]:
-		if bool(words["data"]) and kind in ["warning", "success", "info"] or (kind == "error" and l == _title):
+		if bool(words["data"]) and kind in ["warning", "success", "info", "key-entries"] or (kind == "error" and l == _title):
 			l.set_meta(DATA_META, true)
 		elif l.has_meta(DATA_META):
 			l.remove_meta(DATA_META)

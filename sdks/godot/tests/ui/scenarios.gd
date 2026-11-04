@@ -1149,9 +1149,9 @@ func toast(kind: String) -> Control:
 		"tier_long":
 			t.show_success(String(PKeyUiView.catalog().format("signin.desktop.toast", {"name": PKeyGateView.toast_name("Mara Lindqvist-Fennick-Okonkwo (mara.lindqvist@fennick.studio)"), "tier": "Founder's Edition"})))
 		"entries":
-			t.show_info(String(PKeyUiView.catalog().format("signin.key.entriesLeftShort", {"left": 2})))
+			t.show_key_entries(2)
 		"entries0":
-			t.show_info(String(PKeyUiView.catalog().format("signin.key.entriesLeftShort", {"left": 0})))
+			t.show_key_entries(0)
 		"warning":
 			t.show_warning("Autosave is off", "Your progress is not being saved.")
 		"error":

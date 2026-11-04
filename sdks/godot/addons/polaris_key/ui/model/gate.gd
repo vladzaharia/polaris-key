@@ -346,6 +346,17 @@ static func toast_view(ctx: RefCounted) -> Dictionary:
 				"args": {"version": ctx.member("update").get("version")},
 				"focus": null,
 			})
+		"key-entries":
+			# The line only: no Dismiss, no timer line; the host owns how long it stays.
+			var left = ctx.member("toast").get("left")
+			if not ctx.on("license") or not ctx.on("identity") or not (left is int or (left is float and left == floorf(left) and absf(left) < 9007199254740992.0)) or left < 0:
+				return View.hidden(ctx, "Toast")
+			return View.make(ctx, "Toast", {
+				"state": "info",
+				"copy": ["signin.key.entriesLeftShort"],
+				"args": {"left": left},
+				"focus": null,
+			})
 		"copied":
 			return View.make(ctx, "Toast", {
 				"state": "success",

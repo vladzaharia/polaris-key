@@ -74,7 +74,7 @@ const EVENTS := ["use-code", "copy-link", "have-key", "open-replace", "confirm-r
 const DEVICE_CODE_PHASES := ["starting", "waiting", "slow-down", "ok", "denied", "failed", "expired", "cancelled"]
 const REGISTRATION := ["open", "requires-identity", "requires-license"]
 const PENDING := ["sign-in", "activate", "replace", "save", "purchase", "restore"]
-const TOASTS := ["update", "copied", "warning", "error", "progress"]
+const TOASTS := ["update", "copied", "warning", "error", "progress", "key-entries"]
 const PROGRESS_PHASES := ["queued", "download", "verify", "paused", "install", "failed", "done"]
 ## Where a theme's accent came from (UI-KITS.md §1.2, §3.4).
 const ACCENT_SOURCES := ["integrator", "product", "icon", "core", "ink", "host"]

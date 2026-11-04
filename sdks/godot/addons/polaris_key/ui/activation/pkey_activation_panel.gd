@@ -824,7 +824,7 @@ func _toast_entries_left(entries: Dictionary) -> void:
 	if sdk == null or not is_instance_valid(sdk) or not sdk.has_method("toasts"):
 		return
 	var left := maxi(0, int(entries["limit"]) - int(entries["used"]))
-	sdk.toasts().show_info(String(catalog().format("signin.key.entriesLeftShort", {"left": left})))
+	sdk.toasts().show_key_entries(left)
 
 
 ## Show a message already worded by the caller (a rejected key the gate reports) under the key
