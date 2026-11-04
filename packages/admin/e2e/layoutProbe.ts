@@ -1,5 +1,5 @@
 /**
- * The in-page half of the console's layout lint (`layout.e2e.test.ts`): one self-contained
+ * The in-page half of the console's layout lint (`layoutSuite.ts`): one self-contained
  * function, serialised into the page by `page.evaluate`, that measures the rendered console and
  * returns every breach of the four layout invariants. It imports nothing and closes over nothing,
  * so Playwright can ship its source text as-is.

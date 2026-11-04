@@ -264,14 +264,26 @@ jobs:
   # scroll at 360 px and its visual baseline. It runs in Playwright's own image because the
   # committed linux baselines are rendered there (packages/admin/scripts/portal-baselines.sh); on
   # a failure the actual and diff images are uploaded.
+  #
+  # CS-1: six shards. The heavy suites are split into test files of a few hundred tests each
+  # (layout.N, portalResolutions.N, portalQuality.N, portalUxBar.N), and tools/e2e-shards.mjs
+  # assigns every e2e file to a shard longest-first from tools/e2e-shard-timings.json. Each shard
+  # records which entries of the shrink-only debt ledgers it matched; `console-debt` merges them.
+  # Check runs are named "Console and portal (Chromium, CSP, axe, visual) (<shard>)".
   console:
     name: Console and portal (Chromium, CSP, axe, visual)
     needs: changes
     if: needs.changes.outputs.console == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
+    env:
+      PK_DEBT_DIR: ${{ github.workspace }}/debt-out
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-js
@@ -286,9 +298,76 @@ jobs:
       - run: >-
           pnpm exec turbo run build --filter=@polaris-key/admin... --filter=@polaris-key/brand
           --filter=@polaris-key/worker^...
-      - run: pnpm --filter @polaris-key/admin test:e2e
-      # The motion smoke in Firefox (MO-13.6; S-23 §11). The image ships Playwright's browsers.
-      # Non-blocking until it has passed once on main (MO-13.6); then remove continue-on-error.
+      # Every e2e file is in exactly one shard (the check), then this shard's files run.
+      - name: Run this shard's e2e files
+        run: |
+          node tools/e2e-shards.mjs check 6
+          FILES=$(node tools/e2e-shards.mjs files ${{ matrix.shard }} 6)
+          echo "$FILES"
+          cd packages/admin
+          pnpm exec vitest run -c vitest.e2e.config.ts $FILES
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: console-debt-${{ matrix.shard }}
+          path: debt-out
+          if-no-files-found: ignore
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: portal-visual-diff-${{ matrix.shard }}
+          path: packages/admin/e2e/__baselines__/portal/.out
+          # `.out` is a hidden directory, which upload-artifact v4+ skips unless told otherwise.
+          include-hidden-files: true
+          if-no-files-found: ignore
+
+  # The shrink-only debt ledgers (MASTHEAD_DEBT, UX_BAR_DEBT) of the split suites: an entry that
+  # no violation matches must be deleted, and no single shard can tell. It reads what every
+  # shard recorded, and fails when a part is missing.
+  console-debt:
+    name: Console and portal debt ledgers
+    needs: [changes, console]
+    if: needs.changes.outputs.console == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PK_DEBT_DIR: ${{ github.workspace }}/debt-out
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-js
+        with:
+          install: "false"
+      - run: >-
+          pnpm install --frozen-lockfile --filter=@polaris-key/admin...
+          --filter=@polaris-key/worker...
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: console-debt-*
+          path: debt-out
+          merge-multiple: true
+      - run: pnpm --filter @polaris-key/admin test:e2e:debt
+
+  # The motion smoke in Firefox (MO-13.6; S-23 §11). The image ships Playwright's browsers.
+  # Non-blocking until it has passed once on main (MO-13.6); then remove continue-on-error.
+  console-firefox:
+    name: Console motion smoke (Firefox, non-blocking)
+    needs: changes
+    if: needs.changes.outputs.console == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-js
+        with:
+          install: "false"
+      - run: >-
+          pnpm install --frozen-lockfile --filter=@polaris-key/admin...
+          --filter=@polaris-key/worker...
+      - run: >-
+          pnpm exec turbo run build --filter=@polaris-key/admin... --filter=@polaris-key/brand
+          --filter=@polaris-key/worker^...
       - name: Motion smoke (Firefox)
         continue-on-error: true
         env:
@@ -297,14 +376,6 @@ jobs:
         run: >-
           pnpm --filter @polaris-key/admin exec vitest run -c vitest.e2e.config.ts
           e2e/motion.e2e.test.ts
-      - if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: portal-visual-diff
-          path: packages/admin/e2e/__baselines__/portal/.out
-          # `.out` is a hidden directory, which upload-artifact v4+ skips unless told otherwise.
-          include-hidden-files: true
-          if-no-files-found: ignore
 
   # Help search under the Worker's real docs CSP (the docs script-src needs 'wasm-unsafe-eval' for
   # Pagefind; without it search spun forever). The test serves the built docs through the Worker
@@ -1692,6 +1763,8 @@ jobs:
         node-floor,
         browser,
         console,
+        console-debt,
+        console-firefox,
         help-search,
         ui-kits,
         react-kit,

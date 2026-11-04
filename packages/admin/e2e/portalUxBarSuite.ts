@@ -6,7 +6,8 @@ import {
   type Theme,
 } from "./portalHarness.js";
 import { SHIPPED } from "./portalStates.js";
-import { staleUxDebt, uxBarChecked } from "./uxBar.js";
+import { staleUxDebt, usedUxDebt, uxBarChecked } from "./uxBar.js";
+import { currentPart, partOf, recordDebtUse } from "./parts.js";
 
 /**
  * The UX bar over the BUILT customer site (UK-63; BRAND-TRANSITION B6, B7, B17): the rendered-DOM
@@ -35,6 +36,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await portal?.stop();
+  // A part of a split run cannot tell a stale entry from one another part matches: it records
+  // its matches and `scripts/e2e-debt.ts` merges the parts.
+  if (recordDebtUse({ ux: usedUxDebt() })) return;
   const stale = staleUxDebt("portal");
   if (stale.length)
     throw new Error(
@@ -43,7 +47,7 @@ afterAll(async () => {
 });
 
 describe.concurrent("UX bar over the built customer site", () => {
-  for (const state of SHIPPED) {
+  for (const state of partOf(SHIPPED)) {
     describe(`§${state.section} ${state.title} (${state.id})`, () => {
       for (const row of ROWS) {
         for (const theme of THEMES) {
