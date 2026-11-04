@@ -19,6 +19,10 @@ extends RefCounted
 ##
 ## A product without License never sees a gate: not-applicable comes first, before any error.
 
+## The steps of the link offer (ui-matrix SignIn link-offer, link-done, link-conflict).
+const LINK_STEPS := ["link-offer", "link-done", "link-conflict"]
+## The provider a link kind names, as the offer says it.
+const LINK_PROVIDERS := {"google": "Google", "apple": "Apple", "gamecenter": "Game Center", "pgs": "Google Play Games"}
 const SCREENS := ["loading", "usable", "grace", "grace-blocked", "activation", "revoked", "expired", "update-required", "not-available", "error", "license-choice"]
 
 
@@ -171,3 +175,57 @@ static func _anchor_of(a: Dictionary) -> Dictionary:
 static func manage_link(result: PKeyAutoSignInResult) -> String:
 	var url := result.manage_url if result != null else ""
 	return url if url.begins_with("https://") and not url.contains(" ") else ""
+
+
+# ── The link offer after a native redirect sign-in (I-48.14) ─────────────────────────────────
+
+static func link_provider(kind: String) -> String:
+	return String(LINK_PROVIDERS.get(kind, ""))
+
+
+## Whom the provider's identity is shared with, from an offer entry: "global", "developer" or "unknown".
+static func link_reach(entry: Dictionary) -> String:
+	var reach = entry.get("reach")
+	return String(reach) if reach == "global" or reach == "developer" else "unknown"
+
+
+## Where an `accept()` answer goes: `link-done` when linked, `link-conflict` when another account holds the
+## identity, else `link-offer` again (the person can retry or decline).
+static func link_next(result: PKeyLinkResult) -> String:
+	if result != null and result.kind == PKeyLinkResult.KIND_LINKED:
+		return "link-done"
+	if result != null and result.kind == PKeyLinkResult.KIND_REFUSED and result.code == PKeyConstants.ErrorCode.LINK_CONFLICT:
+		return "link-conflict"
+	return "link-offer"
+
+
+## How a failed Link ends (ui-core "link-offer"): `stale` (a sign-in too old: Sign in again), `refused` (Link
+## goes, No thanks is the primary), `network` (Link stays), `unavailable` (ends quietly), or "" for a answer
+## that is not a failure (linked, or a conflict, which has its own step).
+static func link_problem(result: PKeyLinkResult) -> String:
+	if result == null:
+		return ""
+	match result.kind:
+		PKeyLinkResult.KIND_REFUSED:
+			if result.code == PKeyConstants.ErrorCode.STEP_UP_REQUIRED:
+				return "stale"
+			return "" if result.code == PKeyConstants.ErrorCode.LINK_CONFLICT else "refused"
+		PKeyLinkResult.KIND_FAILED:
+			if result.code in [PKeyErrors.NETWORK, PKeyErrors.LOCAL_ONLY, PKeyErrors.SERVER_ERROR]:
+				return "network"
+			return "refused"
+		PKeyLinkResult.KIND_UNAVAILABLE:
+			return "unavailable"
+	return ""
+
+
+## The catalog line under the offer for a problem ("" for none).
+static func link_problem_key(problem: String) -> String:
+	match problem:
+		"stale":
+			return "signin.linkOffer.stale"
+		"refused":
+			return "signin.linkOffer.failed"
+		"network":
+			return "core.codes.network.message"
+	return ""

@@ -37,6 +37,24 @@ Card/Scroll/Stack/Body/Info/Steps/Account/Who/Email: Label "ada@mail.io"
 Card/Scroll/Stack/Body/Info/Steps/AttachLicense: CheckButton "Also attach this device's license to my account" [focus 1]
 Card/Scroll/Stack/Body/Info/Actions/Continue: Button "Continue" [focus 2]
 Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
+== redirect, waiting for the browser ==
+Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Stack/Body/Info/Header/Titles/TitleRow/Title: Label "Finish in your browser"
+Card/Scroll/Stack/Body/Info/Header/Titles/Status: Label "We opened Polaris Locker in your browser. Sign in there and \u2068Polaris Key SDK\u2069 continues by itself."
+Card/Scroll/Stack/Body/Info/Steps/Where/Instructions: Label "Waiting for your browser…"
+Card/Scroll/Stack/Body/Info/Actions/OpenBrowser: Button "Open browser again" [focus 1]
+Card/Scroll/Stack/Body/Info/Actions/UseCode: Button "Use a code instead" [focus 2]
+Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
+== redirect, the browser did not open ==
+Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Stack/Body/Info/Header/Titles/TitleRow/Title: Label "We couldn't open your browser"
+Card/Scroll/Stack/Body/Info/Header/Titles/Status: Label "Open this link in a browser on this computer, or use a code instead."
+Card/Scroll/Stack/Body/Info/Actions/OpenBrowser: Button "Open browser again" [focus 1]
+Card/Scroll/Stack/Body/Info/Actions/CopyLink: Button "Copy link" [focus 2]
+Card/Scroll/Stack/Body/Info/Actions/UseCode: Button "Use a code instead" [focus 3]
+Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 4]
 == ok ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"

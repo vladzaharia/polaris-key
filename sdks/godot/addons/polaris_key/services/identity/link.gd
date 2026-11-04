@@ -136,9 +136,26 @@ func _accept(link_handle: String, proof_value: String) -> PKeyLinkResult:
 	return result
 
 
+## The offer entry ({kind, reach}) this device can accept now, from the kinds `offer()` named: one whose
+## provider is installed here, else the first when a link handle is held; {} when none (the kit shows no offer).
+func entry_for(kinds: Array) -> Dictionary:
+	var installed: Array = _identity().platform_providers().map(func(p): return p.get("kind"))
+	for entry in kinds:
+		if entry is Dictionary and entry.get("kind") in installed:
+			return entry
+	if _held_handle() != "":
+		for entry in kinds:
+			if entry is Dictionary:
+				return entry
+	return {}
+
+
 ## Not again for this account on this device: `sha256(issuer || sub)` is kept. With no known subject the
 ## offer is only closed. A coroutine.
 func decline() -> void:
+	# Nothing is open: nothing is recorded (a later offer for the signed-in account stays possible).
+	if _pending_for == null:
+		return
 	var key := _decline_key()
 	_close()
 	if key != "":
@@ -216,7 +233,7 @@ func _ready(declined_allowed: bool) -> Variant:
 	# The pending state may have been closed or replaced while discovery ran.
 	if _pending_for == null or not core.enabled("identity") or route == "":
 		return PKeyLinkResult.unavailable()
-	if not identity._own(route):
+	if not identity._in_product(route):
 		return PKeyLinkResult.failed(PKeyErrors.INVALID_RESPONSE, "An identity endpoint points outside this product.")
 	return route
 

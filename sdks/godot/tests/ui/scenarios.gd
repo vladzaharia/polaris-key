@@ -130,6 +130,8 @@ func all() -> Array:
 	out.append(["sign_in", "pending", sign_in.bind("pending")])
 	out.append(["sign_in", "pending, link copied", sign_in.bind("copied")])
 	out.append(["sign_in", "confirm, attachable", sign_in.bind("confirm")])
+	out.append(["sign_in", "redirect, waiting for the browser", sign_in.bind("redirect")])
+	out.append(["sign_in", "redirect, the browser did not open", sign_in.bind("redirect-no-browser")])
 	out.append(["sign_in", "ok", sign_in.bind("ok")])
 	out.append(["sign_in", "expired", sign_in.bind("expired")])
 	out.append(["sign_in", "denied", sign_in.bind("denied")])
@@ -420,6 +422,9 @@ const SIGN_IN_STEP_CASES := [
 	["confirm, a new license and what the app also gets", "confirm-license"],
 	["link offer, Google shared across apps", "link-offer-global"],
 	["link offer, per developer", "link-offer-developer"],
+	["link offer, the sign-in is too old", "link-offer-stale"],
+	["link offer, it could not be linked", "link-offer-failed"],
+	["link offer, no connection", "link-offer-network"],
 	["link done", "link-done"],
 	["link conflict", "link-conflict"],
 	["nearby prompt", "nearby-prompt"],
@@ -459,10 +464,27 @@ func sign_in_step(kind: String) -> Control:
 			s.also_gets = true
 		"link-offer-global":
 			s.step = "link-offer"
+			s.provider = "Google"
 			s.reach = "global"
 		"link-offer-developer":
 			s.step = "link-offer"
+			s.provider = "Google"
 			s.reach = "developer"
+		"link-offer-stale":
+			s.step = "link-offer"
+			s.provider = "Google"
+			s.reach = "global"
+			s.error_key = "signin.linkOffer.stale"
+		"link-offer-failed":
+			s.step = "link-offer"
+			s.provider = "Google"
+			s.reach = "global"
+			s.error_key = "signin.linkOffer.failed"
+		"link-offer-network":
+			s.step = "link-offer"
+			s.provider = "Google"
+			s.reach = "global"
+			s.error_key = "core.codes.network.message"
 		"nearby-done":
 			s.step = "nearby-done"
 			s.email = "ada@mail.io"
@@ -481,6 +503,9 @@ func sign_in_step(kind: String) -> Control:
 		"nearby-choose":
 			s.step = "nearby-choose"
 			s.approvers = [{"id": "A1", "label": "Ana's laptop", "platform": "macOS"}, {"id": "A2", "label": null, "platform": "android"}]
+		"link-done", "link-conflict":
+			s.step = kind
+			s.provider = "Google"
 		_:
 			s.step = kind
 	if kind.begins_with("confirm"):
@@ -540,6 +565,11 @@ func sign_in(state: String) -> Control:
 		"confirm":
 			d.show_prompt(prompt_fixture())
 			d.show_confirm({"identity": {"name": "Ada Lovelace", "email": "ada@mail.io"}, "attachable": true})
+		"redirect", "redirect-no-browser":
+			var session := prompt_fixture()
+			session.channel = &"redirect"
+			session.opened = state == "redirect"
+			d.show_redirect(session)
 		"ok":
 			d.show_result(PKeySignInOutcome.signed_in({"name": "Ada"}, "", true, null))
 		"expired":

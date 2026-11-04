@@ -706,6 +706,23 @@ func _own(url: String) -> bool:
 	return not u.is_empty() and not base.is_empty() and u["origin"] == base["origin"]
 
 
+## `url` is under this product: the origin is the base URL's and the path starts with
+## `<base path>/<product>/` (trailing slash included, so a sibling product or a path outside it is not).
+## The device token goes only to such a route.
+func _in_product(url: String) -> bool:
+	var core := _core()
+	var u := PKeyTransport.parse_url(url)
+	var prefix := PKeyTransport.parse_url(core.url(""))
+	if u.is_empty() or prefix.is_empty() or u["origin"] != prefix["origin"]:
+		return false
+	var path := String(u["path"])
+	if not path.begins_with(String(prefix["path"])):
+		return false
+	# A dot segment or an encoded one could leave the product once resolved.
+	var lowered := path.to_lower()
+	return not ("/../" in path or path.ends_with("/..") or "/./" in path or "%2e" in lowered or "%2f" in lowered or "\\" in path)
+
+
 ## Redeem the code at the token endpoint (form body, no bearer) and, on a token, store it. Returns
 ## a PKeySignInOutcome: signed_in, or an error carrying the Worker's own code (`invalid_grant`,
 ## `invalid_client`, `rate_limited` with detail {retry_after_seconds}, `server-error` for a 5xx).
@@ -726,7 +743,7 @@ func _redeem(session: PKeySignInSession, pending: Dictionary, code: String, nati
 		h = core.headers(tr["headers"])
 	# A device that already holds its token presents it to its own product, as the web client does: the
 	# Worker then knows the device and keeps the licence it runs on. Never to an endpoint off the product.
-	if core.tokens.has_token() and _own(String(pending["token_endpoint"])):
+	if core.tokens.has_token() and _in_product(String(pending["token_endpoint"])):
 		h["Authorization"] = "Bearer %s" % core.tokens.current()
 	var r := await core.transport.request("POST", pending["token_endpoint"], h, form.to_utf8_buffer())
 	if not r.ok:

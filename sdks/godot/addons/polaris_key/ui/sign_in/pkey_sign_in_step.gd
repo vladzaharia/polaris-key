@@ -51,6 +51,7 @@ const LAYOUT := {
 	"nearby-cancelled": ["core.codes.unauthorized.title", [], ["signin.nearby.code"]],
 	"nearby-signed-out": ["core.gate.revoked.title", [], ["signin.nearby.code"]],
 	"nearby-done": ["signin.nearby.done", [], ["signin.nearby.notYou"]],
+	"finishing": ["signin.handoff.finishing", [], []],
 	"device-limit": ["core.codes.device_limit.title", ["core.codes.device_limit.message", "deviceLimit.noManage"], ["signin.auto.confirm.other", "common.cancel"]],
 }
 
@@ -72,7 +73,8 @@ const LAYOUT := {
 	"nearby-cancelled",
 	"nearby-signed-out",
 	"nearby-done",
-	"device-limit"
+	"device-limit",
+	"finishing"
 ) var step := "confirm":
 	set(value):
 		step = value
@@ -241,6 +243,9 @@ func _build() -> void:
 	_approver_box = vbox(top, "Approvers", "PKeyTight")
 	_code_label = label(top, "NearbyCode", "PKeyCode", true)
 	_code_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	# A failed Link's line is the one announcement of that state.
+	if "accessibility_live" in _error:
+		_error.set("accessibility_live", 1)
 	_qr_box = vbox(top, "Remedy", "PKeyTight")
 	_qr = qr_tile(_qr_box)
 	_qr.get_parent().size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -290,7 +295,9 @@ func ring_inset() -> float:
 func _arrange(m: Dictionary) -> void:
 	super(m)
 	# Short on room, the product header gives way before the card scrolls.
-	_product.visible = squeeze_level() < 1
+	_product.visible = squeeze_level() < (2 if step == "link-offer" and error_key != "" else 1)
+	# A failed Link's line, squeezed hard: the groups sit a stack gap apart rather than a section gap.
+	_body.theme_type_variation = &"PKeyStack" if step == "link-offer" and error_key != "" and squeeze_level() >= 3 else &"PKeySections"
 	# On a phone's page the actions dock to the bottom, in the thumb zone, as the refusal steps' do.
 	_spacer.visible = phone_screen()
 	# Room inside the scroll for a focus ring at any edge, at every squeeze level.
@@ -325,7 +332,8 @@ func _fit_code(avail: float) -> void:
 
 
 func _screen_key() -> String:
-	return step
+	# A failed Link is a new state of the offer: its line is announced once, when it appears.
+	return "%s|%s" % [step, error_key] if step == "link-offer" and error_key != "" else step
 
 
 ## This device as a phrase inside a sentence ("this Mac"), from the platform's form factor.
@@ -390,7 +398,11 @@ func _render() -> void:
 	var tier_name := tier if tier != "" else (String(anchor.get("tierName", "")) if anchor.get("tierName") is String else "")
 	if tier_name != "":
 		inp["account"] = {"tier": tier_name}
-	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("SignIn", inp)
+	if step == "finishing":
+		# The wait between the browser's return and the offer (or the game): the finishing line, no actions.
+		model = {"decisions": {"primary": null}, "copy": []}
+	else:
+		model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("SignIn", inp)
 	var id := PKeyUiTheme.product_identity()
 	var app := PKeyUiTheme.isolate(String(id["name"]))
 	var args := {
@@ -422,13 +434,20 @@ func _render() -> void:
 		cat_text(_lede, "", args)
 	_render_nearby(args)
 	# Continue failed: its own line in the error colour, with Continue as the retry.
-	if error_key != "" and confirm:
-		cat_text(_error, error_key)
+	if error_key != "" and (confirm or step == "link-offer"):
+		cat_text(_error, error_key, args)
 	else:
 		cat_text(_error, "")
 	# The primary: the model's, except a device limit the person cannot fix here (no link, or no browser
 	# on a pad), where it is Try again: the sign-in runs once more.
 	var primary_key := String(model["decisions"].get("primary") if model.get("decisions") != null and model["decisions"].get("primary") != null else "")
+	# A failed Link keeps the offer (ui-core "link-offer"): too old a sign-in swaps Link for Sign in again; a refused
+	# one drops Link and No thanks is the primary.
+	var refused := step == "link-offer" and error_key == "signin.linkOffer.failed"
+	if step == "link-offer" and error_key == "signin.linkOffer.stale":
+		primary_key = "signin.again"
+	elif refused:
+		primary_key = "signin.linkOffer.decline"
 	var limit_qr := step == "device-limit" and pad_only() and primary_key != ""
 	var limit_retry := step == "device-limit" and (primary_key == "" or limit_qr)
 	if limit_retry:
@@ -455,12 +474,43 @@ func _render() -> void:
 	if step == "device-limit" and outer_view() != self:
 		# Nested in the gate, whose Welcome is the sign-in form: "Use another account" already goes there.
 		sec.erase("common.cancel")
+	if refused:
+		sec = []
 	_sec_keys = [sec[0] if sec.size() > 0 else "", sec[1] if sec.size() > 1 else ""]
 	cat_text(_secondary, _sec_keys[0], args)
 	cat_text(_secondary2, _sec_keys[1], args)
 	# The wait for the other device shows the thin indicator, never a spinner in the title.
+	# A link step is read once on arrival: the primary carries the title and the first line.
+	if "accessibility_description" in _primary and step in PKeyGateController.LINK_STEPS:
+		var said := _title.text
+		if _lines[0].visible and _lines[0].text != "":
+			said += (" " if said.right(1) in [".", "?", "!", "\u2026", ":"] else ". ") + _lines[0].text
+		_primary.set("accessibility_description", said)
+	elif "accessibility_description" in _primary and step != "device-limit":
+		# A later step does not inherit the last one's.
+		_primary.set("accessibility_description", "")
+	# The finishing card announces itself once (it has no control to carry the words).
+	if "accessibility_live" in _title:
+		_title.set("accessibility_live", 1 if step == "finishing" else 0)
+	# Linking in flight: neither Link nor No thanks can be pressed.
+	var linking := step == "link-offer" and busy
+	_primary.disabled = linking
+	_secondary.disabled = linking
+	fx_error(error_key if step == "link-offer" else "")
 	set_loading(step == "nearby-wait" or step == "nearby-choose" or busy)
 	set_process(step == "nearby-wait" or step == "nearby-choose" or busy)
+	_reserve_bar()
+
+
+## The offer keeps the indicator's row (4 px) so Link going busy moves nothing under the pointer; it fades in
+## only while linking.
+func _reserve_bar() -> void:
+	# Squeezed, the row is not kept: the actions come first.
+	if _loading_bar == null or step != "link-offer" or squeeze_level() >= 2:
+		return
+	_loading_bar.custom_minimum_size.y = 4.0
+	_loading_bar.visible = true
+	_loading_bar.modulate.a = 1.0 if busy and Time.get_ticks_msec() - _loading_since >= 250 else 0.0
 
 
 ## nearby-wait: the devices that answered (until one is chosen), then the code to tap there. nearby-done: the
@@ -558,6 +608,9 @@ static func platform_name(raw: String) -> String:
 ## The plain steps: the title, then the model's body lines in order.
 func _render_plain(copy: Array, row: Array, args: Dictionary) -> void:
 	var lines: Array = (row[1] as Array).filter(func(k): return copy.has(k))
+	# Out of room, the error line says what is wrong, and the explanation gives way before the actions scroll.
+	if error_key != "" and squeeze_level() >= 3:
+		lines = []
 	for i in _lines.size():
 		cat_text(_lines[i], lines[i] if i < lines.size() else "", args)
 
@@ -608,3 +661,4 @@ func _focus_chain() -> Array:
 
 func _process(_delta: float) -> void:
 	_tick_loading()
+	_reserve_bar()

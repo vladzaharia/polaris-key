@@ -134,6 +134,18 @@ var _auto_bar := true
 var _replacing := false
 ## Continue (or a choice) is in flight: more presses are ignored.
 var _completing := false
+## A sign-in this device started finished and the link offer is being asked for or shown: the gate holds
+## (the game does not run under the offer) until it is answered.
+var _link_hold := false
+## The offer is being closed: the step stays (busy) until the licence state is read again.
+var _link_finishing := false
+## The offer entry on screen ({kind, reach}) and how its last try failed ("", stale, refused, network).
+var _link_entry: Dictionary = {}
+var _link_problem := ""
+## Sign in again (a stale offer) is running: the hold and the handle stay, and the offer returns when it ends.
+var _link_resign := false
+## The link offer's flow (PKeyGateLink).
+var _link_flow := PKeyGateLink.new(self)
 ## After "Use another account" the focus goes to Polaris Locker's sign-in, not the key field.
 var _focus_sign_in := false
 
@@ -234,9 +246,11 @@ func _build() -> void:
 	activation.sign_in_dialog.finished.connect(_on_signed_in)
 	activation.sign_in_dialog.platform_answer.connect(_on_platform_answer)
 	# Sign-in and offline activation take the whole card: the gate re-renders around them.
-	activation.mode_changed.connect(func(_m: String) -> void:
+	activation.mode_changed.connect(func(m: String) -> void:
 		_focus_sign_in = false
-		refresh_view())
+		refresh_view()
+		if m == "main" and _link_resign:
+			_link_flow.resign_ended.call_deferred())
 	_main.add_child(activation)
 	license_choice = PKeyLicenseChoice.new()
 	license_choice.auto_sdk = false
@@ -294,7 +308,18 @@ func _activation_owns_screen() -> bool:
 
 ## An automatic sign-in step (confirm, device-limit) is on screen in the form's place.
 func _auto_on() -> bool:
-	return _auto_state == "confirm" or _auto_state == "device-limit" or _auto_state.begins_with("nearby")
+	return _auto_state == "confirm" or _auto_state == "device-limit" or _auto_state.begins_with("nearby") or _auto_state in PKeyGateController.LINK_STEPS or _holding()
+
+
+## The offer is being asked for and no step is on screen: the busy "Finishing sign-in" card stands in, so the
+## finished sign-in dialog (and its Close) never shows under the hold.
+func _holding() -> bool:
+	return _link_hold and _auto_state == "" and not _link_resign
+
+
+## The link offer holds the gate (being asked for, or one of its steps on screen).
+func _linking() -> bool:
+	return _link_hold or _auto_state in PKeyGateController.LINK_STEPS
 
 
 ## The card's content width (logical pixels): what the activation panel wants while a dialog of
@@ -471,11 +496,11 @@ func _render() -> void:
 	var url := PKeyUpdatePromptController.update_url(update_result, _outlet(), release_url)
 	var ctl := PKeyGateController.controls_for(screen, url != "")
 	var cp := PKeyGateController.copy_for(screen, st, status.get("allowed_range"))
-	var is_usable := PKeyGateController.is_usable_screen(screen)
+	var is_usable := PKeyGateController.is_usable_screen(screen) and not _linking()
 	var net := screen == "error" and network_error
 	var inline := screen == "error" and not network_error
 	if not embedded:
-		visible = screen != "usable"
+		visible = screen != "usable" or _linking()
 	# Loading shows nothing for its first 250 ms, then the identity, a muted label and the shimmer
 	# (DL7); a license check that finishes sooner never flashes a card.
 	var waiting := screen == "loading"
@@ -515,8 +540,11 @@ func _render() -> void:
 	_glyph.visible = net
 	var expired_keying := screen == "expired" and _keying
 	var wants_form: bool = (ctl["activation"] or expired_keying) and not net
+	if _holding():
+		auto_step.step = "finishing"
+		auto_step.busy = true
 	var auto_on := _auto_on()
-	activation.visible = wants_form and not auto_on
+	activation.visible = (wants_form or _link_resign) and not auto_on
 	# The form's "Sign in with a nearby device" row, whenever this device and the product can run it.
 	activation.nearby_offered = sdk != null and is_instance_valid(sdk) and sdk.get("identity") != null and sdk.identity.nearby_available()
 	auto_step.visible = auto_on and not net
@@ -596,6 +624,10 @@ func _on_update_available(r: PKeyResult) -> void:
 
 
 func _on_activated() -> void:
+	_link_resign = false
+	# A sign-in this device started (the browser) can end on the link offer; any other activation goes on.
+	if await _link_flow.offer():
+		return
 	if sdk != null and sdk.has_method("status"):
 		show_state(sdk.status())
 
@@ -665,6 +697,13 @@ func _on_retry() -> void:
 
 
 func _cancel() -> bool:
+	# The offer is being asked for, linked or closed: Escape and B change nothing.
+	if _holding() or _link_finishing or (_completing and _auto_state in PKeyGateController.LINK_STEPS):
+		return true
+	if auto_step.visible and _auto_state in PKeyGateController.LINK_STEPS:
+		# Escape on the offer closes it without remembering a decline.
+		_link_flow.finish(false)
+		return true
 	if auto_step.visible:
 		# The SDK is settling the person's confirmation: Escape does not leave it half done.
 		if _nearby_flow.confirming():
@@ -791,6 +830,11 @@ func _end_auto() -> void:
 	auto_step.searching = false
 	auto_step.pending = false
 	_auto_state = ""
+	_link_hold = false
+	_link_finishing = false
+	_link_entry = {}
+	_link_problem = ""
+	_link_resign = false
 	choosing = false
 	_auto_result = null
 	_replacing = false
@@ -819,6 +863,9 @@ func _on_auto_primary(step: String) -> void:
 	if step.begins_with("nearby"):
 		await _nearby_flow.on_primary(step)
 		return
+	if step in PKeyGateController.LINK_STEPS:
+		await _link_flow.primary(step)
+		return
 	if step == "device-limit":
 		var url := PKeyGateController.manage_link(_auto_result)
 		if url != "" and not PKeyUiView.pad_only():
@@ -838,6 +885,9 @@ func _on_auto_primary(step: String) -> void:
 func _on_auto_secondary(step: String) -> void:
 	if step.begins_with("nearby"):
 		await _nearby_flow.on_secondary(step)
+		return
+	if step in PKeyGateController.LINK_STEPS:
+		_link_flow.secondary(step)
 		return
 	_leave_auto_sign_in()
 
