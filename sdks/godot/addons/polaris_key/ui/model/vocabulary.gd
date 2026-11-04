@@ -15,6 +15,10 @@ const COMPONENTS := [
 	"UnlockSync", "RecoveryCode", "RingChange", "SaveConflict",
 ]
 
+## The two screens activation without an account adds (the `holders` family). Like the Cloud Sync
+## screens they are not in COMPONENTS; `Models.view_of` answers them.
+const HOLDER_SCREENS := ["ActivateDone", "AddToAccount"]
+
 ## The reserved state of a component its service turns off: the drop-in renders nothing.
 const HIDDEN := "hidden"
 
@@ -28,8 +32,8 @@ const ACTION_KEYS := {
 	"open-card": ["signin.desktop.continue", "signin.email.continue"],
 	"open-browser": ["signin.handoff.again", "signin.handoff.openBrowser"],
 	"replace-in-browser": [],
-	"open-manage-url": ["deviceLimit.openBrowser", "devices.manage", "signin.key.addInLocker", "signin.deviceLimit.replace"],
-	"start-sign-in": ["signin.key.ownedSignIn", "signin.key.signIn"],
+	"open-manage-url": ["deviceLimit.openBrowser", "devices.manage", "signin.key.addInLocker", "signin.deviceLimit.replace", "activate.otherEmail.verify"],
+	"start-sign-in": ["signin.key.ownedSignIn", "signin.key.signIn", "activate.waitingSignIn", "activate.recommend.action"],
 	"copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
 	"retry": ["common.tryAgain", "common.reconnect", "signin.again", "signInHandoff.newCode"],
 	"cancel": ["common.cancel"],

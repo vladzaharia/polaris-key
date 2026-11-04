@@ -16,6 +16,7 @@ extends RefCounted
 const MATRIX_PATH := "res://tests/corpus/v2/ui-matrix.json"
 const Models := preload("res://addons/polaris_key/ui/model/models.gd")
 const Vocabulary := preload("res://addons/polaris_key/ui/model/vocabulary.gd")
+const Holders := preload("res://addons/polaris_key/ui/model/holders.gd")
 const _MODEL_DIR := "res://addons/polaris_key/ui/model/"
 
 ## ui-matrix.json family → its `ui.*` feature (features.json).
@@ -30,6 +31,7 @@ const FAMILIES := {
 	"paywall": "ui.paywall",
 	"cloudSync": "ui.settings",
 	"saveConflict": "ui.settings",
+	"holders": "ui.kit.holders",
 }
 const SIGN_IN := ["SignIn", "SignInHandoff", "LicenseChoice"]
 
@@ -51,6 +53,9 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 			_components(t, family, m[family], defaults)
 	if only == "" or only == "activate":
 		_nameless_welcome(t, defaults)
+	if only == "" or only == "holders":
+		_mask_email(t, m["holdersFlow"]["maskEmail"])
+		_lead_parts(t)
 	if only == "" or only == "theme":
 		_theme(t, m["theme"], defaults)
 	if only == "" or only == "i18n":
@@ -146,6 +151,29 @@ func _components(t: PKeyTestContext, family: String, rows: Array, defaults: Dict
 		if t.check(name, ok, detail):
 			ran += 1
 	t.check("ui-matrix.json %s: every row passes (%d/%d)" % [family, ran, rows.size()], ran == rows.size() and rows.size() > 0)
+
+
+## `holdersFlow.maskEmail`: the masking every screen uses, and the account tab's helper over it.
+func _mask_email(t: PKeyTestContext, vectors: Array) -> void:
+	var ran := 0
+	for v in vectors:
+		var got := Holders.mask_email(v["email"])
+		var name := "ui-matrix.json holdersFlow maskEmail (ui.kit.holders): %s" % [v["email"]]
+		var via_tab: String = PKeyAccountController.mask_email(v["email"])
+		var ok: bool = got == v["masked"] and via_tab == v["masked"]
+		if t.check(name, ok, "got %s, want %s" % [got, v["masked"]]):
+			ran += 1
+	t.check("ui-matrix.json holdersFlow maskEmail: every vector passes (%d/%d)" % [ran, vectors.size()], ran == vectors.size() and vectors.size() > 0)
+
+
+## A reason line splits on `**` into runs; no marker is ever left in a run.
+func _lead_parts(t: PKeyTestContext) -> void:
+	var CopyFormat: GDScript = load(_MODEL_DIR + "copy_format.gd")
+	var bold: Array = CopyFormat.lead_parts("**Get it back.** Sign in on a new device.")
+	var want := [{"text": "Get it back.", "strong": true}, {"text": " Sign in on a new device.", "strong": false}]
+	t.check("lead_parts: a bold lead-in, then the rest", bold == want)
+	t.check("lead_parts: no marker is one plain run", CopyFormat.lead_parts("Plain") == [{"text": "Plain", "strong": false}])
+	t.check("lead_parts: an empty string has no runs", CopyFormat.lead_parts("").is_empty())
 
 
 ## Theme rows: the resolver's summary (`{name, accentSource, colorScheme, icon, preset}`).

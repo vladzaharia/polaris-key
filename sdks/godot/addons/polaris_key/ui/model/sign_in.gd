@@ -21,6 +21,7 @@ const Context := preload("res://addons/polaris_key/ui/model/context.gd")
 const Errors := preload("res://addons/polaris_key/ui/model/errors.gd")
 const Link := preload("res://addons/polaris_key/ui/model/link.gd")
 const Loading := preload("res://addons/polaris_key/ui/model/loading.gd")
+const Holders := preload("res://addons/polaris_key/ui/model/holders.gd")
 const View := preload("res://addons/polaris_key/ui/model/view.gd")
 
 const DEFAULT_DEVICE_URL := PKeyConstants.DEVICE_CODE_PAGE
@@ -73,7 +74,7 @@ static func verification_target(ctx: RefCounted, shown: String) -> String:
 ## `SignInState`.
 const SIGN_IN_STATES := [
 	"methods", "handoff", "code", "finishing", "choose", "replace", "key", "key-refused", "done", "error", "expired",
-	"confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-choose", "nearby-none-found", "nearby-denied", "nearby-expired", "nearby-not-nearby",
+	"key-done", "attach", "added", "confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-choose", "nearby-none-found", "nearby-denied", "nearby-expired", "nearby-not-nearby",
 	"nearby-failed", "nearby-rate-limited", "nearby-unavailable", "nearby-cancelled", "nearby-signed-out", "nearby-done", "device-limit", "hidden",
 ]
 
@@ -105,6 +106,18 @@ static func _methods_copy(ctx: RefCounted) -> Array:
 	]
 
 
+## The form's steps after a key with no account (UK-42): the holders' screens in the form's body,
+## under the form's own state names. Their copy, actions and decisions are the screens' own.
+static func _holder_step_view(ctx: RefCounted, step: String) -> Dictionary:
+	var v: Dictionary = Holders.activate_done_view(ctx) if step == "key-done" else Holders.add_to_account_view(ctx, "added" if step == "added" else null)
+	# A screen that is hidden here (a service is off) leaves the form on its first step.
+	if v["state"] == "hidden":
+		return View.hidden(ctx, "SignIn")
+	v["component"] = "SignIn"
+	v["state"] = step
+	return v
+
+
 ## The one sign-in form.
 static func sign_in_view(ctx: RefCounted) -> Dictionary:
 	var s = ctx.input.get("signIn")
@@ -131,6 +144,9 @@ static func sign_in_view(ctx: RefCounted) -> Dictionary:
 		var extra := {"developer": id["developer"], "email": auto.get("email")}
 		args.merge(extra, true)
 		return _auto_step_view(ctx, auto, args)
+	var step = s.get("step")
+	if step == "key-done" or step == "attach" or step == "added":
+		return _holder_step_view(ctx, step)
 	if s.get("outcome") == "expired" or (dc is Dictionary and (dc.get("phase") == "expired" or Link.code_expired(dc.get("secondsLeft")))):
 		return View.make(ctx, "SignIn", {
 			"state": "expired",

@@ -43,6 +43,8 @@ const MODELS := {
 	"RecoveryCode": ["cloud_sync.gd", "recovery_code_view"],
 	"RingChange": ["cloud_sync.gd", "ring_change_view"],
 	"SaveConflict": ["save_conflict.gd", "save_conflict_view"],
+	"ActivateDone": ["holders.gd", "activate_done_view"],
+	"AddToAccount": ["holders.gd", "add_to_account_view"],
 	"About": ["settings.gd", "about_view"],
 	"ChannelPicker": ["settings.gd", "channel_picker_view"],
 }

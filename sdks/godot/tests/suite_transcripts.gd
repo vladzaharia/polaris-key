@@ -145,7 +145,10 @@ static func _ids() -> PackedStringArray:
 
 
 ## Replays one transcript; [] when every step matched the recording and its expectations.
-static func replay(tr: Dictionary) -> Array:
+## `act_hook` (UK-43.12), when valid, is `func(sdk: Node, step: Dictionary) -> Variant`: it drives a
+## step of its own (a Dictionary of what it observed) in place of the SDK call; null leaves the
+## step to `_act`. The kit's AddToAccount test replays the holders conversation through it.
+static func replay(tr: Dictionary, act_hook: Callable = Callable()) -> Array:
 	var engine := PKeyTranscriptReplay.new(tr)
 	var server := PKeyTestFixtures.new_server(engine.handle)
 	var store := PKeyMemoryStore.new(tr["initial"]["deviceId"], tr["initial"].get("token", ""))
@@ -257,7 +260,11 @@ static func replay(tr: Dictionary) -> Array:
 				# The discovered blobs template names the transcript's base; the bytes come from the
 				# loopback server.
 				sdk.core.discovery_manifest = _rebased(sdk.core.discovery_manifest, tr["baseUrl"], server.base_url())
-			var observed := await _act(sdk, store, step, exchange_keys, nearby_keys)
+			var observed = null
+			if act_hook.is_valid():
+				observed = await act_hook.call(sdk, step)
+			if not (observed is Dictionary):
+				observed = await _act(sdk, store, step, exchange_keys, nearby_keys)
 			# A built URL names the loopback server; the recording names the transcript's base.
 			if observed.get("url") is String and String(observed["url"]).begins_with(server.base_url() + "/"):
 				observed["url"] = tr["baseUrl"] + String(observed["url"]).substr(server.base_url().length())
