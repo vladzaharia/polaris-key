@@ -157,7 +157,7 @@ export function LibraryToolbar({
       {/* Sort and the view toggle share a row on a phone (LF3); from `sm` they sit beside the chips. */}
       <div
         data-library-view-row=""
-        className="flex min-w-0 flex-wrap items-center justify-between gap-3 max-sm:basis-full max-sm:justify-end sm:ms-auto"
+        className="flex min-w-0 flex-wrap items-center justify-between gap-3 max-sm:basis-full max-sm:flex-nowrap max-sm:justify-end sm:ms-auto"
       >
         <label className="flex min-w-0 max-w-full items-center">
           <span className="sr-only">{t("locker.library.sort")}</span>
