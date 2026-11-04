@@ -163,7 +163,7 @@ export function sparkleItem(
     pubDate: rfc1123Seconds(phased ? phased.pubDate : e.publishedAt),
     ...(s.edSignature ? { edSignature: s.edSignature } : {}),
     ...(minSys ? { minimumSystemVersion: minSys } : {}),
-    ...(e.notes ? { descriptionHtml: proseToHtml(e.notes) } : {}),
+    ...(e.notes ? { descriptionText: e.notes } : {}),
     ...(e.arch === "arm64" ? { hardwareRequirements: "arm64" } : {}),
     ...(critical ? { criticalUpdate: critical } : {}),
     ...(phased ? { phasedRolloutInterval: phased.interval } : {}),

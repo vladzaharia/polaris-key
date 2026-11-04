@@ -637,8 +637,12 @@ describe("updater feeds: content", () => {
     // 1.1.0 shipped only a universal DMG: the arm64 feed lists it too, with no requirement.
     expect(body).toContain("djdl-1.1.0-macos-universal.dmg");
     expect(body).not.toContain("1.1.5");
-    // Release notes are escaped.
-    expect(body).toContain("&lt;b&gt;bold&lt;/b&gt;");
+    // Release notes are plain text: marked sparkle:format="plain-text" so Sparkle (and the
+    // Polaris kit's update window) shows them, and left unescaped inside CDATA.
+    expect(body).toContain(
+      '<description sparkle:format="plain-text"><![CDATA[',
+    );
+    expect(body).toContain("<b>bold</b>");
   });
 
   it("Sparkle x86_64: the universal DMG, with its delta from build 110", async () => {

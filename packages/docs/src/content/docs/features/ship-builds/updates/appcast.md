@@ -80,8 +80,9 @@ Each rendered `<item>` carries:
   (no manifest can declare it), and only after its value passes a shape check (Sparkle compares it, never
   displays it, so a value it can't parse would silently make every update ineligible).
 - **`<description>`** — the same curated changelog summary the changelog endpoint extracts
-  (see Release's [Artifacts](/docs/features/ship-builds/releases/artifacts/) page), HTML-escaped and
-  wrapped in CDATA.
+  (see Release's [Artifacts](/docs/features/ship-builds/releases/artifacts/) page), as plain text
+  (`sparkle:format="plain-text"`, so Sparkle shows it) wrapped in CDATA. The WinSparkle feed
+  keeps HTML-escaped notes.
 - **`<enclosure>`** — the download URL, the byte length, and — only when the release
   published a verifiable signature — `sparkle:edSignature`.
 
@@ -151,8 +152,9 @@ not by whatever the repository happens to contain.
 
 ## Release-note safety
 
-The curated summary embedded in `<description>` is HTML-escaped, and any literal `]]>`
-sequence inside it is also neutralized before it's wrapped in `CDATA`. Without that second
+The curated summary embedded in `<description>` is plain text, which Sparkle displays verbatim
+rather than parsing as markup, and any literal `]]>`
+sequence inside it is neutralized before it's wrapped in `CDATA`. Without that second
 step, a release note that happened to contain that exact three-character sequence would
 close the CDATA section early, and everything written after it in the note would be parsed
 as sibling XML — including, in principle, a second, attacker-chosen `<enclosure>` element

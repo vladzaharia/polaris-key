@@ -38,6 +38,13 @@ export interface AppcastItemInput {
   minimumSystemVersion?: string;
   /** Optional HTML release notes embedded as the item <description>. */
   descriptionHtml?: string;
+  /**
+   * Release notes as PLAIN TEXT, rendered as `<description sparkle:format="plain-text">`.
+   * Sparkle shows no notes for a format-less (html) description in the Polaris kit's update
+   * window, and plain text needs no escaping: Sparkle displays it verbatim, so only the CDATA
+   * terminator is neutralised. Wins over `descriptionHtml` when both are set.
+   */
+  descriptionText?: string;
   // ── P3-09: the extended appcast (Sparkle 2.9–2.10, notes/E1) and WinSparkle ──
   /** `<sparkle:hardwareRequirements>` (Sparkle 2.9+): `arm64` for an Apple-silicon-only build. */
   hardwareRequirements?: string;
@@ -165,9 +172,11 @@ function renderItem(item: AppcastItemInput): string {
     item.phasedRolloutInterval !== undefined
       ? `\n      <sparkle:phasedRolloutInterval>${item.phasedRolloutInterval}</sparkle:phasedRolloutInterval>`
       : "";
-  const desc = item.descriptionHtml
-    ? `\n      <description><![CDATA[${neutralizeCdata(item.descriptionHtml)}]]></description>`
-    : "";
+  const desc = item.descriptionText
+    ? `\n      <description sparkle:format="plain-text"><![CDATA[${neutralizeCdata(item.descriptionText)}]]></description>`
+    : item.descriptionHtml
+      ? `\n      <description><![CDATA[${neutralizeCdata(item.descriptionHtml)}]]></description>`
+      : "";
   const enclosures = [
     {
       url: item.url,
@@ -243,6 +252,7 @@ export function buildAppcastItem(
     title?: string;
     minimumSystemVersion?: string;
     descriptionHtml?: string;
+    descriptionText?: string;
   } = {},
 ): AppcastItemInput {
   const shortVersion = versionFromTag(release.tag_name);
@@ -258,5 +268,6 @@ export function buildAppcastItem(
       ? { minimumSystemVersion: opts.minimumSystemVersion }
       : {}),
     ...(opts.descriptionHtml ? { descriptionHtml: opts.descriptionHtml } : {}),
+    ...(opts.descriptionText ? { descriptionText: opts.descriptionText } : {}),
   };
 }
