@@ -21,6 +21,7 @@ import type { ActivationResult } from "../license/endpoints.js";
 import { SDK_NAME, SDK_VERSION } from "../version.js";
 import { ErrorCode, Feature } from "../constants.generated.js";
 import { portalLink as resolvePortalLink } from "@polaris-key/client-core/portal";
+import { maskEmail } from "@polaris-key/ui-core";
 import { getConfig } from "./commands.js";
 import type { KitContext } from "./context.js";
 import { eventLine, EXIT, type CliJsonError, type FlowResult } from "./json.js";
@@ -459,6 +460,16 @@ export async function statusFlow(
   if (quiet(ctx)) return { exitCode, state: view.state, result };
   // The link a refusal draws comes from discovery's `core.portal` (DISC-01), also on a pinned build.
   if (exitCode !== EXIT.ok) await ensurePortal(client);
+  // Floating (UK-43 D4): a key-only device whose license has no holder address.
+  const holder =
+    view.component === "AccountAndLicense" ? await licenseHolder(client) : null;
+  const floating =
+    view.component === "AccountAndLicense" &&
+    view.state === "key-only" &&
+    holder !== null &&
+    !holder.signedIn &&
+    holder.email === "";
+  if (floating) await ensurePortal(client);
   const t = ctx.copy.t.bind(ctx.copy);
   const rows: RailRow[] = productHeader(ctx, "status");
   switch (view.component) {
@@ -476,7 +487,9 @@ export async function statusFlow(
         view.holder ??
         (view.state === "signed-in"
           ? t("signInHandoff.ok")
-          : t("account.keyOnly"));
+          : floating
+            ? t("account.notInAccount")
+            : t("account.keyOnly"));
       const table: Array<{ mark: "ok"; label: string; value: Line }> = [
         {
           mark: "ok",
@@ -529,6 +542,11 @@ export async function statusFlow(
         ],
       });
       rows.push(...tableRows(ctx, table));
+      // A license held by the key alone says so, and where it can be kept (never `#key=`).
+      if (floating) {
+        const url = portalLink(client);
+        if (url !== null) rows.push(linkRow(url));
+      }
       break;
     }
     case "GraceBanner":
@@ -1049,6 +1067,65 @@ export function portalRows(
   ];
 }
 
+/**
+ * Who holds the license this device just activated or shows, from the facts the terminal has: the
+ * account signed in here, else the license document's profile. `signedIn`: an account holds it.
+ * `email`: the address it was sent to (waiting); empty: held by the key alone (floating). `null`
+ * when no license document is held, so nothing is known (the screens then draw what they drew
+ * before). The address is the purchaser's, never an account (UK-43 D4).
+ */
+async function licenseHolder(
+  client: PolarisKeyClient,
+): Promise<{ signedIn: boolean; email: string } | null> {
+  const info = client.license.licenseInfo();
+  if (!info) return null;
+  const identity = await Promise.resolve()
+    .then(() => client.identity.current())
+    .catch(() => null);
+  return {
+    signedIn: identity != null,
+    email: present(info.profile?.email) ?? "",
+  };
+}
+
+/**
+ * The one line after a successful `activate` (UK-43 D4): where a license held by the key alone can
+ * be kept in an account. Nothing for an account's license, and nothing when the product page is off.
+ * Floating: the recommendation title and the page; Identity off: the portal reason and the page;
+ * waiting: the masked address and the sign-in command. Never `#key=`: the link is the page's own.
+ */
+async function holderRows(
+  ctx: KitContext,
+  client: PolarisKeyClient,
+): Promise<RailRow[]> {
+  const holder = await licenseHolder(client);
+  if (holder === null || holder.signedIn) return [];
+  const t = ctx.copy.t.bind(ctx.copy);
+  const identityOn = client.capabilities().identity?.enabled === true;
+  // The mask's dots are a Unicode bullet; an ASCII terminal gets asterisks.
+  const masked = ctx.caps.unicode
+    ? maskEmail(holder.email)
+    : maskEmail(holder.email).replaceAll("\u2022", "*");
+  if (identityOn && masked)
+    return [
+      ...gap(ctx),
+      textRow(t("activate.waiting", { maskedEmail: masked })),
+      ...fixRows(ctx, [{ verb: "login", key: "cli.fix.signIn" }]),
+    ];
+  await ensurePortal(client);
+  const url = portalLink(client);
+  if (url === null) return [];
+  return [
+    ...gap(ctx),
+    textRow(
+      identityOn
+        ? t("activate.recommend.title", { product: ctx.product.name })
+        : t("activate.recommend.portal"),
+    ),
+    linkRow(url),
+  ];
+}
+
 /** Rows for an activation outcome other than the device limit. */
 function outcomeRows(
   ctx: KitContext,
@@ -1428,6 +1505,9 @@ export async function activateFlow(
       show(ctx, [
         ...hist,
         ...outcomeRows(ctx, o, portalLink(client)),
+        ...(o.state === "done" && !quiet(ctx)
+          ? await holderRows(ctx, client)
+          : []),
         endRow(),
       ]);
       return {

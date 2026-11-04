@@ -198,7 +198,7 @@ describe("what a real client reports", () => {
         }),
       ),
     );
-    expect(plain(text)).toMatch(/License\s+Pro · Activated with a license key/);
+    expect(plain(text)).toMatch(/License\s+Pro · Not in an account/);
     expect(plain(text)).not.toMatch(/·\s*$/m);
   });
 });

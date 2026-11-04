@@ -97,6 +97,8 @@
 // The `cli` family gains `devices approve` (I-47.1, additive within version 7: Swift, Kotlin and
 // Godot do not run the family): an end-user verb, so the default mount and help rows list it, and
 // the `login` outcomes `sign-in-nearby` and `sign-in-nearby-handoff` and the `approve-*` outcomes.
+// The `cli` outcomes `activate-floating`, `activate-floating-no-page`, `activate-waiting`, `activate-identity-off` and
+// `status-floating` (UK-43.19, additive, no new member): a license held by the key alone is offered the account in one line.
 // `uiMatrixVersion` 8 (integration CP2, D-1): NearbyApproval's `choose` state (I-47.U, UXR-47) has one control per license and Deny, as `ask`
 // has one per code and Deny: no "Use this license" step, and no primary.
 // `uiMatrixVersion` 9 (UCP.1, UI-CONFIRM-PROVIDER): the `autoSignIn.kind` input member (the exchange that made
@@ -5691,6 +5693,16 @@ export const CLI_SITUATIONS: Readonly<Record<string, string>> = {
     "`status`: this version is above the license's allowed range, and the product's discovery says its portal is off (`core.portal` is `{enabled:false}`).",
   "status-channel-not-entitled-no-page":
     "`status`: the license does not include this build's channel, and the product's discovery says its portal is off (`core.portal` is `{enabled:false}`).",
+  "activate-floating":
+    "`activate`, a well-formed key on a piped stdin, the license is held by the key alone (no account on this device, no address on the license) and Identity is on: after the success, the recommendation title and the product page link (never `#key=`).",
+  "activate-floating-no-page":
+    "`activate`, as `activate-floating`, and the product's discovery says its portal is off (`core.portal` is `{enabled:false}`): the success alone, no recommendation line.",
+  "activate-waiting":
+    "`activate`, as `activate-floating`, but the license was sent to an address and no account holds it: the masked address and the `login` command row.",
+  "activate-identity-off":
+    "`activate`, as `activate-floating`, with Identity off for the product: the portal reason and the product page link.",
+  "status-floating":
+    "`status` on a license held by the key alone (no account on this device, no address on the license): the license row says it is not in an account, and the product page link follows.",
   network:
     "`devices list`: the request fails with the registry code `network`.",
   "key-refused":
@@ -5751,7 +5763,7 @@ const CLI_VOCABULARY = {
     help: "The root help page's sections in order: the host's, under its headings, then one section whose heading is the kit copy key `copy` with what the mount added at the top level (a namespace is one entry). commands is each section's set; within a section the kit keeps its order.",
     gate: "requireLicense(handler, {entitlement?}) before the host's command input.command. run: the action runs and exits as it does. flow: the kit's activate or sign-in flow runs inline, then the action. refuse: mark, the title (copy; {command} is input.command; no message line, because the fix follows), then link (portal: the product page, from the kit's portal URL; contact: `status.contact` with the developer's name, where the kit resolves no product page, WIRE-CONTRACT-V4 section 5.7: input.portal is false) and the fix verbs as command rows, written once to stream (stderr: no escape off a terminal), the exit; fix is the verbs filtered by input.mounted (absent: the end-user set), and a link stands in when none is left. fail: input.check (the check throws, or answers a status that is not a licenseStatus) draws a cross with copy (title and message), no fix row, exit 4. With --json stdout carries only `result`, the envelope's result line (CLI_JSON_VERSION 1).",
     outcomes:
-      "Drive the kit's verb in input.situation (situations) on a Unicode terminal (json false) or with --json, and compare: exit; mark, the outcome's step mark (that symbol is drawn and the other of fail and warn is not); error and code, the result's fields (null: no error); stdout (empty: nothing on stdout; screen: the flow is drawn on stdout; result: only JSON lines, the last the result); fix, the verb ids of the command rows drawn, as a set; link, the row drawn where no fix verb is (portal: the product page link; contact: `status.contact` with the developer's name, where the kit resolves no product page, WIRE-CONTRACT-V4 section 5.7 - a situation whose name ends -no-page sets up a client whose discovery says the portal is off).",
+      "Drive the kit's verb in input.situation (situations) on a Unicode terminal (json false) or with --json, and compare: exit; mark, the outcome's step mark (that symbol is drawn and the other of fail and warn is not); error and code, the result's fields (null: no error); stdout (empty: nothing on stdout; screen: the flow is drawn on stdout; result: only JSON lines, the last the result); fix, the verb ids of the command rows drawn, as a set; link, the row drawn where no fix verb is (portal: the product page link; contact: `status.contact` with the developer's name, where the kit resolves no product page, WIRE-CONTRACT-V4 section 5.7 - a situation whose name ends -no-page sets up a client whose discovery says the portal is off; an `activate` row of that kind and no link draws neither the link nor a contact row, its success stands alone).",
     stdin:
       "activate with no key, stdin of kind input.stdin (stdinKinds) given input.lines, each followed by a newline (null: nothing is written and the writer stays open). read: prompt (the masked entry), key (the first non-empty line, here the fixture key, without waiting for the writer to close) or none (the copy key, the exit, the error, and with withinMs the run ends, process and all, within that many milliseconds). The none screen is drawn on stdout, like every kit verb's screen (outcomes stdout: screen); stderr is the gate's, because a gated host command's stdout is the host's.",
     capabilities:
@@ -6320,6 +6332,44 @@ function cliFamily(): CliFamily {
     // The portal is off (core.portal, DISC-01): the developer's name stands in for the link.
     ...statusRow("version-too-new", [], "contact", "-no-page"),
     ...statusRow("channel-not-entitled", [], "contact", "-no-page"),
+    // UK-43 D4: a license held by the key alone is offered the account in one line, never `#key=`
+    // and never in `--json` (no new member). The page off: no line.
+    ...outcome(
+      "activate-floating",
+      "activate",
+      { mark: "ok", exit: 0, error: null, stdout: "screen", link: "portal" },
+      { exit: 0, error: null },
+    ),
+    ...outcome(
+      "activate-floating-no-page",
+      "activate",
+      { mark: "ok", exit: 0, error: null, stdout: "screen" },
+      { exit: 0, error: null },
+    ),
+    ...outcome(
+      "activate-waiting",
+      "activate",
+      {
+        mark: "ok",
+        exit: 0,
+        error: null,
+        stdout: "screen",
+        fix: ["login"],
+      },
+      { exit: 0, error: null },
+    ),
+    ...outcome(
+      "activate-identity-off",
+      "activate",
+      { mark: "ok", exit: 0, error: null, stdout: "screen", link: "portal" },
+      { exit: 0, error: null },
+    ),
+    ...outcome(
+      "status-floating",
+      "status",
+      { mark: "ok", exit: 0, error: null, stdout: "screen", link: "portal" },
+      { exit: 0, error: null },
+    ),
     ...outcome(
       "network",
       "devices list",

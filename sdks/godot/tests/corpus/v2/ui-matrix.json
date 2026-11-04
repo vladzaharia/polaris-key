@@ -320,7 +320,7 @@
         "mount": "Register the kit's verbs into a host CLI whose own top-level commands are input.host, with input.options. mounted: the commands the host gains, as typed (namespace first). error: the registration error (nothing is mounted): every host command equal to a namespace, a verb's first word or an alias, and the two options that resolve it. skipped: the verbs onCollision skip dropped; the kit warns once, naming them. hidden: the options help hides once config is given. The host's own commands are never renamed, removed or re-described.",
         "help": "The root help page's sections in order: the host's, under its headings, then one section whose heading is the kit copy key `copy` with what the mount added at the top level (a namespace is one entry). commands is each section's set; within a section the kit keeps its order.",
         "gate": "requireLicense(handler, {entitlement?}) before the host's command input.command. run: the action runs and exits as it does. flow: the kit's activate or sign-in flow runs inline, then the action. refuse: mark, the title (copy; {command} is input.command; no message line, because the fix follows), then link (portal: the product page, from the kit's portal URL; contact: `status.contact` with the developer's name, where the kit resolves no product page, WIRE-CONTRACT-V4 section 5.7: input.portal is false) and the fix verbs as command rows, written once to stream (stderr: no escape off a terminal), the exit; fix is the verbs filtered by input.mounted (absent: the end-user set), and a link stands in when none is left. fail: input.check (the check throws, or answers a status that is not a licenseStatus) draws a cross with copy (title and message), no fix row, exit 4. With --json stdout carries only `result`, the envelope's result line (CLI_JSON_VERSION 1).",
-        "outcomes": "Drive the kit's verb in input.situation (situations) on a Unicode terminal (json false) or with --json, and compare: exit; mark, the outcome's step mark (that symbol is drawn and the other of fail and warn is not); error and code, the result's fields (null: no error); stdout (empty: nothing on stdout; screen: the flow is drawn on stdout; result: only JSON lines, the last the result); fix, the verb ids of the command rows drawn, as a set; link, the row drawn where no fix verb is (portal: the product page link; contact: `status.contact` with the developer's name, where the kit resolves no product page, WIRE-CONTRACT-V4 section 5.7 - a situation whose name ends -no-page sets up a client whose discovery says the portal is off).",
+        "outcomes": "Drive the kit's verb in input.situation (situations) on a Unicode terminal (json false) or with --json, and compare: exit; mark, the outcome's step mark (that symbol is drawn and the other of fail and warn is not); error and code, the result's fields (null: no error); stdout (empty: nothing on stdout; screen: the flow is drawn on stdout; result: only JSON lines, the last the result); fix, the verb ids of the command rows drawn, as a set; link, the row drawn where no fix verb is (portal: the product page link; contact: `status.contact` with the developer's name, where the kit resolves no product page, WIRE-CONTRACT-V4 section 5.7 - a situation whose name ends -no-page sets up a client whose discovery says the portal is off; an `activate` row of that kind and no link draws neither the link nor a contact row, its success stands alone).",
         "stdin": "activate with no key, stdin of kind input.stdin (stdinKinds) given input.lines, each followed by a newline (null: nothing is written and the writer stays open). read: prompt (the masked entry), key (the first non-empty line, here the fixture key, without waiting for the writer to close) or none (the copy key, the exit, the error, and with withinMs the run ends, process and all, within that many milliseconds). The none screen is drawn on stdout, like every kit verb's screen (outcomes stdout: screen); stderr is the gate's, because a gated host command's stdout is the host's.",
         "capabilities": "detectTerminal over input.env, the streams (tty or pipe) and the flags (color false is --no-color), to colour, unicode, interactive, animate and links.",
         "exit": "The exit codes every terminal kit uses."
@@ -353,6 +353,11 @@
         "status-channel-not-entitled": "`status`: the license does not include this build's channel.",
         "status-version-too-new-no-page": "`status`: this version is above the license's allowed range, and the product's discovery says its portal is off (`core.portal` is `{enabled:false}`).",
         "status-channel-not-entitled-no-page": "`status`: the license does not include this build's channel, and the product's discovery says its portal is off (`core.portal` is `{enabled:false}`).",
+        "activate-floating": "`activate`, a well-formed key on a piped stdin, the license is held by the key alone (no account on this device, no address on the license) and Identity is on: after the success, the recommendation title and the product page link (never `#key=`).",
+        "activate-floating-no-page": "`activate`, as `activate-floating`, and the product's discovery says its portal is off (`core.portal` is `{enabled:false}`): the success alone, no recommendation line.",
+        "activate-waiting": "`activate`, as `activate-floating`, but the license was sent to an address and no account holds it: the masked address and the `login` command row.",
+        "activate-identity-off": "`activate`, as `activate-floating`, with Identity off for the product: the portal reason and the product page link.",
+        "status-floating": "`status` on a license held by the key alone (no account on this device, no address on the license): the license row says it is not in an account, and the product page link follows.",
         "network": "`devices list`: the request fails with the registry code `network`.",
         "key-refused": "`activate`, a well-formed key on a piped stdin: the server answers 401 `unauthorized`.",
         "device-limit": "`activate`, a well-formed key on a piped stdin: the server answers `device_limit` with a `manageUrl`; no key reader, so the flow ends.",
@@ -18725,6 +18730,120 @@
           "json": true
         },
         "expect": { "exit": 1, "error": null, "stdout": "result" }
+      },
+      {
+        "name": "activate-floating",
+        "input": {
+          "verb": "activate",
+          "situation": "activate-floating",
+          "json": false
+        },
+        "expect": {
+          "mark": "ok",
+          "exit": 0,
+          "error": null,
+          "stdout": "screen",
+          "link": "portal"
+        }
+      },
+      {
+        "name": "activate-floating, --json",
+        "input": {
+          "verb": "activate",
+          "situation": "activate-floating",
+          "json": true
+        },
+        "expect": { "exit": 0, "error": null, "stdout": "result" }
+      },
+      {
+        "name": "activate-floating-no-page",
+        "input": {
+          "verb": "activate",
+          "situation": "activate-floating-no-page",
+          "json": false
+        },
+        "expect": { "mark": "ok", "exit": 0, "error": null, "stdout": "screen" }
+      },
+      {
+        "name": "activate-floating-no-page, --json",
+        "input": {
+          "verb": "activate",
+          "situation": "activate-floating-no-page",
+          "json": true
+        },
+        "expect": { "exit": 0, "error": null, "stdout": "result" }
+      },
+      {
+        "name": "activate-waiting",
+        "input": {
+          "verb": "activate",
+          "situation": "activate-waiting",
+          "json": false
+        },
+        "expect": {
+          "mark": "ok",
+          "exit": 0,
+          "error": null,
+          "stdout": "screen",
+          "fix": ["login"]
+        }
+      },
+      {
+        "name": "activate-waiting, --json",
+        "input": {
+          "verb": "activate",
+          "situation": "activate-waiting",
+          "json": true
+        },
+        "expect": { "exit": 0, "error": null, "stdout": "result" }
+      },
+      {
+        "name": "activate-identity-off",
+        "input": {
+          "verb": "activate",
+          "situation": "activate-identity-off",
+          "json": false
+        },
+        "expect": {
+          "mark": "ok",
+          "exit": 0,
+          "error": null,
+          "stdout": "screen",
+          "link": "portal"
+        }
+      },
+      {
+        "name": "activate-identity-off, --json",
+        "input": {
+          "verb": "activate",
+          "situation": "activate-identity-off",
+          "json": true
+        },
+        "expect": { "exit": 0, "error": null, "stdout": "result" }
+      },
+      {
+        "name": "status-floating",
+        "input": {
+          "verb": "status",
+          "situation": "status-floating",
+          "json": false
+        },
+        "expect": {
+          "mark": "ok",
+          "exit": 0,
+          "error": null,
+          "stdout": "screen",
+          "link": "portal"
+        }
+      },
+      {
+        "name": "status-floating, --json",
+        "input": {
+          "verb": "status",
+          "situation": "status-floating",
+          "json": true
+        },
+        "expect": { "exit": 0, "error": null, "stdout": "result" }
       },
       {
         "name": "network",
