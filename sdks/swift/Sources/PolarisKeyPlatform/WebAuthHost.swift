@@ -194,8 +194,8 @@ public final class WebAuthHost: @unchecked Sendable {
         ) -> Bool {
             let work: @MainActor () -> Bool = { [self] in
                 let holder = Holder(anchor: Self.keyAnchor())
-                let session = ASWebAuthenticationSession(url: url, callbackURLScheme: callbackScheme) {
-                    callback, error in
+                // The system calls this on a background queue, so it must not be main-actor isolated.
+                let finished: @Sendable (URL?, (any Error)?) -> Void = { callback, error in
                     if let callback {
                         completion(.callback(callback.absoluteString))
                     } else if let e = error as? ASWebAuthenticationSessionError, e.code == .canceledLogin {
@@ -204,6 +204,8 @@ public final class WebAuthHost: @unchecked Sendable {
                         completion(.failed)
                     }
                 }
+                let session = ASWebAuthenticationSession(
+                    url: url, callbackURLScheme: callbackScheme, completionHandler: finished)
                 session.presentationContextProvider = holder
                 session.prefersEphemeralWebBrowserSession = ephemeral
                 holder.session = session
