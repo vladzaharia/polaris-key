@@ -26,6 +26,7 @@ from typing import IO, Any, Callable, Dict, List, Mapping, Optional, Sequence, T
 from ...constants_generated import ErrorCode
 from ...core.errors import PolarisError
 from ...core.models import license_user
+from ..core.format import mask_email
 from ..core.identity import presentation_source
 from ..core.models import (
     BootView,
@@ -244,14 +245,7 @@ def status(client: Any, t: Terminal) -> Outcome:
     signed_in = signed_in or license_user(profile) is not None
     ar = getattr(st, "allowedRange", None)
     core = getattr(client, "core", None)
-    # The tier the licence carries ("Pro"), as the Node kit reads it: its label, else its id.
-    try:
-        info = client.license.license_info()
-    except Exception:
-        info = None
-    tier = (getattr(info, "tierLabel", None) or getattr(info, "tier", None)) if info is not None else None
-    if tier and not getattr(info, "tierLabel", None):
-        tier = tier[:1].upper() + tier[1:]  # the id with an initial capital, as Node's tierName
+    tier = _tier_of(client)
     view = gate_view(
         st.status,
         now=_now(),
@@ -267,9 +261,12 @@ def status(client: Any, t: Terminal) -> Outcome:
         developer=t.kit.identity.developer,
     )
     usable = bool(client.is_licensed())
-    if not usable:
+    # Floating (UK-43 D4): a key-only device whose license has no holder address.
+    held = _license_holder(client, signed_in)
+    floating = view.component == "AccountAndLicense" and view.state == "key-only" and held == (False, "")
+    if not usable or floating:
         screens.ensure_portal(client)  # the link a refusal draws comes from discovery (DISC-01)
-    lines = screens.gate(t.kit, view, t.verb or "status", screens.portal_url(client))
+    lines = screens.gate(t.kit, view, t.verb or "status", screens.portal_url(client), floating)
     data: Dict[str, Any] = {
         "status": st.status,
         "usable": usable,
@@ -283,6 +280,58 @@ def status(client: Any, t: Terminal) -> Outcome:
         "tier": tier or None,
     }
     return Outcome(EXIT.ok if usable else EXIT.failed, lines, data)
+
+
+def _tier_of(client: Any) -> Optional[str]:
+    """The tier the licence carries ("Pro"), as the Node kit reads it: its label, else its id."""
+    try:
+        info = client.license.license_info()
+    except Exception:
+        return None
+    tier = (getattr(info, "tierLabel", None) or getattr(info, "tier", None)) if info is not None else None
+    if tier and not getattr(info, "tierLabel", None):
+        tier = tier[:1].upper() + tier[1:]  # the id with an initial capital, as Node's tierName
+    return tier or None
+
+
+def _license_holder(client: Any, signed_in: Optional[bool] = None) -> Optional[Tuple[bool, str]]:
+    """Who holds the license: ``(signed_in, email)``, from the account signed in here, else the
+    license document's profile. ``email`` is the address the license was sent to (waiting), empty
+    when the key alone holds it (floating); ``None`` when no license document is held, so nothing
+    is known. The address is the purchaser's, never an account (UK-43 D4)."""
+    try:
+        info = client.license.license_info()
+    except Exception:
+        return None
+    if info is None:
+        return None
+    if signed_in is None:
+        try:
+            signed_in = bool(client.identity.current())
+        except Exception:
+            signed_in = False
+    profile = getattr(info, "profile", None)
+    email = getattr(profile, "email", None) if profile is not None else None
+    return bool(signed_in), email if isinstance(email, str) else ""
+
+
+def _holder_rows(t: Terminal, client: Any) -> List[Line]:
+    """The line after a successful ``activate``: where a license held by the key alone can be kept
+    in an account. Nothing for an account's license, and nothing when the product page is off."""
+    held = _license_holder(client)
+    if held is None or held[0]:
+        return []
+    try:
+        identity_on = client.capabilities().get("identity", {}).get("enabled") is True
+    except Exception:
+        identity_on = False
+    masked = mask_email(held[1])
+    if t.kit.env.symbols == "ascii":
+        masked = masked.replace("\u2022", "*")
+    if identity_on and masked:
+        return screens.holder_rows(t.kit, "waiting", masked=masked)
+    screens.ensure_portal(client)
+    return screens.holder_rows(t.kit, "floating" if identity_on else "identity-off", screens.portal_url(client))
 
 
 def _activation_data(result: Any) -> Dict[str, Any]:
@@ -375,7 +424,8 @@ def activate(client: Any, t: Terminal, key: Optional[str], *, reason: Optional[S
                 data["status"] = client.status().status
             except Exception:
                 pass
-            return Outcome(EXIT.ok, screens.activate(k, view, verb), data)
+            holder = [] if t.env.json else _holder_rows(t, client)
+            return Outcome(EXIT.ok, screens.activate(k, view, verb, holder, _tier_of(client)), data)
         if view.component == "DeviceLimit" and view.manage_url and t.env.interactive:
             if not _replace_in_browser(t, view, verb):
                 # The hints give way to the line that says what to run: nothing live-looking is

@@ -709,6 +709,7 @@ _PARITY_NOW = 1_791_201_600
 def _status_client(status: str, *, tier: Optional[str] = "Pro") -> Any:
     info = SimpleNamespace(tier="pro", tierLabel=tier, profile=None)
     return SimpleNamespace(
+        product=PRODUCT,
         status=lambda: SimpleNamespace(status=status, graceUntil=_PARITY_NOW + 14 * 86_400, allowedRange=None),
         license=SimpleNamespace(
             get_profile=lambda: DocProfile(

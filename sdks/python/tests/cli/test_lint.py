@@ -104,7 +104,13 @@ BORROWS: Dict[str, Dict[str, str]] = {
         "signin.cli.ifNotOpened": "SIGN-IN.md §5.2 terminal hand-off copy",
         "signin.cli.opening": "SIGN-IN.md §5.2 terminal hand-off copy",
     },
+    "ActivateDone": {
+        "account.tier": "the success row names the tier, as the Node kit's",
+        "cli.fix.signIn": "waiting: the login command's label",
+        "activate.recommend.title": "waiting and floating: the one line after the success",
+    },
     "Activate": {
+        "account.tier": "the success row names the tier, as the Node kit's",
         "cli.keys.activate": "the key prompt's hints, in the Node kit's words",
         "cli.activate.otherProduct": "a key for another product is a warning",
         "cli.nothingChanged": "cancelling the prompt changes nothing",
