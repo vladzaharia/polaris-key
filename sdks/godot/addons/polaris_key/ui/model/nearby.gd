@@ -6,7 +6,7 @@ extends RefCounted
 ## the screen says.
 ##
 ## States: entry, ask, approved, not-nearby, mismatch, denied, expired, device-limit, choose,
-## account-required, rate-limited, hidden.
+## account-required, rate-limited, listening, stopped, failed, hidden.
 
 const View := preload("res://addons/polaris_key/ui/model/view.gd")
 
@@ -39,6 +39,12 @@ static func nearby_approval_view(ctx: RefCounted) -> Dictionary:
 		"choose": [["signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.approve.deny"], null, null],
 		"account-required": [["core.codes.account_required.title", "core.codes.account_required.message", "signin.key.signIn"], "signin.key.signIn", "neutral"],
 		"rate-limited": [["core.codes.rate_limited.title", "signin.nearby.rateLimitedBody", "common.done"], "common.done", "neutral"],
+		# The approver's own screen (UXR-47b B3): what it does, that it is listening, and the way out.
+		"listening": [["signin.nearby.listenTitle", "signin.nearby.listenBody", "signin.cli.approveWaiting", "common.done"], "common.done", "neutral"],
+		# Two declined requests in ten minutes stop the advert: say so.
+		"stopped": [["signin.nearby.pausedTitle", "signin.nearby.pausedBody", "signin.nearby.startAgain", "common.done"], "signin.nearby.startAgain", "neutral"],
+		# A server or network failure: nothing was approved, and the retry is on the new device.
+		"failed": [["core.codes.network.title", "signin.nearby.failedBody", "common.done"], "common.done", "neutral"],
 	}
 	if step is String and outcomes.has(step):
 		var o: Array = outcomes[step]

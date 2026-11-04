@@ -18,6 +18,14 @@ extends RefCounted
 ##   link.offer() / accept() / decline() / dismiss(), link.pending
 ##                                         the link offer after a sign-in this device started through
 ##                                         the browser; see PKeyIdentityLink
+##   sign_in.start_nearby(opts)            nearby sign-in on a new device (a PKeyResult holding a
+##                                         PKeyNearbySignIn: the approvers, the code, `wait()`,
+##                                         `confirm_account()`); opts {device_name}. See PKeyNearbySignIn
+##   nearby_available(role)                this device can take part in nearby sign-in: role "requester" (the new
+##                                         device, the default) or "approver" (the signed-in device)
+##   nearby.on_request(handler, opts)      the signed-in device approves a new device nearby (a coroutine answering
+##                                         a PKeyResult holding the running approver; the handler gets a
+##                                         PKeyNearbyAsk per session); see PKeyIdentityNearby
 ##   auto_sign_in(opts)                    the automatic sign-in ladder (a coroutine answering a
 ##                                         PKeyAutoSignInResult); see PKeyIdentityAutoSignIn
 ##   install_platform_provider(provider)   add a platform sign-in (PKeyPlatformIdentityProvider) the
@@ -79,6 +87,8 @@ var on_change: Callable = Callable():
 
 ## `sign_in.start(opts)`.
 var sign_in: PKeySignInNamespace
+## `nearby.on_request(handler, opts)`: the approving device (PKeyIdentityNearby).
+var nearby: PKeyIdentityNearby
 ## `choice.licenses / devices / complete / cancel`: the licence choice after a redirect sign-in
 ## that asked `license_choice = "app"` (PKeyIdentityChoice).
 var choice: PKeyIdentityChoice
@@ -88,6 +98,8 @@ var exchange: PKeyIdentityExchange
 var ladder: PKeyIdentityAutoSignIn
 ## `link.offer / accept / decline`: the link offer after a sign-in this device started (PKeyIdentityLink).
 var link: PKeyIdentityLink
+## The nearby routes (`nearby/start`, `nearby/poll`): see PKeyIdentityNearbyRoutes.
+var nearby_routes: PKeyIdentityNearbyRoutes
 ## The device key port (PKeyDeviceKeyStore or the options' own) the exchange signs its proof with:
 ## the autoload hands identity the one instance the key ring holds. Null until configure().
 var device_keys: Object = null
@@ -108,6 +120,17 @@ var native_opener: Object = null
 ## Tests and hosts: the system browser sheet behind the Apple opener (a PKeyAppleAuth, or a stand-in with `open`,
 ## `cancel_sheet` and `sheet_id`). Null reads the process's, with the plugin.
 var auth_opener: Object = null
+## Nearby sign-in seams. `nearby_lan`: the LAN half (an object with `lane_check(options) -> PKeyResult` and
+## `request(options)`, a coroutine answering a PKeyResult holding the request handle); null: the host's
+## `cloud_connect.nearby`. `nearby_timer`: `func(seconds: float, fn: Callable) -> Callable` runs `fn` after
+## `seconds` of a monotonic clock and returns the call that cancels it; empty: a scene-tree timer.
+## `nearby_acquisition_sync`: false skips the sync after the person confirmed the account (replay recordings).
+var nearby_lan: Object = null
+var nearby_timer: Callable = Callable()
+var nearby_acquisition_sync := true
+## The key ring a nearby sign-in adopts a wrap into and an approval seals one from; null: the host's `keyring`.
+var nearby_keyring: Object = null
+
 ## Conformance replay only: false skips the forced sync after a redirect token (the `redirect-web-*`
 ## recordings hold the token exchange, not the sync that follows it).
 var redirect_acquisition_sync := true
@@ -129,6 +152,8 @@ func _init() -> void:
 	exchange = PKeyIdentityExchange.new(self)
 	ladder = PKeyIdentityAutoSignIn.new(self)
 	link = PKeyIdentityLink.new(self)
+	nearby_routes = PKeyIdentityNearbyRoutes.new(self)
+	nearby = PKeyIdentityNearby.new(self)
 
 
 ## Bind to Core (PolarisKey.configure). A sign-in in progress is cancelled.
@@ -152,6 +177,8 @@ func _cancel_active() -> void:
 	var s = _active.get_ref() if _active != null else null
 	_active = null
 	if s is PKeySignInSession:
+		s.cancel()
+	elif s is PKeyNearbySignIn:
 		s.cancel()
 
 
@@ -198,6 +225,9 @@ func copy_link(session: PKeySignInSession) -> void:
 func current() -> Variant:
 	var core := _core()
 	if core == null or core.cache == null or core.cache.license == null:
+		return null
+	# A nearby sign-in no person confirmed is no sign-in (rule 12).
+	if core.tokens.unconfirmed():
 		return null
 	var doc = core.cache.license.get("doc")
 	if not (doc is Dictionary) or not (doc.get("profile") is Dictionary):
@@ -253,6 +283,7 @@ func sign_out() -> PKeyResult:
 	var r := await _account.sign_out()
 	if r.ok:
 		await _mark_signed_out()
+		_drop_unconfirmed()
 		return r
 	if not (r.detail is Dictionary and r.detail.get("kind") == "unavailable"):
 		return r
@@ -263,7 +294,17 @@ func sign_out() -> PKeyResult:
 	var released: PKeyResult = await license.deactivate()
 	if released.ok:
 		await _mark_signed_out()
+		_drop_unconfirmed()
 	return released
+
+
+## A sign-out that kept the token (`released: false`) must not keep one nobody confirmed.
+func _drop_unconfirmed() -> void:
+	var core := _core()
+	if core != null and core.tokens.unconfirmed():
+		core.tokens.clear()
+		core.cache.clear()
+		core.cache.set_explicit_sign_out(true)
 
 
 ## The Worker accepted a sign-out: no silent rung runs until the person signs in again, and each
@@ -328,6 +369,140 @@ func _on_account_wiped() -> void:
 static func default_device_name() -> String:
 	return PKeyDeviceLabel.platform_default()
 
+
+
+# ── Nearby sign-in (the new device D) ───────────────────────────────────────────────────
+
+## The LAN half: the seam, else the host's `cloud_connect.nearby`; null when there is none.
+func _nearby_lan() -> Object:
+	if nearby_lan != null:
+		return nearby_lan
+	var connect: Variant = _host.get("cloud_connect") if _host != null and is_instance_valid(_host) else null
+	return connect.nearby if connect != null else null
+
+
+## The key ring, or null.
+func _nearby_keyring() -> Object:
+	if nearby_keyring != null:
+		return nearby_keyring
+	var ring: Variant = _host.get("keyring") if _host != null and is_instance_valid(_host) else null
+	return ring as Object
+
+
+## Whether this device can take part in nearby sign-in: as D (`role` "requester") the runtime can browse the network
+## and the product's discovery (as last read) names the start and poll routes; as M (`role` "approver") it can
+## advertise and discovery names the approve route. No request is made.
+func nearby_available(role := "requester") -> bool:
+	var core := _core()
+	var lan := _nearby_lan()
+	if core == null or not core.started or lan == null or not core.enabled("identity"):
+		return false
+	if not (lan.lane_check({}) as PKeyResult).ok:
+		return false
+	var fragment := PKeyDiscovery.identity_from(core.discovery_manifest)
+	var ep: Dictionary = fragment.get("endpoints", {})
+	if fragment.get("nearby", false) != true:
+		return false
+	if role == "approver":
+		return lan.has_method("on_request") and String(ep.get("nearbyApprove", "")) != ""
+	return String(ep.get("nearbyStart", "")) != "" and String(ep.get("nearbyPoll", "")) != ""
+
+
+## `sign_in.start_nearby(opts)`: refuses before anything is sent when it cannot run (`nearby-unsupported` when
+## this runtime cannot browse the network, the typed `service-unavailable` N/A when discovery names no nearby
+## approval). Then `nearby/start`, then the LAN request (a failure there leaves the Worker's request to lapse).
+## ok with a PKeyNearbySignIn. A session already running is cancelled first. A coroutine.
+func _start_nearby(opts: Dictionary) -> PKeyResult:
+	_cancel_active()
+	var core := _core()
+	if core == null or not core.started:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() before sign_in.start_nearby().")
+	var gen := _starts
+	var lan := _nearby_lan()
+	var lane := _nearby_lane(lan, opts)
+	if not lane.ok:
+		# An unsupported runtime never calls a route for it (rule 10).
+		return lane
+	var started := await nearby_routes.start(String(opts.get("device_name", "")))
+	if not started.ok:
+		return started
+	var st: PKeyIdentityNearbyRoutes.Started = started.detail
+	var label := PKeyDeviceLabel.resolve(String(opts.get("device_name", "")), core.options)
+	var request_options: Dictionary = (opts.get("lan", {}) as Dictionary).duplicate()
+	request_options["request"] = st.request
+	request_options["expires_in"] = st.expires_in
+	if label != "":
+		request_options["label"] = label
+	var made: PKeyResult = await lan.request(request_options)
+	if not made.ok:
+		return made
+	var session := PKeyNearbySignIn.new(self, nearby_routes, st, made.detail, label, core.clock.system_now() + st.expires_in)
+	_active = weakref(session)
+	if gen != _starts:
+		# A newer start or a rebind landed while this one was in flight.
+		session.cancel()
+	return PKeyResult.success(session)
+
+
+## ok when the LAN half can browse here, else the typed `nearby-unsupported` (or the lane's own failure).
+static func _nearby_lane(lan: Object, opts: Dictionary) -> PKeyResult:
+	if lan != null:
+		return lan.lane_check(opts)
+	var detail := {"feature": PKeyConstants.Feature.IDENTITY_NEARBY, "reason": PKeyConstants.UnsupportedReason.RUNTIME, "detail": "This runtime cannot look for nearby devices."}
+	return PKeyResult.failure(PKeyConstants.ErrorCode.NEARBY_UNSUPPORTED, "Nearby sign-in is not available here.", detail)
+
+
+## A scene-tree timer on the monotonic clock; `nearby_timer` replaces it in tests. Returns the call that cancels it.
+func _nearby_timer(seconds: float, fn: Callable) -> Callable:
+	if nearby_timer.is_valid():
+		return nearby_timer.call(seconds, fn)
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return Callable()
+	var live := [true]
+	tree.create_timer(maxf(seconds, 0.01), true, false, true).timeout.connect(func() -> void:
+		if live[0]:
+			live[0] = false
+			fn.call())
+	return func() -> void: live[0] = false
+
+
+## The person confirmed a nearby sign-in's account: the held token (this session's own) becomes the sign-in, the
+## subject is stored and the `signedIn` event goes out, so Cloud Sync and Connect start now and not before
+## (section 12.11.5 rule 9). `&"ok"`, or why not (see PKeyTokenManager.confirm_unconfirmed). No await: the
+## compare and the write are one step.
+func _nearby_confirm(subject: String, token: String) -> StringName:
+	var core := _core()
+	if core == null or subject == "":
+		return &"mismatch"
+	var verdict := core.tokens.confirm_unconfirmed(token)
+	if verdict == &"ok" and _account != null:
+		_account.note_signed_in(subject)
+	return verdict
+
+
+## The acquisition sync after a nearby sign-in was confirmed (`nearby_acquisition_sync` off skips it).
+func _nearby_acquired() -> void:
+	if nearby_acquisition_sync and on_acquired.is_valid():
+		await on_acquired.call()
+
+
+## An unconfirmed nearby sign-in ended: the Worker is asked to sign out (best effort) and, whatever it answered,
+## the token, its mark and the documents it fetched go locally; the token goes before its mark. Only `token`,
+## this session's own, is touched: another sign-in that replaced it meanwhile is left alone.
+func _nearby_discard_token(token: String) -> void:
+	var core := _core()
+	if core == null or core.tokens.current() != token:
+		return
+	if _account != null:
+		await _account.nearby_sign_out()
+	if core.tokens.current() != token:
+		return
+	core.tokens.bump_sign_out_generation()
+	core.tokens.clear()
+	core.cache.clear()
+	core.cache.set_explicit_sign_out(true)
+	_on_account_wiped()
 
 
 # ── The sign-in ──────────────────────────────────────────────────────────────────────────

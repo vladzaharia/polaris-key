@@ -40,10 +40,23 @@ extends RefCounted
 
 const RING_ID_RE := "\\Arg_[A-Za-z0-9_-]{22}\\z"
 const FEATURE := "sync.keyring"
+## The most a `KEYRING_WRAP` record is read at (a real one is about 300 bytes).
+const WRAP_RECORD_MAX := 2048
+const WRAP_RECORD_KEYS := ["ringId", "epoch", "kid", "kem", "enc", "ct"]
 
 var product: String
-var device_id: String
+## This device's id, which a wrap to it is bound to. A ring made by `for_core` reads it from Core when it is used:
+## Core learns the id at `start()`, after the ring is built.
+var device_id: String:
+	get:
+		var live := String(_device_source.call()) if _device_source.is_valid() else ""
+		return live if live != "" else _device_id
+	set(value):
+		_device_id = value
 var codec: Codec
+
+var _device_id := ""
+var _device_source: Callable = Callable()
 
 var _requester: Callable
 var _keys: Object
@@ -184,7 +197,12 @@ func _to_string() -> String:
 static func for_core(core: PKeyCore, keys: Object, vault: PKeySyncRingVault) -> PKeySyncRing:
 	var req := func(method: String, path: String, body: Variant) -> PKeyResult:
 		return await core.request(method, path, body, true)
-	return PKeySyncRing.new(core.product, core.device_id, req, keys, vault)
+	var ring := PKeySyncRing.new(core.product, core.device_id, req, keys, vault)
+	var ref := weakref(core)
+	ring._device_source = func() -> String:
+		var c := ref.get_ref() as PKeyCore
+		return c.device_id if c != null else ""
+	return ring
 
 
 # ── State ────────────────────────────────────────────────────────────────────────────────
@@ -306,7 +324,22 @@ func accept_ring_change(confirmed: Dictionary) -> PKeyResult:
 	return r
 
 
-func _unlock_with(accept: Variant) -> PKeyResult:
+## Takes the wrap a nearby approval sent over the LAN (a `KEYRING_WRAP` record body) instead of waiting for the
+## server's copy. The ring, epoch and `kid` it names are checked against a FRESH read and the pin first (a ring
+## that is not the pinned one is `ring-changed` and is not opened; one that is not the served ring, or a record
+## that is not a wrap, is `locked` with `unusable-wrap`). A root already held for the same ring and epoch stays.
+## Call it only after the person confirmed the signed-in account (V5 section 15.6.1 rule 12).
+func adopt_wrap(record: Variant) -> PKeyResult:
+	var offered: Variant = parse_wrap_record(record)
+	if offered == null:
+		return _locked_result("unusable-wrap")
+	await _enter()
+	var r := await _unlock_with(null, offered)
+	_leave()
+	return r
+
+
+func _unlock_with(accept: Variant, offered: Variant = null) -> PKeyResult:
 	var st := await _read_state()
 	if not st.ok:
 		return st
@@ -335,6 +368,8 @@ func _unlock_with(accept: Variant) -> PKeyResult:
 	var kid := _unhex(ring["root_kid"], 16)
 	if kid == null:
 		return _locked_result("unusable-wrap")
+	if offered != null and (offered["ring_id"] != ring["ring_id"] or offered["epoch"] != ring["epoch"] or offered["kid"] != ring["root_kid"]):
+		return _locked_result("unusable-wrap")
 	var h := _memory.held
 	if h != null and h.matches(ring["ring_id"], ring["epoch"], kid):
 		return unlocked_r
@@ -345,6 +380,8 @@ func _unlock_with(accept: Variant) -> PKeyResult:
 			return sr_hold
 		return unlocked_r
 	var wrap: Variant = st.detail["wrap"]
+	if offered != null:
+		wrap = {"epoch": offered["epoch"], "kid": offered["kid"], "kem": offered["kem"], "enc": offered["enc"], "ct": offered["ct"], "by": null}
 	if wrap == null:
 		return _locked_result("no-wrap")
 	var open := _open_own_wrap(ring, wrap, kid)
@@ -413,6 +450,21 @@ func wrap_to(p_device_id: String, agree_key: Variant) -> PKeyResult:
 
 
 func _put_wrap(p_device_id: String, agree_key: Variant) -> PKeyResult:
+	var sealed := _seal_wrap(p_device_id, agree_key)
+	if not sealed.ok:
+		return sealed
+	return await _call("PUT", "devices/keyring/wraps/%s" % p_device_id.uri_encode(), _put_body(sealed.detail))
+
+
+## The first half of `wrap_to`: the root sealed to `agree_key` for `device_id`, stored nowhere. ok with the wrap
+## as {ring_id, epoch, kid (hex), kem, enc, ct (base64url)}. A nearby approver sends `wrap_record(wrap)` over the
+## nearby channel first and only then stores the same bytes with `put_wrap`, so a refused or failed `PUT` cannot
+## take the channel copy with it (V5 section 13.11.3). Nothing awaits: the root is read once.
+func seal_wrap_to(p_device_id: String, agree_key: Variant) -> PKeyResult:
+	return _seal_wrap(p_device_id, agree_key)
+
+
+func _seal_wrap(p_device_id: String, agree_key: Variant) -> PKeyResult:
 	var h := _memory.held
 	if h == null:
 		return _locked()
@@ -426,9 +478,83 @@ func _put_wrap(p_device_id: String, agree_key: Variant) -> PKeyResult:
 	var w := PKeySyncWrap.wrap_root(key, product, p_device_id, h.ring_id, h.epoch, h.kid, h.root)
 	if w.is_empty():
 		return _bad_arg("The agreement key is not usable.")
-	var body := {"epoch": h.epoch, "kid": h.kid.hex_encode()}
-	body.merge(_wire_wrap(w))
-	return await _call("PUT", "devices/keyring/wraps/%s" % p_device_id.uri_encode(), body)
+	var wire := _wire_wrap(w)
+	return PKeyResult.success({"ring_id": h.ring_id, "epoch": h.epoch, "kid": h.kid.hex_encode(), "kem": wire["kem"], "enc": wire["enc"], "ct": wire["ct"]})
+
+
+## The second half of `wrap_to`: `PUT .../wraps/{deviceId}` with a wrap `seal_wrap_to` made.
+func put_wrap(p_device_id: String, wrap: Dictionary) -> PKeyResult:
+	if not _device_id_ok(p_device_id):
+		return _bad_arg("A device id is required.")
+	if _parse_wrap_members(wrap) == null:
+		return _bad_arg("Not a wrap.")
+	await _enter()
+	var r := await _call("PUT", "devices/keyring/wraps/%s" % p_device_id.uri_encode(), _put_body(wrap))
+	_leave()
+	return r
+
+
+static func _put_body(w: Dictionary) -> Dictionary:
+	return {"epoch": w["epoch"], "kid": w["kid"], "kem": w["kem"], "enc": w["enc"], "ct": w["ct"]}
+
+
+## The `KEYRING_WRAP` (0x0030) record body for a wrap `seal_wrap_to` made: the same wrap with the ring it
+## belongs to, `{ringId, epoch, kid, kem, enc, ct}`.
+static func wrap_record(w: Dictionary) -> PackedByteArray:
+	return PKeyJson.stringify({"ringId": w["ring_id"], "epoch": w["epoch"], "kid": w["kid"], "kem": w["kem"], "enc": w["enc"], "ct": w["ct"]}).to_utf8_buffer()
+
+
+## A `KEYRING_WRAP` record body as a wrap {ring_id, epoch, kid, kem, enc, ct}, or null when it is not exactly
+## `{ringId, epoch, kid, kem, enc, ct}` (a missing or extra member, a wrong type or size, an oversized body).
+## Nothing is opened here.
+static func parse_wrap_record(body: Variant) -> Variant:
+	if not (body is PackedByteArray) or (body as PackedByteArray).size() > WRAP_RECORD_MAX:
+		return null
+	var parsed := PKeyJson.parse_bytes(body)
+	if not parsed["ok"] or not (parsed["value"] is Dictionary):
+		return null
+	var raw: Dictionary = parsed["value"]
+	if raw.size() != WRAP_RECORD_KEYS.size():
+		return null
+	for k: String in WRAP_RECORD_KEYS:
+		if not raw.has(k):
+			return null
+	return _parse_wrap_members({"ring_id": raw["ringId"], "epoch": raw["epoch"], "kid": raw["kid"], "kem": raw["kem"], "enc": raw["enc"], "ct": raw["ct"]})
+
+
+## The wrap with every member checked (type, shape, size), as a fresh Dictionary; null when any is not.
+static func _parse_wrap_members(w: Dictionary) -> Variant:
+	var ring_id: Variant = w.get("ring_id")
+	var epoch: Variant = w.get("epoch")
+	var kid: Variant = w.get("kid")
+	var kem: Variant = w.get("kem")
+	var enc: Variant = w.get("enc")
+	var ct: Variant = w.get("ct")
+	if not (ring_id is String) or RegEx.create_from_string(RING_ID_RE).search(ring_id) == null:
+		return null
+	if not _is_num(epoch) or float(epoch) != floorf(float(epoch)) or float(epoch) < 1.0 or float(epoch) > 9007199254740991.0:
+		return null
+	if not (kid is String) or (kid as String).length() != 32 or not _is_lower_hex(kid):
+		return null
+	if not ((kem is String and kem == "x25519") or (_is_num(kem) and float(kem) == float(PKeySyncHpke.KEM_X25519))):
+		return null
+	if not (enc is String) or not (ct is String):
+		return null
+	var enc_bytes: Variant = PKeyB64Url.decode_strict(enc)
+	var ct_bytes: Variant = PKeyB64Url.decode_strict(ct)
+	if enc_bytes == null or (enc_bytes as PackedByteArray).size() != PKeySyncHpke.ENC_BYTES:
+		return null
+	if ct_bytes == null or (ct_bytes as PackedByteArray).size() != PKeySyncWrap.WRAP_CT_BYTES:
+		return null
+	return {"ring_id": ring_id, "epoch": int(epoch), "kid": kid, "kem": kem, "enc": enc, "ct": ct}
+
+
+static func _is_lower_hex(s: String) -> bool:
+	for i in s.length():
+		var c := s.unicode_at(i)
+		if not ((c >= 48 and c <= 57) or (c >= 97 and c <= 102)):
+			return false
+	return true
 
 
 ## `DELETE .../wraps/{deviceId}`: the Worker removes a device's own wrap only.

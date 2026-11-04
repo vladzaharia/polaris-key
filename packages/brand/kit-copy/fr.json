@@ -601,6 +601,7 @@
     "signin.nearby.expiredBody": "Recommencez sur {device}.",
     "signin.nearby.pick": "Choisissez l’appareil à solliciter.",
     "signin.nearby.another": "Choisir un autre appareil",
+    "signin.nearby.method": "Se connecter avec un appareil à proximité",
     "signin.nearby.noneTitle": "Aucun appareil trouvé",
     "signin.nearby.noneBody": "Ouvrez {app} sur votre autre appareil et choisissez Approuver un appareil à proximité.",
     "signin.nearby.listenTitle": "Approuver un appareil à proximité",

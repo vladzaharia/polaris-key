@@ -314,15 +314,14 @@
       "note": "I-48.13: PolarisKey.identity.link (services/identity/link.gd): pending, offer() (GET link with the device token), accept(link_handle) (POST link with the held handle, else one platform provider prompt over a fresh nonce; proof purpose link by the device key), decline() and dismiss(), each a coroutine answering a PKeyLinkResult. The offer opens only after a sign-in this device started through the browser (a redirect, native or not, or a licence choice one left) that named its subject; a device-code, exchange, nearby or restore sign-in never opens it, and without one offer() and accept() answer unavailable with no request. The handle an exchange left is held in memory for its lifetime and spent by the attempt that uses it, except by step_up_required. A decline is sha256(issuer + sub) in a sealed record of its own (services/identity/link_store.gd, link.v1); a declined account gets unavailable with no request, and a link_conflict is remembered the same way. The redirect token request carries the held device token as the bearer only to a token endpoint on the product's origin. Refusals are typed (step_up_required, link_conflict, not_found, invalid_grant). The link-offer, link-errors and link-game transcripts are replayed in tests/suite_transcripts.gd; tests/identity/test_link.gd maps the rules."
     },
     "identity.nearby": {
-      "status": "planned",
-      "wp": "I-48",
+      "status": "implemented",
       "except": [
         {
           "runtime": "web",
           "reason": "runtime"
         }
       ],
-      "note": "Nearby approval (I-40.8 transcripts, I-48)."
+      "note": "Nearby sign-in on both devices (WIRE-CONTRACT-V5 section 12.11.5 and 15.6.1). The new device D: PolarisKey.identity.sign_in.start_nearby(opts) answers a PKeyNearbySignIn (the approvers, the code, wait(), confirm_account(), decline_account(), wrap); the gate draws nearby-prompt, nearby-wait and nearby-done. The token is held under an unconfirmed mark until the person confirms the account; a decline, a cancel, the 300 s deadline and the next start discard it once. The approving device M: PolarisKey.identity.nearby.on_request(handler, opts) advertises while the person has Approve a nearby device open and hands each session to the handler as a PKeyNearbyAsk (pick, deny); nearby/approve takes only a verified request whose code the person picked, sends D's deviceId, and answers a licence choice one tap per licence; leaving the codes or the choice answers Deny. With a key ring that holds the root, M seals the wrap, sends it as KEYRING_WRAP (0x0030) and only then stores it (PKeySyncRing.seal_wrap_to, put_wrap); D adopts it after the confirmation (adopt_wrap, strict record parser) and drops it on a decline. The kit: PKeyNearbyApproval with PKeyNearbyApprovalFlow, and the account tab's Approve a nearby device row (nearby_approval_requested). Proven by tests/identity/{test_nearby,test_nearby_approve,test_nearby_wrap,test_gate_nearby}.gd, tests/connect/nearby_*.gd, the six nearby-* transcripts replayed in suite_transcripts (D and M as a second client) and the ui scenarios. The web has no LAN discovery. Residual owed to the owner: two phones and a TV QR on the OS-6 device run (the native mDNS lanes are unit-tested over fakes, not on devices)."
     },
     "identity.keyentry": {
       "status": "implemented",

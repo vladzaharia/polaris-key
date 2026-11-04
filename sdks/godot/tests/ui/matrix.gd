@@ -87,6 +87,11 @@ const TIGHT_CASES := [
 	["gate.offline", "custom", "1170x2532@3"],
 	# Four large-type words stack taller than the phone's page: Link, the auto step's primary, is a scroll away.
 	["sign_in.auto_link", "native36", "1170x2532@3"],
+	# The nearby wait at 36 px type on a 390 dp phone: "Approve" and the code fill the card's width.
+	["sign_in.nearby_wait", "native36", "1170x2532@3"],
+	["sign_in.nearby_searching", "native36", "1170x2532@3"],
+	["sign_in.nearby_wait_named", "native36", "1170x2532@3"],
+	["sign_in.nearby_choose", "native36", "1170x2532@3"],
 	# A step that opens at its top (title in view, KF-godot): at 36 px on a 360 px canvas the primary is
 	# a scroll away (asserted reachable by pad); it never opens scrolled past its title.
 	["sign_in.auto_link", "native36", "640x360"],
@@ -355,6 +360,11 @@ const SCREENS := [
 	["sign_in.auto_link", "sign_in_step", "link offer, per developer", "full"],
 	["sign_in.auto_confirm", "sign_in_step", "confirm, the account's email", "full"],
 	["sign_in.nearby_wait", "sign_in_step", "nearby wait", "full"],
+	["sign_in.nearby_searching", "sign_in_step", "nearby searching", "full"],
+	["sign_in.nearby_choose", "sign_in_step", "nearby choose", "full"],
+	["sign_in.nearby_wait_named", "sign_in_step", "nearby wait, the code on a named device", "full"],
+	["sign_in.nearby_none_found", "sign_in_step", "nearby none found", "full"],
+	["sign_in.nearby_denied", "sign_in_step", "nearby denied", "full"],
 	["nearby.ask", "nearby", "ask", "full"],
 	["offline", "offline", "native", "full"],
 	["boot", "boot", "syncing", "full"],

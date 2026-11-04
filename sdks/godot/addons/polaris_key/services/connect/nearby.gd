@@ -104,6 +104,12 @@ func request(options := {}) -> PKeyResult:
 	return PKeyResult.success(PKeyNearbyRequest.new(r))
 
 
+## Whether this runtime has a discovery lane to browse with: ok, or the typed `nearby-unsupported`. No request, no
+## socket. Nearby sign-in asks before it calls `nearby/start`.
+func lane_check(options := {}) -> PKeyResult:
+	return _lane_for(options)
+
+
 # -- M ------------------------------------------------------------------------------------------
 
 

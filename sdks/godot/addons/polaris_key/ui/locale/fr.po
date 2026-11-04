@@ -3693,6 +3693,16 @@ msgctxt "macos"
 msgid "signin.nearby.another"
 msgstr "Choisir un autre appareil"
 
+#. Sign in with a nearby device
+#. The sign-in form's row that starts nearby sign-in: a signed-in phone or computer on the same network approves this device. The approving device's screen tells the person to choose this row.
+msgid "signin.nearby.method"
+msgstr "Se connecter avec un appareil à proximité"
+
+#. macos: Sign In with a Nearby Device
+msgctxt "macos"
+msgid "signin.nearby.method"
+msgstr "Se connecter avec un appareil à proximité"
+
 #. No device found
 #. Nearby sign-in, on the device that signs in: no device answered after a while.
 msgid "signin.nearby.noneTitle"
@@ -3703,12 +3713,12 @@ msgstr "Aucun appareil trouvé"
 msgid "signin.nearby.noneBody"
 msgstr "Ouvrez {app} sur votre autre appareil et choisissez Approuver un appareil à proximité."
 
-#. Approve a Nearby Device
+#. Approve a nearby device
 #. Nearby approval, on the signed-in device: the screen that waits for a request.
 msgid "signin.nearby.listenTitle"
 msgstr "Approuver un appareil à proximité"
 
-#. On the new device, choose to sign in with a nearby device. Its request shows here.
+#. On the new device, choose Sign in with a nearby device.
 #. Nearby approval: what to do on the new device so its request shows here.
 msgid "signin.nearby.listenBody"
 msgstr "Sur le nouvel appareil, choisissez de vous connecter avec un appareil à proximité. Sa demande s’affiche ici."

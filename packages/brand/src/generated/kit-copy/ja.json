@@ -593,6 +593,7 @@
   "signin.nearby.expiredBody": "{device} で最初からやり直してください。",
   "signin.nearby.pick": "確認を求めるデバイスを選んでください。",
   "signin.nearby.another": "別のデバイスを選ぶ",
+  "signin.nearby.method": "近くのデバイスでサインイン",
   "signin.nearby.noneTitle": "デバイスが見つかりません",
   "signin.nearby.noneBody": "もう一方のデバイスで {app} を開き、「近くのデバイスを承認」を選んでください。",
   "signin.nearby.listenTitle": "近くのデバイスを承認",

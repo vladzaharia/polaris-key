@@ -69,6 +69,18 @@ func clear_cache() -> bool:
 	return true
 
 
+## The unconfirmed mark of a nearby sign-in's token, kept in a record of its own: `&"none"`, `&"set"`, or
+## `&"unreadable"` (held but not readable, which reads as set: fail closed). A store that cannot keep one
+## answers `&"unsupported"` and the cache keeps the mark in its record instead.
+func read_unconfirmed_mark() -> StringName:
+	return &"unsupported"
+
+
+## Write (`on`) or remove the unconfirmed mark. False when it could not be written.
+func write_unconfirmed_mark(_on: bool) -> bool:
+	return false
+
+
 ## True when a cache record is held but cannot be read or parsed. PKeyCache then treats the person as
 ## signed out (the sign-out flag fails closed). A store that cannot tell answers false.
 func cache_unreadable() -> bool:

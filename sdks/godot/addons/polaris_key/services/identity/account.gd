@@ -182,6 +182,19 @@ func sign_out() -> PKeyResult:
 	return PKeyResult.success({"released": true})
 
 
+## Best effort: tell the Worker an unconfirmed nearby sign-in is over (`POST <signout>` with the held token). What
+## it answers does not matter: the caller drops the token locally either way. A coroutine.
+func nearby_sign_out() -> void:
+	var core := _core()
+	if core == null or not core.started or not core.tokens.has_token():
+		return
+	var fragment := await _fragment()
+	var url: String = fragment.get("signout", "") if fragment.get("account") == true else ""
+	if url == "" or not _own(url):
+		return
+	await _send("POST", url)
+
+
 ## ok: detail {url, opened: bool}. Not opened (no opener, or it declined): show `url` instead.
 func open_account() -> PKeyResult:
 	var core := _core()

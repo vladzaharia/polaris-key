@@ -97,6 +97,7 @@ static func identity_from(manifest: Variant) -> Dictionary:
 		"nonce": endpoints.get("nonce", ""),
 		"link": endpoints.get("link", ""),
 		"account": PKeyClaims.is_true(fragment.get("account")),
+		"nearby": PKeyClaims.is_true(fragment.get("nearby")),
 		"device_choice": PKeyClaims.is_true(fragment.get("deviceChoice")),
 		"issuer": fragment["issuer"] if _nonempty(fragment.get("issuer")) else "",
 		"key_entry_limit": int(limit) if PKeyClaims.is_number(limit) else -1,

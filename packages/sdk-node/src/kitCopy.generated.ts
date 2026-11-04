@@ -721,12 +721,13 @@ export const KIT_COPY: Readonly<
     "signin.nearby.expiredBody": "Start again on {device}.",
     "signin.nearby.pick": "Choose the device to ask.",
     "signin.nearby.another": "Choose another device",
+    "signin.nearby.method": "Sign in with a nearby device",
     "signin.nearby.noneTitle": "No device found",
     "signin.nearby.noneBody":
       "Open {app} on your other device and choose Approve a Nearby Device.",
-    "signin.nearby.listenTitle": "Approve a Nearby Device",
+    "signin.nearby.listenTitle": "Approve a nearby device",
     "signin.nearby.listenBody":
-      "On the new device, choose to sign in with a nearby device. Its request shows here.",
+      "On the new device, choose Sign in with a nearby device.",
     "signin.nearby.pausedTitle": "Approvals paused",
     "signin.nearby.pausedBody":
       "Two requests were declined, so this device stopped listening.",
@@ -2737,6 +2738,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.expiredBody": "Beginnen Sie auf {device} von vorn.",
     "signin.nearby.pick": "Wählen Sie das Gerät, das gefragt werden soll.",
     "signin.nearby.another": "Anderes Gerät wählen",
+    "signin.nearby.method": "Mit einem Gerät in der Nähe anmelden",
     "signin.nearby.noneTitle": "Kein Gerät gefunden",
     "signin.nearby.noneBody":
       "Öffnen Sie {app} auf Ihrem anderen Gerät und wählen Sie „Gerät in der Nähe bestätigen“.",
@@ -4837,6 +4839,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.expiredBody": "Recommencez sur {device}.",
     "signin.nearby.pick": "Choisissez l’appareil à solliciter.",
     "signin.nearby.another": "Choisir un autre appareil",
+    "signin.nearby.method": "Se connecter avec un appareil à proximité",
     "signin.nearby.noneTitle": "Aucun appareil trouvé",
     "signin.nearby.noneBody":
       "Ouvrez {app} sur votre autre appareil et choisissez Approuver un appareil à proximité.",
@@ -6917,6 +6920,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.expiredBody": "Empieza de nuevo en {device}.",
     "signin.nearby.pick": "Elige el dispositivo al que preguntar.",
     "signin.nearby.another": "Elegir otro dispositivo",
+    "signin.nearby.method": "Iniciar sesión con un dispositivo cercano",
     "signin.nearby.noneTitle": "No se encontró ningún dispositivo",
     "signin.nearby.noneBody":
       "Abre {app} en tu otro dispositivo y elige Aprobar un dispositivo cercano.",
@@ -9000,6 +9004,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.expiredBody": "Comece de novo em {device}.",
     "signin.nearby.pick": "Escolha o dispositivo a consultar.",
     "signin.nearby.another": "Escolher outro dispositivo",
+    "signin.nearby.method": "Entrar com um dispositivo próximo",
     "signin.nearby.noneTitle": "Nenhum dispositivo encontrado",
     "signin.nearby.noneBody":
       "Abra {app} no seu outro dispositivo e escolha Aprovar um dispositivo próximo.",
@@ -11033,6 +11038,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.expiredBody": "Ricomincia su {device}.",
     "signin.nearby.pick": "Scegli il dispositivo a cui chiedere.",
     "signin.nearby.another": "Scegli un altro dispositivo",
+    "signin.nearby.method": "Accedi con un dispositivo vicino",
     "signin.nearby.noneTitle": "Nessun dispositivo trovato",
     "signin.nearby.noneBody":
       "Apri {app} sull’altro dispositivo e scegli Approva un dispositivo vicino.",
@@ -13097,6 +13103,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.expiredBody": "{device} で最初からやり直してください。",
     "signin.nearby.pick": "確認を求めるデバイスを選んでください。",
     "signin.nearby.another": "別のデバイスを選ぶ",
+    "signin.nearby.method": "近くのデバイスでサインイン",
     "signin.nearby.noneTitle": "デバイスが見つかりません",
     "signin.nearby.noneBody":
       "もう一方のデバイスで {app} を開き、「近くのデバイスを承認」を選んでください。",
@@ -15151,6 +15158,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.expiredBody": "{device}에서 처음부터 다시 시작하세요.",
     "signin.nearby.pick": "요청할 기기를 선택하세요.",
     "signin.nearby.another": "다른 기기 선택",
+    "signin.nearby.method": "근처 기기로 로그인",
     "signin.nearby.noneTitle": "기기를 찾지 못했어요",
     "signin.nearby.noneBody":
       "다른 기기에서 {app}을(를) 열고 ‘근처 기기 승인’을 선택하세요.",
@@ -17085,6 +17093,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.expiredBody": "请在 {device} 上重新开始。",
     "signin.nearby.pick": "选择要询问的设备。",
     "signin.nearby.another": "选择其他设备",
+    "signin.nearby.method": "用附近的设备登录",
     "signin.nearby.noneTitle": "未找到设备",
     "signin.nearby.noneBody":
       "在你的另一台设备上打开 {app}，然后选择“批准附近的设备”。",
@@ -18364,6 +18373,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.nearby.notYou": { macos: "Not You?" },
   "signin.nearby.menu": { macos: "Approve a Nearby Device…" },
   "signin.nearby.another": { macos: "Choose Another Device" },
+  "signin.nearby.method": { macos: "Sign In with a Nearby Device" },
   "signin.nearby.startAgain": { macos: "Start Again" },
   "signin.key.addInLocker": { macos: "Add It in Polaris Locker" },
   "signin.return.stay": { macos: "Stay Here" },

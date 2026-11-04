@@ -26,6 +26,14 @@ const View := preload("res://addons/polaris_key/ui/model/view.gd")
 const DEFAULT_DEVICE_URL := PKeyConstants.DEVICE_CODE_PAGE
 const DEFAULT_TV_URL := PKeyConstants.TV_CODE_PAGE
 
+## The code each nearby ending takes its title and line from (a core code's title and message, or a full title
+## key and no line); the port of ui-core's `nearbyEnd`.
+const NEARBY_ENDS := {
+	"nearby-denied": "sign-in-denied", "nearby-expired": "sign-in-expired", "nearby-not-nearby": "not_nearby",
+	"nearby-failed": "network", "nearby-rate-limited": "rate_limited", "nearby-unavailable": "nearby-unsupported",
+	"nearby-cancelled": "core.codes.unauthorized.title", "nearby-signed-out": "core.gate.revoked.title",
+}
+
 
 ## The sign-in is possible here: Identity is on and the build offers it.
 static func _sign_in_on(ctx: RefCounted) -> bool:
@@ -65,7 +73,8 @@ static func verification_target(ctx: RefCounted, shown: String) -> String:
 ## `SignInState`.
 const SIGN_IN_STATES := [
 	"methods", "handoff", "code", "finishing", "choose", "replace", "key", "key-refused", "done", "error", "expired",
-	"confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-done", "device-limit", "hidden",
+	"confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-choose", "nearby-none-found", "nearby-denied", "nearby-expired", "nearby-not-nearby",
+	"nearby-failed", "nearby-rate-limited", "nearby-unavailable", "nearby-cancelled", "nearby-signed-out", "nearby-done", "device-limit", "hidden",
 ]
 
 
@@ -302,13 +311,29 @@ static func _auto_step_view(ctx: RefCounted, auto: Dictionary, base_args: Dictio
 			copy = ["signin.nearby.promptTitle", "signin.nearby.prePrompt", "common.continue", "common.notNow"]
 			primary = "common.continue"
 		"nearby-wait":
+			# A code on screen names the device it is tapped on, and a way back to the list.
+			var named := View.truthy(auto.get("code")) and View.truthy(auto.get("device"))
+			args["device"] = auto.get("device")
 			copy = [
 				"signin.nearby.title",
-				"signin.nearby.body",
+				"signin.nearby.bodyOn" if named else "signin.nearby.body",
 				"signin.nearby.match",
 				"a11y.nearbyCode" if View.truthy(auto.get("code")) else null,
+				"signin.nearby.another" if named else null,
+				"signin.cli.nearbyLooking" if View.truthy(auto.get("searching")) else null,
 				"signin.nearby.code",
 			]
+		"nearby-choose":
+			copy = ["signin.nearby.title", "signin.nearby.pick", "signin.nearby.code"]
+		"nearby-none-found":
+			copy = ["signin.nearby.noneTitle", "signin.nearby.noneBody", "common.tryAgain", "signin.nearby.code"]
+			primary = "common.tryAgain"
+			tone = "neutral"
+		"nearby-denied", "nearby-expired", "nearby-not-nearby", "nearby-failed", "nearby-rate-limited", "nearby-unavailable", "nearby-cancelled", "nearby-signed-out":
+			# How a request ended (UXR-47b B1): a title, a line, Try again and Use a code instead.
+			copy = _nearby_end_copy(step)
+			primary = "common.tryAgain"
+			tone = "neutral"
 		"device-limit":
 			# A device limit with no license rows: its own step, never the key screen. Replace opens
 			# the refusal's manageUrl; without a usable link the fix is named in words.
@@ -330,6 +355,16 @@ static func _auto_step_view(ctx: RefCounted, auto: Dictionary, base_args: Dictio
 			copy = ["signin.nearby.done", "common.continue", "signin.nearby.notYou"]
 			primary = "common.continue"
 	return View.make(ctx, "SignIn", {"state": step, "copy": copy, "args": args, "primary": primary, "tone": tone, "focus": "heading"})
+
+
+static func _nearby_end_copy(step: String) -> Array:
+	var code: String = NEARBY_ENDS[step]
+	var kit := code.begins_with("core.")
+	var out: Array = [code if kit else "core.codes.%s.title" % code]
+	if not kit:
+		out.append("core.codes.%s.message" % code)
+	out.append_array(["common.tryAgain", "signin.nearby.code"])
+	return out
 
 
 static func _methods_view(ctx: RefCounted, args: Dictionary) -> Dictionary:

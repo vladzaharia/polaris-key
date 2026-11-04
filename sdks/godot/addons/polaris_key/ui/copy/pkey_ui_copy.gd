@@ -429,6 +429,7 @@ const DEFAULTS := {
 	"account_holder": "Signed in as %s",
 	"account_key_only": "Activated with a license key",
 	"account_devices": "Devices",
+	"account_nearby": "Approve a nearby device",
 	"account_cloud_sync": "Sync Across Devices",
 	"account_updates": "Updates",
 	"account_auto_update": "Update Automatically",
