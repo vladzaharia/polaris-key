@@ -150,6 +150,12 @@ export function collect(
       const parts = relative(base, file).split(/[\\/]/);
       // Compose keeps the registry's states one level down, under matrix/.
       if (parts[0] === "matrix" && parts.length > 2) parts.shift();
+      // Cloud Connect's and the account holders' baselines sit one folder down too:
+      // connect/<component>-<state>-<slug>/ and holders/<nn>-<component>-<state>-<slug>/.
+      if ((parts[0] === "connect" || parts[0] === "holders") && parts.length > 2) {
+        parts.shift();
+        parts[0] = parts[0]!.replace(/^\d+-/, "");
+      }
       const raw = parts.length > 1 ? parts[0]! : stateOf(rest);
       // React writes Component.state, Qt lowercases the component, Compose uses camelCase: all
       // meet the registry's id. A state no registry row names stays as the kit wrote it.
