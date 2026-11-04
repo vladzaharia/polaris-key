@@ -420,7 +420,7 @@ public actor PolarisKeyClient {
                 await PolarisKeyClient.syncAfterAcquisition(
                     core: core, probes: options.probes, engine: engine,
                     fingerprintEnabled: options.license.fingerprint, reportsEnabled: options.deviceReports,
-                publisher: publisher)
+                    publisher: publisher)
             },
             // `client.license.deactivate()` reaches the same event as `client.deactivate()`.
             onReleased: { await publisher.publish() },
