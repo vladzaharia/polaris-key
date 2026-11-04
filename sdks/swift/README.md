@@ -172,6 +172,10 @@ passthroughs for the calls a host makes before it knows which service it is talk
 
 `client.report()` posts the telemetry snapshot now (`sync()` already reports after each pass);
 it answers `false` rather than throwing when no credential is held or the server refused.
+`PolarisKeyClientOptions(deviceReports: false)` turns the device report off (Node `devices.reports`,
+Python `device_reports`): `sync()` ends without a report and `report()` answers `false` without
+a request. There is no reduced level; fingerprinting is the separate `fingerprint: false`, and an
+app that wants no hardware hashes and no report sets both.
 `client.config.fetchSchema()` returns the catalog's bytes, or `nil` on any failure — it is
 unsigned and diagnostic. `client.release` throws `service-unavailable` when the product does not
 run Release, forwards the device token when one is held, and throws a 401/403 with the refusal

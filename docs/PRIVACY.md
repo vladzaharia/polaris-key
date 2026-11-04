@@ -90,6 +90,11 @@ keyring. It names features only. It never names a library, a path or a version.
 Used for: admin visibility, compatibility gating, and targeting configuration at the devices
 that need it.
 
+An app can switch the whole device report off: Node `devices: { reports: false }`, Python
+`device_reports=False`, Swift `deviceReports: false`. The SDK then sends no `devices/report`
+request, after a sync or on demand. There is no reduced level. The hardware fingerprint is a
+separate switch (`fingerprint`) and is sent at registration, not in the report.
+
 ### Update outcome events — SDKs with an updater
 
 What happened after an update reached the device: one of `update_offered`, `update_downloaded`,

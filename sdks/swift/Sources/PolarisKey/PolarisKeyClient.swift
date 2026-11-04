@@ -60,6 +60,11 @@ public struct PolarisKeyClientOptions: Sendable {
     /// Cloud Sync's app-owned settings: the mode (default end-to-end), the compiled catalog mirror and the
     /// renames. Never read from the Worker.
     public let cloudSync: CloudSyncOptions
+    /// Send `POST /devices/report` telemetry (default true). `false` makes `report()` return
+    /// false without a request and drops the report that ends a sync; nothing else changes
+    /// (fingerprinting is `LicenseClientOptions.fingerprint`). Node: `devices.reports`; Python:
+    /// `device_reports`.
+    public let deviceReports: Bool
 
     public init(
         core: CoreOptions,
@@ -72,8 +77,10 @@ public struct PolarisKeyClientOptions: Sendable {
         storeClient: (any StoreClient)? = nil,
         backendOrigins: [String] = [],
         connect: ConnectOptions = ConnectOptions(),
-        cloudSync: CloudSyncOptions = CloudSyncOptions()
+        cloudSync: CloudSyncOptions = CloudSyncOptions(),
+        deviceReports: Bool = true
     ) {
+        self.deviceReports = deviceReports
         self.cloudSync = cloudSync
         self.connect = connect
         self.backendOrigins = backendOrigins
@@ -110,8 +117,10 @@ public struct PolarisKeyClientOptions: Sendable {
         appGroup: String? = nil,
         backendOrigins: [String] = [],
         connect: ConnectOptions = ConnectOptions(),
-        cloudSync: CloudSyncOptions = CloudSyncOptions()
+        cloudSync: CloudSyncOptions = CloudSyncOptions(),
+        deviceReports: Bool = true
     ) {
+        self.deviceReports = deviceReports
         self.cloudSync = cloudSync
         self.connect = connect
         self.backendOrigins = backendOrigins
@@ -230,6 +239,7 @@ public actor PolarisKeyClient {
     /// runtime and the SDK's detectors.
     private nonisolated let capabilityEngine: Capabilities
     private let fingerprintEnabled: Bool
+    private let reportsEnabled: Bool
     private let refreshIntervalSeconds: Double?
     private var refreshTask: Task<Void, Never>?
     private var onChange: (@Sendable (LicenseState) -> Void)?
@@ -281,7 +291,8 @@ public actor PolarisKeyClient {
         let identityClient = IdentityClient(core: core) {
             await PolarisKeyClient.syncAfterAcquisition(
                 core: core, probes: options.probes, engine: engine,
-                fingerprintEnabled: options.license.fingerprint, publisher: publisher)
+                fingerprintEnabled: options.license.fingerprint, reportsEnabled: options.deviceReports,
+                publisher: publisher)
         }
         identityClient.installDeviceKeys(options.connect.keys)
         identityClient.installPlatformIdentity(AppleSignInProvider())
@@ -308,11 +319,13 @@ public actor PolarisKeyClient {
         ) {
             await PolarisKeyClient.syncAfterAcquisition(
                 core: core, probes: options.probes, engine: engine,
-                fingerprintEnabled: options.license.fingerprint, publisher: publisher)
+                fingerprintEnabled: options.license.fingerprint, reportsEnabled: options.deviceReports,
+                publisher: publisher)
         }
         self.probes = options.probes
         self.capabilityEngine = engine
         self.fingerprintEnabled = options.license.fingerprint
+        self.reportsEnabled = options.deviceReports
         self.refreshIntervalSeconds = options.refreshIntervalSeconds
         let connect = ConnectClient(core: core, options: options.connect, accessGroup: options.core.keychainAccessGroup)
         self.connect = connect
@@ -406,7 +419,8 @@ public actor PolarisKeyClient {
                 // actor; the hop back in is what makes `sync()` the facade's decision.
                 await PolarisKeyClient.syncAfterAcquisition(
                     core: core, probes: options.probes, engine: engine,
-                    fingerprintEnabled: options.license.fingerprint, publisher: publisher)
+                    fingerprintEnabled: options.license.fingerprint, reportsEnabled: options.deviceReports,
+                publisher: publisher)
             },
             // `client.license.deactivate()` reaches the same event as `client.deactivate()`.
             onReleased: { await publisher.publish() },
@@ -606,11 +620,13 @@ public actor PolarisKeyClient {
         let core = self.core
         let probes = self.probes
         let engine = self.capabilityEngine
+        let reportsEnabled = self.reportsEnabled
         let result = await core.sync(
             force: force,
             reacquire: PolarisKeyClient.reacquire(core: core, fingerprintEnabled: fingerprintEnabled),
             report: {
-                _ = await PolarisKeyClient.report(core: core, probes: probes, engine: engine)
+                _ = await PolarisKeyClient.report(
+                    core: core, probes: probes, engine: engine, enabled: reportsEnabled)
             })
         // The ETags are the change signal: they exclude the per-request timestamps, so a
         // differing tag means the CONTENT changed rather than that the document was re-signed.
@@ -629,13 +645,14 @@ public actor PolarisKeyClient {
     /// The post-activation sync, forced so a stale ETag cannot 304 away the very first document.
     private static func syncAfterAcquisition(
         core: CoreContext, probes: [ProbeDeclaration], engine: Capabilities,
-        fingerprintEnabled: Bool, publisher: ChangePublisher
+        fingerprintEnabled: Bool, reportsEnabled: Bool, publisher: ChangePublisher
     ) async {
         _ = await core.sync(
             force: true,
             reacquire: reacquire(core: core, fingerprintEnabled: fingerprintEnabled),
             report: {
-                _ = await PolarisKeyClient.report(core: core, probes: probes, engine: engine)
+                _ = await PolarisKeyClient.report(
+                    core: core, probes: probes, engine: engine, enabled: reportsEnabled)
             })
         // A fresh credential changes the gate's inputs whatever the documents did.
         await publisher.publish()
@@ -701,8 +718,10 @@ public actor PolarisKeyClient {
     @discardableResult
     private static func report(
         core: CoreContext, probes: [ProbeDeclaration], engine: Capabilities,
-        extras: [String: JSONValue] = [:]
+        enabled: Bool, extras: [String: JSONValue] = [:]
     ) async -> Bool {
+        // `deviceReports: false`: no snapshot is assembled and no request is made.
+        guard enabled else { return false }
         let cache = await core.cache()
         var config: [String: JSONValue] = [:]
         var entitlements: [String: JSONValue] = [:]
@@ -769,7 +788,8 @@ public actor PolarisKeyClient {
     /// refused, or the network failed — telemetry never throws at the host.
     @discardableResult
     public func report() async -> Bool {
-        await PolarisKeyClient.report(core: core, probes: probes, engine: capabilityEngine)
+        await PolarisKeyClient.report(
+            core: core, probes: probes, engine: capabilityEngine, enabled: reportsEnabled)
     }
 
     /// `report()` plus host-supplied keys: only the Worker's allowlisted report keys
@@ -778,7 +798,8 @@ public actor PolarisKeyClient {
     @discardableResult
     public func report(extras: [String: JSONValue]) async -> Bool {
         await PolarisKeyClient.report(
-            core: core, probes: probes, engine: capabilityEngine, extras: extras)
+            core: core, probes: probes, engine: capabilityEngine, enabled: reportsEnabled,
+            extras: extras)
     }
 
     /// The React-bridge contract, assembled from the managers that own each piece.
