@@ -230,8 +230,8 @@ export interface TierRow {
   /** LX-08 (0105_g): higher is better (anchor choice, the OIDC group map, `syncTierOnSignIn`);
    *  0 by default. Optional only for rows built by hand. */
   rank?: number;
-  /** LX-08 (0105_h): the tier default for a licence's offline grace (`max_offline_days`); NULL
-   *  falls back to the product default. Stored for LX-09's `combined` mode. */
+  /** LX-08 (0105_h): stored, not applied: the offline window is the product's
+   *  `defaultMaxOfflineDays`; the tier value is never read for a licence. */
   policy_offline_grace_days?: number | null;
   /** LX-33.1 (0129): 1 marks the product's implicit Default tier (at most one per product); 0
    *  otherwise. No reader or writer yet. Optional because `upsertTier` callers build rows without it

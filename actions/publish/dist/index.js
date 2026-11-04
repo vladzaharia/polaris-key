@@ -1830,7 +1830,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "$ref": "#/$defs/nonNegativeInteger"
           },
           "policyOfflineGraceDays": {
-            "description": "The tier default for a licence's offline grace, in days (0-365); null (or omitted) falls back to the product default. Not maxOfflineDays, which is a legacy alias of policyExpiryDays.",
+            "description": "Stored for later use and not applied yet: the offline window is the licence's own value, else the product's defaultMaxOfflineDays. Days 0-365, or null. Not maxOfflineDays, which is a legacy alias of policyExpiryDays.",
             "anyOf": [
               { "type": "integer", "minimum": 0, "maximum": 365 },
               { "type": "null" }
@@ -21189,7 +21189,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
           "tier_ignored_field",
-          "maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry, and for offline grace use policyOfflineGraceDays."
+          "maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry. The offline window is product-level (defaultMaxOfflineDays)."
         );
       } else if (typeof record.policyExpiryDays === "number" || typeof record.expiryDays === "number") {
         add4(
@@ -21197,7 +21197,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
           "tier_ignored_field",
-          "maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace: for offline grace use policyOfflineGraceDays."
+          "maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace, which is product-level (defaultMaxOfflineDays)."
         );
       } else {
         add4(
@@ -21205,7 +21205,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
           "tier_ignored_field",
-          "maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace: for offline grace use policyOfflineGraceDays."
+          "maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace, which is product-level (defaultMaxOfflineDays)."
         );
       }
     }

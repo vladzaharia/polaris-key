@@ -2202,7 +2202,7 @@ describe("tier keys the scaffold used to write (tier_ignored_field)", () => {
     expect(res.warnings.map((w) => w.code)).not.toContain("tier_ignored_field");
   });
 
-  it("points every maxOfflineDays warning at policyOfflineGraceDays for offline grace (LX-08)", () => {
+  it("points every maxOfflineDays warning at the product-level offline window (LX-08)", () => {
     const msg = (tier: Record<string, unknown>) =>
       validateManifestDocuments(tiered(tier)).warnings.find(
         (w) => w.path === "/licensing/tiers/0/maxOfflineDays",
@@ -2212,9 +2212,7 @@ describe("tier keys the scaffold used to write (tier_ignored_field)", () => {
       { maxOfflineDays: 14, policyExpiryDays: 30 },
       { maxOfflineDays: "14" },
     ])
-      expect(msg(tier)).toContain(
-        "for offline grace use policyOfflineGraceDays",
-      );
+      expect(msg(tier)).toContain("product-level (defaultMaxOfflineDays)");
   });
 });
 

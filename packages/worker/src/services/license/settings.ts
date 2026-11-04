@@ -57,7 +57,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     area: "license.policy",
     label: "Default offline window",
     description:
-      "How many days a device may run without reaching the server when neither its tier nor the license sets a window.",
+      "How many days a device may run without reaching the server when the license sets no window of its own.",
     keywords: ["grace", "offline", "graceUntil"],
     docs: "/docs/features/licensing/access/",
     value: { kind: "integer", unit: "days", min: 0, max: OFFLINE_DAYS_MAX },

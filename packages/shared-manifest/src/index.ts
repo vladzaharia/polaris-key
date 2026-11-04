@@ -483,8 +483,8 @@ export interface ManifestTier {
   /** LX-08: higher is better (anchor choice, the OIDC group-map choice, `syncTierOnSignIn`).
    *  0 when omitted; not unique. */
   rank: number;
-  /** LX-08: the tier default for a licence's offline grace (0–365 days); null falls back to the
-   *  product default. Not `maxOfflineDays`, the legacy alias of `policyExpiryDays`. */
+  /** LX-08: stored, not applied yet (0–365 days, or null): the offline window is the licence's
+   *  own value, else the product default. Not `maxOfflineDays`, the legacy alias of `policyExpiryDays`. */
   policyOfflineGraceDays: number | null;
 }
 
@@ -2176,7 +2176,7 @@ function validateDocuments(
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
           "tier_ignored_field",
-          "maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry, and for offline grace use policyOfflineGraceDays.",
+          "maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry. The offline window is product-level (defaultMaxOfflineDays).",
         );
       } else if (
         typeof record.policyExpiryDays === "number" ||
@@ -2187,7 +2187,7 @@ function validateDocuments(
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
           "tier_ignored_field",
-          "maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace: for offline grace use policyOfflineGraceDays.",
+          "maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace, which is product-level (defaultMaxOfflineDays).",
         );
       } else {
         add(
@@ -2195,7 +2195,7 @@ function validateDocuments(
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
           "tier_ignored_field",
-          "maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace: for offline grace use policyOfflineGraceDays.",
+          "maxOfflineDays on a tier sets the licence expiry, policyExpiryDays, not offline grace, which is product-level (defaultMaxOfflineDays).",
         );
       }
     }
