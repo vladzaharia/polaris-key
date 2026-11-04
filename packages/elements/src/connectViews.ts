@@ -23,21 +23,28 @@ const shown = (c: RenderCtx, k: string): boolean => c.view.copy.includes(k);
 function codeBlock(c: RenderCtx): Out {
   if (!c.input.linkPairing?.code) return nothing;
   const code = c.input.linkPairing.code;
+  return html`<span
+    class="pair-code"
+    part="code"
+    data-part="code"
+    role="img"
+    data-key="a11y.linkCode"
+    aria-label=${shown(c, "a11y.linkCode")
+      ? plain(c, "a11y.linkCode", { code: spellOut(code) })
+      : spellOut(code)}
+    >${code}</span
+  >`;
+}
+
+/** The line that says which device reported the code: the end pane's first line. */
+function reportedLine(c: RenderCtx): Out {
+  if (!c.input.linkPairing?.code) return nothing;
   const reported = shown(c, "linkPairing.reported")
     ? "linkPairing.reported"
     : "linkPairing.reportedUnnamed";
-  return html`<span
-      class="pair-code"
-      part="code"
-      data-part="code"
-      role="img"
-      data-key="a11y.linkCode"
-      aria-label=${shown(c, "a11y.linkCode")
-        ? plain(c, "a11y.linkCode", { code: spellOut(code) })
-        : spellOut(code)}
-      >${code}</span
-    >
-    <p class="pair-reported" data-key=${reported}>${text(c, reported)}</p>`;
+  return html`<p class="pair-reported" data-key=${reported}>
+    ${text(c, reported)}
+  </p>`;
 }
 
 /** What would be shared: the categories as chips, or the line that says nothing is shared yet. */
@@ -91,20 +98,23 @@ function pairing(c: RenderCtx): Out {
     failed: ["common.tryAgain", "common.done"],
     unavailable: ["common.done"],
   };
-  return html`${codeBlock(c)}${shares(c)}${wait(c)}${state === "unavailable" &&
-    shown(c, "core.codes.connect_links_disabled.message")
-      ? html`<p
-          class="body"
-          data-key="core.codes.connect_links_disabled.message"
-        >
-          ${text(c, "core.codes.connect_links_disabled.message")}
-        </p>`
-      : nothing}
-    <div class="pair-actions" data-part="pair-actions">
-      ${actions(
-        c,
-        (keys[state] ?? []).filter((k) => shown(c, k)),
-      )}
+  return html`${codeBlock(c)}
+    <div class="pair-end" data-part="pair-end">
+      ${reportedLine(c)}${shares(c)}${wait(c)}${state === "unavailable" &&
+      shown(c, "core.codes.connect_links_disabled.message")
+        ? html`<p
+            class="body"
+            data-key="core.codes.connect_links_disabled.message"
+          >
+            ${text(c, "core.codes.connect_links_disabled.message")}
+          </p>`
+        : nothing}
+      <div class="pair-actions" data-part="pair-actions">
+        ${actions(
+          c,
+          (keys[state] ?? []).filter((k) => shown(c, k)),
+        )}
+      </div>
     </div>`;
 }
 

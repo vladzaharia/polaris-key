@@ -4,55 +4,84 @@
 
 /** The panes' rules for the states that split (UI-KITS "LinkPairing and TransferOffer"): the start
  *  pane (title, lede, the code or the offer card) and the end pane (the reported device, the
- *  categories, the actions). CSS columns with a forced break after the start pane, so the DOM, the
- *  reading order and the focus order stay the one column's. `root` narrows the rule: any kit root
- *  in a short window, only a TV's elsewhere. */
-function panes(root: string, short: boolean): string {
+ *  categories, the actions), top-aligned and stacked full width with the primary first. One grid,
+ *  the numbers of the React twin (sdk-react/src/kit/connect.tsx `panes`); the DOM, the reading order
+ *  and the focus order stay the one column's. `root` narrows the rule: any kit root in a short
+ *  window, only a TV's elsewhere. */
+function panes(root: string, tv: boolean): string {
   const on = [
     `${root}[data-component="LinkPairing"][data-state="code"]`,
     `${root}[data-component="LinkPairing"][data-state="confirm"]`,
     `${root}[data-component="TransferOffer"][data-state="ask"]`,
   ];
+  const stage = on.map((r) => `${r} .stage[data-kind="screen"]`).join(",\n");
   const card = on.map((r) => `${r} .stage[data-kind="screen"] .card`);
   const each = (tail: string): string =>
     card.map((c) => `${c}${tail}`).join(",\n");
-  const stage = on.map((r) => `${r} .stage[data-kind="screen"]`).join(",\n");
-  return `${
-    short
-      ? `${stage} {
-  padding-inline: var(--pk-space-1);
-  padding-block: var(--pk-space-2);
-  align-content: start;
+  const end = (tail: string): string =>
+    [
+      ...card.slice(0, 2).map((c) => `${c} > .pair-end${tail}`),
+      `${card[2]} > .actions${tail}`,
+    ].join(",\n");
+  // A TV keeps its title-safe area (5 % each side) at any text size.
+  const safe = tv
+    ? `
+  padding-inline: max(var(--pk-space-6), 5vw);
+  padding-block: max(var(--pk-space-6), 5vh);`
+    : "";
+  return `${stage} {
+  /* safe: a card taller than the window starts at its top edge and the window scrolls. */
+  align-content: safe center;${safe}
 }
-`
-      : ""
-  }${each("")} {
-  display: block;
-  column-count: 2;
+${each("")} {
+  inline-size: min(46rem, 100%);
+  padding-inline: var(--pk-space-5);
+  padding-block: var(--pk-space-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
   column-gap: var(--pk-space-6);
-  column-fill: balance;
-  inline-size: min(48rem, 100%);
+  row-gap: var(--pk-space-3);
+  align-items: start;
+  align-content: start;
   min-block-size: 0;
-  padding-inline: var(--pk-space-4);
-  padding-block: var(--pk-space-3);
+  text-align: start;
 }
 ${each(" > *")} {
-  break-inside: avoid;
-  margin-block: 0 var(--pk-space-3);
+  grid-column: 1;
 }
-${each(" > .pair-code")},
-${each(" > .pair-offer")} {
-  break-after: column;
+${end("")} {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  display: grid;
+  gap: var(--pk-space-3);
+  align-content: start;
+}
+${each(" > .pair-end > .pair-actions")} {
+  display: contents;
 }
 ${each(" > .actions")},
-${each(" > .pair-actions > .actions")} {
+${each(" > .pair-end > .pair-actions > .actions")} {
   position: static;
-  margin-inline: 0;
-  margin-block: 0 var(--pk-space-3);
+  margin: 0;
   padding: 0;
   background: none;
   box-shadow: none;
-  gap: var(--pk-space-2);
+  display: grid;
+  gap: var(--pk-space-3);
+  flex-direction: column;
+  justify-content: stretch;
+  grid-template-columns: minmax(0, 1fr);
+}
+${each(" > .actions::before")},
+${each(" > .pair-end > .pair-actions > .actions::before")} {
+  content: none;
+}
+${each(" > .actions .btn")},
+${each(" > .pair-end > .pair-actions > .actions .btn")} {
+  inline-size: 100%;
+  flex: none;
+  white-space: normal;
 }
 `;
 }
@@ -78,7 +107,8 @@ export const CONNECT_CSS = `
   color: var(--pk-text-strong);
   overflow-wrap: anywhere;
 }
-.pair-actions {
+.pair-actions,
+.pair-end {
   display: contents;
 }
 .pair-offer {
@@ -159,11 +189,9 @@ export const CONNECT_CSS = `
   }
 }
 /* Two panes: a window at least 600px wide (the container counts rem at the page's root size, so
-   200% text keeps one column) and under 480px tall, and a TV in any height. */
+   200% text keeps one column) and under 480px tall; a TV or console in any size, at any text size. */
 @media (max-height: 480px) {
   @container pk (min-width: 37.5rem) {
-${panes(".pk-root", true)}  }
+${panes(".pk-root", false)}  }
 }
-@container pk (min-width: 37.5rem) {
-${panes(".pk-root[data-tv]", false)}}
-`;
+${panes(".pk-root[data-tv]", true)}`;
