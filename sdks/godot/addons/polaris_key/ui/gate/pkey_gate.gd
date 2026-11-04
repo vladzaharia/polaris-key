@@ -155,6 +155,7 @@ var _link_problem := ""
 var _link_resign := false
 ## The link offer's flow (PKeyGateLink).
 var _link_flow := PKeyGateLink.new(self)
+var _choice_flow := PKeyGateChoice.new(self)
 ## After "Use another account" the focus goes to Polaris Locker's sign-in, not the key field.
 var _focus_sign_in := false
 
@@ -269,9 +270,9 @@ func _build() -> void:
 	license_choice.show_product = false
 	license_choice.visible = false
 	license_choice.chosen.connect(func(selection: Dictionary) -> void: license_chosen.emit(selection))
-	license_choice.chosen.connect(_on_auto_license_chosen)
-	license_choice.replace_requested.connect(_on_auto_replace_requested)
-	license_choice.replace_confirmed.connect(_on_auto_replace_confirmed)
+	license_choice.chosen.connect(_choice_flow.on_chosen)
+	license_choice.replace_requested.connect(_choice_flow.on_replace_requested)
+	license_choice.replace_confirmed.connect(_choice_flow.on_replace_confirmed)
 	license_choice.other_account_requested.connect(_on_auto_other_account)
 	license_choice.key_requested.connect(_on_auto_other_account)
 	_main.add_child(license_choice)
@@ -771,12 +772,14 @@ func _cancel() -> bool:
 		if not _nearby_flow.confirming():
 			_leave_auto_sign_in()
 		return true
-	if license_choice.visible and license_choice._cancel():
-		return true
-	# The licence choice reached through automatic sign-in: Escape gives the grant up (the form returns).
-	if _auto_state == "choose" and license_choice.visible:
-		_leave_auto_sign_in()
-		return true
+	if license_choice.visible:
+		var handled := license_choice._cancel()
+		# The licence choice reached through automatic sign-in: Escape gives the grant up (the form returns).
+		if not handled and _auto_state == "choose":
+			_leave_auto_sign_in()
+			handled = true
+		if handled:
+			return true
 	return activation.visible and activation._cancel()
 
 
@@ -939,7 +942,7 @@ func _on_auto_primary(step: String) -> void:
 	if step != "confirm" or _auto_result == null:
 		return
 	var claims: Array = PKeyGateController.consent_step(_auto_result.pending.get("consent", {})).get("claims", [])
-	await _complete_auto(null, {"claims": claims})
+	await _choice_flow.complete(null, {"claims": claims})
 
 
 ## Use another account: give the grant up and show the regular form, on Polaris Locker's sign-in.
@@ -981,64 +984,3 @@ func _exit_tree() -> void:
 
 func _held_grant() -> String:
 	return String(_auto_result.pending.get("grant", "")) if _auto_result != null else ""
-
-
-func _on_auto_license_chosen(selection: Dictionary) -> void:
-	if _auto_state != "choose":
-		return
-	var kind := String(selection.get("kind", ""))
-	var choice := {"kind": kind}
-	if kind == "license":
-		choice["license_id"] = String(selection.get("id", ""))
-	await _complete_auto(choice, null)
-
-
-## Replace a device on a full licence: the licence's devices, in place.
-func _on_auto_replace_requested(license_id: String) -> void:
-	var grant := _held_grant()
-	if _auto_state != "choose" or grant == "" or sdk == null or not is_instance_valid(sdk):
-		return
-	var r: PKeyChoiceResult = await sdk.identity.choice.devices(grant, license_id)
-	if not is_instance_valid(self) or _auto_state != "choose":
-		return
-	if r.ok and not r.view.is_empty():
-		license_choice.open_replace(license_id, r.view)
-	else:
-		license_choice.show_raced()
-
-
-func _on_auto_replace_confirmed(license_id: String, device: Dictionary) -> void:
-	if _auto_state != "choose" or String(device.get("id", "")) == "":
-		return
-	await _complete_auto({"kind": "license", "license_id": license_id, "replace_device_id": String(device["id"])}, null)
-
-
-func _complete_auto(choice: Variant, consent: Variant) -> void:
-	var grant := _held_grant()
-	if grant == "" or sdk == null or not is_instance_valid(sdk) or _completing:
-		return
-	_completing = true
-	auto_step.busy = _auto_state == "confirm"
-	var r: PKeyChoiceResult = await sdk.identity.choice.complete(grant, choice, consent)
-	_completing = false
-	if not is_instance_valid(self):
-		return
-	auto_step.busy = false
-	if not r.ok and r.view is Dictionary and r.view.get("choices") is Array:
-		# A refusal the person can fix (a full licence, a choice still due) carries a fresh view.
-		_auto_state = "choose"
-		license_choice.other_account_link = true
-		show_license_choice(r.view)
-		return
-	if not r.ok and _auto_state == "confirm" and r.code != &"invalid_grant":
-		# The grant is still good (the network failed, say): the step stays, with the kit's own error line,
-		# and Continue tries again. The grant is given up only when the person leaves.
-		auto_step.error_key = "core.codes.network.message"
-		return
-	var failure := ""
-	if not r.ok:
-		# The grant expired or was used: back to the form, with the kit's line, and the grant given up.
-		failure = String(catalog().format("core.codes.invalid_grant.message"))
-		sdk.identity.choice.cancel(grant)
-	_end_auto()
-	show_state(sdk.status(), failure)
