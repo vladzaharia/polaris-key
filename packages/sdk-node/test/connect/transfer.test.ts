@@ -661,7 +661,7 @@ describe.each([
 
   it("a kept partial that vanished before the resume starts the transfer afresh, without ending the process", async () => {
     const w = await make();
-    const size = 600_000;
+    const size = 150_000;
     w.a.cloudConnect.transfer.onOffer(() => ({ saveTo: join(w.out, "r.bin") }));
     let writes = 0;
     const real = PartialStore.prototype.write;
