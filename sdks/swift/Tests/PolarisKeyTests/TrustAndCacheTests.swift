@@ -45,13 +45,13 @@ final class TrustAndCacheTests: XCTestCase {
     /// every assertion about request counts.
     private func options(
         store: any Store, trustRefresh: Bool = true,
-        services: [ServiceSlug] = [.license]
+        services: [ServiceSlug] = [.license], deviceReports: Bool = true
     ) -> PolarisKeyClientOptions {
         PolarisKeyClientOptions(
             productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
             pinnedKeys: [pinnedKid: vendor.publicKeyB64], trustRefresh: trustRefresh,
             store: store, transport: server.transport, expectedServices: services,
-            fingerprint: false)
+            fingerprint: false, deviceReports: deviceReports)
     }
 
     private func seededStore(_ record: CacheRecord?) async -> InMemoryStore {
@@ -739,6 +739,37 @@ final class TrustAndCacheTests: XCTestCase {
         XCTAssertNotNil(json?["entitlements"])
         let legacyReports = await server.requests(forPath: "/djdl/config/report")
         XCTAssertTrue(legacyReports.isEmpty, "the v2 report path must never be called")
+    }
+
+    // @pkey-feature devices.report
+    /// `deviceReports: false` (Node `devices.reports`, Python `device_reports`): neither the sync
+    /// that ends in a report nor an explicit `report()` makes a request. Documents still sync.
+    func testDeviceReportsOffSendsNoReport() async throws {
+        let t = nowSec()
+        await routeLicense(vendor.sign(Fixtures.license(issuedAt: t)))
+        let c = try await PolarisKeyClient.create(
+            options: options(
+                store: await seededStore(CacheRecord()), trustRefresh: false,
+                deviceReports: false))
+        let result = await c.sync()
+        let explicit = await c.report()
+        let explicitExtras = await c.report(extras: [:])
+
+        XCTAssertEqual(result.documents[.license], .applied, "documents still sync")
+        XCTAssertFalse(explicit)
+        XCTAssertFalse(explicitExtras)
+        let reports = await server.requests(forPath: reportPath)
+        XCTAssertTrue(reports.isEmpty, "no device report request when reports are off")
+    }
+
+    /// The default is on: a sync ends in a report.
+    func testDeviceReportsDefaultOn() async throws {
+        let t = nowSec()
+        await routeLicense(vendor.sign(Fixtures.license(issuedAt: t)))
+        let c = try await client(trustRefresh: false)
+        _ = await c.sync()
+        let reports = await server.requests(forPath: reportPath)
+        XCTAssertFalse(reports.isEmpty)
     }
 
     /// Every product-scoped request carries the seven `X-PKey-*` metadata headers (§5), from
