@@ -82,9 +82,34 @@ private final class Plane: PolarisTransport, @unchecked Sendable {
     func count(_ path: String) -> Int { calls.filter { $0.path == path }.count }
     func set(_ path: String, _ answers: [(Int, String)]) { lock.withLock { self.answers[path] = answers } }
 
+    private var heldPath: String?
+    private var heldWaiters: [CheckedContinuation<Void, Never>] = []
+
+    /// Hold every request to `path` until `release()`; the call is recorded when it is answered.
+    func hold(_ path: String) { lock.withLock { heldPath = path } }
+    func release() {
+        let waiters: [CheckedContinuation<Void, Never>] = lock.withLock {
+            heldPath = nil
+            defer { heldWaiters = [] }
+            return heldWaiters
+        }
+        for w in waiters { w.resume() }
+    }
+    /// How many requests are parked at the held path.
+    var parked: Int { lock.withLock { heldWaiters.count } }
+
     func send(_ request: PolarisRequest) async throws -> PolarisResponse {
         let path = request.url.path
         if let ring, path.contains("/devices/keyring") { return try await ring.send(request) }
+        if lock.withLock({ heldPath == path }) {
+            await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+                let resumeNow = lock.withLock { () -> Bool in
+                    if heldPath == path { heldWaiters.append(c); return false }
+                    return true
+                }
+                if resumeNow { c.resume() }
+            }
+        }
         let body = request.body.flatMap { try? JSONDecoder().decode(JSONValue.self, from: $0) }?.objectValue
         let answer: (Int, String)? = lock.withLock {
             callsValue.append(Call(path: path, body: body, authorization: request.headers["authorization"]))
@@ -761,6 +786,30 @@ final class NearbySignInSessionTests: XCTestCase {
         let token = await r2.core.token
         XCTAssertNil(token)
         XCTAssertFalse(r2.events.kinds.contains("signedIn"))
+    }
+
+    /// The wait is cancelled (and the session ended) while the poll is in flight; the poll then answers with a
+    /// token. The discard must run to its end in spite of the cancelled task: no token or mark stays stored,
+    /// and exactly one sign-out is sent.
+    func testACancelWhileThePollIsInFlightStillDiscardsTheTokenItGets() async throws {
+        let r = try await rig()
+        r.plane.set(pollPath, [(200, readyBody())])
+        let session = try await r.identity.signIn.startNearby()
+        r.plane.hold(pollPath)
+        let waiting = Task { try await session.wait() }
+        await nearbyUntil("the poll is parked") { r.plane.parked >= 1 }
+        session.cancel()
+        waiting.cancel()
+        r.plane.release()
+        _ = try? await waiting.value
+        await nearbyUntil("the discard") { r.plane.count(signoutPath) == 1 }
+        await nearbyUntil("the token is gone") { await r.core.token == nil }
+        let token = await r.core.token
+        let mark = await r.store.readRecord("token-unconfirmed")
+        XCTAssertNil(token, "no token stays stored")
+        XCTAssertNil(mark, "no unconfirmed mark stays stored")
+        XCTAssertEqual(r.plane.count(signoutPath), 1, "exactly one sign-out")
+        XCTAssertFalse(r.events.kinds.contains("signedIn"))
     }
 
     func testTheEndListenersHearOnceAndALateOneAtOnce() async throws {
