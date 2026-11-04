@@ -23,6 +23,7 @@ internal fun signInScreen(inputs: KitInputs): KitScreen {
         }
     }
     inputs.obj("autoSignIn")?.let { return autoSignInScreen(context, it) }
+    signIn.string("step")?.takeIf { it in HOLDER_STEPS }?.let { return holderStepScreen(inputs, it) }
     if (signIn.string("outcome") == "expired") {
         return screen(KitComponent.signIn, "expired", listOf(context.line("signin.handoff.tooLong"), context.line("signin.again")))
     }

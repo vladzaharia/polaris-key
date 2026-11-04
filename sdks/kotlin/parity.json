@@ -470,7 +470,7 @@
     "ui.kit.holders": {
       "status": "planned",
       "wp": "UK-43",
-      "note": "Native port of the UK-42 holders views and AddToAccountModel (the holders rows of ui-matrix.json are the fixtures)."
+      "note": "Native port of the UK-42 holders views and AddToAccountModel (the holders rows of ui-matrix.json are the fixtures). UK-43.7: the core views (KitHolderStates, the holders family in UIMatrixPresentationTest, HoldersTest) are in; the model, driver and screens follow."
     },
     "ui.kit.keyentry": {
       "status": "implemented",
