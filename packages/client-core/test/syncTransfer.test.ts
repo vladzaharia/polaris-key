@@ -55,6 +55,8 @@ class FakeServer implements FileTransport {
   delay: (n: number) => number = () => 0;
   expiresAt = Date.now() + 86_400_000;
   partBytes = 8 * MIB;
+  /** Largest size the fake begins as a single PUT. */
+  singleMax = 16 * MIB;
 
   begin = async (
     _t: FileTarget,
@@ -65,7 +67,7 @@ class FakeServer implements FileTransport {
     if (h) return h as Reply<never>;
     this.begins++;
     const uploadId = `up${++this.seq}`;
-    const single = r.size <= 16 * MIB;
+    const single = r.size <= this.singleMax;
     this.uploads.set(uploadId, {
       size: r.size,
       sha256: r.sha256,
@@ -226,6 +228,12 @@ function engine(
 
 const big = noise(40 * MIB, 3); // 5 parts of 8 MiB
 const small = noise(300_000, 9);
+// Five 1 MiB parts: the same part count as `big` at an eighth of the hashing.
+const parts5 = noise(5 * MIB, 4);
+const smallParts = (s: FakeServer) => {
+  s.partBytes = MIB;
+  s.singleMax = MIB;
+};
 
 describe("TransferEngine upload", () => {
   it.each([
@@ -394,24 +402,26 @@ describe("TransferEngine upload", () => {
 
   it("restarts on a 410 at status, and on a 410 mid-parts, then succeeds", async () => {
     const s = new FakeServer();
+    smallParts(s);
     const j = memoryJournal();
     s.hook = (kind, n) => {
       if (kind === "putPart" && (n ?? 0) >= 3) throw new Error("killed");
       return undefined;
     };
     await expect(
-      engine(s, j, { maxAttempts: 1 }).e.upload(await request(big)),
+      engine(s, j, { maxAttempts: 1 }).e.upload(await request(parts5)),
     ).rejects.toBeInstanceOf(TransferError);
     // The upload expired on the server while the app was away.
     s.uploads.clear();
     s.hook = () => undefined;
     s.begins = 0;
-    const out = await engine(s, j).e.upload(await request(big));
+    const out = await engine(s, j).e.upload(await request(parts5));
     expect(s.begins).toBe(1);
-    expect(out.size).toBe(big.length);
+    expect(out.size).toBe(parts5.length);
 
     // A 410 on a part restarts the whole upload once.
     const s2 = new FakeServer();
+    smallParts(s2);
     let hit = false;
     s2.hook = (kind, n) => {
       if (kind === "putPart" && n === 2 && !hit) {
@@ -421,9 +431,9 @@ describe("TransferEngine upload", () => {
       return undefined;
     };
     const j2 = memoryJournal();
-    const out2 = await engine(s2, j2).e.upload(await request(big));
+    const out2 = await engine(s2, j2).e.upload(await request(parts5));
     expect(s2.begins).toBe(2);
-    expect(out2.size).toBe(big.length);
+    expect(out2.size).toBe(parts5.length);
     expect(await j2.list()).toEqual([]);
   });
 
