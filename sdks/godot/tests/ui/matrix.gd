@@ -95,6 +95,10 @@ const TIGHT_CASES := [
 	# A step that opens at its top (title in view, KF-godot): at 36 px on a 360 px canvas the primary is
 	# a scroll away (asserted reachable by pad); it never opens scrolled past its title.
 	["sign_in.auto_link", "native36", "640x360"],
+	# The confirm step is the same structure (title, account line, primary, Use another account): at 36 px on a
+	# 360 px canvas the title wraps to three lines and the squeeze is spent (level 4), so Continue sits below
+	# the card's 228 px of room, a scroll away (asserted reachable by pad).
+	["sign_in.auto_confirm", "native36", "640x360"],
 	# The browser wait: the same structure as the device-code view, so the same exemptions (36 px type on a
 	# short canvas breaks the product's name; on a phone the buttons are a scroll away, reachable by pad).
 	["sign_in.redirect", "native36", "1170x2532@3"],

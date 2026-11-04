@@ -1574,9 +1574,9 @@ jobs:
   # `jwsCases`, read from the generator-owned res:// mirror. PARITY requires the runner on the
   # editor AND an exported release template, because official 4.6+ templates ignore `--path`,
   # `--script` and `--main-pack`; the runner is the project's main loop, so both run it the same
-  # way. Four Linux legs, one per supported engine (P1-12): the 4.7.2, 4.6.3 and 4.5.2 editors, each
+  # way. Four Linux engines (P1-12): the 4.7.2, 4.6.3 and 4.5.2 editors, each
   # with its official linux_release.x86_64 template, and the 4.4.1 editor (the source-compatible
-  # floor). The README's tested matrix names exactly these engines. run_tests.sh also exports the
+  # floor); each engine is split over runners (editor A, editor B, UI matrix, release template). The README's tested matrix names exactly these engines. run_tests.sh also exports the
   # harness preset headless with PKEY_BUILD_OUTLET=steam, PKEY_BUILD_CHANNEL=beta and
   # PKEY_BUILD_NUMBER=42 (the P1-11 build stamp): the export_stamps suite checks the stamps in the
   # editor and the build_stamp suite asserts the stamp and the pkey_* feature tags on the release
@@ -1662,8 +1662,9 @@ jobs:
           if [ -n "${{ matrix.suites }}" ]; then export PKEY_TEST_SUITES="${{ matrix.suites }}"; fi
           # The newest editor runs the UI matrix on both presentation paths (scrim and opaque page).
           if [ "${{ matrix.godot }}" = 4.7.2 ]; then export PKEY_UI_MATRIX_PATHS=both; fi
-          # The 4.7.2 engine's work is split over four runners (the editor run in two halves, A with
-          # the stamps and B, the UI matrix, the release template run); the other legs run it all (PKEY_TEST_PART unset).
+          # Every Linux engine's work is split over runners (the editor run in two halves, A with
+          # the stamps and B, the UI matrix, the release template run where the engine has one); the
+          # Windows and macOS smoke legs run it all (PKEY_TEST_PART unset).
           if [ -n "${{ matrix.part }}" ]; then export PKEY_TEST_PART="${{ matrix.part }}"; fi
           sdks/godot/tools/run_tests.sh
       # Import, export and runs must leave the tree as committed: no rewritten file, no new .uid.

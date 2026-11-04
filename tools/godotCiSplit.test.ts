@@ -82,3 +82,46 @@ describe("godot live lane follows dev_live", () => {
       }
   });
 });
+
+describe("godot legs split every Linux engine", () => {
+  type Leg = { godot: string; os: string; part?: string; template: string };
+  const scope = JSON.parse(
+    readFileSync(new URL("./ci-scope.json", import.meta.url), "utf8"),
+  ) as { matrices: { godot: Record<string, { include: Leg[] }> } };
+  const publish = readFileSync(
+    new URL("../.github/workflows/publish-sdks.yml", import.meta.url),
+    "utf8",
+  );
+
+  for (const [lane, { include }] of Object.entries(scope.matrices.godot)) {
+    it(`runs each ${lane} Linux engine as editor A, editor B and the UI matrix, plus the release template where it has one`, () => {
+      const linux = include.filter((l) => l.os === "ubuntu-latest");
+      expect(linux.every((l) => l.part)).toBe(true);
+      for (const godot of new Set(linux.map((l) => l.godot))) {
+        const legs = linux.filter((l) => l.godot === godot);
+        const parts = legs.map((l) => l.part!).sort();
+        const withTemplate = legs.some((l) => l.template);
+        expect(parts).toEqual(
+          (withTemplate
+            ? ["editor-a", "editor-b", "matrix", "template"]
+            : ["editor-a", "editor-b", "matrix"]
+          ).sort(),
+        );
+        // A template is fetched exactly for the template part.
+        for (const l of legs)
+          expect(Boolean(l.template)).toBe(l.part === "template");
+      }
+    });
+  }
+
+  it("runs the publish workflow's Godot test as the same four parts", () => {
+    const m = /godot-test:[\s\S]*?part: \[([^\]]+)\]/.exec(publish);
+    expect(m?.[1]!.split(",").map((s) => s.trim())).toEqual([
+      "editor-a",
+      "editor-b",
+      "matrix",
+      "template",
+    ]);
+    expect(publish).toContain('PKEY_TEST_PART="${{ matrix.part }}"');
+  });
+});
