@@ -332,6 +332,32 @@ final class ConnectRelaySessionTests: XCTestCase {
         await w.close()
     }
 
+    /// A record's bytes are counted once: held by the service until the writer queues them, then only by the
+    /// outbox, not by both while the writer is stalled.
+    func testARecordIsHeldOnlyUntilTheWriterQueuesIt() async throws {
+        final class Room: RelayRoom, @unchecked Sendable {
+            let held = LockedValue(0)
+            let queued = LockedValue(0)
+            func sendSession(peer: Data, session: UInt32, noise: Data) async { queued.with { $0 += noise.count + 128 } }
+            func hasRoom(_ n: Int) async -> Bool { true }
+            func reserve(_ n: Int) async -> Bool {
+                held.with { $0 += n }
+                return true
+            }
+            func release(_ n: Int) async { held.with { $0 -= n } }
+        }
+        let room = Room()
+        let pipe = RelayPipe()
+        pipe.attach(svc: room, peer: Data(count: 32), session: 1)
+        let noise = Data(count: 50_000)
+        let need = noise.count + 128
+        _ = await room.reserve(need)
+        pipe.addReserved(need)
+        try await pipe.write(try PeerFrame.encode(noise))
+        XCTAssertEqual(room.queued.current, need)
+        XCTAssertEqual(room.held.current, 0, "queued bytes are no longer also held")
+    }
+
     func testASessionWhoseOutboxIsOverTheCapIsClosedAndTheOthersGoOn() async throws {
         let w = try await World()
         let clock = FakeClock()
