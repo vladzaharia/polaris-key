@@ -50,6 +50,70 @@
 [2m|[0m
 [2m|[0m  It installs through the store or platform you got
 [2m`[0m  Tidewater Studio from.
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mTidewater Studio 2.5[0m
+[2m│[0m
+[2m│[0m  It installs through the store or
+[2m│[0m  platform you got Tidewater
+[2m└[0m  Studio from.
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[36m◆[0m  [1mTidewater Studio 2.5[0m
+[2m│[0m
+[2m│[0m  It installs through the store or
+[2m│[0m  platform you got Tidewater
+[2m└[0m  Studio from.
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · update
+│
+◆  [1mTidewater Studio 2.5[0m
+│
+│  It installs through the store or
+│  platform you got Tidewater
+└  Studio from.
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
+[2m|[0m
+[36m*[0m  [1mTidewater Studio 2.5[0m
+[2m|[0m
+[2m|[0m  It installs through the store or
+[2m|[0m  platform you got Tidewater
+[2m`[0m  Studio from.
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mTidewater Studio 2.5[0m
+[2m│[0m
+[2m│[0m  It installs through the store
+[2m│[0m  or platform you got Tidewater
+[2m└[0m  Studio from.
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[36m◆[0m  [1mTidewater Studio 2.5[0m
+[2m│[0m
+[2m│[0m  It installs through the store
+[2m│[0m  or platform you got Tidewater
+[2m└[0m  Studio from.
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · update
+│
+◆  [1mTidewater Studio 2.5[0m
+│
+│  It installs through the store
+│  or platform you got Tidewater
+└  Studio from.
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
+[2m|[0m
+[36m*[0m  [1mTidewater Studio 2.5[0m
+[2m|[0m
+[2m|[0m  It installs through the store
+[2m|[0m  or platform you got Tidewater
+[2m`[0m  Studio from.
 ── pipe · 80 ──
 Tidewater Studio · update
 Tidewater Studio 2.5

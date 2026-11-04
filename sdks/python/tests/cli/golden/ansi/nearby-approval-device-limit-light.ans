@@ -54,6 +54,82 @@
 [2m|[0m  room for New phone.
 [2m|[0m  [1mtidewater devices list[0m
 [2m`[0m    [2mList the devices using your license[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[33m▲[0m  [1mDevice limit reached[0m
+[2m│[0m  This license is on all its devices.
+[2m│[0m  Remove one to make room for
+[2m│[0m  New phone.
+[2m│[0m  [1mtidewater devices list[0m
+[2m└[0m    [2mList the devices using your license[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[33m▲[0m  [1mDevice limit reached[0m
+[2m│[0m  This license is on all its devices.
+[2m│[0m  Remove one to make room for
+[2m│[0m  New phone.
+[2m│[0m  [1mtidewater devices list[0m
+[2m└[0m    [2mList the devices using your license[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · devices approve
+│
+▲  [1mDevice limit reached[0m
+│  This license is on all its devices.
+│  Remove one to make room for
+│  New phone.
+│  [1mtidewater devices list[0m
+└    List the devices using your license
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices approve[0m
+[2m|[0m
+[33m![0m  [1mDevice limit reached[0m
+[2m|[0m  This license is on all its devices.
+[2m|[0m  Remove one to make room for
+[2m|[0m  New phone.
+[2m|[0m  [1mtidewater devices list[0m
+[2m`[0m    [2mList the devices using your license[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m
+[2m│[0m
+[33m▲[0m  [1mDevice limit reached[0m
+[2m│[0m  This license is on all its
+[2m│[0m  devices. Remove one to make
+[2m│[0m  room for New phone.
+[2m│[0m  [1mtidewater devices list[0m
+[2m│[0m    [2mList the devices using[0m
+[2m└[0m    [2myour license[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m
+[2m│[0m
+[33m▲[0m  [1mDevice limit reached[0m
+[2m│[0m  This license is on all its
+[2m│[0m  devices. Remove one to make
+[2m│[0m  room for New phone.
+[2m│[0m  [1mtidewater devices list[0m
+[2m│[0m    [2mList the devices using[0m
+[2m└[0m    [2myour license[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m
+│
+▲  [1mDevice limit reached[0m
+│  This license is on all its
+│  devices. Remove one to make
+│  room for New phone.
+│  [1mtidewater devices list[0m
+│    List the devices using
+└    your license
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m
+[2m|[0m
+[33m![0m  [1mDevice limit reached[0m
+[2m|[0m  This license is on all its
+[2m|[0m  devices. Remove one to make
+[2m|[0m  room for New phone.
+[2m|[0m  [1mtidewater devices list[0m
+[2m|[0m    [2mList the devices using[0m
+[2m`[0m    [2myour license[0m
 ── pipe · 80 ──
 Tidewater Studio · devices approve
 Device limit reached

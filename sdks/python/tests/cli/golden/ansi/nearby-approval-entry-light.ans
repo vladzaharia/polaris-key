@@ -46,6 +46,55 @@
 [36m*[0m  [1mApprove a nearby device[0m
 [2m-[0m  Waiting for a device to ask...
 [2m`[0m  [1mEsc[0m [2mstop[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mApprove a nearby device[0m
+[2m⠹[0m  Waiting for a device to ask…
+[2m└[0m  [1mEsc[0m [2mstop[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[36m◆[0m  [1mApprove a nearby device[0m
+[2m⠹[0m  Waiting for a device to ask…
+[2m└[0m  [1mEsc[0m [2mstop[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · devices approve
+│
+◆  [1mApprove a nearby device[0m
+⠹  Waiting for a device to ask…
+└  [1mEsc[0m stop
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices approve[0m
+[2m|[0m
+[36m*[0m  [1mApprove a nearby device[0m
+[2m-[0m  Waiting for a device to ask...
+[2m`[0m  [1mEsc[0m [2mstop[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mApprove a nearby device[0m
+[2m⠹[0m  Waiting for a device to ask…
+[2m└[0m  [1mEsc[0m [2mstop[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m
+[2m│[0m
+[36m◆[0m  [1mApprove a nearby device[0m
+[2m⠹[0m  Waiting for a device to ask…
+[2m└[0m  [1mEsc[0m [2mstop[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m
+│
+◆  [1mApprove a nearby device[0m
+⠹  Waiting for a device to ask…
+└  [1mEsc[0m stop
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m
+[2m|[0m
+[36m*[0m  [1mApprove a nearby device[0m
+[2m-[0m  Waiting for a device
+[2m|[0m  to ask...
+[2m`[0m  [1mEsc[0m [2mstop[0m
 ── pipe · 80 ──
 Tidewater Studio · devices approve
 Approve a nearby device

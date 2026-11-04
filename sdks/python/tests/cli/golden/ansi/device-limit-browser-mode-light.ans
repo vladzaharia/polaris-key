@@ -70,6 +70,102 @@
 [2m|[0m  Replace a device in your browser, then try again here.
 [2m|[0m  ]8;;https://polaris.locker/#/p/tidewater/devices\[2;4mpolaris.locker/#/p/tidewater/devices[0m]8;;\
 [2m`[0m  [1mEnter[0m [2mopen in browser - Esc cancel[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[33m▲[0m  [1mYour license is on 3 of 3 devices[0m
+[2m│[0m  [1m●●●[0m
+[2m│[0m  Replace a device in your browser,
+[2m│[0m  then try again here.
+[2m│[0m  ]8;;https://polaris.locker/#/p/tidewater/devices\[2;4mpolaris.locker/#/p/tidewater/devices[0m]8;;\
+[2m└[0m  [1mEnter[0m [2mopen in browser · [0m[1mEsc[0m [2mcancel[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[33m▲[0m  [1mYour license is on 3 of 3 devices[0m
+[2m│[0m  [1m●●●[0m
+[2m│[0m  Replace a device in your browser,
+[2m│[0m  then try again here.
+[2m│[0m  ]8;;https://polaris.locker/#/p/tidewater/devices\[2;4mpolaris.locker/#/p/tidewater/devices[0m]8;;\
+[2m└[0m  [1mEnter[0m [2mopen in browser · [0m[1mEsc[0m [2mcancel[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · activate
+│
+◇  License key · pkey_tidewater_••••••
+▲  [1mYour license is on 3 of 3 devices[0m
+│  [1m●●●[0m
+│  Replace a device in your browser,
+│  then try again here.
+│  polaris.locker/#/p/tidewater/devices
+└  [1mEnter[0m open in browser · [1mEsc[0m cancel
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
+[2m|[0m
+[32mo[0m  License key[2m - pkey_tidewater_******[0m
+[33m![0m  [1mYour license is on 3 of 3 devices[0m
+[2m|[0m  [1m###[0m
+[2m|[0m  Replace a device in your browser,
+[2m|[0m  then try again here.
+[2m|[0m  ]8;;https://polaris.locker/#/p/tidewater/devices\[2;4mpolaris.locker/#/p/tidewater/devices[0m]8;;\
+[2m`[0m  [1mEnter[0m [2mopen in browser - Esc cancel[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key
+[2m│[0m  [2mpkey_tidewater_••••••[0m
+[33m▲[0m  [1mYour license is on 3 of[0m
+[2m│[0m  [1m3 devices[0m
+[2m│[0m  [1m●●●[0m
+[2m│[0m  Replace a device in your
+[2m│[0m  browser, then try again here.
+[2m│[0m  ]8;;https://polaris.locker/#/p/tidewater/devices\[2;4mpolaris.locker/#/p/tidewater/[0m]8;;\
+[2m│[0m  ]8;;https://polaris.locker/#/p/tidewater/devices\[2;4mdevices[0m]8;;\
+[2m│[0m  [1mEnter[0m [2mopen in browser[0m
+[2m└[0m  [1mEsc[0m [2mcancel[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key
+[2m│[0m  [2mpkey_tidewater_••••••[0m
+[33m▲[0m  [1mYour license is on 3 of[0m
+[2m│[0m  [1m3 devices[0m
+[2m│[0m  [1m●●●[0m
+[2m│[0m  Replace a device in your
+[2m│[0m  browser, then try again here.
+[2m│[0m  ]8;;https://polaris.locker/#/p/tidewater/devices\[2;4mpolaris.locker/#/p/tidewater/[0m]8;;\
+[2m│[0m  ]8;;https://polaris.locker/#/p/tidewater/devices\[2;4mdevices[0m]8;;\
+[2m│[0m  [1mEnter[0m [2mopen in browser[0m
+[2m└[0m  [1mEsc[0m [2mcancel[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · activate
+│
+◇  License key
+│  pkey_tidewater_••••••
+▲  [1mYour license is on 3 of[0m
+│  [1m3 devices[0m
+│  [1m●●●[0m
+│  Replace a device in your
+│  browser, then try again here.
+│  polaris.locker/#/p/tidewater/
+│  devices
+│  [1mEnter[0m open in browser
+└  [1mEsc[0m cancel
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
+[2m|[0m
+[32mo[0m  License key
+[2m|[0m  [2m- pkey_tidewater_******[0m
+[33m![0m  [1mYour license is on 3 of[0m
+[2m|[0m  [1m3 devices[0m
+[2m|[0m  [1m###[0m
+[2m|[0m  Replace a device in your
+[2m|[0m  browser, then try again here.
+[2m|[0m  ]8;;https://polaris.locker/#/p/tidewater/devices\[2;4mpolaris.locker/#/p/tidewater/[0m]8;;\
+[2m|[0m  ]8;;https://polaris.locker/#/p/tidewater/devices\[2;4mdevices[0m]8;;\
+[2m|[0m  [1mEnter[0m [2mopen in browser -[0m
+[2m`[0m  [2mEsc cancel[0m
 ── pipe · 80 ──
 Tidewater Studio · activate
 License key · pkey_tidewater_••••••

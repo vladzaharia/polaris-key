@@ -27,7 +27,7 @@ MODES: Tuple[Tuple[str, str, str], ...] = (
     ("no-color", "none", "unicode"),
     ("ascii", "ansi16", "ascii"),
 )
-WIDTHS = (80, 60)
+WIDTHS = (80, 60, 40, 32)
 
 RECORD = os.environ.get("PKEY_GOLDEN") == "record"
 
@@ -50,8 +50,8 @@ def env(color: str, symbols: str, width: int, theme: str, *, tty: bool = True) -
     )
 
 
-def variants(theme: str) -> List[Tuple[str, TermEnv]]:
-    out = [(f"{name} · {w}", env(color, sym, w, theme)) for w in WIDTHS for name, color, sym in MODES]
+def variants(theme: str, widths: Tuple[int, ...] = WIDTHS) -> List[Tuple[str, TermEnv]]:
+    out = [(f"{name} · {w}", env(color, sym, w, theme)) for w in widths for name, color, sym in MODES]
     out.append(("pipe · 80", env("none", "unicode", 80, theme, tty=False)))
     return out
 

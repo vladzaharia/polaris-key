@@ -1217,8 +1217,25 @@ const parityCases: Record<string, (h: Harness) => Promise<unknown>> = {
   "offline-request": async (h) => offlineRequestFlow(h.ctx, stubClient()),
   // The license is active: the tier it carries ("Pro"), the holder and the version.
   "status-active": (h) => statusFlow(h.ctx, stubClient()),
-  // Activated with a key alone: no account, so no holder.
+  // Activated with a key, the license sent to an address: no account yet.
   "status-key-only": (h) =>
+    statusFlow(
+      h.ctx,
+      stubClient({
+        identity: { current: async () => null },
+        licenseInfo: {
+          licenseId: "lic_tw",
+          tier: "pro",
+          tierLabel: "Pro",
+          deviceLimit: 3,
+          profile: { name: "", email: "ada@example.com" },
+          entitledChannels: ["stable"],
+          status: "ok",
+        },
+      }),
+    ),
+  // Held by the key alone: no account and no address, so the page follows.
+  "status-floating": (h) =>
     statusFlow(
       h.ctx,
       stubClient({

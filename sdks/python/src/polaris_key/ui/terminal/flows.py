@@ -263,7 +263,9 @@ def status(client: Any, t: Terminal) -> Outcome:
     usable = bool(client.is_licensed())
     # Floating (UK-43 D4): a key-only device whose license has no holder address.
     held = _license_holder(client, signed_in)
-    floating = view.component == "AccountAndLicense" and view.state == "key-only" and held == (False, "")
+    floating: Optional[str] = None
+    if view.component == "AccountAndLicense" and view.state == "key-only" and held == (False, ""):
+        floating = "floating" if _identity_on(client) else "identity-off"
     if not usable or floating:
         screens.ensure_portal(client)  # the link a refusal draws comes from discovery (DISC-01)
     lines = screens.gate(t.kit, view, t.verb or "status", screens.portal_url(client), floating)
@@ -315,16 +317,20 @@ def _license_holder(client: Any, signed_in: Optional[bool] = None) -> Optional[T
     return bool(signed_in), email if isinstance(email, str) else ""
 
 
+def _identity_on(client: Any) -> bool:
+    try:
+        return client.capabilities().get("identity", {}).get("enabled") is True
+    except Exception:
+        return False
+
+
 def _holder_rows(t: Terminal, client: Any) -> List[Line]:
     """The line after a successful ``activate``: where a license held by the key alone can be kept
     in an account. Nothing for an account's license, and nothing when the product page is off."""
     held = _license_holder(client)
     if held is None or held[0]:
         return []
-    try:
-        identity_on = client.capabilities().get("identity", {}).get("enabled") is True
-    except Exception:
-        identity_on = False
+    identity_on = _identity_on(client)
     masked = mask_email(held[1])
     if t.kit.env.symbols == "ascii":
         masked = masked.replace("\u2022", "*")

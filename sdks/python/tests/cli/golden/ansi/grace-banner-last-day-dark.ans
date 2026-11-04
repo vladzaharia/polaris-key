@@ -86,6 +86,142 @@
 [32m+[0m  Version   [1m2.4.1[0m[2m - stable[0m
 [2m|[0m
 [2m`[0m  [1mtidewater status[0m   [2mReconnect[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[33m▲[0m  [1mOffline · last day to use[0m
+[2m│[0m  [1mTidewater Studio[0m
+[2m│[0m  [2mWorks offline until Oct 3[0m
+[2m│[0m
+[32m✓[0m  License
+[2m│[0m    [1mPro[0m[2m · Lifetime[0m
+[2m│[0m    [2mmara@fennick.studio[0m
+[32m✓[0m  Offline
+[2m│[0m    [1muntil Oct 3[0m
+[32m✓[0m  Version
+[2m│[0m    [1m2.4.1[0m[2m · stable[0m
+[2m│[0m
+[2m│[0m  [1mtidewater status[0m
+[2m└[0m    [2mReconnect[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[33m▲[0m  [1mOffline · last day to use[0m
+[2m│[0m  [1mTidewater Studio[0m
+[2m│[0m  [2mWorks offline until Oct 3[0m
+[2m│[0m
+[32m✓[0m  License
+[2m│[0m    [1mPro[0m[2m · Lifetime[0m
+[2m│[0m    [2mmara@fennick.studio[0m
+[32m✓[0m  Offline
+[2m│[0m    [1muntil Oct 3[0m
+[32m✓[0m  Version
+[2m│[0m    [1m2.4.1[0m[2m · stable[0m
+[2m│[0m
+[2m│[0m  [1mtidewater status[0m
+[2m└[0m    [2mReconnect[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · status
+│
+▲  [1mOffline · last day to use[0m
+│  [1mTidewater Studio[0m
+│  Works offline until Oct 3
+│
+✓  License
+│    [1mPro[0m · Lifetime
+│    mara@fennick.studio
+✓  Offline
+│    [1muntil Oct 3[0m
+✓  Version
+│    [1m2.4.1[0m · stable
+│
+│  [1mtidewater status[0m
+└    Reconnect
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
+[2m|[0m
+[33m![0m  [1mOffline - last day to use[0m
+[2m|[0m  [1mTidewater Studio[0m
+[2m|[0m  [2mWorks offline until Oct 3[0m
+[2m|[0m
+[32m+[0m  License
+[2m|[0m    [1mPro[0m[2m - Lifetime -[0m
+[2m|[0m    [2mmara@fennick.studio[0m
+[32m+[0m  Offline
+[2m|[0m    [1muntil Oct 3[0m
+[32m+[0m  Version
+[2m|[0m    [1m2.4.1[0m[2m - stable[0m
+[2m|[0m
+[2m|[0m  [1mtidewater status[0m
+[2m`[0m    [2mReconnect[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[33m▲[0m  [1mOffline · last day to use[0m
+[2m│[0m  [1mTidewater Studio[0m
+[2m│[0m  [2mWorks offline until Oct 3[0m
+[2m│[0m
+[32m✓[0m  License
+[2m│[0m    [1mPro[0m[2m · Lifetime[0m
+[2m│[0m    [2mmara@fennick.studio[0m
+[32m✓[0m  Offline
+[2m│[0m    [1muntil Oct 3[0m
+[32m✓[0m  Version
+[2m│[0m    [1m2.4.1[0m[2m · stable[0m
+[2m│[0m
+[2m│[0m  [1mtidewater status[0m
+[2m└[0m    [2mReconnect[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[33m▲[0m  [1mOffline · last day to use[0m
+[2m│[0m  [1mTidewater Studio[0m
+[2m│[0m  [2mWorks offline until Oct 3[0m
+[2m│[0m
+[32m✓[0m  License
+[2m│[0m    [1mPro[0m[2m · Lifetime[0m
+[2m│[0m    [2mmara@fennick.studio[0m
+[32m✓[0m  Offline
+[2m│[0m    [1muntil Oct 3[0m
+[32m✓[0m  Version
+[2m│[0m    [1m2.4.1[0m[2m · stable[0m
+[2m│[0m
+[2m│[0m  [1mtidewater status[0m
+[2m└[0m    [2mReconnect[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · status
+│
+▲  [1mOffline · last day to use[0m
+│  [1mTidewater Studio[0m
+│  Works offline until Oct 3
+│
+✓  License
+│    [1mPro[0m · Lifetime
+│    mara@fennick.studio
+✓  Offline
+│    [1muntil Oct 3[0m
+✓  Version
+│    [1m2.4.1[0m · stable
+│
+│  [1mtidewater status[0m
+└    Reconnect
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
+[2m|[0m
+[33m![0m  [1mOffline - last day to use[0m
+[2m|[0m  [1mTidewater Studio[0m
+[2m|[0m  [2mWorks offline until Oct 3[0m
+[2m|[0m
+[32m+[0m  License
+[2m|[0m    [1mPro[0m[2m - Lifetime -[0m
+[2m|[0m    [2mmara@fennick.studio[0m
+[32m+[0m  Offline
+[2m|[0m    [1muntil Oct 3[0m
+[32m+[0m  Version
+[2m|[0m    [1m2.4.1[0m[2m - stable[0m
+[2m|[0m
+[2m|[0m  [1mtidewater status[0m
+[2m`[0m    [2mReconnect[0m
 ── pipe · 80 ──
 Tidewater Studio · status
 Offline · last day to use Tidewater Studio

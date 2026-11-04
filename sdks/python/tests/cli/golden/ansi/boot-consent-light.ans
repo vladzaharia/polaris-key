@@ -54,6 +54,70 @@
 [2m|[0m  Tidewater Studio needs 91 MB of new content, and you're
 [2m|[0m  on a metered connection.
 [2m`[0m  [1my[0m [2mDownload - [0m[1mn[0m [2mNot now[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · boot[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mDownload content?[0m
+[2m│[0m  Tidewater Studio needs 91 MB of new
+[2m│[0m  content, and you're on a
+[2m│[0m  metered connection.
+[2m└[0m  [1my[0m [2mDownload · [0m[1mn[0m [2mNot now[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · boot[0m
+[2m│[0m
+[36m◆[0m  [1mDownload content?[0m
+[2m│[0m  Tidewater Studio needs 91 MB of new
+[2m│[0m  content, and you're on a
+[2m│[0m  metered connection.
+[2m└[0m  [1my[0m [2mDownload · [0m[1mn[0m [2mNot now[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · boot
+│
+◆  [1mDownload content?[0m
+│  Tidewater Studio needs 91 MB of new
+│  content, and you're on a
+│  metered connection.
+└  [1my[0m Download · [1mn[0m Not now
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - boot[0m
+[2m|[0m
+[36m*[0m  [1mDownload content?[0m
+[2m|[0m  Tidewater Studio needs 91 MB of new
+[2m|[0m  content, and you're on a
+[2m|[0m  metered connection.
+[2m`[0m  [1my[0m [2mDownload - [0m[1mn[0m [2mNot now[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · boot[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mDownload content?[0m
+[2m│[0m  Tidewater Studio needs 91 MB
+[2m│[0m  of new content, and you're on
+[2m│[0m  a metered connection.
+[2m└[0m  [1my[0m [2mDownload · [0m[1mn[0m [2mNot now[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · boot[0m
+[2m│[0m
+[36m◆[0m  [1mDownload content?[0m
+[2m│[0m  Tidewater Studio needs 91 MB
+[2m│[0m  of new content, and you're on
+[2m│[0m  a metered connection.
+[2m└[0m  [1my[0m [2mDownload · [0m[1mn[0m [2mNot now[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · boot
+│
+◆  [1mDownload content?[0m
+│  Tidewater Studio needs 91 MB
+│  of new content, and you're on
+│  a metered connection.
+└  [1my[0m Download · [1mn[0m Not now
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - boot[0m
+[2m|[0m
+[36m*[0m  [1mDownload content?[0m
+[2m|[0m  Tidewater Studio needs 91 MB
+[2m|[0m  of new content, and you're on
+[2m|[0m  a metered connection.
+[2m`[0m  [1my[0m [2mDownload - [0m[1mn[0m [2mNot now[0m
 ── pipe · 80 ──
 Tidewater Studio · boot
 Download content?

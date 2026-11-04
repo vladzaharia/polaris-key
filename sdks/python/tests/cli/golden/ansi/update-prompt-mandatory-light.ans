@@ -62,6 +62,94 @@
 [2m|[0m  [33m![0m This update includes an important security fix.
 [2m|[0m
 [2m`[0m  [1mtidewater update apply[0m   [2mInstall[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[33m▲[0m  [1mUpdate to keep using Tidewater Studio[0m
+[2m│[0m  This version is no longer supported.
+[2m│[0m  [33m▲[0m This update includes an important
+[2m│[0m  security fix.
+[2m│[0m
+[2m│[0m  [1mtidewater update apply[0m
+[2m└[0m    [2mInstall[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[33m▲[0m  [1mUpdate to keep using Tidewater Studio[0m
+[2m│[0m  This version is no longer supported.
+[2m│[0m  [33m▲[0m This update includes an important
+[2m│[0m  security fix.
+[2m│[0m
+[2m│[0m  [1mtidewater update apply[0m
+[2m└[0m    [2mInstall[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · update
+│
+▲  [1mUpdate to keep using Tidewater Studio[0m
+│  This version is no longer supported.
+│  ▲ This update includes an important
+│  security fix.
+│
+│  [1mtidewater update apply[0m
+└    Install
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
+[2m|[0m
+[33m![0m  [1mUpdate to keep using Tidewater Studio[0m
+[2m|[0m  This version is no longer supported.
+[2m|[0m  [33m![0m This update includes an important
+[2m|[0m  security fix.
+[2m|[0m
+[2m|[0m  [1mtidewater update apply[0m
+[2m`[0m    [2mInstall[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[33m▲[0m  [1mUpdate to keep using[0m
+[2m│[0m  [1mTidewater Studio[0m
+[2m│[0m  This version is no
+[2m│[0m  longer supported.
+[2m│[0m  [33m▲[0m This update includes an
+[2m│[0m  important security fix.
+[2m│[0m
+[2m│[0m  [1mtidewater update apply[0m
+[2m└[0m    [2mInstall[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[33m▲[0m  [1mUpdate to keep using[0m
+[2m│[0m  [1mTidewater Studio[0m
+[2m│[0m  This version is no
+[2m│[0m  longer supported.
+[2m│[0m  [33m▲[0m This update includes an
+[2m│[0m  important security fix.
+[2m│[0m
+[2m│[0m  [1mtidewater update apply[0m
+[2m└[0m    [2mInstall[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · update
+│
+▲  [1mUpdate to keep using[0m
+│  [1mTidewater Studio[0m
+│  This version is no
+│  longer supported.
+│  ▲ This update includes an
+│  important security fix.
+│
+│  [1mtidewater update apply[0m
+└    Install
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
+[2m|[0m
+[33m![0m  [1mUpdate to keep using[0m
+[2m|[0m  [1mTidewater Studio[0m
+[2m|[0m  This version is no
+[2m|[0m  longer supported.
+[2m|[0m  [33m![0m This update includes an
+[2m|[0m  important security fix.
+[2m|[0m
+[2m|[0m  [1mtidewater update apply[0m
+[2m`[0m    [2mInstall[0m
 ── pipe · 80 ──
 Tidewater Studio · update
 Update to keep using Tidewater Studio

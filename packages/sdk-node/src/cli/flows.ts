@@ -543,10 +543,14 @@ export async function statusFlow(
       });
       rows.push(...tableRows(ctx, table));
       // A license held by the key alone says so, and where it can be kept (never `#key=`).
-      if (floating) {
-        const url = portalLink(client);
-        if (url !== null) rows.push(linkRow(url));
-      }
+      if (floating)
+        rows.push(
+          ...(await floatingRows(
+            ctx,
+            client,
+            client.capabilities().identity?.enabled === true,
+          )),
+        );
       break;
     }
     case "GraceBanner":
@@ -1110,8 +1114,23 @@ async function holderRows(
     return [
       ...gap(ctx),
       textRow(t("activate.waiting", { maskedEmail: masked })),
-      ...fixRows(ctx, [{ verb: "login", key: "cli.fix.signIn" }]),
+      ...gap(ctx),
+      ...fixRows(ctx, [{ verb: "login", key: "welcome.signIn" }]),
     ];
+  return floatingRows(ctx, client, identityOn);
+}
+
+/**
+ * The block for a license the key alone holds, after `activate` and under `status`: a gap, the
+ * recommendation (the portal reason with Identity off), then the product page. Nothing when the
+ * page is off. Never `#key=`: the link is the page's own.
+ */
+async function floatingRows(
+  ctx: KitContext,
+  client: PolarisKeyClient,
+  identityOn: boolean,
+): Promise<RailRow[]> {
+  const t = ctx.copy.t.bind(ctx.copy);
   await ensurePortal(client);
   const url = portalLink(client);
   if (url === null) return [];
@@ -1450,12 +1469,23 @@ export async function activateFlow(
       },
     };
   }
-  hist.push(
-    stepRow("done", t("part.keyField.label"), [
-      { text: `${ctx.symbols.separator} `, style: ["muted"] },
-      ...keyMask(ctx, key, true, cellWidth(t("part.keyField.label")) + 3),
-    ]),
-  );
+  // The answered key sits beside its label; where the line is too narrow for both, it takes a row
+  // of its own under the label, whole, as the Python kit lays it out.
+  const label = t("part.keyField.label");
+  const beside = keyMask(ctx, key, true, cellWidth(label) + 3);
+  const whole = keyMask(ctx, key, true);
+  if (
+    cellWidth(label) + 3 + cellWidth(whole.map((p) => p.text).join("")) >
+    contentWidth(ctx.caps.columns)
+  )
+    hist.push(stepRow("done", label), textRow(whole));
+  else
+    hist.push(
+      stepRow("done", label, [
+        { text: `${ctx.symbols.separator} `, style: ["muted"] },
+        ...beside,
+      ]),
+    );
   const verdict = keyVerdict(key, true);
   if (verdict.state === "rejected" || verdict.state === "cut-short") {
     const message =

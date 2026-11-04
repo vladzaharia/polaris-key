@@ -203,18 +203,20 @@ def contact_row(k: Kit) -> Lines:
     return k.body([k.t("status.contact", developer=k.identity.developer or k.product)])
 
 
-def gate(k: Kit, v: GateView, verb: str = "status", portal: Optional[str] = None, floating: bool = False) -> Lines:
+def gate(
+    k: Kit, v: GateView, verb: str = "status", portal: Optional[str] = None, floating: Optional[str] = None
+) -> Lines:
     """The ``status`` verb: the account summary when licensed, the grace line offline, the
     blocked state with its fix as a command, or the activation prompt. ``portal`` is the product
     page, the way out of a state no command fixes (a version above the range, a missing channel).
-    ``floating``: the license is held by the key alone (UK-43 D4); the row says so and the page
-    follows, never with ``#key=``."""
+    ``floating``: the license is held by the key alone (UK-43 D4), ``"floating"`` or, with Identity
+    off, ``"identity-off"``; the row says so and :func:`holder_rows` follows, never with ``#key=``."""
     body: Lines = []
     end: List[Span] = []
     if v.component == "AccountAndLicense":
-        body += _account_rows(k, v, floating)
-        if floating and portal:
-            body += link_row(k, portal)
+        body += _account_rows(k, v, bool(floating))
+        if floating:
+            body += holder_rows(k, floating, portal)
     elif v.component == "GraceBanner":
         if v.state == "last-day":
             body += k.step("warn", [k.t("grace.lastDay", "strong", product=k.inline_product)])
@@ -358,7 +360,7 @@ def holder_rows(k: Kit, kind: str, url: Optional[str] = None, masked: str = "") 
     the page; ``waiting``: the masked address and the ``login`` command row. Never ``#key=``."""
     if kind == "waiting":
         waiting = k.body([k.t("activate.waiting", maskedEmail=masked)])
-        return _gap(k) + waiting + _fixes(k, [("login", "cli.fix.signIn")])
+        return _gap(k) + waiting + _gap(k) + _fixes(k, [("login", "welcome.signIn")])
     if not url:
         return []
     if kind == "floating":

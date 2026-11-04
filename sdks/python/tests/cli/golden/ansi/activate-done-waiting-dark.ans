@@ -7,7 +7,8 @@
 [2m│[0m
 [2m│[0m  This license was sent to a•••@example.com. Sign in with that email to keep it
 [2m│[0m  in your account.
-[2m└[0m  [1mtidewater login[0m   [2mUse the license on your account[0m
+[2m│[0m
+[2m└[0m  [1mtidewater login[0m   [2mSign in[0m
 ── ansi16 · 80 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
 [2m│[0m
@@ -17,7 +18,8 @@
 [2m│[0m
 [2m│[0m  This license was sent to a•••@example.com. Sign in with that email to keep it
 [2m│[0m  in your account.
-[2m└[0m  [1mtidewater login[0m   [2mUse the license on your account[0m
+[2m│[0m
+[2m└[0m  [1mtidewater login[0m   [2mSign in[0m
 ── no-color · 80 ──
 ┌  [7m Tidewater Studio [0m · activate
 │
@@ -27,7 +29,8 @@
 │
 │  This license was sent to a•••@example.com. Sign in with that email to keep it
 │  in your account.
-└  [1mtidewater login[0m   Use the license on your account
+│
+└  [1mtidewater login[0m   Sign in
 ── ascii · 80 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
 [2m|[0m
@@ -37,7 +40,8 @@
 [2m|[0m
 [2m|[0m  This license was sent to a***@example.com. Sign in with that email to keep it
 [2m|[0m  in your account.
-[2m`[0m  [1mtidewater login[0m   [2mUse the license on your account[0m
+[2m|[0m
+[2m`[0m  [1mtidewater login[0m   [2mSign in[0m
 ── truecolor · 60 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
 [2m│[0m
@@ -47,7 +51,8 @@
 [2m│[0m
 [2m│[0m  This license was sent to a•••@example.com. Sign in with
 [2m│[0m  that email to keep it in your account.
-[2m└[0m  [1mtidewater login[0m   [2mUse the license on your account[0m
+[2m│[0m
+[2m└[0m  [1mtidewater login[0m   [2mSign in[0m
 ── ansi16 · 60 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
 [2m│[0m
@@ -57,7 +62,8 @@
 [2m│[0m
 [2m│[0m  This license was sent to a•••@example.com. Sign in with
 [2m│[0m  that email to keep it in your account.
-[2m└[0m  [1mtidewater login[0m   [2mUse the license on your account[0m
+[2m│[0m
+[2m└[0m  [1mtidewater login[0m   [2mSign in[0m
 ── no-color · 60 ──
 ┌  [7m Tidewater Studio [0m · activate
 │
@@ -67,7 +73,8 @@
 │
 │  This license was sent to a•••@example.com. Sign in with
 │  that email to keep it in your account.
-└  [1mtidewater login[0m   Use the license on your account
+│
+└  [1mtidewater login[0m   Sign in
 ── ascii · 60 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
 [2m|[0m
@@ -77,7 +84,128 @@
 [2m|[0m
 [2m|[0m  This license was sent to a***@example.com. Sign in with
 [2m|[0m  that email to keep it in your account.
-[2m`[0m  [1mtidewater login[0m   [2mUse the license on your account[0m
+[2m|[0m
+[2m`[0m  [1mtidewater login[0m   [2mSign in[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m│[0m  Your license is active on
+[2m│[0m  this device.
+[2m│[0m
+[2m│[0m  This license was sent to
+[2m│[0m  a•••@example.com. Sign in with that
+[2m│[0m  email to keep it in your account.
+[2m│[0m
+[2m│[0m  [1mtidewater login[0m
+[2m└[0m    [2mSign in[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m│[0m  Your license is active on
+[2m│[0m  this device.
+[2m│[0m
+[2m│[0m  This license was sent to
+[2m│[0m  a•••@example.com. Sign in with that
+[2m│[0m  email to keep it in your account.
+[2m│[0m
+[2m│[0m  [1mtidewater login[0m
+[2m└[0m    [2mSign in[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · activate
+│
+◇  License key · pkey_tidewater_••••••
+✓  [1mActivated[0m · Pro license
+│  Your license is active on
+│  this device.
+│
+│  This license was sent to
+│  a•••@example.com. Sign in with that
+│  email to keep it in your account.
+│
+│  [1mtidewater login[0m
+└    Sign in
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
+[2m|[0m
+[32mo[0m  License key[2m - pkey_tidewater_******[0m
+[32m+[0m  [1mActivated[0m[2m - Pro license[0m
+[2m|[0m  Your license is active on
+[2m|[0m  this device.
+[2m|[0m
+[2m|[0m  This license was sent to
+[2m|[0m  a***@example.com. Sign in with that
+[2m|[0m  email to keep it in your account.
+[2m|[0m
+[2m|[0m  [1mtidewater login[0m
+[2m`[0m    [2mSign in[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key
+[2m│[0m  [2mpkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m│[0m  Your license is active on
+[2m│[0m  this device.
+[2m│[0m
+[2m│[0m  This license was sent to
+[2m│[0m  a•••@example.com. Sign in
+[2m│[0m  with that email to keep it in
+[2m│[0m  your account.
+[2m│[0m
+[2m│[0m  [1mtidewater login[0m
+[2m└[0m    [2mSign in[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key
+[2m│[0m  [2mpkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m│[0m  Your license is active on
+[2m│[0m  this device.
+[2m│[0m
+[2m│[0m  This license was sent to
+[2m│[0m  a•••@example.com. Sign in
+[2m│[0m  with that email to keep it in
+[2m│[0m  your account.
+[2m│[0m
+[2m│[0m  [1mtidewater login[0m
+[2m└[0m    [2mSign in[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · activate
+│
+◇  License key
+│  pkey_tidewater_••••••
+✓  [1mActivated[0m · Pro license
+│  Your license is active on
+│  this device.
+│
+│  This license was sent to
+│  a•••@example.com. Sign in
+│  with that email to keep it in
+│  your account.
+│
+│  [1mtidewater login[0m
+└    Sign in
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
+[2m|[0m
+[32mo[0m  License key
+[2m|[0m  [2m- pkey_tidewater_******[0m
+[32m+[0m  [1mActivated[0m[2m - Pro license[0m
+[2m|[0m  Your license is active on
+[2m|[0m  this device.
+[2m|[0m
+[2m|[0m  This license was sent to
+[2m|[0m  a***@example.com. Sign in
+[2m|[0m  with that email to keep it in
+[2m|[0m  your account.
+[2m|[0m
+[2m|[0m  [1mtidewater login[0m
+[2m`[0m    [2mSign in[0m
 ── pipe · 80 ──
 Tidewater Studio · activate
 License key · pkey_tidewater_••••••
@@ -86,4 +214,5 @@ Your license is active on this device.
 
 This license was sent to a•••@example.com. Sign in with that email to keep it in
 your account.
-tidewater login   Use the license on your account
+
+tidewater login   Sign in

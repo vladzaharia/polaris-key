@@ -46,6 +46,62 @@
 [36m*[0m  [1mApprove on your other device[0m
 [2m-[0m  Looking for your other devices...
 [2m`[0m  [1mc[0m [2muse a code instead - Esc cancel[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mApprove on your other device[0m
+[2m⠹[0m  Looking for your other devices…
+[2m└[0m  [1mc[0m [2muse a code instead · [0m[1mEsc[0m [2mcancel[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[36m◆[0m  [1mApprove on your other device[0m
+[2m⠹[0m  Looking for your other devices…
+[2m└[0m  [1mc[0m [2muse a code instead · [0m[1mEsc[0m [2mcancel[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · login
+│
+◆  [1mApprove on your other device[0m
+⠹  Looking for your other devices…
+└  [1mc[0m use a code instead · [1mEsc[0m cancel
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
+[2m|[0m
+[36m*[0m  [1mApprove on your other device[0m
+[2m-[0m  Looking for your other devices...
+[2m`[0m  [1mc[0m [2muse a code instead - Esc cancel[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mApprove on your other device[0m
+[2m⠹[0m  Looking for your
+[2m│[0m  other devices…
+[2m│[0m  [1mc[0m [2muse a code instead[0m
+[2m└[0m  [1mEsc[0m [2mcancel[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[36m◆[0m  [1mApprove on your other device[0m
+[2m⠹[0m  Looking for your
+[2m│[0m  other devices…
+[2m│[0m  [1mc[0m [2muse a code instead[0m
+[2m└[0m  [1mEsc[0m [2mcancel[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · login
+│
+◆  [1mApprove on your other device[0m
+⠹  Looking for your
+│  other devices…
+│  [1mc[0m use a code instead
+└  [1mEsc[0m cancel
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
+[2m|[0m
+[36m*[0m  [1mApprove on your other device[0m
+[2m-[0m  Looking for your
+[2m|[0m  other devices...
+[2m|[0m  [1mc[0m [2muse a code instead -[0m
+[2m`[0m  [2mEsc cancel[0m
 ── pipe · 80 ──
 Tidewater Studio · login
 Approve on your other device

@@ -38,6 +38,50 @@
 [2m|[0m
 [31mx[0m  [1mActivation file not valid[0m
 [2m`[0m  Ask whoever sent it for a new file.
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · import-bundle[0m
+[2m│[0m
+[31m✗[0m  [1mActivation file not valid[0m
+[2m└[0m  Ask whoever sent it for a new file.
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · import-bundle[0m
+[2m│[0m
+[31m✗[0m  [1mActivation file not valid[0m
+[2m└[0m  Ask whoever sent it for a new file.
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · import-bundle
+│
+✗  [1mActivation file not valid[0m
+└  Ask whoever sent it for a new file.
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - import-bundle[0m
+[2m|[0m
+[31mx[0m  [1mActivation file not valid[0m
+[2m`[0m  Ask whoever sent it for a new file.
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m
+[2m│[0m
+[31m✗[0m  [1mActivation file not valid[0m
+[2m│[0m  Ask whoever sent it for a
+[2m└[0m  new file.
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m
+[2m│[0m
+[31m✗[0m  [1mActivation file not valid[0m
+[2m│[0m  Ask whoever sent it for a
+[2m└[0m  new file.
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m
+│
+✗  [1mActivation file not valid[0m
+│  Ask whoever sent it for a
+└  new file.
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m
+[2m|[0m
+[31mx[0m  [1mActivation file not valid[0m
+[2m|[0m  Ask whoever sent it for a
+[2m`[0m  new file.
 ── pipe · 80 ──
 Tidewater Studio · import-bundle
 Activation file not valid

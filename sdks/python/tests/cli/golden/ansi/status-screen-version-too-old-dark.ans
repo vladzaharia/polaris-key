@@ -74,6 +74,106 @@
 [2m|[0m
 [2m|[0m  To keep using Tidewater Studio:
 [2m`[0m  [1mtidewater update apply[0m   [2mUpdate[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[33m▲[0m  [1mUpdate required[0m
+[2m│[0m  This version is no longer supported.
+[2m│[0m  Update Tidewater Studio to continue.
+[2m│[0m  [2mAllowed versions: 2.4.0 or later[0m
+[2m│[0m
+[2m│[0m  To keep using Tidewater Studio:
+[2m│[0m  [1mtidewater update apply[0m
+[2m└[0m    [2mUpdate[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[33m▲[0m  [1mUpdate required[0m
+[2m│[0m  This version is no longer supported.
+[2m│[0m  Update Tidewater Studio to continue.
+[2m│[0m  [2mAllowed versions: 2.4.0 or later[0m
+[2m│[0m
+[2m│[0m  To keep using Tidewater Studio:
+[2m│[0m  [1mtidewater update apply[0m
+[2m└[0m    [2mUpdate[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · status
+│
+▲  [1mUpdate required[0m
+│  This version is no longer supported.
+│  Update Tidewater Studio to continue.
+│  Allowed versions: 2.4.0 or later
+│
+│  To keep using Tidewater Studio:
+│  [1mtidewater update apply[0m
+└    Update
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
+[2m|[0m
+[33m![0m  [1mUpdate required[0m
+[2m|[0m  This version is no longer supported.
+[2m|[0m  Update Tidewater Studio to continue.
+[2m|[0m  [2mAllowed versions: 2.4.0 or later[0m
+[2m|[0m
+[2m|[0m  To keep using Tidewater Studio:
+[2m|[0m  [1mtidewater update apply[0m
+[2m`[0m    [2mUpdate[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[33m▲[0m  [1mUpdate required[0m
+[2m│[0m  This version is no longer
+[2m│[0m  supported. Update Tidewater
+[2m│[0m  Studio to continue.
+[2m│[0m  [2mAllowed versions: 2.4.0[0m
+[2m│[0m  [2mor later[0m
+[2m│[0m
+[2m│[0m  To keep using
+[2m│[0m  Tidewater Studio:
+[2m│[0m  [1mtidewater update apply[0m
+[2m└[0m    [2mUpdate[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[33m▲[0m  [1mUpdate required[0m
+[2m│[0m  This version is no longer
+[2m│[0m  supported. Update Tidewater
+[2m│[0m  Studio to continue.
+[2m│[0m  [2mAllowed versions: 2.4.0[0m
+[2m│[0m  [2mor later[0m
+[2m│[0m
+[2m│[0m  To keep using
+[2m│[0m  Tidewater Studio:
+[2m│[0m  [1mtidewater update apply[0m
+[2m└[0m    [2mUpdate[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · status
+│
+▲  [1mUpdate required[0m
+│  This version is no longer
+│  supported. Update Tidewater
+│  Studio to continue.
+│  Allowed versions: 2.4.0
+│  or later
+│
+│  To keep using
+│  Tidewater Studio:
+│  [1mtidewater update apply[0m
+└    Update
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
+[2m|[0m
+[33m![0m  [1mUpdate required[0m
+[2m|[0m  This version is no longer
+[2m|[0m  supported. Update Tidewater
+[2m|[0m  Studio to continue.
+[2m|[0m  [2mAllowed versions: 2.4.0[0m
+[2m|[0m  [2mor later[0m
+[2m|[0m
+[2m|[0m  To keep using
+[2m|[0m  Tidewater Studio:
+[2m|[0m  [1mtidewater update apply[0m
+[2m`[0m    [2mUpdate[0m
 ── pipe · 80 ──
 Tidewater Studio · status
 Update required

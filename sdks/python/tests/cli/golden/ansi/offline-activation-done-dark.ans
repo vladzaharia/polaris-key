@@ -38,6 +38,50 @@
 [2m|[0m
 [32m+[0m  [1mActivated from the offline file.[0m
 [2m`[0m  [2mlicense + config[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · import-bundle[0m
+[2m│[0m
+[32m✓[0m  [1mActivated from the offline file.[0m
+[2m└[0m  [2mlicense + config[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · import-bundle[0m
+[2m│[0m
+[32m✓[0m  [1mActivated from the offline file.[0m
+[2m└[0m  [2mlicense + config[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · import-bundle
+│
+✓  [1mActivated from the offline file.[0m
+└  license + config
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - import-bundle[0m
+[2m|[0m
+[32m+[0m  [1mActivated from the offline file.[0m
+[2m`[0m  [2mlicense + config[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m
+[2m│[0m
+[32m✓[0m  [1mActivated from the[0m
+[2m│[0m  [1moffline file.[0m
+[2m└[0m  [2mlicense + config[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m
+[2m│[0m
+[32m✓[0m  [1mActivated from the[0m
+[2m│[0m  [1moffline file.[0m
+[2m└[0m  [2mlicense + config[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m
+│
+✓  [1mActivated from the[0m
+│  [1moffline file.[0m
+└  license + config
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m
+[2m|[0m
+[32m+[0m  [1mActivated from the[0m
+[2m|[0m  [1moffline file.[0m
+[2m`[0m  [2mlicense + config[0m
 ── pipe · 80 ──
 Tidewater Studio · import-bundle
 Activated from the offline file.

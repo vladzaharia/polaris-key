@@ -38,6 +38,58 @@
 [2m|[0m
 [36m*[0m  [1mSigned in as mara@fennick.studio[0m
 [2m`[0m  [1mEnter[0m [2mcontinue - n or Esc not you, sign out[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mSigned in as mara@fennick.studio[0m
+[2m│[0m  [1mEnter[0m [2mcontinue · [0m[1mn[0m [2mor Esc not you,[0m
+[2m└[0m  [2msign out[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[36m◆[0m  [1mSigned in as mara@fennick.studio[0m
+[2m│[0m  [1mEnter[0m [2mcontinue · [0m[1mn[0m [2mor Esc not you,[0m
+[2m└[0m  [2msign out[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · login
+│
+◆  [1mSigned in as mara@fennick.studio[0m
+│  [1mEnter[0m continue · [1mn[0m or Esc not you,
+└  sign out
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
+[2m|[0m
+[36m*[0m  [1mSigned in as mara@fennick.studio[0m
+[2m|[0m  [1mEnter[0m [2mcontinue - n or Esc not you,[0m
+[2m`[0m  [2msign out[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mSigned in as[0m
+[2m│[0m  [1mmara@fennick.studio[0m
+[2m│[0m  [1mEnter[0m [2mcontinue · [0m[1mn[0m [2mor Esc not[0m
+[2m└[0m  [2myou, sign out[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[36m◆[0m  [1mSigned in as[0m
+[2m│[0m  [1mmara@fennick.studio[0m
+[2m│[0m  [1mEnter[0m [2mcontinue · [0m[1mn[0m [2mor Esc not[0m
+[2m└[0m  [2myou, sign out[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · login
+│
+◆  [1mSigned in as[0m
+│  [1mmara@fennick.studio[0m
+│  [1mEnter[0m continue · [1mn[0m or Esc not
+└  you, sign out
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
+[2m|[0m
+[36m*[0m  [1mSigned in as[0m
+[2m|[0m  [1mmara@fennick.studio[0m
+[2m|[0m  [1mEnter[0m [2mcontinue - n or Esc not[0m
+[2m`[0m  [2myou, sign out[0m
 ── pipe · 80 ──
 Tidewater Studio · login
 Signed in as mara@fennick.studio

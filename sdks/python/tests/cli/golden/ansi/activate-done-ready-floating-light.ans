@@ -70,6 +70,102 @@
 [2m|[0m
 [2m|[0m  Keep Tidewater Studio in your account
 [2m`[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[0m]8;;\
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m│[0m  Your license is active on
+[2m│[0m  this device.
+[2m│[0m
+[2m│[0m  Keep Tidewater Studio in your account
+[2m│[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate[0m]8;;\
+[2m└[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4m?product=tidewater[0m]8;;\
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m│[0m  Your license is active on
+[2m│[0m  this device.
+[2m│[0m
+[2m│[0m  Keep Tidewater Studio in your account
+[2m│[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate[0m]8;;\
+[2m└[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4m?product=tidewater[0m]8;;\
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · activate
+│
+◇  License key · pkey_tidewater_••••••
+✓  [1mActivated[0m · Pro license
+│  Your license is active on
+│  this device.
+│
+│  Keep Tidewater Studio in your account
+│  polaris.locker/activate
+└  ?product=tidewater
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
+[2m|[0m
+[32mo[0m  License key[2m - pkey_tidewater_******[0m
+[32m+[0m  [1mActivated[0m[2m - Pro license[0m
+[2m|[0m  Your license is active on
+[2m|[0m  this device.
+[2m|[0m
+[2m|[0m  Keep Tidewater Studio in your account
+[2m|[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate[0m]8;;\
+[2m`[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4m?product=tidewater[0m]8;;\
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key
+[2m│[0m  [2mpkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m│[0m  Your license is active on
+[2m│[0m  this device.
+[2m│[0m
+[2m│[0m  Keep Tidewater Studio in
+[2m│[0m  your account
+[2m│[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate[0m]8;;\
+[2m└[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4m?product=tidewater[0m]8;;\
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key
+[2m│[0m  [2mpkey_tidewater_••••••[0m
+[32m✓[0m  [1mActivated[0m[2m · Pro license[0m
+[2m│[0m  Your license is active on
+[2m│[0m  this device.
+[2m│[0m
+[2m│[0m  Keep Tidewater Studio in
+[2m│[0m  your account
+[2m│[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate[0m]8;;\
+[2m└[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4m?product=tidewater[0m]8;;\
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · activate
+│
+◇  License key
+│  pkey_tidewater_••••••
+✓  [1mActivated[0m · Pro license
+│  Your license is active on
+│  this device.
+│
+│  Keep Tidewater Studio in
+│  your account
+│  polaris.locker/activate
+└  ?product=tidewater
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
+[2m|[0m
+[32mo[0m  License key
+[2m|[0m  [2m- pkey_tidewater_******[0m
+[32m+[0m  [1mActivated[0m[2m - Pro license[0m
+[2m|[0m  Your license is active on
+[2m|[0m  this device.
+[2m|[0m
+[2m|[0m  Keep Tidewater Studio in
+[2m|[0m  your account
+[2m|[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate[0m]8;;\
+[2m`[0m  ]8;;https://polaris.locker/activate?product=tidewater\[4m?product=tidewater[0m]8;;\
 ── pipe · 80 ──
 Tidewater Studio · activate
 License key · pkey_tidewater_••••••

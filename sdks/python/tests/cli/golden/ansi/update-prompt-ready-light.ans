@@ -38,6 +38,46 @@
 [2m|[0m
 [32m+[0m  [1m2.5 is ready[0m
 [2m`[0m  Restart to finish updating.
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[32m✓[0m  [1m2.5 is ready[0m
+[2m└[0m  Restart to finish updating.
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[32m✓[0m  [1m2.5 is ready[0m
+[2m└[0m  Restart to finish updating.
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · update
+│
+✓  [1m2.5 is ready[0m
+└  Restart to finish updating.
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
+[2m|[0m
+[32m+[0m  [1m2.5 is ready[0m
+[2m`[0m  Restart to finish updating.
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[32m✓[0m  [1m2.5 is ready[0m
+[2m└[0m  Restart to finish updating.
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
+[32m✓[0m  [1m2.5 is ready[0m
+[2m└[0m  Restart to finish updating.
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · update
+│
+✓  [1m2.5 is ready[0m
+└  Restart to finish updating.
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
+[2m|[0m
+[32m+[0m  [1m2.5 is ready[0m
+[2m`[0m  Restart to finish updating.
 ── pipe · 80 ──
 Tidewater Studio · update
 2.5 is ready

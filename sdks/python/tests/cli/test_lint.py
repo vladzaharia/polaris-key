@@ -41,6 +41,8 @@ BORROWS: Dict[str, Dict[str, str]] = {
         "welcome.signIn": "the fix commands of needs-activation are Welcome's two paths",
     },
     "AccountAndLicense": {
+        "activate.recommend.title": "a license held by the key alone: where it can be kept, as after activate",
+        "activate.recommend.portal": "the same with Identity off",
         "part.status.ok": "the tier row opens with the status pill",
         "cli.status.license": "the status table's row labels, as the Node kit's",
         "cli.status.devices": "the status table's row labels, as the Node kit's",
@@ -106,8 +108,8 @@ BORROWS: Dict[str, Dict[str, str]] = {
     },
     "ActivateDone": {
         "account.tier": "the success row names the tier, as the Node kit's",
-        "cli.fix.signIn": "waiting: the login command's label",
-        "activate.recommend.title": "waiting and floating: the one line after the success",
+        "welcome.signIn": "waiting: the login command's label",
+        "activate.recommend.title": "floating: the one line after the success",
     },
     "Activate": {
         "account.tier": "the success row names the tier, as the Node kit's",
@@ -235,7 +237,7 @@ def test_every_must_component_state_is_drawn_or_documented() -> None:
 
 @pytest.mark.parametrize("fx", FIXTURES, ids=[f.name for f in FIXTURES])
 def test_every_line_fits_80_and_60_columns(fx) -> None:
-    for label, e in variants("dark"):
+    for label, e in variants("dark", (80, 60)):
         lines, _ = render(fx, e)
         for line in lines:
             assert cell_len(line.text.rstrip()) <= e.width, f"{fx.name} [{label}] {line.text!r} is wider than {e.width}"

@@ -116,6 +116,16 @@ function holderScenarios(): Scenario[] {
     activate("activate-done-ready-identity-off", null, {
       capabilities: IDENTITY_OFF,
     }),
+    // A masked address wider than a narrow line breaks at "@" or "." under the rail.
+    activate(
+      "activate-done-waiting-long-email",
+      "maria.fernanda.de.la.cruz@studio-ingenieria-sonora.example.com",
+      {},
+      [
+        "m\u2022\u2022\u2022@studio-ingenieria-sonora.example.com",
+        "tidewater login",
+      ],
+    ),
   ];
 }
 
@@ -795,19 +805,11 @@ export const SCENARIOS: Scenario[] = [
   statusScenario("account-and-license-signed-in", "ok", {
     graceUntil: now + 14 * DAY,
   }),
+  // A license sent to an address that no account holds yet: "Activated with a license key".
   statusScenario("account-and-license-key-only", "ok", {
     identity: null,
-    link: true,
     graceUntil: now + 14 * DAY,
-    info: {
-      licenseId: "l",
-      tier: "pro",
-      tierLabel: "Pro",
-      deviceLimit: 3,
-      profile: null,
-      entitledChannels: [],
-      status: "ok",
-    },
+    info: holderInfo("ada@example.com"),
   }),
   // UK-43.19: a license held by the key alone says so, and the page follows; narrow too.
   {

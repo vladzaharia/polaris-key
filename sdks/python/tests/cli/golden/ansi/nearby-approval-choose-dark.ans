@@ -78,6 +78,94 @@
 [2m|[0m  [1m3[0m  Create a new free license
 [2m|[0m
 [2m`[0m  [1m1-3[0m [2mchoose a license - Esc deny[0m
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[38;2;114;202;190m◆[0m  [1mChoose a license for New phone[0m
+[2m│[0m  Tidewater Studio will use it.
+[2m│[0m  [1m1[0m  Pro
+[2m│[0m  [1m2[0m  Harbor Audio team
+[2m│[0m  [1m3[0m  Create a new free license
+[2m│[0m
+[2m└[0m  [1m1-3[0m [2mchoose a license · [0m[1mEsc[0m [2mdeny[0m
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[36m◆[0m  [1mChoose a license for New phone[0m
+[2m│[0m  Tidewater Studio will use it.
+[2m│[0m  [1m1[0m  Pro
+[2m│[0m  [1m2[0m  Harbor Audio team
+[2m│[0m  [1m3[0m  Create a new free license
+[2m│[0m
+[2m└[0m  [1m1-3[0m [2mchoose a license · [0m[1mEsc[0m [2mdeny[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · devices approve
+│
+◆  [1mChoose a license for New phone[0m
+│  Tidewater Studio will use it.
+│  [1m1[0m  Pro
+│  [1m2[0m  Harbor Audio team
+│  [1m3[0m  Create a new free license
+│
+└  [1m1-3[0m choose a license · [1mEsc[0m deny
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices approve[0m
+[2m|[0m
+[36m*[0m  [1mChoose a license for New phone[0m
+[2m|[0m  Tidewater Studio will use it.
+[2m|[0m  [1m1[0m  Pro
+[2m|[0m  [1m2[0m  Harbor Audio team
+[2m|[0m  [1m3[0m  Create a new free license
+[2m|[0m
+[2m`[0m  [1m1-3[0m [2mchoose a license - Esc deny[0m
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m
+[2m│[0m
+[38;2;114;202;190m◆[0m  [1mChoose a license for[0m
+[2m│[0m  [1mNew phone[0m
+[2m│[0m  Tidewater Studio will use it.
+[2m│[0m  [1m1[0m  Pro
+[2m│[0m  [1m2[0m  Harbor Audio team
+[2m│[0m  [1m3[0m  Create a new free license
+[2m│[0m
+[2m│[0m  [1m1-3[0m [2mchoose a license[0m
+[2m└[0m  [1mEsc[0m [2mdeny[0m
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m
+[2m│[0m
+[36m◆[0m  [1mChoose a license for[0m
+[2m│[0m  [1mNew phone[0m
+[2m│[0m  Tidewater Studio will use it.
+[2m│[0m  [1m1[0m  Pro
+[2m│[0m  [1m2[0m  Harbor Audio team
+[2m│[0m  [1m3[0m  Create a new free license
+[2m│[0m
+[2m│[0m  [1m1-3[0m [2mchoose a license[0m
+[2m└[0m  [1mEsc[0m [2mdeny[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m
+│
+◆  [1mChoose a license for[0m
+│  [1mNew phone[0m
+│  Tidewater Studio will use it.
+│  [1m1[0m  Pro
+│  [1m2[0m  Harbor Audio team
+│  [1m3[0m  Create a new free license
+│
+│  [1m1-3[0m choose a license
+└  [1mEsc[0m deny
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m
+[2m|[0m
+[36m*[0m  [1mChoose a license for[0m
+[2m|[0m  [1mNew phone[0m
+[2m|[0m  Tidewater Studio will use it.
+[2m|[0m  [1m1[0m  Pro
+[2m|[0m  [1m2[0m  Harbor Audio team
+[2m|[0m  [1m3[0m  Create a new free license
+[2m|[0m
+[2m|[0m  [1m1-3[0m [2mchoose a license -[0m
+[2m`[0m  [2mEsc deny[0m
 ── pipe · 80 ──
 Tidewater Studio · devices approve
 Choose a license for New phone

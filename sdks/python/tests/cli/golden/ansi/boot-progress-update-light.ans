@@ -22,6 +22,38 @@
 ── ascii · 60 ──
 [32m+[0m  [1mTidewater Studio[0m[2m - Ready[0m
 [2m|[0m  [1mtidewater update[0m   [2mAn update is available[0m
+── truecolor · 40 ──
+[32m✓[0m  [1mTidewater Studio[0m[2m · Ready[0m
+[2m│[0m  [1mtidewater update[0m
+[2m│[0m    [2mAn update is available[0m
+── ansi16 · 40 ──
+[32m✓[0m  [1mTidewater Studio[0m[2m · Ready[0m
+[2m│[0m  [1mtidewater update[0m
+[2m│[0m    [2mAn update is available[0m
+── no-color · 40 ──
+✓  [1mTidewater Studio[0m · Ready
+│  [1mtidewater update[0m
+│    An update is available
+── ascii · 40 ──
+[32m+[0m  [1mTidewater Studio[0m[2m - Ready[0m
+[2m|[0m  [1mtidewater update[0m
+[2m|[0m    [2mAn update is available[0m
+── truecolor · 32 ──
+[32m✓[0m  [1mTidewater Studio[0m[2m · Ready[0m
+[2m│[0m  [1mtidewater update[0m
+[2m│[0m    [2mAn update is available[0m
+── ansi16 · 32 ──
+[32m✓[0m  [1mTidewater Studio[0m[2m · Ready[0m
+[2m│[0m  [1mtidewater update[0m
+[2m│[0m    [2mAn update is available[0m
+── no-color · 32 ──
+✓  [1mTidewater Studio[0m · Ready
+│  [1mtidewater update[0m
+│    An update is available
+── ascii · 32 ──
+[32m+[0m  [1mTidewater Studio[0m[2m - Ready[0m
+[2m|[0m  [1mtidewater update[0m
+[2m|[0m    [2mAn update is available[0m
 ── pipe · 80 ──
 Tidewater Studio · Ready
 tidewater update   An update is available

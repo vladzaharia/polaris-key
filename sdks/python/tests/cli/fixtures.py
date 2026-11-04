@@ -102,7 +102,7 @@ def _sign_in(headless: bool, *steps: Tuple[str, object]) -> Callable[[Kit], List
     return draw
 
 
-def _gate(status: str, floating: bool = False, **kw: object) -> Callable[[Kit], List[Line]]:
+def _gate(status: str, floating: Optional[str] = None, **kw: object) -> Callable[[Kit], List[Line]]:
     def draw(k: Kit) -> List[Line]:
         # The product page the real `status` verb links to for a state no command fixes.
         portal = "https://polaris.locker/activate?product=tidewater"
@@ -169,13 +169,20 @@ FIXTURES: Tuple[Fixture, ...] = (
         "AccountAndLicense",
         "key-only",
         "status",
-        _gate("ok", tier="Pro", grace_until=1_791_201_600 + 14 * DAY, version="2.4.1", channel="stable", floating=True),
+        _gate("ok", tier="Pro", grace_until=1_791_201_600 + 14 * DAY, version="2.4.1", channel="stable"),
     ),
     Fixture(
         "AccountAndLicense",
         "key-only",
         "status",
-        _gate("ok", tier="Pro", grace_until=1_791_201_600 + 14 * DAY, version="2.4.1", channel="stable", floating=True),
+        _gate(
+            "ok",
+            tier="Pro",
+            grace_until=1_791_201_600 + 14 * DAY,
+            version="2.4.1",
+            channel="stable",
+            floating="floating",
+        ),
         "floating",
     ),
     Fixture("GraceBanner", "days-left", "status", _gate("grace", grace_until=NOW + 3 * DAY, **_ACCOUNT)),
@@ -409,6 +416,13 @@ FIXTURES: Tuple[Fixture, ...] = (
     Fixture("ActivateDone", "ready", "activate", _done("floating", None), "floating-no-page"),
     Fixture("ActivateDone", "ready", "activate", _done("identity-off"), "identity-off"),
     Fixture("ActivateDone", "waiting", "activate", _done("waiting", None, "a\u2022\u2022\u2022@example.com")),
+    Fixture(
+        "ActivateDone",
+        "waiting",
+        "activate",
+        _done("waiting", None, "m\u2022\u2022\u2022@studio-ingenieria-sonora.example.com"),
+        "long-email",
+    ),
     # ── DeviceLimit (browser mode, then Try again) ──
     Fixture("DeviceLimit", "browser-mode", "activate", lambda k: screens.device_limit(k, _LIMIT, "activate")),
     Fixture(

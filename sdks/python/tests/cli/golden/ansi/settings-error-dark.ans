@@ -42,6 +42,62 @@
 [31mx[0m  [1mSet by your organization[0m
 [2m|[0m  This setting is managed by your organization and can't be
 [2m`[0m  changed here.
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · config[0m
+[2m│[0m
+[31m✗[0m  [1mSet by your organization[0m
+[2m│[0m  This setting is managed by your
+[2m│[0m  organization and can't be
+[2m└[0m  changed here.
+── ansi16 · 40 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · config[0m
+[2m│[0m
+[31m✗[0m  [1mSet by your organization[0m
+[2m│[0m  This setting is managed by your
+[2m│[0m  organization and can't be
+[2m└[0m  changed here.
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · config
+│
+✗  [1mSet by your organization[0m
+│  This setting is managed by your
+│  organization and can't be
+└  changed here.
+── ascii · 40 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - config[0m
+[2m|[0m
+[31mx[0m  [1mSet by your organization[0m
+[2m|[0m  This setting is managed by your
+[2m|[0m  organization and can't be
+[2m`[0m  changed here.
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · config[0m
+[2m│[0m
+[31m✗[0m  [1mSet by your organization[0m
+[2m│[0m  This setting is managed by
+[2m│[0m  your organization and can't
+[2m└[0m  be changed here.
+── ansi16 · 32 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · config[0m
+[2m│[0m
+[31m✗[0m  [1mSet by your organization[0m
+[2m│[0m  This setting is managed by
+[2m│[0m  your organization and can't
+[2m└[0m  be changed here.
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · config
+│
+✗  [1mSet by your organization[0m
+│  This setting is managed by
+│  your organization and can't
+└  be changed here.
+── ascii · 32 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - config[0m
+[2m|[0m
+[31mx[0m  [1mSet by your organization[0m
+[2m|[0m  This setting is managed by
+[2m|[0m  your organization and can't
+[2m`[0m  be changed here.
 ── pipe · 80 ──
 Tidewater Studio · config
 Set by your organization
