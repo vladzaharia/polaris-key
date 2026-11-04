@@ -690,7 +690,11 @@ public fun PolarisTitle(text: String, modifier: Modifier = Modifier, key: Any? =
     val requester = remember { FocusRequester() }
     val screenReader = rememberScreenReaderOn() && LocalPolarisInitialFocus.current
     if (screenReader) {
-        LaunchedEffect(key) { runCatching { requester.requestFocus() } }
+        // After the first frame, so the heading is attached and the focus is not taken back by a control's initial focus.
+        LaunchedEffect(key) {
+            androidx.compose.runtime.withFrameNanos { }
+            runCatching { requester.requestFocus() }
+        }
     }
     Text(
         text = text,

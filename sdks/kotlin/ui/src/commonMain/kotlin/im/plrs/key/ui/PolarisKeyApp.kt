@@ -136,6 +136,7 @@ internal fun PolarisKeyAppHost(
     updateActions: PolarisUpdateActions,
     optionalUpdateInDialog: Boolean,
     autoSignIn: Boolean = true,
+    redirect: PolarisRedirect? = PolarisRedirect(),
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -145,7 +146,9 @@ internal fun PolarisKeyAppHost(
     // Inline sign-in re-reads the licence when it completes (the SDK has already synced).
     // Held outside the composition (keyed to the client), so an activity recreation keeps the code.
     val signInState = if (signIn && onSignIn == null) {
-        rememberHeldSignIn(client, client.signInActions()) { scope.launch { gate.reload() } }
+        // A television has no browser to hand the sign-in to: it signs in with a code.
+        val redirectHere = redirect.takeUnless { isTelevision() }
+        rememberHeldSignIn(client, client.signInActions(redirect = redirectHere)) { scope.launch { gate.reload() } }
     } else {
         null
     }

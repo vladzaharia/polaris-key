@@ -33,12 +33,18 @@ public fun PolarisKeyGate(
     onQuit: (() -> Unit)? = null,
     /** False turns automatic sign-in off: the gate shows its own screens and runs no `autoSignIn()` (Q-12). */
     autoSignIn: Boolean = true,
+    /**
+     * The in-gate sign-in's native redirect (rung 6): the system browser, with a code where no redirect can start (and
+     * always on a television). Android passes `AndroidRedirect.options` and an `AndroidRedirectBrowser` here; the default
+     * suits the desktop. Null signs in with a code only.
+     */
+    redirect: PolarisRedirect? = PolarisRedirect(),
     content: @Composable () -> Unit,
 ) {
     val update = remember(client) { PolarisUpdateState() }
     val updateActions = remember(client) { client.updateActions() }
     PolarisKeyAppHost(
         client, modifier, bootOptions, onSignIn, packs, signIn, onQuit, update, updateActions,
-        optionalUpdateInDialog = true, autoSignIn = autoSignIn, content = content,
+        optionalUpdateInDialog = true, autoSignIn = autoSignIn, redirect = redirect, content = content,
     )
 }

@@ -7,7 +7,7 @@
      its own manifest, the filter for the scheme or claimed link it registered:
 
        <activity android:name="im.plrs.key.android.PKeyRedirectActivity"
-           android:exported="true" tools:node="merge">
+           android:exported="true" tools:node="merge" tools:replace="android:exported">
          <intent-filter>   (a registered scheme)
            <action android:name="android.intent.action.VIEW" />
            <category android:name="android.intent.category.DEFAULT" />

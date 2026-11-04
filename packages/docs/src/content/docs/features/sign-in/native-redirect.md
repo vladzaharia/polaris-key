@@ -151,6 +151,8 @@ val session = client.identity.signIn.start(
 
 `issuerHost` is the host of the product's issuer. The browser opens only an HTTPS page on that host. See [Register on Android](#android).
 
+In the Compose kit, pass `PolarisRedirect(redirect.options, browser)` as the `redirect` argument of `PolarisKeyGate`. Without it an Android app signs in with a code, because the kit cannot register a scheme itself; a television always uses the code.
+
 ### Godot
 
 On Windows, macOS and Linux the SDK listens on `127.0.0.1` and opens the browser with `OS.shell_open`.
@@ -184,7 +186,7 @@ Add the scheme to Info.plist.
 
 ```xml
 <activity android:name="im.plrs.key.android.PKeyRedirectActivity"
-    android:exported="true" tools:node="merge">
+    android:exported="true" tools:node="merge" tools:replace="android:exported">
   <intent-filter>
     <action android:name="android.intent.action.VIEW" />
     <category android:name="android.intent.category.DEFAULT" />

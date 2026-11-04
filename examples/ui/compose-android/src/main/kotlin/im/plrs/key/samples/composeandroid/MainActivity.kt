@@ -25,13 +25,17 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import im.plrs.key.ui.PolarisBranding
 import im.plrs.key.ui.PolarisCopy
+import im.plrs.key.android.AndroidRedirect
+import im.plrs.key.android.AndroidRedirectBrowser
 import im.plrs.key.ui.PolarisKeyGate
+import im.plrs.key.ui.PolarisRedirect
 import im.plrs.key.ui.PolarisTheme
 
 class MainActivity : ComponentActivity() {
@@ -78,7 +82,18 @@ class MainActivity : ComponentActivity() {
                         if (client == null) {
                             Text(stringResource(R.string.live_needs_product), Modifier.safeDrawingPadding().padding(24.dp), color = MaterialTheme.colorScheme.error)
                         } else {
-                            PolarisKeyGate(client, signIn = true) { TidewaterApp(client, world, options, link) { link = null } }
+                            // Live only: the browser sign-in (rung 6) over a Custom Tab and the scheme the manifest registers.
+                            // Without a PolarisRedirect the gate signs in with a code.
+                            val redirect = remember(client, world) {
+                                if (world != null) {
+                                    null
+                                } else {
+                                    val registered = AndroidRedirect(scheme = "im.plrs.key.samples.composeandroid")
+                                    val host = java.net.URI(BuildConfig.PKEY_BASE_URL).host.orEmpty()
+                                    PolarisRedirect(registered.options, AndroidRedirectBrowser.create(this@MainActivity, client.identity.signIn, registered, host))
+                                }
+                            }
+                            PolarisKeyGate(client, signIn = true, redirect = redirect) { TidewaterApp(client, world, options, link) { link = null } }
                         }
                     }
                 }
