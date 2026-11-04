@@ -448,6 +448,7 @@ export const TOASTS = [
   "warning",
   "error",
   "progress",
+  "key-entries",
 ] as const;
 export const PROGRESS_PHASES = [
   "queued",
@@ -764,7 +765,8 @@ const INPUTS: Record<string, string> = {
   entitlement: "{name, entitled}.",
   offers:
     "{available, purchased?, url?}: url is the https page that sells the offer outside the app (a store page or the product's Polaris Locker page), from the integrator or the server; the hand-off shows only when the opener accepts it (DL14).",
-  toast: "{kind}: the toast being shown.",
+  toast:
+    "{kind, closesIn?, left?}: the toast being shown. `left` (key-entries): the key entries the license has left.",
   error: "{code}: a core.codes code the step failed with.",
   cloudSync:
     "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed | transferring | waiting | transfer-failed, signedIn?, canReview?, lastSynced?, transfer?: {size?, total?, fraction?}, reason?: network | battery | background}. `ring-changed` always offers Review: the kit owns the confirmation. `transferring` shows `transfer.size` of `transfer.total` (display-ready sizes) when both are given, and a bar that is determinate only with `transfer.fraction` (counted bytes, 0 to 1); `waiting` names its `reason` (default network); `transfer-failed` offers Try again. While a transfer is pending the status never says Synced, whatever `lastSynced` holds.",
@@ -1543,8 +1545,32 @@ function gateFamily(a: A): Draft[] {
       },
       "Toast",
       "info",
-      "all",
+      but("Toast", "info", "signin.key.entriesLeftShort"),
       { default: true },
+    ),
+    row(
+      "Toast/info: key entries left",
+      { toast: { kind: "key-entries", left: 2 } },
+      "Toast",
+      "info",
+      ["signin.key.entriesLeftShort"],
+    ),
+    hidden(
+      "Toast/info: key entries, License off",
+      {
+        ...licenseOff,
+        toast: { kind: "key-entries", left: 2 },
+      },
+      "Toast",
+    ),
+    hidden(
+      "Toast/info: key entries, Identity off",
+      {
+        services: off("identity"),
+        capabilities: { signIn: false },
+        toast: { kind: "key-entries", left: 2 },
+      },
+      "Toast",
     ),
     row(
       "Toast/success: copied",

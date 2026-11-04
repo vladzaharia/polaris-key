@@ -551,8 +551,8 @@ export interface UiInput {
     /** The https store or portal page that opens when purchases happen outside the app. */
     url?: string;
   };
-  /** `closesIn` is how long an auto-closing toast stays ("8 seconds"), for the screen reader. */
-  toast?: { kind: ToastKind; closesIn?: string };
+  /** `closesIn` is how long an auto-closing toast stays ("8 seconds"), for the screen reader. `left` (key-entries) is the key entries the license has left. */
+  toast?: { kind: ToastKind; closesIn?: string; left?: number };
   error?: { code: string };
   /** The should tier: Cloud Sync's state, and whether the release channel is locked. */
   cloudSync?: {

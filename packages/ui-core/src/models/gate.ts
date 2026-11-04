@@ -402,6 +402,23 @@ export function toastView(ctx: Context): View<"Toast", ToastState> {
         },
         focus: null,
       });
+    case "key-entries": {
+      const left = ctx.input.toast?.left;
+      if (
+        !ctx.on("license") ||
+        !ctx.on("identity") ||
+        typeof left !== "number" ||
+        !Number.isInteger(left) ||
+        left < 0
+      )
+        return hiddenView(ctx, "Toast");
+      return makeView(ctx, "Toast", {
+        state: "info",
+        copy: ["signin.key.entriesLeftShort"],
+        args: { left },
+        focus: null,
+      });
+    }
     case "copied":
       return makeView(ctx, "Toast", {
         state: "success",

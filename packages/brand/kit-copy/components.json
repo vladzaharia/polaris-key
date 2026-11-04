@@ -1621,7 +1621,12 @@
       "family": "gate",
       "states": {
         "info": {
-          "copy": ["toast.updateAvailable", "common.dismiss", "a11y.toastTimer"]
+          "copy": [
+            "toast.updateAvailable",
+            "common.dismiss",
+            "a11y.toastTimer",
+            "signin.key.entriesLeftShort"
+          ]
         },
         "success": {
           "copy": ["common.copied"]

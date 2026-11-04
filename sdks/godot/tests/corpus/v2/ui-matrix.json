@@ -94,7 +94,7 @@
       "account": "{signedIn, holder?: account}: holder is the account signed in on this device (S-19), or absent.",
       "entitlement": "{name, entitled}.",
       "offers": "{available, purchased?, url?}: url is the https page that sells the offer outside the app (a store page or the product's Polaris Locker page), from the integrator or the server; the hand-off shows only when the opener accepts it (DL14).",
-      "toast": "{kind}: the toast being shown.",
+      "toast": "{kind, closesIn?, left?}: the toast being shown. `left` (key-entries): the key entries the license has left.",
       "error": "{code}: a core.codes code the step failed with.",
       "cloudSync": "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed | transferring | waiting | transfer-failed, signedIn?, canReview?, lastSynced?, transfer?: {size?, total?, fraction?}, reason?: network | battery | background}. `ring-changed` always offers Review: the kit owns the confirmation. `transferring` shows `transfer.size` of `transfer.total` (display-ready sizes) when both are given, and a bar that is determinate only with `transfer.fraction` (counted bytes, 0 to 1); `waiting` names its `reason` (default network); `transfer-failed` offers Try again. While a transfer is pending the status never says Synced, whatever `lastSynced` holds.",
       "saveConflict": "SaveConflict: {step: choose | keeping | kept | failed, local?: {when?}, remote?: {when?, device?} | null, bothAvailable?, keep?: local | remote | both, newer?: local | remote}. `remote: null` means the other copy was deleted: Keep the other becomes Delete it here too and Keep both is not offered. `bothAvailable` is true only with a free slot of the 16; absent or false draws Keep both disabled, with its reason. `keep` is the choice being applied (keeping), applied (kept) or that failed; kept needs it. `newer`: `local | remote`, the version the app knows was saved later (its own metadata, never the display strings). It tags that card and chooses nothing; it is ignored when the other copy was deleted. `when` and `device` are display-ready.",
@@ -299,7 +299,14 @@
       "restore"
     ],
     "edits": ["rename", "remove", "value"],
-    "toasts": ["update", "copied", "warning", "error", "progress"],
+    "toasts": [
+      "update",
+      "copied",
+      "warning",
+      "error",
+      "progress",
+      "key-entries"
+    ],
     "progressPhases": [
       "queued",
       "download",
@@ -1232,6 +1239,48 @@
         "state": "info",
         "copy": ["a11y.toastTimer", "common.dismiss", "toast.updateAvailable"]
       }
+    },
+    {
+      "name": "Toast/info: key entries left",
+      "input": { "toast": { "kind": "key-entries", "left": 2 } },
+      "expect": {
+        "component": "Toast",
+        "state": "info",
+        "copy": ["signin.key.entriesLeftShort"]
+      }
+    },
+    {
+      "name": "Toast/info: key entries, License off",
+      "input": {
+        "services": [
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "sync",
+          "connect"
+        ],
+        "registration": "open",
+        "toast": { "kind": "key-entries", "left": 2 }
+      },
+      "expect": { "component": "Toast", "state": "hidden", "copy": [] }
+    },
+    {
+      "name": "Toast/info: key entries, Identity off",
+      "input": {
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "commerce"
+        ],
+        "capabilities": { "signIn": false },
+        "toast": { "kind": "key-entries", "left": 2 }
+      },
+      "expect": { "component": "Toast", "state": "hidden", "copy": [] }
     },
     {
       "name": "Toast/success: copied",
