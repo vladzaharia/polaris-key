@@ -5,13 +5,7 @@
 // own and says why it stopped, and focus and Escape follow each step.
 
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  waitFor,
-} from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 
 import { NearbyApprover, NearbySignIn } from "@polaris-key/react/kit";
 import type {
@@ -30,6 +24,7 @@ import {
   shows,
   v5,
   wrap,
+  waitFor,
   type Fake,
 } from "./nearbyHelpers.js";
 
