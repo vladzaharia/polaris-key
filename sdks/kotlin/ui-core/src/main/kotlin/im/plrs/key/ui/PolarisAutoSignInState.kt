@@ -384,16 +384,23 @@ public fun redirectWaitInputs(opened: Boolean = true, copied: Boolean = false): 
     return KitInputs.of(mapOf("signIn" to JsonObject(browserSignIn().toMap() + extra)))
 }
 
-/** The link offer's steps (`link-offer`, `link-done`, `link-conflict`) for [provider] (its display name); [reach] is `global` or `developer`. */
-public fun linkStepInputs(step: String, provider: String, reach: String? = null): KitInputs = KitInputs.of(
-    mapOf(
-        "provider" to JsonPrimitive(provider),
-        "signIn" to browserSignIn(),
-        "autoSignIn" to JsonObject(
-            buildMap {
-                put("step", JsonPrimitive(step))
-                reach?.let { put("reach", JsonPrimitive(it)) }
-            },
-        ),
-    ),
+/**
+ * The link offer's steps (`link-offer`, `link-done`, `link-conflict`) for [provider] (its display name); [reach] is
+ * `global` or `developer`. [problem] is the offer's failure (`link-stale`, `link-failed` or `network`).
+ */
+public fun linkStepInputs(step: String, provider: String, reach: String? = null, problem: String? = null): KitInputs = KitInputs.of(
+    buildMap {
+        put("provider", JsonPrimitive(provider))
+        put("signIn", browserSignIn())
+        put(
+            "autoSignIn",
+            JsonObject(
+                buildMap {
+                    put("step", JsonPrimitive(step))
+                    reach?.let { put("reach", JsonPrimitive(it)) }
+                },
+            ),
+        )
+        problem?.let { put("error", JsonObject(mapOf("code" to JsonPrimitive(it)))) }
+    },
 )

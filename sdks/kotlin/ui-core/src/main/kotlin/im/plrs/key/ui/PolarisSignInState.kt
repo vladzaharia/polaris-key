@@ -73,7 +73,7 @@ public sealed interface PolarisSignInUi {
     }
 
     /** What went wrong with a link attempt the person can read about: the offer stays, or only No thanks is left. */
-    public enum class LinkProblem { Stale, Failed, Network }
+    public enum class LinkProblem(public val wire: String) { Stale("link-stale"), Failed("link-failed"), Network("network") }
 
     /** After a sign-in this device started: add [provider] (its display name) so the next sign-in is automatic. */
     public data class LinkOffer(
@@ -348,6 +348,13 @@ public class PolarisSignInState(
             actions.linkDismiss()
             finish()
         }
+    }
+
+    /** Back on the offer: close it without remembering a decline, and finish (the sign-in stands). */
+    public fun linkClose() {
+        if (_ui.value !is PolarisSignInUi.LinkOffer) return
+        actions.linkDismiss()
+        finish()
     }
 
     /** A stale offer's "Sign in again": close the offer and start a new sign-in. */

@@ -30,6 +30,8 @@ public class PolarisSignInSteps(
     public val onLinkDecline: () -> Unit = {},
     public val onLinkFinished: () -> Unit = {},
     public val onLinkSignInAgain: () -> Unit = {},
+    /** Back on the offer: close it without a decline, and finish. */
+    public val onLinkClose: () -> Unit = {},
 )
 
 /** Help: what the link conflict step points to (Polaris Locker's site, the one end users see). */
@@ -93,88 +95,29 @@ internal fun PolarisRedirectWait(ui: PolarisSignInUi.Redirecting, steps: Polaris
     )
 }
 
-/** The link offer and its two results. */
+/** The link offer and its two results. System Back (Escape on the desktop) is Done, or, on the offer, No thanks without remembering. */
 @Suppress("ktlint:standard:function-naming", "FunctionNaming")
 @Composable
 internal fun PolarisLinkStep(ui: PolarisSignInUi, steps: PolarisSignInSteps, modifier: Modifier = Modifier) {
-    when (ui) {
-        is PolarisSignInUi.LinkOffer -> when (ui.problem) {
-            // A sign-in too old to link, or an offer this device was refused: the one way on is stated plainly.
-            PolarisSignInUi.LinkProblem.Stale, PolarisSignInUi.LinkProblem.Failed -> LinkProblemStep(ui, steps, modifier)
-
-            else -> LinkOfferStep(ui, steps, modifier)
-        }
-
-        is PolarisSignInUi.LinkDone -> LinkResultStep("link-done", ui.provider, steps, modifier)
-
-        is PolarisSignInUi.LinkConflict -> LinkResultStep("link-conflict", ui.provider, steps, modifier)
-
-        else -> Unit
-    }
-}
-
-@Suppress("ktlint:standard:function-naming", "FunctionNaming")
-@Composable
-private fun LinkProblemStep(ui: PolarisSignInUi.LinkOffer, steps: PolarisSignInSteps, modifier: Modifier) {
-    val locale = kitLocale()
-    val stale = ui.problem == PolarisSignInUi.LinkProblem.Stale
-    val args = mapOf("provider" to CopyArgument.Text(ui.provider))
-    val catalog = KitCopy.bundled
-    PolarisMessageLayout(
-        modifier = modifier,
-        emblem = {},
-        title = catalog.format("signin.linkOffer.title", locale, args),
-        body = catalog.format(if (stale) "signin.linkOffer.stale" else "signin.linkOffer.failed", locale, args),
-        titleStyle = { androidx.compose.material3.MaterialTheme.typography.titleMedium },
-        actions = {
-            if (stale) {
-                PolarisPrimaryButton(catalog.format("signin.again", locale), steps.onLinkSignInAgain, initialFocus = true)
-                Spacer(Modifier.height(PolarisSpace.controls))
-                PolarisTextButton(catalog.format("signin.linkOffer.decline", locale), steps.onLinkDecline)
-            } else {
-                PolarisPrimaryButton(catalog.format("signin.linkOffer.decline", locale), steps.onLinkDecline, initialFocus = true)
-            }
-        },
-    )
-}
-
-@Suppress("ktlint:standard:function-naming", "FunctionNaming")
-@Composable
-private fun LinkOfferStep(ui: PolarisSignInUi.LinkOffer, steps: PolarisSignInSteps, modifier: Modifier) {
-    val (screen, _) = rememberKitResolver().let { resolve ->
-        remember(ui.provider, ui.reach) { resolve(KitComponent.signIn, linkStepInputs("link-offer", ui.provider, ui.reach)) }
-    }
-    androidx.compose.foundation.layout.Column(modifier) {
-        if (ui.problem == PolarisSignInUi.LinkProblem.Network) {
-            PolarisInlineNotice(KitCopy.bundled.format("core.codes.network.message", kitLocale()))
-        }
-        PolarisKitScreen(
-            screen,
-            onControl = { key ->
-                if (!ui.busy) {
-                    when (key) {
-                        "signin.linkOffer.primary" -> steps.onLinkAccept()
-                        "signin.linkOffer.decline" -> steps.onLinkDecline()
-                    }
-                }
-            },
-        )
-    }
-}
-
-/** `link-done` and `link-conflict`: Done ends the sign-in; a conflict also points to Help. */
-@Suppress("ktlint:standard:function-naming", "FunctionNaming")
-@Composable
-private fun LinkResultStep(step: String, provider: String, steps: PolarisSignInSteps, modifier: Modifier) {
+    val back = PolarisBackHandler(onBack = if (ui is PolarisSignInUi.LinkOffer) steps.onLinkClose else steps.onLinkFinished)
+    val resolve = rememberKitResolver()
     val opener = rememberPolarisOpener()
-    val (screen, _) = rememberKitResolver().let { resolve ->
-        remember(step, provider) { resolve(KitComponent.signIn, linkStepInputs(step, provider)) }
+    val inputs = when (ui) {
+        is PolarisSignInUi.LinkOffer -> linkStepInputs("link-offer", ui.provider, ui.reach, ui.problem?.wire)
+        is PolarisSignInUi.LinkDone -> linkStepInputs("link-done", ui.provider)
+        is PolarisSignInUi.LinkConflict -> linkStepInputs("link-conflict", ui.provider)
+        else -> return
     }
+    val (screen, _) = remember(inputs) { resolve(KitComponent.signIn, inputs) }
     PolarisKitScreen(
         screen,
-        modifier,
+        modifier.then(back),
+        busy = (ui as? PolarisSignInUi.LinkOffer)?.busy == true,
         onControl = { key ->
             when (key) {
+                "signin.linkOffer.primary" -> steps.onLinkAccept()
+                "signin.linkOffer.decline" -> steps.onLinkDecline()
+                "signin.again" -> steps.onLinkSignInAgain()
                 "common.done" -> steps.onLinkFinished()
                 "signin.linkOffer.join" -> opener(JOIN_ACCOUNTS_URL)
             }

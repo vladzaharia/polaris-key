@@ -114,6 +114,7 @@ public fun PolarisSignIn(
             onLinkDecline = state::linkDecline,
             onLinkFinished = state::linkFinished,
             onLinkSignInAgain = state::linkSignInAgain,
+            onLinkClose = state::linkClose,
         ),
         onUseKey = onUseKey?.let { useKey ->
             {

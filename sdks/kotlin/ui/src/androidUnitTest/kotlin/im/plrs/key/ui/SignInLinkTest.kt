@@ -10,8 +10,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -98,10 +100,38 @@ class SignInLinkTest {
         rule.onNode(hasText(t("signin.linkOffer.bodyApp", "app" to "Diceroll"))).assertExists()
     }
 
+    private fun buttons(): Int = rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.OnClick)).fetchSemanticsNodes().size
+
     @Test
-    fun linkedAndConflictEndWithDone() {
+    fun linkedHasOneHeadingAndDoneIsTheOnlyButton() {
         show(PolarisSignInUi.LinkDone("Google"))
-        rule.onNodeWithText(t("signin.linkOffer.done", "provider" to "Google")).assertExists()
+        val title = t("signin.linkOffer.done", "provider" to "Google")
+        rule.onNodeWithText(title).assertExists()
+        assertEquals("one heading", 1, headings())
+        assertEquals("the title is text, not a control", 1, buttons())
+        click(t("common.done"))
+        assertEquals(listOf("finished"), calls)
+    }
+
+    @Test
+    fun aBusyLinkDisablesBothAnswers() {
+        show(PolarisSignInUi.LinkOffer("Google", "global", busy = true))
+        rule.onNodeWithText(t("signin.linkOffer.decline")).assertIsNotEnabled()
+        click(t("signin.linkOffer.decline"))
+        assertEquals(emptyList<String>(), calls)
+    }
+
+    @Test
+    fun aLostConnectionKeepsLinkAndSaysSo() {
+        show(PolarisSignInUi.LinkOffer("Google", "global", problem = PolarisSignInUi.LinkProblem.Network))
+        rule.onNode(hasText(t("core.codes.network.message"))).assertExists()
+        click(t("signin.linkOffer.primary", "provider" to "Google"))
+        assertEquals(listOf("accept"), calls)
+    }
+
+    @Test
+    fun linkedEndsWithDone() {
+        show(PolarisSignInUi.LinkDone("Google"))
         click(t("common.done"))
         assertEquals(listOf("finished"), calls)
     }

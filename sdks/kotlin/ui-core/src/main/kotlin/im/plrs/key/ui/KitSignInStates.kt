@@ -14,7 +14,9 @@ internal fun signInScreen(inputs: KitInputs): KitScreen {
     val keyPath = inputs.isOn("license") && inputs.capability("keyEntry")
     val deviceCode = if (signIn.string("channel") == "device-code") inputs.obj("deviceCode") else null
     val error = inputs.obj("error")
-    if (error != null) {
+    // A failed Link keeps the link offer on screen (it reads the error itself); every other error is the error screen.
+    val linkOfferStep = inputs.obj("autoSignIn").string("step") == "link-offer"
+    if (error != null && !linkOfferStep) {
         return if (error.string("code") == "sign-in-unavailable") {
             screen(KitComponent.signIn, "error", listOf(context.line("signIn.noMethods", context.productArgs)))
         } else {
@@ -185,17 +187,35 @@ private fun autoSignInScreen(context: KitContext, auto: JsonObject): KitScreen {
             )
         }
 
-        "link-offer" -> step(
-            "link-offer",
-            "signin.linkOffer.title",
-            when {
-                !perDeveloper -> "signin.linkOffer.bodyGlobal"
-                context.identity.developer != null -> "signin.linkOffer.bodyDeveloper"
-                else -> "signin.linkOffer.bodyApp"
-            },
-            "signin.linkOffer.primary",
-            "signin.linkOffer.decline",
-        )
+        "link-offer" -> {
+            // A failed Link keeps the offer and says why (ui-core's signIn.ts "link-offer"): a sign-in too old
+            // swaps Link for "Sign in again"; a refused device drops Link, so No thanks is the way on; a lost
+            // connection keeps Link.
+            val problem = context.inputs.obj("error").string("code")
+            val stale = problem == "link-stale"
+            val refused = problem == "link-failed"
+            step(
+                "link-offer",
+                "signin.linkOffer.title",
+                when {
+                    !perDeveloper -> "signin.linkOffer.bodyGlobal"
+                    context.identity.developer != null -> "signin.linkOffer.bodyDeveloper"
+                    else -> "signin.linkOffer.bodyApp"
+                },
+                when {
+                    stale -> "signin.again"
+                    refused -> null
+                    else -> "signin.linkOffer.primary"
+                },
+                "signin.linkOffer.decline",
+                when {
+                    problem == "network" -> "core.codes.network.message"
+                    stale -> "signin.linkOffer.stale"
+                    refused -> "signin.linkOffer.failed"
+                    else -> null
+                },
+            )
+        }
 
         "link-done" -> step("link-done", "signin.linkOffer.done", "common.done")
 

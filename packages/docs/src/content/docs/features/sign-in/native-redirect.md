@@ -186,7 +186,7 @@ Add the scheme to Info.plist.
 
 ```xml
 <activity android:name="im.plrs.key.android.PKeyRedirectActivity"
-    android:exported="true" tools:node="merge">
+    android:exported="true" tools:node="merge" tools:replace="android:exported">
   <intent-filter>
     <action android:name="android.intent.action.VIEW" />
     <category android:name="android.intent.category.DEFAULT" />
