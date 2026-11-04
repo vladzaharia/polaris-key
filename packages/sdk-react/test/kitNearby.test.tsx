@@ -5,13 +5,7 @@
 // are the kit's own SignIn and NearbyApproval views; the person's controls reach the host.
 
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  waitFor,
-} from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 
 import { NearbyApprover, NearbySignIn } from "@polaris-key/react/kit";
 import type {
@@ -22,7 +16,15 @@ import type {
 } from "../src/desktop/bridge.js";
 import { stubResizeObserver } from "./autoFixtures.js";
 import { emptyBridgeState } from "./fixtures.js";
-import { adapterOf, control, req, shows, v5, wrap } from "./nearbyHelpers.js";
+import {
+  adapterOf,
+  control,
+  req,
+  shows,
+  v5,
+  waitFor,
+  wrap,
+} from "./nearbyHelpers.js";
 
 beforeAll(stubResizeObserver);
 afterEach(() => {
