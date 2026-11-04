@@ -2,6 +2,7 @@ import * as React from "react";
 import { cn } from "../../lib/cn.js";
 import { Globe, Monitor, Smartphone, Tv } from "lucide-react";
 import { t, tParts } from "../../lib/copy.js";
+import { useLargeTextFlag } from "../../lib/useLargeTextFlag.js";
 
 /**
  * Moves focus to a step's h1, except where the step marks the field its next action is typing in
@@ -51,6 +52,7 @@ export function AuthCard({
   focusKey = 0,
   receipt = false,
   after,
+  brandAir = "lockup",
   children,
 }: {
   /** The brand row: the lockup (portal: Polaris Locker). Decorative; the page names itself. */
@@ -72,8 +74,12 @@ export function AuthCard({
   receipt?: boolean;
   /** Under the card, outside it (the app card's Help · Privacy, next to its receipt footer). */
   after?: React.ReactNode;
+  /** Whose air counts toward the 40 px gap: the Key lockup's 64 px canvas carries its own (24 px more here). */
+  brandAir?: "lockup" | "canvas";
   children: React.ReactNode;
 }): React.ReactElement {
+  // Large text (WCAG 1.4.4): the Button's bigtext: variants key on it; the sign-in page has no shell.
+  useLargeTextFlag();
   const bodyRef = React.useRef<HTMLDivElement>(null);
   const lastHeight = React.useRef<number | null>(null);
   const first = React.useRef(true);
@@ -135,15 +141,20 @@ export function AuthCard({
 
   return (
     // The family's one ring: the card root re-points `--pk-focus` to `--pk-text-strong` (§8), so the
-    // portal and the console wear the same neutral ring; fields use their own inset ring.
+    // portal and the console wear the same neutral ring; fields use their own 1 px strong-ink border.
     <div className="relative flex min-h-dvh flex-col bg-surface-raised text-fg [--pk-focus:var(--pk-text-strong)] sm:bg-surface-page">
       {/* The brand row (§3, §8): on a phone a 56 px row under the safe-area inset, no hairline;
           from `sm` the lockup's top sits at clamp(2.5rem, 12vh, 7.5rem) and its ink 40 px above
           the card (24 px each on a short window). */}
-      <div className="relative z-10 flex h-[calc(3.5rem+env(safe-area-inset-top,0px))] items-center justify-center pt-[env(safe-area-inset-top,0px)] sm:h-auto sm:pb-10 sm:pt-[clamp(2.5rem,12vh,7.5rem)] short:pb-6 short:pt-6">
+      <div
+        className={cn(
+          "relative z-10 flex h-[calc(3.5rem+env(safe-area-inset-top,0px))] items-center justify-center pt-[env(safe-area-inset-top,0px)] sm:h-auto sm:pt-[clamp(2.5rem,12vh,7.5rem)] short:pb-6 short:pt-6",
+          brandAir === "canvas" ? "sm:pb-6" : "sm:pb-10",
+        )}
+      >
         {brand}
       </div>
-      <main className="@container relative z-10 flex flex-1 flex-col items-center sm:px-4">
+      <main className="@container relative z-10 flex flex-col items-center sm:px-4">
         <div
           data-passport={header ? "" : undefined}
           className={cn(
@@ -203,15 +214,16 @@ export function AuthCard({
             </div>
           ) : null}
         </div>
-        {after ? (
-          <div className="mb-6 text-sm/5 text-fg-muted max-sm:mb-0 max-sm:px-6 max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] max-sm:pt-6">
-            {after}
-          </div>
-        ) : null}
         <div aria-live="polite" data-step-announcer className="sr-only">
           {announce}
         </div>
       </main>
+      {/* Outside <main>, as the Worker's twin: the footer nav is its own landmark. */}
+      {after ? (
+        <div className="relative z-10 mb-6 text-center text-sm/5 text-fg-muted max-sm:mb-0 max-sm:px-6 max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
+          {after}
+        </div>
+      ) : null}
     </div>
   );
 }

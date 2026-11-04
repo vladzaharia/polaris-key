@@ -91,6 +91,7 @@ function palette(theme: "dark" | "light"): string {
     `--strong:${t.text.strong}`,
     `--text:${t.text.default}`,
     `--muted:${t.text.muted}`,
+    `--subtle:${t.text.subtle}`,
     `--rule:${t.border.subtle}`,
     `--edge:${t.border.strong}`,
     `--accent:${accent.solid}`,
@@ -156,7 +157,7 @@ export const BRAND_PAGE_CSS = [
   `form{margin:0}`,
   `label{display:block;margin:1.5rem 0 .5rem;color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:500}`,
   `input[type=text]{display:block;width:100%;min-height:44px;padding:0 .75rem;margin:0 0 1rem;border:1px solid var(--edge);border-radius:6px;background:var(--sunken);color:var(--strong);font-family:${FONT.mono};font-size:1.25rem;letter-spacing:.08em;text-transform:uppercase}`,
-  `input[type=text]::placeholder{color:var(--muted);opacity:1}`,
+  `input[type=text]::placeholder{color:var(--subtle);opacity:1;font-weight:400}`,
   // The console's md Button (BootScreen's Retry): 36 px, 14 px regular weight, one accent fill.
   `.button{display:flex;width:100%;align-items:center;justify-content:center;min-height:2.25rem;padding:.5rem 1rem;text-align:center;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:.875rem;line-height:1.25rem;font-weight:400;text-decoration:none;cursor:pointer}`,
   `.button:hover{filter:brightness(1.1)}`,
@@ -271,6 +272,8 @@ const AUTH_CARD_RULES = [
   `.ac-body h1{font-size:1.5rem;line-height:2rem;letter-spacing:0}`,
   `.ac-body h1+p{margin-top:-1rem;color:var(--muted);font-size:1rem;line-height:1.5rem}`,
   `.ac-body label{margin:0}`,
+  // Fields: focus is the 1 px border in strong ink, no ring and no offset outline (SIGNIN-REDESIGN §4).
+  `.ac-body input[type=email]:focus-visible,.ac-body input[type=text]:focus-visible{outline:none;border-color:var(--strong)}`,
   `.ac-body .actions{margin:0}`,
   `.ac-body .actions.stack,.ac-body .stack{gap:.75rem}`,
   `.ac-foot{display:flex;gap:.75rem;align-items:flex-start;padding:1rem 2rem;border-top:1px solid var(--rule);color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
@@ -283,7 +286,7 @@ const AUTH_CARD_RULES = [
   `.ac-links a+a::before{content:"\\00b7" / "";position:absolute;inset-inline-start:-.6875rem;color:var(--muted);text-decoration:none}`,
   `[data-brand=locker] .ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;color:var(--muted)}`,
   `[data-brand=locker] .ac-links a:hover{color:var(--strong)}`,
-  `@media (pointer: coarse){.ac-links a,.quiet,.chip-change{min-height:2.75rem;min-width:2.75rem;justify-content:center}}`,
+  `@media (pointer: coarse){.ac-links a{min-height:2.75rem}.quiet,.chip-change{min-height:2.75rem;min-width:2.75rem;justify-content:center}}`,
   // Selectable rows: the title is 16/24 (the React row's), the tier chip a full pill; a user code is strong ink.
   `[data-brand=locker] .choice-title{font-size:1rem;line-height:1.5rem;font-weight:400}`,
   `[data-brand=locker] .tag{border-radius:9999px}`,
@@ -325,7 +328,9 @@ const AUTH_CARD_RULES = [
   `.tertiary{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;font-size:.875rem;line-height:1.25rem}`,
   `.tertiary a,.tertiary .quiet{display:inline-flex;align-items:center;min-height:1.5rem}`,
   `button.quiet{padding:0;border:0;background:none;font:inherit;font-size:.875rem;line-height:1.25rem;cursor:pointer}`,
-  `@media (pointer: coarse){.tertiary a,.tertiary .quiet{min-height:2.75rem;min-width:2.75rem;justify-content:center}}`,
+  `@media (pointer: coarse){.tertiary a,.tertiary .quiet,.person .quiet,.person a.quiet,.ac-body .chip-change,[data-brand=locker] .ac-links a{min-height:2.75rem}.tertiary a,.tertiary .quiet,.person .quiet,.person a.quiet,.ac-body .chip-change{min-width:2.75rem;justify-content:center}}`,
+  // Large text on a phone: the 1.5 rem inline padding leaves a word per line; 12 px keeps the label whole.
+  `@media (max-width: 39.99rem){[data-brand=locker] .button{padding-inline:.75rem}}`,
   // The code field: big mono caps, centred; its error sits under it, never above the form.
   `.field{display:grid;gap:.5rem;min-width:0}`,
   `.field label,.field input{margin:0}`,
@@ -355,7 +360,7 @@ const AUTH_CARD_RULES = [
   // the raised surface; a 56 px brand row under the safe-area inset with no hairline; 24 px inline
   // padding, 8 px above the step (24 px under a header strip, which keeps the one hairline) and 24
   // px below; the footer follows the content. The Locker lockup drops to 23 px, the Key's is sized by width.
-  `@media (max-width: 39.99rem){[data-brand=locker],[data-brand=locker] body{background:var(--raised)}[data-brand=locker] body{padding:0}[data-brand=locker] .ac-brand{box-sizing:content-box;height:3.5rem;padding-top:env(safe-area-inset-top,0px);align-items:center;margin:0;border:0}[data-brand=locker] main.ac{max-width:none;margin:0;border:0;border-radius:0;box-shadow:none;background:var(--raised)}[data-brand=locker] .ac-head,[data-brand=locker] .ac-foot{padding-left:1.5rem;padding-right:1.5rem}[data-brand=locker] .ac-body{padding:.5rem 1.5rem 1.5rem}[data-brand=locker] .ac-head~.ac-body{padding-top:1.5rem}[data-brand=locker] .ac-links{margin:0;padding:1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom,0px))}[data-brand=locker] .tv .ac-body{padding:1.5rem}}`,
+  `@media (max-width: 39.99rem){[data-brand=locker],[data-brand=locker] body{background:var(--raised)}[data-brand=locker] body{padding:0}[data-brand=locker] .ac-brand{box-sizing:content-box;height:3.5rem;padding-top:env(safe-area-inset-top,0px);align-items:center;margin:0;border:0}[data-brand=locker] main.ac{max-width:none;margin:0;border:0;border-radius:0;box-shadow:none;background:var(--raised)}[data-brand=locker] .ac-head,[data-brand=locker] .ac-foot{padding-left:1.5rem;padding-right:1.5rem}[data-brand=locker] .ac-body{padding:.5rem 1.5rem 1.5rem}[data-brand=locker] .ac-head~.ac-body{padding-top:1.5rem}[data-brand=locker] .ac-links{margin:0;padding:0 1.5rem calc(1.5rem + env(safe-area-inset-bottom,0px))}[data-brand=locker] .tv .ac-body{padding:1.5rem}}`,
   // The hosted passport (SIGN-IN.md "the product passport"): at 960 px and wider with a width to
   // height ratio of at least 1.2, and while the page has room for 46 rem (a container query on the
   // body, so rem follows the root font size and 200 % text stacks the strip), the app sits in a
@@ -363,7 +368,7 @@ const AUTH_CARD_RULES = [
   // over its lower edge, name, developer), the receipt at the foot (the device line, then the
   // safety line): the pane never ends in a void. Narrower, taller or larger text: the strip.
   `body{container-type:inline-size}`,
-  `@media (min-width: 60rem) and (min-aspect-ratio: 6/5){@container (min-width: 46rem){main.ac-wide{max-width:46rem;display:grid;grid-template-columns:minmax(0,17.5rem) minmax(0,1fr);grid-template-rows:1fr auto}main.ac-wide .ac-head{display:none}main.ac-wide .ac-passport{display:flex;flex-direction:column;grid-column:1;grid-row:1;min-width:0;border-right:1px solid var(--rule);background:var(--sunken);color:var(--muted)}main.ac-wide .ac-body{grid-column:2;grid-row:1 / 3;align-content:start}main.ac-wide .ac-foot{grid-column:1;grid-row:2;padding-inline:1.5rem;border-top:0;border-right:1px solid var(--rule);background:var(--sunken)}.ac-art{display:block;width:100%;aspect-ratio:16/10;max-height:40%;object-fit:cover;flex:none}.ac-passport>:not(.ac-art){margin-inline:1.5rem}.ac-passport>:first-child:not(.ac-art){margin-top:2rem}.ac-art+img,.ac-art+.ac-mono{margin-top:-1.75rem;box-shadow:0 0 0 4px var(--sunken)}.ac-passport>img:not(.ac-art),.ac-passport>.ac-mono{flex:none;width:56px;height:56px;border-radius:14px;background:var(--raised)}.ac-pass-text{display:grid;gap:.25rem;margin-top:1rem;overflow-wrap:anywhere}.ac-pass-text p{margin:0}.ac-pass-text .ac-head-title{font-size:1rem;line-height:1.5rem;text-wrap:balance}.ac-pass-where{margin-top:.25rem;padding:0 0 1rem;align-items:flex-start}.ac-pass-where .ic{margin-top:.125rem}.ac-passport.ac-noart{justify-content:center;align-items:center;text-align:center}.ac-passport.ac-noart>:first-child{margin-top:0}.ac-passport.ac-noart>img,.ac-passport.ac-noart>.ac-mono{width:96px;height:96px;border-radius:24px;font-size:2.5rem}.ac-passport.ac-noart .ac-pass-where{justify-content:center;align-items:center;padding-bottom:0}}}`,
+  `@media (min-width: 60rem) and (min-aspect-ratio: 6/5){@container (min-width: 46rem){main.ac-wide{max-width:46rem;display:grid;grid-template-columns:minmax(0,17.5rem) minmax(0,1fr);grid-template-rows:1fr auto}main.ac-wide .ac-head{display:none}main.ac-wide .ac-passport{display:flex;flex-direction:column;grid-column:1;grid-row:1;min-width:0;border-right:1px solid var(--rule);background:var(--sunken);color:var(--muted)}main.ac-wide .ac-body{grid-column:2;grid-row:1 / 3;align-content:start}main.ac-wide .ac-foot{grid-column:1;grid-row:2;padding-inline:1.5rem;border-top:0;border-right:1px solid var(--rule);background:var(--sunken)}.ac-art{display:block;width:100%;aspect-ratio:16/10;max-height:40%;object-fit:cover;flex:none}.ac-passport>:not(.ac-art){margin-inline:1.5rem}.ac-passport>:first-child:not(.ac-art){margin-top:2rem}.ac-art+img,.ac-art+.ac-mono{margin-top:-1.75rem;box-shadow:0 0 0 4px var(--sunken)}.ac-passport>img:not(.ac-art),.ac-passport>.ac-mono{flex:none;width:56px;height:56px;border-radius:14px;background:var(--raised)}.ac-pass-text{display:grid;gap:.25rem;margin-top:1rem;overflow-wrap:anywhere}.ac-pass-text p{margin:0}.ac-pass-text .ac-head-title{font-size:1rem;line-height:1.5rem;text-wrap:balance}.ac-pass-where{margin-top:.25rem;padding:0 0 1rem;align-items:flex-start}.ac-pass-where .ic{margin-top:.125rem}.ac-passport.ac-noart{justify-content:center;align-items:center;text-align:center}.ac-passport.ac-noart>:first-child{margin-top:0}.ac-passport.ac-noart>img,.ac-passport.ac-noart>.ac-mono{width:96px;height:96px;border-radius:24px;font-size:2.25rem}.ac-passport.ac-noart .ac-pass-where{justify-content:center;align-items:center;padding-bottom:0}}}`,
   `@media (forced-colors: active){main.ac-wide .ac-passport,main.ac-wide .ac-foot{border-right-color:CanvasText;background:Canvas;color:CanvasText}}`,
   // The TV variant (`/tv`): read from a sofa, typed with a remote. Large type and targets, the
   // same card.
@@ -385,6 +390,8 @@ const AUTH_CARD_RULES = [
   `.tv .ac-foot,.tv .ac-head{padding-left:3rem;padding-right:3rem}`,
   `.tv .ac-body dl{font-size:1.5rem;line-height:2rem}`,
   `.tv .ac-body .small{font-size:1.25rem;line-height:1.75rem}`,
+  `.tv .ac-links{font-size:1.5rem;line-height:2rem}`,
+  `.tv .ac-links a{min-height:2.75rem}`,
   `@media (max-width: 30rem){.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:min(2rem,7vw)}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
 ];
 
@@ -450,14 +457,13 @@ const CONSOLE_PAGE_CSS_TAIL = [
   // rule 24 px tall with 12 px each side, and "Console" at 16/24, 400, muted. The canvas's own air
   // counts toward the 40 px gap to the card. Phones size the lockup by width, min(180px, 52vw).
   `[data-brand=console] .ac-brand svg{width:13.875rem;height:4rem}`,
-  `[data-brand=console] .ac-brand{margin-bottom:1.5rem}`,
+  `@media (min-width: 40rem){[data-brand=console] .ac-brand{margin-bottom:1.5rem}}`,
   `@media (max-width: 39.99rem){[data-brand=console] .ac-brand svg{width:min(180px,52vw);height:auto}[data-brand=console] .ac-brand .ac-surface{font-size:16px;line-height:24px}}`,
   `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.375rem;background:var(--sunken);color:var(--strong);font:inherit}`,
-  `.ac-body input[type=email]::placeholder{color:var(--muted);opacity:1}`,
-  // Fields: the calm 1 px inset focus ring, no offset outline (SIGNIN-REDESIGN §4).
-  `.ac-body input[type=email]:focus-visible,.ac-body input[type=text]:focus-visible{outline:none;border-color:var(--strong);box-shadow:inset 0 0 0 1px var(--strong)}`,
+  `.ac-body input[type=email]::placeholder{color:var(--subtle);opacity:1}`,
+  // Fields: focus is the 1 px border in strong ink, no ring and no offset outline (SIGNIN-REDESIGN §4).
   `.ac-body .fine{color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
-  `.ac-body form .fine{margin-top:-.25rem}`,
+  `.ac-body form .fine{margin:-.25rem 0 0}`,
   `.ac-brand .ac-surface{margin-left:.75rem;padding-left:.75rem;border-left:1px solid var(--edge);color:var(--muted);font-size:1rem;line-height:1.5rem;font-weight:400}`,
   `@media (forced-colors: active){.ac-brand .ac-surface{color:CanvasText;border-color:CanvasText}}`,
   // the top edge with half a screen empty below; the phone layout keeps its own padding.
@@ -526,7 +532,7 @@ export interface BrandPageOptions {
    * pass their own; `[]` shows none.
    */
   links?: readonly { label: string; href: string }[];
-  /** The links landmark's name; "Help and privacy" unless the row holds more than that. */
+  /** The links landmark's name; "Help and policies" unless the row holds more than that. */
   linksLabel?: string;
   /**
    * Locker only: the hosted passport (identity.device-confirm). At 960 px and wider in landscape
@@ -703,6 +709,13 @@ function passportPane(f: AppFacts): string {
   return `<aside class="ac-passport${f.artUrl ? "" : " ac-noart"}">${art}${appArt(f.name, f.iconUrl, f.glyph)}<div class="ac-pass-text">${appLines({ name: f.name, ...(f.action ? { action: f.action } : {}), ...(f.developer ? { sub: f.developer } : {}) })}</div>${where}</aside>`;
 }
 
+/** The lockup inside a labelled wrapper: its own role and title would announce the name twice. */
+function hideLockup(svg: string): string {
+  return svg
+    .replace(' role="img" aria-label=', ' aria-hidden="true" data-label=')
+    .replace(/<title>[^<]*<\/title>/, "");
+}
+
 let keyLockup: string | null = null;
 let lockerLockup: string | null = null;
 let consoleLockup: string | null = null;
@@ -872,7 +885,7 @@ export function renderAuthCard(opts: AuthCardOptions): string {
     `</head>`,
     opts.variant === "tv" ? `<body class="tv">` : `<body>`,
     consoleCard
-      ? `<header class="ac-brand"><div role="img" aria-label="Polaris Key Console">${consoleLockup}<span class="ac-surface" aria-hidden="true">Console</span></div></header>`
+      ? `<header class="ac-brand"><div role="img" aria-label="Polaris Key Console">${hideLockup(consoleLockup)}<span class="ac-surface" aria-hidden="true">Console</span></div></header>`
       : `<header class="${inApp ? "ac-brand quiet" : "ac-brand"}"><div role="img" aria-label="Polaris Locker">${lockerLockup}</div></header>`,
     wide ? `<main class="ac ac-wide">` : `<main class="ac">`,
     header,
@@ -889,7 +902,7 @@ export function renderAuthCard(opts: AuthCardOptions): string {
       : "",
     `</main>`,
     cardLinks.length
-      ? `<nav class="ac-links" aria-label="${escapeHtml(opts.linksLabel ?? "Help and privacy")}">${cardLinks
+      ? `<nav class="ac-links" aria-label="${escapeHtml(opts.linksLabel ?? "Help and policies")}">${cardLinks
           .map(
             (l) => `<a href="${escapeHtml(l.href)}">${escapeHtml(l.label)}</a>`,
           )

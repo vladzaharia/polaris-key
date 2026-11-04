@@ -10,6 +10,14 @@ import { useTheme } from "../../components/theme.js";
 import { Button } from "../../ui/Button.js";
 import { AUTH_METHOD_CLASS, AuthCard, AuthTitle } from "../../ui/auth/index.js";
 import { AUTH_PRIMARY_CLASS } from "../../ui/auth/parts.js";
+import { FooterNav } from "../../ui/auth/FooterNav.js";
+
+/** Help and Privacy under the console cards: the Worker card's links (public pages, no session). */
+export function ConsoleLegalNav(): React.ReactElement {
+  return (
+    <FooterNav help="/docs/" privacy="/docs/reference/what-apps-collect/" />
+  );
+}
 
 export function ConsoleBrand(): React.ReactElement {
   const { theme } = useTheme();
@@ -60,7 +68,13 @@ export function ConsoleOffline({
   const back = `/manage/${window.location.hash}`;
   return (
     // focusKey: the card's h1 takes focus and is announced when the card appears.
-    <AuthCard brand={<ConsoleBrand />} stepKey="offline" focusKey={1}>
+    <AuthCard
+      brand={<ConsoleBrand />}
+      brandAir="canvas"
+      after={<ConsoleLegalNav />}
+      stepKey="offline"
+      focusKey={1}
+    >
       <AuthTitle>
         {serverError
           ? "Something went wrong on the server"
@@ -106,7 +120,13 @@ export function ConsoleOffline({
 export function ConsoleRefused(): React.ReactElement {
   const back = `/manage/${window.location.hash}`;
   return (
-    <AuthCard brand={<ConsoleBrand />} stepKey="refused" focusKey={1}>
+    <AuthCard
+      brand={<ConsoleBrand />}
+      brandAir="canvas"
+      after={<ConsoleLegalNav />}
+      stepKey="refused"
+      focusKey={1}
+    >
       <AuthTitle>This account can't open the console</AuthTitle>
       <p className="text-fg-muted">
         Ask an admin to add you, or sign in with another account.

@@ -661,7 +661,7 @@ verification is `danger`, never gold. Nothing else in the console is gold.
 
 Every interactive element shows a visible `:focus-visible` ring: 2 px solid `--pk-focus` with a
 2 px offset in the surface colour. Never remove it; never replace it with a colour change alone.
-The sign-in card family's ring is `--pk-text-strong` in both brands; its fields use a 1 px inset ring, no offset (§7.9).
+The sign-in card family's ring is `--pk-text-strong` in both brands; its fields focus with a 1 px `--pk-text-strong` border, no ring and no offset (§7.9).
 The ring takes the service the element references (`--pk-state-ring`, §4.8; core violet on core and
 platform screens), one ring colour per element, never per component; ≥ 3:1 everywhere in both
 themes. `--pk-focus` stays the platform violet for contexts with no service.
@@ -789,7 +789,7 @@ one recipe per role.
   trailing arrow. Every alternative way in and every decline is one **method button**: full width, 48 px,
   a 1 px `--pk-border-strong` border, `--pk-radius-md`, a 16/500 `--pk-text-strong` label and a 20 px
   leading icon centred with it. The provider row (Apple, Google, Steam) wears the same skin, logo-only.
-  Fields use a 1 px inset focus ring, never an offset outline.
+  Fields focus with a 1 px strong-ink border (no ring), never an offset outline.
 - **Order of the methods step:** the email and Continue; "or"; the provider row, the passkey, single
   sign-on (or the named connections), another device. "Have a license key?" (the console's "Emergency
   sign-in") is a quiet centred link on the card's last line.

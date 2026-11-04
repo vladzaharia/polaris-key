@@ -118,7 +118,7 @@ export function HintStep({
     );
   return (
     <>
-      <div className="inline-flex max-w-full flex-wrap items-center gap-x-2 rounded-full border border-border py-0.5 ps-1 pe-1 text-sm/5 text-fg-muted">
+      <div className="inline-flex max-w-full flex-wrap items-center gap-x-2 rounded-full bigtext:rounded-lg border border-border py-0.5 ps-1 pe-1 text-sm/5 text-fg-muted">
         <span
           aria-hidden
           className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-hover text-sm/5 font-medium text-fg-strong"

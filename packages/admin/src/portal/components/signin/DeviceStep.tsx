@@ -126,6 +126,7 @@ export function DeviceStep({
 
   return (
     <div ref={ref} className="space-y-6">
+      {live}
       <div className="space-y-2">
         <AuthTitle>{t("signin.approve.title")}</AuthTitle>
         {asking ? (
@@ -190,7 +191,6 @@ export function DeviceStep({
       <div aria-live="polite" className="sr-only">
         {announce}
       </div>
-      {live}
       {state.kind === "expired" || state.kind === "error" ? (
         <Button
           variant="neutral"

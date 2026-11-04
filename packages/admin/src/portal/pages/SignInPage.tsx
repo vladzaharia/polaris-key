@@ -956,7 +956,14 @@ function MethodsStep({
           </Button>
         </form>
       ) : null}
-      {(providers.length > 0 || oidc) && magic ? <Divider /> : null}
+      {magic &&
+      (providers.length > 0 ||
+        oidc ||
+        passkey ||
+        connections.length > 0 ||
+        (!other && !attachDevice)) ? (
+        <Divider />
+      ) : null}
       <div className="space-y-3" data-methods>
         <ProviderRow
           providers={providers}

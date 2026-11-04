@@ -39,7 +39,7 @@ export function CodeCells({
               invalid
                 ? "border-danger"
                 : focused && i === at
-                  ? "border-fg-strong ring-1 ring-inset ring-fg-strong"
+                  ? "border-fg-strong"
                   : "border-border-strong",
             )}
           >

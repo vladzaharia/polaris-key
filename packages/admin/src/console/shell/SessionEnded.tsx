@@ -14,8 +14,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "../../ui/Button.js";
 import { toast } from "../../ui/toast.js";
 import { Dialog, DialogFooter } from "../../ui/Dialog.js";
-import { AuthCard, AuthTitle } from "../../ui/auth/index.js";
-import { ConsoleBrand } from "./ConsoleSignIn.js";
+import { AUTH_METHOD_CLASS, AuthCard, AuthTitle } from "../../ui/auth/index.js";
+import { ConsoleBrand, ConsoleLegalNav } from "./ConsoleSignIn.js";
 import { qk } from "../data/queries.js";
 import {
   SESSION_CHANNEL,
@@ -161,17 +161,18 @@ export function SignedInAgain(): React.ReactElement {
     window.close();
   }, []);
   return (
-    <AuthCard brand={<ConsoleBrand />} stepKey="signed-in" focusKey={1}>
+    <AuthCard
+      brand={<ConsoleBrand />}
+      brandAir="canvas"
+      after={<ConsoleLegalNav />}
+      stepKey="signed-in"
+      focusKey={1}
+    >
       <AuthTitle>You're signed in again</AuthTitle>
-      <p className="text-sm text-fg-muted">
+      <p className="text-base/6 text-fg-muted">
         Close this tab to go back to your page. Your changes are still there.
       </p>
-      <Button
-        asChild
-        variant="outline"
-        size="lg"
-        className="h-auto min-h-12 w-full py-2 text-base font-semibold"
-      >
+      <Button asChild variant="outline" size="xl" className={AUTH_METHOD_CLASS}>
         <a href="/manage/">Open the console here</a>
       </Button>
     </AuthCard>

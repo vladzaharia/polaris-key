@@ -174,7 +174,13 @@ export function AccountUpgrade({
                     developer: preview.product.developerName ?? name,
                   }),
                 ).map((p, i) =>
-                  p.strong ? <strong key={i}>{p.text}</strong> : p.text,
+                  p.strong ? (
+                    <strong key={i} className="font-medium text-fg-strong">
+                      {p.text}
+                    </strong>
+                  ) : (
+                    p.text
+                  ),
                 )}
               </span>
             </li>

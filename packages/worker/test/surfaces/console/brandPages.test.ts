@@ -116,7 +116,7 @@ async function expectBrandedPage(
     // Help and Privacy sit under every Locker card (no Terms page exists), 24 px targets.
     // The device pages' Help opens "Approve a sign-in" (DOC-06b.2).
     expect(html).toMatch(
-      /<nav class="ac-links" aria-label="Help and privacy"><a href="\/docs\/help\/(approve-a-sign-in\/)?">Help<\/a><a href="\/docs\/help\/your-data\/">Privacy<\/a><\/nav>/,
+      /<nav class="ac-links" aria-label="Help and policies"><a href="\/docs\/help\/(approve-a-sign-in\/)?">Help<\/a><a href="\/docs\/help\/your-data\/">Privacy<\/a><\/nav>/,
     );
     expect(html).not.toContain("Terms");
     // Footer type: the muted link style, a 24 px target and, under a coarse pointer, 44 px.
@@ -482,7 +482,7 @@ describe("the console sign-in card (GET /manage/login)", () => {
     // Help and Privacy sit under the card: public Polaris Key pages, never customer Help (operators are not customers).
     // Emergency sign-in is the card's last line (the tertiary line), not a footer link.
     expect(html).toContain(
-      '<nav class="ac-links" aria-label="Help and links"><a href="/docs/">Help</a><a href="/docs/reference/what-apps-collect/">Privacy</a></nav>',
+      '<nav class="ac-links" aria-label="Help and policies"><a href="/docs/">Help</a><a href="/docs/reference/what-apps-collect/">Privacy</a></nav>',
     );
     expect(html).toContain(
       '<p class="tertiary"><a href="/manage/login?breakGlass=1&amp;returnTo=%2Fmanage%2F%23%2Fp%2Falpha">Emergency sign-in</a></p>',

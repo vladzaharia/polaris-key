@@ -44,14 +44,17 @@ export const AUTH_METHOD_CLASS =
 
 /** The same skin on a bare element (an anchor): what `Button variant="outline"` adds. */
 export const AUTH_METHOD_ELEMENT_CLASS =
-  "inline-flex h-auto min-h-12 w-full items-center justify-center gap-2 rounded-md border border-border-strong bg-transparent px-6 py-2 text-center text-base/6 font-medium text-fg-strong transition-colors duration-(--pk-duration-fast) hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus [&_svg]:size-5 [&_svg]:shrink-0";
+  "inline-flex h-auto min-h-12! w-full items-center justify-center gap-2 rounded-md border border-border-strong bg-transparent px-6 py-2 text-center text-base/6 font-medium text-fg-strong transition-colors duration-(--pk-duration-fast) hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus [&_svg]:size-5 [&_svg]:shrink-0";
 
-/** The card's text input: 48 px at 16 px, the calm 1 px inset focus ring (§4). */
+/** The card's text input: 48 px at 16 px, focus is the 1 px border in strong ink, no ring, no offset (§4). */
 export const AUTH_INPUT_CLASS =
-  "h-12 text-base focus-visible:border-fg-strong focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-fg-strong";
+  "h-12 pointer-coarse:h-12 text-base focus-visible:border-fg-strong focus-visible:outline-0 focus-visible:outline-offset-0";
+
+/** A help line under a field or a checkbox (§2 Secondary: 14/20 at 400, muted). */
+export const AUTH_HELP_CLASS = "text-sm/5 text-fg-muted";
 
 /** The label above a field or a section (§2 Label: 14/20 at 500). */
-export const AUTH_LABEL_CLASS = "text-sm/5 font-medium text-fg-strong";
+export const AUTH_LABEL_CLASS = "block text-sm/5 font-medium text-fg-strong";
 
 /**
  * The card's one link style (§6, BRAND §7.9): 14/20 at 400 in `--pk-text-default`, a 1 px

@@ -129,7 +129,7 @@ export function renderConsoleSignin(opts: {
           `<span class="chip-email">${escapeHtml(chip).replace(/[@.]/g, "<wbr>$&")}</span>` +
           `<a class="chip-change" href="${escapeHtml(ctxQuery({ change: "1", ...stateFlag }))}">Change</a></div></div>`
         : `<div class="field"><label for="email">Email</label>` +
-          `<input id="email" type="email" name="login_hint"${opts.focusEmail ? " autofocus" : ""} autocomplete="${offerPasskey ? "username webauthn" : "username"}" autocapitalize="none" spellcheck="false" maxlength="254"${opts.hint ? ` value="${escapeHtml(opts.hint)}"` : ""}></div>`;
+          `<input id="email" type="email" name="login_hint" autofocus placeholder="you@example.com" autocomplete="${offerPasskey ? "username webauthn" : "username"}" autocapitalize="none" spellcheck="false" maxlength="254"${opts.hint ? ` value="${escapeHtml(opts.hint)}"` : ""}></div>`;
   const body = [
     c.lede ? `<p>${escapeHtml(c.lede)}</p>` : "",
     // The path is elevated, so it reads that way: the one fact an operator must weigh sits in a
@@ -173,9 +173,8 @@ export function renderConsoleSignin(opts: {
     title: c.h1,
     heading: c.h1,
     body,
-    focusHeading: !(opts.focusEmail && !chip && !opts.knownEmail && !bg),
+    focusHeading: bg || Boolean(chip) || Boolean(opts.knownEmail),
     links,
-    linksLabel: "Help and links",
   });
 }
 

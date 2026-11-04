@@ -167,9 +167,9 @@ export function KeyField({
             <button
               type="button"
               onClick={() => void paste()}
-              className="inline-flex h-11 items-center gap-1.5 rounded-md border border-border-strong bg-surface-raised px-2 text-sm font-medium text-fg-strong hover:bg-hover"
+              className="inline-flex h-10 items-center gap-1.5 rounded-md bg-transparent px-2 text-sm/5 font-medium text-fg-strong hover:bg-hover pointer-coarse:h-11"
             >
-              <ClipboardPaste aria-hidden className="size-4 text-accent-fg" />
+              <ClipboardPaste aria-hidden className="size-4 text-fg-muted" />
               {t("common.paste")}
             </button>
           ) : valid ? (

@@ -14,6 +14,7 @@ import { Checkbox } from "../../../ui/Checkbox.js";
 import { Input } from "../../../ui/Input.js";
 import {
   AUTH_INPUT_CLASS,
+  AUTH_HELP_CLASS,
   AUTH_LABEL_CLASS,
   AUTH_LINK_CLASS,
   AUTH_METHOD_CLASS,
@@ -27,7 +28,7 @@ import {
 } from "../../../ui/auth/index.js";
 import { cn } from "../../../lib/cn.js";
 import { LINK_CLASS } from "../../linkClass.js";
-import { PRIMARY_CLASS, Unreachable } from "./requestParts.js";
+import { Pill, PRIMARY_CLASS, Unreachable } from "./requestParts.js";
 import { t, tParts } from "../../../lib/copy.js";
 import {
   portalApi,
@@ -268,8 +269,8 @@ function GateUnreachable({
   }, [ref]);
   return (
     <div ref={ref} className="space-y-6">
-      <Unreachable error={error} onRetry={onRetry} />
       {live}
+      <Unreachable error={error} onRetry={onRetry} />
     </div>
   );
 }
@@ -326,7 +327,7 @@ function EmailConfirmed({
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <span className={AUTH_LABEL_CLASS}>{t("signin.email.label")}</span>
-        <span className="inline-flex items-center gap-1 text-sm/5 text-success">
+        <span className="inline-flex items-center gap-1 text-sm/5 text-fg-muted">
           <CircleCheck aria-hidden className="size-4" />
           {status}
         </span>
@@ -594,6 +595,7 @@ function FinishForm({
   if (view === "passkey" && after) {
     return (
       <div ref={ref} className="space-y-6">
+        {live}
         <div className="space-y-2">
           <AuthTitle>{title}</AuthTitle>
           <p className="text-fg-muted">{t("signin.gate.passkeyLede")}</p>
@@ -649,7 +651,6 @@ function FinishForm({
             </Button>
           )}
         </div>
-        {live}
       </div>
     );
   }
@@ -660,6 +661,7 @@ function FinishForm({
     const proven = Boolean(gate.join?.proven);
     return (
       <div ref={ref} className="space-y-6">
+        {live}
         <div className="space-y-2">
           <AuthTitle>{title}</AuthTitle>
           <p className="text-fg-muted [overflow-wrap:anywhere]">
@@ -725,7 +727,6 @@ function FinishForm({
             </QuietLink>
           </QuietLinks>
         ) : null}
-        {live}
       </div>
     );
   }
@@ -783,6 +784,7 @@ function FinishForm({
           if (e.key === "Escape") editEmail(to);
         }}
       >
+        {live}
         <div className="space-y-2">
           <AuthTitle>{title}</AuthTitle>
           <p className="text-fg-muted [overflow-wrap:anywhere]">
@@ -807,7 +809,6 @@ function FinishForm({
             {t("signin.gate.cancel")}
           </button>
         </CodeEntry>
-        {live}
       </div>
     );
   }
@@ -827,8 +828,8 @@ function FinishForm({
     "relative flex min-h-24 cursor-pointer flex-col items-center gap-1 rounded-lg border border-border-strong bg-surface-sunken px-1 py-2 text-center text-sm text-fg-strong has-[:checked]:border-fg-strong has-[:checked]:bg-hover has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus forced-colors:has-[:checked]:outline-2";
   const circle =
     "inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-strong bg-surface-raised text-sm/5 font-medium text-fg-strong";
-  const pickMeta = (which: Pick, idle: string): string =>
-    pick === which ? t("signin.gate.pictureInUse") : idle;
+  const pickMeta = (which: Pick, idle: string): React.ReactNode =>
+    pick === which ? <Pill>{t("signin.gate.pictureInUse")}</Pill> : idle;
 
   const emailInput = (
     <div className="space-y-2">
@@ -870,11 +871,10 @@ function FinishForm({
 
   const termsPanel =
     platformTerms || productTerms ? (
-      <div className="space-y-3 rounded-lg border border-border bg-surface-sunken px-4 py-3">
+      <>
         {platformTerms ? (
           <div>
             <Checkbox
-              className="min-h-11 items-center [&_label]:-my-3 [&_label]:py-3"
               ref={platformRef}
               checked={platformOk}
               onCheckedChange={(v) => {
@@ -898,7 +898,6 @@ function FinishForm({
         {productTerms ? (
           <div>
             <Checkbox
-              className="min-h-11 items-center [&_label]:-my-3 [&_label]:py-3"
               ref={productRef}
               checked={productOk}
               onCheckedChange={(v) => {
@@ -931,11 +930,12 @@ function FinishForm({
             {t("core.codes.terms_required.message")}
           </p>
         ) : null}
-      </div>
+      </>
     ) : null;
 
   return (
     <div ref={ref} className="space-y-6">
+      {live}
       <div className="space-y-2">
         <AuthTitle>{title}</AuthTitle>
         {termsOnly ? (
@@ -1096,7 +1096,7 @@ function FinishForm({
                 <div
                   role="group"
                   aria-labelledby={`${nameId}-from`}
-                  className="space-y-1"
+                  className="space-y-2"
                 >
                   <span
                     id={`${nameId}-from`}
@@ -1255,10 +1255,16 @@ function FinishForm({
                 </p>
               ) : null}
             </fieldset>
+          </>
+        )}
 
-            {gate.profile.birthdate ? (
+        {(isNew && gate.profile.birthdate) ||
+        termsPanel ||
+        (passkeyOffer && isNew) ? (
+          <div className="space-y-3">
+            {isNew && gate.profile.birthdate ? (
               <Checkbox
-                className="min-h-11 items-center [&_label]:-my-3 [&_label]:py-3"
+                descriptionClassName={AUTH_HELP_CLASS}
                 checked={birth}
                 onCheckedChange={setBirth}
                 label={t("signin.gate.birthdate", {
@@ -1267,20 +1273,19 @@ function FinishForm({
                 description={t("signin.gate.birthdateHelp")}
               />
             ) : null}
-          </>
-        )}
-
-        {termsPanel}
-
-        {passkeyOffer && isNew ? (
-          <Checkbox
-            className="min-h-11 items-center [&_label]:-my-3 [&_label]:py-3"
-            checked={passkey}
-            onCheckedChange={setPasskey}
-            label={
-              <span className="text-fg-muted">{t("signin.gate.passkey")}</span>
-            }
-          />
+            {termsPanel}
+            {passkeyOffer && isNew ? (
+              <Checkbox
+                checked={passkey}
+                onCheckedChange={setPasskey}
+                label={
+                  <span className="text-fg-muted">
+                    {t("signin.gate.passkey")}
+                  </span>
+                }
+              />
+            ) : null}
+          </div>
         ) : null}
 
         {error?.field === "form" ? (
@@ -1303,7 +1308,6 @@ function FinishForm({
           </QuietLink>
         </QuietLinks>
       </form>
-      {live}
     </div>
   );
 }

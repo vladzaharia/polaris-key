@@ -376,7 +376,7 @@ describe("the break-glass link and start card", () => {
       '<p class="tertiary"><a href="/manage/login?">Back to sign in</a></p>',
     );
     expect(html).toContain(
-      '<nav class="ac-links" aria-label="Help and links"><a href="/docs/">Help</a>',
+      '<nav class="ac-links" aria-label="Help and policies"><a href="/docs/">Help</a>',
     );
     expect(html).not.toContain('<p class="fine"><a');
     expect(html).toContain('name="breakGlass" value="1"');
@@ -551,7 +551,7 @@ describe("the chip, large text and the card's details (UX review)", () => {
 
   it('the links landmark is Help · Privacy with a muted aria-hidden middot; the lockup is 4 rem, "Console" is 16/24 at 400', async () => {
     const html = await (await card("")).text();
-    expect(html).toContain('aria-label="Help and links"');
+    expect(html).toContain('aria-label="Help and policies"');
     expect(html).toContain(
       "[data-brand=console] .ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;color:var(--muted)}",
     );
@@ -566,15 +566,17 @@ describe("the chip, large text and the card's details (UX review)", () => {
     );
   });
 
-  it("Change puts focus on the empty field and not on the heading; the other cards keep the heading", async () => {
+  it("an empty field takes focus on load and shows a placeholder; the other cards keep the heading", async () => {
     const change = await (await card("?change=1", `${HINT}=a%40b.io`)).text();
     expect(change).toMatch(
-      /<input id="email" type="email" name="login_hint" autofocus/,
+      /<input id="email" type="email" name="login_hint" autofocus placeholder="you@example.com"/,
     );
     expect(change).toContain("<h1>Sign in to the console</h1>");
     const plain = await (await card("")).text();
-    expect(plain).not.toMatch(/<input id="email"[^>]* autofocus/);
-    expect(plain).toContain('<h1 tabindex="-1" autofocus>');
+    expect(plain).toMatch(/<input id="email"[^>]* autofocus/);
+    expect(plain).toContain("<h1>Sign in to the console</h1>");
+    const chip = await (await card("", `${HINT}=a%40b.io`)).text();
+    expect(chip).toContain('<h1 tabindex="-1" autofocus>');
   });
 
   it("the refusal and the mint refusal say 'emergency sign-in', one name for one thing", async () => {
