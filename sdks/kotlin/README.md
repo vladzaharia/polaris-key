@@ -447,6 +447,17 @@ client.nearbyApprovalActions(), scope))` adds the "Approve a nearby device" row 
 the licence choice and the outcomes (`PolarisNearbyApproval`). `PolarisKeyFutures.identityNearbyOnRequest`, `nearbyAskPick`,
 `nearbyAskDeny`, `nearbyApprovalChoose` and `nearbyApprovalCancel` are the Java forms.
 
+## Pairing and transfer prompts (Compose kit)
+
+Two screens draw Cloud Connect's inter-account features. `PolarisLinkPairing(PolarisLinkPairingState(client.linkPairingActions(),
+categories, label, scope = scope))` opens the pairing window when it enters the composition and closes it, declining any code on
+screen, when it leaves: both people compare the code, see what each shares (`categoryLabels` names the ids) and confirm; it never
+confirms on arrival, and on a TV or with a keyboard the first focus is "Not a match". `client.transferOffers(scope) { id, name ->
+destinationFile }` sets `cloudConnect.transfer.onOffer` so every offer asks first (consent per transfer), and
+`PolarisTransferOffer(offers)` draws the prompt: Accept, Decline, the progress with Cancel, then Done or a failure that kept
+nothing. The stateless `PolarisLinkPairingScreen` and `PolarisTransferOfferScreen` take a resolved `KitScreen` for a host that
+drives its own state; the states are `KitComponent.linkPairing` and `transferOffer` (ui-matrix `connect`).
+
 ## Cloud Sync settings
 
 `client.cloudSync.status()` answers the machine's state (`local` before it starts), `flush()` sends what is waiting (bounded) and
