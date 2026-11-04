@@ -194,7 +194,6 @@ function LibraryRow({
           action={action}
           lead={p.justAdded && isDownloadAction(action)}
           size="md"
-          className="h-10"
         />
       </td>
       <td className="w-0 py-3 pe-4 desk:pe-5 bigtext:max-desk:hidden">

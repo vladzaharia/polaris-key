@@ -160,7 +160,7 @@ export function DeviceStep({
           </div>
           <div
             role="status"
-            className="flex items-center gap-3 rounded-md border border-border-strong bg-hover px-4 py-3 text-sm text-fg"
+            className="flex items-center gap-3 rounded-lg border border-border bg-surface-sunken px-4 py-3 text-fg"
           >
             <Spinner label="" className="text-fg-muted" />
             {t("signin.approve.waiting")}

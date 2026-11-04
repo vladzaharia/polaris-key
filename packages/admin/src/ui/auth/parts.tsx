@@ -29,7 +29,7 @@ export function AuthTitle({
 
 /** The step's one large action: 48 px, 16 px text, weight 500 (BRAND 9.4; SIGN-IN 3.1). */
 export const AUTH_PRIMARY_CLASS =
-  "h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-medium";
+  "h-auto min-h-12! w-full whitespace-normal py-2 text-center text-base font-medium";
 
 /** The card's text input: 48 px at 16 px (SIGN-IN 3.1). */
 export const AUTH_INPUT_CLASS = "h-12 text-base";

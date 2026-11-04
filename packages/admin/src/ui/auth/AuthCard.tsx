@@ -477,7 +477,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
                     {part.replace(/^[\s·]+|[\s·]+$/g, "")}
                   </span>
                 ) : (
-                  <span className="font-mono text-base font-semibold tracking-widest text-fg-strong passport:block passport:text-xl/7">
+                  <span className="font-mono font-semibold tracking-widest text-fg-strong passport:block">
                     {code}
                   </span>
                 )}

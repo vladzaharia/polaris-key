@@ -103,7 +103,7 @@ export function DeviceRowHead({
             line follows the page's start edge; `bdi` shapes the name in its own direction. */}
         <p
           data-device-name=""
-          className="flex flex-wrap items-center gap-x-2 gap-y-1 break-words text-start font-medium text-fg-strong"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 break-words text-start font-semibold text-fg-strong"
         >
           {/* `min-w-0` and `anywhere`: in a flex line a long label with no break point would
               otherwise hold the row wider than a 320 px screen (WCAG 1.4.10). */}

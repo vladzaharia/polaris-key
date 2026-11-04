@@ -35,7 +35,7 @@ export function LibraryKeyTile(): React.ReactElement {
           <div className="mt-auto" />
           <Button
             variant="quiet"
-            className="mt-3 h-auto min-h-10 w-full whitespace-normal py-1.5 text-center pointer-coarse:min-h-11 @max-[13rem]:[&_svg]:hidden"
+            className="mt-3 w-full whitespace-normal text-center @max-[13rem]:[&_svg]:hidden"
             iconStart={<KeyRound aria-hidden />}
             onClick={() => activate.open()}
           >

@@ -61,7 +61,7 @@ export function WhatsNew({
                 aria-expanded={full}
                 aria-controls={restId}
                 onClick={() => setFull((v) => !v)}
-                className="mt-3 inline-flex min-h-6 items-center gap-1 pointer-coarse:min-h-11 text-sm font-medium text-accent-fg underline decoration-2 underline-offset-4 hover:text-fg-strong"
+                className="mt-3 inline-flex min-h-6 items-center gap-1 pointer-coarse:min-h-11 text-sm rounded-md font-normal text-fg-strong underline decoration-2 underline-offset-4"
               >
                 {full ? t("locker.notes.less") : t("locker.notes.full")}
                 <ChevronDown

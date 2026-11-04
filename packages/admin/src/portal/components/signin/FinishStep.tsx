@@ -106,7 +106,7 @@ function TermsLink({
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="-my-3 py-3 underline decoration-2 underline-offset-4"
+      className="-my-3 rounded-md py-3 text-fg-strong underline decoration-2 underline-offset-4"
     >
       {children}
     </a>
@@ -688,29 +688,36 @@ function FinishForm({
             </Button>
           ) : null}
           {emailAsked ? (
-            <Button
-              variant={proven ? "ghost" : "neutral"}
-              size="lg"
-              className={PRIMARY_CLASS}
-              disabled={busy}
-              onClick={() => editEmail(pending)}
-            >
-              {t("signin.code.differentEmail")}
-            </Button>
+            proven ? (
+              <button
+                type="button"
+                className={STACKED_LINK}
+                disabled={busy}
+                onClick={() => editEmail(pending)}
+              >
+                {t("signin.code.differentEmail")}
+              </button>
+            ) : (
+              <Button
+                variant="neutral"
+                size="lg"
+                className={PRIMARY_CLASS}
+                disabled={busy}
+                onClick={() => editEmail(pending)}
+              >
+                {t("signin.code.differentEmail")}
+              </Button>
+            )
           ) : null}
           {emailAsked || proven ? (
-            <Button
-              variant="ghost"
-              size="lg"
-              className={cn(
-                PRIMARY_CLASS,
-                "underline decoration-2 underline-offset-4",
-              )}
+            <button
+              type="button"
+              className={STACKED_LINK}
               disabled={busy}
               onClick={onCancel}
             >
               {t("signin.gate.cancel")}
-            </Button>
+            </button>
           ) : (
             <Button
               variant="neutral"
@@ -1296,22 +1303,23 @@ function FinishForm({
           >
             {primary}
           </Button>
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="lg"
-            className={cn(PRIMARY_CLASS, "-mb-2")}
+            className={STACKED_LINK}
             disabled={busy}
             onClick={onCancel}
           >
             {t("signin.gate.cancel")}
-          </Button>
+          </button>
         </div>
       </form>
       {live}
     </div>
   );
 }
+
+/** A secondary action under the primary: the shared link, centred on its own line. */
+const STACKED_LINK = cn(AUTH_LINK_CLASS, "mx-auto flex w-fit");
 
 /** A name suggestion: one pill, pressed when it is the name in the field. */
 function SuggestionChip({

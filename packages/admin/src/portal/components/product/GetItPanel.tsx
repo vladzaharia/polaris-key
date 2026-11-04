@@ -341,7 +341,7 @@ function FileRow({
             {/* Wraps, never cut short (§4.20, like a device's name). */}
             <span
               data-platform-name=""
-              className="block break-words font-medium text-fg-strong"
+              className="block break-words text-base font-semibold text-fg-strong"
             >
               {r.platform ? `${osName(r.platform)} · ${r.title}` : r.title}
             </span>

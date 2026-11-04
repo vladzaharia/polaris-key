@@ -265,3 +265,36 @@ export function InkMeter({
     </div>
   );
 }
+
+/**
+ * A device row's content, shared by sign-in's Replace a device and the portal's Free a device:
+ * the glyph, the name (16, weight 600), its tags, and the meta line (14).
+ */
+export function DeviceChoiceBody({
+  glyph,
+  name,
+  tags,
+  meta,
+}: {
+  glyph: React.ReactNode;
+  name: React.ReactNode;
+  tags?: React.ReactNode;
+  meta: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <span className="flex items-start gap-2">
+      <span className="mt-0.5 shrink-0 text-fg-muted [&_svg]:size-4">
+        {glyph}
+      </span>
+      <span className="min-w-0 space-y-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-fg-strong [overflow-wrap:anywhere]">
+            {name}
+          </span>
+          {tags}
+        </span>
+        <span className="block text-sm text-fg-muted">{meta}</span>
+      </span>
+    </span>
+  );
+}

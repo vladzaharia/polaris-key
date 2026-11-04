@@ -122,7 +122,7 @@ function SessionList({
       <div className="ms-12 mt-1 bigtext:max-sm:ms-0">
         <Button
           variant="link"
-          className="h-auto min-h-11 pointer-coarse:min-h-11 max-w-full whitespace-normal py-2 text-start font-medium [overflow-wrap:anywhere]"
+          className="h-auto min-h-11 pointer-coarse:min-h-11 max-w-full whitespace-normal py-2 text-start font-normal [overflow-wrap:anywhere]"
           iconStart={<ScanLine aria-hidden />}
           onClick={() => {
             window.location.hash = href.account("sessions", { approve: "" });

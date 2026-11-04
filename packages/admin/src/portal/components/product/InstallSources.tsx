@@ -103,7 +103,7 @@ function InstallSourceItem({
       <div className="min-w-0 flex-1 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-medium text-fg-strong">{name}</p>
+            <p className="font-semibold text-fg-strong">{name}</p>
             {s.version ? (
               <p className="text-sm text-fg-muted">{versionLine(s.version)}</p>
             ) : null}

@@ -168,7 +168,7 @@ export function DiscoverTile({
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                 <h3
                   id={id}
-                  className="min-w-0 max-w-full break-words text-base font-semibold leading-snug text-fg-strong"
+                  className="min-w-0 max-w-full break-words text-base/6 font-semibold text-fg-strong"
                 >
                   <a
                     href={page}
@@ -259,12 +259,7 @@ export function DiscoverTile({
             <div className="relative mt-auto pt-3">
               {added ? (
                 (addedActions ?? (
-                  <Button
-                    asChild
-                    variant="quiet"
-                    size="md"
-                    className="h-10 w-full pointer-coarse:h-11"
-                  >
+                  <Button asChild variant="quiet" size="md" className="w-full">
                     <a id={`${id}-open`} href={href.product(offer.product)}>
                       <ArrowRight aria-hidden />
                       <span className="truncate">
@@ -278,7 +273,7 @@ export function DiscoverTile({
                   id={`${id}-add`}
                   variant="quiet"
                   size="md"
-                  className="h-10 w-full pointer-coarse:h-11"
+                  className="w-full"
                   iconStart={<Plus aria-hidden />}
                   loading={state === "adding"}
                   aria-describedby={error ? errorId : undefined}
@@ -363,12 +358,7 @@ function LinkActions({
         </li>
       ) : (
         <li>
-          <Button
-            asChild
-            variant="quiet"
-            size="md"
-            className="h-10 w-full pointer-coarse:h-11"
-          >
+          <Button asChild variant="quiet" size="md" className="w-full">
             <a
               href={page}
               aria-label={t("locker.offer.seeDetailsAria", {
@@ -395,12 +385,7 @@ function ExternalButton({
   name: string;
 }): React.ReactElement {
   return (
-    <Button
-      asChild
-      variant="quiet"
-      size="md"
-      className="h-10 w-full pointer-coarse:h-11"
-    >
+    <Button asChild variant="quiet" size="md" className="w-full">
       <a
         href={to}
         target="_blank"

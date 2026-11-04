@@ -265,6 +265,10 @@ const AUTH_CARD_RULES = [
   `.ac-links a+a::before{content:"\\00b7" / "";position:absolute;inset-inline-start:-1.0625rem;color:var(--muted)}`,
   `.ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;padding:.125rem .25rem;font-size:.875rem;line-height:1.25rem}`,
   `@media (max-width: 30rem){.ac-links a{min-height:2.75rem;padding:.125rem .5rem}}`,
+  // Selectable rows: the title is 16/24 (the React row's), the tier chip a full pill; a user code is strong ink.
+  `[data-brand=locker] .choice-title{font-size:1rem;line-height:1.5rem}`,
+  `[data-brand=locker] .tag{border-radius:9999px}`,
+  `[data-brand=locker] .code{color:var(--strong)}`,
   `.ic.lg{width:2.5rem;height:2.5rem;color:var(--strong)}`,
   // The pkey login card: the code, big, in its own panel; the role tags in one wrapping row.
   `.codepanel{display:grid;gap:.25rem;justify-items:center;padding:1rem;border:1px solid var(--rule);border-radius:.625rem;background:var(--sunken);text-align:center}`,
@@ -279,7 +283,7 @@ const AUTH_CARD_RULES = [
   `.ic{flex:none;width:1.25rem;height:1.25rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}`,
   `.ic.sm{width:1rem;height:1rem}`,
   // Buttons: 48 px, ink fill, one primary per step. `.link` is the quiet third action.
-  `[data-brand=locker] .button{min-height:3rem;gap:.5rem;border-radius:.375rem;font-size:1rem;line-height:1.5rem;font-weight:500}`,
+  `[data-brand=locker] .button{min-height:3rem;padding:.5rem 1.5rem;gap:.5rem;border-radius:.375rem;font-size:1rem;line-height:1.5rem;font-weight:500}`,
   `[data-brand=locker] .button.secondary{border-color:var(--edge);background:transparent;color:var(--strong)}`,
   `[data-brand=locker] .button.link{border-color:transparent;background:transparent;color:var(--strong);min-height:2.75rem;text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:4px;font-weight:400}`,
   `[data-brand=locker] .button.link:hover{filter:none}`,
@@ -316,7 +320,7 @@ const AUTH_CARD_RULES = [
   `@media (forced-colors: active){[data-brand=locker] .choice:has(input:checked){border-color:Highlight;border-left-width:3px}}`,
   `[data-brand=locker] ul.choices a{display:inline-flex;align-items:center;min-height:2.75rem}`,
   `[data-brand=locker] details.replace summary{display:flex;align-items:center;min-height:2.75rem}`,
-  `@media (max-width: 30rem){[data-brand=locker] body{padding:0 0 2rem}.ac-brand{height:3.5rem;align-items:center;margin:0;border-bottom:1px solid var(--rule)}main.ac{max-width:none;border-width:0 0 1px;border-radius:0;box-shadow:none;background:var(--page)}.ac-head,.ac-body,.ac-foot{padding-left:1.25rem;padding-right:1.25rem}.ac-body{padding-top:1.5rem;padding-bottom:1.5rem}}`,
+  `@media (max-width: 39.99rem){[data-brand=locker] body{padding:0 0 2rem}.ac-brand{height:3.5rem;align-items:center;margin:0;border-bottom:1px solid var(--rule)}main.ac{max-width:none;border-width:0 0 1px;border-radius:0;box-shadow:none;background:var(--raised)}.ac-head,.ac-body,.ac-foot{padding-left:1.25rem;padding-right:1.25rem}.ac-body{padding-top:1.5rem;padding-bottom:1.5rem}}`,
   // The hosted passport (SIGN-IN.md "the product passport"): at 960 px and wider with a width to
   // height ratio of at least 1.2, and while the page has room for 46 rem (a container query on the
   // body, so rem follows the root font size and 200 % text stacks the strip), the app sits in a
@@ -346,7 +350,7 @@ const AUTH_CARD_RULES = [
   `.tv .ac-foot,.tv .ac-head{padding-left:3rem;padding-right:3rem}`,
   `.tv .ac-body dl{font-size:1.5rem;line-height:2rem}`,
   `.tv .ac-body .small{font-size:1.25rem;line-height:1.75rem}`,
-  `@media (max-width: 30rem){.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:min(2rem,7vw)}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
+  `@media (max-width: 39.99rem){.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:min(2rem,7vw)}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
 ];
 
 const LOCKER_PAGE_CSS_TAIL = [
@@ -357,7 +361,7 @@ const LOCKER_PAGE_CSS_TAIL = [
   // which the console card shares with its brand attribute swapped: the console card keeps its
   // compact Key lockup at the brand size (BRAND_LOCKUP_HEIGHT.key). `/tv`'s 44 px TV lockup drops
   // to the same 23 px, which needs no width cap.
-  `@media (max-width: 30rem){.ac-brand svg{height:23px;width:auto}.tv .ac-brand svg{height:23px}}`,
+  `@media (max-width: 39.99rem){.ac-brand svg{height:23px;width:auto}.tv .ac-brand svg{height:23px}}`,
 ].join("");
 
 /** The stylesheet of a Locker page: `BRAND_PAGE_CSS` and its tail. */

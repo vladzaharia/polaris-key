@@ -56,6 +56,7 @@ import { KeyField } from "./KeyField.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
 import { t, tParts } from "../../lib/copy.js";
+import { LINK_CLASS } from "../linkClass.js";
 
 /**
  * Activate license (PORTAL.md §4.17–4.19, §5.2 `ActivateDialog`): always a modal over the
@@ -728,7 +729,10 @@ function AccountRow({
           document.body.append(f);
           f.submit();
         }}
-        className="inline-flex min-h-11 shrink-0 items-center rounded-sm text-sm font-medium text-fg-strong underline underline-offset-2"
+        className={cn(
+          LINK_CLASS,
+          "inline-flex min-h-11 shrink-0 items-center text-sm",
+        )}
       >
         {t("signin.notYou")}
       </button>
@@ -1106,8 +1110,7 @@ export function ConfirmStep({
           <Button
             type="button"
             variant="ghost"
-            size="sm"
-            className="shrink-0 font-medium max-sm:min-h-11"
+            className="shrink-0"
             onClick={onBack}
           >
             {t("locker.activate.changeKey")}

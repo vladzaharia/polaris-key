@@ -13,6 +13,8 @@ import { QuickActionButton } from "./QuickAction.js";
 import { SeatMeter } from "./SeatMeter.js";
 import { StorePills } from "./StorePills.js";
 import { t } from "../../lib/copy.js";
+import { cn } from "../../lib/cn.js";
+import { LINK_CLASS } from "../linkClass.js";
 
 /**
  * The one-product hero (§4.13): art (1.45 fr) and a side panel with the icon, name, status and
@@ -155,7 +157,10 @@ export function LibraryHero({
         </dl>
         <a
           href={href.product(product.slug)}
-          className="mt-auto inline-flex items-center gap-2 self-start font-medium text-accent-fg hover:underline pointer-coarse:min-h-11"
+          className={cn(
+            LINK_CLASS,
+            "mt-auto inline-flex items-center gap-2 self-start pointer-coarse:min-h-11",
+          )}
         >
           {product.kind === "entry"
             ? t("locker.menu.details")

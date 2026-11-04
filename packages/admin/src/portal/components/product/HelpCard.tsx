@@ -26,7 +26,7 @@ export function HelpCard({
         <HelpLink href={HELP_LINKS.contact}>{t("locker.help.guide")}</HelpLink>
       ) : null}
       {supportUrl ? (
-        <Button asChild variant="outline" size="sm" className={WRAPS}>
+        <Button asChild variant="outline" size="md" className={WRAPS}>
           <a href={supportUrl} target="_blank" rel="noreferrer">
             <ExternalLink aria-hidden />
             {t("locker.help.contact", {
@@ -36,7 +36,7 @@ export function HelpCard({
           </a>
         </Button>
       ) : supportEmail ? (
-        <Button asChild variant="outline" size="sm" className={WRAPS}>
+        <Button asChild variant="outline" size="md" className={WRAPS}>
           <a href={`mailto:${supportEmail}`}>
             <Mail aria-hidden />
             {t("signin.email.label")} {supportEmail}
