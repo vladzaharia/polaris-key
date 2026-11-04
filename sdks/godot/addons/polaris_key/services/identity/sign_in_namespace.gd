@@ -96,14 +96,14 @@ func start_nearby(opts: Dictionary = {}) -> PKeyResult:
 	var identity := _owner.get_ref() as PKeyIdentity if _owner != null else null
 	if identity == null:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
-	return await start_nearby_session(identity, opts)
+	return await _start_nearby_session(identity, opts)
 
 
 ## `sign_in.start_nearby(opts)`: refuses before anything is sent when it cannot run (`nearby-unsupported` when
 ## this runtime cannot browse the network, the typed `service-unavailable` N/A when discovery names no nearby
 ## approval). Then `nearby/start`, then the LAN request (a failure there leaves the Worker's request to lapse).
 ## ok with a PKeyNearbySignIn. A session already running is cancelled first. A coroutine.
-func start_nearby_session(identity: PKeyIdentity, opts: Dictionary) -> PKeyResult:
+func _start_nearby_session(identity: PKeyIdentity, opts: Dictionary) -> PKeyResult:
 	identity._cancel_active()
 	var core := identity._core()
 	if core == null or not core.started:
