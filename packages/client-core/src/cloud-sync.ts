@@ -495,12 +495,23 @@ function canonicalJson(v: Json): string {
       .sort(byteOrder)
       .map((k) => `${JSON.stringify(k)}:${canonicalJson(v[k] as Json)}`)
       .join(",")}}`;
+  if (
+    v !== null &&
+    typeof v !== "string" &&
+    typeof v !== "number" &&
+    typeof v !== "boolean"
+  )
+    throw new TypeError(`canonical json: unsupported type (${typeof v})`);
   return JSON.stringify(v);
 }
 
 /** The UTF-8 length of a value's canonical JSON (the 8 KiB setting bound, D3). */
 export function jsonBytes(v: Json): number {
-  return new TextEncoder().encode(canonicalJson(v)).length;
+  try {
+    return new TextEncoder().encode(canonicalJson(v)).length;
+  } catch {
+    return Number.POSITIVE_INFINITY; // a value with no JSON spelling is over any bound
+  }
 }
 
 export function formatHlc(physicalMs: number, counter: number): string {
@@ -783,6 +794,9 @@ export class CloudSyncMachine {
 
   /** `config.set` while Cloud Sync is on. */
   set(key: string, value: Json): CallResult {
+    // Before the clone, which would drop an `undefined` member or throw on a bigint.
+    if (jsonBytes(value) === Number.POSITIVE_INFINITY)
+      return { ok: false, error: "bad_request" };
     return this.edit(key, { value: clone(value) });
   }
 

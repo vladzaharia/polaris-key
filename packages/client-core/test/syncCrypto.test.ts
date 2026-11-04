@@ -254,6 +254,16 @@ describe("canonicalJson", () => {
   it("refuses a number that is not finite and a lone surrogate", () => {
     for (const bad of [NaN, Infinity, -Infinity, "\ud800", [{ "\udc00": 1 }]])
       expect(() => canonicalJson(bad as never)).toThrow(RangeError);
+    const sym = Symbol("x");
+    const kinds = [undefined, () => 1, sym, 1n];
+    for (const bad of kinds) {
+      expect(() => canonicalJson(bad as never)).toThrow(TypeError);
+      expect(() => canonicalJson({ a: bad } as never)).toThrow(TypeError);
+      expect(() => canonicalJson([1, bad] as never)).toThrow(TypeError);
+      expect(() => canonicalJson({ a: [{ b: bad }] } as never)).toThrow(
+        TypeError,
+      );
+    }
     expect(canonicalJson("\ud83d\ude00")).toBe('"\u{1F600}"');
   });
 
