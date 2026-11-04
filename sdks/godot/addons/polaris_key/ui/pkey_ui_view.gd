@@ -660,6 +660,7 @@ func _manage_focus() -> void:
 		return
 	if changed and outer_view() == self and _opens_at_top():
 		_top_on_open = true
+		_first_focus_top = true
 	if _lost_index >= 0 and not changed:
 		var chain := focus_order()
 		var idx := _lost_index
@@ -1245,6 +1246,8 @@ func _check_sorted() -> void:
 var _reveal_pending := false
 ## A screen that opens at its top has just opened: the next reveal scrolls to the top, not to the focus.
 var _top_on_open := false
+## Same, until a control inside has taken its first focus (a late focus must not scroll past the title).
+var _first_focus_top := false
 
 
 ## Whether a screen of this view opens scrolled to its top (its title in view) even when the focused
@@ -1275,11 +1278,12 @@ func _reveal_focus() -> void:
 	var n := f.get_parent()
 	while n != null and n != get_parent():
 		if n is ScrollContainer and (n as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED and not n.has_meta(MANUAL_SCROLL_META):
-			if _top_on_open:
+			if _top_on_open or _first_focus_top:
 				(n as ScrollContainer).scroll_vertical = 0
 			else:
 				_reveal_with_ring(n as ScrollContainer, f)
 		n = n.get_parent()
+	_first_focus_top = false
 	for v in _views():
 		(v as PKeyUiView)._revealed(f)
 

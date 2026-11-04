@@ -28,9 +28,10 @@ static func services(sdk: Node) -> Array:
 
 
 ## What the pane shows, read off the SDK: `{tier, holder, signed_in, status, devices_limit, channel,
-## channel_locked, version}`. Anything the SDK does not know is empty or null.
+## channel_locked, version, floating}`. Anything the SDK does not know is empty or null. `floating`: the
+## license is held by its key alone (the holder is known and has no email, no account signed in; UK-42).
 static func facts(sdk: Node) -> Dictionary:
-	var out := {"tier": "", "holder": "", "signed_in": false, "status": "", "devices_limit": null, "channel": "", "channel_locked": "", "version": ""}
+	var out := {"tier": "", "holder": "", "signed_in": false, "status": "", "devices_limit": null, "channel": "", "channel_locked": "", "version": "", "floating": false, "key_only": false}
 	if sdk == null:
 		return out
 	var st: Dictionary = sdk.status() if sdk.has_method("status") else {}
@@ -48,6 +49,12 @@ static func facts(sdk: Node) -> Dictionary:
 		if who is Dictionary:
 			out["signed_in"] = true
 			out["holder"] = String(who["name"]) if who.get("name") is String else String(who.get("email", ""))
+	if sdk.get("license") != null and sdk.get("core") != null and not out["signed_in"] and sdk.core.enabled("license"):
+		var profile = sdk.license.get_profile()
+		var email = profile.get("email") if profile is Dictionary else null
+		# A license held by its key alone, whoever it waits for: the exit forgets the key (as on the web).
+		out["key_only"] = profile is Dictionary and sdk.license.get_license_user() == null
+		out["floating"] = profile is Dictionary and (email == null or (email is String and email.strip_edges() == "")) and sdk.license.get_license_user() == null
 	if sdk.get("update") != null:
 		out["channel"] = sdk.update.get_channel()
 		out["channel_locked"] = sdk.update.channel_lock()

@@ -4,6 +4,7 @@ extends RefCounted
 #   - the 20 `holdersFlow` scenarios of ui-matrix.json over a scripted driver (the same scenarios
 #     every native port replays), and the typed values staying out of the views' input;
 #   - `portal-matrix.json`: parse_portal and portal_link (core/portal.gd);
+#   - PKeyPortalStore: the member survives a cold start (portal.json);
 #   - the driver over the SDK: `holders-add-to-account-preview` replayed end to end through
 #     suite_transcripts.gd's replayer (key activation, the sign-in the driver starts with channel
 #     redirect and no redirect URI, which answers redirect-unavailable here so the driver asks for a
@@ -32,6 +33,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _flow(t, m["holdersFlow"])
 	_typed_values_stay_out(t)
 	_portal(t)
+	_portal_store(t)
 	await _transcript(t)
 	await _driver_rules(t)
 	return true
@@ -176,6 +178,68 @@ func _portal(t: PKeyTestContext) -> void:
 		t.check("portal-matrix.json linkCases: %s" % c["name"], _same(got, c["expect"]), "%s != %s" % [JSON.stringify(got), JSON.stringify(c["expect"])])
 		ran += 1
 	t.check("portal-matrix.json: every case ran (%d)" % ran, ran == m["parseCases"].size() + m["linkCases"].size() and ran > 0)
+
+
+## The discovered member persists as portal.json and a new store reads it back on a cold start.
+func _portal_store(t: PKeyTestContext) -> void:
+	var dir := "user://pkey_test_portal_store"
+	var file := dir.path_join(PKeyPortalStore.MEMBER_FILE)
+	if FileAccess.file_exists(file):
+		DirAccess.remove_absolute(file)
+	var link := "https://pkey.example/activate?product=drift"
+	var on := {"core": {"portal": {"enabled": true, "activate": link}}}
+
+	var a := PKeyPortalStore.new()
+	a.cache_dir = dir
+	a.product = "drift"
+	a.base_url = "https://pkey.example"
+	t.check("portal store: nothing known before a discovery", a.current() == null)
+	a.accept(on)
+	t.check("portal store: accept holds the member", _same(a.current(), {"enabled": true, "activate": link}))
+
+	var b := PKeyPortalStore.new()
+	b.cache_dir = dir
+	b.product = "drift"
+	b.base_url = "https://pkey.example"
+	b.load_cached()
+	t.check("portal store: a cold start reads the member back", _same(b.current(), {"enabled": true, "activate": link}))
+
+	var other := PKeyPortalStore.new()
+	other.cache_dir = dir
+	other.product = "other"
+	other.base_url = "https://pkey.example"
+	other.load_cached()
+	t.check("portal store: another product's file is refused and deleted", other.current() == null and not FileAccess.file_exists(file))
+
+	a.accept(on)
+	var c := PKeyPortalStore.new()
+	c.cache_dir = dir
+	c.product = "drift"
+	c.base_url = "https://elsewhere.example"
+	c.load_cached()
+	t.check("portal store: another base is refused", c.current() == null)
+
+	a.accept(on)
+	var d := PKeyPortalStore.new()
+	d.cache_dir = dir
+	d.product = "drift"
+	d.base_url = "https://pkey.example"
+	d.accept({"core": {"portal": {"enabled": false}}})
+	d.load_cached()
+	t.check("portal store: this session's discovery wins over the file", _same(d.current(), {"enabled": false}))
+
+	a.accept({"core": {}})
+	t.check("portal store: a document with no member clears it and the file", a.current() == null and not FileAccess.file_exists(file))
+
+	var f := FileAccess.open(file, FileAccess.WRITE)
+	f.store_string('{"v":1,"product":"drift","baseUrl":"https://pkey.example","portal":{"enabled":false,"activate":"x"}}')
+	f.close()
+	var e := PKeyPortalStore.new()
+	e.cache_dir = dir
+	e.product = "drift"
+	e.base_url = "https://pkey.example"
+	e.load_cached()
+	t.check("portal store: a file that is not the parser's normal form is deleted", e.current() == null and not FileAccess.file_exists(file))
 
 
 ## Deep equality on parsed JSON (member order is not significant).

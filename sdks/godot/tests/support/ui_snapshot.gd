@@ -33,7 +33,7 @@ static func _walk(root: Control, node: Node, order: Array, lines: PackedStringAr
 
 
 static func _is_leaf(n: Node) -> bool:
-	return n is Label or n is BaseButton or n is LineEdit or n is TextEdit or n is Range or n is TextureRect
+	return n is Label or n is RichTextLabel or n is BaseButton or n is LineEdit or n is TextEdit or n is Range or n is TextureRect
 
 
 static func _line(root: Control, n: Control, order: Array) -> String:
@@ -50,6 +50,10 @@ static func _line(root: Control, n: Control, order: Array) -> String:
 		type = "TextureRect"
 	elif n is Label:
 		text = (n as Label).text
+	elif n is RichTextLabel:
+		# The lead-in's markers are never drawn: the parsed text is what a reader sees.
+		type = "RichTextLabel"
+		text = (n as RichTextLabel).get_parsed_text()
 	elif n is OptionButton:
 		var ob := n as OptionButton
 		text = ob.get_item_text(ob.selected) if ob.selected >= 0 else ""
@@ -160,11 +164,13 @@ static func _texts(node: Node, out: Array) -> void:
 			continue
 		if child is Label and (child as Label).text != "":
 			out.append([child, (child as Label).text])
+		elif child is RichTextLabel and (child as RichTextLabel).get_parsed_text() != "":
+			out.append([child, (child as RichTextLabel).get_parsed_text()])
 		elif child is Button and (child as Button).text != "":
 			out.append([child, (child as Button).text])
 		elif child is LineEdit and (child as LineEdit).placeholder_text != "":
 			out.append([child, (child as LineEdit).placeholder_text])
 		elif child is TextEdit and (child as TextEdit).placeholder_text != "":
 			out.append([child, (child as TextEdit).placeholder_text])
-		if not (child is Button or child is Label or child is LineEdit or child is TextEdit):
+		if not (child is Button or child is Label or child is RichTextLabel or child is LineEdit or child is TextEdit):
 			_texts(child, out)

@@ -212,6 +212,7 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
 	identity.on_change = _on_identity_change
 	presentation_source.attach(core, self)
+	PKeyPortalStore.new().attach(core)
 	PKeyUiTheme.use_presentation(presentation_source)
 	return PKeyResult.success()
 
@@ -372,6 +373,9 @@ func start() -> PKeyResult:
 	if r.ok:
 		# The last presentation, so an offline start still shows the product.
 		presentation_source.load_cached()
+		var portal_store = core.get_meta(&"portal_source", null)
+		if portal_store != null:
+			portal_store.load_cached()
 		_start_timer()
 		_emit_state()
 		config.refresh()
@@ -397,6 +401,15 @@ func discover() -> PKeyResult:
 ## it. Works before configure() ({}).
 func presentation() -> Dictionary:
 	return presentation_source.current()
+
+
+## The product page member of the last successful discovery, else of the last session's
+## (`core.portal`, WIRE-CONTRACT-V4 §5.7): null (not known), `{enabled: false}` or
+## `{enabled: true, activate: link or null}`. Unsigned display data; `PKeyPortal.portal_link()`
+## turns it into the link a screen draws. Works before configure() (null).
+func portal() -> Variant:
+	var store = core.get_meta(&"portal_source", null) if core != null else null
+	return store.current() if store != null else null
 
 
 ## The product's verified icon for a hero drawn at `px` points on a `scale` screen, or null (no

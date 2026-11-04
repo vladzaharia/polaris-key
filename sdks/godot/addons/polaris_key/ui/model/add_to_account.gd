@@ -151,10 +151,12 @@ func try_again() -> void:
 	await submit()
 
 
-## Bring the browser tab back while the sign-in runs. Call it inside the press.
-func reopen() -> void:
-	if _handle != null:
-		_handle.reopen()
+## Bring the browser tab back while the sign-in runs. Call it inside the press. False when the page
+## did not open.
+func reopen() -> bool:
+	if _handle == null:
+		return true
+	return _handle.reopen() != false
 
 
 ## Cancel: back to the form with the fields kept, any sign-in in flight let go.

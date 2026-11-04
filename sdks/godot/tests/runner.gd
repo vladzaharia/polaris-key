@@ -37,7 +37,7 @@ const SETS := {
 		"devices", "devicekeys", "devicekeys_native", "backup_exclusion", "platform", "identity",
 		"qr", "build_stamp", "update", "stage_matrix", "ui", "ui_components", "cloud_sync_ui",
 		"updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop",
-		"keyring", "parity", "ui_lint", "exit_leaks", "dropin", "ui_core", "ui_add_to_account", "ui_locales", "dev_live",
+		"keyring", "parity", "ui_lint", "exit_leaks", "dropin", "ui_core", "ui_add_to_account", "ui_holders", "ui_holders_flow", "ui_locales", "dev_live",
 		"api_surface",
 	],
 	"ci_b": [
@@ -46,7 +46,7 @@ const SETS := {
 		"cloud_sync_saves", "sync_scenarios", "cloud_sync_host", "cloud_sync_settings", "commerce",
 		"backend", "transports", "connect",
 	],
-	"ci": ["sha512", "ed25519", "nfc", "conformance", "core", "config", "license", "transcripts", "presentation", "devices", "devicekeys", "devicekeys_native", "backup_exclusion", "platform", "identity", "qr", "build_stamp", "update", "stage_matrix", "boot", "ui", "ui_components", "cloud_sync_ui", "updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop", "keyring", "sync_vectors", "sync_ring", "sync_host_codec", "sync_files", "cloud_sync_transfer", "cloud_sync_files", "cloud_sync_bulk", "cloud_sync_bulk_native", "cloud_sync_saves", "sync_scenarios", "cloud_sync_host", "cloud_sync_settings", "commerce", "backend", "transports", "parity", "ui_lint", "exit_leaks", "dropin", "ui_core", "ui_add_to_account", "ui_locales", "dev_live", "api_surface", "connect"],
+	"ci": ["sha512", "ed25519", "nfc", "conformance", "core", "config", "license", "transcripts", "presentation", "devices", "devicekeys", "devicekeys_native", "backup_exclusion", "platform", "identity", "qr", "build_stamp", "update", "stage_matrix", "boot", "ui", "ui_components", "cloud_sync_ui", "updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop", "keyring", "sync_vectors", "sync_ring", "sync_host_codec", "sync_files", "cloud_sync_transfer", "cloud_sync_files", "cloud_sync_bulk", "cloud_sync_bulk_native", "cloud_sync_saves", "sync_scenarios", "cloud_sync_host", "cloud_sync_settings", "commerce", "backend", "transports", "parity", "ui_lint", "exit_leaks", "dropin", "ui_core", "ui_add_to_account", "ui_holders", "ui_holders_flow", "ui_locales", "dev_live", "api_surface", "connect"],
 	## The brief spells the suite with a hyphen.
 	"stage-matrix": ["stage_matrix"],
 }

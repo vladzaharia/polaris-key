@@ -11,12 +11,22 @@ extends RefCounted
 ##   attach(confirm)     `identity.attach`; false previews, nothing is written.
 ##
 ## The handle `sign_in` answers wraps the SDK's PKeySignInSession for the model.
+##
+## The device-code fallback has no browser of its own: the driver opens its page once through the SDK's
+## validated opener, and reports it to `on_page` ({address, link, opened}, `opened` false when the
+## page did not open) so the screen can show where to type the code and a way back to the page.
+
+## Called with {address, link, opened} when a device-code wait starts; null for none.
+var on_page: Callable = Callable()
+## Opens a device-code page: (session) -> bool. Empty uses the SDK's validated opener.
+var open_page: Callable = Callable()
 
 var _identity: PKeyIdentity = null
 
 
-func _init(identity: PKeyIdentity) -> void:
+func _init(identity: PKeyIdentity, p_on_page: Callable = Callable()) -> void:
 	_identity = identity
+	on_page = p_on_page
 
 
 class Handle extends RefCounted:
@@ -43,8 +53,8 @@ class Handle extends RefCounted:
 		# Expired, denied, an error, or an outcome this model does not handle: a failed attempt.
 		return {"outcome": "expired"}
 
-	func reopen() -> void:
-		_session.reopen()
+	func reopen() -> bool:
+		return _session.reopen()
 
 	func cancel() -> void:
 		_session.cancel()
@@ -68,6 +78,12 @@ func sign_in(hints: Dictionary) -> Object:
 		session = await _identity.sign_in.start(device)
 	if not session.ok:
 		return null
+	if session.channel == &"device-code" and on_page.is_valid():
+		on_page.call({
+			"address": session.verification_uri,
+			"link": session.verification_uri_complete,
+			"opened": bool(open_page.call(session)) if open_page.is_valid() else _identity.open_in_browser(session) == OK,
+		})
 	return Handle.new(session)
 
 

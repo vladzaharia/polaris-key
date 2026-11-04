@@ -68,12 +68,23 @@ var checked_note := ""
 ## Mask the email (`m•••@fennick.studio`) and reveal it while Manage has the focus: on by itself on a
 ## TV or console (a pad-only screen), a game turns it on for any shared screen.
 var mask_email := false
+## The license is held by its key alone (no email, no account): Settings says "Not in an account", offers
+## Add your name and email, and calls the exit Remove license (UK-43.14). The SDK fills it.
+var floating := false
+## The license is held by its key alone, floating or waiting for an email: the exit reads Remove license.
+var key_only := false
 var model: Dictionary = {}
+## The Add flow (UK-43.14): the account form, or the manage QR on a pad-only screen, in the list's place.
+var holders: PKeyHolderFlow
 
 var _frame: VBoxContainer
 var _product: PKeyProductHeader
 var _title: Label
 var _notice: Label
+## The portal did not open, or has no link: a danger line under the rows (a polite live region).
+var _add_note: Label
+## The catalog key `_add_note` shows ("" for none).
+var _add_problem := ""
 var _list: VBoxContainer
 var _powered_by: PKeyPoweredBy
 var _groups := {}
@@ -94,6 +105,12 @@ func _build() -> void:
 	_notice = label(_frame, "Notice", "PKeyMuted")
 	loading_bar(_frame)
 	_list = vbox(_frame, "Groups", "PKeySections")
+	_add_note = label(_frame, "AddNote", "PKeyError")
+	if "accessibility_live" in _add_note:
+		_add_note.set("accessibility_live", 1)
+	holders = PKeyHolderFlow.new()
+	holders.finished.connect(_on_holders_finished)
+	_frame.add_child(holders)
 	_powered_by = brand_node(_frame, "PoweredBy", BRAND_POWERED_BY)
 	# The web layout's cap (UI-KITS.md §4.3).
 	max_content_width = 640.0
@@ -134,7 +151,7 @@ func _bleeds() -> bool:
 
 
 func _screen_key() -> String:
-	return String(model.get("state", ""))
+	return "%s|%s" % [model.get("state", ""), holders.stage() if holders != null else ""]
 
 
 # ── Data ─────────────────────────────────────────────────────────────────────────────────────
@@ -154,6 +171,8 @@ func refresh_from_sdk() -> void:
 	tier = f["tier"]
 	holder = f["holder"]
 	signed_in = f["signed_in"]
+	floating = bool(f["floating"])
+	key_only = bool(f["key_only"])
 	status = f["status"]
 	if f["devices_limit"] != null:
 		devices_limit = f["devices_limit"]
@@ -214,12 +233,19 @@ func _render() -> void:
 		_product.visible = false
 	show_text(_title, t.text("account_title") if show_title and not nested else "")
 	show_text(_notice, t.text("account_offline") if state == "offline" else "")
-	_list.visible = state != "loading"
+	var adding := holders.is_open()
+	_list.visible = state != "loading" and not adding
+	holders.visible = adding
+	if adding:
+		_notice.visible = false
+		_title.visible = false
+		_product.visible = false
+	cat_text(_add_note, _add_problem if not adding else "")
 	fx_error("sync_error" if cloud_sync == "error" else "")
 	var sig := JSON.stringify([
 		state, tier, holder, signed_in, status, devices_used, devices_limit, auto_update, channel, channel_options,
 		channel_locked_by, version, cloud_sync, cloud_sync_time, services, manage_url, _checking, checked_note,
-		PKeyUiTheme.powered_by, mask_email, pad_only(), _nearby_row(),
+		PKeyUiTheme.powered_by, mask_email, pad_only(), _nearby_row(), floating, key_only, _add_offered(), _portal_path(),
 	])
 	if sig != _signature and state != "loading":
 		_signature = sig
@@ -285,7 +311,7 @@ func _rebuild(t: PKeyUiCopy, state: String) -> void:
 	var held := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
 	var held_key := ""
 	for k in _controls:
-		for part in ["manage", "devices", "nearby", "switch", "channel", "check", "version", "managed", "sign_out"]:
+		for part in ["add", "manage", "devices", "nearby", "switch", "channel", "check", "version", "managed", "sign_out"]:
 			if _controls[k].has(part) and _controls[k][part] == held and held != null:
 				held_key = "%s|%s" % [k, part]
 	for ch in _list.get_children():
@@ -308,7 +334,18 @@ func _rebuild(t: PKeyUiCopy, state: String) -> void:
 		var masked := false
 		if signed_in and who.contains("@") and (mask_email or pad_only()):
 			masked = true
-		var r2 := _row(first, "holder", t.text("account_holder", PKeyUiTheme.isolate(who)) if signed_in and who != "" else t.text("account_key_only"))
+		var floating_here := floating and not signed_in
+		var holder_title := t.text("account_holder", PKeyUiTheme.isolate(who)) if signed_in and who != "" else t.text("account_key_only")
+		if floating_here:
+			holder_title = String(catalog().format("account.notInAccount"))
+		var r2 := _row(first, "holder", holder_title)
+		if floating_here and _add_offered():
+			var external := _portal_path() and not pad_only()
+			var add_button := button(r2["control"], "Add", _on_add, "PKeyLink")
+			add_button.set_meta(CATALOG_META, true)
+			add_button.text = String(catalog().format("signin.key.addInLocker" if _portal_path() else "activate.recommend.action"))
+			leaves_app(add_button, external)
+			r2["add"] = add_button
 		r2["masked"] = masked
 		r2["full"] = who
 		if signed_in:
@@ -414,7 +451,9 @@ func _rebuild(t: PKeyUiCopy, state: String) -> void:
 	# Sign out: a group of its own, in danger text.
 	if _on("license") or _on("identity"):
 		var so := _group("Group_SignOut")
-		var sr := _link_row(so, "sign_out", t.text("account_sign_out"), _on_sign_out)
+		# A license held by its key alone has no account to sign out of: the exit forgets the key.
+		var exit_text := String(catalog().format("account.removeKey")) if (key_only or floating) and not signed_in else t.text("account_sign_out")
+		var sr := _link_row(so, "sign_out", exit_text, _on_sign_out)
 		(sr["button"] as Button).disabled = _signing_out
 		sr["sign_out"] = sr["button"]
 	if held_key != "":
@@ -469,13 +508,49 @@ func _arrange(m: Dictionary) -> void:
 func _focus_chain() -> Array:
 	var out: Array = []
 	for k in _controls:
-		for part in ["manage", "devices", "nearby", "switch", "channel", "check", "managed", "sign_out"]:
+		for part in ["add", "manage", "devices", "nearby", "switch", "channel", "check", "managed", "sign_out"]:
 			if _controls[k].has(part):
 				out.append(_controls[k][part])
+	if holders != null and holders.is_open():
+		return holders._focus_chain()
 	return out
 
 
 # ── Actions ──────────────────────────────────────────────────────────────────────────────────
+
+## Settings offers Add: a portal with no link behind it has nothing to open, so it is not offered.
+func _add_offered() -> bool:
+	return floating and not signed_in and (not _portal_path() or holders.portal_link() != "")
+
+
+## Add goes to the portal here (Identity is off, or a pad-only screen).
+func _portal_path() -> bool:
+	return not _on("identity") or pad_only()
+
+
+## Add your name and email: the account form takes the list's place; the portal opens in the browser
+## where Identity is off; a pad-only screen shows the manage QR. The key is not here to carry.
+func _on_add() -> void:
+	_add_problem = ""
+	if _portal_path() and not pad_only():
+		if not holders.open_portal(""):
+			_add_problem = "signin.handoff.noBrowser"
+		refresh_view()
+		return
+	holders.begin_add()
+	refresh_view()
+
+
+func _on_holders_finished() -> void:
+	holders.close()
+	refresh_from_sdk()
+	refresh_view()
+
+
+## Escape (or a pad's B) on the Add flow's step; nothing otherwise.
+func _cancel() -> bool:
+	return holders != null and holders.is_open() and holders._cancel()
+
 
 func _on_manage() -> void:
 	manage_requested.emit()

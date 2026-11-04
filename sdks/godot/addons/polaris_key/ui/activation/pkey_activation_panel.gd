@@ -20,6 +20,11 @@ extends PKeyUiView
 
 ## A token was minted (key, enrolment or sign-in) or a bundle installed.
 signal activated()
+## A license key was accepted (the key typed, for the host's Done step to hold in memory only). Emitted
+## before `activated`; never for a sign-in, an enrolment or a bundle.
+signal key_accepted(key: String)
+## A key activation ended, whatever the answer (the hold `key_in_flight` is over).
+signal key_flight_ended()
 ## The panel switched between "main", "sign-in" and "offline" (`open_mode()`).
 signal mode_changed(mode: String)
 ## The person chose "Sign in with a nearby device" (shown while `nearby_offered`): the host runs nearby sign-in.
@@ -72,6 +77,9 @@ var form_title := "":
 		refresh_view()
 var mode := "main"
 var busy := false
+## A license key is being activated: a host that shows a step of its own after a key (the gate's Done)
+## holds the product back until `key_flight_ended`.
+var key_in_flight := false
 var message := ""
 var message_ok := false
 ## False for a refusal of a well-formed key (license disabled, expired, key-entry limit…): a
@@ -874,6 +882,7 @@ func _on_submit() -> void:
 		show_result(PKeyActivationResult.of(PKeyActivationResult.KIND_ERROR, PKeyErrors.NOT_CONFIGURED, ""))
 		return
 	busy = true
+	key_in_flight = true
 	message = ""
 	message_slot = "key"
 	refresh_view()
@@ -881,7 +890,10 @@ func _on_submit() -> void:
 	busy = false
 	if r.ok:
 		_key.text = ""
+		key_accepted.emit(key)
 	show_result(r, key)
+	key_in_flight = false
+	key_flight_ended.emit()
 
 
 func _on_manage() -> void:
