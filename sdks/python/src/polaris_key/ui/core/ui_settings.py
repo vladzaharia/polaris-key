@@ -50,6 +50,13 @@ def account_view(ctx: Context) -> View:
     license_on = ctx.on("license")
     update_on = ctx.on("update")
     if not ctx.on("identity") or account.get("signedIn") is not True:
+        # A floating license (the holder is known and has no email, UK-42) says so, and offers Add
+        # your name and email: with Identity off, or a kit with no in-app channel, that opens the
+        # portal. A license waiting for an email keeps the key-only line.
+        has_holder = isinstance(ctx.input.get("licenseHolder"), Mapping)
+        holder = _mapping(ctx.input.get("licenseHolder"))
+        floating = license_on and has_holder and not holder.get("email")
+        via_portal = not ctx.on("identity") or holder.get("addIn") == "portal"
         return make_view(
             ctx,
             "AccountAndLicense",
@@ -57,11 +64,15 @@ def account_view(ctx: Context) -> View:
             (
                 "account.title",
                 "account.tier" if license_on else None,
-                "account.keyOnly" if license_on else None,
+                "account.keyOnly" if license_on and not floating else None,
+                "account.notInAccount" if floating else None,
+                ("signin.key.addInLocker" if via_portal else "activate.recommend.action") if floating else None,
+                "a11y.externalLink" if floating and via_portal else None,
                 "account.updates" if update_on else None,
-                "common.signOut",
+                # A holder who never signed in has nothing to sign out of: the exit forgets the key.
+                "account.removeKey" if has_holder else "common.signOut",
             ),
-            args=args,
+            args={**args, "tier": account.get("tier")},
         )
     integrator = _mapping(ctx.input.get("integrator"))
     return make_view(

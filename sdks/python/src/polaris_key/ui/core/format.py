@@ -7,7 +7,7 @@ writes it. Pure data and no imports, so the Qt layout and the terminal read the 
 
 from __future__ import annotations
 
-__all__ = ["RELATIVE", "relative_days"]
+__all__ = ["RELATIVE", "mask_email", "relative_days"]
 
 #: "today", "yesterday" and "N days ago", per launch locale (as ``Intl.RelativeTimeFormat`` writes them).
 RELATIVE = {
@@ -27,3 +27,16 @@ def relative_days(days: int, locale: str = "en") -> str:
     """``today``, ``yesterday`` or ``3 days ago`` for a whole number of days (negative reads as today)."""
     today, yesterday, ago = RELATIVE.get(locale, RELATIVE["en"])
     return today if days < 1 else yesterday if days == 1 else ago.format(n=days)
+
+
+def mask_email(email: object) -> str:
+    """An email with its middle hidden: the first character and the domain, ``a•••@example.com``.
+
+    What a screen shows of an address it did not just type (the license was sent to it). An address
+    with no local part or no domain is ``""``, so a screen shows no half-hidden fragment.
+    """
+    text = email if isinstance(email, str) else ""
+    at = text.rfind("@")
+    first = text[0] if at > 0 else ""
+    domain = text[at + 1 :] if at > 0 else ""
+    return "%s\u2022\u2022\u2022@%s" % (first, domain) if first and domain else ""
