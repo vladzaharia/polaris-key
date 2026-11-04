@@ -224,7 +224,9 @@ suspend fun start(key: String) {
 - **Devices** (in `:core`, as the registry files them): `registerDevice`, `listDevices`,
   `renameDevice`, `deauthorizeDevice`, the report, and two ports: `FingerprintSource`
   (`JvmFingerprintSource` on a desktop) and `DeviceFactsSource` (`JvmDeviceFactsSource`); the
-  Android implementations are `:android`'s.
+  Android implementations are `:android`'s. `PolarisKeyClientOptions(deviceReports = false)` sends
+  no device report at all (after a sync or from `report()`, which answers false); fingerprinting is
+  the separate `LicenseClientOptions(fingerprint)`.
 - **`devices.attest()`** (notes/SDK-PARITY-PASS.md §3.10): `client.devices.attest()` runs the
   Worker's challenge, the platform token and `POST /devices/attest` through an
   `AttestationProvider`: Play Integrity on a play build Google Play installed (`:android`'s

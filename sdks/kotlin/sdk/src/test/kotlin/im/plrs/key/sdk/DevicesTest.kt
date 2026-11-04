@@ -47,7 +47,11 @@ class DevicesTest {
     private val now = 1_700_000_000L
     private val signer = TestSigner()
 
-    private fun client(token: String? = "pkeyt_held", handler: (PolarisRequest) -> PolarisResponse): Triple<PolarisKeyClient, ScriptedTransport, InMemoryStore> =
+    private fun client(
+        token: String? = "pkeyt_held",
+        deviceReports: Boolean = true,
+        handler: (PolarisRequest) -> PolarisResponse,
+    ): Triple<PolarisKeyClient, ScriptedTransport, InMemoryStore> =
         runBlocking {
             val store = InMemoryStore("djdl", "dev1")
             token?.let { store.setToken(it) }
@@ -62,6 +66,7 @@ class DevicesTest {
                     ),
                     license = LicenseClientOptions(fingerprint = false),
                     factsSource = { DeviceFacts(DeviceFacts.Os("linux"), DeviceFacts.Hardware(cpuCores = 4), DeviceFacts.Runtime("kotlin", "2.1")) },
+                    deviceReports = deviceReports,
                 ),
             )
             Triple(client, transport, store)
@@ -189,6 +194,31 @@ class DevicesTest {
         assertTrue(body["caps"].toString().contains(Feature.licenseGate))
         assertTrue(client.report())
         assertTrue(client.supports(Feature.devicesReport) is Support.Supported)
+    }
+
+    /** DB-1b: `deviceReports = false` sends no devices/report (after a sync or on demand); documents still apply. */
+    @Test
+    fun withDeviceReportsOffNoReportIsSentAndDocumentsStillApply() = runBlocking {
+        val license = signer.licenseDoc("djdl", "dev1", now, mapOf("polarisVpn" to JsonPrimitive(true)))
+        val (client, transport, _) = client(deviceReports = false) { r ->
+            when (r.path) {
+                "/djdl/license/document" -> respond(200, license)
+                "/djdl/devices/report" -> respond(200, """{"ok":true}""")
+                else -> respond(404)
+            }
+        }
+        client.sync()
+        assertFalse(client.report())
+        assertTrue(transport.requests().none { it.path == "/djdl/devices/report" })
+        assertTrue(transport.requests().any { it.path == "/djdl/license/document" })
+        assertEquals(LicenseStatus.ok, client.status().status)
+    }
+
+    @Test
+    fun deviceReportsDefaultStillReports() = runBlocking {
+        val (client, transport, _) = client { r -> if (r.path == "/djdl/devices/report") respond(200, """{"ok":true}""") else respond(404) }
+        assertTrue(client.report())
+        assertEquals(1, transport.requests().count { it.path == "/djdl/devices/report" })
     }
 
     /** §3.13: the report carries the gate and the pending update events, and marks them sent once accepted. */
