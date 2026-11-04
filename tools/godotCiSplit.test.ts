@@ -12,7 +12,7 @@ const runner = readFileSync(
 );
 
 function set(name: string): string[] {
-  const m = new RegExp(`^\\t"${name}": \\[(.*?)\\],?$`, "m").exec(runner);
+  const m = new RegExp(`^\\t"${name}": \\[([^\\]]*?)\\],?$`, "m").exec(runner);
   if (!m) throw new Error(`runner.gd has no ${name} set`);
   return [...m[1]!.matchAll(/"([a-z_0-9]+)"/g)].map((x) => x[1]!);
 }
