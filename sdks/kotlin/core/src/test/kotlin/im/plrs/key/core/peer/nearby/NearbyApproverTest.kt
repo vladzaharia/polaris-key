@@ -34,6 +34,8 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class NearbyApproverTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -115,6 +117,30 @@ class NearbyApproverTest {
     private fun shownOf(a: NearbyApproval, d: RawD): String = a.codes.first { it.replace(" ", "") == d.code.toString().padStart(6, '0') }
 
     private fun decoyOf(a: NearbyApproval, d: RawD): String = a.codes.first { it.replace(" ", "") != d.code.toString().padStart(6, '0') }
+
+    /**
+     * Run [end], then wait for the approver's own session to end. D seeing its close is not enough: the one
+     * waiting session per address is freed only when the approver's session ends, and a dial before that is refused.
+     */
+    private fun endAndAwaitApprover(a: NearbyApproval, end: suspend () -> Unit) = runBlocking {
+        val gone = CountDownLatch(1)
+        a.onClose { gone.countDown() }
+        end()
+        until(5000, "the approver to see the close") { gone.await(10, TimeUnit.MILLISECONDS) }
+    }
+
+    /** A D that said HELLO, redialling while the previous session from this address still holds the waiting slot. */
+    private fun heldOnceFree(): RawD = runBlocking {
+        val end = System.nanoTime() + 5000L * 1_000_000
+        var d: RawD
+        do {
+            d = RawD.dial(net, scope)
+            ds += d
+            d.waitFor("HELLO or a refusal") { d.hello != null || d.closed != null }
+        } while (d.hello == null && System.nanoTime() < end)
+        if (d.hello == null) throw AssertionError("timed out waiting for HELLO")
+        d
+    }
 
     private fun adverts() = net.approverAdverts()
 
@@ -336,7 +362,7 @@ class NearbyApproverTest {
         start(options(clock = clock))
         val d1 = chosen()
         waitApprovals(1)
-        approvals[0].close()
+        endAndAwaitApprover(approvals[0]) { approvals[0].close() }
         d1.waitFor { d1.closed != null }
         val d2 = chosen()
         waitApprovals(2)
@@ -355,7 +381,7 @@ class NearbyApproverTest {
             val n = approvals.size
             val d = chosen()
             waitApprovals(n + 1)
-            approvals[n].decline()
+            endAndAwaitApprover(approvals[n]) { approvals[n].decline() }
             d.waitFor { d.closed != null }
         }
         until { stops.isNotEmpty() }
@@ -688,13 +714,8 @@ class NearbyApproverTest {
         start(options(clock = FakeClock()))
         val d1 = chosen()
         waitApprovals(1)
-        // D seeing its own close is not the approver seeing it: the one waiting session per address is
-        // freed only when the approver's session ends, and a dial before that is refused.
-        val gone = java.util.concurrent.CountDownLatch(1)
-        approvals[0].onClose { gone.countDown() }
-        d1.close()
+        endAndAwaitApprover(approvals[0]) { d1.close() }
         d1.waitFor { d1.closed != null }
-        d1.waitFor("the approver to see the close") { gone.await(10, java.util.concurrent.TimeUnit.MILLISECONDS) }
         assertEquals(emptyList<NearbyStopReason>(), stops.toList())
         val d2 = chosen()
         waitApprovals(2)
@@ -707,7 +728,7 @@ class NearbyApproverTest {
     fun doesNotCountAPeerThatClosesBeforeAnyPromptShowed() = runBlocking<Unit> {
         start(options(clock = FakeClock()))
         repeat(3) {
-            val d = held()
+            val d = heldOnceFree()
             d.close()
             d.waitFor { d.closed != null }
             settle(40)
