@@ -1660,8 +1660,8 @@ jobs:
           if [ -n "${{ matrix.suites }}" ]; then export PKEY_TEST_SUITES="${{ matrix.suites }}"; fi
           # The newest editor runs the UI matrix on both presentation paths (scrim and opaque page).
           if [ "${{ matrix.godot }}" = 4.7.2 ]; then export PKEY_UI_MATRIX_PATHS=both; fi
-          # The 4.7.2 engine's work is split over three runners (editor run + stamps, the UI
-          # matrix, the release template run); the other legs run it all (PKEY_TEST_PART unset).
+          # The 4.7.2 engine's work is split over four runners (the editor run in two halves, A with
+          # the stamps and B, the UI matrix, the release template run); the other legs run it all (PKEY_TEST_PART unset).
           if [ -n "${{ matrix.part }}" ]; then export PKEY_TEST_PART="${{ matrix.part }}"; fi
           sdks/godot/tools/run_tests.sh
       # Import, export and runs must leave the tree as committed: no rewritten file, no new .uid.

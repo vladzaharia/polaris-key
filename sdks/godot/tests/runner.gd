@@ -28,7 +28,12 @@ const Context := preload("res://tests/support/test_context.gd")
 ## so does `ui_matrix` (about a minute), which run_tests.sh runs as a step of its own. `dev_live`
 ## (SP-41) is in `ci` and skips itself where no `pkey dev` variable is set; a lane that sets all
 ## three runs it against that server (tests/suite_dev_live.gd).
+## `ci` split in two for the 4.7.2 editor runners (run_tests.sh PKEY_TEST_PART=editor-a / editor-b), so
+## neither nears the step watchdog. The two lists are disjoint and together are `ci`, as a set
+## (tools/godotCiSplit.test.ts); a suite added to `ci` goes into one of them in the same change.
 const SETS := {
+	"ci_a": ["sha512", "ed25519", "nfc", "conformance", "core", "config", "license", "presentation", "devices", "devicekeys", "devicekeys_native", "backup_exclusion", "platform", "identity", "qr", "build_stamp", "update", "stage_matrix", "ui", "ui_components", "cloud_sync_ui", "updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop", "keyring", "parity", "ui_lint", "exit_leaks", "dropin", "ui_core", "ui_locales", "dev_live", "api_surface"],
+	"ci_b": ["transcripts", "boot", "sync_vectors", "sync_ring", "sync_host_codec", "sync_files", "cloud_sync_transfer", "cloud_sync_files", "cloud_sync_bulk", "cloud_sync_bulk_native", "cloud_sync_saves", "sync_scenarios", "cloud_sync_host", "cloud_sync_settings", "commerce", "backend", "transports", "connect"],
 	"ci": ["sha512", "ed25519", "nfc", "conformance", "core", "config", "license", "transcripts", "presentation", "devices", "devicekeys", "devicekeys_native", "backup_exclusion", "platform", "identity", "qr", "build_stamp", "update", "stage_matrix", "boot", "ui", "ui_components", "cloud_sync_ui", "updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop", "keyring", "sync_vectors", "sync_ring", "sync_host_codec", "sync_files", "cloud_sync_transfer", "cloud_sync_files", "cloud_sync_bulk", "cloud_sync_bulk_native", "cloud_sync_saves", "sync_scenarios", "cloud_sync_host", "cloud_sync_settings", "commerce", "backend", "transports", "parity", "ui_lint", "exit_leaks", "dropin", "ui_core", "ui_locales", "dev_live", "api_surface", "connect"],
 	## The brief spells the suite with a hyphen.
 	"stage-matrix": ["stage_matrix"],
