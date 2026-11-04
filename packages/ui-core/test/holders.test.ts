@@ -160,6 +160,18 @@ describe("ActivateDone", () => {
     expect(v.actions).toContain("start-sign-in");
     expect(JSON.stringify(v)).not.toContain("alex@");
   });
+  it("a holder email with Identity off stays ready with the portal line", () => {
+    const v = done({
+      licenseHolder: { email: "alex@example.com" },
+      services: servicesWithout("identity"),
+    });
+    expect(v.state).toBe("ready");
+    expect(v.copy).toContain("activate.recommend.portal");
+    expect(v.copy).not.toContain("activate.waiting");
+    expect(v.copy).not.toContain("activate.waitingSignIn");
+    expect(v.args.maskedEmail).toBeUndefined();
+    expect(JSON.stringify(v)).not.toContain("alex@");
+  });
   it("is hidden with License off or with nothing to show", () => {
     expect(done({ services: servicesWithout("license") }).state).toBe("hidden");
     expect(

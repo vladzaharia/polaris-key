@@ -92,4 +92,27 @@ class HoldersTest {
         )
         assertFalse(screen.copy.any { line -> line.args.values.any { it is CopyArgument.Text && "maya@" in it.value } })
     }
+
+    @Test
+    fun aHolderEmailWithIdentityOffDrawsTheReadyStateWithThePortalLine() {
+        fun resolve(services: List<String>) = KitStates.resolve(
+            KitComponent.activateDone,
+            KitInputs.of(
+                mapOf(
+                    "services" to kotlinx.serialization.json.JsonArray(services.map { JsonPrimitive(it) }),
+                    "activateDone" to JsonObject(emptyMap()),
+                    "licenseHolder" to JsonObject(mapOf("email" to JsonPrimitive("maya@example.com"))),
+                ),
+            ),
+        )
+        assertEquals("waiting", resolve(listOf("license", "identity")).state)
+        val off = resolve(listOf("license"))
+        assertEquals("ready", off.state)
+        assertTrue(off.shows("activate.recommend.portal"))
+        assertTrue(off.shows("signin.key.addInLocker"))
+        assertTrue(off.shows("a11y.externalLink"))
+        assertFalse(off.shows("activate.waiting"))
+        assertFalse(off.shows("activate.waitingSignIn"))
+        assertFalse(off.copy.any { line -> line.args.containsKey("maskedEmail") })
+    }
 }

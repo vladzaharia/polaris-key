@@ -76,3 +76,16 @@ def test_lead_parts_splits_on_the_markers() -> None:
     ]
     assert lead_parts("plain") == [{"text": "plain", "strong": False}]
     assert lead_parts("") == []
+
+
+def test_a_holder_email_with_identity_off_is_ready_with_the_portal_line() -> None:
+    base = {"activateDone": {}, "licenseHolder": {"email": "maya@example.com"}}
+    on = activate_done_view(context_of(_with_defaults({**base, "services": ["license", "identity"]})))
+    assert on.state == "waiting"
+    off = activate_done_view(context_of(_with_defaults({**base, "services": ["license"]})))
+    assert off.state == "ready"
+    for key in ("activate.recommend.portal", "signin.key.addInLocker", "a11y.externalLink"):
+        assert key in off.copy
+    assert "activate.waiting" not in off.copy
+    assert "activate.waitingSignIn" not in off.copy
+    assert "maskedEmail" not in off.args

@@ -64,4 +64,18 @@ final class HoldersTests: XCTestCase {
         inputs.licenseHolder = KitLicenseHolder(email: "not-an-email")
         XCTAssertEqual(KitStates.activateDone(inputs).stateName, "ready")
     }
+
+    func testAHolderEmailWithIdentityOffIsReadyWithThePortalLine() {
+        var inputs = KitInputs()
+        inputs.services = [.license]
+        inputs.activateDone = KitActivateDone()
+        inputs.licenseHolder = KitLicenseHolder(email: "ada@example.com")
+        let screen = KitStates.activateDone(inputs)
+        XCTAssertEqual(screen.stateName, "ready")
+        XCTAssertTrue(screen.shows("signin.key.addInLocker") && screen.shows("a11y.externalLink"))
+        XCTAssertFalse(screen.shows("activate.waiting"))
+        XCTAssertFalse(screen.shows("activate.waitingSignIn"))
+        inputs.services = nil
+        XCTAssertEqual(KitStates.activateDone(inputs).stateName, "waiting")
+    }
 }

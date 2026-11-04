@@ -6,7 +6,7 @@
 //     getting the license back and moving it to a new device only when Identity is on; with
 //     Identity off the one line sends the person to the portal;
 //   - the holder is `profile.email` of the license: empty is floating, set is waiting for that
-//     email, which a screen shows masked (`maskEmail`) and never in full;
+//     email, with Identity on, which a screen shows masked (`maskEmail`) and never in full;
 //   - skipping is never a refusal: Start using is always the one primary, and "Continue without an
 //     account" is a line under the card, never a second filled control.
 
@@ -54,7 +54,8 @@ export type ActivateDoneState = "ready" | "waiting" | "hidden";
 /**
  * The step after a license key activates: "<Product> is ready", the license line, and the
  * recommendation when no email holds the license. A license sent to an email that has no account
- * yet shows the waiting line instead, with Sign in as <masked email>.
+ * yet shows the waiting line instead, with Sign in as <masked email>, but only with Identity on:
+ * with Identity off there is no sign-in to offer, so it stays ready with the portal line.
  */
 export function activateDoneView(
   ctx: Context,
@@ -74,7 +75,7 @@ export function activateDoneView(
   };
   // A holder email too malformed to mask counts as none: no sentence renders with an empty email.
   const masked = maskEmail(ctx.input.licenseHolder?.email);
-  if (masked) {
+  if (masked && ctx.on("identity")) {
     return makeView(ctx, "ActivateDone", {
       state: "waiting",
       copy: [

@@ -773,7 +773,7 @@ const INPUTS: Record<string, string> = {
   licenseHolder:
     "Who holds the license a key just activated: {email?}. No email (or an empty one): floating, held by the key alone. An email: the license was sent to it and no account holds it yet (waiting); screens mask it. `addIn: portal` (UK-43.2): the kit has no in-app channel for Add your name and email, so the Add control of ActivateDone, SignIn `key-done` and AccountAndLicense's floating row says Add it in Polaris Locker (an external link) and opens the manage URL; absent or `app`: the in-app form. Absent: the holder is not known and AccountAndLicense draws what it drew before.",
   activateDone:
-    "The Done step after a key activates: {tier?, term?, deviceKind?, position?, limit?}, the strings and numbers the license line shows. Absent: ActivateDone is hidden. The state is `waiting` with a `licenseHolder` email, else `ready`; the reasons follow the services (Cloud Sync only with sync, Get your license back and Move it with Identity, else the portal line).",
+    "The Done step after a key activates: {tier?, term?, deviceKind?, position?, limit?}, the strings and numbers the license line shows. Absent: ActivateDone is hidden. The state is `waiting` with a `licenseHolder` email and Identity on, else `ready`; the reasons follow the services (Cloud Sync only with sync, Get your license back and Move it with Identity, else the portal line).",
   addToAccount:
     "Add your name and email: {step: form | invalid | busy | added | owned | email-bound | other-account | failed, field?: name | email | both, deviceKind?, typedEmail?, signedEmail?, fromSettings?}. `invalid` names the field to fix (absent: both). owned: someone attached the license meanwhile; email-bound: the license was sent to another email (with `licenseHolder`); other-account: a different account signed in than the email typed (`typedEmail` and `signedEmail`, both masked); `fromSettings` closes `added` with Done; failed: sign-in or attach did not finish. `added` names Cloud Sync only with sync on. Absent: AddToAccount is hidden.",
   unlockSync:
@@ -796,7 +796,7 @@ const PRECEDENCE: Record<string, string> = {
   Devices:
     "loading, error, browser-mode, renaming or confirming (edit), empty, list.",
   ActivateDone:
-    "hidden (License off), waiting (a licenseHolder email), ready (the reasons follow the services).",
+    "hidden (License off), waiting (a licenseHolder email, Identity on), ready (the reasons follow the services).",
   AddToAccount:
     "hidden (Identity off), then the step: form, invalid, busy, added, owned, email-bound, other-account, failed.",
   "SignIn (holders)":
@@ -4031,6 +4031,13 @@ function holdersFamily(a: A): Draft[] {
       AD,
       "waiting",
       "all",
+    ),
+    row(
+      `${AD}/ready: sent to an email with Identity off, the portal line`,
+      { activateDone: DONE, licenseHolder: WAITING, ...NO_IDENTITY },
+      AD,
+      "ready",
+      but(AD, "ready", SYNC, ...OTHERS, "activate.recommend.action"),
     ),
     hidden(
       `${AD}/hidden: License off`,

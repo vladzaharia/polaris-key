@@ -56,6 +56,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	if only == "" or only == "holders":
 		_mask_email(t, m["holdersFlow"]["maskEmail"])
 		_lead_parts(t)
+		_activate_done_identity(t, defaults)
 	if only == "" or only == "theme":
 		_theme(t, m["theme"], defaults)
 	if only == "" or only == "i18n":
@@ -164,6 +165,26 @@ func _mask_email(t: PKeyTestContext, vectors: Array) -> void:
 		if t.check(name, ok, "got %s, want %s" % [got, v["masked"]]):
 			ran += 1
 	t.check("ui-matrix.json holdersFlow maskEmail: every vector passes (%d/%d)" % [ran, vectors.size()], ran == vectors.size() and vectors.size() > 0)
+
+
+## A license sent to an email waits only with Identity on; with it off the state is `ready`
+## with the portal line and no masked email.
+func _activate_done_identity(t: PKeyTestContext, defaults: Dictionary) -> void:
+	var input := {
+		"activateDone": {"tier": "Pro", "term": "Lifetime", "deviceKind": "computer", "position": 1, "limit": 3},
+		"licenseHolder": {"email": "maya@example.com"},
+	}
+	var on := view_for({"input": input, "expect": {"component": "ActivateDone"}}, defaults)
+	t.check("ActivateDone: a holder email with Identity on waits", on.get("state") == "waiting" and (on.get("copy", []) as Array).has("activate.waiting"), str(on.get("state")))
+	var off_input := input.duplicate(true)
+	off_input["services"] = ["license", "config", "release", "distribution", "update", "commerce"]
+	off_input["capabilities"] = {"signIn": false}
+	var off := view_for({"input": off_input, "expect": {"component": "ActivateDone"}}, defaults)
+	var copy: Array = off.get("copy", [])
+	var shown := str(off.get("args", {}))
+	var ready: bool = off.get("state") == "ready" and copy.has("signin.key.addInLocker") and copy.has("a11y.externalLink")
+	var no_wait: bool = not copy.has("activate.waiting") and not copy.has("activate.waitingSignIn") and not shown.contains("maskedEmail")
+	t.check("ActivateDone: a holder email with Identity off is ready with the portal line", ready and no_wait, "%s %s" % [off.get("state"), str(copy)])
 
 
 ## A reason line splits on `**` into runs; no marker is ever left in a run.

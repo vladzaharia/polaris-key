@@ -99,7 +99,7 @@
       "cloudSync": "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed | transferring | waiting | transfer-failed, signedIn?, canReview?, lastSynced?, transfer?: {size?, total?, fraction?}, reason?: network | battery | background}. `ring-changed` always offers Review: the kit owns the confirmation. `transferring` shows `transfer.size` of `transfer.total` (display-ready sizes) when both are given, and a bar that is determinate only with `transfer.fraction` (counted bytes, 0 to 1); `waiting` names its `reason` (default network); `transfer-failed` offers Try again. While a transfer is pending the status never says Synced, whatever `lastSynced` holds.",
       "saveConflict": "SaveConflict: {step: choose | keeping | kept | failed, local?: {when?}, remote?: {when?, device?} | null, bothAvailable?, keep?: local | remote | both, newer?: local | remote}. `remote: null` means the other copy was deleted: Keep the other becomes Delete it here too and Keep both is not offered. `bothAvailable` is true only with a free slot of the 16; absent or false draws Keep both disabled, with its reason. `keep` is the choice being applied (keeping), applied (kept) or that failed; kept needs it. `newer`: `local | remote`, the version the app knows was saved later (its own metadata, never the display strings). It tags that card and chooses nothing; it is ignored when the other copy was deleted. `when` and `device` are display-ready.",
       "licenseHolder": "Who holds the license a key just activated: {email?}. No email (or an empty one): floating, held by the key alone. An email: the license was sent to it and no account holds it yet (waiting); screens mask it. `addIn: portal` (UK-43.2): the kit has no in-app channel for Add your name and email, so the Add control of ActivateDone, SignIn `key-done` and AccountAndLicense's floating row says Add it in Polaris Locker (an external link) and opens the manage URL; absent or `app`: the in-app form. Absent: the holder is not known and AccountAndLicense draws what it drew before.",
-      "activateDone": "The Done step after a key activates: {tier?, term?, deviceKind?, position?, limit?}, the strings and numbers the license line shows. Absent: ActivateDone is hidden. The state is `waiting` with a `licenseHolder` email, else `ready`; the reasons follow the services (Cloud Sync only with sync, Get your license back and Move it with Identity, else the portal line).",
+      "activateDone": "The Done step after a key activates: {tier?, term?, deviceKind?, position?, limit?}, the strings and numbers the license line shows. Absent: ActivateDone is hidden. The state is `waiting` with a `licenseHolder` email and Identity on, else `ready`; the reasons follow the services (Cloud Sync only with sync, Get your license back and Move it with Identity, else the portal line).",
       "addToAccount": "Add your name and email: {step: form | invalid | busy | added | owned | email-bound | other-account | failed, field?: name | email | both, deviceKind?, typedEmail?, signedEmail?, fromSettings?}. `invalid` names the field to fix (absent: both). owned: someone attached the license meanwhile; email-bound: the license was sent to another email (with `licenseHolder`); other-account: a different account signed in than the email typed (`typedEmail` and `signedEmail`, both masked); `fromSettings` closes `added` with Done; failed: sign-in or attach did not finish. `added` names Cloud Sync only with sync on. Absent: AddToAccount is hidden.",
       "unlockSync": "UnlockSync's step: {step: code | invalid | working | failed | start-over-failed | no-code | start-over, nearby?}. `no-code`: the account has no recovery code, so only Start over helps. `nearby` says the host could unlock from a nearby device; v0.10.0 never offers it (NearbyApproval does not ship).",
       "recoveryCode": "RecoveryCode: {saved?}. The code itself is never an input of the view: the kit draws it from the host, once, and keeps nothing.",
@@ -130,7 +130,7 @@
       "SignIn": "error, auto (autoSignIn), expired, done (signedIn), key-refused or key (have-key while choosing; the key-entry limit and an owned license are key-refused), replace (open-replace with replace inline), choose, finishing (redeeming, or device-code ok), code (device code, or use-code), handoff (pending), methods.",
       "Settings": "loading, error, saving (pending save or saved), dirty, locked (a locked row), list.",
       "Devices": "loading, error, browser-mode, renaming or confirming (edit), empty, list.",
-      "ActivateDone": "hidden (License off), waiting (a licenseHolder email), ready (the reasons follow the services).",
+      "ActivateDone": "hidden (License off), waiting (a licenseHolder email, Identity on), ready (the reasons follow the services).",
       "AddToAccount": "hidden (Identity off), then the step: form, invalid, busy, added, owned, email-bound, other-account, failed.",
       "SignIn (holders)": "`signIn.step` key-done (the ActivateDone body), attach (AddToAccount's, at its `addToAccount.step`) or added wins over every step except error and an automatic sign-in step.",
       "AccountAndLicense (holders)": "key-only with a `licenseHolder` that has no email (floating) draws Not in an account and Add your name and email instead of the key-only line; Identity off keeps it, Add opening the portal.",
@@ -13615,6 +13615,44 @@
           "signin.done.start"
         ],
         "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "ActivateDone/ready: sent to an email with Identity off, the portal line",
+      "input": {
+        "activateDone": {
+          "tier": "Pro",
+          "term": "Lifetime",
+          "deviceKind": "computer",
+          "position": 1,
+          "limit": 3
+        },
+        "licenseHolder": { "email": "maya@example.com" },
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "commerce"
+        ],
+        "capabilities": { "signIn": false }
+      },
+      "expect": {
+        "component": "ActivateDone",
+        "state": "ready",
+        "copy": [
+          "a11y.externalLink",
+          "activate.done.device",
+          "activate.done.title",
+          "activate.recommend.badge",
+          "activate.recommend.portal",
+          "activate.recommend.skip",
+          "activate.recommend.title",
+          "signin.done.start",
+          "signin.key.addInLocker"
+        ],
+        "actions": ["open-manage-url"]
       }
     },
     {
