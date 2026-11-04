@@ -467,7 +467,7 @@ func _screen_key() -> String:
 
 ## An automatic sign-in step opens at its title, with its primary in the first viewport.
 func _opens_at_top() -> bool:
-	return _auto_on()
+	return _auto_on() or holders.is_open()
 
 
 func _render() -> void:

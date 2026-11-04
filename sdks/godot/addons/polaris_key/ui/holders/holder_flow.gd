@@ -60,6 +60,8 @@ var _wait_from := ""
 var _problem := ""
 ## An account sign-in is starting (its session is not here yet): another press is ignored.
 var _starting := false
+## The email an account sign-in is for ("" when none is known).
+var _signing_as := ""
 
 
 func _init() -> void:
@@ -72,6 +74,9 @@ func _init() -> void:
 	qr = PKeyHolderQr.new()
 	for v in [done, add, qr]:
 		(v as PKeyUiView).auto_sdk = false
+		# The flow shows one step at a time; a scene re-rendering (the gate's refresh, a keystroke) must
+		# never undo it.
+		v.hosted = true
 		(v as Control).visible = false
 		add_child(v)
 	done.start_pressed.connect(_finish)
@@ -136,6 +141,7 @@ func _show(which: String) -> void:
 	done.visible = which == "done"
 	add.visible = which == "add"
 	qr.visible = which == "qr"
+	_push_problem()
 	if which != "":
 		(_scene() as PKeyUiView).refresh_view()
 
@@ -153,8 +159,14 @@ func _scene() -> Control:
 
 ## What the active scene's problem line shows now.
 func _push_problem() -> void:
-	done.problem_key = _problem
-	add.problem_key = _problem
+	var on_done := _stage == "done"
+	var on_add := _stage == "add"
+	var for_done := _problem if on_done else ""
+	var for_add := _problem if on_add else ""
+	if done.problem_key != for_done:
+		done.problem_key = for_done
+	if add.problem_key != for_add:
+		add.problem_key = for_add
 
 
 # ── Starting ─────────────────────────────────────────────────────────────────────────────
@@ -218,8 +230,9 @@ func _facts() -> void:
 	add.identity_on = done.identity_on
 	add.sync_on = done.sync_on
 	add.device_kind = done.device_kind
+	# No portal link: the offer is dropped quietly (a danger line is for a press that failed).
 	done.no_add_action = _portal_path() and _portal_link() == ""
-	_problem = "common.linkUnavailable" if done.no_add_action else ""
+	_problem = ""
 	_push_problem()
 
 
@@ -269,7 +282,8 @@ func _portal_link() -> String:
 	if c == null or sdk == null:
 		return ""
 	var link = PKeyPortal.portal_link(null, sdk.portal(), c.base_url, c.product)
-	return link if link is String else ""
+	# Only a link the opener will take (https) is a link.
+	return link if link is String and PKeyOutletAdapter.is_https(link) else ""
 
 
 ## Open the portal through the validated opener: `key` rides as `#key=` on a computer or a phone, never
@@ -311,11 +325,28 @@ func _on_done_add() -> void:
 
 # ── The form ─────────────────────────────────────────────────────────────────────────────
 
-func _open_add() -> void:
+## The model over the SDK driver (kept when it exists).
+func _ensure_model() -> void:
+	if _model != null:
+		return
 	_driver = Driver.new(sdk.identity, _on_page)
-	_driver.open_page = open_page
+	_driver.open_page = _open_device_page
 	_model = Model.new(_driver, {"services": ["license", "identity"]}, _kind())
 	_model.changed.connect(_on_model_changed)
+
+
+## Open a device-code page: a pad-only screen has no browser, so nothing opens and nothing is said.
+func _open_device_page(session: PKeySignInSession) -> bool:
+	if _pad():
+		return true
+	if open_page.is_valid():
+		return bool(open_page.call(session))
+	return int(sdk.identity.open_in_browser(session)) == OK
+
+
+func _open_add() -> void:
+	_model = null
+	_ensure_model()
 	_problem = ""
 	_clear_page()
 	add.clear_values()
@@ -341,16 +372,19 @@ func _on_model_changed(snap: Dictionary) -> void:
 func _on_page(info: Dictionary) -> void:
 	add.address = String(info.get("address", ""))
 	add.link = String(info.get("link", ""))
-	var opened := bool(info.get("opened", false))
+	var opened := bool(info.get("opened", false)) or _pad()
 	add.opened = opened
 	_problem = "" if opened else "signin.handoff.noBrowser"
 	_push_problem()
 
 
 func _clear_page() -> void:
-	add.address = ""
-	add.link = ""
-	add.opened = true
+	if add.address != "":
+		add.address = ""
+	if add.link != "":
+		add.link = ""
+	if not add.opened:
+		add.opened = true
 
 
 func _on_edited(field: String, value: String) -> void:
@@ -370,9 +404,14 @@ func _on_submitted(person_name: String, email: String) -> void:
 
 func _on_retry() -> void:
 	if _model == null:
+		_open_add()
 		return
 	_problem = ""
 	_push_problem()
+	# Other account, reached from an account sign-in: the model is on its own step, so go back to the form.
+	if add.step == "other-account" and _model.step() != "other-account":
+		_model.cancel()
+		return
 	await _model.try_again()
 
 
@@ -405,7 +444,7 @@ func _leave() -> void:
 func _on_reopen() -> void:
 	var ok := true
 	if _wait != null:
-		ok = bool(open_page.call(_wait)) if open_page.is_valid() else _wait.reopen()
+		ok = _open_device_page(_wait)
 	elif _model != null:
 		ok = _model.reopen()
 	if ok:
@@ -441,9 +480,11 @@ func _sign_in_for(hint: String) -> void:
 		return
 	_problem = ""
 	_starting = true
-	# The request is in flight: Done offers no action and takes no focus until the wait screen shows.
-	done.busy = true
 	_wait_from = _stage
+	_signing_as = hint
+	# The request is in flight: the step shows the busy bar, keeps its focus and ignores more presses.
+	done.signing_in = true
+	add.working = true
 	var opts := {"channel": "device-code"}
 	if hint != "":
 		opts["login_hint"] = hint
@@ -451,7 +492,9 @@ func _sign_in_for(hint: String) -> void:
 	_wait_gen = gen
 	var session: PKeySignInSession = await sdk.identity.sign_in.start(opts)
 	_starting = false
-	done.busy = false
+	if is_instance_valid(self):
+		done.signing_in = false
+		add.working = false
 	if gen != _wait_gen or not is_instance_valid(self):
 		if session != null and session.ok:
 			session.cancel()
@@ -461,8 +504,7 @@ func _sign_in_for(hint: String) -> void:
 		_push_problem()
 		return
 	_wait = session
-	var opened: bool = bool(open_page.call(session)) if open_page.is_valid() else int(sdk.identity.open_in_browser(session)) == OK
-	_show_wait(session, opened)
+	_show_wait(session, _open_device_page(session))
 	var o: PKeySignInOutcome = null
 	while true:
 		o = await session.wait()
@@ -472,11 +514,30 @@ func _sign_in_for(hint: String) -> void:
 			break
 	_wait = null
 	if o.kind == PKeySignInOutcome.KIND_SIGNED_IN:
-		_finish()
+		_signed_in(o)
 		return
 	if o.kind != PKeySignInOutcome.KIND_CANCELLED:
 		_problem = "signin.approve.failed"
 	_restore_from_wait()
+
+
+## The account signed in. When it is not the one the sign-in was for (the license's holder, or the email
+## typed), nothing was added: the step says so, as the form's own path does.
+func _signed_in(o: PKeySignInOutcome) -> void:
+	var who = o.identity.get("email") if o.identity is Dictionary else null
+	var signed: String = who.strip_edges() if who is String else ""
+	if _signing_as != "" and signed != "" and signed.to_lower() != _signing_as.strip_edges().to_lower():
+		_ensure_model()
+		_clear_page()
+		add.user_code = ""
+		add.signing_as = ""
+		add.typed_email = PKeyAccountController.mask_email(_signing_as)
+		add.signed_email = PKeyAccountController.mask_email(signed)
+		add.step = "other-account"
+		_problem = ""
+		_show("add")
+		return
+	_finish()
 
 
 ## The wait screen of an account sign-in: the form's own `waiting` step on the device-code channel.
@@ -485,6 +546,7 @@ func _show_wait(session: PKeySignInSession, opened: bool) -> void:
 	add.address = session.verification_uri
 	add.link = session.verification_uri_complete
 	add.opened = opened
+	add.signing_as = PKeyAccountController.mask_email(_signing_as)
 	add.step = "busy"
 	_problem = "" if opened else "signin.handoff.noBrowser"
 	_push_problem()
@@ -513,6 +575,7 @@ func _drop_wait() -> void:
 func _restore_from_wait() -> void:
 	_clear_page()
 	add.user_code = ""
+	add.signing_as = ""
 	_push_problem()
 	if _wait_from == "add" and _model != null:
 		add.apply_snapshot(_model.snapshot())

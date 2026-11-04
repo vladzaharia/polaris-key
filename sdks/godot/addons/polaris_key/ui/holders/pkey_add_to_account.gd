@@ -96,6 +96,11 @@ const EMAIL_MAX := 254
 	set(value):
 		problem_key = value
 		refresh_view()
+## `busy` with a code for an account sign-in: the masked email to sign in as ("" for none).
+@export var signing_as := "":
+	set(value):
+		signing_as = value
+		refresh_view()
 ## Opened from Settings: added closes with Done, not Start using.
 @export var from_settings := false:
 	set(value):
@@ -110,6 +115,15 @@ const EMAIL_MAX := 254
 		sync_on = value
 		refresh_view()
 
+## The host owns this scene's visibility (PKeyHolderFlow shows one step at a time): `_render()` leaves
+## `visible` alone.
+var hosted := false
+## An account sign-in is starting: the busy bar shows and presses on the step are ignored.
+var working := false:
+	set(value):
+		working = value
+		refresh_view()
+
 var model: Dictionary = {}
 
 var _body: VBoxContainer
@@ -117,6 +131,9 @@ var _product: PKeyProductHeader
 var _mark: TextureRect
 var _title: Label
 var _lede: Label
+var _signing: Label
+## The step before the one on screen (the first wrong field takes focus on entering `invalid`).
+var _prev_state := ""
 var _form: VBoxContainer
 var _name_label: Label
 var _name_input: LineEdit
@@ -154,6 +171,7 @@ func _build() -> void:
 	var words := vbox(top, "Words", "PKeyTight")
 	_title = label(words, "Title", "PKeyTitle")
 	_lede = label(words, "Lede", "PKeyMuted")
+	_signing = label(words, "SigningAs", "PKeyStrong")
 	_form = vbox(top, "Form", "PKeyStack")
 	var name_block := vbox(_form, "NameField", "PKeyTight")
 	_name_label = label(name_block, "NameLabel", "PKeyStrong")
@@ -176,6 +194,8 @@ func _build() -> void:
 	_address = label(_code_block, "Address", "PKeyMuted")
 	_qr_caption = label(_code_block, "QrCaption", "PKeyMuted")
 	_qr = qr_tile(_code_block)
+	# Left with the text column; a TV centres it (`_arrange`).
+	_qr.get_parent().size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	var problem := glyph_label(top, "Problem", "warning", "PKeyError")
 	_problem = problem["label"]
 	_problem_glyph = problem["glyph"]
@@ -201,6 +221,8 @@ func _line_edit(parent: Node, node_name: String, keyboard: int, max_chars: int) 
 	le.virtual_keyboard_type = keyboard as LineEdit.VirtualKeyboardType
 	le.max_length = max_chars
 	le.caret_blink = true
+	# Enter submits or moves on; the field stays in edit mode, so a correction typed next is not lost.
+	le.keep_editing_on_text_submit = true
 	le.context_menu_enabled = true
 	parent.add_child(le)
 	return le
@@ -237,6 +259,7 @@ func _arrange(m: Dictionary) -> void:
 	_product.visible = squeeze_level() < 1
 	size_glyph(_mark, 40.0, get_theme_color("font_color", "PKeyStrong"))
 	size_glyph(_problem_glyph, 20.0, get_theme_color("font_color", "PKeyError"))
+	_qr.get_parent().size_flags_horizontal = Control.SIZE_SHRINK_CENTER if pad_only() else Control.SIZE_SHRINK_BEGIN
 	_spacer.visible = phone_screen()
 	_fit_code()
 	_body.theme_type_variation = &"PKeyTight" if squeeze_level() >= 2 else &"PKeySections"
@@ -258,8 +281,11 @@ func _fit_code() -> void:
 		_code.add_theme_font_size_override(&"font_size", size)
 
 
+## The form, a wrong field and the wait of the form are one screen: typing never counts as a new one
+## (the focus would be moved off the field being typed in).
 func _screen_key() -> String:
-	return "%s|%s" % [model.get("state", ""), problem_key]
+	var state := String(model.get("state", ""))
+	return "form" if state == "form" or state == "invalid" or state == "busy" else state
 
 
 static func _is_https(url: String) -> bool:
@@ -318,7 +344,8 @@ func apply_snapshot(snap: Dictionary) -> void:
 func _render() -> void:
 	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("AddToAccount", input())
 	var state: String = model.get("state", "hidden")
-	visible = state != "hidden"
+	if not hosted:
+		visible = state != "hidden"
 	var copy: Array = model.get("copy", [])
 	var args := PKeyHolderText.args_of(model)
 	_product.refresh()
@@ -335,6 +362,8 @@ func _render() -> void:
 		"other-account": "activate.otherAccount.body",
 	}.get(state, "") as String
 	cat_text(_title, title_key, args)
+	var who := "activate.waitingSignIn" if waiting_for_account(state) else ""
+	cat_text(_signing, who, {"maskedEmail": signing_as})
 	# Short on room the lede goes (3) and then the fine print (4), before the card scrolls.
 	var level := squeeze_level()
 	var keep_lede := not (in_form and level >= 3)
@@ -393,7 +422,7 @@ func _render() -> void:
 			primary_key = ""
 			links = ["signin.handoff.again", "common.cancel"]
 		"waiting":
-			second_key = "activate.attach.reopen" if opened else "signin.handoff.openBrowser"
+			second_key = "" if pad_only() else ("activate.attach.reopen" if opened else "signin.handoff.openBrowser")
 			links = ["common.cancel"]
 		"owned", "form", "invalid", "failed":
 			links = ["common.cancel"]
@@ -407,9 +436,27 @@ func _render() -> void:
 	_set_action(_link, String(links[0]) if links.size() > 0 else "", copy, args)
 	_set_action(_link2, String(links[1]) if links.size() > 1 else "", copy, args)
 	_actions.visible = state != "hidden"
-	set_loading(state == "busy")
-	set_process(state == "busy")
 	_describe_primary()
+	set_loading(state == "busy" or working)
+	set_process(state == "busy" or working)
+	# Entering `invalid` from a submit puts the cursor in the first wrong field; typing in it later is
+	# not a new screen, so nothing moves the focus again.
+	if state == "invalid" and _prev_state != "invalid" and not pad_only() and is_inside_tree():
+		_focus_wrong_field.call_deferred()
+	_prev_state = state
+
+
+func waiting_for_account(state: String) -> bool:
+	return state == "waiting" and signing_as != ""
+
+
+func _focus_wrong_field() -> void:
+	if step != "invalid" or not is_visible_in_tree():
+		return
+	var target := _email_input if field == "email" else _name_input
+	if is_focusable(target):
+		target.grab_focus()
+		target.edit()
 
 
 func _set_action(b: Button, key: String, copy: Array, args: Dictionary) -> void:
@@ -462,7 +509,7 @@ func clear_values() -> void:
 # ── Presses ──────────────────────────────────────────────────────────────────────────────
 
 func _on_continue() -> void:
-	if step != "form" and step != "invalid":
+	if working or (step != "form" and step != "invalid"):
 		return
 	submitted.emit(_name_input.text, _email_input.text)
 
@@ -484,6 +531,9 @@ func _on_link2() -> void:
 
 
 func _route(key: String) -> void:
+	# An account sign-in is starting: only Cancel is live.
+	if working and key != "common.cancel":
+		return
 	match key:
 		"common.continue":
 			_on_continue()
@@ -518,9 +568,16 @@ func _initial_focus() -> Control:
 				return _email_input
 			return _name_input if is_focusable(_name_input) else _primary
 		"waiting":
-			# The forward action is to open Polaris Locker again, never Cancel.
-			return _second if is_focusable(_second) else null
+			return _waiting_focus()
 	return _primary if is_focusable(_primary) else null
+
+
+## The forward action of the wait is to open Polaris Locker again, never Cancel. A TV has no browser to
+## open, so the wait is passive: Cancel is then the one control.
+func _waiting_focus() -> Control:
+	if is_focusable(_second):
+		return _second
+	return _link if pad_only() and is_focusable(_link) else null
 
 
 ## A busy card takes no focus by itself (the base class would fall back to the first control, which

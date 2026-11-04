@@ -65,6 +65,8 @@ var mask_email := false
 ## The license is held by its key alone (no email, no account): Settings says "Not in an account", offers
 ## Add your name and email, and calls the exit Remove license (UK-43.14). The SDK fills it.
 var floating := false
+## The license is held by its key alone, floating or waiting for an email: the exit reads Remove license.
+var key_only := false
 var model: Dictionary = {}
 ## The Add flow (UK-43.14): the account form, or the manage QR on a pad-only screen, in the list's place.
 var holders: PKeyHolderFlow
@@ -158,6 +160,7 @@ func refresh_from_sdk() -> void:
 	holder = f["holder"]
 	signed_in = f["signed_in"]
 	floating = bool(f["floating"])
+	key_only = bool(f["key_only"])
 	status = f["status"]
 	if f["devices_limit"] != null:
 		devices_limit = f["devices_limit"]
@@ -229,7 +232,7 @@ func _render() -> void:
 	var sig := JSON.stringify([
 		state, tier, holder, signed_in, status, devices_used, devices_limit, auto_update, channel, channel_options,
 		channel_locked_by, version, cloud_sync, cloud_sync_time, services, manage_url, _checking, checked_note,
-		PKeyUiTheme.powered_by, mask_email, pad_only(), floating, _add_offered(), _portal_path(),
+		PKeyUiTheme.powered_by, mask_email, pad_only(), floating, key_only, _add_offered(), _portal_path(),
 	])
 	if sig != _signature and state != "loading":
 		_signature = sig
@@ -432,7 +435,7 @@ func _rebuild(t: PKeyUiCopy, state: String) -> void:
 	if _on("license") or _on("identity"):
 		var so := _group("Group_SignOut")
 		# A license held by its key alone has no account to sign out of: the exit forgets the key.
-		var exit_text := String(catalog().format("account.removeKey")) if floating and not signed_in else t.text("account_sign_out")
+		var exit_text := String(catalog().format("account.removeKey")) if (key_only or floating) and not signed_in else t.text("account_sign_out")
 		var sr := _link_row(so, "sign_out", exit_text, _on_sign_out)
 		(sr["button"] as Button).disabled = _signing_out
 		sr["sign_out"] = sr["button"]

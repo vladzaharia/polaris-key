@@ -89,6 +89,15 @@ signal sign_in_pressed()
 	set(value):
 		license_on = value
 		refresh_view()
+## The host owns this scene's visibility (PKeyHolderFlow shows one step at a time): `_render()` leaves
+## `visible` alone.
+var hosted := false
+## An account sign-in is starting: Sign in keeps its place and focus and shows the busy bar, and
+## presses are ignored.
+var signing_in := false:
+	set(value):
+		signing_in = value
+		refresh_view()
 ## A press is in flight (a hold flag): no action shows, nothing takes focus.
 var busy := false:
 	set(value):
@@ -180,7 +189,7 @@ func _build() -> void:
 
 ## A press the host has not answered yet is ignored.
 func _press(sig: Signal) -> void:
-	if busy:
+	if busy or signing_in:
 		return
 	sig.emit()
 
@@ -292,7 +301,8 @@ func input() -> Dictionary:
 func _render() -> void:
 	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("ActivateDone", input())
 	var state: String = model.get("state", "hidden")
-	visible = state != "hidden"
+	if not hosted:
+		visible = state != "hidden"
 	var copy: Array = model.get("copy", [])
 	var args := PKeyHolderText.args_of(model)
 	_product.refresh()
@@ -341,14 +351,14 @@ func _render() -> void:
 		_add.set("accessibility_description", "")
 	cat_text(_skip, "activate.recommend.skip" if ready and copy.has("activate.recommend.skip") and level < 3 else "", args)
 	cat_text(_primary, "signin.done.start" if state != "hidden" and not busy else "", args)
-	cat_text(_sign_in, "activate.waitingSignIn" if waiting and not busy else "", args)
+	cat_text(_sign_in, ("common.working" if signing_in else "activate.waitingSignIn") if waiting and not busy else "", args)
 	cat_text(_problem, problem_key if state != "hidden" else "", args)
 	_problem_glyph.visible = _problem.visible
 	_problem_glyph.set_meta(&"pkey_glyph", "warning")
 	fx_error(problem_key if state != "hidden" else "")
 	_actions.visible = state != "hidden" and not busy
-	set_loading(busy)
-	set_process(busy)
+	set_loading(busy or signing_in)
+	set_process(busy or signing_in)
 	_describe_primary()
 
 

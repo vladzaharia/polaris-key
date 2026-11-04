@@ -17,6 +17,9 @@ signal done_pressed()
 		link = value
 		refresh_view()
 
+## The host owns visibility (PKeyHolderFlow).
+var hosted := false
+
 var _body: VBoxContainer
 var _product: PKeyProductHeader
 var _title: Label

@@ -57,6 +57,8 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	PKeyUiView.mobile_override = false
 	PKeyUiView.pad_only_override = false
 	await _gate(t)
+	await _gate_steps(t, false)
+	await _gate_steps(t, true)
 	await _flow_steps(t)
 	await _portal(t)
 	await _settings(t)
@@ -118,7 +120,8 @@ func _gate(t: PKeyTestContext) -> void:
 	t.check("gate: Escape on Done declines nothing and the step stays", not gate._cancel() and gate.holders.stage() == "done")
 	done.start_pressed.emit()
 	await _until(func() -> bool: return usable[0] > 0)
-	t.check("gate: Start using forgets the key and the product shows", usable[0] >= 1 and gate.holders._key == "" and not gate.holders.is_open() and gate.screen == "usable" and not gate.holding_done())
+	t.check("gate: Start using forgets the key and the product shows", usable[0] >= 1 and gate.holders._key == "" and not gate.holders.is_open() and
+			gate.screen == "usable" and not gate.holding_done())
 	gate.queue_free()
 	sdk.queue_free()
 	await _tree().process_frame
@@ -135,6 +138,109 @@ func _gate(t: PKeyTestContext) -> void:
 	gate2.queue_free()
 	sdk2.queue_free()
 	await _tree().process_frame
+
+
+# ── Real key events through the live gate ────────────────────────────────────────────────
+
+static func _press(code: int, uni := 0, shift := false) -> void:
+	var ev := InputEventKey.new()
+	ev.keycode = code as Key
+	ev.physical_keycode = code as Key
+	ev.unicode = uni
+	ev.shift_pressed = shift
+	ev.pressed = true
+	_tree().root.push_input(ev)
+	var up := ev.duplicate() as InputEventKey
+	up.pressed = false
+	_tree().root.push_input(up)
+	await _tree().process_frame
+	await _tree().process_frame
+
+
+static func _type(text: String) -> void:
+	for ch in text:
+		var code := OS.find_keycode_from_string(ch.to_upper())
+		if ch == "@":
+			code = KEY_AT
+		elif ch == ".":
+			code = KEY_PERIOD
+		elif ch == " ":
+			code = KEY_SPACE
+		await _press(code, ch.unicode_at(0), ch != ch.to_lower())
+
+
+## One scene on the card: the other is not visible, whatever re-rendered since.
+func _only(t: PKeyTestContext, label: String, flow: PKeyHolderFlow, which: Control) -> void:
+	var others: Array = [flow.done, flow.add, flow.qr].filter(func(c: Control) -> bool: return c != which)
+	t.check("%s: only the step on screen is visible" % label, which.is_visible_in_tree() and
+			others.all(func(c: Control) -> bool: return not c.is_visible_in_tree()), "%s %s" % [flow.stage(), [flow.done.is_visible_in_tree(), flow.add.is_visible_in_tree(), flow.qr.is_visible_in_tree()]])
+
+
+## Done, then Add, over a live gate with real key events: one scene at a time through every gate refresh
+## and every keystroke, and typing after a wrong field keeps each value in its own field.
+func _gate_steps(t: PKeyTestContext, phone: bool) -> void:
+	var tag := "gate keys (%s)" % ("phone" if phone else "desktop")
+	PKeyUiView.mobile_override = phone
+	var sdk := await _sdk()
+	var gate := await _gate_over(sdk)
+	gate.activation._key.text = KEY
+	gate.activation._on_submit()
+	await _until(func() -> bool: return gate.holders.is_open() and not gate.activation.key_in_flight)
+	var flow: PKeyHolderFlow = gate.holders
+	for i in 4:
+		await _tree().process_frame
+	_only(t, tag + ": after activation", flow, flow.done)
+	gate.refresh_view()
+	await _tree().process_frame
+	await _tree().process_frame
+	_only(t, tag + ": after the gate refreshes", flow, flow.done)
+	flow.done.holder_email = ""
+	flow.done.add_pressed.emit()
+	await _tree().process_frame
+	await _tree().process_frame
+	var add: PKeyAddToAccount = flow.add
+	_only(t, tag + ": on the form", flow, add)
+	gate.refresh_view()
+	await _tree().process_frame
+	_only(t, tag + ": on the form after a refresh", flow, add)
+	# Wrong email: Enter in Email, then type the correction.
+	add._name_input.grab_focus()
+	add._name_input.edit()
+	await _type("Ada Lovelace")
+	await _press(KEY_ENTER)
+	await _type("ada")
+	await _press(KEY_ENTER)
+	for i in 4:
+		await _tree().process_frame
+	t.check(tag + ": a wrong email puts the cursor in Email", add.step == "invalid" and add._email_input.has_focus() and
+			add._email_input.is_editing(), "%s %s" % [add.step, _tree().root.gui_get_focus_owner()])
+	await _type("@x.io")
+	t.check(tag + ": typing after an invalid email lands in Email, whole", add._email_input.text == "ada@x.io" and
+			add._name_input.text == "Ada Lovelace", "%s | %s" % [add._name_input.text, add._email_input.text])
+	_only(t, tag + ": after typing", flow, add)
+	# Wrong name.
+	add.set_values("", "ada@x.io")
+	add.submitted.emit("", "ada@x.io")
+	for i in 4:
+		await _tree().process_frame
+	t.check(tag + ": a missing name puts the cursor in Name", add.step == "invalid" and add.field == "name" and
+			add._name_input.has_focus(), "%s %s" % [add.field, _tree().root.gui_get_focus_owner()])
+	await _type("Bo")
+	t.check(tag + ": typing after an invalid name lands in Name", add._name_input.text == "Bo" and add._email_input.text == "ada@x.io", "%s | %s" % [add._name_input.text, add._email_input.text])
+	# Both wrong.
+	add.set_values("", "")
+	flow._model.set_field("name", "")
+	flow._model.set_field("email", "")
+	add.submitted.emit("", "")
+	for i in 4:
+		await _tree().process_frame
+	await _type("Al")
+	t.check(tag + ": with both wrong, typing lands in the first (Name) and leaves Email alone", add._name_input.text == "Al" and
+			add._email_input.text == "", "%s | %s" % [add._name_input.text, add._email_input.text])
+	gate.queue_free()
+	sdk.queue_free()
+	await _tree().process_frame
+	PKeyUiView.mobile_override = false
 
 
 # ── The steps ────────────────────────────────────────────────────────────────────────────
@@ -193,6 +299,19 @@ func _portal(t: PKeyTestContext) -> void:
 	flow.done.holder_email = ""
 	await _tree().process_frame
 	t.check("portal: a portal with no link offers no Add and says so", not flow.open_portal(KEY) and opened.is_empty())
+	# A pad-only screen with no link drops the offer quietly: no Add, and no danger line nobody earned.
+	flow.close()
+	PKeyUiView.pad_only_override = true
+	flow.begin_done(KEY)
+	flow.done.holder_email = ""
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("portal: with no link a pad-only Done drops Add and shows no danger line", not flow.done._add.visible and not flow.done._problem.visible and
+			flow.done._problem.text == "", "%s|%s" % [flow.done._add.visible, flow.done._problem.text])
+	flow.close()
+	PKeyUiView.pad_only_override = false
+	flow.begin_done(KEY)
+	flow.done.holder_email = ""
 	sdk.core.get_meta(&"portal_source").accept({"core": {"portal": {"enabled": true, "activate": LINK}}})
 	t.check("portal: a computer's link carries #key=", flow.open_portal(KEY) and opened.back() == LINK + "#key=" + KEY, str(opened))
 	flow.close()
@@ -257,7 +376,15 @@ func _settings(t: PKeyTestContext) -> void:
 	await _tree().process_frame
 	await _tree().process_frame
 	t.check("settings: with Identity off and no portal link Add is not offered", tab._list.find_child("Add", true, false) == null)
+	# A key-only holder that is not floating (it waits for an email) still removes the license.
 	tab.floating = false
+	tab.key_only = true
+	tab.signed_in = false
+	tab.refresh_view()
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("settings: a key-only license's exit is Remove license from this device", _texts(tab._list, []).has("Remove license from this device"), str(_texts(tab._list, [])))
+	tab.key_only = false
 	tab.services = ["license", "identity"]
 	tab.refresh_view()
 	await _tree().process_frame
@@ -285,7 +412,13 @@ func _sign_ins(t: PKeyTestContext) -> void:
 	flow.begin_done(KEY)
 	await _tree().process_frame
 	flow.done.holder_email = "ana@fennick.studio"
+	await _tree().process_frame
+	await _tree().process_frame
+	flow.done._sign_in.grab_focus()
 	flow.done.sign_in_pressed.emit()
+	await _tree().process_frame
+	t.check("sign-in: while it starts, Sign in shows busy and keeps its focus", flow.done.signing_in and flow.done._sign_in.visible and
+			flow.done._sign_in.text == "Working…" and flow.done._sign_in.has_focus(), "%s %s" % [flow.done._sign_in.text, flow.done._sign_in.has_focus()])
 	var waiting := await _until(func() -> bool: return flow.is_waiting())
 	await _tree().process_frame
 	var add: PKeyAddToAccount = flow.add
@@ -305,6 +438,25 @@ func _sign_ins(t: PKeyTestContext) -> void:
 	add.cancelled.emit()
 	await _tree().process_frame
 	t.check("sign-in: Cancel lets go and returns to Done", not flow.is_waiting() and flow.stage() == "done" and add.user_code == "" and add.address == "", flow.stage())
+	# An account sign-in for another email than the account that signs in lands on other-account.
+	bed.starts = [B.started()]
+	bed.polls = [B.state("pending")]
+	flow._sign_in_for("ana@fennick.studio")
+	await _until(func() -> bool: return flow.is_waiting())
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("sign-in: the wait says which account to sign in as, masked", add._signing.visible and add._signing.text.contains("a•••@fennick.studio") and
+			not add._signing.text.contains("ana@"), add._signing.text)
+	bed.polls = [B.state("ready", {"token": B.TOKEN, "schemaVersion": 1, "identity": {"name": "Bo", "email": "bo@fennick.studio"}})]
+	await _until(func() -> bool: return add.step == "other-account")
+	t.check("sign-in: a different account lands on other-account, not done", flow.stage() == "add" and add.step == "other-account" and
+			not flow.is_waiting() and flow._key == KEY, "%s %s" % [flow.stage(), add.step])
+	t.check("sign-in: other-account names both emails masked", add.typed_email.begins_with("a•••") and add.signed_email.begins_with("b•••"), "%s %s" % [add.typed_email, add.signed_email])
+	add.start_pressed.emit()
+	t.check("sign-in: Start using on other-account ends the flow", not flow.is_open())
+	flow.begin_done(KEY)
+	flow.done.holder_email = "ana@fennick.studio"
+	await _tree().process_frame
 	# The QR shows on a pad-only screen.
 	PKeyUiView.pad_only_override = true
 	flow.done.sign_in_pressed.emit()
@@ -312,6 +464,8 @@ func _sign_ins(t: PKeyTestContext) -> void:
 	await _tree().process_frame
 	await _tree().process_frame
 	t.check("sign-in: a QR code of the page shows on a TV", add._qr.text.begins_with("https://") and add._qr.get_parent().visible, add._qr.text)
+	t.check("sign-in: a TV's wait has no open-browser button, no browser line, and Cancel leads", not add._second.visible and add._problem.text == "" and
+			flow._initial_focus() == add._link, "%s|%s|%s" % [add._second.visible, add._problem.text, flow._initial_focus()])
 	add.cancelled.emit()
 	PKeyUiView.pad_only_override = false
 	# A sign-in that does not finish says so on the step it started from.
@@ -319,8 +473,13 @@ func _sign_ins(t: PKeyTestContext) -> void:
 	bed.polls = [B.state("timeout")]
 	flow.done.sign_in_pressed.emit()
 	await _until(func() -> bool: return flow.stage() == "done" and flow.done.problem_key == "signin.approve.failed")
-	t.check("sign-in: a sign-in that failed says so on Done, in sign-in words", flow.done._problem.text == "That didn't go through. Try again." and flow.done._problem.visible, flow.done._problem.text)
-	# Signed in: the flow ends.
+	t.check("sign-in: a sign-in that failed says so on Done, in sign-in words", flow.done._problem.text == "That didn't go through. Try again." and
+			flow.done._problem.visible, flow.done._problem.text)
+	# Signed in: the flow ends (a fresh device: the first sign-in above stored a token).
+	sdk = await bed.make_sdk("")
+	flow.sdk = sdk
+	flow.begin_done(KEY)
+	await _tree().process_frame
 	bed.starts = [B.started()]
 	bed.polls = [B.state("ready", {"token": B.TOKEN, "schemaVersion": 1, "identity": {"name": "Ana", "email": "ana@fennick.studio"}})]
 	var ended := [0]
