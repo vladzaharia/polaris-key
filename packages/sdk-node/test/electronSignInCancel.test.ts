@@ -71,12 +71,19 @@ describe("ending a device-code flow from its window", () => {
     h.handle.close();
   });
 
-  it("a poll in flight that still signs in is undone and answers expired", async () => {
+  it("a poll in flight when the flow is ended answers expired and signs nothing out", async () => {
     let release!: () => void;
     const gate = new Promise<void>((r) => (release = r));
+    // Like the real session: a cancel during the poll wins over the answer.
+    let cancelled = false;
     const h = setup(async () => {
       await gate;
-      return { kind: "signedIn", subject: null, activation: {} };
+      return cancelled
+        ? { kind: "cancelled" }
+        : { kind: "signedIn", subject: null, activation: {} };
+    });
+    h.session.cancel.mockImplementation(() => {
+      cancelled = true;
     });
     const b = (await h.bridge.beginSignIn()) as { flowId: string };
     const polling = h.bridge.pollSignIn(b.flowId);
@@ -84,7 +91,7 @@ describe("ending a device-code flow from its window", () => {
     expect(await end(h, b.flowId)).toEqual({ ended: true });
     release();
     expect(await polling).toEqual({ kind: "expired" });
-    await vi.waitFor(() => expect(h.identity.signOut).toHaveBeenCalledTimes(1));
+    expect(h.identity.signOut).not.toHaveBeenCalled();
     h.handle.close();
   });
 

@@ -197,11 +197,20 @@ export class RedirectSession {
  * Shared by the web redirect and the native redirect (the pushing device's header rides in
  * `headers`).
  */
+/** Thrown by `redeemCode` when the caller cancelled while the token request was in flight: the
+ *  answer was dropped and nothing was stored. */
+export class RedeemCancelled extends Error {
+  constructor() {
+    super("the sign-in was cancelled before its token was stored.");
+  }
+}
+
 export async function redeemCode(
   deps: RedirectDeps,
   pending: { tokenEndpoint: string; keyReturn: boolean },
   form: string,
   headers: Record<string, string>,
+  cancelled: () => boolean = () => false,
 ): Promise<RedirectOutcome> {
   const { ctx, tokens } = deps;
   const res = await ctx.request(
@@ -223,6 +232,9 @@ export async function redeemCode(
   const answer: TokenAnswer = parseTokenAnswer(res.status, body, {
     keyReturn: pending.keyReturn,
   });
+  // Checked after the answer and before anything is stored.
+  if (cancelled() && answer.kind !== "refused" && answer.kind !== "malformed")
+    throw new RedeemCancelled();
   switch (answer.kind) {
     case "malformed":
       throw new PolarisError(

@@ -62,7 +62,7 @@ async function setup(o: { request?: boolean; tokenGate?: Promise<void> } = {}) {
         await o.tokenGate;
         return json(TOKEN_OK);
       },
-      [`POST /${PRODUCT}/identity/signout`]: () => json({ released: true }),
+      [`POST /${PRODUCT}/identity/signout`]: () => json({ released: false }),
     },
   });
   (
@@ -371,6 +371,9 @@ describe("PolarisBridge: the native redirect sign-in", () => {
       await vi.waitFor(() => expect(env.seen.length).toBeGreaterThan(2));
       await new Promise((r) => setTimeout(r, 100));
       expect(await env.store.getToken()).toBeNull();
+      expect(env.seen.some((s) => s.path.endsWith("/identity/signout"))).toBe(
+        false,
+      );
     });
 
     it("after sign-out the flow is already gone, so the verb is a no-op", async () => {

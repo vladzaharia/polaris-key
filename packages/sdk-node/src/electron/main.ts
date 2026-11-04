@@ -721,13 +721,6 @@ export function exposePolarisBridge(
     f?.native?.cancel();
     flows.delete(id);
   };
-  /** Undo a sign-in that finished after its flow was ended. */
-  const undoLate = (): void => {
-    client.identity.signOut().then(
-      () => pushState(),
-      () => undefined,
-    );
-  };
   // The restart an install staged, applied by `update.restart` (the function cannot cross IPC).
   let pendingRestart: (() => Promise<void>) | null = null;
   // The options of the last `update.decide`: an install re-derives the offer under the same ones
@@ -1183,14 +1176,6 @@ export function exposePolarisBridge(
       choiceHost.dropFlow(id);
       flow.prompt?.cancel();
       forgetFlow(id);
-      // A redirect already redeeming cannot be stopped: if it still signs in, the token it
-      // stored is undone.
-      flow.native?.wait().then(
-        (o) => {
-          if (o.kind === "signedIn") undoLate();
-        },
-        () => undefined,
-      );
       return { ended: true };
     },
     // ── v4 (SP-13 config.local, SP-14 update-health events) ───────────────────────────
@@ -1345,11 +1330,9 @@ export function exposePolarisBridge(
           r = flow.result.ok;
         } else {
           r = await flow.prompt!.wait({ once: true });
-          // The flow was ended while the poll was in flight: a sign-in it still finished is undone.
-          if (flows.get(flowId as string) !== flow) {
-            if (r.kind === "signedIn") undoLate();
-            return { kind: "expired" };
-          }
+          // The flow was ended while the poll was in flight. The session stores nothing once
+          // cancelled, so no sign-in can be seen here; answer expired whatever came back.
+          if (flows.get(flowId as string) !== flow) return { kind: "expired" };
         }
       } catch (e) {
         const code = (e as { code?: unknown }).code;
