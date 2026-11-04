@@ -582,5 +582,29 @@ func _hook(t: PKeyTestContext) -> void:
 	r = await sdk.discover()
 	t.check("hook: a document without the member clears it", r.ok and sdk.presentation().is_empty() and events.size() == 4)
 	t.check("hook: presentation_icon() is null without a member", await sdk.presentation_icon(64) == null)
+
+	# core.portal rides the same discovery and survives a cold start (portal.json beside the cache).
+	var link := _server.base_url() + "/activate?product=djdl"
+	t.check("portal: nothing known before a discovery", sdk.portal() == null)
+	var portal_dir := PKeyTestFixtures.scratch_dir("portal-hook")
+	(sdk.core.get_meta(&"portal_source") as PKeyPortalStore).cache_dir = portal_dir
+	var with_portal := F.manifest(null)
+	with_portal["core"]["portal"] = {"enabled": true, "activate": link}
+	doc["value"] = with_portal
+	r = await sdk.discover()
+	t.check("portal: a discovery with the member holds it", r.ok and _same(sdk.portal(), {"enabled": true, "activate": link}), JSON.stringify(sdk.portal()))
+	var cold := PKeyTestFixtures.new_sdk()
+	cold.configure(PKeyTestFixtures.options(_server.base_url(), PKeyMemoryStore.new(), [NOW]))
+	(cold.core.get_meta(&"portal_source") as PKeyPortalStore).cache_dir = portal_dir
+	t.check("portal: a new client knows nothing before it starts", cold.portal() == null)
+	await cold.start()
+	t.check("portal: a cold start reads the member back from portal.json", _same(cold.portal(), {"enabled": true, "activate": link}), JSON.stringify(cold.portal()))
+	doc["value"] = {"status": 500}
+	r = await sdk.discover()
+	t.check("portal: a failed discovery keeps the member", not r.ok and _same(sdk.portal(), {"enabled": true, "activate": link}))
+	doc["value"] = F.manifest(null)
+	r = await sdk.discover()
+	t.check("portal: a document without the member clears it and the file", r.ok and sdk.portal() == null and not FileAccess.file_exists(portal_dir.path_join(PKeyPortalStore.MEMBER_FILE)))
+	cold.queue_free()
 	sdk.queue_free()
 	PKeyUiTheme.use_presentation(null)

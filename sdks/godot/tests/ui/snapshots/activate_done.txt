@@ -1,0 +1,123 @@
+== ready ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Mark: TextureRect
+Card/Scroll/Body/Top/Words/Title: Label "\u2068Polaris Key SDK\u2069 is ready"
+Card/Scroll/Body/Top/Words/Device: Label "\u2068Pro\u2069 · Lifetime · this computer is device 1 of 3."
+Card/Scroll/Body/Top/Recommend/Stack/Head/Badge: Label "Recommended"
+Card/Scroll/Body/Top/Recommend/Stack/Head/Title: Label "Keep \u2068Polaris Key SDK\u2069 in your account"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason0/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason0/Line: RichTextLabel "Sync your settings across your devices"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason1/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason1/Line: RichTextLabel "Get your license back if you lose the key or this device"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason2/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason2/Line: RichTextLabel "Move it to a new device yourself, without asking \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Recommend/Stack/Add: Button "Add your name and email" [focus 1]
+Card/Scroll/Body/Top/Skip: Label "Or continue without an account. \u2068Polaris Key SDK\u2069 works the same."
+Card/Scroll/Body/Actions/Primary: Button "Start using \u2068Polaris Key SDK\u2069" [focus 2]
+== ready, no Cloud Sync ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Mark: TextureRect
+Card/Scroll/Body/Top/Words/Title: Label "\u2068Polaris Key SDK\u2069 is ready"
+Card/Scroll/Body/Top/Words/Device: Label "\u2068Pro\u2069 · Lifetime · this computer is device 1 of 3."
+Card/Scroll/Body/Top/Recommend/Stack/Head/Badge: Label "Recommended"
+Card/Scroll/Body/Top/Recommend/Stack/Head/Title: Label "Keep \u2068Polaris Key SDK\u2069 in your account"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason0/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason0/Line: RichTextLabel "Get your license back if you lose the key or this device"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason1/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason1/Line: RichTextLabel "Move it to a new device yourself, without asking \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Recommend/Stack/Add: Button "Add your name and email" [focus 1]
+Card/Scroll/Body/Top/Skip: Label "Or continue without an account. \u2068Polaris Key SDK\u2069 works the same."
+Card/Scroll/Body/Actions/Primary: Button "Start using \u2068Polaris Key SDK\u2069" [focus 2]
+== ready, Identity off ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Mark: TextureRect
+Card/Scroll/Body/Top/Words/Title: Label "\u2068Polaris Key SDK\u2069 is ready"
+Card/Scroll/Body/Top/Words/Device: Label "\u2068Pro\u2069 · Lifetime · this computer is device 1 of 3."
+Card/Scroll/Body/Top/Recommend/Stack/Head/Badge: Label "Recommended"
+Card/Scroll/Body/Top/Recommend/Stack/Head/Title: Label "Keep \u2068Polaris Key SDK\u2069 in your account"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason0/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason0/Line: RichTextLabel "Keep your license safe in Polaris Locker"
+Card/Scroll/Body/Top/Recommend/Stack/Add: Button "Add it in Polaris Locker" [focus 1]
+Card/Scroll/Body/Top/Skip: Label "Or continue without an account. \u2068Polaris Key SDK\u2069 works the same."
+Card/Scroll/Body/Actions/Primary: Button "Start using \u2068Polaris Key SDK\u2069" [focus 2]
+== ready, no in-app channel ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Mark: TextureRect
+Card/Scroll/Body/Top/Words/Title: Label "\u2068Polaris Key SDK\u2069 is ready"
+Card/Scroll/Body/Top/Words/Device: Label "\u2068Pro\u2069 · Lifetime · this computer is device 1 of 3."
+Card/Scroll/Body/Top/Recommend/Stack/Head/Badge: Label "Recommended"
+Card/Scroll/Body/Top/Recommend/Stack/Head/Title: Label "Keep \u2068Polaris Key SDK\u2069 in your account"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason0/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason0/Line: RichTextLabel "Sync your settings across your devices"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason1/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason1/Line: RichTextLabel "Get your license back if you lose the key or this device"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason2/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason2/Line: RichTextLabel "Move it to a new device yourself, without asking \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Recommend/Stack/Add: Button "Add it in Polaris Locker" [focus 1]
+Card/Scroll/Body/Top/Skip: Label "Or continue without an account. \u2068Polaris Key SDK\u2069 works the same."
+Card/Scroll/Body/Actions/Primary: Button "Start using \u2068Polaris Key SDK\u2069" [focus 2]
+== ready, back from the browser ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Mark: TextureRect
+Card/Scroll/Body/Top/Words/Title: Label "\u2068Polaris Key SDK\u2069 is ready"
+Card/Scroll/Body/Top/Words/Device: Label "\u2068Pro\u2069 · Lifetime · this computer is device 1 of 3."
+Card/Scroll/Body/Top/Recommend/Stack/Head/Badge: Label "Recommended"
+Card/Scroll/Body/Top/Recommend/Stack/Head/Title: Label "Keep \u2068Polaris Key SDK\u2069 in your account"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason0/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason0/Line: RichTextLabel "Sync your settings across your devices"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason1/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason1/Line: RichTextLabel "Get your license back if you lose the key or this device"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason2/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason2/Line: RichTextLabel "Move it to a new device yourself, without asking \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Recommend/Stack/Add: Button "Add your name and email" [focus 1]
+Card/Scroll/Body/Top/Skip: Label "Or continue without an account. \u2068Polaris Key SDK\u2069 works the same."
+Card/Scroll/Body/Actions/Primary: Button "Start using \u2068Polaris Key SDK\u2069" [focus 2]
+== ready, the device line unknown ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Mark: TextureRect
+Card/Scroll/Body/Top/Words/Title: Label "\u2068Polaris Key SDK\u2069 is ready"
+Card/Scroll/Body/Top/Recommend/Stack/Head/Badge: Label "Recommended"
+Card/Scroll/Body/Top/Recommend/Stack/Head/Title: Label "Keep \u2068Polaris Key SDK\u2069 in your account"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason0/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason0/Line: RichTextLabel "Sync your settings across your devices"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason1/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason1/Line: RichTextLabel "Get your license back if you lose the key or this device"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason2/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason2/Line: RichTextLabel "Move it to a new device yourself, without asking \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Recommend/Stack/Add: Button "Add your name and email" [focus 1]
+Card/Scroll/Body/Top/Skip: Label "Or continue without an account. \u2068Polaris Key SDK\u2069 works the same."
+Card/Scroll/Body/Actions/Primary: Button "Start using \u2068Polaris Key SDK\u2069" [focus 2]
+== waiting ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Mark: TextureRect
+Card/Scroll/Body/Top/Words/Title: Label "\u2068Polaris Key SDK\u2069 is ready"
+Card/Scroll/Body/Top/Words/Device: Label "\u2068Pro\u2069 · Lifetime · this computer is device 1 of 3."
+Card/Scroll/Body/Top/Words/Waiting: Label "This license was sent to m•••@example.com. Sign in with that email to keep it in your account."
+Card/Scroll/Body/Actions/Primary: Button "Start using \u2068Polaris Key SDK\u2069" [focus 1]
+Card/Scroll/Body/Actions/SignIn: Button "Sign in as m•••@example.com" [focus 2]
+== busy ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Mark: TextureRect
+Card/Scroll/Body/Top/Words/Title: Label "\u2068Polaris Key SDK\u2069 is ready"
+Card/Scroll/Body/Top/Words/Device: Label "\u2068Pro\u2069 · Lifetime · this computer is device 1 of 3."
+Card/Scroll/Body/Top/Recommend/Stack/Head/Badge: Label "Recommended"
+Card/Scroll/Body/Top/Recommend/Stack/Head/Title: Label "Keep \u2068Polaris Key SDK\u2069 in your account"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason0/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason0/Line: RichTextLabel "Sync your settings across your devices"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason1/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason1/Line: RichTextLabel "Get your license back if you lose the key or this device"
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason2/Glyph: TextureRect
+Card/Scroll/Body/Top/Recommend/Stack/Reasons/Reason2/Line: RichTextLabel "Move it to a new device yourself, without asking \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Skip: Label "Or continue without an account. \u2068Polaris Key SDK\u2069 works the same."
+== hidden ==
+<hidden>
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"

@@ -1,0 +1,134 @@
+== form ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Add your name and email"
+Card/Scroll/Body/Top/Words/Lede: Label "Your license and its devices stay as they are."
+Card/Scroll/Body/Top/Form/NameField/NameLabel: Label "Name"
+Card/Scroll/Body/Top/Form/NameField/NameInput: LineEdit [focus 1]
+Card/Scroll/Body/Top/Form/EmailField/EmailLabel: Label "Email"
+Card/Scroll/Body/Top/Form/EmailField/EmailInput: LineEdit [focus 2]
+Card/Scroll/Body/Top/Form/EmailField/Fine: Label "Polaris Locker sends a code to this email. \u2068Polaris Key SDK\u2069 never sees it."
+Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 3]
+Card/Scroll/Body/Actions/Link: Button "Cancel" [focus 4]
+== invalid: name ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Add your name and email"
+Card/Scroll/Body/Top/Words/Lede: Label "Your license and its devices stay as they are."
+Card/Scroll/Body/Top/Form/NameField/NameLabel: Label "Name"
+Card/Scroll/Body/Top/Form/NameField/NameInput: LineEdit [focus 1]
+Card/Scroll/Body/Top/Form/NameField/NameError: Label "Enter your name."
+Card/Scroll/Body/Top/Form/EmailField/EmailLabel: Label "Email"
+Card/Scroll/Body/Top/Form/EmailField/EmailInput: LineEdit [focus 2]
+Card/Scroll/Body/Top/Form/EmailField/Fine: Label "Polaris Locker sends a code to this email. \u2068Polaris Key SDK\u2069 never sees it."
+Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 3]
+Card/Scroll/Body/Actions/Link: Button "Cancel" [focus 4]
+== invalid: email ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Add your name and email"
+Card/Scroll/Body/Top/Words/Lede: Label "Your license and its devices stay as they are."
+Card/Scroll/Body/Top/Form/NameField/NameLabel: Label "Name"
+Card/Scroll/Body/Top/Form/NameField/NameInput: LineEdit [focus 1]
+Card/Scroll/Body/Top/Form/EmailField/EmailLabel: Label "Email"
+Card/Scroll/Body/Top/Form/EmailField/EmailInput: LineEdit [focus 2]
+Card/Scroll/Body/Top/Form/EmailField/EmailError: Label "Enter a full email address, like name@example.com."
+Card/Scroll/Body/Top/Form/EmailField/Fine: Label "Polaris Locker sends a code to this email. \u2068Polaris Key SDK\u2069 never sees it."
+Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 3]
+Card/Scroll/Body/Actions/Link: Button "Cancel" [focus 4]
+== invalid: both ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Add your name and email"
+Card/Scroll/Body/Top/Words/Lede: Label "Your license and its devices stay as they are."
+Card/Scroll/Body/Top/Form/NameField/NameLabel: Label "Name"
+Card/Scroll/Body/Top/Form/NameField/NameInput: LineEdit [focus 1]
+Card/Scroll/Body/Top/Form/NameField/NameError: Label "Enter your name."
+Card/Scroll/Body/Top/Form/EmailField/EmailLabel: Label "Email"
+Card/Scroll/Body/Top/Form/EmailField/EmailInput: LineEdit [focus 2]
+Card/Scroll/Body/Top/Form/EmailField/EmailError: Label "Enter a full email address, like name@example.com."
+Card/Scroll/Body/Top/Form/EmailField/Fine: Label "Polaris Locker sends a code to this email. \u2068Polaris Key SDK\u2069 never sees it."
+Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 3]
+Card/Scroll/Body/Actions/Link: Button "Cancel" [focus 4]
+== busy ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Add your name and email"
+Card/Scroll/Body/Top/Words/Lede: Label "Your license and its devices stay as they are."
+Card/Scroll/Body/Top/Form/NameField/NameLabel: Label "Name"
+Card/Scroll/Body/Top/Form/NameField/NameInput: LineEdit [read-only]
+Card/Scroll/Body/Top/Form/EmailField/EmailLabel: Label "Email"
+Card/Scroll/Body/Top/Form/EmailField/EmailInput: LineEdit [read-only]
+Card/Scroll/Body/Top/Form/EmailField/Fine: Label "Polaris Locker sends a code to this email. \u2068Polaris Key SDK\u2069 never sees it."
+Card/Scroll/Body/Top/Status: Label "Working…"
+Card/Scroll/Body/Actions/Link: Button "Open browser again" [focus 1]
+Card/Scroll/Body/Actions/Link2: Button "Cancel" [focus 2]
+== waiting ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Finish in Polaris Locker"
+Card/Scroll/Body/Top/CodeBlock/CodeCaption: Label "Sign-in code"
+Card/Scroll/Body/Top/CodeBlock/Code: Label "WDJB-MJHT"
+Card/Scroll/Body/Top/CodeBlock/Check: Label "Check it matches in Polaris Locker."
+Card/Scroll/Body/Actions/Second: Button "Open Polaris Locker again" [focus 1]
+Card/Scroll/Body/Actions/Link: Button "Cancel" [focus 2]
+== added ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Mark: TextureRect
+Card/Scroll/Body/Top/Words/Title: Label "\u2068Polaris Key SDK\u2069 is in your account"
+Card/Scroll/Body/Top/Words/Lede: Label "Syncing is on for this computer. Sign in on your other devices to sync them too."
+Card/Scroll/Body/Actions/Primary: Button "Start using \u2068Polaris Key SDK\u2069" [focus 1]
+== added, no Cloud Sync ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Mark: TextureRect
+Card/Scroll/Body/Top/Words/Title: Label "\u2068Polaris Key SDK\u2069 is in your account"
+Card/Scroll/Body/Actions/Primary: Button "Start using \u2068Polaris Key SDK\u2069" [focus 1]
+== added, from Settings ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Mark: TextureRect
+Card/Scroll/Body/Top/Words/Title: Label "\u2068Polaris Key SDK\u2069 is in your account"
+Card/Scroll/Body/Top/Words/Lede: Label "Syncing is on for this computer. Sign in on your other devices to sync them too."
+Card/Scroll/Body/Actions/Primary: Button "Done" [focus 1]
+== owned ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "This license is in a Polaris Locker account"
+Card/Scroll/Body/Top/Words/Lede: Label "Sign in with the email it was sent to. \u2068Polaris Key SDK\u2069 starts on this computer as soon as you do."
+Card/Scroll/Body/Actions/Primary: Button "Sign in to that account" [focus 1]
+Card/Scroll/Body/Actions/Link: Button "Cancel" [focus 2]
+== email-bound ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "This license was sent to another email"
+Card/Scroll/Body/Top/Words/Lede: Label "It was sent to m•••@example.com. Sign in with that email, or add it to this account and verify it."
+Card/Scroll/Body/Actions/Primary: Button "Verify that email" [focus 1]
+Card/Scroll/Body/Actions/Second: Button "Use another account" [focus 2]
+Card/Scroll/Body/Actions/Link: Button "Start using \u2068Polaris Key SDK\u2069" [focus 3]
+== email-bound, the email unknown ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "This license was sent to another email"
+Card/Scroll/Body/Actions/Primary: Button "Use another account" [focus 1]
+Card/Scroll/Body/Actions/Link: Button "Start using \u2068Polaris Key SDK\u2069" [focus 2]
+== other-account ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "You signed in with a different account"
+Card/Scroll/Body/Top/Words/Lede: Label "You signed in as j•••@example.com, not m•••@example.com. Nothing was added."
+Card/Scroll/Body/Actions/Primary: Button "Try again" [focus 1]
+Card/Scroll/Body/Actions/Link: Button "Start using \u2068Polaris Key SDK\u2069" [focus 2]
+== failed ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Add your name and email"
+Card/Scroll/Body/Top/ProblemRow/ProblemGlyph: TextureRect
+Card/Scroll/Body/Top/ProblemRow/Problem: Label "Couldn't add this license. Try again in a moment."
+Card/Scroll/Body/Actions/Primary: Button "Try again" [focus 1]
+Card/Scroll/Body/Actions/Link: Button "Cancel" [focus 2]
+== hidden ==
+<hidden>
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"

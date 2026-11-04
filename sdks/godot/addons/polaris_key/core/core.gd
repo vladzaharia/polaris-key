@@ -335,6 +335,10 @@ func discover() -> PKeyResult:
 	# core.presentation: parsed again from every successful discovery; a failed one keeps it.
 	if presentation_source != null:
 		presentation_source.accept(discovery_manifest)
+	# core.portal: the discovered product page member, held and persisted (PKeyPortalStore.attach).
+	var portal_source = get_meta(&"portal_source", null)
+	if portal_source != null:
+		portal_source.accept(discovery_manifest)
 	discovery_changed.emit()
 	return PKeyResult.success(d)
 

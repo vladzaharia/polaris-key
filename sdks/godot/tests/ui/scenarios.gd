@@ -8,6 +8,8 @@ const NOW := 1700000000.0
 const CONFIG := preload("res://tests/config/support.gd")
 const PRESENTATION := preload("res://tests/support/presentation_fixtures.gd")
 const NearbyApproval := preload("res://addons/polaris_key/ui/nearby/pkey_nearby_approval.gd")
+const ActivateDone := preload("res://addons/polaris_key/ui/holders/pkey_activate_done.gd")
+const AddToAccount := preload("res://addons/polaris_key/ui/holders/pkey_add_to_account.gd")
 
 ## A settings catalog with every row kind the panel must handle.
 const SETTINGS_CATALOG := [
@@ -68,6 +70,17 @@ const CHOICE_CASES := [
 ]
 
 
+## The states of the holder scenes (ui-matrix `holders`).
+const ACTIVATE_DONE_CASES := [
+	"ready", "ready, no Cloud Sync", "ready, Identity off", "ready, no in-app channel", "ready, back from the browser",
+	"ready, the device line unknown", "waiting", "busy", "hidden",
+]
+const ADD_TO_ACCOUNT_CASES := [
+	"form", "invalid: name", "invalid: email", "invalid: both", "busy", "waiting", "added", "added, no Cloud Sync", "added, from Settings",
+	"owned", "email-bound", "email-bound, the email unknown", "other-account", "failed", "hidden",
+]
+
+
 func tree() -> SceneTree:
 	return Engine.get_main_loop() as SceneTree
 
@@ -122,6 +135,11 @@ func all() -> Array:
 	# ── PKeyNearbyApproval (ui-matrix v7).
 	for c in ["entry", "ask", "approved", "not-nearby", "mismatch", "denied", "expired", "device-limit", "choose", "account-required", "rate-limited", "no-name", "hidden"]:
 		out.append(["nearby", c, nearby.bind(c)])
+	# ── PKeyActivateDone and PKeyAddToAccount (ui-matrix `holders`).
+	for c in ACTIVATE_DONE_CASES:
+		out.append(["activate_done", c, activate_done.bind(c)])
+	for c in ADD_TO_ACCOUNT_CASES:
+		out.append(["add_to_account", c, add_to_account.bind(c)])
 	# ── PKeySignInDialog.
 	out.append(["sign_in", "starting", sign_in.bind("starting")])
 	out.append(["sign_in", "pending", sign_in.bind("pending")])
@@ -483,6 +501,86 @@ func nearby(kind: String) -> Control:
 		n.codes = PackedStringArray(["482 913", "107 356", "759 204"])
 	n.refresh_view()
 	return n
+
+
+func activate_done(kind: String) -> Control:
+	var d := ActivateDone.new()
+	d.auto_sdk = false
+	add(d)
+	d.tier = "Pro"
+	d.term = "Lifetime"
+	d.device_kind = "computer"
+	d.seat = 1
+	d.limit = 3
+	match kind:
+		"ready, no Cloud Sync":
+			d.sync_on = false
+		"ready, Identity off":
+			d.identity_on = false
+		"ready, no in-app channel":
+			d.add_in = "portal"
+		"ready, back from the browser":
+			d.returned = true
+		"ready, the device line unknown":
+			d.tier = ""
+			d.limit = 0
+		"waiting":
+			d.holder_email = "maya@example.com"
+		"busy":
+			d.busy = true
+		"hidden":
+			d.license_on = false
+	d.refresh_view()
+	return d
+
+
+func add_to_account(kind: String) -> Control:
+	var a := AddToAccount.new()
+	a.auto_sdk = false
+	add(a)
+	a.device_kind = "computer"
+	match kind:
+		"invalid: name":
+			a.field = "name"
+			a.step = "invalid"
+		"invalid: email":
+			a.field = "email"
+			a.step = "invalid"
+		"invalid: both":
+			a.field = "both"
+			a.step = "invalid"
+		"busy":
+			a.step = "busy"
+		"waiting":
+			a.user_code = "WDJB-MJHT"
+			a.step = "busy"
+		"added":
+			a.step = "added"
+		"added, no Cloud Sync":
+			a.sync_on = false
+			a.step = "added"
+		"added, from Settings":
+			a.from_settings = true
+			a.step = "added"
+		"owned":
+			a.step = "owned"
+		"email-bound":
+			a.holder_email = "maya@example.com"
+			a.step = "email-bound"
+		"email-bound, the email unknown":
+			a.step = "email-bound"
+		"other-account":
+			a.typed_email = "m\u2022\u2022\u2022@example.com"
+			a.signed_email = "j\u2022\u2022\u2022@example.com"
+			a.step = "other-account"
+		"failed":
+			a.step = "failed"
+		"hidden":
+			a.identity_on = false
+		_:
+			a.step = "form"
+	a.refresh_view()
+	return a
 
 
 func prompt_fixture() -> PKeySignInSession:
