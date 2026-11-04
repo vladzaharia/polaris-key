@@ -62,9 +62,24 @@ struct SettingsSections: View {
     @Bindable var model: PolarisKeySettingsModel
     @Environment(\.openURL) private var openURL
     @Environment(\.polarisKeyStrings) private var strings
+    /// The gate's model when the pane sits inside `.polarisKeyGate`: the product's identity the Add screens name.
+    @Environment(PolarisKeyGateModel.self) private var gate: PolarisKeyGateModel?
 
     var body: some View {
         panes
+            // Add your name and email (or the manage QR on a TV) over the pane, until it is done.
+            .sheet(
+                isPresented: Binding(
+                    get: { model.holders != nil }, set: { _ in })
+            ) {
+                if let flow = model.holders {
+                    // The sheet inherits the pane's look and strings; Cancel and Done are its only ways out.
+                    HolderFlowView(flow: flow)
+                        #if !os(macOS)
+                            .interactiveDismissDisabled()
+                        #endif
+                }
+            }
             // "Approve a nearby device" opens over the pane and closes by any route as a Deny or a Done.
             .sheet(
                 isPresented: Binding(
@@ -88,6 +103,15 @@ struct SettingsSections: View {
         AccessibilityNotification.Announcement(strings.string(line)).post()
     }
 
+    private func addTapped() {
+        let scope = gate?.inputs
+        let opener = openURL
+        Task { @MainActor in
+            let open = holderOpening(opener) { [model] in model.addOpenFailed() }
+            await model.beginAdd(scope: scope, open: open)
+        }
+    }
+
     @ViewBuilder private var panes: some View {
         AccountAndLicenseSection(
             screen: model.account, tier: model.tier, holder: model.holder, version: model.version,
@@ -99,7 +123,9 @@ struct SettingsSections: View {
             checking: model.checking, checkNote: model.checkResult, checkFailed: model.checkFailed,
             part: .top,
             onApproveNearby: model.canApproveNearby && model.nearbyApproval != nil
-                ? { model.nearbyApproval?.onOpen?() } : nil)
+                ? { model.nearbyApproval?.onOpen?() } : nil,
+            onAdd: model.canAdd ? { addTapped() } : nil, addExternal: model.addOpensPortal,
+            addProblem: model.addProblem)
         DevicesSection(
             screen: model.devicesScreen, devices: model.deviceRows,
             onRetry: { Task { await model.retryDevices() } },

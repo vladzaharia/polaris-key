@@ -162,6 +162,11 @@ public struct AccountAndLicenseSection: View {
     /// The account menu's "Approve a nearby device" row; nil draws none (the device is signed out, or the
     /// product or runtime offers no nearby approval).
     var onApproveNearby: (() -> Void)?
+    /// A floating license's "Add your name and email" (or "Add it in Polaris Locker" when it opens the page); nil draws none.
+    var onAdd: (() -> Void)?
+    var addExternal = false
+    /// The page did not open: said under the rows, in the danger tone.
+    var addProblem: CopyLine?
     @Binding var autoUpdate: Bool
     var onCheckNow: () -> Void
     /// Manage ↗ and the automatic-update switch draw only when the host can act on them
@@ -192,7 +197,8 @@ public struct AccountAndLicenseSection: View {
         onCheckNow: @escaping () -> Void = {}, canManage: Bool = true, canAutoUpdate: Bool = true,
         channel: KitChannelState = .hidden, onChannel: ((String) -> Void)? = nil,
         checking: Bool = false, checkNote: CopyLine? = nil, checkFailed: Bool = false,
-        part: Part = .all, onApproveNearby: (() -> Void)? = nil, signOutFailed: Bool = false,
+        part: Part = .all, onApproveNearby: (() -> Void)? = nil, onAdd: (() -> Void)? = nil,
+        addExternal: Bool = false, addProblem: CopyLine? = nil, signOutFailed: Bool = false,
         onSignOutAnyway: (() -> Void)? = nil, onSignOutRetry: (() -> Void)? = nil,
         onDismissSignOutFailure: (() -> Void)? = nil, signOutError: CopyLine? = nil
     ) {
@@ -201,6 +207,9 @@ public struct AccountAndLicenseSection: View {
         self.onSignOutRetry = onSignOutRetry
         self.onDismissSignOutFailure = onDismissSignOutFailure
         self.signOutError = signOutError
+        self.onAdd = onAdd
+        self.addExternal = addExternal
+        self.addProblem = addProblem
         self.onApproveNearby = onApproveNearby
         self.checkFailed = checkFailed
         self.canManage = canManage
@@ -270,6 +279,12 @@ public struct AccountAndLicenseSection: View {
                         .kitRowHeight(52)
                     }
                     .tint(style.palette.accentFg)
+                }
+                if let onAdd, screen.shows("account.notInAccount") {
+                    addRow(style, onAdd)
+                }
+                if let addProblem {
+                    HolderProblemLine(line: addProblem)
                 }
                 if let onApproveNearby {
                     Button(action: onApproveNearby) {
@@ -376,16 +391,41 @@ public struct AccountAndLicenseSection: View {
         }
     }
 
+    /// A floating license is not in an account: Add your name and email (or the page that does it, ↗).
+    @ViewBuilder private func addRow(_ style: KitResolvedStyle, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                VStack(alignment: .leading, spacing: style.space(.xxs)) {
+                    PaneText(
+                        CopyLine(addExternal ? "signin.key.addInLocker" : "activate.recommend.action"), .body,
+                        color: .default)
+                    PaneText(CopyLine("account.notInAccount"), .meta, color: .muted)
+                }
+                Spacer()
+                Image(systemName: addExternal ? PolarisKitGlyph.newWindow : "chevron.right")
+                    .foregroundStyle(style.palette.textMuted)
+                    .accessibilityHidden(true)
+            }
+            .kitRowHeight(52)
+        }
+        .tint(style.palette.accentFg)
+        .accessibilityHint(addExternal ? strings.string("a11y.externalLink") : "")
+    }
+
+    /// The exit's words: a license held by its key alone is removed from the device (nothing is signed out of).
+    private var exitKey: String? {
+        if screen.shows("account.removeKey") { return "account.removeKey" }
+        return screen.shows("common.signOut") ? "common.signOut" : nil
+    }
+
     @ViewBuilder private func bottom(_ style: KitResolvedStyle) -> some View {
         Group {
-            if screen.shows("common.signOut") {
+            if let exit = exitKey {
                 Section {
-                    // A license held by a key alone has nobody to sign out: the exit forgets the key.
-                    let exit = CopyLine(screen.state == .keyOnly ? "account.removeKey" : "common.signOut")
                     Button(role: .destructive) {
                         confirmingSignOut = true
                     } label: {
-                        PaneText(exit, .body, color: .danger)
+                        PaneText(CopyLine(exit), .body, color: .danger)
                             .kitRowHeight(52, alignment: .leading)
                     }
                     .confirmationDialog(

@@ -59,9 +59,18 @@ public protocol AddToAccountHandle: AnyObject, Sendable {
     /// The code the person checks against the one Polaris Locker shows, when the sign-in has one.
     var userCode: String? { get }
     func wait() async throws -> AddToAccountWait
+    /// The page the person goes to when the sign-in is a code (`polaris.locker/device`); nil for a redirect.
+    var verificationUri: String? { get }
+    /// The same page with the code filled in: what the QR carries.
+    var verificationUriComplete: String? { get }
     /// Bring the browser tab back; false when nothing could open.
     func reopen() async -> Bool
     func cancel()
+}
+
+extension AddToAccountHandle {
+    public var verificationUri: String? { nil }
+    public var verificationUriComplete: String? { nil }
 }
 
 /// The narrow interface both gates implement.
@@ -91,11 +100,22 @@ public final class AddToAccountModel {
     public private(set) var email = ""
     /// `busy`: the code to check against Polaris Locker's, when the sign-in has one.
     public private(set) var userCode: String?
+    /// The code's page, as text, and the link its QR carries.
+    public private(set) var address: String?
+    public private(set) var link: String?
+    /// The page has opened once: the wait's button says "Open browser" until then.
+    public private(set) var opened = false
+    /// The last open failed: the screen says so, in the danger tone.
+    public private(set) var openFailed = false
+    /// Account sign-ins (owned, email-bound) and their wait: the same screen, run over this model's driver.
+    public let host: HolderHostState
 
     private let driver: any AddToAccountDriver
     /// Everything else the views read (platform, presentation, services, `licenseHolder`).
     private let base: KitInputs
     private let deviceKind: String?
+    /// Opened from Settings: the app is already running, so Added closes with Done.
+    private let fromSettings: Bool
     private var handle: (any AddToAccountHandle)?
     // Bumped when an attempt ends, so a late answer from an old one is dropped.
     private var epoch = 0
@@ -104,10 +124,15 @@ public final class AddToAccountModel {
     // The email of the account that signed in, when the sign-in named it.
     private var signedInEmail: String?
 
-    public init(driver: any AddToAccountDriver, base: KitInputs = KitInputs(), deviceKind: String? = nil) {
+    public init(
+        driver: any AddToAccountDriver, base: KitInputs = KitInputs(), deviceKind: String? = nil,
+        fromSettings: Bool = false
+    ) {
         self.driver = driver
         self.base = base
         self.deviceKind = deviceKind
+        self.fromSettings = fromSettings
+        self.host = HolderHostState(driver: driver)
     }
 
     // MARK: - What the views read
@@ -116,28 +141,71 @@ public final class AddToAccountModel {
     public var inputs: KitInputs {
         var i = base
         if step == .busy, let code = userCode, !code.isEmpty {
-            i.deviceCode = KitDeviceCode(phase: .waiting, userCode: code)
+            i.deviceCode = KitDeviceCode(phase: .waiting, userCode: code, verificationUri: address)
         }
         i.addToAccount = KitAddToAccount(
             step: step, field: field, deviceKind: deviceKind,
             typedEmail: step == .otherAccount ? typedEmail : nil,
-            signedEmail: step == .otherAccount ? signedEmail : nil)
+            signedEmail: step == .otherAccount ? signedEmail : nil,
+            fromSettings: fromSettings ? true : nil)
         return i
+    }
+
+    /// The email the license waits for, else the one typed: what an account sign-in is asked to use.
+    public var holderEmail: String? {
+        let held = (base.licenseHolder?.email ?? "").trimmed
+        return held.isEmpty ? nil : held
+    }
+
+    /// An account other than the expected one signed in (from Done, or from owned and email-bound): the
+    /// license is added nowhere, and Try again goes back to the form. Both emails show masked.
+    public func showOtherAccount(expected: String, signed: String) {
+        endAttempt()
+        signedIn = false
+        clearWait()
+        typedEmail = KitFormat.maskEmail(expected)
+        signedEmail = KitFormat.maskEmail(signed)
+        step = .otherAccount
+        field = nil
+    }
+
+    /// "Sign in to that account" and "Use another account": an account sign-in over this model's driver. It names the
+    /// account it was asked for (the license's email, else the one typed) and is not done on any other: where the
+    /// signed-in account is known and differs it lands on `other-account`. True when the sign-in ended on the account.
+    public func signInToAccount() async -> Bool {
+        // The typed email is only a hint; the license's own is what the account is checked against.
+        let hint = holderEmail ?? (email.trimmed.isEmpty ? nil : email.trimmed)
+        let ok = await host.signIn(loginHint: hint, expect: holderEmail)
+        if !ok, let m = host.takeMismatch() { showOtherAccount(expected: m.expected, signed: m.signed) }
+        return ok
     }
 
     /// The screen for the current step.
     public var screen: KitScreen<AddToAccountState> { KitStates.addToAccount(inputs) }
 
-    /// The person typed in a field; an `invalid` step goes back to `form`. A busy attempt ignores typing.
+    /// The person typed in a field. An `invalid` step clears the error of the field that changed (the other's
+    /// stays); a write of the value already there changes nothing (a macOS field writes when it takes focus,
+    /// which is not typing). A busy attempt ignores typing.
     public func setField(_ which: AddToAccountField, _ value: String) {
         if step == .busy { return }
         switch which {
-        case .name: name = value
-        case .email: email = value
+        case .name:
+            if name == value { return }
+            name = value
+        case .email:
+            if email == value { return }
+            email = value
         }
         if step == .invalid {
-            step = .form
-            field = nil
+            // Only the field that changed stops being wrong.
+            switch (field ?? .both, which) {
+            case (.name, .name), (.email, .email):
+                step = .form
+                field = nil
+            case (.both, .name): field = .email
+            case (.both, .email): field = .name
+            default: break
+            }
         }
     }
 
@@ -179,7 +247,11 @@ public final class AddToAccountModel {
     /// Bring the browser tab back while the sign-in runs. Call it inside the press.
     public func reopen() async {
         guard let handle else { return }
-        _ = await handle.reopen()
+        let mine = epoch
+        let ok = await handle.reopen()
+        guard current(mine) else { return }
+        opened = opened || ok
+        openFailed = !ok
     }
 
     /// Cancel: back to the form with the fields kept, any sign-in in flight let go.
@@ -190,10 +262,11 @@ public final class AddToAccountModel {
         signedInEmail = nil
         step = .form
         field = nil
-        userCode = nil
+        clearWait()
         typedEmail = nil
         signedEmail = nil
         old?.cancel()
+        host.cancel()
     }
 
     // MARK: - The attempt
@@ -209,7 +282,15 @@ public final class AddToAccountModel {
         guard current(mine) else { return }
         step = next
         field = nil
+        clearWait()
+    }
+
+    private func clearWait() {
         userCode = nil
+        address = nil
+        link = nil
+        opened = false
+        openFailed = false
     }
 
     private func run(name: String, email: String) async {
@@ -220,7 +301,7 @@ public final class AddToAccountModel {
         previous?.cancel()
         step = .busy
         field = nil
-        userCode = nil
+        clearWait()
         do {
             if !signedIn {
                 guard try await signIn(name: name, email: email, mine: mine) else { return }
@@ -266,7 +347,19 @@ public final class AddToAccountModel {
             return false
         }
         handle = opened
-        if let code = opened.userCode, !code.isEmpty { userCode = code }
+        if let code = opened.userCode, !code.isEmpty {
+            userCode = code
+            address = opened.verificationUri.flatMap { $0.isEmpty ? nil : $0 }
+            link = opened.verificationUriComplete.flatMap { $0.isEmpty ? nil : $0 }
+            // A code sign-in opens nothing by itself: open its page now, and say so when that fails.
+            let ok = await opened.reopen()
+            guard current(mine) else { return false }
+            self.opened = ok
+            openFailed = !ok
+        } else {
+            // A redirect sign-in opened its own browser when it started.
+            self.opened = true
+        }
         while true {
             let answer = try await opened.wait()
             guard current(mine) else { return false }

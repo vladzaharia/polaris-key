@@ -56,6 +56,8 @@ struct KitText: View {
     var alignment: TextAlignment = .leading
     /// A weight over the role's own (the confirm step's license line reads 500).
     var weight: Font.Weight?
+    /// A caption, not a control: the platform's button casing (macOS title case) does not apply.
+    var plain = false
 
     @Environment(\.polarisKeyStrings) private var strings
     #if os(macOS)
@@ -64,8 +66,9 @@ struct KitText: View {
 
     init(
         _ line: CopyLine, _ role: KitTextRole = .body, color: KitTextColor = .default,
-        alignment: TextAlignment = .leading, weight: Font.Weight? = nil
+        alignment: TextAlignment = .leading, weight: Font.Weight? = nil, plain: Bool = false
     ) {
+        self.plain = plain
         self.line = line
         self.role = role
         self.color = color
@@ -80,6 +83,11 @@ struct KitText: View {
         self.init(CopyLine(key, args), role, color: color, alignment: alignment)
     }
 
+    /// The words: with the platform's casing for a control, as written for a caption.
+    private var shown: String {
+        plain ? strings.catalog.format(line, locale: strings.locale) : strings.string(line)
+    }
+
     private var resolvedAlignment: TextAlignment {
         #if os(macOS)
             return leading ? .leading : alignment
@@ -90,7 +98,7 @@ struct KitText: View {
 
     var body: some View {
         kitStyle { style in
-            Text(strings.string(line))
+            KitLeadText(shown)
                 .font(weight.map { style.font(role).weight($0) } ?? style.font(role))
                 .foregroundStyle(color.resolve(style.palette))
                 .multilineTextAlignment(resolvedAlignment)
@@ -122,4 +130,23 @@ extension KitScreen {
     /// The line for `key` with the state's arguments, or the bare key's line when the state does
     /// not carry it (a part drawn outside its state).
     func lineOrKey(_ key: String) -> CopyLine { line(key) ?? CopyLine(key) }
+}
+
+/// A formatted line as `Text`. A reason's lead-in sits between `**` marks (`KitFormat.leadParts`):
+/// each run is its own `Text`, the lead-in semibold, joined into one so VoiceOver reads a sentence.
+/// The string is never handed to a markup parser.
+struct KitLeadText: View {
+    let string: String
+
+    init(_ string: String) { self.string = string }
+
+    var body: some View {
+        if string.contains("**") {
+            KitFormat.leadParts(string).reduce(Text(verbatim: "")) { joined, run in
+                joined + (run.strong ? Text(verbatim: run.text).fontWeight(.semibold) : Text(verbatim: run.text))
+            }
+        } else {
+            Text(verbatim: string)
+        }
+    }
 }

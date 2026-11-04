@@ -93,8 +93,16 @@ public struct PolarisKeyGate<Content: View>: View {
         let gate = model.gate
         switch gate.state {
         case .licensed, .grace:
-            // A sign-in this device just finished holds the app behind the link offer.
-            if model.holdsApp { linkHold } else { content() }
+            // A key just activated: "<Product> is ready" comes before the product, the key held in memory until
+            // Start using (UK-43).
+            if let holders = model.holders {
+                HolderFlowView(flow: holders)
+            } else if model.holdsApp {
+                // A sign-in this device just finished holds the app behind the link offer.
+                linkHold
+            } else {
+                content()
+            }
         case .booting, .none:
             BootView(screen: gate)
         case .error:
@@ -203,7 +211,7 @@ public struct PolarisKeyGate<Content: View>: View {
 
     /// The licensed app is showing: the only time the banner and the update sheet draw.
     private var appShowing: Bool {
-        model.gate.state == .licensed || model.gate.state == .grace
+        (model.gate.state == .licensed || model.gate.state == .grace) && model.holders == nil
     }
 
     /// A mandatory update owns the screen as a sheet with no dismiss (§4.3).

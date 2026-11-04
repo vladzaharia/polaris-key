@@ -73,6 +73,7 @@ const ROWS := [
 	["cloudSync.transfer.cancel", "res://addons/polaris_key/services/cloud_sync/transfer_handle.gd", "method", "cancel"],
 	["cloudSync.transferEvent", SDK, "signal", "event"],
 	["client.discover", SDK, "method", "discover"],
+	["client.portal", SDK, "method", "portal"],
 	["client.presentation", SDK, "method", "presentation"],
 	["client.presentationIcon", SDK, "method", "presentation_icon"],
 	["client.capabilities", SDK, "method", "capabilities"],

@@ -4733,7 +4733,11 @@
       "sdks": {
         "node": {},
         "python": {},
-        "godot": {}
+        "godot": {},
+        "swift": {
+          "shape": "property",
+          "reason": "a stored property in Swift"
+        }
       },
       "layer": "client"
     },

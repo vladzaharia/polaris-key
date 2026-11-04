@@ -184,6 +184,8 @@ final class KitRenderTests: XCTestCase {
         // and an offer with a long file name.
         "LinkPairing.code", "LinkPairing.confirm", "LinkPairing.failed.full",
         "TransferOffer.ask.long-name",
+        // The holder screens (UK-43.5): AX5 is where a title could break mid-word.
+        "ActivateDone.ready", "AddToAccount.form", "AddToAccount.waiting", "AddToAccount.email-bound",
     ]
 
     static let all = [
@@ -238,6 +240,15 @@ final class KitRenderTests: XCTestCase {
         "LinkPairing.unavailable", "TransferOffer.ask", "TransferOffer.ask.unnamed",
         "TransferOffer.ask.long-name", "TransferOffer.receiving", "TransferOffer.done",
         "TransferOffer.failed",
+        // Activation without an account (UK-43.5).
+        "ActivateDone.ready", "ActivateDone.ready.no-cloud-sync",
+        "ActivateDone.ready.identity-off", "ActivateDone.ready.portal", "ActivateDone.waiting",
+        "AddToAccount.form", "AddToAccount.invalid", "AddToAccount.invalid.name",
+        "AddToAccount.invalid.email", "AddToAccount.busy", "AddToAccount.waiting",
+        "AddToAccount.added", "AddToAccount.added.no-cloud-sync",
+        "AddToAccount.added.from-settings", "AddToAccount.owned", "AddToAccount.email-bound",
+        "AddToAccount.other-account", "AddToAccount.failed", "SignIn.key-done", "SignIn.attach",
+        "SignIn.attach.invalid", "SignIn.added",
     ]
 
     /// The states rendered again in a launch pack, for the catalog's i18n proof.

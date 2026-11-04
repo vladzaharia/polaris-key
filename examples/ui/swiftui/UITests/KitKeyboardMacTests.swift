@@ -78,4 +78,19 @@ final class KitKeyboardMacTests: XCTestCase {
         let landed = [button(app, "Sign in"), button(app, "License Key")].contains(where: hasFocus)
         XCTAssertTrue(landed, "focus returns to Welcome's controls")
     }
+
+    /// The AddToAccount form after Continue with a bad email: the error stays (a macOS field writes its binding when
+    /// it takes focus, which must not clear it).
+    func testTheEmailErrorStaysWhenFocusMovesToTheField() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-pkeyState", "AddToAccount.invalid.email", "-pkeyFreezeTime", "-pkeyWindow", "900x640"]
+        app.launch()
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 10))
+        let error = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "email address")).firstMatch
+        XCTAssertTrue(error.waitForExistence(timeout: 5), "the error shows beside the field")
+        // The focus move lands, and the person's click in the field: the error is still there.
+        let field = app.textFields.element(boundBy: 1)
+        if field.exists { field.click() }
+        XCTAssertTrue(error.exists, "focusing the field does not clear the error")
+    }
 }

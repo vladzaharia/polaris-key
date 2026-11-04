@@ -408,9 +408,8 @@
       "note": "I-10b.13: License in another account (a refusal with Sign in to that account when the server gave a valid signInUrl, a QR on tvOS), the gate model's D3 mapping (PolarisKeyGateModel.kitOutcome: chooseLicense is the matrix's choose) with LicenseChoiceModel wired into the gate (presentLicenseChoice, selectLicense, confirmLicenseChoice, openChoiceReplace, replaceChoiceDevice, cancelLicenseChoice), and the signed-in line \"Signed in as {name} · {tier} license\"."
     },
     "ui.kit.holders": {
-      "status": "planned",
-      "wp": "UK-43",
-      "note": "Native port of the UK-42 holders views and AddToAccountModel (the holders rows of ui-matrix.json are the fixtures)."
+      "status": "implemented",
+      "note": "UK-43.3-.6: the holders family (ActivateDone, AddToAccount) from the holders rows of ui-matrix.json, AddToAccountModel and HolderHostState over the SDK driver (redirect with no URI, device code on redirect-unavailable), the gate's Done step after a key activates (the key in memory until Start using) with addIn app on iPhone, iPad and Mac and portal on tvOS or with Identity off (#key= only on the product's own origins, never on a TV), and the floating-license row in Settings with Remove license from this device."
     },
     "ui.kit.keyentry": {
       "status": "implemented",

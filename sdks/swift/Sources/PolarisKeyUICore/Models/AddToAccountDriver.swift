@@ -79,6 +79,11 @@ public struct IdentityAddToAccountDriver: AddToAccountDriver {
             }
         }
 
+        var verificationUri: String? { session.verificationUri.isEmpty ? nil : session.verificationUri }
+        var verificationUriComplete: String? {
+            session.verificationUriComplete.isEmpty ? nil : session.verificationUriComplete
+        }
+
         func reopen() async -> Bool { await session.reopen() }
         func cancel() { session.cancel() }
     }
