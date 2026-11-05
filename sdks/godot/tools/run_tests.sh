@@ -15,7 +15,17 @@
 #                     PKEY_TEST_PNG_UPDATE=1 records them
 #   PKEY_TEST_MATRIX  1 runs the UI resolution matrix (step 3b, the ui_matrix suite) whatever the
 #                     selection; it runs by default only with the `ci` selection
-#   PKEY_UI_MATRIX_SHARDS  parallel shards of the UI matrix step (default 4, or 2 per path with PATHS=both; 1 = one process per path)
+#   PKEY_UI_MATRIX_PATHS  both | 0 | 1 | auto (default): the presentation path(s) the UI matrix runs: both = the scrim
+#                     and the opaque page, 0 = the scrim only (PKEY_UI_REDUCE_TRANSPARENCY=0), 1 = the opaque
+#                     page only, auto = the engine's own path
+#   PKEY_UI_MATRIX_SHARDS  shards the cases of each matrix path are split into (default 4, or 2 per path with
+#                     PATHS=both; 1 = one process per path)
+#   PKEY_UI_MATRIX_SHARD_RANGE  lo-hi (default: all of them): this run executes only shards lo..hi (inclusive) of
+#                     the SHARDS, so CI can spread one path over several jobs; the run still checks that its shards
+#                     ran exactly the cases the (unsharded) listing assigns to them
+#   PKEY_TEST_PARALLEL  1 runs the `ci` selection of the editor and template steps as the four disjoint sets
+#                     ci_p1..ci_p4 (tests/runner.gd) in parallel processes, each with its own HOME (so its own
+#                     `user://`) and TMPDIR; any other selection runs as one process
 #   PKEY_TEST_TIMEOUT seconds per step (default: 300)
 #   PKEY_TEST_PART    all (default) | editor | editor-a | editor-b | matrix | template: which heavy
 #                     steps run, so CI can spread them over runners. editor = the editor run + the
@@ -168,12 +178,21 @@ STEP_STATUS=0
 step() {
   local name="$1" kind="$2"
   shift 2
-  local log="$LOGS/$name.log" elapsed=0 started reason=""
+  local log="$LOGS/$name.log" elapsed=0 started reason="" shown=0 size
   started=$(date +%s)
   echo "── $name: $*"
   HOME="$RUN_HOME" "$@" >"$log" 2>&1 &
   local pid=$!
   while kill -0 "$pid" 2>/dev/null; do
+    # Stream the log as it grows (not only after the step ends), unless STEP_LIVE=0 (parallel steps,
+    # whose logs would interleave): a long step is then visible while it runs.
+    if [ "${STEP_LIVE:-1}" = 1 ]; then
+      size=$(wc -c <"$log" | tr -d ' ')
+      if [ "$size" -gt "$shown" ]; then
+        tail -c +$((shown + 1)) "$log"
+        shown=$size
+      fi
+    fi
     if grep -Eq "$FATAL" "$log"; then
       reason="fatal line"
       break
@@ -200,7 +219,11 @@ step() {
       reason="no final 'PKEY-TEST SUMMARY … failed=0'"
     fi
   fi
-  cat "$log"
+  if [ "${STEP_LIVE:-1}" = 1 ]; then
+    tail -c +$((shown + 1)) "$log"
+  else
+    cat "$log"
+  fi
   local took=$(($(date +%s) - started))
   if [ -n "$reason" ]; then
     echo "── $name: FAIL ($reason) in ${took}s; log: $log"
@@ -209,6 +232,37 @@ step() {
   fi
   echo "── $name: ok in ${took}s"
   return 0
+}
+
+EXTRA=("$@")
+# launch_editor / launch_template <selection>: one suite process (exec: the step's watchdog kills Godot itself).
+launch_editor() { exec "$GODOT" --headless --path "$PROJECT" -- --pkey-test "$1" ${EXTRA[@]+"${EXTRA[@]}"}; }
+launch_template() { exec "$BUILD/pkey_conformance.x86_64" --headless -- --pkey-test "$1" ${EXTRA[@]+"${EXTRA[@]}"}; }
+
+# run_selection <step> <launcher>: the selection as one process, or, for `ci` with PKEY_TEST_PARALLEL=1,
+# as the four disjoint sets ci_p1..ci_p4 in parallel processes (a hosted runner has 4 vCPUs). Each
+# process has its own log ($name-p<i>.log), HOME (user://, editor settings) and TMPDIR; every suite uses
+# loopback ports bound on port 0 and writes only under user://, so the processes share nothing but the
+# read-only project, the corpus and the editor copy. The step fails when any process fails.
+run_selection() {
+  local name="$1" launcher="$2"
+  if [ "${PKEY_TEST_PARALLEL:-0}" = 1 ] && [ "$SUITES" = ci ]; then
+    local pids="" g failed=0 pid
+    for g in 1 2 3 4; do
+      (
+        STEP_LIVE=0
+        RUN_HOME="$RUN_DIR/home-$name-p$g"
+        export TMPDIR="$RUN_DIR/tmp-$name-p$g"
+        mkdir -p "$RUN_HOME" "$TMPDIR"
+        step "$name-p$g" run "$launcher" "ci_p$g"
+      ) &
+      pids="$pids $!"
+    done
+    for pid in $pids; do wait "$pid" || failed=1; done
+    [ "$failed" -eq 0 ]
+  else
+    step "$name" run "$launcher" "$SUITES"
+  fi
 }
 
 T0=$(date +%s)
@@ -247,7 +301,7 @@ done
 
 # 3. The editor run.
 if part editor; then
-  step editor run "$GODOT" --headless --path "$PROJECT" -- --pkey-test "$SUITES" "$@" || exit 1
+  run_selection editor launch_editor || exit 1
 fi
 
 # 3b. The UI resolution matrix (tests/ui/matrix.gd): every drop-in screen laid out at every size,
@@ -260,11 +314,15 @@ if part matrix && { [ "$SUITES" = ci ] || [ "${PKEY_TEST_MATRIX:-0}" = 1 ]; }; t
   # (PKEY_UI_REDUCE_TRANSPARENCY=0, the see-through glass card) and the opaque page (=1). The engines
   # disagree on which one a headless run takes by default (4.4.1 the scrim, 4.7 on macOS the opaque
   # page, GODOT-441b), so the newest lane asks for both. Unset: one run, the engine's own path.
-  if [ "${PKEY_UI_MATRIX_PATHS:-auto}" = both ]; then
-    MATRIX_PATHS="0 1"
-  else
-    MATRIX_PATHS="auto"
-  fi
+  case "${PKEY_UI_MATRIX_PATHS:-auto}" in
+    both) MATRIX_PATHS="0 1" ;;
+    0 | 1) MATRIX_PATHS="$PKEY_UI_MATRIX_PATHS" ;;
+    auto) MATRIX_PATHS="auto" ;;
+    *)
+      echo "run_tests: PKEY_UI_MATRIX_PATHS=$PKEY_UI_MATRIX_PATHS is not both, 0, 1 or auto" >&2
+      exit 2
+      ;;
+  esac
   # PKEY_UI_MATRIX_SHARDS=<n> splits the cases of each path into n deterministic shares
   # (`--pkey-shard <i>/<n>`, tests/suite_ui_matrix.gd), and every share of every path runs as its own
   # PARALLEL process (a hosted runner has 4 vCPUs): default n = 4 / paths (4, or 2 for `both`), 1 =
@@ -273,7 +331,7 @@ if part matrix && { [ "$SUITES" = ci ] || [ "${PKEY_TEST_MATRIX:-0}" = 1 ]; }; t
   # per-step limit; the step fails when any of them fails or times out. The shards are checked
   # against an unsharded `--pkey-list` dry run: together they must run exactly the listed cases,
   # each once, per path.
-  if [ "$MATRIX_PATHS" = auto ]; then NPATHS=1; else NPATHS=2; fi
+  case "$MATRIX_PATHS" in "0 1") NPATHS=2 ;; *) NPATHS=1 ;; esac
   SHARDS="${PKEY_UI_MATRIX_SHARDS:-$((4 / NPATHS))}"
   case "$SHARDS" in
     '' | *[!0-9]* | 0)
@@ -281,23 +339,49 @@ if part matrix && { [ "$SUITES" = ci ] || [ "${PKEY_TEST_MATRIX:-0}" = 1 ]; }; t
       exit 2
       ;;
   esac
+  # PKEY_UI_MATRIX_SHARD_RANGE=lo-hi: this run executes shards lo..hi of the SHARDS (default: all).
+  SHARD_LO=0
+  SHARD_HI=$((SHARDS - 1))
+  if [ -n "${PKEY_UI_MATRIX_SHARD_RANGE:-}" ]; then
+    SHARD_LO="${PKEY_UI_MATRIX_SHARD_RANGE%-*}"
+    SHARD_HI="${PKEY_UI_MATRIX_SHARD_RANGE#*-}"
+    case "$SHARD_LO$SHARD_HI" in
+      '' | *[!0-9]*)
+        echo "run_tests: PKEY_UI_MATRIX_SHARD_RANGE=$PKEY_UI_MATRIX_SHARD_RANGE is not <lo>-<hi>" >&2
+        exit 2
+        ;;
+    esac
+    if [ "$SHARD_LO" -gt "$SHARD_HI" ] || [ "$SHARD_HI" -ge "$SHARDS" ]; then
+      echo "run_tests: PKEY_UI_MATRIX_SHARD_RANGE=$PKEY_UI_MATRIX_SHARD_RANGE is outside the $SHARDS shards" >&2
+      exit 2
+    fi
+  fi
   if [ "$SHARDS" -gt 1 ]; then
     (
       TIMEOUT="${PKEY_UI_MATRIX_TIMEOUT:-1800}"
-      step ui-matrix-list plain "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix --pkey-list
+      step ui-matrix-list plain "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix --pkey-shard "0/$SHARDS" --pkey-list
     ) || exit 1
     sed -n 's/^PKEY-MATRIX-CASE //p' "$LOGS/ui-matrix-list.log" | sort >"$LOGS/ui-matrix-cases.txt"
     if [ ! -s "$LOGS/ui-matrix-cases.txt" ]; then
       echo "── ui-matrix: FAIL (--pkey-list printed no cases)"
       exit 1
     fi
+    # The cases this run owns: those of its shards (the whole list when it runs every shard).
+    sed -n 's/^PKEY-MATRIX-OWNER //p' "$LOGS/ui-matrix-list.log" |
+      awk -v lo="$SHARD_LO" -v hi="$SHARD_HI" '$1 >= lo && $1 <= hi { sub(/^[0-9]+ /, ""); print }' |
+      sort >"$LOGS/ui-matrix-owned.txt"
+    if [ ! -s "$LOGS/ui-matrix-owned.txt" ]; then
+      echo "── ui-matrix: FAIL (shards $SHARD_LO-$SHARD_HI own no case)"
+      exit 1
+    fi
   fi
   pids=""
   for path in $MATRIX_PATHS; do
     MNAME="ui-matrix$([ "$path" = auto ] || echo "-rt$path")"
-    i=0
-    while [ "$i" -lt "$SHARDS" ]; do
+    i="$SHARD_LO"
+    while [ "$i" -le "$SHARD_HI" ]; do
       (
+        STEP_LIVE=0
         TIMEOUT="${PKEY_UI_MATRIX_TIMEOUT:-1800}"
         if [ "$path" != auto ]; then
           export PKEY_UI_REDUCE_TRANSPARENCY="$path"
@@ -323,18 +407,18 @@ if part matrix && { [ "$SUITES" = ci ] || [ "${PKEY_TEST_MATRIX:-0}" = 1 ]; }; t
     for path in $MATRIX_PATHS; do
       MNAME="ui-matrix$([ "$path" = auto ] || echo "-rt$path")"
       : >"$LOGS/$MNAME-ran.unsorted"
-      i=0
-      while [ "$i" -lt "$SHARDS" ]; do
+      i="$SHARD_LO"
+      while [ "$i" -le "$SHARD_HI" ]; do
         sed -n 's/^PKEY-MATRIX-RAN //p' "$LOGS/$MNAME-$i.log" >>"$LOGS/$MNAME-ran.unsorted"
         i=$((i + 1))
       done
       sort "$LOGS/$MNAME-ran.unsorted" >"$LOGS/$MNAME-ran.txt"
-      if ! cmp -s "$LOGS/ui-matrix-cases.txt" "$LOGS/$MNAME-ran.txt"; then
-        echo "── $MNAME: FAIL (the $SHARDS shards did not run exactly the $(wc -l <"$LOGS/ui-matrix-cases.txt" | tr -d ' ') listed cases once each)"
-        diff "$LOGS/ui-matrix-cases.txt" "$LOGS/$MNAME-ran.txt" | head -n 20
+      if ! cmp -s "$LOGS/ui-matrix-owned.txt" "$LOGS/$MNAME-ran.txt"; then
+        echo "── $MNAME: FAIL (shards $SHARD_LO-$SHARD_HI of $SHARDS did not run exactly their $(wc -l <"$LOGS/ui-matrix-owned.txt" | tr -d ' ') listed cases once each)"
+        diff "$LOGS/ui-matrix-owned.txt" "$LOGS/$MNAME-ran.txt" | head -n 20
         exit 1
       fi
-      echo "── $MNAME: ok, $SHARDS shards ran all $(wc -l <"$LOGS/ui-matrix-cases.txt" | tr -d ' ') cases once each"
+      echo "── $MNAME: ok, shards $SHARD_LO-$SHARD_HI of $SHARDS ran their $(wc -l <"$LOGS/ui-matrix-owned.txt" | tr -d ' ') of the $(wc -l <"$LOGS/ui-matrix-cases.txt" | tr -d ' ') listed cases once each"
     done
   fi
 fi
@@ -396,7 +480,7 @@ if part template && [ -n "${GODOT_TEMPLATE:-}" ]; then
     --export-pack "Conformance (Linux)" "$BUILD/pkey_conformance.pck" || exit 1
   cp "$GODOT_TEMPLATE" "$BUILD/pkey_conformance.x86_64"
   chmod +x "$BUILD/pkey_conformance.x86_64"
-  step template run "$BUILD/pkey_conformance.x86_64" --headless -- --pkey-test "$SUITES" "$@" || exit 1
+  run_selection template launch_template || exit 1
 fi
 
 echo "── run_tests: all steps green in $(($(date +%s) - T0))s"
