@@ -898,7 +898,7 @@
     <string name="saveConflict_chooseAgain">다시 선택</string>
     <string name="saveConflict_chooseAgain__macos">다시 선택</string>
     <!-- SaveConflict: shown on the choices when the other copy changed again while the person's choice was being applied. Nothing was applied. -->
-    <string name="saveConflict_reopened">다른 기기에서 다시 저장되었습니다. 다시 선택하세요.</string>
+    <string name="saveConflict_reopened">다른 기기에서 다시 저장되었어요. 다시 선택하세요.</string>
     <!-- SaveConflict: the choice failed after the other copy was deleted; only this device's save exists. -->
     <string name="saveConflict_failedDeleted">선택을 적용하지 못했어요. 저장 데이터는 그대로예요.</string>
     <!-- SaveConflict: result title after Keep this device's version. -->

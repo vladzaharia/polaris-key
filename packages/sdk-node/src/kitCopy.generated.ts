@@ -4599,7 +4599,7 @@ export const KIT_COPY: Readonly<
     "saveConflict.newerOther": "Plus récente",
     "saveConflict.chooseAgain": "Choisir à nouveau",
     "saveConflict.reopened":
-      "Enregistré de nouveau sur un autre appareil. Choisissez à nouveau.",
+      "Enregistrée de nouveau sur un autre appareil. Choisissez à nouveau.",
     "saveConflict.failedDeleted":
       "Impossible d’appliquer votre choix. Votre sauvegarde est inchangée.",
     "saveConflict.keptLocalTitle": "Version de cet appareil conservée",
@@ -10829,7 +10829,7 @@ export const KIT_COPY: Readonly<
     "saveConflict.newerOther": "Più recente",
     "saveConflict.chooseAgain": "Scegli di nuovo",
     "saveConflict.reopened":
-      "Salvato di nuovo su un altro dispositivo. Scegli di nuovo.",
+      "Salvato di nuovo su un altro dispositivo. Scegli ancora.",
     "saveConflict.failedDeleted":
       "Impossibile applicare la scelta. Il salvataggio è invariato.",
     "saveConflict.keptLocalTitle": "Versione di questo dispositivo mantenuta",
@@ -14979,7 +14979,7 @@ export const KIT_COPY: Readonly<
     "saveConflict.newerOther": "최신",
     "saveConflict.chooseAgain": "다시 선택",
     "saveConflict.reopened":
-      "다른 기기에서 다시 저장되었습니다. 다시 선택하세요.",
+      "다른 기기에서 다시 저장되었어요. 다시 선택하세요.",
     "saveConflict.failedDeleted":
       "선택을 적용하지 못했어요. 저장 데이터는 그대로예요.",
     "saveConflict.keptLocalTitle": "이 기기의 버전을 유지했어요",

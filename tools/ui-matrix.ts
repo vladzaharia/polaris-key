@@ -5082,7 +5082,7 @@ function saveConflictFamily(a: A): Draft[] {
         bothAvailable: true,
         newer: "remote",
         reopened: true,
-        remote: { when: "today, 10:44", device: "Maya's Steam Deck" },
+        remote: { when: "today, 14:05", device: "Maya's Steam Deck" },
       }),
       "SaveConflict",
       "choose",
