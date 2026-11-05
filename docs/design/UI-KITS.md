@@ -1455,6 +1455,32 @@ Mockups: [web](ui-kits/shots/web-settings-light.png),
   updates are not; the bar reports its own range. Waiting draws the offline glyph for a connection
   and the info glyph for power or the app being in the background, never a warning glyph.
 
+#### LinkPairing and TransferOffer
+
+- **Which states split.** Only the LinkPairing code and confirm states and the TransferOffer ask
+  state have two panes. The message states (searching or open, linked, failed, receiving, done)
+  never split: a message screen stays one centred column.
+- **Layout.** Start pane: the title, the lede and the code (LinkPairing) or the offer card
+  (TransferOffer: the device, the file name middle-shortened, the size). End pane, top-aligned: the
+  reported-device line, the categories, then the actions (Codes match and Not a match; Accept and
+  Decline). Both panes start at the top and nothing is docked. The reading and focus order is
+  start pane then end pane and is the same as the one-column order, so the categories still come
+  before Codes match; the DOM or view order does not change.
+- **When.** Two panes in a window at least 600 dp/pt/px wide and under 480 tall at 1x text. One
+  column everywhere else in a window: portrait, a window under 600 wide, 200 % text and any
+  accessibility text size. The decision is then in the first viewport without scrolling. TV and
+  consoles (the web kits' platform class `tv` or `console`) always use two panes, at any text
+  size, inside the title-safe area; the start pane stays visible or reachable. "One column at
+  200 % text" applies to non-TV windows only. A card taller than the window never starts above its
+  top edge: it centres safely and the window scrolls.
+- **Focus.** First focus is Not a match in the LinkPairing code state (the confirm state has only
+  Cancel) and Decline in the TransferOffer ask state, with the 250 ms guard against a stray press.
+  The web kits focus the heading first by design (the ui-core model's `focus: "heading"`), and
+  Tab then reaches Codes match or Accept. On TV the focused action keeps its bring-into-view
+  margin inside the title-safe area, so it never sits in overscan.
+- **Godot.** Once Godot draws these screens it uses its own two-pane rule, `two_pane_fits()`
+  (landscape, 680 px or wider, aspect 1.5 or more), as SaveConflict does: one rule per kit.
+
 ### 4.4 Accessibility (every kit)
 
 WCAG 2.2 AA in both themes (BRAND §9) plus:
@@ -1706,6 +1732,9 @@ landscape layouts where the window is landscape).
 | Godot game sizes   | 1280 × 720, 1280 × 800 (Steam Deck), 2560 × 1440, 3840 × 2160 at scale 2 | Godot                                                                                                                                   |
 | 200 % text or zoom | Phone portrait, phone landscape and desktop, again                       | every GUI kit: browser zoom 200 % (web), AX3 Dynamic Type (Apple), font scale 2.0 (Compose), font scale 2 (Qt), content scale 2 (Godot) |
 | 400 % zoom         | 1280 × 1024 at 400 % (320 × 256 CSS px, WCAG 1.4.10)                     | web kits and hosted pages: no page-level horizontal scroll; a table that scrolls sideways sits in a labelled, focusable region          |
+
+LinkPairing and TransferOffer are checked at 844 × 390, 640 × 360 and TV 960 × 540 (title-safe
+insets): two panes, and the decision actions inside the first viewport, in both themes.
 
 The web boards draw the rows 844 × 390, 640 × 360, 820 × 1180, 1180 × 820 and 1920 × 1080 beside
 390 × 844 and 1440 × 900. Forced-colors runs in both schemes (not dark only), and a
