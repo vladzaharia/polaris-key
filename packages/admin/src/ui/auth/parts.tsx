@@ -48,7 +48,7 @@ export const AUTH_METHOD_ELEMENT_CLASS =
 
 /** The card's text input: 48 px at 16 px, focus is the 1 px border in strong ink, no ring, no offset (§4). */
 export const AUTH_INPUT_CLASS =
-  "h-12 pointer-coarse:h-12 text-base focus-visible:border-fg-strong focus-visible:outline-0 focus-visible:outline-offset-0";
+  "h-12 pointer-coarse:h-12 text-base focus-visible:border-fg-strong focus-visible:transition-none focus-visible:outline-0 focus-visible:outline-offset-0";
 
 /** A help line under a field or a checkbox (§2 Secondary: 14/20 at 400, muted). */
 export const AUTH_HELP_CLASS = "text-sm/5 text-fg-muted";
