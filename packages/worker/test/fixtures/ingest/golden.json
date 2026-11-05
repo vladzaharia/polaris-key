@@ -864,7 +864,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -882,7 +883,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -900,7 +902,8 @@
           "source": "console",
           "rank": 0,
           "policy_offline_grace_days": 14,
-          "implicit": 1
+          "implicit": 1,
+          "on_expiry": null
         }
       ]
     },
@@ -1402,7 +1405,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -1420,7 +1424,8 @@
           "source": "console",
           "rank": 0,
           "policy_offline_grace_days": 14,
-          "implicit": 1
+          "implicit": 1,
+          "on_expiry": null
         }
       ]
     },
@@ -2274,7 +2279,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -2292,7 +2298,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -2310,7 +2317,8 @@
           "source": "console",
           "rank": 0,
           "policy_offline_grace_days": 14,
-          "implicit": 1
+          "implicit": 1,
+          "on_expiry": null
         }
       ]
     },
@@ -3526,7 +3534,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -3544,7 +3553,8 @@
           "source": "console",
           "rank": 0,
           "policy_offline_grace_days": 14,
-          "implicit": 1
+          "implicit": 1,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -3562,7 +3572,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         }
       ]
     },
@@ -4529,7 +4540,8 @@
           "source": "console",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -4547,7 +4559,8 @@
           "source": "console",
           "rank": 0,
           "policy_offline_grace_days": 14,
-          "implicit": 1
+          "implicit": 1,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -4565,7 +4578,8 @@
           "source": "console",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         }
       ]
     },
@@ -5460,7 +5474,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -5478,7 +5493,8 @@
           "source": "console",
           "rank": 0,
           "policy_offline_grace_days": 14,
-          "implicit": 1
+          "implicit": 1,
+          "on_expiry": null
         }
       ]
     },
@@ -6474,7 +6490,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -6492,7 +6509,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -6510,7 +6528,8 @@
           "source": "console",
           "rank": 0,
           "policy_offline_grace_days": 14,
-          "implicit": 1
+          "implicit": 1,
+          "on_expiry": null
         }
       ]
     },
@@ -7428,7 +7447,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -7446,7 +7466,8 @@
           "source": "console",
           "rank": 0,
           "policy_offline_grace_days": 14,
-          "implicit": 1
+          "implicit": 1,
+          "on_expiry": null
         }
       ]
     },
@@ -8344,7 +8365,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -8362,7 +8384,8 @@
           "source": "console",
           "rank": 0,
           "policy_offline_grace_days": 14,
-          "implicit": 1
+          "implicit": 1,
+          "on_expiry": null
         }
       ]
     },
@@ -9260,7 +9283,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -9278,7 +9302,8 @@
           "source": "console",
           "rank": 0,
           "policy_offline_grace_days": 14,
-          "implicit": 1
+          "implicit": 1,
+          "on_expiry": null
         }
       ]
     },
@@ -9974,7 +9999,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         },
         {
           "product": "acme",
@@ -9992,7 +10018,8 @@
           "source": "console",
           "rank": 0,
           "policy_offline_grace_days": 14,
-          "implicit": 1
+          "implicit": 1,
+          "on_expiry": null
         }
       ]
     },
@@ -10680,7 +10707,8 @@
           "source": "manifest",
           "rank": 0,
           "policy_offline_grace_days": null,
-          "implicit": 0
+          "implicit": 0,
+          "on_expiry": null
         }
       ]
     },
