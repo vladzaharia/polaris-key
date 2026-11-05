@@ -2,22 +2,22 @@ class_name PKeySaveScreensHost
 extends RefCounted
 ## What the save screens do with `PolarisKey.cloud_sync.saves` (K.5T; the Godot form of React's
 ## `saveScreens.tsx`): says which transfer state the Cloud Sync strip shows while a save moves, and
-## drives `PKeySaveConflict` from the first conflict a write ended with. No node here. `sdk` is the
-## PolarisKey autoload or a test's stand-in with `cloud_sync.saves` (PKeySaves).
+## drives `PKeySaveConflict` from the first open save request (U-08: a PKeyMergeRequest). No node here.
+## `sdk` is the PolarisKey autoload or a test's stand-in with `cloud_sync.saves` (PKeySaves).
 ##
 ##   transfer_input()   {} when nothing moves, else {state, transfer?, can_review?} for the strip:
 ##                      `transferring` (the counted bytes), `transfer-failed` (until the next write
 ##                      starts) or `conflict` (with Review). The host's own status stands otherwise.
-##   conflict()         the pending conflict, held until it is dismissed so `kept` still reads after
-##                      the saves forgot it, or {}
-##   choose(keep)       "local", "remote" or "both": runs `saves.resolve` with the bytes `local_copy`
-##                      hands in, then moves on (keeping, kept, or failed)
+##   conflict()         the open request (PKeyMergeRequest), held until it is dismissed so `kept` still
+##                      reads after the saves forgot it, or null
+##   choose(keep)       "local", "remote" or "both": runs `request.keep(keep)`, then moves on (keeping,
+##                      kept, or failed)
 ##   retry(), choose_again(), cancel(), done()   the handlers of the failed and kept steps
 ##
-## **The game's one line:** `local_copy`, a Callable taking the conflict and returning the local save's
-## `PackedByteArray` (the SDK holds the other copy; it has no copy of the local file to give back).
-## Keeping the other version needs none. Without one, Keep this version and Keep both fail, and the
-## screen says so; nothing is overwritten.
+## The SDK holds this device's copy of the save, so the game has nothing to hand in (U-08 removed the
+## `local_copy` line). The sides' dates and the other device's name come from the request: `when` is the
+## medium date and time of its `saved_at`; `describe`, a Callable taking the request and returning
+## {local_when?, remote_when?, remote_device?}, overrides any of them.
 ##
 ## No value, key or path passes through here: the state carries counts and display-ready sizes.
 
@@ -25,16 +25,17 @@ signal changed()
 
 const META := &"pkey_save_screens_host"
 const UNITS := ["B", "KB", "MB", "GB"]
+const MONTHS := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 var sdk: Node = null
-## Callable(conflict: Dictionary) -> PackedByteArray: the local copy of the save in conflict.
-var local_copy := Callable()
+## Optional Callable(request: PKeyMergeRequest) -> Dictionary: {local_when?, remote_when?, remote_device?}.
+var describe := Callable()
 ## "choose", "keeping", "kept" or "failed" (the SaveConflict steps).
 var step := "choose"
 ## The choice being applied, applied or that failed: "local", "remote" or "both"; "" before one.
 var keep := ""
 
-var _held: Dictionary = {}
+var _held: PKeyMergeRequest = null
 var _saves: PKeySaves = null
 var _started := false
 var _gen := 0
@@ -87,8 +88,11 @@ func stop() -> void:
 
 func _on_saves() -> void:
 	var pending := _saves.conflicts()
-	# Shown until it is dismissed, so Kept still reads after the saves forgot the conflict.
-	if not pending.is_empty() and step == "choose":
+	# Shown until it is dismissed, so Kept still reads after the saves forgot the request. On the choose
+	# step a request that closed meanwhile (an exact write superseded it) gives way to the next.
+	if step == "choose" and (_held == null or _held.is_closed()):
+		_held = pending[0] if not pending.is_empty() else null
+	elif not pending.is_empty() and _held == null:
 		_held = pending[0]
 	changed.emit()
 
@@ -115,26 +119,48 @@ func transfer_input() -> Dictionary:
 	return {}
 
 
-## The conflict the screen is on, or {}.
-func conflict() -> Dictionary:
+## The request the screen is on, or null.
+func conflict() -> PKeyMergeRequest:
 	return _held
 
 
-## The SaveConflict screen's fields for the conflict: {step, keep, remote_deleted, both_available}.
+## The SaveConflict screen's fields for the request: {step, keep, remote_deleted, both_available, newer,
+## local_when, remote_when, remote_device}.
 func view() -> Dictionary:
-	if _held.is_empty():
+	if _held == null:
 		return {}
-	return {
+	var local: Variant = _held.local
+	var remote: Variant = _held.remote
+	var out := {
 		"step": step,
 		"keep": keep,
-		"remote_deleted": _held.get("remote") == null,
-		"both_available": bool(_held.get("both_available", false)),
+		"remote_deleted": remote == null,
+		"both_available": _held.choices.has("both"),
+		"newer": String(_held.newer) if _held.newer != null else "",
+		"local_when": when_text(local["saved_at"]) if local is Dictionary else "",
+		"remote_when": when_text(remote["saved_at"]) if remote is Dictionary else "",
+		"remote_device": String(remote["device"]) if remote is Dictionary and remote["device"] != null else "",
 	}
+	if describe.is_valid():
+		var d: Variant = describe.call(_held)
+		if d is Dictionary:
+			for k: String in ["local_when", "remote_when", "remote_device"]:
+				if d.has(k):
+					out[k] = String(d[k])
+	return out
+
+
+## A save's `saved_at` (epoch ms) as a medium date and time ("Nov 5, 2026, 14:02"); "" when it has none.
+static func when_text(saved_at: Variant) -> String:
+	if not PKeyClaims.is_number(saved_at):
+		return ""
+	var d := Time.get_datetime_dict_from_unix_time(int(saved_at) / 1000 + int(Time.get_time_zone_from_system()["bias"]) * 60)
+	return "%s %d, %d, %02d:%02d" % [MONTHS[int(d["month"]) - 1], int(d["day"]), int(d["year"]), int(d["hour"]), int(d["minute"])]
 
 
 ## Apply a choice once. A coroutine; the screen redraws on `changed` as the steps change.
 func choose(p_keep: String) -> void:
-	if _saves == null or _held.is_empty() or step == "keeping":
+	if _saves == null or _held == null or step == "keeping":
 		return
 	var c := _held
 	_gen += 1
@@ -142,26 +168,10 @@ func choose(p_keep: String) -> void:
 	keep = p_keep
 	step = "keeping"
 	changed.emit()
-	var bytes := PackedByteArray()
-	var have := true
-	if p_keep != "remote":
-		have = local_copy.is_valid()
-		if have:
-			var got: Variant = await local_copy.call(c)
-			have = got is PackedByteArray
-			if have:
-				bytes = got
+	var r: PKeyResult = await c.keep(p_keep)
 	if mine != _gen:
 		return
-	if not have:
-		step = "failed"
-		changed.emit()
-		return
-	var t := _saves.resolve(c, p_keep, bytes)
-	var out: Dictionary = await t.wait()
-	if mine != _gen:
-		return
-	step = "kept" if String(out.get("state", "")) == "done" else "failed"
+	step = "kept" if r.ok else "failed"
 	changed.emit()
 
 
@@ -182,9 +192,9 @@ func choose_again() -> void:
 ## Cancel, or Done after `kept`: forget the conflict without settling it.
 func cancel() -> void:
 	_gen += 1
-	if _saves != null and not _held.is_empty():
-		_saves.dismiss_conflict(String(_held.get("id", "")))
-	_held = {}
+	if _saves != null and _held != null:
+		_saves.dismiss_conflict(_held.record)
+	_held = null
 	step = "choose"
 	keep = ""
 	changed.emit()
