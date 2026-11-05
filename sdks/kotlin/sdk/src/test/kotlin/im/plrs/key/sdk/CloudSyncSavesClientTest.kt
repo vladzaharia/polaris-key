@@ -264,10 +264,16 @@ class CloudSyncSavesClientTest {
         val deviceLabel: String? = null,
     )
 
-    private fun client(cloud: Cloud, e2e: Boolean, options: ClientOptions = ClientOptions()): SavesClient {
+    private fun client(cloud: Cloud, e2e: Boolean, options: ClientOptions = ClientOptions(), onSettled: () -> Unit = {}): SavesClient {
         val engine = FileTransferEngine(cloud, options.journal, sleeper = { })
         val codec: FileCodec = if (e2e) E2eFileCodec(root, SAVES_COLLECTION) else ServerFileCodec()
-        return SavesClient(scope, SavesHooks(settled = { id, r -> settled += id to r })) {
+        val hooks = SavesHooks(
+            settled = { id, r ->
+                onSettled()
+                settled += id to r
+            },
+        )
+        return SavesClient(scope, hooks) {
             SavesDeps(
                 cloud,
                 engine,
@@ -538,6 +544,16 @@ class CloudSyncSavesClientTest {
         assertEquals("quota_exceeded", failed.error.detail)
         assertEquals(1, settled.count { it.second is SaveResult.Failed })
         assertTrue("the aborted upload was released", cloud.aborted.isNotEmpty())
+    }
+
+    @Test
+    fun aSettledEventIsDeliveredBeforeTheOutcomeIsObservable() = runBlocking {
+        val cloud = Cloud(e2e = false).also { it.quota = true }
+        val saves = client(cloud, e2e = false, onSettled = { Thread.sleep(50) })
+        val t = saves.write("s", bytes(100), meta("c"))
+        assertTrue(t.result() is SaveResult.Failed)
+        assertEquals(listOf("saves:s"), settled.map { it.first })
+        assertTrue(saves.transfers().isEmpty())
     }
 
     @Test

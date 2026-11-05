@@ -769,6 +769,7 @@ public class SaveTransfer internal constructor(
     private var phase: Phase? = null
     private var gate: CompletableDeferred<Unit>? = null
     private var wanted = Wanted.RUN
+    private var settling = false
 
     private enum class Wanted { RUN, PAUSE, CANCEL }
 
@@ -831,8 +832,22 @@ public class SaveTransfer internal constructor(
     }
 
     private fun settle(s: TransferState, r: SaveResult) {
-        synchronized(lock) { state = s }
-        if (result.complete(r)) onSettle(r)
+        // The first settle wins. The settled hook runs before the result is released, so a caller that sees the
+        // outcome (await, result) always finds the transfer already off the running map and its event delivered.
+        val first = synchronized(lock) {
+            val claim = !result.isCompleted && !settling
+            if (claim) {
+                settling = true
+                state = s
+            }
+            claim
+        }
+        if (!first) return
+        try {
+            onSettle(r)
+        } finally {
+            result.complete(r)
+        }
     }
 
     private suspend fun cancelNow() {
