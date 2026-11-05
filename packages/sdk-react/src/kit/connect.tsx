@@ -14,6 +14,7 @@
 
 import { useEffect, useInsertionEffect, useRef, type ReactNode } from "react";
 import {
+  platformClass,
   categoryFallback,
   connectEscape,
   formatBytes,
@@ -44,6 +45,80 @@ import { renderView } from "./views.js";
 // ── Rules ────────────────────────────────────────────────────────────────────────────────────
 
 /** The rules these screens add to the kit's sheet: the code, the reported line, the categories. */
+/**
+ * Two panes (UI-KITS, LinkPairing and TransferOffer): the start pane is the title, the lede and the
+ * code or the offer card; the end pane is the reported-device line, the categories and the actions,
+ * top-aligned, in the DOM order they already have. Only the code, confirm and ask states are cards
+ * with a pane (`.pair-end`, or the ask card's own actions); a message state never matches.
+ */
+function panes(root: string): string {
+  const lp = `${root}[data-component="LinkPairing"] .stage[data-kind="screen"] .card:has(> .pair-end)`;
+  const to = `${root}[data-component="TransferOffer"][data-state="ask"] .stage[data-kind="screen"] .card`;
+  const stage = `${root}[data-component="LinkPairing"] .stage[data-kind="screen"]:has(.pair-end),
+${root}[data-component="TransferOffer"][data-state="ask"] .stage[data-kind="screen"]`;
+  // A TV keeps its title-safe area (5 % each side) at any text size.
+  const safe =
+    root === ".pk-root.pk-tv"
+      ? `
+  padding-inline: max(var(--pk-space-6), 5vw);
+  padding-block: max(var(--pk-space-6), 5vh);`
+      : "";
+  return `
+${stage} {
+  /* safe: a card taller than the window starts at its top edge and the window scrolls. */
+  align-content: safe center;${safe}
+}
+${lp},
+${to} {
+  inline-size: min(46rem, 100%);
+  padding-inline: var(--pk-space-5);
+  padding-block: var(--pk-space-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
+  column-gap: var(--pk-space-6);
+  row-gap: var(--pk-space-3);
+  align-items: start;
+  align-content: start;
+  text-align: start;
+}
+${lp} > *,
+${to} > * {
+  grid-column: 1;
+}
+${lp} > .pair-end,
+${to} > .actions {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  display: grid;
+  gap: var(--pk-space-3);
+  align-content: start;
+}
+${to} > .actions {
+  position: static;
+  margin: 0;
+  padding: 0;
+  background: none;
+  flex-direction: column;
+  justify-content: stretch;
+  grid-template-columns: minmax(0, 1fr);
+}
+${to} > .actions::before {
+  content: none;
+}
+${to} > .actions .btn {
+  inline-size: 100%;
+  flex: none;
+}
+`;
+}
+
+/** Short and wide enough (600 px at the root size, so 200 % text keeps one column), or a TV. */
+const CONNECT_PANES = `@media (max-height: 480px) {
+  @container pk (min-width: 37.5rem) {${panes(".pk-root")}}
+}
+${panes(".pk-root.pk-tv")}`;
+
 const CONNECT_CSS = `@layer polaris-key {
 .pk-root .pair-code {
   display: block;
@@ -65,7 +140,8 @@ const CONNECT_CSS = `@layer polaris-key {
   color: var(--pk-text-strong);
   overflow-wrap: anywhere;
 }
-.pk-root .pair-actions {
+.pk-root .pair-actions,
+.pk-root .pair-end {
   display: contents;
 }
 .pk-root .pair-offer {
@@ -134,6 +210,7 @@ const CONNECT_CSS = `@layer polaris-key {
     opacity: 0.35;
   }
 }
+${CONNECT_PANES}
 }
 `;
 
@@ -197,12 +274,15 @@ function Screen(
   };
   const content = body ? body(ctx) : null;
   const esc = escape(kit.view);
+  // A TV, or a pad-only screen on one, is always two panes (the width rule does not apply).
+  const pc = platformClass(ctx.input.platform ?? null);
+  const tv = pc === "tv" || pc === "console";
   return (
     <KitRoot
       kit={kit}
       bare={props.bare}
       fill={props.fill}
-      className={props.className}
+      className={[props.className, tv ? "pk-tv" : ""].filter(Boolean).join(" ")}
       onEscape={esc ? () => ctx.act(esc) : undefined}
     >
       {renderView({ ...ctx, content })}
@@ -267,32 +347,37 @@ function Categories(props: {
   );
 }
 
-/** The code and the line that says which device reported it: kept on screen through `confirm`. */
-function CodeBlock(props: { c: KitCtx }): ReactNode {
+/** The code, kept on screen through `confirm`. The line that says which device reported it follows
+ *  in the end pane (`.pair-end`, which is transparent to layout in one column). */
+function PairCode(props: { c: KitCtx }): ReactNode {
   const { c } = props;
   const has = (k: string) => c.view.copy.includes(k);
   const code = c.input.linkPairing?.code ?? "";
-  const reported = has("linkPairing.reported")
+  return (
+    <span
+      className="pair-code"
+      role="text"
+      data-key="a11y.linkCode"
+      aria-label={
+        has("a11y.linkCode")
+          ? plain(c, "a11y.linkCode", { code: spellOut(code) })
+          : spellOut(code)
+      }
+    >
+      {code}
+    </span>
+  );
+}
+
+function Reported(props: { c: KitCtx }): ReactNode {
+  const { c } = props;
+  const reported = c.view.copy.includes("linkPairing.reported")
     ? "linkPairing.reported"
     : "linkPairing.reportedUnnamed";
   return (
-    <>
-      <span
-        className="pair-code"
-        role="text"
-        data-key="a11y.linkCode"
-        aria-label={
-          has("a11y.linkCode")
-            ? plain(c, "a11y.linkCode", { code: spellOut(code) })
-            : spellOut(code)
-        }
-      >
-        {code}
-      </span>
-      <p className="pair-reported" data-key={reported}>
-        {text(c, reported)}
-      </p>
-    </>
+    <p className="pair-reported" data-key={reported}>
+      {text(c, reported)}
+    </p>
   );
 }
 
@@ -327,9 +412,12 @@ function PairBody(props: {
     case "code":
       return (
         <>
-          <CodeBlock c={c} />
-          <Categories c={c} labels={labels} />
-          {act(["linkPairing.confirm", "linkPairing.decline"])}
+          <PairCode c={c} />
+          <div className="pair-end">
+            <Reported c={c} />
+            <Categories c={c} labels={labels} />
+            {act(["linkPairing.confirm", "linkPairing.decline"])}
+          </div>
         </>
       );
     case "confirm":
@@ -337,13 +425,16 @@ function PairBody(props: {
       // said beside the dot (the title, where focus lands, is what a screen reader reads).
       return (
         <>
-          <CodeBlock c={c} />
-          <Categories c={c} labels={labels} />
-          <p className="pair-wait" role="status">
-            <span className="pair-dot" aria-hidden="true" />
-            <span aria-hidden="true">{plain(c, "linkPairing.waiting")}</span>
-          </p>
-          {act(["common.cancel"])}
+          <PairCode c={c} />
+          <div className="pair-end">
+            <Reported c={c} />
+            <Categories c={c} labels={labels} />
+            <p className="pair-wait" role="status">
+              <span className="pair-dot" aria-hidden="true" />
+              <span aria-hidden="true">{plain(c, "linkPairing.waiting")}</span>
+            </p>
+            {act(["common.cancel"])}
+          </div>
         </>
       );
     case "linked":
