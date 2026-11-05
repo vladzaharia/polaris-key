@@ -202,6 +202,8 @@ extension SyncPartition {
         if let sealedFloor { o["sealedFloor"] = .int(sealedFloor) }
         if let headroom { o["headroom"] = .double(headroom) }
         o["nextTicket"] = .int(nextTicket)
+        if !conflicts.isEmpty { o["conflicts"] = .object(conflicts.mapValues(\.fileJSON)) }
+        if let empty { o["empty"] = .bool(empty) }
         return .object(o)
     }
 
@@ -235,6 +237,36 @@ extension SyncPartition {
         sealedFloor = o["sealedFloor"]?.intValue
         headroom = syncNumber(o["headroom"])
         nextTicket = max(o["nextTicket"]?.intValue ?? 1, 1)
+        // Additive (plans/U-08.md section 2.3 rule 7): an older file loads with none.
+        for (k, c) in o["conflicts"]?.objectValue ?? [:] {
+            guard let rec = SyncConflictRec(fileJSON: c) else { return nil }
+            conflicts[k] = rec
+        }
+        empty = o["empty"]?.boolValue
+    }
+}
+
+extension SyncConflictRec {
+    var fileJSON: JSONValue {
+        var o: [String: JSONValue] = ["local": local]
+        if let localVersion { o["localVersion"] = .int(localVersion) }
+        if let keep {
+            o["keep"] = .object(["choice": .string(keep.choice.rawValue), "mutationId": .int(keep.mutationId)])
+        }
+        if let error { o["error"] = .string(error) }
+        return .object(o)
+    }
+
+    init?(fileJSON v: JSONValue) {
+        guard case .object(let o) = v, let local = o["local"] else { return nil }
+        var keep: Keep?
+        if let k = o["keep"]?.objectValue {
+            guard let choice = k["choice"]?.stringValue.flatMap(SyncMergeHow.init(rawValue:)),
+                let mid = k["mutationId"]?.intValue
+            else { return nil }
+            keep = Keep(choice: choice, mutationId: mid)
+        }
+        self.init(local: local, localVersion: o["localVersion"]?.intValue, keep: keep, error: o["error"]?.stringValue)
     }
 }
 

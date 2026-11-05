@@ -21,8 +21,9 @@
 //   - a refusal is posted as one announcement after focus moves to the heading; Escape on `kept` is Done;
 //   - a deleted other copy has its own title and lede, and "Delete it here too" is a danger
 //     outline of its own, never a Keep.
-// Not bound to a live client: `SaveConflictModel` takes a `SaveConflictHost`, and the binding to the
-// saves client is the K.3T tail.
+// Bound to a live client through `SaveConflictModel(request:)` (U-08.K3): a `MergeRequest` from
+// `client.cloudSync.onConflict` or `conflicts()` supplies both copies and answers the choice with
+// `request.keep`; the app does not hand back the save's bytes. The view itself only draws a model.
 
 import PolarisKeyUICore
 import SwiftUI

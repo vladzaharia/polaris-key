@@ -212,6 +212,7 @@ private final class FakeRecords: SaveRecords, @unchecked Sendable {
     }
 
     func delete(_ id: String, baseVersion: Int) async throws -> SaveSetResult {
+        if let row = lock.withLock({ rows[id] }), row.version != baseVersion { return .conflict(server: row) }
         lock.withLock { _ = rows.removeValue(forKey: id) }
         return .ok(version: baseVersion + 1)
     }
@@ -541,52 +542,82 @@ final class CloudSyncSavesTests: XCTestCase {
                 .outcome()
         else { return XCTFail("a seventeenth save") }
         XCTAssertEqual(e.code, .slotsFull)
-        // An existing slot is still writable.
+        // An existing slot is still writable once this device has seen it (S2).
+        _ = try await rig.client.list()
         guard case .done = try await rig.client.write("s3", bytes: Data("z".utf8), metadata: obj([:])).outcome()
         else { return XCTFail("overwrite") }
     }
 
-    func testAStaleBaseIsAConflictAndEachKeepResolvesIt() async throws {
+    /// A seeded save at version 1 and a write on a stale base: the conflict, as an open request.
+    private func conflictRig() async throws -> (rig: Rig, request: MergeRequest) {
         let rig = Rig(e2e: false)
         rig.records.seed("slot1", ["who": .string("remote")], bytes: Data("remote".utf8))
         // The caller last saw version 0 of a record that is now at 1.
         let t = try await rig.client.write(
             "slot1", bytes: Data("local".utf8), metadata: obj(["who": .string("local")]),
             options: SaveWriteOptions(baseVersion: 0))
-        guard case .conflict(let conflict) = await t.outcome() else { return XCTFail("not a conflict") }
+        guard case .conflict(let request) = await t.outcome() else {
+            XCTFail("not a conflict")
+            throw CancellationError()
+        }
         XCTAssertEqual(t.state, .conflict)
-        XCTAssertEqual(conflict.serverVersion, 1)
-        XCTAssertEqual(conflict.remote?.metadata, obj(["who": .string("remote")]))
-        XCTAssertEqual(conflict.local.metadata, stamped(["who": .string("local")]))
-        XCTAssertEqual(conflict.local.size, 5)
-        XCTAssertTrue(conflict.bothAvailable)
+        return (rig, request)
+    }
 
-        // remote: nothing is written.
+    // @pkey-feature sync.conflict (saveConflictOpensRequest)
+    func testSaveConflictOpensRequest() async throws {
+        let (rig, request) = try await conflictRig()
+        XCTAssertEqual(request.id, "w:saves/slot1")
+        XCTAssertEqual(request.cause, .write)
+        XCTAssertEqual(request.collection, "saves")
+        XCTAssertEqual(request.record, "slot1")
+        XCTAssertEqual(request.state, .open)
+        XCTAssertNil(request.error)
+        XCTAssertEqual(request.choices, [.local, .remote, .both])
+        XCTAssertEqual(request.remote?.value, obj(["who": .string("remote")]))
+        XCTAssertEqual(request.remote?.version, 1)
+        XCTAssertEqual(request.local?.value, stamped(["who": .string("local")]))
+        XCTAssertEqual(request.local?.version, 0)
+        XCTAssertEqual(request.local?.file?.size, 5)
+        XCTAssertEqual(request.local?.savedAt, savedAtNow)
+        let open = await rig.client.merge.conflicts()
+        XCTAssertEqual(open.map(\.id), ["w:saves/slot1"])
+    }
+
+    // @pkey-feature sync.conflict (saveKeepRemote)
+    func testSaveKeepRemote() async throws {
+        let (rig, request) = try await conflictRig()
         let callsBefore = rig.files.calls.count
-        guard
-            case .keptRemote(_, let v) = try await rig.client.resolve(conflict, keep: .remote, bytes: Data()).outcome()
-        else { return XCTFail("keep remote") }
-        XCTAssertEqual(v, 1)
+        // remote: nothing is written, and the pull is the one the conflict made plus the keep's.
+        let outcome = await request.keep(.remote)
+        XCTAssertEqual(outcome, .kept(.remote, version: 1, copyId: nil))
         XCTAssertEqual(rig.files.calls.count, callsBefore)
+        let open = await rig.client.merge.conflicts()
+        XCTAssertTrue(open.isEmpty)
+    }
 
-        // both: a copy in a free slot, the original untouched.
-        guard
-            case .done(let id, _, _, let copy) = try await rig.client.resolve(
-                conflict, keep: .both, bytes: Data("local".utf8)
-            ).outcome()
-        else { return XCTFail("keep both") }
-        XCTAssertEqual(id, "slot1")
+    // @pkey-feature sync.conflict (saveKeepLocal)
+    func testSaveKeepLocal() async throws {
+        let (rig, request) = try await conflictRig()
+        // local: written on top of the server's version.
+        let outcome = await request.keep(.local)
+        guard case .kept(.local, let version?, nil) = outcome else { return XCTFail("keep local: \(outcome)") }
+        XCTAssertGreaterThan(version, 1)
+        let r = try await rig.records.get("slot1")
+        XCTAssertEqual(r?.value, ["who": .string("local"), saveSavedAtKey: .int(savedAtNow)])
+        XCTAssertEqual(r?.version, version)
+        let open = await rig.client.merge.conflicts()
+        XCTAssertTrue(open.isEmpty)
+    }
+
+    func testKeepBothWritesTheCopyInAFreeSlot() async throws {
+        let (rig, request) = try await conflictRig()
+        guard case .kept(.both, _, let copy?) = await request.keep(.both) else { return XCTFail("keep both") }
         XCTAssertEqual(copy, "slot1.copy")
         let r1 = try await rig.records.get("slot1")
         XCTAssertEqual(r1?.value, ["who": .string("remote")])
         let r2 = try await rig.records.get("slot1.copy")
         XCTAssertEqual(r2?.value, ["who": .string("local"), saveSavedAtKey: .int(savedAtNow)])
-
-        // local: written on top of the server's version.
-        guard case .done = try await rig.client.resolve(conflict, keep: .local, bytes: Data("local".utf8)).outcome()
-        else { return XCTFail("keep local") }
-        let r3 = try await rig.records.get("slot1")
-        XCTAssertEqual(r3?.value, ["who": .string("local"), saveSavedAtKey: .int(savedAtNow)])
     }
 
     func testAConflictDescribesTheServersVersionNotTheCachedCopy() async throws {
@@ -597,14 +628,13 @@ final class CloudSyncSavesTests: XCTestCase {
         let t = try await rig.client.write(
             "slot1", bytes: Data("mine".utf8), metadata: obj(["who": .string("mine")]))
         guard case .conflict(let c) = await t.outcome() else { return XCTFail("not a conflict") }
-        XCTAssertEqual(c.serverVersion, 40)
         XCTAssertEqual(c.remote?.version, 40)
-        XCTAssertNotEqual(c.remote?.metadata, obj(["who": .string("old")]))
+        XCTAssertNotEqual(c.remote?.value, obj(["who": .string("old")]))
         // Keeping this device's version succeeds, and the next write does not repeat the conflict.
         rig.files.conflictAt = [:]
         rig.files.lock.withLock { rig.files.versionSeq["slot1"] = 40 }
-        guard case .done = try await rig.client.resolve(c, keep: .local, bytes: Data("mine".utf8)).outcome()
-        else { return XCTFail("keep local") }
+        let outcome0 = await c.keep(.local)
+        XCTAssertTrue(outcome0.isOK)
         guard case .done = try await rig.client.write("slot1", bytes: Data("again".utf8), metadata: obj([:])).outcome()
         else { return XCTFail("a repeated conflict") }
     }
@@ -619,7 +649,7 @@ final class CloudSyncSavesTests: XCTestCase {
         rig.records.onPull = {
             records.lock.withLock {
                 records.rows["slot1"] = SaveRecord(
-                    id: "slot1", version: 40, value: ["who": .string("theirs")], file: nil)
+                    id: "slot1", version: 40, value: ["who": .string("theirs"), saveSavedAtKey: .int(500)], file: nil)
             }
         }
         let t = try await rig.client.write(
@@ -627,16 +657,17 @@ final class CloudSyncSavesTests: XCTestCase {
         guard case .conflict(let c) = await t.outcome() else { return XCTFail("not a conflict") }
         XCTAssertEqual(rig.records.pulls, 1)
         XCTAssertEqual(c.remote?.version, 40)
-        XCTAssertEqual(c.remote?.metadata, obj(["who": .string("theirs")]))
+        XCTAssertEqual(c.remote?.value, obj(["who": .string("theirs"), saveSavedAtKey: .int(500)]))
+        XCTAssertEqual(c.remote?.savedAt, 500)
         // This device's card carries when and where it was saved.
-        XCTAssertEqual(
-            c.local.metadata, stamped(["who": .string("mine"), saveDeviceKey: .string("Steam Deck")]))
+        XCTAssertEqual(c.local?.value, stamped(["who": .string("mine"), saveDeviceKey: .string("Steam Deck")]))
+        XCTAssertEqual(c.local?.device, "Steam Deck")
+        XCTAssertEqual(c.local?.savedAt, savedAtNow)
+        XCTAssertEqual(c.newer, .local)
         // Keeping the other version pulls again, and the chosen copy is what is held.
-        guard
-            case .keptRemote(_, let v) = try await rig.client.resolve(c, keep: .remote, bytes: Data()).outcome()
-        else { return XCTFail("keep remote") }
+        let outcome1 = await c.keep(.remote)
+        XCTAssertEqual(outcome1, .kept(.remote, version: 40, copyId: nil))
         XCTAssertEqual(rig.records.pulls, 2)
-        XCTAssertEqual(v, 40)
     }
 
     func testASaveDeletedElsewhereReadsAsDeletedAfterThePull() async throws {
@@ -652,7 +683,8 @@ final class CloudSyncSavesTests: XCTestCase {
         XCTAssertNil(c.remote)
     }
 
-    func testASaveDeletedElsewhereHasNoRemoteAndKeepMineUsesMustNotExist() async throws {
+    // @pkey-feature sync.conflict (saveKeepAfterDeleteCreates)
+    func testSaveKeepAfterDeleteCreates() async throws {
         let rig = Rig(e2e: false)
         rig.records.seed("slot1", ["who": .string("old")], bytes: Data("old".utf8))
         rig.files.conflictAt["slot1"] = 0
@@ -660,24 +692,27 @@ final class CloudSyncSavesTests: XCTestCase {
             "slot1", bytes: Data("mine".utf8), metadata: obj(["who": .string("mine")]))
         guard case .conflict(let c) = await t.outcome() else { return XCTFail("not a conflict") }
         XCTAssertNil(c.remote)
-        XCTAssertEqual(c.serverVersion, 0)
+        XCTAssertEqual(c.choices, [.local, .remote])
         rig.files.conflictAt = [:]
         rig.files.lock.withLock { rig.files.versionSeq["slot1"] = 0 }
-        guard case .done = try await rig.client.resolve(c, keep: .local, bytes: Data("mine".utf8)).outcome()
-        else { return XCTFail("keep local") }
+        let outcome2 = await c.keep(.local)
+        XCTAssertTrue(outcome2.isOK)
         XCTAssertEqual(rig.files.bases.last, .some(.string("*")))
     }
 
-    func testKeepBothNeedsAFreeSlot() async throws {
+    // @pkey-feature sync.conflict (saveKeepBothNeedsFreeSlot)
+    func testSaveKeepBothNeedsFreeSlot() async throws {
         let rig = Rig(e2e: false)
         for n in 0..<SYNC_SAVE_SLOTS { rig.records.seed(n == 0 ? "slot1" : "s\(n)", [:], bytes: Data("x".utf8)) }
         let t = try await rig.client.write(
             "slot1", bytes: Data("l".utf8), metadata: obj([:]), options: SaveWriteOptions(baseVersion: 0))
         guard case .conflict(let c) = await t.outcome() else { return XCTFail("not a conflict") }
-        XCTAssertFalse(c.bothAvailable)
-        guard case .failed(let e) = try await rig.client.resolve(c, keep: .both, bytes: Data("l".utf8)).outcome()
-        else { return XCTFail("keep both") }
-        XCTAssertEqual(e.code, .slotsFull)
+        XCTAssertEqual(c.choices, [.local, .remote], "both is not offered while the 16 slots are full")
+        let calls = rig.files.calls.count
+        let outcome3 = await c.keep(.both)
+        XCTAssertEqual(outcome3, .failed(code: "bad_request", reopened: false))
+        XCTAssertEqual(rig.files.calls.count, calls)
+        XCTAssertEqual(c.state, .open)
     }
 
     func testAMetadataConflictAfterTheFileIsAConflictToo() async throws {
@@ -687,7 +722,138 @@ final class CloudSyncSavesTests: XCTestCase {
             case .conflict(let c) = try await rig.client.write("slot1", bytes: Data("l".utf8), metadata: obj([:]))
                 .outcome()
         else { return XCTFail("not a conflict") }
-        XCTAssertEqual(c.serverVersion, 9)
+        XCTAssertEqual(c.remote?.version, 9)
+    }
+
+    // @pkey-feature sync.conflict (saveRequestFreezesSlot)
+    func testSaveRequestFreezesSlot() async throws {
+        let (rig, request) = try await conflictRig()
+        let seen = LockedValue<[String]>([])
+        rig.client.merge.watch { signal in
+            switch signal {
+            case .opened: seen.with { $0.append("opened") }
+            case .closed: seen.with { $0.append("closed") }
+            }
+        }
+        let calls = rig.files.calls.count
+        let later = Data("later copy!".utf8)
+        let t = try await rig.client.write(
+            "slot1", bytes: later, metadata: obj(["who": .string("later")]))
+        guard case .conflict(let again) = await t.outcome() else { return XCTFail("not a conflict") }
+        XCTAssertTrue(again === request)
+        XCTAssertEqual(request.local?.value, stamped(["who": .string("later")]))
+        XCTAssertEqual(request.local?.file?.size, later.count)
+        XCTAssertEqual(rig.files.calls.count, calls, "nothing is sent while a request is open")
+        let open = await rig.client.merge.conflicts()
+        XCTAssertEqual(open.count, 1)
+        XCTAssertEqual(seen.current, [])
+        // The later copy is the one that is kept.
+        let outcome4 = await request.keep(.local)
+        XCTAssertTrue(outcome4.isOK)
+        guard case .ok(let read) = try await rig.client.read("slot1") else { return XCTFail("read") }
+        XCTAssertEqual(read.metadata.objectValue?["who"], .string("later"))
+        XCTAssertEqual(read.bytes, later)
+    }
+
+    // @pkey-feature sync.conflict (saveRequestFreezesSlot)
+    func testSaveRequestFreezesSlotDeleteKeepsTheOtherCopy() async throws {
+        let (rig, request) = try await conflictRig()
+        // The delete's default base is the request's (0): it conflicts and the other copy survives.
+        guard case .conflict = try await rig.client.delete("slot1") else { return XCTFail("a delete that conflicts") }
+        let kept = try await rig.records.get("slot1")
+        XCTAssertEqual(kept?.value, ["who": .string("remote")])
+        let open = await rig.client.merge.conflicts()
+        XCTAssertTrue(open.isEmpty)
+        let outcome5 = await request.keep(.local)
+        XCTAssertEqual(outcome5, .failed(code: ErrorCode.syncMergeClosed, reopened: false))
+    }
+
+    // @pkey-feature sync.conflict (saveBaseIsSeenVersion)
+    func testSaveBaseIsSeenVersion() async throws {
+        let rig = Rig(e2e: false)
+        guard case .done = try await rig.client.write("slot1", bytes: Data("one".utf8), metadata: obj([:])).outcome()
+        else { return XCTFail("create") }
+        // Another device writes; this device's cache is refreshed by a pull. A pulled version is never a base.
+        rig.records.seed("slot1", ["who": .string("other")], bytes: Data("other copy".utf8))
+        guard
+            case .conflict(let mine) = try await rig.client.write(
+                "slot1", bytes: Data("mine".utf8), metadata: obj([:])
+            ).outcome()
+        else { return XCTFail("silently overwritten") }
+        XCTAssertEqual(mine.local?.version, 1, "the version this device wrote")
+        XCTAssertNotEqual(mine.local?.version, mine.remote?.version)
+        // A fresh client has not seen the slot: its write is create-only.
+        let fresh = SavesClient(env: rig.env, options: SavesOptions(delta: false), emit: { _ in }, now: { savedAtNow })
+        guard
+            case .conflict(let created) = try await fresh.write("slot1", bytes: Data("c".utf8), metadata: obj([:]))
+                .outcome()
+        else { return XCTFail("create-only") }
+        XCTAssertNil(created.local?.version)
+        // Reading the slot is seeing it.
+        let reader = SavesClient(env: rig.env, options: SavesOptions(delta: false), emit: { _ in }, now: { savedAtNow })
+        _ = try await reader.read("slot1")
+        guard case .done = try await reader.write("slot1", bytes: Data("r".utf8), metadata: obj([:])).outcome()
+        else { return XCTFail("a slot that was read") }
+    }
+
+    // @pkey-feature sync.conflict (saveExactWriteSupersedes)
+    func testSaveExactWriteSupersedes() async throws {
+        let (rig, request) = try await conflictRig()
+        let closed = LockedValue<[String]>([])
+        rig.client.merge.watch { signal in
+            if case .closed(let id, let how) = signal { closed.with { $0.append("\(id):\(how.rawValue)") } }
+        }
+        let server = request.remote!.version!
+        guard
+            case .done = try await rig.client.write(
+                "slot1", bytes: Data("exact".utf8), metadata: obj([:]), options: SaveWriteOptions(baseVersion: server)
+            ).outcome()
+        else { return XCTFail("exact write") }
+        XCTAssertEqual(closed.current, ["w:saves/slot1:superseded"])
+        let open = await rig.client.merge.conflicts()
+        XCTAssertTrue(open.isEmpty)
+        let outcome6 = await request.keep(.local)
+        XCTAssertEqual(outcome6, .failed(code: ErrorCode.syncMergeClosed, reopened: false))
+    }
+
+    // @pkey-feature sync.conflict (saveKeepOnClosedRequest)
+    func testSaveKeepOnClosedRequest() async throws {
+        let (rig, request) = try await conflictRig()
+        let outcome7 = await request.keep(.remote)
+        XCTAssertTrue(outcome7.isOK)
+        let calls = rig.files.calls.count
+        let outcome8 = await request.keep(.local)
+        XCTAssertEqual(outcome8, .failed(code: ErrorCode.syncMergeClosed, reopened: false))
+        XCTAssertEqual(rig.files.calls.count, calls)
+    }
+
+    func testSaveKeepThatMeetsANewerSaveReopensTheRequest() async throws {
+        let (rig, request) = try await conflictRig()
+        let opened = LockedValue<Int>(0)
+        rig.client.merge.watch { signal in
+            if case .opened = signal { opened.with { $0 += 1 } }
+        }
+        let before = request.remote!.version!
+        // Another device writes again before the keep lands.
+        rig.records.seed("slot1", ["who": .string("three")], bytes: Data("three".utf8))
+        let outcome9 = await request.keep(.local)
+        XCTAssertEqual(outcome9, .failed(code: "conflict", reopened: true))
+        XCTAssertEqual(request.state, .open)
+        XCTAssertGreaterThan(request.remote!.version!, before)
+        XCTAssertEqual(request.remote?.value, obj(["who": .string("three")]))
+        XCTAssertEqual(opened.current, 1)
+        // The person decides again.
+        let outcome10 = await request.keep(.local)
+        XCTAssertTrue(outcome10.isOK)
+    }
+
+    // @pkey-feature sync.conflict (saveRequestNotJournaled)
+    func testSaveRequestNotJournaled() async throws {
+        let (rig, _) = try await conflictRig()
+        XCTAssertTrue(rig.journal.list().isEmpty)
+        let next = SavesClient(env: rig.env, options: SavesOptions(delta: false), emit: { _ in }, now: { savedAtNow })
+        let open = await next.merge.conflicts()
+        XCTAssertTrue(open.isEmpty)
     }
 
     func testRevisionsAreListedNewestFirst() async throws {

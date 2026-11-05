@@ -56,6 +56,7 @@ func apiSurface() async {
     _ = CloudSyncClient.status  // cloudSync.status
     _ = CloudSyncClient.flush  // cloudSync.flush
     _ = \PolarisKeyClient.events  // cloudSync.event
+    _ = \PolarisKeyClient.events  // cloudSync.conflictEvent
     _ = \CloudSyncClient.saves  // cloudSync.saves
     _ = SavesClient.list  // cloudSync.saves.list
     _ = SavesClient.read(_:options:)  // cloudSync.saves.read
