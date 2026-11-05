@@ -165,7 +165,10 @@ struct ScenarioRoot: View {
     private var options: KitGateOptions {
         KitGateOptions(
             offlineActivation: defaults.bool(forKey: "pkOffline")
-                || KitGateOptions().offlineActivation)
+                || KitGateOptions().offlineActivation,
+            // These tests drive activation to the licensed app; the Done step ("<Product> is
+            // ready", Start using) has its own coverage in the holders tests.
+            keyDone: false)
     }
 
     var body: some View {
