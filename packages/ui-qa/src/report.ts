@@ -42,6 +42,9 @@ export interface Report {
   crossRenderer: PairResult[] | null;
 }
 
+/** Folders that hold another platform's baselines of the same states, not states of their own. */
+const PLATFORM_DIRS = ["linux"];
+
 function walkPngs(dir: string): string[] {
   const out: string[] = [];
   const walk = (d: string) => {
@@ -159,11 +162,17 @@ export function collect(
         parts.shift();
         parts[0] = parts[0]!.replace(/^\d+-/, "");
       }
+      // A platform folder (Qt's linux/) holds that platform's baseline of the same states.
+      const platform =
+        parts.length > 1 && PLATFORM_DIRS.includes(parts[0]!)
+          ? parts.shift()!
+          : "";
       const raw = parts.length > 1 ? parts[0]! : stateOf(rest);
       // React writes Component.state, Qt lowercases the component, Compose uses camelCase: all
       // meet the registry's id. A state no registry row names stays as the kit wrote it.
       const state = canonicalOf(canon, raw) ?? raw;
-      const variant = parts.length > 1 ? `${parts[0]} ${rest}` : rest;
+      const named = parts.length > 1 ? `${parts[0]} ${rest}` : rest;
+      const variant = platform ? `${platform} ${named}` : named;
       shots.push({ source: kit, state, variant, theme, file });
     }
   }
