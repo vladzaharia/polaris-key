@@ -647,6 +647,12 @@
       "status": "implemented",
       "note": "adapter.cloudConnect.transfer (ui-core browser/connect transfer.ts and xferStore.ts, CC-20.4; WIRE-CONTRACT-V5 §15.11), mode a over the relay only (a page cannot pair, D-14): send(peer, source, {name, type, chunk, signal, id, onStart}) for a device id or an open session, from a Blob (a File is one), a ReadableStream or bytes (streams are spooled and hashed first); onOffer(handler) decides each offer (no handler, a refusal, an error or an unusable sink declines; the answer is {blob}, {stream} or {file: FileSystemFileHandle}, so nothing downloads on its own); onResult(fn); cancel(id); maxSize; purge(). Sessions list xfer/1 by default; client-core's XferEndpoint runs the machine over ConnectSession.xferPort(). Partial transfers live in one IndexedDB database per product (named by the derived reference only; 24 h, 8 per peer, 64 in all, room from navigator.storage.estimate() set aside at the accept and enforced on each write), are removed on sign-out, deactivation and leave(), and reach the host's sink only after the hash matched. Only the tab that owns the relay session transfers; another tab's send is a LanError elsewhere. The engine loads with the relay on the first start() (the React size budgets hold). The peer-matrix xfer rows run in conformance/runners/browser/peerMatrix.browser.test.ts; test/connectTransfer.test.ts (@pkey-feature connect.transfer) is the two-session test over the relay fixture. CC-19.9: <TransferOffer> and useTransferOffer ship the D-8 consent prompt over a TransferOfferDriver."
     },
+    "connect.local": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "A browser or renderer has no sockets, and local links never use the relay; in Electron the host's Node SDK pairs and holds the links. CC-29K.1 draws the Pair with a Code screens over a driver."
+    },
     "connect.app": {
       "status": "implemented",
       "note": "adapter.cloudConnect / useCloudConnect() (CC-09.2): start, stop, peers, refreshPeers, devices, open, onChannel, onNotice, status and onChange, with the relay as the only path (a page cannot discover devices on a LAN: connect.lan is the typed runtime N/A). A cookie page and the local adapter answer the typed runtime N/A, the desktop renderer the version N/A (its host runs the Node SDK). Sign-out and deactivation stop it before leaving the roster."

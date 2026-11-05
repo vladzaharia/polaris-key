@@ -1247,6 +1247,26 @@
       "why": "The other device is no longer paired with this one.",
       "fix": "Pair the devices again."
     },
+    "local-pairing-off": {
+      "page": "devices",
+      "why": "The app's developer hasn't turned on pairing with a code.",
+      "fix": "Use another way the app offers to connect your devices."
+    },
+    "pairing-code-failed": {
+      "page": "devices",
+      "why": "The code didn't match the one on the other device, or it was tried too many times.",
+      "fix": "Check the code on the other device and enter it again. If it shows a new code, use that one."
+    },
+    "pairing-not-found": {
+      "page": "devices",
+      "why": "This device couldn't find the other device on your network.",
+      "fix": "Check that both devices are on the same network and the other device still shows its code, then try again."
+    },
+    "local-links-full": {
+      "page": "devices",
+      "why": "This device is already paired with as many devices as the app allows.",
+      "fix": "Forget a paired device you no longer use, then pair again."
+    },
     "peer_revoked": {
       "page": "devices",
       "why": "The other device was removed from the account, so nothing was shared.",

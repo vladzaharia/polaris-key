@@ -2987,6 +2987,22 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_link_unknown_message">そのデバイスはこのデバイスとペアリングされていません。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_pairing_off_title">ペアリングを利用できません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_pairing_off_message">このアプリでは、コードによるペアリングはオフになっています。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_code_failed_title">ペアリングできませんでした</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_code_failed_message">そのコードは使えませんでした。確認して、もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_not_found_title">デバイスが見つかりません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_not_found_message">相手のデバイスが見つかりません。両方が同じネットワークにあるか確認してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_links_full_title">これ以上ペアリングできません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_links_full_message">このデバイスにはこれ以上ペアリングを保存できません。先にペアリング済みのデバイスを削除してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_title">デバイスは信頼されなくなりました</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_message">相手のデバイスはアカウントから削除されました。何も共有されていません。</string>

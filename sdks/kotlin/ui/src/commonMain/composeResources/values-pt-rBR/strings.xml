@@ -3013,6 +3013,22 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_link_unknown_message">Esse dispositivo não está mais pareado com este.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_pairing_off_title">Pareamento indisponível</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_pairing_off_message">O pareamento com um código está desativado neste app.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_code_failed_title">Não foi possível parear</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_code_failed_message">Esse código não funcionou. Confira e tente novamente.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_not_found_title">Dispositivo não encontrado</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_not_found_message">Não foi possível encontrar o outro dispositivo. Confira se os dois estão na mesma rede.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_links_full_title">Sem espaço para parear</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_links_full_message">Este dispositivo não tem espaço para outro pareamento. Esqueça um dispositivo pareado primeiro.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_title">Dispositivo não é mais confiável</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_message">O outro dispositivo foi removido da conta. Nada foi compartilhado.</string>

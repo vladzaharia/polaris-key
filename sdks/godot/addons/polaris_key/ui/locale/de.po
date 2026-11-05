@@ -7871,6 +7871,46 @@ msgstr "Nicht gekoppelt"
 msgid "core.codes.link-unknown.message"
 msgstr "Dieses Gerät ist nicht mehr mit diesem gekoppelt."
 
+#. Pairing unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.local-pairing-off.title"
+msgstr "Koppeln nicht verfügbar"
+
+#. Pairing with a code is off for this app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.local-pairing-off.message"
+msgstr "Das Koppeln mit einem Code ist für diese App deaktiviert."
+
+#. Couldn't pair
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pairing-code-failed.title"
+msgstr "Koppeln fehlgeschlagen"
+
+#. That code didn't work. Check it and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pairing-code-failed.message"
+msgstr "Dieser Code hat nicht funktioniert. Prüfen Sie ihn und versuchen Sie es erneut."
+
+#. Device not found
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pairing-not-found.title"
+msgstr "Gerät nicht gefunden"
+
+#. Can't find the other device. Check you're both on the same network.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pairing-not-found.message"
+msgstr "Das andere Gerät wurde nicht gefunden. Prüfen Sie, ob beide Geräte im selben Netzwerk sind."
+
+#. No room to pair
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.local-links-full.title"
+msgstr "Kein Platz zum Koppeln"
+
+#. This device has no room for another pairing. Forget a paired device first.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.local-links-full.message"
+msgstr "Auf diesem Gerät ist kein Platz für eine weitere Kopplung. Entfernen Sie zuerst ein gekoppeltes Gerät."
+
 #. Device no longer trusted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.peer_revoked.title"

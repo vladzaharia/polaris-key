@@ -776,6 +776,17 @@
       "status": "implemented",
       "note": "PolarisKey.cloud_connect.transfer (PKeyCloudTransfer, services/connect/transfer.gd, transfer_store.gd, CC-20b; WIRE-CONTRACT-V5 section 15.11): send(peer, source, options) for an open session, a device id or {link = id}, from a path or bytes, returns a PKeyTransferHandle (wait, cancel); on_offer(handler) puts each OFFER to the host as a PKeyTransferOffer to accept(path, overwrite) or decline() (no handler, an error, an unusable destination or 120 s decline; in mode c the category is checked before the person is asked); the result signal; cancel(id). Sessions list xfer/1 by default; PKeyPeerXferEndpoint runs the machine over the session's transfer port (the six types 0x20 to 0x25 belong to it; without the cap they close peer_not_allowed). A link session joins Direct Transfer only after its link has been checked. Partial files live in the state directory (named only by the derived reference, resumable for 24 h), are removed on sign-out and when a link is deleted, and are delivered by temp file and rename after the hash matched; content delivered and offered again is answered as done without a new consent. The whole content is hashed off the main thread. An accept that no longer fits the store is CANCEL quota for that one transfer, and the session stays. tests/connect/{xfer,xfer_endpoint,xfer_store,transfer}.gd and the xfer rows of peer-matrix.json (@pkey-feature connect.transfer). Limits that go with the feature: the GDScript GCM (Linux and web, and anywhere a native lane failed its check) gives about 1 MB/s a link under the pump budget; a native lane (CryptoKit, CNG, JCA) is faster. Web runs it over the relay only, with no resume (the store keeps no partial file there and the quota is 64 MiB). With no host quota and a disk that cannot say how much is free (a full disk reads as unknown), the default quota is 1 GiB and the 256 MiB reserve does not apply; a host quota is used as given. GDScript has no stat, O_EXCL or O_NOFOLLOW: temp files sit in a 0700 directory, the delivered file has the umask's mode until the rename, and the check-then-rename of the destination is not atomic (a race with another process that can write the same directory)."
     },
+    "connect.local": {
+      "status": "planned",
+      "unowned": true,
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ],
+      "note": "CC-29b.G1 to CC-29b.G4 build it after CC-19b and CC-20b (WIRE-CONTRACT-V5 section 15.12); web has no LAN. The program registry has no CC-29b row yet; this names wp CC-29b once it does."
+    },
     "connect.app": {
       "status": "implemented",
       "note": "PolarisKey.cloud_connect (PKeyCloudConnect, services/cloud_connect.gd): start, stop, peers, refresh_peers, devices, open, status and the signals channel and notice (the accessor is cloud_connect, never connect, which is Object's; the identity client is connect_client). LAN first (a 4 s bound), then the relay; an inbound session nobody listens for is closed (G9); sign-out stops Connect, then forgets the state, and stops when it cannot (G18); gated by launch.connect through discovery. A mobile build without the native bridge, and web, report the LAN off with reason unsupported. tests/connect/cloud_connect.gd and the api_surface suite. No Godot web test lane: web runs the same code, untested."

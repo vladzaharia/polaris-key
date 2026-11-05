@@ -1733,6 +1733,18 @@ export const KIT_COPY: Readonly<
     "core.codes.link-unknown.title": "Not paired",
     "core.codes.link-unknown.message":
       "That device is no longer paired with this one.",
+    "core.codes.local-pairing-off.title": "Pairing unavailable",
+    "core.codes.local-pairing-off.message":
+      "Pairing with a code is off for this app.",
+    "core.codes.pairing-code-failed.title": "Couldn't pair",
+    "core.codes.pairing-code-failed.message":
+      "That code didn't work. Check it and try again.",
+    "core.codes.pairing-not-found.title": "Device not found",
+    "core.codes.pairing-not-found.message":
+      "Can't find the other device. Check you're both on the same network.",
+    "core.codes.local-links-full.title": "No room to pair",
+    "core.codes.local-links-full.message":
+      "This device has no room for another pairing. Forget a paired device first.",
     "core.codes.peer_revoked.title": "Device no longer trusted",
     "core.codes.peer_revoked.message":
       "The other device was removed from the account. Nothing was shared.",
@@ -3842,6 +3854,18 @@ export const KIT_COPY: Readonly<
     "core.codes.link-unknown.title": "Nicht gekoppelt",
     "core.codes.link-unknown.message":
       "Dieses Gerät ist nicht mehr mit diesem gekoppelt.",
+    "core.codes.local-pairing-off.title": "Koppeln nicht verfügbar",
+    "core.codes.local-pairing-off.message":
+      "Das Koppeln mit einem Code ist für diese App deaktiviert.",
+    "core.codes.pairing-code-failed.title": "Koppeln fehlgeschlagen",
+    "core.codes.pairing-code-failed.message":
+      "Dieser Code hat nicht funktioniert. Prüfen Sie ihn und versuchen Sie es erneut.",
+    "core.codes.pairing-not-found.title": "Gerät nicht gefunden",
+    "core.codes.pairing-not-found.message":
+      "Das andere Gerät wurde nicht gefunden. Prüfen Sie, ob beide Geräte im selben Netzwerk sind.",
+    "core.codes.local-links-full.title": "Kein Platz zum Koppeln",
+    "core.codes.local-links-full.message":
+      "Auf diesem Gerät ist kein Platz für eine weitere Kopplung. Entfernen Sie zuerst ein gekoppeltes Gerät.",
     "core.codes.peer_revoked.title": "Gerät nicht mehr vertrauenswürdig",
     "core.codes.peer_revoked.message":
       "Das andere Gerät wurde aus dem Konto entfernt. Es wurde nichts geteilt.",
@@ -5938,6 +5962,18 @@ export const KIT_COPY: Readonly<
     "core.codes.link-unknown.title": "Non associé",
     "core.codes.link-unknown.message":
       "Cet appareil n'est plus associé à celui-ci.",
+    "core.codes.local-pairing-off.title": "Association indisponible",
+    "core.codes.local-pairing-off.message":
+      "L'association avec un code est désactivée pour cette app.",
+    "core.codes.pairing-code-failed.title": "Association impossible",
+    "core.codes.pairing-code-failed.message":
+      "Ce code n'a pas fonctionné. Vérifiez-le et réessayez.",
+    "core.codes.pairing-not-found.title": "Appareil introuvable",
+    "core.codes.pairing-not-found.message":
+      "L'autre appareil est introuvable. Vérifiez que les deux sont sur le même réseau.",
+    "core.codes.local-links-full.title": "Plus de place pour associer",
+    "core.codes.local-links-full.message":
+      "Cet appareil n'a plus de place pour une autre association. Oubliez d'abord un appareil associé.",
     "core.codes.peer_revoked.title": "Appareil non fiable",
     "core.codes.peer_revoked.message":
       "L'autre appareil a été retiré du compte. Rien n'a été partagé.",
@@ -8023,6 +8059,18 @@ export const KIT_COPY: Readonly<
     "core.codes.link-unknown.title": "Sin vincular",
     "core.codes.link-unknown.message":
       "Ese dispositivo ya no está vinculado con este.",
+    "core.codes.local-pairing-off.title": "Vinculación no disponible",
+    "core.codes.local-pairing-off.message":
+      "La vinculación con un código está desactivada en esta app.",
+    "core.codes.pairing-code-failed.title": "No se pudo vincular",
+    "core.codes.pairing-code-failed.message":
+      "Ese código no funcionó. Revísalo e inténtalo de nuevo.",
+    "core.codes.pairing-not-found.title": "Dispositivo no encontrado",
+    "core.codes.pairing-not-found.message":
+      "No se encuentra el otro dispositivo. Comprueba que ambos estén en la misma red.",
+    "core.codes.local-links-full.title": "Sin espacio para vincular",
+    "core.codes.local-links-full.message":
+      "Este dispositivo no tiene espacio para otra vinculación. Olvida primero un dispositivo vinculado.",
     "core.codes.peer_revoked.title": "Dispositivo ya no es de confianza",
     "core.codes.peer_revoked.message":
       "El otro dispositivo se eliminó de la cuenta. No se compartió nada.",
@@ -10072,6 +10120,18 @@ export const KIT_COPY: Readonly<
     "core.codes.link-unknown.title": "Não pareado",
     "core.codes.link-unknown.message":
       "Esse dispositivo não está mais pareado com este.",
+    "core.codes.local-pairing-off.title": "Pareamento indisponível",
+    "core.codes.local-pairing-off.message":
+      "O pareamento com um código está desativado neste app.",
+    "core.codes.pairing-code-failed.title": "Não foi possível parear",
+    "core.codes.pairing-code-failed.message":
+      "Esse código não funcionou. Confira e tente novamente.",
+    "core.codes.pairing-not-found.title": "Dispositivo não encontrado",
+    "core.codes.pairing-not-found.message":
+      "Não foi possível encontrar o outro dispositivo. Confira se os dois estão na mesma rede.",
+    "core.codes.local-links-full.title": "Sem espaço para parear",
+    "core.codes.local-links-full.message":
+      "Este dispositivo não tem espaço para outro pareamento. Esqueça um dispositivo pareado primeiro.",
     "core.codes.peer_revoked.title": "Dispositivo não é mais confiável",
     "core.codes.peer_revoked.message":
       "O outro dispositivo foi removido da conta. Nada foi compartilhado.",
@@ -12133,6 +12193,18 @@ export const KIT_COPY: Readonly<
     "core.codes.link-unknown.title": "Non associato",
     "core.codes.link-unknown.message":
       "Quel dispositivo non è più associato a questo.",
+    "core.codes.local-pairing-off.title": "Associazione non disponibile",
+    "core.codes.local-pairing-off.message":
+      "L'associazione con un codice è disattivata per questa app.",
+    "core.codes.pairing-code-failed.title": "Associazione non riuscita",
+    "core.codes.pairing-code-failed.message":
+      "Quel codice non ha funzionato. Controllalo e riprova.",
+    "core.codes.pairing-not-found.title": "Dispositivo non trovato",
+    "core.codes.pairing-not-found.message":
+      "Impossibile trovare l'altro dispositivo. Controlla che siano entrambi sulla stessa rete.",
+    "core.codes.local-links-full.title": "Nessuno spazio per associare",
+    "core.codes.local-links-full.message":
+      "Questo dispositivo non ha spazio per un'altra associazione. Dimentica prima un dispositivo associato.",
     "core.codes.peer_revoked.title": "Dispositivo non più attendibile",
     "core.codes.peer_revoked.message":
       "L'altro dispositivo è stato rimosso dall'account. Non è stato condiviso nulla.",
@@ -14214,6 +14286,18 @@ export const KIT_COPY: Readonly<
     "core.codes.link-unknown.title": "ペアリングされていません",
     "core.codes.link-unknown.message":
       "そのデバイスはこのデバイスとペアリングされていません。",
+    "core.codes.local-pairing-off.title": "ペアリングを利用できません",
+    "core.codes.local-pairing-off.message":
+      "このアプリでは、コードによるペアリングはオフになっています。",
+    "core.codes.pairing-code-failed.title": "ペアリングできませんでした",
+    "core.codes.pairing-code-failed.message":
+      "そのコードは使えませんでした。確認して、もう一度お試しください。",
+    "core.codes.pairing-not-found.title": "デバイスが見つかりません",
+    "core.codes.pairing-not-found.message":
+      "相手のデバイスが見つかりません。両方が同じネットワークにあるか確認してください。",
+    "core.codes.local-links-full.title": "これ以上ペアリングできません",
+    "core.codes.local-links-full.message":
+      "このデバイスにはこれ以上ペアリングを保存できません。先にペアリング済みのデバイスを削除してください。",
     "core.codes.peer_revoked.title": "デバイスは信頼されなくなりました",
     "core.codes.peer_revoked.message":
       "相手のデバイスはアカウントから削除されました。何も共有されていません。",
@@ -16211,6 +16295,18 @@ export const KIT_COPY: Readonly<
     "core.codes.link-unknown.title": "페어링되지 않음",
     "core.codes.link-unknown.message":
       "해당 기기는 더 이상 이 기기와 페어링되어 있지 않습니다.",
+    "core.codes.local-pairing-off.title": "페어링을 사용할 수 없음",
+    "core.codes.local-pairing-off.message":
+      "이 앱에서는 코드로 페어링하기가 꺼져 있습니다.",
+    "core.codes.pairing-code-failed.title": "페어링하지 못함",
+    "core.codes.pairing-code-failed.message":
+      "코드가 맞지 않습니다. 확인한 후 다시 시도하세요.",
+    "core.codes.pairing-not-found.title": "기기를 찾을 수 없음",
+    "core.codes.pairing-not-found.message":
+      "상대 기기를 찾을 수 없습니다. 두 기기가 같은 네트워크에 있는지 확인하세요.",
+    "core.codes.local-links-full.title": "더 이상 페어링할 수 없음",
+    "core.codes.local-links-full.message":
+      "이 기기에는 더 이상 페어링을 저장할 수 없습니다. 먼저 페어링된 기기를 삭제하세요.",
     "core.codes.peer_revoked.title": "더 이상 신뢰할 수 없는 기기",
     "core.codes.peer_revoked.message":
       "상대 기기가 계정에서 제거되었습니다. 공유된 내용은 없습니다.",
@@ -18055,6 +18151,16 @@ export const KIT_COPY: Readonly<
     "core.codes.transfer-cancelled.message": "传输未完成，未收到任何内容。",
     "core.codes.link-unknown.title": "未配对",
     "core.codes.link-unknown.message": "该设备已不再与此设备配对。",
+    "core.codes.local-pairing-off.title": "无法配对",
+    "core.codes.local-pairing-off.message": "此应用已关闭通过代码配对。",
+    "core.codes.pairing-code-failed.title": "配对失败",
+    "core.codes.pairing-code-failed.message": "该代码无效。请检查后重试。",
+    "core.codes.pairing-not-found.title": "未找到设备",
+    "core.codes.pairing-not-found.message":
+      "找不到另一台设备。请确认两台设备在同一网络中。",
+    "core.codes.local-links-full.title": "无法再配对",
+    "core.codes.local-links-full.message":
+      "此设备已无法再保存配对。请先移除一台已配对的设备。",
     "core.codes.peer_revoked.title": "设备不再受信任",
     "core.codes.peer_revoked.message":
       "对方设备已从账户中移除。未共享任何内容。",

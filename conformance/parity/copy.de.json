@@ -649,6 +649,22 @@
       "title": "Nicht gekoppelt",
       "message": "Dieses Gerät ist nicht mehr mit diesem gekoppelt."
     },
+    "local-pairing-off": {
+      "title": "Koppeln nicht verfügbar",
+      "message": "Das Koppeln mit einem Code ist für diese App deaktiviert."
+    },
+    "pairing-code-failed": {
+      "title": "Koppeln fehlgeschlagen",
+      "message": "Dieser Code hat nicht funktioniert. Prüfen Sie ihn und versuchen Sie es erneut."
+    },
+    "pairing-not-found": {
+      "title": "Gerät nicht gefunden",
+      "message": "Das andere Gerät wurde nicht gefunden. Prüfen Sie, ob beide Geräte im selben Netzwerk sind."
+    },
+    "local-links-full": {
+      "title": "Kein Platz zum Koppeln",
+      "message": "Auf diesem Gerät ist kein Platz für eine weitere Kopplung. Entfernen Sie zuerst ein gekoppeltes Gerät."
+    },
     "peer_revoked": {
       "title": "Gerät nicht mehr vertrauenswürdig",
       "message": "Das andere Gerät wurde aus dem Konto entfernt. Es wurde nichts geteilt."

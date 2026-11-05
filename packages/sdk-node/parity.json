@@ -557,6 +557,11 @@
       "status": "implemented",
       "note": "client.cloudConnect.transfer (packages/sdk-node/src/connect/transfer.ts, transferStore.ts, CC-20.3; WIRE-CONTRACT-V5 §15.11): send(peer, source, {name, type, category, chunk, signal, id, onStart}) for a device id, {link} or an open session, from a file path, bytes or a stream (spooled and hashed first); onOffer(handler) decides each offer (no handler, a refusal, an error or an unusable destination declines; the answer is {saveTo, overwrite?} or {stream}); onResult(fn); cancel(id); maxSize. Sessions list xfer/1 by default; client-core's XferEndpoint runs the machine over ConnectSession.xferPort(). Partial files live in <state>/transfer/p (0700 directory, 0600 files, named by the derived reference only, 24 h, 64 files, a 4 GiB quota and the volume's free space), are removed on sign-out, deactivation and link deletion, and are delivered by temp-file and rename after the hash matched. The peer-matrix xfer rows run in conformance/runners/node/peerMatrix.test.ts; test/connect/transfer.test.ts and transferLinks.test.ts (@pkey-feature connect.transfer) are the two-session tests over the LAN, the relay fixture and a link."
     },
+    "connect.local": {
+      "status": "planned",
+      "unowned": true,
+      "note": "CC-29.7 and CC-29.8 build it (WIRE-CONTRACT-V5 §15.12): client.cloudConnect.localLinks over a LAN service that runs with no account, and the pkey.connect.local.v1 store. The program registry has no CC-29 row yet; this names wp CC-29 once it does."
+    },
     "connect.app": {
       "status": "implemented",
       "note": "client.cloudConnect (packages/sdk-node/src/connect/cloudConnect.ts, CC-08.3): start({lan, relay, lanAttemptMs}), stop(), peers() with the paths each device has, refreshPeers(), devices(), open(deviceId) (LAN first, the relay after a failed or timed-out LAN attempt unless the host disabled it; session.path says which was used), onChannel(), onNotice() and status(). A LAN service that cannot start is not fatal while the relay is on. test/relay.test.ts (@pkey-feature connect.app). Nearby (mode v) and links (mode p) are later work packages."

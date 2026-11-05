@@ -649,6 +649,22 @@
       "title": "未配对",
       "message": "该设备已不再与此设备配对。"
     },
+    "local-pairing-off": {
+      "title": "无法配对",
+      "message": "此应用已关闭通过代码配对。"
+    },
+    "pairing-code-failed": {
+      "title": "配对失败",
+      "message": "该代码无效。请检查后重试。"
+    },
+    "pairing-not-found": {
+      "title": "未找到设备",
+      "message": "找不到另一台设备。请确认两台设备在同一网络中。"
+    },
+    "local-links-full": {
+      "title": "无法再配对",
+      "message": "此设备已无法再保存配对。请先移除一台已配对的设备。"
+    },
     "peer_revoked": {
       "title": "设备不再受信任",
       "message": "对方设备已从账户中移除。未共享任何内容。"

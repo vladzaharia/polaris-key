@@ -649,6 +649,22 @@
       "title": "Não pareado",
       "message": "Esse dispositivo não está mais pareado com este."
     },
+    "local-pairing-off": {
+      "title": "Pareamento indisponível",
+      "message": "O pareamento com um código está desativado neste app."
+    },
+    "pairing-code-failed": {
+      "title": "Não foi possível parear",
+      "message": "Esse código não funcionou. Confira e tente novamente."
+    },
+    "pairing-not-found": {
+      "title": "Dispositivo não encontrado",
+      "message": "Não foi possível encontrar o outro dispositivo. Confira se os dois estão na mesma rede."
+    },
+    "local-links-full": {
+      "title": "Sem espaço para parear",
+      "message": "Este dispositivo não tem espaço para outro pareamento. Esqueça um dispositivo pareado primeiro."
+    },
     "peer_revoked": {
       "title": "Dispositivo não é mais confiável",
       "message": "O outro dispositivo foi removido da conta. Nada foi compartilhado."

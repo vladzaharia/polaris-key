@@ -649,6 +649,22 @@
       "title": "Non associato",
       "message": "Quel dispositivo non è più associato a questo."
     },
+    "local-pairing-off": {
+      "title": "Associazione non disponibile",
+      "message": "L'associazione con un codice è disattivata per questa app."
+    },
+    "pairing-code-failed": {
+      "title": "Associazione non riuscita",
+      "message": "Quel codice non ha funzionato. Controllalo e riprova."
+    },
+    "pairing-not-found": {
+      "title": "Dispositivo non trovato",
+      "message": "Impossibile trovare l'altro dispositivo. Controlla che siano entrambi sulla stessa rete."
+    },
+    "local-links-full": {
+      "title": "Nessuno spazio per associare",
+      "message": "Questo dispositivo non ha spazio per un'altra associazione. Dimentica prima un dispositivo associato."
+    },
     "peer_revoked": {
       "title": "Dispositivo non più attendibile",
       "message": "L'altro dispositivo è stato rimosso dall'account. Non è stato condiviso nulla."

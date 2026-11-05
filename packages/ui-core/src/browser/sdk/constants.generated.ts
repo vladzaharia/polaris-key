@@ -167,6 +167,10 @@ export const ErrorCode = {
   peerClosed: "peer-closed",
   transferCancelled: "transfer-cancelled",
   linkUnknown: "link-unknown",
+  localPairingOff: "local-pairing-off",
+  pairingCodeFailed: "pairing-code-failed",
+  pairingNotFound: "pairing-not-found",
+  localLinksFull: "local-links-full",
   peerRevoked: "peer_revoked",
   peerExpired: "peer_expired",
   peerBadFrame: "peer_bad_frame",
@@ -399,6 +403,10 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "peer-closed",
   "transfer-cancelled",
   "link-unknown",
+  "local-pairing-off",
+  "pairing-code-failed",
+  "pairing-not-found",
+  "local-links-full",
   "peer_revoked",
   "peer_expired",
   "peer_bad_frame",
@@ -633,6 +641,10 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "peer-closed": "client",
   "transfer-cancelled": "client",
   "link-unknown": "client",
+  "local-pairing-off": "client",
+  "pairing-code-failed": "client",
+  "pairing-not-found": "client",
+  "local-links-full": "client",
   peer_revoked: "peer",
   peer_expired: "peer",
   peer_bad_frame: "peer",
@@ -754,6 +766,7 @@ export const Feature = {
   connectRelay: "connect.relay",
   connectLinks: "connect.links",
   connectTransfer: "connect.transfer",
+  connectLocal: "connect.local",
   connectApp: "connect.app",
   devicesFingerprint: "devices.fingerprint",
   devicesFacts: "devices.facts",
@@ -901,6 +914,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "connect.relay",
   "connect.links",
   "connect.transfer",
+  "connect.local",
   "connect.app",
   "devices.fingerprint",
   "devices.facts",
@@ -2198,6 +2212,14 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     ],
   },
   "connect.transfer": { status: "implemented", service: "connect", na: [] },
+  "connect.local": {
+    status: "na",
+    service: "connect",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
   "connect.app": { status: "implemented", service: "connect", na: [] },
   "devices.fingerprint": {
     status: "na",
@@ -2489,4 +2511,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "874fa9e166f65fad4e65b598982de9b0c915ef645f58d9e5040007fa34c8280f";
+  "0a61999a62e14ba7568541b1f85e8785436189551c26939a561a7b578a23618b";

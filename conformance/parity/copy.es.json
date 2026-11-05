@@ -649,6 +649,22 @@
       "title": "Sin vincular",
       "message": "Ese dispositivo ya no está vinculado con este."
     },
+    "local-pairing-off": {
+      "title": "Vinculación no disponible",
+      "message": "La vinculación con un código está desactivada en esta app."
+    },
+    "pairing-code-failed": {
+      "title": "No se pudo vincular",
+      "message": "Ese código no funcionó. Revísalo e inténtalo de nuevo."
+    },
+    "pairing-not-found": {
+      "title": "Dispositivo no encontrado",
+      "message": "No se encuentra el otro dispositivo. Comprueba que ambos estén en la misma red."
+    },
+    "local-links-full": {
+      "title": "Sin espacio para vincular",
+      "message": "Este dispositivo no tiene espacio para otra vinculación. Olvida primero un dispositivo vinculado."
+    },
     "peer_revoked": {
       "title": "Dispositivo ya no es de confianza",
       "message": "El otro dispositivo se eliminó de la cuenta. No se compartió nada."
