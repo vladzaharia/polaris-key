@@ -367,6 +367,10 @@ func _settings(t: PKeyTestContext) -> void:
 	await _tree().process_frame
 	await _tree().process_frame
 	t.check("settings: Add opens the form in the list's place", tab.holders.stage() == "add" and tab.holders.add.is_visible_in_tree() and not tab._list.visible, tab.holders.stage())
+	await _tree().process_frame
+	var form_focus := tab.holders._initial_focus()
+	var kept := tab.get_viewport().gui_get_focus_owner()
+	t.check("settings: Add opens the form with focus on its first control", form_focus != null and kept == form_focus, str(kept))
 	tab.holders.add.cancelled.emit()
 	await _tree().process_frame
 	t.check("settings: Cancel from Settings leaves the form and shows the list again", not tab.holders.is_open() and tab._list.visible)

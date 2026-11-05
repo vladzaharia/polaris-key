@@ -333,13 +333,15 @@ func _render() -> void:
 	cat_text(_waiting, "activate.waiting" if waiting else "", args)
 	_mark.visible = state != "hidden" and level < 1
 	# The recommendation: a quiet card, only the reasons the model names.
-	_recommend.visible = ready
-	cat_text(_rec_title, "activate.recommend.title" if ready else "", args)
-	cat_text(_badge, "activate.recommend.badge" if ready and level < 3 else "", args)
+	# Nothing to add to: no card and no skip line, only the way on.
+	var offer := ready and not no_add_action
+	_recommend.visible = offer
+	cat_text(_rec_title, "activate.recommend.title" if offer else "", args)
+	cat_text(_badge, "activate.recommend.badge" if offer and level < 3 else "", args)
 	var reasons := PKeyHolderText.reasons(model)
 	var shown := 0 if level >= 5 else (1 if level >= 4 else reasons.size())
 	for i in _reason_lines.size():
-		var on := ready and i < reasons.size() and i < shown
+		var on := offer and i < reasons.size() and i < shown
 		(_reason_lines[i] as PKeyRichLine).show_lead(String(catalog().format(reasons[i], args)) if on else "")
 		(_reason_glyphs[i] as Control).visible = on
 	var portal := copy.has("signin.key.addInLocker")
@@ -349,7 +351,7 @@ func _render() -> void:
 	leaves_app(_add, portal and ready and not busy and not no_add_action)
 	if not portal and "accessibility_description" in _add:
 		_add.set("accessibility_description", "")
-	cat_text(_skip, "activate.recommend.skip" if ready and copy.has("activate.recommend.skip") and level < 3 else "", args)
+	cat_text(_skip, "activate.recommend.skip" if offer and copy.has("activate.recommend.skip") and level < 3 else "", args)
 	cat_text(_primary, "signin.done.start" if state != "hidden" and not busy else "", args)
 	cat_text(_sign_in, ("common.working" if signing_in else "activate.waitingSignIn") if waiting and not busy else "", args)
 	cat_text(_problem, problem_key if state != "hidden" else "", args)

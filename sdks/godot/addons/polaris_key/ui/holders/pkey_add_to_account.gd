@@ -259,7 +259,7 @@ func _arrange(m: Dictionary) -> void:
 	_product.visible = squeeze_level() < 1
 	size_glyph(_mark, 40.0, get_theme_color("font_color", "PKeyStrong"))
 	size_glyph(_problem_glyph, 20.0, get_theme_color("font_color", "PKeyError"))
-	_qr.get_parent().size_flags_horizontal = Control.SIZE_SHRINK_CENTER if pad_only() else Control.SIZE_SHRINK_BEGIN
+	_qr.get_parent().size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_spacer.visible = phone_screen()
 	_fit_code()
 	_body.theme_type_variation = &"PKeyTight" if squeeze_level() >= 2 else &"PKeySections"
@@ -392,12 +392,18 @@ func _render() -> void:
 	_code.text = user_code if waiting else ""
 	_code.visible = waiting and user_code != ""
 	name_for_reader(_code, String(catalog().format("a11y.code", {"code": user_code})) if _code.visible else "")
-	cat_text(_check, "activate.attach.waitCheck" if waiting else "", args)
 	# Where to type the code, and a QR code of the page with it filled in on a wide window or a TV.
 	var shown_address := PKeySignInController.short_uri(address) if waiting and _is_https(address) else ""
-	cat_text(_address, "signin.handoff.url" if shown_address != "" else "", {"url": shown_address})
+	# A pad-only screen opened no browser: one line says where to go; the match check and the second
+	# address line belong to a browser that was opened.
+	var pad_wait := waiting and pad_only() and shown_address != ""
+	if pad_wait:
+		cat_text(_check, "signin.handoff.codeBody", {"url": shown_address})
+	else:
+		cat_text(_check, "activate.attach.waitCheck" if waiting else "", args)
+	cat_text(_address, "signin.handoff.url" if shown_address != "" and not pad_wait else "", {"url": shown_address})
 	var qr_on := waiting and _is_https(link) and (pad_only() or (bool(layout_metrics().get("wide", false)) and not phone_screen()))
-	cat_text(_qr_caption, "part.qr.scanInstead" if qr_on else "", args)
+	cat_text(_qr_caption, "part.qr.scanInstead" if qr_on and not pad_wait else "", args)
 	_qr.text = link if qr_on else ""
 	_qr.visible = qr_on
 	_qr.get_parent().visible = qr_on
