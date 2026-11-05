@@ -16,7 +16,10 @@ export function FooterNav({
   privacy: string;
 }): React.ReactElement {
   // No min-width: padding reaches the 44 px floor below the desk breakpoint on both links, so the dot sits evenly.
-  const link = cn(AUTH_LINK_CLASS, "text-fg-muted align-middle min-w-0! max-[47.5624rem]:px-2");
+  const link = cn(
+    AUTH_LINK_CLASS,
+    "text-fg-muted align-middle min-w-0! max-[47.5624rem]:px-2",
+  );
   return (
     <nav
       aria-label={t("locker.shell.help")}
