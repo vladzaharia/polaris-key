@@ -67,8 +67,83 @@ describe("baseline directories", () => {
   });
 });
 
+describe("docs subset", () => {
+  const shows = (kit: string, component: string): boolean =>
+    BASELINES.some((b) => b.kit === kit && b.component === component);
+
+  it("React and elements show their nested 390 renders, each state in both themes", () => {
+    for (const kit of ["react", "elements"]) {
+      for (const component of ["ActivateDone", "LinkPairing", "TransferOffer"])
+        expect(shows(kit, component), `${kit} ${component}`).toBe(true);
+    }
+    const r = BASELINES.filter(
+      (b) => b.kit === "react" && b.component === "ActivateDone",
+    );
+    expect(r.map((b) => `${b.state}-${b.theme}`).sort()).toEqual([
+      "ready-dark",
+      "ready-light",
+      "waiting-dark",
+      "waiting-light",
+    ]);
+  });
+
+  it("Compose shows its Cloud Connect baselines", () => {
+    for (const component of ["LinkPairing", "TransferOffer"])
+      expect(shows("compose", component), component).toBe(true);
+  });
+
+  it("every kit that has committed baselines yields some", () => {
+    for (const kit of [
+      "react",
+      "elements",
+      "swiftui",
+      "compose",
+      "terminal-node",
+      "terminal-python",
+    ])
+      expect(
+        BASELINES.some((b) => b.kit === kit),
+        kit,
+      ).toBe(true);
+  });
+
+  it("emits no variant render: 1440, native, forced-colors, platform chrome, font scales", () => {
+    for (const b of BASELINES.filter(
+      (x) => x.kit === "react" || x.kit === "elements",
+    ))
+      expect(b.file, b.file).toMatch(/\/390-(dark|light)\.png$/);
+    for (const b of BASELINES.filter((x) => x.kit === "compose"))
+      expect(b.file, b.file).toMatch(
+        /\/phone-(branded|polaris)-(dark|light)\.png$/,
+      );
+  });
+});
+
 describe("baseline names", () => {
   const catalog = { ...CATALOG };
+
+  it("map React's <Component>.<state>/<width>-<theme> and Compose's connect/ folders, in any case", () => {
+    expect(classify("ActivateDone.ready/390-dark.png")).toMatchObject({
+      component: "ActivateDone",
+      state: "ready",
+      variant: "390",
+    });
+    for (const dir of [
+      "connect/linkpairing-code-the-app-asks-for",
+      "connect/link-pairing-code-the-app-asks-for",
+      "connect/LinkPairing-code-the-app-asks-for",
+    ])
+      expect(classify(`${dir}/phone-polaris-light.png`)).toMatchObject({
+        component: "LinkPairing",
+        state: "code",
+        theme: "light",
+      });
+    expect(
+      classify(
+        "connect/transferoffer-ask-the-contact-has-no/phone-polaris-dark.png",
+      ),
+    ).toMatchObject({ component: "TransferOffer", state: "ask" });
+  });
 
   it("map a flat <component>-<state>-<theme> name", () => {
     expect(classify("devices-list-dark.png", catalog)).toMatchObject({
