@@ -573,8 +573,7 @@ public struct CloudSyncStatusView: View {
             if let fraction {
                 ProgressView(value: max(0, min(1, fraction)))
             } else {
-                ProgressView()
-                    .progressViewStyle(.linear)
+                IndeterminateBar()
             }
         }
         .tint(style.palette.accentSolid)

@@ -885,7 +885,14 @@ public final class PolarisKeyGateModel {
                 if let name = ready.identity?.name ?? ready.identity?.email { signedInName = name }
                 await reload()
                 await readSignedInTier()
-                let offered = ready.sameDevice ? await presentLinkOffer() : false
+                // A code-based sign-in finished on another device has no offer to show here: a held
+                // link ends explicitly, never lingers.
+                var offered = false
+                if ready.sameDevice {
+                    offered = await presentLinkOffer()
+                } else if client?.identity.link.pending == true {
+                    client?.identity.link.dismiss()
+                }
                 signIn?.redeeming = nil
                 signIn?.outcome = Self.kitOutcome(outcome)
                 signIn?.issuedNow = false
@@ -1099,13 +1106,6 @@ public final class PolarisKeyGateModel {
         return true
     }
 
-    /// Say a problem line once, even when the same line was just said.
-    private func announceProblem(_ key: String) async {
-        announcement = nil
-        await Task.yield()
-        announce(signInScreen.line(key))
-    }
-
     /// Link on the offer: one request (the handle, or one provider sheet), then Done or the
     /// conflict. A refusal keeps the offer and says why (stale: Sign in again; refused: No thanks is
     /// the way on); a failed request keeps Link with the network line. Nothing to link with ends
@@ -1114,6 +1114,14 @@ public final class PolarisKeyGateModel {
         guard let client, autoSignIn?.step == .linkOffer, !linkWorking else { return }
         linkWorking = true
         defer { linkWorking = false }
+        // The last failure's line goes while the request runs, so a repeated failure draws it, and
+        // takes focus, again (the problem row is the one cue; it is not also announced).
+        if autoSignIn?.linkError != nil {
+            autoSignIn?.linkError = nil
+            rebuild()
+            await Task.yield()
+            guard autoSignIn?.step == .linkOffer else { return }
+        }
         let kind = autoSignIn?.kind
         let result: LinkAcceptResult?
         var failure: String?
@@ -1128,7 +1136,6 @@ public final class PolarisKeyGateModel {
         if let failure {
             autoSignIn?.linkError = failure
             rebuild()
-            await announceProblem("core.codes.network.message")
             return
         }
         switch result {
@@ -1143,12 +1150,10 @@ public final class PolarisKeyGateModel {
             // The sign-in is too old: Sign in again, then Link is one tap (the handle is kept).
             autoSignIn?.linkError = "stale"
             rebuild()
-            await announceProblem("signin.linkOffer.stale")
             return
         case .refused?:
             autoSignIn?.linkError = "failed"
             rebuild()
-            await announceProblem("signin.linkOffer.failed")
             return
         default:
             finishLink()

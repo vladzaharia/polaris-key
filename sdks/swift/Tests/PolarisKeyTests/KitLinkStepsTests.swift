@@ -72,6 +72,7 @@
                 if open { return }
                 await withCheckedContinuation { waiting.append($0) }
             }
+            func reset() { open = false }
             func release() {
                 open = true
                 for continuation in waiting { continuation.resume() }
@@ -82,8 +83,10 @@
         private struct HeldTransport: PolarisTransport {
             let inner: StubTransport
             let gate: Gate
+            /// The request that waits at the gate: the link GET, or the accept's POST.
+            var method = "GET"
             func send(_ request: PolarisRequest) async throws -> PolarisResponse {
-                if request.method == "GET", request.url.path == "/djdl/identity/link" { await gate.wait() }
+                if request.method == method, request.url.path == "/djdl/identity/link" { await gate.wait() }
                 return try await inner.send(request)
             }
         }
@@ -323,7 +326,7 @@
             let screen = m.signInScreen
             XCTAssertEqual(screen.state, .linkOffer)
             XCTAssertTrue(screen.shows("signin.linkOffer.stale"))
-            XCTAssertEqual(m.announcement?.key, "signin.linkOffer.stale", "the problem line is announced")
+            XCTAssertNotEqual(m.announcement?.key, "signin.linkOffer.stale", "the problem row takes focus; it is not also announced")
             XCTAssertTrue(screen.shows("signin.again"))
             XCTAssertFalse(screen.shows("signin.linkOffer.primary"))
             XCTAssertTrue(screen.shows("signin.linkOffer.decline"))
@@ -415,18 +418,55 @@
             XCTAssertEqual(m.route, .welcome)
         }
 
-        func testLinkShowsProgressAndNoThanksIsOffWhileItRuns() async throws {
+        func testLinkShowsProgressAndNoThanksIsOffWhileTheRequestIsHeld() async throws {
             await discovery()
-            let (m, c, listeners, _) = try await model()
+            let gate = Gate()
+            let held = HeldTransport(inner: server.transport, gate: gate, method: "POST")
+            let (m, c, listeners, _) = try await model(transport: held)
             c.identity.linkHold(handle: handle, expiresAt: Int.max)
             try await signIn(m, listeners)
             try await settle { m.signInScreen.state == .linkOffer }
+            await server.route("/djdl/identity/link") { request in
+                request.method == "POST"
+                    ? StubServer.Reply(body: #"{"linked":{"kind":"apple","reach":"developer"}}"#)
+                    : StubServer.Reply(body: #"{"offer":[{"kind":"apple","reach":"developer"}]}"#)
+            }
             let task = Task { await m.acceptLinkOffer() }
-            // The stub answers at once; what is pinned is that a second press is ignored and the
-            // flag is down afterwards.
+            // The POST is held: the screen is busy, a second Link and No thanks do nothing.
+            try await settle { m.linkWorking }
+            XCTAssertEqual(m.signInScreen.state, .linkOffer)
+            await m.acceptLinkOffer()
+            await m.declineLinkOffer()
+            XCTAssertTrue(m.linkWorking)
+            XCTAssertEqual(m.signInScreen.state, .linkOffer)
+            await gate.release()
             await task.value
             XCTAssertFalse(m.linkWorking)
-            XCTAssertTrue(m.holdsApp || !m.linkStepActive)
+            XCTAssertEqual(m.signInScreen.state, .linkDone)
+            let posts = await server.requests(forPath: "/djdl/identity/link").filter { $0.method == "POST" }
+            XCTAssertEqual(posts.count, 1)
+        }
+
+        func testARepeatedFailureClearsTheLineWhenLinkStartsSoItIsShownAgain() async throws {
+            await discovery()
+            let gate = Gate()
+            let held = HeldTransport(inner: server.transport, gate: gate, method: "POST")
+            let (m, c, listeners, _) = try await model(transport: held)
+            c.identity.linkHold(handle: handle, expiresAt: Int.max)
+            try await signIn(m, listeners)
+            try await settle { m.signInScreen.state == .linkOffer }
+            await failLink(status: 503, code: "unavailable")
+            await gate.release()
+            await m.acceptLinkOffer()
+            XCTAssertTrue(m.signInScreen.shows("core.codes.network.message"))
+            // The next press: the line is gone while the request is held, and back when it fails again.
+            await gate.reset()
+            let task = Task { await m.acceptLinkOffer() }
+            try await settle { m.linkWorking }
+            XCTAssertFalse(m.signInScreen.shows("core.codes.network.message"))
+            await gate.release()
+            await task.value
+            XCTAssertTrue(m.signInScreen.shows("core.codes.network.message"))
         }
 
         func testARefusedDeviceLosesLinkAndNoThanksIsTheWayOn() async throws {
@@ -442,7 +482,7 @@
                 let screen = m.signInScreen
                 XCTAssertEqual(screen.state, .linkOffer, code)
                 XCTAssertTrue(screen.shows("signin.linkOffer.failed"), code)
-                XCTAssertEqual(m.announcement?.key, "signin.linkOffer.failed", code)
+                XCTAssertNotEqual(m.announcement?.key, "signin.linkOffer.failed", code)
                 XCTAssertFalse(screen.shows("signin.linkOffer.primary"), code)
                 XCTAssertFalse(screen.shows("signin.again"), code)
                 XCTAssertTrue(screen.shows("signin.linkOffer.decline"), code)
@@ -471,7 +511,7 @@
             XCTAssertTrue(screen.shows("signin.linkOffer.primary"))
             XCTAssertFalse(screen.shows("signin.again"))
             XCTAssertTrue(c.identity.link.pending)
-            XCTAssertEqual(m.announcement?.key, "core.codes.network.message")
+            XCTAssertNotEqual(m.announcement?.key, "core.codes.network.message")
         }
 
         func testAServerErrorIsNotARefusalAndLinkStays() async throws {
