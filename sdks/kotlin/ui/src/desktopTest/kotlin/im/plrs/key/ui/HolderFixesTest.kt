@@ -1,6 +1,6 @@
 // @pkey-feature ui.kit.holders
 //
-// UK-43.10 fix round (UX pass C): typing after a wrong field lands in the right field; the code's copy button copies the
+// Holder screens: typing after a wrong field lands in the right field; the code's copy button copies the
 // code; the device-code wait shows where to go; a license waiting for an email signs in for that address; email-bound
 // and other-account lead with the web's primary; the license line without a term; the card at large type; the desktop
 // action row inside the content column; the TV QR with no link.

@@ -1,6 +1,6 @@
 // @pkey-feature ui.kit.holders
 //
-// The holders' wiring against a stub Worker (UK-43.6 fix round): the real `submitKey` over a signed
+// The holders' wiring against a stub Worker: the real `submitKey` over a signed
 // license, then what the Done step is drawn from. A line never carries a brace (a license line whose
 // term the license does not give drops that segment), the product page link follows discovery's
 // `core.portal` (off is no link, and no key leaves for it; a self-hosted Worker uses its own customer
