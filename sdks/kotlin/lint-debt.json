@@ -3237,7 +3237,6 @@
       "detekt:style.MagicNumber": 2,
       "detekt:style.ReturnCount": 2,
       "ktlint:standard:function-naming": 25,
-      "ktlint:standard:import-ordering": 1,
       "ktlint:standard:kdoc": 1
     },
     "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisSettings.kt": {

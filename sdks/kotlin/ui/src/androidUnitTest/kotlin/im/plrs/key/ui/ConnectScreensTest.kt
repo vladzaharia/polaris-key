@@ -21,11 +21,13 @@ import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -132,9 +134,15 @@ class ConnectMatrixSnapshotTest(private val dark: Boolean) {
 }
 
 private val connectSizes = listOf(
+    // The short landscape sizes are drawn in both themes (two panes, UI-KITS.md "LinkPairing and TransferOffer").
     ResponsiveSize("phone-844x390", 844, 390, nativeDark = true),
+    ResponsiveSize("phone-844x390", 844, 390, nativeDark = false),
     ResponsiveSize("small-landscape-640x360", 640, 360, nativeDark = false),
+    ResponsiveSize("small-landscape-640x360", 640, 360, nativeDark = true),
     ResponsiveSize("tablet-1180x820", 1180, 820, nativeDark = false),
+    // Portrait stays one column, with the choice after the categories.
+    ResponsiveSize("portrait-390x844", 390, 844, nativeDark = true),
+    ResponsiveSize("portrait-390x844", 390, 844, nativeDark = false),
     ResponsiveSize("phone-390x844-font200", 390, 844, fontScale = 2f, nativeDark = true),
 )
 
@@ -146,9 +154,11 @@ class ConnectResponsiveSnapshotTest(private val variant: SnapshotVariant) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun variants(): List<Array<Any>> = connectSizes.flatMap(::bothLooks).filter {
-            it.branding == PolarisBranding.PolarisKey
-        }.map { arrayOf<Any>(it) }
+        fun variants(): List<Array<Any>> = (
+            connectSizes.flatMap(::bothLooks) + bothLooks(tvSize) +
+                // TV is dark in both looks by default; its light render is checked too.
+                SnapshotVariant("tv-960x540-polaris-light", PolarisBranding.PolarisKey, false, 960, 540, 1f, true)
+            ).filter { it.branding == PolarisBranding.PolarisKey }.map { arrayOf<Any>(it) }
     }
 
     @get:Rule
@@ -490,6 +500,141 @@ class ConnectTvFocusTest {
         rule.mainClock.advanceTimeBy(100)
         rule.onNodeWithText("Decline").assertIsFocused()
         rule.onNodeWithText("Accept").assertIsNotFocused()
+    }
+}
+
+/**
+ * The two-pane rule (UI-KITS.md "LinkPairing and TransferOffer"): in a short landscape window the decision is in the first viewport,
+ * the code and the choice side by side, and the categories still come before Codes match.
+ */
+abstract class ConnectPanesBase {
+    @get:Rule
+    val rule = createComposeRule()
+
+    abstract val widthDp: Int
+    abstract val heightDp: Int
+    open val dark: Boolean = false
+
+    private fun show(content: @Composable () -> Unit) {
+        rule.setContent {
+            StockHost(dark) { PolarisTheme(branding = PolarisBranding.PolarisKey, copy = sampleCopy, darkTheme = dark) { content() } }
+        }
+        rule.waitForIdle()
+    }
+
+    private fun bounds(text: String) = rule.onNodeWithText(text, useUnmergedTree = true).getUnclippedBoundsInRoot()
+
+    private fun inside(label: String, text: String) {
+        val b = bounds(text)
+        assertTrue("$label ends inside the $heightDp dp window: ${b.bottom}", b.bottom <= heightDp.dp && b.top >= 0.dp)
+        assertTrue("$label sits inside the $widthDp dp width", b.right <= widthDp.dp)
+    }
+
+    @Test
+    fun theCodeAndTheChoiceAreSideBySideAndBothActionsAreInTheFirstViewport() {
+        val case = ConnectCases.case("linkpairing-code-the-code")
+        show { case.Draw() }
+        inside("Codes match", "Codes match")
+        inside("Not a match", "Not a match")
+        val code = rule.onNodeWithContentDescription("Pairing code 1 2 3   4 5 6").getUnclippedBoundsInRoot()
+        val confirm = bounds("Codes match")
+        assertTrue("the choice is on the end side of the code", code.right <= confirm.left)
+        // The categories come before Codes match: the end pane reads the reported line, the categories, then the actions.
+        assertTrue(bounds("Each of you shares").top < confirm.top)
+        assertTrue(confirm.top < bounds("Not a match").top)
+    }
+
+    @Test
+    fun theWaitKeepsTheCodeBesideItsStatusAndCancelInTheFirstViewport() {
+        val case = ConnectCases.case("linkpairing-confirm-waiting")
+        show { case.Draw() }
+        inside("Cancel", "Cancel")
+        val code = rule.onNodeWithContentDescription("Pairing code 1 2 3   4 5 6", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertTrue("the status is beside the code", code.right <= bounds("Cancel").left)
+    }
+
+    @Test
+    fun theOfferAndTheChoiceAreSideBySideAndBothActionsAreInTheFirstViewport() {
+        val case = ConnectCases.case("transferoffer-ask-the-contact-s-label")
+        show { case.Draw() }
+        inside("Accept", "Accept")
+        inside("Decline", "Decline")
+        val file = bounds("⁨${KitConnect.shortName(case.name, 48)}⁩")
+        assertTrue("the choice is on the end side of the offer", file.right <= bounds("Accept").left)
+    }
+
+    @Test
+    fun aMessageStateStaysOneColumn() {
+        val case = ConnectCases.case("transferoffer-receiving")
+        show { case.Draw() }
+        inside("Cancel", "Cancel")
+        // One column: the heading is above its Cancel, not beside it.
+        val title = bounds("Receiving ⁨holiday.zip⁩")
+        val cancel = bounds("Cancel")
+        assertTrue(title.bottom <= cancel.top && title.left < cancel.right && cancel.left < title.right)
+    }
+}
+
+@RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = "w844dp-h390dp-mdpi")
+class ConnectPanesPhoneLandscapeTest : ConnectPanesBase() {
+    override val widthDp = 844
+    override val heightDp = 390
+}
+
+@RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = "w640dp-h360dp-mdpi")
+class ConnectPanesSmallLandscapeTest : ConnectPanesBase() {
+    override val widthDp = 640
+    override val heightDp = 360
+    override val dark = true
+}
+
+@RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = "w960dp-h540dp-television-mdpi")
+class ConnectPanesTvTest : ConnectPanesBase() {
+    override val widthDp = 960
+    override val heightDp = 540
+    override val dark = true
+}
+
+/** Where the rule keeps one column: a portrait phone, a window under 600 dp wide, and large type in a short landscape window. */
+@RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = "w844dp-h390dp-mdpi")
+class ConnectPanesThresholdTest {
+    @get:Rule
+    val rule = createComposeRule()
+
+    @Test
+    fun theRuleAsCoded() {
+        fun panes(w: Int, h: Int, fontScale: Float = 1f, tv: Boolean = false) = PolarisWindow(w.dp, h.dp, tv).connectPanes(fontScale)
+        assertTrue("844 x 390", panes(844, 390))
+        assertTrue("640 x 360", panes(640, 360))
+        assertTrue("600 x 479", panes(600, 479))
+        assertTrue("599 wide is one column", !panes(599, 360))
+        assertTrue("480 tall is one column", !panes(844, 480))
+        assertTrue("portrait is one column", !panes(390, 844))
+        assertTrue("a tablet landscape is one column", !panes(1180, 820))
+        assertTrue("large type is one column", !panes(844, 390, fontScale = 1.5f))
+        assertTrue("TV is always two panes", panes(960, 540, tv = true))
+        assertTrue("TV at large type too", panes(960, 540, fontScale = 2f, tv = true))
+    }
+
+    @Test
+    fun largeTypeInAShortLandscapeWindowKeepsOneColumnWithTheCategoriesBeforeTheChoice() {
+        org.robolectric.RuntimeEnvironment.setFontScale(2f)
+        val case = ConnectCases.case("linkpairing-code-the-code")
+        rule.setContent {
+            StockHost(false) { PolarisTheme(branding = PolarisBranding.PolarisKey, copy = sampleCopy, darkTheme = false) { case.Draw() } }
+        }
+        rule.waitForIdle()
+        val shares = rule.onNodeWithText("Each of you shares", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val confirm = rule.onNodeWithText("Codes match", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue("one column: the choice is below the categories", shares.bottom <= confirm.top)
     }
 }
 
