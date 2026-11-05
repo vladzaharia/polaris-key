@@ -678,7 +678,7 @@ const EXCEPTIONS: Record<string, { rules: string[]; why: string }> = {
     why: "an A-18a declaration module: it imports only the adapter layer, so the CLI's copy is a straight serialise (boundaries.test.ts, 'the adapter layer')",
   },
   "src/console/signinScript.ts": {
-    rules: ["base64url decoder"],
+    rules: ["base64url decoder", "SHA-256 digest", "local copy by name"],
     why: "browser code inside a hash-pinned string (the sign-in card's one script): it cannot import a Worker module",
   },
   "src/services/distribution/dictionary.ts": {
