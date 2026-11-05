@@ -46,6 +46,8 @@ export {
   type UseCloudSync,
   type SignInOffer,
 } from "./react/useCloudSync.js";
+// sync.conflict (U-08): the MergeRequests open now, and `keep` to settle one.
+export { useConflicts, type UseConflicts } from "./react/useConflicts.js";
 // sync.saves (U-22.7): the saves of the signed-in person and the writes in flight.
 export {
   useSaves,

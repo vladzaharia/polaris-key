@@ -31,8 +31,7 @@ import {
   type HostCodec,
   type ReadOptions,
   type RangedSource,
-  type SaveConflict,
-  type SaveKeep,
+  type SavesDeps,
   type SaveOutcome,
   type SaveRead,
   type SaveRecord,
@@ -246,6 +245,12 @@ export class SavesApi {
   readonly #active = new Map<string, SaveTransfer>();
   /** The person the last call used the chunk cache for: the one a purge removes, never another's. */
   #cacheSubject: string | null = null;
+  /** One client for the session: it holds the open save requests and the versions this device has
+   *  seen (S1, S2), so it is kept until the person or the settings change. */
+  #cached: { key: string; client: SavesClient } | null = null;
+  /** Bumped when the ring locks or unlocks: the end-to-end codec is bound to one root. */
+  #ring = 0;
+  #codec: { ring: number; value: FileCodec } | null = null;
 
   constructor(deps: SavesApiDeps) {
     this.#d = deps;
@@ -254,6 +259,7 @@ export class SavesApi {
       deps.keyring.codec,
       () => deps.host.machine.encryptionMode() === "e2e",
     );
+    deps.keyring.attach({ setRoot: () => void this.#ring++ });
     this.#journal = new FileJournal(deps.ctx.dirs.state);
     this.#transport = new NodeFileTransport({
       ctx: deps.ctx,
@@ -328,24 +334,6 @@ export class SavesApi {
     );
   }
 
-  /** Settle a conflict: keep the remote copy, write the local one on top, or keep both. */
-  async resolve(
-    conflict: SaveConflict,
-    keep: SaveKeep,
-    bytes: Uint8Array | RangedSource,
-    opts: WriteOptions = {},
-  ): Promise<SaveTransfer> {
-    const client = await this.#client();
-    return this.#track(
-      client.resolve(
-        conflict,
-        keep,
-        bytes,
-        this.#progress(`saves:${conflict.id}`, opts),
-      ),
-    );
-  }
-
   /** Delete a save; its file is collected with the record. */
   async delete(id: string, baseVersion?: number): Promise<SaveSetResult> {
     return (await this.#client()).delete(id, baseVersion);
@@ -364,6 +352,12 @@ export class SavesApi {
     const running = [...this.#active.values()];
     this.#active.clear();
     this.#records.dropAll();
+    // The requests of the person who left go with them (they live in memory only, S5).
+    this.#cached = null;
+    this.#codec = null;
+    for (const r of this.#d.host.merge.conflicts())
+      if (r.collection === SAVES_COLLECTION)
+        this.#d.host.merge.close(r.id, "superseded");
     await Promise.all(running.map((t) => t.cancel().catch(() => undefined)));
     const journal = this.#journal.clear().catch(() => undefined);
     // The leaving person's cache goes (the last one a call used, else the signed-in one). When
@@ -394,18 +388,36 @@ export class SavesApi {
     };
   }
 
+  /** The codec for the mode the machine is in now; the end-to-end one is rebuilt after the ring
+   *  locked or unlocked (it refuses with `sync-locked` while no root is held). */
+  #fileCodec(): FileCodec {
+    if (this.#d.host.machine.encryptionMode() !== "e2e")
+      return serverFileCodec(webCryptoSyncPort);
+    if (this.#codec === null || this.#codec.ring !== this.#ring)
+      this.#codec = {
+        ring: this.#ring,
+        value: this.#d.keyring.fileCodec(SAVES_COLLECTION),
+      };
+    return this.#codec.value;
+  }
+
   async #client(): Promise<SavesClient> {
-    const { ctx, host, keyring } = this.#d;
+    const { ctx, host } = this.#d;
     ctx.requireService("sync", Feature.syncSaves);
     await this.#d.attach();
     if (!host.started) throw new SavesError("rejected", "sync-not-started");
-    const e2e = host.machine.encryptionMode() === "e2e";
-    const codec: FileCodec = e2e
-      ? keyring.fileCodec(SAVES_COLLECTION)
-      : serverFileCodec(webCryptoSyncPort);
+    // Refuses with `sync-locked` while the ring holds no root.
+    if (host.machine.encryptionMode() === "e2e") this.#fileCodec();
     const o = host.savesOptions;
     const subject = this.#d.subject();
     this.#cacheSubject = subject;
+    const key = JSON.stringify([
+      subject,
+      o.delta,
+      o.maxBytes,
+      o.saveFormatVersion,
+    ]);
+    if (this.#cached?.key === key) return this.#cached.client;
     const cache =
       o.delta && subject !== null
         ? new FileChunkCache(
@@ -413,19 +425,26 @@ export class SavesApi {
             chunkCacheBudget(o.maxBytes ?? 0),
           )
         : undefined;
-    return new SavesClient({
+    const self = this;
+    const deps: SavesDeps = {
       records: this.#records,
       deviceLabel: () => ctx.deviceLabel(),
       engine: this.#engine,
       transport: this.#transport,
-      codec,
+      get codec(): FileCodec {
+        return self.#fileCodec();
+      },
       delta: o.delta,
+      merge: host.merge,
       ...(cache ? { cache } : {}),
       ...(o.maxBytes !== undefined ? { maxBytes: o.maxBytes } : {}),
       ...(o.saveFormatVersion !== undefined
         ? { saveFormatVersion: o.saveFormatVersion }
         : {}),
-    });
+    };
+    const client = new SavesClient(deps);
+    this.#cached = { key, client };
+    return client;
   }
 
   /** Register a write, emit its events, and drop it from `transfers()` when it settles. */

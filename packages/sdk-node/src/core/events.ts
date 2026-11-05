@@ -16,7 +16,7 @@ import type { LicenseState } from "@polaris-key/client-core";
 import type { UpdateCheck } from "@polaris-key/protocol/update";
 import type { IdentityEvent } from "../identity/signIn.js";
 import type { SyncEvent } from "@polaris-key/client-core/cloud-sync";
-import type { TransferEvent } from "../constants.generated.js";
+import type { MergeEvent, TransferEvent } from "../constants.generated.js";
 import type { ConfigChange } from "../config/client.js";
 
 /** A transfer event on the `cloudSync` stream (`TransferEvent` in `conformance/parity/enums.json`). */
@@ -35,6 +35,22 @@ export type SaveTransferEvent =
     }
   | { type: typeof TransferEvent.transferfailed; id: string; code: string };
 
+/** A MergeRequest event on the `cloudSync` stream (`MergeEvent` in `conformance/parity/enums.json`).
+ *  Ids and names only; the request itself is in `cloudSync.conflicts()`. */
+export type ConflictStreamEvent =
+  | {
+      type: typeof MergeEvent.conflictopened;
+      id: string;
+      cause: "write" | "accountMerge";
+      collection: string;
+      record: string;
+    }
+  | {
+      type: typeof MergeEvent.conflictclosed;
+      id: string;
+      how: "local" | "remote" | "value" | "both" | "superseded";
+    };
+
 export interface PolarisEvents {
   license: [{ state: LicenseState; previous: LicenseState["status"] | null }];
   config: [ConfigChange];
@@ -42,7 +58,7 @@ export interface PolarisEvents {
   packs: [PackProgress];
   identity: [IdentityEvent];
   store: [StoreStatus | null];
-  cloudSync: [SyncEvent | SaveTransferEvent];
+  cloudSync: [SyncEvent | SaveTransferEvent | ConflictStreamEvent];
 }
 
 export type PolarisEventName = keyof PolarisEvents;

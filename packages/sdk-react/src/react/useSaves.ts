@@ -1,5 +1,5 @@
 // Cloud Sync saves as hooks (sync.saves, U-22.7): `useSaves()` is the saves of the signed-in person
-// (list, read, write, resolve, delete, revisions) and `useTransfers()` the writes in flight, with
+// (list, read, write, delete, revisions) and `useTransfers()` the writes in flight, with
 // pause, resume and cancel. Where Cloud Sync cannot run (a cookie page, the desktop bridge until
 // v4, a product without Sync) `unsupported` says why and every verb throws the typed unsupported.
 //
@@ -39,7 +39,6 @@ export interface UseSaves {
   read: BrowserSaves["read"];
   /** Resolves with the handle at once; follow it in `useTransfers()`. */
   write: BrowserSaves["write"];
-  resolve: BrowserSaves["resolve"];
   delete: BrowserSaves["delete"];
   revisions: BrowserSaves["revisions"];
 }
@@ -97,11 +96,6 @@ export function useSaves(): UseSaves {
       write: via(async (id, b, m, o) => {
         const t = await s.write(id, b, m, o);
         // A finished write changes the list: read it again when it settles.
-        void t.done.then(() => refresh().catch(() => undefined));
-        return t;
-      }),
-      resolve: via(async (c, k, b, o) => {
-        const t = await s.resolve(c, k, b, o);
         void t.done.then(() => refresh().catch(() => undefined));
         return t;
       }),

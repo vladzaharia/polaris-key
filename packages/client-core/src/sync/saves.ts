@@ -162,19 +162,6 @@ export type SaveRead =
       supported: number;
     };
 
-/** @deprecated Transitional (U-08.3): the pre-MergeRequest shape the Node and React hosts and the
- *  kit still bind to. U-08.4 and the kit slices move them to `MergeRequest` and delete this. */
-export interface SaveConflict {
-  id: string;
-  local: { metadata: { [k: string]: Json }; size: number };
-  remote: SaveSummary | null;
-  serverVersion: number | null;
-  bothAvailable: boolean;
-}
-
-/** @deprecated Transitional (U-08.3), see `SaveConflict`. */
-export type SaveKeep = "local" | "remote" | "both";
-
 export type TransferState =
   | "running"
   | "paused"
@@ -196,9 +183,8 @@ export type SaveOutcome =
   | { state: "done"; id: string; kept: "remote"; version: number | null }
   | { state: "cancelled" }
   | { state: "failed"; error: SavesError }
-  /** The write was not sent: `request` holds it until `keep` (S1, S3). `conflict` is the
-   *  transitional shape (see `SaveConflict`). */
-  | { state: "conflict"; request: MergeRequest; conflict: SaveConflict };
+  /** The write was not sent: `request` holds it until `keep` (S1, S3). */
+  | { state: "conflict"; request: MergeRequest };
 
 /** A write in flight. A cancelled transfer is a state, not an error (D-8). */
 export interface SaveTransfer {
@@ -537,64 +523,10 @@ export class SavesClient {
         return settled(id, {
           state: "conflict",
           request: this.merge.find(this.requestId(id))!,
-          conflict: {
-            id,
-            local: { metadata: slot.metadata, size: source.size },
-            remote: slot.remote,
-            serverVersion: slot.remote?.version ?? null,
-            bothAvailable: slot.slotsFree && slot.remote !== null,
-          },
         });
       }
     }
     return this.run(id, bytes, metadata, opts, null);
-  }
-
-  /** @deprecated Transitional (U-08.3): use `MergeRequest.keep`. The bytes are the caller's. */
-  resolve(
-    conflict: SaveConflict,
-    keep: SaveKeep,
-    bytes: Uint8Array | RangedSource,
-    opts: WriteOptions = {},
-  ): SaveTransfer {
-    const id = conflict.id;
-    if (keep === "remote")
-      return deferred(id, async () => {
-        await this.pull();
-        const rec = await this.d.records.get(id);
-        if (rec) this.seen.set(id, rec.version);
-        this.closeSlot(id, "remote");
-        return {
-          state: "done",
-          id,
-          kept: "remote",
-          version: rec?.version ?? null,
-        } satisfies SaveOutcome;
-      });
-    if (keep === "both" && !conflict.bothAvailable)
-      return settled(id, {
-        state: "failed",
-        error: new SavesError("slots-full"),
-      });
-    const t = this.run(
-      id,
-      bytes,
-      conflict.local.metadata,
-      opts,
-      keep === "both"
-        ? { copy: true }
-        : {
-            baseVersion:
-              conflict.remote === null || !conflict.serverVersion
-                ? "*"
-                : conflict.serverVersion,
-          },
-      false,
-    );
-    void t.done.then((o) => {
-      if (o.state === "done") this.closeSlot(id, keep);
-    });
-    return t;
   }
 
   /** Delete a save; its file is collected with the record. With a request open for the slot the
@@ -909,13 +841,6 @@ export class SavesClient {
         version = serverVersion;
       }
     }
-    const slot0: SaveConflict = {
-      id,
-      local: { metadata, size: source.size },
-      remote,
-      serverVersion: version,
-      bothAvailable: slots < SYNC_SAVE_SLOTS,
-    };
     const request = this.openSlot(
       {
         id,
@@ -929,7 +854,7 @@ export class SavesClient {
       },
       version,
     );
-    return { state: "conflict", request, conflict: slot0 };
+    return { state: "conflict", request };
   }
 
   // ── requests (S1, S3, S4) ─────────────────────────────────────────────────────────────────
