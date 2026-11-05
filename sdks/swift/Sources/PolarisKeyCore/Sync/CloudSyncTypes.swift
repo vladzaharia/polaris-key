@@ -315,6 +315,11 @@ public enum SyncEvent: Sendable, Equatable {
     /// The effective rows of a watched collection changed (`watchRecords`); ids in byte order.
     case records(collection: String, ids: [String], origin: SyncChangeOrigin)
     case signInOffered(signInUrl: String?)
+    /// A `revision` record's write opened a MergeRequest (`cause` is always `write` here; plans/U-08.md
+    /// section 2.3 rule 1). `id` is `w:<collection>/<record>`.
+    case conflict(id: String, collection: String, record: String)
+    /// A request closed: how it was settled.
+    case conflictClosed(id: String, how: SyncMergeHow)
 
     /// The corpus's event form (`type` plus members).
     public var json: JSONValue {
@@ -339,7 +344,131 @@ public enum SyncEvent: Sendable, Equatable {
             ])
         case .signInOffered(let url):
             return .object(["type": .string("signInOffered"), "signInUrl": url.map { .string($0) } ?? .null])
+        case .conflict(let id, let collection, let record):
+            return .object([
+                "type": .string("conflict"), "id": .string(id), "cause": .string("write"),
+                "collection": .string(collection), "record": .string(record),
+            ])
+        case .conflictClosed(let id, let how):
+            return .object(["type": .string("conflictClosed"), "id": .string(id), "how": .string(how.rawValue)])
         }
+    }
+}
+
+// MARK: - MergeRequests (plans/U-08.md section 2.2, 2.3)
+
+/// What a request offers. A record request never offers `both`.
+public enum SyncMergeChoice: String, Sendable, Equatable {
+    case local, remote, both, value
+}
+
+/// How a request ended (`conflictClosed`).
+public enum SyncMergeHow: String, Sendable, Equatable {
+    case local, remote, value, both, superseded
+}
+
+/// The answer to a request: keep this device's copy, the cloud's, a value the person made (a record
+/// request), or both (a save).
+public enum SyncMergeKeep: Sendable, Equatable {
+    case local, remote, both
+    case value(JSONValue)
+
+    /// The choice name the request lists.
+    public var choice: SyncMergeChoice {
+        switch self {
+        case .local: return .local
+        case .remote: return .remote
+        case .both: return .both
+        case .value: return .value
+        }
+    }
+}
+
+public enum SyncMergeState: String, Sendable, Equatable {
+    case open, applying
+}
+
+/// One side of a request as the machine sees it. `savedAt` and `device` are saves-layer members and stay nil here.
+public struct SyncMergeSide: Sendable, Equatable {
+    public var value: JSONValue
+    public var version: Int?
+    public var savedAt: Int?
+    public var device: String?
+    public var file: (size: Int, format: SyncFilePointer.Format)?
+
+    public init(
+        value: JSONValue, version: Int?, savedAt: Int? = nil, device: String? = nil,
+        file: (size: Int, format: SyncFilePointer.Format)? = nil
+    ) {
+        self.value = value
+        self.version = version
+        self.savedAt = savedAt
+        self.device = device
+        self.file = file
+    }
+
+    public static func == (a: Self, b: Self) -> Bool {
+        a.value == b.value && a.version == b.version && a.savedAt == b.savedAt && a.device == b.device
+            && a.file?.size == b.file?.size && a.file?.format == b.file?.format
+    }
+
+    /// The corpus's side form.
+    public var json: JSONValue {
+        .object([
+            "value": value, "version": version.map { .int($0) } ?? .null,
+            "savedAt": savedAt.map { .int($0) } ?? .null, "device": device.map { .string($0) } ?? .null,
+            "file": file.map { .object(["size": .int($0.size), "format": .string($0.format.rawValue)]) } ?? .null,
+        ])
+    }
+}
+
+/// The machine's view of one open request (record collections).
+public struct SyncMachineConflict: Sendable, Equatable {
+    public var id: String
+    public var collection: String
+    public var record: String
+    public var local: SyncMergeSide
+    public var remote: SyncMergeSide?
+    public var choices: [SyncMergeChoice]
+    public var state: SyncMergeState
+    public var error: String?
+
+    /// The corpus's `conflicts` form.
+    public var json: JSONValue {
+        .object([
+            "id": .string(id), "cause": .string("write"), "collection": .string(collection),
+            "record": .string(record), "local": local.json, "remote": remote?.json ?? .null,
+            "choices": .array(choices.map { .string($0.rawValue) }), "state": .string(state.rawValue),
+            "error": error.map { .string($0) } ?? .null,
+        ])
+    }
+}
+
+/// An open request as the journal holds it: the device's copy, held unsent.
+public struct SyncConflictRec: Sendable, Equatable {
+    public struct Keep: Sendable, Equatable {
+        /// `local` or `value`.
+        public var choice: SyncMergeHow
+        public var mutationId: Int
+
+        public init(choice: SyncMergeHow, mutationId: Int) {
+            self.choice = choice
+            self.mutationId = mutationId
+        }
+    }
+    public var local: JSONValue
+    /// The version the copy was written on; nil: the record did not exist.
+    public var localVersion: Int?
+    /// A keep is applying: the mutation that carries it.
+    public var keep: Keep?
+    /// The failure code of the last keep.
+    public var error: String?
+
+    public init(local: JSONValue, localVersion: Int?, keep: Keep? = nil, error: String? = nil) {
+        self.local = local
+        self.localVersion = localVersion
+        self.keep = keep
+        self.error = error
     }
 }
 
@@ -379,18 +508,24 @@ public struct SyncStatus: Sendable, Equatable {
     public var reason: SyncBlockReason?
     /// `sync-encryption-pinned` while `unsupported`.
     public var code: String?
+    /// The open MergeRequests; present only above 0.
+    public var conflicts: Int?
 
-    public init(state: SyncState, pending: Int, reason: SyncBlockReason? = nil, code: String? = nil) {
+    public init(
+        state: SyncState, pending: Int, reason: SyncBlockReason? = nil, code: String? = nil, conflicts: Int? = nil
+    ) {
         self.state = state
         self.pending = pending
         self.reason = reason
         self.code = code
+        self.conflicts = conflicts
     }
 
     public var json: JSONValue {
         var o: [String: JSONValue] = ["state": .string(state.rawValue), "pending": .int(pending)]
         if let reason { o["reason"] = .string(reason.rawValue) }
         if let code { o["code"] = .string(code) }
+        if let conflicts { o["conflicts"] = .int(conflicts) }
         return .object(o)
     }
 }

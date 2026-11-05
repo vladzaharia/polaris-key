@@ -123,7 +123,14 @@ extension CloudSyncMachine {
         s.partitions[req.partition]!.nextMutationId = 1
         let ops = s.partitions[req.partition]!.pending
         s.partitions[req.partition]!.pending = []
-        for o in ops { _ = enqueue(req.partition, o) }
+        var renumbered: [Int: Int] = [:]
+        for o in ops { renumbered[o.mutationId] = enqueue(req.partition, o).mutationId }
+        for (rk, c) in s.partitions[req.partition]!.conflicts {
+            if let k = c.keep, let now = renumbered[k.mutationId] {
+                s.partitions[req.partition]!.conflicts[rk]!.keep = SyncConflictRec.Keep(
+                    choice: k.choice, mutationId: now)
+            }
+        }
     }
 
     func firstContact(_ serverNow: Double) {
@@ -205,6 +212,15 @@ extension CloudSyncMachine {
         if req.cursor == 0 && syncIsNumber(body["cursor"]) {
             s.partitions[name]!.settings = [:]
             s.partitions[name]!.records = [:]
+        }
+        // `empty` (section 13.4): a cursor-0 answer with nothing in it. Anything the cloud then holds clears it.
+        let active =
+            (body["results"]?.arrayValue ?? []).contains { $0.objectValue?["status"]?.stringValue == "ok" }
+            || !(body["changes"]?.arrayValue ?? []).isEmpty || !(body["tombstones"]?.arrayValue ?? []).isEmpty
+        if req.cursor == 0 && syncIsNumber(body["cursor"]) {
+            s.partitions[name]!.empty = body["empty"] == .bool(true) && !active
+        } else if active && s.partitions[name]!.empty == true {
+            s.partitions[name]!.empty = false
         }
         if requiresE2E, let since = syncNumber(body["encryptionSince"]) { lowerSince(name, since) }
         let openedChanges = opened.changes
@@ -416,6 +432,11 @@ extension CloudSyncMachine {
             }
             if s.partitions[name]!.held[rk] != nil { (rebaseOn, hasRebase) = (version, true) }
             emitOutcome(op, .ok(version: version))
+            if let kept = s.partitions[name]!.conflicts[rk]?.keep, kept.mutationId == op.mutationId {
+                closeConflict(name, rk, kept.choice)
+            } else if op.op == .delete && op.ticket == nil {
+                closeConflict(name, rk, .superseded)
+            }
         } else if status == "conflict", case .object(let server)? = r["server"] {
             if let sv = wholeInt(server["version"]) {
                 let sbad = copyRow(name, "r:\(rk)", server, sv, openedConflict, cursor: cursor)
@@ -427,7 +448,19 @@ extension CloudSyncMachine {
                             ? SyncRecordCopy(value: sbad.value, version: sbad.version, file: sbad.file) : nil))
                 // The resolution is a NEW mutation on the server's version; N is never resent. Only
                 // `revision` resolves on the device; every other policy took the server's copy.
-                if s.partitions[name]!.held[rk] != nil {
+                let plainRevision = op.ticket == nil && decl?.policy == "revision"
+                if plainRevision && op.op == .delete {
+                    // A delete that conflicts keeps the other copy and opens nothing; it ends the request.
+                    closeConflict(name, rk, .superseded)
+                    if s.partitions[name]!.held[rk] != nil { (rebaseOn, hasRebase) = (sv, true) }
+                } else if plainRevision && op.op == .set && (decl?.resolve == nil || decl?.resolve == "keepRemote") {
+                    if decl?.resolve == "keepRemote" {
+                        // The host's inline decider answered at once: nothing is listed or sent.
+                        s.partitions[name]!.held.removeValue(forKey: rk)
+                    } else {
+                        openConflict(name, rk, c, rid, op)
+                    }
+                } else if s.partitions[name]!.held[rk] != nil {
                     (rebaseOn, hasRebase) = (sv, true)
                 } else if op.ticket == nil, let decl, op.op == .set, decidable(sbad), clientDecides(decl.policy),
                     better(decl.policy, compared(op.value, decl.field), compared(server["value"], decl.field))
@@ -444,6 +477,12 @@ extension CloudSyncMachine {
             if status == "rejected" {
                 events.append(.rejected(mutationId: op.mutationId, code: jsString(r, "code")))
                 emitOutcome(op, .rejected(code: jsString(r, "code")))
+                if var open = s.partitions[name]!.conflicts[rk], open.keep?.mutationId == op.mutationId {
+                    // A terminal refusal of the keep reopens the request with the failure.
+                    open.keep = nil
+                    open.error = jsString(r, "code")
+                    s.partitions[name]!.conflicts[rk] = open
+                }
             }
             if s.partitions[name]!.held[rk] != nil {
                 hasRebase = true

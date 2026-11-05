@@ -18,6 +18,13 @@
 // CloudSyncSavesBinding.swift), sealing and blinding in end-to-end mode. This file owns the order of the steps, the choice of the revision, the format
 // check (D-11), the slot cap, conflicts and the `SaveTransfer` handle.
 //
+// Conflicts (plans/U-08.md section 2.4): a write whose base is stale opens one `MergeRequest` per slot (S1), and
+// the device keeps its copy unsent until the person or the app answers with `request.keep` (S4). A write with no
+// base is based on the version this device last listed, read or wrote for the slot this session (S2); a slot not
+// seen is create-only, and a pulled version is never a base. While a request is open, a write with no base only
+// replaces its local side (S3). Requests live in memory (S5): a relaunch drops them, and the next write raises
+// the conflict again through S2.
+//
 // A save is held in memory while it is sealed and sent (the `saves` template's 32 MiB default; an app may
 // lower it with `SavesOptions.maxBytes`, and a bigger file is `too-large`). A download streams to a sink.
 //
@@ -216,34 +223,15 @@ public struct SaveRevision: Sendable, Equatable {
     public let createdAt: Int
 }
 
-/// What a device tried to write when another write got there first.
-public struct SaveConflict: Sendable, Equatable {
-    public struct Local: Sendable, Equatable {
-        public let metadata: JSONValue
-        public let size: Int
-    }
-
-    public let id: String
-    /// What this device wrote.
-    public let local: Local
-    /// The server's copy; nil when it was deleted meanwhile.
-    public let remote: SaveSummary?
-    public let serverVersion: Int?
-    /// `keep: .both` needs a free slot of the 16.
-    public let bothAvailable: Bool
-}
-
-public enum SaveKeep: String, Sendable { case local, remote, both }
-
 public enum SaveTransferState: String, Sendable { case running, paused, done, cancelled, failed, conflict }
 
 public enum SaveOutcome: Sendable, Equatable {
     /// The file is stored and the metadata pushed. `version` is the record's version after the `set`.
     case done(id: String, version: Int, file: SaveFile, copyId: String?)
-    case keptRemote(id: String, version: Int?)
     case cancelled
     case failed(SavesError)
-    case conflict(SaveConflict)
+    /// The write was not sent: `request` holds it until `keep` (S1, S3).
+    case conflict(MergeRequest)
 }
 
 public struct SaveReadOptions: Sendable {
@@ -260,7 +248,8 @@ public struct SaveReadOptions: Sendable {
 }
 
 public struct SaveWriteOptions: Sendable {
-    /// The version the caller last saw; nil is the record's current one, or create-only for a new id.
+    /// The version the caller last saw; nil is the version this device last listed, read or wrote for the slot
+    /// this session, or create-only for a slot not seen (S2).
     public var baseVersion: Int?
     public var onProgress: (@Sendable (Int, Int) -> Void)?
 
@@ -372,15 +361,41 @@ public final class SavesClient: Sendable {
     private let live = LockedValue<[String: SaveTransfer]>([:])
     private let reported = LockedValue<Set<String>>([])
     private let now: @Sendable () -> Int
+    /// The requests of this client: the saves layer's are `w:saves/<id>`.
+    let merge: MergeRegistry
+    private let slots = LockedValue<[String: Slot]>([:])
+    /// S2: the version this device last listed, read or wrote for a slot this session.
+    private let seen = LockedValue<[String: Int]>([:])
 
     init(
         env: any SavesEnvironment, options: SavesOptions, emit: @escaping @Sendable (CloudSyncEvent) -> Void,
-        now: @escaping @Sendable () -> Int = { Int(Date().timeIntervalSince1970 * 1000) }
+        now: @escaping @Sendable () -> Int = { Int(Date().timeIntervalSince1970 * 1000) },
+        merge: MergeRegistry = MergeRegistry()
     ) {
         self.env = env
         self.options = options
         self.emit = emit
         self.now = now
+        self.merge = merge
+    }
+
+    /// One open save request (S1): the device's copy, retained in memory until `keep`.
+    fileprivate struct Slot: Sendable {
+        var id: String
+        /// The stamped metadata of the copy.
+        var metadata: [String: JSONValue]
+        var source: any RangedSource
+        var opts: SaveWriteOptions
+        var localFile: MergeFile
+        /// The version the copy was written on; nil: create-only.
+        var base: Int?
+        var remote: SaveSummary?
+        /// The server's version for `keep: .local`; `.any` when the save is gone.
+        var remoteVersion: SyncBase
+        var slotsFree: Bool
+        /// A keep is running: a conflict it meets reopens the request when the keep ends.
+        var keeping = false
+        var reopen = false
     }
 
     /// The context for a verb. An upload an earlier run left unfinished, and no live write holds, is reported
@@ -422,7 +437,9 @@ public final class SavesClient: Sendable {
     public func list() async throws -> [SaveSummary] {
         let ctx = try await context()
         let e2e = ctx.codec.enc == "e2e"
-        return try await ctx.records.list().map { summary($0, e2e: e2e) }.sorted { $0.id < $1.id }
+        let all = try await ctx.records.list()
+        seen.with { s in for r in all { s[r.id] = r.version } }
+        return all.map { summary($0, e2e: e2e) }.sorted { $0.id < $1.id }
     }
 
     /// The kept revisions of a save's file, newest first.
@@ -475,6 +492,7 @@ public final class SavesClient: Sendable {
         guard isSaveKey(id) else { throw SavesError(.invalidSave, detail: "id") }
         let ctx = try await context()
         guard let rec = try await ctx.records.get(id) else { return .notFound }
+        seen.with { $0[id] = rec.version }
         let (metadata, binding) = splitBinding(rec.value)
         if let supported = options.saveFormatVersion, let fv = formatOf(metadata), fv > supported {
             return .newerFormat(formatVersion: fv, supported: supported)
@@ -543,8 +561,33 @@ public final class SavesClient: Sendable {
         _ id: String, source: any RangedSource, metadata: JSONValue,
         options writeOptions: SaveWriteOptions = SaveWriteOptions()
     ) async throws -> SaveTransfer {
-        _ = try await context(excluding: id)  // the typed refusal (no Sync service, locked, not started) is thrown here
-        return run(id, source, await stamped(metadata), writeOptions, mode: nil)
+        // The typed refusal (no Sync service, locked, not started) is thrown here.
+        let ctx = try await context(excluding: id)
+        let stampedMetadata = await stamped(metadata)
+        if slots.current[id] != nil {
+            if writeOptions.baseVersion != nil {
+                closeSlot(id, .superseded)
+            } else if let check = precheck(id, source, stampedMetadata) {
+                return SaveTransfer.settled(id: transferId(id), .failed(check), state: .failed)
+            } else if case .object(let stamped) = stampedMetadata {
+                // S3: the open request keeps the device's latest copy; nothing is sent.
+                let file = localFile(source, ctx.codec)
+                let rid = requestId(id)
+                slots.with {
+                    $0[id]?.metadata = stamped
+                    $0[id]?.source = source
+                    $0[id]?.opts = writeOptions
+                    $0[id]?.localFile = file
+                }
+                if let slot = slots.current[id] {
+                    merge.update(rid) { $0.local = localSide(slot) }
+                    if let request = merge.find(rid) {
+                        return SaveTransfer.settled(id: transferId(id), .conflict(request), state: .conflict)
+                    }
+                }
+            }
+        }
+        return run(id, source, stampedMetadata, writeOptions, mode: nil)
     }
 
     /// `write` with the app's own `Encodable` metadata.
@@ -555,45 +598,37 @@ public final class SavesClient: Sendable {
         return try await write(id, bytes: bytes, metadata: value, options: writeOptions)
     }
 
-    /// Settle a conflict. `remote` keeps the server's copy and writes nothing; `local` writes this device's
-    /// save on top of the server's version; `both` writes it as a new save in a free slot.
-    public func resolve(
-        _ conflict: SaveConflict, keep: SaveKeep, bytes: Data,
-        options writeOptions: SaveWriteOptions = SaveWriteOptions()
-    ) async throws -> SaveTransfer {
-        let ctx = try await context()
-        switch keep {
-        case .remote:
-            // Pull first, so the cache holds the copy the person chose (not this device's old one).
-            _ = await ctx.records.pull()
-            let rec = try? await ctx.records.get(conflict.id)
-            return SaveTransfer.settled(
-                id: conflict.id, .keptRemote(id: conflict.id, version: rec?.version), state: .done)
-        case .both where !conflict.bothAvailable:
-            return SaveTransfer.settled(id: conflict.id, .failed(SavesError(.slotsFull)), state: .failed)
-        case .both:
-            return run(conflict.id, DataSource(bytes), conflict.local.metadata, writeOptions, mode: .copy)
-        case .local:
-            return run(
-                conflict.id, DataSource(bytes), conflict.local.metadata, writeOptions,
-                // A copy the server no longer holds is replaced on "record must not exist".
-                mode: .base(
-                    conflict.remote == nil || (conflict.serverVersion ?? 0) == 0
-                        ? .any : .version(conflict.serverVersion ?? 0)))
-        }
-    }
-
     /// Delete a save; its file is collected with the record.
     @discardableResult
     public func delete(_ id: String, baseVersion: Int? = nil) async throws -> SaveSetResult {
         guard isSaveKey(id) else { throw SavesError(.invalidSave, detail: "id") }
         let ctx = try await context()
+        let slot = slots.current[id]
         var base = baseVersion
         if base == nil {
-            guard let rec = try await ctx.records.get(id) else { return .rejected(code: "not_found") }
-            base = rec.version
+            if let slot {
+                // S3: with a request open the default base is the request's, so a delete that conflicts keeps the
+                // other copy.
+                guard let slotBase = slot.base else {
+                    let server = try await ctx.records.get(id)
+                    closeSlot(id, .superseded)
+                    return .conflict(server: server)
+                }
+                base = slotBase
+            } else {
+                guard let rec = try await ctx.records.get(id) else { return .rejected(code: "not_found") }
+                base = rec.version
+            }
         }
-        return try await ctx.records.delete(id, baseVersion: base!)
+        let r = try await ctx.records.delete(id, baseVersion: base!)
+        if slot != nil, slots.current[id] != nil {
+            switch r {
+            case .ok, .conflict: closeSlot(id, .superseded)
+            case .rejected: break
+            }
+        }
+        if case .ok = r { seen.with { _ = $0.removeValue(forKey: id) } }
+        return r
     }
 
     /// The person's data is gone: cancel what runs, settle waiting writes, delete the journal and the chunk
@@ -606,6 +641,9 @@ public final class SavesClient: Sendable {
         }
         env.dropWaiting()
         reported.with { $0.removeAll() }
+        slots.set([:])
+        seen.set([:])
+        merge.closeAllExtra()
         // Every running transfer is told to stop before the files go; only the server's release (best effort,
         // it may wait on the network) runs on in the background.
         for t in running { t.requestCancel() }
@@ -655,7 +693,7 @@ public final class SavesClient: Sendable {
                 case .failed(let e): emit(.transferFailed(id: transferId, code: e.code.rawValue))
                 case .cancelled: emit(.transferDone(id: transferId, state: "cancelled"))
                 case .conflict: emit(.transferDone(id: transferId, state: "conflict"))
-                case .done, .keptRemote: emit(.transferDone(id: transferId, state: "done"))
+                case .done: emit(.transferDone(id: transferId, state: "done"))
                 }
             })
         live.with { $0[transferId] = t }
@@ -667,15 +705,9 @@ public final class SavesClient: Sendable {
         _ id: String, _ source: any RangedSource, _ metadataValue: JSONValue, _ opts: SaveWriteOptions, _ mode: Mode?,
         transferId: String, stop: SaveStop, onProgress: @escaping @Sendable (Int, Int) -> Void
     ) async throws -> SaveOutcome {
-        guard isSaveKey(id) else { return .failed(SavesError(.invalidSave, detail: "id")) }
+        if let refused = precheck(id, source, metadataValue) { return .failed(refused) }
         guard case .object(let metadata) = metadataValue else {
             return .failed(SavesError(.invalidSave, detail: "metadata"))
-        }
-        guard metadata[saveFileBindingKey] == nil else {
-            return .failed(SavesError(.invalidSave, detail: "reserved-key"))
-        }
-        guard source.size <= options.maxBytes, source.size <= SYNC_FILE_MAX_BYTES else {
-            return .failed(SavesError(.tooLarge))
         }
         let ctx = try await env.savesContext()
         let records = ctx.records
@@ -691,10 +723,15 @@ public final class SavesClient: Sendable {
         case nil:
             if let v = opts.baseVersion {
                 base = .version(v)
-            } else if let existing = try await records.get(id) {
-                base = .version(existing.version)
+            } else if let seenVersion = seen.current[id] {
+                // S2: the version this device saw this session. A pulled version is never a base, so another
+                // device's newer save is a conflict, not an overwrite.
+                base = .version(seenVersion)
             } else {
-                if try await records.list().count >= SYNC_SAVE_SLOTS { return .failed(SavesError(.slotsFull)) }
+                // A slot not seen this session is create-only.
+                if try await records.get(id) == nil, try await records.list().count >= SYNC_SAVE_SLOTS {
+                    return .failed(SavesError(.slotsFull))
+                }
                 base = .any
             }
         }
@@ -726,7 +763,7 @@ public final class SavesClient: Sendable {
             }
         } catch let e as TransferError where e.reason == .conflict {
             return try await conflictOutcome(
-                records, ctx.codec.enc == "e2e", id, metadata, source.size, e.serverVersion)
+                ctx, id, metadata, source, opts, base, e.serverVersion)
         } catch let e as TransferError where e.reason == .aborted || e.reason == .closed {
             throw e
         } catch is CancellationError {
@@ -745,12 +782,11 @@ public final class SavesClient: Sendable {
         }
         switch try await records.set(targetId, value: value, base: .version(file.version), file: file, stop: stop) {
         case .ok(let version):
+            seen.with { $0[targetId] = version }
             return .done(id: id, version: version, file: file, copyId: targetId != id ? targetId : nil)
         case .conflict(let server):
             return try await conflictOutcome(
-                records, ctx.codec.enc == "e2e", id, metadata, source.size, server?.version, known: server,
-                hasKnown: true
-            )
+                ctx, id, metadata, source, opts, base, server?.version, known: server, hasKnown: true)
         case .rejected(let code):
             return .failed(SavesError(.rejected, detail: code))
         }
@@ -769,9 +805,12 @@ public final class SavesClient: Sendable {
     }
 
     private func conflictOutcome(
-        _ records: any SaveRecords, _ e2e: Bool, _ id: String, _ metadata: [String: JSONValue], _ size: Int,
-        _ serverVersion: Int?, known: SaveRecord? = nil, hasKnown: Bool = false
+        _ ctx: SavesContext, _ id: String, _ metadata: [String: JSONValue], _ source: any RangedSource,
+        _ opts: SaveWriteOptions, _ base: SyncBase, _ serverVersion: Int?, known: SaveRecord? = nil,
+        hasKnown: Bool = false
     ) async throws -> SaveOutcome {
+        let records = ctx.records
+        let e2e = ctx.codec.enc == "e2e"
         // The cache may be behind the conflict: pull before reading it, so the screen shows what the server
         // holds (and a save deleted elsewhere reads as deleted).
         let pulled = await records.pull()
@@ -808,10 +847,144 @@ public final class SavesClient: Sendable {
             remote = rec.map { summary($0, e2e: e2e) }
             version = rec?.version
         }
-        return .conflict(
-            SaveConflict(
-                id: id, local: SaveConflict.Local(metadata: .object(metadata), size: size),
-                remote: remote, serverVersion: version, bothAvailable: slots < SYNC_SAVE_SLOTS))
+        var localBase: Int?
+        if case .version(let v) = base { localBase = v }
+        let request = openSlot(
+            Slot(
+                id: id, metadata: metadata, source: source, opts: opts, localFile: localFile(source, ctx.codec),
+                base: localBase, remote: remote,
+                remoteVersion: remote == nil || (version ?? 0) == 0 ? .any : .version(version ?? 0),
+                slotsFree: slots < SYNC_SAVE_SLOTS),
+            version: version)
+        return .conflict(request)
+    }
+
+    // MARK: requests (S1, S3, S4)
+
+    /// The refusal of a write that cannot be a save, before anything is sent.
+    private func precheck(_ id: String, _ source: any RangedSource, _ metadataValue: JSONValue) -> SavesError? {
+        guard isSaveKey(id) else { return SavesError(.invalidSave, detail: "id") }
+        guard case .object(let metadata) = metadataValue else {
+            return SavesError(.invalidSave, detail: "metadata")
+        }
+        guard metadata[saveFileBindingKey] == nil else { return SavesError(.invalidSave, detail: "reserved-key") }
+        guard source.size <= options.maxBytes, source.size <= SYNC_FILE_MAX_BYTES else {
+            return SavesError(.tooLarge)
+        }
+        return nil
+    }
+
+    private func requestId(_ id: String) -> String { "w:\(savesCollection)/\(id)" }
+
+    /// The file's size and how it is sent: whole, or in chunks when the plan says so.
+    private func localFile(_ source: any RangedSource, _ codec: any FileCodec) -> MergeFile {
+        let plan = SyncTransferPlan.plan(size: codec.storedSize(source.size), delta: options.delta)
+        return MergeFile(size: source.size, format: plan?.mode == .chunks ? .chunks : .whole)
+    }
+
+    private func localSide(_ slot: Slot) -> MergeSide {
+        MergeSide(
+            value: .object(slot.metadata), version: slot.base, savedAt: slot.metadata[saveSavedAtKey]?.intValue,
+            device: slot.metadata[saveDeviceKey]?.stringValue, file: slot.localFile)
+    }
+
+    private func remoteSide(_ slot: Slot, _ version: Int?) -> MergeSide? {
+        guard let r = slot.remote else { return nil }
+        let meta = r.metadata.objectValue ?? [:]
+        return MergeSide(
+            value: r.metadata, version: version ?? r.version, savedAt: meta[saveSavedAtKey]?.intValue,
+            device: meta[saveDeviceKey]?.stringValue, file: r.file.map { MergeFile(size: $0.size, format: $0.format) })
+    }
+
+    private func view(_ slot: Slot, _ version: Int?, _ state: SyncMergeState, _ error: String?) -> MergeView {
+        var choices: [SyncMergeChoice] = [.local, .remote]
+        if slot.remote != nil && slot.slotsFree { choices.append(.both) }
+        return MergeView(
+            id: requestId(slot.id), cause: .write, collection: savesCollection, record: slot.id,
+            local: localSide(slot), remote: remoteSide(slot, version), choices: choices, state: state, error: error)
+    }
+
+    /// S1: open the slot's request, or (a keep conflicted again) bring the open one up to date.
+    private func openSlot(_ new: Slot, version: Int?) -> MergeRequest {
+        let id = new.id
+        let (slot, keeping) = slots.with { s -> (Slot, Bool) in
+            var slot = new
+            if let have = s[id] {
+                slot.keeping = have.keeping
+                slot.reopen = have.keeping
+            }
+            s[id] = slot
+            return (slot, slot.keeping)
+        }
+        let v = view(slot, version, keeping ? .applying : .open, nil)
+        let rid = requestId(id)
+        if keeping, let have = merge.find(rid) {
+            // The keep ends first; `keepSlot` reopens the request for the person.
+            merge.update(rid) { $0 = v }
+            return have
+        }
+        return merge.open(v) { [weak self] choice in
+            guard let self else { return MergeRegistry.closedOutcome }
+            return await self.keepSlot(id, choice)
+        }
+    }
+
+    private func closeSlot(_ id: String, _ how: SyncMergeHow) {
+        slots.with { _ = $0.removeValue(forKey: id) }
+        merge.close(requestId(id), how)
+    }
+
+    /// S4: answer the slot's request; the transfer's outcome settles the promise.
+    private func keepSlot(_ id: String, _ choice: MergeKeep) async -> MergeOutcome {
+        guard let slot = slots.current[id] else { return MergeRegistry.closedOutcome }
+        let rid = requestId(id)
+        let name = choice.choice
+        slots.with {
+            $0[id]?.keeping = true
+            $0[id]?.reopen = false
+        }
+        merge.update(rid) {
+            $0.state = .applying
+            $0.error = nil
+        }
+        func reopen(_ code: String) -> MergeOutcome {
+            let (again, current) = slots.with { s -> (Bool, Slot?) in
+                let again = s[id]?.reopen ?? false
+                s[id]?.keeping = false
+                s[id]?.reopen = false
+                return (again, s[id])
+            }
+            if let current {
+                let v = view(current, current.remote?.version, .open, again ? nil : code)
+                merge.update(rid) { $0 = v }
+            }
+            if again { merge.reannounce(rid) }
+            return .failed(code: again ? "conflict" : code, reopened: true)
+        }
+        if name == .remote {
+            // Pull first, so the cache holds the copy the person chose (not this device's old one).
+            do {
+                let ctx = try await context()
+                _ = await ctx.records.pull()
+                let rec = try? await ctx.records.get(id)
+                if let rec { seen.with { $0[id] = rec.version } }
+                closeSlot(id, .remote)
+                return .kept(.remote, version: rec?.version, copyId: nil)
+            } catch {
+                return reopen(savesError(error).code.rawValue)
+            }
+        }
+        if name == .both && !slot.slotsFree { return reopen(SavesError.Code.slotsFull.rawValue) }
+        let t = run(
+            id, slot.source, .object(slot.metadata), slot.opts, mode: name == .both ? .copy : .base(slot.remoteVersion))
+        switch await t.outcome() {
+        case .done(_, let version, _, let copyId):
+            closeSlot(id, SyncMergeHow(rawValue: name.rawValue) ?? .local)
+            return .kept(name, version: version, copyId: copyId)
+        case .conflict: return reopen("conflict")
+        case .failed(let e): return reopen(e.code.rawValue)
+        case .cancelled: return reopen("cancelled")
+        }
     }
 }
 
@@ -968,7 +1141,7 @@ public final class SaveTransfer: @unchecked Sendable {
 
     private func settle(_ outcome: SaveOutcome) -> SaveOutcome {
         switch outcome {
-        case .done, .keptRemote: set(.done)
+        case .done: set(.done)
         case .failed: set(.failed)
         case .conflict: set(.conflict)
         case .cancelled: set(.cancelled)

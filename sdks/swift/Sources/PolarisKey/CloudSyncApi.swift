@@ -48,6 +48,11 @@ public enum CloudSyncEvent: Sendable, Equatable {
     case transferDone(id: String, state: String)
     /// A save transfer failed with a code (`TransferEvent.transferfailed`).
     case transferFailed(id: String, code: String)
+    /// A `revision` write met a newer copy (or a keep conflicted again): the request is open and the device
+    /// keeps its copy unsent until `keep` (plans/U-08.md section 2.3). `MergeEvent.conflictopened`.
+    case conflictOpened(MergeRequest)
+    /// A request closed; `how` is `local`, `remote`, `value`, `both` or `superseded`. `MergeEvent.conflictclosed`.
+    case conflictClosed(id: String, how: SyncMergeHow)
 
     /// The transfer event's type word from the generated `TransferEvent` constants; nil for the others.
     public var transferType: String? {
@@ -55,6 +60,15 @@ public enum CloudSyncEvent: Sendable, Equatable {
         case .transferProgress: return TransferEvent.transferprogress
         case .transferDone: return TransferEvent.transferdone
         case .transferFailed: return TransferEvent.transferfailed
+        default: return nil
+        }
+    }
+
+    /// The MergeRequest event's type word from the generated `MergeEvent` constants; nil for the others.
+    public var mergeType: String? {
+        switch self {
+        case .conflictOpened: return MergeEvent.conflictopened
+        case .conflictClosed: return MergeEvent.conflictclosed
         default: return nil
         }
     }
@@ -67,7 +81,8 @@ public enum CloudSyncEvent: Sendable, Equatable {
         case .signedOut(let r, let u): self = .signedOut(reason: r, unsynced: u)
         case .unsyncedData(let c): self = .unsyncedData(count: c)
         case .signInOffered(let u): self = .signInOffered(signInUrl: u)
-        case .records: return nil
+        // A request's events come from the registry, which holds the request object.
+        case .records, .conflict, .conflictClosed: return nil
         }
     }
 }
@@ -89,6 +104,35 @@ public final class CloudSyncClient: Sendable {
         self.api = api
         self.saves = saves
     }
+
+    /// Listen for `revision` conflicts: a request opens when a write meets a newer copy, and the device keeps
+    /// its copy unsent until `request.keep(...)`. The requests already open are offered at once. The listener
+    /// runs on the Cloud Sync host's turn and must not call back into the client synchronously; show the request
+    /// and answer later with `keep`. `subscription.cancel()` removes it. See `onConflict(deciding:)` to answer
+    /// at once.
+    public func onConflict(_ listener: @escaping @Sendable (MergeRequest) -> Void) async -> MergeSubscription {
+        await api.onConflict { request in
+            listener(request)
+            return nil
+        }
+    }
+
+    /// `onConflict` for a listener that decides: the choice it returns is applied at once (nothing is listed,
+    /// no event fires for it), and `nil` leaves the request open for `keep`.
+    public func onConflict(deciding listener: @escaping @Sendable (MergeRequest) -> MergeKeep?) async
+        -> MergeSubscription
+    {
+        await api.onConflict(listener)
+    }
+
+    /// The open MergeRequests (record collections and saves), in id order. A product without the Sync service
+    /// has none.
+    public func conflicts() async -> [MergeRequest] { await api.conflicts() }
+
+    /// Whether the cloud held nothing at this person's first sign-in answer: `true` after a first answer that
+    /// said empty, `false` after one that did not or after any change, `nil` before an answer or while signed
+    /// out. A first sign-in with a local save can offer to upload it.
+    public func cloudEmpty() async -> Bool? { await api.cloudEmpty() }
 
     /// The save writes in flight (each with `pause`, `resume`, `cancel` and `outcome`).
     public func transfers() -> [SaveTransfer] { saves.transfers() }
@@ -143,6 +187,7 @@ actor CloudSyncApi {
     private let purgeSaves: @Sendable () async -> Void
     private let personSignedIn: @Sendable () -> Void
     private let recovery: @Sendable () async throws -> String
+    let merge: MergeRegistry
     private var hostValue: CloudSyncHost?
     private var attached = false
     private var attaching: Task<Void, Never>?
@@ -163,7 +208,8 @@ actor CloudSyncApi {
         lockRing: @escaping @Sendable () async -> Void = {},
         purgeSaves: @escaping @Sendable () async -> Void = {},
         personSignedIn: @escaping @Sendable () -> Void = {},
-        recovery: @escaping @Sendable () async throws -> String
+        recovery: @escaping @Sendable () async throws -> String,
+        merge: MergeRegistry = MergeRegistry()
     ) {
         self.core = core
         self.config = config
@@ -175,8 +221,10 @@ actor CloudSyncApi {
         self.purgeSaves = purgeSaves
         self.personSignedIn = personSignedIn
         self.recovery = recovery
+        self.merge = merge
         self.importMarker = core.dirs.state.appendingPathComponent("cloud-sync-imported.json")
         (queue, enqueue) = AsyncStream<Work>.makeStream()
+        merge.attach(ApiMergePort(api: self))
     }
 
     private func host() -> CloudSyncHost {
@@ -210,6 +258,34 @@ actor CloudSyncApi {
     }
 
     func newRecoveryCode() async throws -> String { try await recovery() }
+
+    // MARK: MergeRequests (plans/U-08.md section 2.5)
+
+    /// The host once it has started; never starts one.
+    func hostIfStarted() async -> CloudSyncHost? {
+        guard let h = hostValue, await h.isStarted else { return nil }
+        return h
+    }
+
+    /// Listen for requests as they open; the ones already open are offered at once. A returned choice decides.
+    /// Starts Cloud Sync first, so a request the journal held across a relaunch is offered too. A product
+    /// without the Sync service has no requests.
+    func onConflict(_ fn: @escaping MergeRegistry.Decider) async -> MergeSubscription {
+        await attach()
+        return await merge.addListener(fn)
+    }
+
+    func conflicts() async -> [MergeRequest] {
+        await attach()
+        return await merge.conflicts()
+    }
+
+    /// Whether the cloud was empty at this person's first answer (`nil` before one, or while signed out).
+    func cloudEmpty() async -> Bool? {
+        await attach()
+        guard let h = await hostIfStarted() else { return nil }
+        return await h.cloudEmpty()
+    }
 
     /// The person Cloud Sync is signed in as (for tests and diagnostics).
     func currentSubject() -> String? { subject }
@@ -253,6 +329,9 @@ actor CloudSyncApi {
         attached = true
         startConsumer()
         await h.onEvents { [weak self] events in self?.queueEvents(events) }
+        await h.setMergeSink { [merge] events, snapshot, versions in
+            merge.ingest(events, snapshot, versions: versions)
+        }
         await config.useSync(SyncPort(api: self))
         await h.installLifecycleHooks()
         // A journal saved while signed in still names its subject.
@@ -554,5 +633,20 @@ struct SyncPort: ConfigSyncPort {
 
     func state(_ key: String) async -> SettingSyncState {
         await api.activeHost()?.settingState(key)?.sync ?? .local
+    }
+}
+
+/// The registry's way to the machine: the started host, if any.
+struct ApiMergePort: MergeMachinePort {
+    let api: CloudSyncApi
+
+    func keep(_ id: String, _ choice: MergeKeep) async -> CallResult {
+        guard let h = await api.hostIfStarted() else { return .failed(ErrorCode.syncMergeClosed) }
+        return await h.mergeKeep(id, choice)
+    }
+
+    func snapshot() async -> [SyncMachineConflict]? {
+        guard let h = await api.hostIfStarted() else { return nil }
+        return await h.mergeSnapshot()
     }
 }

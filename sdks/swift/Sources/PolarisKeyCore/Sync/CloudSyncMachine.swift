@@ -219,6 +219,10 @@ public struct SyncPartition: Sendable, Equatable {
     public var pending: [SyncOp] = []
     /// Revision records written while their push was in flight, by `collection/id`.
     public var held: [String: JSONValue] = [:]
+    /// Open MergeRequests by `collection/id` (plans/U-08.md section 2.3 rule 7).
+    public var conflicts: [String: SyncConflictRec] = [:]
+    /// Whether the last cursor-0 answer said the cloud is empty; nil until one.
+    public var empty: Bool?
     public var settings: [String: SyncRow] = [:]
     public var records: [String: SyncRow] = [:]
     public var device: [String: SyncDeviceSetting] = [:]
@@ -600,7 +604,10 @@ public final class CloudSyncMachine {
             return false
         }
         if decl.policy == "revision" {
-            if inFlightTouches(rk) {
+            if let open = s.partitions[name]!.conflicts[rk], open.keep == nil {
+                // Rule 3: an open request freezes the record; the later put replaces the device's copy.
+                s.partitions[name]!.conflicts[rk]!.local = value
+            } else if inFlightTouches(rk) {
                 s.partitions[name]!.held[rk] = value
             } else if let idx = s.partitions[name]!.pending.firstIndex(where: { isRecord($0) && $0.ticket == nil }) {
                 s.partitions[name]!.pending[idx].value = value
@@ -700,6 +707,8 @@ public final class CloudSyncMachine {
         }
         guard s.subject != nil else { return .failed("signed-out") }
         let name = activeName
+        // Rule 4: an exact write supersedes the record's open request and is sent as asked.
+        closeConflict(name, syncRecordKey(collection, recordId), .superseded)
         let ticket = s.partitions[name]!.nextTicket
         s.partitions[name]!.nextTicket = ticket + 1
         var mutation = SyncOp(mutationId: 0, target: .record(collection, recordId), op: op, value: value)
@@ -782,6 +791,7 @@ public final class CloudSyncMachine {
         var ids = Set<String>()
         for rk in p.records.keys where rk.hasPrefix(prefix) { ids.insert(String(rk.dropFirst(prefix.count))) }
         for rk in p.held.keys where rk.hasPrefix(prefix) { ids.insert(String(rk.dropFirst(prefix.count))) }
+        for rk in p.conflicts.keys where rk.hasPrefix(prefix) { ids.insert(String(rk.dropFirst(prefix.count))) }
         for op in p.pending {
             if case .record(let c, let i) = op.target, c == collection { ids.insert(i) }
         }
@@ -838,12 +848,25 @@ public final class CloudSyncMachine {
         return .ok
     }
 
-    /// Delete a record of any policy but `revision` (use `removeAt` there).
+    /// Delete a record: the collection's default delete. A `revision` record is deleted on the version of
+    /// an open request's local copy, else on the snapshot's, so a delete that conflicts keeps the other
+    /// copy (plans/U-08.md section 2.3 rule 3).
     public func delete(_ collection: String, _ recordId: String) -> CallResult {
-        guard let decl = collectionDecl(collection), decl.policy != "revision" else {
-            return .failed("collection-unknown")
-        }
+        guard let decl = collectionDecl(collection) else { return .failed("collection-unknown") }
         guard s.subject != nil else { return .failed("signed-out") }
+        if decl.policy == "revision" {
+            let name = activeName
+            let rk = syncRecordKey(collection, recordId)
+            var op = SyncOp(mutationId: 0, target: .record(collection, recordId), op: .delete)
+            let base: Int? =
+                s.partitions[name]!.conflicts[rk] != nil
+                ? s.partitions[name]!.conflicts[rk]!.localVersion : s.partitions[name]!.records[rk]?.version
+            if let base { op.baseVersion = base } else { op.baseAny = true }
+            _ = enqueue(name, op)
+            noteRecordChanges(.local)
+            kick()
+            return .ok
+        }
         let union = decl.policy == "union"
         _ = enqueue(
             activeName,
@@ -979,6 +1002,10 @@ public final class CloudSyncMachine {
         var value: JSONValue? = nil
         if let row = p.records[rk], !rowUnreadable(row) { value = row.value }
         var pending = false
+        if let open = p.conflicts[rk], open.keep == nil {
+            value = open.local
+            pending = true
+        }
         for op in p.pending {
             if case .record(let c, let i) = op.target, syncRecordKey(c, i) == rk {
                 value = syncApplyRecordOp(value, op)
@@ -994,6 +1021,13 @@ public final class CloudSyncMachine {
     }
 
     public func status() -> SyncStatus {
+        var base = baseStatus()
+        let open = subjectConflicts().count
+        if open > 0 { base.conflicts = open }
+        return base
+    }
+
+    private func baseStatus() -> SyncStatus {
         let pending = pendingCount
         if pinnedOut {
             return SyncStatus(
@@ -1457,15 +1491,18 @@ public final class CloudSyncMachine {
         // An exact write is not retried across a sign-out: its caller is told, and the op goes.
         for op in s.partitions[name]!.pending where op.ticket != nil { emitOutcome(op, .dropped) }
         s.partitions[name]!.pending.removeAll { $0.ticket != nil }
-        let unsynced = s.partitions[name]!.pending.count + s.partitions[name]!.held.count
+        let unsynced =
+            s.partitions[name]!.pending.count + s.partitions[name]!.held.count + s.partitions[name]!.conflicts.count
         if discard {
             s.partitions[name]!.pending = []
             s.partitions[name]!.held = [:]
+            s.partitions[name]!.conflicts = [:]
         }
         if onSignOut == .clear || reason != .signOut {
             s.partitions[name]!.settings = [:]
             s.partitions[name]!.records = [:]
             s.partitions[name]!.cursor = 0
+            s.partitions[name]!.empty = nil
         }
         s.partitions[name]!.signedOutAt = now
         s.subject = nil

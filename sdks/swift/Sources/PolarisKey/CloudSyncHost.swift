@@ -235,9 +235,13 @@ public actor CloudSyncHost {
     private var watchCounts: [String: Int] = [:]
     private let outcomeTaps = LockedValue<[Int: @Sendable (Int, SyncRecordOutcome) -> Void]>([:])
     private var nextTap = 0
+    /// Told after every machine turn: the events just taken, the machine's open MergeRequests and the record
+    /// version of each request that closed. Survives a rebuild of the machine.
+    private var mergeSink: (@Sendable ([SyncEvent], [SyncMachineConflict], [String: Int]) -> Void)?
 
-    /// The collections the machine knows: the catalog's `cloudSync.collections` (each member's policy, a
-    /// `max`/`min` field and, for `revision`, the keep-server resolution). There is no implicit collection.
+    /// The collections the machine knows: the catalog's `cloudSync.collections` (each member's policy and a
+    /// `max`/`min` field). A `revision` record has no resolution here: its conflict opens a MergeRequest
+    /// (plans/U-08.md section 2.1). There is no implicit collection.
     static func collectionsOf(_ catalog: JSONValue) -> [SyncCollectionDecl] {
         let templates = ["saves": "revision", "session": "lastWrite"]
         let policies: Set<String> = ["revision", "union", "lastWrite", "max", "min", "merge"]
@@ -249,9 +253,7 @@ public actor CloudSyncHost {
                 o["conflict"]?.stringValue ?? o["template"]?.stringValue.flatMap { templates[$0] } ?? "revision"
             guard policies.contains(policy) else { continue }
             out.append(
-                SyncCollectionDecl(
-                    name: name, policy: policy, field: o["conflictField"]?.stringValue,
-                    resolve: policy == "revision" ? "keepServer" : nil))
+                SyncCollectionDecl(name: name, policy: policy, field: o["conflictField"]?.stringValue))
         }
         return out
     }
@@ -284,6 +286,27 @@ public actor CloudSyncHost {
         outcomeListener = fn
         machine?.onOutcome(fn)
     }
+
+    /// The one sink for the machine's MergeRequests (see `mergeSink`). It must not call back into the host.
+    func setMergeSink(_ fn: (@Sendable ([SyncEvent], [SyncMachineConflict], [String: Int]) -> Void)?) {
+        mergeSink = fn
+    }
+
+    /// The machine's open MergeRequests (empty while signed out or between machines).
+    func mergeSnapshot() -> [SyncMachineConflict] { machine?.conflicts() ?? [] }
+
+    /// Answer an open request (the machine's `keep`) and report the new state at once.
+    func mergeKeep(_ id: String, _ choice: SyncMergeKeep) -> CallResult {
+        guard let m = machine else { return .failed(ErrorCode.syncMergeClosed) }
+        catchUp()
+        let r = m.keep(id, choice)
+        emit(m)
+        wakePump()
+        return r
+    }
+
+    /// `cloudEmpty`: the active partition's flag (nil while signed out or before the first answer).
+    public func cloudEmpty() -> Bool? { machine?.cloudEmpty() }
 
     /// Ask the machine for a pull; the caller's `touch()` sends it. False while signed out.
     func requestPull() -> Bool {
@@ -884,6 +907,19 @@ public actor CloudSyncHost {
 
     private func emit(_ m: CloudSyncMachine) {
         let events = m.takeEvents()
+        if let sink = mergeSink {
+            var versions: [String: Int] = [:]
+            for case .conflictClosed(let id, _) in events {
+                // `w:<collection>/<record>`
+                let key = String(id.dropFirst(2))
+                if let slash = key.firstIndex(of: "/") {
+                    let collection = String(key[..<slash])
+                    let record = String(key[key.index(after: slash)...])
+                    if let row = m.records(collection).first(where: { $0.id == record }) { versions[id] = row.version }
+                }
+            }
+            sink(events, m.conflicts(), versions)
+        }
         if events.isEmpty { return }
         for l in listeners { l.fn(events) }
     }

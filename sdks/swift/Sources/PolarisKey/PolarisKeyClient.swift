@@ -368,6 +368,27 @@ public actor PolarisKeyClient {
         let syncOptions = options.cloudSync
         let savesBox = LockedValue<SavesClient?>(nil)
         let savesEnvBox = LockedValue<LiveSavesEnvironment?>(nil)
+        // The open MergeRequests of this client (plans/U-08.md section 2.5); its signals go on the `cloudSync` stream.
+        let merge = MergeRegistry(notice: { _ in
+            #if DEBUG
+                let first = mergeNoticeOnce.with { fired -> Bool in
+                    defer { fired = true }
+                    return !fired
+                }
+                if first {
+                    let notice =
+                        "polaris-key: a Cloud Sync conflict opened and nothing listens; the device keeps its copy"
+                        + " unsent. Listen with client.cloudSync.onConflict and answer with request.keep.\n"
+                    FileHandle.standardError.write(Data(notice.utf8))
+                }
+            #endif
+        })
+        merge.watch { signal in
+            switch signal {
+            case .opened(let request): hub.emit(.cloudSync(.conflictOpened(request)))
+            case .closed(let id, let how): hub.emit(.cloudSync(.conflictClosed(id: id, how: how)))
+            }
+        }
         let api = CloudSyncApi(
             core: core, config: config,
             host: {
@@ -388,7 +409,7 @@ public actor PolarisKeyClient {
             },
             purgeSaves: { await savesBox.current?.purge() },
             personSignedIn: { savesEnvBox.current?.personSignedIn() },
-            recovery: { try await ring().setRecoveryCode() })
+            recovery: { try await ring().setRecoveryCode() }, merge: merge)
         self.cloudSyncApi = api
         // The bearer of a background task is read when the task is made; a 401 re-acquires once.
         let fingerprintOn = options.license.fingerprint
@@ -405,7 +426,7 @@ public actor PolarisKeyClient {
         savesEnvBox.set(savesEnv)
         let saves = SavesClient(
             env: savesEnv,
-            options: syncOptions.saves, emit: { hub.emit(.cloudSync($0)) })
+            options: syncOptions.saves, emit: { hub.emit(.cloudSync($0)) }, merge: merge)
         savesBox.set(saves)
         self.cloudSync = CloudSyncClient(api: api, saves: saves)
         // The activation event: mint a credential, then sync. `devices.register()` deliberately
@@ -1017,3 +1038,6 @@ extension PolarisKeyClient {
         return (client, imported)
     }
 }
+
+/// The dev-mode notice of a request that opens with no listener fires once per process.
+private let mergeNoticeOnce = LockedValue<Bool>(false)
