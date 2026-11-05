@@ -37,7 +37,8 @@
 // Version 5 (U-08; WIRE-CONTRACT-V5 §11.5 "Conflicts", plans/U-08.md §2, §5) is the conflict
 // vocabulary. A `revision` record's plain `put` that meets a conflict opens a MergeRequest the
 // person or the app decides; nothing is lost and nothing is enqueued until `keep`. The `keep` step
-// answers one (`{request, choice}`, choice `local`, `remote`, `both` or `{value}`), the `delete`
+// answers one (`{request, choice}` and, when refused at once with `bad_request` or
+// `sync-merge-closed`, an `expect` of `{ok: false, error}`; choice `local`, `remote`, `both` or `{value}`), the `delete`
 // call is the collection's default delete (based on the request's local version while one is
 // open), the asserts `conflicts` (the exact open list, each `{id, cause, collection, record,
 // local, remote, choices, state, error}`, a side `{value, version, savedAt, device, file}`;
@@ -341,13 +342,6 @@ const RULES: { id: string; title: string; ref: string }[] = [
   },
 ];
 
-/** Rules defined in U-08.1a whose scenarios arrive in U-08.1b; U-08.1b empties this set. */
-const PENDING_RULES = new Set([
-  "merge-request-keep",
-  "merge-request-remote",
-  "cloud-empty",
-]);
-
 // ── fixtures ───────────────────────────────────────────────────────────────────────────────
 
 const PRODUCT = "demo";
@@ -413,6 +407,15 @@ const CONFLICT_CATALOG: Obj = {
   settings: CATALOG.settings!,
   collections: [
     { name: "progress", policy: "revision" },
+    { name: "unlocks", policy: "union" },
+  ],
+};
+
+/** `progress` with the scenario host's inline decider keepRemote (an answer given synchronously). */
+const INLINE_REMOTE_CATALOG: Obj = {
+  settings: CATALOG.settings!,
+  collections: [
+    { name: "progress", policy: "revision", resolve: "keepRemote" },
     { name: "unlocks", policy: "union" },
   ],
 };
@@ -736,6 +739,13 @@ const network = (state: "online" | "offline"): Obj => ({ network: { state } });
 const signIn = (subject: string): Obj => ({ signIn: { subject } });
 const signOut = (opts: Obj = {}): Obj => ({ signOut: opts });
 const assert = (a: Obj): Obj => ({ assert: a });
+/** Version 5: answer an open request. `expect` is given only when the keep is refused at once
+ *  (`{ok: false, error}`); an accepted keep settles with the transfer, which the asserts after the
+ *  next `respond` show. */
+const keep = (request: string, choice: J, expect?: Obj): Obj => ({
+  keep: expect ? { request, choice, expect } : { request, choice },
+});
+const PROGRESS_ID = "w:progress/main";
 const root = (has: boolean): Obj => ({ root: { has } });
 const val = (value: J, from: string): Obj => ({ value, from });
 const st = (state: string, pending: number, reason?: string): Obj =>
@@ -4099,6 +4109,366 @@ function scenarios(): Scenario[] {
     ],
   });
 
+  // Rule 38: keep.
+  const applying = (): Obj =>
+    mergeReq("progress", "main", side({ level: 4 }, 7), side({ level: 5 }, 8), {
+      state: "applying",
+    });
+  /** The answer to the keep's set (mutation 2, based on the remote version 8). */
+  const keepAck = (value: J): Obj =>
+    respond(
+      pushBody({
+        serverNow: T0,
+        cursor: 11,
+        lastMutationId: 2,
+        results: [ok(2, 9)],
+        changes: [recChange("progress", "main", value, 9)],
+      }),
+    );
+
+  addV5({
+    name: "merge-keep-local",
+    description:
+      "Keeping the device's copy sends one set of it on the remote version; the request is applying until that set is acknowledged, then closes as local and the record reads the cloud.",
+    rules: ["merge-request-keep"],
+    init: init({ catalog: CONFLICT_CATALOG }),
+    steps: [
+      ...opened(),
+      assert(openAsserts),
+      keep(PROGRESS_ID, "local"),
+      assert({
+        requests: [
+          pushReq(C1, 10, [put(2, "progress", "main", { level: 4 }, 8)]),
+        ],
+        conflicts: [applying()],
+        records: { "progress/main": val({ level: 4 }, "pending") },
+        events: [],
+      }),
+      keepAck({ level: 4 }),
+      assert({
+        requests: [],
+        conflicts: [],
+        records: { "progress/main": val({ level: 4 }, "cloud") },
+        events: [closedEv("progress", "main", "local")],
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  addV5({
+    name: "merge-keep-remote",
+    description:
+      "Keeping the server's copy sends nothing: the request closes as remote at once and the record reads the server copy.",
+    rules: ["merge-request-keep"],
+    init: init({ catalog: CONFLICT_CATALOG }),
+    steps: [
+      ...opened(),
+      assert(openAsserts),
+      keep(PROGRESS_ID, "remote"),
+      assert({
+        requests: [],
+        conflicts: [],
+        records: { "progress/main": val({ level: 5 }, "cloud") },
+        events: [closedEv("progress", "main", "remote")],
+        status: st("idle", 0),
+      }),
+      advance(10_000),
+      assert({ requests: [], conflicts: [], status: st("idle", 0) }),
+    ],
+  });
+
+  addV5({
+    name: "merge-keep-value",
+    description:
+      "Keeping a value the person or the app composed sends one set of that value on the remote version, and closes as value once acknowledged.",
+    rules: ["merge-request-keep"],
+    init: init({ catalog: CONFLICT_CATALOG }),
+    steps: [
+      ...opened(),
+      assert(openAsserts),
+      keep(PROGRESS_ID, { value: { level: 9 } }),
+      assert({
+        requests: [
+          pushReq(C1, 10, [put(2, "progress", "main", { level: 9 }, 8)]),
+        ],
+        events: [],
+      }),
+      keepAck({ level: 9 }),
+      assert({
+        requests: [],
+        conflicts: [],
+        records: { "progress/main": val({ level: 9 }, "cloud") },
+        events: [closedEv("progress", "main", "value")],
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  addV5({
+    name: "merge-keep-conflicts-again",
+    description:
+      "A keep whose set meets another conflict reopens the request with the new server copy as remote and fires conflict again; the device's copy is unchanged and a second keep sends it on the new version.",
+    rules: ["merge-request-keep"],
+    init: init({ catalog: CONFLICT_CATALOG }),
+    steps: [
+      ...opened(),
+      assert(openAsserts),
+      keep(PROGRESS_ID, "local"),
+      assert({
+        requests: [
+          pushReq(C1, 10, [put(2, "progress", "main", { level: 4 }, 8)]),
+        ],
+        conflicts: [applying()],
+        events: [],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 11,
+          lastMutationId: 2,
+          results: [conflict(2, { value: { level: 6 }, version: 10 })],
+          changes: [recChange("progress", "main", { level: 6 }, 10)],
+        }),
+      ),
+      assert({
+        requests: [],
+        conflicts: [
+          mergeReq(
+            "progress",
+            "main",
+            side({ level: 4 }, 7),
+            side({ level: 6 }, 10),
+          ),
+        ],
+        records: { "progress/main": val({ level: 4 }, "pending") },
+        events: [conflictEv("progress", "main")],
+        status: stc("idle", 0, 1),
+      }),
+      keep(PROGRESS_ID, "local"),
+      assert({
+        requests: [
+          pushReq(C1, 11, [put(3, "progress", "main", { level: 4 }, 10)]),
+        ],
+        events: [],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 12,
+          lastMutationId: 3,
+          results: [ok(3, 11)],
+          changes: [recChange("progress", "main", { level: 4 }, 11)],
+        }),
+      ),
+      assert({
+        requests: [],
+        conflicts: [],
+        records: { "progress/main": val({ level: 4 }, "cloud") },
+        events: [closedEv("progress", "main", "local")],
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  addV5({
+    name: "merge-decided-inline",
+    description:
+      "A host decider that answers keepRemote synchronously decides at once: no request is listed, no conflict event fires, nothing is sent and the record reads the server copy.",
+    rules: ["merge-request-keep"],
+    init: init({ catalog: INLINE_REMOTE_CATALOG }),
+    steps: [
+      ...started(9, [recChange("progress", "main", { level: 3 }, 7)]),
+      local("put", ["progress", "main", { level: 4 }], { ok: true }),
+      assert({
+        requests: [
+          pushReq(C1, 9, [put(1, "progress", "main", { level: 4 }, 7)]),
+        ],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 10,
+          lastMutationId: 1,
+          results: [conflict(1, { value: { level: 5 }, version: 8 })],
+          changes: [recChange("progress", "main", { level: 5 }, 8)],
+        }),
+      ),
+      assert({
+        requests: [],
+        conflicts: [],
+        records: { "progress/main": val({ level: 5 }, "cloud") },
+        events: [],
+        status: st("idle", 0),
+      }),
+      advance(10_000),
+      assert({ requests: [], conflicts: [], status: st("idle", 0) }),
+    ],
+  });
+
+  addV5({
+    name: "merge-keep-closed-refused",
+    description:
+      "A choice the request does not offer is bad_request and leaves it open; a keep on a request that has closed is sync-merge-closed. Neither sends anything or changes the record.",
+    rules: ["merge-request-keep"],
+    init: init({ catalog: CONFLICT_CATALOG }),
+    steps: [
+      ...opened(),
+      assert(openAsserts),
+      keep(PROGRESS_ID, "both", { ok: false, error: "bad_request" }),
+      assert({
+        requests: [],
+        conflicts: [PROGRESS_REQ],
+        records: { "progress/main": val({ level: 4 }, "pending") },
+        events: [],
+        status: stc("idle", 0, 1),
+      }),
+      keep(PROGRESS_ID, "remote"),
+      assert({
+        conflicts: [],
+        records: { "progress/main": val({ level: 5 }, "cloud") },
+        events: [closedEv("progress", "main", "remote")],
+        status: st("idle", 0),
+      }),
+      keep(PROGRESS_ID, "local", { ok: false, error: "sync-merge-closed" }),
+      advance(10_000),
+      assert({
+        requests: [],
+        conflicts: [],
+        records: { "progress/main": val({ level: 5 }, "cloud") },
+        events: [],
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  // Rule 39: the remote side follows the cloud.
+  addV5({
+    name: "merge-remote-moves-then-deleted",
+    description:
+      "A pulled change of the record replaces the request's remote; a pulled tombstone makes it null; keeping the device's copy then creates the record on a star base. The device's copy stays as written throughout.",
+    rules: ["merge-request-remote"],
+    init: init({ catalog: CONFLICT_CATALOG }),
+    steps: [
+      ...opened(),
+      assert(openAsserts),
+      network("offline"),
+      network("online"),
+      assert({ requests: [pullReq(10, C1)] }),
+      respond(
+        pullBody({
+          serverNow: T0,
+          cursor: 11,
+          changes: [recChange("progress", "main", { level: 6 }, 9)],
+        }),
+      ),
+      assert({
+        requests: [],
+        conflicts: [
+          mergeReq(
+            "progress",
+            "main",
+            side({ level: 4 }, 7),
+            side({ level: 6 }, 9),
+          ),
+        ],
+        records: { "progress/main": val({ level: 4 }, "pending") },
+        events: [],
+        status: stc("idle", 0, 1),
+      }),
+      network("offline"),
+      network("online"),
+      assert({ requests: [pullReq(11, C1)] }),
+      respond(
+        pullBody({
+          serverNow: T0,
+          cursor: 12,
+          tombstones: [{ record: ["progress", "main"], version: 10 }],
+        }),
+      ),
+      assert({
+        requests: [],
+        conflicts: [mergeReq("progress", "main", side({ level: 4 }, 7), null)],
+        records: { "progress/main": val({ level: 4 }, "pending") },
+        events: [],
+        status: stc("idle", 0, 1),
+      }),
+      keep(PROGRESS_ID, "local"),
+      assert({
+        requests: [
+          pushReq(C1, 12, [put(2, "progress", "main", { level: 4 }, "*")]),
+        ],
+        events: [],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 13,
+          lastMutationId: 2,
+          results: [ok(2, 11)],
+          changes: [recChange("progress", "main", { level: 4 }, 11)],
+        }),
+      ),
+      assert({
+        requests: [],
+        conflicts: [],
+        records: { "progress/main": val({ level: 4 }, "cloud") },
+        events: [closedEv("progress", "main", "local")],
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  // Rule 40: cloudEmpty.
+  addV5({
+    name: "cloud-empty-first-sign-in",
+    description:
+      "cloudEmpty is null before the first answer, true after a cursor-0 answer that says empty, and false once anything changes in the cloud.",
+    rules: ["cloud-empty"],
+    init: init(),
+    steps: [
+      assert({
+        requests: [pullReq(0, C1)],
+        cloudEmpty: null,
+        status: st("syncing", 0),
+      }),
+      respond(pullBody({ serverNow: T0, cursor: 0 })),
+      assert({ cloudEmpty: true, status: st("idle", 0) }),
+      local("set", [VOL, 0.6], { ok: true }),
+      advance(2000),
+      assert({
+        requests: [pushReq(C1, 0, [set(1, VOL, 0.6, hlc(T0))])],
+        cloudEmpty: true,
+      }),
+      respond(
+        pushBody({
+          serverNow: T0 + 2000,
+          cursor: 1,
+          lastMutationId: 1,
+          results: [ok(1, 1)],
+          changes: [change(VOL, 0.6, 1, hlc(T0))],
+        }),
+      ),
+      assert({ cloudEmpty: false, status: st("idle", 0) }),
+    ],
+  });
+
+  addV5({
+    name: "cloud-not-empty",
+    description:
+      "A cursor-0 answer that carries data does not say empty, so cloudEmpty is false; it is a per-subject view, null for a subject whose first answer has not come.",
+    rules: ["cloud-empty"],
+    init: init(),
+    steps: [
+      ...started(9, [recChange("progress", "main", { level: 3 }, 7)]),
+      assert({ cloudEmpty: false, status: st("idle", 0) }),
+      signOut(),
+      signIn(BOB),
+      assert({ requests: [pullReq(0, C2)], cloudEmpty: null }),
+      respond(pullBody({ subject: BOB, serverNow: T0, cursor: 0 })),
+      assert({ cloudEmpty: true, status: st("idle", 0) }),
+    ],
+  });
+
   return s;
 }
 
@@ -4337,6 +4707,15 @@ function selfCheck(file: Obj): void {
           (isObj(c) && Object.keys(c).join() === "value");
         if (typeof body.request !== "string" || !valid)
           at(`step ${i}: keep needs a request id and a choice`);
+        if (
+          body.expect !== undefined &&
+          !(
+            isObj(body.expect) &&
+            body.expect.ok === false &&
+            typeof body.expect.error === "string"
+          )
+        )
+          at(`step ${i}: keep expect is {ok: false, error}`);
         if (!opened.has(String(body.request)))
           at(
             `step ${i}: keep names ${String(body.request)}, which no earlier step opened`,
@@ -4380,8 +4759,7 @@ function selfCheck(file: Obj): void {
     });
   }
   for (const r of ruleIds)
-    if (!covered.has(r) && !PENDING_RULES.has(r))
-      fail(`rule ${r} has no scenario`);
+    if (!covered.has(r)) fail(`rule ${r} has no scenario`);
   const caseNames = new Set<string>();
   for (const c of file.settingCases as unknown as SettingCase[]) {
     const at = (m: string): never => fail(`settingCases ${c.name}: ${m}`);
@@ -5153,6 +5531,111 @@ function fileRecordCases(): Scenario[] {
     ],
   });
 
+  // Version 5: an exact write of a record with an open request supersedes it (plans/U-08.md §2.3
+  // rule 4). These two use a revision collection with no inline decider.
+  const addV5 = (sc: Omit<Scenario, "wp">): void => {
+    s.push({ ...sc, wp: "U-08" });
+  };
+  const openedRequest = (): Obj[] => [
+    ...started(9, [recF("progress", "main", { level: 3 }, 7)]),
+    local("put", ["progress", "main", { level: 4 }], { ok: true }),
+    assert({
+      requests: [pushReq(C1, 9, [put(1, "progress", "main", { level: 4 }, 7)])],
+    }),
+    respond(
+      pushBody({
+        serverNow: T0,
+        cursor: 10,
+        lastMutationId: 1,
+        results: [conflict(1, { value: { level: 5 }, version: 8 })],
+        changes: [recF("progress", "main", { level: 5 }, 8)],
+      }),
+    ),
+    assert({
+      requests: [],
+      conflicts: [
+        mergeReq(
+          "progress",
+          "main",
+          side({ level: 4 }, 7),
+          side({ level: 5 }, 8),
+        ),
+      ],
+      events: [conflictEv("progress", "main")],
+      status: stc("idle", 0, 1),
+    }),
+  ];
+
+  addV5({
+    name: "put-at-supersedes-request",
+    description:
+      "A putAt of a record with an open request closes the request as superseded and is sent as asked, on the version given; the outcome is the putAt's own.",
+    rules: ["merge-request-freeze"],
+    init: init({ catalog: CONFLICT_CATALOG }),
+    steps: [
+      ...openedRequest(),
+      local("putAt", ["progress", "main", { level: 7 }, 8], {
+        ok: true,
+        mutationId: 2,
+      }),
+      assert({
+        requests: [
+          pushReq(C1, 10, [put(2, "progress", "main", { level: 7 }, 8)]),
+        ],
+        conflicts: [],
+        events: [closedEv("progress", "main", "superseded")],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 11,
+          lastMutationId: 2,
+          results: [ok(2, 9)],
+          changes: [recF("progress", "main", { level: 7 }, 9)],
+        }),
+      ),
+      assert({
+        outcomes: [outOk(2, 9)],
+        conflicts: [],
+        ...rowsAre([rowOf("main", { level: 7 }, 9, null)]),
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  addV5({
+    name: "remove-at-supersedes-request",
+    description:
+      "A removeAt of a record with an open request closes the request as superseded and is sent as asked, on the version given.",
+    rules: ["merge-request-freeze"],
+    init: init({ catalog: CONFLICT_CATALOG }),
+    steps: [
+      ...openedRequest(),
+      local("removeAt", ["progress", "main", 8], { ok: true, mutationId: 2 }),
+      assert({
+        requests: [pushReq(C1, 10, [del(2, "progress", "main", 8)])],
+        conflicts: [],
+        events: [closedEv("progress", "main", "superseded")],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 11,
+          lastMutationId: 2,
+          results: [ok(2, 9)],
+          tombstones: [{ record: ["progress", "main"], version: 9 }],
+        }),
+      ),
+      assert({
+        outcomes: [outOk(2, 9)],
+        conflicts: [],
+        ...rowsAre([]),
+        records: { "progress/main": null },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
   return s;
 }
 
@@ -5193,7 +5676,7 @@ export function buildSyncScenarios(): Obj {
   const file: Obj = {
     syncScenariosVersion: SYNC_SCENARIOS_VERSION,
     description:
-      "Cloud Sync client behaviour, outside the wire contract (WIRE-CONTRACT-V4 §11.5, plans/U-01.md §4.1 as amended by plans/U-01b.md §4). Each scenario starts from `init` (when `legacyLocal` is not null, the client first imports it as its legacy `config.local` store) and runs its steps in order against a fake clock and a fake transport: `local` calls the SDK, `advance` moves the clock (firing debounce commits and the sign-out deadline), `network` goes online or offline, `respond` answers the one request in flight, `signIn`, `signOut` and `relaunch` act on the device, and `assert` compares the listed views. `requests` and `events` are what was sent and emitted since the previous assert. `settingCases` pins the setting routes a host derives from catalog entries (`syncedSettings`) and the user-block issues a publish reports. Version 5 adds the conflict vocabulary: the `keep` step (`request`, `choice`), the `delete` call, the asserts `conflicts` and `cloudEmpty`, the events `conflict` and `conflictClosed`, and `status.conflicts` (the open count, present only above 0); a collection's `resolve` is the host's inline decider (`keepLocal` or `keepRemote`). Version 3 adds the end-to-end policy: `init.encryption` and `init.hasRoot`, the `root` step (the device gains or loses the ring's root), `respond.opened` (what the host codec found for each opened row; the fake transport itself speaks plaintext) and the `encryptionSince` assert. Literal data, not generated by an implementation. `fileRecordCases` (appended with the records binding of cloudSync.saves, plans/U-22.5.md) is a second family run by the same steps: its `calls` add `putAt` and `removeAt`, its `asserts` add `rows` (a collection's cloud rows, as `records(collection)` lists them) and `outcomes` (what `onOutcome` reported since the previous assert); its rows keep the pull's `file` pointer, and `putAt` takes an optional fifth argument, the file pointer the save's finalize returned, which an acknowledged `ok` adopts. A runner without the binding skips the family by name.",
+      "Cloud Sync client behaviour, outside the wire contract (WIRE-CONTRACT-V4 §11.5, plans/U-01.md §4.1 as amended by plans/U-01b.md §4). Each scenario starts from `init` (when `legacyLocal` is not null, the client first imports it as its legacy `config.local` store) and runs its steps in order against a fake clock and a fake transport: `local` calls the SDK, `advance` moves the clock (firing debounce commits and the sign-out deadline), `network` goes online or offline, `respond` answers the one request in flight, `signIn`, `signOut` and `relaunch` act on the device, and `assert` compares the listed views. `requests` and `events` are what was sent and emitted since the previous assert. `settingCases` pins the setting routes a host derives from catalog entries (`syncedSettings`) and the user-block issues a publish reports. Version 5 adds the conflict vocabulary: the `keep` step (`request`, `choice`, and an `expect` of `{ok: false, error}` when the keep is refused at once), the `delete` call, the asserts `conflicts` and `cloudEmpty`, the events `conflict` and `conflictClosed`, and `status.conflicts` (the open count, present only above 0); a collection's `resolve` is the host's inline decider (`keepLocal` or `keepRemote`). Version 3 adds the end-to-end policy: `init.encryption` and `init.hasRoot`, the `root` step (the device gains or loses the ring's root), `respond.opened` (what the host codec found for each opened row; the fake transport itself speaks plaintext) and the `encryptionSince` assert. Literal data, not generated by an implementation. `fileRecordCases` (appended with the records binding of cloudSync.saves, plans/U-22.5.md) is a second family run by the same steps: its `calls` add `putAt` and `removeAt`, its `asserts` add `rows` (a collection's cloud rows, as `records(collection)` lists them) and `outcomes` (what `onOutcome` reported since the previous assert); its rows keep the pull's `file` pointer, and `putAt` takes an optional fifth argument, the file pointer the save's finalize returned, which an acknowledged `ok` adopts. A runner without the binding skips the family by name.",
     product: PRODUCT,
     constants: {
       debounceMs: 2000,
