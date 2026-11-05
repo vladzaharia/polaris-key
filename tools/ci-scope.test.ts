@@ -272,6 +272,40 @@ describe("the changes job outputs", () => {
     ]);
   });
 
+  it("emits the Godot legs a runner can tell apart: unique names, and the UI matrix legs with their path and shard range", () => {
+    type Leg = {
+      name: string;
+      os: string;
+      godot: string;
+      part?: string;
+      ui_paths?: string;
+      ui_shards?: string;
+      ui_range?: string;
+    };
+    for (const event of ["push", "pull_request"]) {
+      const out = ciOutputs(scope, {
+        event,
+        files: event === "push" ? null : ["sdks/godot/tests/runner.gd"],
+      });
+      const legs = JSON.parse(out["godot-matrix"]!).include as Leg[];
+      expect(new Set(legs.map((l) => l.name)).size).toBe(legs.length);
+      for (const l of legs.filter((x) => x.part === "matrix"))
+        expect(
+          [l.ui_paths, l.ui_shards, l.ui_range].every(Boolean),
+          l.name,
+        ).toBe(true);
+      for (const l of legs.filter((x) => x.part !== "matrix"))
+        expect(l.ui_paths ?? "", l.name).toBe("");
+      // The newest engine is on the matrix in both pull-request and main shapes, on both paths.
+      const newest = legs.filter(
+        (l) => l.godot === "4.7.2" && l.part === "matrix",
+      );
+      expect(new Set(newest.map((l) => l.ui_paths))).toEqual(
+        new Set(["0", "1"]),
+      );
+    }
+  });
+
   it("keeps the floor and the latest of each pull-request matrix inside the full one", () => {
     for (const name of Object.keys(scope.matrices)) {
       const pr = JSON.stringify(matrixFor(scope, name, true));

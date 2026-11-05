@@ -11,9 +11,9 @@
 #                created on the newest installed iOS runtime and reused; it is erased first,
 #                because storekitd keeps a StoreKit configuration per bundle id across runs)
 #   BUILD_DIR    where the generated project, derived data and logs go (default: ./build)
-#   SETTLE_MAX   the longest wait, in seconds, for the simulator to go quiet (default 300). The
-#                settle wait runs twice (after the boot and after the StoreKit warm-up), so the
-#                worst case is twice this: 600 s at the default
+#   SETTLE_MAX   the longest wait, in seconds, for the simulator to go quiet (default 300; 60 while
+#                the StoreKit tests are disabled, see STOREKIT_WAITS). With the StoreKit tests on, the
+#                settle wait runs three times, so the worst case is three times this
 #
 #   XCODEGEN     the xcodegen binary (default: xcodegen on PATH; CI pins 2.45.4 by SHA-256)
 #
@@ -31,7 +31,17 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 BUILD="${BUILD_DIR:-$HERE/build}"
-SETTLE_MAX="${SETTLE_MAX:-300}"
+# The waits below exist for the StoreKit purchase, refund and AppTransaction tests. While those are
+# disabled in StoreKitHostTests.swift ("disabled as flaky") nothing left in the suite stalls on a
+# busy simulator, so only the boot settle runs, capped at 60 s, and the warm-up and the later settles
+# are skipped. Re-enabling the tests (removing the marker) restores every wait and the 300 s cap.
+if grep -q 'disabled as flaky' "$HERE/HostTests/StoreKitHostTests.swift"; then
+  STOREKIT_WAITS=0
+  SETTLE_MAX="${SETTLE_MAX:-60}"
+else
+  STOREKIT_WAITS=1
+  SETTLE_MAX="${SETTLE_MAX:-300}"
+fi
 # Quiet: the simulator's processes together use under SETTLE_CPU percent of one core (ps's
 # decaying average) for SETTLE_FOR seconds in a row.
 SETTLE_CPU=50
@@ -151,14 +161,16 @@ xcodebuild build-for-testing "${XB_GATE[@]}" >"$BUILD/logs/xcodebuild-build-gate
 }
 
 settle "after the boot"
-# The warm-up's result does not count: the suite below runs both tests again.
-xcodebuild test-without-building "${XB[@]}" "${TIMEOUTS[@]}" \
-  -only-testing:PKPlatformHostTests/StoreKitHostTests/testProductsLoad \
-  -only-testing:PKPlatformHostTests/StoreKitHostTests/testAppTransaction \
-  -resultBundlePath "$BUILD/logs/warmup-$(date +%s).xcresult" \
-  >"$BUILD/logs/xcodebuild-warmup.log" 2>&1 || true
-echo "run.sh: StoreKit warm-up: $(grep -cE "Test Case .* passed" "$BUILD/logs/xcodebuild-warmup.log" || true) of 2 passed"
-settle "after the StoreKit warm-up"
+if [ "$STOREKIT_WAITS" = 1 ]; then
+  # The warm-up's result does not count: the suite below runs both tests again.
+  xcodebuild test-without-building "${XB[@]}" "${TIMEOUTS[@]}" \
+    -only-testing:PKPlatformHostTests/StoreKitHostTests/testProductsLoad \
+    -only-testing:PKPlatformHostTests/StoreKitHostTests/testAppTransaction \
+    -resultBundlePath "$BUILD/logs/warmup-$(date +%s).xcresult" \
+    >"$BUILD/logs/xcodebuild-warmup.log" 2>&1 || true
+  echo "run.sh: StoreKit warm-up: $(grep -cE "Test Case .* passed" "$BUILD/logs/xcodebuild-warmup.log" || true) of 2 passed"
+  settle "after the StoreKit warm-up"
+fi
 
 # Two separate xcodebuild runs, StoreKit first. The kit-focus test drives the software keyboard and
 # rotates the scene for minutes in the host app; run before the StoreKit tests in the same session
@@ -189,7 +201,7 @@ run_suite services \
   -only-testing:PKPlatformHostTests/StoreKitHostTests \
   -only-testing:PKPlatformHostTests/KeychainHostTests \
   -only-testing:PKPlatformHostTests/DistributorHostTests
-settle "after the services suite"
+[ "$STOREKIT_WAITS" = 1 ] && settle "after the services suite"
 run_suite gate-ui -only-testing:PKGateUITests
 if [ "$rc" -ne 0 ]; then
   exit "$rc"

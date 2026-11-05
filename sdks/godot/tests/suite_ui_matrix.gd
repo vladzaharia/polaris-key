@@ -99,6 +99,10 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	if list_only:
 		for i in units.size():
 			print("PKEY-MATRIX-CASE %s" % units[i]["id"])
+			# With `--pkey-shard <i>/<n>` also say which share owns each case, so a job that runs only
+			# some of the n shares (run_tests.sh PKEY_UI_MATRIX_SHARD_RANGE) can check its own cases.
+			if shard.y > 1:
+				print("PKEY-MATRIX-OWNER %d %s" % [owner[i], units[i]["id"]])
 		t.check("matrix: listed %d cases" % units.size(), true)
 		return true
 	# Self-check of the partition: every case in exactly one shard, none lost.
