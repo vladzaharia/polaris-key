@@ -219,7 +219,15 @@ export class PolarisKeyClient {
   readonly cloudSyncHost: CloudSyncHost;
   /** Cloud Sync settings (U-06.3): `status()` and `flush()`; its events arrive on
    *  `events.on("cloudSync", …)`. A product without the Sync service answers the typed N/A. */
-  readonly cloudSync: Pick<CloudSyncApi, "status" | "flush" | "collection"> & {
+  readonly cloudSync: Pick<
+    CloudSyncApi,
+    | "status"
+    | "flush"
+    | "collection"
+    | "onConflict"
+    | "conflicts"
+    | "cloudEmpty"
+  > & {
     /** The saves of the signed-in person (U-22.5). */
     readonly saves: SavesApi;
     /** The save writes in flight. */
@@ -456,6 +464,9 @@ export class PolarisKeyClient {
       status: () => this.cloudSyncApi.status(),
       flush: () => this.cloudSyncApi.flush(),
       collection: (name) => this.cloudSyncApi.collection(name),
+      onConflict: (fn) => this.cloudSyncApi.onConflict(fn),
+      conflicts: () => this.cloudSyncApi.conflicts(),
+      cloudEmpty: () => this.cloudSyncApi.cloudEmpty(),
       saves: this.savesApi,
       transfers: () => this.savesApi.transfers(),
     };
