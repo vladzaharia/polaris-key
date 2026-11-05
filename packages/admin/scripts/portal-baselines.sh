@@ -4,7 +4,7 @@
 # CI runs the portal quality bar in Playwright's own image (.github/workflows/ci.yml, job
 # `console`), so the committed baselines are rendered in that same image. This script copies the
 # working tree (without node_modules, dist or .git) into a throwaway container of that image,
-# installs and builds the console there, runs e2e/portalQuality.e2e.test.ts and copies the linux
+# installs and builds the console there, runs e2e/portalQuality.0.e2e.test.ts e2e/portalQuality.1.e2e.test.ts and copies the linux
 # baselines back into e2e/__baselines__/portal/linux/.
 #
 #   scripts/portal-baselines.sh            re-record every linux baseline
@@ -63,7 +63,7 @@ docker run --rm --init --ipc=host --platform linux/amd64 \
       export PK_UPDATE_BASELINES=1
     fi
     status=0
-    pnpm exec vitest run -c vitest.e2e.config.ts e2e/portalQuality.e2e.test.ts ${FILTER:+-t "$FILTER"} || status=$?
+    pnpm exec vitest run -c vitest.e2e.config.ts e2e/portalQuality.0.e2e.test.ts e2e/portalQuality.1.e2e.test.ts ${FILTER:+-t "$FILTER"} || status=$?
     if [ "$MODE" = update ]; then
       rm -f /out/linux/*.png
       cp e2e/__baselines__/portal/linux/*.png /out/linux/
