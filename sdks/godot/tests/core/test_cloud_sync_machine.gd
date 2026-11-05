@@ -176,7 +176,7 @@ func _coll_machine(extra: Dictionary = {}) -> Variant:
 		{"name": "cards", "policy": "merge"},
 		{"name": "tags", "policy": "union"},
 		{"name": "scores", "policy": "max", "field": "points"},
-		{"name": "saves", "policy": "revision", "resolve": "keepServer"},
+		{"name": "saves", "policy": "revision"},
 		{"name": "log.*", "policy": "lastWrite"},
 		{"name": "log.audit.*", "policy": "union"},
 		{"name": "log.audit.fixed", "policy": "merge"},
@@ -234,13 +234,19 @@ func _collections(t: PKeyTestContext) -> void:
 			kinds[o["op"]] = true
 	t.check("put on a merge record sends setField operations", kinds.keys() == ["setField"])
 
-	# delete: a stamp for every policy but union; revision uses remove_at.
+	# delete: a stamp for every policy but union; revision is a compare-and-set on the snapshot's version.
 	m.add("tags", "t1", "x")
 	m.delete("tags", "t1")
 	m.delete("cards", "c1")
 	var dels := _pending(m).filter(func(o: Dictionary) -> bool: return o["op"] == "delete")
 	t.check("delete: a union delete carries no stamp, a merge delete does", dels.size() == 2 and not dels[0].has("editedHlc") and dels[1].has("editedHlc"))
-	t.check("delete: refused for revision and for an undeclared name", m.delete("saves", "s").get("error") == "collection-unknown" and m.delete("nope", "s").get("error") == "collection-unknown")
+	var sd: Dictionary = m.delete("saves", "s")
+	var revision_dels := _pending(m).filter(func(o: Dictionary) -> bool: return o["op"] == "delete" and o["target"]["record"][0] == "saves")
+	t.check(
+			"delete: a revision delete is the collection's default delete, on the snapshot's version (U-08), and an undeclared name is refused",
+			sd.get("ok") == true and revision_dels.size() == 1 and revision_dels[0]["baseVersion"] == "*" and not revision_dels[0].has("editedHlc")
+				and m.delete("nope", "s").get("error") == "collection-unknown"
+	)
 	t.check(
 			"collection verbs: signed-out while nobody is signed in",
 			_coll_machine({"subject": null}).update("cards", "c", {"set": {"a": 1}}).get("error") == "signed-out"

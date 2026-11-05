@@ -4268,6 +4268,74 @@
       "layer": "client"
     },
     {
+      "id": "cloudSync.onConflict",
+      "kind": "method",
+      "feature": "sync.conflict",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "godot": {
+          "spelling": "conflict_opened",
+          "shape": "signal",
+          "reason": "Godot observes a signal; on_conflict(fn) is the listener that may decide inline"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.conflicts",
+      "kind": "method",
+      "feature": "sync.conflict",
+      "sdks": {
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.cloudEmpty",
+      "kind": "method",
+      "feature": "sync.conflict",
+      "sdks": {
+        "godot": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.mergeRequest.keep",
+      "kind": "method",
+      "feature": "sync.conflict",
+      "args": [
+        {
+          "name": "choice",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "godot": {
+          "spelling": "PKeyMergeRequest.keep"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.conflictEvent",
+      "kind": "stream",
+      "feature": "sync.conflict",
+      "enum": "mergeEvent",
+      "sdks": {
+        "godot": {
+          "spelling": "client.event",
+          "shape": "signal",
+          "reason": "Godot observes the one event signal, kinds conflictOpened and conflictClosed"
+        }
+      },
+      "layer": "client"
+    },
+    {
       "id": "cloudSync.transfers",
       "kind": "method",
       "feature": "sync.files",
@@ -8975,6 +9043,12 @@
       "from": "identity.accept_sign_in",
       "to": "identity.signIn.session.wait",
       "package": "I-10a"
+    },
+    {
+      "sdk": "godot",
+      "from": "PKeySaves.resolve",
+      "to": "cloudSync.mergeRequest.keep",
+      "package": "U-08"
     }
   ]
 }

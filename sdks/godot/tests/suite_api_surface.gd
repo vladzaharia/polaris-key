@@ -67,6 +67,11 @@ const ROWS := [
 	["cloudSync.saves.write", "res://addons/polaris_key/services/cloud_sync/saves.gd", "method", "write"],
 	["cloudSync.saves.delete", "res://addons/polaris_key/services/cloud_sync/saves.gd", "method", "delete"],
 	["cloudSync.saves.revisions", "res://addons/polaris_key/services/cloud_sync/saves.gd", "method", "revisions"],
+	["cloudSync.onConflict", "res://addons/polaris_key/services/cloud_sync.gd", "signal", "conflict_opened"],
+	["cloudSync.conflicts", "res://addons/polaris_key/services/cloud_sync.gd", "method", "conflicts"],
+	["cloudSync.cloudEmpty", "res://addons/polaris_key/services/cloud_sync.gd", "method", "cloud_empty"],
+	["cloudSync.mergeRequest.keep", "res://addons/polaris_key/services/cloud_sync/merge_request.gd", "method", "keep"],
+	["cloudSync.conflictEvent", SDK, "signal", "event"],
 	["cloudSync.transfers", "res://addons/polaris_key/services/cloud_sync.gd", "method", "transfers"],
 	["cloudSync.transfer.pause", "res://addons/polaris_key/services/cloud_sync/transfer_handle.gd", "method", "pause"],
 	["cloudSync.transfer.resume", "res://addons/polaris_key/services/cloud_sync/transfer_handle.gd", "method", "resume"],
@@ -254,6 +259,7 @@ const REMOVED := [
 	["identity.sign_in_pending", "res://addons/polaris_key/services/identity.gd", "sign_in_pending"],
 	["identity.sign_in_confirm", "res://addons/polaris_key/services/identity.gd", "sign_in_confirm"],
 	["identity.sign_in_finished", "res://addons/polaris_key/services/identity.gd", "sign_in_finished"],
+	["PKeySaves.resolve", "res://addons/polaris_key/services/cloud_sync/saves.gd", "resolve"],
 ]
 
 

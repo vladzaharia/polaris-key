@@ -8,7 +8,7 @@ extends RefCounted
 ##   {state: "done", id, kept: "remote", version}   a conflict settled by keeping the server's copy
 ##   {state: "cancelled"}                           cancelled (a cancel is a state, not a failure)
 ##   {state: "failed", error: {code, reason, detail}}
-##   {state: "conflict", conflict: {...}}           another write got there first (see `saves.resolve`)
+##   {state: "conflict", request}                   another write got there first: a PKeyMergeRequest holds this copy (`await request.keep(...)`)
 ##
 ## `state` is "running", "paused", "done", "cancelled", "failed" or "conflict". `pause()` stops the engine
 ## at its next step and keeps the journal, so `resume()` carries on from what the Worker already holds;

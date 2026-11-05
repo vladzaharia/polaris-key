@@ -3,6 +3,7 @@ extends RefCounted
 # @pkey-feature sync.settings config.sync
 # @pkey-feature sync.saves
 # @pkey-feature sync.e2e
+# @pkey-feature sync.conflict
 # `sync-scenarios.json`: the Cloud Sync client state machine and the setting routes.
 #
 # Mirrors sdks/python/tests/test_sync_scenarios.py. The corpus is read from the generator-owned
@@ -17,7 +18,8 @@ extends RefCounted
 # `add(c, id, v)`, `remove(c, id, v)`, `flush()`, `refresh()` (each returns a Dictionary),
 # `advance(ms)`, `set_network(state)`, `receive(res, opened)`, `set_root(has)`, `sign_in(subject)`,
 # `sign_out(discard)`, `take_requests()`, `take_events()`, `get_value(k)`, `setting_state(k)`,
-# `record(collection, id)`, `journal()`, `status()`, `encryption_since()`; and for `fileRecordCases`
+# `record(collection, id)`, `journal()`, `status()`, `encryption_since()`; and for sync-scenarios v5 (U-08) `delete(c, id)`,
+# `keep(request_id, choice)`, `conflicts()` and `cloud_empty()`; and for `fileRecordCases`
 # (the records binding of cloudSync.saves): `put_at(c, id, v, base)`, `remove_at(c, id, base)`,
 # `on_outcome(listener)` and `records(collection)`.
 
@@ -29,8 +31,8 @@ const Routes := preload("res://addons/polaris_key/core/sync/sync_routes.gd")
 const SKIPPED := ["record-merge-fields"]
 
 const CORPUS := "res://tests/corpus/v2/sync-scenarios.json"
-const STEP_KINDS := ["local", "advance", "network", "respond", "signIn", "signOut", "relaunch", "root", "assert"]
-const CALLS := ["set", "clear", "put", "add", "remove", "flush", "refresh"]
+const STEP_KINDS := ["local", "advance", "network", "respond", "signIn", "signOut", "relaunch", "root", "keep", "assert"]
+const CALLS := ["set", "clear", "put", "add", "remove", "flush", "refresh", "delete"]
 const FILE_RECORD_CALLS := ["putAt", "removeAt"]
 const FILE_RECORD_ASSERTS := ["rows", "outcomes"]
 
@@ -82,7 +84,7 @@ func _shape(t: PKeyTestContext, corpus: Dictionary) -> void:
 	var family_names := {}
 	for sc: Dictionary in family["scenarios"]:
 		family_names[sc["name"]] = true
-	t.check("fileRecordCases is declared (19 cases)", family["scenarios"].size() == 19 and family_names.size() == 19)
+	t.check("fileRecordCases is declared (21 cases)", family["scenarios"].size() == 21 and family_names.size() == 21)
 	t.check("fileRecordCases vocabulary is the driver's", Types.json_equal(family["calls"], FILE_RECORD_CALLS) and Types.json_equal(family["asserts"], FILE_RECORD_ASSERTS))
 	t.check("every step and call is known", unknown == 0, str(unknown))
 	t.check("the corpus has scenarios, rules and setting cases", corpus["scenarios"].size() > 0 and corpus["rules"].size() > 0 and corpus["settingCases"].size() > 0)
@@ -161,6 +163,8 @@ func _call(m: Variant, name: String, args: Array) -> Dictionary:
 			return m.add(args[0], args[1], args[2])
 		"remove":
 			return m.remove(args[0], args[1], args[2])
+		"delete":
+			return m.delete(args[0], args[1])
 		"flush":
 			return m.flush()
 	return m.refresh()
@@ -199,6 +203,10 @@ func _replay(t: PKeyTestContext, corpus: Dictionary, sc: Dictionary) -> void:
 				t.check(where, m.receive(res, raw.get("opened"))["ok"])
 			"root":
 				m.set_root(raw.get("has") == true)
+			"keep":
+				# Version 5: answer an open request. `expect` is given only for a refusal at once.
+				var result: Dictionary = m.keep(raw["request"], raw["choice"])
+				t.check(where, Types.json_equal(result, raw.get("expect", {"ok": true})), JSON.stringify(result))
 			"signIn":
 				m.sign_in(raw["subject"])
 			"signOut":
@@ -240,6 +248,10 @@ func _assert(t: PKeyTestContext, m: Variant, raw: Dictionary, where: String, lic
 		t.check("%s: status" % where, Types.json_equal(m.status(), raw["status"]))
 	if raw.has("encryptionSince"):
 		t.check("%s: encryptionSince" % where, Types.json_equal(m.encryption_since(), raw["encryptionSince"]))
+	if raw.has("conflicts"):
+		t.check("%s: conflicts" % where, Types.json_equal(m.conflicts(), raw["conflicts"]), JSON.stringify(m.conflicts()))
+	if raw.has("cloudEmpty"):
+		t.check("%s: cloudEmpty" % where, Types.json_equal(m.cloud_empty(), raw["cloudEmpty"]))
 	if raw.has("licence"):
 		t.check("%s: licence" % where, Types.json_equal(licence, raw["licence"]))
 
