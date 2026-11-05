@@ -2616,12 +2616,12 @@ msgstr ""
 msgid "signin.provider.connect"
 msgstr ""
 
-#. Sign in with a passkey
+#. Continue with a passkey
 #. Hosted sign-in card (SIGN-IN.md).
 msgid "signin.passkey"
 msgstr ""
 
-#. macos: Sign In with a Passkey
+#. macos: Continue with a Passkey
 msgctxt "macos"
 msgid "signin.passkey"
 msgstr ""
@@ -2646,12 +2646,12 @@ msgctxt "macos"
 msgid "signin.link.key"
 msgstr ""
 
-#. Sign in with another device
-#. Links at the foot of the sign-in card (SIGN-IN.md §3.3).
+#. Continue with another device
+#. Sign-in method button: approve from a signed-in device (SIGN-IN.md §3.3).
 msgid "signin.link.anotherDevice"
 msgstr ""
 
-#. macos: Sign In with Another Device
+#. macos: Continue with Another Device
 msgctxt "macos"
 msgid "signin.link.anotherDevice"
 msgstr ""
@@ -5356,12 +5356,12 @@ msgstr ""
 msgid "signin.hint.method.email"
 msgstr ""
 
-#. Use a passkey
+#. Continue with a passkey
 #. HintStep: passkey button.
 msgid "signin.hint.usePasskey"
 msgstr ""
 
-#. macos: Use a Passkey
+#. macos: Continue with a Passkey
 msgctxt "macos"
 msgid "signin.hint.usePasskey"
 msgstr ""

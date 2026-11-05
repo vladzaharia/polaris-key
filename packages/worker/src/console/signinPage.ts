@@ -69,7 +69,7 @@ function passkeyBlock(state: SigninState, returnTo: string | null): string {
   const stepUp = state === "stepUp";
   const button =
     `<button class="${stepUp ? "button" : "button secondary"}" type="button" id="pk-go" aria-describedby="pk-err">` +
-    `${methodLabel("fingerprint", stepUp ? "Use your passkey" : "Sign in with a passkey")}</button>`;
+    `${methodLabel("fingerprint", stepUp ? "Use your passkey" : "Continue with a passkey")}</button>`;
   const err = `<div class="pk-err" id="pk-err" role="alert"><p class="field-err" id="pk-msg" hidden></p></div>`;
   const or = `<div class="or" aria-hidden="true">or</div>`;
   return (
@@ -92,7 +92,7 @@ function hintView(): string {
     `<button class="chip-change" id="h-change" type="button">Change</button></div>` +
     `<h1 id="h-title" tabindex="-1">Welcome back</h1>` +
     `<div class="usual">${icon("fingerprint")}<div><p class="usual-1">You usually sign in with a passkey</p><p class="usual-2" id="h-when"></p></div></div>` +
-    `<button class="button" type="button" id="h-go">${methodLabel("fingerprint", "Use a passkey")}</button>` +
+    `<button class="button" type="button" id="h-go">${methodLabel("fingerprint", "Continue with a passkey")}</button>` +
     `<div class="or" aria-hidden="true">or</div>` +
     `<button class="button secondary" type="button" id="h-sso">${methodLabel("building", "Continue with single sign-on")}</button>` +
     `<div class="pk-err pk-err-start" role="alert"><p class="field-err" id="h-msg" hidden></p></div>` +

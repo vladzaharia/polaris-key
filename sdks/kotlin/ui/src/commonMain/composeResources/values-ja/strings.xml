@@ -961,17 +961,17 @@
     <!-- Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam). Arguments: 1=provider. -->
     <string name="signin_provider_connect">%1$sを連携</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
-    <string name="signin_passkey">パスキーでサインイン</string>
-    <string name="signin_passkey__macos">パスキーでサインイン</string>
+    <string name="signin_passkey">パスキーで続ける</string>
+    <string name="signin_passkey__macos">パスキーで続ける</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
     <string name="signin_email_continue">メールアドレスで続ける</string>
     <string name="signin_email_continue__macos">メールアドレスで続ける</string>
     <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
     <string name="signin_link_key">ライセンスキーをお持ちですか？</string>
     <string name="signin_link_key__macos">ライセンスキーをお持ちですか？</string>
-    <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
-    <string name="signin_link_anotherDevice">別のデバイスでサインイン</string>
-    <string name="signin_link_anotherDevice__macos">別のデバイスでサインイン</string>
+    <!-- Sign-in method button: approve from a signed-in device (SIGN-IN.md §3.3). -->
+    <string name="signin_link_anotherDevice">別のデバイスで続ける</string>
+    <string name="signin_link_anotherDevice__macos">別のデバイスで続ける</string>
     <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
     <string name="signin_link_deviceCode">スマートフォンまたはコンピュータでサインイン</string>
     <string name="signin_link_deviceCode__macos">スマートフォンまたはコンピュータでサインイン</string>
@@ -1998,8 +1998,8 @@
     <!-- HintStep: completes 'You usually sign in with {method}'. -->
     <string name="signin_hint_method_email">メールのコード</string>
     <!-- HintStep: passkey button. -->
-    <string name="signin_hint_usePasskey">パスキーを使用</string>
-    <string name="signin_hint_usePasskey__macos">パスキーを使用</string>
+    <string name="signin_hint_usePasskey">パスキーで続ける</string>
+    <string name="signin_hint_usePasskey__macos">パスキーで続ける</string>
     <!-- HintStep: sends a sign-in code. -->
     <string name="signin_hint_emailCode">メールでコードを送る</string>
     <string name="signin_hint_emailCode__macos">メールでコードを送る</string>

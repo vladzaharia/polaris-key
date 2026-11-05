@@ -236,7 +236,7 @@ const previewSays = (answer: Record<string, unknown>) => ({
 async function typeEmail(page: Page, email: string): Promise<void> {
   await h1(page, /Sign in/);
   await page.getByRole("textbox", { name: "Email" }).fill(email);
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
 }
 
 async function openActivate(page: Page): Promise<void> {
@@ -378,7 +378,7 @@ export const SHIPPED: ShippedState[] = [
         navigator.credentials.get = () =>
           Promise.reject(new DOMException("denied", "NotAllowedError"));
       });
-      await p.getByRole("button", { name: "Sign in with a passkey" }).click();
+      await p.getByRole("button", { name: "Continue with a passkey" }).click();
       await p.getByText("Your passkey wasn't used").waitFor();
     },
   },
@@ -397,7 +397,7 @@ export const SHIPPED: ShippedState[] = [
     ready: async (p) => {
       await h1(p, "Sign in to Polaris Locker");
       await p
-        .getByRole("button", { name: "Sign in with another device" })
+        .getByRole("button", { name: "Continue with another device" })
         .click();
       await h1(p, "Sign in with another device");
       await p.getByText("KRQP-BMXD").waitFor();
@@ -426,7 +426,7 @@ export const SHIPPED: ShippedState[] = [
     ready: async (p) => {
       await h1(p, "Sign in to Polaris Locker");
       await p
-        .getByRole("button", { name: "Sign in with another device" })
+        .getByRole("button", { name: "Continue with another device" })
         .click();
       await p.getByText("That request was denied").waitFor();
     },

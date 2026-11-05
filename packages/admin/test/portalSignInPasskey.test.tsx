@@ -90,7 +90,7 @@ describe("passkey button (modal)", () => {
     routes();
     renderPortal();
     await userEvent.click(
-      await screen.findByRole("button", { name: "Sign in with a passkey" }),
+      await screen.findByRole("button", { name: "Continue with a passkey" }),
     );
     await waitFor(() =>
       expect(fetchedRequests()).toContain("POST /api/signin/passkey/verify"),
@@ -113,14 +113,14 @@ describe("passkey button (modal)", () => {
     routes();
     renderPortal();
     await userEvent.click(
-      await screen.findByRole("button", { name: "Sign in with a passkey" }),
+      await screen.findByRole("button", { name: "Continue with a passkey" }),
     );
     expect((await screen.findByRole("alert")).textContent).toMatch(
       /passkey|cancel/i,
     );
     expect(fetchedRequests()).not.toContain("POST /api/signin/passkey/verify");
     expect(
-      screen.getByRole("button", { name: "Sign in with a passkey" }),
+      screen.getByRole("button", { name: "Continue with a passkey" }),
     ).toBeTruthy();
   });
 
@@ -135,7 +135,7 @@ describe("passkey button (modal)", () => {
     });
     renderPortal();
     await userEvent.click(
-      await screen.findByRole("button", { name: "Sign in with a passkey" }),
+      await screen.findByRole("button", { name: "Continue with a passkey" }),
     );
     await waitFor(() => expect(signal).toHaveBeenCalledTimes(1));
     expect(signal).toHaveBeenCalledWith({
@@ -156,7 +156,7 @@ describe("passkey button (modal)", () => {
     });
     renderPortal();
     await userEvent.click(
-      await screen.findByRole("button", { name: "Sign in with a passkey" }),
+      await screen.findByRole("button", { name: "Continue with a passkey" }),
     );
     await screen.findByRole("alert");
     expect(signal).not.toHaveBeenCalled();
@@ -173,7 +173,7 @@ describe("passkey button (modal)", () => {
     });
     renderPortal();
     await userEvent.click(
-      await screen.findByRole("button", { name: "Sign in with a passkey" }),
+      await screen.findByRole("button", { name: "Continue with a passkey" }),
     );
     expect(await screen.findByRole("alert")).toBeTruthy();
   });
@@ -186,7 +186,7 @@ describe("passkey button (modal)", () => {
     renderPortal();
     await screen.findByRole("textbox", { name: "Email" });
     expect(
-      screen.queryByRole("button", { name: "Sign in with a passkey" }),
+      screen.queryByRole("button", { name: "Continue with a passkey" }),
     ).toBeNull();
     expect(get).not.toHaveBeenCalled();
   });

@@ -1,7 +1,7 @@
 /**
  * The console sign-in card's one inline script (ST-30c.6; SIGN-IN.md §3.13 exception, plan D-S2).
  *
- * The card is script-free except for this: it reveals **Sign in with a passkey** (or **Use your
+ * The card is script-free except for this: it reveals **Continue with a passkey** (or **Use your
  * passkey** on a step-up) when the browser has WebAuthn, shows the returning-person step (the
  * Locker hint step: "Welcome back", the usual way first) from what THIS browser remembers of its own
  * last sign-in, stashes how this tab is signing in for the SPA to remember (`lib/lastMethod.ts`), runs
