@@ -3,6 +3,7 @@
 // the step machine, "applied once", Retry repeating the same choice, `remote: null` versus an absent
 // `remote`, the disabled Keep both, and a pending transfer never reading as synced.
 
+import PolarisKeyCore
 import PolarisKeyUICore
 import XCTest
 
@@ -37,6 +38,27 @@ final class SaveConflictModelTests: XCTestCase {
             await m.keep(.both)
             XCTAssertEqual(m.step, .choose, "a disabled choice does nothing")
         }
+    }
+
+    /// The host form has no request to read again: a keep that reopens the request ends it, and no keep
+    /// (nor Try again) runs on the copies the person never saw.
+    func testAReopenOnAModelWithNoRequestClosesItAndSendsNothingMore() async {
+        let sent = LockedValue<[KitSaveConflict.Keep]>([])
+        let host = SaveConflictHost { choice in
+            sent.with { $0.append(choice) }
+            throw SaveConflictKeepError(code: "conflict", reopened: true)
+        }
+        let m = SaveConflictModel(conflict: conflict(), host: host)
+        var closed = 0
+        m.onClosed = { closed += 1 }
+        await m.keep(.local)
+        XCTAssertEqual(closed, 1)
+        XCTAssertEqual(sent.current, [.local])
+        await m.retry()
+        await m.keep(.remote)
+        m.chooseAgain()
+        XCTAssertEqual(sent.current, [.local], "a reopen never sends a second keep")
+        XCTAssertFalse(m.canKeep(.remote))
     }
 
     func testADeletionHasItsOwnTitleLedeAndButton() async {

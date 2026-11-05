@@ -230,7 +230,7 @@ public struct SaveConflictView: View {
                         // A choice met a newer copy: nothing was applied, and these are the new versions.
                         HStack(alignment: .firstTextBaseline, spacing: style.space(.xs)) {
                             Image(systemName: "info.circle").accessibilityHidden(true)
-                            KitText(note, .meta, color: .muted)
+                            KitText(note, .body, color: .strong)
                         }
                         .accessibilityElement(children: .combine)
                     }

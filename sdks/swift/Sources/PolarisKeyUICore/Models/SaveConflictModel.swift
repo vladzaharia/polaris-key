@@ -105,7 +105,8 @@ extension KitSaveConflict {
     }
 }
 
-/// A save conflict: choose, being applied, applied, or failed.
+/// A save conflict: choose, being applied, applied, or failed. The form built from inputs and a host (no
+/// request) is for previews and tests: a keep that meets a newer copy ends it, as a closed request does.
 @MainActor
 @Observable
 public final class SaveConflictModel {
@@ -115,6 +116,9 @@ public final class SaveConflictModel {
     /// goes back to the choices, so the cards never show what the request has moved past.
     private let request: MergeRequest?
     private let describe: ((MergeSide) -> KitSaveConflict.Copy)?
+    /// A model with no request met a reopened conflict: the copies it was built with are stale and it has no
+    /// request to read again, so it answers nothing more (no choice, no Try again). `onClosed` was told.
+    private var closed = false
     /// Told when the request ended meanwhile (an exact write superseded it): there is nothing left to choose.
     public var onClosed: (@MainActor () -> Void)?
     /// Told when a choice was applied (before `kept` shows).
@@ -171,7 +175,7 @@ public final class SaveConflictModel {
 
     /// Whether `choice` may be made now: only on `choose`, and Keep both only with a free slot.
     public func canKeep(_ choice: KitSaveConflict.Keep) -> Bool {
-        guard step == .choose else { return false }
+        guard step == .choose, !closed else { return false }
         return choice == .both ? canKeepBoth : true
     }
 
@@ -183,14 +187,14 @@ public final class SaveConflictModel {
 
     /// Try again, after a choice failed: the same choice, never another.
     public func retry() async {
-        guard step == .failed, let choice = conflict.keep else { return }
+        guard step == .failed, !closed, let choice = conflict.keep else { return }
         await apply(choice)
     }
 
     /// Choose again, after a choice failed: back to the choices with the same versions. Nothing is
     /// applied; the host is not told.
     public func chooseAgain() {
-        guard step == .failed else { return }
+        guard step == .failed, !closed else { return }
         if !reread(reopened: false) {
             inputs.saveConflict?.step = .choose
             inputs.saveConflict?.keep = nil
@@ -211,6 +215,12 @@ public final class SaveConflictModel {
             } else if e.reopened && (e.code == "conflict" || e.code == "slots-full") && reread(reopened: e.code == "conflict") {
                 // The other copy moved (or Keep both lost its slot) while the keep ran: nothing was applied.
                 // Back to the choices on the request's current sides, which say so.
+            } else if e.reopened && e.code == "conflict" && request == nil {
+                // No request to read again: the cards are stale, and a keep would run on the new copy unseen.
+                // Treated as closed for this form; nothing more is sent.
+                closed = true
+                set(.failed, keep: choice)
+                (onClosed ?? onCancel)?()
             } else {
                 set(.failed, keep: choice)
             }

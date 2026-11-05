@@ -117,6 +117,9 @@ final class SaveConflictRequestTests: XCTestCase {
         XCTAssertEqual(m.conflict.remote?.when, KitSaveConflict.copy(of: request.remote!).when)
         XCTAssertEqual(calls.current, 1, "nothing ran again by itself")
         XCTAssertTrue(m.screen.copy.contains { $0.key == "saveConflict.reopened" })
+        await m.retry()
+        XCTAssertEqual(calls.current, 1, "Try again is for a failure only: after a reopen it sends nothing")
+        XCTAssertEqual(m.step, .choose)
     }
 
     func testChooseAgainReadsTheRequestAgain() async {
