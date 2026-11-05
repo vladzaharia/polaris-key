@@ -56,6 +56,7 @@ import {
   type CallResult,
   type CloudSyncOptions,
   type Json,
+  type MergeChoiceName,
   type OpenedBody,
   type RecordFile,
   type RecordOutcome,
@@ -147,6 +148,8 @@ function call(m: CloudSyncMachine, name: string, args: Json[]): CallResult {
         args[1] as string,
         args[2] as number | "*",
       );
+    case "delete":
+      return m.delete(args[0] as string, args[1] as string);
     case "flush":
       return m.flush();
     case "refresh":
@@ -158,7 +161,7 @@ function call(m: CloudSyncMachine, name: string, args: Json[]): CallResult {
 
 describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client state machine)`, () => {
   it(`runs on Node ${process.version}`, () => {
-    expect(corpus.syncScenariosVersion).toBe(4);
+    expect(corpus.syncScenariosVersion).toBe(5);
     expect(corpus.constants).toEqual({
       debounceMs: SYNC_DEBOUNCE_MS,
       signOutFlushMs: SYNC_SIGNOUT_FLUSH_MS,
@@ -243,6 +246,13 @@ describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client 
           case "root":
             m.setRoot(raw.has === true);
             break;
+          case "keep": {
+            // Version 5: answer an open request. `expect` is given only for a refusal at once.
+            const choice = raw.choice as MergeChoiceName | { value: Json };
+            const result = m.keep(raw.request as string, choice);
+            expect(result, where).toEqual(raw.expect ?? { ok: true });
+            break;
+          }
           case "signIn":
             m.signIn(raw.subject as string);
             break;
@@ -285,6 +295,14 @@ describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client 
             if (raw.encryptionSince !== undefined)
               expect(m.encryptionSince(), `${where}: encryptionSince`).toEqual(
                 raw.encryptionSince,
+              );
+            if (raw.conflicts !== undefined)
+              expect(m.conflicts(), `${where}: conflicts`).toEqual(
+                raw.conflicts,
+              );
+            if (raw.cloudEmpty !== undefined)
+              expect(m.cloudEmpty(), `${where}: cloudEmpty`).toEqual(
+                raw.cloudEmpty,
               );
             if (raw.licence !== undefined)
               expect(licence, `${where}: licence`).toEqual(raw.licence);

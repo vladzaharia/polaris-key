@@ -4050,7 +4050,7 @@ function scenarios(): Scenario[] {
         },
         records: { "progress/main": val({ level: 6 }, "pending") },
         conflicts: [],
-        status: st("syncing", 1),
+        status: st("syncing", 2),
       }),
       respond(
         pushBody({
@@ -5576,7 +5576,7 @@ function fileRecordCases(): Scenario[] {
       ...openedRequest(),
       local("putAt", ["progress", "main", { level: 7 }, 8], {
         ok: true,
-        mutationId: 2,
+        mutationId: 1,
       }),
       assert({
         requests: [
@@ -5595,7 +5595,7 @@ function fileRecordCases(): Scenario[] {
         }),
       ),
       assert({
-        outcomes: [outOk(2, 9)],
+        outcomes: [outOk(1, 9)],
         conflicts: [],
         ...rowsAre([rowOf("main", { level: 7 }, 9, null)]),
         status: st("idle", 0),
@@ -5611,7 +5611,7 @@ function fileRecordCases(): Scenario[] {
     init: init({ catalog: CONFLICT_CATALOG }),
     steps: [
       ...openedRequest(),
-      local("removeAt", ["progress", "main", 8], { ok: true, mutationId: 2 }),
+      local("removeAt", ["progress", "main", 8], { ok: true, mutationId: 1 }),
       assert({
         requests: [pushReq(C1, 10, [del(2, "progress", "main", 8)])],
         conflicts: [],
@@ -5627,7 +5627,7 @@ function fileRecordCases(): Scenario[] {
         }),
       ),
       assert({
-        outcomes: [outOk(2, 9)],
+        outcomes: [outOk(1, 9)],
         conflicts: [],
         ...rowsAre([]),
         records: { "progress/main": null },

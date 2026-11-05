@@ -16342,7 +16342,7 @@
               "progress/main": { "value": { "level": 6 }, "from": "pending" }
             },
             "conflicts": [],
-            "status": { "state": "syncing", "pending": 1 }
+            "status": { "state": "syncing", "pending": 2 }
           }
         },
         {
@@ -23607,7 +23607,7 @@
             "local": {
               "call": "putAt",
               "args": ["progress", "main", { "level": 7 }, 8],
-              "expect": { "ok": true, "mutationId": 2 }
+              "expect": { "ok": true, "mutationId": 1 }
             }
           },
           {
@@ -23674,7 +23674,7 @@
           },
           {
             "assert": {
-              "outcomes": [{ "mutationId": 2, "status": "ok", "version": 9 }],
+              "outcomes": [{ "mutationId": 1, "status": "ok", "version": 9 }],
               "conflicts": [],
               "rows": {
                 "progress": [
@@ -23920,7 +23920,7 @@
             "local": {
               "call": "removeAt",
               "args": ["progress", "main", 8],
-              "expect": { "ok": true, "mutationId": 2 }
+              "expect": { "ok": true, "mutationId": 1 }
             }
           },
           {
@@ -23982,7 +23982,7 @@
           },
           {
             "assert": {
-              "outcomes": [{ "mutationId": 2, "status": "ok", "version": 9 }],
+              "outcomes": [{ "mutationId": 1, "status": "ok", "version": 9 }],
               "conflicts": [],
               "rows": { "progress": [] },
               "records": { "progress/main": null },

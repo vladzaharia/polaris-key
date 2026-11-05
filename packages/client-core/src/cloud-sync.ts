@@ -139,7 +139,7 @@ export interface CollectionDecl {
   name: string;
   policy: CollectionPolicy;
   field?: string;
-  resolve?: "keepServer" | "keepLocal";
+  resolve?: "keepServer" | "keepLocal" | "keepRemote";
 }
 
 export interface CloudSyncCatalog {
@@ -202,6 +202,42 @@ export interface JournalOp extends WireMutation {
   /** The file pointer `putAt` was given (the one the save's finalize returned): the row adopts it
    *  when the op is acknowledged `ok`. Never sent. */
   file?: RecordFile;
+}
+
+/** An open MergeRequest of a `revision` record (plans/U-08.md §2.3): the device's copy, held
+ *  unsent. The remote side is the partition's snapshot row, so it follows the cloud. */
+interface ConflictRec {
+  local: Json;
+  /** The version the device's copy was written on; `null`: the record did not exist. */
+  localVersion: number | null;
+  /** A keep is applying: the mutation that carries it. */
+  keep?: { choice: "local" | "value"; mutationId: number };
+  /** The failure code of the last keep. */
+  error?: string;
+}
+
+/** What a request offers (record requests: no `both`). */
+export type MergeChoiceName = "local" | "remote" | "both" | "value";
+
+export interface MachineConflictSide {
+  value: Json;
+  version: number | null;
+  savedAt: number | null;
+  device: string | null;
+  file: { size: number; format: "whole" | "chunks" } | null;
+}
+
+/** The machine's view of one request; the saves layer adds `newer` and the keep promise. */
+export interface MachineConflict {
+  id: string;
+  cause: "write";
+  collection: string;
+  record: string;
+  local: MachineConflictSide;
+  remote: MachineConflictSide | null;
+  choices: MergeChoiceName[];
+  state: "open" | "applying";
+  error: string | null;
 }
 
 /** A setting held in the local partition. */
@@ -269,6 +305,10 @@ interface Partition {
   pending: JournalOp[];
   /** Rule 3: the latest local edit of a record whose CAS is in flight, by `collection/id`. */
   held: Record<string, Json>;
+  /** Open MergeRequests by `collection/id` (plans/U-08.md §2.3 rule 7). Absent in older journals. */
+  conflicts?: Record<string, ConflictRec>;
+  /** Whether the last cursor-0 answer said the cloud is empty (`null` view while undefined). */
+  empty?: boolean;
   /** The cloud snapshot (subject partitions), by server key. */
   settings: Record<string, Versioned>;
   records: Record<string, Versioned>;
@@ -355,6 +395,8 @@ export const cloudSyncEncryption = (
 
 /** The client code for the pin (`conformance/parity/errors.json`). */
 export const SYNC_ENCRYPTION_PINNED = "sync-encryption-pinned";
+/** `keep` on a request that has closed (or never existed): the client code of plans/U-08.md §2.3. */
+export const SYNC_MERGE_CLOSED = "sync-merge-closed";
 
 export type SyncRequest =
   | { method: "POST"; path: string; body: Json }
@@ -400,7 +442,19 @@ export type SyncEvent =
       ids: string[];
       origin: ChangeOrigin;
     }
-  | { type: "signInOffered"; signInUrl: string | null };
+  | { type: "signInOffered"; signInUrl: string | null }
+  | {
+      type: "conflict";
+      id: string;
+      cause: "write";
+      collection: string;
+      record: string;
+    }
+  | {
+      type: "conflictClosed";
+      id: string;
+      how: "local" | "remote" | "value" | "both" | "superseded";
+    };
 
 export type ValueFrom = "pending" | "cloud" | "device" | "document";
 
@@ -432,6 +486,8 @@ export interface SyncStatus {
     | ParkReason;
   /** `sync-encryption-pinned` while `unsupported`. */
   code?: typeof SYNC_ENCRYPTION_PINNED;
+  /** The open MergeRequests; present only above 0. */
+  conflicts?: number;
 }
 
 export interface SettingState {
@@ -654,6 +710,13 @@ function fileOf(v: unknown): RecordFile | undefined {
 }
 
 const recordKey = (c: string, id: string): string => `${c}/${id}`;
+const splitKey = (rk: string): [string, string] => {
+  const i = rk.indexOf("/");
+  return [rk.slice(0, i), rk.slice(i + 1)];
+};
+/** A write request's id: `w:<collection>/<record>` (plans/U-08.md §2.2). */
+const conflictId = (collection: string, record: string): string =>
+  `w:${collection}/${record}`;
 
 /** A conflict copy the client may compare: opened sealed (not unreadable, not plaintext). */
 const decidable = (b: { bad?: true; plain?: number }): boolean =>
@@ -918,7 +981,11 @@ export class CloudSyncMachine {
     const isRecord = (o: JournalOp): boolean =>
       "record" in o.target && recordKey(...o.target.record) === rk;
     if (decl.policy === "revision") {
-      if (this.inFlightTouches(rk)) {
+      const open = p.conflicts?.[rk];
+      if (open && !open.keep) {
+        // Rule 3: an open request freezes the record; the later put replaces the device's copy.
+        open.local = clone(value);
+      } else if (this.inFlightTouches(rk)) {
         p.held[rk] = clone(value);
       } else {
         const queued = p.pending.find(
@@ -1049,6 +1116,8 @@ export class CloudSyncMachine {
       return { ok: false, error: "collection-unknown" };
     if (this.s.subject === null) return { ok: false, error: "signed-out" };
     const p = this.active();
+    // Rule 4: an exact write supersedes the record's open request and is sent as asked.
+    this.closeConflict(p, recordKey(collection, id), "superseded");
     const op = this.enqueue(p, {
       target: { record: [collection, id] },
       ...body,
@@ -1129,6 +1198,7 @@ export class CloudSyncMachine {
       if ("record" in op.target && op.target.record[0] === collection)
         keys.add(recordKey(...op.target.record));
     for (const rk of Object.keys(p.held)) keys.add(rk);
+    for (const rk of Object.keys(p.conflicts ?? {})) keys.add(rk);
     for (const rk of keys) {
       if (!rk.startsWith(prefix)) continue;
       const id = rk.slice(prefix.length);
@@ -1198,13 +1268,28 @@ export class CloudSyncMachine {
     return { ok: true };
   }
 
-  /** Delete a record of any policy but `revision` (use `removeAt` there). */
+  /** Delete a record: the collection's default delete. A `revision` record is deleted on the
+   *  version of an open request's local copy, else on the snapshot's, so a delete that conflicts
+   *  keeps the other copy (plans/U-08.md §2.3 rule 3). */
   delete(collection: string, id: string): CallResult {
     const decl = this.collection(collection);
-    if (!decl || decl.policy === "revision")
-      return { ok: false, error: "collection-unknown" };
+    if (!decl) return { ok: false, error: "collection-unknown" };
     if (this.s.subject === null) return { ok: false, error: "signed-out" };
     const p = this.active();
+    if (decl.policy === "revision") {
+      const rk = recordKey(collection, id);
+      const open = p.conflicts?.[rk];
+      this.enqueue(p, {
+        target: { record: [collection, id] },
+        op: "delete",
+        baseVersion: open
+          ? (open.localVersion ?? "*")
+          : (p.records[rk]?.version ?? "*"),
+      });
+      this.noteRecordChanges("local");
+      this.kick();
+      return { ok: true };
+    }
     this.enqueue(p, {
       target: { record: [collection, id] },
       op: "delete",
@@ -1440,6 +1525,11 @@ export class CloudSyncMachine {
     let value: Json | undefined =
       row && !this.rowUnreadable(row) ? row.value : undefined;
     let pending = false;
+    const open = p.conflicts?.[rk];
+    if (open && !open.keep) {
+      value = clone(open.local);
+      pending = true;
+    }
     for (const op of p.pending)
       if ("record" in op.target && recordKey(...op.target.record) === rk) {
         value = applyRecordOp(value, op);
@@ -1454,6 +1544,12 @@ export class CloudSyncMachine {
   }
 
   status(): SyncStatus {
+    const base = this.baseStatus();
+    const open = this.subjectConflicts().length;
+    return open > 0 ? { ...base, conflicts: open } : base;
+  }
+
+  private baseStatus(): SyncStatus {
     const pending = this.pendingCount();
     if (this.pinnedOut())
       return {
@@ -2093,7 +2189,13 @@ export class CloudSyncMachine {
     p.nextMutationId = 1;
     const ops = p.pending;
     p.pending = [];
-    for (const { mutationId: _id, ...rest } of ops) this.enqueue(p, rest);
+    const renumbered = new Map<number, number>();
+    for (const { mutationId: id, ...rest } of ops)
+      renumbered.set(id, this.enqueue(p, rest).mutationId);
+    for (const c of Object.values(p.conflicts ?? {}))
+      if (c.keep)
+        c.keep.mutationId =
+          renumbered.get(c.keep.mutationId) ?? c.keep.mutationId;
   }
 
   private firstContact(serverNow: number): void {
@@ -2181,6 +2283,14 @@ export class CloudSyncMachine {
       p.settings = {};
       p.records = {};
     }
+    // `empty` (§13.4): a cursor-0 answer with nothing in it. Anything the cloud then holds clears it.
+    const active =
+      results.some((r) => isObject(r) && r.status === "ok") ||
+      (Array.isArray(body.changes) && body.changes.length > 0) ||
+      (Array.isArray(body.tombstones) && body.tombstones.length > 0);
+    if (req.cursor === 0 && typeof body.cursor === "number")
+      p.empty = body.empty === true && !active;
+    else if (active && p.empty === true) p.empty = false;
     if (this.requiresE2e() && typeof body.encryptionSince === "number")
       this.lowerSince(p, body.encryptionSince);
     const changes = Array.isArray(body.changes) ? body.changes : [];
@@ -2443,6 +2553,11 @@ export class CloudSyncMachine {
         };
       if (rk in p.held) rebaseOn = r.version;
       this.emitOutcome(op, { status: "ok", version: r.version });
+      const kept = p.conflicts?.[rk]?.keep;
+      if (kept?.mutationId === op.mutationId)
+        this.closeConflict(p, rk, kept.choice);
+      else if (op.op === "delete" && op.ticket === undefined)
+        this.closeConflict(p, rk, "superseded");
     } else if (status === "conflict" && isObject(r.server)) {
       const server = r.server;
       if (typeof server.version === "number") {
@@ -2465,7 +2580,22 @@ export class CloudSyncMachine {
               }
             : null,
         });
-        if (rk in p.held) rebaseOn = server.version;
+        const plainRevision =
+          op.ticket === undefined && decl?.policy === "revision";
+        if (plainRevision && op.op === "delete") {
+          // A delete that conflicts keeps the other copy and opens nothing; it ends the request.
+          this.closeConflict(p, rk, "superseded");
+          if (rk in p.held) rebaseOn = server.version;
+        } else if (
+          plainRevision &&
+          op.op === "set" &&
+          (decl?.resolve === undefined || decl.resolve === "keepRemote")
+        ) {
+          if (decl?.resolve === "keepRemote") {
+            // The host's inline decider answered at once: nothing is listed or sent.
+            delete p.held[rk];
+          } else this.openConflict(p, rk, c, id, op);
+        } else if (rk in p.held) rebaseOn = server.version;
         else if (
           op.ticket === undefined &&
           decl &&
@@ -2499,6 +2629,12 @@ export class CloudSyncMachine {
           code: String(r.code),
         });
         this.emitOutcome(op, { status: "rejected", code: String(r.code) });
+        const c = p.conflicts?.[rk];
+        if (c?.keep?.mutationId === op.mutationId) {
+          // A terminal refusal of the keep reopens the request with the failure.
+          delete c.keep;
+          c.error = String(r.code);
+        }
       }
       if (rk in p.held) rebaseOn = p.records[rk]?.version ?? "*";
     }
@@ -2512,6 +2648,153 @@ export class CloudSyncMachine {
         baseVersion: rebaseOn,
       });
     }
+  }
+
+  /** Open (or, when a keep's own set conflicted, reopen) the request of a `revision` record: the
+   *  held edit, else the mutation's, is the device's copy; nothing is enqueued (rule 1). */
+  private openConflict(
+    p: Partition,
+    rk: string,
+    collection: string,
+    record: string,
+    op: JournalOp,
+  ): void {
+    const existing = (p.conflicts ??= {})[rk];
+    const held = rk in p.held ? clone(p.held[rk]) : undefined;
+    delete p.held[rk];
+    if (existing) {
+      delete existing.keep;
+      delete existing.error;
+      if (held !== undefined) existing.local = held;
+    } else {
+      p.conflicts![rk] = {
+        local: held !== undefined ? held : clone(op.value as Json),
+        localVersion:
+          typeof op.baseVersion === "number" ? op.baseVersion : null,
+      };
+    }
+    this.events.push({
+      type: "conflict",
+      id: conflictId(collection, record),
+      cause: "write",
+      collection,
+      record,
+    });
+  }
+
+  private closeConflict(
+    p: Partition,
+    rk: string,
+    how: "local" | "remote" | "value" | "both" | "superseded",
+  ): void {
+    if (!p.conflicts?.[rk]) return;
+    delete p.conflicts[rk];
+    if (Object.keys(p.conflicts).length === 0) delete p.conflicts;
+    const [collection, record] = splitKey(rk);
+    this.events.push({
+      type: "conflictClosed",
+      id: conflictId(collection, record),
+      how,
+    });
+  }
+
+  private subjectConflicts(): string[] {
+    if (this.s.subject === null) return [];
+    return Object.keys(this.active().conflicts ?? {}).sort(byteOrder);
+  }
+
+  /** The open MergeRequests of the signed-in subject (record collections), in id order. */
+  conflicts(): MachineConflict[] {
+    if (this.s.subject === null) return [];
+    const p = this.active();
+    return this.subjectConflicts().map((rk) => {
+      const c = p.conflicts![rk]!;
+      const [collection, record] = splitKey(rk);
+      const row = p.records[rk];
+      const remote: MachineConflictSide | null =
+        row && !this.rowUnreadable(row)
+          ? {
+              value: clone(row.value),
+              version: row.version,
+              savedAt: null,
+              device: null,
+              file: null,
+            }
+          : null;
+      return {
+        id: conflictId(collection, record),
+        cause: "write",
+        collection,
+        record,
+        local: {
+          value: clone(c.local),
+          version: c.localVersion,
+          savedAt: null,
+          device: null,
+          file: null,
+        },
+        remote,
+        choices: ["local", "remote", "value"],
+        state: c.keep ? "applying" : "open",
+        error: c.error ?? null,
+      };
+    });
+  }
+
+  /** Answer an open request (rule 6). `local` and `value` send one `set` on the remote version
+   *  (`"*"` when it is gone); `remote` sends nothing and reads the server copy. The request is
+   *  `applying` until the set is answered. A refusal journals nothing. */
+  keep(id: string, choice: MergeChoiceName | { value: Json }): CallResult {
+    if (this.s.subject === null) return { ok: false, error: SYNC_MERGE_CLOSED };
+    const p = this.active();
+    const rk = this.subjectConflicts().find((k) => {
+      const [c, r] = splitKey(k);
+      return conflictId(c, r) === id;
+    });
+    if (rk === undefined) return { ok: false, error: SYNC_MERGE_CLOSED };
+    const c = p.conflicts![rk]!;
+    if (c.keep) return { ok: false, error: "bad_request" };
+    const name = typeof choice === "string" ? choice : "value";
+    if (name !== "local" && name !== "remote" && name !== "value")
+      return { ok: false, error: "bad_request" };
+    if (typeof choice === "object") {
+      if (
+        choice === null ||
+        !("value" in choice) ||
+        choice.value === undefined ||
+        jsonBytes(choice.value) > SYNC_MAX_VALUE_BYTES
+      )
+        return { ok: false, error: "bad_request" };
+    }
+    const [collection, record] = splitKey(rk);
+    if (name === "remote") {
+      this.closeConflict(p, rk, "remote");
+      this.noteRecordChanges("merge");
+      this.kick();
+      return { ok: true };
+    }
+    const row = p.records[rk];
+    const base = row && !this.rowUnreadable(row) ? row.version : "*";
+    const value =
+      typeof choice === "object" ? clone(choice.value) : clone(c.local);
+    const op = this.enqueue(p, {
+      target: { record: [collection, record] },
+      op: "set",
+      value,
+      baseVersion: base,
+    });
+    delete c.error;
+    c.keep = { choice: name, mutationId: op.mutationId };
+    this.noteRecordChanges("merge");
+    this.kick();
+    return { ok: true };
+  }
+
+  /** Whether the cloud was empty at the subject's first cursor-0 answer: `true` after one that
+   *  said so, `false` after one that did not or after any change, `null` before any (rule 8). */
+  cloudEmpty(): boolean | null {
+    if (this.s.subject === null) return null;
+    return this.active().empty ?? null;
   }
 
   /** The number a `max`/`min` record compares: the value, or its `field` member. */
@@ -2543,15 +2826,20 @@ export class CloudSyncMachine {
     for (const op of p.pending.filter((o) => o.ticket !== undefined))
       this.emitOutcome(op, { status: "dropped" });
     p.pending = p.pending.filter((o) => o.ticket === undefined);
-    const unsynced = p.pending.length + Object.keys(p.held).length;
+    const unsynced =
+      p.pending.length +
+      Object.keys(p.held).length +
+      Object.keys(p.conflicts ?? {}).length;
     if (discard) {
       p.pending = [];
       p.held = {};
+      delete p.conflicts;
     }
     if (this.onSignOutPolicy === "clear" || reason !== "signOut") {
       p.settings = {};
       p.records = {};
       p.cursor = 0;
+      delete p.empty;
     }
     p.signedOutAt = this.nowMs;
     this.s.subject = null;
