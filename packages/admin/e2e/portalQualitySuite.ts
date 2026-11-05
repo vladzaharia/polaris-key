@@ -187,8 +187,11 @@ describe.concurrent("every shipped §4 state passes the quality bar", () => {
   }
 });
 
-describe("§4 states still to build (PX-20 is rolling)", () => {
-  for (const p of !currentPart() || currentPart()!.index === 0 ? PENDING : []) {
-    it.todo(`§${p.section} ${p.title} (${p.wp.join(", ")})`);
-  }
-});
+// Only the first part lists the pending states: an empty describe fails the run.
+if (!currentPart() || currentPart()!.index === 0) {
+  describe("§4 states still to build (PX-20 is rolling)", () => {
+    for (const p of PENDING) {
+      it.todo(`§${p.section} ${p.title} (${p.wp.join(", ")})`);
+    }
+  });
+}
