@@ -172,7 +172,7 @@ export const ChoiceGroup = React.forwardRef<
               aria-label={o.label}
               data-checked={checked ? "" : undefined}
               className={cn(
-                "@container/choice relative flex min-h-14 w-full items-start gap-3 overflow-hidden rounded-lg border px-4 py-3 text-start",
+                "@container/choice relative flex min-h-14 w-full items-start gap-3 overflow-hidden rounded-lg border px-4 py-3 text-start max-[22.5rem]:px-3",
                 "before:absolute before:inset-y-0 before:start-0 before:w-[3px]",
                 "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
                 checked
