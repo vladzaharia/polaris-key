@@ -1,10 +1,11 @@
 // @pkey-feature ui.settings
 // The SaveConflict screen's model (U-22 K.3): the same save changed on two devices, and the person
 // picks the copy to keep. It holds the step and answers `KitStates.saveConflict`; the choice goes
-// through `SaveConflictHost.keep`. The live form is the saves client (K.3T, after the Swift saves
-// slice): `SaveConflictHost(keep:)` takes one closure, so the binding is a small tail. A model built
-// without a host is model-only: a choice moves the step and calls the model's closures, and
-// nothing is written.
+// through `SaveConflictHost.keep`. The live form is a `MergeRequest` (U-08.K3): `SaveConflictHost(request:)`
+// answers it with `request.keep`, `KitSaveConflict(request:)` reads both copies from it (when, device, whether
+// Keep both is free, which is newer), and `SaveConflictModel(request:)` joins the two. The app no longer
+// re-supplies the save's bytes: the request holds them. A model built without a host is model-only: a choice
+// moves the step and calls the model's closures, and nothing is written.
 //
 // Must not (ui-matrix `saveConflict`): a save is never discarded without a choice (`choose` takes no
 // default, and Retry repeats the choice the person made, never another), and a choice is applied
@@ -12,6 +13,8 @@
 
 import Foundation
 import Observation
+import PolarisKey
+import PolarisKeyCore
 
 /// What the screen asks of the saves client: apply one choice. Throws when it could not be applied
 /// (both copies are then as they were).
@@ -20,6 +23,54 @@ public struct SaveConflictHost: Sendable {
 
     public init(keep: @escaping @Sendable (KitSaveConflict.Keep) async throws -> Void) {
         self.keep = keep
+    }
+}
+
+/// A choice a request refused or could not apply: its code (`conflict`, `sync-merge-closed`, a failure code).
+/// The screen shows no text from it.
+public struct SaveConflictKeepError: Error, Equatable, Sendable {
+    public let code: String
+}
+
+extension SaveConflictHost {
+    /// Answer a request with `request.keep`. A keep that did not apply throws, so the screen shows `failed`
+    /// with both copies as they were (the request is open again, or closed) and Retry repeats the same choice.
+    public init(request: MergeRequest) {
+        self.init(keep: { choice in
+            let keep: MergeKeep
+            switch choice {
+            case .local: keep = .local
+            case .remote: keep = .remote
+            case .both: keep = .both
+            }
+            if case .failed(let code, _) = await request.keep(keep) { throw SaveConflictKeepError(code: code) }
+        })
+    }
+}
+
+extension KitSaveConflict {
+    /// How a copy reads by default: the platform's medium date and short time of `savedAt`, and the device the
+    /// save names. nil when the copy carries neither.
+    public static func copy(of side: MergeSide) -> Copy {
+        var when: String?
+        if let savedAt = side.savedAt {
+            let f = DateFormatter()
+            f.dateStyle = .medium
+            f.timeStyle = .short
+            when = f.string(from: Date(timeIntervalSince1970: Double(savedAt) / 1000))
+        }
+        return Copy(when: when, device: side.device)
+    }
+
+    /// The `choose` step for an open request: both copies, whether the other was deleted, whether Keep both is
+    /// free, and which copy is newer. `describe` overrides how a side reads (the app's own words for `when`).
+    public init(request: MergeRequest, describe: ((MergeSide) -> Copy)? = nil) {
+        let read = describe ?? Self.copy(of:)
+        let remote = request.remote
+        self.init(
+            step: .choose, local: request.local.map(read), remote: remote.map(read), remoteDeleted: remote == nil,
+            bothAvailable: request.choices.contains(.both),
+            newer: request.newer.map { $0 == .local ? Keep.local : Keep.remote })
     }
 }
 
@@ -45,6 +96,15 @@ public final class SaveConflictModel {
         inputs.saveConflict = conflict
         self.inputs = inputs
         self.host = host
+    }
+
+    /// The live form: the screen for an open request, answered with `request.keep`.
+    public convenience init(
+        request: MergeRequest, inputs: KitInputs = KitInputs(), describe: ((MergeSide) -> KitSaveConflict.Copy)? = nil
+    ) {
+        self.init(
+            conflict: KitSaveConflict(request: request, describe: describe), inputs: inputs,
+            host: SaveConflictHost(request: request))
     }
 
     public convenience init(inputs: KitInputs, host: SaveConflictHost? = nil) {
