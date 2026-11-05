@@ -4227,8 +4227,8 @@
           "reason": "one event stream on the client, case cloudSync, with conflictOpened and conflictClosed"
         },
         "kotlin": {
-          "spelling": "events",
-          "reason": "one event stream on the client, kind cloudSync, with ConflictOpened and ConflictClosed"
+          "spelling": "client.events",
+          "reason": "one event stream on the client (client.events), PolarisEvent.CloudSync, with ConflictOpened and ConflictClosed"
         }
       },
       "layer": "client"
