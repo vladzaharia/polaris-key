@@ -49,6 +49,10 @@ var access_group := ""
 var _identity_ref: WeakRef = null
 var _lazy: PKeyPlatformBackup = null
 var _fallback_state: PKeyRestoreState = null
+## Enrolments and checks in flight; sign-out waits for them (an enrolment finishing after the item was
+## deleted would write it back).
+var _busy := 0
+signal _idle
 
 
 static func _static_init() -> void:
@@ -324,8 +328,21 @@ static func _enrol_answer(r: PKeyResult) -> Dictionary:
 
 
 ## Enrol or check this device's key and write a new one to the backup. Quiet: nothing here fails a caller.
-## `load` lets it fetch discovery when none is loaded. A coroutine.
+## `load` lets it fetch discovery when none is loaded. A sign-out that begins while this runs stops the
+## write, and waits for this to finish. A coroutine.
 func enrol(load: bool) -> void:
+	var core := _core()
+	if core == null:
+		return
+	var generation := core.tokens.sign_out_generation
+	_busy += 1
+	await _enrol(load, generation)
+	_busy -= 1
+	if _busy == 0:
+		_idle.emit()
+
+
+func _enrol(load: bool, generation: int) -> void:
 	var s := store()
 	var core := _core()
 	if s == null or not core.tokens.has_token():
@@ -342,15 +359,27 @@ func enrol(load: bool) -> void:
 		return
 	await flush_pending()
 	var e := await enrol_wire(held)
+	# A sign-out since this began: the item stays deleted and the check clock stays clear.
+	var stopped := core.tokens.sign_out_generation != generation or _explicit_sign_out()
 	match e["kind"]:
 		"enrolled":
 			var fresh: PKeyPlatformBackup.RestoreValue = e["value"]
+			if stopped:
+				fresh.wipe()
+				return
 			var w := await s.write_restore(core.product, fresh.restore_id, fresh.secret_bytes().get_string_from_utf8())
 			fresh.wipe()
-			if w.ok:
+			if w.ok and core.tokens.sign_out_generation == generation and not _explicit_sign_out():
 				_state().stamp(core.clock.system_now())
 		"current":
-			_state().stamp(core.clock.system_now())
+			if not stopped:
+				_state().stamp(core.clock.system_now())
+
+
+## Wait for the enrolment or check in flight, if any. A coroutine.
+func await_idle() -> void:
+	while _busy > 0:
+		await _idle
 
 
 ## After any completed sign-in, from any rung (a person-started one included): enrol.
@@ -408,17 +437,18 @@ func flush_pending() -> void:
 		await send_delete()
 
 
-## Sign-out, before the Worker's `signout` (the bearer is still there): revoke the key, queueing the delete
-## when the Worker cannot be reached. A coroutine.
+## Sign-out, before the Worker's `signout` (the bearer is still there): the item goes first, the check clock
+## clears and the delete is owed, then it is sent; the owed flag stays when the Worker cannot settle it. This
+## runs whenever a store exists: the item may be gone (a sibling deleted it) while this device's key lives on.
+## Waits for an enrolment in flight so that it cannot write the item back. A coroutine.
 func sign_out_prelude() -> void:
 	var s := store()
 	if s == null:
 		return
-	var held: PKeyPlatformBackup.RestoreValue = await _read_item(s)
-	if held == null:
-		await flush_pending()
-		return
-	held.wipe()
+	await await_idle()
+	await s.delete_restore(_core().product)
+	_state().clear_checked()
+	_state().set_pending_delete(true)
 	await send_delete()
 
 
@@ -426,6 +456,7 @@ func sign_out_prelude() -> void:
 ## check enrols their own), and so does the check clock. `server_revoked` is true when the Worker's
 ## `signout` ran, which deleted the key in the same request. A coroutine.
 func after_sign_out(server_revoked: bool) -> void:
+	await await_idle()
 	var s := store()
 	var had_item := false
 	if s != null:
@@ -441,15 +472,19 @@ func after_sign_out(server_revoked: bool) -> void:
 		_state().set_pending_delete(true)
 
 
-## `auto_sign_in(restore: false)`: never enrol, revoke what is enrolled and drop the item. A coroutine.
+## `auto_sign_in(restore: false)`: never enrol, revoke what is enrolled and drop the item. A device whose item
+## a sibling deleted still holds a key of its own: its check clock says so. A coroutine.
 func opt_out() -> void:
 	var s := store()
 	if s == null:
 		return
+	await await_idle()
 	var held: PKeyPlatformBackup.RestoreValue = await _read_item(s)
-	if held == null:
+	var had_check := _state().checked_at() != 0
+	if held == null and not had_check:
 		return
-	held.wipe()
+	if held != null:
+		held.wipe()
 	await send_delete()
 	await s.delete_restore(_core().product)
 	_state().clear_checked()

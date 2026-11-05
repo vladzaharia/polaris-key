@@ -84,6 +84,8 @@ var sb_answers := {}
 ## answer {error: unavailable, reason: <it>} ("" works).
 var backup := {}
 var backup_error := ""
+## What `garbage_for` answers (a malformed reply; a test sets text a leak would show).
+var garbage_text := "not json"
 
 var calls: Array[Dictionary] = []
 var _queue: Array[Dictionary] = []
@@ -215,7 +217,7 @@ func cmd(json: String) -> String:
 	calls.append(q)
 	var op := str(q.get("op", ""))
 	if op == garbage_for:
-		return "not json"
+		return garbage_text
 	if (PLAY_OPS.has(op) and flavor != "play") or (DIRECT_OPS.has(op) and flavor != "direct"):
 		return JSON.stringify({"ok": false, "unsupported": true, "reason": "outlet", "detail": "%s needs the other build" % op})
 	match op:

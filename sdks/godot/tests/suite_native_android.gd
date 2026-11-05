@@ -274,6 +274,10 @@ func _facade(t: PKeyTestContext) -> void:
 ## The restore item over the plugin's bk_* ops (I-49.14) through PKeyPlatformBackup: one entry per product
 ## (value base64 on the wire), a missing entry reads null, a direct build or no Play services is Unsupported,
 ## and the sync root is not stored here.
+func a_raw(f) -> Dictionary:
+	return _android("android", f).call_sync({"op": "bk_get", "kind": "restore", "product": "diceroll"})
+
+
 func _backup(t: PKeyTestContext) -> void:
 	var f := _fake("play")
 	var b := PKeyPlatformBackup.new(null, "", _android("android", f))
@@ -290,6 +294,13 @@ func _backup(t: PKeyTestContext) -> void:
 	t.check("backup: delete removes it", gone.ok and f.backup.is_empty())
 	var sync_root := await b.write_sync_root("diceroll", "s", "r", {"v": 1})
 	t.check("backup: the sync root is Unsupported on Android here", not sync_root.ok and sync_root.code == &"unsupported")
+	f.garbage_for = "bk_get"
+	f.garbage_text = "garbled rk_abcdefghijklmnopqrstuv rs_secret"
+	var garbled := await b.read_restore("diceroll")
+	t.check("backup: a malformed reply carries none of its text", not garbled.ok and not (str(garbled) + str(garbled.detail) + garbled.message).contains("rs_secret"))
+	var raw_reply := a_raw(f)
+	t.check("backup: …and the raw call keeps none for a bk op", not str(raw_reply).contains("rs_secret"))
+	f.garbage_for = ""
 	f.backup_error = "outlet"
 	var direct := await b.read_restore("diceroll")
 	t.check("backup: a direct build is Unsupported (outlet)", not direct.ok and direct.code == &"unsupported" and direct.detail["reason"] == "outlet")

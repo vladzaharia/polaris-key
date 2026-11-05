@@ -252,6 +252,9 @@ func call_sync(q: Dictionary) -> Dictionary:
 	var json := JSON.new()
 	if raw is String and json.parse(raw) == OK and json.data is Dictionary:
 		return json.data
+	# A malformed reply to a bk_* op may carry the restore item: it is never kept.
+	if str(q.get("op", "")).begins_with("bk_"):
+		return {"ok": false, "error": "bad_reply"}
 	return {"ok": false, "error": "bad_reply", "raw": str(raw)}
 
 
@@ -722,4 +725,7 @@ func _wrap(feature: String, r: Dictionary, fail_code: StringName = PKeyErrors.PL
 		return PKeyResult.success(r)
 	if str(r.get("error", "")) == "timeout":
 		return PKeyResult.failure(PKeyErrors.TIMEOUT, "The Android platform plugin did not answer in time.", r)
-	return PKeyResult.failure(fail_code, "The Android platform plugin answered %s." % str(r.get("error", "an error")), r)
+	var detail := r.duplicate()
+	if detail.has("value"):
+		detail.erase("value")
+	return PKeyResult.failure(fail_code, "The Android platform plugin answered %s." % str(r.get("error", "an error")), detail)

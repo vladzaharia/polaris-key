@@ -55,12 +55,35 @@ class FakeBackup extends PKeyPlatformBackup:
 		return text is String and (text as String).contains(restore_id)
 
 
+## The restore object with a view of the fresh keys an enrolment hands out, and a gate that holds one enrolment
+## on the wire (a sign-out that begins meanwhile).
+class SpyRestore extends PKeyIdentityRestore:
+	signal go
+	var fresh: Array = []
+	var gated := false
+	var waiting := false
+
+	func enrol_wire(restore_id: String) -> Dictionary:
+		if gated:
+			waiting = true
+			await go
+			waiting = false
+			var held := PKeyPlatformBackup.RestoreValue.new(ID_NEW, SECRET_NEW)
+			fresh.append(held)
+			return {"kind": "enrolled", "value": held}
+		var e: Dictionary = await super.enrol_wire(restore_id)
+		if e["kind"] == "enrolled":
+			fresh.append(e["value"])
+		return e
+
+
 func run(t: PKeyTestContext) -> void:
 	await _redeem(t)
 	await _refusals(t)
 	await _confirm_and_enrol(t)
 	await _daily(t)
 	await _sign_out(t)
+	await _sign_out_races(t)
 	await _opt_out_and_gates(t)
 	_secret_bytes(t)
 
@@ -89,8 +112,10 @@ func _bed(item := true, offered := true, token := "") -> Array:
 	var backup := FakeBackup.new()
 	if item:
 		backup.text = PKeyPlatformBackup.RestoreValue.new(ID_OLD, SECRET_OLD).encoded()
-	sdk.identity.restore.backup = backup
-	sdk.identity.restore.state = PKeyRestoreState.new("djdl", "user://pkey_test_restore_state", true)
+	var spy := SpyRestore.new(sdk.identity)
+	sdk.identity.restore = spy
+	spy.backup = backup
+	spy.state = PKeyRestoreState.new("djdl", "user://pkey_test_restore_state", true)
 	return [bed, backup]
 
 
@@ -128,6 +153,7 @@ func _redeem(t: PKeyTestContext) -> void:
 		var held: PackedByteArray = v.secret_bytes()
 		zeroed = zeroed and held.size() > 0 and held.count(0) == held.size() and v.is_wiped()
 	t.check("restore: every secret the ladder read is zeroed in place when it is done (typed reference)", zeroed)
+	t.check("restore: the key the enrolment was handed is zeroed once written", _all_wiped((bed.sdk.identity.restore as SpyRestore).fresh) and backup.holds(ID_NEW))
 	bed.free_all()
 
 
@@ -164,6 +190,7 @@ func _refusals(t: PKeyTestContext) -> void:
 	(made4[1] as FakeBackup).text = PKeyPlatformBackup.RestoreValue.new("rk_short", SECRET_OLD).encoded()
 	var bad = await made4[0].sdk.identity.auto_sign_in()
 	t.check("restore: an item of the wrong shape is never sent", bad.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and made4[0].token_requests.is_empty())
+	t.check("restore: …and the item read is zeroed", not (made4[1] as FakeBackup).handed.is_empty() and _all_wiped((made4[1] as FakeBackup).handed))
 	made4[0].free_all()
 
 
@@ -251,14 +278,64 @@ func _sign_out(t: PKeyTestContext) -> void:
 	await bed4.sdk.identity.sign_out()
 	t.check("restore: an accepted sign-out clears the owed delete", not bed4.sdk.identity.restore.state.pending_delete() and bed4.sdk.core.cache.explicit_sign_out)
 	bed4.free_all()
-	# No item on this device: sign-out sends no DELETE of its own.
+	# No item on this device (a sibling deleted it): this device's key may still live, so sign-out still revokes.
 	var m3 := await _bed(false, true, B.TOKEN)
 	var bed3: B = m3[0]
 	await bed3.sdk.sync()
 	bed3.sdk.core.tokens.set_token(B.TOKEN, PKeyTokenManager.SOURCE_SIGNIN)
+	bed3.restores = [B.json(204, "")]
+	bed3.signouts = [B.json(200, {"released": true})]
 	await bed3.sdk.identity.sign_out()
-	t.check("restore: no item, no DELETE", bed3.restore_requests.is_empty())
+	t.check("restore: no item, sign-out still sends DELETE", bed3.restore_requests.size() == 1 and bed3.restore_requests[0]["method"] == "DELETE")
 	bed3.free_all()
+	# The Worker refuses the sign-out: the item is already gone, the delete is owed, the check clock is clear.
+	var m5 := await _bed(true, true, B.TOKEN)
+	var bed5: B = m5[0]
+	await bed5.sdk.sync()
+	bed5.sdk.core.tokens.set_token(B.TOKEN, PKeyTokenManager.SOURCE_SIGNIN)
+	bed5.sdk.identity.restore.state.stamp(1000)
+	bed5.restores = [B.json(503, {"error": "unavailable"})]
+	bed5.signouts = [B.json(503, {"error": "unavailable"})]
+	await bed5.sdk.identity.sign_out()
+	t.check("restore: the item is deleted before the Worker answers, whatever it answers", (m5[1] as FakeBackup).text == null and bed5.sdk.identity.restore.state.checked_at() == 0 \
+			and bed5.sdk.identity.restore.state.pending_delete())
+	bed5.free_all()
+	# after_sign_out on an item still there (a sign-out with no session): dropped, owed, and the read is zeroed.
+	var m6 := await _bed(true, true, B.TOKEN)
+	var bed6: B = m6[0]
+	await bed6.sdk.identity.restore.after_sign_out(false)
+	t.check("restore: after_sign_out drops a held item, owes its delete and zeroes the read", (m6[1] as FakeBackup).text == null and bed6.sdk.identity.restore.state.pending_delete() \
+			and not (m6[1] as FakeBackup).handed.is_empty() and _all_wiped((m6[1] as FakeBackup).handed))
+	bed6.free_all()
+
+
+## A sign-out that begins while an enrolment is on the wire: the enrolment must not write the item back.
+func _sign_out_races(t: PKeyTestContext) -> void:
+	var made := await _bed(true, true, B.TOKEN)
+	var bed: B = made[0]
+	var backup: FakeBackup = made[1]
+	await bed.sdk.sync()
+	bed.sdk.core.tokens.set_token(B.TOKEN, PKeyTokenManager.SOURCE_SIGNIN)
+	var spy: SpyRestore = bed.sdk.identity.restore
+	spy.gated = true
+	bed.restores = [B.json(204, "")]
+	bed.signouts = [B.json(200, {"released": true})]
+	spy.enrol(true)
+	t.check("restore: (race) the enrolment is on the wire", spy.waiting)
+	var out = bed.sdk.identity.sign_out()
+	spy.go.emit()
+	var res: PKeyResult = await out
+	await spy.await_idle()
+	t.check("restore: an enrolment in flight cannot write the item back after sign-out", res.ok and backup.text == null and spy.state.checked_at() == 0 and _all_wiped(spy.fresh) \
+			and not spy.fresh.is_empty())
+	bed.free_all()
+
+
+static func _all_wiped(values: Array) -> bool:
+	for v: PKeyPlatformBackup.RestoreValue in values:
+		if not v.is_wiped():
+			return false
+	return true
 
 
 func _opt_out_and_gates(t: PKeyTestContext) -> void:
@@ -271,12 +348,32 @@ func _opt_out_and_gates(t: PKeyTestContext) -> void:
 	var r = await bed.sdk.identity.auto_sign_in({"restore": false})
 	t.check("restore: restore=false revokes the key, drops the item and enrols nothing", r.via == "stored" and bed.restore_requests.size() == 1 \
 			and bed.restore_requests[0]["method"] == "DELETE" and backup.text == null)
+	t.check("restore: …and the item it read is zeroed", not backup.handed.is_empty() and _all_wiped(backup.handed))
 	bed.free_all()
+	# No item but a check on record (a sibling deleted the item): the key still lives, so it is revoked.
+	var mc := await _bed(false, true, B.TOKEN)
+	var bedc: B = mc[0]
+	await bedc.sdk.sync()
+	bedc.sdk.core.tokens.set_token(B.TOKEN, PKeyTokenManager.SOURCE_SIGNIN)
+	bedc.sdk.identity.restore.state.stamp(1000)
+	bedc.restores = [B.json(204, "")]
+	await bedc.sdk.identity.auto_sign_in({"restore": false})
+	t.check("restore: restore=false with no item but a check on record still revokes", bedc.restore_requests.size() == 1 and bedc.restore_requests[0]["method"] == "DELETE" \
+			and bedc.sdk.identity.restore.state.checked_at() == 0)
+	bedc.free_all()
+	var mn := await _bed(false, true, B.TOKEN)
+	var bedn: B = mn[0]
+	await bedn.sdk.sync()
+	bedn.sdk.core.tokens.set_token(B.TOKEN, PKeyTokenManager.SOURCE_SIGNIN)
+	await bedn.sdk.identity.auto_sign_in({"restore": false})
+	t.check("restore: restore=false with neither item nor check sends nothing", bedn.restore_requests.is_empty())
+	bedn.free_all()
 	# Discovery without the member: nothing is sent, rung 3 is next.
 	var m2 := await _bed(true, false)
 	var bed2: B = m2[0]
 	var none = await bed2.sdk.identity.auto_sign_in()
 	t.check("restore: discovery without the member sends nothing", none.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and bed2.token_requests.is_empty() and (m2[1] as FakeBackup).holds(ID_OLD))
+	t.check("restore: …and the item it read is zeroed", not (m2[1] as FakeBackup).handed.is_empty() and _all_wiped((m2[1] as FakeBackup).handed))
 	bed2.free_all()
 	# The sign-out flag stops rung 2 for an automatic run.
 	var m3 := await _bed()
