@@ -528,6 +528,16 @@ describe("openPull: records", () => {
       status: "conflict",
       server,
     });
+    /** Mutations 1 and 2 are the same op on `id`; result 1 is `copy`, result 2 `foreign`. */
+    const openCopies = (
+      copy: Json,
+      foreign: Json,
+      op: string,
+      extra: Record<string, Json>,
+    ) =>
+      openPull({ results: [result(1, copy), result(2, foreign)] }, codec, {
+        mutations: muts([rec(1, id, op, extra), rec(2, id, op, extra)]),
+      });
     it("opens under the mutation's own record", async () => {
       const out = await openPull(
         {
@@ -592,16 +602,10 @@ describe("openPull: records", () => {
         fields: [await cell("field", "hp", 5, "slot-2")],
         version: 9,
       };
-      const out = await openPull(
-        { results: [result(1, copy), result(2, foreign)] },
-        codec,
-        {
-          mutations: muts([
-            rec(1, id, "setField", { field: "hp", editedHlc: "h" }),
-            rec(2, id, "setField", { field: "hp", editedHlc: "h" }),
-          ]),
-        },
-      );
+      const out = await openCopies(copy, foreign, "setField", {
+        field: "hp",
+        editedHlc: "h",
+      });
       expect((out.body as any).results[0].server.value).toEqual({ hp: 5 });
       expect("fields" in (out.body as any).results[0].server).toBe(false);
       expect(out.opened.conflicts).toEqual({
@@ -624,16 +628,10 @@ describe("openPull: records", () => {
         elements: [await cell("element", "", "shield", "slot-2")],
         version: 9,
       };
-      const out = await openPull(
-        { results: [result(1, copy), result(2, foreign)] },
-        codec,
-        {
-          mutations: muts([
-            rec(1, id, "addElement", { element: "shield", editedHlc: "h" }),
-            rec(2, id, "addElement", { element: "shield", editedHlc: "h" }),
-          ]),
-        },
-      );
+      const out = await openCopies(copy, foreign, "addElement", {
+        element: "shield",
+        editedHlc: "h",
+      });
       const first = (out.body as any).results[0].server;
       expect(first.value).toEqual(["shield", a]);
       expect("elements" in first).toBe(false);

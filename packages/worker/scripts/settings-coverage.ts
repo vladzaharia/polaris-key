@@ -435,6 +435,13 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     covers: { ids: ["column:grants.source", "column:licenses.source"] },
   },
   {
+    thing: "Subscription provenance",
+    reason:
+      "Records where a subscription came from (a store, a Polaris Key sale, an operator's comp): a fact about a sale, not Polaris behaviour.",
+    shows: "License → Subscriptions",
+    covers: { ids: ["column:subscriptions.source"] },
+  },
+  {
     thing: "Channel signing-key fingerprints",
     reason:
       "Key-material records, registered by an operator or observed at a channel; they describe keys, not behaviour.",

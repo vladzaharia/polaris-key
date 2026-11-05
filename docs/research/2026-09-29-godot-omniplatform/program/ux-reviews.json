@@ -534,6 +534,16 @@
       "verdict": "pass",
       "date": "2026-10-28",
       "evidence": "/Users/vlad/Repos/pk-wt/_lead/reviews/UXR-HA-09.md (BUILT review CHANGES REQUIRED: success path passes; 1 major + 2 minor on the failure path after the click) -> follow-up wp/HA-09F-download-failures (refused redemption returns to the product page, branded expired-link page on the bytes host, 1 h Range resume, stored-copy check before a ticket); evidence /Users/vlad/Repos/pk-wt/_mockups/review/HA-09/"
+    },
+    "ST-31": {
+      "verdict": "pass",
+      "date": "2026-10-23",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-31.11/ (BUILT reviews of the Members page, Roles tab, drawer, product Members and no-access page, each CHANGES round fixed and verified; the drawer and product Members at 150-200 % text in the final rounds)"
+    },
+    "UK-42": {
+      "verdict": "pass",
+      "date": "2026-10-28",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/UK-42.22/ (BUILT reviews of the Done step and the account rows: FIX, then PASS on re-check after the blocking findings were fixed)"
     }
   }
 }
