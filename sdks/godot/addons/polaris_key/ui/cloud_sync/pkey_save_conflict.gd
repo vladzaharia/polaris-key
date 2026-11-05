@@ -113,6 +113,9 @@ var _remote_card: PanelContainer
 var _remote_who: Label
 var _remote_newer: Label
 var _remote_when: Label
+var _notice_row: HBoxContainer
+var _notice_glyph: TextureRect
+var _notice: Label
 var _status_row: HBoxContainer
 var _status_glyph: TextureRect
 var _status: Label
@@ -216,6 +219,11 @@ func _build() -> void:
 	right.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	# The lede sits under the title, so both columns start level and a card lines up with its choice.
 	_lede = label(head, "Lede", "PKeyMuted")
+	# A choice met a newer copy: one line right under the lede, above the cards, announced once.
+	var nt := glyph_label(head, "Notice", "info", "PKeyStrong")
+	_notice_row = nt["row"]
+	_notice_glyph = nt["glyph"]
+	_notice = nt["label"]
 	_cards = columns(left, "Cards")
 	_local_card = _save_card(_cards, "Local")
 	_local_who = _local_card.get_node("Words/Head/Who")
@@ -259,16 +267,15 @@ func _save_card(parent: Node, node_name: String) -> PanelContainer:
 	p.set_meta(AUTO_HIDE_META, true)
 	parent.add_child(p)
 	var words := vbox(p, "Words", "PKeyTight")
-	# Who, and the Newer tag when the app names this version (a tag, never a control).
-	var head := hbox(words, "Head")
+	# Who, then the Newer tag under it when the app names this version (a tag, never a control).
+	var head := vbox(words, "Head", "PKeyTight")
 	var who := label(head, "Who", "PKeyStrong")
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# Whole words only: a title never breaks inside a word.
 	who.autowrap_mode = TextServer.AUTOWRAP_WORD
 	var tag := label(head, "Newer", "PKeyBadge")
 	tag.autowrap_mode = TextServer.AUTOWRAP_OFF
-	tag.size_flags_horizontal = Control.SIZE_SHRINK_END
-	tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tag.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	label(words, "When", "PKeyMuted")
 	return p
 
@@ -304,6 +311,7 @@ func _arrange(m: Dictionary) -> void:
 	super(m)
 	_fit_choices()
 	_product.visible = squeeze_level() < 1
+	size_glyph(_notice_glyph, 20.0, get_theme_color("font_color", "PKeyStrong"))
 	size_glyph(_status_glyph, 20.0, get_theme_color("font_color", "PKeyError" if step == "failed" else "PKeyMuted"))
 	size_glyph(_mark, 32.0, _success_colour())
 	_style_delete(_keep_remote, remote_deleted)
@@ -475,11 +483,14 @@ func _render() -> void:
 			status_key = "saveConflict.failedDeleted" if copy.has("saveConflict.failedDeleted") else "saveConflict.failed"
 		"kept":
 			status_key = "saveConflict.keptCopy" if copy.has("saveConflict.keptCopy") else ""
-		"choose":
-			status_key = "saveConflict.reopened" if copy.has("saveConflict.reopened") else ""
 	cat_text(_status, status_key)
-	_status_glyph.set_meta(&"pkey_glyph", "warning" if state == "failed" else "info")
-	_status_glyph.visible = _status.visible and (state == "failed" or state == "choose")
+	_status_glyph.set_meta(&"pkey_glyph", "warning")
+	_status_glyph.visible = _status.visible and state == "failed"
+	cat_text(_notice, "saveConflict.reopened" if choose and copy.has("saveConflict.reopened") else "")
+	_notice_glyph.visible = _notice.visible
+	# Live only while it shows, so the screen has one live label at a time (the status line is silent then).
+	if "accessibility_live" in _notice:
+		_notice.set("accessibility_live", 1 if _notice.visible else 0)
 	_status.theme_type_variation = &"PKeyError" if state == "failed" else &"PKeyMuted"
 	fx_error("saveConflict.failedDeleted" if copy.has("saveConflict.failedDeleted") else ("saveConflict.failed" if state == "failed" else ""))
 	cat_text(_keep_local, "saveConflict.keepThis" if choose else "")

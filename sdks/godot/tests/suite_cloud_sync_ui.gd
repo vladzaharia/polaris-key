@@ -1393,13 +1393,17 @@ func _saves_binding(t: PKeyTestContext) -> void:
 	# A keep that meets a newer copy goes back to the choices on the new versions, and says so.
 	var third := _open_request(saves, "slot4", false, true)
 	await _frames()
+	var third_sent := [0]
 	third._backend = func(_choice: Variant) -> Dictionary:
+		third_sent[0] += 1
 		third._view["remote"] = {"value": {}, "version": 5, "saved_at": 1760007200000, "device": "Deck", "file": null}
 		return {"ok": false, "code": "conflict", "reopened": true}
 	await host.choose("local")
 	var shown := host.view()
 	t.check("saves binding: a keep that meets a newer copy goes back to choose on the new remote", host.step == "choose" and host.keep == "" and host.reopened and shown["newer"] == "remote", str(shown))
 	t.check("saves binding: the choose step says the other copy changed", shown["remote_when"] != "" and shown["remote_when"] != shown["local_when"])
+	await host.retry()
+	t.check("saves binding: Try again after a reopen sends nothing", third_sent[0] == 1 and host.step == "choose" and host.keep == "", str(third_sent))
 	host.cancel()
 	saves.write("slot4", PackedByteArray([1]), {}, {"base_version": 5})
 	# A request a later exact write superseded is gone.
