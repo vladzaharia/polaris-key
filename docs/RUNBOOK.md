@@ -147,6 +147,36 @@ the SDK slices for the launched apps ship, the security review of nearby approva
 cryptographer's review of the key-binding and proof rules are signed off, and real-device runs on
 a local network have passed, a dual-stack network included. Its off state answers not found.
 
+### Launch log
+
+One flip a day at most, by the lead, in Platform → Settings (L1) at a quiet hour. Before a flip,
+confirm every fix of the gate is on the deployed release (`git tag --contains <fix>`) and that the
+rollback has been rehearsed on staging. After it, smoke `curl -fsS https://key.plrs.im/api/capabilities | jq .`
+and a discovery read for a test product, and watch errors and cost for 24 hours. Add a row per
+flip; ids only, no findings.
+
+| Gate | Date on | By  | CI OK run | Rollback command | Rehearsal date |
+| ---- | ------- | --- | --------- | ---------------- | -------------- |
+
+Rollback for any gate: switch it off in Platform → Settings (L1). Its routes answer not found
+again, and clients stay local.
+
+### Pause the relay
+
+Use this on an abuse or cost alert, before deciding on `launch.relay`. It stops the relay on the whole
+deployment; the local network, the stored data and every other Cloud Connect route stay as they are.
+
+1. Platform → Settings → **Pause the Cloud Connect relay** (`cloudConnect.relayPaused`): switch it on.
+   Turning it on is L2, so type the key to confirm. Turning it off is L1.
+2. Confirm the pause took:
+   - a new ticket request, `POST /<product>/connect/relay/ticket`, answers 503 `relay_paused` with a
+     `Retry-After` (300 seconds);
+   - open rooms close within 90 seconds, which is one alarm;
+   - the change is in Platform → Activity.
+3. To end the pause, switch the setting off. Rooms open again on the next ticket.
+4. To take the relay out of service instead, switch `launch.relay` off: its routes answer not found,
+   and rooms close. `launch.connectLinks` off closes contact rooms at their next minute.
+
 ## Secrets
 
 Required prod Worker secrets:
