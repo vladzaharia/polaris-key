@@ -15,7 +15,7 @@ import { ALL_ON, boot, resetConsole } from "./consoleHarness.js";
 /**
  * Console shell v2 (ST-48; BRAND-TRANSITION B2-B6, B17): the canvas, the masthead's one
  * orientation line, Ship builds' one identity, the neutral-ink primary, the dialog rule and the
- * workbench. The pixels are `e2e/layout.e2e.test.ts`'s (the masthead height, the first-content
+ * workbench. The pixels are `e2e/layoutSuite.ts`'s (the masthead height, the first-content
  * offset, the canvas inset); these are the structure and the stylesheet rules.
  */
 

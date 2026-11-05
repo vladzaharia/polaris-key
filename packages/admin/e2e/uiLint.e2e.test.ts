@@ -12,7 +12,7 @@ import { SHIPPED } from "./portalStates.js";
  * §7.1; PX-26): the same in-page modernity lint that runs over the mockup boards and the kits'
  * own pages (`@polaris-key/ui-qa`, `lintPage`), every rule, on every shipped §4 state at 1920 × 1080, at 200 %
  * zoom (640 × 400 CSS px at 2) and at 400 % (320 × 256 at 4), in both themes. The console is
- * linted at the same sizes in `layout.e2e.test.ts`. From the command line, the same sizes run
+ * linted at the same sizes in `layoutSuite.ts`. From the command line, the same sizes run
  * against a live page with `pnpm ui:lint --html=<url> --size=1920x1080,640x400@2,320x256@4`.
  */
 

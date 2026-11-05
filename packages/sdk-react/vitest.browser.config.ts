@@ -41,8 +41,11 @@ export default defineConfig({
     include: ["test/browser/**/*.browser.test.tsx"],
     setupFiles: ["test/browser/setupCopy.ts"],
     testTimeout: 60_000,
-    // One file, many renders: report each test, keep the run in one browser page.
-    fileParallelism: false,
+    // Files run side by side, each in its own page of the shared context (CS-2): the emulate*
+    // commands below act on the calling file's page, so no file sees another's media emulation.
+    // Three, because the CI runner has 4 vCPU and the browser itself needs one.
+    fileParallelism: true,
+    maxWorkers: 3,
     browser: {
       enabled: true,
       provider: playwright({

@@ -48,7 +48,10 @@ import {
   CONNECT_USAGE_QUIET,
   pausedPlatformSettings,
 } from "./layoutData.js";
-import { staleUxDebt, uxBarChecked } from "./uxBar.js";
+import { staleUxDebt, usedUxDebt, uxBarChecked } from "./uxBar.js";
+import { MASTHEAD_DEBT } from "./layoutDebt.js";
+import { LAYOUT_PARTS, MISC_PART, partHolds } from "./layoutParts.js";
+import { currentPart, recordDebtUse } from "./parts.js";
 import {
   probeLayout,
   type LayoutViolation,
@@ -88,20 +91,6 @@ const REPORT = process.env.PK_LAYOUT_REPORT;
 /** The page wrapper's bottom padding is 24px; 48 allows a card's own padding on top of it. */
 const TRAILING_SLACK = 48;
 
-/**
- * Masthead and stretch overshoots that belong to a page's own composition, each with the package
- * that fixes it (ST-48 builds the shell; the area packages build their screens on it). The list
- * only shrinks: a full run fails when an entry no longer matches a violation, so delete the entry
- * in the change that fixes the page. It is empty now (B-235); a new page never joins it.
- */
-const MASTHEAD_DEBT: {
-  /** The case name (`djdl:licenses/record/keys`). */
-  cases: RegExp;
-  /** `rule/kind`. */
-  kinds: readonly string[];
-  owner: string;
-  why: string;
-}[] = [];
 const debtMatched = new Set<number>();
 
 /** Splits a page's violations into new ones and those a MASTHEAD_DEBT entry owns. */
@@ -1365,6 +1354,21 @@ beforeAll(async () => {
     configFile: `${here}vite.config.ts`,
     preview: { port: 0, strictPort: false, host: "127.0.0.1" },
     logLevel: "silent",
+    // The Worker's policy rides on the shell's `.html` responses. The preview server sends it
+    // itself, so the browser takes every other asset straight from it (no round trip through
+    // this process for each script, style and font of every page open).
+    plugins: [
+      {
+        name: "pk-console-csp",
+        configurePreviewServer(s) {
+          s.middlewares.use((req, res, next) => {
+            if ((req.url ?? "").split("?")[0]!.endsWith(".html"))
+              res.setHeader("content-security-policy", CSP);
+            next();
+          });
+        },
+      },
+    ],
   });
   base = server.resolvedUrls!.local[0]!.replace(/\/$/, "");
   // `PK_LAYOUT_BROWSER=webkit|firefox` runs the same lint in another engine locally.
@@ -1375,15 +1379,18 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // A full run owes the debt list its shrinking: an entry that matched nothing is paid.
-  if (!ONLY && !ONLY_CASES && !process.env.PK_LAYOUT_VIEWPORTS) {
+  // A full run owes the debt lists their shrinking: an entry that matched nothing is paid. A part
+  // of a split run cannot tell (the page may be another part's): it records what it matched and
+  // `scripts/e2e-debt.ts` merges the parts.
+  const whole = !ONLY && !ONLY_CASES && !process.env.PK_LAYOUT_VIEWPORTS;
+  if (whole && currentPart())
+    recordDebtUse({ masthead: [...debtMatched], ux: usedUxDebt() });
+  else if (whole) {
     const paid = MASTHEAD_DEBT.filter((_, i) => !debtMatched.has(i));
     if (paid.length)
       throw new Error(
         `MASTHEAD_DEBT entries that no longer match a violation (delete them): ${paid.map((d) => `${d.cases} (${d.owner})`).join(", ")}`,
       );
-  }
-  if (!ONLY && !ONLY_CASES && !process.env.PK_LAYOUT_VIEWPORTS) {
     const stale = staleUxDebt("console");
     if (stale.length)
       throw new Error(
@@ -1460,7 +1467,11 @@ async function open(
   }, theme);
   const gaps: string[] = [];
   const errors: string[] = [];
-  await ctx.route("**/*", async (route) => {
+  // Only what the fixtures answer (the API and the image host) is routed; the preview server
+  // answers the app's own files, with the CSP on its `.html` responses.
+  const answered = (u: URL) =>
+    u.pathname.startsWith("/manage/api/") || u.origin === IMG_ORIGIN;
+  await ctx.route(answered, async (route) => {
     const url = new URL(route.request().url());
     const image = fixtureImage(url);
     if (image)
@@ -1516,11 +1527,7 @@ async function open(
       }
       return route.fulfill({ json: body });
     }
-    const res = await route.fetch();
-    const headers = { ...res.headers() };
-    if (url.pathname.endsWith(".html"))
-      headers["content-security-policy"] = CSP;
-    return route.fulfill({ response: res, headers });
+    return route.fallback();
   });
   const page = await ctx.newPage();
   if (viewport.reducedTransparency) await reduceTransparency(page);
@@ -1640,9 +1647,26 @@ async function primaryInView(page: Page): Promise<void> {
 /** `PK_LAYOUT_CASES=overview,settings` narrows a local run to cases whose name contains one. */
 const ONLY_CASES = process.env.PK_LAYOUT_CASES?.split(",");
 
+const part = currentPart();
+if (part && !process.env.PK_LAYOUT_VIEWPORTS)
+  for (const vp of VIEWPORTS)
+    for (const theme of THEMES)
+      if (!LAYOUT_PARTS.some((_, i) => partHolds(i, vp.label, theme)))
+        throw new Error(
+          `layoutParts.ts holds no part for ${vp.label}/${theme}`,
+        );
+
 for (const vp of VIEWPORTS) {
   for (const theme of THEMES) {
     if (ONLY && ONLY !== `${vp.label}/${theme}`) continue;
+    // One part of a split run owns each viewport and theme (layoutParts.ts).
+    if (
+      part &&
+      (process.env.PK_LAYOUT_VIEWPORTS
+        ? part.index !== 0
+        : !partHolds(part.index, vp.label, theme))
+    )
+      continue;
     describe.concurrent(
       `layout · ${vp.label} ${vp.width}×${vp.height} · ${theme}`,
       () => {
@@ -1876,399 +1900,416 @@ async function axeWithin(page: Page, selector: string): Promise<string[]> {
   }, selector);
 }
 
-// ── Needs attention rows keep their shape (ST-44b.3) ───────────────────────────────────────────
-// A grid template the browser drops (it did once: `fit-content()` inside `minmax()`) stacks every
-// row and still passes the overflow checks, so the shape itself is pinned: at a laptop width the
-// pill, the subject and the action share one line.
-describe("Needs attention rows are one line at 1440 and stack on a phone (ST-44b.3)", () => {
-  const HOME: Case = { name: "global:home", hash: "#/" };
-  for (const theme of THEMES) {
-    it(`${theme}`, async () => {
-      const desk = await open(HOME, theme, { width: 1440, height: 900 });
-      try {
-        const rows = desk.page.locator("[data-attention-list] ul > li");
-        const n = await rows.count();
-        expect(n).toBeGreaterThan(1);
-        for (let i = 0; i < n; i++) {
-          const row = rows.nth(i);
-          const tops = await row.evaluate((li) => {
-            const top = (el: Element | null) =>
-              el ? el.getBoundingClientRect().top : NaN;
-            return [
-              top(li.querySelector("[class*=pill], [data-tone], span")),
-              top(li.querySelector("[title]")),
-              top([...li.querySelectorAll("a[href], button")].pop() ?? null),
-              li.getBoundingClientRect().height,
-            ];
-          });
-          const [pill, subject, action] = tops as number[];
-          expect(Math.abs(subject! - pill!), `row ${i} subject`).toBeLessThan(
-            8,
-          );
-          expect(Math.abs(action! - pill!), `row ${i} action`).toBeLessThan(10);
-        }
-      } finally {
-        await closeContext(desk.page.context());
-      }
-      const phone = await open(HOME, theme, { width: 390, height: 844 });
-      try {
-        const li = phone.page.locator("[data-attention-list] ul > li").first();
-        const [pill, action] = await li.evaluate((el) => [
-          el.querySelector("span")!.getBoundingClientRect().top,
-          [...el.querySelectorAll("a[href], button")]
-            .pop()!
-            .getBoundingClientRect().top,
-        ]);
-        expect(action! - pill!).toBeGreaterThan(20);
-      } finally {
-        await closeContext(phone.page.context());
-      }
-    });
-  }
-});
-
-describe("Home's product card (owner polish 2026-10-07)", () => {
-  const HOME: Case = { name: "global:home", hash: "#/" };
-  const CARDS = 'main [aria-label="Products"]';
-
-  for (const theme of THEMES) {
-    it(`${theme}: one row of named feature glyphs; on a phone, the name and one pip per feature in its accent`, async () => {
-      const desk = await open(HOME, theme, { width: 1440, height: 900 });
-      try {
-        const page = desk.page;
-        const card = page.locator(`${CARDS} article[aria-label="DJDL"]`);
-        const icons = card.locator("[data-feature-link]");
-        expect(await icons.count()).toBe(7);
-        for (const label of ["Licensing", "Ship builds", "Cloud Sync"]) {
-          // A feature with a problem names it too ("Managed config: 1 needs attention").
-          const link = card.getByRole("link", { name: label, exact: true });
-          expect(await link.isVisible()).toBe(true);
-          expect(await link.getAttribute("title")).toBe(label);
-        }
-        expect(await card.locator("[data-feature-pips]").isVisible()).toBe(
-          false,
-        );
-        // No facts, rows or footer on the card.
-        expect(await card.locator("[data-service-row]").count()).toBe(0);
-        expect(await card.textContent()).not.toMatch(/Synced|Changed|active/);
-        expect(await axeWithin(page, CARDS)).toEqual([]);
-      } finally {
-        await closeContext(desk.page.context());
-      }
-
-      const phone = await open(HOME, theme, { width: 390, height: 844 });
-      try {
-        const page = phone.page;
-        const card = page.locator(`${CARDS} article[aria-label="DJDL"]`);
-        const pips = card.getByRole("img", {
-          name: "Licensing, Managed config: 1 needs attention, Ship builds, Sign-in, Cloud Sync, Commerce",
-        });
-        expect(await pips.isVisible()).toBe(true);
-        // The glyph row steps aside; the logo, the slug with its pips beside it, and the small
-        // pill at the right edge stay (products.home, phone).
-        expect(
-          await card.locator("[data-feature-icons]").first().isVisible(),
-        ).toBe(false);
-        // The card draws two logos (40 px, hidden on a phone; 32 px, phone only): the visible one.
-        for (const sel of [
-          "[data-logo]:visible",
-          "[data-card-header] [data-status]",
-        ])
-          expect(await card.locator(sel).first().isVisible(), sel).toBe(true);
-        expect(await card.getByText("djdl", { exact: true }).isVisible()).toBe(
-          true,
-        );
-        expect(await card.getByRole("link", { name: "DJDL" }).isVisible()).toBe(
-          true,
-        );
-        // Each pip is its service's accent, as the brand tokens define it for that section.
-        const colours = await card.locator("[data-pip]").evaluateAll((els) =>
-          els.map((el) => {
-            const probe = document.createElement("span");
-            probe.setAttribute(
-              "data-service",
-              el.getAttribute("data-service")!,
+// The page-level checks below belong to one part of a split run (layoutParts.ts MISC_PART).
+if (!part || part.index === MISC_PART) {
+  // ── Needs attention rows keep their shape (ST-44b.3) ───────────────────────────────────────────
+  // A grid template the browser drops (it did once: `fit-content()` inside `minmax()`) stacks every
+  // row and still passes the overflow checks, so the shape itself is pinned: at a laptop width the
+  // pill, the subject and the action share one line.
+  describe("Needs attention rows are one line at 1440 and stack on a phone (ST-44b.3)", () => {
+    const HOME: Case = { name: "global:home", hash: "#/" };
+    for (const theme of THEMES) {
+      it(`${theme}`, async () => {
+        const desk = await open(HOME, theme, { width: 1440, height: 900 });
+        try {
+          const rows = desk.page.locator("[data-attention-list] ul > li");
+          const n = await rows.count();
+          expect(n).toBeGreaterThan(1);
+          for (let i = 0; i < n; i++) {
+            const row = rows.nth(i);
+            const tops = await row.evaluate((li) => {
+              const top = (el: Element | null) =>
+                el ? el.getBoundingClientRect().top : NaN;
+              return [
+                top(li.querySelector("[class*=pill], [data-tone], span")),
+                top(li.querySelector("[title]")),
+                top([...li.querySelectorAll("a[href], button")].pop() ?? null),
+                li.getBoundingClientRect().height,
+              ];
+            });
+            const [pill, subject, action] = tops as number[];
+            expect(Math.abs(subject! - pill!), `row ${i} subject`).toBeLessThan(
+              8,
             );
-            probe.style.color = "var(--pk-accent)";
-            document.body.append(probe);
-            const want = getComputedStyle(probe).color;
-            probe.remove();
-            return {
-              service: el.getAttribute("data-service"),
-              got: getComputedStyle(el).backgroundColor,
-              want,
-            };
-          }),
-        );
-        // One pip per feature, in canonical order, each in its feature's accent.
-        expect(colours.map((c) => c.service)).toEqual([
-          "license",
-          "config",
-          "release",
-          "identity",
-          "sync",
-          "commerce",
-          "connect",
-        ]);
-        for (const c of colours) expect(c.got, c.service!).toBe(c.want);
-        expect(new Set(colours.map((c) => c.got)).size).toBe(colours.length);
-        expect(await axeWithin(page, CARDS)).toEqual([]);
-      } finally {
-        await closeContext(phone.page.context());
-      }
-    });
-  }
-});
-
-// ── `?setting=` deep links land on their row (UX review M6) ───────────────────────────────────
-
-describe("?setting= deep links", () => {
-  const LINKS: [string, string, string][] = [
-    [
-      "a product row",
-      "#/p/djdl/settings?setting=license.defaults.deviceLimit",
-      "setting-license.defaults.deviceLimit",
-    ],
-    [
-      "a Polaris Locker switch",
-      "#/p/djdl/settings/portal?setting=identity.keyEntry.claimByKey",
-      "setting-identity.keyEntry.claimByKey",
-    ],
-    [
-      "a platform setting row",
-      "#/platform/settings?setting=LAZY_DELTAS",
-      "platform-setting-LAZY_DELTAS",
-    ],
-    [
-      "the extra reserved display terms list",
-      "#/platform/settings?setting=identity.reservedDisplayTerms",
-      "platform-setting-identity.reservedDisplayTerms",
-    ],
-    [
-      "the display name approval",
-      "#/p/djdl/identity/app-sign-in?setting=identity.displayNameApproved",
-      "setting-identity.displayNameApproved",
-    ],
-  ];
-  for (const [what, hash, id] of LINKS) {
-    it(`${what} takes the focus and scrolls into view`, async () => {
-      const { page } = await open({ name: `link:${id}`, hash }, "dark", {
-        width: 1440,
-        height: 900,
+            expect(Math.abs(action! - pill!), `row ${i} action`).toBeLessThan(
+              10,
+            );
+          }
+        } finally {
+          await closeContext(desk.page.context());
+        }
+        const phone = await open(HOME, theme, { width: 390, height: 844 });
+        try {
+          const li = phone.page
+            .locator("[data-attention-list] ul > li")
+            .first();
+          const [pill, action] = await li.evaluate((el) => [
+            el.querySelector("span")!.getBoundingClientRect().top,
+            [...el.querySelectorAll("a[href], button")]
+              .pop()!
+              .getBoundingClientRect().top,
+          ]);
+          expect(action! - pill!).toBeGreaterThan(20);
+        } finally {
+          await closeContext(phone.page.context());
+        }
       });
+    }
+  });
+
+  describe("Home's product card (owner polish 2026-10-07)", () => {
+    const HOME: Case = { name: "global:home", hash: "#/" };
+    const CARDS = 'main [aria-label="Products"]';
+
+    for (const theme of THEMES) {
+      it(`${theme}: one row of named feature glyphs; on a phone, the name and one pip per feature in its accent`, async () => {
+        const desk = await open(HOME, theme, { width: 1440, height: 900 });
+        try {
+          const page = desk.page;
+          const card = page.locator(`${CARDS} article[aria-label="DJDL"]`);
+          const icons = card.locator("[data-feature-link]");
+          expect(await icons.count()).toBe(7);
+          for (const label of ["Licensing", "Ship builds", "Cloud Sync"]) {
+            // A feature with a problem names it too ("Managed config: 1 needs attention").
+            const link = card.getByRole("link", { name: label, exact: true });
+            expect(await link.isVisible()).toBe(true);
+            expect(await link.getAttribute("title")).toBe(label);
+          }
+          expect(await card.locator("[data-feature-pips]").isVisible()).toBe(
+            false,
+          );
+          // No facts, rows or footer on the card.
+          expect(await card.locator("[data-service-row]").count()).toBe(0);
+          expect(await card.textContent()).not.toMatch(/Synced|Changed|active/);
+          expect(await axeWithin(page, CARDS)).toEqual([]);
+        } finally {
+          await closeContext(desk.page.context());
+        }
+
+        const phone = await open(HOME, theme, { width: 390, height: 844 });
+        try {
+          const page = phone.page;
+          const card = page.locator(`${CARDS} article[aria-label="DJDL"]`);
+          const pips = card.getByRole("img", {
+            name: "Licensing, Managed config: 1 needs attention, Ship builds, Sign-in, Cloud Sync, Commerce",
+          });
+          expect(await pips.isVisible()).toBe(true);
+          // The glyph row steps aside; the logo, the slug with its pips beside it, and the small
+          // pill at the right edge stay (products.home, phone).
+          expect(
+            await card.locator("[data-feature-icons]").first().isVisible(),
+          ).toBe(false);
+          // The card draws two logos (40 px, hidden on a phone; 32 px, phone only): the visible one.
+          for (const sel of [
+            "[data-logo]:visible",
+            "[data-card-header] [data-status]",
+          ])
+            expect(await card.locator(sel).first().isVisible(), sel).toBe(true);
+          expect(
+            await card.getByText("djdl", { exact: true }).isVisible(),
+          ).toBe(true);
+          expect(
+            await card.getByRole("link", { name: "DJDL" }).isVisible(),
+          ).toBe(true);
+          // Each pip is its service's accent, as the brand tokens define it for that section.
+          const colours = await card.locator("[data-pip]").evaluateAll((els) =>
+            els.map((el) => {
+              const probe = document.createElement("span");
+              probe.setAttribute(
+                "data-service",
+                el.getAttribute("data-service")!,
+              );
+              probe.style.color = "var(--pk-accent)";
+              document.body.append(probe);
+              const want = getComputedStyle(probe).color;
+              probe.remove();
+              return {
+                service: el.getAttribute("data-service"),
+                got: getComputedStyle(el).backgroundColor,
+                want,
+              };
+            }),
+          );
+          // One pip per feature, in canonical order, each in its feature's accent.
+          expect(colours.map((c) => c.service)).toEqual([
+            "license",
+            "config",
+            "release",
+            "identity",
+            "sync",
+            "commerce",
+            "connect",
+          ]);
+          for (const c of colours) expect(c.got, c.service!).toBe(c.want);
+          expect(new Set(colours.map((c) => c.got)).size).toBe(colours.length);
+          expect(await axeWithin(page, CARDS)).toEqual([]);
+        } finally {
+          await closeContext(phone.page.context());
+        }
+      });
+    }
+  });
+
+  // ── `?setting=` deep links land on their row (UX review M6) ───────────────────────────────────
+
+  describe("?setting= deep links", () => {
+    const LINKS: [string, string, string][] = [
+      [
+        "a product row",
+        "#/p/djdl/settings?setting=license.defaults.deviceLimit",
+        "setting-license.defaults.deviceLimit",
+      ],
+      [
+        "a Polaris Locker switch",
+        "#/p/djdl/settings/portal?setting=identity.keyEntry.claimByKey",
+        "setting-identity.keyEntry.claimByKey",
+      ],
+      [
+        "a platform setting row",
+        "#/platform/settings?setting=LAZY_DELTAS",
+        "platform-setting-LAZY_DELTAS",
+      ],
+      [
+        "the extra reserved display terms list",
+        "#/platform/settings?setting=identity.reservedDisplayTerms",
+        "platform-setting-identity.reservedDisplayTerms",
+      ],
+      [
+        "the display name approval",
+        "#/p/djdl/identity/app-sign-in?setting=identity.displayNameApproved",
+        "setting-identity.displayNameApproved",
+      ],
+    ];
+    for (const [what, hash, id] of LINKS) {
+      it(`${what} takes the focus and scrolls into view`, async () => {
+        const { page } = await open({ name: `link:${id}`, hash }, "dark", {
+          width: 1440,
+          height: 900,
+        });
+        try {
+          await page.waitForFunction(
+            (rowId) =>
+              document.getElementById(rowId)?.contains(document.activeElement),
+            id,
+            { timeout: 1500 },
+          );
+          const box = await page.evaluate((rowId) => {
+            const r = document.getElementById(rowId)!.getBoundingClientRect();
+            return { top: r.top, bottom: r.bottom, h: innerHeight };
+          }, id);
+          expect(box.top).toBeGreaterThanOrEqual(0);
+          expect(box.bottom).toBeLessThanOrEqual(box.h);
+        } finally {
+          await closeContext(page.context());
+        }
+      });
+    }
+  });
+
+  // ── A dialog's own <form> wraps the body and footer (B-018) ───────────────────────────────────
+
+  describe("a dialog whose form wraps its body and footer", () => {
+    it("keeps the footer inside a short window; the body scrolls instead", async () => {
+      const { page } = await open(
+        { name: "dialog:issue-ci-token", hash: "#/p/djdl/settings/keys" },
+        "dark",
+        { width: 1024, height: 360 },
+      );
       try {
-        await page.waitForFunction(
-          (rowId) =>
-            document.getElementById(rowId)?.contains(document.activeElement),
-          id,
-          { timeout: 1500 },
-        );
-        const box = await page.evaluate((rowId) => {
-          const r = document.getElementById(rowId)!.getBoundingClientRect();
-          return { top: r.top, bottom: r.bottom, h: innerHeight };
-        }, id);
+        await page
+          .getByRole("button", { name: "Issue token…" })
+          .first()
+          .click();
+        const dialog = page.getByRole("dialog", { name: "Issue a CI token" });
+        await dialog.waitFor();
+        const box = await dialog.evaluate((el) => {
+          const submit = el.querySelector<HTMLElement>("button[type=submit]")!;
+          const r = submit.getBoundingClientRect();
+          return { bottom: r.bottom, top: r.top, h: innerHeight };
+        });
         expect(box.top).toBeGreaterThanOrEqual(0);
         expect(box.bottom).toBeLessThanOrEqual(box.h);
       } finally {
         await closeContext(page.context());
       }
     });
-  }
-});
-
-// ── A dialog's own <form> wraps the body and footer (B-018) ───────────────────────────────────
-
-describe("a dialog whose form wraps its body and footer", () => {
-  it("keeps the footer inside a short window; the body scrolls instead", async () => {
-    const { page } = await open(
-      { name: "dialog:issue-ci-token", hash: "#/p/djdl/settings/keys" },
-      "dark",
-      { width: 1024, height: 360 },
-    );
-    try {
-      await page.getByRole("button", { name: "Issue token…" }).first().click();
-      const dialog = page.getByRole("dialog", { name: "Issue a CI token" });
-      await dialog.waitFor();
-      const box = await dialog.evaluate((el) => {
-        const submit = el.querySelector<HTMLElement>("button[type=submit]")!;
-        const r = submit.getBoundingClientRect();
-        return { bottom: r.bottom, top: r.top, h: innerHeight };
-      });
-      expect(box.top).toBeGreaterThanOrEqual(0);
-      expect(box.bottom).toBeLessThanOrEqual(box.h);
-    } finally {
-      await closeContext(page.context());
-    }
   });
-});
 
-// ── A typed confirmation with a reason, in a short window (CX-BUGS-2) ────────────────────────
-// The L3 "Relax the device trust policy?" dialog asks for a reason and a typed word. At 844×390
-// (a phone on its side) and 667×375 both fields are in view without a scroll, the footer pinned
-// under them, and neither is a target under 24 px. `PK_CX_SHOTS=<dir>` writes each render.
+  // ── A typed confirmation with a reason, in a short window (CX-BUGS-2) ────────────────────────
+  // The L3 "Relax the device trust policy?" dialog asks for a reason and a typed word. At 844×390
+  // (a phone on its side) and 667×375 both fields are in view without a scroll, the footer pinned
+  // under them, and neither is a target under 24 px. `PK_CX_SHOTS=<dir>` writes each render.
 
-describe("a typed confirmation with a reason in a short window", () => {
-  for (const vp of [
-    { width: 844, height: 390 },
-    { width: 667, height: 375 },
-  ])
-    for (const theme of THEMES)
-      it(`${vp.width}×${vp.height} · ${theme}: the reason and the typed field are both in view`, async () => {
-        const { page } = await open(
-          { name: "dialog:relax-trust", hash: "#/p/djdl/settings/keys" },
-          theme,
-          vp,
-        );
-        try {
-          await page
-            .locator("#keys-trust")
-            .getByRole("button", { name: "Edit device trust" })
-            .click();
-          const drawer = page.getByRole("dialog", {
-            name: "Device trust policy",
-          });
-          await drawer.waitFor();
-          await drawer
-            .getByRole("combobox", { name: "Device license and config" })
-            .click();
-          await page.getByRole("option", { name: "Any device" }).click();
-          await drawer.getByRole("button", { name: "Review changes…" }).click();
-          const dialog = page.getByRole("alertdialog");
-          await dialog.waitFor();
-          await page.waitForTimeout(500);
-          const m = await dialog.evaluate((el) => {
-            const box = (e: Element | null) => {
-              const r = e!.getBoundingClientRect();
-              return { top: r.top, bottom: r.bottom, h: r.height };
-            };
-            return {
-              reason: box(el.querySelector("textarea")),
-              typed: box(el.querySelector("input")),
-              footer: box(el.querySelector("button")!.parentElement),
-              header: box(el.querySelector("[data-pk-overlay-header]")),
-              body: el.querySelector<HTMLElement>("[data-pk-dialog-body]")!
-                .scrollTop,
-              vh: innerHeight,
-            };
-          });
-          if (process.env.PK_CX_SHOTS) {
-            mkdirSync(process.env.PK_CX_SHOTS, { recursive: true });
-            await page.screenshot({
-              path: `${process.env.PK_CX_SHOTS}/typed-${vp.width}x${vp.height}-${theme}.png`,
-            });
-          }
-          for (const f of [m.reason, m.typed]) {
-            expect(f.top, "below the header").toBeGreaterThanOrEqual(
-              m.header.bottom,
-            );
-            expect(f.bottom, "above the pinned footer").toBeLessThanOrEqual(
-              m.footer.top,
-            );
-          }
-          expect(m.typed.h, "the typed field's height").toBeGreaterThanOrEqual(
-            24,
+  describe("a typed confirmation with a reason in a short window", () => {
+    for (const vp of [
+      { width: 844, height: 390 },
+      { width: 667, height: 375 },
+    ])
+      for (const theme of THEMES)
+        it(`${vp.width}×${vp.height} · ${theme}: the reason and the typed field are both in view`, async () => {
+          const { page } = await open(
+            { name: "dialog:relax-trust", hash: "#/p/djdl/settings/keys" },
+            theme,
+            vp,
           );
-          expect(m.footer.bottom, "footer on screen").toBeLessThanOrEqual(m.vh);
-          expect(m.body, "the body has not been scrolled").toBe(0);
-        } finally {
-          await closeContext(page.context());
-        }
-      });
-});
-
-// ── A keyboard-focused primary or danger button shows a ring (CF1 / B1) ──────────────────────
-// ST-48's unlayered `box-shadow: none` on the primary variant once removed the ring from every
-// main action. A focus ring is an outline or a box-shadow; "none" for both fails WCAG 2.4.7.
-
-describe("focus ring on primary and danger buttons", () => {
-  const targets = [
-    {
-      hash: "#/p/djdl/license/licenses",
-      name: "New license",
-      variant: "primary",
-    },
-    {
-      hash: "#/p/djdl/distribution/rollouts",
-      name: "Start rollout…",
-      variant: "primary",
-    },
-    {
-      hash: "#/p/djdl/settings",
-      name: "Delete product…",
-      variant: "danger",
-    },
-  ] as const;
-  for (const theme of THEMES) {
-    for (const t of targets) {
-      it(`${t.name} · ${theme}`, async () => {
-        const { page } = await open(
-          { name: `focus:${t.name}`, hash: t.hash },
-          theme,
-          { width: 1440, height: 900 },
-        );
-        try {
-          const button = page.getByRole("button", { name: t.name }).first();
-          await button.waitFor();
-          // A key press first, so the next focus() is a keyboard focus (`:focus-visible`).
-          await page.keyboard.press("Shift");
-          await button.focus();
-          const ring = await button.evaluate((el) => {
-            const cs = getComputedStyle(el);
-            return {
-              visible: el.matches(":focus-visible"),
-              variant: el.getAttribute("data-variant"),
-              shadow: cs.boxShadow,
-              outline:
-                cs.outlineStyle !== "none" && parseFloat(cs.outlineWidth) > 0,
-            };
-          });
-          expect(ring.visible, "keyboard focus").toBe(true);
-          expect(ring.variant).toBe(t.variant);
-          expect(
-            ring.shadow !== "none" || ring.outline,
-            `ring: ${JSON.stringify(ring)}`,
-          ).toBe(true);
-        } finally {
-          await closeContext(page.context());
-        }
-      });
-    }
-  }
-});
-
-// ── Overlays pass axe: the account menu and a tooltip (CX-FU-1) ───────────────────────────────
-describe("the account menu and a tooltip pass axe at 1440 and 390", () => {
-  const HOME: Case = { name: "global:home", hash: "#/" };
-  for (const theme of THEMES) {
-    for (const [width, height] of [
-      [1440, 900],
-      [390, 844],
-    ] as const) {
-      for (const what of ["menu", "tooltip"] as const) {
-        it(`${what}, ${theme} at ${width}`, async () => {
-          const { page } = await open(HOME, theme, { width, height });
           try {
-            if (what === "menu") {
-              await page.getByRole("button", { name: "Account menu" }).click();
-              await page.getByRole("menu").waitFor();
-            } else {
-              // Keyboard focus opens a tooltip on the first control that has one.
-              let found = false;
-              for (let i = 0; i < 40 && !found; i++) {
-                await page.keyboard.press("Tab");
-                found = await page
-                  .waitForSelector('[role="tooltip"]', { timeout: 400 })
-                  .then(() => true)
-                  .catch(() => false);
-              }
-              expect(found).toBe(true);
+            await page
+              .locator("#keys-trust")
+              .getByRole("button", { name: "Edit device trust" })
+              .click();
+            const drawer = page.getByRole("dialog", {
+              name: "Device trust policy",
+            });
+            await drawer.waitFor();
+            await drawer
+              .getByRole("combobox", { name: "Device license and config" })
+              .click();
+            await page.getByRole("option", { name: "Any device" }).click();
+            await drawer
+              .getByRole("button", { name: "Review changes…" })
+              .click();
+            const dialog = page.getByRole("alertdialog");
+            await dialog.waitFor();
+            await page.waitForTimeout(500);
+            const m = await dialog.evaluate((el) => {
+              const box = (e: Element | null) => {
+                const r = e!.getBoundingClientRect();
+                return { top: r.top, bottom: r.bottom, h: r.height };
+              };
+              return {
+                reason: box(el.querySelector("textarea")),
+                typed: box(el.querySelector("input")),
+                footer: box(el.querySelector("button")!.parentElement),
+                header: box(el.querySelector("[data-pk-overlay-header]")),
+                body: el.querySelector<HTMLElement>("[data-pk-dialog-body]")!
+                  .scrollTop,
+                vh: innerHeight,
+              };
+            });
+            if (process.env.PK_CX_SHOTS) {
+              mkdirSync(process.env.PK_CX_SHOTS, { recursive: true });
+              await page.screenshot({
+                path: `${process.env.PK_CX_SHOTS}/typed-${vp.width}x${vp.height}-${theme}.png`,
+              });
             }
-            expect(await axeWithin(page, "html"), "axe").toEqual([]);
+            for (const f of [m.reason, m.typed]) {
+              expect(f.top, "below the header").toBeGreaterThanOrEqual(
+                m.header.bottom,
+              );
+              expect(f.bottom, "above the pinned footer").toBeLessThanOrEqual(
+                m.footer.top,
+              );
+            }
+            expect(
+              m.typed.h,
+              "the typed field's height",
+            ).toBeGreaterThanOrEqual(24);
+            expect(m.footer.bottom, "footer on screen").toBeLessThanOrEqual(
+              m.vh,
+            );
+            expect(m.body, "the body has not been scrolled").toBe(0);
+          } finally {
+            await closeContext(page.context());
+          }
+        });
+  });
+
+  // ── A keyboard-focused primary or danger button shows a ring (CF1 / B1) ──────────────────────
+  // ST-48's unlayered `box-shadow: none` on the primary variant once removed the ring from every
+  // main action. A focus ring is an outline or a box-shadow; "none" for both fails WCAG 2.4.7.
+
+  describe("focus ring on primary and danger buttons", () => {
+    const targets = [
+      {
+        hash: "#/p/djdl/license/licenses",
+        name: "New license",
+        variant: "primary",
+      },
+      {
+        hash: "#/p/djdl/distribution/rollouts",
+        name: "Start rollout…",
+        variant: "primary",
+      },
+      {
+        hash: "#/p/djdl/settings",
+        name: "Delete product…",
+        variant: "danger",
+      },
+    ] as const;
+    for (const theme of THEMES) {
+      for (const t of targets) {
+        it(`${t.name} · ${theme}`, async () => {
+          const { page } = await open(
+            { name: `focus:${t.name}`, hash: t.hash },
+            theme,
+            { width: 1440, height: 900 },
+          );
+          try {
+            const button = page.getByRole("button", { name: t.name }).first();
+            await button.waitFor();
+            // A key press first, so the next focus() is a keyboard focus (`:focus-visible`).
+            await page.keyboard.press("Shift");
+            await button.focus();
+            const ring = await button.evaluate((el) => {
+              const cs = getComputedStyle(el);
+              return {
+                visible: el.matches(":focus-visible"),
+                variant: el.getAttribute("data-variant"),
+                shadow: cs.boxShadow,
+                outline:
+                  cs.outlineStyle !== "none" && parseFloat(cs.outlineWidth) > 0,
+              };
+            });
+            expect(ring.visible, "keyboard focus").toBe(true);
+            expect(ring.variant).toBe(t.variant);
+            expect(
+              ring.shadow !== "none" || ring.outline,
+              `ring: ${JSON.stringify(ring)}`,
+            ).toBe(true);
           } finally {
             await closeContext(page.context());
           }
         });
       }
     }
-  }
-});
+  });
+
+  // ── Overlays pass axe: the account menu and a tooltip (CX-FU-1) ───────────────────────────────
+  describe("the account menu and a tooltip pass axe at 1440 and 390", () => {
+    const HOME: Case = { name: "global:home", hash: "#/" };
+    for (const theme of THEMES) {
+      for (const [width, height] of [
+        [1440, 900],
+        [390, 844],
+      ] as const) {
+        for (const what of ["menu", "tooltip"] as const) {
+          it(`${what}, ${theme} at ${width}`, async () => {
+            const { page } = await open(HOME, theme, { width, height });
+            try {
+              if (what === "menu") {
+                await page
+                  .getByRole("button", { name: "Account menu" })
+                  .click();
+                await page.getByRole("menu").waitFor();
+              } else {
+                // Keyboard focus opens a tooltip on the first control that has one.
+                let found = false;
+                for (let i = 0; i < 40 && !found; i++) {
+                  await page.keyboard.press("Tab");
+                  found = await page
+                    .waitForSelector('[role="tooltip"]', { timeout: 400 })
+                    .then(() => true)
+                    .catch(() => false);
+                }
+                expect(found).toBe(true);
+              }
+              expect(await axeWithin(page, "html"), "axe").toEqual([]);
+            } finally {
+              await closeContext(page.context());
+            }
+          });
+        }
+      }
+    }
+  });
+}

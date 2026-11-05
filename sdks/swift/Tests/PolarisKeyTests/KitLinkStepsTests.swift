@@ -30,7 +30,19 @@
         private let requestHandle = "rq_fxXQ7DEgqPUfZlsJYdm76w"
         private let subject = "ps_abc"
 
-        override func setUp() async throws { server = StubServer() }
+        private var savedCI: String?
+
+        override func setUp() async throws {
+            server = StubServer()
+            // `CI` marks a headless session (no loopback listener, so the sign-in falls to a device code). These
+            // tests drive the native redirect, so they run as a desktop session even on a CI runner.
+            savedCI = ProcessInfo.processInfo.environment["CI"]
+            setenv("CI", "", 1)
+        }
+
+        override func tearDown() async throws {
+            if let savedCI { setenv("CI", savedCI, 1) } else { unsetenv("CI") }
+        }
 
         private final class AppleProvider: PlatformIdentityProvider, @unchecked Sendable {
             let kind: ExchangeKind = .apple
@@ -79,6 +91,11 @@
         private final class Listeners: @unchecked Sendable {
             private let lock = NSLock()
             private(set) var made: [ReplayListener] = []
+            /// The nth listener, or a failed assertion (never an out-of-range trap) when it was not made.
+            func at(_ n: Int) throws -> ReplayListener {
+                let found = lock.withLock { made.indices.contains(n) ? made[n] : nil }
+                return try XCTUnwrap(found, "listener \(n) was never made")
+            }
             func make() -> ReplayListener {
                 let l = ReplayListener(port: 49152 + lock.withLock { made.count })
                 lock.withLock { made.append(l) }
@@ -186,7 +203,8 @@
             XCTAssertEqual(again.count, 1)
             // Cancel ends the session and closes the socket.
             m.cancelSignIn()
-            XCTAssertTrue(listeners.made[0].closed)
+            let first = try listeners.at(0)
+            XCTAssertTrue(first.closed)
             XCTAssertEqual(m.signInScreen.state, .methods)
         }
 
@@ -222,7 +240,8 @@
             m.useCode()
             try await settle { m.handoff.state == .code }
             XCTAssertEqual(m.handoff.state, .code)
-            XCTAssertTrue(listeners.made[0].closed)
+            let first = try listeners.at(0)
+            XCTAssertTrue(first.closed)
             XCTAssertEqual(m.request?.userCode, "WDJB-MJHT")
             m.cancelSignIn()
         }
@@ -325,7 +344,8 @@
             XCTAssertTrue(m.holdsApp)
             XCTAssertEqual(m.signInScreen.state, .handoff)
             XCTAssertEqual(m.handoff.state, .waiting)
-            XCTAssertNotNil(listeners.made[1].deliver(callback(49153)))
+            let second = try listeners.at(1)
+            XCTAssertNotNil(second.deliver(callback(49153)))
             try await settle { m.signInScreen.state == .linkOffer }
             XCTAssertEqual(m.signInScreen.state, .linkOffer)
             XCTAssertTrue(m.signInScreen.shows("signin.linkOffer.primary"))
@@ -363,7 +383,8 @@
             let (m, _, listeners, _) = try await model(transport: held)
             m.beginSignIn()
             try await settle { !listeners.made.isEmpty && m.request != nil }
-            XCTAssertNotNil(listeners.made[0].deliver(callback()))
+            let only = try listeners.at(0)
+            XCTAssertNotNil(only.deliver(callback()))
             // The token is redeemed and the gate reloaded while the link GET is held.
             try await settle { m.holdsApp }
             var samples = 0

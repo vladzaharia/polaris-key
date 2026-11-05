@@ -583,13 +583,13 @@ jobs:
     name: Test the Godot SDK (4.7.2 ${{ matrix.part }})
     needs: version
     runs-on: ubuntu-latest
-    # The same four parts as ci.yml's godot job (run_tests.sh PKEY_TEST_PART), one runner each, so
-    # no step nears its limit.
+    # The same three parts as ci.yml's godot job (run_tests.sh PKEY_TEST_PART), one runner each, so
+    # no step nears its limit; the editor and template run their suites as four parallel processes.
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        part: [editor-a, editor-b, matrix, template]
+        part: [editor, matrix, template]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -599,10 +599,10 @@ jobs:
       - run: sdks/godot/tools/fetch_godot.sh 4.7.2 "$HOME/.cache/pkey-godot/4.7.2" --template
       - run: |
           D="$HOME/.cache/pkey-godot/4.7.2"
-          # ci.yml's godot job sets the same: the `ci` selection's editor step takes ~6 minutes on
+          # ci.yml's godot job sets the same: a parallel `ci` process takes up to ~5 minutes on
           # a hosted runner, past run_tests.sh's default 300 s per step (the ui-matrix step has its
           # own limit).
-          GODOT_BIN="$D/godot" GODOT_TEMPLATE="$D/linux_release.x86_64" PKEY_TEST_TIMEOUT=900 PKEY_TEST_PART="${{ matrix.part }}" sdks/godot/tools/run_tests.sh
+          GODOT_BIN="$D/godot" GODOT_TEMPLATE="$D/linux_release.x86_64" PKEY_TEST_TIMEOUT=900 PKEY_TEST_PARALLEL=1 PKEY_TEST_PART="${{ matrix.part }}" sdks/godot/tools/run_tests.sh
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

@@ -37,7 +37,9 @@ import PolarisKeyCore
         private let journal: UpdateJournal
         private let channel: String
         private let installedVersion: String
-        private let host: (any SPUUpdaterDelegate)?
+        // Read by the NSObject forwarding overrides, which are nonisolated; Sparkle's delegate
+        // protocol is main-actor, so older compilers isolate this property with the class.
+        nonisolated(unsafe) private let host: (any SPUUpdaterDelegate)?
         private let relaunchGate: PolarisSparkleRelaunchGate?
 
         init(

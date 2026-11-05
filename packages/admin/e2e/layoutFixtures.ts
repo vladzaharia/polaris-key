@@ -1,5 +1,5 @@
 /**
- * The scripted admin API behind the layout lint (`layout.e2e.test.ts`): every read the console's
+ * The scripted admin API behind the layout lint (`layoutSuite.ts`): every read the console's
  * pages make, with realistic, fuller data than the per-area suites carry. Several products (one
  * with a long name), tens of rows in the lists, long identifiers, and an `empty` product whose
  * every collection is empty, so each page renders both its populated and its empty state.
