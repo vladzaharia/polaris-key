@@ -204,4 +204,39 @@ class AndroidDeviceKeysTest {
         assertTrue(File(ctx.noBackupFilesDir, "pkey/$nsB/sync-root.bin").exists())
         assertEquals(setOf("pkey:$nsA:syncroot", "pkey:$nsB:syncroot"), keys.keys.keys)
     }
+
+    @Test
+    fun theClientPlacesTheRootInTheStoreNamespaceNotUnderTheProductSlug() = runBlocking {
+        val ctx: android.content.Context = androidx.test.core.app.ApplicationProvider.getApplicationContext()
+        val url = "https://a.example.test"
+        val ns = im.plrs.key.core.storeNamespace(product, url)
+        val options = im.plrs.key.sdk.PolarisKeyClientOptions(
+            core = im.plrs.key.core.CoreOptions(
+                productSlug = product,
+                version = "1.0.0",
+                baseUrl = url,
+                pinnedKeys = im.plrs.key.core.testing.TestSigner().trust,
+            ),
+        )
+        // A file in the namespace's place that the store will refuse to touch (readable by others), and
+        // one under the bare product slug.
+        val inNamespace = File(ctx.noBackupFilesDir, "pkey/$ns/sync-root.bin")
+        val underSlug = File(ctx.noBackupFilesDir, "pkey/$product/sync-root.bin")
+        for (f in listOf(inNamespace, underSlug)) {
+            f.parentFile!!.mkdirs()
+            f.writeBytes(ByteArray(64) { 5 })
+        }
+        // Through the public entry point, not the helper: the client's key ring opens the namespace's file.
+        val client = PolarisKeyAndroid.client(ctx, options)
+        try {
+            client.keyring.forget()
+            fail("the refused file was not reached")
+        } catch (e: im.plrs.key.core.PolarisException) {
+            assertTrue("the client's root is in its store namespace: ${e.message}", e.message!!.contains("pkey/$ns/sync-root.bin"))
+            assertFalse("not under the product slug: ${e.message}", e.message!!.contains("pkey/$product/sync-root.bin"))
+        } finally {
+            client.close()
+        }
+        assertTrue(underSlug.exists())
+    }
 }
