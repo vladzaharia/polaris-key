@@ -2,7 +2,7 @@
 //
 // K.2T (SAVES.R): the SaveConflict screen and the CloudSyncStatus transfer states follow
 // `adapter.cloudSync.saves` when the host passes no input: a running write is `transferring` with
-// the counted fraction, a failed one `transfer-failed`, a conflict is settled with `resolve`.
+// the counted fraction, a failed one `transfer-failed`, a conflict is settled with `request.keep`.
 
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
@@ -13,8 +13,8 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type {
-  SaveConflict as Conflict,
-  SaveOutcome,
+  MergeOutcome,
+  MergeRequest,
   SaveTransfer,
 } from "@polaris-key/client-core/sync";
 
@@ -35,57 +35,64 @@ beforeAll(() => {
 });
 afterEach(cleanup);
 
-const CONFLICT: Conflict = {
-  id: "slot1",
-  local: { metadata: { n: 2 }, size: 10 },
-  remote: {
-    id: "slot1",
+type Conflict = MergeRequest;
+
+const keepMock = vi.fn(
+  async (..._a: unknown[]): Promise<MergeOutcome> => ({
+    ok: true,
+    kept: "remote",
     version: 3,
-    metadata: { n: 1 },
-    file: null,
-    newerFormat: false,
+  }),
+);
+
+const CONFLICT = {
+  id: "w:saves/slot1",
+  cause: "write",
+  collection: "saves",
+  record: "slot1",
+  local: {
+    value: { n: 2 },
+    version: 2,
+    savedAt: null,
+    device: null,
+    file: { size: 10, format: "whole" },
   },
-  serverVersion: 3,
-  bothAvailable: true,
-};
+  remote: {
+    value: { n: 1 },
+    version: 3,
+    savedAt: null,
+    device: null,
+    file: null,
+  },
+  choices: ["local", "remote", "both"],
+  newer: null,
+  state: "open",
+  error: null,
+  keep: keepMock,
+} as unknown as Conflict;
 
 function fakeSaves() {
   const listeners = new Set<(e: SaveTransferEvent | null) => void>();
   let running: SaveTransfer[] = [];
   let conflicts: Conflict[] = [];
-  const resolve = vi.fn(async (..._a: unknown[]): Promise<SaveTransfer> => {
-    const done: Promise<SaveOutcome> = Promise.resolve({
-      state: "done",
-      id: "slot1",
-      kept: "remote",
-      version: 3,
-    });
-    return {
-      id: "saves:slot1",
-      state: "done",
-      progress: { done: 0, total: 0 },
-      pause() {},
-      resume() {},
-      cancel: async () => undefined,
-      done,
-    };
+  // A keep that works closes the request, as the client does.
+  keepMock.mockReset();
+  keepMock.mockImplementation(async () => {
+    conflicts = [];
+    listeners.forEach((l) => l(null));
+    return { ok: true, kept: "remote", version: 3 };
   });
   const saves = {
     transfers: () => running,
     conflicts: () => conflicts,
-    dismissConflict: vi.fn((id: string) => {
-      conflicts = conflicts.filter((c) => c.id !== id);
-      listeners.forEach((l) => l(null));
-    }),
     onTransfers: (l: (e: SaveTransferEvent | null) => void) => (
       listeners.add(l),
       () => listeners.delete(l)
     ),
-    resolve,
   } as unknown as BrowserSaves;
   return {
     saves,
-    resolve,
+    resolve: keepMock,
     emit: (e: SaveTransferEvent | null) => listeners.forEach((l) => l(e)),
     setRunning: (t: SaveTransfer[]) => (running = t),
     setConflicts: (c: Conflict[]) => (conflicts = c),
@@ -170,11 +177,10 @@ describe("CloudSyncStatus follows the saves", () => {
 });
 
 describe("SaveConflict follows the saves", () => {
-  it("draws the pending conflict and settles it with resolve, then Done dismisses it", async () => {
+  it("draws the pending request and settles it with keep, then Done leaves it settled", async () => {
     const f = fakeSaves();
     f.setConflicts([CONFLICT]);
-    const bytes = vi.fn(() => Uint8Array.of(1, 2, 3));
-    const { container } = inProvider(f.saves, <SaveConflict bytes={bytes} />);
+    const { container } = inProvider(f.saves, <SaveConflict />);
     const keepThis = container.querySelector<HTMLButtonElement>(
       'button[data-key="saveConflict.keepThis"]',
     )!;
@@ -185,18 +191,21 @@ describe("SaveConflict follows the saves", () => {
         container.querySelector('button[data-key="common.done"]'),
       ).not.toBeNull(),
     );
-    expect(f.resolve).toHaveBeenCalledWith(
-      CONFLICT,
-      "local",
-      Uint8Array.of(1, 2, 3),
-    );
+    expect(f.resolve).toHaveBeenCalledWith("local");
     fireEvent.click(container.querySelector('button[data-key="common.done"]')!);
-    expect(f.saves.dismissConflict).toHaveBeenCalledWith("slot1");
+    expect(
+      container.querySelector('button[data-key="saveConflict.keepThis"]'),
+    ).toBeNull();
   });
 
-  it("fails with Try again when the local copy is missing", async () => {
+  it("fails with Try again when keep is refused", async () => {
     const f = fakeSaves();
     f.setConflicts([CONFLICT]);
+    f.resolve.mockImplementationOnce(async () => ({
+      ok: false,
+      code: "rejected",
+      reopened: true,
+    }));
     const { container } = inProvider(f.saves, <SaveConflict />);
     fireEvent.click(
       container.querySelector('button[data-key="saveConflict.keepThis"]')!,
@@ -206,7 +215,7 @@ describe("SaveConflict follows the saves", () => {
         container.querySelector('button[data-key="common.tryAgain"]'),
       ).not.toBeNull(),
     );
-    expect(f.resolve).not.toHaveBeenCalled();
+    expect(f.resolve).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the other copy without any bytes from the host", async () => {
@@ -217,7 +226,7 @@ describe("SaveConflict follows the saves", () => {
       container.querySelector('button[data-key="saveConflict.keepOther"]')!,
     );
     await waitFor(() => expect(f.resolve).toHaveBeenCalledTimes(1));
-    expect(f.resolve.mock.calls[0]![1]).toBe("remote");
+    expect(f.resolve.mock.calls[0]![0]).toBe("remote");
   });
 
   it("is the host's plain part when it passes its own input and nothing is pending", () => {
@@ -247,11 +256,10 @@ describe("SaveConflict follows the saves", () => {
     const { container } = inProvider(
       f.saves,
       <SaveConflict
-        bytes={() => Uint8Array.of(1)}
         describe={(c) => ({
           local: { when: "today 9:00" },
           remote: { device: "Laptop" },
-          newer: c.local.metadata["n"] === 2 ? "local" : "remote",
+          newer: (c.local?.value as { n: number }).n === 2 ? "local" : "remote",
         })}
         input={{ saveConflict: { step: "choose", remote: { when: "Mon" } } }}
       />,
@@ -286,7 +294,7 @@ describe("SaveConflict follows the saves", () => {
     fireEvent.click(
       container.querySelector('button[data-key="common.cancel"]')!,
     );
-    expect(f.saves.dismissConflict).not.toHaveBeenCalled();
+    expect(f.resolve).not.toHaveBeenCalled();
     expect(onDismiss).toHaveBeenCalledTimes(1);
     await waitFor(() =>
       expect(
@@ -426,10 +434,7 @@ describe("the strip and the screen together (final round)", () => {
   it("M7: closing the dialog the strip's Review opened returns focus to the strip, never the page", async () => {
     const f = fakeSaves();
     f.setConflicts([CONFLICT]);
-    const { container } = inProvider(
-      f.saves,
-      <CloudSyncStatus input={host} bytes={() => Uint8Array.of(1)} />,
-    );
+    const { container } = inProvider(f.saves, <CloudSyncStatus input={host} />);
     const review = () =>
       container.querySelector<HTMLButtonElement>(
         'button[data-key="common.review"]',
@@ -450,20 +455,19 @@ describe("the strip and the screen together (final round)", () => {
     expect(document.activeElement).not.toBe(document.body);
   });
 
-  it("cards default from savedAt and deviceLabel in the metadata; describe() still overrides", () => {
+  it("cards default from the request's savedAt and device; describe() still overrides", () => {
     const f = fakeSaves();
     f.setConflicts([
       {
         ...CONFLICT,
-        local: { metadata: { savedAt: Date.now() }, size: 10 },
+        local: { ...CONFLICT.local!, savedAt: Date.now() },
         remote: {
           ...CONFLICT.remote!,
-          metadata: {
-            savedAt: Date.now() - 3_600_000,
-            deviceLabel: "Steam Deck",
-          },
+          savedAt: Date.now() - 3_600_000,
+          device: "Steam Deck",
         },
-      },
+        newer: "local",
+      } as Conflict,
     ]);
     const { container } = inProvider(f.saves, <SaveConflict />);
     expect(container.textContent).toMatch(/Steam Deck/);
@@ -492,34 +496,19 @@ describe("the strip and the screen together (final round)", () => {
     );
   });
 
-  it("N3: a choice that ends in a newer conflict goes back to choose, on the new one", async () => {
+  it("N3: a choice that ends in a newer conflict goes back to choose, on the new copy", async () => {
     const f = fakeSaves();
     f.setConflicts([CONFLICT]);
-    const newer: Conflict = {
-      ...CONFLICT,
-      serverVersion: 9,
-      remote: { ...CONFLICT.remote!, version: 9, metadata: { n: 7 } },
-    };
     f.resolve.mockImplementationOnce(async () => ({
-      id: "saves:slot1",
-      state: "conflict",
-      progress: { done: 0, total: 0 },
-      pause() {},
-      resume() {},
-      cancel: async () => undefined,
-      done: Promise.resolve({
-        state: "conflict",
-        request: {} as never,
-        conflict: newer,
-      }),
+      ok: false,
+      code: "conflict",
+      reopened: true,
     }));
-    const { container } = inProvider(
-      f.saves,
-      <SaveConflict bytes={() => Uint8Array.of(1)} />,
-    );
+    const { container } = inProvider(f.saves, <SaveConflict />);
     fireEvent.click(
       container.querySelector('button[data-key="saveConflict.keepThis"]')!,
     );
+    await waitFor(() => expect(f.resolve).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(
         container.querySelector('button[data-key="saveConflict.keepThis"]'),

@@ -3,7 +3,7 @@
 // controls open the screen they name when the host does not answer them: given no `onAction`,
 // inside `<PolarisKeyProvider>`, UnlockSync or RingChange opens in the kit's modal dialog over the
 // strip, and focus returns to the control that opened it. A host that passes `onAction` answers them itself.
-// Review on a pending save conflict opens SaveConflict (its `bytes` and `describe` are passed on);
+// Review on a pending save conflict opens SaveConflict (its `describe` is passed on);
 // RingChange is for a changed ring. Try again on a failed transfer calls `onRetry`, then `onAction`:
 // the saves hold no bytes to resend, so the app writes again. With neither, Try again is not
 // offered: the strip says the save did not sync until the next write succeeds.
@@ -29,14 +29,12 @@ const SaveConflict = syncScreen<SaveConflictProps>("SaveConflict");
 export interface CloudSyncStatusProps extends KitProps {
   /** Try again on a failed transfer: write the save again. */
   onRetry?: () => void;
-  /** For the SaveConflict that Review opens: the local copy's bytes. */
-  bytes?: SaveConflictProps["bytes"];
   /** For the SaveConflict that Review opens: the cards' times, device and Newer. */
   describe?: SaveConflictProps["describe"];
 }
 
 export function CloudSyncStatus(allProps: CloudSyncStatusProps): ReactNode {
-  const { onRetry, bytes, describe, ...props } = allProps;
+  const { onRetry, describe, ...props } = allProps;
   const [open, setOpen] = useState<"unlock" | "review" | "save" | null>(null);
   const sdk = useContext(PolarisContext);
   const saves = useBoundSaves();
@@ -118,7 +116,6 @@ export function CloudSyncStatus(allProps: CloudSyncStatusProps): ReactNode {
           theme={theme}
           className={className}
           onDismiss={close}
-          {...(bytes ? { bytes } : {})}
           {...(describe ? { describe } : {})}
         />
       ) : null}

@@ -3,9 +3,9 @@
 // saves client. Both are the plain part when the host passes the input (the host drives them);
 // with none, inside `<PolarisKeyProvider>`, they follow `adapter.cloudSync.saves`:
 //
-//   SaveConflict      the first conflict a write ended with. A choice runs `saves.resolve` with the
-//                     bytes the host hands in (`bytes`, the local copy; none is needed to keep the
-//                     other copy), then moves on: keeping, kept, or failed with Try again.
+//   SaveConflict      the first save request open (a MergeRequest of the saves collection). A choice
+//                     runs `request.keep`, then moves on: keeping, kept, or failed with Try again.
+//                     The client holds the device's copy, so the host hands in no bytes.
 //   CloudSyncStatus   `transferring` (with the counted fraction), `transfer-failed` and `conflict`,
 //                     only while a save is moving; otherwise the host's input stands.
 //
@@ -19,15 +19,12 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { UiInput } from "@polaris-key/ui-core";
-import type {
-  RangedSource,
-  SaveConflict as Conflict,
-  SaveKeep,
-} from "@polaris-key/client-core/sync";
+import type { MergeRequest as Conflict } from "@polaris-key/client-core/sync";
 
 import { PolarisContext } from "../react/context.js";
-import { developerError } from "../core/devNotice.js";
 import type { BrowserSaves, SaveTransferEvent } from "../core/cloudSync.js";
+
+type SaveKeep = "local" | "remote" | "both";
 
 type Cloud = NonNullable<UiInput["cloudSync"]>;
 type ConflictInput = NonNullable<UiInput["saveConflict"]>;
@@ -223,9 +220,9 @@ export function whenText(ms: number, now = Date.now()): string {
 /** The cards' details from what every SDK writes with a save (`savedAt` in ms and `deviceLabel`,
  *  SAVES-META): each copy's time, the other device's name, and the later one as `newer`. */
 export function describeFromMetadata(c: Conflict): ConflictDescription {
-  const mine = num(c.local.metadata["savedAt"]);
-  const theirs = c.remote ? num(c.remote.metadata["savedAt"]) : undefined;
-  const device = c.remote ? label(c.remote.metadata["deviceLabel"]) : undefined;
+  const mine = c.local?.savedAt ?? undefined;
+  const theirs = c.remote?.savedAt ?? undefined;
+  const device = c.remote?.device ?? undefined;
   return {
     ...(mine !== undefined ? { local: { when: whenText(mine) } } : {}),
     ...(theirs !== undefined || device !== undefined
@@ -236,9 +233,7 @@ export function describeFromMetadata(c: Conflict): ConflictDescription {
           },
         }
       : {}),
-    ...(mine !== undefined && theirs !== undefined && mine !== theirs
-      ? { newer: mine > theirs ? ("local" as const) : ("remote" as const) }
-      : {}),
+    ...(c.newer !== null ? { newer: c.newer } : {}),
   };
 }
 
@@ -264,8 +259,6 @@ export interface BoundConflict {
   onDone: () => void;
 }
 
-let warnedBytes = false;
-
 /**
  * The pending conflict as the SaveConflict screen's input, and the handlers that settle it. The
  * host's `input.saveConflict` is merged over it (its `local`, `remote` and `newer` fields), so a
@@ -274,11 +267,6 @@ let warnedBytes = false;
  */
 export function useBoundConflict(
   hostInput: UiInput | undefined,
-  bytes:
-    | ((
-        c: Conflict,
-      ) => Uint8Array | RangedSource | Promise<Uint8Array | RangedSource>)
-    | undefined,
   describe?: (c: Conflict) => ConflictDescription,
 ): BoundConflict {
   const saves = useBoundSaves();
@@ -304,36 +292,20 @@ export function useBoundConflict(
     saves === null || (hostInput?.saveConflict !== undefined && !c);
   const visible = !driven && c !== null && hiddenFor !== c;
   useScreenOpen(saves, visible);
-  useEffect(() => {
-    // Once, in development, on any bundler (`developerError` is quiet in production builds).
-    if (visible && bytes === undefined && !warnedBytes) {
-      warnedBytes = true;
-      developerError(
-        "saves-conflict-bytes",
-        "SaveConflict is bound to the saves without `bytes`: Keep this and Keep both cannot run. Pass bytes={(conflict) => localBytes}.",
-      );
-    }
-  }, [visible, bytes]);
-
   const run = async (k: SaveKeep): Promise<void> => {
     if (!saves || !c) return;
     setKeep(k);
     setStep("keeping");
     try {
-      const local = bytes ? await bytes(c) : null;
-      if (local === null && k !== "remote") throw new Error("no local copy");
-      const t = await saves.resolve(c, k, local ?? new Uint8Array(0));
-      const out = await t.done;
+      const out = await c.keep(k);
       if (!live.current) return;
-      if (out.state === "conflict") {
-        // Another write landed meanwhile: choose again, on the new conflict (Try again would
-        // repeat the stale one).
-        held.current = out.conflict;
+      if (out.ok) setStep("kept");
+      else if (out.reopened && out.code === "conflict") {
+        // Another write landed meanwhile: the request is open again on the new copy. Choose
+        // again (Try again would repeat the stale choice).
         setKeep(undefined);
         setStep("choose");
-        return;
-      }
-      setStep(out.state === "done" ? "kept" : "failed");
+      } else setStep("failed");
     } catch {
       if (live.current) setStep("failed");
     }
@@ -366,7 +338,7 @@ export function useBoundConflict(
           ...((host?.newer ?? d?.newer)
             ? { newer: (host?.newer ?? d?.newer)! }
             : {}),
-          bothAvailable: c.bothAvailable,
+          bothAvailable: c.choices.includes("both"),
           ...(keep ? { keep } : {}),
           step,
         },
@@ -387,7 +359,6 @@ export function useBoundConflict(
       setKeep(undefined);
     },
     onDone: () => {
-      if (c) saves?.dismissConflict(c.id);
       settle();
     },
   };
