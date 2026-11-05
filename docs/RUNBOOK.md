@@ -2566,7 +2566,7 @@ host is untouched. Detach before rolling back below that release.
 (branch protection: require it and nothing else); it passes when every job passed or was skipped
 by scope.
 
-- `js` always runs: JS/TS build, typecheck, tests (the adapter conformance suites included),
+- `js`, `js-worker`, `js-admin` and `js-rest` always run (static checks; the Worker, the admin SPA and every other package's tests): JS/TS build, typecheck, tests (the adapter conformance suites included),
   lint, the production-dependency audit, `pnpm gen --check` (the conformance corpus among the drift
   gates), the admin build and the docs link check.
 - The other lanes (workerd smoke, Node floor, browsers, console, UI kits, React kit, Python, the

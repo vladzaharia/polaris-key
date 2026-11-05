@@ -8,7 +8,7 @@ import {
 
 /**
  * The UX bar over the built console and customer site (UK-63; BRAND-TRANSITION B6, B7, B17): the
- * rendered-DOM rules of `@polaris-key/ui-qa`'s `ux-bar.ts`, run by `layout.e2e.test.ts` (console)
+ * rendered-DOM rules of `@polaris-key/ui-qa`'s `ux-bar.ts`, run by `layoutSuite.ts` (console)
  * and `uiLint.e2e.test.ts` (customer site).
  *
  * Breaches that predate the rule are held here, each with the package that clears it. The list
@@ -43,6 +43,11 @@ export async function uxBarChecked(
   // proves the wiring fails on a real breach.
   if (process.env.PK_UXBAR_NO_DEBT) return found;
   return withoutUxDebt(where, found, UX_BAR_DEBT, used);
+}
+
+/** The debt entries this run matched, as indexes into `UX_BAR_DEBT` (a part of a split run). */
+export function usedUxDebt(): number[] {
+  return [...used];
 }
 
 /** Debt entries nothing matched in this run (only meaningful after a full run). */

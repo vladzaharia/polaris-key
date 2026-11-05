@@ -46,6 +46,30 @@ const SETS := {
 		"cloud_sync_saves", "sync_scenarios", "cloud_sync_host", "cloud_sync_settings", "commerce",
 		"backend", "transports", "connect",
 	],
+	## `ci` split in four, balanced by measured run time, for the parallel editor and template runs
+	## (run_tests.sh PKEY_TEST_PARALLEL=1: one process per set, each with its own HOME). Disjoint and together `ci`
+	## (tools/godotCiSplit.test.ts); a suite added to `ci` goes into one of them in the same change.
+	"ci_p1": [
+		"identity", "packs",
+	],
+	"ci_p2": [
+		"ui", "sync_files",
+	],
+	"ci_p3": [
+		"nfc", "config", "presentation", "platform", "build_stamp", "stage_matrix",
+		"cloud_sync_ui", "updater", "provides", "native_apple", "native_android",
+		"native_desktop", "sync_ring", "sync_host_codec", "cloud_sync_transfer",
+		"cloud_sync_bulk", "sync_scenarios", "cloud_sync_host", "commerce", "backend",
+		"exit_leaks", "dropin", "connect",
+	],
+	"ci_p4": [
+		"sha512", "ed25519", "conformance", "core", "license", "transcripts", "devices",
+		"devicekeys", "devicekeys_native", "backup_exclusion", "qr", "update", "boot",
+		"ui_components", "brand", "keyring", "sync_vectors", "cloud_sync_files",
+		"cloud_sync_bulk_native", "cloud_sync_saves", "cloud_sync_settings", "transports",
+		"parity", "ui_lint", "ui_core", "ui_add_to_account", "ui_locales", "dev_live",
+		"api_surface",
+	],
 	"ci": ["sha512", "ed25519", "nfc", "conformance", "core", "config", "license", "transcripts", "presentation", "devices", "devicekeys", "devicekeys_native", "backup_exclusion", "platform", "identity", "qr", "build_stamp", "update", "stage_matrix", "boot", "ui", "ui_components", "cloud_sync_ui", "updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop", "keyring", "sync_vectors", "sync_ring", "sync_host_codec", "sync_files", "cloud_sync_transfer", "cloud_sync_files", "cloud_sync_bulk", "cloud_sync_bulk_native", "cloud_sync_saves", "sync_scenarios", "cloud_sync_host", "cloud_sync_settings", "commerce", "backend", "transports", "parity", "ui_lint", "exit_leaks", "dropin", "ui_core", "ui_add_to_account", "ui_locales", "dev_live", "api_surface", "connect"],
 	## The brief spells the suite with a hyphen.
 	"stage-matrix": ["stage_matrix"],

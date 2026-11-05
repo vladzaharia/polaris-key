@@ -12,6 +12,7 @@ import {
   type Theme,
 } from "./portalHarness.js";
 import { PENDING, SHIPPED } from "./portalStates.js";
+import { currentPart, partOf } from "./parts.js";
 
 /**
  * The customer site's quality bar (PORTAL.md §8, §9 item 10; PX-20). Every shipped §4 state, in
@@ -75,14 +76,15 @@ afterAll(async () => {
 // Concurrent: each test has its own browser context, so up to vitest's `maxConcurrency` pages run
 // side by side in the one Chromium.
 describe.concurrent("every shipped §4 state passes the quality bar", () => {
-  it("names each state once", ({ expect }) => {
-    const ids = SHIPPED.map((s) => s.id);
-    expect(new Set(ids).size).toBe(ids.length);
-    for (const id of TABLET_STATES) expect(ids).toContain(id);
-    for (const id of PRESENCE_STATES) expect(ids).toContain(id);
-  });
+  if (!currentPart() || currentPart()!.index === 0)
+    it("names each state once", ({ expect }) => {
+      const ids = SHIPPED.map((s) => s.id);
+      expect(new Set(ids).size).toBe(ids.length);
+      for (const id of TABLET_STATES) expect(ids).toContain(id);
+      for (const id of PRESENCE_STATES) expect(ids).toContain(id);
+    });
 
-  for (const state of SHIPPED) {
+  for (const state of partOf(SHIPPED)) {
     describe(`§${state.section} ${state.title} (${state.id})`, () => {
       const sizes = THEMES.flatMap((theme) =>
         [
@@ -185,8 +187,11 @@ describe.concurrent("every shipped §4 state passes the quality bar", () => {
   }
 });
 
-describe("§4 states still to build (PX-20 is rolling)", () => {
-  for (const p of PENDING) {
-    it.todo(`§${p.section} ${p.title} (${p.wp.join(", ")})`);
-  }
-});
+// Only the first part lists the pending states: an empty describe fails the run.
+if (!currentPart() || currentPart()!.index === 0) {
+  describe("§4 states still to build (PX-20 is rolling)", () => {
+    for (const p of PENDING) {
+      it.todo(`§${p.section} ${p.title} (${p.wp.join(", ")})`);
+    }
+  });
+}
