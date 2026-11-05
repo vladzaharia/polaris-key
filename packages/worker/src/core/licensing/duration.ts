@@ -34,21 +34,6 @@ export interface LicenseState {
   reason: LicenseStateReason | null;
 }
 
-/** The summary the console, the portal and LX-18 share (plans/LX-41.md §2.5). */
-export interface LicenseTerm {
-  endsAt: number | null;
-  onExpiry: "stop" | "keepVersion" | "tier";
-  nextTier: { id: string; label: string } | null;
-  state: "active" | "lapsed" | "converting";
-  fallbackVersion: string | null;
-  trial: boolean;
-  renews: {
-    at: number;
-    source: string;
-    status: string;
-  } | null;
-}
-
 const ENDED_REASONS: ReadonlySet<string> = new Set([
   "revoked",
   "refunded",
