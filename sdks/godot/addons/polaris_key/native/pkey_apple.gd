@@ -55,8 +55,8 @@ const BIN_MAX := 16 << 20
 const BIN_OP_MAX := 64
 const BIN_STASH := 1024
 
-## The features that also run on macOS, through the desktop dylib: the Keychain and Sign in with Apple.
-const MACOS_FEATURES := [PKeyConstants.Feature.CORE_STORE, PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, PKeyConstants.Feature.IDENTITY_GAMECENTER]
+## The features that also run on macOS, through the desktop dylib: the Keychain, Sign in with Apple and the backed-up restore item.
+const MACOS_FEATURES := [PKeyConstants.Feature.CORE_STORE, PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, PKeyConstants.Feature.IDENTITY_GAMECENTER, PKeyConstants.Feature.IDENTITY_RESTORE]
 ## An abandoned request is forgotten after this long, and at most this many are kept.
 const ABANDONED_TTL_MSEC := 600000
 const ABANDONED_MAX := 64
@@ -446,6 +446,38 @@ func _keychain_call(q: Dictionary, keychain: String) -> PKeyResult:
 	if keychain != "":
 		q["keychain"] = keychain
 	return _wrap(PKeyConstants.Feature.CORE_STORE, call_sync(q, PKeyConstants.Feature.CORE_STORE), PKeyErrors.STORE_FAILED)
+
+
+## The backed-up (synchronizable, iCloud Keychain) items of silent restore and Cloud Sync (I-49;
+## PolarisKeyPlatform's bk_* ops). `item` is "restore" (needs `product`) or "sync" (`product`,
+## `subject`, `ring_id`); `access_group` is the optional keychain access group (I-49 D-7). The value
+## is a JSON object of at most 4 KB, as text. Use PKeyPlatformBackup, which wraps these.
+func backup_get(item: String, product: String, subject := "", ring_id := "", access_group := "") -> PKeyResult:
+	return _backup_call("bk_get", item, product, subject, ring_id, access_group, null)
+
+
+func backup_set(item: String, product: String, value: String, subject := "", ring_id := "", access_group := "") -> PKeyResult:
+	return _backup_call("bk_set", item, product, subject, ring_id, access_group, value)
+
+
+func backup_delete(item: String, product: String, subject := "", ring_id := "", access_group := "") -> PKeyResult:
+	return _backup_call("bk_delete", item, product, subject, ring_id, access_group, null)
+
+
+func _backup_call(op: String, item: String, product: String, subject: String, ring_id: String, access_group: String, value: Variant) -> PKeyResult:
+	var q := {"op": op, "item": item, "product": product}
+	if item == "sync":
+		q["subject"] = subject
+		q["ringId"] = ring_id
+	if access_group != "":
+		q["accessGroup"] = access_group
+	if value != null:
+		q["value"] = value
+	var r := call_sync(q, PKeyConstants.Feature.IDENTITY_RESTORE)
+	# No entitlement or no iCloud Keychain: a plain "no backup here", not a failure of the plugin.
+	if str(r.get("error", "")) == "unavailable":
+		return PKeyResult.unsupported(PKeyConstants.Feature.IDENTITY_RESTORE, PKeyConstants.UnsupportedReason.RUNTIME, "The backed-up Keychain is not available to this app (OSStatus %s)." % str(r.get("status", "?")))
+	return _wrap(PKeyConstants.Feature.IDENTITY_RESTORE, r, PKeyErrors.STORE_FAILED)
 
 
 ## A pack's status: detail {status: [flags], version, localVersion, downloadSize}.

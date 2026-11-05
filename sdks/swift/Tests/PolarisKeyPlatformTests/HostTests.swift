@@ -154,6 +154,57 @@ final class HostTests: XCTestCase {
             let (none, _) = host(fakeServices(keychain: nil))
             XCTAssertEqual(call(none, #"{"op":"kc_get","product":"diceroll","account":"device"}"#)["reason"], "runtime")
         }
+
+        func testBackupStoreThroughJSON() {
+            let kc = FakeKeychain()
+            let (h, _) = host(fakeServices(keychain: kc))
+            let value = #"{\"v\":1,\"restoreId\":\"rk_1\",\"secret\":\"rs_1\"}"#
+            XCTAssertEqual(call(h, #"{"op":"bk_get","item":"restore","product":"diceroll"}"#), ["ok": true, "value": .null])
+            XCTAssertEqual(
+                call(h, #"{"op":"bk_set","item":"restore","product":"diceroll","value":"\#(value)"}"#), ["ok": true])
+            let got = call(h, #"{"op":"bk_get","item":"restore","product":"diceroll"}"#)
+            XCTAssertEqual(got["ok"], true)
+            XCTAssertEqual(got["value"]?.stringValue, #"{"v":1,"restoreId":"rk_1","secret":"rs_1"}"#)
+            // A sync root is its own item; deleting the restore item leaves it.
+            XCTAssertEqual(
+                call(h, #"{"op":"bk_set","item":"sync","product":"diceroll","subject":"sub1","ringId":"r1","value":"{\"v\":1}"}"#),
+                ["ok": true])
+            XCTAssertEqual(call(h, #"{"op":"bk_delete","item":"restore","product":"diceroll"}"#), ["ok": true])
+            XCTAssertEqual(call(h, #"{"op":"bk_delete","item":"restore","product":"diceroll"}"#), ["ok": true])
+            XCTAssertEqual(call(h, #"{"op":"bk_get","item":"restore","product":"diceroll"}"#)["value"], .null)
+            XCTAssertEqual(
+                call(h, #"{"op":"bk_get","item":"sync","product":"diceroll","subject":"sub1","ringId":"r1"}"#)["value"]?
+                    .stringValue, #"{"v":1}"#)
+        }
+
+        func testBackupStoreRefusals() {
+            let (h, _) = host(fakeServices(keychain: FakeKeychain()))
+            XCTAssertEqual(call(h, #"{"op":"bk_get","item":"restore"}"#)["error"], "missing_product")
+            XCTAssertEqual(call(h, #"{"op":"bk_get","item":"token","product":"diceroll"}"#)["error"], "invalid_item")
+            XCTAssertEqual(call(h, #"{"op":"bk_get","item":"sync","product":"diceroll"}"#)["error"], "missing_subject_or_ring")
+            XCTAssertEqual(call(h, #"{"op":"bk_get","item":"restore","product":"../x"}"#)["error"], "invalid_name")
+            XCTAssertEqual(call(h, #"{"op":"bk_set","item":"restore","product":"diceroll"}"#)["error"], "missing_value")
+            XCTAssertEqual(
+                call(h, #"{"op":"bk_set","item":"restore","product":"diceroll","value":"not json"}"#)["error"],
+                "invalid_value")
+            let big = String(repeating: "a", count: PlatformBackupStore.maxValueBytes)
+            XCTAssertEqual(
+                call(h, #"{"op":"bk_set","item":"restore","product":"diceroll","value":"{\"x\":\"\#(big)\"}"}"#)["error"],
+                "invalid_value")
+            let (none, _) = host(fakeServices(keychain: nil))
+            XCTAssertEqual(call(none, #"{"op":"bk_get","item":"restore","product":"diceroll"}"#)["reason"], "runtime")
+        }
+
+        func testBackupStoreUnavailableAndAccessGroup() {
+            let kc = FakeKeychain()
+            let (h, _) = host(fakeServices(keychain: kc))
+            kc.failWith = PlatformBackupStore.missingEntitlement
+            let r = call(h, #"{"op":"bk_get","item":"restore","product":"diceroll","accessGroup":"TEAM.group.x"}"#)
+            XCTAssertEqual(r["error"], "unavailable")
+            XCTAssertEqual(r["status"], .int(-34018))
+            kc.failWith = errSecInteractionNotAllowed
+            XCTAssertEqual(call(h, #"{"op":"bk_get","item":"restore","product":"diceroll"}"#)["error"], "keychain")
+        }
     #endif
 
     func testPacksThroughJSON() async {
