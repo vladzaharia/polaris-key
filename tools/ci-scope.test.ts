@@ -58,11 +58,40 @@ const WORKFLOWS = join(ROOT, ".github", "workflows");
 const workflow = (file: string) =>
   parseYaml(readFileSync(join(WORKFLOWS, file), "utf8")) as Workflow;
 const ci = workflow("ci.yml");
+const nightly = workflow("nightly-advisory.yml");
+/** The advisory jobs that run nightly, off the push path (ci.yml has none of them). */
+const NIGHTLY_JOBS = [
+  "swift-linux",
+  "swiftui-mac",
+  "compose-desktop",
+  "apple-footprint",
+];
+/** Lanes whose only job lives in nightly-advisory.yml: no `changes` job there, so no ci.yml owner. */
+const NIGHTLY_LANES = ["swift-linux", "swiftui-mac", "compose-desktop"];
 
 const on = (files: string[] | null) =>
   Object.entries(selectLanes(scope, files))
     .filter(([, v]) => v)
     .map(([k]) => k);
+
+/** A nightly advisory job never fails the run and CI OK does not wait for it. */
+const expectAdvisory = (name: string) => {
+  expect(nightly.jobs[name]!["continue-on-error"]).toBe(true);
+  expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).not.toContain(name);
+};
+
+/** Every lane on, and every matrix in its full shape. */
+const expectFullMatrices = (
+  out: Record<string, string>,
+  lanes: string[] = Object.keys(scope.lanes),
+) => {
+  for (const lane of lanes) expect(out[lane], lane).toBe("true");
+  expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(17);
+  expect(JSON.parse(out["kotlin-desktop-matrix"]!).os).toHaveLength(3);
+  expect(JSON.parse(out["kotlin-emulator-matrix"]!)["api-level"]).toEqual([
+    24, 34, 36,
+  ]);
+};
 
 const temps: string[] = [];
 afterEach(() => {
@@ -259,17 +288,11 @@ describe("the changes job outputs", () => {
     // Exactly what a push to main gets: every lane, every matrix in its full shape.
     expect(out).toEqual(ciOutputs(scope, { event: "push", files: null }));
     expect(out.full).toBe("true");
-    for (const lane of Object.keys(scope.lanes))
-      expect(out[lane], lane).toBe("true");
     expect(JSON.parse(out["python-matrix"]!).include).toContainEqual({
       os: "macos-15",
       python: "3.12",
     });
-    expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(17);
-    expect(JSON.parse(out["kotlin-desktop-matrix"]!).os).toHaveLength(3);
-    expect(JSON.parse(out["kotlin-emulator-matrix"]!)["api-level"]).toEqual([
-      24, 34, 36,
-    ]);
+    expectFullMatrices(out);
   });
 
   it("emits the Godot legs a runner can tell apart: unique names, and the UI matrix legs with their path and shard range", () => {
@@ -416,14 +439,8 @@ describe("the ci-scope command", () => {
       expect(run.status, run.stderr).toBe(0);
       const out = outputsOf(run.stdout);
       expect(out.full).toBe("true");
-      for (const lane of Object.keys(scope.lanes))
-        expect(out[lane], lane).toBe("true");
       expect(JSON.parse(out["python-matrix"]!).include).toHaveLength(3);
-      expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(17);
-      expect(JSON.parse(out["kotlin-desktop-matrix"]!).os).toHaveLength(3);
-      expect(JSON.parse(out["kotlin-emulator-matrix"]!)["api-level"]).toEqual([
-        24, 34, 36,
-      ]);
+      expectFullMatrices(out);
     },
   );
 
@@ -445,6 +462,8 @@ describe("ci.yml reads the scope", () => {
   it("has a changes job that every scoped job needs", () => {
     expect(jobs.changes).toBeDefined();
     for (const lane of Object.keys(scope.lanes)) {
+      // The nightly lanes run unfiltered from nightly-advisory.yml, off the push path.
+      if (NIGHTLY_LANES.includes(lane)) continue;
       // A lane gates a whole job (`if:`) or a step of one (the docs link check in `js`).
       const owner = Object.entries(jobs).filter(([, j]) =>
         JSON.stringify(j).includes(`needs.changes.outputs.${lane} ==`),
@@ -467,14 +486,56 @@ describe("ci.yml reads the scope", () => {
   it("aggregates every other job in ci-ok, which runs always", () => {
     const ok = jobs["ci-ok"]!;
     expect(ok.if).toBe("${{ always() }}");
-    const others = Object.keys(jobs).filter(
-      (id) =>
-        id !== "ci-ok" &&
-        id !== "swiftui-mac" &&
-        id !== "compose-desktop" &&
-        id !== "swift-linux",
-    ); // swiftui-mac and compose-desktop are non-blocking until their baselines are committed (UK-08.8, UK-10.12); swift-linux until it has been green once;
+    // The advisory jobs left ci.yml for nightly-advisory.yml, so CI OK cannot need them.
+    const others = Object.keys(jobs).filter((id) => id !== "ci-ok");
     expect(needsOf(ok).sort()).toEqual(others.sort());
+    for (const id of NIGHTLY_JOBS) expect(jobs[id], id).toBeUndefined();
+  });
+
+  it("runs the full CI on pushes to main and next, superseding a run in flight", () => {
+    const push = ci.on.push as { branches?: string[] };
+    expect(push.branches).toEqual(["main", "next"]);
+    const concurrency = (
+      ci as unknown as {
+        concurrency: { group: string; "cancel-in-progress": boolean };
+      }
+    ).concurrency;
+    // One group per pull request, else per ref; always superseded (PRs, next and main).
+    expect(concurrency.group).toBe(
+      "ci-${{ github.event.pull_request.number || github.ref }}",
+    );
+    expect(concurrency["cancel-in-progress"]).toBe(true);
+  });
+
+  it("treats a push to next as a push to main: every lane, the full matrix", () => {
+    // The scope map narrows only a pull request; ci.yml hands it the event name, not the branch.
+    const lanes = ciOutputs(scope, { event: "push", files: ["README.md"] });
+    for (const lane of Object.keys(scope.lanes))
+      expect(lanes[lane], lane).toBe("true");
+    for (const name of Object.keys(scope.matrices))
+      expect(JSON.parse(String(lanes[`${name}-matrix`]))).toEqual(
+        matrixFor(scope, name, false),
+      );
+  });
+});
+
+describe("nightly-advisory.yml holds the advisory lanes", () => {
+  it("runs on a schedule and on demand only, read-only", () => {
+    expect(Object.keys(nightly.on).sort()).toEqual([
+      "schedule",
+      "workflow_dispatch",
+    ]);
+    expect(Object.keys(nightly.jobs).sort()).toEqual([...NIGHTLY_JOBS].sort());
+  });
+
+  it("keeps each job advisory and independent of the scope map", () => {
+    for (const id of NIGHTLY_JOBS) {
+      const job = nightly.jobs[id]!;
+      expect(job["continue-on-error"], id).toBe(true);
+      expect(job.needs, id).toBeUndefined();
+      expect(job.if, id).toBeUndefined();
+    }
+    expect(JSON.stringify(nightly)).not.toContain("needs.changes");
   });
 });
 
@@ -620,13 +681,11 @@ describe("a workflow's path filter covers the local actions its jobs use", () =>
 });
 
 // The Swift SDK on Linux: advisory, pinned by digest, runs for the package's tree.
-describe("ci.yml builds the Swift SDK on Linux", () => {
-  const job = ci.jobs["swift-linux"]!;
+describe("nightly-advisory.yml builds the Swift SDK on Linux", () => {
+  const job = nightly.jobs["swift-linux"]!;
 
-  it("is its own lane, non-blocking for CI OK", () => {
-    expect(job.if).toBe("needs.changes.outputs.swift-linux == 'true'");
-    expect(job["continue-on-error"]).toBe(true);
-    expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).not.toContain("swift-linux");
+  it("is advisory, nightly, and not a CI OK dependency; the lane stays in the scope map", () => {
+    expectAdvisory("swift-linux");
     expect(on(["sdks/swift/Sources/PolarisKeyCore/Transport.swift"])).toContain(
       "swift-linux",
     );
@@ -643,15 +702,13 @@ describe("ci.yml builds the Swift SDK on Linux", () => {
 
 // UK-08.8: the SwiftUI kit's macOS renders (macos-26 and macos-15) run only for the kit's own tree,
 // the sample and the copy it renders, and CI OK does not wait for them until the baselines are committed.
-describe("ci.yml renders the SwiftUI kit on the Mac", () => {
-  const job = ci.jobs["swiftui-mac"]!;
+describe("nightly-advisory.yml renders the SwiftUI kit on the Mac", () => {
+  const job = nightly.jobs["swiftui-mac"]!;
   const steps = JSON.stringify(job.steps ?? []);
 
-  it("is its own lane, non-blocking for CI OK", () => {
-    expect(job.if).toBe("needs.changes.outputs.swiftui-mac == 'true'");
-    expect(job["continue-on-error"]).toBe(true);
+  it("is advisory, nightly, and not a CI OK dependency; the lane stays in the scope map", () => {
     // Non-blocking until the first baselines are committed (UK-08.8).
-    expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).not.toContain("swiftui-mac");
+    expectAdvisory("swiftui-mac");
     expect(on(["examples/ui/swiftui/run.sh"])).toContain("swiftui-mac");
     expect(
       on(["sdks/swift/Sources/PolarisKeyUpdateUI/Driver.swift"]),
@@ -679,16 +736,13 @@ describe("ci.yml renders the SwiftUI kit on the Mac", () => {
 
 // UK-10.12: the Compose desktop kit's lane runs on the three desktop OSes for the kit's own tree and the
 // sample, and CI OK does not wait for it until the baselines are committed.
-describe("ci.yml runs the Compose desktop kit lane", () => {
-  const job = ci.jobs["compose-desktop"]!;
+describe("nightly-advisory.yml runs the Compose desktop kit lane", () => {
+  const job = nightly.jobs["compose-desktop"]!;
   const steps = JSON.stringify(job.steps ?? []);
 
-  it("is its own lane, non-blocking for CI OK", () => {
-    expect(job.if).toBe("needs.changes.outputs.compose-desktop == 'true'");
-    expect(job["continue-on-error"]).toBe(true);
-    expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).not.toContain(
-      "compose-desktop",
-    );
+  it("is advisory, nightly, and not a CI OK dependency; the lane stays in the scope map", () => {
+    expectAdvisory("compose-desktop");
+    expect(ci.jobs["compose-desktop"]).toBeUndefined();
     expect(on(["examples/ui/compose-desktop/build.gradle.kts"])).toContain(
       "compose-desktop",
     );

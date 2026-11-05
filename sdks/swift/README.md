@@ -584,6 +584,11 @@ ring the Worker serves, and unlocks with no prompt. It then stores its own wrap 
 `recover(_:)` does, so its next start no longer depends on the backup. If that request fails the
 device is unlocked all the same.
 
+**Keychain access group.** `client.keyring` keeps the root in the same Keychain access group as the client's
+device token. If an extension shares the token's group, it can read the root too; leave the group `nil` to use
+the app's default one, and share only with targets you trust with the person's data. Set
+`SyncKeyringOptions.accessGroup` to give the root a group of its own.
+
 To keep the root out of iCloud, turn the backup off before the first read of `client.keyring`:
 
 ```swift

@@ -610,6 +610,40 @@ describe("openPull: records", () => {
       });
     });
 
+    it("opens a union record's elements against the mutation's id, and refuses another record's", async () => {
+      const a = { id: 7, tag: "a" };
+      const copy = {
+        elements: [
+          await cell("element", "", "shield"),
+          await cell("element", "", a),
+        ],
+        version: 9,
+        editedHlc: "0190f3a2c1b4:0003",
+      };
+      const foreign = {
+        elements: [await cell("element", "", "shield", "slot-2")],
+        version: 9,
+      };
+      const out = await openPull(
+        { results: [result(1, copy), result(2, foreign)] },
+        codec,
+        {
+          mutations: muts([
+            rec(1, id, "addElement", { element: "shield", editedHlc: "h" }),
+            rec(2, id, "addElement", { element: "shield", editedHlc: "h" }),
+          ]),
+        },
+      );
+      const first = (out.body as any).results[0].server;
+      expect(first.value).toEqual(["shield", a]);
+      expect("elements" in first).toBe(false);
+      expect(first.version).toBe(9);
+      expect(out.opened.conflicts).toEqual({
+        1: { sealed: true },
+        2: { invalid: true },
+      });
+    });
+
     it("a plaintext copy is legacy (seq is its version)", async () => {
       const out = await openPull(
         { results: [result(1, { value: { hp: 1 }, version: 2 })] },

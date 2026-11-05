@@ -1,0 +1,92 @@
+name: Promote next
+
+# The lead pushes to `next`; the full CI runs there like on main (ci.yml); when it completes with
+# success this workflow fast-forwards `main` to the SHA CI tested. Releases are tagged from main.
+#
+#   push to next -> CI (full) -> success -> main fast-forwards to that SHA -> tag from main
+#
+# Fast-forward only. The push is never forced, and it is refused unless main is already an
+# ancestor of the tested SHA (git merge-base --is-ancestor): if main holds a commit next does not
+# (a hotfix pushed straight to main), the run fails and says so; merge main into next, push, and
+# the next green CI promotes it.
+#
+# Security: `workflow_run` runs the copy of this file on the default branch, with this token. The
+# job runs no script from the checked-out tree: it only runs git, on a SHA CI already tested, and
+# then dispatches the SDK publish. The token carries contents: write (the push) and actions: write
+# (the dispatch) and nothing else. A push made with it does not start other workflows (GitHub's
+# rule for the workflow token): CI already ran on this exact SHA through next, and deploy.yml
+# accepts that run as the proof for a tag on it. So the main-channel SDK prerelease is started
+# here by a dispatch; publish-sdks.yml still waits for CI OK on the SHA before it publishes.
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+# No default permissions; the job asks for the one it needs.
+permissions: {}
+
+# One promotion at a time; a newer one waits rather than racing the push.
+concurrency:
+  group: promote-main
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: Fast-forward main to the green next
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: >-
+      github.repository == 'vladzaharia/polaris-key'
+      && github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push'
+      && github.event.workflow_run.head_branch == 'next'
+      && github.event.workflow_run.head_repository.full_name == github.repository
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The whole history: the ancestry check needs it. The default (checked-out) ref is main.
+          fetch-depth: 0
+          # The push below uses this checkout's credentials (the job's token, contents: write).
+          persist-credentials: true
+      - name: Fast-forward main
+        id: ff
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Not a commit SHA: $SHA" >&2
+            exit 1
+          fi
+          git fetch --no-tags origin main next
+          if ! git cat-file -e "$SHA^{commit}" 2>/dev/null; then
+            echo "::error::$SHA is not in the repository." >&2
+            exit 1
+          fi
+          # CI tested this commit on next; it must still be on next (a force-push could have
+          # removed it, and an untested commit never reaches main).
+          if ! git merge-base --is-ancestor "$SHA" origin/next; then
+            echo "::error::$SHA is no longer on next (next was rewritten). Nothing promoted." >&2
+            exit 1
+          fi
+          if git merge-base --is-ancestor "$SHA" origin/main; then
+            echo "main already contains $SHA. Nothing to promote."
+            exit 0
+          fi
+          if ! git merge-base --is-ancestor origin/main "$SHA"; then
+            echo "::error::main is not an ancestor of $SHA: main has commits that next does not. Not fast-forwardable; merge main into next, push, and the next green CI promotes it." >&2
+            exit 1
+          fi
+          git push origin "$SHA:refs/heads/main"
+          echo "promoted=true" >> "$GITHUB_OUTPUT"
+          echo "main fast-forwarded to $SHA." >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish the main-channel SDK prerelease
+        if: steps.ff.outputs.promoted == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run publish-sdks.yml --ref main

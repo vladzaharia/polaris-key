@@ -135,6 +135,12 @@ export interface LicenseRow {
   /** LX-27c (0131_a): epoch seconds of the last invitation email that went out; NULL (or absent on
    *  a row read before the migration) when none did. Written only by the License service. */
   invited_at?: number | null;
+  /** LX-41.1 (0155_b): what this licence does when it lapses, overriding its tier's; NULL inherits.
+   *  No reader or writer yet. */
+  on_expiry?: string | null;
+  /** LX-41.1 (0156_c): the version a lapsed `keepVersion` licence keeps; NULL = not frozen, `''` =
+   *  nothing to keep. No reader or writer yet. */
+  fallback_version?: string | null;
   modified_by: string | null;
   modified_at: number;
 }
@@ -237,6 +243,9 @@ export interface TierRow {
    *  otherwise. No reader or writer yet. Optional because `upsertTier` callers build rows without it
    *  and the upsert must not write it. */
   implicit?: number;
+  /** LX-41.1 (0154_a): what a licence of this tier does when it lapses; NULL = `stop`. No reader or
+   *  writer yet. */
+  on_expiry?: string | null;
   modified_by: string | null;
   modified_at: number;
   /** ST-01b (0079): who owns the row. */

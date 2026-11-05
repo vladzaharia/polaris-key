@@ -26,6 +26,14 @@ import type { Grant, GrantScope, Role } from "./can.js";
 
 /** At most this many rules in one document. */
 export const MAX_ACCESS_RULES = 50;
+
+/** Why `rules` is not an acceptable rule list (an array of at most `MAX_ACCESS_RULES`), or null. */
+export function rulesListProblem(rules: unknown): string | null {
+  if (!Array.isArray(rules)) return "rules must be a list";
+  if (rules.length > MAX_ACCESS_RULES)
+    return `at most ${MAX_ACCESS_RULES} rules`;
+  return null;
+}
 /** A rule label is at most this many characters. */
 export const MAX_RULE_LABEL = 80;
 /** The roles a rule may grant. Superadmin and Platform admin never come from a rule. */
@@ -197,13 +205,12 @@ export function parseAccessRules(
     return { ok: false, reason: "document must be an object" };
   const badDoc = extraKeys(value, ["rules"]);
   if (badDoc) return { ok: false, reason: `unknown key: ${badDoc}` };
-  if (!Array.isArray(value.rules))
-    return { ok: false, reason: "rules must be a list" };
-  if (value.rules.length > MAX_ACCESS_RULES)
-    return { ok: false, reason: `at most ${MAX_ACCESS_RULES} rules` };
+  const listProblem = rulesListProblem(value.rules);
+  if (listProblem) return { ok: false, reason: listProblem };
+  const list = value.rules as unknown[];
   const rules: AccessRule[] = [];
   const ids = new Set<string>();
-  for (const [i, raw] of value.rules.entries()) {
+  for (const [i, raw] of list.entries()) {
     const at = `rules[${i}]`;
     if (!isObject(raw)) return { ok: false, reason: `${at} must be an object` };
     const bad = extraKeys(raw, ["id", "label", "when", "grant"]);

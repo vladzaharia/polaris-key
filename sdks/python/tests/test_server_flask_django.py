@@ -173,11 +173,13 @@ def test_django_view(row: Dict[str, Any]) -> None:
 
 @pytest.mark.parametrize("row", DJ_ROWS, ids=DJ_IDS)
 def test_drf_view(row: Dict[str, Any]) -> None:
-    from rest_framework.response import Response
-    from rest_framework.test import APIRequestFactory
-    from rest_framework.views import APIView
-
     with _django(row), _now(row):
+        # DRF reads Django settings on import, so import it only once they are configured: a worker
+        # that runs this test first (pytest-xdist) has not configured them yet.
+        from rest_framework.response import Response
+        from rest_framework.test import APIRequestFactory
+        from rest_framework.views import APIView
+
         from polaris_key.server import drf
         from polaris_key.server.drf import PolarisKeyAuthentication, exception_handler
 
@@ -203,12 +205,14 @@ def test_drf_view(row: Dict[str, Any]) -> None:
 
 def test_drf_default_handler_without_ours() -> None:
     """Without our handler DRF still answers 401 (authenticate_header) and 403."""
-    from rest_framework.response import Response
-    from rest_framework.test import APIRequestFactory
-    from rest_framework.views import APIView
-
     row = ROWS[0]
     with _django(row), _now(row):
+        # DRF reads Django settings on import, so import it only once they are configured: a worker
+        # that runs this test first (pytest-xdist) has not configured them yet.
+        from rest_framework.response import Response
+        from rest_framework.test import APIRequestFactory
+        from rest_framework.views import APIView
+
         from polaris_key.server.drf import PolarisKeyAuthentication
 
         class V(APIView):

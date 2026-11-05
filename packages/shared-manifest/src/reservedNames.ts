@@ -44,9 +44,22 @@ export function isReservedNamesMode(v: unknown): v is ReservedNamesMode {
 /** The JSON type a reserved key's declaration must have. */
 export type ReservedKeyType = "string" | "integer" | "string-array";
 
+/** The service a platform entitlement belongs to; it shows only while that service is on. */
+export type PlatformEntitlementService = "license" | "sync" | "connect";
+/** `feature` is on or off for a licence; `quantity` is a number a tier, override or add-on sets. */
+export type PlatformEntitlementKind = "feature" | "quantity";
+
+/** 256 MiB: the Cloud Sync quota and the Cloud Connect relay allowance when unset. */
+export const PLATFORM_QUOTA_DEFAULT_BYTES = 256 * 1024 * 1024;
+
 export interface ReservedEntitlementKey {
   key: string;
   type: ReservedKeyType;
+  /** The service the key belongs to (U-01b §11). */
+  service: PlatformEntitlementService;
+  kind: PlatformEntitlementKind;
+  /** The value when nothing sets it; `null` when the product or the licence supplies it. */
+  default: string | number | readonly string[] | null;
   /** How the Worker sets it (shown read-only in the console). */
   rule: string;
   /** `false` for a key the Worker only reads: a tier, a licence or an add-on sets it, and the
@@ -59,47 +72,83 @@ export interface ReservedEntitlementKey {
 export const RESERVED_ENTITLEMENT_KEYS: readonly ReservedEntitlementKey[] = [
   {
     key: "channels",
+    service: "license",
+    kind: "feature",
+    default: [],
     type: "string-array",
     rule: "The union of the tier's and the license's channels.",
   },
   {
     key: "deviceLimit",
+    service: "license",
+    kind: "quantity",
+    default: null,
     type: "integer",
     rule: "The license's own device limit, else the tier's, else the license's deviceLimit entitlement, else the product default.",
   },
   {
     key: "app.minVersion",
+    service: "license",
+    kind: "feature",
+    default: null,
     type: "string",
     rule: "The higher of the tier's and the license's minimum version: a license can narrow its tier's version window, never widen it.",
   },
   {
     key: "app.maxVersion",
+    service: "license",
+    kind: "feature",
+    default: null,
     type: "string",
     rule: "The lower of the tier's and the license's maximum version: a license can narrow its tier's version window, never widen it.",
   },
   {
     key: "license.tier",
+    service: "license",
+    kind: "feature",
+    default: null,
     type: "string",
     rule: "The license's tier id.",
   },
   {
     key: "license.tierLabel",
+    service: "license",
+    kind: "feature",
+    default: null,
     type: "string",
     rule: "The license's tier label.",
   },
   {
     key: "pkey.cloudSync.bytes",
+    service: "sync",
+    kind: "quantity",
+    default: PLATFORM_QUOTA_DEFAULT_BYTES,
     type: "integer",
     rule: "Not injected. A tier, a licence override or an add-on sets it, and Cloud Sync reads it from the anchor licence as the person's quota in bytes (256 MiB when unset).",
     injected: false,
   },
   {
     key: "pkey.cloudConnect.relayBytes",
+    service: "connect",
+    kind: "quantity",
+    default: PLATFORM_QUOTA_DEFAULT_BYTES,
     type: "integer",
     rule: "Not injected. A tier, a licence override or an add-on sets it, and Cloud Connect reads it from the anchor licence as the relay bytes a person may use per UTC day (256 MiB when unset, 16 MiB without a usable licence, clamped to 4 GiB).",
     injected: false,
   },
 ];
+
+/**
+ * The platform entitlements a product shows: the rows whose service is on. `license` is always
+ * on; `sync` and `connect` show only while listed in `enabledServices`.
+ */
+export function platformEntitlements(
+  enabledServices: Iterable<string>,
+): ReservedEntitlementKey[] {
+  const on = new Set<string>(enabledServices);
+  on.add("license");
+  return RESERVED_ENTITLEMENT_KEYS.filter((k) => on.has(k.service));
+}
 
 /** Prefixes reserved for future system keys. */
 export const RESERVED_ENTITLEMENT_PREFIXES = [

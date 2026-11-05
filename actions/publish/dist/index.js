@@ -16200,45 +16200,70 @@ function checkDisplayName(text3, opts = {}) {
   return reservedDisplayTerm(text3, opts.extraTerms) ? "reserved" : null;
 }
 var DEFAULT_RESERVED_NAMES_MODE = "warn";
+var PLATFORM_QUOTA_DEFAULT_BYTES = 256 * 1024 * 1024;
 var RESERVED_ENTITLEMENT_KEYS = [
   {
     key: "channels",
+    service: "license",
+    kind: "feature",
+    default: [],
     type: "string-array",
     rule: "The union of the tier's and the license's channels."
   },
   {
     key: "deviceLimit",
+    service: "license",
+    kind: "quantity",
+    default: null,
     type: "integer",
     rule: "The license's own device limit, else the tier's, else the license's deviceLimit entitlement, else the product default."
   },
   {
     key: "app.minVersion",
+    service: "license",
+    kind: "feature",
+    default: null,
     type: "string",
     rule: "The higher of the tier's and the license's minimum version: a license can narrow its tier's version window, never widen it."
   },
   {
     key: "app.maxVersion",
+    service: "license",
+    kind: "feature",
+    default: null,
     type: "string",
     rule: "The lower of the tier's and the license's maximum version: a license can narrow its tier's version window, never widen it."
   },
   {
     key: "license.tier",
+    service: "license",
+    kind: "feature",
+    default: null,
     type: "string",
     rule: "The license's tier id."
   },
   {
     key: "license.tierLabel",
+    service: "license",
+    kind: "feature",
+    default: null,
     type: "string",
     rule: "The license's tier label."
   },
   {
     key: "pkey.cloudSync.bytes",
+    service: "sync",
+    kind: "quantity",
+    default: PLATFORM_QUOTA_DEFAULT_BYTES,
     type: "integer",
     rule: "Not injected. A tier, a licence override or an add-on sets it, and Cloud Sync reads it from the anchor licence as the person's quota in bytes (256 MiB when unset).",
     injected: false
   },
   {
     key: "pkey.cloudConnect.relayBytes",
+    service: "connect",
+    kind: "quantity",
+    default: PLATFORM_QUOTA_DEFAULT_BYTES,
     type: "integer",
     rule: "Not injected. A tier, a licence override or an add-on sets it, and Cloud Connect reads it from the anchor licence as the relay bytes a person may use per UTC day (256 MiB when unset, 16 MiB without a usable licence, clamped to 4 GiB).",
     injected: false

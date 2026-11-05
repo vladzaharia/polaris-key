@@ -13,7 +13,7 @@
  *   - the `down` script copies back what the I-05 Worker created, so a rolled-back Worker sees it.
  */
 import Database from "better-sqlite3";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SqliteDb } from "../../../src/db/sqlite.js";
@@ -27,12 +27,11 @@ import { rekeyLegacyAccountLinks } from "../../../src/services/identity/accounts
 import { attachLicense } from "../../../src/services/identity/accounts/claim.js";
 import { disableAccount } from "../../../src/services/identity/accounts/deletion.js";
 import type { Env } from "../../../src/platform/env.js";
+import { MIGRATIONS_DIR, MIGRATION_FILES } from "../migrationFiles.js";
 import { TEST_ROOT as HERE } from "../../paths.js";
 
-const DIR = join(HERE, "..", "migrations");
-const FILES = readdirSync(DIR)
-  .filter((f) => f.endsWith(".sql"))
-  .sort();
+const DIR = MIGRATIONS_DIR;
+const FILES = MIGRATION_FILES;
 const BEFORE = FILES.filter((f) => f < "0068");
 const I05 = FILES.filter((f) => f.startsWith("0068_"));
 const AFTER = FILES.filter((f) => f > "0068_z");

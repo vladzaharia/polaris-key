@@ -12,19 +12,24 @@ permissions:
 # Only the canonical repo deploys (forks/PRs run CI but never deploy).
 jobs:
   # Everything that runs repository or dependency code beyond the
-  # deploy itself (dependency install scripts, test, lint, typecheck) runs HERE, on a job with
+  # deploy itself (the dependency install and the agent kit build) runs HERE, on a job with
   # no environment, no secrets and no id-token, so a compromised dependency or test cannot
   # reach CLOUDFLARE_API_TOKEN or mint a deploy-audience OIDC token. The tag/ancestry gate is
   # the first thing it checks, before any install or build.
   verify:
     name: Verify (unprivileged)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Up to 120 minutes of waiting for CI OK, then the install and the kit.
+    timeout-minutes: 150
     if: github.repository == 'vladzaharia/polaris-key'
     permissions:
       contents: read
-      # Reads the check runs recorded against the tagged commit ("Require green checks").
+      # Reads the CI workflow's runs and its "CI OK" check run on the tagged commit.
       checks: read
+      actions: read
+    outputs:
+      # "true" only after "Require CI OK" passed: the proof publish-sdks passes on as `tested`.
+      ci_ok: ${{ steps.ci.outputs.ok }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -48,122 +53,27 @@ jobs:
       # Ancestry proves only that the tagged commit is REACHABLE from main. It says nothing
       # about whether anything ran on it: a commit can land on main with CI red (an admin
       # merge, a check that was not yet required, a workflow that errored before reporting)
-      # and still pass the gate above. So also require every check run recorded against this
-      # exact SHA to be green.
+      # and still pass the gate above. So require the CI workflow's own "CI OK" check run on
+      # this exact SHA to have concluded success. CI is the one place the build, typecheck,
+      # tests and lint run; the deploy no longer repeats them (deploy-worker still builds the
+      # Worker it ships).
       #
-      # Fails CLOSED: zero check runs, or an API error reading them, is a failure, not a pass.
-      # Runs still in progress are polled for a bounded time (tagging right after the merge
-      # is normal), never forever. Like the checks above this lives in the tag's own tree, so
-      # it stops mistakes, not an actor who can write a tag (see "environment: production"
-      # below).
-      - name: Require green checks on the tagged commit
+      # tools/require-ci-ok.sh polls up to 120 minutes while CI is queued or in progress and
+      # fails CLOSED: any other conclusion, no CI OK check run from ci.yml, or an API error is a
+      # refusal. It reads the check run only through ci.yml's own push runs of this SHA (name AND
+      # workflow), so a job named "CI OK" in another workflow cannot satisfy it. Other workflows'
+      # check runs (Publish SDKs, native desktop, flatpak, feed closure) and advisory jobs do not
+      # gate the deploy. Like the checks above this lives in the tag's own tree, so it stops
+      # mistakes, not an actor who can write a tag (see "environment: production" below).
+      - name: Require CI OK on the tagged commit
+        id: ci
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
-          RUN_ID: ${{ github.run_id }}
         run: |
-          MAX_ATTEMPTS=30   # 30 x 30s = 15 minutes for in-progress runs to finish
-          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
-            # Exclude this workflow run's own check runs (verify, deploy, the called SDK
-            # publish): they are necessarily still in progress while this step executes.
-            # Actions check runs carry an html_url of the form
-            # .../actions/runs/<run_id>/job/<job_id>, so the current run is matched exactly by
-            # id and no job display name is duplicated here. RUN_ID is read through jq's $ENV
-            # rather than interpolated, so nothing is spliced into the program text.
-            # Capture through a variable, not process substitution: `gh` exits non-zero on an
-            # API error but writes the error BODY to stdout, so piping straight into mapfile
-            # would turn "the API was unreachable" into a nonsense check-run row. Test the
-            # exit status explicitly and fail with a distinguishable message.
-            if ! CHECKS_TSV=$(
-              gh api --paginate "repos/$REPO/commits/$SHA/check-runs?per_page=100" \
-                --jq '.check_runs[]
-                      | select(((.html_url // "") | contains("/actions/runs/" + $ENV.RUN_ID + "/")) | not)
-                      | [.name, .status, (.conclusion // "pending")]
-                      | @tsv'
-            ); then
-              echo "Refusing to deploy: could not read check runs for $SHA." >&2
-              echo "This is an API/permissions failure, not a red build. The job needs" >&2
-              echo "'checks: read'; see the permissions block above." >&2
-              exit 1
-            fi
-
-            # A here-string over an empty capture still yields one empty line, so filter.
-            ROWS=()
-            PENDING=0
-            while IFS= read -r LINE; do
-              [ -n "$LINE" ] || continue
-              ROWS+=("$LINE")
-              REST="${LINE#*$'\t'}"
-              [ "${REST%%$'\t'*}" = "completed" ] || PENDING=$((PENDING + 1))
-            done <<< "$CHECKS_TSV"
-
-            if [ "${#ROWS[@]}" -eq 0 ]; then
-              echo "Refusing to deploy: no check runs recorded against $SHA." >&2
-              echo "CI must have run on the tagged commit before it can be deployed." >&2
-              exit 1
-            fi
-            if [ "$PENDING" -eq 0 ]; then break; fi
-            if [ "$attempt" -eq "$MAX_ATTEMPTS" ]; then
-              echo "Refusing to deploy: $PENDING check run(s) on $SHA still not finished after 15 minutes." >&2
-              exit 1
-            fi
-            echo "$PENDING check run(s) still in progress (attempt $attempt/$MAX_ATTEMPTS) — retrying in 30s"
-            sleep 30
-          done
-
-          # Advisory lanes (owner decision 2026-10-26): a CI job declared `continue-on-error: true`
-          # at job level is allowed to fail in CI, so its failure does not block a deploy either.
-          # The list is read from this tag's own ci.yml (job display names, cut before a matrix
-          # expression suffix), never typed here, so a lane is advisory exactly while CI says so.
-          # Every other check still fails closed.
-          mapfile -t ADVISORY < <(python3 - .github/workflows/ci.yml <<'PY'
-          import re, sys
-          job = name = None; advisory = False; out = []
-          def flush():
-              if job and advisory and name: out.append(name)
-          for line in open(sys.argv[1], encoding="utf-8"):
-              m = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
-              if m:
-                  flush(); job, name, advisory = m.group(1), None, False; continue
-              m = re.match(r"^    name:\s*(.+?)\s*$", line)
-              if m and job: name = m.group(1).strip("'\"").split("$" + "{{")[0].rstrip(" (")
-              if re.match(r"^    continue-on-error:\s*true\s*$", line): advisory = True
-          flush()
-          print("\n".join(out))
-          PY
-          )
-
-          BAD=0
-          for ROW in "${ROWS[@]}"; do
-            NAME="${ROW%%$'\t'*}"
-            REST="${ROW#*$'\t'}"
-            STATUS="${REST%%$'\t'*}"
-            CONCLUSION="${REST##*$'\t'}"
-            case "$STATUS:$CONCLUSION" in
-              completed:success | completed:skipped | completed:neutral)
-                echo "  ok    $NAME ($CONCLUSION)"
-                ;;
-              *)
-                LANE=""
-                for A in "${ADVISORY[@]}"; do
-                  [ -n "$A" ] && [ "${NAME#"$A"}" != "$NAME" ] && LANE="$A"
-                done
-                if [ -n "$LANE" ] && [ "$STATUS" = "completed" ]; then
-                  echo "  advisory  $NAME ($CONCLUSION): allowed to fail (continue-on-error in ci.yml)"
-                else
-                  echo "  FAIL  $NAME (status=$STATUS conclusion=$CONCLUSION)" >&2
-                  BAD=1
-                fi
-                ;;
-            esac
-          done
-
-          if [ "$BAD" -ne 0 ]; then
-            echo "Refusing to deploy: CI is not green on $SHA." >&2
-            exit 1
-          fi
-          echo "All ${#ROWS[@]} check run(s) on $SHA are green."
+          tools/require-ci-ok.sh
+          echo "ok=true" >> "$GITHUB_OUTPUT"
       # No `version:` here — the action reads `packageManager` from package.json.
       # Specifying both makes v4 abort with "Multiple versions of pnpm specified",
       # which is why every CI run in this repo failed at step 2 until 2026-08-26.
@@ -172,25 +82,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      # The docs snippet lane compiles every Python block on a covered page against the SDK with
-      # mypy, so `pnpm test` needs the SDK's own venv with the same extras as ci.yml's JS/TS job
-      # (`qt`: the Qt kit page imports PySide6).
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.12"
-      - name: Python venv for the docs snippet lane
-        run: |
-          python -m venv sdks/python/.venv
-          sdks/python/.venv/bin/pip install -e "sdks/python[dev,qt]"
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - run: pnpm typecheck
-      # As in ci.yml's JS/TS job: the Swift, Kotlin and GDScript snippet lanes run in CI's own
-      # docs-snippets jobs on their toolchains; a runner's preinstalled JDK must not start them here.
-      - run: pnpm test
-        env:
-          PKEY_DOCS_SKIP_LANES: swift,kotlin,gdscript
-      - run: pnpm lint
       # AX-07.5: the agent kit, built and validated here (unprivileged: no environment, no
       # secrets) and handed to `agent-kit-release` as an artifact. The pinned Claude Code CLI is
       # the same pin as ci.yml's js job (tools/agent-kit-release.ts, PINNED_CLAUDE_CODE).
@@ -231,7 +123,7 @@ jobs:
     # written in this file, commit, and push that commit straight to `refs/tags/v9.9.9`. The
     # commit never appears on a branch or in a PR, and GitHub runs their edited workflow.
     #
-    # Therefore every check in this file (tag shape, ancestry, CI green on the tagged commit)
+    # Therefore every check in this file (tag shape, ancestry, CI OK on the tagged commit)
     # is ADVISORY: each stops a mistake, none stops an actor who can write a tag, because that
     # actor edits them out in the same commit they deploy.
     #
@@ -239,7 +131,7 @@ jobs:
     # SEE. CLOUDFLARE_API_TOKEN is an ENVIRONMENT secret on `production`, not a repository
     # secret. Deleting the line below does not unlock the deploy; it removes the credential
     # and wrangler fails with no token. The `production` environment's protection rules
-    # (required reviewers, and a deployment tag policy of `v*`) live in repository settings,
+    # (a deployment tag policy of `v*`, and the environment-scoped token) live in repository settings,
     # out of reach of anything in this tree.
     #
     # If CLOUDFLARE_API_TOKEN is ever recreated as a *repository* secret, this line becomes
@@ -265,8 +157,8 @@ jobs:
           node-version: 22
           cache: pnpm
       # No dependency lifecycle script runs beside CLOUDFLARE_API_TOKEN and the
-      # id-token (as sync-worker-secrets.yml). The build below is repository code; test, lint
-      # and typecheck already passed in `verify`.
+      # id-token (as sync-worker-secrets.yml). The build below is repository code; the full CI
+      # (build, typecheck, test, lint) passed on this SHA, which `verify` proved.
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm build
       - name: Select target
@@ -608,11 +500,16 @@ jobs:
   # above). Pushes to main publish their prereleases from publish-sdks.yml directly.
   publish-sdks:
     name: Publish SDKs
-    needs: deploy-worker
+    needs: [verify, deploy-worker]
     permissions:
       contents: read
       id-token: write
     uses: ./.github/workflows/publish-sdks.yml
+    with:
+      # CI OK was proven green on this exact SHA by `verify`, so the SDK suites CI already ran
+      # (Swift, Godot, Kotlin, the public npm packages, Python) are not repeated: the publish
+      # keeps pack, build, publish and drift. Never a literal `true`: it is the proof, not a flag.
+      tested: ${{ needs.verify.outputs.ci_ok == 'true' }}
     # Required for the `package-registry` environment's secrets (the Swift signing key, cert and
     # chain) to reach publish-sdks.yml's swift-sign job: that job declares the environment, but a
     # called workflow resolves `secrets.*` only from what its caller passes, and without this line

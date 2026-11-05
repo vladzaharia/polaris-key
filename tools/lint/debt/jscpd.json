@@ -3528,7 +3528,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/test/core/migrations/accountsMigration.test.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 2
     },
     "packages/worker/test/core/migrations/ciTokensHintMigration.test.ts": {
       "jscpd:duplicate": 9
@@ -3568,9 +3568,6 @@
     },
     "packages/worker/test/core/outletCredentialReach.test.ts": {
       "jscpd:duplicate": 3
-    },
-    "packages/worker/test/core/packageMigrations.test.ts": {
-      "jscpd:duplicate": 1
     },
     "packages/worker/test/core/provisionedSecretsPlan.test.ts": {
       "jscpd:duplicate": 1
@@ -4830,9 +4827,6 @@
       "jscpd:duplicate": 1
     },
     "tools/ci-scope.mjs": {
-      "jscpd:duplicate": 1
-    },
-    "tools/ci-scope.test.ts": {
       "jscpd:duplicate": 1
     },
     "tools/corpus/bundle.ts": {
