@@ -262,14 +262,14 @@ internal fun ConnectStep(
     end: ConnectEnd? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val fontScale = LocalDensity.current.fontScale
+    val textScale = LocalDensity.current.fontScale
     // No `actions` slot in a column: they would dock below the scroll, and Codes match must not be on screen before the categories.
     PolarisScaffold(
         modifier = modifier,
         anchor = PolarisAnchor.Top,
         contentAlign = TextAlign.Start,
-        paneDetail = { window -> if (window.connectPanes(fontScale)) end?.detail else null },
-        paneActions = { window -> if (window.connectPanes(fontScale)) end?.actions else null },
+        paneDetail = { window -> if (window.connectPanes(textScale)) end?.detail else null },
+        paneActions = { window -> if (window.connectPanes(textScale)) end?.actions else null },
     ) {
         PolarisProductHeader()
         if (badge != null) {
@@ -280,7 +280,7 @@ internal fun ConnectStep(
         PolarisTitle(title, key = state)
         content()
         val window = polarisWindow
-        if (end != null && !window.connectPanes(fontScale)) {
+        if (end != null && !window.connectPanes(textScale)) {
             if (end.detail != null) {
                 Spacer(Modifier.height(PolarisSpace.medium))
                 end.detail.invoke(this)
