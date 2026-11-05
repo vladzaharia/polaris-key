@@ -17,7 +17,7 @@
  */
 
 import {
-  MAX_ACCESS_RULES,
+  rulesListProblem,
   MAX_RULE_LABEL,
   matches,
   parseClaimMatcher,
@@ -88,12 +88,11 @@ export function parseAccessPolicy(value: unknown): PolicyParse {
   if (mode !== "rules") return { ok: false, reason: "mode is unknown" };
   const bad = unknownKey(value, [...common, "rules"]);
   if (bad) return { ok: false, reason: `unknown key: ${bad}` };
-  if (!Array.isArray(value.rules))
-    return { ok: false, reason: "rules must be a list" };
-  if (value.rules.length > MAX_ACCESS_RULES)
-    return { ok: false, reason: `at most ${MAX_ACCESS_RULES} rules` };
+  const listProblem = rulesListProblem(value.rules);
+  if (listProblem) return { ok: false, reason: listProblem };
+  const list = value.rules as unknown[];
   const rules: AccessPolicyRule[] = [];
-  for (const [i, raw] of value.rules.entries()) {
+  for (const [i, raw] of list.entries()) {
     const at = `rules[${i}]`;
     if (!isObject(raw)) return { ok: false, reason: `${at} must be an object` };
     const k = unknownKey(raw, ["when", "target", "label"]);

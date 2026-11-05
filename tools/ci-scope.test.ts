@@ -74,6 +74,25 @@ const on = (files: string[] | null) =>
     .filter(([, v]) => v)
     .map(([k]) => k);
 
+/** A nightly advisory job never fails the run and CI OK does not wait for it. */
+const expectAdvisory = (name: string) => {
+  expect(nightly.jobs[name]!["continue-on-error"]).toBe(true);
+  expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).not.toContain(name);
+};
+
+/** Every lane on, and every matrix in its full shape. */
+const expectFullMatrices = (
+  out: Record<string, string>,
+  lanes: string[] = Object.keys(scope.lanes),
+) => {
+  for (const lane of lanes) expect(out[lane], lane).toBe("true");
+  expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(17);
+  expect(JSON.parse(out["kotlin-desktop-matrix"]!).os).toHaveLength(3);
+  expect(JSON.parse(out["kotlin-emulator-matrix"]!)["api-level"]).toEqual([
+    24, 34, 36,
+  ]);
+};
+
 const temps: string[] = [];
 afterEach(() => {
   for (const t of temps.splice(0)) rmSync(t, { recursive: true, force: true });
@@ -269,17 +288,11 @@ describe("the changes job outputs", () => {
     // Exactly what a push to main gets: every lane, every matrix in its full shape.
     expect(out).toEqual(ciOutputs(scope, { event: "push", files: null }));
     expect(out.full).toBe("true");
-    for (const lane of Object.keys(scope.lanes))
-      expect(out[lane], lane).toBe("true");
     expect(JSON.parse(out["python-matrix"]!).include).toContainEqual({
       os: "macos-15",
       python: "3.12",
     });
-    expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(17);
-    expect(JSON.parse(out["kotlin-desktop-matrix"]!).os).toHaveLength(3);
-    expect(JSON.parse(out["kotlin-emulator-matrix"]!)["api-level"]).toEqual([
-      24, 34, 36,
-    ]);
+    expectFullMatrices(out);
   });
 
   it("emits the Godot legs a runner can tell apart: unique names, and the UI matrix legs with their path and shard range", () => {
@@ -426,14 +439,8 @@ describe("the ci-scope command", () => {
       expect(run.status, run.stderr).toBe(0);
       const out = outputsOf(run.stdout);
       expect(out.full).toBe("true");
-      for (const lane of Object.keys(scope.lanes))
-        expect(out[lane], lane).toBe("true");
       expect(JSON.parse(out["python-matrix"]!).include).toHaveLength(3);
-      expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(17);
-      expect(JSON.parse(out["kotlin-desktop-matrix"]!).os).toHaveLength(3);
-      expect(JSON.parse(out["kotlin-emulator-matrix"]!)["api-level"]).toEqual([
-        24, 34, 36,
-      ]);
+      expectFullMatrices(out);
     },
   );
 
@@ -678,8 +685,7 @@ describe("nightly-advisory.yml builds the Swift SDK on Linux", () => {
   const job = nightly.jobs["swift-linux"]!;
 
   it("is advisory, nightly, and not a CI OK dependency; the lane stays in the scope map", () => {
-    expect(job["continue-on-error"]).toBe(true);
-    expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).not.toContain("swift-linux");
+    expectAdvisory("swift-linux");
     expect(on(["sdks/swift/Sources/PolarisKeyCore/Transport.swift"])).toContain(
       "swift-linux",
     );
@@ -701,9 +707,8 @@ describe("nightly-advisory.yml renders the SwiftUI kit on the Mac", () => {
   const steps = JSON.stringify(job.steps ?? []);
 
   it("is advisory, nightly, and not a CI OK dependency; the lane stays in the scope map", () => {
-    expect(job["continue-on-error"]).toBe(true);
     // Non-blocking until the first baselines are committed (UK-08.8).
-    expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).not.toContain("swiftui-mac");
+    expectAdvisory("swiftui-mac");
     expect(on(["examples/ui/swiftui/run.sh"])).toContain("swiftui-mac");
     expect(
       on(["sdks/swift/Sources/PolarisKeyUpdateUI/Driver.swift"]),
@@ -736,10 +741,7 @@ describe("nightly-advisory.yml runs the Compose desktop kit lane", () => {
   const steps = JSON.stringify(job.steps ?? []);
 
   it("is advisory, nightly, and not a CI OK dependency; the lane stays in the scope map", () => {
-    expect(job["continue-on-error"]).toBe(true);
-    expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).not.toContain(
-      "compose-desktop",
-    );
+    expectAdvisory("compose-desktop");
     expect(ci.jobs["compose-desktop"]).toBeUndefined();
     expect(on(["examples/ui/compose-desktop/build.gradle.kts"])).toContain(
       "compose-desktop",

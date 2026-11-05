@@ -1,15 +1,14 @@
 // LX-41.1 (plans/LX-41.md §6.1): the duration columns and their vocabulary triggers, applied to a
 // populated pre-migration database. Nothing reads the columns yet; this pins the schema.
+import { MIGRATIONS_DIR, MIGRATION_FILES } from "./migrationFiles.js";
 import Database from "better-sqlite3";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { TEST_ROOT as HERE } from "../paths.js";
 
-const DIR = join(HERE, "..", "migrations");
-const FILES = readdirSync(DIR)
-  .filter((f) => f.endsWith(".sql"))
-  .sort();
+const DIR = MIGRATIONS_DIR;
+const FILES = MIGRATION_FILES;
 const MINE = FILES.filter((f) =>
   /^\d+_[abce]_(tiers_on_expiry|licenses_on_expiry|licenses_fallback_version|duration_vocabulary)\.sql$/.test(
     f,
