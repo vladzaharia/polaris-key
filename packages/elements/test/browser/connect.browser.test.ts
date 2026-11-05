@@ -13,10 +13,11 @@ import { commands, page } from "vitest/browser";
 
 import type { UiInput } from "@polaris-key/ui-core";
 import matrixJson from "../../../../conformance/corpus/v2/ui-matrix.json" with { type: "json" };
-import { TAGS, type PkElement } from "../../src/index.js";
-import { axeViolations, fixtureTheme } from "./support.js";
+import { PolarisKey, TAGS, type PkElement } from "../../src/index.js";
+import { axeViolations } from "./support.js";
 
 declare const __PKEY_KIT_SHOTS__: string;
+declare const __PKEY_KIT_BASELINES__: string;
 declare const __PKEY_FONTS__: string;
 
 interface Row {
@@ -41,6 +42,7 @@ const SCENES = ROWS.filter(
 const SIZES = [
   { label: "390x844", width: 390, height: 844, rootPx: 16 },
   { label: "844x390", width: 844, height: 390, rootPx: 16 },
+  { label: "640x360", width: 640, height: 360, rootPx: 16 },
   { label: "1440x900", width: 1440, height: 900, rootPx: 16 },
   { label: "390x844@200", width: 390, height: 844, rootPx: 32 },
 ] as const;
@@ -51,7 +53,18 @@ const shoot = (file: string): Promise<void> =>
 const nextFrame = () =>
   new Promise<void>((done) => requestAnimationFrame(() => done()));
 
-beforeAll(() => fixtureTheme(__PKEY_FONTS__));
+// The product the React twin draws, so the two kits' renders compare pixel for pixel.
+beforeAll(() => {
+  PolarisKey.fonts(__PKEY_FONTS__);
+  PolarisKey.theme({
+    product: {
+      name: "Tidewater",
+      developer: "Lumen Games",
+      accent: "#369186",
+    },
+  });
+  document.body.style.margin = "0";
+});
 afterEach(() => {
   document.body.replaceChildren();
   document.documentElement.style.fontSize = "";
@@ -156,6 +169,266 @@ describe("the connect screens at the §7.1 rows", () => {
             );
         });
       }
+});
+
+// UI-KITS "LinkPairing and TransferOffer": two panes in a window at least 600 px wide and under
+// 480 tall at 1x text, and on a TV; one column at 200 % text and in portrait. The decisions sit in
+// the first viewport, and the reading order is still start pane, then end pane.
+describe("two panes in a short landscape window and on a TV", () => {
+  const TV = {
+    os: "android",
+    formFactor: "tv",
+  } as unknown as UiInput["platform"];
+  const SPLIT = SCENES.filter(
+    (r) =>
+      (r.expect.component === "LinkPairing" &&
+        (r.expect.state === "code" || r.expect.state === "confirm")) ||
+      (r.expect.component === "TransferOffer" && r.expect.state === "ask"),
+  );
+  const CASES = [
+    {
+      label: "844x390",
+      width: 844,
+      height: 390,
+      rootPx: 16,
+      tv: false,
+      two: true,
+    },
+    {
+      label: "640x360",
+      width: 640,
+      height: 360,
+      rootPx: 16,
+      tv: false,
+      two: true,
+    },
+    {
+      label: "960x540 TV",
+      width: 960,
+      height: 540,
+      rootPx: 16,
+      tv: true,
+      two: true,
+    },
+    {
+      label: "1024x600 not short",
+      width: 1024,
+      height: 600,
+      rootPx: 16,
+      tv: false,
+      two: false,
+    },
+    {
+      label: "390x844 portrait",
+      width: 390,
+      height: 844,
+      rootPx: 16,
+      tv: false,
+      two: false,
+    },
+    {
+      label: "844x390@200",
+      width: 844,
+      height: 390,
+      rootPx: 32,
+      tv: false,
+      two: false,
+    },
+    {
+      label: "960x540 TV@200",
+      width: 960,
+      height: 540,
+      rootPx: 32,
+      tv: true,
+      two: true,
+    },
+  ];
+  for (const row of SPLIT)
+    for (const c of CASES)
+      for (const scheme of ["dark", "light"] as const)
+        it(`${row.expect.component}.${row.expect.state} ${c.label} ${scheme}`, async () => {
+          await page.viewport(c.width, c.height);
+          const r = c.tv
+            ? ({ ...row, input: { ...row.input, platform: TV } } as Row)
+            : row;
+          const el = await mount(r, scheme, c.rootPx);
+          const kit = el.shadowRoot!.querySelector<HTMLElement>(".pk-root")!;
+          const box = (sel: string) =>
+            kit.querySelector<HTMLElement>(sel)!.getBoundingClientRect();
+          const start = box(
+            row.expect.component === "LinkPairing"
+              ? ".pair-code"
+              : ".pair-offer",
+          );
+          const end = box(".btn");
+          if (c.two) {
+            expect(end.left, "the actions are in the end pane").toBeGreaterThan(
+              start.right - 1,
+            );
+            const first = kit.querySelector<HTMLElement>(
+              ".card > :not(.split):not(.shimmer)",
+            )!;
+            const endFirst = kit.querySelector<HTMLElement>(
+              row.expect.component === "LinkPairing"
+                ? ".pair-reported"
+                : ".actions",
+            )!;
+            expect(
+              Math.abs(
+                endFirst.getBoundingClientRect().top -
+                  first.getBoundingClientRect().top,
+              ),
+              "both panes start at the top",
+            ).toBeLessThan(2);
+          } else expect(end.left, "one column").toBeLessThan(start.right);
+          if (c.two) {
+            const actions = [
+              ...kit.querySelectorAll<HTMLElement>(".btn"),
+            ].filter(visible);
+            expect(actions.length).toBeGreaterThan(0);
+            const pane = kit.querySelector<HTMLElement>(
+              ".pair-end, .card > .actions",
+            )!;
+            const fit = c.rootPx === 16;
+            for (const b of actions) {
+              const br = b.getBoundingClientRect();
+              expect(br.width, "a decision is as wide as its pane").toBeCloseTo(
+                pane.getBoundingClientRect().width,
+                0,
+              );
+              if (!fit) continue;
+              expect(
+                br.top,
+                "an action is above the first viewport",
+              ).toBeGreaterThanOrEqual(-0.5);
+              expect(
+                br.bottom,
+                "an action is below the first viewport",
+              ).toBeLessThanOrEqual(innerHeight + 0.5);
+            }
+            // Stacked, the primary first in the DOM and on top.
+            const tops = actions.map((b) => b.getBoundingClientRect().top);
+            expect(tops, "stacked, in DOM order").toEqual(
+              [...tops].sort((a, b) => a - b),
+            );
+            if (actions.some((b) => b.dataset["variant"] === "primary"))
+              expect(
+                actions[0]!.dataset["variant"],
+                "the primary is first",
+              ).toBe("primary");
+            const cats = kit.querySelector(".pair-cats");
+            const confirm = kit.querySelector(
+              '[data-key="linkPairing.confirm"]',
+            );
+            if (cats && confirm)
+              expect(
+                cats.compareDocumentPosition(confirm) &
+                  Node.DOCUMENT_POSITION_FOLLOWING,
+                "the categories come before Codes match",
+              ).toBeTruthy();
+            expect(
+              document.documentElement.scrollWidth,
+              "sideways scroll",
+            ).toBeLessThanOrEqual(document.documentElement.clientWidth + 1);
+            if (fit)
+              expect(kit.getBoundingClientRect().height).toBeLessThanOrEqual(
+                innerHeight + 1,
+              );
+          }
+          // The cross-renderer baselines (ui:report diffs them against React's).
+          const baseline = { "844x390": "844", "960x540 TV": "960tv" }[c.label];
+          if (__PKEY_KIT_BASELINES__ && baseline)
+            await shoot(
+              `${__PKEY_KIT_BASELINES__}/${row.expect.component}.${row.expect.state}/${baseline}-${scheme}.png`,
+            );
+          if (__PKEY_KIT_SHOTS__)
+            await shoot(
+              `${__PKEY_KIT_SHOTS__}/elements.panes.${row.expect.component}.${row.expect.state}/${c.label.replace(/ /g, "_")}-${scheme}.png`,
+            );
+        });
+});
+
+describe("a tall card and a TV at large text", () => {
+  const TV = {
+    os: "android",
+    formFactor: "tv",
+  } as unknown as UiInput["platform"];
+  it("a card taller than the window starts at the top edge and the window scrolls", async () => {
+    const base = SCENES.find(
+      (s) => s.expect.component === "TransferOffer" && s.expect.state === "ask",
+    )!;
+    const row: Row = {
+      ...base,
+      input: {
+        ...base.input,
+        transferOffer: {
+          ...base.input.transferOffer!,
+          device:
+            "Maya's very long named travelling laptop in the spare room upstairs",
+        },
+      } as UiInput,
+    };
+    for (const scheme of ["dark", "light"] as const)
+      for (const [w, h] of [
+        [640, 360],
+        [844, 390],
+      ] as const) {
+        await page.viewport(w, h);
+        const el = await mount(row, scheme, 16);
+        const kit = el.shadowRoot!.querySelector<HTMLElement>(".pk-root")!;
+        const card = kit.querySelector(".card")!.getBoundingClientRect();
+        const accept = kit
+          .querySelector('[data-key="transferOffer.accept"]')!
+          .getBoundingClientRect();
+        // Document coordinates: focus on the heading may have scrolled the window.
+        expect(card.top + scrollY, `${w}x${h} card top`).toBeGreaterThanOrEqual(
+          -0.5,
+        );
+        expect(
+          accept.top + scrollY,
+          `${w}x${h} Accept top`,
+        ).toBeGreaterThanOrEqual(-0.5);
+        expect(
+          accept.bottom + scrollY,
+          `${w}x${h} Accept is reachable by scrolling`,
+        ).toBeLessThanOrEqual(document.documentElement.scrollHeight + 0.5);
+      }
+  });
+
+  for (const [component, state] of [
+    ["LinkPairing", "code"],
+    ["LinkPairing", "confirm"],
+    ["TransferOffer", "ask"],
+  ] as const)
+    it(`${component}.${state} on a TV at 200 % text: two panes inside the title-safe area`, async () => {
+      await page.viewport(960, 540);
+      const base = SCENES.find(
+        (s) => s.expect.component === component && s.expect.state === state,
+      )!;
+      const el = await mount(
+        { ...base, input: { ...base.input, platform: TV } } as Row,
+        "dark",
+        32,
+      );
+      const kit = el.shadowRoot!.querySelector<HTMLElement>(".pk-root")!;
+      const cols = getComputedStyle(kit.querySelector(".card")!)
+        .gridTemplateColumns.split(" ")
+        .filter(Boolean);
+      expect(cols.length, "two columns").toBe(2);
+      const sh = document.documentElement.scrollHeight;
+      for (const t of [
+        kit.querySelector(".pair-code, .pair-offer")!,
+        kit.querySelector(".btn")!,
+      ]) {
+        const b = t.getBoundingClientRect();
+        expect(b.top + scrollY, "above the top edge").toBeGreaterThanOrEqual(
+          0.5,
+        );
+        expect(b.bottom + scrollY, "unreachable").toBeLessThanOrEqual(sh + 0.5);
+        expect(b.left, "in overscan").toBeGreaterThanOrEqual(960 * 0.05 - 0.5);
+        expect(b.right, "in overscan").toBeLessThanOrEqual(960 * 0.95 + 0.5);
+      }
+    });
 });
 
 describe("the code step keeps what is shared above Codes match", () => {

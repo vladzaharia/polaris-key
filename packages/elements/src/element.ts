@@ -10,6 +10,7 @@ import {
   CONNECT_MODELS,
   connectEscape,
   focusOnMount,
+  platformClass,
   HOLDER_MODELS,
   renewTarget,
   ViewModel,
@@ -781,6 +782,9 @@ export abstract class PkElement extends LitElement {
         data-motion=${r.theme.motion}
         data-shape=${this.shape}
         ?data-tight=${this.tight}
+        ?data-tv=${["tv", "console"].includes(
+          platformClass(this.input.platform ?? null),
+        )}
         ?data-fill=${this.fill || this.fillsWindow(view.state)}
         data-pk-platform=${platformVariant(r.theme)}
         ?data-keyboard=${keyboard}
