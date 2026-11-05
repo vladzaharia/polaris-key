@@ -37,7 +37,7 @@ The SDK reads the answer from discovery (`services.connect.interAccount`) and ca
 
 Start `cloudConnect` first. Both people open the pairing window; it closes by itself after `seconds` (at most 300) and once a pairing is made. Pairing runs on the local network only.
 
-`categories` is the list of data categories your app asks both people to approve (at most 8, each `a-z`, `0-9` and `-`, 1 to 32 characters). Show it next to the code, so each person sees what they approve before confirming. The pairing keeps the categories both sides listed. A [Direct Transfer](/docs/features/cloud-connect/transfer/) to a paired device is refused outside them.
+`categories` is the list of data categories your app asks both people to approve (at most 8, each `a-z`, `0-9` and `-`, 1 to 32 characters). Show it next to the code, so each person sees what they approve before confirming; the [LinkPairing](/docs/build/ui/components/link-pairing/) screen does. The pairing keeps the categories both sides listed. A [Direct Transfer](/docs/features/cloud-connect/transfer/) to a paired device is refused outside them.
 
 ```ts
 const pairing = await client.cloudConnect.links.pair({

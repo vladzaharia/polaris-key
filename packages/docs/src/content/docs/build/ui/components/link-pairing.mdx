@@ -1,0 +1,169 @@
+---
+title: "LinkPairing"
+description: "Two people pair their devices once, in person: both screens show one code, they compare it, see what each shares, and confirm."
+type: "reference"
+lanes: ["kit"]
+lastReviewed: "2026-11-04"
+sidebar:
+  order: 35
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
+import StatesToHandle from "../../../../../components/docs/StatesToHandle.astro";
+
+The screen behind **Pair with Someone Nearby**. Both people open it on the same network; each screen shows the same code and the categories of data this app asks both to approve. They compare the codes, then each confirms. The other device's name is shown as that device reported it. [Pairing](/docs/features/cloud-connect/pairing/) has the gates, the limits and the calls behind it.
+
+Nothing on the screen confirms by default: focus rests on the heading, so Enter on arrival never confirms a code nobody compared. Escape declines a code and cancels a window.
+
+## States and copy
+
+<ComponentStates component="LinkPairing" />
+
+## States to handle
+
+An app that draws its own screen shows each of these.
+
+<StatesToHandle
+  states={[
+    { state: "Declined", copyKey: "linkPairing.failedDeclined" },
+    { state: "Timed out", copyKey: "linkPairing.failedTimeout" },
+    { state: "Full", copyKey: "linkPairing.failedFull" },
+    { state: "Closed", copyKey: "linkPairing.failedClosed" },
+    {
+      state: "Pairing is off",
+      copyKey: "core.codes.connect_links_disabled.message",
+      helpId: "connect_links_disabled",
+    },
+  ]}
+/>
+
+Pairing is off when the SDK throws `connect_links_disabled`; Done leaves. When the window is full, Done leads and Try again is not offered first.
+
+## Baselines
+
+<KitBaselines component="LinkPairing" />
+
+## In each kit
+
+<Tabs syncKey="ui-kit">
+  <TabItem label="React">
+    <KitStatus kit="react" />
+
+    **Drop-in.** `<LinkPairing driver={linkPairingDriver(client.cloudConnect.links)} categories={[...]} />` from `@polaris-key/react/kit`. It opens the window on mount and closes it, declining any code on screen, on unmount.
+
+    **Styled part.** The same component. `categoryLabels` names each category by id, `label` names this device to the other, `seconds` sets the window (at most 300). `onLinked` runs once when a link was made; `onClose` runs for Done, Cancel and Escape. Without `driver` it draws `input.linkPairing` and you do the rest.
+
+    **Headless.** `useLinkPairing({ driver, categories, label, seconds })` returns `{ view, input, snapshot, start, confirmMatch, declineMatch, cancel }`.
+
+    ```tsx
+    import { LinkPairing, linkPairingDriver, type LinksLike } from "@polaris-key/react/kit";
+
+    export function PairNearby(props: { links: LinksLike; onClose: () => void }) {
+      return (
+        <LinkPairing
+          driver={linkPairingDriver(props.links)}
+          categories={["contacts"]}
+          categoryLabels={{ contacts: "Your contacts" }}
+          label="Maya's laptop"
+          onClose={props.onClose}
+        />
+      );
+    }
+    ```
+
+    [React](/docs/build/ui/frameworks/react/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Web components">
+    <KitStatus kit="elements" />
+
+    **Drop-in.** `<pk-link-pairing>` given a `driver` property. The browser runtime has no pairing, so a desktop host supplies the driver over its bridge.
+
+    **Styled part.** The same element, with `categories`, `categoryLabels`, `label` and `seconds`. It reports `pk-linked` when a link was made and `pk-close` for Done, Cancel and Escape. Without `driver` it draws `input.linkPairing` and reports `pk-action`.
+
+    **Headless.** `viewOf("LinkPairing", input)` from `@polaris-key/elements/headless`. The state machine is `LinkPairingModel` in `@polaris-key/ui-core`.
+
+    ```html
+    <pk-link-pairing id="pair"></pk-link-pairing>
+    <script type="module">
+      const el = document.getElementById("pair");
+      el.categories = ["contacts"];
+      el.driver = {
+        pair: (options) => host.pair(options),
+        isUnavailable: (e) => e?.code === "connect_links_disabled",
+      };
+      el.addEventListener("pk-linked", () => showPaired());
+      el.addEventListener("pk-close", () => el.remove());
+    </script>
+    ```
+
+    [Web components](/docs/build/ui/frameworks/elements/) has the theme and the sample.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** `PolarisLinkPairing(state)`: the window opens when it enters the composition and closes, declining any code on screen, when it leaves.
+
+    **Styled part.** `PolarisLinkPairingScreen`, stateless, over `KitStates.resolve(KitComponent.linkPairing, inputs)` and your own callbacks. `categoryLabels` names each category by id; `onLinked` runs once when a link was made; `onClose` runs for Cancel, Done and Back.
+
+    **Headless.** `PolarisLinkPairingState(client.linkPairingActions(), categories, label, seconds, scope)` in `polaris-key-ui-core`; its `ui` flow holds the step, the code and the categories.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.remember
+    import androidx.compose.runtime.rememberCoroutineScope
+    import im.plrs.key.sdk.PolarisKeyClient
+    import im.plrs.key.ui.PolarisLinkPairing
+    import im.plrs.key.ui.PolarisLinkPairingState
+    import im.plrs.key.ui.linkPairingActions
+
+    @Composable
+    fun PairNearby(client: PolarisKeyClient, onClose: () -> Unit) {
+        val scope = rememberCoroutineScope()
+        val state = remember(client) {
+            PolarisLinkPairingState(client.linkPairingActions(), categories = listOf("contacts"), scope = scope)
+        }
+        PolarisLinkPairing(state, categoryLabels = mapOf("contacts" to "Your contacts"), onClose = onClose)
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the desktop windows.
+
+  </TabItem>
+  <TabItem label="SwiftUI">
+    <KitStatus kit="swiftui" />
+
+    **Drop-in.** `LinkPairingView(model:)` over `LinkPairingModel`. The model opens the window on `start()`; the view cancels it when it disappears, so a swipe-down never leaves it open for the other person.
+
+    **Styled part.** `LinkPairingView(model:categoryLabels:)`, from `PolarisKeyUI`. `onLinked` runs once when a link was made; `onClose` runs when Done or Cancel ends the screen.
+
+    **Headless.** `LinkPairingModel(driver:categories:label:seconds:)` and `KitStates.linkPairing(_:)`, from `PolarisKeyUICore`. `LinkPairingDriver.links(_:)` binds it to `client.cloudConnect.links`.
+
+    ```swift
+    import PolarisKey
+    import PolarisKeyUI
+    import PolarisKeyUICore
+    import SwiftUI
+
+    @MainActor
+    func pairNearby(client: PolarisKeyClient, close: @escaping @MainActor () -> Void) -> some View {
+        let model = LinkPairingModel(
+            driver: .links(client.cloudConnect.links),
+            categories: ["contacts"],
+            label: "Maya's laptop")
+        model.onClose = close
+        return LinkPairingView(model: model, categoryLabels: ["contacts": "Your contacts"])
+            .task { await model.start() }
+    }
+    ```
+
+    [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme and the restyle hooks.
+
+  </TabItem>
+</Tabs>
+
+The Godot kit has no tab yet: the addon's `PolarisKey.cloud_connect.links` has no screen.

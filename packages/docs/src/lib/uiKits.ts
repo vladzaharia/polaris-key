@@ -285,8 +285,4 @@ export const COMPONENTS_NOT_BUILT: readonly string[] = [
   "UnlockSync",
   "RecoveryCode",
   "RingChange",
-  // Inter-account links and direct-transfer offers (CC-19.9); the React kit draws them first, the
-  // native kits follow with their own packages.
-  "LinkPairing",
-  "TransferOffer",
 ];
