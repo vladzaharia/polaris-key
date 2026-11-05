@@ -1208,13 +1208,18 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 
 # ── The save screens bound to the saves (K.5T) ──────────────────────────────────────────────
 
-static func _conflict_row(id: String, deleted := false, both := true) -> Dictionary:
-	return {"id": id, "local": {"metadata": {"level": 4}, "size": 12}, "server_version": 3, "both_available": both,
-		"remote": null if deleted else {"id": id, "version": 3, "metadata": {}}}
-
-
-static func _conflict_outcome(id: String, deleted := false, both := true) -> Dictionary:
-	return {"state": "conflict", "conflict": _conflict_row(id, deleted, both)}
+## An open save request (S1) as a write that lost its compare-and-set leaves it: this device's copy is held in
+## memory, the other is `deleted` or the server's version 3. `both` says a slot of the 16 is free.
+static func _open_request(saves: PKeySaves, id: String, deleted := false, both := true) -> PKeyMergeRequest:
+	var remote: Variant = null
+	if not deleted:
+		remote = {"id": id, "version": 3, "metadata": {"savedAt": 1760000000000, "deviceLabel": "Deck"}, "file": null, "newer_format": false}
+	var request: PKeyMergeRequest = saves._open_slot({
+		"id": id, "metadata": {"level": 4, "savedAt": 1760003600000}, "bytes": PackedByteArray([1, 2, 3]), "opts": {}, "base": 1,
+		"remote": remote, "remote_version": "*" if deleted else 3, "slots_free": both,
+	}, null if deleted else 3)
+	saves.changed.emit()
+	return request
 
 
 func _saves() -> PKeySaves:
@@ -1286,7 +1291,7 @@ func _saves_binding(t: PKeyTestContext) -> void:
 	await (again[0] as PKeyTransfer).wait()
 	await _frames()
 	# A conflict: the strip offers Review, and Review opens the bound screen.
-	saves._tracked(PKeyTransfer.settled("saves:slot1", _conflict_outcome("slot1")))
+	var slot1 := _open_request(saves, "slot1")
 	await _frames()
 	t.check("saves binding: a conflict is the strip's conflict with Review", strip.state == "conflict" and strip.can_review and saves.conflicts().size() == 1)
 	strip._action.pressed.emit()
@@ -1294,28 +1299,35 @@ func _saves_binding(t: PKeyTestContext) -> void:
 	var screen: PKeySaveConflict = _find(PKeySaveConflict)
 	var bound: bool = screen != null and screen.host != null and screen.visible
 	t.check("saves binding: Review opens SaveConflict, bound, on the choose step", bound and screen.step == "choose" and screen.both_available and not screen.remote_deleted)
+	t.check(
+			"saves binding: the screen takes the dates, the device and which is newer from the request",
+			screen.remote_device == "Deck" and screen.local_when != "" and screen.remote_when != "" and screen.local_when != screen.remote_when and screen.newer == "local",
+			"%s | %s | %s" % [screen.local_when, screen.remote_when, screen.newer]
+	)
 	if screen == null:
 		_free_strip(strip)
 		_free_node(sdk)
 		return
 	var b := _buttons(screen)
 	t.check("saves binding: nothing is the default on the bound screen", b.has("KeepThis") and b.has("KeepOther") and b.has("Cancel") and screen._initial_focus() == b["Cancel"])
-	# Keep this version with no local copy handed in: it fails and nothing is written.
-	(b["KeepThis"] as Button).pressed.emit()
-	await _frames(4)
-	t.check("saves binding: keep this version with no local copy fails and says so", screen.step == "failed" and screen.keep == "local" and saves.transfers().is_empty())
-	# The game's one line; Try again repeats the choice with the bytes it hands in.
-	var asked: Array = []
+	# Keep this version: the SDK holds the local copy, so nothing is asked of the game. Here the write cannot run
+	# (the typed unsupported refusal): the choice fails, the request reopens with the failure, nothing is written.
 	var host := PKeySaveScreensHost.of(sdk)
-	host.local_copy = func(c: Dictionary) -> PackedByteArray:
-		asked.append(c["id"])
-		return PackedByteArray([1, 2, 3])
+	(b["KeepThis"] as Button).pressed.emit()
+	await _frames(6)
+	t.check(
+			"saves binding: keep this version that cannot be applied fails, says so and leaves the request open",
+			screen.step == "failed" and screen.keep == "local" and saves.transfers().is_empty() and slot1.state == "open" and slot1.error == "unsupported",
+			str(slot1.error)
+	)
 	b = _buttons(screen)
 	t.check("saves binding: a failure offers Try again, Choose again and Cancel, none filled", b.has("TryAgain") or b.has("Retry") or screen._retry.visible)
 	screen._retry.pressed.emit()
 	await _frames(6)
-	t.check("saves binding: Try again asks the game for the local copy once, for this save", asked == ["slot1"], str(asked))
-	t.check("saves binding: and the result (here the typed unsupported refusal) is a failure, never a kept", screen.step == "failed" and screen.keep == "local")
+	t.check(
+			"saves binding: Try again repeats the choice and the result (here the typed unsupported refusal) is a failure, never a kept",
+			screen.step == "failed" and screen.keep == "local" and slot1.state == "open"
+	)
 	screen._choose_again.pressed.emit()
 	await _frames(3)
 	t.check("saves binding: Choose again returns to the versions", screen.step == "choose" and screen.keep == "")
@@ -1328,9 +1340,9 @@ func _saves_binding(t: PKeyTestContext) -> void:
 	t.check("saves binding: the strip is no longer in conflict", strip.state == "synced")
 	screen._done_button.pressed.emit()
 	await _frames(4)
-	t.check("saves binding: Done closes the screen", _find(PKeySaveConflict) == null and host.conflict().is_empty())
+	t.check("saves binding: Done closes the screen", _find(PKeySaveConflict) == null and host.conflict() == null)
 	# Cancel leaves the conflict as it is (dismissed from the strip, both copies untouched).
-	saves._tracked(PKeyTransfer.settled("saves:slot9", _conflict_outcome("slot9", true, false)))
+	_open_request(saves, "slot9", true, false)
 	await _frames()
 	strip._action.pressed.emit()
 	await _frames(4)
@@ -1341,16 +1353,16 @@ func _saves_binding(t: PKeyTestContext) -> void:
 	await _frames(4)
 	t.check("saves binding: Cancel drops the conflict without settling it", _find(PKeySaveConflict) == null and saves.conflicts().is_empty() and strip.state == "synced")
 	# Keep both with no free slot: refused, a failure, nothing written.
-	saves._tracked(PKeyTransfer.settled("saves:slot2", _conflict_outcome("slot2", false, false)))
+	_open_request(saves, "slot2", false, false)
 	await _frames()
 	await host.choose("both")
 	t.check("saves binding: keep both with every slot in use fails", host.step == "failed" and host.keep == "both")
 	host.cancel()
-	# A conflict a later successful write settled is gone (done erases it).
-	saves._tracked(PKeyTransfer.settled("saves:slot3", _conflict_outcome("slot3", true)))
-	t.check("saves binding: a held conflict is listed", saves.conflicts().size() == 1)
-	saves._tracked(PKeyTransfer.settled("saves:slot3", {"state": "done", "id": "slot3", "version": 2}))
-	t.check("saves binding: a later write that is done settles it", saves.conflicts().is_empty())
+	# A request a later exact write superseded is gone.
+	_open_request(saves, "slot3", true)
+	t.check("saves binding: an open request is listed", saves.conflicts().size() == 1)
+	saves.write("slot3", PackedByteArray([9]), {}, {"base_version": 3})
+	t.check("saves binding: a later write with a base supersedes it", saves.conflicts().is_empty())
 	# Not following: the screen is the host's to drive, and it is not hidden by the saves.
 	var manual := PKeySaveConflict.new()
 	manual.auto_sdk = false

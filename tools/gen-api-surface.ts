@@ -715,6 +715,7 @@ const GODOT_SCRIPT: Record<string, string> = {
   PKeyCloudLinks: `"res://addons/polaris_key/services/connect/links.gd"`,
   PKeySaves: `"res://addons/polaris_key/services/cloud_sync/saves.gd"`,
   PKeyTransfer: `"res://addons/polaris_key/services/cloud_sync/transfer_handle.gd"`,
+  PKeyMergeRequest: `"res://addons/polaris_key/services/cloud_sync/merge_request.gd"`,
   devices: `"res://addons/polaris_key/services/devices.gd"`,
   release: `"res://addons/polaris_key/services/release.gd"`,
   distribution: `"res://addons/polaris_key/services/distribution.gd"`,

@@ -21,9 +21,9 @@ extends PKeyUiView
 ##
 ## Bound to the saves (K.5T): with `follow_sdk` (the default) the screen follows
 ## `PolarisKey.cloud_sync.saves` through `PKeySaveScreensHost`: it shows the
-## first conflict a write ended with, hidden while there is none, runs the choice (`saves.resolve`) and moves
-## on (keeping, kept, failed with Try again). The game's one line is
-## `PKeySaveScreensHost.of(PolarisKey).local_copy = func(conflict): return <the local save's bytes>`.
+## first open save request (a PKeyMergeRequest), hidden while there is none, runs the choice (`request.keep`) and
+## moves on (keeping, kept, failed with Try again). The SDK holds this device's copy, so the game hands in
+## nothing; `PKeySaveScreensHost.of(PolarisKey).describe` can override the worded dates and the device name.
 ## With `follow_sdk` off the host sets `step` and the display-ready fields and connects the signals itself.
 ## `model` is the ui-core view of the state, so a binding reads it rather than redoing it.
 ## Hidden when the Sync service is off (`sync_on`).
@@ -137,7 +137,7 @@ func _exit_tree() -> void:
 
 
 ## Bind to `p_sdk`'s saves: the screen then shows the pending conflict (and hides while there is none), and
-## its choices run `saves.resolve`. The signals are still emitted, for a game that wants to see them.
+## its choices run `request.keep`. The signals are still emitted, for a game that wants to see them.
 func follow(p_sdk: Node) -> void:
 	var h := PKeySaveScreensHost.of(p_sdk)
 	if h == null or h == host:
@@ -184,6 +184,10 @@ func _from_host() -> void:
 	remote_deleted = bool(v["remote_deleted"])
 	both_available = bool(v["both_available"])
 	step = String(v["step"])
+	local_when = String(v["local_when"])
+	remote_when = String(v["remote_when"])
+	remote_device = String(v["remote_device"])
+	newer = String(v["newer"])
 	refresh_view()
 
 
@@ -408,7 +412,7 @@ func _render() -> void:
 	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("SaveConflict", inp)
 	var state: String = model.get("state", "hidden")
 	# Following the saves, the screen is there only while a conflict is.
-	visible = state != "hidden" and (host == null or not host.conflict().is_empty())
+	visible = state != "hidden" and (host == null or host.conflict() != null)
 	if state != _seen_state:
 		_seen_state = state
 		_moved = false
