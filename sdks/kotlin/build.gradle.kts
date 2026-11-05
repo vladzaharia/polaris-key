@@ -52,22 +52,28 @@ val checkModuleBoundaries = tasks.register("checkModuleBoundaries") {
     val gamesProject = findProject(":games")
     val androidProject = findProject(":android")
     val everyProject = rootProject.subprojects.toList()
+    // Resolved from the root project over project dependencies (variant-aware), never through another
+    // project's own configuration: under org.gradle.parallel that needs the owner's lock.
+    val boundaryConfigs = listOf("api" to Usage.JAVA_API, "runtime" to Usage.JAVA_RUNTIME).map { (label, usage) ->
+        label to configurations.detachedConfiguration().also { c ->
+            jvmModules.forEach { c.dependencies.add(dependencies.project(mapOf("path" to it))) }
+            c.isCanBeConsumed = false
+            c.attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage::class.java, usage))
+        }
+    }
     doLast {
         val problems = mutableListOf<String>()
         val forbiddenPlugins = listOf("com.android.library", "com.android.application")
         val androidGroup = Regex("^(androidx\\..*|com\\.android\\..*|com\\.google\\.android\\..*)$")
+        for ((label, config) in boundaryConfigs) {
+            for (component in config.incoming.resolutionResult.allComponents) {
+                val id = component.moduleVersion ?: continue
+                if (androidGroup.matches(id.group)) problems += "the JVM modules' $label classpath contains $id"
+            }
+        }
         for (p in jvmProjects) {
             for (id in forbiddenPlugins) {
                 if (p.plugins.hasPlugin(id)) problems += "${p.path} applies $id"
-            }
-            for (name in listOf("compileClasspath", "runtimeClasspath")) {
-                val config = p.configurations.getByName(name)
-                for (artifact in config.resolvedConfiguration.resolvedArtifacts) {
-                    val group = artifact.moduleVersion.id.group
-                    if (androidGroup.matches(group)) {
-                        problems += "${p.path} $name contains ${artifact.moduleVersion.id}"
-                    }
-                }
             }
             p.file("src").walkTopDown().filter { it.isFile && it.extension == "kt" }.forEach {
                 it.readLines().forEachIndexed { i, line ->
