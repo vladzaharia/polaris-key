@@ -62,6 +62,12 @@ static func _desc(b: Button) -> String:
 	return str(b.get("accessibility_description"))
 
 
+## Control.accessibility_description arrived in Godot 4.5; the kit sets it only where it exists, so a
+## check about the description holds on an older engine by there being nothing to describe.
+static func _a11y(b: Button, ok: bool) -> bool:
+	return not ("accessibility_description" in b) or ok
+
+
 static func _shown(v: Node, node_name: String) -> bool:
 	var c := _node(v, node_name)
 	return c != null and c.is_visible_in_tree()
@@ -102,7 +108,7 @@ func _activate_done(t: PKeyTestContext) -> void:
 	t.check("done: the three reasons, drawn by PKeyRichLine", reasons.size() == 3, str(reasons.size()))
 	t.check("done: a reason's lead-in has no markers", reasons.all(func(l): return not (l as PKeyRichLine).plain().contains("**")))
 	t.check("done: initial focus is Start using", d._initial_focus() == primary)
-	t.check("done: the primary reads the title and the device line", _desc(primary) == "%s. %s" % [_text(d, "Title"), _text(d, "Device")], _desc(primary))
+	t.check("done: the primary reads the title and the device line", _a11y(primary, _desc(primary) == "%s. %s" % [_text(d, "Title"), _text(d, "Device")]), _desc(primary))
 	t.check("done: Escape is left for the game", not d._cancel())
 	var starts := [0]
 	d.start_pressed.connect(func(): starts[0] += 1)
@@ -114,17 +120,17 @@ func _activate_done(t: PKeyTestContext) -> void:
 	t.check("done: a busy card takes no focus", d._initial_focus() == null and d.focus_order().is_empty())
 	primary.pressed.emit()
 	t.check("done: a press while busy is ignored", starts[0] == 1)
-	t.check("done: a busy card has no description to carry", primary.get("accessibility_description") == "")
+	t.check("done: a busy card has no description to carry", _a11y(primary, _desc(primary) == ""))
 	d.busy = false
 	d.holder_email = "maya@example.com"
 	await _settle()
 	var waiting_line := _text(d, "Waiting")
 	t.check("done: waiting names the email masked, never in full", waiting_line.contains("m•••@example.com") and not waiting_line.contains("maya@"), waiting_line)
-	t.check("done: the description follows the step", _desc(primary).contains(waiting_line))
+	t.check("done: the description follows the step", _a11y(primary, _desc(primary).contains(waiting_line)))
 	t.check("done: waiting has Sign in as the quiet action", _shown(d, "SignIn") and not _shown(d, "Add"))
 	d.license_on = false
 	await _settle()
-	t.check("done: License off hides it, and the description with it", not d.visible and primary.get("accessibility_description") == "")
+	t.check("done: License off hides it, and the description with it", not d.visible and _a11y(primary, _desc(primary) == ""))
 	_free(d)
 
 	d = await _sc.activate_done("ready")
@@ -146,11 +152,11 @@ func _activate_done(t: PKeyTestContext) -> void:
 	d = await _sc.activate_done("ready, no in-app channel")
 	await _settle()
 	var add := _node(d, "Add") as Button
-	var opens_locker := add.text.begins_with("Add it in Polaris Locker") and add.icon != null and _desc(add) != ""
+	var opens_locker := add.text.begins_with("Add it in Polaris Locker") and add.icon != null and _a11y(add, _desc(add) != "")
 	t.check("done: no in-app channel, Add opens Polaris Locker and says so", opens_locker, add.text)
 	d.add_in = "app"
 	await _settle()
-	t.check("done: the in-app Add has no new-window glyph or note", add.icon == null and _desc(add) == "")
+	t.check("done: the in-app Add has no new-window glyph or note", add.icon == null and _a11y(add, _desc(add) == ""))
 	_free(d)
 
 	d = await _sc.activate_done("ready, Identity off")
@@ -194,7 +200,7 @@ func _add_to_account(t: PKeyTestContext) -> void:
 	primary.pressed.emit()
 	t.check("add: Continue submits too", sent.size() == 2)
 	t.check("add: initial focus is Name on a desktop", a._initial_focus() == name_input)
-	t.check("add: the primary reads the title and the first line", _desc(primary) == "%s. %s" % [_text(a, "Title"), _text(a, "Lede")], _desc(primary))
+	t.check("add: the primary reads the title and the first line", _a11y(primary, _desc(primary) == "%s. %s" % [_text(a, "Title"), _text(a, "Lede")]), _desc(primary))
 	var cancels := [0]
 	a.cancelled.connect(func(): cancels[0] += 1)
 	t.check("add: Escape leaves a form with nothing in flight", a._cancel() and cancels[0] == 1)
@@ -238,7 +244,7 @@ func _add_to_account(t: PKeyTestContext) -> void:
 	var c2 := [0]
 	a.cancelled.connect(func(): c2[0] += 1)
 	t.check("add: Escape does nothing while the sign-in runs", a._cancel() and c2[0] == 0)
-	t.check("add: no description rides on a hidden primary", (_node(a, "Primary") as Button).get("accessibility_description") == "")
+	t.check("add: no description rides on a hidden primary", _a11y(_node(a, "Primary") as Button, _desc(_node(a, "Primary") as Button) == ""))
 	a.step = "invalid"
 	await _settle()
 	t.check("add: the fields can be edited again afterwards", (_node(a, "NameInput") as LineEdit).editable)
@@ -284,12 +290,12 @@ func _add_to_account(t: PKeyTestContext) -> void:
 	# The outcomes: one way on each, the description cleared by the next step.
 	a = await _sc.add_to_account("owned")
 	await _settle()
-	var owned_desc := str((_node(a, "Primary") as Button).get("accessibility_description"))
-	t.check("add: owned reads its title and line on the primary", owned_desc.begins_with((_node(a, "Title") as Label).text))
+	var owned_desc := _desc(_node(a, "Primary") as Button)
+	t.check("add: owned reads its title and line on the primary", _a11y(_node(a, "Primary") as Button, owned_desc.begins_with((_node(a, "Title") as Label).text)))
 	a.step = "added"
 	await _settle()
 	var added_primary := _btn(a, "Primary")
-	t.check("add: added closes with Start using and draws the mark", _shown(a, "Mark") and added_primary.text.begins_with("Start using") and _desc(added_primary) != owned_desc)
+	t.check("add: added closes with Start using and draws the mark", _shown(a, "Mark") and added_primary.text.begins_with("Start using") and _a11y(added_primary, _desc(added_primary) != owned_desc))
 	_free(a)
 
 	a = await _sc.add_to_account("added, from Settings")
