@@ -108,6 +108,8 @@ public class PolarisSaveConflictState private constructor(
     private val read: () -> Sides,
     private val resolver: PolarisSaveResolver,
     private val scope: CoroutineScope,
+    /** The sides were fixed when the holder was built: a request that reopens has new ones this holder cannot show. */
+    private val fixedSides: Boolean = false,
 ) {
     /** The two copies as the screen draws them: read again on every step, so a bound request's moves show. */
     private class Sides(
@@ -182,6 +184,10 @@ public class PolarisSaveConflictState private constructor(
                 _ui.value = when {
                     // The request ended meanwhile: nothing is left to choose, and Try again could never succeed.
                     refused?.code == CLOSED -> PolarisSaveConflictUi.Cancelled
+                    // The sides were fixed at build time, so the choices could only return on copies the person
+                    // has seen replaced: close instead, and the host opens the screen again on the reopened request.
+                    fixedSides && refused != null && refused.reopened && refused.code == "conflict" ->
+                        PolarisSaveConflictUi.Cancelled
                     // The other copy moved while the keep ran (or Keep both lost its slot): nothing was applied.
                     // Back to the choices, read again from the request.
                     refused != null && refused.reopened && (refused.code == "conflict" || refused.code == SLOTS_FULL) -> {
@@ -265,7 +271,12 @@ public class PolarisSaveConflictState private constructor(
             scope,
         )
 
-        /** [of] from the pieces of a request, so a host that holds them another way binds the same screen. */
+        /**
+         * [of] from the pieces of a request, so a host that holds them another way binds the same screen. The pieces
+         * are fixed: a keep that meets a newer copy reopens the request on sides these pieces do not show, so that
+         * ends the screen (Cancelled) rather than returning to the old cards. A host that wants the choices to
+         * come back on the new copies binds the request, or [of] with a `read` that returns its live sides.
+         */
         @Suppress("LongParameterList")
         public fun of(
             local: MergeSide,
@@ -280,6 +291,7 @@ public class PolarisSaveConflictState private constructor(
                 { sides(local, remote, choices, newer, describe) },
                 resolver,
                 scope,
+                fixedSides = true,
             )
         }
 

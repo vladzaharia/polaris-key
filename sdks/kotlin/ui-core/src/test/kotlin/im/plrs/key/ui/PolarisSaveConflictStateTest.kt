@@ -264,6 +264,32 @@ class PolarisSaveConflictStateTest {
         assertEquals(2, calls)
     }
 
+    /** The pieces overload has fixed sides: a reopen closes it, so no keep can run on cards the person never saw. */
+    @Test
+    fun aReopenOnFixedPiecesClosesTheScreenAndNeverSendsAKeep() = runTest {
+        val asked = mutableListOf<MergeKeep>()
+        val state = PolarisSaveConflictState.of(
+            mine,
+            theirs,
+            listOf("local", "remote", "both"),
+            null,
+            PolarisSaveResolver.of {
+                asked += it
+                MergeOutcome.Refused("conflict", reopened = true)
+            },
+            backgroundScope,
+        )
+        state.keep(PolarisSaveKeep.Local)
+        runCurrent()
+        assertEquals(PolarisSaveConflictUi.Cancelled, state.ui.value)
+        assertNull(state.kitScreen())
+        state.keep(PolarisSaveKeep.Remote)
+        state.keep(PolarisSaveKeep.Both)
+        state.retry()
+        runCurrent()
+        assertEquals("only the first keep was sent", listOf<MergeKeep>(MergeKeep.Local), asked)
+    }
+
     @Test
     fun aClosedRequestClosesTheScreenAndASlotsFullReopenDisablesKeepBoth() = runTest {
         val closed = PolarisSaveConflictState.of(mine, theirs, listOf("local", "remote", "both"), null, PolarisSaveResolver.of { MergeOutcome.Refused("sync-merge-closed", reopened = false) }, backgroundScope)

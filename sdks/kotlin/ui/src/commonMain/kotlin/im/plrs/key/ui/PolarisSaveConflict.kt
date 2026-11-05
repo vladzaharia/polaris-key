@@ -160,7 +160,7 @@ private fun Failed(lines: KitLines, onRetry: () -> Unit, onChooseAgain: () -> Un
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
         PolarisSecondaryButton(lines.format("common.tryAgain"), onRetry)
         PolarisSecondaryButton(lines.text("saveConflict.chooseAgain").orEmpty(), onChooseAgain)
-        PolarisTextButton(lines.format("common.cancel"), onCancel)
+        PolarisTextButton(lines.format("common.cancel"), onCancel, Modifier.align(Alignment.CenterHorizontally))
     }
 }
 
@@ -192,12 +192,18 @@ private fun Copies(lines: KitLines, stacked: Boolean) {
     // A choice met a newer copy: nothing was applied, and these are the new versions.
     lines.text("saveConflict.reopened")?.let {
         Spacer(Modifier.height(PolarisSpace.tight))
-        Text(
-            it,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
-        )
+        Row(
+            Modifier.fillMaxWidth().semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+            horizontalArrangement = Arrangement.spacedBy(PolarisSpace.tight),
+        ) {
+            Icon(
+                PolarisSymbols.Info,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+        }
     }
     Spacer(Modifier.height(if (stacked) PolarisSpace.tight else PolarisSpace.medium))
     // Newer only tags a card (and only the app says which); it chooses nothing.
@@ -242,7 +248,7 @@ private fun ColumnScope.Choices(lines: KitLines, onKeep: (PolarisSaveKeep) -> Un
             )
         }
         lines.text("saveConflict.bothFull")?.let { PolarisBody(it, textAlign = TextAlign.Start) }
-        PolarisTextButton(lines.text("common.cancel").orEmpty(), onCancel)
+        PolarisTextButton(lines.text("common.cancel").orEmpty(), onCancel, Modifier.align(Alignment.CenterHorizontally))
     }
 }
 
