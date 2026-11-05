@@ -21,6 +21,7 @@ import im.plrs.key.core.ServiceSlug
 import im.plrs.key.core.longValue
 import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
+import im.plrs.key.core.sync.MergeKeep
 import im.plrs.key.core.sync.SyncKeys
 import im.plrs.key.core.sync.SyncState
 import im.plrs.key.core.testing.ScriptedTransport
@@ -383,24 +384,31 @@ class CloudSyncSavesTest {
     }
 
     @Test
-    fun aStaleWriteIsAConflictThatCarriesTheServerCopyAndResolveSettlesIt() = runBlocking {
+    fun aStaleWriteIsAConflictThatCarriesTheServerCopyAndKeepSettlesIt() = runBlocking {
         world.rows["slot-1"] = Row(meta("two"), 7, world.file(7, 5, "a".repeat(64)))
         world.version = 7
         val r = Rig()
         r.signIn()
-        val out = r.saves.write("slot-1", bytes(500), meta("mine"), baseVersion = 5).result() as SaveResult.Conflict
-        assertEquals("two", out.conflict.remote!!.metadata["chapter"].stringValue)
-        assertEquals(7L, out.conflict.serverVersion)
-        val kept = r.saves.resolve(out.conflict, SaveKeep.REMOTE, bytes(500)).result()
-        assertTrue(kept is SaveResult.KeptRemote)
-        val both = r.saves.resolve(out.conflict, SaveKeep.BOTH, bytes(500)).result() as SaveResult.Done
+        suspend fun stale() = (r.saves.write("slot-1", bytes(500), meta("mine"), baseVersion = 5).result() as SaveResult.Conflict).request
+        val request = stale()
+        assertEquals("two", (request.remote!!.value as JsonObject)["chapter"].stringValue)
+        assertEquals(7L, request.remote!!.version)
+        assertEquals("w:saves/slot-1", request.id)
+        assertEquals(listOf("w:saves/slot-1"), r.client.cloudSync.conflicts().map { it.id })
+        assertEquals(1, r.client.cloudSync.status().conflicts)
+        val kept = request.keep(MergeKeep.Remote)
+        assertTrue(kept.toString(), kept is MergeOutcome.Kept)
+        assertTrue(r.client.cloudSync.conflicts().isEmpty())
+        val both = (stale().keep(MergeKeep.Both) as MergeOutcome.Kept)
         assertEquals("slot-1.copy", both.copyId)
         assertEquals(meta("mine"), bare(world.rows.getValue("slot-1.copy").value))
         assertEquals(meta("two"), world.rows.getValue("slot-1").value)
-        val local = r.saves.resolve(out.conflict, SaveKeep.LOCAL, bytes(500, 9)).result()
-        assertTrue(local.toString(), local is SaveResult.Done)
+        val local = stale().keep(MergeKeep.Local)
+        assertTrue(local.toString(), local is MergeOutcome.Kept)
         assertEquals(meta("mine"), bare(world.rows.getValue("slot-1").value))
         eventually("a conflict event") { r.events.any { it is CloudSyncEvent.TransferDone && it.state == "conflict" } }
+        eventually("an opened event") { r.events.any { it is CloudSyncEvent.ConflictOpened } }
+        eventually("a closed event") { r.events.any { it is CloudSyncEvent.ConflictClosed && it.how == "local" } }
         r.client.close()
     }
 

@@ -1,15 +1,20 @@
 // @pkey-feature sync.saves
+// @pkey-feature sync.conflict
 //
 // The saves client (U-22.5) over an in-memory cloud that is both the file routes and the record layer:
 // the D-3 order (file, then the metadata on the version finalize answered), the E2E binding, a Worker that swaps a
-// file, `formatVersion`, the 16 slots, conflicts and their three resolutions, a quota refusal, and pause and cancel.
+// file, `formatVersion`, the 16 slots, conflicts (a MergeRequest per slot) and their keeps, a quota refusal, and pause and cancel.
 // The machine's records binding and the client's wiring are pinned in CloudSyncSavesTest.
 
 package im.plrs.key.sdk
 
+import im.plrs.key.core.ErrorCode
+import im.plrs.key.core.MergeCause
+import im.plrs.key.core.MergeChoice
 import im.plrs.key.core.longValue
 import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
+import im.plrs.key.core.sync.MergeKeep
 import im.plrs.key.core.sync.RecordFile
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -273,7 +278,7 @@ class CloudSyncSavesClientTest {
                 settled += id to r
             },
         )
-        return SavesClient(scope, hooks) {
+        return SavesClient(scope, hooks, MergeRegistry(scope)) {
             SavesDeps(
                 cloud,
                 engine,
@@ -412,28 +417,199 @@ class CloudSyncSavesClientTest {
         }
     }
 
+    /** A save written twice by "another device" and then written here on the first version: a conflict request. */
+    private suspend fun staleRequest(saves: SavesClient, id: String = "s"): Pair<MergeRequest, Long> {
+        assertTrue(saves.write(id, bytes(100), meta("theirs")).result() is SaveResult.Done)
+        val first = (saves.read(id) as SaveRead.Ok).version
+        assertTrue(saves.write(id, bytes(100, 2), meta("newer")).result() is SaveResult.Done)
+        val out = saves.write(id, bytes(120, 3), meta("mine"), baseVersion = first).result() as SaveResult.Conflict
+        return out.request to first
+    }
+
+    private fun chapter(side: im.plrs.key.core.sync.MergeSide?): String? = (side?.value as? JsonObject)?.get("chapter").stringValue
+
     @Test
-    fun aStaleWriteIsAConflictAndEachResolutionDoesWhatItSays() = runBlocking {
+    fun saveConflictOpensRequest() = runBlocking {
         val cloud = Cloud(e2e = false)
         val saves = client(cloud, e2e = false)
-        assertTrue(saves.write("s", bytes(100), meta("theirs")).result() is SaveResult.Done)
-        val first = (saves.read("s") as SaveRead.Ok).version
-        assertTrue(saves.write("s", bytes(100, 2), meta("newer")).result() is SaveResult.Done)
-        val conflict = (saves.write("s", bytes(120, 3), meta("mine"), baseVersion = first).result() as SaveResult.Conflict).conflict
-        assertEquals("newer", conflict.remote!!.metadata["chapter"].stringValue)
-        assertTrue(conflict.bothAvailable)
-        // REMOTE keeps theirs and writes nothing.
-        val kept = saves.resolve(conflict, SaveKeep.REMOTE, bytes(120, 3)).result() as SaveResult.KeptRemote
-        assertEquals(conflict.serverVersion, kept.version)
+        val (request, first) = staleRequest(saves)
+        assertEquals("w:saves/s", request.id)
+        assertEquals(MergeCause.write, request.cause)
+        assertEquals(SAVES_COLLECTION, request.collection)
+        assertEquals("s", request.record)
+        assertEquals("open", request.state)
+        assertNull(request.error)
+        assertEquals("newer", chapter(request.remote))
+        assertEquals("mine", chapter(request.local))
+        assertEquals(first, request.local!!.version)
+        assertEquals(1_000L, request.local!!.savedAt)
+        assertEquals(listOf(MergeChoice.local, MergeChoice.remote, MergeChoice.both), request.choices)
+        assertEquals(listOf("w:saves/s"), saves.merge.conflicts().map { it.id })
+        // Nothing of the device's copy was stored.
         assertEquals("newer", (saves.read("s") as SaveRead.Ok).metadata["chapter"].stringValue)
-        // BOTH writes mine as a new save.
-        val both = saves.resolve(conflict, SaveKeep.BOTH, bytes(120, 3)).result() as SaveResult.Done
+    }
+
+    @Test
+    fun saveRequestFreezesSlot() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val saves = client(cloud, e2e = false)
+        val (request, _) = staleRequest(saves)
+        val sent = cloud.bases.size
+        // A later write with no base only replaces the request's local copy; it is not sent.
+        val again = saves.write("s", bytes(130, 4), meta("later")).result() as SaveResult.Conflict
+        assertTrue(again.request === request)
+        assertEquals("later", chapter(request.local))
+        assertEquals(sent, cloud.bases.size)
+        assertEquals(1, saves.merge.conflicts().size)
+        assertTrue(request.keep(MergeKeep.Local) is MergeOutcome.Kept)
+        assertEquals("later", (saves.read("s") as SaveRead.Ok).metadata["chapter"].stringValue)
+        assertArrayEquals(bytes(130, 4), (saves.read("s") as SaveRead.Ok).bytes)
+    }
+
+    @Test
+    fun saveBaseIsSeenVersion() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val saves = client(cloud, e2e = false)
+        assertTrue(saves.write("s", bytes(100), meta("one")).result() is SaveResult.Done)
+        assertEquals(JsonPrimitive("*"), cloud.bases.last())
+        val wrote = cloud.records.values.single().version
+        // Another device wrote on top and this device pulled it: the pulled version is not a base.
+        cloud.records.values.single().let {
+            it.version += 40
+            it.value = buildJsonObject { put("chapter", "theirs") }
+        }
+        val out = saves.write("s", bytes(100, 2), meta("two")).result()
+        assertEquals(JsonPrimitive(wrote), cloud.bases.last())
+        assertTrue(out is SaveResult.Conflict)
+        assertEquals("theirs", chapter((out as SaveResult.Conflict).request.remote))
+        // A slot not seen this session is create-only, so a save on the cloud is a conflict, not an overwrite.
+        val fresh = client(cloud, e2e = false)
+        val out2 = fresh.write("s", bytes(100, 3), meta("three")).result()
+        assertEquals(JsonPrimitive("*"), cloud.bases.last())
+        assertTrue(out2 is SaveResult.Conflict)
+    }
+
+    @Test
+    fun saveKeepLocal() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val saves = client(cloud, e2e = false)
+        val (request, _) = staleRequest(saves)
+        val serverVersion = cloud.records.values.single().version
+        val kept = request.keep(MergeKeep.Local)
+        assertTrue(kept.toString(), kept is MergeOutcome.Kept)
+        assertEquals("local", (kept as MergeOutcome.Kept).kept)
+        assertEquals(JsonPrimitive(serverVersion), cloud.bases.last())
+        assertArrayEquals(bytes(120, 3), (saves.read("s") as SaveRead.Ok).bytes)
+        assertEquals("mine", (saves.read("s") as SaveRead.Ok).metadata["chapter"].stringValue)
+        assertTrue(saves.merge.conflicts().isEmpty())
+    }
+
+    @Test
+    fun saveKeepRemote() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val saves = client(cloud, e2e = false, ClientOptions(deviceLabel = "Steam Deck"))
+        assertTrue(saves.write("s", bytes(100), meta("old")).result() is SaveResult.Done)
+        val stale = cloud.get("s")!!
+        // Another device wrote on top; this device's cache still holds the first row until it pulls.
+        cloud.records.values.single().let {
+            it.version += 40
+            it.value = buildJsonObject { put("chapter", "theirs") }
+        }
+        cloud.cache = { stale }
+        cloud.onPull = { cloud.cache = null }
+        val request = (saves.write("s", bytes(120, 3), meta("mine"), baseVersion = stale.version).result() as SaveResult.Conflict).request
+        assertEquals(1, cloud.pulls)
+        assertEquals("theirs", chapter(request.remote))
+        // This device's card carries when and where it was saved (never a hardware value).
+        assertEquals(1_000L, request.local!!.savedAt)
+        assertEquals("Steam Deck", request.local!!.device)
+        assertNull("the other copy carries no savedAt, so neither is newer", request.newer)
+        // Keeping the other version pulls again, writes nothing, and the chosen copy is what is held.
+        cloud.cache = { stale }
+        val sent = cloud.bases.size
+        val kept = request.keep(MergeKeep.Remote) as MergeOutcome.Kept
+        assertEquals(2, cloud.pulls)
+        assertEquals(cloud.records.values.single().version, kept.version)
+        assertEquals(sent, cloud.bases.size)
+        assertTrue(saves.merge.conflicts().isEmpty())
+    }
+
+    @Test
+    fun saveKeepBothNeedsFreeSlot() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val saves = client(cloud, e2e = false)
+        val (request, _) = staleRequest(saves)
+        val both = request.keep(MergeKeep.Both) as MergeOutcome.Kept
         assertEquals("s.copy", both.copyId)
         assertEquals("mine", (saves.read("s.copy") as SaveRead.Ok).metadata["chapter"].stringValue)
-        // LOCAL overwrites theirs.
-        val local = saves.resolve(conflict, SaveKeep.LOCAL, bytes(120, 3)).result()
-        assertTrue(local is SaveResult.Done)
-        assertArrayEquals(bytes(120, 3), (saves.read("s") as SaveRead.Ok).bytes)
+        assertEquals("newer", (saves.read("s") as SaveRead.Ok).metadata["chapter"].stringValue)
+        // With all 16 slots in use `both` is not on offer, and asking for it is refused without touching the request.
+        val full = Cloud(e2e = false)
+        val crowded = client(full, e2e = false)
+        for (i in 1..16) assertTrue(crowded.write("s$i", bytes(50), meta("c")).result() is SaveResult.Done)
+        val stale = (crowded.write("s1", bytes(60), meta("mine"), baseVersion = 999).result() as SaveResult.Conflict).request
+        assertEquals(listOf(MergeChoice.local, MergeChoice.remote), stale.choices)
+        assertEquals(MergeOutcome.Refused("bad_request", reopened = false), stale.keep(MergeKeep.Both))
+        assertEquals("open", stale.state)
+    }
+
+    @Test
+    fun saveKeepAfterDeleteCreates() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val saves = client(cloud, e2e = false)
+        assertTrue(saves.write("s", bytes(100), meta("old")).result() is SaveResult.Done)
+        val stale = cloud.get("s")
+        cloud.records.clear()
+        cloud.cache = { stale }
+        val request = (saves.write("s", bytes(120, 3), meta("mine")).result() as SaveResult.Conflict).request
+        assertNull(request.remote)
+        assertEquals(listOf(MergeChoice.local, MergeChoice.remote), request.choices)
+        assertTrue(request.keep(MergeKeep.Local) is MergeOutcome.Kept)
+        assertEquals(JsonPrimitive("*"), cloud.bases.last())
+    }
+
+    @Test
+    fun saveExactWriteSupersedes() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val saves = client(cloud, e2e = false)
+        val (request, _) = staleRequest(saves)
+        val current = cloud.records.values.single().version
+        val done = saves.write("s", bytes(90, 5), meta("exact"), baseVersion = current).result()
+        assertTrue(done.toString(), done is SaveResult.Done)
+        assertTrue(saves.merge.conflicts().isEmpty())
+        assertEquals(MergeOutcome.Refused(ErrorCode.syncMergeClosed, reopened = false), request.keep(MergeKeep.Local))
+        // A delete with no base while a request is open is based on the request's local version, so it conflicts.
+        val (second, _) = staleRequest(saves, "t")
+        val theirs = cloud.records.keys.last()
+        assertTrue(saves.delete("t") is SaveSetResult.Conflict)
+        assertTrue(saves.merge.conflicts().none { it.id == second.id })
+        assertTrue(theirs.isNotEmpty())
+        assertEquals("newer", (saves.read("t") as SaveRead.Ok).metadata["chapter"].stringValue)
+    }
+
+    @Test
+    fun saveKeepOnClosedRequest() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val saves = client(cloud, e2e = false)
+        val (request, _) = staleRequest(saves)
+        assertTrue(request.keep(MergeKeep.Remote) is MergeOutcome.Kept)
+        assertEquals(MergeOutcome.Refused(ErrorCode.syncMergeClosed, reopened = false), request.keep(MergeKeep.Local))
+        assertEquals(MergeOutcome.Refused(ErrorCode.syncMergeClosed, reopened = false), request.keep(MergeKeep.Remote))
+    }
+
+    @Test
+    fun saveRequestNotJournaled() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val journal = MemoryJournal()
+        val saves = client(cloud, e2e = false, ClientOptions(journal = journal))
+        val (request, _) = staleRequest(saves)
+        assertEquals("open", request.state)
+        // A relaunch drops the request (S5); the app still holds its save, and its next write raises the conflict again.
+        val relaunched = client(cloud, e2e = false, ClientOptions(journal = journal))
+        assertTrue(relaunched.merge.conflicts().isEmpty())
+        val again = relaunched.write("s", bytes(120, 3), meta("mine")).result() as SaveResult.Conflict
+        assertEquals("w:saves/s", again.request.id)
+        assertEquals("newer", chapter(again.request.remote))
     }
 
     @Test
@@ -449,40 +625,13 @@ class CloudSyncSavesClientTest {
             it.value = buildJsonObject { put("chapter", "theirs") }
         }
         cloud.cache = { stale }
-        val conflict = (saves.write("s", bytes(120, 3), meta("mine"), baseVersion = first).result() as SaveResult.Conflict).conflict
+        val request = (saves.write("s", bytes(120, 3), meta("mine"), baseVersion = first).result() as SaveResult.Conflict).request
         val serverVersion = cloud.records.values.single().version
-        assertEquals(serverVersion, conflict.serverVersion)
-        assertEquals(serverVersion, conflict.remote!!.version)
+        assertEquals(serverVersion, request.remote!!.version)
         // Keeping this device's version succeeds, and the next write does not repeat the conflict.
-        assertTrue(saves.resolve(conflict, SaveKeep.LOCAL, bytes(120, 3)).result() is SaveResult.Done)
+        assertTrue(request.keep(MergeKeep.Local) is MergeOutcome.Kept)
         cloud.cache = null
         assertTrue(saves.write("s", bytes(90, 4), meta("again")).result() is SaveResult.Done)
-    }
-
-    @Test
-    fun aConflictAndKeepingTheOtherVersionPullFirstAndSavesRecordWhenAndWhere() = runBlocking {
-        val cloud = Cloud(e2e = false)
-        val saves = client(cloud, e2e = false, ClientOptions(deviceLabel = "Steam Deck"))
-        assertTrue(saves.write("s", bytes(100), meta("old")).result() is SaveResult.Done)
-        val stale = cloud.get("s")!!
-        // Another device wrote on top; this device's cache still holds the first row until it pulls.
-        cloud.records.values.single().let {
-            it.version += 40
-            it.value = buildJsonObject { put("chapter", "theirs") }
-        }
-        cloud.cache = { stale }
-        cloud.onPull = { cloud.cache = null }
-        val conflict = (saves.write("s", bytes(120, 3), meta("mine"), baseVersion = stale.version).result() as SaveResult.Conflict).conflict
-        assertEquals(1, cloud.pulls)
-        assertEquals("theirs", conflict.remote!!.metadata["chapter"].stringValue)
-        // This device's card carries when and where it was saved (never a hardware value).
-        assertEquals(1_000L, conflict.localMetadata[SAVE_SAVED_AT_KEY].longValue)
-        assertEquals("Steam Deck", conflict.localMetadata[SAVE_DEVICE_KEY].stringValue)
-        // Keeping the other version pulls again, and the chosen copy is what is held.
-        cloud.cache = { stale }
-        val kept = saves.resolve(conflict, SaveKeep.REMOTE, bytes(1)).result() as SaveResult.KeptRemote
-        assertEquals(2, cloud.pulls)
-        assertEquals(cloud.records.values.single().version, kept.version)
     }
 
     @Test
@@ -498,23 +647,8 @@ class CloudSyncSavesClientTest {
             cloud.cache = null
             cloud.records.clear()
         }
-        val conflict = (saves.write("s", bytes(120, 3), meta("mine"), baseVersion = stale.version).result() as SaveResult.Conflict).conflict
-        assertNull(conflict.remote)
-    }
-
-    @Test
-    fun aSaveDeletedElsewhereHasNoRemoteAndKeepMineUsesMustNotExist() = runBlocking {
-        val cloud = Cloud(e2e = false)
-        val saves = client(cloud, e2e = false)
-        assertTrue(saves.write("s", bytes(100), meta("old")).result() is SaveResult.Done)
-        val stale = cloud.get("s")
-        cloud.records.clear()
-        cloud.cache = { stale }
-        val conflict = (saves.write("s", bytes(120, 3), meta("mine")).result() as SaveResult.Conflict).conflict
-        assertNull(conflict.remote)
-        assertEquals(0L, conflict.serverVersion)
-        assertTrue(saves.resolve(conflict, SaveKeep.LOCAL, bytes(120, 3)).result() is SaveResult.Done)
-        assertEquals(JsonPrimitive("*"), cloud.bases.last())
+        val request = (saves.write("s", bytes(120, 3), meta("mine"), baseVersion = stale.version).result() as SaveResult.Conflict).request
+        assertNull(request.remote)
     }
 
     @Test
@@ -630,7 +764,7 @@ class CloudSyncSavesClientTest {
         val cloud = Cloud(e2e = false).also { it.gate = CompletableDeferred() }
         val started = CopyOnWriteArrayList<String>()
         val engine = FileTransferEngine(cloud, MemoryJournal(), sleeper = { })
-        val saves = SavesClient(scope, SavesHooks(started = { started += it })) {
+        val saves = SavesClient(scope, SavesHooks(started = { started += it }), MergeRegistry(scope)) {
             SavesDeps(cloud, engine, cloud, ServerFileCodec(), delta = false, now = { 1_000L })
         }
         val t = saves.write("s", bytes(500), meta("c"))

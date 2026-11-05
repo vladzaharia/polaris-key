@@ -98,12 +98,13 @@ internal class MachineReads(private val p: MachineParts) : SyncReads {
     override fun status(): SyncStatus {
         val pending = pendingCount()
         val blocked = core.s.blocked
+        val open = p.merge.count()
         return when {
-            core.pinnedOut() -> SyncStatus(SyncState.Unsupported, pending, "encryption", ErrorCode.syncEncryptionPinned)
-            blocked != null -> SyncStatus(SyncState.Blocked, pending, blocked)
-            core.s.subject == null -> SyncStatus(SyncState.Local, pending)
-            core.lockedOut() -> SyncStatus(SyncState.Locked, pending, "keyring")
-            else -> SyncStatus(liveState(pending), pending, parkedReason())
+            core.pinnedOut() -> SyncStatus(SyncState.Unsupported, pending, "encryption", ErrorCode.syncEncryptionPinned, open)
+            blocked != null -> SyncStatus(SyncState.Blocked, pending, blocked, conflicts = open)
+            core.s.subject == null -> SyncStatus(SyncState.Local, pending, conflicts = open)
+            core.lockedOut() -> SyncStatus(SyncState.Locked, pending, "keyring", conflicts = open)
+            else -> SyncStatus(liveState(pending), pending, parkedReason(), conflicts = open)
         }
     }
 

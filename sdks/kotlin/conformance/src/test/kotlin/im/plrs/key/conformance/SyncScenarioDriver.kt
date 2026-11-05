@@ -10,6 +10,7 @@ import im.plrs.key.core.stringValue
 import im.plrs.key.core.sync.CallResult
 import im.plrs.key.core.sync.CloudSyncMachine
 import im.plrs.key.core.sync.CloudSyncOptions
+import im.plrs.key.core.sync.MergeKeep
 import im.plrs.key.core.sync.OpenedBody
 import im.plrs.key.core.sync.OpenedRow
 import im.plrs.key.core.sync.PutAtResult
@@ -63,6 +64,7 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
         }
     }
 
+    @Suppress("CyclomaticComplexMethod")
     private fun step(kind: String, raw: JsonObject, where: String) {
         when (kind) {
             "local" -> local(raw, where)
@@ -84,10 +86,25 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
                 machine.onOutcome { outcomes.add(it.toJson()) }
             }
 
+            "keep" -> keep(raw, where)
+
             "assert" -> assertions(raw, where)
 
             else -> fail("$where: the machine slice that ports `$kind` has not landed")
         }
+    }
+
+    /** Version 5: answer an open request; `expect` is given only for a refusal at once. */
+    private fun keep(raw: JsonObject, where: String) {
+        val choice = raw["choice"]
+        val keep = when {
+            choice is JsonObject -> MergeKeep.Value(choice["value"]!!)
+            choice.stringValue == "local" -> MergeKeep.Local
+            choice.stringValue == "remote" -> MergeKeep.Remote
+            else -> MergeKeep.Both
+        }
+        val result = machine.keep(raw["request"].stringValue!!, keep).toJson()
+        same(where, "keep", raw["expect"] ?: CallResult.Ok.toJson(), result)
     }
 
     private fun respond(raw: JsonObject) {
@@ -106,6 +123,7 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
     private fun putAt(args: JsonArray): PutAtResult =
         machine.putAt(args[0].stringValue!!, args[1].stringValue!!, args[2], args[3], RecordFile.of(args.getOrNull(4)))
 
+    @Suppress("CyclomaticComplexMethod")
     private fun local(raw: JsonObject, where: String) {
         val args = raw["args"].arrayValue ?: JsonArray(emptyList())
         val result: JsonElement = when (val call = raw["call"].stringValue) {
@@ -116,6 +134,7 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
             "remove" -> machine.remove(args[0].stringValue!!, args[1].stringValue!!, args[2]).toJson()
             "putAt" -> putAt(args).toJson()
             "removeAt" -> machine.removeAt(args[0].stringValue!!, args[1].stringValue!!, args[2]).toJson()
+            "delete" -> machine.delete(args[0].stringValue!!, args[1].stringValue!!).toJson()
             "flush" -> machine.flush().toJson()
             "refresh" -> machine.refresh().toJson()
             else -> fail("$where: the machine slice that ports `$call` has not landed").let { JsonNull }
@@ -136,6 +155,7 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
         }
     }
 
+    @Suppress("CyclomaticComplexMethod")
     private fun assertions(raw: JsonObject, where: String) {
         val requests = JsonArray(machine.takeRequests())
         val events = JsonArray(machine.takeEvents().map { it.toJson() })
@@ -152,6 +172,10 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
         raw["status"]?.let { same(where, "status", it, machine.status().toJson()) }
         if (raw.containsKey("encryptionSince")) {
             same(where, "encryptionSince", raw["encryptionSince"], machine.encryptionSince()?.let { JsonPrimitive(it) } ?: JsonNull)
+        }
+        raw["conflicts"]?.let { same(where, "conflicts", it, JsonArray(machine.conflicts().map { c -> c.toJson() })) }
+        if (raw.containsKey("cloudEmpty")) {
+            same(where, "cloudEmpty", raw["cloudEmpty"], machine.cloudEmpty()?.let { JsonPrimitive(it) } ?: JsonNull)
         }
         raw["licence"]?.let { same(where, "licence", it, licence ?: JsonNull) }
     }

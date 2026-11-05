@@ -38,8 +38,9 @@ internal object CloudSyncCatalog {
 
     /**
      * The collections as the machine reads a declaration: each member of the catalog's `cloudSync.collections` with its
-     * policy (`conflict`, else the template's, else `revision`), its `conflictField` as `field` and, for `revision`, the
-     * keep-server resolution. A name may be an exact name or a `prefix.*` pattern.
+     * policy (`conflict`, else the template's, else `revision`), its `conflictField` as `field`. A `revision` record has no
+     * resolution here: its conflict opens a MergeRequest (plans/U-08.md section 2.1). A name may be an exact name or a
+     * `prefix.*` pattern.
      */
     fun collectionsOf(catalog: JsonObject): List<JsonObject> =
         catalog["cloudSync"].objectValue?.get("collections").arrayValue.orEmpty().mapNotNull { e ->
@@ -52,7 +53,6 @@ internal object CloudSyncCatalog {
                     put("name", JsonPrimitive(name))
                     put("policy", JsonPrimitive(policy))
                     if (field != null) put("field", JsonPrimitive(field))
-                    if (policy == "revision") put("resolve", JsonPrimitive("keepServer"))
                 },
             )
         }

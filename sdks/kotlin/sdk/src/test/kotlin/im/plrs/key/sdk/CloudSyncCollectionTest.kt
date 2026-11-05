@@ -130,7 +130,7 @@ class CloudSyncCollectionTest {
         assertEquals("merge", decl[0]?.policy)
         assertEquals("union", decl[1]?.policy)
         assertEquals("revision", decl[2]?.policy)
-        assertEquals("keepServer", decl[2]?.resolve)
+        assertNull(decl[2]?.resolve)
         assertEquals("max", decl[3]?.policy)
         assertEquals("best", decl[3]?.field)
         assertEquals("lastWrite", decl[4]?.policy)
