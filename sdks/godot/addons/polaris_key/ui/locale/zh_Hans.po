@@ -2447,6 +2447,11 @@ msgctxt "macos"
 msgid "saveConflict.chooseAgain"
 msgstr "重新选择"
 
+#. Saved again on another device. Choose again.
+#. SaveConflict: shown on the choices when the other copy changed again while the person's choice was being applied. Nothing was applied.
+msgid "saveConflict.reopened"
+msgstr "已在另一台设备上再次保存。请重新选择。"
+
 #. Couldn't keep your choice. Your save is unchanged.
 #. SaveConflict: the choice failed after the other copy was deleted; only this device's save exists.
 msgid "saveConflict.failedDeleted"

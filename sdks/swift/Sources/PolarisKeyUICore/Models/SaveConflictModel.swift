@@ -30,6 +30,13 @@ public struct SaveConflictHost: Sendable {
 /// The screen shows no text from it.
 public struct SaveConflictKeepError: Error, Equatable, Sendable {
     public let code: String
+    /// The request is open again (`conflict`: the other copy changed while the keep ran; `slots-full`).
+    public let reopened: Bool
+
+    public init(code: String, reopened: Bool = false) {
+        self.code = code
+        self.reopened = reopened
+    }
 }
 
 extension SaveConflictHost {
@@ -43,34 +50,58 @@ extension SaveConflictHost {
             case .remote: keep = .remote
             case .both: keep = .both
             }
-            if case .failed(let code, _) = await request.keep(keep) { throw SaveConflictKeepError(code: code) }
+            if case .failed(let code, let reopened) = await request.keep(keep) {
+                throw SaveConflictKeepError(code: code, reopened: reopened)
+            }
         })
     }
 }
 
 extension KitSaveConflict {
-    /// How a copy reads by default: the platform's medium date and short time of `savedAt`, and the device the
-    /// save names. nil when the copy carries neither.
+    /// How a copy reads by default: `worded(savedAt:)` for the time, and the device the save names. nil
+    /// when the copy carries neither.
     public static func copy(of side: MergeSide) -> Copy {
-        var when: String?
-        if let savedAt = side.savedAt {
-            let f = DateFormatter()
-            f.dateStyle = .medium
+        Copy(when: side.savedAt.flatMap { worded(savedAt: $0) }, device: side.device)
+    }
+
+    /// A moment worded for "Saved {when}", by the platform's formatters: a relative day and the short time
+    /// ("today, 10:42", "yesterday, 21:40"), else the short date with no year inside the current year
+    /// ("Oct 30, 10:12"), and the year only for another year. Lower case inside the sentence.
+    /// `savedAt` is epoch milliseconds; `now`, `locale` and `calendar` are for tests.
+    public static func worded(
+        savedAt: Int, now: Date = Date(), locale: Locale = .current, calendar: Calendar = .current
+    ) -> String {
+        let date = Date(timeIntervalSince1970: Double(savedAt) / 1000)
+        let f = DateFormatter()
+        f.locale = locale
+        f.calendar = calendar
+        f.timeZone = calendar.timeZone
+        if calendar.isDate(date, inSameDayAs: now) || calendar.isDate(
+            date, inSameDayAs: calendar.date(byAdding: .day, value: -1, to: now) ?? now)
+        {
+            f.dateStyle = .short
             f.timeStyle = .short
-            when = f.string(from: Date(timeIntervalSince1970: Double(savedAt) / 1000))
+            f.doesRelativeDateFormatting = true
+            let relative = f.string(from: date)
+            // "Today, 10:42" reads mid-sentence in lower case; only the day word changes.
+            return relative.prefix(1).lowercased(with: locale) + relative.dropFirst()
         }
-        return Copy(when: when, device: side.device)
+        let sameYear = calendar.isDate(date, equalTo: now, toGranularity: .year)
+        f.setLocalizedDateFormatFromTemplate(sameYear ? "MMMd jm" : "yMMMd jm")
+        return f.string(from: date)
     }
 
     /// The `choose` step for an open request: both copies, whether the other was deleted, whether Keep both is
     /// free, and which copy is newer. `describe` overrides how a side reads (the app's own words for `when`).
-    public init(request: MergeRequest, describe: ((MergeSide) -> Copy)? = nil) {
+    /// `reopened` adds the line saying the other copy changed again.
+    public init(request: MergeRequest, describe: ((MergeSide) -> Copy)? = nil, reopened: Bool = false) {
         let read = describe ?? Self.copy(of:)
         let remote = request.remote
         self.init(
             step: .choose, local: request.local.map(read), remote: remote.map(read), remoteDeleted: remote == nil,
             bothAvailable: request.choices.contains(.both),
-            newer: request.newer.map { $0 == .local ? Keep.local : Keep.remote })
+            newer: request.newer.map { $0 == .local ? Keep.local : Keep.remote },
+            reopened: reopened ? true : nil)
     }
 }
 
@@ -80,6 +111,12 @@ extension KitSaveConflict {
 public final class SaveConflictModel {
     public private(set) var inputs: KitInputs
     private let host: SaveConflictHost?
+    /// The live request, when the model was built from one: its sides are read again whenever the screen
+    /// goes back to the choices, so the cards never show what the request has moved past.
+    private let request: MergeRequest?
+    private let describe: ((MergeSide) -> KitSaveConflict.Copy)?
+    /// Told when the request ended meanwhile (an exact write superseded it): there is nothing left to choose.
+    public var onClosed: (@MainActor () -> Void)?
     /// Told when a choice was applied (before `kept` shows).
     public var onKept: (@MainActor (KitSaveConflict.Keep) -> Void)?
     /// Told on Cancel: the conflict stays as it was.
@@ -96,15 +133,26 @@ public final class SaveConflictModel {
         inputs.saveConflict = conflict
         self.inputs = inputs
         self.host = host
+        self.request = nil
+        self.describe = nil
+    }
+
+    private init(
+        bound request: MergeRequest, inputs: KitInputs, describe: ((MergeSide) -> KitSaveConflict.Copy)?
+    ) {
+        var inputs = inputs
+        inputs.saveConflict = KitSaveConflict(request: request, describe: describe)
+        self.inputs = inputs
+        self.host = SaveConflictHost(request: request)
+        self.request = request
+        self.describe = describe
     }
 
     /// The live form: the screen for an open request, answered with `request.keep`.
     public convenience init(
         request: MergeRequest, inputs: KitInputs = KitInputs(), describe: ((MergeSide) -> KitSaveConflict.Copy)? = nil
     ) {
-        self.init(
-            conflict: KitSaveConflict(request: request, describe: describe), inputs: inputs,
-            host: SaveConflictHost(request: request))
+        self.init(bound: request, inputs: inputs, describe: describe)
     }
 
     public convenience init(inputs: KitInputs, host: SaveConflictHost? = nil) {
@@ -143,8 +191,10 @@ public final class SaveConflictModel {
     /// applied; the host is not told.
     public func chooseAgain() {
         guard step == .failed else { return }
-        inputs.saveConflict?.step = .choose
-        inputs.saveConflict?.keep = nil
+        if !reread(reopened: false) {
+            inputs.saveConflict?.step = .choose
+            inputs.saveConflict?.keep = nil
+        }
         onChooseAgain?()
     }
 
@@ -154,10 +204,27 @@ public final class SaveConflictModel {
             try await host?.keep(choice)
             set(.kept, keep: choice)
             onKept?(choice)
+        } catch let e as SaveConflictKeepError {
+            if e.code == "sync-merge-closed" {
+                // The request ended meanwhile: nothing is left to choose, and Try again could never succeed.
+                (onClosed ?? onCancel)?()
+            } else if e.reopened && (e.code == "conflict" || e.code == "slots-full") && reread(reopened: e.code == "conflict") {
+                // The other copy moved (or Keep both lost its slot) while the keep ran: nothing was applied.
+                // Back to the choices on the request's current sides, which say so.
+            } else {
+                set(.failed, keep: choice)
+            }
         } catch {
             // Both copies are as they were; nothing about the error reaches the screen.
             set(.failed, keep: choice)
         }
+    }
+
+    /// Back to the choices, read again from the live request. False when the model has no request.
+    private func reread(reopened: Bool) -> Bool {
+        guard let request else { return false }
+        inputs.saveConflict = KitSaveConflict(request: request, describe: describe, reopened: reopened)
+        return true
     }
 
     private func set(_ step: KitSaveConflict.Step, keep: KitSaveConflict.Keep) {

@@ -771,7 +771,7 @@ const INPUTS: Record<string, string> = {
   cloudSync:
     "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed | transferring | waiting | transfer-failed, signedIn?, canReview?, lastSynced?, transfer?: {size?, total?, fraction?}, reason?: network | battery | background}. `ring-changed` always offers Review: the kit owns the confirmation. `transferring` shows `transfer.size` of `transfer.total` (display-ready sizes) when both are given, and a bar that is determinate only with `transfer.fraction` (counted bytes, 0 to 1); `waiting` names its `reason` (default network); `transfer-failed` offers Try again. While a transfer is pending the status never says Synced, whatever `lastSynced` holds.",
   saveConflict:
-    "SaveConflict: {step: choose | keeping | kept | failed, local?: {when?}, remote?: {when?, device?} | null, bothAvailable?, keep?: local | remote | both, newer?: local | remote}. `remote: null` means the other copy was deleted: Keep the other becomes Delete it here too and Keep both is not offered. `bothAvailable` is true only with a free slot of the 16; absent or false draws Keep both disabled, with its reason. `keep` is the choice being applied (keeping), applied (kept) or that failed; kept needs it. `newer`: `local | remote`, the version the app knows was saved later (its own metadata, never the display strings). It tags that card and chooses nothing; it is ignored when the other copy was deleted. `when` and `device` are display-ready.",
+    "SaveConflict: {step: choose | keeping | kept | failed, local?: {when?}, remote?: {when?, device?} | null, bothAvailable?, keep?: local | remote | both, newer?: local | remote}. `remote: null` means the other copy was deleted: Keep the other becomes Delete it here too and Keep both is not offered. `bothAvailable` is true only with a free slot of the 16; absent or false draws Keep both disabled, with its reason. `keep` is the choice being applied (keeping), applied (kept) or that failed; kept needs it. `reopened`: true on choose when a choice met a newer copy and nothing was applied; one line says the other version changed again. `newer`: `local | remote`, the version the app knows was saved later (its own metadata, never the display strings). It tags that card and chooses nothing; it is ignored when the other copy was deleted. `when` and `device` are display-ready.",
   licenseHolder:
     "Who holds the license a key just activated: {email?}. No email (or an empty one): floating, held by the key alone. An email: the license was sent to it and no account holds it yet (waiting); screens mask it. `addIn: portal` (UK-43.2): the kit has no in-app channel for Add your name and email, so the Add control of ActivateDone, SignIn `key-done` and AccountAndLicense's floating row says Add it in Polaris Locker (an external link) and opens the manage URL; absent or `app`: the in-app form. Absent: the holder is not known and AccountAndLicense draws what it drew before.",
   activateDone:
@@ -4911,7 +4911,7 @@ function saveConflictFamily(a: A): Draft[] {
       input,
       "SaveConflict",
       "choose",
-      but("SaveConflict", "choose", ...drop),
+      but("SaveConflict", "choose", ...drop, "saveConflict.reopened"),
       o,
     );
   const NEVER_PENDING =
@@ -5074,6 +5074,32 @@ function saveConflictFamily(a: A): Draft[] {
           ],
           actions: ["keep-both"],
         },
+      ),
+    ),
+    row(
+      "SaveConflict/choose: a choice met a newer copy, so the versions are read again",
+      SC("choose", {
+        bothAvailable: true,
+        newer: "remote",
+        reopened: true,
+        remote: { when: "today, 10:44", device: "Maya's Steam Deck" },
+      }),
+      "SaveConflict",
+      "choose",
+      but(
+        "SaveConflict",
+        "choose",
+        "saveConflict.deletedTitle",
+        "saveConflict.deletedLede",
+        "saveConflict.otherUnknown",
+        "saveConflict.deletedElsewhere",
+        "saveConflict.acceptDelete",
+        "saveConflict.bothFull",
+        "saveConflict.newerThis",
+      ),
+      inv(
+        "A choice that met a newer copy applies nothing: the person sees the new version and chooses again.",
+        { states: ["keeping", "kept"] },
       ),
     ),
     choose(

@@ -50,6 +50,17 @@ export function useBoundSaves(): BrowserSaves | null {
   );
 }
 
+/** While a bound screen is mounted, the app is listening for conflicts: the developer notice for an
+ *  unheard request stays quiet (the documented `<SaveConflict />` and `<CloudSyncStatus />` hear it). */
+function useConflictListener(saves: BrowserSaves | null): void {
+  const adapter = useContext(PolarisContext)?.adapter;
+  useEffect(() => {
+    const client = adapter?.cloudSync;
+    if (!saves || !client || client.unsupported) return;
+    return client.onConflict(() => undefined);
+  }, [adapter, saves]);
+}
+
 /** Re-render on every change of the saves' transfers and conflicts. */
 function useSavesTick(saves: BrowserSaves | null): SaveTransferEvent | null {
   const [last, setLast] = useState<SaveTransferEvent | null>(null);
@@ -130,6 +141,7 @@ export function useTransferInput(
   muted: boolean;
 } {
   const saves = useBoundSaves();
+  useConflictListener(saves);
   const last = useSavesTick(saves);
   const screen = useScreenOpen(saves);
   const online = useOnline();
@@ -195,7 +207,9 @@ const num = (v: unknown): number | undefined =>
 const label = (v: unknown): string | undefined =>
   typeof v === "string" && v !== "" ? v : undefined;
 
-/** "Today, 9:41", "Yesterday, 9:41" or "12 Mar, 9:41", in the person's locale. */
+/** A moment for "Saved {when}", in the person's locale: a relative day and the time ("today, 9:41",
+ *  "yesterday, 9:41"), else the short date with no year inside the current year ("12 Mar, 9:41"),
+ *  and the year only for another year. Lower case inside the sentence. */
 export function whenText(ms: number, now = Date.now()): string {
   const t = new Date(ms);
   const day = (d: Date) => new Date(d).setHours(0, 0, 0, 0);
@@ -213,8 +227,11 @@ export function whenText(ms: number, now = Date.now()): string {
       : new Intl.DateTimeFormat(undefined, {
           day: "numeric",
           month: "short",
+          ...(t.getFullYear() === new Date(now).getFullYear()
+            ? {}
+            : { year: "numeric" }),
         }).format(t);
-  return `${rel.charAt(0).toUpperCase()}${rel.slice(1)}, ${clock}`;
+  return `${rel}, ${clock}`;
 }
 
 /** The cards' details from what every SDK writes with a save (`savedAt` in ms and `deviceLabel`,
@@ -270,9 +287,12 @@ export function useBoundConflict(
   describe?: (c: Conflict) => ConflictDescription,
 ): BoundConflict {
   const saves = useBoundSaves();
+  useConflictListener(saves);
   useSavesTick(saves);
   const [step, setStep] = useState<ConflictInput["step"]>("choose");
   const [keep, setKeep] = useState<SaveKeep | undefined>(undefined);
+  // A keep met a newer copy and nothing was applied: the choices show the new versions and say so.
+  const [reopened, setReopened] = useState(false);
   // Cancel hides the screen and keeps the conflict pending (the strip says it needs review). It
   // hides that conflict, not the save: a later conflict on the same save shows again.
   const [hiddenFor, setHiddenFor] = useState<Conflict | null>(null);
@@ -295,17 +315,25 @@ export function useBoundConflict(
   const run = async (k: SaveKeep): Promise<void> => {
     if (!saves || !c) return;
     setKeep(k);
+    setReopened(false);
     setStep("keeping");
     try {
       const out = await c.keep(k);
       if (!live.current) return;
       if (out.ok) setStep("kept");
-      else if (out.reopened && out.code === "conflict") {
-        // Another write landed meanwhile: the request is open again on the new copy. Choose
-        // again (Try again would repeat the stale choice).
+      else if (
+        out.reopened &&
+        (out.code === "conflict" || out.code === "slots-full")
+      ) {
+        // Another write landed meanwhile (or Keep both lost its slot): the request is open again on
+        // the new copy. Choose again, read from the request (Try again would repeat the stale choice).
         setKeep(undefined);
+        setReopened(out.code === "conflict");
         setStep("choose");
-      } else setStep("failed");
+      } else if (out.code === "sync-merge-closed")
+        // The request ended meanwhile (an exact write superseded it): nothing is left to choose.
+        settle();
+      else setStep("failed");
     } catch {
       if (live.current) setStep("failed");
     }
@@ -315,6 +343,7 @@ export function useBoundConflict(
     setHiddenFor(null);
     setStep("choose");
     setKeep(undefined);
+    setReopened(false);
   };
   const own = c ? describeFromMetadata(c) : undefined;
   const given = c && describe ? describe(c) : undefined;
@@ -340,6 +369,7 @@ export function useBoundConflict(
             : {}),
           bothAvailable: c.choices.includes("both"),
           ...(keep ? { keep } : {}),
+          ...(reopened && step === "choose" ? { reopened: true } : {}),
           step,
         },
       };
@@ -351,6 +381,7 @@ export function useBoundConflict(
     onChooseAgain: () => {
       setStep("choose");
       setKeep(undefined);
+      setReopened(false);
     },
     // Cancel (or Escape) leaves the conflict as it was; only Done settles it.
     onCancel: () => {

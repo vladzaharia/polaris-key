@@ -226,6 +226,14 @@ public struct SaveConflictView: View {
                     if let lede = screen.line("saveConflict.lede") ?? screen.line("saveConflict.deletedLede") {
                         KitText(lede, .body)
                     }
+                    if let note = screen.line("saveConflict.reopened") {
+                        // A choice met a newer copy: nothing was applied, and these are the new versions.
+                        HStack(alignment: .firstTextBaseline, spacing: style.space(.xs)) {
+                            Image(systemName: "info.circle").accessibilityHidden(true)
+                            KitText(note, .meta, color: .muted)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
                     card(
                         style, who: screen.lineOrKey("saveConflict.thisDevice"),
                         when: screen.line("saveConflict.savedThis"),
@@ -273,14 +281,7 @@ public struct SaveConflictView: View {
     {
         VStack(alignment: .leading, spacing: style.space(.xxs)) {
             KitText(who, .body, color: .strong)
-            if let newer {
-                // A tag, not a control: the word on a neutral pill, no outline and no accent.
-                KitText(newer, .meta, color: .strong)
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, style.space(.xs))
-                    .padding(.vertical, style.space(.xxs))
-                    .background(Capsule().fill(style.palette.page))
-            }
+            if let newer { newerTag(style, newer) }
             if let when { KitText(when, .meta, color: .muted) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -290,6 +291,15 @@ public struct SaveConflictView: View {
                 .fill(style.palette.sunken)
         )
         .accessibilityElement(children: .combine)
+    }
+
+    /// A tag, not a control: the word on a neutral pill, no outline and no accent.
+    private func newerTag(_ style: KitResolvedStyle, _ line: CopyLine) -> some View {
+        KitText(line, .meta, color: .strong)
+            .fontWeight(.semibold)
+            .padding(.horizontal, style.space(.xs))
+            .padding(.vertical, style.space(.xxs))
+            .background(Capsule().fill(style.palette.page))
     }
 
     // MARK: Actions

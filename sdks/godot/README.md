@@ -504,7 +504,9 @@ key ring calls on `PolarisKey.keyring` through `PKeyCloudSyncController` unless 
   holds this device's copy of the save while the request is open, so the game hands in nothing; the dates and
   the other device's name come from the request (`PKeySaveScreensHost.of(PolarisKey).describe`, a Callable
   taking the request and returning `{local_when, remote_when, remote_device}`, overrides them).
-  `saves.conflicts()` lists the open requests and `saves.dismiss_conflict(id)` hides one. To drive the
+  `saves.conflicts()` lists every open request. Cancel hides the screen only (the save stays held unsent, the strip says
+  it needs a choice, and Review brings the screen back); it returns by itself only when the other copy changes. A
+  keep that meets a newer copy goes back to the choices on the new versions, with a line saying so. To drive the
   screen yourself, set `follow_sdk = false`, then set
   `step`, `local_when`, `remote_when`, `remote_device`, `remote_deleted`, `both_available`, `keep`,
   `newer` and connect the signals. `newer` (`"local"` or `"remote"`, from your own metadata) tags that

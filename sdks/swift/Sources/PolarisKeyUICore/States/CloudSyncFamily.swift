@@ -230,8 +230,10 @@ extension KitStates {
             var lines = [
                 c.line(gone ? "saveConflict.deletedTitle" : "saveConflict.title"),
                 c.line(gone ? "saveConflict.deletedLede" : "saveConflict.lede"),
-                c.line("saveConflict.thisDevice"),
             ]
+            // A choice met a newer copy: nothing was applied, and these are the new versions.
+            if s.reopened == true { lines.append(c.line("saveConflict.reopened")) }
+            lines.append(c.line("saveConflict.thisDevice"))
             if let when = s.local?.when {
                 lines.append(c.line("saveConflict.savedThis", ["when": .text(when)]))
             }

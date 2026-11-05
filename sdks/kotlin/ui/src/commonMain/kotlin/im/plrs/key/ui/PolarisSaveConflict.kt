@@ -189,6 +189,16 @@ private val KEPT_TITLES = listOf(
 private fun Copies(lines: KitLines, stacked: Boolean) {
     Spacer(Modifier.height(PolarisSpace.tight))
     (lines.text("saveConflict.deletedLede") ?: lines.text("saveConflict.lede"))?.let { PolarisBody(it, textAlign = TextAlign.Start) }
+    // A choice met a newer copy: nothing was applied, and these are the new versions.
+    lines.text("saveConflict.reopened")?.let {
+        Spacer(Modifier.height(PolarisSpace.tight))
+        Text(
+            it,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+        )
+    }
     Spacer(Modifier.height(if (stacked) PolarisSpace.tight else PolarisSpace.medium))
     // Newer only tags a card (and only the app says which); it chooses nothing.
     val newer = lines.text("saveConflict.newerThis") to lines.text("saveConflict.newerOther")

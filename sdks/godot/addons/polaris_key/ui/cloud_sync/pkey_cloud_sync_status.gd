@@ -377,7 +377,7 @@ func _on_action() -> void:
 			review_requested.emit()
 			if state == "ring-changed" and host != null:
 				host.open_review()
-			elif state == "conflict" and saves_host != null and saves_host.conflict() != null:
+			elif state == "conflict" and saves_host != null and saves_host.review():
 				_present_save_conflict()
 		"locked":
 			unlock_requested.emit()

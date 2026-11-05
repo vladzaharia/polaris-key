@@ -397,6 +397,7 @@
     "saveConflict.newerThis": "Più recente",
     "saveConflict.newerOther": "Più recente",
     "saveConflict.chooseAgain": "Scegli di nuovo",
+    "saveConflict.reopened": "Salvato di nuovo su un altro dispositivo. Scegli di nuovo.",
     "saveConflict.failedDeleted": "Impossibile applicare la scelta. Il salvataggio è invariato.",
     "saveConflict.keptLocalTitle": "Versione di questo dispositivo mantenuta",
     "saveConflict.keptRemoteTitle": "Altra versione mantenuta",

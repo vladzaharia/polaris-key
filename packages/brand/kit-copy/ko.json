@@ -397,6 +397,7 @@
     "saveConflict.newerThis": "최신",
     "saveConflict.newerOther": "최신",
     "saveConflict.chooseAgain": "다시 선택",
+    "saveConflict.reopened": "다른 기기에서 다시 저장되었습니다. 다시 선택하세요.",
     "saveConflict.failedDeleted": "선택을 적용하지 못했어요. 저장 데이터는 그대로예요.",
     "saveConflict.keptLocalTitle": "이 기기의 버전을 유지했어요",
     "saveConflict.keptRemoteTitle": "다른 버전을 유지했어요",

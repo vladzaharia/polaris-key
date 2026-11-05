@@ -94,6 +94,8 @@ internal fun saveConflictScreen(inputs: KitInputs): KitScreen {
                     // The deleted variant states its own situation: one copy and a deletion, not two versions.
                     context.line(if (gone) "saveConflict.deletedTitle" else "saveConflict.title"),
                     context.line(if (gone) "saveConflict.deletedLede" else "saveConflict.lede"),
+                    // A choice met a newer copy: nothing was applied, and these are the new versions.
+                    if (conflict.boolean("reopened") == true) context.line("saveConflict.reopened") else null,
                     context.line("saveConflict.thisDevice"),
                     if (localWhen != null) context.line("saveConflict.savedThis", mapOf("when" to CopyArgument.Text(localWhen))) else null,
                     when {

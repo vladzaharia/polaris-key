@@ -397,6 +397,7 @@
     "saveConflict.newerThis": "新しい",
     "saveConflict.newerOther": "新しい",
     "saveConflict.chooseAgain": "選び直す",
+    "saveConflict.reopened": "別のデバイスで再び保存されました。もう一度選んでください。",
     "saveConflict.failedDeleted": "選択を反映できませんでした。セーブデータは変わっていません。",
     "saveConflict.keptLocalTitle": "このデバイスのバージョンを残しました",
     "saveConflict.keptRemoteTitle": "もう一方のバージョンを残しました",

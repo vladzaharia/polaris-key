@@ -397,6 +397,7 @@
     "saveConflict.newerThis": "Mais recente",
     "saveConflict.newerOther": "Mais recente",
     "saveConflict.chooseAgain": "Escolher de novo",
+    "saveConflict.reopened": "Salvo novamente em outro dispositivo. Escolha de novo.",
     "saveConflict.failedDeleted": "Não foi possível aplicar sua escolha. Seu jogo salvo continua igual.",
     "saveConflict.keptLocalTitle": "Versão deste dispositivo mantida",
     "saveConflict.keptRemoteTitle": "Outra versão mantida",

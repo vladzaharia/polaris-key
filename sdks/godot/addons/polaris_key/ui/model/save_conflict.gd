@@ -85,6 +85,8 @@ static func save_conflict_view(ctx: RefCounted) -> Dictionary:
 		"copy": [
 			situation,
 			"saveConflict.deletedLede" if gone else "saveConflict.lede",
+			# A choice met a newer copy: nothing was applied, and these are the new versions.
+			"saveConflict.reopened" if c.get("reopened") == true else "",
 			"saveConflict.thisDevice",
 			"saveConflict.savedThis" if local_when != null else "",
 			# Newer tags the card the app names; it never fills, focuses or reorders, and one copy has nothing to compare.

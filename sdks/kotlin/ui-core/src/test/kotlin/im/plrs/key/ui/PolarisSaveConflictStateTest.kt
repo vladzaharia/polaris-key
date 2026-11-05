@@ -215,8 +215,8 @@ class PolarisSaveConflictStateTest {
     }
 
     @Test
-    fun aRefusedKeepIsAFailureAndBothIsOfferedOnlyWhenTheRequestListsIt() = runTest {
-        val resolver = PolarisSaveResolver.of { MergeOutcome.Refused("conflict", reopened = true) }
+    fun aKeepThatFailedIsAFailureAndBothIsOfferedOnlyWhenTheRequestListsIt() = runTest {
+        val resolver = PolarisSaveResolver.of { MergeOutcome.Refused("offline", reopened = true) }
         val full = PolarisSaveConflictState.of(mine, theirs, listOf("local", "remote"), null, resolver, backgroundScope)
         val screen = full.kitScreen()!!
         assertEquals(listOf(KitAction.keepBoth), screen.disabledActions)
@@ -229,5 +229,71 @@ class PolarisSaveConflictStateTest {
         // The copy deleted elsewhere: no remote card, and the default medium date-time names the copy's time only.
         val gone = PolarisSaveConflictState.of(mine, null, listOf("local", "remote"), "remote", resolver, backgroundScope)
         assertFalse(gone.kitScreen()!!.shows("saveConflict.newerOther"))
+    }
+
+    /** keep, then a third write: back to the choices on the new remote, nothing applied, and a line says so. */
+    @Test
+    fun aKeepThatMeetsANewerCopyGoesBackToChooseOnTheNewRemote() = runTest {
+        var request = PolarisSaveSides(mine.copy(savedAt = 1_700_200_000_000), theirs, listOf("local", "remote", "both"), "local")
+        var calls = 0
+        // The other device saves again, later than this one, while the keep runs: the request reopens on it.
+        val state = PolarisSaveConflictState.of(
+            { request },
+            PolarisSaveResolver.of {
+                calls++
+                request = request.copy(remote = theirs.copy(version = 8, savedAt = 1_700_300_000_000), newer = "remote")
+                MergeOutcome.Refused("conflict", reopened = true)
+            },
+            backgroundScope,
+        )
+        assertTrue(state.kitScreen()!!.shows("saveConflict.newerThis"))
+        state.keep(PolarisSaveKeep.Local)
+        runCurrent()
+        assertEquals("never Failed: a Try again would overwrite a copy nobody saw", PolarisSaveConflictUi.Choose, state.ui.value)
+        assertEquals(1, calls)
+        val screen = state.kitScreen()!!
+        assertTrue(screen.shows("saveConflict.reopened"))
+        assertTrue("the cards are the request's now, not the ones the holder was built with", screen.shows("saveConflict.newerOther"))
+        assertFalse(screen.shows("saveConflict.newerThis"))
+        state.retry()
+        runCurrent()
+        assertEquals("Try again is for a failure only", 1, calls)
+        // Choosing again clears the line.
+        state.keep(PolarisSaveKeep.Remote)
+        runCurrent()
+        assertEquals(2, calls)
+    }
+
+    @Test
+    fun aClosedRequestClosesTheScreenAndASlotsFullReopenDisablesKeepBoth() = runTest {
+        val closed = PolarisSaveConflictState.of(mine, theirs, listOf("local", "remote", "both"), null, PolarisSaveResolver.of { MergeOutcome.Refused("sync-merge-closed", reopened = false) }, backgroundScope)
+        closed.keep(PolarisSaveKeep.Local)
+        runCurrent()
+        assertEquals(PolarisSaveConflictUi.Cancelled, closed.ui.value)
+        assertNull(closed.kitScreen())
+        val choices = mutableListOf("local", "remote", "both")
+        val full = PolarisSaveConflictState.of(mine, theirs, choices, null, PolarisSaveResolver.of { MergeOutcome.Refused("slots-full", reopened = true) }, backgroundScope)
+        full.keep(PolarisSaveKeep.Both)
+        runCurrent()
+        assertEquals(PolarisSaveConflictUi.Choose, full.ui.value)
+        assertFalse(full.kitScreen()!!.shows("saveConflict.reopened"))
+    }
+
+    @Test
+    fun theDefaultWhenIsAWordedDayOrAShortDate() {
+        val zone = java.time.ZoneId.of("UTC")
+        val now = java.time.Instant.parse("2026-11-05T12:00:00Z")
+        fun at(s: String) = java.time.Instant.parse(s).toEpochMilli()
+        val en = java.util.Locale.US
+        assertTrue(PolarisWhen.worded(at("2026-11-05T10:42:00Z"), en, now, zone).startsWith("today, 10:42"))
+        assertTrue(PolarisWhen.worded(at("2026-11-04T21:40:00Z"), en, now, zone).startsWith("yesterday, 9:40"))
+        val sameYear = PolarisWhen.worded(at("2026-10-30T10:12:00Z"), en, now, zone)
+        assertTrue(sameYear, sameYear.startsWith("Oct 30, ") && !sameYear.contains("2026"))
+        assertTrue(PolarisWhen.worded(at("2025-10-30T10:12:00Z"), en, now, zone).contains("2025"))
+        assertTrue(PolarisWhen.worded(at("2026-11-05T10:42:00Z"), java.util.Locale.GERMANY, now, zone).startsWith("heute, 10:42"))
+        val de = PolarisWhen.worded(at("2026-10-30T10:12:00Z"), java.util.Locale.GERMANY, now, zone)
+        assertTrue(de, !de.contains("2026"))
+        val ja = PolarisWhen.worded(at("2026-10-30T10:12:00Z"), java.util.Locale.JAPAN, now, zone)
+        assertTrue(ja, !ja.contains("2026"))
     }
 }

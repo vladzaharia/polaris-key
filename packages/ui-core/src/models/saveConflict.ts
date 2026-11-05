@@ -89,6 +89,8 @@ export function saveConflictView(
           // The deleted variant states its own situation: one copy and a deletion, not two versions.
           gone ? "saveConflict.deletedTitle" : "saveConflict.title",
           gone ? "saveConflict.deletedLede" : "saveConflict.lede",
+          // A choice met a newer copy: nothing was applied, and these are the new versions.
+          c.reopened === true && "saveConflict.reopened",
           "saveConflict.thisDevice",
           c.local?.when !== undefined && "saveConflict.savedThis",
           gone

@@ -390,6 +390,7 @@
   "saveConflict.newerThis": "Neuer",
   "saveConflict.newerOther": "Neuer",
   "saveConflict.chooseAgain": "Erneut wählen",
+  "saveConflict.reopened": "Auf einem anderen Gerät erneut gespeichert. Wählen Sie noch einmal.",
   "saveConflict.failedDeleted": "Ihre Wahl konnte nicht übernommen werden. Ihr Spielstand ist unverändert.",
   "saveConflict.keptLocalTitle": "Version dieses Geräts behalten",
   "saveConflict.keptRemoteTitle": "Andere Version behalten",

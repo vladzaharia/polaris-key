@@ -390,6 +390,7 @@
   "saveConflict.newerThis": "Newer",
   "saveConflict.newerOther": "Newer",
   "saveConflict.chooseAgain": "Choose again",
+  "saveConflict.reopened": "Saved again on another device. Choose again.",
   "saveConflict.failedDeleted": "Couldn't keep your choice. Your save is unchanged.",
   "saveConflict.keptLocalTitle": "Kept this device's version",
   "saveConflict.keptRemoteTitle": "Kept the other version",

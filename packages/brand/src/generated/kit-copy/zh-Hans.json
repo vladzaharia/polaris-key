@@ -390,6 +390,7 @@
   "saveConflict.newerThis": "较新",
   "saveConflict.newerOther": "较新",
   "saveConflict.chooseAgain": "重新选择",
+  "saveConflict.reopened": "已在另一台设备上再次保存。请重新选择。",
   "saveConflict.failedDeleted": "无法应用你的选择。你的存档未更改。",
   "saveConflict.keptLocalTitle": "已保留此设备的版本",
   "saveConflict.keptRemoteTitle": "已保留另一个版本",

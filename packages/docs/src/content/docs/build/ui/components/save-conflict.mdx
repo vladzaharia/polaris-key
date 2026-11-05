@@ -32,7 +32,7 @@ Shown when the same save changed on two devices. Two cards, one per copy, carry 
 
     **Drop-in.** `<SaveConflict />` from `@polaris-key/react/kit`, inside `<PolarisKeyProvider config={polarisKey}>`. It follows the first open MergeRequest of the saves collection and answers it with `request.keep`; the client holds this device's copy, so there is no `bytes` prop. With no conflict it draws nothing. A conflict that appears after a save takes focus once. Cancel keeps the conflict pending; the [Cloud Sync strip](/docs/build/ui/components/cloud-sync-status/) keeps asking, and Review opens the screen again.
 
-    **Cards.** Every SDK stores `savedAt` (milliseconds) and `deviceLabel` (the device's display name, never a hardware value) in the metadata of each save, and the cards read them. Your own `savedAt` or `deviceLabel` key is overwritten. `when` defaults to the platform's medium date and time of `savedAt`. `describe` is optional and overrides a card's `when`, `device` or `newer`.
+    **Cards.** Every SDK stores `savedAt` (milliseconds) and `deviceLabel` (the device's display name, never a hardware value) in the metadata of each save, and the cards read them. Your own `savedAt` or `deviceLabel` key is overwritten. `when` defaults to a relative day and the time ("today, 10:42"), else the short date, in the person's locale. `describe` is optional and overrides a card's `when`, `device` or `newer`.
 
     **Styled part and headless.** Given an `input.saveConflict` it is the plain part and the host drives it; `viewOf("SaveConflict", input)` returns the view.
 
@@ -43,20 +43,44 @@ Shown when the same save changed on two devices. Two cards, one per copy, carry 
     **Styled part.** `SaveConflictView(model:)` over `SaveConflictModel(request:)`, from `PolarisKeyUI` and `PolarisKeyUICore`. The model reads both copies, `bothAvailable` and `newer` from the `MergeRequest` and applies a choice with `request.keep`, so the app passes no bytes. `SaveConflictModel(conflict:inputs:host:)` is the plain form, with `SaveConflictHost(keep:)`, one closure that throws when it could not apply the choice. `onKept`, `onCancel`, `onChooseAgain` and `onDone` on the model tell you where the person went.
 
     ```swift
+    import PolarisKey
+    import PolarisKeyUI
+    import PolarisKeyUICore
+    import SwiftUI
 
-import PolarisKey
-import PolarisKeyUI
-import PolarisKeyUICore
-import SwiftUI
+    @MainActor
+    func saveConflictScreen(request: MergeRequest) -> some View {
+        SaveConflictView(model: SaveConflictModel(request: request))
+    }
+    ```
 
-@MainActor
-func saveConflictScreen(request: MergeRequest) -> some View {
-SaveConflictView(model: SaveConflictModel(request: request))
-}
-
-```
+    A keep that meets a newer copy goes back to the choices on the request's current versions, with one line saying the other copy changed again; Try again is only ever offered after a failure. A request that closed meanwhile calls `onClosed`.
 
     **Headless.** `KitStates.saveConflict(_:)`. [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme and the restyle hooks.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Styled part.** `PolarisSaveConflict(state)` from `polaris-key-ui`, over `PolarisSaveConflictState.of(request, scope)` from `polaris-key-ui-core`. The state holder reads both copies, `bothAvailable` and `newer` from the `MergeRequest` on every step and applies a choice with `request.keep`, so the app passes no bytes. A keep that meets a newer copy goes back to the choices on the request's current versions with one line saying so; a request that closed meanwhile closes the screen. `PolarisWhen.worded` is the default `when`: "today, 10:42", "yesterday, 21:40", else the short date.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.remember
+    import androidx.compose.runtime.rememberCoroutineScope
+    import im.plrs.key.sdk.MergeRequest
+    import im.plrs.key.ui.PolarisSaveConflict
+    import im.plrs.key.ui.PolarisSaveConflictState
+
+    @Composable
+    fun SaveConflictScreen(request: MergeRequest) {
+        val scope = rememberCoroutineScope()
+        val state = remember(request) { PolarisSaveConflictState.of(request, scope) }
+        PolarisSaveConflict(state)
+    }
+    ```
+
+    **Headless.** `state.kitScreen()` answers the matrix component and inputs the current step draws. [Compose](/docs/build/ui/frameworks/compose/) has the theme and the routes.
 
   </TabItem>
   <TabItem label="Godot">

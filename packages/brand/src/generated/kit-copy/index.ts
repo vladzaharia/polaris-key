@@ -404,6 +404,7 @@ export type KitCopyKey =
   | "saveConflict.newerThis"
   | "saveConflict.newerOther"
   | "saveConflict.chooseAgain"
+  | "saveConflict.reopened"
   | "saveConflict.failedDeleted"
   | "saveConflict.keptLocalTitle"
   | "saveConflict.keptRemoteTitle"

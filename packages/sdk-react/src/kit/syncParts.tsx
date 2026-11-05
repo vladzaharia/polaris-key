@@ -381,15 +381,34 @@ function SaveConflictBody(props: { c: KitCtx }): ReactNode {
   // One status node across every step, empty until keeping: a node that mounts holding its text
   // may not be announced (UX2-web 6).
   const keeping = c.view.state === "keeping";
+  // A choice met a newer copy: nothing was applied, and the versions shown are the new ones.
+  const reopened = c.view.state === "choose" && shown(c, "saveConflict.reopened");
+  // The result is announced here too (the title is the heading, where focus rests, but a screen reader
+  // that was on the removed button hears nothing without it).
+  const keptKey =
+    c.view.state === "kept"
+      ? [
+          "saveConflict.keptLocalTitle",
+          "saveConflict.keptRemoteTitle",
+          "saveConflict.keptBothTitle",
+          "saveConflict.keptDeletedTitle",
+        ].find((k) => shown(c, k))
+      : undefined;
+  const key = keeping
+    ? "saveConflict.keeping"
+    : reopened
+      ? "saveConflict.reopened"
+      : keptKey;
+  const visible = keeping || reopened;
   return (
     <>
       <SaveConflictStep c={c} />
       <p
-        className={keeping ? "body" : "visually-hidden"}
+        className={visible ? "body" : "visually-hidden"}
         role="status"
-        data-key={keeping ? "saveConflict.keeping" : undefined}
+        data-key={visible ? key : undefined}
       >
-        {keeping ? text(c, "saveConflict.keeping") : ""}
+        {key ? text(c, key) : ""}
       </p>
     </>
   );

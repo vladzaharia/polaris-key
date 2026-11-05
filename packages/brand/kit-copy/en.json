@@ -1992,6 +1992,11 @@
       "role": "button",
       "note": "SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied."
     },
+    "saveConflict.reopened": {
+      "value": "Saved again on another device. Choose again.",
+      "role": "body",
+      "note": "SaveConflict: shown on the choices when the other copy changed again while the person's choice was being applied. Nothing was applied."
+    },
     "saveConflict.failedDeleted": {
       "value": "Couldn't keep your choice. Your save is unchanged.",
       "role": "body",

@@ -907,6 +907,8 @@
     <!-- SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied. -->
     <string name="saveConflict_chooseAgain">Choisir à nouveau</string>
     <string name="saveConflict_chooseAgain__macos">Choisir à nouveau</string>
+    <!-- SaveConflict: shown on the choices when the other copy changed again while the person's choice was being applied. Nothing was applied. -->
+    <string name="saveConflict_reopened">Enregistré de nouveau sur un autre appareil. Choisissez à nouveau.</string>
     <!-- SaveConflict: the choice failed after the other copy was deleted; only this device's save exists. -->
     <string name="saveConflict_failedDeleted">Impossible d’appliquer votre choix. Votre sauvegarde est inchangée.</string>
     <!-- SaveConflict: result title after Keep this device's version. -->

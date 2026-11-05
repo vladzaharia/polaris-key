@@ -326,7 +326,7 @@ Two devices that save from the same version conflict. The write is not sent: `tr
 
 `request.choices` offers `both` only while a slot is free and the other version exists. A save deleted on another device conflicts too: there is then no other version (`remote` is nil or null), and keeping this device's copy creates the save again.
 
-While a request is open, a write with no base only replaces its local copy and settles `conflict` again without uploading. A write with a base supersedes the request, and `delete()` defaults to the request's base, so it conflicts and the other copy survives. A write with no base is based on the version this device last listed, read or wrote for that slot in this session; a slot not seen this session is create-only. A version learned by a pull is never a base, so another device's newer save is a conflict and not an overwrite. Save requests live in memory: a relaunch drops them, and the app's next write raises the conflict again.
+While a request is open, a write with no base only replaces its local copy and settles `conflict` again without uploading. A write with a base supersedes the request, and `delete()` defaults to the request's base, so it conflicts and the other copy survives. A write with no base is based on the version this device last listed, read or wrote for that slot in this session; a slot not seen this session is create-only. A version learned by a pull is never a base, so another device's newer save is a conflict and not an overwrite; once the app calls `list()`, the versions it lists (the cache a pull refreshed included) are the ones it has seen. Save requests live in memory: a relaunch drops them, and the app's next write raises the conflict again.
 
 ## Errors
 

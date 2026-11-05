@@ -1152,10 +1152,13 @@ public struct KitSaveConflict: Sendable, Codable, Equatable, Hashable {
     /// The version the app knows was saved later (its own metadata, never the display strings).
     /// It tags that card and chooses nothing; ignored when the other copy was deleted.
     public var newer: Keep?
+    /// On `choose`: a choice was being applied and the other copy changed again, so nothing was applied and
+    /// the copies shown are the new ones. Adds one line saying so.
+    public var reopened: Bool?
 
     public init(
         step: Step, local: Copy? = nil, remote: Copy? = nil, remoteDeleted: Bool = false,
-        bothAvailable: Bool? = nil, keep: Keep? = nil, newer: Keep? = nil
+        bothAvailable: Bool? = nil, keep: Keep? = nil, newer: Keep? = nil, reopened: Bool? = nil
     ) {
         self.step = step
         self.local = local
@@ -1164,10 +1167,11 @@ public struct KitSaveConflict: Sendable, Codable, Equatable, Hashable {
         self.bothAvailable = bothAvailable
         self.keep = keep
         self.newer = newer
+        self.reopened = reopened
     }
 
     private enum CodingKeys: String, CodingKey {
-        case step, local, remote, bothAvailable, keep, newer
+        case step, local, remote, bothAvailable, keep, newer, reopened
     }
 
     public init(from decoder: Decoder) throws {
@@ -1182,6 +1186,7 @@ public struct KitSaveConflict: Sendable, Codable, Equatable, Hashable {
         bothAvailable = try c.decodeIfPresent(Bool.self, forKey: .bothAvailable)
         keep = try c.decodeIfPresent(Keep.self, forKey: .keep)
         newer = try c.decodeIfPresent(Keep.self, forKey: .newer)
+        reopened = try c.decodeIfPresent(Bool.self, forKey: .reopened)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -1196,6 +1201,7 @@ public struct KitSaveConflict: Sendable, Codable, Equatable, Hashable {
         try c.encodeIfPresent(bothAvailable, forKey: .bothAvailable)
         try c.encodeIfPresent(keep, forKey: .keep)
         try c.encodeIfPresent(newer, forKey: .newer)
+        try c.encodeIfPresent(reopened, forKey: .reopened)
     }
 }
 

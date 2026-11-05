@@ -478,6 +478,7 @@ export const KIT_COPY: Readonly<
     "saveConflict.newerThis": "Newer",
     "saveConflict.newerOther": "Newer",
     "saveConflict.chooseAgain": "Choose again",
+    "saveConflict.reopened": "Saved again on another device. Choose again.",
     "saveConflict.failedDeleted":
       "Couldn't keep your choice. Your save is unchanged.",
     "saveConflict.keptLocalTitle": "Kept this device's version",
@@ -2486,6 +2487,8 @@ export const KIT_COPY: Readonly<
     "saveConflict.newerThis": "Neuer",
     "saveConflict.newerOther": "Neuer",
     "saveConflict.chooseAgain": "Erneut wählen",
+    "saveConflict.reopened":
+      "Auf einem anderen Gerät erneut gespeichert. Wählen Sie noch einmal.",
     "saveConflict.failedDeleted":
       "Ihre Wahl konnte nicht übernommen werden. Ihr Spielstand ist unverändert.",
     "saveConflict.keptLocalTitle": "Version dieses Geräts behalten",
@@ -4595,6 +4598,8 @@ export const KIT_COPY: Readonly<
     "saveConflict.newerThis": "Plus récente",
     "saveConflict.newerOther": "Plus récente",
     "saveConflict.chooseAgain": "Choisir à nouveau",
+    "saveConflict.reopened":
+      "Enregistré de nouveau sur un autre appareil. Choisissez à nouveau.",
     "saveConflict.failedDeleted":
       "Impossible d’appliquer votre choix. Votre sauvegarde est inchangée.",
     "saveConflict.keptLocalTitle": "Version de cet appareil conservée",
@@ -6687,6 +6692,8 @@ export const KIT_COPY: Readonly<
     "saveConflict.newerThis": "Más reciente",
     "saveConflict.newerOther": "Más reciente",
     "saveConflict.chooseAgain": "Elegir de nuevo",
+    "saveConflict.reopened":
+      "Se volvió a guardar en otro dispositivo. Elige de nuevo.",
     "saveConflict.failedDeleted":
       "No se pudo aplicar tu elección. Tu partida sigue igual.",
     "saveConflict.keptLocalTitle": "Se conservó la versión de este dispositivo",
@@ -8779,6 +8786,8 @@ export const KIT_COPY: Readonly<
     "saveConflict.newerThis": "Mais recente",
     "saveConflict.newerOther": "Mais recente",
     "saveConflict.chooseAgain": "Escolher de novo",
+    "saveConflict.reopened":
+      "Salvo novamente em outro dispositivo. Escolha de novo.",
     "saveConflict.failedDeleted":
       "Não foi possível aplicar sua escolha. Seu jogo salvo continua igual.",
     "saveConflict.keptLocalTitle": "Versão deste dispositivo mantida",
@@ -10819,6 +10828,8 @@ export const KIT_COPY: Readonly<
     "saveConflict.newerThis": "Più recente",
     "saveConflict.newerOther": "Più recente",
     "saveConflict.chooseAgain": "Scegli di nuovo",
+    "saveConflict.reopened":
+      "Salvato di nuovo su un altro dispositivo. Scegli di nuovo.",
     "saveConflict.failedDeleted":
       "Impossibile applicare la scelta. Il salvataggio è invariato.",
     "saveConflict.keptLocalTitle": "Versione di questo dispositivo mantenuta",
@@ -12890,6 +12901,8 @@ export const KIT_COPY: Readonly<
     "saveConflict.newerThis": "新しい",
     "saveConflict.newerOther": "新しい",
     "saveConflict.chooseAgain": "選び直す",
+    "saveConflict.reopened":
+      "別のデバイスで再び保存されました。もう一度選んでください。",
     "saveConflict.failedDeleted":
       "選択を反映できませんでした。セーブデータは変わっていません。",
     "saveConflict.keptLocalTitle": "このデバイスのバージョンを残しました",
@@ -14965,6 +14978,8 @@ export const KIT_COPY: Readonly<
     "saveConflict.newerThis": "최신",
     "saveConflict.newerOther": "최신",
     "saveConflict.chooseAgain": "다시 선택",
+    "saveConflict.reopened":
+      "다른 기기에서 다시 저장되었습니다. 다시 선택하세요.",
     "saveConflict.failedDeleted":
       "선택을 적용하지 못했어요. 저장 데이터는 그대로예요.",
     "saveConflict.keptLocalTitle": "이 기기의 버전을 유지했어요",
@@ -16922,6 +16937,7 @@ export const KIT_COPY: Readonly<
     "saveConflict.newerThis": "较新",
     "saveConflict.newerOther": "较新",
     "saveConflict.chooseAgain": "重新选择",
+    "saveConflict.reopened": "已在另一台设备上再次保存。请重新选择。",
     "saveConflict.failedDeleted": "无法应用你的选择。你的存档未更改。",
     "saveConflict.keptLocalTitle": "已保留此设备的版本",
     "saveConflict.keptRemoteTitle": "已保留另一个版本",

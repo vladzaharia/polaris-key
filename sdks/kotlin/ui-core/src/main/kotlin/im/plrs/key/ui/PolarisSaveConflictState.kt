@@ -8,7 +8,9 @@
 //    second choice while one runs (or after it was kept) is ignored, so a choice is applied once;
 //  - Keep both needs a free slot and a copy to keep: without them it is ignored, not applied;
 //  - Choose again after a failure returns to the choices with the same versions and applies nothing;
-//  - `kept` follows only a resolver that returned, and names the choice that was made.
+//  - `kept` follows only a resolver that returned, and names the choice that was made;
+//  - a keep that meets a newer copy (a refusal `conflict` with the request reopened) goes back to the choices on
+//    the request's current sides, says so, and applies nothing: Try again must never run on a reopened request.
 package im.plrs.key.ui
 
 import im.plrs.key.core.MergeChoice
@@ -57,10 +59,21 @@ public fun interface PolarisSaveResolver {
                 PolarisSaveKeep.Both -> MergeKeep.Both
             }
             val out = keep(mapped)
-            if (out is MergeOutcome.Refused) throw IllegalStateException(out.code)
+            if (out is MergeOutcome.Refused) throw PolarisSaveRefused(out.code, out.reopened)
         }
     }
 }
+
+/** A choice a request refused: its [code] (`conflict`, `slots-full`, `sync-merge-closed`, a failure code) and whether it is open again. */
+public class PolarisSaveRefused(public val code: String, public val reopened: Boolean) : IllegalStateException(code)
+
+/** What a request holds right now: both copies, the choices it accepts, and which copy is newer. */
+public data class PolarisSaveSides(
+    val local: MergeSide,
+    val remote: MergeSide?,
+    val choices: List<String>,
+    val newer: String?,
+)
 
 /** Where the conflict is. */
 public sealed interface PolarisSaveConflictUi {
@@ -91,14 +104,31 @@ public enum class PolarisSaveNewer(public val id: String) {
  * slot of the 16. [newer] tags that version's card on the choices; it chooses nothing and is ignored
  * when the other copy was deleted.
  */
-public class PolarisSaveConflictState(
-    private val local: PolarisSaveVersion,
-    private val remote: PolarisSaveVersion?,
-    private val bothAvailable: Boolean,
+public class PolarisSaveConflictState private constructor(
+    private val read: () -> Sides,
     private val resolver: PolarisSaveResolver,
     private val scope: CoroutineScope,
-    private val newer: PolarisSaveNewer? = null,
 ) {
+    /** The two copies as the screen draws them: read again on every step, so a bound request's moves show. */
+    private class Sides(
+        val local: PolarisSaveVersion,
+        val remote: PolarisSaveVersion?,
+        val bothAvailable: Boolean,
+        val newer: PolarisSaveNewer?,
+    )
+
+    public constructor(
+        local: PolarisSaveVersion,
+        remote: PolarisSaveVersion?,
+        bothAvailable: Boolean,
+        resolver: PolarisSaveResolver,
+        scope: CoroutineScope,
+        newer: PolarisSaveNewer? = null,
+    ) : this({ Sides(local, remote, bothAvailable, newer) }, resolver, scope)
+
+    /** A keep met a newer copy and nothing was applied: the choices show the new versions and say so. */
+    private var reopened = false
+
     private val _ui = MutableStateFlow<PolarisSaveConflictUi>(PolarisSaveConflictUi.Choose)
     public val ui: StateFlow<PolarisSaveConflictUi> = _ui.asStateFlow()
 
@@ -108,7 +138,9 @@ public class PolarisSaveConflictState(
     /** Apply [keep]. Ignored while a choice runs, after one was kept, and for Keep both without a free slot or a copy. */
     public fun keep(keep: PolarisSaveKeep) {
         if (_ui.value != PolarisSaveConflictUi.Choose || running) return
-        if (keep == PolarisSaveKeep.Both && (remote == null || !bothAvailable)) return
+        val sides = read()
+        if (keep == PolarisSaveKeep.Both && (sides.remote == null || !sides.bothAvailable)) return
+        reopened = false
         apply(keep)
     }
 
@@ -122,6 +154,7 @@ public class PolarisSaveConflictState(
     /** Return a failed choice to the choices; nothing is applied. */
     public fun chooseAgain() {
         if (_ui.value !is PolarisSaveConflictUi.Failed || running) return
+        reopened = false
         _ui.value = PolarisSaveConflictUi.Choose
     }
 
@@ -144,9 +177,20 @@ public class PolarisSaveConflictState(
                 _ui.value = PolarisSaveConflictUi.Kept(keep)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
-                // The screen says both saves are unchanged; the cause is not shown.
-                _ui.value = PolarisSaveConflictUi.Failed(keep)
+            } catch (e: Exception) {
+                val refused = e as? PolarisSaveRefused
+                _ui.value = when {
+                    // The request ended meanwhile: nothing is left to choose, and Try again could never succeed.
+                    refused?.code == CLOSED -> PolarisSaveConflictUi.Cancelled
+                    // The other copy moved while the keep ran (or Keep both lost its slot): nothing was applied.
+                    // Back to the choices, read again from the request.
+                    refused != null && refused.reopened && (refused.code == "conflict" || refused.code == SLOTS_FULL) -> {
+                        reopened = refused.code == "conflict"
+                        PolarisSaveConflictUi.Choose
+                    }
+                    // The screen says both saves are unchanged; the cause is not shown.
+                    else -> PolarisSaveConflictUi.Failed(keep)
+                }
             }
         }
     }
@@ -155,6 +199,7 @@ public class PolarisSaveConflictState(
     public fun kitScreen(base: Map<String, JsonElement> = emptyMap()): KitScreen? {
         val step = _ui.value
         if (step == PolarisSaveConflictUi.Cancelled || step == PolarisSaveConflictUi.Done) return null
+        val sides = read()
         val body = buildMap<String, JsonElement> {
             put(
                 "step",
@@ -167,10 +212,11 @@ public class PolarisSaveConflictState(
                     },
                 ),
             )
-            put("local", version(local))
-            put("remote", remote?.let(::version) ?: JsonNull)
-            put("bothAvailable", JsonPrimitive(bothAvailable))
-            newer?.let { put("newer", JsonPrimitive(it.id)) }
+            put("local", version(sides.local))
+            put("remote", sides.remote?.let(::version) ?: JsonNull)
+            put("bothAvailable", JsonPrimitive(sides.bothAvailable))
+            sides.newer?.let { put("newer", JsonPrimitive(it.id)) }
+            if (reopened && step == PolarisSaveConflictUi.Choose) put("reopened", JsonPrimitive(true))
             when (step) {
                 is PolarisSaveConflictUi.Keeping -> put("keep", JsonPrimitive(step.keep.id))
                 is PolarisSaveConflictUi.Kept -> put("keep", JsonPrimitive(step.keep.id))
@@ -191,21 +237,32 @@ public class PolarisSaveConflictState(
     public companion object {
         /**
          * The state holder of a saves [MergeRequest]: the copies, `newer` and the free-slot flag come from the request,
-         * and a choice is its `keep`. [describe] names a copy for the screen; by default a copy shows the medium
-         * date-time of its `savedAt`, and the other copy also names its device.
+         * and a choice is its `keep`. [describe] names a copy for the screen; by default a copy shows [PolarisWhen.worded] of its `savedAt`, and the other copy also names its device.
          */
         public fun of(
             request: MergeRequest,
             scope: CoroutineScope,
             describe: ((MergeSide, other: Boolean) -> PolarisSaveVersion)? = null,
         ): PolarisSaveConflictState = of(
-            request.local ?: MergeSide(JsonNull, null),
-            request.remote,
-            request.choices,
-            request.newer,
+            { PolarisSaveSides(request.local ?: MergeSide(JsonNull, null), request.remote, request.choices, request.newer) },
             PolarisSaveResolver.of(request),
             scope,
             describe,
+        )
+
+        /**
+         * The state holder over a request read again on every step (a keep that meets a newer copy goes back to the
+         * choices on the request's new sides), never once when the holder is built. [read] returns the live sides.
+         */
+        public fun of(
+            read: () -> PolarisSaveSides,
+            resolver: PolarisSaveResolver,
+            scope: CoroutineScope,
+            describe: ((MergeSide, other: Boolean) -> PolarisSaveVersion)? = null,
+        ): PolarisSaveConflictState = PolarisSaveConflictState(
+            { read().let { sides(it.local, it.remote, it.choices, it.newer, describe) } },
+            resolver,
+            scope,
         )
 
         /** [of] from the pieces of a request, so a host that holds them another way binds the same screen. */
@@ -219,22 +276,33 @@ public class PolarisSaveConflictState(
             scope: CoroutineScope,
             describe: ((MergeSide, other: Boolean) -> PolarisSaveVersion)? = null,
         ): PolarisSaveConflictState {
-            val name = describe ?: ::defaultVersion
             return PolarisSaveConflictState(
+                { sides(local, remote, choices, newer, describe) },
+                resolver,
+                scope,
+            )
+        }
+
+        private fun sides(
+            local: MergeSide,
+            remote: MergeSide?,
+            choices: List<String>,
+            newer: String?,
+            describe: ((MergeSide, other: Boolean) -> PolarisSaveVersion)?,
+        ): Sides {
+            val name = describe ?: ::defaultVersion
+            return Sides(
                 name(local, false),
                 remote?.let { name(it, true) },
                 remote != null && MergeChoice.both in choices,
-                resolver,
-                scope,
                 PolarisSaveNewer.entries.firstOrNull { it.id == newer },
             )
         }
 
-        private fun defaultVersion(side: MergeSide, other: Boolean): PolarisSaveVersion {
-            val whenText = side.savedAt?.let {
-                java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.MEDIUM).format(java.util.Date(it))
-            }
-            return PolarisSaveVersion(whenText, if (other) side.device else null)
-        }
+        private const val CLOSED = "sync-merge-closed"
+        private const val SLOTS_FULL = "slots-full"
+
+        private fun defaultVersion(side: MergeSide, other: Boolean): PolarisSaveVersion =
+            PolarisSaveVersion(side.savedAt?.let { PolarisWhen.worded(it) }, if (other) side.device else null)
     }
 }

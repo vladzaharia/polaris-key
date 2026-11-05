@@ -75,8 +75,6 @@ const PURGE_WAIT_MS := 5000
 var _slots: Dictionary = {}
 ## S2: id -> the version this device last listed, read or wrote for the slot this session.
 var _seen: Dictionary = {}
-## id -> true: a request the screen hid with `dismiss_conflict`; it stays open, and a new conflict shows it again.
-var _dismissed: Dictionary = {}
 var _merge: PKeyMergeRegistry
 var _last_failed := false
 ## Journal ids already told as interrupted this session.
@@ -153,22 +151,14 @@ func surface_interrupted(journaled: Array) -> Array:
 	return told
 
 
-## The open requests of the saves that nobody has dismissed, by save id. Each is a PKeyMergeRequest.
+## Every open save request, by save id. Each is a PKeyMergeRequest. A screen's Cancel hides a request in
+## PKeySaveScreensHost; it stays listed here, and the slot stays frozen, until it is kept or superseded.
 func conflicts() -> Array:
 	var out: Array = []
 	for r: PKeyMergeRequest in _merge.conflicts():
-		if r.collection == COLLECTION and not _dismissed.has(r.record):
+		if r.collection == COLLECTION:
 			out.append(r)
 	return out
-
-
-## Hide a request from `conflicts()` without settling it (a screen's Cancel). Both copies stay as they were and
-## the slot stays frozen; the next conflict of the save shows it again. `id` is the save id or the request's id.
-func dismiss_conflict(id: String) -> void:
-	var save_id := id.trim_prefix("w:%s/" % COLLECTION)
-	if _slots.has(save_id) and not _dismissed.has(save_id):
-		_dismissed[save_id] = true
-		changed.emit()
 
 
 ## The last write to end failed, and no write has started since (a cancelled write is not a failure).
@@ -455,7 +445,6 @@ func write(id: String, bytes: PackedByteArray, metadata: Dictionary, opts: Dicti
 			slot["bytes"] = bytes
 			slot["opts"] = opts
 			_merge.update(_request_id(id), {"local": _local_side(slot)})
-			_dismissed.erase(id)
 			changed.emit()
 			return _tracked(Handle.settled(id, {"state": "conflict", "request": _merge.find(_request_id(id))}))
 	return _run(id, bytes, _stamped(metadata), opts, null)
@@ -829,7 +818,6 @@ func _open_slot(init: Dictionary, version: Variant) -> Variant:
 		slot["keeping"] = false
 		slot["reopen"] = false
 	_slots[id] = slot
-	_dismissed.erase(id)
 	var rid := _request_id(id)
 	var view := _view(slot, version, "applying" if slot["keeping"] else "open", null)
 	if slot["keeping"]:
@@ -841,7 +829,6 @@ func _open_slot(init: Dictionary, version: Variant) -> Variant:
 
 func _close_slot(id: String, how: String) -> void:
 	_slots.erase(id)
-	_dismissed.erase(id)
 	_merge.close(_request_id(id), how)
 	changed.emit()
 
@@ -902,7 +889,6 @@ func purge() -> void:
 	_live.clear()
 	_slots.clear()
 	_seen.clear()
-	_dismissed.clear()
 	_merge.clear_extra()
 	_last_failed = false
 	changed.emit()

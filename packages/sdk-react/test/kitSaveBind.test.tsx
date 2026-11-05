@@ -102,7 +102,11 @@ function fakeSaves() {
 const inProvider = (saves: BrowserSaves, ui: React.ReactNode) =>
   render(
     <PolarisContext.Provider
-      value={{ adapter: { cloudSync: { saves } } as never }}
+      value={{
+        adapter: {
+          cloudSync: { saves, onConflict: () => () => undefined },
+        } as never,
+      }}
     >
       {ui}
     </PolarisContext.Provider>,
@@ -471,7 +475,7 @@ describe("the strip and the screen together (final round)", () => {
     ]);
     const { container } = inProvider(f.saves, <SaveConflict />);
     expect(container.textContent).toMatch(/Steam Deck/);
-    expect(container.textContent).toMatch(/Today/);
+    expect(container.textContent).toMatch(/Saved today, /);
     expect(container.textContent).toMatch(/Newer/i);
   });
 
@@ -517,6 +521,53 @@ describe("the strip and the screen together (final round)", () => {
     expect(
       container.querySelector('button[data-key="common.tryAgain"]'),
     ).toBeNull();
+    // It says so: the other device saved again, and nothing was applied.
+    expect(
+      container.querySelector('[data-key="saveConflict.reopened"]')?.textContent,
+    ).toMatch(/Choose again/);
+  });
+
+  it("focus follows the step when the focused choice is removed (M3)", async () => {
+    const f = fakeSaves();
+    f.setConflicts([CONFLICT]);
+    const { container } = inProvider(f.saves, <SaveConflict />);
+    const keepThis = container.querySelector<HTMLElement>(
+      'button[data-key="saveConflict.keepThis"]',
+    )!;
+    keepThis.focus();
+    expect(document.activeElement).toBe(keepThis);
+    fireEvent.click(keepThis);
+    // The choice's own button goes with the step; focus lands on the screen's heading, then on kept.
+    await waitFor(() =>
+      expect(container.querySelector('[data-part="title"]')?.textContent).toMatch(
+        /Kept/,
+      ),
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        container.querySelector('[data-part="title"]'),
+      ),
+    );
+    // The result is in the status region too, so a screen reader hears it.
+    expect(container.querySelector('[role="status"]')?.textContent).toMatch(/Kept/);
+  });
+
+  it("a closed request closes the screen, and a bound screen listens for conflicts", async () => {
+    const f = fakeSaves();
+    f.setConflicts([CONFLICT]);
+    f.resolve.mockImplementationOnce(async () => {
+      f.setConflicts([]);
+      return { ok: false, code: "sync-merge-closed", reopened: false };
+    });
+    const { container } = inProvider(f.saves, <SaveConflict />);
+    fireEvent.click(
+      container.querySelector('button[data-key="saveConflict.keepThis"]')!,
+    );
+    await waitFor(() => expect(f.resolve).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(container.querySelector('[data-key="common.tryAgain"]')).toBeNull(),
+    );
+    expect(container.querySelector("h1")).toBeNull();
   });
 
   it("m1: a paused save reads waiting once the transfer says so", async () => {
