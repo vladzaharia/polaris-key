@@ -105,7 +105,7 @@ public struct SaveConflictView: View {
                         header: !(short && accessibility),
                         dockActions: state != .choose && !short
                     ) {
-                        heading(screen, state, capped: short)
+                        heading(screen, state, capped: short && accessibility)
                     } content: {
                         content(screen, state)
                     } actions: {

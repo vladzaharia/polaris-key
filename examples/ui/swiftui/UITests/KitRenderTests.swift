@@ -179,7 +179,7 @@ final class KitRenderTests: XCTestCase {
         "UnlockSync.code", "RecoveryCode.show", "RingChange.confirm", "CloudSyncStatus.locked",
         // The save screens (K.3): the conflict, its two variants and the transfer status.
         "SaveConflict.choose", "SaveConflict.choose.slots-full", "SaveConflict.choose.deleted",
-        "CloudSyncStatus.transferring",
+        "SaveConflict.failed.deleted", "CloudSyncStatus.transferring",
         // The inter-account screens (CC-19.10): the code stage and confirm, the longest failure
         // and an offer with a long file name.
         "LinkPairing.code", "LinkPairing.confirm", "LinkPairing.failed.full",

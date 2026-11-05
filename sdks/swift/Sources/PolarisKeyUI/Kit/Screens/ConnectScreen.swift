@@ -97,7 +97,6 @@ public struct LinkPairingView: View {
     @Environment(\.polarisKeyStrings) private var strings
     @AccessibilityFocusState private var focus: ConnectFocus?
     @State private var last: KitScreen<LinkPairingState>?
-    @ScaledMetric(relativeTo: .title) private var codeSize: CGFloat = CodeDisplay.size
 
     public init(model: LinkPairingModel, categoryLabels: [String: String] = [:]) {
         self.model = model
@@ -234,11 +233,16 @@ public struct LinkPairingView: View {
             VStack(alignment: .leading, spacing: style.space(.sm)) {
                 if let code = model.link?.code {
                     Text(code)
-                        .font(style.codeFont(size: codeSize))
-                        .tracking(codeSize * CodeDisplay.tracking)
+                        .font(style.codeFont(size: CodeDisplay.size))
+                        .tracking(CodeDisplay.size * CodeDisplay.tracking)
                         .foregroundStyle(style.palette.textStrong)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
+                        .accessibilityLabel(
+                            Text(
+                                strings.string(
+                                    "a11y.linkCode",
+                                    ["code": .text(code.map(String.init).joined(separator: " "))])))
                         .padding(.horizontal, style.space(.md))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, style.space(.md))
@@ -246,12 +250,6 @@ public struct LinkPairingView: View {
                             RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
                                 .fill(style.palette.sunken)
                         )
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(
-                            Text(
-                                strings.string(
-                                    "a11y.linkCode",
-                                    ["code": .text(code.map(String.init).joined(separator: " "))])))
                 }
                 if let reported = screen.line("linkPairing.reported")
                     ?? screen.line("linkPairing.reportedUnnamed")
