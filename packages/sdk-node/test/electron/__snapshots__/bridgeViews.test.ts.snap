@@ -3297,6 +3297,67 @@ exports[`bridge views: gate (ui.gate) > Toast/info: an update is available 1`] =
 }
 `;
 
+exports[`bridge views: gate (ui.gate) > Toast/info: key entries left 1`] = `
+{
+  "actions": [],
+  "args": {
+    "left": 2,
+  },
+  "component": "Toast",
+  "copy": [
+    "signin.key.entriesLeftShort",
+  ],
+  "decisions": {
+    "errorSlot": null,
+    "focus": null,
+    "link": null,
+    "primary": null,
+    "qr": false,
+    "tone": null,
+  },
+  "isolate": [],
+  "state": "info",
+}
+`;
+
+exports[`bridge views: gate (ui.gate) > Toast/info: key entries, Identity off 1`] = `
+{
+  "actions": [],
+  "args": {},
+  "component": "Toast",
+  "copy": [],
+  "decisions": {
+    "errorSlot": null,
+    "focus": null,
+    "link": null,
+    "primary": null,
+    "qr": false,
+    "tone": null,
+  },
+  "isolate": [],
+  "state": "hidden",
+}
+`;
+
+exports[`bridge views: gate (ui.gate) > Toast/info: key entries, License off 1`] = `
+{
+  "actions": [],
+  "args": {},
+  "component": "Toast",
+  "copy": [],
+  "decisions": {
+    "errorSlot": null,
+    "focus": null,
+    "link": null,
+    "primary": null,
+    "qr": false,
+    "tone": null,
+  },
+  "isolate": [],
+  "state": "hidden",
+}
+`;
+
 exports[`bridge views: gate (ui.gate) > Toast/success: copied 1`] = `
 {
   "actions": [],
