@@ -966,17 +966,17 @@
     <!-- Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam). Arguments: 1=provider. -->
     <string name="signin_provider_connect">Connect %1$s</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
-    <string name="signin_passkey">Sign in with a passkey</string>
-    <string name="signin_passkey__macos">Sign In with a Passkey</string>
+    <string name="signin_passkey">Continue with a passkey</string>
+    <string name="signin_passkey__macos">Continue with a Passkey</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
     <string name="signin_email_continue">Continue with email</string>
     <string name="signin_email_continue__macos">Continue with Email</string>
     <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
     <string name="signin_link_key">Have a license key?</string>
     <string name="signin_link_key__macos">Have a License Key?</string>
-    <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
-    <string name="signin_link_anotherDevice">Sign in with another device</string>
-    <string name="signin_link_anotherDevice__macos">Sign In with Another Device</string>
+    <!-- Sign-in method button: approve from a signed-in device (SIGN-IN.md §3.3). -->
+    <string name="signin_link_anotherDevice">Continue with another device</string>
+    <string name="signin_link_anotherDevice__macos">Continue with Another Device</string>
     <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
     <string name="signin_link_deviceCode">Sign in on your phone or computer</string>
     <string name="signin_link_deviceCode__macos">Sign In on Your Phone or Computer</string>
@@ -2008,8 +2008,8 @@
     <!-- HintStep: completes 'You usually sign in with {method}'. -->
     <string name="signin_hint_method_email">an email code</string>
     <!-- HintStep: passkey button. -->
-    <string name="signin_hint_usePasskey">Use a passkey</string>
-    <string name="signin_hint_usePasskey__macos">Use a Passkey</string>
+    <string name="signin_hint_usePasskey">Continue with a passkey</string>
+    <string name="signin_hint_usePasskey__macos">Continue with a Passkey</string>
     <!-- HintStep: sends a sign-in code. -->
     <string name="signin_hint_emailCode">Email me a code</string>
     <string name="signin_hint_emailCode__macos">Email Me a Code</string>

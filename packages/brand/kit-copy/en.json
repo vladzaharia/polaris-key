@@ -2143,7 +2143,7 @@
       "note": "Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam)."
     },
     "signin.passkey": {
-      "value": "Sign in with a passkey",
+      "value": "Continue with a passkey",
       "role": "button",
       "note": "Hosted sign-in card (SIGN-IN.md)."
     },
@@ -2158,9 +2158,9 @@
       "note": "Links at the foot of the sign-in card (SIGN-IN.md §3.3)."
     },
     "signin.link.anotherDevice": {
-      "value": "Sign in with another device",
+      "value": "Continue with another device",
       "role": "button",
-      "note": "Links at the foot of the sign-in card (SIGN-IN.md §3.3)."
+      "note": "Sign-in method button: approve from a signed-in device (SIGN-IN.md §3.3)."
     },
     "signin.link.deviceCode": {
       "value": "Sign in on your phone or computer",
@@ -4567,7 +4567,7 @@
       "note": "HintStep: completes 'You usually sign in with {method}'."
     },
     "signin.hint.usePasskey": {
-      "value": "Use a passkey",
+      "value": "Continue with a passkey",
       "role": "button",
       "note": "HintStep: passkey button."
     },

@@ -296,8 +296,8 @@ continue**, or **Add and use on this device**).
 
 **Layout (portal direct):** h1 "Sign in to Polaris Locker" (no lede). **Email**
 (`autocomplete="username webauthn"`, conditional passkey UI) and **Continue**. Then "or" and the
-provider row, **Sign in with a passkey**, **Continue with single sign-on** (or one button per named
-connection) and **Sign in with another device**, each below "or" as a method button in that fixed
+provider row, **Continue with a passkey**, **Continue with single sign-on** (or one button per named
+connection) and **Continue with another device**, each below "or" as a method button in that fixed
 order (BRAND §7.9). **Have a license key?** is the tertiary line: a quiet centred link on the card's
 last line, with no icon and no rule above it (it is a door to the key on-ramp, not a way to sign in).
 
@@ -329,7 +329,7 @@ Center and Play Games are never buttons on the web.
 
 **HintStep** (PORTAL §4.3): identity chip (no picture before authentication), "Welcome
 back, Mara", a hint card "You usually sign in with Steam" with that method as the labelled primary,
-**Email me a code** and **Use a passkey** as method buttons, and **Other ways to sign in** as the tertiary line. The hint comes only from the
+**Email me a code** and **Continue with a passkey** as method buttons, and **Other ways to sign in** as the tertiary line. The hint comes only from the
 first-party `pk_last_method` cookie. Apple stays one tap away for iOS products.
 
 **CodeStep:** h1 "Check your email". Lede "We sent a code and a sign-in link to **{email}**. Both work
@@ -709,7 +709,7 @@ Two different flows have two names (D-18):
 
 The console signs in as Polaris Locker does, step for step; only the lockup and the accent differ.
 EXPERIENCE §8 stands (frame 13): brand row "Polaris Key │ Console", h1 "Sign in to the console", the
-identifier-first email, **Continue**, then "or" and **Sign in with a passkey** as a method button.
+identifier-first email, **Continue**, then "or" and **Continue with a passkey** as a method button.
 There is no fine print under Continue: it, or **Continue with single sign-on**, leaves for the console
 IdP, whose own page names itself. Single sign-on is what Continue does, so it has no button on this
 card. **Emergency sign-in** is the tertiary line, a quiet centred link on the card's last line; the
@@ -722,7 +722,7 @@ focused, nothing started or counted).
 address, when this browser's record matches the address, its usual method is a passkey, the card offers
 a passkey and this page has not hinted this address, the card shows: the identity pill (initial, the
 typed address, **Change**), "Welcome back, {first name}" (or "Welcome back"), an inset panel with
-"You usually sign in with a passkey" and "On this browser, last time {when}", **Use a passkey**, "or",
+"You usually sign in with a passkey" and "On this browser, last time {when}", **Continue with a passkey**, "or",
 **Continue with single sign-on** (submits the form with `login_hint`), and the tertiary **Other ways
 to sign in**. Change and Other ways return to the email step with the address kept, focused and
 selected. A usual single sign-on gets no step: Continue already is that way. The record is Locker's
@@ -751,7 +751,7 @@ instead of a ticking countdown, forms POST to self, `frame-ancestors 'none'`. Th
 allows `img-src 'self' data:` plus the image origin through `cspImageOrigin()` (one bare https
 origin, else unchanged), so the passport's icon and art load; there is no inline style or script.
 
-One exception (ST-30c.6): the console card carries one inline script, pinned by its SHA-256 in `script-src` (`console/signinScript.ts`, never `'unsafe-inline'`). It reveals **Sign in with a passkey**, runs the passkey ceremony and shows the returning-person step (§3.12). Without JS or WebAuthn the card is the form alone.
+One exception (ST-30c.6): the console card carries one inline script, pinned by its SHA-256 in `script-src` (`console/signinScript.ts`, never `'unsafe-inline'`). It reveals **Continue with a passkey**, runs the passkey ceremony and shows the returning-person step (§3.12). Without JS or WebAuthn the card is the form alone.
 
 | Page                      | Copy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1598,7 +1598,7 @@ Custom Tabs or the default browser for native apps; device code on another devic
 1. **Kit `SignIn` chooser**: the same logo-only provider row (Apple, Google, Steam, as the
    product ships). On Apple platforms Apple uses native `ASAuthorization` behind a logo-only button
    drawn to Apple's logo-only guidelines. On Android, Google goes through Credential Manager. Steam
-   goes through the hosted card. Below the row: **Sign in with a passkey** (the platform passkey
+   goes through the hosted card. Below the row: **Continue with a passkey** (the platform passkey
    sheet), **Continue with email** (opens the card, which is identifier-first), **Sign in on your
    phone or computer** (device code), and the footnote `signin.footer`. **On desktop** the chooser
    leads with **Continue in browser** and has no passkey or device-code row (§3.17, D-69).
@@ -1653,10 +1653,10 @@ keys (`conformance/parity/copy.en.json`) for refusal codes instead of duplicatin
 | `signin.provider.group`              | Or continue with                                                                                                                                                                              |
 | `signin.provider.continue`           | Continue with {provider}                                                                                                                                                                      |
 | `signin.provider.connect`            | Connect {provider}                                                                                                                                                                            |
-| `signin.passkey`                     | Sign in with a passkey                                                                                                                                                                        |
+| `signin.passkey`                     | Continue with a passkey                                                                                                                                                                       |
 | `signin.email.continue`              | Continue with email                                                                                                                                                                           |
 | `signin.link.key`                    | Have a license key?                                                                                                                                                                           |
-| `signin.link.anotherDevice`          | Sign in with another device                                                                                                                                                                   |
+| `signin.link.anotherDevice`          | Continue with another device                                                                                                                                                                  |
 | `signin.link.deviceCode`             | Sign in on your phone or computer                                                                                                                                                             |
 | `signin.header.app`                  | {app} wants you to sign in                                                                                                                                                                    |
 | `signin.header.context`              | {product} · {developer}                                                                                                                                                                       |

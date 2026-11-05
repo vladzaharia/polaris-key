@@ -2612,15 +2612,15 @@ msgstr "通过{provider}继续"
 msgid "signin.provider.connect"
 msgstr "关联{provider}"
 
-#. Sign in with a passkey
+#. Continue with a passkey
 #. Hosted sign-in card (SIGN-IN.md).
 msgid "signin.passkey"
-msgstr "使用通行密钥登录"
+msgstr "通过通行密钥继续"
 
-#. macos: Sign In with a Passkey
+#. macos: Continue with a Passkey
 msgctxt "macos"
 msgid "signin.passkey"
-msgstr "使用通行密钥登录"
+msgstr "通过通行密钥继续"
 
 #. Continue with email
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
@@ -2642,15 +2642,15 @@ msgctxt "macos"
 msgid "signin.link.key"
 msgstr "有许可证密钥？"
 
-#. Sign in with another device
-#. Links at the foot of the sign-in card (SIGN-IN.md §3.3).
+#. Continue with another device
+#. Sign-in method button: approve from a signed-in device (SIGN-IN.md §3.3).
 msgid "signin.link.anotherDevice"
-msgstr "使用其他设备登录"
+msgstr "通过其他设备继续"
 
-#. macos: Sign In with Another Device
+#. macos: Continue with Another Device
 msgctxt "macos"
 msgid "signin.link.anotherDevice"
-msgstr "使用其他设备登录"
+msgstr "通过其他设备继续"
 
 #. Sign in on your phone or computer
 #. Links at the foot of the sign-in card (SIGN-IN.md §3.3).
@@ -5347,15 +5347,15 @@ msgstr "通行密钥"
 msgid "signin.hint.method.email"
 msgstr "邮件验证码"
 
-#. Use a passkey
+#. Continue with a passkey
 #. HintStep: passkey button.
 msgid "signin.hint.usePasskey"
-msgstr "使用通行密钥"
+msgstr "通过通行密钥继续"
 
-#. macos: Use a Passkey
+#. macos: Continue with a Passkey
 msgctxt "macos"
 msgid "signin.hint.usePasskey"
-msgstr "使用通行密钥"
+msgstr "通过通行密钥继续"
 
 #. Email me a code
 #. HintStep: sends a sign-in code.

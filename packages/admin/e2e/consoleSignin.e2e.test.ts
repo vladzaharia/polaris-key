@@ -99,7 +99,7 @@ describe("console sign-in card in Chromium", () => {
       `${origin}/manage/login?returnTo=${encodeURIComponent("/manage/#/p/alpha")}`,
     );
     await page.getByLabel("Email").fill("ada@example.com");
-    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
     const idpUrl = new URL((await idpRequest).url());
     expect(violations).toEqual([]);
     expect(idpUrl.pathname).toBe("/authorize");
@@ -246,7 +246,9 @@ describe("the returning-person step, Change and the break-glass link (ST-30c.2)"
     expect(await page.evaluate(() => document.activeElement?.tagName)).toBe(
       "H1",
     );
-    await page.getByRole("button", { name: "Use a passkey" }).waitFor();
+    await page
+      .getByRole("button", { name: "Continue with a passkey" })
+      .waitFor();
     await page
       .getByRole("button", { name: "Continue with single sign-on" })
       .waitFor();
@@ -357,7 +359,7 @@ describe("the returning-person step, Change and the break-glass link (ST-30c.2)"
     await page.getByRole("link", { name: "Emergency sign-in" }).click();
     await page.getByRole("heading", { name: "Emergency sign-in" }).waitFor();
     await page.getByText("Every use is recorded").waitFor();
-    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
     const idpUrl = new URL((await idpRequest).url());
     expect(idpUrl.searchParams.get("prompt")).toBe("login");
     expect(idpUrl.searchParams.get("max_age")).toBe("0");

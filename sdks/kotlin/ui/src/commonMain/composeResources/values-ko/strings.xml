@@ -961,17 +961,17 @@
     <!-- Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam). Arguments: 1=provider. -->
     <string name="signin_provider_connect">%1$s 연결</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
-    <string name="signin_passkey">패스키로 로그인</string>
-    <string name="signin_passkey__macos">패스키로 로그인</string>
+    <string name="signin_passkey">패스키로 계속</string>
+    <string name="signin_passkey__macos">패스키로 계속</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
     <string name="signin_email_continue">이메일로 계속</string>
     <string name="signin_email_continue__macos">이메일로 계속</string>
     <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
     <string name="signin_link_key">라이선스 키가 있나요?</string>
     <string name="signin_link_key__macos">라이선스 키가 있나요?</string>
-    <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
-    <string name="signin_link_anotherDevice">다른 기기로 로그인</string>
-    <string name="signin_link_anotherDevice__macos">다른 기기로 로그인</string>
+    <!-- Sign-in method button: approve from a signed-in device (SIGN-IN.md §3.3). -->
+    <string name="signin_link_anotherDevice">다른 기기로 계속</string>
+    <string name="signin_link_anotherDevice__macos">다른 기기로 계속</string>
     <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
     <string name="signin_link_deviceCode">휴대폰이나 컴퓨터에서 로그인</string>
     <string name="signin_link_deviceCode__macos">휴대폰이나 컴퓨터에서 로그인</string>
@@ -1998,8 +1998,8 @@
     <!-- HintStep: completes 'You usually sign in with {method}'. -->
     <string name="signin_hint_method_email">이메일 코드</string>
     <!-- HintStep: passkey button. -->
-    <string name="signin_hint_usePasskey">패스키 사용</string>
-    <string name="signin_hint_usePasskey__macos">패스키 사용</string>
+    <string name="signin_hint_usePasskey">패스키로 계속</string>
+    <string name="signin_hint_usePasskey__macos">패스키로 계속</string>
     <!-- HintStep: sends a sign-in code. -->
     <string name="signin_hint_emailCode">이메일로 코드 받기</string>
     <string name="signin_hint_emailCode__macos">이메일로 코드 받기</string>

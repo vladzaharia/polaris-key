@@ -324,7 +324,7 @@ describe("the request's hints and purpose (UK-42.14)", () => {
     expect(document.body.textContent).not.toMatch(/wants you to sign in/);
   });
 
-  it("a device attach request drops Have a license key? and Sign in with another device", async () => {
+  it("a device attach request drops Have a license key? and Continue with another device", async () => {
     out({
       ...VIEW,
       purpose: "attach",
@@ -333,14 +333,14 @@ describe("the request's hints and purpose (UK-42.14)", () => {
     renderPortal();
     await screen.findByRole("textbox", { name: "Email" });
     expect(screen.queryByText("Have a license key?")).toBeNull();
-    expect(screen.queryByText("Sign in with another device")).toBeNull();
+    expect(screen.queryByText("Continue with another device")).toBeNull();
   });
 
   it("a web or native request keeps them", async () => {
     out({ ...VIEW, purpose: "attach" });
     renderPortal();
     await screen.findByRole("textbox", { name: "Email" });
-    expect(screen.queryByText("Sign in with another device")).not.toBeNull();
+    expect(screen.queryByText("Continue with another device")).not.toBeNull();
     // The device button is a method below the form: the "or" divides it from the email.
     expect(screen.queryByText("or")).not.toBeNull();
   });

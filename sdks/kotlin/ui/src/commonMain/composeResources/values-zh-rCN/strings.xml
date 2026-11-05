@@ -961,17 +961,17 @@
     <!-- Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam). Arguments: 1=provider. -->
     <string name="signin_provider_connect">关联%1$s</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
-    <string name="signin_passkey">使用通行密钥登录</string>
-    <string name="signin_passkey__macos">使用通行密钥登录</string>
+    <string name="signin_passkey">通过通行密钥继续</string>
+    <string name="signin_passkey__macos">通过通行密钥继续</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
     <string name="signin_email_continue">使用电子邮件继续</string>
     <string name="signin_email_continue__macos">使用电子邮件继续</string>
     <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
     <string name="signin_link_key">有许可证密钥？</string>
     <string name="signin_link_key__macos">有许可证密钥？</string>
-    <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
-    <string name="signin_link_anotherDevice">使用其他设备登录</string>
-    <string name="signin_link_anotherDevice__macos">使用其他设备登录</string>
+    <!-- Sign-in method button: approve from a signed-in device (SIGN-IN.md §3.3). -->
+    <string name="signin_link_anotherDevice">通过其他设备继续</string>
+    <string name="signin_link_anotherDevice__macos">通过其他设备继续</string>
     <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
     <string name="signin_link_deviceCode">在手机或电脑上登录</string>
     <string name="signin_link_deviceCode__macos">在手机或电脑上登录</string>
@@ -1998,8 +1998,8 @@
     <!-- HintStep: completes 'You usually sign in with {method}'. -->
     <string name="signin_hint_method_email">邮件验证码</string>
     <!-- HintStep: passkey button. -->
-    <string name="signin_hint_usePasskey">使用通行密钥</string>
-    <string name="signin_hint_usePasskey__macos">使用通行密钥</string>
+    <string name="signin_hint_usePasskey">通过通行密钥继续</string>
+    <string name="signin_hint_usePasskey__macos">通过通行密钥继续</string>
     <!-- HintStep: sends a sign-in code. -->
     <string name="signin_hint_emailCode">通过邮件发送验证码</string>
     <string name="signin_hint_emailCode__macos">通过邮件发送验证码</string>

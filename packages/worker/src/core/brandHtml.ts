@@ -453,9 +453,9 @@ const CONSOLE_PAGE_CSS_TAIL = [
   `.or{display:flex;gap:.75rem;align-items:center;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   // Borders, not fills: a fill vanishes under forced colours.
   `.or::before,.or::after{content:"";flex:1;border-top:1px solid var(--rule)}`,
-  // One run: the glyph sits beside the first line of a label that wraps, and the label starts at the glyph.
+  // One run: the glyph sits beside the first line of a label that wraps, and the wrapped lines centre under it.
   `.pk .button,#pk-hint .button{align-items:center}`,
-  `.pk .button span,#pk-hint .button span{text-align:start}`,
+  `.pk .button span,#pk-hint .button span{text-align:center}`,
   `.pk .button[aria-disabled=true],#pk-hint .button[aria-disabled=true]{opacity:.6;cursor:progress}`,
   `.pk-err{display:grid;min-width:0}`,
   `.pk-err .field-err{margin:.5rem 0 0;text-align:center}`,

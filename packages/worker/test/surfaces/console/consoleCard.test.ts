@@ -473,6 +473,11 @@ describe("the chip, large text and the card's details (UX review)", () => {
     expect(html).toContain(
       "@container (max-width: 16em){.button span{text-align:center}.chip{border-radius:.625rem}.usual{flex-direction:column;align-items:flex-start}}",
     );
+    // A wrapped label centres under its glyph in every method button, not at the left edge.
+    expect(html).toContain(
+      ".pk .button span,#pk-hint .button span{text-align:center}",
+    );
+    expect(html).not.toContain("#pk-hint .button span{text-align:start}");
     expect(html).toContain("container-type:inline-size");
     // The same font smoothing as the SPA's body.
     expect(html).toContain("-webkit-font-smoothing:antialiased");

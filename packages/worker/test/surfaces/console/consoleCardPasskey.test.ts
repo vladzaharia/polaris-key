@@ -230,7 +230,7 @@ describe("the sign-in markup", () => {
     const html = await (await card("")).text();
     expect(html).toContain('<div class="pk" id="pk" hidden>');
     expect(html).toContain(">or</div>");
-    expect(html).toContain(">Sign in with a passkey</span>");
+    expect(html).toContain(">Continue with a passkey</span>");
     expect(html).toContain('aria-describedby="pk-err"');
     expect(html).toContain('<div class="pk-err" id="pk-err" role="alert">');
     expect(html).toContain('autocomplete="username webauthn"');
@@ -274,7 +274,7 @@ describe("the returning-person step", () => {
     for (const text of [
       "Welcome back",
       "You usually sign in with a passkey",
-      "Use a passkey",
+      "Continue with a passkey",
       "Continue with single sign-on",
       "Other ways to sign in",
       ">Change<",

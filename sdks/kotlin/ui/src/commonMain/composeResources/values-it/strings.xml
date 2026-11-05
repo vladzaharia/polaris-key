@@ -971,17 +971,17 @@
     <!-- Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam). Arguments: 1=provider. -->
     <string name="signin_provider_connect">Collega %1$s</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
-    <string name="signin_passkey">Accedi con una passkey</string>
-    <string name="signin_passkey__macos">Accedi con una passkey</string>
+    <string name="signin_passkey">Continua con una passkey</string>
+    <string name="signin_passkey__macos">Continua con una passkey</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
     <string name="signin_email_continue">Continua con l'email</string>
     <string name="signin_email_continue__macos">Continua con l'email</string>
     <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
     <string name="signin_link_key">Hai una chiave di licenza?</string>
     <string name="signin_link_key__macos">Hai una chiave di licenza?</string>
-    <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
-    <string name="signin_link_anotherDevice">Accedi con un altro dispositivo</string>
-    <string name="signin_link_anotherDevice__macos">Accedi con un altro dispositivo</string>
+    <!-- Sign-in method button: approve from a signed-in device (SIGN-IN.md §3.3). -->
+    <string name="signin_link_anotherDevice">Continua con un altro dispositivo</string>
+    <string name="signin_link_anotherDevice__macos">Continua con un altro dispositivo</string>
     <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
     <string name="signin_link_deviceCode">Accedi dal telefono o dal computer</string>
     <string name="signin_link_deviceCode__macos">Accedi dal telefono o dal computer</string>
@@ -2018,8 +2018,8 @@
     <!-- HintStep: completes 'You usually sign in with {method}'. -->
     <string name="signin_hint_method_email">un codice via email</string>
     <!-- HintStep: passkey button. -->
-    <string name="signin_hint_usePasskey">Usa una passkey</string>
-    <string name="signin_hint_usePasskey__macos">Usa una passkey</string>
+    <string name="signin_hint_usePasskey">Continua con una passkey</string>
+    <string name="signin_hint_usePasskey__macos">Continua con una passkey</string>
     <!-- HintStep: sends a sign-in code. -->
     <string name="signin_hint_emailCode">Inviami un codice via email</string>
     <string name="signin_hint_emailCode__macos">Inviami un codice via email</string>

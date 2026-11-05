@@ -307,7 +307,9 @@ describe("the passkey button (ST-30c.6)", () => {
     await page.goto(
       `${origin}/manage/login?returnTo=${encodeURIComponent("/manage/")}`,
     );
-    const button = page.getByRole("button", { name: "Sign in with a passkey" });
+    const button = page.getByRole("button", {
+      name: "Continue with a passkey",
+    });
     await button.waitFor();
     expect(await button.isVisible()).toBe(true);
     const sent = page.waitForResponse((r) =>
@@ -385,7 +387,7 @@ describe("the passkey button (ST-30c.6)", () => {
       .waitFor();
     const use = page.getByRole("button", { name: "Use your passkey" });
     await use.waitFor();
-    expect(await page.getByText("Sign in with a passkey").count()).toBe(0);
+    expect(await page.getByText("Continue with a passkey").count()).toBe(0);
     await use.click();
     await page.waitForURL(`${origin}/manage/`);
     expect(violations).toEqual([]);
@@ -408,7 +410,7 @@ describe("the passkey button (ST-30c.6)", () => {
   it("a passkey with no console grant says what to do, in place", async () => {
     const { context, page } = await open(nogrant);
     await page.goto(`${origin}/manage/login`);
-    await page.getByRole("button", { name: "Sign in with a passkey" }).click();
+    await page.getByRole("button", { name: "Continue with a passkey" }).click();
     await page
       .getByRole("alert")
       .getByText("Ask a Superadmin to add you.")
@@ -451,7 +453,7 @@ describe("the passkey button (ST-30c.6)", () => {
     const { context, page } = await open(ada);
     await page.goto(`${origin}/manage/login`);
     await context.route("**/login/passkey/options", (route) => route.abort());
-    await page.getByRole("button", { name: "Sign in with a passkey" }).click();
+    await page.getByRole("button", { name: "Continue with a passkey" }).click();
     await page
       .getByRole("alert")
       .getByText(
@@ -464,7 +466,9 @@ describe("the passkey button (ST-30c.6)", () => {
   it("the message is plain text under the button, and the button points at it", async () => {
     const { context, page } = await open(nogrant);
     await page.goto(`${origin}/manage/login`);
-    const button = page.getByRole("button", { name: "Sign in with a passkey" });
+    const button = page.getByRole("button", {
+      name: "Continue with a passkey",
+    });
     expect(await button.getAttribute("aria-describedby")).toBe("pk-err");
     await button.click();
     await page.locator("#pk-msg").waitFor();
@@ -485,7 +489,7 @@ describe("the passkey button (ST-30c.6)", () => {
       await route.continue();
     });
     await page.goto(`${origin}/manage/login`);
-    await page.getByRole("button", { name: "Sign in with a passkey" }).click();
+    await page.getByRole("button", { name: "Continue with a passkey" }).click();
     await page.getByRole("button", { name: "Signing in…" }).waitFor();
     expect(await page.locator("#pk-go").getAttribute("aria-busy")).toBe("true");
     await page.waitForURL(`${origin}/manage/`);
@@ -617,7 +621,7 @@ describe("the passkey button (ST-30c.6)", () => {
       );
       await page.goto(`${origin}/manage/login`);
       await page
-        .getByRole("button", { name: "Sign in with a passkey" })
+        .getByRole("button", { name: "Continue with a passkey" })
         .click();
       const alert = page.getByRole("alert");
       await alert.getByText(text, { exact: false }).waitFor();
@@ -626,7 +630,7 @@ describe("the passkey button (ST-30c.6)", () => {
       // The button is usable again, and still the focus target.
       expect(
         await page
-          .getByRole("button", { name: "Sign in with a passkey" })
+          .getByRole("button", { name: "Continue with a passkey" })
           .getAttribute("aria-disabled"),
       ).toBeNull();
       await closeContext(context);
@@ -645,12 +649,13 @@ describe("the card without script, and keyboard (ST-30c.6)", () => {
     await page.goto(`${origin}/manage/login`);
     expect(
       await page
-        .getByText("Sign in with a passkey", { exact: true })
+        .locator("#pk-go")
+        .getByText("Continue with a passkey", { exact: true })
         .isVisible(),
     ).toBe(false);
     expect(await page.locator("#pk").isVisible()).toBe(false);
     await page.getByLabel("Email").fill("ada@example.com");
-    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
     expect(new URL((await idp).url()).searchParams.get("login_hint")).toBe(
       "ada@example.com",
     );
@@ -664,7 +669,7 @@ describe("the card without script, and keyboard (ST-30c.6)", () => {
     });
     const page = await context.newPage();
     await page.goto(`${origin}/manage/login`);
-    await page.getByRole("button", { name: "Continue" }).waitFor();
+    await page.getByRole("button", { name: "Continue", exact: true }).waitFor();
     expect(await page.locator("#pk").isVisible()).toBe(false);
     await closeContext(context);
   });
@@ -673,7 +678,7 @@ describe("the card without script, and keyboard (ST-30c.6)", () => {
     const { context, page } = await open(null, { reducedMotion: "reduce" });
     await page.goto(`${origin}/manage/login`);
     await page
-      .getByRole("button", { name: "Sign in with a passkey" })
+      .getByRole("button", { name: "Continue with a passkey" })
       .waitFor();
     await page.locator("#email").focus();
     await page.keyboard.press("Tab");
@@ -692,7 +697,7 @@ describe("the card without script, and keyboard (ST-30c.6)", () => {
         animation: s.animationName,
       };
     });
-    expect(ring.text).toBe("Sign in with a passkey");
+    expect(ring.text).toBe("Continue with a passkey");
     expect(ring.style).not.toBe("none");
     expect(ring.width).toBeGreaterThanOrEqual(2);
     expect(ring.transition).toBe("0s");
@@ -741,7 +746,7 @@ describe("shots for the built UX review (PK_SHOTS_DIR)", () => {
       ] as const) {
         await page.goto(`${origin}/manage/login${query}`);
         await page
-          .getByRole("button", { name: "Sign in with a passkey" })
+          .getByRole("button", { name: "Continue with a passkey" })
           .waitFor();
         await fit();
         await shot(page, name, tag);
@@ -795,7 +800,7 @@ describe("shots for the built UX review (PK_SHOTS_DIR)", () => {
         await context.clearCookies({ name: ADMIN_COOKIE });
         await page.goto(`${origin}/manage/login`);
         await page
-          .getByRole("button", { name: "Sign in with a passkey" })
+          .getByRole("button", { name: "Continue with a passkey" })
           .click();
         await page.getByRole("alert").getByText(/\S/).waitFor();
         await fit();
@@ -809,7 +814,7 @@ describe("shots for the built UX review (PK_SHOTS_DIR)", () => {
       });
       const p = await plain.newPage();
       await p.goto(`${origin}/manage/login`);
-      await p.getByRole("button", { name: "Continue" }).waitFor();
+      await p.getByRole("button", { name: "Continue", exact: true }).waitFor();
       await shot(p, "nojs", tag);
       await closeContext(plain);
     },

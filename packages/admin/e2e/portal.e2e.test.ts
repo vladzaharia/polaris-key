@@ -1323,7 +1323,7 @@ describe("main flows", () => {
     await o.page
       .getByRole("textbox", { name: "Email" })
       .fill("mara@fennick.studio");
-    await o.page.getByRole("button", { name: "Continue" }).click();
+    await o.page.getByRole("button", { name: "Continue", exact: true }).click();
     await h1(o.page, "Check your email");
     await o.page.getByRole("textbox", { name: "6-digit code" }).waitFor();
     await shoot(o.page, "signin-sent-mobile-dark");

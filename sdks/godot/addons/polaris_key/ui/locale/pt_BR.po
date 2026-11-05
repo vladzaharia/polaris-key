@@ -2622,15 +2622,15 @@ msgstr "Continuar com {provider}"
 msgid "signin.provider.connect"
 msgstr "Conectar {provider}"
 
-#. Sign in with a passkey
+#. Continue with a passkey
 #. Hosted sign-in card (SIGN-IN.md).
 msgid "signin.passkey"
-msgstr "Entrar com uma chave de acesso"
+msgstr "Continuar com uma chave de acesso"
 
-#. macos: Sign In with a Passkey
+#. macos: Continue with a Passkey
 msgctxt "macos"
 msgid "signin.passkey"
-msgstr "Entrar com uma chave de acesso"
+msgstr "Continuar com uma chave de acesso"
 
 #. Continue with email
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
@@ -2652,15 +2652,15 @@ msgctxt "macos"
 msgid "signin.link.key"
 msgstr "Tem uma chave de licença?"
 
-#. Sign in with another device
-#. Links at the foot of the sign-in card (SIGN-IN.md §3.3).
+#. Continue with another device
+#. Sign-in method button: approve from a signed-in device (SIGN-IN.md §3.3).
 msgid "signin.link.anotherDevice"
-msgstr "Entrar com outro dispositivo"
+msgstr "Continuar com outro dispositivo"
 
-#. macos: Sign In with Another Device
+#. macos: Continue with Another Device
 msgctxt "macos"
 msgid "signin.link.anotherDevice"
-msgstr "Entrar com outro dispositivo"
+msgstr "Continuar com outro dispositivo"
 
 #. Sign in on your phone or computer
 #. Links at the foot of the sign-in card (SIGN-IN.md §3.3).
@@ -5367,15 +5367,15 @@ msgstr "uma chave de acesso"
 msgid "signin.hint.method.email"
 msgstr "um código por e-mail"
 
-#. Use a passkey
+#. Continue with a passkey
 #. HintStep: passkey button.
 msgid "signin.hint.usePasskey"
-msgstr "Usar chave de acesso"
+msgstr "Continuar com uma chave de acesso"
 
-#. macos: Use a Passkey
+#. macos: Continue with a Passkey
 msgctxt "macos"
 msgid "signin.hint.usePasskey"
-msgstr "Usar chave de acesso"
+msgstr "Continuar com uma chave de acesso"
 
 #. Email me a code
 #. HintStep: sends a sign-in code.
