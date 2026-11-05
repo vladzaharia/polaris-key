@@ -322,13 +322,22 @@ func _sign_out_races(t: PKeyTestContext) -> void:
 	bed.signouts = [B.json(200, {"released": true})]
 	spy.enrol(true)
 	t.check("restore: (race) the enrolment is on the wire", spy.waiting)
-	var out = bed.sdk.identity.sign_out()
+	var holder := {}
+	_sign_out_into(bed, holder)
 	spy.go.emit()
-	var res: PKeyResult = await out
+	while not holder.has("res"):
+		await (Engine.get_main_loop() as SceneTree).process_frame
+	var res: PKeyResult = holder["res"]
 	await spy.await_idle()
+	# The log is the interim state: a write at any point (after_sign_out would hide it) means the guard failed.
 	t.check("restore: an enrolment in flight cannot write the item back after sign-out", res.ok and backup.text == null and spy.state.checked_at() == 0 and _all_wiped(spy.fresh) \
-			and not spy.fresh.is_empty())
+			and not spy.fresh.is_empty() and not backup.log.has("set"), str(backup.log))
 	bed.free_all()
+
+
+## Run a sign-out as its own coroutine so the caller can release the gated enrolment meanwhile.
+func _sign_out_into(bed: B, holder: Dictionary) -> void:
+	holder["res"] = await bed.sdk.identity.sign_out()
 
 
 static func _all_wiped(values: Array) -> bool:

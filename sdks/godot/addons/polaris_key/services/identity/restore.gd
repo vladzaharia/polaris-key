@@ -28,6 +28,9 @@ extends RefCounted
 ##
 ## Not instantiated by a game: PKeyIdentity owns one (`identity.restore`).
 
+## Emitted when the last enrolment or check in flight finishes.
+signal idle_reached
+
 const GRANT_TYPE := "urn:polaris-key:grant-type:restore"
 ## A rung-1 launch checks the key at most this often.
 const CHECK_SECONDS := 86400
@@ -52,7 +55,6 @@ var _fallback_state: PKeyRestoreState = null
 ## Enrolments and checks in flight; sign-out waits for them (an enrolment finishing after the item was
 ## deleted would write it back).
 var _busy := 0
-signal _idle
 
 
 static func _static_init() -> void:
@@ -339,7 +341,7 @@ func enrol(load: bool) -> void:
 	await _enrol(load, generation)
 	_busy -= 1
 	if _busy == 0:
-		_idle.emit()
+		idle_reached.emit()
 
 
 func _enrol(load: bool, generation: int) -> void:
@@ -379,7 +381,7 @@ func _enrol(load: bool, generation: int) -> void:
 ## Wait for the enrolment or check in flight, if any. A coroutine.
 func await_idle() -> void:
 	while _busy > 0:
-		await _idle
+		await idle_reached
 
 
 ## After any completed sign-in, from any rung (a person-started one included): enrol.
