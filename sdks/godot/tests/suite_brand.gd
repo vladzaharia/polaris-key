@@ -328,8 +328,9 @@ func _overrides(t: PKeyTestContext) -> void:
 		var c := v.find_child(n, true, false) as Control
 		if c is PKeyPoweredBy:
 			return c.visible and (c as PKeyPoweredBy).texture != null
+		# Drawn means visible in the tree: the closed holder screens keep a "Mark" glyph of their own.
 		var r := c as TextureRect
-		return r != null and r.visible and r.texture != null
+		return r != null and r.is_visible_in_tree() and r.texture != null
 	# The product's identity leads a gate card (UI-KITS.md §1.2): its icon or monogram and name.
 	var product := func(v: Control) -> bool:
 		var h := v.find_child("Product", true, false) as PKeyProductHeader
