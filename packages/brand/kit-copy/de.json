@@ -694,7 +694,6 @@
     "signin.approve.denied": "Diese Anfrage wurde abgelehnt. Melden Sie sich auf andere Weise an.",
     "signin.approve.expired": "Dieser Code ist abgelaufen. Fordern Sie einen neuen Code an.",
     "signin.console.title": "Bei der Konsole anmelden",
-    "signin.console.next": "Weiter: {idp} auf {host}",
     "signin.console.signedOut": "Sie sind abgemeldet",
     "signin.console.sessionEnded": "Ihre Sitzung ist abgelaufen",
     "signin.console.sessionEndedBody": "Melden Sie sich erneut an, um fortzufahren. Ihre ungespeicherten Änderungen bleiben in diesem Tab erhalten.",

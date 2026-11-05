@@ -18,7 +18,7 @@ export function AuthTitle({
     <h1
       tabIndex={-1}
       className={cn(
-        "text-2xl font-semibold text-fg-strong outline-none forced-colors:outline-none",
+        "text-2xl/8 font-semibold text-fg-strong outline-none forced-colors:outline-none",
         className,
       )}
     >
@@ -27,21 +27,50 @@ export function AuthTitle({
   );
 }
 
-/** The step's one large action: 48 px, 16 px text, weight 500 (BRAND 9.4; SIGN-IN 3.1). */
+/**
+ * The step's one primary (SIGNIN-REDESIGN §4): the action fill, 48 px, Control type (16/24 at
+ * 500), full width, no trailing arrow. Pair it with `variant="neutral" size="xl"`.
+ */
 export const AUTH_PRIMARY_CLASS =
-  "h-auto min-h-12! w-full whitespace-normal py-2 text-center text-base font-medium";
+  "h-auto min-h-12! w-full whitespace-normal py-2 text-center text-base/6 font-medium";
 
-/** The card's text input: 48 px at 16 px (SIGN-IN 3.1). */
-export const AUTH_INPUT_CLASS = "h-12 text-base";
+/**
+ * The one skin of every alternative way in and every decline (§4): a full-width 48 px outlined
+ * button, `--pk-border-strong`, Control type in `--pk-text-strong`, a 20 px icon and the label centred as
+ * one run. Pair it with `variant="outline" size="xl"` (or `<a>` with `METHOD_LINK_CLASS`).
+ */
+export const AUTH_METHOD_CLASS =
+  "h-auto min-h-12! w-full whitespace-normal py-2 text-center text-base/6 font-medium text-fg-strong";
 
-/** The card's link: neutral ink, coral underline, explicit focus outline (BRAND 15). */
+/** The same skin on a bare element (an anchor): what `Button variant="outline"` adds. */
+export const AUTH_METHOD_ELEMENT_CLASS =
+  "inline-flex h-auto min-h-12! w-full items-center justify-center gap-2 rounded-md border border-border-strong bg-transparent px-6 py-2 text-center text-base/6 font-medium text-fg-strong transition-colors duration-(--pk-duration-fast) hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus [&_svg]:size-5 [&_svg]:shrink-0";
+
+/** The card's text input: 48 px at 16 px, focus is the 1 px border in strong ink, no ring, no offset (§4). */
+export const AUTH_INPUT_CLASS =
+  "h-12 pointer-coarse:h-12 text-base focus-visible:border-fg-strong focus-visible:outline-0 focus-visible:outline-offset-0";
+
+/** A help line under a field or a checkbox (§2 Secondary: 14/20 at 400, muted). */
+export const AUTH_HELP_CLASS = "text-sm/5 text-fg-muted";
+
+/** The label above a field or a section (§2 Label: 14/20 at 500). */
+export const AUTH_LABEL_CLASS = "block text-sm/5 font-medium text-fg-strong";
+
+/**
+ * The card's one link style (§6, BRAND §7.9): 14/20 at 400 in `--pk-text-default`, a 1 px
+ * `--pk-border-strong` underline at a 3 px offset with skip-ink, `--pk-text-strong` on hover, the family's
+ * focus ring. Never coral, never violet, no icon. A 44 px target under a coarse pointer.
+ */
 export const AUTH_LINK_CLASS =
-  "inline-flex min-h-11 items-center gap-1.5 rounded-md px-1 text-fg-strong underline decoration-2 underline-offset-4 transition-colors duration-(--pk-duration-fast) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+  "inline-flex items-center justify-center rounded-sm text-sm/5 font-normal text-fg underline decoration-border-strong decoration-1 underline-offset-[3px] [text-decoration-skip-ink:auto] transition-colors duration-(--pk-duration-fast) hover:text-fg-strong hover:decoration-fg-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus min-h-6 pointer-coarse:min-h-11 pointer-coarse:min-w-11";
 
-/** "or" between the email form and the other ways (§3.3). */
+/** "or" between the email form and the other ways (§3.3): Secondary type, one 1 px hairline each side. */
 export function OrDivider(): React.ReactElement {
   return (
-    <div className="flex items-center gap-3 text-sm text-fg-muted" aria-hidden>
+    <div
+      className="flex items-center gap-3 text-sm/5 text-fg-muted"
+      aria-hidden
+    >
       <span className="h-px flex-1 bg-border" />
       {t("signin.or")}
       <span className="h-px flex-1 bg-border" />
@@ -50,26 +79,21 @@ export function OrDivider(): React.ReactElement {
 }
 
 /**
- * The quiet links under a rule (§3.3), centred and evenly spaced: 24 px from the rule to the text
- * and 24 px from the text to the card's bottom edge. Each link is a 44 px target with its 20 px
- * line centred in it (12 px either side), so the row adds 12 px of padding above it and pulls the
- * body's bottom padding (24 px on phones, 32 px wide) in by 12 px or 20 px below it.
+ * The step's tertiary line (§6): one centred line of exits and switches (Back, Cancel, Use a
+ * different email, Send a new code), items 24 px apart, wrapping. No rule above it. The coarse
+ * pointer's 44 px targets are pulled back by a negative margin so the visible rhythm holds.
  */
 export function QuietLinks({
   children,
-  stacked = false,
 }: {
   children: React.ReactNode;
-  /** One link per line at body size (the direct card's mockup, portal.signin). */
+  /** Kept for callers that drew the direct card's stacked list; the line is one row now. */
   stacked?: boolean;
 }): React.ReactElement {
   return (
     <div
       data-quiet-links
-      className={
-        "-mb-3 flex items-center justify-center border-t border-border pt-3 sm:-mb-5 " +
-        (stacked ? "flex-col text-base" : "flex-wrap gap-x-5 text-sm")
-      }
+      className="flex flex-wrap items-center justify-center gap-x-6 text-sm/5 pointer-coarse:-my-3"
     >
       {children}
     </div>
@@ -78,12 +102,10 @@ export function QuietLinks({
 
 export function QuietLink({
   onClick,
-  icon,
   disabled = false,
   children,
 }: {
   onClick: () => void;
-  icon?: React.ReactNode;
   /** Not usable right now (a request is in flight): stays focusable, does nothing, looks muted. */
   disabled?: boolean;
   children: React.ReactNode;
@@ -98,24 +120,8 @@ export function QuietLink({
         "aria-disabled:cursor-default aria-disabled:opacity-60",
       )}
     >
-      {icon}
       {children}
     </button>
-  );
-}
-
-/** A QuietLink that goes to a page (a Help article) instead of doing something. */
-export function QuietAnchor({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <a href={href} className={AUTH_LINK_CLASS}>
-      {children}
-    </a>
   );
 }
 

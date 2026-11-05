@@ -694,7 +694,6 @@
     "signin.approve.denied": "Se denegó esa solicitud. Usa otra forma de iniciar sesión.",
     "signin.approve.expired": "Ese código ha caducado. Obtén un código nuevo.",
     "signin.console.title": "Inicia sesión en la consola",
-    "signin.console.next": "Siguiente: {idp} en {host}",
     "signin.console.signedOut": "Has cerrado sesión",
     "signin.console.sessionEnded": "Tu sesión terminó",
     "signin.console.sessionEndedBody": "Vuelve a iniciar sesión para continuar. Tus cambios sin guardar se mantienen en esta pestaña.",

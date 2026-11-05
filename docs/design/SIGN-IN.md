@@ -186,30 +186,30 @@ the license choice of every device-code sign-in (D-82).
 ### 3.1 The card
 
 `ui/auth/AuthCard` (UX-40 promotes the built `LoginCard`). The measures are EXPERIENCE §8's: a
-28.5 rem card, radius 22 px, elevation 3, 48–52 px controls, a 24 px h1, top-aligned at 10 vh on the
-static star field, and edge to edge under a 56 px lockup row on phones. Help · Privacy · Terms sit
-below the card. **No host line.** No Key star field behind a Locker card; only the mark's own star. Nothing draws a
+28.5 rem card, radius 18 px (`--pk-radius-xl`), elevation 3, 48 px controls, a 24 px h1, the lockup's
+top at `clamp(2.5rem, 12vh, 7.5rem)` and 40 px from its ink to the card (24 px on a short window), and edge to
+edge under a 56 px lockup row on phones. Help · Privacy sit below the card. **No host line.** No Key star field behind a Locker card; only the mark's own star. Nothing draws a
 hairline or tint under the brand row on phones.
 
 **The primary is neutral ink** in every context (portal, app sign-in, Worker pages): near-white
 fill on dark, near-black on light, label in the page colour (`action-neutral`; disabled is the same
-shape at 40 % contrast with its reason line). Coral is identity only (D9a): the mark, a 3 px selected marker, a 2 px link underline and the context edge.
+shape at 40 % contrast with its reason line). Coral is identity only (D9a): the mark, a 3 px selected marker and the context edge.
 The focus ring, selected radio and row border and link text are neutral ink. Danger stays red.
 
-**Provider buttons** take the host theme's scheme, height (44 px or more) and radius, and a fill
-from the provider's allowed set for that scheme (PORTAL §4.1); never a lavender or accent tint.
+**Provider buttons** take the method-button skin (48 px, 20 px marks, a 1 px `border-strong` outline,
+transparent fill; BRAND §7.9; PORTAL §4.1); never a lavender or accent tint.
 
-| Slot      | Content                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
-| Brand row | The compact lockup with no bit; the console adds "│ Console". One 40 px Locker lockup on every surface, the portal card and the Worker pages alike (lead decision, 2026-10-20), never under the 120 px minimum width and never changing size between steps; in app contexts (app request, product context) it is muted, so the app reads first, and on `/tv` it is full and larger                                                                                                                                                                                                                                                       |     |
-| Header    | **App request** (passthrough only), the hero of the card (a landscape card shows it as the passport, below): a 56 px app icon (radius 14 px), "**<App>** wants you to sign in" at 18/24 with the name semibold, then "<Developer> · <where>". Where is a globe and the registered origin (web), a device glyph and "on <device label>" (native), or a TV/device glyph, the label and the **code panel** "Code on the screen · `WDJB-MJHT` · Check it matches the screen" (device code). **Product context** (developer link, identity_disabled): icon, "**<Product>** · <Developer>", "Your license, downloads and devices". Never both. |
-| Body      | One step                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Footer    | Passthrough only: lock glyph, "Polaris Locker signs you in for <App>. <Developer> never sees your codes or passkeys."                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Slot      | Content                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| Brand row | The compact lockup with no bit; the console adds "│ Console". The 26 px trimmed Locker lockup or the 64 px compact Key lockup, 40 px above the card, on every surface, the portal card and the Worker pages alike (lead decision, 2026-10-20), never under the guide's 180 px minimum width and never changing size between steps; in app contexts (app request, product context) it is muted, so the app reads first, and on `/tv` it is full and larger                                                                                                                                                                              |     |
+| Header    | **App request** (passthrough only), the hero of the card (a landscape card shows it as the passport, below): a 56 px app icon (radius 14 px), "**<App>** wants you to sign in" at 16/24 with the name at 500, then "<Developer> · <where>". Where is a globe and the registered origin (web), a device glyph and "on <device label>" (native), or a TV/device glyph, the label and the **code panel** "Code on the screen · `WDJB-MJHT` · Check it matches the screen" (device code). **Product context** (developer link, identity_disabled): icon, "**<Product>** · <Developer>", "Your license, downloads and devices". Never both. |
+| Body      | One step                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Footer    | Passthrough only: lock glyph, "Polaris Locker signs you in for <App>. <Developer> never sees your codes or passkeys."                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 **Layout: the product passport.** When the card has an App request or Product context header and
 the viewport is landscape (width of at least 60 rem / 960 CSS px and a width to height ratio of at
 least 1.2, and a card container with room for 46 rem, so 200 % text stacks the strip), the header leaves the top of the card and becomes a start pane 17.5 rem (280 px) wide
-beside the form pane, which keeps every measure above (28.5 rem, 48 to 52 px controls, a 24 px h1);
+beside the form pane, which keeps every measure above (28.5 rem, 48 px controls, a 24 px h1);
 the card is about 46 rem wide. Portrait, tablet portrait (834 px) and phones keep the stacked header
 strip: never two narrow panes in portrait (UI-KITS DL1). The pane is a neutral `surface-sunken` in
 both themes, never a violet wash and never a dark pane in the light theme, with `text-strong` and
@@ -229,8 +229,8 @@ The pane never ends in a void: identity at the top, receipt at the foot.
 
 Product context (developer link, `identity_disabled`) shows the icon, "<Product> · <Developer>" and
 "Your license, downloads and devices". The **trust receipt** ("Polaris Locker signs you in for
-<App>...") closes the start pane at its foot. The pane never moves between steps (§3.18). The brand row stays the one 40 px lockup (muted in an app's context); Help · Privacy ·
-Terms stay under the card. On the Worker's no-JS pages (I-38) the art is a same-origin `<img>` (or the
+<App>...") closes the start pane at its foot. The pane never moves between steps (§3.18). The brand row stays the one lockup (muted in an app's context); Help · Privacy
+stay under the card. On the Worker's no-JS pages (I-38) the art is a same-origin `<img>` (or the
 image origin the Worker CSP allows through `cspImageOrigin()`, exactly as the app policy does),
 with no inline style or script: the layout is classes and container queries in the hashed
 stylesheet and the pane uses neutral tokens only.
@@ -250,12 +250,21 @@ another page and never opens a modal. The body morphs (§3.18) while the brand r
 person row and the footer stay. **Replace a device**, the key field and Consent's **Change** are
 steps of the same card.
 
+#### 3.1.1 Type, spacing and treatments
+
+The card's type scale (four sizes, three weights), the 8, 12 and 24 px rhythm, the one method-button
+skin for every alternative way in and every decline, the thin link style and the tertiary line are
+specified once, in BRAND §7.9. Every step below follows it: one primary per step with no trailing
+arrow; exits and switches (Back, Cancel, Use a different email, Send a new code, Other ways to sign
+in, Have a license key?) are the step's single centred tertiary line, with no rule above it;
+a way to sign in or a decline is never a link.
+
 ### 3.2 Step catalogue
 
 | Step                 | Shown when                                                                                                                                                                           | Surfaces (§5.1)                                          | Frame                      |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- | -------------------------- |
 | `MethodsStep`        | First step of every browser sign-in                                                                                                                                                  | Card; kit `SignIn` (native; desktop chooser)             | 01, 02, 16, 23, 25         |
-| `HintStep`           | After Continue, when this browser's `pk_last_method` cookie matches the typed address                                                                                                | Card                                                     | PORTAL 03                  |
+| `HintStep`           | After Continue, when this browser's `pk_last_method` cookie matches the typed address; and the console, passkey-usual (`pk_console_last_method`, §3.12)                              | Card                                                     | PORTAL 03                  |
 | `CodeStep`           | After an email: one email with a 6-digit code and a link                                                                                                                             | Card, email, Worker                                      | 03                         |
 | `FinishStep`         | A new account: after an email code (RegisterStep, §3.4) or on the first provider sign-in of an account (EmailGateStep, §3.5)                                                         | Card                                                     | 04, PORTAL 11              |
 | `LicenseChoiceStep`  | An app sign-in that will bind this installation, on a product with the License service, when the account has a license to choose or the product does not issue one (§3.6)            | Card; Worker (I-26 legacy); the kit form (path B, §3.17) | 05, 09, 18–22, 36, 39, 40  |
@@ -287,8 +296,10 @@ continue**, or **Add and use on this device**).
 
 **Layout (portal direct):** h1 "Sign in to Polaris Locker" (no lede). **Email**
 (`autocomplete="username webauthn"`, conditional passkey UI) and **Continue**. Then "or" and the
-provider row, then **Sign in with a passkey** (ghost). Under a rule sit two quiet links: **Have a
-license key?** and **Sign in with another device**.
+provider row, **Sign in with a passkey**, **Continue with single sign-on** (or one button per named
+connection) and **Sign in with another device**, each below "or" as a method button in that fixed
+order (BRAND §7.9). **Have a license key?** is the tertiary line: a quiet centred link on the card's
+last line, with no icon and no rule above it (it is a door to the key on-ramp, not a way to sign in).
 
 **Passthrough and product context:** h1 "Sign in", lede "Use your <Product> purchase email or a work or school email."
 The device-code variant has h1 "Sign in to finish on <device label>", lede "Use your phone or
@@ -296,7 +307,7 @@ computer here. <device label> continues by itself when you're done.", and "Didn'
 yourself? Cancel it. Someone may be trying to use your account." It has no "Sign in with another
 device" link. A `login_hint` the app sends on `authorize` (I-08, §6.6) prefills **Email**.
 
-**Provider row** (O-6): one row of equal-width, logo-only buttons, 52 px tall with 24 px marks, in
+**Provider row** (O-6): one row of equal-width, logo-only buttons, 48 px tall with 20 px marks, in
 the order Apple, Google, Steam. Accessible names are "Continue with Apple/Google/Steam" (repeated as
 a tooltip), in `role="group"` "Or continue with". One button keeps half-row width, centred.
 Providers follow where the product ships: Apple for Apple-platform products with any social sign-in,
@@ -318,14 +329,16 @@ Center and Play Games are never buttons on the web.
 
 **HintStep** (PORTAL §4.3): identity chip (no picture before authentication), "Welcome
 back, Mara", a hint card "You usually sign in with Steam" with that method as the labelled primary,
-**Email me a code**, **Use a passkey** and **Other ways to sign in**. The hint comes only from the
+**Email me a code** and **Use a passkey** as method buttons, and **Other ways to sign in** as the tertiary line. The hint comes only from the
 first-party `pk_last_method` cookie. Apple stays one tap away for iOS products.
 
 **CodeStep:** h1 "Check your email". Lede "We sent a code and a sign-in link to **{email}**. Both work
 for 10 minutes." One input drawn as six cells (`autocomplete="one-time-code"`, `inputmode="numeric"`, one accessible
 name "6-digit code"; paste fills it; it submits on the sixth digit). "Or open the link
 in the email. Keep this tab open." **Continue** enables at six digits. Below: "Send a new code" (a
-countdown first, "Send a new code in 0:42") and **Use a different email**.
+countdown first, "Send a new code in 0:42", in muted text and not underlined) and **Use a different email**
+on the tertiary line. Help under the card points to the "code didn't arrive" article, so there is no
+in-card "Didn't get a code?" link.
 The tab signs in by itself when the link is opened in the same browser: it re-checks on focus and
 `visibilitychange`, every 5 s for 10 minutes, and on a `BroadcastChannel` the link page posts to.
 
@@ -585,7 +598,7 @@ optional}` over name, picture, email and Cloud Sync; I-27 §2.4). Required items
   products or how you sign in." A declined item is not asked again and never reaches the app
   (S-16 D19); declining Cloud Sync leaves sync off for that app.
 - **Continue to <App>** and **Cancel**, the same width and height, listed after what the app gets
-  (scopes come before the buttons); on phones they stack full width with the primary last.
+  (scopes come before the buttons); on phones they stack full width, the primary first. **Don't allow** is a method button.
   Continue posts the granted subset and applies the choice, any Replace and the grant together.
 - Shown on the first sign-in to each app and whenever its claims or services change (PX-W13 Q5). A
   license-only change never re-asks consent, but LicenseChoiceStep still shows by its own rule.
@@ -694,18 +707,40 @@ Two different flows have two names (D-18):
 
 ### 3.12 ConsoleMethodsStep
 
+The console signs in as Polaris Locker does, step for step; only the lockup and the accent differ.
 EXPERIENCE §8 stands (frame 13): brand row "Polaris Key │ Console", h1 "Sign in to the console", the
-identifier-first email (a known operator is a chip, "vlad@zaharia.dev · Change"), **Continue**, the
-fine print "Next: Pocket ID at {issuer host}", then "or" and **Sign in with a passkey**. There is no
-provider row and no license key. PKCE starts only on Continue, and `returnTo` survives.
+identifier-first email, **Continue**, then "or" and **Sign in with a passkey** as a method button.
+There is no fine print under Continue: it, or **Continue with single sign-on**, leaves for the console
+IdP, whose own page names itself. Single sign-on is what Continue does, so it has no button on this
+card. **Emergency sign-in** is the tertiary line, a quiet centred link on the card's last line; the
+footer is Help · Privacy. There is no provider row and no license key. PKCE starts only on Continue,
+and `returnTo` survives. Continue refuses an empty or malformed address with "Enter a full email
+address, like name@example.com." (server side on the POST: 400, the card again, the address kept and
+focused, nothing started or counted).
 
-| State           | Copy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Signed out      | h1 "You're signed out", chip, **Continue**. No IdP bounce                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Session ended   | In place over the open page (frame 14, built in ST-30 slice 2a): a modal dialog "Your session ended", "Sign in again to carry on. Changes you haven’t saved stay on this page.", **Sign in again** (a link that opens this card, ended state, in a second tab and returns to a "You’re signed in again" card that tells the first tab) and **Not now** (also Escape). The page is never left; with no page open (a bookmark after the session lapsed) it is this card, chip, **Continue** |
-| Not an operator | "{email} isn't in the operators group." with **Use another account**                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Offline / 5xx   | "Can't reach Polaris Key" with **Try again**                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Not configured  | "Admin sign-in isn't set up" with the docs link                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+**The returning-person step** (Locker's HintStep, passkey-usual only). On Continue, with a well-formed
+address, when this browser's record matches the address, its usual method is a passkey, the card offers
+a passkey and this page has not hinted this address, the card shows: the identity pill (initial, the
+typed address, **Change**), "Welcome back, {first name}" (or "Welcome back"), an inset panel with
+"You usually sign in with a passkey" and "On this browser, last time {when}", **Use a passkey**, "or",
+**Continue with single sign-on** (submits the form with `login_hint`), and the tertiary **Other ways
+to sign in**. Change and Other ways return to the email step with the address kept, focused and
+selected. A usual single sign-on gets no step: Continue already is that way. The record is Locker's
+mechanism (`lib/lastMethod.ts`): the cookie `pk_console_last_method` = `kind.hash.at`
+(`Path=/manage; SameSite=Strict; Secure`, readable by script), the salt and first name in localStorage,
+the tab's method in sessionStorage. The hash is salted and never leaves the browser; the Worker never
+reads the cookie and no request is made, so there is nothing to enumerate. The card's script stashes
+the method (passkey on success, single sign-on on submit); the SPA commits it after `/me` answers for
+an account session. An Emergency sign-in is never remembered. The record is kept on sign-out.
+
+| State           | Copy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signed out      | The plain sign-in card. No IdP bounce                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Session ended   | In place over the open page (frame 14, built in ST-30 slice 2a): a modal dialog "Your session ended", "Sign in again to carry on. Changes you haven’t saved stay on this page.", **Sign in again** (a link that opens this card, ended state, in a second tab and returns to a "You’re signed in again" card that tells the first tab) and **Not now** (also Escape). The page is never left; with no page open (a bookmark after the session lapsed) it is the plain sign-in card with the notice "Your session ended." under the h1 |
+| Step-up         | Pill (the session's address, no Change), h1 "Confirm it’s you", "This change needs a fresh sign-in.", **Use your passkey**, "or", **Continue with single sign-on** (the primary when no passkey is offered)                                                                                                                                                                                                                                                                                                                           |
+| Not an operator | "{email} isn't in the operators group." with **Use another account**                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Offline / 5xx   | "Can't reach Polaris Key" with **Try again**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Not configured  | "Admin sign-in isn't set up" with the docs link                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 ### 3.13 Worker pages
 
@@ -716,7 +751,7 @@ instead of a ticking countdown, forms POST to self, `frame-ancestors 'none'`. Th
 allows `img-src 'self' data:` plus the image origin through `cspImageOrigin()` (one bare https
 origin, else unchanged), so the passport's icon and art load; there is no inline style or script.
 
-One exception (ST-30c.6): the console card carries one inline script, pinned by its SHA-256 in `script-src` (`console/signinScript.ts`, never `'unsafe-inline'`). It reveals **Sign in with a passkey** and runs the passkey ceremony. Without JS or WebAuthn the card is the form alone.
+One exception (ST-30c.6): the console card carries one inline script, pinned by its SHA-256 in `script-src` (`console/signinScript.ts`, never `'unsafe-inline'`). It reveals **Sign in with a passkey**, runs the passkey ceremony and shows the returning-person step (§3.12). Without JS or WebAuthn the card is the form alone.
 
 | Page                      | Copy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -746,7 +781,7 @@ One exception (ST-30c.6): the console card carries one inline script, pinned by 
   (`aria-describedby`). The step marks the field with `data-step-focus`; every other step keeps
   heading focus. A refreshed list (seat
   taken, device removed) is announced and keeps focus in the list.
-- **Targets** are at least 44 × 44 px (controls are 48–52 px). Logo-only provider buttons carry
+- **Targets** are at least 44 × 44 px (controls are 48 px, the code field 56). Logo-only provider buttons carry
   their accessible name and show it as a tooltip on hover and focus.
 - **License rows** are native radios in a `radiogroup` "Licenses for <Product>". Full and blocked
   rows are not radios: each is a labelled `role="group"` whose tag and reason are text, tied to it with
@@ -1840,7 +1875,6 @@ keys (`conformance/parity/copy.en.json`) for refusal codes instead of duplicatin
 | `signin.approve.denied`              | That request was denied. Use another way to sign in.                                                                                                                                          |
 | `signin.approve.expired`             | That code expired. Get a new code.                                                                                                                                                            |
 | `signin.console.title`               | Sign in to the console                                                                                                                                                                        |
-| `signin.console.next`                | Next: {idp} at {host}                                                                                                                                                                         |
 | `signin.console.signedOut`           | You're signed out                                                                                                                                                                             |
 | `signin.console.sessionEnded`        | Your session ended                                                                                                                                                                            |
 | `signin.console.sessionEndedBody`    | Sign in again to carry on. Your unsaved changes stay in this tab.                                                                                                                             |

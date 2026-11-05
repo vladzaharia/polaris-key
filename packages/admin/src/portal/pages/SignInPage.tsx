@@ -1,14 +1,6 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowRight,
-  Building2,
-  Fingerprint,
-  KeyRound,
-  Mail,
-  ScanLine,
-  ShieldCheck,
-} from "lucide-react";
+import { Building2, Fingerprint, Mail, MonitorSmartphone } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { Input } from "../../ui/Input.js";
 import { cn } from "../../lib/cn.js";
@@ -30,7 +22,9 @@ import {
 } from "../api.js";
 import {
   AUTH_INPUT_CLASS,
+  AUTH_LABEL_CLASS,
   AUTH_LINK_CLASS,
+  AUTH_METHOD_CLASS,
   AuthCard,
   AuthTitle as Title,
   CardHeader,
@@ -41,7 +35,6 @@ import {
   type CodeVerifyOutcome,
   OrDivider as Divider,
   ProviderRow,
-  QuietAnchor,
   QuietLink,
   QuietLinks,
 } from "../../ui/auth/index.js";
@@ -422,7 +415,11 @@ export function SignInPage({
                 ? "upgrade:forced"
                 : step.kind));
 
-  const legalNav = <LegalNav />;
+  const legalNav = (
+    <LegalNav
+      help={stepKey === "code" ? HELP_LINKS.codeDidntArrive : undefined}
+    />
+  );
 
   return (
     <AuthCard
@@ -436,7 +433,8 @@ export function SignInPage({
         other ? (
           <Button
             variant="outline"
-            className="w-full max-sm:min-h-11"
+            size="xl"
+            className={AUTH_METHOD_CLASS}
             onClick={other.onCancel}
           >
             {t("common.cancel")}
@@ -708,10 +706,10 @@ function ResumeStep({
 /** The card's loading state (§3.3): a skeleton at the final size, never a "Getting…" line. */
 function MethodsSkeleton(): React.ReactElement {
   return (
-    <div aria-busy className="space-y-5" data-testid="signin-skeleton">
+    <div aria-busy className="space-y-6" data-testid="signin-skeleton">
       <span className="sr-only">{t("common.loading")}</span>
       <div aria-hidden className="h-8 w-2/3 rounded-md bg-hover" />
-      <div aria-hidden className="space-y-1.5">
+      <div aria-hidden className="space-y-2">
         <div className="h-4 w-12 rounded bg-hover" />
         <div className="h-12 rounded-md bg-hover" />
       </div>
@@ -913,18 +911,15 @@ function MethodsStep({
         {lede ? <p className="text-fg-muted">{lede}</p> : null}
         {notice ? (
           // An alert, so the reason is announced along with the step change (WCAG 4.1.3).
-          <p data-signin-notice role="alert" className="text-sm text-fg">
+          <p data-signin-notice role="alert" className="text-sm/5 text-fg">
             {notice}
           </p>
         ) : null}
       </div>
       {magic ? (
-        <form onSubmit={submit} noValidate className="space-y-4">
-          <div className="space-y-1.5">
-            <label
-              htmlFor="pk-signin-email"
-              className="text-sm font-medium text-fg-strong"
-            >
+        <form onSubmit={submit} noValidate className="space-y-3">
+          <div className="space-y-2">
+            <label htmlFor="pk-signin-email" className={AUTH_LABEL_CLASS}>
               {t("signin.email.label")}
             </label>
             <Input
@@ -945,7 +940,7 @@ function MethodsStep({
             />
             {/* B-067: no reserved line; it opens a 48 px gap above Continue. */}
             {error ? (
-              <p id={errorId} role="alert" className="pt-1 text-sm text-danger">
+              <p id={errorId} role="alert" className="text-sm/5 text-danger">
                 {error}
               </p>
             ) : null}
@@ -953,97 +948,112 @@ function MethodsStep({
           <Button
             type="submit"
             variant="neutral"
-            size="lg"
+            size="xl"
             className={PRIMARY_CLASS}
             loading={sending}
-            iconEnd={<ArrowRight aria-hidden />}
           >
             {t("signin.continue")}
           </Button>
         </form>
       ) : null}
-      {(providers.length > 0 || oidc) && magic ? <Divider /> : null}
-      <ProviderRow
-        providers={providers}
-        // I-06's start route is GET /login/<provider>; the row renders only once the Worker
-        // names providers in its capabilities (PX-12). I-09: a card opened for a product (an
-        // app's `signInUrl`) signs in through it, so the product's terms are asked.
-        hrefFor={(p) =>
-          `/login/${p}?return_to=${encodeURIComponent(returnTo())}${
-            context ? `&product=${encodeURIComponent(context.slug)}` : ""
-          }`
-        }
-        onNavigate={(p) => {
-          rememberVia(p);
-          stashCarriedKey();
-        }}
-      />
-      {oidc ? (
-        <Button
-          asChild
-          variant={magic || providers.length ? "secondary" : "neutral"}
-          size="lg"
-          className={PRIMARY_CLASS}
-        >
-          <a href={ssoHref} onClick={() => stashCarriedKey()}>
-            <ShieldCheck aria-hidden />
-            {ssoLabel}
-          </a>
-        </Button>
+      {magic &&
+      (providers.length > 0 ||
+        oidc ||
+        passkey ||
+        connections.length > 0 ||
+        (!other && !attachDevice)) ? (
+        <Divider />
       ) : null}
-      {connections.map((c) => (
-        <ConnectionButton
-          key={c.id}
-          connection={c}
-          href={connectionHref(c.id, undefined, context?.slug)}
-          primary={!oidc && providers.length === 0 && c === connections[0]}
+      <div className="space-y-3" data-methods>
+        <ProviderRow
+          providers={providers}
+          // I-06's start route is GET /login/<provider>; the row renders only once the Worker
+          // names providers in its capabilities (PX-12). I-09: a card opened for a product (an
+          // app's `signInUrl`) signs in through it, so the product's terms are asked.
+          hrefFor={(p) =>
+            `/login/${p}?return_to=${encodeURIComponent(returnTo())}${
+              context ? `&product=${encodeURIComponent(context.slug)}` : ""
+            }`
+          }
+          onNavigate={(p) => {
+            rememberVia(p);
+            stashCarriedKey();
+          }}
         />
-      ))}
-      {passkey ? (
-        <div className="space-y-2">
+        {passkey ? (
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="xl"
+              className={AUTH_METHOD_CLASS}
+              loading={passkeyBusy}
+              onClick={() => void withPasskey()}
+              iconStart={<Fingerprint aria-hidden />}
+            >
+              {t("signin.passkey")}
+            </Button>
+            {passkeyError ? (
+              <p role="alert" className="text-center text-sm/5 text-danger">
+                {passkeyError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        {oidc ? (
+          <Button
+            asChild
+            variant={
+              magic || providers.length || passkey ? "outline" : "neutral"
+            }
+            size="xl"
+            className={
+              magic || providers.length || passkey
+                ? AUTH_METHOD_CLASS
+                : PRIMARY_CLASS
+            }
+          >
+            <a href={ssoHref} onClick={() => stashCarriedKey()}>
+              <Building2 aria-hidden />
+              <span>{ssoLabel}</span>
+            </a>
+          </Button>
+        ) : null}
+        {connections.map((c) => (
+          <ConnectionButton
+            key={c.id}
+            connection={c}
+            href={connectionHref(c.id, undefined, context?.slug)}
+            primary={
+              !oidc &&
+              !passkey &&
+              providers.length === 0 &&
+              c === connections[0]
+            }
+          />
+        ))}
+        {magic && !other && !attachDevice ? (
           <Button
             type="button"
-            variant="ghost"
-            size="lg"
-            className={PRIMARY_CLASS}
-            loading={passkeyBusy}
-            onClick={() => void withPasskey()}
-            iconStart={<Fingerprint aria-hidden />}
+            variant="outline"
+            size="xl"
+            className={AUTH_METHOD_CLASS}
+            onClick={onDevice}
+            iconStart={<MonitorSmartphone aria-hidden />}
           >
-            {t("signin.passkey")}
+            {t("signin.link.anotherDevice")}
           </Button>
-          {passkeyError ? (
-            <p role="alert" className="text-center text-sm text-danger">
-              {passkeyError}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-      {!other && !attachDevice && (carried || caps.modules.claim || magic) ? (
-        <QuietLinks stacked>
+        ) : null}
+      </div>
+      {!other && !attachDevice && (carried || caps.modules.claim) ? (
+        <QuietLinks>
           {carried ? (
-            <QuietLink
-              onClick={() => setParams({ activate: null })}
-              icon={<KeyRound aria-hidden className="size-4" />}
-            >
+            <QuietLink onClick={() => setParams({ activate: null })}>
               {t("signin.key.withoutKey")}
             </QuietLink>
-          ) : caps.modules.claim ? (
-            <QuietLink
-              onClick={onKey}
-              icon={<KeyRound aria-hidden className="size-4" />}
-            >
-              {t("signin.link.key")}
-            </QuietLink>
-          ) : null}
-          {magic ? (
-            <QuietLink
-              onClick={onDevice}
-              icon={<ScanLine aria-hidden className="size-4" />}
-            >
-              {t("signin.link.anotherDevice")}
-            </QuietLink>
-          ) : null}
+          ) : (
+            <QuietLink onClick={onKey}>{t("signin.link.key")}</QuietLink>
+          )}
         </QuietLinks>
       ) : null}
     </>
@@ -1066,9 +1076,9 @@ function ConnectionButton({
   return (
     <Button
       asChild
-      variant={primary ? "neutral" : "secondary"}
-      size="lg"
-      className={PRIMARY_CLASS}
+      variant={primary ? "neutral" : "outline"}
+      size="xl"
+      className={primary ? PRIMARY_CLASS : AUTH_METHOD_CLASS}
     >
       <a
         href={href}
@@ -1190,7 +1200,7 @@ function CodeStep({
     <>
       <div className="space-y-2">
         <Title>{t("signin.code.title")}</Title>
-        <p className="text-fg">
+        <p className="text-fg-muted">
           {tParts("signin.code.sent", ["email"]).map((part, i) =>
             typeof part === "string" ? (
               part
@@ -1212,9 +1222,6 @@ function CodeStep({
         <QuietLink onClick={onChangeEmail}>
           {t("signin.code.differentEmail")}
         </QuietLink>
-        <QuietAnchor href={HELP_LINKS.codeDidntArrive}>
-          {t("signin.code.missing")}
-        </QuietAnchor>
       </CodeEntry>
     </>
   );
@@ -1237,7 +1244,7 @@ function IdChip({
   const host = at > 0 ? email.slice(at) : "";
   return (
     <div className="flex">
-      <div className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border border-border py-0.5 ps-3 pe-1 text-sm text-fg">
+      <div className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border border-border py-0.5 ps-3 pe-1 text-sm/5 text-fg-muted">
         <span className="flex min-w-0 max-w-full" title={email}>
           <bdi className="min-w-0 truncate">{local}</bdi>
           <bdi className="shrink-0">{host}</bdi>
@@ -1331,15 +1338,7 @@ function SsoStep({
     <>
       <IdChip email={email} onChange={onChangeEmail} />
       <div className="space-y-2">
-        <div className="flex items-start gap-3">
-          <span
-            aria-hidden
-            className="grid size-8 shrink-0 place-items-center rounded-md bg-hover text-fg-muted"
-          >
-            <Building2 className="size-5" />
-          </span>
-          <Title>{t("signin.sso.title", { org: connection.label })}</Title>
-        </div>
+        <Title>{t("signin.sso.title", { org: connection.label })}</Title>
         {enforced ? (
           <p className="text-fg-muted">
             {t("signin.sso.required", { host: domain })}
@@ -1347,21 +1346,20 @@ function SsoStep({
         ) : null}
       </div>
       <div className="space-y-3">
-        <Button asChild variant="neutral" size="lg" className={PRIMARY_CLASS}>
+        <Button asChild variant="neutral" size="xl" className={PRIMARY_CLASS}>
           <a
             href={connectionHref(connection.id, email, product)}
             onClick={() => stashCarriedKey()}
           >
             {t("signin.continue")}
-            <ArrowRight aria-hidden />
           </a>
         </Button>
         {enforced ? null : (
           <Button
             ref={codeRef}
             variant="outline"
-            size="lg"
-            className={PRIMARY_CLASS}
+            size="xl"
+            className={AUTH_METHOD_CLASS}
             loading={sending}
             disabledReason={
               wait > 0 ? t("signin.sso.wait", { time: clock }) : undefined
@@ -1376,7 +1374,7 @@ function SsoStep({
           </Button>
         )}
         {error ? (
-          <p id={errorId} role="alert" className="text-sm text-danger">
+          <p id={errorId} role="alert" className="text-sm/5 text-danger">
             {error}
           </p>
         ) : null}
@@ -1401,11 +1399,11 @@ function RefusedStep({
     <>
       <div className="space-y-2">
         <Title>{t("signin.refused.title")}</Title>
-        <p className="text-fg">{t("signin.refused.lede", { email })}</p>
+        <p className="text-fg-muted">{t("signin.refused.lede", { email })}</p>
       </div>
       <Button
         variant="neutral"
-        size="lg"
+        size="xl"
         className={PRIMARY_CLASS}
         onClick={onChangeEmail}
       >
@@ -1480,7 +1478,7 @@ function KeyStep({
       </div>
       <form
         noValidate
-        className="space-y-4"
+        className="space-y-3"
         onSubmit={(e) => {
           e.preventDefault();
           void submit();
@@ -1501,7 +1499,7 @@ function KeyStep({
           }}
           hint={
             check.kind === "valid" ? (
-              <p className="text-sm text-fg-muted">
+              <p className="text-sm/5 text-fg-muted">
                 {t("signin.key.keyFor", { product: productLabel(check.slug) })}
               </p>
             ) : null
@@ -1511,10 +1509,9 @@ function KeyStep({
         <Button
           type="submit"
           variant="neutral"
-          size="lg"
+          size="xl"
           loading={checking}
           className={PRIMARY_CLASS}
-          iconEnd={<ArrowRight aria-hidden />}
         >
           {t("signin.continue")}
         </Button>

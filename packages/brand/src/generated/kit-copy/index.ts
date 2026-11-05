@@ -700,7 +700,6 @@ export type KitCopyKey =
   | "signin.approve.denied"
   | "signin.approve.expired"
   | "signin.console.title"
-  | "signin.console.next"
   | "signin.console.signedOut"
   | "signin.console.sessionEnded"
   | "signin.console.sessionEndedBody"

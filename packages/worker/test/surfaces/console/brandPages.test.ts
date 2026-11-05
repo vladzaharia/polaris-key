@@ -116,11 +116,12 @@ async function expectBrandedPage(
     // Help and Privacy sit under every Locker card (no Terms page exists), 24 px targets.
     // The device pages' Help opens "Approve a sign-in" (DOC-06b.2).
     expect(html).toMatch(
-      /<nav class="ac-links" aria-label="Help and privacy"><a href="\/docs\/help\/(approve-a-sign-in\/)?">Help<\/a><a href="\/docs\/help\/your-data\/">Privacy<\/a><\/nav>/,
+      /<nav class="ac-links" aria-label="Help and policies"><a href="\/docs\/help\/(approve-a-sign-in\/)?">Help<\/a><a href="\/docs\/help\/your-data\/">Privacy<\/a><\/nav>/,
     );
     expect(html).not.toContain("Terms");
-    expect(styles[0]![1]).toContain(
-      ".ac-links a{display:inline-flex;align-items:center;min-height:1.5rem",
+    // Footer type: the muted link style, a 24 px target and, under a coarse pointer, 44 px.
+    expect(styles[0]![1]).toMatch(
+      /\.ac-links a\{display:inline-flex;align-items:center;min-height:1\.5rem;color:var\(--muted\)\}/,
     );
   }
   expect(html).not.toContain('class="lockup"');
@@ -479,10 +480,16 @@ describe("the console sign-in card (GET /manage/login)", () => {
     expect(html).not.toContain('name="go"');
     expect(html).toContain('name="returnTo" value="/manage/#/p/alpha"');
     // Help and Privacy sit under the card: public Polaris Key pages, never customer Help (operators are not customers).
+    // Emergency sign-in is the card's last line (the tertiary line), not a footer link.
     expect(html).toContain(
-      '<nav class="ac-links" aria-label="Help and links"><a href="/docs/">Help</a><a href="/docs/reference/what-apps-collect/">Privacy</a><a href="/manage/login?breakGlass=1&amp;returnTo=%2Fmanage%2F%23%2Fp%2Falpha">Emergency sign-in</a></nav>',
+      '<nav class="ac-links" aria-label="Help and policies"><a href="/docs/">Help</a><a href="/docs/reference/what-apps-collect/">Privacy</a></nav>',
     );
-    expect(html).toContain("Next: sign in at id.example");
+    expect(html).toContain(
+      '<p class="tertiary"><a href="/manage/login?breakGlass=1&amp;returnTo=%2Fmanage%2F%23%2Fp%2Falpha">Emergency sign-in</a></p>',
+    );
+    // Nothing under Continue says where it goes: the IdP's own page names itself.
+    expect(html).not.toContain("Next:");
+    expect(html).not.toContain("id.example");
   });
 
   it("an unsafe returnTo is dropped", async () => {
@@ -492,10 +499,11 @@ describe("the console sign-in card (GET /manage/login)", () => {
   });
 
   it.each([
-    ["?signedOut=1", "You’re signed out", "Continue", true],
-    ["?ended=1", "Your session ended", "Continue", true],
+    // Signed out is the plain card; ended adds the notice (Polaris Locker's states).
+    ["?signedOut=1", "Sign in to the console", "Continue", true],
+    ["?ended=1", "Sign in to the console", "Continue", true],
     // No signed-in account on a step-up: no passkey to offer, so no script (consoleCardPasskey.test.ts).
-    ["?stepUp=1", "Confirm it’s you", "Sign in again", false],
+    ["?stepUp=1", "Confirm it’s you", "Continue with single sign-on", false],
   ])("%s", async (query, heading, cta, script) => {
     const html = await expectBrandedPage(
       await get(query),
@@ -503,7 +511,11 @@ describe("the console sign-in card (GET /manage/login)", () => {
       script ? { pinnedScript: SIGNIN_SCRIPT_HASH } : {},
     );
     expect(html).toContain(heading);
-    expect(html).toContain(`>${cta}<`);
+    expect(html).toContain(cta);
+    expect(html).not.toContain("You’re signed out");
+    expect(
+      html.includes('<p class="sn" role="alert">Your session ended.</p>'),
+    ).toBe(query === "?ended=1");
   });
 
   it("the card's form-action names the IdP, so Continue's redirect is allowed", async () => {
@@ -616,14 +628,23 @@ describe("the console sign-in card's POST (SIGN-IN.md §3.13)", () => {
     expect(other.searchParams.get("prompt")).toMatch(/select_account|login/);
   });
 
-  it("drops a malformed address and an unsafe returnTo, as the GET did", async () => {
-    const res = await post(
-      "login_hint=not+an+email&returnTo=https%3A%2F%2Fevil.example%2F",
-    );
-    expect(res.status).toBe(303);
-    expect(
-      new URL(res.headers.get("location")!).searchParams.get("login_hint"),
-    ).toBeNull();
+  it("refuses an empty or malformed address on the card, starting nothing and keeping what was typed", async () => {
+    for (const body of ["", "login_hint=mara", "login_hint=not+an+email"]) {
+      const res = await post(
+        `${body}${body ? "&" : ""}returnTo=https%3A%2F%2Fevil.example%2F`,
+      );
+      expect(res.status).toBe(400);
+      expect(res.headers.get("location")).toBeNull();
+      expect(res.headers.get("set-cookie")).toBeNull();
+      const html = await res.text();
+      expect(html).toContain(
+        "Enter a full email address, like name@example.com.",
+      );
+      expect(html).toContain('aria-invalid="true"');
+      expect(html).not.toContain("evil.example");
+    }
+    const typed = await (await post("login_hint=mara")).text();
+    expect(typed).toContain('value="mara"');
   });
 
   it("refuses a cross-site POST, a non-form body and an oversized body", async () => {
@@ -721,7 +742,13 @@ describe("the console sign-in error cards", () => {
 describe("the phone header rules are scoped to the Locker card", () => {
   it("the console card keeps its Key lockup at the brand size (no unscoped 23 px rule)", () => {
     const css = BRAND_PAGE_CSS_CONSOLE;
-    expect(css).not.toContain(".ac-brand svg{height:23px");
-    expect(BRAND_PAGE_CSS_LOCKER).toContain(".ac-brand svg{height:23px");
+    expect(css).not.toContain("height:23px");
+    expect(BRAND_PAGE_CSS_LOCKER).toContain(
+      "[data-brand=locker] .ac-brand svg,[data-brand=locker] .tv .ac-brand svg{height:23px",
+    );
+    // The console's phone lockup is sized by width, from the same 40 rem breakpoint.
+    expect(css).toContain(
+      "@media (max-width: 39.99rem){[data-brand=console] .ac-brand svg{width:min(180px,52vw);height:auto}",
+    );
   });
 });

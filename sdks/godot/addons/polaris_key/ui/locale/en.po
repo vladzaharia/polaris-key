@@ -4229,11 +4229,6 @@ msgstr "That code expired. Get a new code."
 msgid "signin.console.title"
 msgstr "Sign in to the console"
 
-#. Next: {idp} at {host}
-#. Console operator sign-in (SIGN-IN.md §3.12). Arguments: {idp} = the identity provider's name; {host} = a host name.
-msgid "signin.console.next"
-msgstr "Next: {idp} at {host}"
-
 #. You're signed out
 #. Console operator sign-in (SIGN-IN.md §3.12).
 msgid "signin.console.signedOut"

@@ -34,7 +34,7 @@ export function ReplacedDone({
       </div>
       <Button
         variant="neutral"
-        size="lg"
+        size="xl"
         className={PRIMARY_CLASS}
         onClick={onReturn}
       >

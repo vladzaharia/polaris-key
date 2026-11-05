@@ -694,7 +694,6 @@
     "signin.approve.denied": "Essa solicitação foi negada. Use outra forma de entrar.",
     "signin.approve.expired": "Esse código expirou. Obtenha um novo código.",
     "signin.console.title": "Entrar no console",
-    "signin.console.next": "Próximo: {idp} em {host}",
     "signin.console.signedOut": "Você saiu",
     "signin.console.sessionEnded": "Sua sessão terminou",
     "signin.console.sessionEndedBody": "Entre novamente para continuar. Suas alterações não salvas ficam nesta aba.",

@@ -20,6 +20,8 @@ export interface CheckboxProps extends Omit<
   label?: React.ReactNode;
   /** A secondary line under the label, linked with `aria-describedby`. */
   description?: React.ReactNode;
+  /** Overrides the description's type (the sign-in card's is Secondary: 14/20). */
+  descriptionClassName?: string;
   readOnly?: boolean;
   ref?: React.Ref<HTMLButtonElement>;
 }
@@ -42,6 +44,7 @@ export function Checkbox({
   onChange,
   label,
   description,
+  descriptionClassName,
   readOnly,
   id,
   ref,
@@ -96,7 +99,10 @@ export function Checkbox({
           {label}
         </label>
         {description ? (
-          <p id={descId} className="text-xs text-fg-muted">
+          <p
+            id={descId}
+            className={cn("text-xs text-fg-muted", descriptionClassName)}
+          >
             {description}
           </p>
         ) : null}

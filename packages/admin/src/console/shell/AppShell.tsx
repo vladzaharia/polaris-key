@@ -1,4 +1,5 @@
 import * as React from "react";
+import { consoleLastMethod } from "../../lib/lastMethod.js";
 import { useLargeTextFlag } from "../../lib/useLargeTextFlag.js";
 import { channelDocs, docsUrl } from "../../lib/docsLinks.js";
 import { Dialog as DialogPrimitive } from "radix-ui";
@@ -191,6 +192,16 @@ function useRouteFocus(key: string, title: string): void {
 export function AppShell({ me }: { me: Me }): React.ReactElement {
   // Large text lets a console button label wrap (the `cramped` variant, styles.css).
   useLargeTextFlag("data-console-large-text");
+  // The sign-in card stashed how this tab signed in; now that `/me` answered, remember it for the
+  // returning-person step (lib/lastMethod.ts). An Emergency sign-in is never remembered.
+  React.useEffect(() => {
+    if (me.breakGlass) consoleLastMethod.clearVia();
+    else
+      void consoleLastMethod.commitLastMethod({
+        email: me.email,
+        name: me.name,
+      });
+  }, [me.breakGlass, me.email, me.name]);
   const { route } = useLocation();
   const page = pageOfRoute(route);
   const handOff = portalHandOff(

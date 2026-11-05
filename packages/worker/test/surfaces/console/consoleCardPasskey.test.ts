@@ -138,7 +138,7 @@ describe("the hash pin", () => {
     expect(SIGNIN_SCRIPT_HASH).toBe(sha(SIGNIN_SCRIPT));
   });
 
-  it.each(["", "?signedOut=1", "?ended=1", "?change=1"])(
+  it.each(["", "?signedOut=1", "?ended=1"])(
     "the card %j serves exactly that script, and the CSP allows exactly its hash",
     async (query) => {
       const res = await card(query);
@@ -195,7 +195,7 @@ describe("where the passkey block appears", () => {
     await none(await card("?stepUp=1", cookie));
   });
 
-  it("a step-up whose account holds a console passkey leads with it, before Sign in again", async () => {
+  it("a step-up whose account holds a console passkey leads with it, before single sign-on", async () => {
     const cookie = await member(2, true);
     const res = await card(
       `?stepUp=1&returnTo=${encodeURIComponent("/manage/#/p/alpha")}`,
@@ -211,15 +211,16 @@ describe("where the passkey block appears", () => {
     expect(html).toContain(">Use your passkey</span>");
     expect(html).toContain('<button class="button" type="button" id="pk-go"');
     expect(html).toContain(">or</div>");
-    // "Signing in as" names the account once, above both ways in.
-    expect(html.indexOf("Signing in as")).toBeLessThan(
-      html.indexOf('id="pk-go"'),
-    );
-    expect(html.match(/Signing in as/g)).toHaveLength(1);
+    // The identity pill names the account once, above the title and both ways in, with no Change.
+    expect(html.indexOf('class="chip"')).toBeLessThan(html.indexOf("<h1"));
+    expect(html.match(/class="chip"/g)).toHaveLength(1);
+    expect(html).not.toContain('class="chip-change"');
+    expect(html).not.toContain("Signing in as");
     expect(html.indexOf('id="pk-go"')).toBeLessThan(
-      html.indexOf(">Sign in again<"),
+      html.indexOf("Continue with single sign-on"),
     );
-    // Without script the block is hidden and Sign in again is the plain primary.
+    expect(html).not.toContain(">Sign in again<");
+    // Without script the block is hidden and single sign-on is the plain primary.
     expect(html).toContain('<div class="pk" id="pk" hidden');
   });
 });
@@ -241,10 +242,19 @@ describe("the sign-in markup", () => {
 describe("the script's copy", () => {
   it("names the refusals in house words, without a vendor or the break-glass name", () => {
     expect(SIGNIN_SCRIPT).toContain(
-      "Your access needs a recent company sign-in.",
+      "Your access needs a recent single sign-on. Use it this time.",
     );
     expect(SIGNIN_SCRIPT).toContain(
-      'This passkey doesn’t open the console yet. Use "+via+", then choose Use for the console in Account → Sign-in methods.',
+      "This passkey doesn’t open the console yet. Use single sign-on, then choose Use for the console in Account → Sign-in methods.",
+    );
+    expect(SIGNIN_SCRIPT).toContain(
+      "Your passkey didn’t work. Try again, or use another way.",
+    );
+    expect(SIGNIN_SCRIPT).toContain(
+      "Your passkey wasn’t used. Try again, or use another way.",
+    );
+    expect(SIGNIN_SCRIPT).toContain(
+      "Passkeys aren’t available here. Use single sign-on.",
     );
     expect(SIGNIN_SCRIPT).toContain(
       "Can’t reach Polaris Key. Check your connection, then try again.",
@@ -252,6 +262,34 @@ describe("the script's copy", () => {
     expect(SIGNIN_SCRIPT).toContain(
       "Too many sign-in attempts. Wait a minute, then try again.",
     );
-    expect(SIGNIN_SCRIPT).not.toMatch(/pocket|break.?glass/i);
+    expect(SIGNIN_SCRIPT).not.toMatch(/pocket|break.?glass|company/i);
+  });
+});
+
+describe("the returning-person step", () => {
+  it("is rendered hidden beside the email step, with literal copy and Locker's controls", async () => {
+    const html = await (await card("")).text();
+    expect(html).toContain('<div class="ac-body" id="pk-main">');
+    expect(html).toContain('<div class="ac-body" id="pk-hint" hidden>');
+    for (const text of [
+      "Welcome back",
+      "You usually sign in with a passkey",
+      "Use a passkey",
+      "Continue with single sign-on",
+      "Other ways to sign in",
+      ">Change<",
+    ])
+      expect(html).toContain(text);
+    // The Worker fills in nothing: the name, address and time come from the browser.
+    expect(html).toMatch(/id="h-email"><\/span>/);
+    expect(html).toMatch(/id="h-when"><\/p>/);
+    expect(html).not.toContain("Next:");
+  });
+
+  it("exists only where the script does", async () => {
+    for (const q of ["?breakGlass=1", "?stepUp=1"]) {
+      const html = await (await card(q)).text();
+      expect(html).not.toContain('id="pk-hint"');
+    }
   });
 });

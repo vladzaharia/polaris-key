@@ -832,7 +832,6 @@ export const KIT_COPY: Readonly<
       "That request was denied. Use another way to sign in.",
     "signin.approve.expired": "That code expired. Get a new code.",
     "signin.console.title": "Sign in to the console",
-    "signin.console.next": "Next: {idp} at {host}",
     "signin.console.signedOut": "You're signed out",
     "signin.console.sessionEnded": "Your session ended",
     "signin.console.sessionEndedBody":
@@ -2869,7 +2868,6 @@ export const KIT_COPY: Readonly<
     "signin.approve.expired":
       "Dieser Code ist abgelaufen. Fordern Sie einen neuen Code an.",
     "signin.console.title": "Bei der Konsole anmelden",
-    "signin.console.next": "Weiter: {idp} auf {host}",
     "signin.console.signedOut": "Sie sind abgemeldet",
     "signin.console.sessionEnded": "Ihre Sitzung ist abgelaufen",
     "signin.console.sessionEndedBody":
@@ -4969,7 +4967,6 @@ export const KIT_COPY: Readonly<
       "Cette demande a été refusée. Utilisez un autre moyen de vous connecter.",
     "signin.approve.expired": "Ce code a expiré. Obtenez-en un nouveau.",
     "signin.console.title": "Se connecter à la console",
-    "signin.console.next": "Étape suivante : {idp} sur {host}",
     "signin.console.signedOut": "Vous êtes déconnecté",
     "signin.console.sessionEnded": "Votre session a pris fin",
     "signin.console.sessionEndedBody":
@@ -7053,7 +7050,6 @@ export const KIT_COPY: Readonly<
       "Se denegó esa solicitud. Usa otra forma de iniciar sesión.",
     "signin.approve.expired": "Ese código ha caducado. Obtén un código nuevo.",
     "signin.console.title": "Inicia sesión en la consola",
-    "signin.console.next": "Siguiente: {idp} en {host}",
     "signin.console.signedOut": "Has cerrado sesión",
     "signin.console.sessionEnded": "Tu sesión terminó",
     "signin.console.sessionEndedBody":
@@ -9136,7 +9132,6 @@ export const KIT_COPY: Readonly<
       "Essa solicitação foi negada. Use outra forma de entrar.",
     "signin.approve.expired": "Esse código expirou. Obtenha um novo código.",
     "signin.console.title": "Entrar no console",
-    "signin.console.next": "Próximo: {idp} em {host}",
     "signin.console.signedOut": "Você saiu",
     "signin.console.sessionEnded": "Sua sessão terminou",
     "signin.console.sessionEndedBody":
@@ -11177,7 +11172,6 @@ export const KIT_COPY: Readonly<
       "La richiesta è stata rifiutata. Usa un altro modo per accedere.",
     "signin.approve.expired": "Il codice è scaduto. Ottieni un nuovo codice.",
     "signin.console.title": "Accedi alla console",
-    "signin.console.next": "Avanti: {idp} su {host}",
     "signin.console.signedOut": "Sei uscito",
     "signin.console.sessionEnded": "La sessione è terminata",
     "signin.console.sessionEndedBody":
@@ -13251,7 +13245,6 @@ export const KIT_COPY: Readonly<
     "signin.approve.expired":
       "このコードの有効期限が切れました。新しいコードを取得してください。",
     "signin.console.title": "コンソールにサインイン",
-    "signin.console.next": "次へ：{host}の{idp}",
     "signin.console.signedOut": "サインアウトしました",
     "signin.console.sessionEnded": "セッションが終了しました",
     "signin.console.sessionEndedBody":
@@ -15302,7 +15295,6 @@ export const KIT_COPY: Readonly<
     "signin.approve.denied": "요청이 거부됐어요. 다른 방법으로 로그인하세요.",
     "signin.approve.expired": "코드가 만료됐어요. 새 코드를 받으세요.",
     "signin.console.title": "콘솔에 로그인",
-    "signin.console.next": "다음: {host}의 {idp}",
     "signin.console.signedOut": "로그아웃했어요",
     "signin.console.sessionEnded": "세션이 종료됐어요",
     "signin.console.sessionEndedBody":
@@ -17227,7 +17219,6 @@ export const KIT_COPY: Readonly<
     "signin.approve.denied": "该请求已被拒绝。请换一种方式登录。",
     "signin.approve.expired": "该代码已过期。请获取新代码。",
     "signin.console.title": "登录控制台",
-    "signin.console.next": "下一步：{host}上的{idp}",
     "signin.console.signedOut": "你已退出登录",
     "signin.console.sessionEnded": "你的会话已结束",
     "signin.console.sessionEndedBody":

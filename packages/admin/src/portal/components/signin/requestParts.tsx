@@ -27,7 +27,7 @@ export function RequestGone(): React.ReactElement {
         <AuthTitle>{t("signin.request.goneTitle")}</AuthTitle>
         <p className="text-fg-muted">{t("signin.request.gone")}</p>
       </div>
-      <Button asChild variant="neutral" size="lg" className={PRIMARY_CLASS}>
+      <Button asChild variant="neutral" size="xl" className={PRIMARY_CLASS}>
         <a href="/">{t("signin.return.library")}</a>
       </Button>
     </>
@@ -51,7 +51,7 @@ export function Unreachable({
       </div>
       <Button
         variant="neutral"
-        size="lg"
+        size="xl"
         className={PRIMARY_CLASS}
         iconStart={<RefreshCw aria-hidden />}
         onClick={onRetry}
@@ -77,7 +77,7 @@ export function PersonRow({
   return (
     <div
       data-person-row
-      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-surface-sunken px-3 py-2"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-surface-sunken px-4 py-3"
     >
       <Avatar name={name} email={email} picture={picture} size={40} />
       <div className="min-w-[12ch] flex-[1_1_12ch]">
@@ -85,7 +85,7 @@ export function PersonRow({
           {name ?? email}
         </p>
         {name && email ? (
-          <p className="text-sm text-fg-muted [overflow-wrap:anywhere]">
+          <p className="text-sm/5 text-fg-muted [overflow-wrap:anywhere]">
             {email}
           </p>
         ) : null}
@@ -93,7 +93,7 @@ export function PersonRow({
       <button
         type="button"
         onClick={onNotYou}
-        className={cn(AUTH_LINK_CLASS, "shrink-0 text-sm")}
+        className={cn(AUTH_LINK_CLASS, "shrink-0")}
       >
         {t("signin.notYou")}
       </button>
@@ -172,11 +172,11 @@ export const ChoiceGroup = React.forwardRef<
               aria-label={o.label}
               data-checked={checked ? "" : undefined}
               className={cn(
-                "@container/choice relative flex min-h-14 w-full items-start gap-3 overflow-hidden rounded-md border px-3 py-3 text-start",
+                "@container/choice relative flex min-h-14 w-full items-start gap-3 overflow-hidden rounded-lg border px-4 py-3 text-start",
                 "before:absolute before:inset-y-0 before:start-0 before:w-[3px]",
                 "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
                 checked
-                  ? "border-border-strong bg-hover before:bg-locker-accent forced-colors:border-[Highlight] forced-colors:outline forced-colors:outline-2 forced-colors:outline-[Highlight] forced-colors:before:bg-[Highlight]"
+                  ? "border-border-strong bg-hover before:bg-state-context-edge forced-colors:border-[Highlight] forced-colors:outline forced-colors:outline-2 forced-colors:outline-[Highlight] forced-colors:before:bg-[Highlight]"
                   : "border-border-strong bg-surface-raised hover:bg-hover",
               )}
             >
@@ -201,7 +201,7 @@ export const ChoiceGroup = React.forwardRef<
         })}
       </RadioGroup.Root>
       {error ? (
-        <p id={errorId} role="alert" className="text-sm text-danger">
+        <p id={errorId} role="alert" className="text-sm/5 text-danger">
           {error}
         </p>
       ) : null}
@@ -216,7 +216,7 @@ export function Pill({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <span className="inline-flex items-center rounded-full border border-border-strong px-2 py-0.5 text-xs font-medium text-fg">
+    <span className="inline-flex items-center rounded-full border border-border-strong px-2 py-0.5 text-xs/4 font-medium text-fg">
       {children}
     </span>
   );
@@ -268,7 +268,7 @@ export function InkMeter({
 
 /**
  * A device row's content, shared by sign-in's Replace a device and the portal's Free a device:
- * the glyph, the name (16, weight 600), its tags, and the meta line (14).
+ * the glyph, the name (16, weight 400), its tags, and the meta line (14).
  */
 export function DeviceChoiceBody({
   glyph,
@@ -290,12 +290,12 @@ export function DeviceChoiceBody({
       </span>
       <span className="min-w-0 space-y-1">
         <span className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-fg-strong [overflow-wrap:anywhere]">
+          <span className="text-fg-strong [overflow-wrap:anywhere]">
             {name}
           </span>
           {tags}
         </span>
-        <span className="block text-sm text-fg-muted">{meta}</span>
+        <span className="block text-sm/5 text-fg-muted">{meta}</span>
       </span>
     </span>
   );

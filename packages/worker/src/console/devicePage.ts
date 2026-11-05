@@ -134,7 +134,7 @@ function refreshTo(location: string, env: Env): Response {
     brand: "console",
     title: "Continuing",
     heading: "Continuing",
-    body: `<p>One moment.</p><p class="actions"><a class="button" href="${escapeHtml(location)}">Continue${icon("arrow-right")}</a></p>`,
+    body: `<p>One moment.</p><p class="actions"><a class="button" href="${escapeHtml(location)}">Continue</a></p>`,
     focusHeading: true,
     links: CONSOLE_CARD_LINKS,
   }).replace(
@@ -312,18 +312,18 @@ async function reviewCard(
     principal.grants.length > 0 &&
     principal.grants.every((g) => g.source === "root");
   const fields = { code: view.code, csrf: session.csrf };
-  const cancel = post({ ...fields, decision: "deny" }, "Cancel", "secondary");
+  const deny = post({ ...fields, decision: "deny" }, "Deny", "secondary");
   const actions = steppedUp
-    ? post({ ...fields, decision: "approve" }, "Approve", "") + cancel
-    : `<a class="button" href="${escapeHtml(signInTo(view.code, true))}">Sign in again to approve${icon("arrow-right")}</a>` +
-      cancel;
+    ? post({ ...fields, decision: "approve" }, "Approve", "") + deny
+    : `<a class="button" href="${escapeHtml(signInTo(view.code, true))}">Sign in again to approve</a>` +
+      deny;
   const body = [
     // The step-up message sits where the subtitle does, and is announced when the page loads.
     stepUpNotice
       ? `<p role="alert">Approving needs a sign-in from the last five minutes.</p>`
       : "",
-    `<div class="codepanel"><p>Check this matches your terminal</p><p class="code">${escapeHtml(view.code)}</p></div>`,
-    `<p class="note">${icon("info", true)}<span><span class="tag">unverified</span> pkey reported its name and host; Polaris Key can’t check them.</span></p>`,
+    `<p>pkey showed the code <span class="code">${escapeHtml(view.code)}</span> ${escapeHtml(ago(now, view.requestedAt))}.</p>`,
+    `<p class="note">pkey reported its name and host; Polaris Key can’t check them.</p>`,
     `<div class="facts"><p class="fine">Limited to your roles</p>${await roleTags(db, principal)}${
       onlyRoot
         ? note(
@@ -335,23 +335,23 @@ async function reviewCard(
       "clock",
       `Ends ${date(now + PERSONAL_TOKEN_DAYS.admin.default * 86_400)}`,
     )}${note("x-circle", "Can’t install packages")}</div>`,
-    callout("shield", "Didn’t just run pkey login? Cancel."),
+    `<p class="note">Check that your terminal shows the same code.</p>`,
     `<div class="actions stack">${actions}</div>`,
-    personRow({
+    note("info", "Didn’t run pkey login? Deny, and nothing signs in."),
+  ].join("");
+  return {
+    heading: "Let pkey sign in as you?",
+    // The person row sits above the heading, as on Polaris Locker's approval.
+    preface: personRow({
       name: session.name || session.email,
       email: session.email,
       notYouHref: otherAccount(view.code),
     }),
-  ].join("");
-  return {
-    heading: "Let pkey sign in as you?",
     body,
     header: appHeader({
       name,
       ...(version ? { action: version } : {}),
-      sub: [host, place, ago(now, view.requestedAt)]
-        .filter((p): p is string => !!p)
-        .join(" · "),
+      sub: [host, place].filter((p): p is string => !!p).join(" · "),
       glyph: "terminal",
     }),
     passport: {
@@ -364,11 +364,12 @@ async function reviewCard(
   };
 }
 
-const CODE_HINT = "QXKM-TPRW";
+const MISS =
+  "No pkey login is waiting for that code. Run pkey login for a new one.";
 
 function entryCard(opts: { message?: string; value?: string } = {}): Card {
   const err = opts.message
-    ? `<p class="field-err" id="code-err" role="alert">${icon("x-circle", true)}<span>${escapeHtml(opts.message)}</span></p>`
+    ? `<p class="field-err" id="code-err" role="alert">${escapeHtml(opts.message)}</p>`
     : "";
   return {
     heading: "Enter the code from your terminal",
@@ -376,24 +377,16 @@ function entryCard(opts: { message?: string; value?: string } = {}): Card {
     body:
       `<form method="get" action="/manage/device"><input type="hidden" name="entered" value="1">` +
       `<div class="field"><label for="code">Code</label>` +
-      `<input id="code" type="text" name="code" autofocus autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="${PHONE_CODE_MAX}" required` +
+      `<input id="code" type="text" name="code" autofocus autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="${PHONE_CODE_MAX}" required placeholder="XXXX-XXXX"` +
       `${opts.value ? ` value="${escapeHtml(opts.value)}"` : ""}` +
-      `${opts.message ? ` aria-invalid="true"` : ""} aria-describedby="${opts.message ? "code-err " : ""}code-hint">` +
-      `<span class="hint" id="code-hint">Like ${CODE_HINT}, as pkey login printed it.</span>${err}</div>` +
-      `<button class="button" type="submit">Continue${icon("arrow-right")}</button></form>`,
+      `${opts.message ? ` aria-invalid="true" aria-describedby="code-err"` : ""}>${err}</div>` +
+      note(
+        "shield",
+        "Only use a code your own terminal shows, not one somebody sent you.",
+      ) +
+      `<button class="button" type="submit">Continue</button></form>`,
   };
 }
-
-const SHAPE_MESSAGE = `That isn’t a code. It has 8 letters, like ${CODE_HINT}.`;
-const UNUSABLE_DETAIL =
-  "It’s wrong, expired or already used. Run pkey login for a new code.";
-
-const unusableCard: Card = {
-  heading: "This code can’t be used",
-  body:
-    `<p>${escapeHtml(UNUSABLE_DETAIL)}</p>` +
-    `<p class="actions"><a class="button" href="/manage/device">Enter another code</a></p>`,
-};
 
 /** The account already holds as many live personal tokens as it may (`token_limit`). */
 async function tokenLimitReached(
@@ -423,15 +416,15 @@ function limitCard(): Card {
 
 function approvedCard(view: CliDeviceLoginView, now: number): Card {
   return {
-    heading: "Signed in",
+    heading: "pkey is signed in",
     preface: icon("check-circle").replace('class="ic"', 'class="ic lg"'),
     body: `<p>Go back to your terminal. pkey on ${escapeHtml(shown(view.client.host, HOST_MAX))} can act as you until ${escapeHtml(date(now + PERSONAL_TOKEN_DAYS.admin.default * 86_400))}.</p>`,
   };
 }
 
 const deniedCard: Card = {
-  heading: "Sign-in canceled",
-  body: callout("x-circle", "Nothing was approved", "You can close this tab."),
+  heading: "Sign-in denied",
+  body: `<p>Nothing was signed in. You can close this page.</p>`,
 };
 
 function noAccessCard(session: AdminSession, code: string | null): Card {
@@ -447,7 +440,7 @@ function noAccessCard(session: AdminSession, code: string | null): Card {
         name: session.name || session.email,
         email: session.email,
       }) +
-      `<p class="actions"><a class="button" href="${escapeHtml(otherAccount(code))}">Use another account${icon("arrow-right")}</a></p>`,
+      `<p class="actions"><a class="button" href="${escapeHtml(otherAccount(code))}">Use another account</a></p>`,
   };
 }
 
@@ -573,7 +566,7 @@ export async function handleDevicePage(
     return html(
       200,
       entryCard({
-        message: SHAPE_MESSAGE,
+        message: MISS,
         value: typed.raw.trim().slice(0, PHONE_CODE_MAX),
       }),
       env,
@@ -609,8 +602,8 @@ export async function handleDevicePage(
   // from a link, the card that says so.
   const unusable = () =>
     typed.entered && req.method === "GET"
-      ? html(200, entryCard({ message: UNUSABLE_DETAIL, value: code }), env)
-      : html(410, unusableCard, env);
+      ? html(200, entryCard({ message: MISS, value: code }), env)
+      : html(410, entryCard({ message: MISS, value: code }), env);
 
   if (req.method === "GET") {
     const view = await cliDeviceLoginLookup(env, code, now);
@@ -637,7 +630,7 @@ export async function handleDevicePage(
     );
 
   const view = await cliDeviceLoginLookup(env, code, now);
-  if (!view) return html(410, unusableCard, env);
+  if (!view) return unusable();
 
   // 7. Approving needs a fresh sign-in.
   if (decision === "approve" && !steppedUp) {
@@ -667,7 +660,7 @@ export async function handleDevicePage(
     { code, accountId: session.aid, decision },
     now,
   );
-  if (!result.ok) return html(410, unusableCard, env);
+  if (!result.ok) return unusable();
 
   const where = view.location.label ? ` near ${view.location.label}` : "";
   try {

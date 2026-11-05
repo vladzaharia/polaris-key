@@ -1554,8 +1554,6 @@
     <string name="signin_approve_expired">코드가 만료됐어요. 새 코드를 받으세요.</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
     <string name="signin_console_title">콘솔에 로그인</string>
-    <!-- Console operator sign-in (SIGN-IN.md §3.12). Arguments: {idp} = the identity provider's name; {host} = a host name. Arguments: 1=idp, 2=host. -->
-    <string name="signin_console_next">다음: %2$s의 %1$s</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
     <string name="signin_console_signedOut">로그아웃했어요</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->

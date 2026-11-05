@@ -1572,8 +1572,6 @@
     <string name="signin_approve_expired">Il codice è scaduto. Ottieni un nuovo codice.</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
     <string name="signin_console_title">Accedi alla console</string>
-    <!-- Console operator sign-in (SIGN-IN.md §3.12). Arguments: {idp} = the identity provider's name; {host} = a host name. Arguments: 1=idp, 2=host. -->
-    <string name="signin_console_next">Avanti: %1$s su %2$s</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
     <string name="signin_console_signedOut">Sei uscito</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->

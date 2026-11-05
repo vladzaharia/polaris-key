@@ -10,7 +10,12 @@ import {
 import { leadParts, recommendReasons } from "@polaris-key/ui-core";
 import type { KeyPreview } from "@polaris-key/protocol/identity";
 import { Button } from "../../../ui/Button.js";
-import { AuthTitle, QuietLink, QuietLinks } from "../../../ui/auth/index.js";
+import {
+  AUTH_METHOD_CLASS,
+  AuthTitle,
+  QuietLink,
+  QuietLinks,
+} from "../../../ui/auth/index.js";
 import { t } from "../../../lib/copy.js";
 import { termText } from "../../model/signInRequest.js";
 import type { SkipRefusal } from "../../model/key.js";
@@ -111,7 +116,7 @@ export function AccountUpgrade({
       {forced ? null : (
         <div
           data-key-card
-          className="flex items-start gap-3 rounded-md border border-border-strong px-3 py-3"
+          className="flex items-start gap-3 rounded-lg border border-border px-4 py-3"
         >
           <CircleCheck
             aria-hidden
@@ -121,7 +126,7 @@ export function AccountUpgrade({
             <p className="font-medium text-fg-strong">
               {t("signin.key.keyWorks")}
             </p>
-            <p className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+            <p className="flex flex-wrap items-center gap-2 text-sm/5 text-fg-muted">
               <span className="[overflow-wrap:anywhere]">{name}</span>
               {preview.license?.tierName ? (
                 <Pill>{preview.license.tierName}</Pill>
@@ -148,7 +153,7 @@ export function AccountUpgrade({
         <NeutralCallout icon={<Clock />}>
           <p>
             {fromSkip ? (
-              <strong className="font-semibold text-fg-strong">
+              <strong className="font-medium text-fg-strong">
                 {t("locker.key.noEntriesLead")}
               </strong>
             ) : null}
@@ -157,7 +162,7 @@ export function AccountUpgrade({
           </p>
         </NeutralCallout>
       ) : null}
-      <ul className="space-y-1.5 text-sm text-fg-muted" data-reasons>
+      <ul className="space-y-2 text-sm/5 text-fg-muted" data-reasons>
         {recommendReasons({ identity: true, sync: cloudSync }).map((key) => {
           const Icon = REASON_ICONS[key as ReasonKey];
           return (
@@ -169,7 +174,13 @@ export function AccountUpgrade({
                     developer: preview.product.developerName ?? name,
                   }),
                 ).map((p, i) =>
-                  p.strong ? <strong key={i}>{p.text}</strong> : p.text,
+                  p.strong ? (
+                    <strong key={i} className="font-medium text-fg-strong">
+                      {p.text}
+                    </strong>
+                  ) : (
+                    p.text
+                  ),
                 )}
               </span>
             </li>
@@ -188,7 +199,7 @@ export function AccountUpgrade({
             })}
           />
           {forced ? null : (
-            <p className="text-sm text-fg-muted">
+            <p className="text-sm/5 text-fg-muted">
               {t("signin.key.entries", {
                 left,
                 limit: entries.limit,
@@ -200,7 +211,7 @@ export function AccountUpgrade({
       ) : null}
       <Button
         variant="neutral"
-        size="lg"
+        size="xl"
         className={PRIMARY_CLASS}
         // While the skip is in flight: focusable, inert, so a second path cannot start.
         {...(busy ? { "aria-disabled": true } : {})}
@@ -209,16 +220,16 @@ export function AccountUpgrade({
         {t("signin.key.createAccount")}
       </Button>
       {forced ? (
-        <p className="text-sm text-fg-muted">
+        <p className="text-sm/5 text-fg-muted">
           {t("signin.key.noEntriesKeeps", { product: name })}
         </p>
       ) : null}
       {skip && !forced ? (
         <div className="space-y-2 text-center">
           <Button
-            variant="ghost"
-            size="lg"
-            className={PRIMARY_CLASS}
+            variant="outline"
+            size="xl"
+            className={AUTH_METHOD_CLASS}
             loading={busy}
             // A 429 holds the control without a tooltip of its own: the message under it is the
             // button's description (once), and the button keeps its focus.
@@ -228,14 +239,14 @@ export function AccountUpgrade({
           >
             {t("signin.key.skip")}
           </Button>
-          <p className="text-sm text-fg-muted">
+          <p className="text-sm/5 text-fg-muted">
             {t("signin.key.skipNote", { product: name })}
           </p>
           {refusal ? (
             <p
               id={messageId}
               role="alert"
-              className="text-sm text-danger [overflow-wrap:anywhere]"
+              className="text-sm/5 text-danger [overflow-wrap:anywhere]"
             >
               {refusal.message}
             </p>
@@ -280,7 +291,7 @@ export function KeyOwned({
       </div>
       <Button
         variant="neutral"
-        size="lg"
+        size="xl"
         className={PRIMARY_CLASS}
         onClick={onSignIn}
       >

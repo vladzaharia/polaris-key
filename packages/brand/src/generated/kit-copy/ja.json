@@ -686,7 +686,6 @@
   "signin.approve.denied": "このリクエストは拒否されました。別の方法でサインインしてください。",
   "signin.approve.expired": "このコードの有効期限が切れました。新しいコードを取得してください。",
   "signin.console.title": "コンソールにサインイン",
-  "signin.console.next": "次へ：{host}の{idp}",
   "signin.console.signedOut": "サインアウトしました",
   "signin.console.sessionEnded": "セッションが終了しました",
   "signin.console.sessionEndedBody": "続けるにはもう一度サインインしてください。未保存の変更はこのタブに残ります。",

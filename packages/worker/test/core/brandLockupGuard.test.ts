@@ -66,8 +66,14 @@ describe("Worker brand blocks draw the name from an outlined lockup", () => {
     expect(visibleText(block)).not.toMatch(/polaris|locker|key/i);
     // It comes from an outlined lockup SVG with an accessible name, at least the guide minimum.
     const svg = /<svg[\s\S]*?<\/svg>/.exec(block)![0];
-    expect(svg).toMatch(/role="img" aria-label="Polaris (Key|Locker)"/);
-    expect(svg).toContain("<title>Polaris");
+    // A card hides the drawing from assistive tech and names it once, on its wrapper.
+    if (svg.includes('aria-hidden="true"')) {
+      expect(block).toMatch(/<div role="img" aria-label="Polaris (Key|Locker)/);
+      expect(svg).toMatch(/data-label="Polaris (Key|Locker)"/);
+    } else {
+      expect(svg).toMatch(/role="img" aria-label="Polaris (Key|Locker)"/);
+      expect(svg).toContain("<title>Polaris");
+    }
     expect(svg).not.toContain("<text");
     expect(widthOf(svg)).toBeGreaterThanOrEqual(minWidth);
   });

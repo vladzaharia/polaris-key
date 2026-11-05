@@ -6,11 +6,7 @@ import { hashKey } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
 import { hostOrigin } from "../../../core/hosts.js";
 import { apiOrigin } from "../../../core/customerHost.js";
-import {
-  renderAuthCard,
-  icon,
-  DEVICE_CARD_LINKS,
-} from "../../../core/brandHtml.js";
+import { renderAuthCard, DEVICE_CARD_LINKS } from "../../../core/brandHtml.js";
 import { brandedHtmlSecurityHeaders } from "../../../core/securityHeaders.js";
 import { escapeHtml } from "../../../platform/html.js";
 import { consumeBindToken, issueBindToken } from "../../../core/signInBind.js";
@@ -479,7 +475,7 @@ function hopPage(hop: string, cookie: string): Response {
     links: DEVICE_CARD_LINKS,
     title: "Continuing",
     heading: "Continuing to sign in",
-    body: `<a class="button" href="${escapeHtml(hop)}">Continue${icon("arrow-right")}</a>`,
+    body: `<a class="button" href="${escapeHtml(hop)}">Continue</a>`,
     footer: ENTRY_FOOTER,
   }).replace(
     '<meta charset="utf-8">',

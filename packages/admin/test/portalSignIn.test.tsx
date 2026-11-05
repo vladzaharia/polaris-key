@@ -295,7 +295,7 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     expect((email as HTMLInputElement).value).toBe("");
   });
 
-  it("puts the quiet Have a license key? link under a rule, centred", async () => {
+  it("puts the quiet Have a license key? link on the card's last line, centred, with no rule", async () => {
     signedOut();
     renderPortal();
     const link = await screen.findByRole("button", {
@@ -303,16 +303,18 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     });
     const row = link.closest("[data-quiet-links]")!;
     expect(row.className).toContain("justify-center");
-    expect(row.className).toContain("border-t");
-    // 24 px from the rule to the text and from the text to the card's edge: 12 px of padding
-    // plus half the 44 px target's slack above; the body's 24 / 32 px padding pulled in by
-    // 12 / 20 px below.
-    expect(row.className).toMatch(/(^| )pt-3( |$)/);
-    expect(row.className).toMatch(/(^| )-mb-3( |$)/);
-    expect(row.className).toMatch(/(^| )sm:-mb-5( |$)/);
-    expect(link.className).toContain("min-h-11");
-    expect(row.parentElement!.className).toMatch(/(^| )py-6( |$)/);
-    expect(row.parentElement!.className).toMatch(/(^| )sm:py-8( |$)/);
+    // SIGNIN-REDESIGN §3, §5: the tertiary line has no rule above it and no icon in the link.
+    expect(row.className).not.toContain("border-t");
+    expect(link.querySelector("svg")).toBeNull();
+    // The link style (§6): 400, 14/20, a 1 px neutral underline; a 44 px target on a coarse pointer.
+    expect(link.className).toContain("font-normal");
+    expect(link.className).toContain("decoration-1");
+    expect(link.className).toContain("decoration-border-strong");
+    expect(link.className).not.toContain("decoration-2");
+    expect(link.className).toContain("pointer-coarse:min-h-11");
+    // The card body's rhythm is 24 px between groups, and 32 px of padding on every side.
+    expect(row.parentElement!.className).toMatch(/(^| )space-y-6( |$)/);
+    expect(row.parentElement!.className).toMatch(/(^| )sm:p-8( |$)/);
   });
 
   it("takes a license key before sign-in and carries it through (the on-ramp)", async () => {

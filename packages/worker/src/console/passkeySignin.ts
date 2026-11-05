@@ -40,12 +40,7 @@ import {
   consolePasskeySignIn,
   endConsoleSession,
 } from "../services/identity/public.js";
-import {
-  consoleHintCookie,
-  consoleRefusalCopy,
-  loginHint,
-  sanitizeReturnTo,
-} from "./auth.js";
+import { consoleRefusalCopy, sanitizeReturnTo } from "./auth.js";
 import { resolveConsoleCaller } from "./api.js";
 import { convertInvites } from "./inviteConversion.js";
 
@@ -301,17 +296,12 @@ async function verify(
     summary: "passkey",
     now,
   });
-  const hint = loginHint(result.subject.email || null);
   return json(
     {
       status: "signed_in",
       next: sanitizeReturnTo(result.returnTo) ?? "/manage/",
     },
     200,
-    [
-      buildSessionCookie(token),
-      clearCeremonyCookie(),
-      ...(hint ? [consoleHintCookie(hint)] : []),
-    ],
+    [buildSessionCookie(token), clearCeremonyCookie()],
   );
 }

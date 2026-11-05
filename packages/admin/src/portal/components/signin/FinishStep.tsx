@@ -14,15 +14,21 @@ import { Checkbox } from "../../../ui/Checkbox.js";
 import { Input } from "../../../ui/Input.js";
 import {
   AUTH_INPUT_CLASS,
+  AUTH_HELP_CLASS,
+  AUTH_LABEL_CLASS,
   AUTH_LINK_CLASS,
+  AUTH_METHOD_CLASS,
   AuthTitle,
+  QuietLink,
+  QuietLinks,
   CodeEntry,
   type CodeResendOutcome,
   type CodeVerifyOutcome,
   useStepFocus,
 } from "../../../ui/auth/index.js";
 import { cn } from "../../../lib/cn.js";
-import { PRIMARY_CLASS, Unreachable } from "./requestParts.js";
+import { LINK_CLASS } from "../../linkClass.js";
+import { Pill, PRIMARY_CLASS, Unreachable } from "./requestParts.js";
 import { t, tParts } from "../../../lib/copy.js";
 import {
   portalApi,
@@ -106,7 +112,7 @@ function TermsLink({
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="-my-3 rounded-md py-3 text-fg-strong underline decoration-2 underline-offset-4"
+      className={cn(LINK_CLASS, "-my-3 py-3")}
     >
       {children}
     </a>
@@ -225,7 +231,7 @@ export function FinishStep({
         aria-busy
         role="status"
         aria-label={t("common.loading")}
-        className="space-y-5"
+        className="space-y-6"
       >
         <div aria-hidden className="h-8 w-2/3 rounded-md bg-hover" />
         <div aria-hidden className="h-24 rounded-md bg-hover" />
@@ -262,9 +268,9 @@ function GateUnreachable({
       ?.focus({ preventScroll: true });
   }, [ref]);
   return (
-    <div ref={ref} className="space-y-5">
-      <Unreachable error={error} onRetry={onRetry} />
+    <div ref={ref} className="space-y-6">
       {live}
+      <Unreachable error={error} onRetry={onRetry} />
     </div>
   );
 }
@@ -318,12 +324,10 @@ function EmailConfirmed({
   value: string;
 }): React.ReactElement {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <span className="text-sm font-medium text-fg-strong">
-          {t("signin.email.label")}
-        </span>
-        <span className="inline-flex items-center gap-1 text-sm text-success">
+        <span className={AUTH_LABEL_CLASS}>{t("signin.email.label")}</span>
+        <span className="inline-flex items-center gap-1 text-sm/5 text-fg-muted">
           <CircleCheck aria-hidden className="size-4" />
           {status}
         </span>
@@ -590,7 +594,8 @@ function FinishForm({
   // The passkey step: one tap, an outcome line, then onward.
   if (view === "passkey" && after) {
     return (
-      <div ref={ref} className="space-y-5">
+      <div ref={ref} className="space-y-6">
+        {live}
         <div className="space-y-2">
           <AuthTitle>{title}</AuthTitle>
           <p className="text-fg-muted">{t("signin.gate.passkeyLede")}</p>
@@ -599,8 +604,8 @@ function FinishForm({
           role="status"
           className={
             passkeyResult === "added"
-              ? "text-sm text-success"
-              : "text-sm text-fg-muted"
+              ? "text-sm/5 text-success"
+              : "text-sm/5 text-fg-muted"
           }
         >
           {passkeyResult === "added"
@@ -615,7 +620,7 @@ function FinishForm({
               <Button
                 type="button"
                 variant="neutral"
-                size="lg"
+                size="xl"
                 className={PRIMARY_CLASS}
                 loading={busy}
                 onClick={() => void addPasskey()}
@@ -624,9 +629,9 @@ function FinishForm({
               </Button>
               <Button
                 type="button"
-                variant="ghost"
-                size="lg"
-                className={PRIMARY_CLASS}
+                variant="outline"
+                size="xl"
+                className={AUTH_METHOD_CLASS}
                 disabled={busy}
                 onClick={() => void onPassed(after.next, after.nudge)}
               >
@@ -638,7 +643,7 @@ function FinishForm({
               ref={continueRef}
               type="button"
               variant="neutral"
-              size="lg"
+              size="xl"
               className={PRIMARY_CLASS}
               onClick={() => void onPassed(after.next, after.nudge)}
             >
@@ -646,7 +651,6 @@ function FinishForm({
             </Button>
           )}
         </div>
-        {live}
       </div>
     );
   }
@@ -656,7 +660,8 @@ function FinishForm({
     const email = gate.join?.email ?? "";
     const proven = Boolean(gate.join?.proven);
     return (
-      <div ref={ref} className="space-y-5">
+      <div ref={ref} className="space-y-6">
+        {live}
         <div className="space-y-2">
           <AuthTitle>{title}</AuthTitle>
           <p className="text-fg-muted [overflow-wrap:anywhere]">
@@ -666,7 +671,7 @@ function FinishForm({
           </p>
         </div>
         {error ? (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-sm/5 text-danger">
             {error.text}
           </p>
         ) : null}
@@ -674,7 +679,7 @@ function FinishForm({
           {proven ? (
             <Button
               variant="neutral"
-              size="lg"
+              size="xl"
               className={PRIMARY_CLASS}
               loading={busy}
               onClick={() =>
@@ -687,50 +692,41 @@ function FinishForm({
               {t("signin.gate.join")}
             </Button>
           ) : null}
-          {emailAsked ? (
-            proven ? (
-              <button
-                type="button"
-                className={STACKED_LINK}
-                disabled={busy}
-                onClick={() => editEmail(pending)}
-              >
-                {t("signin.code.differentEmail")}
-              </button>
-            ) : (
-              <Button
-                variant="neutral"
-                size="lg"
-                className={PRIMARY_CLASS}
-                disabled={busy}
-                onClick={() => editEmail(pending)}
-              >
-                {t("signin.code.differentEmail")}
-              </Button>
-            )
-          ) : null}
-          {emailAsked || proven ? (
-            <button
-              type="button"
-              className={STACKED_LINK}
-              disabled={busy}
-              onClick={onCancel}
-            >
-              {t("signin.gate.cancel")}
-            </button>
-          ) : (
+          {emailAsked && !proven ? (
             <Button
               variant="neutral"
-              size="lg"
+              size="xl"
+              className={PRIMARY_CLASS}
+              disabled={busy}
+              onClick={() => editEmail(pending)}
+            >
+              {t("signin.code.differentEmail")}
+            </Button>
+          ) : null}
+          {!emailAsked && !proven ? (
+            <Button
+              variant="neutral"
+              size="xl"
               className={PRIMARY_CLASS}
               disabled={busy}
               onClick={onCancel}
             >
               {t("signin.gate.cancel")}
             </Button>
-          )}
+          ) : null}
         </div>
-        {live}
+        {emailAsked || proven ? (
+          <QuietLinks>
+            {emailAsked && proven ? (
+              <QuietLink disabled={busy} onClick={() => editEmail(pending)}>
+                {t("signin.code.differentEmail")}
+              </QuietLink>
+            ) : null}
+            <QuietLink disabled={busy} onClick={onCancel}>
+              {t("signin.gate.cancel")}
+            </QuietLink>
+          </QuietLinks>
+        ) : null}
       </div>
     );
   }
@@ -783,11 +779,12 @@ function FinishForm({
     return (
       <div
         ref={ref}
-        className="space-y-5"
+        className="space-y-6"
         onKeyDown={(e) => {
           if (e.key === "Escape") editEmail(to);
         }}
       >
+        {live}
         <div className="space-y-2">
           <AuthTitle>{title}</AuthTitle>
           <p className="text-fg-muted [overflow-wrap:anywhere]">
@@ -804,19 +801,14 @@ function FinishForm({
             type="button"
             disabled={busy}
             onClick={() => editEmail(to)}
-            className={cn(AUTH_LINK_CLASS, "text-base")}
+            className={AUTH_LINK_CLASS}
           >
             {t("signin.code.differentEmail")}
           </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className={cn(AUTH_LINK_CLASS, "text-base")}
-          >
+          <button type="button" onClick={onCancel} className={AUTH_LINK_CLASS}>
             {t("signin.gate.cancel")}
           </button>
         </CodeEntry>
-        {live}
       </div>
     );
   }
@@ -835,12 +827,12 @@ function FinishForm({
   const tile =
     "relative flex min-h-24 cursor-pointer flex-col items-center gap-1 rounded-lg border border-border-strong bg-surface-sunken px-1 py-2 text-center text-sm text-fg-strong has-[:checked]:border-fg-strong has-[:checked]:bg-hover has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus forced-colors:has-[:checked]:outline-2";
   const circle =
-    "inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-strong bg-surface-raised text-sm font-medium text-fg-strong";
-  const pickMeta = (which: Pick, idle: string): string =>
-    pick === which ? t("signin.gate.pictureInUse") : idle;
+    "inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-strong bg-surface-raised text-sm/5 font-medium text-fg-strong";
+  const pickMeta = (which: Pick, idle: string): React.ReactNode =>
+    pick === which ? <Pill>{t("signin.gate.pictureInUse")}</Pill> : idle;
 
   const emailInput = (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <Input
         id={emailId}
         ref={emailRef}
@@ -865,12 +857,12 @@ function FinishForm({
         }
       />
       {gate.provider === "steam" ? (
-        <p id={`${emailId}-help`} className="text-sm text-fg-muted">
+        <p id={`${emailId}-help`} className="text-sm/5 text-fg-muted">
           {t("signin.gate.steam")}
         </p>
       ) : null}
       {emailInvalid ? (
-        <p id={errorId} role="alert" className="text-sm text-danger">
+        <p id={errorId} role="alert" className="text-sm/5 text-danger">
           {error?.text}
         </p>
       ) : null}
@@ -879,11 +871,11 @@ function FinishForm({
 
   const termsPanel =
     platformTerms || productTerms ? (
-      <div className="space-y-3 rounded-lg border border-border bg-surface-sunken px-4 py-3">
+      <>
         {platformTerms ? (
           <div>
             <Checkbox
-              className="min-h-11 items-center [&_label]:-my-3 [&_label]:py-3"
+              className="pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-2.5 pointer-coarse:[&_label]:py-2.5"
               ref={platformRef}
               checked={platformOk}
               onCheckedChange={(v) => {
@@ -907,7 +899,7 @@ function FinishForm({
         {productTerms ? (
           <div>
             <Checkbox
-              className="min-h-11 items-center [&_label]:-my-3 [&_label]:py-3"
+              className="pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-2.5 pointer-coarse:[&_label]:py-2.5"
               ref={productRef}
               checked={productOk}
               onCheckedChange={(v) => {
@@ -935,16 +927,17 @@ function FinishForm({
           <p
             id={`${errorId}-terms`}
             role="alert"
-            className="text-sm text-danger"
+            className="text-sm/5 text-danger"
           >
             {t("core.codes.terms_required.message")}
           </p>
         ) : null}
-      </div>
+      </>
     ) : null;
 
   return (
-    <div ref={ref} className="space-y-5">
+    <div ref={ref} className="space-y-6">
+      {live}
       <div className="space-y-2">
         <AuthTitle>{title}</AuthTitle>
         {termsOnly ? (
@@ -955,7 +948,7 @@ function FinishForm({
       </div>
       <form
         noValidate
-        className="space-y-5"
+        className="space-y-6"
         onSubmit={(e) => {
           e.preventDefault();
           if (
@@ -992,7 +985,7 @@ function FinishForm({
                 value={providerEmail}
               />
               {gate.email.relay ? (
-                <p className="text-sm text-fg-muted">
+                <p className="text-sm/5 text-fg-muted">
                   {t("signin.gate.relay")}
                 </p>
               ) : null}
@@ -1003,14 +996,14 @@ function FinishForm({
                   setError(null);
                   requestAnimationFrame(() => emailRef.current?.focus());
                 }}
-                className={cn(AUTH_LINK_CLASS, "px-0 text-base")}
+                className={AUTH_LINK_CLASS}
               >
                 {t("signin.code.differentEmail")}
               </button>
             </div>
           ) : providerEmail ? (
             <fieldset className="space-y-2">
-              <legend className="text-sm font-medium text-fg-strong">
+              <legend className={AUTH_LABEL_CLASS}>
                 {t("signin.email.label")}
               </legend>
               <label className={radio}>
@@ -1058,10 +1051,10 @@ function FinishForm({
               ) : null}
             </fieldset>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <label
                 htmlFor={emailId}
-                className="block text-sm font-medium text-fg-strong"
+                className={cn("block", AUTH_LABEL_CLASS)}
               >
                 {t("signin.email.label")}
               </label>
@@ -1073,10 +1066,7 @@ function FinishForm({
         {!isNew ? null : (
           <>
             <div className="space-y-2">
-              <label
-                htmlFor={nameId}
-                className="block text-sm font-medium text-fg-strong"
-              >
+              <label htmlFor={nameId} className={cn("block", AUTH_LABEL_CLASS)}>
                 {t("signin.gate.name")}
               </label>
               <Input
@@ -1099,7 +1089,7 @@ function FinishForm({
                 <p
                   id={`${nameId}-err`}
                   role="alert"
-                  className="text-sm text-danger"
+                  className="text-sm/5 text-danger"
                 >
                   {t("signin.gate.nameRequired")}
                 </p>
@@ -1108,9 +1098,12 @@ function FinishForm({
                 <div
                   role="group"
                   aria-labelledby={`${nameId}-from`}
-                  className="space-y-1"
+                  className="space-y-2"
                 >
-                  <span id={`${nameId}-from`} className="text-sm text-fg-muted">
+                  <span
+                    id={`${nameId}-from`}
+                    className="text-sm/5 text-fg-muted"
+                  >
                     {t("signin.gate.nameFrom")}
                   </span>
                   <ul className="flex flex-wrap gap-2">
@@ -1154,15 +1147,28 @@ function FinishForm({
                   </ul>
                 </div>
               ) : null}
-              <p id={`${nameId}-hint`} className="text-sm text-fg-muted">
+              <p id={`${nameId}-hint`} className="text-sm/5 text-fg-muted">
                 {t("signin.gate.nameHint")}
               </p>
             </div>
 
             <fieldset className="space-y-2">
-              <legend className="text-sm font-medium text-fg-strong">
+              <legend className={AUTH_LABEL_CLASS}>
                 {t("signin.gate.picture")}
               </legend>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png,image/jpeg"
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) void pickFile(file);
+                }}
+              />
               <div
                 className={cn(
                   "grid gap-2",
@@ -1188,7 +1194,7 @@ function FinishForm({
                       className="size-10 shrink-0 rounded-full object-cover"
                     />
                     <span>{provider}</span>
-                    <span className="text-xs text-fg-muted">
+                    <span className="text-sm/5 text-fg-muted">
                       {pickMeta("provider", "")}
                     </span>
                   </label>
@@ -1205,7 +1211,7 @@ function FinishForm({
                     {initialsText || <User className="size-5 text-fg-muted" />}
                   </span>
                   <span>{t("signin.gate.pictureInitialsTile")}</span>
-                  <span className="text-xs text-fg-muted">
+                  <span className="text-sm/5 text-fg-muted">
                     {pickMeta("initials", t("signin.gate.pictureFromName"))}
                   </span>
                 </label>
@@ -1226,7 +1232,7 @@ function FinishForm({
                       className="size-10 shrink-0 rounded-full object-cover"
                     />
                     <span>{t("signin.gate.pictureYours")}</span>
-                    <span className="text-xs text-fg-muted">
+                    <span className="text-sm/5 text-fg-muted">
                       {pickMeta("upload", "")}
                     </span>
                   </label>
@@ -1240,34 +1246,28 @@ function FinishForm({
                     <Upload className="size-5 text-fg-muted" />
                   </span>
                   <span>{t("signin.gate.pictureUpload")}</span>
-                  <span className="text-xs text-fg-muted">
+                  <span className="text-sm/5 text-fg-muted">
                     {t("signin.gate.pictureUploadHint")}
                   </span>
                 </button>
               </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/png,image/jpeg"
-                className="sr-only"
-                tabIndex={-1}
-                aria-hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (file) void pickFile(file);
-                }}
-              />
               {pictureError ? (
-                <p role="alert" className="text-sm text-danger">
+                <p role="alert" className="text-sm/5 text-danger">
                   {pictureError}
                 </p>
               ) : null}
             </fieldset>
+          </>
+        )}
 
-            {gate.profile.birthdate ? (
+        {(isNew && gate.profile.birthdate) ||
+        termsPanel ||
+        (passkeyOffer && isNew) ? (
+          <div className="space-y-3 pointer-coarse:space-y-0">
+            {isNew && gate.profile.birthdate ? (
               <Checkbox
-                className="min-h-11 items-center [&_label]:-my-3 [&_label]:py-3"
+                className="pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-2.5 pointer-coarse:[&_label]:py-2.5"
+                descriptionClassName={AUTH_HELP_CLASS}
                 checked={birth}
                 onCheckedChange={setBirth}
                 label={t("signin.gate.birthdate", {
@@ -1276,54 +1276,45 @@ function FinishForm({
                 description={t("signin.gate.birthdateHelp")}
               />
             ) : null}
-          </>
-        )}
-
-        {termsPanel}
-
-        {passkeyOffer && isNew ? (
-          <Checkbox
-            className="min-h-11 items-center [&_label]:-my-3 [&_label]:py-3"
-            checked={passkey}
-            onCheckedChange={setPasskey}
-            label={
-              <span className="text-fg-muted">{t("signin.gate.passkey")}</span>
-            }
-          />
+            {termsPanel}
+            {passkeyOffer && isNew ? (
+              <Checkbox
+                className="pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-2.5 pointer-coarse:[&_label]:py-2.5"
+                checked={passkey}
+                onCheckedChange={setPasskey}
+                label={
+                  <span className="text-fg-muted">
+                    {t("signin.gate.passkey")}
+                  </span>
+                }
+              />
+            ) : null}
+          </div>
         ) : null}
 
         {error?.field === "form" ? (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-sm/5 text-danger">
             {error.text}
           </p>
         ) : null}
-        <div className="space-y-2">
-          <Button
-            type="submit"
-            variant="neutral"
-            size="lg"
-            className={PRIMARY_CLASS}
-            loading={busy}
-          >
-            {primary}
-          </Button>
-          <button
-            type="button"
-            className={STACKED_LINK}
-            disabled={busy}
-            onClick={onCancel}
-          >
+        <Button
+          type="submit"
+          variant="neutral"
+          size="xl"
+          className={PRIMARY_CLASS}
+          loading={busy}
+        >
+          {primary}
+        </Button>
+        <QuietLinks>
+          <QuietLink disabled={busy} onClick={onCancel}>
             {t("signin.gate.cancel")}
-          </button>
-        </div>
+          </QuietLink>
+        </QuietLinks>
       </form>
-      {live}
     </div>
   );
 }
-
-/** A secondary action under the primary: the shared link, centred on its own line. */
-const STACKED_LINK = cn(AUTH_LINK_CLASS, "mx-auto flex w-fit text-base");
 
 /** A name suggestion: one pill, pressed when it is the name in the field. */
 function SuggestionChip({
@@ -1343,7 +1334,7 @@ function SuggestionChip({
       aria-pressed={on}
       onClick={onPick}
       className={cn(
-        "inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border px-3 text-sm text-fg-strong hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+        "inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border px-3 text-sm/5 text-fg-strong hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
         on ? "border-fg-strong bg-hover" : "border-border-strong",
       )}
     >

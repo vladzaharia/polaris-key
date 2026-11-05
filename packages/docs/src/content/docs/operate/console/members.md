@@ -26,7 +26,7 @@ before you send: who is told, and when the invite expires.
   gives Superadmin, Platform admin or Product admin on all products.
 - You cannot give yourself a role, or invite an address that belongs to your own account.
 - Giving a Superadmin, Platform admin or all-products role asks you to confirm and to step up (sign
-  in again with a passkey or your identity provider).
+  in again with a passkey or single sign-on).
 - Every Superadmin is told about each grant. Nothing is added to the person's account until they
   accept.
 

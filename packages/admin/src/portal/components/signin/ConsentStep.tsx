@@ -4,6 +4,7 @@ import type { AppConsentView } from "@polaris-key/protocol/identity";
 import { Button } from "../../../ui/Button.js";
 import {
   AUTH_LINK_CLASS,
+  AUTH_METHOD_CLASS,
   AuthNotice,
   AuthTitle,
 } from "../../../ui/auth/index.js";
@@ -73,15 +74,15 @@ export function ConsentStep({
         <section className="space-y-2" aria-labelledby="pk-consent-license">
           <h2
             id="pk-consent-license"
-            className="text-sm font-medium text-fg-muted"
+            className="text-sm/5 font-medium text-fg-strong"
           >
             {t("signin.consent.license")}
           </h2>
-          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 rounded-md border border-border-strong px-3 py-3">
+          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 rounded-lg border border-border px-4 py-3">
             <div className="min-w-[12ch] flex-[1_1_12ch] [overflow-wrap:anywhere]">
-              <p className="font-semibold text-fg-strong">{line.title}</p>
+              <p className="font-medium text-fg-strong">{line.title}</p>
               {line.meta ? (
-                <p className="text-sm text-fg-muted">
+                <p className="text-sm/5 text-fg-muted">
                   <Keep>{line.meta}</Keep>
                 </p>
               ) : null}
@@ -90,7 +91,7 @@ export function ConsentStep({
               <button
                 type="button"
                 onClick={onChange}
-                className={cn(AUTH_LINK_CLASS, "shrink-0 text-sm")}
+                className={cn(AUTH_LINK_CLASS, "shrink-0")}
               >
                 {t("signin.consent.change")}
               </button>
@@ -99,14 +100,17 @@ export function ConsentStep({
         </section>
       ) : null}
       <section className="space-y-2" aria-labelledby="pk-consent-gets">
-        <h2 id="pk-consent-gets" className="text-sm font-medium text-fg-muted">
+        <h2
+          id="pk-consent-gets"
+          className="text-sm/5 font-medium text-fg-strong"
+        >
           {t("signin.consent.alsoGets", { app })}
         </h2>
-        <ul className="divide-y divide-border rounded-md border border-border-strong">
+        <ul className="divide-y divide-border rounded-lg border border-border">
           {lines.map((text) => (
             <li
               key={text}
-              className="flex items-center gap-3 px-3 py-3 text-fg-strong"
+              className="flex items-center gap-3 px-4 py-3 text-fg"
             >
               {text === t("signin.consent.cloudSync") ? (
                 <Cloud aria-hidden className="size-5 shrink-0 text-fg-muted" />
@@ -120,7 +124,7 @@ export function ConsentStep({
             </li>
           ))}
         </ul>
-        <p className="flex items-start gap-2 text-sm text-fg-muted">
+        <p className="flex items-start gap-2 text-sm/5 text-fg-muted">
           <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0" />
           {t("signin.consent.pairwise")}
         </p>
@@ -129,7 +133,7 @@ export function ConsentStep({
       <div className="space-y-3">
         <Button
           variant="neutral"
-          size="lg"
+          size="xl"
           className={PRIMARY_CLASS}
           loading={busy === "continue"}
           aria-disabled={busy === "deny" || undefined}
@@ -139,8 +143,8 @@ export function ConsentStep({
         </Button>
         <Button
           variant="outline"
-          size="lg"
-          className={PRIMARY_CLASS}
+          size="xl"
+          className={AUTH_METHOD_CLASS}
           loading={busy === "deny"}
           aria-disabled={busy === "continue" || undefined}
           onClick={onDeny}

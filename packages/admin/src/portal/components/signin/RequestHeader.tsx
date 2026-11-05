@@ -42,7 +42,7 @@ export function RequestHeader({
       <span
         aria-hidden
         className={cn(
-          "flex size-14 shrink-0 items-center justify-center rounded-[14px] border border-border bg-surface-sunken text-xl font-semibold text-fg-strong",
+          "flex size-14 shrink-0 items-center justify-center rounded-[14px] border border-border bg-surface-sunken text-2xl/8 font-medium text-fg-strong",
           art ? undefined : "passport:text-4xl",
           big,
         )}

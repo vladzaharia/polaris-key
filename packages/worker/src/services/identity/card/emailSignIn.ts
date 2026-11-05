@@ -869,8 +869,8 @@ async function expiredLinkPage(
       heading,
       body:
         `${body}<form method="post" action="/api/signin/email/resend"><p>A new code goes to ${escapeHtml(maskEmail(flow.email))}.</p>` + // signin.expired.sendTo
-        `<p class="actions stack"><button class="button" type="submit">Send a new code</button>` + // signin.code.resend
-        `<a class="button secondary" href="${back}">Use a different email</a></p></form>`, // signin.code.differentEmail
+        `<p class="actions"><button class="button" type="submit">Send a new code</button></p>` + // signin.code.resend
+        `<p class="tertiary"><a href="${back}">Use a different email</a></p></form>`, // signin.code.differentEmail
     });
   }
   return cardPage(400, {

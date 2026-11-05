@@ -637,16 +637,24 @@ export function chooserBody(input: {
     (canContinue
       ? `<button class="button" type="submit" name="action" value="use">${escapeHtml(input.primaryLabel ?? "Use this license")}</button>` // signin.choice.continue
       : "") +
-    keyLink(input.keyHref) +
-    `<button class="button secondary" type="submit" name="action" value="cancel" formnovalidate>Cancel</button>` +
-    `</div></form>`
+    `</div>` +
+    tertiary(
+      keyLink(input.keyHref) +
+        `<button class="quiet" type="submit" name="action" value="cancel" formnovalidate>Cancel</button>`,
+    ) +
+    `</form>`
   );
+}
+
+/** The step's one tertiary line (SIGNIN-REDESIGN §6): exits and switches, centred, no rule. */
+function tertiary(links: string): string {
+  return `<p class="tertiary">${links}</p>`;
 }
 
 /** "Use a license key instead", only when the flow has somewhere to send it. */
 function keyLink(href: string | null | undefined): string {
   return href
-    ? `<a class="button secondary" href="${escapeHtml(href)}">Use a license key instead</a>`
+    ? `<a href="${escapeHtml(href)}">Use a license key instead</a>`
     : "";
 }
 
@@ -692,7 +700,7 @@ function replaceGroupBody(
     })
     .join("");
   const err = bad
-    ? `<p class="field-err" id="rg-err">${icon("x-circle", true)}<span>Choose a device to replace.</span></p>`
+    ? `<p class="field-err" id="rg-err">Choose a device to replace.</p>`
     : `<p class="sr-only" id="rg-err"></p>`;
   const other = bad ? "" : noticeHtml(input.notice);
   const iso = (n: string) => `\u2068${n}\u2069`;
@@ -710,9 +718,12 @@ function replaceGroupBody(
     `<p class="note">${icon("info", true)}<span>The device you choose signs out of ${escapeHtml(input.productName)}. It can sign in again later if there's room for another device. We'll email you about it.</span></p>` +
     `<div class="actions stack">` +
     `<button class="button" type="submit" name="action" value="replace-pick">Replace and sign in</button>` +
-    keyLink(input.keyHref) +
-    `<button class="button secondary" type="submit" name="action" value="cancel" formnovalidate>Cancel</button>` +
-    `</div></form>`
+    `</div>` +
+    tertiary(
+      keyLink(input.keyHref) +
+        `<button class="quiet" type="submit" name="action" value="cancel" formnovalidate>Cancel</button>`,
+    ) +
+    `</form>`
   );
 }
 
@@ -751,8 +762,11 @@ export function replaceConfirmBody(input: {
     `<input type="hidden" name="choice" value="${escapeHtml(input.token)}">` +
     `<div class="actions stack">` +
     `<button class="button" type="submit" name="action" value="replace">Replace and continue</button>` + // signin.replace.confirm
-    `<button class="button secondary" type="submit" name="action" value="back">Back</button>` + // signin.replace.back
-    `</div></form>`
+    `</div>` +
+    tertiary(
+      `<button class="quiet" type="submit" name="action" value="back">Back</button>`, // signin.replace.back
+    ) +
+    `</form>`
   );
 }
 

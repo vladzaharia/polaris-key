@@ -4220,11 +4220,6 @@ msgstr "코드가 만료됐어요. 새 코드를 받으세요."
 msgid "signin.console.title"
 msgstr "콘솔에 로그인"
 
-#. Next: {idp} at {host}
-#. Console operator sign-in (SIGN-IN.md §3.12). Arguments: {idp} = the identity provider's name; {host} = a host name.
-msgid "signin.console.next"
-msgstr "다음: {host}의 {idp}"
-
 #. You're signed out
 #. Console operator sign-in (SIGN-IN.md §3.12).
 msgid "signin.console.signedOut"

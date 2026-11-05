@@ -341,20 +341,25 @@ describe("the review card", () => {
     expect(res.status).toBe(200);
     const page = await res.text();
     expect(page).toContain("Let pkey sign in as you?");
-    // The code sits inside the "check this matches" panel, and is not a row of a list.
+    // The code sits in a sentence, with the check beside it, and is not a row of a list.
     expect(page).toMatch(
-      new RegExp(
-        `Check this matches your terminal</p><p class="code">${s.code}</p>`,
-      ),
+      new RegExp(`pkey showed the code <span class="code">${s.code}</span> `),
     );
+    expect(page).toContain("Check that your terminal shows the same code.");
+    // The person row leads the card, above the title.
+    expect(page.indexOf('class="person"')).toBeLessThan(page.indexOf("<h1"));
+    expect(page).toContain(">Deny</button>");
+    expect(page).not.toContain("Cancel");
     expect(page).not.toContain("<dt>");
-    // The host once, "unverified" once, the date in the console's format, the cap on packages.
+    // The host, the unverified note once, the date in the console's format, the cap on packages.
     expect(page).toContain("ada-mbp.local");
-    expect(page.match(/>unverified</g)).toHaveLength(1);
+    expect(page.match(/Polaris Key can’t check them/g)).toHaveLength(1);
     expect(page).toContain("Ends Nov 21, 2023");
     expect(page).toContain("Can’t install packages");
     expect(page).toContain("Portugal (approximate)");
-    expect(page).toContain("Didn’t just run pkey login? Cancel.");
+    expect(page).toContain(
+      "Didn’t run pkey login? Deny, and nothing signs in.",
+    );
     // One way forward, and "Sign in again to approve" said once.
     expect(page.match(/Sign in again to approve/g)).toHaveLength(1);
     expect(page).toContain("Not you?");
@@ -403,16 +408,24 @@ describe("the review card", () => {
     const entryPage = await entry.text();
     expect(entryPage).toContain("Enter the code from your terminal");
     expect(entryPage).toContain("autofocus");
-    expect(entryPage).toContain("Like QXKM-TPRW");
+    expect(entryPage).toContain('placeholder="XXXX-XXXX"');
+    expect(entryPage).toContain(
+      "Only use a code your own terminal shows, not one somebody sent you.",
+    );
+    expect(entryPage).not.toContain("Like QXKM-TPRW");
     const unknown = await device(w, "GET", {
       path: "/device?code=ZZZZ-ZZZZ",
       cookie: c.cookie,
     });
     expect(unknown.status).toBe(410);
     const unknownPage = await unknown.text();
-    expect(unknownPage).toContain("This code can’t be used");
-    expect(unknownPage).toContain("wrong, expired or already used");
-    expect(unknownPage).not.toContain("Nothing was approved");
+    // One inline error on the entry card, the code kept: there is no separate "can't be used" card.
+    expect(unknownPage).toContain("Enter the code from your terminal");
+    expect(unknownPage).toContain(
+      "No pkey login is waiting for that code. Run pkey login for a new one.",
+    );
+    expect(unknownPage).toContain('value="ZZZZ-ZZZZ"');
+    expect(unknownPage).not.toContain("This code can’t be used");
     const s = await startCli(w);
     const late = await device(w, "GET", {
       path: `/device?code=${s.code}`,
@@ -420,7 +433,9 @@ describe("the review card", () => {
       now: NOW + 301,
     });
     expect(late.status).toBe(410);
-    expect(await late.text()).toContain("This code can’t be used");
+    expect(await late.text()).toContain(
+      "No pkey login is waiting for that code.",
+    );
   });
 
   it("cleans spaces and case before the shape check, and keeps what was typed on an error", async () => {
@@ -443,7 +458,7 @@ describe("the review card", () => {
     expect(badPage).toContain('value="hello there"');
     expect(badPage).toContain('aria-invalid="true"');
     expect(badPage).toMatch(/class="field-err"[^>]*role="alert"/);
-    expect(badPage).toContain("That isn’t a code");
+    expect(badPage).toContain("No pkey login is waiting for that code.");
     // A well-formed code that is not live: the form again from the form, the card from a link.
     const unknown = await device(w, "GET", {
       path: "/device?entered=1&code=zzzz-zzzz",
@@ -452,8 +467,7 @@ describe("the review card", () => {
     expect(unknown.status).toBe(200);
     const unknownPage = await unknown.text();
     expect(unknownPage).toContain('value="ZZZZ-ZZZZ"');
-    expect(unknownPage).toContain("wrong, expired or already used");
-    expect(unknownPage).not.toContain("Nothing was approved");
+    expect(unknownPage).toContain("No pkey login is waiting for that code.");
   });
 
   it("marks a value cut at its limit with an ellipsis", async () => {
@@ -573,7 +587,7 @@ describe("the decision", () => {
       "deny",
     );
     expect(res.status).toBe(200);
-    expect(await res.text()).toContain("Sign-in canceled");
+    expect(await res.text()).toContain("Sign-in denied");
     expect(await auditActions(w.db)).toEqual(["cli.login.deny"]);
     expect(w.sent).toHaveLength(0);
     const polled = await poll(w, s);

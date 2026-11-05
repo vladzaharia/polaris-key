@@ -149,7 +149,7 @@ Rubik ships as **one variable face** (wght 300–900; `fonts/ttf/Rubik-Variable.
 sign-in, kits, docs): **400** for body and row titles, **500** for labels and buttons, **600** for
 headings. **700** is the wordmark's (the kit's outlined Rubik Bold) and a game wordmark fallback's
 only; hierarchy comes from scale and spacing, not from universal boldness. Customer body text is
-16 px; console tables and forms use `sm` 14 (§7.6). Display size and tracking exist only for
+16 px; console tables and forms use `sm` 14 (§7.6). The sign-in card uses four sizes (24, 16, 14, and 12 for pills) and 600 only for its h1 (§7.9). Display size and tracking exist only for
 marketing and the docs landing (§4.6, §14). `tokens.css` sets `font-synthesis: none` so a browser
 never fakes a weight or a slant. All logo text in the kit SVGs is outlined; the web fonts are for UI
 text only. The kit's static `Rubik-Regular.ttf` and `Rubik-Bold.ttf` stay in `kit/source/fonts/` as
@@ -661,6 +661,7 @@ verification is `danger`, never gold. Nothing else in the console is gold.
 
 Every interactive element shows a visible `:focus-visible` ring: 2 px solid `--pk-focus` with a
 2 px offset in the surface colour. Never remove it; never replace it with a colour change alone.
+The sign-in card family's ring is `--pk-text-strong` in both brands; its fields focus with a 1 px `--pk-text-strong` border, no ring and no offset (§7.9).
 The ring takes the service the element references (`--pk-state-ring`, §4.8; core violet on core and
 platform screens), one ring colour per element, never per component; ≥ 3:1 everywhere in both
 themes. `--pk-focus` stays the platform violet for contexts with no service.
@@ -772,6 +773,39 @@ glyph at 50 % of the tile in the accent `fg`, stroke per size (UK-57). Flat: nev
 plate, never a glow. The console masthead uses the 48 px tile only on feature landing pages from
 1024 px.
 
+### 7.9 The sign-in card
+
+One restrained card for Polaris Locker and Polaris Key (SIGNIN-REDESIGN, 2026-11-04). Every renderer
+(the portal's `AuthCard`, the console's offline card, the Worker's `renderAuthCard`) draws it from
+one recipe per role.
+
+- **Type: four sizes, three weights.** Title 24/32 at 600 (the h1, the only 600). Body 16/24 at 400, a
+  name inside it at 500. Control 16/24 at 500. Label 14/20 at 500. Secondary, link and footer 14/20 at 400. Code 24/32 mono at 500. Pill 12/16 at 500 (12 px is for pills only).
+- **Frame.** The card is 28.5 rem wide with `--pk-radius-xl` (18 px), a 1 px `--pk-border-subtle`
+  border, `--pk-elevation-3` and 32 px (`--pk-space-8`) padding. The lockup's top sits at
+  `clamp(2.5rem, 12vh, 7.5rem)` and its ink 40 px above the card (24 px each on a short window). The
+  rhythm uses 8, 12 and 24 px only: 8 inside a group, 12 between stacked controls, 24 between groups.
+- **Controls** are 48 px (the code field 56). The primary is the `--pk-action` fill, one per step, with no
+  trailing arrow. Every alternative way in and every decline is one **method button**: full width, 48 px,
+  a 1 px `--pk-border-strong` border, `--pk-radius-md`, a 16/500 `--pk-text-strong` label and a 20 px
+  leading icon centred with it. The provider row (Apple, Google, Steam) wears the same skin, logo-only.
+  Fields focus with a 1 px strong-ink border (no ring), never an offset outline.
+- **Order of the methods step:** the email and Continue; "or"; the provider row, the passkey, single
+  sign-on (or the named connections), another device. "Have a license key?" (the console's "Emergency
+  sign-in") is a quiet centred link on the card's last line.
+- **Links** are weight 400, 14/20, `--pk-text-default` in the card and `--pk-text-muted` in the footer,
+  with a 1 px `--pk-border-strong` underline at a 3 px offset (skip-ink); hover turns the text and the
+  underline `--pk-text-strong`. They appear only as the step's one tertiary line (exits and switches),
+  Change / Not you?, a reference inside a sentence, and the footer. A way to sign in or a decline is
+  never a link. Under a coarse pointer a link is a 44 x 44 target.
+- **Footer:** "Help · Privacy", 24 px under the card, in footer type, with a muted `aria-hidden` middot.
+- **Phones** (under 40 rem, both brands): no card chrome on a full `--pk-surface-raised` viewport, a 56 px
+  brand row with safe-area insets and no hairline, 24 px inline padding, no sticky actions.
+- **Focus** is one neutral `--pk-text-strong` ring in both brands (2 px at a 2 px offset).
+- **Brands differ only** in the lockup (Locker trimmed 26 px; Key compact 64 px, a 1 px rule and
+  "Console" at 16/24 400 muted) and the coral 3 px selected marker (Locker). Worker cards render
+  with font smoothing (`antialiased`), as the React cards do.
+
 ---
 
 ## 8. The bytes host, dl.plrs.im
@@ -832,8 +866,8 @@ The per-product download page (`dl.plrs.im/<product>`) is customer-facing, so it
 
 - One 23 px Locker lockup in a top bar with a rule under it; the page title is "Download <Product> ·
   Polaris Locker". No Delivery service row, no Star Cut, no Distribution green.
-- Actions and links are neutral ink: the filled primary is ink, the other actions are outlined, and links are
-  `text-strong` with a 2 px coral underline (the lockup's coral is identity only, never a state).
+- Actions and links are neutral ink: the filled primary is ink, the other actions are outlined, and links
+  use the §7.9 link style (1 px `--pk-border-strong` underline; the lockup's coral is identity only, never a state).
 - Storefront sources (Scoop, AltStore, SideStore, F-Droid, Obtainium) print `polaris.locker` URLs, never
   `key.plrs.im`: the customer host serves the same public feeds, and the console host keeps answering them.
 - The foot reads "Polaris Locker · Questions about <Product>? …" and nothing else about the platform.
@@ -1237,12 +1271,12 @@ the accessible name is "<label> Polaris Locker". Each label needs a real destina
 Tailwind: `--color-locker-{accent,fg,on,subtle}`. `css/locker.css` is the kit's `locker.css`
 verbatim, for plrs.im. `[data-brand="locker"]` is described in §3.
 
-**Where coral goes (D9a): identity only.** The mark, the 3 px selected-nav marker, a 2 px link
-underline and the context edge (`--pk-state-context-edge`). Everything stateful is neutral ink:
+**Where coral goes (D9a): identity only.** The mark, the 3 px selected-nav marker and the context
+edge (`--pk-state-context-edge`). Everything stateful is neutral ink:
 selected fill and hover tint (`text.strong` at 7 % and 4 % over the page), the focus ring
-(`--pk-text-strong`, 2 px, 2 px offset), link text (`text.strong` with the coral underline), and
+(`--pk-text-strong`, 2 px, 2 px offset), link text (`text.default`, 1 px neutral underline, §7.9), and
 checked controls and switches (`--pk-action` fill and edge, `--pk-action-on` glyph). The primary
-action stays neutral ink (§4.7, D9). Coral is never a status. `--pk-locker-fg` is kept for coral
+action stays neutral ink (§4.7, D9). D9a amended 2026-11-04 (SIGNIN-REDESIGN): the coral underline read as heavy and as a status line. Coral is never a status. `--pk-locker-fg` is kept for coral
 text that is identity; nothing in the Locker scope uses it, so `#b8382e` is only there for such a
 future use.
 
@@ -1290,7 +1324,7 @@ outlined lockup, never the name in live text beside a mark (§1.4 Don'ts). Locke
 p.7: the horizontal lockup is at least 180 px wide, so `lockupSvg({ kind: "locker", trim: true })`
 (`LOCKER_TRIM`, the re-laid lockup (§1.4) cropped to the mark art and the wordmark, 380 × 46) is drawn
 from 22 px tall: 23 px (191 px wide) in the portal header at every width and in the download page's
-top bar, 26 px (214 px) above a card. Where a row has no room for 180 px, the mark stands alone with an accessible name (p.7: "for
+top bar, 26 px (214 px) above a card, with 40 px from the lockup's ink to the card (§7.9). Where a row has no room for 180 px, the mark stands alone with an accessible name (p.7: "for
 crowded navigation use the mark alone"). Key guide p.2: where the full wordmark would make the mark smaller than 48 px (every header), use
 the kit's compact lockup as supplied, uncropped (222 × 64 canvas), at 52 px tall (180 px wide) in the
 64 px bar, the size plrs.im draws; its 26 px mark has no room for the section bit. Below the width

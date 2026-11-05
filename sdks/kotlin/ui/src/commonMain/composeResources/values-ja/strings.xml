@@ -1554,8 +1554,6 @@
     <string name="signin_approve_expired">このコードの有効期限が切れました。新しいコードを取得してください。</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
     <string name="signin_console_title">コンソールにサインイン</string>
-    <!-- Console operator sign-in (SIGN-IN.md §3.12). Arguments: {idp} = the identity provider's name; {host} = a host name. Arguments: 1=idp, 2=host. -->
-    <string name="signin_console_next">次へ：%2$sの%1$s</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
     <string name="signin_console_signedOut">サインアウトしました</string>
     <!-- Console operator sign-in (SIGN-IN.md §3.12). -->

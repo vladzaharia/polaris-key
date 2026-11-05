@@ -8,15 +8,18 @@ export { CODE_LENGTH, CodeCells } from "./CodeCells.js";
 export { PROVIDER_ORDER, ProviderRow, providerLabel } from "./ProviderRow.js";
 export type { AuthProvider } from "./ProviderRow.js";
 export {
+  AUTH_HELP_CLASS,
   AUTH_INPUT_CLASS,
+  AUTH_LABEL_CLASS,
   AUTH_LINK_CLASS,
+  AUTH_METHOD_CLASS,
   AuthNotice,
   AuthTitle,
   OrDivider,
-  QuietAnchor,
   QuietLink,
   QuietLinks,
   useStepFocus,
 } from "./parts.js";
+export { IdentityPill } from "./IdentityPill.js";
 export { CodeEntry } from "./CodeEntry.js";
 export type { CodeResendOutcome, CodeVerifyOutcome } from "./CodeEntry.js";

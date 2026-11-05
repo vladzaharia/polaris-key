@@ -328,7 +328,7 @@ describe("SM-1 and SM-3: the console needs a strong method", () => {
   it("the card for a method refusal says what to use", () => {
     expect(consoleRefusalCopy("method")).toEqual({
       title: "That sign-in can’t open this console",
-      lede: "Use your company account or a passkey. An email code can’t.",
+      lede: "Use single sign-on or a passkey. An email code can’t.",
     });
     expect(consoleRefusalCopy("join").title).toBe(
       "We couldn’t open your account",

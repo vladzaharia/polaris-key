@@ -215,15 +215,11 @@ async function signIn(email = "root1@example.com", groups = [GROUP]) {
   );
 }
 
-describe("the known-operator chip (D-S5)", () => {
-  it("an account sign-in sets the hint cookie: host-bound, HttpOnly, Secure, Strict, 30 days", async () => {
+describe("the retired last-operator cookie (D-S5) and the returning-person step", () => {
+  it("an account sign-in no longer sets the hint cookie", async () => {
     const res = await signIn();
     expect(res.status).toBe(302);
-    const hint = setCookies(res).find((c) => c.startsWith(`${HINT}=`))!;
-    expect(hint).toBe(
-      `${HINT}=root1%40example.com; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${30 * 86400}`,
-    );
-    expect(hint).not.toMatch(/Domain=/i);
+    expect(setCookies(res).some((c) => c.includes(HINT))).toBe(false);
   });
 
   it("break-glass never sets the hint", async () => {
@@ -232,106 +228,43 @@ describe("the known-operator chip (D-S5)", () => {
     expect(setCookies(r.res).some((c) => c.includes(HINT))).toBe(false);
   });
 
-  it.each([
-    ["", "Sign in to the console"],
-    ["?signedOut=1", "You’re signed out"],
-    ["?ended=1", "Your session ended"],
-  ])(
-    "the %s card shows 'email · Change' and carries the hidden login_hint",
-    async (q, h1) => {
+  it.each(["", "?signedOut=1", "?ended=1"])(
+    "the %s card never reads the old cookie: no pill, no hidden address, an empty field",
+    async (q) => {
       const html = await (await card(q, `${HINT}=root1%40example.com`)).text();
-      expect(html).toContain(h1);
-      expect(html).toContain(
-        '<span class="chip-email">root1<wbr>@example<wbr>.com</span>',
-      );
-      expect(html).toContain('name="login_hint" value="root1@example.com"');
-      expect(html).toContain("Change</a>");
-      expect(html).not.toContain('type="email"');
+      expect(html).toContain("<h1>Sign in to the console</h1>");
+      expect(html).not.toContain("root1");
+      expect(html).not.toContain('type="hidden" name="login_hint"');
+      expect(html).toContain('type="email"');
     },
   );
 
-  it("survives sign-out: the card after /logout still shows it (the hint is not a session)", async () => {
-    const out = await card("?signedOut=1", `${HINT}=root1%40example.com`);
-    expect(out.headers.get("set-cookie")).toBeNull();
-    expect(await out.text()).toContain('class="chip-email"');
-  });
-
-  it("a step-up card does not use the chip", async () => {
-    const html = await (
-      await card("?stepUp=1", `${HINT}=root1%40example.com`)
-    ).text();
-    expect(html).not.toContain('class="chip-email"');
-  });
-
-  it("Change clears the cookie and shows the empty field, keeping the state and returnTo", async () => {
-    const html0 = await (
-      await card(
-        "?signedOut=1&returnTo=/manage/%23/p/alpha",
-        `${HINT}=a%40b.io`,
-      )
-    ).text();
-    expect(html0).toContain(
-      'href="/manage/login?change=1&amp;signedOut=1&amp;returnTo=%2Fmanage%2F%23%2Fp%2Falpha"',
-    );
-    const res = await card("?change=1&signedOut=1", `${HINT}=a%40b.io`);
+  it("the card expires a stored copy of the old cookie, once, and only when it was sent", async () => {
+    const res = await card("", `${HINT}=a%40b.io`);
     const clear = res.headers.get("set-cookie")!;
     expect(clear).toContain(`${HINT}=;`);
     expect(clear).toContain("Max-Age=0");
-    const html = await res.text();
-    expect(html).toContain("You’re signed out");
-    expect(html).toContain('type="email"');
-    expect(html).not.toContain('class="chip-email"');
+    expect((await card("")).headers.get("set-cookie")).toBeNull();
   });
 
-  it.each([
-    "not-an-email",
-    "a%20b%40c.io",
-    "%E0%A4%A",
-    `${"a".repeat(300)}%40x.io`,
-    "a%40b%40c",
-  ])("a tampered hint (%s) is rejected: no chip, nothing echoed", async (v) => {
-    const html = await (await card("", `${HINT}=${v}`)).text();
-    expect(html).not.toContain('class="chip-email"');
-    expect(html).not.toContain("<script>alert");
-    expect(html).toContain('type="email"');
-  });
-
-  it("an address that is valid but hostile is escaped", async () => {
-    const html = await (
-      await card("", `${HINT}=${encodeURIComponent('a"onfocus="x@b.io')}`)
-    ).text();
-    // `loginHint` rejects whitespace and a second @, but a quote passes: it must be escaped.
-    expect(html).not.toContain('"onfocus="x');
-    expect(html).toContain("&quot;onfocus=&quot;x@b.io");
-  });
-
-  it("a script in the address passes the shape check but is escaped, never raw", async () => {
-    const html = await (
-      await card(
-        "",
-        `${HINT}=${encodeURIComponent("<script>alert(1)</script>@x.io")}`,
-      )
-    ).text();
-    expect(html).not.toContain("<script>alert");
-    expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;@x.io");
-  });
-
-  it("a duplicate hint cookie is refused (cookie-tossing)", async () => {
-    const html = await (
-      await card("", `${HINT}=a%40b.io; ${HINT}=c%40d.io`)
-    ).text();
-    expect(html).not.toContain('class="chip-email"');
-  });
-
-  it("the CSP is the same with and without the chip", async () => {
-    const a = (await card("")).headers.get("content-security-policy");
-    const b = (await card("", `${HINT}=a%40b.io`)).headers.get(
-      "content-security-policy",
+  it("the card is the same with and without the old cookie, CSP included", async () => {
+    const a = await card("");
+    const b = await card("", `${HINT}=a%40b.io`);
+    expect(b.headers.get("content-security-policy")).toBe(
+      a.headers.get("content-security-policy"),
     );
-    expect(b).toBe(a);
+    expect(await b.text()).toBe(await a.text());
   });
 
-  it("the hint is advisory: it is offered to the IdP as login_hint and authorises nothing", async () => {
+  it("a step-up card shows the fixed pill only for the signed-in account (no Change, no old cookie)", async () => {
+    const html = await (
+      await card("?stepUp=1", `${HINT}=root1%40example.com`)
+    ).text();
+    expect(html).not.toContain("root1");
+    expect(html).not.toContain('class="chip"');
+  });
+
+  it("the old cookie authorises nothing", async () => {
     const res = await handleAdmin(
       new Request(`${ORIGIN}/manage/api/me`, {
         headers: { cookie: `${HINT}=root1%40example.com` },
@@ -349,7 +282,7 @@ describe("the break-glass link and start card", () => {
   it("the sign-in card links 'Emergency sign-in' quietly under the card; step-up and the start card do not", async () => {
     const html = await (await card("?returnTo=/manage/")).text();
     expect(html).toContain(
-      '<a href="/manage/login?breakGlass=1&amp;returnTo=%2Fmanage%2F">Emergency sign-in</a>',
+      '<p class="tertiary"><a href="/manage/login?breakGlass=1&amp;returnTo=%2Fmanage%2F">Emergency sign-in</a></p>',
     );
     expect(await (await card("?stepUp=1")).text()).not.toContain(
       "Emergency sign-in</a>",
@@ -368,12 +301,15 @@ describe("the break-glass link and start card", () => {
     expect(html).toContain(
       "For when your account can’t sign in. Superadmins only.",
     );
-    // The elevated fact sits in a callout with a glyph, and Back to sign in is in the links row.
+    // The elevated fact sits in a callout with a glyph, and Back to sign in is the tertiary line.
     expect(html).toContain(
       '<p class="callout-title">Every use is recorded and every Superadmin is emailed.</p>',
     );
-    expect(html).toMatch(
-      /<nav class="ac-links" aria-label="Help and links">.*Back to sign in<\/a><\/nav>/,
+    expect(html).toContain(
+      '<p class="tertiary"><a href="/manage/login?">Back to sign in</a></p>',
+    );
+    expect(html).toContain(
+      '<nav class="ac-links" aria-label="Help and policies"><a href="/docs/">Help</a>',
     );
     expect(html).not.toContain('<p class="fine"><a');
     expect(html).toContain('name="breakGlass" value="1"');
@@ -524,52 +460,51 @@ describe("N3: a break-glass session mints no durable credential", () => {
 });
 
 describe("the chip, large text and the card's details (UX review)", () => {
-  it("the chip wraps, breaks the address at @ and . and has no input look", async () => {
-    const res = await card(
-      "",
-      `${HINT}=vlad.zaharia%40polaris-engineering.dev`,
-    );
-    const html = await res.text();
+  it("the pill wraps, breaks the address at @ and . and has no input look", async () => {
+    const html = await (await card("")).text();
+    expect(html).toMatch(/\.chip\{display:inline-flex;flex-wrap:wrap/);
+    expect(html).toContain(".chip-email{min-width:0");
+    // The Change control focuses like every other link: no inset ring.
+    expect(html).not.toContain(".chip-change:focus-visible");
+    // Large text: under 16 em of body the pill is a 10 px box, icons beside a label hide, the panel stacks.
     expect(html).toContain(
-      "vlad<wbr>.zaharia<wbr>@polaris-engineering<wbr>.dev",
+      "@container (max-width: 16em){.button .ic{display:none}}",
     );
-    expect(html).toMatch(/\.chip\{display:flex;flex-wrap:wrap/);
-    expect(html).toContain(".chip-email{flex:1 1 10rem");
-    expect(html).toContain(".chip-change:focus-visible{outline-offset:-2px}");
-    // The house initials: the first two words of the local part, by code point.
     expect(html).toContain(
-      '<span class="ac-mono" aria-hidden="true">VZ</span>',
+      "@container (max-width: 16em){.button span{text-align:center}.chip{border-radius:.625rem}.usual{flex-direction:column;align-items:flex-start}}",
     );
-    const emoji = await (
-      await card("", `${HINT}=${encodeURIComponent("😀x@b.io")}`)
-    ).text();
-    expect(emoji).toContain('aria-hidden="true">😀</span>');
+    expect(html).toContain("container-type:inline-size");
+    // The same font smoothing as the SPA's body.
+    expect(html).toContain("-webkit-font-smoothing:antialiased");
   });
 
-  it("the links landmark covers every link, with no separator dots; the lockup is 4 rem from 30 rem", async () => {
+  it('the links landmark is Help · Privacy with a muted aria-hidden middot; the lockup is 4 rem, "Console" is 16/24 at 400', async () => {
     const html = await (await card("")).text();
-    expect(html).toContain('aria-label="Help and links"');
+    expect(html).toContain('aria-label="Help and policies"');
     expect(html).toContain(
-      "[data-brand=console] .ac-links a+a::before{content:none}",
+      "[data-brand=console] .ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;color:var(--muted)}",
     );
+    expect(html).toContain('content:"\\00b7" / ""');
+    expect(html).not.toContain("a+a::before{content:none}");
     expect(html).toContain(
       "[data-brand=console] .ac-brand svg{width:13.875rem;height:4rem}",
     );
     expect(html).toContain("width:min(180px,52vw);height:auto");
     expect(html).toContain(
-      "font-size:1.25rem;line-height:1.75rem;font-weight:500",
+      ".ac-brand .ac-surface{margin-left:.75rem;padding-left:.75rem;border-left:1px solid var(--edge);color:var(--muted);font-size:1rem;line-height:1.5rem;font-weight:400}",
     );
   });
 
-  it("Change puts focus on the empty field and not on the heading; the other cards keep the heading", async () => {
-    const change = await (await card("?change=1", `${HINT}=a%40b.io`)).text();
-    expect(change).toMatch(
-      /<input id="email" type="email" name="login_hint" autofocus/,
-    );
-    expect(change).toContain("<h1>Sign in to the console</h1>");
+  it("an empty field takes focus on load and shows a placeholder; the other cards keep the heading", async () => {
     const plain = await (await card("")).text();
-    expect(plain).not.toMatch(/<input id="email"[^>]* autofocus/);
-    expect(plain).toContain('<h1 tabindex="-1" autofocus>');
+    expect(plain).toMatch(
+      /<input id="email" type="email" name="login_hint" autofocus placeholder="you@example.com"/,
+    );
+    expect(plain).toContain("<h1>Sign in to the console</h1>");
+    expect(plain).not.toContain("Next:");
+    const bg = await (await card("?breakGlass=1")).text();
+    expect(bg).toContain('<h1 tabindex="-1" autofocus>Emergency sign-in</h1>');
+    expect(bg).not.toContain("Next:");
   });
 
   it("the refusal and the mint refusal say 'emergency sign-in', one name for one thing", async () => {

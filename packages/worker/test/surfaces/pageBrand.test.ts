@@ -32,7 +32,8 @@ describe("the shell", () => {
     expect(html).toContain('href="/assets/branding/locker/favicon.svg"');
     expect(html).toContain('aria-label="Polaris Locker"');
     expect(html).not.toContain("device</");
-    expect(html).toContain("<title>Polaris Locker</title>");
+    // The lockup is hidden from assistive tech (its wrapper names it once): no inner title.
+    expect(html).toContain('data-label="Polaris Locker"');
     expect(html).not.toContain("Polaris Key");
     expect(html).not.toContain("Polaris&nbsp;Key");
     expect(html).toContain(`<style>${BRAND_PAGE_CSS_LOCKER}</style>`);
@@ -50,17 +51,19 @@ describe("the shell", () => {
 
   it("D9a: coral is identity only", () => {
     const tail = BRAND_PAGE_CSS_LOCKER.slice(BRAND_PAGE_CSS.length);
-    // Actions, focus and link text are neutral ink; the coral is the lockup's and the underline's.
+    // Actions, focus and link text are neutral ink; the coral is the lockup's, and no underline's (D9a, amended 2026-11-04).
     expect(tail).toContain("--accent:#f6f8ff");
     expect(tail).toContain("--accent:#060912");
     expect(tail).toContain("--mb:#ff7869");
-    expect(tail).toContain("text-decoration-color:var(--mb)");
+    expect(tail).not.toContain("text-decoration-color:var(--mb)");
+    expect(tail).toContain("text-decoration-color:var(--edge)");
+    expect(tail).toContain("text-decoration-thickness:1px");
     expect(tail).not.toMatch(/--(accent|focus|accent-fg):#(ff7869|c44438)/);
   });
 
   it("a link button keeps its own label colour: the link rule skips anchors with .button", () => {
     const tail = BRAND_PAGE_CSS_LOCKER.slice(BRAND_PAGE_CSS.length);
-    expect(tail).toContain("[data-brand=locker] a:not(.button){");
+    expect(tail).toContain("[data-brand=locker] a:not(.button),");
     expect(tail).not.toMatch(/\[data-brand=locker\] a\{/);
     // The label (on-accent) against the fill (accent) in each theme, as the tail sets them.
     for (const theme of ["dark", "light"] as const) {

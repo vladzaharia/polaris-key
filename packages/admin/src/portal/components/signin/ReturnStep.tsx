@@ -54,7 +54,7 @@ export function ReturnStep({
   const timing = !stopped && !inside && left > 0;
   return (
     <div
-      className="space-y-5"
+      className="space-y-6"
       onFocus={(e) => {
         // The card moves focus to the h1 on arrival; that is not the person acting.
         if (e.target.tagName !== "H1") setInside(true);
@@ -81,7 +81,7 @@ export function ReturnStep({
       </div>
       <Button
         variant="neutral"
-        size="lg"
+        size="xl"
         className={PRIMARY_CLASS}
         onClick={() => {
           fired.current = true;
@@ -90,7 +90,7 @@ export function ReturnStep({
       >
         {t("signin.return.button", { app })}
       </Button>
-      <div className="space-y-1 text-center text-sm text-fg-muted">
+      <div className="space-y-1 text-center text-sm/5 text-fg-muted">
         {timerShown ? (
           <p>
             <span role="timer" aria-live="off">
@@ -100,7 +100,7 @@ export function ReturnStep({
             <button
               type="button"
               onClick={() => setStopped(true)}
-              className={cn(AUTH_LINK_CLASS, "min-h-6 px-0")}
+              className={AUTH_LINK_CLASS}
             >
               {t("signin.return.stay")}
             </button>
@@ -108,7 +108,7 @@ export function ReturnStep({
         ) : null}
         {!yours || stopped || !timing ? (
           <p>
-            <a href="/" className={cn(AUTH_LINK_CLASS, "min-h-6 px-0")}>
+            <a href="/" className={AUTH_LINK_CLASS}>
               {t("signin.return.library")}
             </a>
           </p>
