@@ -46,10 +46,12 @@ jobs:
       kotlin-emulator-matrix: ${{ steps.scope.outputs.kotlin-emulator-matrix }}
       godot-matrix: ${{ steps.scope.outputs.godot-matrix }}
     steps:
-      # The whole history: the pull request's changed files are the diff against its base branch.
+      # The whole commit history, no file contents: the pull request's changed files are the diff against
+      # its base branch (a three-dot diff needs the merge base), and `--name-only` reads trees only.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          filter: blob:none
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
@@ -662,7 +664,7 @@ jobs:
         run: tools/lint.sh check
       - name: pytest
         working-directory: sdks/python
-        run: .venv/bin/python -m pytest -q
+        run: .venv/bin/python -m pytest -q -n auto
       # SP-41, the Python lane: the 3.14 leg also runs the live suite against a fresh `pkey dev` (the
       # `js-rest` job says what `start` and `check` do). It comes after the plain `pytest -q` above, where
       # tests/test_dev_live.py skips because none of the PKEY_DEV_* variables are set: the live test
@@ -1091,7 +1093,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
+      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
+      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       - name: Android SDK packages
         run: |
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -1103,7 +1109,10 @@ jobs:
           "$SDKM" "platforms;android-36" "build-tools;36.1.0" >/dev/null
       - name: Virtual display (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y xvfb
+        run: |
+          echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb
       - name: Roborazzi references (Linux; records and uploads while none are committed)
         if: runner.os == 'Linux'
         working-directory: sdks/kotlin
@@ -1281,7 +1290,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       - name: Android SDK packages
         run: |
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -1340,7 +1351,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
+      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
+      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       - name: Lint (ktlint and detekt against the lint-debt ledger)
         working-directory: sdks/kotlin
         run: tools/lint.sh check
@@ -1396,7 +1411,7 @@ jobs:
   # refuses skips that one test and prints the recorded `core.store` jvm `dependency` N/A. macOS and
   # Linux run the :core, :update and :sdk suites whole; Windows runs the desktop suites (the keyring
   # store, the install driver and its fetch, the slots, the desktop entry point, capabilities). Every run
-  # passes --no-build-cache so a :core:test result restored from setup-java's Gradle cache can never
+  # passes --no-build-cache so a :core:test result restored from the Gradle build cache can never
   # stand in for the real-keyring contract (core also declares PKEY_KEYRING_TESTS a Test input).
   kotlin-desktop:
     name: Kotlin SDK JVM desktop (${{ matrix.os }})
@@ -1419,10 +1434,17 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
+      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
+      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       - name: Secret Service (gnome-keyring) for the headless session
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y gnome-keyring dbus-x11
+        run: |
+          echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gnome-keyring dbus-x11
       - name: JVM desktop suites (Linux, Secret Service)
         if: runner.os == 'Linux'
         working-directory: sdks/kotlin
@@ -1498,7 +1520,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
+      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
+      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       # Per-kit modernity lint (UI-KITS.md §7.3, UK-15): the compose source rules of
       # packages/ui-qa/rules/kit-rules.json. Zero dependencies, so plain Node runs it; it fails on any
       # hit beyond the debt ledger (packages/ui-qa/rules/kit-debt.json) and on stale debt.
@@ -1597,7 +1623,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
+      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
+      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.toolchain != 'documented' }}
       - name: Android SDK packages
         run: |
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -1617,6 +1647,7 @@ jobs:
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           gradle-version: "9.7.1"
+          cache-disabled: true
       - name: Build the consumer app (latest toolchain)
         if: matrix.toolchain == 'latest'
         working-directory: sdks/kotlin/samples/android-consumer
@@ -1656,7 +1687,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
+      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
+      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.api-level != 36 }}
       - name: KVM for the emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
