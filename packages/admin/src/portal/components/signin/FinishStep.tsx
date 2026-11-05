@@ -875,7 +875,7 @@ function FinishForm({
         {platformTerms ? (
           <div>
             <Checkbox
-              className="pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-2.5 pointer-coarse:[&_label]:py-2.5"
+              className="max-desk:min-h-11 max-desk:items-center max-desk:[&_label]:-my-3 max-desk:[&_label]:py-3 pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-3 pointer-coarse:[&_label]:py-3"
               ref={platformRef}
               checked={platformOk}
               onCheckedChange={(v) => {
@@ -899,7 +899,7 @@ function FinishForm({
         {productTerms ? (
           <div>
             <Checkbox
-              className="pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-2.5 pointer-coarse:[&_label]:py-2.5"
+              className="max-desk:min-h-11 max-desk:items-center max-desk:[&_label]:-my-3 max-desk:[&_label]:py-3 pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-3 pointer-coarse:[&_label]:py-3"
               ref={productRef}
               checked={productOk}
               onCheckedChange={(v) => {
@@ -1266,7 +1266,7 @@ function FinishForm({
           <div className="space-y-3 pointer-coarse:space-y-0">
             {isNew && gate.profile.birthdate ? (
               <Checkbox
-                className="pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-2.5 pointer-coarse:[&_label]:py-2.5"
+                className="max-desk:min-h-11 max-desk:items-center max-desk:[&_label]:-my-3 max-desk:[&_label]:py-3 pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-3 pointer-coarse:[&_label]:py-3"
                 descriptionClassName={AUTH_HELP_CLASS}
                 checked={birth}
                 onCheckedChange={setBirth}
@@ -1279,7 +1279,7 @@ function FinishForm({
             {termsPanel}
             {passkeyOffer && isNew ? (
               <Checkbox
-                className="pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-2.5 pointer-coarse:[&_label]:py-2.5"
+                className="max-desk:min-h-11 max-desk:items-center max-desk:[&_label]:-my-3 max-desk:[&_label]:py-3 pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:[&_label]:-my-3 pointer-coarse:[&_label]:py-3"
                 checked={passkey}
                 onCheckedChange={setPasskey}
                 label={

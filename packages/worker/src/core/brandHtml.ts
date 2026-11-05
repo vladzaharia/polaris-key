@@ -250,7 +250,7 @@ const AUTH_CARD_RULES = [
   // React original): the lockup above, one 28.5 rem card (22 px radius) with an optional header,
   // the step body (one primary), and an optional footer. Phones: the card goes edge to edge
   // under a 56 px lockup row (36 px tall lockup, 196 px wide: the guide's 180 minimum).
-  `[data-brand=locker] body{display:block;place-items:normal;min-height:100dvh;padding:clamp(2.5rem,12vh,7.5rem) 1rem 3rem}`,
+  `[data-brand=locker] body{display:block;place-items:normal;min-height:100dvh;padding:clamp(2.5rem,12vh,6rem) 1rem 3rem}`,
   `.ac-brand{display:flex;justify-content:center;margin:0 0 2.5rem;color:var(--strong)}`,
   `@media (max-height: 32rem){[data-brand=locker] body{padding-top:1.5rem}.ac-brand{margin-bottom:1.5rem}}`,
   `.ac-brand svg{display:block;max-width:100%;height:auto}`,
