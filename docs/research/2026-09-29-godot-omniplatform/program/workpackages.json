@@ -699,7 +699,7 @@
         "Split from P0-25 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/P0-25b-portal-public-route-tables.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-26",
@@ -748,7 +748,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-27-one-adapter-store-delivery-commerce.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-27a",
@@ -867,7 +867,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-30-guardrails-test-harness-test-layout.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-31",
@@ -916,7 +916,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/P0-32-one-data-layer-console-portal.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-33",
@@ -964,7 +964,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/P0-34-shared-hash-router-core.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-35",
@@ -3494,7 +3494,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/feeds-updates-packs.md"
       ],
       "brief": "wp/P4-33-pack-transports-auto.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P4-34",
@@ -4395,7 +4395,7 @@
         "plans/CC-01.md §4, §6"
       ],
       "brief": "wp/I-13-exchange-endpoint.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -4432,7 +4432,7 @@
         "plans/CC-01.md §4, §6"
       ],
       "brief": "wp/I-14-game-verifiers.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "I-15",
@@ -4499,7 +4499,7 @@
         "plans/CC-01.md §4, §6"
       ],
       "brief": "wp/I-15b-native-redirect-sdks.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -5403,7 +5403,7 @@
         "plans/CC-01.md §4, §6"
       ],
       "brief": "wp/I-40-account-initiated-pairing.md",
-      "status": "in-review",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -5588,7 +5588,7 @@
         "plans/CC-01-cloud-sync.md §0 (U-05 shipped in v0.9.17; U-01b joins its plan)"
       ],
       "brief": "wp/U-05-cloud-sync-do.md",
-      "status": "in-review",
+      "status": "done",
       "planRef": "U-01"
     },
     {
@@ -5613,7 +5613,7 @@
         "DX consolidation 2026-10-07: keep (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/U-19-security-review.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "U-18",
@@ -5737,7 +5737,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-07-sdk-settings-swift-kotlin.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "U-01"
     },
     {
@@ -5770,7 +5770,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-21-sdk-settings-godot.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "U-01"
     },
     {
@@ -5835,7 +5835,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-11a-console-data-settings.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "U-15a",
@@ -5918,7 +5918,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-10-saves-backend.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "U-01"
     },
     {
@@ -6062,7 +6062,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-09-collections-backend.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "U-01"
     },
     {
@@ -6086,7 +6086,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-22-collections-sdk-node-react-python.md",
-      "status": "in-progress",
+      "status": "done",
       "planRef": "U-01"
     },
     {
@@ -6125,7 +6125,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-23-collections-sdk-swift-kotlin-godot.md",
-      "status": "in-progress",
+      "status": "done",
       "planRef": "U-01"
     },
     {
@@ -7254,7 +7254,7 @@
         "Split from F-33 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/F-33b-service-tokens-list-filtering.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "F-34",
@@ -7354,7 +7354,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/feeds-updates-packs.md"
       ],
       "brief": "wp/F-37-pkey-feeds-setup-write-cli-naming.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "F-38",
@@ -7844,7 +7844,7 @@
         "Split from A-19 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/A-19b-channel-labels-literal-lint.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-20",
@@ -7868,7 +7868,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/release-distribution.md"
       ],
       "brief": "wp/A-20-product-facts-channel-read-model.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-21",
@@ -8086,7 +8086,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/release-distribution.md"
       ],
       "brief": "wp/A-28-one-store-app-binding-derived-identity.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-29",
@@ -8110,7 +8110,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/release-distribution.md"
       ],
       "brief": "wp/A-29-homebrew-formula-cli-archives.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-30",
@@ -8726,7 +8726,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/PX-W13b-display-name-settings.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-W14",
@@ -10125,7 +10125,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/rbac-admin.md"
       ],
       "brief": "wp/ST-31-roles-bindings-invites-members-pages.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-32",
@@ -10176,7 +10176,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md"
       ],
       "brief": "wp/ST-34-admin-scope-personal-tokens-pkey-login.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-35",
@@ -10477,7 +10477,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/products-onboarding.md"
       ],
       "brief": "wp/ST-46-interactive-pkey-init.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-47",
@@ -12625,7 +12625,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-61)"
       ],
       "brief": "wp/SP-61-spring-boot-starter.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-62",
@@ -13358,7 +13358,7 @@
         "Split from UK-04 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/UK-04b-elements-cdn-module.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-05",
@@ -13590,7 +13590,7 @@
         "Split from UK-11 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/UK-11b-godot-game-look-scenes-baselines.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-12",
@@ -16908,7 +16908,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/UK-42-activation-holders-web.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "UK-43",
@@ -17881,7 +17881,7 @@
         "docs/research/2026-10-08-llm-audit/README.md §5.1, §5.5, §8.3 (AX-07)"
       ],
       "brief": "wp/AX-07-the-agent-kit-layout-release-zip-references-lint.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "AX-08",
@@ -18464,7 +18464,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §7.10, §10, §12, §16"],
       "brief": "wp/LK-11-cutover.md",
-      "status": "todo",
+      "status": "done",
       "deferred": "O5, O6, O8, O9, O10 done"
     },
     {
@@ -18483,7 +18483,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §7.1, §8"],
       "brief": "wp/LK-12-locker-badges-in-use.md",
-      "status": "in-review",
+      "status": "done",
       "deferred": "LK-11 is live"
     },
     {
@@ -18751,7 +18751,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §2.9", "plans/CC-01.md §4"],
       "brief": "wp/CC-02-service-row.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "CC-03",
@@ -18780,7 +18780,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §2.8", "plans/CC-01.md §4"],
       "brief": "wp/CC-03-core-device-keys.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -18865,7 +18865,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §2.2-§2.4", "plans/CC-01.md §4"],
       "brief": "wp/CC-06-connect-identity.md",
-      "status": "in-progress",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -18911,7 +18911,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §3", "plans/CC-01.md §4"],
       "brief": "wp/CC-08-node-connect.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "CC-09",
@@ -18928,7 +18928,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §3", "plans/CC-01.md §4"],
       "brief": "wp/CC-09-react-connect.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "CC-10",
@@ -18945,7 +18945,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §3", "plans/CC-01.md §4"],
       "brief": "wp/CC-10-python-connect.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "CC-11",
@@ -18962,7 +18962,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §3", "plans/CC-01.md §4"],
       "brief": "wp/CC-11-swift-connect.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "CC-12",
@@ -18979,7 +18979,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §3", "plans/CC-01.md §4"],
       "brief": "wp/CC-12-kotlin-connect.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "CC-12b",
@@ -18996,7 +18996,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §3, C7", "plans/CC-01.md §4"],
       "brief": "wp/CC-12b-android-connect.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "CC-13",
@@ -19040,7 +19040,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §3", "plans/CC-01.md §4"],
       "brief": "wp/CC-14-godot-connect.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "CC-14b",
@@ -19057,7 +19057,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §3, C6, C17", "plans/CC-01.md §4"],
       "brief": "wp/CC-14b-godot-native-ops.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "CC-15",
@@ -19077,7 +19077,7 @@
         "plans/CC-01.md §4"
       ],
       "brief": "wp/CC-15-nearby-mode-v.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "CC-16",
@@ -19117,7 +19117,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §4", "plans/CC-01.md §4"],
       "brief": "wp/CC-17-docs-help.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "CC-18",
@@ -19134,7 +19134,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §7", "plans/CC-01.md §4"],
       "brief": "wp/CC-18-security-review.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "CC-19",
@@ -19162,7 +19162,7 @@
         "needs its own plan before code"
       ],
       "brief": "wp/CC-19-inter-account-links.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "CC-20",
@@ -19183,7 +19183,7 @@
         "needs its own plan before code"
       ],
       "brief": "wp/CC-20-direct-transfer.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "CC-21",
@@ -19316,7 +19316,7 @@
       "optional": false,
       "refs": ["plans/CC-01-auto-sign-in.md §5, §6", "plans/CC-01.md §4"],
       "brief": "wp/I-42-platform-signin-settings.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "I-43",
@@ -19333,7 +19333,7 @@
       "optional": false,
       "refs": ["plans/CC-01-auto-sign-in.md §5, §6", "plans/CC-01.md §4"],
       "brief": "wp/I-43-link-offer.md",
-      "status": "in-progress",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -19351,7 +19351,7 @@
       "optional": false,
       "refs": ["plans/CC-01-auto-sign-in.md §5", "plans/CC-01.md §4"],
       "brief": "wp/I-44-swift-auto-signin.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "I-45",
@@ -19368,7 +19368,7 @@
       "optional": false,
       "refs": ["plans/CC-01-auto-sign-in.md §5", "plans/CC-01.md §4"],
       "brief": "wp/I-45-kotlin-auto-signin.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "I-46",
@@ -19391,7 +19391,7 @@
       "optional": false,
       "refs": ["plans/CC-01-auto-sign-in.md §5, §6", "plans/CC-01.md §4"],
       "brief": "wp/I-46-web-auto-signin.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "I-47",
@@ -19408,7 +19408,7 @@
       "optional": false,
       "refs": ["plans/CC-01-auto-sign-in.md §5", "plans/CC-01.md §4"],
       "brief": "wp/I-47-node-python-auto-signin.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "I-48",
@@ -19425,7 +19425,7 @@
       "optional": false,
       "refs": ["plans/CC-01-auto-sign-in.md §5", "plans/CC-01.md §4"],
       "brief": "wp/I-48-godot-auto-signin.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "I-49",
@@ -19442,7 +19442,7 @@
       "optional": false,
       "refs": ["plans/CC-01-auto-sign-in.md §5, R-11", "plans/CC-01.md §4"],
       "brief": "wp/I-49-silent-restore.md",
-      "status": "todo",
+      "status": "in-review",
       "planRef": "CC-01"
     },
     {
@@ -19460,7 +19460,7 @@
       "optional": false,
       "refs": ["plans/CC-01-auto-sign-in.md §5, R-14", "plans/CC-01.md §4"],
       "brief": "wp/I-50-signin-docs-help.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "U-33",
@@ -19477,7 +19477,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5, §6", "plans/CC-01.md §4"],
       "brief": "wp/U-33-e2e-files-contract.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -19503,7 +19503,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5, §6", "plans/CC-01.md §4"],
       "brief": "wp/U-34-client-core-e2e.md",
-      "status": "in-progress",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -19527,7 +19527,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5, §6", "plans/CC-01.md §4"],
       "brief": "wp/U-35-machine-v3.md",
-      "status": "in-progress",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -19554,7 +19554,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5, §6", "plans/CC-01.md §4"],
       "brief": "wp/U-36-core-key-ring.md",
-      "status": "in-progress",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -19578,7 +19578,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5", "plans/CC-01.md §4"],
       "brief": "wp/U-37-delta-files-worker.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -19636,7 +19636,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5", "plans/CC-01.md §4"],
       "brief": "wp/U-40-e2e-client-godot.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "U-41",
@@ -19653,7 +19653,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5", "plans/CC-01.md §4"],
       "brief": "wp/U-41-background-transfers.md",
-      "status": "in-progress"
+      "status": "in-review"
     },
     {
       "id": "U-42",
@@ -19675,7 +19675,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5", "plans/CC-01.md §4"],
       "brief": "wp/U-42-kit-sync-screens.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "U-43",
@@ -19692,7 +19692,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5, §7", "plans/CC-01.md §4"],
       "brief": "wp/U-43-security-review-e2e.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "U-44",
@@ -19709,7 +19709,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5, §7", "plans/CC-01.md §4"],
       "brief": "wp/U-44-security-review-files.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "U-45",
@@ -19726,7 +19726,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5, §7", "plans/CC-01.md §4"],
       "brief": "wp/U-45-security-review-sdk-keys.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "U-46",
@@ -19747,7 +19747,7 @@
         "plans/CC-01-cloud-sync.md §2.7"
       ],
       "brief": "wp/U-46-collection-records-every-sdk.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "CC-27",
@@ -19783,7 +19783,7 @@
       "optional": false,
       "refs": ["LF 2026-10-31 A6-FIX-NP/SK/G entries"],
       "brief": "wp/CC-28-a6-fix.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "I-51",
@@ -19878,7 +19878,7 @@
         "plans/UI-CONFIRM-PROVIDER.md (lead plan, 2026-10-31; lives in the lead directory, not in the repo)"
       ],
       "brief": "wp/UK-66-ucp.md",
-      "status": "todo",
+      "status": "done",
       "deferred": "Held on wp/UCP (9a9bd3106d) until the SwiftUI simulator baselines exist (owner step 8z); the uiMatrixVersion bump coordinates with I-47.U."
     },
     {
@@ -19899,7 +19899,7 @@
         "wp/U-22.K (K.0-K.2 done), K.3 SwiftUI, K.4 Compose, K.5 Godot; K.S (SwiftUI baselines) held on owner step 8z"
       ],
       "brief": "wp/U-47-kit-saves.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "U-48",
@@ -19916,7 +19916,7 @@
       "optional": false,
       "refs": ["plans/U-22-U-23-U-37-U-41-slices.md (lead directory)"],
       "brief": "wp/U-48-saves-bindings.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "U-49",
@@ -19935,7 +19935,7 @@
         "U-22.UX2 plan (lead directory, plans/U-22.UX2.md; outside the repo)"
       ],
       "brief": "wp/U-49-u-22-ux2.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "U-50",
@@ -19952,7 +19952,7 @@
       "optional": false,
       "refs": ["LF 2026-10-31 CROSS-SDK READ-AFTER-WRITE (lead directory)"],
       "brief": "wp/U-50-saves-fileptr.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "SP-69",
@@ -19969,7 +19969,7 @@
       "optional": false,
       "refs": ["LF 2026-10-31 ANCHOR-HARDEN entries"],
       "brief": "wp/SP-69-anchor-harden.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-70",
@@ -19986,7 +19986,7 @@
       "optional": false,
       "refs": ["LF 2026-10-31 SWIFT-HARDEN entries"],
       "brief": "wp/SP-70-swift-harden.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-71",
@@ -20003,7 +20003,7 @@
       "optional": false,
       "refs": ["ci-scope.json lane swift-linux"],
       "brief": "wp/SP-71-swift-linux-ci.md",
-      "status": "in-review"
+      "status": "done"
     }
   ]
 }
