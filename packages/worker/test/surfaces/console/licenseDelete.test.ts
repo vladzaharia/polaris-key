@@ -68,6 +68,8 @@ const LICENSE_KEYED = [
   // U-27.6: the provisioned-secret backfill ledger; Core deletes the row (`core/licensing/grants.ts`).
   "provisioned_secret_moves",
   "registry_tokens",
+  // LX-41: the licence's subscription; Core deletes it with the grants (`core/licensing/grants.ts`).
+  "subscriptions",
 ].sort();
 
 let db: SqliteDb;
@@ -201,6 +203,15 @@ async function seedEverything(
     licenseId,
     NOW,
     NOW + 3 * DAY,
+  );
+  await db.run(
+    `INSERT INTO subscriptions (product, id, license_id, source, status, period, current_period_end, created_at, modified_at, modified_by)
+     VALUES (?, 'sub_1', ?, 'manual', 'active', 'P1M', ?, ?, ?, 'u1')`,
+    SLUG,
+    licenseId,
+    NOW + 30 * DAY,
+    NOW,
+    NOW,
   );
   await db.run(
     "INSERT INTO license_auto_attach_blocks (product, license_id, account_id, created_at) VALUES (?, ?, 'acct_removed', ?)",

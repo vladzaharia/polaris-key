@@ -210,6 +210,16 @@ export function licenseGrantDeleteStatements(target: {
 }): DbStatement[] {
   const { product, licenseId } = target;
   return [
+    // LX-41: the licence's subscription and those on its grants, ahead of the grants they name.
+    {
+      sql: "DELETE FROM subscriptions WHERE product = ? AND license_id = ?",
+      params: [product, licenseId],
+    },
+    {
+      sql: `DELETE FROM subscriptions
+             WHERE product = ? AND grant_id IN (SELECT id FROM grants WHERE product = ? AND license_id = ?)`,
+      params: [product, product, licenseId],
+    },
     {
       sql: `DELETE FROM grant_entitlements
              WHERE product = ? AND grant_id IN (SELECT id FROM grants WHERE product = ? AND license_id = ?)`,
