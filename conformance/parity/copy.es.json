@@ -565,6 +565,10 @@
       "title": "Archivo no abierto",
       "message": "El archivo sincronizado no superó la comprobación y no se usó. Inténtalo de nuevo."
     },
+    "sync-merge-closed": {
+      "title": "Ya decidido",
+      "message": "La elección ya se hizo o la sustituyó un cambio más reciente. No se cambió nada."
+    },
     "invalid-options": {
       "title": "App no configurada",
       "message": "El sistema de licencias de la app no está configurado correctamente. Contacta con el desarrollador."

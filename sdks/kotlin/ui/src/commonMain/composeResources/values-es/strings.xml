@@ -2929,6 +2929,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_file_invalid_message">El archivo sincronizado no superó la comprobación y no se usó. Inténtalo de nuevo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_merge_closed_title">Ya decidido</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_merge_closed_message">La elección ya se hizo o la sustituyó un cambio más reciente. No se cambió nada.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App no configurada</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_message">El sistema de licencias de la app no está configurado correctamente. Contacta con el desarrollador.</string>

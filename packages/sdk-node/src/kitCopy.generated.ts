@@ -1671,6 +1671,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-file-invalid.title": "File not opened",
     "core.codes.sync-file-invalid.message":
       "The synced file failed its check, so it wasn't used. Try again.",
+    "core.codes.sync-merge-closed.title": "Already decided",
+    "core.codes.sync-merge-closed.message":
+      "The choice was already made, or a newer change replaced it. Nothing changed.",
     "core.codes.invalid-options.title": "App not set up",
     "core.codes.invalid-options.message":
       "The app's licensing isn't set up correctly. Contact the developer.",
@@ -3777,6 +3780,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-file-invalid.title": "Datei nicht geöffnet",
     "core.codes.sync-file-invalid.message":
       "Die synchronisierte Datei hat die Prüfung nicht bestanden und wurde nicht verwendet. Versuchen Sie es erneut.",
+    "core.codes.sync-merge-closed.title": "Bereits entschieden",
+    "core.codes.sync-merge-closed.message":
+      "Die Auswahl wurde bereits getroffen oder durch eine neuere Änderung ersetzt. Es wurde nichts geändert.",
     "core.codes.invalid-options.title": "App nicht eingerichtet",
     "core.codes.invalid-options.message":
       "Die Lizenzierung der App ist nicht korrekt eingerichtet. Wenden Sie sich an den Entwickler.",
@@ -5874,6 +5880,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-file-invalid.title": "Fichier non ouvert",
     "core.codes.sync-file-invalid.message":
       "Le fichier synchronisé n'a pas passé la vérification et n'a pas été utilisé. Réessayez.",
+    "core.codes.sync-merge-closed.title": "Déjà décidé",
+    "core.codes.sync-merge-closed.message":
+      "Le choix a déjà été fait ou remplacé par une modification plus récente. Rien n’a changé.",
     "core.codes.invalid-options.title": "App non configurée",
     "core.codes.invalid-options.message":
       "La gestion des licences de l’app n’est pas correctement configurée. Contactez le développeur.",
@@ -7958,6 +7967,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-file-invalid.title": "Archivo no abierto",
     "core.codes.sync-file-invalid.message":
       "El archivo sincronizado no superó la comprobación y no se usó. Inténtalo de nuevo.",
+    "core.codes.sync-merge-closed.title": "Ya decidido",
+    "core.codes.sync-merge-closed.message":
+      "La elección ya se hizo o la sustituyó un cambio más reciente. No se cambió nada.",
     "core.codes.invalid-options.title": "App no configurada",
     "core.codes.invalid-options.message":
       "El sistema de licencias de la app no está configurado correctamente. Contacta con el desarrollador.",
@@ -10008,6 +10020,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-file-invalid.title": "Arquivo não aberto",
     "core.codes.sync-file-invalid.message":
       "O arquivo sincronizado não passou na verificação e não foi usado. Tente novamente.",
+    "core.codes.sync-merge-closed.title": "Já decidido",
+    "core.codes.sync-merge-closed.message":
+      "A escolha já foi feita ou foi substituída por uma alteração mais recente. Nada foi alterado.",
     "core.codes.invalid-options.title": "App não configurado",
     "core.codes.invalid-options.message":
       "O licenciamento do app não está configurado corretamente. Contate o desenvolvedor.",
@@ -12069,6 +12084,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-file-invalid.title": "File non aperto",
     "core.codes.sync-file-invalid.message":
       "Il file sincronizzato non ha superato il controllo e non è stato usato. Riprova.",
+    "core.codes.sync-merge-closed.title": "Già deciso",
+    "core.codes.sync-merge-closed.message":
+      "La scelta è già stata fatta o sostituita da una modifica più recente. Non è cambiato nulla.",
     "core.codes.invalid-options.title": "App non configurata",
     "core.codes.invalid-options.message":
       "La gestione delle licenze dell'app non è configurata correttamente. Contatta lo sviluppatore.",
@@ -14150,6 +14168,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-file-invalid.title": "ファイルを開けません",
     "core.codes.sync-file-invalid.message":
       "同期したファイルが検証に通らなかったため、使用しませんでした。もう一度お試しください。",
+    "core.codes.sync-merge-closed.title": "選択済み",
+    "core.codes.sync-merge-closed.message":
+      "すでに選択済みか、より新しい変更に置き換えられています。何も変更されていません。",
     "core.codes.invalid-options.title": "アプリが設定されていません",
     "core.codes.invalid-options.message":
       "アプリのライセンス設定が正しくありません。開発者に問い合わせてください。",
@@ -16149,6 +16170,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-file-invalid.title": "파일을 열 수 없음",
     "core.codes.sync-file-invalid.message":
       "동기화된 파일이 검사를 통과하지 못해 사용하지 않았습니다. 다시 시도하세요.",
+    "core.codes.sync-merge-closed.title": "이미 선택됨",
+    "core.codes.sync-merge-closed.message":
+      "이미 선택했거나 더 최근 변경으로 대체되었습니다. 변경된 내용은 없습니다.",
     "core.codes.invalid-options.title": "앱이 설정되지 않음",
     "core.codes.invalid-options.message":
       "앱의 라이선스 설정이 올바르지 않아요. 개발자에게 문의하세요.",
@@ -18003,6 +18027,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-file-invalid.title": "无法打开文件",
     "core.codes.sync-file-invalid.message":
       "同步的文件未通过校验，因此未使用。请重试。",
+    "core.codes.sync-merge-closed.title": "已做出选择",
+    "core.codes.sync-merge-closed.message":
+      "已经做出选择，或已被更新的更改取代。未做任何更改。",
     "core.codes.invalid-options.title": "应用未设置",
     "core.codes.invalid-options.message":
       "应用的许可功能未正确设置。请联系开发者。",

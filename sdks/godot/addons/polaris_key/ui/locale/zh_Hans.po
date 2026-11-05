@@ -7648,6 +7648,16 @@ msgstr "无法打开文件"
 msgid "core.codes.sync-file-invalid.message"
 msgstr "同步的文件未通过校验，因此未使用。请重试。"
 
+#. Already decided
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-merge-closed.title"
+msgstr "已做出选择"
+
+#. The choice was already made, or a newer change replaced it. Nothing changed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-merge-closed.message"
+msgstr "已经做出选择，或已被更新的更改取代。未做任何更改。"
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"

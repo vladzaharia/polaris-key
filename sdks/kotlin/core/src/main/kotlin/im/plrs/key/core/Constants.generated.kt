@@ -152,6 +152,7 @@ public object ErrorCode {
     public const val recoveryCodeInvalid: String = "recovery-code-invalid"
     public const val syncEncryptionPinned: String = "sync-encryption-pinned"
     public const val syncFileInvalid: String = "sync-file-invalid"
+    public const val syncMergeClosed: String = "sync-merge-closed"
     public const val invalidOptions: String = "invalid-options"
     public const val invalidArgument: String = "invalid-argument"
     public const val invokeNotAllowed: String = "invoke-not-allowed"
@@ -383,6 +384,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "recovery-code-invalid",
     "sync-encryption-pinned",
     "sync-file-invalid",
+    "sync-merge-closed",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -614,6 +616,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "recovery-code-invalid" to "client",
     "sync-encryption-pinned" to "client",
     "sync-file-invalid" to "client",
+    "sync-merge-closed" to "client",
     "invalid-options" to "client",
     "invalid-argument" to "client",
     "invoke-not-allowed" to "client",
@@ -1576,6 +1579,66 @@ public val TRANSFER_EVENT_VALUES: List<String> = listOf(
     "transferProgress",
     "transferDone",
     "transferFailed",
+)
+
+/** The one Cloud Sync conflict vocabulary of settings and records (WIRE-CONTRACT-V5 §13.6, plans/U-08.md §2.1). The server applies every policy; `revision` is the only one that asks, through a MergeRequest. Mirrors `SYNC_CONFLICTS` in `@polaris-key/catalog`; a test keeps them equal. */
+public object SyncConflict {
+    public const val lastwrite: String = "lastWrite"
+    public const val max: String = "max"
+    public const val min: String = "min"
+    public const val merge: String = "merge"
+    public const val union: String = "union"
+    public const val revision: String = "revision"
+}
+
+/** Every `SyncConflict` value, in source order. */
+public val SYNC_CONFLICT_VALUES: List<String> = listOf(
+    "lastWrite",
+    "max",
+    "min",
+    "merge",
+    "union",
+    "revision",
+)
+
+/** What a MergeRequest's `keep` takes (WIRE-CONTRACT-V5 §11.5, plans/U-08.md §2.2): this device's copy (`local`), the cloud's (`remote`), both (`both`, saves only, into a free slot) or a new value (`value`, records only). A request lists the choices it offers in `choices`. */
+public object MergeChoice {
+    public const val local: String = "local"
+    public const val remote: String = "remote"
+    public const val both: String = "both"
+    public const val value: String = "value"
+}
+
+/** Every `MergeChoice` value, in source order. */
+public val MERGE_CHOICE_VALUES: List<String> = listOf(
+    "local",
+    "remote",
+    "both",
+    "value",
+)
+
+/** Why a MergeRequest is open (plans/U-08.md §2.2): `write`, a `revision` write met a newer copy; `accountMerge`, an account merge parked the other account's copy (U-08b). */
+public object MergeCause {
+    public const val write: String = "write"
+    public const val accountmerge: String = "accountMerge"
+}
+
+/** Every `MergeCause` value, in source order. */
+public val MERGE_CAUSE_VALUES: List<String> = listOf(
+    "write",
+    "accountMerge",
+)
+
+/** The MergeRequest events on the client's `events` stream under the `cloudSync` kind (WIRE-CONTRACT-V5 §11.5, plans/U-08.md §2.5), in camelCase in every SDK: `conflictOpened` (a request opened, or reopened after its keep failed) and `conflictClosed` (with `how`: `local`, `remote`, `value`, `both` or `superseded`). */
+public object MergeEvent {
+    public const val conflictopened: String = "conflictOpened"
+    public const val conflictclosed: String = "conflictClosed"
+}
+
+/** Every `MergeEvent` value, in source order. */
+public val MERGE_EVENT_VALUES: List<String> = listOf(
+    "conflictOpened",
+    "conflictClosed",
 )
 
 /** The `X-PKey-*` request header names (wire contract v3 §5). */

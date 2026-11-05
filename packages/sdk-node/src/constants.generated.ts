@@ -146,6 +146,7 @@ export const ErrorCode = {
   recoveryCodeInvalid: "recovery-code-invalid",
   syncEncryptionPinned: "sync-encryption-pinned",
   syncFileInvalid: "sync-file-invalid",
+  syncMergeClosed: "sync-merge-closed",
   invalidOptions: "invalid-options",
   invalidArgument: "invalid-argument",
   invokeNotAllowed: "invoke-not-allowed",
@@ -378,6 +379,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "recovery-code-invalid",
   "sync-encryption-pinned",
   "sync-file-invalid",
+  "sync-merge-closed",
   "invalid-options",
   "invalid-argument",
   "invoke-not-allowed",
@@ -612,6 +614,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "recovery-code-invalid": "client",
   "sync-encryption-pinned": "client",
   "sync-file-invalid": "client",
+  "sync-merge-closed": "client",
   "invalid-options": "client",
   "invalid-argument": "client",
   "invoke-not-allowed": "client",
@@ -1605,6 +1608,70 @@ export const TRANSFER_EVENT_VALUES: readonly TransferEvent[] = [
   "transferProgress",
   "transferDone",
   "transferFailed",
+];
+
+/** The one Cloud Sync conflict vocabulary of settings and records (WIRE-CONTRACT-V5 §13.6, plans/U-08.md §2.1). The server applies every policy; `revision` is the only one that asks, through a MergeRequest. Mirrors `SYNC_CONFLICTS` in `@polaris-key/catalog`; a test keeps them equal. */
+export const SyncConflict = {
+  lastwrite: "lastWrite",
+  max: "max",
+  min: "min",
+  merge: "merge",
+  union: "union",
+  revision: "revision",
+} as const;
+export type SyncConflict = (typeof SyncConflict)[keyof typeof SyncConflict];
+
+/** Every `SyncConflict` value, in source order. */
+export const SYNC_CONFLICT_VALUES: readonly SyncConflict[] = [
+  "lastWrite",
+  "max",
+  "min",
+  "merge",
+  "union",
+  "revision",
+];
+
+/** What a MergeRequest's `keep` takes (WIRE-CONTRACT-V5 §11.5, plans/U-08.md §2.2): this device's copy (`local`), the cloud's (`remote`), both (`both`, saves only, into a free slot) or a new value (`value`, records only). A request lists the choices it offers in `choices`. */
+export const MergeChoice = {
+  local: "local",
+  remote: "remote",
+  both: "both",
+  value: "value",
+} as const;
+export type MergeChoice = (typeof MergeChoice)[keyof typeof MergeChoice];
+
+/** Every `MergeChoice` value, in source order. */
+export const MERGE_CHOICE_VALUES: readonly MergeChoice[] = [
+  "local",
+  "remote",
+  "both",
+  "value",
+];
+
+/** Why a MergeRequest is open (plans/U-08.md §2.2): `write`, a `revision` write met a newer copy; `accountMerge`, an account merge parked the other account's copy (U-08b). */
+export const MergeCause = {
+  write: "write",
+  accountmerge: "accountMerge",
+} as const;
+export type MergeCause = (typeof MergeCause)[keyof typeof MergeCause];
+
+/** Every `MergeCause` value, in source order. */
+export const MERGE_CAUSE_VALUES: readonly MergeCause[] = [
+  "write",
+  "accountMerge",
+];
+
+/** The MergeRequest events on the client's `events` stream under the `cloudSync` kind (WIRE-CONTRACT-V5 §11.5, plans/U-08.md §2.5), in camelCase in every SDK: `conflictOpened` (a request opened, or reopened after its keep failed) and `conflictClosed` (with `how`: `local`, `remote`, `value`, `both` or `superseded`). */
+export const MergeEvent = {
+  conflictopened: "conflictOpened",
+  conflictclosed: "conflictClosed",
+} as const;
+export type MergeEvent = (typeof MergeEvent)[keyof typeof MergeEvent];
+
+/** Every `MergeEvent` value, in source order. */
+export const MERGE_EVENT_VALUES: readonly MergeEvent[] = [
+  "conflictOpened",
+  "conflictClosed",
 ];
 
 /** The `X-PKey-*` request header names (wire contract v3 §5). */

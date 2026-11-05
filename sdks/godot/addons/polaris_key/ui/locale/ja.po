@@ -7648,6 +7648,16 @@ msgstr "ファイルを開けません"
 msgid "core.codes.sync-file-invalid.message"
 msgstr "同期したファイルが検証に通らなかったため、使用しませんでした。もう一度お試しください。"
 
+#. Already decided
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-merge-closed.title"
+msgstr "選択済み"
+
+#. The choice was already made, or a newer change replaced it. Nothing changed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-merge-closed.message"
+msgstr "すでに選択済みか、より新しい変更に置き換えられています。何も変更されていません。"
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"

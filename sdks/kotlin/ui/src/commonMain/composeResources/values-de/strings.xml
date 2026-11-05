@@ -2916,6 +2916,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_file_invalid_message">Die synchronisierte Datei hat die Prüfung nicht bestanden und wurde nicht verwendet. Versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_merge_closed_title">Bereits entschieden</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_merge_closed_message">Die Auswahl wurde bereits getroffen oder durch eine neuere Änderung ersetzt. Es wurde nichts geändert.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App nicht eingerichtet</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_message">Die Lizenzierung der App ist nicht korrekt eingerichtet. Wenden Sie sich an den Entwickler.</string>

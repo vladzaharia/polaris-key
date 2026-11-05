@@ -2916,6 +2916,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_file_invalid_message">The synced file failed its check, so it wasn't used. Try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_merge_closed_title">Already decided</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_merge_closed_message">The choice was already made, or a newer change replaced it. Nothing changed.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App not set up</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_message">The app's licensing isn't set up correctly. Contact the developer.</string>

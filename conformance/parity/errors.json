@@ -838,6 +838,12 @@
       "description": "Cloud Sync files: a downloaded file failed a check the server could have caused (a segment tag, the manifest, a chunk id, plainSha256, a length, or the file binding of an end-to-end save) (WIRE-CONTRACT-V5 §13.10.4). A cancelled transfer is a transfer state, not this error."
     },
     {
+      "code": "sync-merge-closed",
+      "kind": "client",
+      "service": "sync",
+      "description": "Cloud Sync: `keep` was called on a MergeRequest that is no longer open, because a keep already closed it or an exact write or a delete superseded it. Nothing is sent or journalled (WIRE-CONTRACT-V5 §11.5)."
+    },
+    {
       "code": "invalid-options",
       "kind": "client",
       "service": "core",

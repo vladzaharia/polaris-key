@@ -2903,6 +2903,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_file_invalid_message">同步的文件未通过校验，因此未使用。请重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_merge_closed_title">已做出选择</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_merge_closed_message">已经做出选择，或已被更新的更改取代。未做任何更改。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">应用未设置</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_message">应用的许可功能未正确设置。请联系开发者。</string>

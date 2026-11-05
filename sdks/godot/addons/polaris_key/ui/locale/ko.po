@@ -7648,6 +7648,16 @@ msgstr "파일을 열 수 없음"
 msgid "core.codes.sync-file-invalid.message"
 msgstr "동기화된 파일이 검사를 통과하지 못해 사용하지 않았습니다. 다시 시도하세요."
 
+#. Already decided
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-merge-closed.title"
+msgstr "이미 선택됨"
+
+#. The choice was already made, or a newer change replaced it. Nothing changed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-merge-closed.message"
+msgstr "이미 선택했거나 더 최근 변경으로 대체되었습니다. 변경된 내용은 없습니다."
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"

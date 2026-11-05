@@ -845,6 +845,8 @@
   "core.codes.sync-encryption-pinned.message": "This app needs encrypted sync, which isn't available right now. Sync stays off.",
   "core.codes.sync-file-invalid.title": "File not opened",
   "core.codes.sync-file-invalid.message": "The synced file failed its check, so it wasn't used. Try again.",
+  "core.codes.sync-merge-closed.title": "Already decided",
+  "core.codes.sync-merge-closed.message": "The choice was already made, or a newer change replaced it. Nothing changed.",
   "core.codes.invalid-options.title": "App not set up",
   "core.codes.invalid-options.message": "The app's licensing isn't set up correctly. Contact the developer.",
   "core.codes.invalid-argument.title": "Request not accepted",

@@ -302,6 +302,7 @@ export const DOCS_REDIRECT_TIERS: Readonly<
   "/docs/help/code/sync-failed/index.html": "public",
   "/docs/help/code/sync-file-invalid/index.html": "public",
   "/docs/help/code/sync-locked/index.html": "public",
+  "/docs/help/code/sync-merge-closed/index.html": "public",
   "/docs/help/code/terms_required/index.html": "public",
   "/docs/help/code/timeout/index.html": "public",
   "/docs/help/code/too-many-redirects/index.html": "public",

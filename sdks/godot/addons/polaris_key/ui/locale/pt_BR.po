@@ -7674,6 +7674,16 @@ msgstr "Arquivo não aberto"
 msgid "core.codes.sync-file-invalid.message"
 msgstr "O arquivo sincronizado não passou na verificação e não foi usado. Tente novamente."
 
+#. Already decided
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-merge-closed.title"
+msgstr "Já decidido"
+
+#. The choice was already made, or a newer change replaced it. Nothing changed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-merge-closed.message"
+msgstr "A escolha já foi feita ou foi substituída por uma alteração mais recente. Nada foi alterado."
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"

@@ -150,6 +150,7 @@ public enum ErrorCode {
     public static let recoveryCodeInvalid = "recovery-code-invalid"
     public static let syncEncryptionPinned = "sync-encryption-pinned"
     public static let syncFileInvalid = "sync-file-invalid"
+    public static let syncMergeClosed = "sync-merge-closed"
     public static let invalidOptions = "invalid-options"
     public static let invalidArgument = "invalid-argument"
     public static let invokeNotAllowed = "invoke-not-allowed"
@@ -381,6 +382,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "recovery-code-invalid",
     "sync-encryption-pinned",
     "sync-file-invalid",
+    "sync-merge-closed",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -612,6 +614,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "recovery-code-invalid": "client",
     "sync-encryption-pinned": "client",
     "sync-file-invalid": "client",
+    "sync-merge-closed": "client",
     "invalid-options": "client",
     "invalid-argument": "client",
     "invoke-not-allowed": "client",
@@ -1536,6 +1539,66 @@ public let TRANSFER_EVENT_VALUES: [String] = [
     "transferProgress",
     "transferDone",
     "transferFailed",
+]
+
+/// The one Cloud Sync conflict vocabulary of settings and records (WIRE-CONTRACT-V5 §13.6, plans/U-08.md §2.1). The server applies every policy; `revision` is the only one that asks, through a MergeRequest. Mirrors `SYNC_CONFLICTS` in `@polaris-key/catalog`; a test keeps them equal.
+public enum SyncConflict {
+    public static let lastwrite = "lastWrite"
+    public static let max = "max"
+    public static let min = "min"
+    public static let merge = "merge"
+    public static let union = "union"
+    public static let revision = "revision"
+}
+
+/// Every `SyncConflict` value, in source order.
+public let SYNC_CONFLICT_VALUES: [String] = [
+    "lastWrite",
+    "max",
+    "min",
+    "merge",
+    "union",
+    "revision",
+]
+
+/// What a MergeRequest's `keep` takes (WIRE-CONTRACT-V5 §11.5, plans/U-08.md §2.2): this device's copy (`local`), the cloud's (`remote`), both (`both`, saves only, into a free slot) or a new value (`value`, records only). A request lists the choices it offers in `choices`.
+public enum MergeChoice {
+    public static let local = "local"
+    public static let remote = "remote"
+    public static let both = "both"
+    public static let value = "value"
+}
+
+/// Every `MergeChoice` value, in source order.
+public let MERGE_CHOICE_VALUES: [String] = [
+    "local",
+    "remote",
+    "both",
+    "value",
+]
+
+/// Why a MergeRequest is open (plans/U-08.md §2.2): `write`, a `revision` write met a newer copy; `accountMerge`, an account merge parked the other account's copy (U-08b).
+public enum MergeCause {
+    public static let write = "write"
+    public static let accountmerge = "accountMerge"
+}
+
+/// Every `MergeCause` value, in source order.
+public let MERGE_CAUSE_VALUES: [String] = [
+    "write",
+    "accountMerge",
+]
+
+/// The MergeRequest events on the client's `events` stream under the `cloudSync` kind (WIRE-CONTRACT-V5 §11.5, plans/U-08.md §2.5), in camelCase in every SDK: `conflictOpened` (a request opened, or reopened after its keep failed) and `conflictClosed` (with `how`: `local`, `remote`, `value`, `both` or `superseded`).
+public enum MergeEvent {
+    public static let conflictopened = "conflictOpened"
+    public static let conflictclosed = "conflictClosed"
+}
+
+/// Every `MergeEvent` value, in source order.
+public let MERGE_EVENT_VALUES: [String] = [
+    "conflictOpened",
+    "conflictClosed",
 ]
 
 /// The `X-PKey-*` request header names (wire contract v3 §5).
