@@ -87,13 +87,21 @@ public enum class SyncState(public val wire: String) {
 }
 
 /** The machine's status: the state, the unsynced count, and why it is parked, blocked, locked or pinned. */
-public data class SyncStatus(val state: SyncState, val pending: Int, val reason: String? = null, val code: String? = null) {
+public data class SyncStatus(
+    val state: SyncState,
+    val pending: Int,
+    val reason: String? = null,
+    val code: String? = null,
+    /** The open MergeRequests; present only above 0. */
+    val conflicts: Int = 0,
+) {
     /** The corpus's `status` form; `reason` and `code` are absent when null. */
     public fun toJson(): JsonObject = buildJsonObject {
         put("state", state.wire)
         put("pending", pending)
         reason?.let { put("reason", it) }
         code?.let { put("code", it) }
+        if (conflicts > 0) put("conflicts", conflicts)
     }
 }
 
@@ -144,6 +152,26 @@ public sealed interface SyncEvent {
         override fun toJson(): JsonObject = buildJsonObject {
             put("type", "unsyncedData")
             put("count", count)
+        }
+    }
+
+    /** A MergeRequest opened (or reopened after its keep failed): ids only, never values. */
+    public data class Conflict(val id: String, val cause: String, val collection: String, val record: String) : SyncEvent {
+        override fun toJson(): JsonObject = buildJsonObject {
+            put("type", "conflict")
+            put("id", id)
+            put("cause", cause)
+            put("collection", collection)
+            put("record", record)
+        }
+    }
+
+    /** A MergeRequest closed; [how] is `local`, `remote`, `value`, `both` or `superseded`. */
+    public data class ConflictClosed(val id: String, val how: String) : SyncEvent {
+        override fun toJson(): JsonObject = buildJsonObject {
+            put("type", "conflictClosed")
+            put("id", id)
+            put("how", how)
         }
     }
 

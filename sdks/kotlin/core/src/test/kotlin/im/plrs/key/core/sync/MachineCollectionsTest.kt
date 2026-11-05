@@ -23,7 +23,7 @@ private val CATALOG = j(
     """{"settings":[],"collections":[
       {"name":"cards","policy":"merge"},
       {"name":"tags","policy":"union"},
-      {"name":"profiles","policy":"revision","resolve":"keepServer"},
+      {"name":"profiles","policy":"revision"},
       {"name":"notes","policy":"lastWrite"},
       {"name":"save.*","policy":"lastWrite"},
       {"name":"save.big.*","policy":"max","field":"best"}]}""",
@@ -131,20 +131,23 @@ class MachineCollectionsTest {
     }
 
     @Test
-    fun deleteStampsEveryPolicyButUnionAndRefusesRevision() {
+    fun deleteStampsEveryPolicyButUnionAndBasesARevisionDeleteOnTheSnapshotVersion() {
         val m = machine()
         settle(m)
         assertEquals(CallResult.Ok, m.delete("notes", "n1"))
         assertEquals(CallResult.Ok, m.delete("cards", "c1"))
         assertEquals(CallResult.Ok, m.delete("tags", "t1"))
-        assertEquals(CallResult.Failed("collection-unknown"), m.delete("profiles", "p1"))
+        assertEquals(CallResult.Ok, m.delete("profiles", "p1"))
         assertEquals(CallResult.Failed("collection-unknown"), m.delete("nope", "x"))
         assertEquals(CallResult.Failed("signed-out"), machine(null).delete("notes", "n"))
         val sent = settle(m).flatMap { ops(it) }
-        assertEquals(listOf("delete", "delete", "delete"), sent.map { (it["op"] as JsonPrimitive).content })
+        assertEquals(listOf("delete", "delete", "delete", "delete"), sent.map { (it["op"] as JsonPrimitive).content })
         assertNotNull(sent[0]["editedHlc"])
         assertNotNull(sent[1]["editedHlc"])
         assertNull(sent[2]["editedHlc"])
+        // A revision delete carries no clock stamp but a compare-and-swap base ("*": the record is not in the snapshot).
+        assertNull(sent[3]["editedHlc"])
+        assertEquals(JsonPrimitive("*"), sent[3]["baseVersion"])
         assertNull(m.record("notes", "n1"))
     }
 

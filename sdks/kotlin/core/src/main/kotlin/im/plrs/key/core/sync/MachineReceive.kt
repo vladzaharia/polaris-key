@@ -121,6 +121,8 @@ internal class MachineReceive(private val p: MachineParts) : SyncExchange {
         part.nextMutationId = 1
         val ops = part.pending
         part.pending = mutableListOf()
-        ops.forEach { p.journal.enqueue(part, it.resend(keepParked = true)) }
+        val renumbered = hashMapOf<Long, Long>()
+        ops.forEach { renumbered[it.mutationId] = p.journal.enqueue(part, it.resend(keepParked = true)).mutationId }
+        part.conflicts.values.forEach { c -> if (c.keepChoice != null) c.keepMutationId = renumbered[c.keepMutationId] ?: c.keepMutationId }
     }
 }

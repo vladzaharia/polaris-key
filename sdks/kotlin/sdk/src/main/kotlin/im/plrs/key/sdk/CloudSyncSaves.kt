@@ -17,10 +17,18 @@
 // of the steps, the choice of the revision, the format check (D-11), the slot cap, conflicts and the [SaveTransfer]
 // handle. Metadata is a [JsonObject] or a `@Serializable` type; `formatVersion` (an integer member) above the app's
 // `saveFormatVersion` reads as [SaveRead.NewerFormat].
+//
+// Conflicts (plans/U-08.md section 2.4): a write whose base is stale opens one [MergeRequest] per slot (S1) and the device
+// keeps its copy unsent until the person or the app answers with `keep`. A write with no base is based on the version this
+// device last listed, read or wrote for the slot this session (S2); a slot not seen is create-only; a pulled version is
+// never a base. While a request is open a write with no base only replaces its local side (S3). Requests live in memory
+// (S5): a relaunch drops them and the next write raises the conflict again through S2.
 
 package im.plrs.key.sdk
 
 import im.plrs.key.core.ErrorCode
+import im.plrs.key.core.MergeCause
+import im.plrs.key.core.MergeChoice
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.SYNC_FILE_MAX_BYTES
 import im.plrs.key.core.SYNC_KEY_PATTERN
@@ -29,6 +37,9 @@ import im.plrs.key.core.arrayValue
 import im.plrs.key.core.longValue
 import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
+import im.plrs.key.core.sync.MergeFile
+import im.plrs.key.core.sync.MergeKeep
+import im.plrs.key.core.sync.MergeSide
 import im.plrs.key.core.sync.RecordFile
 import im.plrs.key.core.sync.SyncTransferPlan
 import kotlinx.coroutines.CancellationException
@@ -150,33 +161,17 @@ public sealed interface SaveRead {
     public class NewerFormat(public val formatVersion: Long, public val supported: Int) : SaveRead
 }
 
-/** What a device tried to write when another write got there first. */
-public class SaveConflict(
-    public val id: String,
-    public val localMetadata: JsonObject,
-    public val localSize: Int,
-    /** The server's copy; null when it was deleted meanwhile. */
-    public val remote: SaveSummary?,
-    public val serverVersion: Long?,
-    /** `SaveKeep.BOTH` needs a free slot of the 16. */
-    public val bothAvailable: Boolean,
-)
-
-public enum class SaveKeep { LOCAL, REMOTE, BOTH }
-
 public sealed interface SaveResult {
-    /** [copyId] is the id a `SaveKeep.BOTH` copy was written under. */
+    /** [copyId] is the id a `keep(MergeKeep.Both)` copy was written under. */
     public class Done(public val id: String, public val version: Long, public val file: RecordFile, public val copyId: String? = null) : SaveResult
-
-    /** `resolve(…, SaveKeep.REMOTE, …)`: nothing was written. */
-    public class KeptRemote(public val id: String, public val version: Long?) : SaveResult
 
     /** A cancelled transfer is a state, not an error (D-8). */
     public data object Cancelled : SaveResult
 
     public class Failed(public val error: SavesException) : SaveResult
 
-    public class Conflict(public val conflict: SaveConflict) : SaveResult
+    /** The write was not sent: [request] holds it until `keep` (S1, S3). */
+    public class Conflict(public val request: MergeRequest) : SaveResult
 }
 
 public enum class TransferState { RUNNING, PAUSED, DONE, CANCELLED, FAILED, CONFLICT }
@@ -275,14 +270,42 @@ internal class SavesHooks(
 public class SavesClient internal constructor(
     private val scope: CoroutineScope,
     private val hooks: SavesHooks,
+    internal val merge: MergeRegistry,
     private val deps: suspend () -> SavesDeps,
 ) {
     private val running = ConcurrentHashMap<String, SaveTransfer>()
+    private val slots = ConcurrentHashMap<String, Slot>()
+
+    /** S2: the version this device last listed, read or wrote for a slot this session. */
+    private val seen = ConcurrentHashMap<String, Long>()
+
+    /** One open save request (S1): the device's copy, retained in memory until `keep`. */
+    @Suppress("LongParameterList")
+    private class Slot(
+        val id: String,
+        var metadata: JsonObject,
+        var source: RangedSource,
+        var onProgress: ((Long, Long) -> Unit)?,
+        /** The version the copy was written on; null: create-only. */
+        var base: Long?,
+        var remote: SaveSummary?,
+        /** The server's version for `keep: local`; `"*"` when the save is gone. */
+        var remoteVersion: JsonElement,
+        var slotsFree: Boolean,
+        var chunks: Boolean,
+    ) {
+        /** A keep is running: a conflict it meets reopens the request when the keep ends. */
+        @Volatile var keeping: Boolean = false
+
+        @Volatile var reopen: Boolean = false
+    }
 
     /** The saves of this person, by id. */
     public suspend fun list(): List<SaveSummary> {
         val d = deps()
-        return d.records.list().map { summary(d, it) }.sortedBy { it.id }
+        val all = d.records.list()
+        for (r in all) seen[r.id] = r.version
+        return all.map { summary(d, it) }.sortedBy { it.id }
     }
 
     /** The kept revisions of a save's file, newest first. */
@@ -316,6 +339,7 @@ public class SavesClient internal constructor(
     @Suppress("CyclomaticComplexMethod", "ReturnCount", "ThrowsCount", "TooGenericExceptionCaught")
     private suspend fun readNow(d: SavesDeps, id: String, sink: (suspend (ByteArray) -> Unit)?, progress: (Long, Long) -> Unit): SaveRead {
         val rec = d.records.get(id) ?: return SaveRead.NotFound
+        seen[id] = rec.version
         val (metadata, binding) = splitBinding(rec.value)
         val fv = formatOf(metadata)
         val supported = d.saveFormatVersion
@@ -361,8 +385,10 @@ public class SavesClient internal constructor(
 
     /**
      * Write a save. The handle settles when the file is stored and the metadata is written, or on a conflict, a
-     * failure or a cancel. [baseVersion] is the version the caller last saw; absent is the record's current one, or
-     * create-only for a new id.
+     * failure or a cancel. [baseVersion] is the version the caller last saw; absent is the version this device last
+     * listed, read or wrote for the slot this session, or create-only for a slot not seen (S2). While a request is open
+     * for the slot, a write with no base only replaces the request's local copy and settles `Conflict`; a write with a
+     * base supersedes the request (S3).
      */
     public suspend fun write(
         id: String,
@@ -370,7 +396,7 @@ public class SavesClient internal constructor(
         metadata: JsonObject,
         baseVersion: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null,
-    ): SaveTransfer = run(SaveWrite(id, BytesSource(bytes), metadata, modeFor(baseVersion), stamp = true), onProgress)
+    ): SaveTransfer = userWrite(SaveWrite(id, BytesSource(bytes), metadata, modeFor(baseVersion), stamp = true), baseVersion != null, onProgress)
 
     /** [write] with a `@Serializable` metadata type (its serializer must encode an object). */
     public suspend inline fun <reified T> writeAs(
@@ -405,52 +431,34 @@ public class SavesClient internal constructor(
         metadata: JsonObject,
         baseVersion: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null,
-    ): SaveTransfer = run(SaveWrite(id, source, metadata, modeFor(baseVersion), stamp = true), onProgress)
+    ): SaveTransfer = userWrite(SaveWrite(id, source, metadata, modeFor(baseVersion), stamp = true), baseVersion != null, onProgress)
 
     /**
-     * Settle a conflict. `REMOTE` keeps the server's copy and writes nothing; `LOCAL` writes this device's save on top
-     * of the server's version; `BOTH` writes it as a new save in a free slot.
+     * Delete a save; its file is collected with the record. With a request open for the slot the default base is the
+     * request's, so a delete that conflicts keeps the other copy (S3).
      */
-    public suspend fun resolve(conflict: SaveConflict, keep: SaveKeep, bytes: ByteArray, onProgress: ((Long, Long) -> Unit)? = null): SaveTransfer {
-        deps()
-        return when {
-            keep == SaveKeep.REMOTE -> {
-                // Pull first, so the cache holds the copy the person chose (not this device's old one).
-                val d = deps()
-                d.records.pull()
-                settled(conflict.id, SaveResult.KeptRemote(conflict.id, d.records.get(conflict.id)?.version))
-            }
-
-            keep == SaveKeep.BOTH && !conflict.bothAvailable -> settled(conflict.id, SaveResult.Failed(SavesException(SavesException.SLOTS_FULL)))
-
-            keep == SaveKeep.BOTH ->
-                run(SaveWrite(conflict.id, BytesSource(bytes), conflict.localMetadata, WriteMode.Copy), onProgress)
-
-            else -> run(
-                SaveWrite(
-                    conflict.id,
-                    BytesSource(bytes),
-                    conflict.localMetadata,
-                    WriteMode.Base(
-                        // A copy the server no longer holds is replaced on "record must not exist".
-                        if (conflict.remote == null || (conflict.serverVersion ?: 0L) == 0L) {
-                            JsonPrimitive("*")
-                        } else {
-                            JsonPrimitive(conflict.serverVersion)
-                        },
-                    ),
-                ),
-                onProgress,
-            )
-        }
-    }
-
-    /** Delete a save; its file is collected with the record. */
+    @Suppress("ReturnCount", "ComplexCondition")
     public suspend fun delete(id: String, baseVersion: Long? = null): SaveSetResult {
         checkId(id)
         val d = deps()
-        val base = baseVersion ?: (d.records.get(id)?.version ?: return SaveSetResult.Rejected("not_found"))
-        return d.records.delete(id, base)
+        val slot = slots[id]
+        var base = baseVersion
+        if (base == null) {
+            if (slot != null) {
+                base = slot.base
+                if (base == null) {
+                    val server = d.records.get(id)
+                    closeSlot(id, "superseded")
+                    return SaveSetResult.Conflict(server)
+                }
+            } else {
+                base = d.records.get(id)?.version ?: return SaveSetResult.Rejected("not_found")
+            }
+        }
+        val r = d.records.delete(id, base)
+        if (slot != null && slots[id] === slot && (r is SaveSetResult.Ok || r is SaveSetResult.Conflict)) closeSlot(id, "superseded")
+        if (r is SaveSetResult.Ok) seen.remove(id)
+        return r
     }
 
     /** The writes in flight (running, paused or waiting on the network). */
@@ -468,7 +476,7 @@ public class SavesClient internal constructor(
         while (result == null && t.state != TransferState.PAUSED) result = withTimeoutOrNull(BACKGROUND_POLL_MS) { t.await() }
         return when (result) {
             null, SaveResult.Cancelled -> BackgroundTransferOutcome.STOP
-            is SaveResult.Done, is SaveResult.KeptRemote, is SaveResult.Conflict -> BackgroundTransferOutcome.DONE
+            is SaveResult.Done, is SaveResult.Conflict -> BackgroundTransferOutcome.DONE
             is SaveResult.Failed -> if (result.error.isStopped()) BackgroundTransferOutcome.RETRY else BackgroundTransferOutcome.STOP
         }
     }
@@ -479,6 +487,9 @@ public class SavesClient internal constructor(
     internal suspend fun cancelAll() {
         val all = running.values.toList()
         running.clear()
+        slots.clear()
+        seen.clear()
+        merge.closeAllExtra()
         for (t in all) runCatching { t.cancel() }
     }
 
@@ -542,6 +553,28 @@ public class SavesClient internal constructor(
 
     private fun modeFor(baseVersion: Long?): WriteMode = baseVersion?.let { WriteMode.Base(JsonPrimitive(it)) } ?: WriteMode.Plain
 
+    /** A write the app asked for: with a request open for the slot, a write with no base only replaces the request's local side (S3). */
+    @Suppress("ReturnCount")
+    private suspend fun userWrite(write: SaveWrite, hasBase: Boolean, onProgress: ((Long, Long) -> Unit)?): SaveTransfer {
+        val id = write.id
+        val slot = slots[id]
+        if (slot == null) return run(write, onProgress)
+        if (hasBase) {
+            closeSlot(id, "superseded")
+            return run(write, onProgress)
+        }
+        val d = deps()
+        val stamped = stamped(d, write.metadata)
+        precheck(d, id, write.source, stamped)?.let { return settled(id, SaveResult.Failed(it)) }
+        slot.metadata = stamped
+        slot.source = write.source
+        slot.onProgress = onProgress
+        slot.chunks = isChunked(d, write.source)
+        val side = localSide(slot)
+        merge.update(requestId(id)) { it.copy(local = side) }
+        return settled(id, SaveResult.Conflict(checkNotNull(merge.find(requestId(id)))))
+    }
+
     private suspend fun run(write: SaveWrite, onProgress: ((Long, Long) -> Unit)?): SaveTransfer {
         val id = write.id
         val source = write.source
@@ -554,7 +587,7 @@ public class SavesClient internal constructor(
         var sealed: Pair<ByteArray, String>? = null
         lateinit var transfer: SaveTransfer
         val attempt: suspend (Phase) -> SaveResult = { phase ->
-            attemptWrite(d, id, transferId, source, metadata, mode, phase, { done, total ->
+            attemptWrite(d, id, transferId, source, metadata, mode, phase, onProgress, { done, total ->
                 transfer.progress(done, total)
                 onProgress?.invoke(done, total)
                 hooks.progress(transferId, done, total)
@@ -592,6 +625,7 @@ public class SavesClient internal constructor(
         metadata: JsonObject,
         mode: WriteMode,
         phase: Phase,
+        userProgress: ((Long, Long) -> Unit)?,
         progress: (Long, Long) -> Unit,
         sealedNow: () -> Pair<ByteArray, String>?,
         keepSealed: (Pair<ByteArray, String>) -> Unit,
@@ -609,12 +643,16 @@ public class SavesClient internal constructor(
             is WriteMode.Base -> base = mode.version
 
             WriteMode.Plain -> {
-                val existing = d.records.get(id)
-                if (existing == null) {
-                    if (d.records.list().size >= SYNC_SAVE_SLOTS) return SaveResult.Failed(SavesException(SavesException.SLOTS_FULL))
-                    base = JsonPrimitive("*")
+                // S2: the version this device saw this session; else create-only. A pulled version is never a base, so
+                // another device's newer save is a conflict, not an overwrite.
+                val saw = seen[id]
+                if (saw != null) {
+                    base = JsonPrimitive(saw)
                 } else {
-                    base = JsonPrimitive(existing.version)
+                    if (d.records.get(id) == null && d.records.list().size >= SYNC_SAVE_SLOTS) {
+                        return SaveResult.Failed(SavesException(SavesException.SLOTS_FULL))
+                    }
+                    base = JsonPrimitive("*")
                 }
             }
         }
@@ -645,7 +683,11 @@ public class SavesClient internal constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: TransferException) {
-            if (e.reason == Reason.CONFLICT) return conflictOutcome(d, id, metadata, source.size, e.serverVersion?.toLong(), null, false)
+            if (e.reason ==
+                Reason.CONFLICT
+            ) {
+                return conflictOutcome(d, Written(id, metadata, source, userProgress, base), e.serverVersion?.toLong(), null, false)
+            }
             return SaveResult.Failed(asSavesError(e))
         }
         val file = RecordFile.of(finalized) ?: return SaveResult.Failed(SavesException(SavesException.TRANSFER_FAILED, "bad-finalize"))
@@ -664,8 +706,13 @@ public class SavesClient internal constructor(
         }
         // The metadata `set` goes on the version `finalize` answered, not on the pulled row's.
         return when (val set = d.records.set(targetId, value, JsonPrimitive(file.version), file)) {
-            is SaveSetResult.Ok -> SaveResult.Done(id, set.version, file, targetId.takeIf { it != id })
-            is SaveSetResult.Conflict -> conflictOutcome(d, id, metadata, source.size, set.server?.version, set.server, true)
+            is SaveSetResult.Ok -> {
+                seen[targetId] = set.version
+                SaveResult.Done(id, set.version, file, targetId.takeIf { it != id })
+            }
+
+            is SaveSetResult.Conflict -> conflictOutcome(d, Written(id, metadata, source, userProgress, base), set.server?.version, set.server, true)
+
             is SaveSetResult.Rejected -> SaveResult.Failed(SavesException(SavesException.REJECTED, set.code))
         }
     }
@@ -685,17 +732,10 @@ public class SavesClient internal constructor(
 
     /** [known] is the server's copy when the metadata write answered one (null: it could not be read); otherwise the machine's. */
     @Suppress("LongParameterList")
-    private suspend fun conflictOutcome(
-        d: SavesDeps,
-        id: String,
-        metadata: JsonObject,
-        size: Int,
-        serverVersion: Long?,
-        known: SaveRecord?,
-        haveKnown: Boolean,
-    ): SaveResult {
+    private suspend fun conflictOutcome(d: SavesDeps, w: Written, serverVersion: Long?, known: SaveRecord?, haveKnown: Boolean): SaveResult {
         // The cache may be behind the conflict: pull before reading it, so the screen shows what the server holds (and a save
         // deleted elsewhere reads as deleted).
+        val id = w.id
         val pulled = d.records.pull()
         val slots = d.records.list().size
         // The server's answer wins. [known] is the copy a rejected set carried (null: deleted). A file begin answers
@@ -727,7 +767,139 @@ public class SavesClient internal constructor(
                 version = serverVersion
             }
         }
-        return SaveResult.Conflict(SaveConflict(id, metadata, size, remote, version, slots < SYNC_SAVE_SLOTS))
+        val request = openSlot(d, w, remote, version, slots < SYNC_SAVE_SLOTS)
+        return SaveResult.Conflict(request)
+    }
+
+    /** What a write sent, for the request a conflict opens. */
+    private class Written(
+        val id: String,
+        val metadata: JsonObject,
+        val source: RangedSource,
+        val onProgress: ((Long, Long) -> Unit)?,
+        val base: JsonElement,
+    )
+
+    // -- requests (S1, S3, S4) -----------------------------------------------------------------------------------
+
+    private fun requestId(id: String): String = "w:$SAVES_COLLECTION/$id"
+
+    private fun isChunked(d: SavesDeps, source: RangedSource): Boolean =
+        SyncTransferPlan.plan(d.codec.storedSize(source.size.toLong()), d.delta).mode == SyncTransferPlan.Mode.CHUNKS
+
+    private fun numberOf(v: JsonElement?): Long? = (v as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toDoubleOrNull()?.toLong()
+
+    private fun stringOf(v: JsonElement?): String? = (v as? JsonPrimitive)?.takeIf { it.isString }?.content
+
+    private fun localSide(slot: Slot): MergeSide = MergeSide(
+        slot.metadata,
+        slot.base,
+        numberOf(slot.metadata[SAVE_SAVED_AT_KEY]),
+        stringOf(slot.metadata[SAVE_DEVICE_KEY]),
+        MergeFile(slot.source.size.toLong(), if (slot.chunks) "chunks" else "whole"),
+    )
+
+    private fun remoteSide(slot: Slot, version: Long?): MergeSide? = slot.remote?.let { r ->
+        MergeSide(
+            r.metadata,
+            version ?: r.version,
+            numberOf(r.metadata[SAVE_SAVED_AT_KEY]),
+            stringOf(r.metadata[SAVE_DEVICE_KEY]),
+            r.file?.let { MergeFile(it.size, it.format) },
+        )
+    }
+
+    private fun view(slot: Slot, version: Long?, state: String, error: String?): MergeView {
+        val choices = mutableListOf(MergeChoice.local, MergeChoice.remote)
+        if (slot.remote != null && slot.slotsFree) choices.add(MergeChoice.both)
+        return MergeView(
+            requestId(slot.id),
+            MergeCause.write,
+            SAVES_COLLECTION,
+            slot.id,
+            localSide(slot),
+            remoteSide(slot, version),
+            choices,
+            state,
+            error,
+        )
+    }
+
+    /** S1: open the slot's request, or (a keep conflicted again) bring the open one up to date. */
+    private fun openSlot(d: SavesDeps, w: Written, remote: SaveSummary?, version: Long?, slotsFree: Boolean): MergeRequest {
+        val remoteVersion: JsonElement = if (remote == null || (version ?: 0L) == 0L) JsonPrimitive("*") else JsonPrimitive(version)
+        val base = (w.base as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toLongOrNull()
+        val chunks = isChunked(d, w.source)
+        val have = slots[w.id]
+        val slot = if (have != null) {
+            have.metadata = w.metadata
+            have.source = w.source
+            have.onProgress = w.onProgress
+            have.base = base
+            have.remote = remote
+            have.remoteVersion = remoteVersion
+            have.slotsFree = slotsFree
+            have.chunks = chunks
+            have.reopen = have.keeping
+            have
+        } else {
+            Slot(w.id, w.metadata, w.source, w.onProgress, base, remote, remoteVersion, slotsFree, chunks).also { slots[w.id] = it }
+        }
+        val v = view(slot, version, if (slot.keeping) "applying" else "open", null)
+        if (slot.keeping) {
+            // The keep ends first; `keepSlot` reopens the request for the person.
+            merge.update(v.id) { v }
+            return checkNotNull(merge.find(v.id))
+        }
+        return merge.open(v) { choice -> keepSlot(w.id, choice) }
+    }
+
+    private fun closeSlot(id: String, how: String) {
+        slots.remove(id)
+        merge.close(requestId(id), how)
+    }
+
+    /** S4: answer the slot's request; the transfer's outcome settles the result. */
+    @Suppress("CyclomaticComplexMethod", "LongMethod", "ReturnCount")
+    private suspend fun keepSlot(id: String, choice: MergeKeep): MergeOutcome {
+        val slot = slots[id] ?: return MergeOutcome.Refused(ErrorCode.syncMergeClosed, reopened = false)
+        val rid = requestId(id)
+        val name = choice.choice
+        slot.keeping = true
+        slot.reopen = false
+        merge.update(rid) { it.copy(state = "applying", error = null) }
+        fun reopen(code: String): MergeOutcome {
+            slot.keeping = false
+            val again = slot.reopen
+            slot.reopen = false
+            val v = view(slot, slot.remote?.version, "open", if (again) null else code)
+            merge.update(rid) { v }
+            if (again) merge.reannounce(rid)
+            return MergeOutcome.Refused(if (again) "conflict" else code, reopened = true)
+        }
+        val d = deps()
+        if (choice is MergeKeep.Remote) {
+            // Pull first, so the cache holds the copy the person chose (not this device's old one).
+            d.records.pull()
+            val rec = d.records.get(id)
+            if (rec != null) seen[id] = rec.version
+            closeSlot(id, "remote")
+            return MergeOutcome.Kept("remote", rec?.version)
+        }
+        if (choice is MergeKeep.Both && !slot.slotsFree) return reopen(SavesException.SLOTS_FULL)
+        val mode: WriteMode = if (choice is MergeKeep.Both) WriteMode.Copy else WriteMode.Base(slot.remoteVersion)
+        return when (val out = run(SaveWrite(id, slot.source, slot.metadata, mode), slot.onProgress).await()) {
+            is SaveResult.Done -> {
+                closeSlot(id, name)
+                MergeOutcome.Kept(name, out.version, out.copyId)
+            }
+
+            is SaveResult.Conflict -> reopen("conflict")
+
+            is SaveResult.Failed -> reopen(out.error.code)
+
+            SaveResult.Cancelled -> reopen("cancelled")
+        }
     }
 }
 
@@ -856,7 +1028,7 @@ public class SaveTransfer internal constructor(
     }
 
     private fun stateOf(r: SaveResult): TransferState = when (r) {
-        is SaveResult.Done, is SaveResult.KeptRemote -> TransferState.DONE
+        is SaveResult.Done -> TransferState.DONE
         is SaveResult.Conflict -> TransferState.CONFLICT
         is SaveResult.Failed -> TransferState.FAILED
         SaveResult.Cancelled -> TransferState.CANCELLED

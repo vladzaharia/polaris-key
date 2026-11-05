@@ -35,7 +35,10 @@ public interface SyncCollections {
         remove: List<String> = emptyList(),
     ): CallResult
 
-    /** Delete a record of any policy but `revision` (use `removeAt` there). */
+    /**
+     * Delete a record. A `revision` record is deleted on the version of an open request's local copy, else on the
+     * snapshot's, so a delete that conflicts keeps the other copy.
+     */
     public fun delete(collection: String, recordId: String): CallResult
 
     /** The declaration of a collection in the catalog (an exact name, else the longest `prefix.*` pattern), or null. */
@@ -127,14 +130,31 @@ internal class MachineRecords(private val p: MachineParts) :
         return refusal?.let { CallResult.Failed(it) } ?: CallResult.Ok
     }
 
+    @Suppress("ReturnCount")
     override fun delete(collection: String, recordId: String): CallResult {
         val policy = p.routing.collection(collection)?.get("policy").stringValue
         val refusal = when {
-            policy == null || policy == "revision" -> "collection-unknown"
+            policy == null -> "collection-unknown"
             core.s.subject == null -> "signed-out"
             else -> null
         }
         if (refusal != null) return CallResult.Failed(refusal)
+        if (policy == "revision") {
+            val part = core.active()
+            val rk = recordKey(collection, recordId)
+            val open = part.conflicts[rk]
+            val base = if (open != null) open.localVersion else part.records[rk]?.version
+            p.journal.enqueue(
+                part,
+                Op(0, OpTarget.Record(collection, recordId), "delete").also {
+                    it.baseVersion =
+                        if (base != null) JsonPrimitive(base) else JsonPrimitive("*")
+                },
+            )
+            noteChanges("local")
+            p.pump.kick()
+            return CallResult.Ok
+        }
         val op = Op(0, OpTarget.Record(collection, recordId), "delete")
         if (policy != "union") op.also { it.editedHlc = p.journal.tickHlc() }.preContact = !core.s.contacted
         p.journal.enqueue(core.active(), op)
@@ -169,6 +189,10 @@ internal class MachineRecords(private val p: MachineParts) :
         val rk = recordKey(collection, recordId)
         var value: JsonElement? = part.records[rk]?.takeIf { !p.layers.rowUnreadable(it) }?.value
         var pending = false
+        part.conflicts[rk]?.takeIf { it.keepChoice == null }?.let {
+            value = it.local
+            pending = true
+        }
         for (op in part.pending.filter { isRecord(it, rk) }) {
             value = SyncValues.applyRecordOp(value, op)
             pending = true
@@ -206,6 +230,8 @@ internal class MachineRecords(private val p: MachineParts) :
         }
         if (refusal != null) return PutAtResult.Failed(refusal)
         val part = core.active()
+        // An exact write supersedes the record's open request and is sent as asked.
+        (op.target as OpTarget.Record).let { p.merge.close(part, recordKey(it.collection, it.id), "superseded") }
         op.baseVersion = baseVersion
         p.journal.enqueue(part, op)
         part.nextTicket += 1
@@ -282,6 +308,7 @@ internal class MachineRecords(private val p: MachineParts) :
                 (op.target as? OpTarget.Record)?.takeIf { it.collection == collection }?.let { add(recordKey(it.collection, it.id)) }
             }
             addAll(part.held.keys)
+            addAll(part.conflicts.keys)
         }
         for (rk in keys) {
             if (!rk.startsWith(prefix)) continue

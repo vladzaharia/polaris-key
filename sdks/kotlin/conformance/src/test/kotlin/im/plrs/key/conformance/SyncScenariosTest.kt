@@ -2,6 +2,7 @@
 // @pkey-feature sync.saves
 // @pkey-feature sync.settings config.sync
 // @pkey-feature sync.e2e
+// @pkey-feature sync.conflict
 //
 // The Kotlin runner for conformance/corpus/v2/sync-scenarios.json (read in place), mirroring the
 // Python test_sync_scenarios.py. `settingCases` runs in full and every scenario replays (the skip list
@@ -56,7 +57,7 @@ class SyncScenariosTest : ConformanceSuite() {
     @Test
     fun everyScenarioReplays() {
         // No skip list: a scenario X-1.1 adds runs here without an edit.
-        val kinds = setOf("local", "advance", "network", "respond", "root", "signIn", "signOut", "relaunch", "assert")
+        val kinds = setOf("local", "advance", "network", "respond", "root", "signIn", "signOut", "relaunch", "keep", "assert")
         for (sc in scenarios) {
             val name = sc["name"].stringValue!!
             assertTrue("$name: init", sc["init"] is JsonObject)
@@ -76,7 +77,7 @@ class SyncScenariosTest : ConformanceSuite() {
         assertEquals(listOf("rows", "outcomes"), family["asserts"].arrayValue!!.map { it.stringValue })
         val cases = family["scenarios"].arrayValue!!.map { it as JsonObject }
         val names = cases.map { it["name"].stringValue!! }
-        assertEquals(19, names.size)
+        assertEquals(21, names.size)
         assertEquals(names.size, names.toSet().size)
         for (sc in cases) SyncScenarioDriver(corpus["product"].stringValue!!, sc).run()
     }
