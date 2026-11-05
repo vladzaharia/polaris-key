@@ -11,7 +11,7 @@ extends RefCounted
 # @pkey-feature identity.exchange identity.gamecenter identity.pgs
 # @pkey-feature sync.files sync.files.delta sync.saves sync.records
 # @pkey-feature connect.identity connect.relay connect.links identity.redirect.native identity.link
-# @pkey-feature identity.keyreturn identity.nearby
+# @pkey-feature identity.keyreturn identity.nearby identity.restore
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -183,7 +183,7 @@ static func replay(tr: Dictionary, act_hook: Callable = Callable()) -> Array:
 		opts.ring_vault = PKeySyncRingVault.new(tr["product"], "user://pkey", true)
 	var exchange_keys: PKeyFixtureDeviceKeys = null
 	for st in tr["steps"]:
-		if st["action"] == "exchange":
+		if st["action"] in ["exchange", "restoreRedeem"]:
 			# The key ring and the exchange share this one port (the autoload hands it to both).
 			exchange_keys = PKeyFixtureDeviceKeys.new(String(st["args"].get("keyLabel", "")))
 			opts.device_keys = exchange_keys
@@ -237,6 +237,8 @@ static func replay(tr: Dictionary, act_hook: Callable = Callable()) -> Array:
 			if step["action"] == "updateDecide" and sdk.core.discovery_manifest == null:
 				# The transcript ran no discovery: the Worker's standard templates, as React's replayer.
 				sdk.core.discovery_manifest = _standard_discovery(server.base_url(), tr["product"])
+			if "identity.restore" in tr["features"] and sdk.core.discovery_manifest == null:
+				sdk.core.discovery_manifest = _restore_discovery(server.base_url(), tr["product"])
 			if step["action"] in ["subject", "signOut", "attach"] and sdk.core.discovery_manifest == null:
 				# identity.account: the account endpoints at the Worker's standard paths, on the loopback server.
 				sdk.core.discovery_manifest = _standard_identity_discovery(server.base_url(), tr["product"])
@@ -247,7 +249,10 @@ static func replay(tr: Dictionary, act_hook: Callable = Callable()) -> Array:
 				sdk.core.discovery_manifest = _link_discovery(server.base_url(), tr)
 			if step["action"] in ["browser", "redirectComplete"] and sdk.core.discovery_manifest == null:
 				sdk.core.discovery_manifest = _redirect_discovery(server.base_url(), tr)
-			if step["action"] in ["exchange", "choiceComplete"] and exchange_keys != null:
+			if "identity.restore" in tr["features"] and sdk.core.discovery_manifest != null and step["action"] != "discover":
+				# The recorded discovery names the transcript's base; the routes are the loopback server's.
+				sdk.core.discovery_manifest = _identity_rebased(sdk.core.discovery_manifest, tr["baseUrl"], server.base_url())
+			elif step["action"] in ["exchange", "choiceComplete"] and exchange_keys != null:
 				if sdk.core.discovery_manifest == null:
 					sdk.core.discovery_manifest = _exchange_discovery(server.base_url(), tr["product"])
 				elif not ("identity.link" in tr["features"]):
@@ -293,6 +298,9 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 			var fragment := PKeyDiscovery.identity_from(sdk.core.discovery_manifest)
 			out["exchange"] = _exchange_member(fragment.get("exchange", {}))
 			out["nonceEndpoint"] = String(fragment.get("nonce", "")) != ""
+			# identity.restore (section 12.11.8): the member and its endpoint.
+			out["restore"] = fragment.get("restore", false) == true
+			out["restoreEndpoint"] = String(fragment.get("restore_endpoint", "")) != ""
 			# connect.links (WIRE-CONTRACT-V5 section 15.9): the cached gate of inter-account links.
 			out["interAccount"] = PKeyConnectClient.inter_account_of(sdk.core.discovery_manifest)
 			# identity.nearby (section 12.11.5): whether the discovery just loaded names nearby approval and its routes.
@@ -305,6 +313,12 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 			out.merge(await _nearby_approve(sdk, step), true)
 		"exchange":
 			out.merge(await _exchange_step(sdk, step, exchange_keys), true)
+		"restoreRedeem":
+			out.merge(await _restore_redeem_step(sdk, step, exchange_keys), true)
+		"restoreEnroll":
+			out.merge(await _restore_enroll_step(sdk, step), true)
+		"restoreDelete":
+			out["result"] = "ok" if await sdk.identity.restore.delete_wire() else "refused"
 		"linkOffer", "link":
 			out.merge(await _link_step(sdk, step, exchange_keys), true)
 		"subject":
@@ -564,7 +578,7 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 		services[slug] = PKeyClaims.is_true(caps[slug]["enabled"])
 	out["services"] = services
 	out["licenseStatus"] = sdk.status()["status"]
-	if step["action"] != "exchange":
+	if step["action"] not in ["exchange", "restoreRedeem"]:
 		out["tokenHeld"] = store.token != ""
 	return out
 
@@ -1122,6 +1136,83 @@ static func _exchange_step(sdk: Node, step: Dictionary, keys: PKeyFixtureDeviceK
 		out["result"] = "a step that signed nobody in changed the held token"
 	out["tokenHeld"] = signed_in and sdk.core.tokens.current() != ""
 	return out
+
+
+## `restoreRedeem` (identity.restore): PolarisKey.identity.restore.redeem with the recording's key (`restoreId`,
+## `restoreSecret`) over the fixture device keys of `keyLabel`; `proofValue` replaces the proof's value and
+## `product` presents the key to another product (its token route on the loopback server). `tokenHeld` is
+## for this step alone, as `exchange`'s.
+static func _restore_redeem_step(sdk: Node, step: Dictionary, keys: PKeyFixtureDeviceKeys) -> Dictionary:
+	var out := {}
+	var a: Dictionary = step["args"]
+	keys.use_label(String(a.get("keyLabel", "")))
+	var opts := {}
+	if a.get("proofValue") is String:
+		opts["proof_value"] = a["proofValue"]
+	if a.get("product") is String:
+		opts["product"] = a["product"]
+		opts["token_url"] = "%s/%s/identity/token" % [sdk.core.base_url, a["product"]]
+	var value := PKeyPlatformBackup.RestoreValue.new(String(a["restoreId"]), String(a["restoreSecret"]))
+	var before: String = sdk.core.tokens.current()
+	var r: PKeyExchangeResult = await sdk.identity.restore.redeem(value, opts)
+	match r.kind:
+		PKeyExchangeResult.KIND_SIGNED_IN:
+			out["result"] = "ok"
+			out["scope"] = r.scope
+			out["licenseId"] = r.license_id if r.license_id != "" else null
+			out["issuedTokenType"] = "urn:polaris-key:token-type:device"
+		PKeyExchangeResult.KIND_CONFIRM:
+			var who: Dictionary = r.consent.get("as", {})
+			out["result"] = "confirm"
+			out["firstTime"] = PKeyClaims.is_true(r.consent.get("firstTime"))
+			out["changed"] = PKeyClaims.is_true(r.consent.get("changed"))
+			out["as"] = {"provider": who.get("provider"), "email": who.get("email")}
+		PKeyExchangeResult.KIND_UNAVAILABLE:
+			out["result"] = "unavailable"
+		PKeyExchangeResult.KIND_REFUSED:
+			out["result"] = "refused"
+			out["status"] = r.http_status
+			out["code"] = String(r.code)
+			if r.retry_after_seconds > 0:
+				out["retryAfter"] = r.retry_after_seconds
+		_:
+			out["result"] = "error"
+			out["code"] = String(r.code)
+	var signed_in := r.kind == PKeyExchangeResult.KIND_SIGNED_IN
+	if not signed_in and sdk.core.tokens.current() != before:
+		out["result"] = "a step that signed nobody in changed the held token"
+	out["tokenHeld"] = signed_in and sdk.core.tokens.current() != ""
+	return out
+
+
+## `restoreEnroll`: POST restore with the item's id (`args.restoreId`, absent: none held).
+static func _restore_enroll_step(sdk: Node, step: Dictionary) -> Dictionary:
+	var e: Dictionary = await sdk.identity.restore.enrol_wire(String(step["args"].get("restoreId", "")))
+	match e["kind"]:
+		"enrolled":
+			var fresh: PKeyPlatformBackup.RestoreValue = e["value"]
+			var out := {"result": "enrolled", "restoreId": fresh.restore_id, "secret": fresh.secret_bytes().get_string_from_utf8()}
+			fresh.wipe()
+			return out
+		"current":
+			return {"result": "current"}
+		"refused":
+			return {"result": "refused", "status": e["status"], "code": String(e["code"])}
+	return {"result": "unavailable"}
+
+
+## The identity fragment of a product that runs silent restore, at the Worker's standard paths on the
+## loopback server (for a transcript that never ran `discover`).
+static func _restore_discovery(base: String, product: String) -> Dictionary:
+	var root := "%s/%s/identity" % [base, product]
+	return {"product": product, "services": {"identity": {
+		"enabled": true, "configured": true, "account": true, "issuer": root, "restore": true,
+		"endpoints": {
+			"token": root + "/token", "restore": root + "/restore", "signout": root + "/signout",
+			"choiceLicenses": root + "/choice/licenses", "choiceDevices": root + "/choice/devices",
+			"choiceComplete": root + "/choice/complete", "choiceCancel": root + "/choice/cancel",
+		},
+	}}}
 
 
 ## `linkOffer` / `link`: see the header. The result is the transcript's vocabulary.

@@ -98,6 +98,8 @@ var exchange: PKeyIdentityExchange
 var ladder: PKeyIdentityAutoSignIn
 ## `link.offer / accept / decline`: the link offer after a sign-in this device started (PKeyIdentityLink).
 var link: PKeyIdentityLink
+## Silent restore, rung 2 of the ladder and its enrolment (PKeyIdentityRestore).
+var restore: PKeyIdentityRestore
 ## The nearby routes (`nearby/start`, `nearby/poll`): see PKeyIdentityNearbyRoutes.
 var nearby_routes: PKeyIdentityNearbyRoutes
 ## The device key port (PKeyDeviceKeyStore or the options' own) the exchange signs its proof with:
@@ -151,6 +153,7 @@ func _init() -> void:
 	exchange = PKeyIdentityExchange.new(self)
 	ladder = PKeyIdentityAutoSignIn.new(self)
 	link = PKeyIdentityLink.new(self)
+	restore = PKeyIdentityRestore.new(self)
 	nearby_routes = PKeyIdentityNearbyRoutes.new(self)
 	nearby = PKeyIdentityNearby.new(self)
 
@@ -278,6 +281,8 @@ func sign_out() -> PKeyResult:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
 	# A ladder in flight must store nothing from here on (the generation is checked with the store).
 	_core().tokens.bump_sign_out_generation()
+	# The restore key is revoked while the bearer still exists (the Worker's own sign-out deletes it too).
+	await restore.sign_out_prelude()
 	var r := await _account.sign_out()
 	if r.ok:
 		await _mark_signed_out()
@@ -291,7 +296,8 @@ func sign_out() -> PKeyResult:
 			return stopped
 	var released: PKeyResult = await license.deactivate()
 	if released.ok:
-		await _mark_signed_out()
+		# (No Worker sign-out ran: a delete the Worker did not settle stays owed.)
+		await _mark_signed_out(false)
 		_drop_unconfirmed()
 	return released
 
@@ -307,10 +313,12 @@ func _drop_unconfirmed() -> void:
 
 ## The Worker accepted a sign-out: no silent rung runs until the person signs in again, and each
 ## platform provider forgets its session. Device keys stay (they are the device's, not the account's).
-func _mark_signed_out() -> void:
+## `server_revoked`: the Worker's `signout` ran, which deleted this device's restore key in the same request.
+func _mark_signed_out(server_revoked := true) -> void:
 	var core := _core()
 	core.tokens.bump_sign_out_generation()
 	core.cache.set_explicit_sign_out(true)
+	await restore.after_sign_out(server_revoked)
 	for provider in _platform_providers.duplicate():
 		if provider.has_method("sign_out_cleanup"):
 			await provider.sign_out_cleanup()
@@ -411,42 +419,6 @@ func _nearby_timer(seconds: float, fn: Callable) -> Callable:
 			live[0] = false
 			fn.call())
 	return func() -> void: live[0] = false
-
-
-## The person confirmed a nearby sign-in's account: the held token becomes the sign-in, the subject is stored and
-## `signedIn` goes out, so Cloud Sync and Connect start now (section 12.11.5 rule 9). `&"ok"`, or why not
-## (see PKeyTokenManager.confirm_unconfirmed). No await: the compare and the write are one step.
-func _nearby_confirm(subject: String, token: String) -> StringName:
-	var core := _core()
-	if core == null or subject == "":
-		return &"mismatch"
-	var verdict := core.tokens.confirm_unconfirmed(token)
-	if verdict == &"ok" and _account != null:
-		_account.note_signed_in(subject)
-	return verdict
-
-
-## The acquisition sync after a nearby sign-in was confirmed (`nearby_acquisition_sync` off skips it).
-func _nearby_acquired() -> void:
-	if nearby_acquisition_sync and on_acquired.is_valid():
-		await on_acquired.call()
-
-
-## An unconfirmed nearby sign-in ended: the Worker is asked to sign out (best effort) and, whatever it answered,
-## the token and its documents go locally. Only `token` is touched: a sign-in that replaced it is left alone.
-func _nearby_discard_token(token: String) -> void:
-	var core := _core()
-	if core == null or core.tokens.current() != token:
-		return
-	if _account != null:
-		await _account.nearby_sign_out()
-	if core.tokens.current() != token:
-		return
-	core.tokens.bump_sign_out_generation()
-	core.tokens.clear()
-	core.cache.clear()
-	core.cache.set_explicit_sign_out(true)
-	_on_account_wiped()
 
 
 # ── The sign-in ──────────────────────────────────────────────────────────────────────────
@@ -784,6 +756,7 @@ func _redeem(session: PKeySignInSession, pending: Dictionary, code: String, nati
 		_account.note_signed_in(subject)
 	# A sign-in this device started: the link offer may follow (only for a sign-in that named its subject).
 	link._open(subject)
+	await restore.after_sign_in()
 	var synced: PKeySyncResult = null
 	if redirect_acquisition_sync and on_acquired.is_valid():
 		synced = await on_acquired.call()
@@ -952,6 +925,7 @@ func _poll(prompt: PKeySignInSession, current: int, decision: Variant) -> Dictio
 			var subject: String = b["subject"] if _str(b.get("subject")) else ""
 			if _account != null:
 				_account.note_signed_in(subject)
+			await restore.after_sign_in()
 			var synced: PKeySyncResult = null
 			if on_acquired.is_valid():
 				synced = await on_acquired.call()

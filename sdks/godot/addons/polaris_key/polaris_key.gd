@@ -227,6 +227,7 @@ func _build_keyring(opts: PKeyOptions) -> Object:
 	var keys: Object = opts.device_keys if opts.device_keys != null else PKeyDeviceKeyStore.new(core.product, sensitive_root)
 	identity.device_keys = keys
 	identity.link.store = opts.link_store if opts.link_store != null else PKeyLinkDeclinedStore.new(core.product, sensitive_root)
+	identity.restore.state = opts.restore_state if opts.restore_state != null else PKeyRestoreState.new(core.product, sensitive_root)
 	var vault: PKeySyncRingVault = opts.ring_vault if opts.ring_vault != null else PKeySyncRingVault.new(core.product, sensitive_root)
 	keyring = PKeySyncRing.for_core(core, keys, vault)
 	if not _ring_hook_added:

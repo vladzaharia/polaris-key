@@ -476,7 +476,8 @@ func _backup_call(op: String, item: String, product: String, subject: String, ri
 	var r := call_sync(q, PKeyConstants.Feature.IDENTITY_RESTORE)
 	# No entitlement or no iCloud Keychain: a plain "no backup here", not a failure of the plugin.
 	if str(r.get("error", "")) == "unavailable":
-		return PKeyResult.unsupported(PKeyConstants.Feature.IDENTITY_RESTORE, PKeyConstants.UnsupportedReason.RUNTIME, "The backed-up Keychain is not available to this app (OSStatus %s)." % str(r.get("status", "?")))
+		var why := "The backed-up Keychain is not available to this app (OSStatus %s)." % str(r.get("status", "?"))
+		return PKeyResult.unsupported(PKeyConstants.Feature.IDENTITY_RESTORE, PKeyConstants.UnsupportedReason.RUNTIME, why)
 	return _wrap(PKeyConstants.Feature.IDENTITY_RESTORE, r, PKeyErrors.STORE_FAILED)
 
 

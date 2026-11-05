@@ -282,11 +282,10 @@
     },
     "identity.autosignin": {
       "status": "implemented",
-      "note": "I-48: PolarisKey.identity.auto_sign_in(opts) walks the ladder in order and answers a PKeyAutoSignInResult of kind signed_in, confirm (completed through identity.choice.complete(grant, choice, consent)), choose, needs_sign_in (reason, link_handle), device_limit or unavailable. Rung 1 is a stored sign-in token; rung 2 (silent restore) is I-49 and skipped; rung 3 asks each installed platform provider silently over a fresh nonce and exchanges; rung 4 shows the provider's one account sheet when prompt is optional. Providers are PKeyPlatformIdentityProvider objects, installed by the gate and the sign-in dialog or by PKeyPlatformProviders.install(PolarisKey.identity): Sign in with Apple, Credential Manager, Play Games and Game Center, and FedCM on web; desktop Linux and Windows have none, so the ladder ends at needs_sign_in there. A sign-out sets the explicit-sign-out flag and the ladder stops until the person signs in again; the ladder's own exchange never lowers it. sync_key is present or needed from PolarisKey.keyring when a key ring is configured, else null. Proven by tests/identity/{test_auto_sign_in,test_gate_auto,test_fedcm}.gd, tests/native/test_google.gd, the exchange-* transcripts replayed in suite_transcripts, and the native Apple suite. The link offer and nearby approval are separate rows (identity.link, identity.nearby), still planned."
+      "note": "I-48: PolarisKey.identity.auto_sign_in(opts) walks the ladder in order and answers a PKeyAutoSignInResult of kind signed_in, confirm (completed through identity.choice.complete(grant, choice, consent)), choose, needs_sign_in (reason, link_handle), device_limit or unavailable. Rung 1 is a stored sign-in token; rung 2 is silent restore (identity.restore); rung 3 asks each installed platform provider silently over a fresh nonce and exchanges; rung 4 shows the provider's one account sheet when prompt is optional. Providers are PKeyPlatformIdentityProvider objects, installed by the gate and the sign-in dialog or by PKeyPlatformProviders.install(PolarisKey.identity): Sign in with Apple, Credential Manager, Play Games and Game Center, and FedCM on web; desktop Linux and Windows have none, so the ladder ends at needs_sign_in there. A sign-out sets the explicit-sign-out flag and the ladder stops until the person signs in again; the ladder's own exchange never lowers it. sync_key is present or needed from PolarisKey.keyring when a key ring is configured, else null. Proven by tests/identity/{test_auto_sign_in,test_gate_auto,test_fedcm}.gd, tests/native/test_google.gd, the exchange-* transcripts replayed in suite_transcripts, and the native Apple suite. The link offer and nearby approval are separate rows (identity.link, identity.nearby), still planned."
     },
     "identity.restore": {
-      "status": "planned",
-      "wp": "I-49",
+      "status": "implemented",
       "except": [
         {
           "runtime": "linux",
@@ -295,9 +294,13 @@
         {
           "runtime": "windows",
           "reason": "runtime"
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime"
         }
       ],
-      "note": "Rung 2 over the pkp_call bk_* ops on the native Apple and Android lanes (I-49.13 to I-49.15)."
+      "note": "I-49.15: rung 2 of PolarisKey.identity.auto_sign_in (services/identity/restore.gd, PKeyIdentityRestore): the restore grant over the PKeyPlatformBackup item (iCloud Keychain through the pkp_call bk_* ops on iOS and macOS, Block Store through the plugin's bk_* ops on Android), enrolment after every completed sign-in and once a day on rung 1, sign-out deletion (DELETE restore queued in restore.v1 for the next launch, the item, the explicit-sign-out flag), the auto_sign_in options restore and backup_access_group. The secret is held as bytes and zeroed in place when a redeem or an enrolment is done (PKeyPlatformBackup.RestoreValue; tests/identity/test_restore.gd reads typed references after the call). A refused redeem deletes the item on Android only. Proven by tests/identity/test_restore.gd and the restore-* and discovery-identity-restore transcripts replayed in suite_transcripts."
     },
     "identity.link": {
       "status": "implemented",

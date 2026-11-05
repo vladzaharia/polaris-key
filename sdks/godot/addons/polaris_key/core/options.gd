@@ -108,6 +108,9 @@ var connect_state: PKeyConnectState = null
 ## Null: the product's own record under `store_root`, sealed by the platform key where a native lane exists.
 ## Not an export: tests pass a scratch or memory one.
 var link_store: PKeyLinkDeclinedStore = null
+## Where silent restore keeps its check clock and an owed `DELETE restore` (`PKeyRestoreState`: two facts, no
+## secret). Null: the product's own file under `store_root`, in the directory backups exclude.
+var restore_state: PKeyRestoreState = null
 ## Cloud Connect with a memory-only device key store (G18). Off: `connect.identity()` refuses, because
 ## every restart would register a new key pair and the Worker allows four a day.
 var allow_ephemeral_keys := false

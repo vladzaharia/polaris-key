@@ -12,6 +12,7 @@ const PLAY_OPS := [
 	"iau_check", "iau_start", "iau_complete", "pad_state", "pad_fetch", "pad_location", "pad_remove", "pad_cancel", "pad_confirm",
 	"integrity_prepare", "integrity_token", "pgs_code", "pgs_sign_in",
 ]
+const BACKUP_OPS := ["bk_info", "bk_get", "bk_set", "bk_delete"]
 const DIRECT_OPS := ["pi_can_install", "pi_open_settings", "pi_verify", "pi_install", "pi_last", "pi_abandon_stale", "pi_constraints"]
 
 ## `play` or `direct`: which flavour's ops answer (the other's are unsupported, reason outlet).
@@ -78,6 +79,11 @@ var sb_ops: Array = []
 ## Staged bytes by spool name, and the bodies sbTake gives by req.
 var sb_files := {}
 var sb_answers := {}
+
+## The OS backup (I-49.14's bk_* ops): values (base64 text) by "<kind>:<product>"; `backup_error` makes every bk_get/set/delete
+## answer {error: unavailable, reason: <it>} ("" works).
+var backup := {}
+var backup_error := ""
 
 var calls: Array[Dictionary] = []
 var _queue: Array[Dictionary] = []
@@ -245,6 +251,19 @@ func cmd(json: String) -> String:
 			return JSON.stringify({"ok": true, "existed": existed})
 		"ks_info":
 			return JSON.stringify({"ok": true, "alias": "pkey:%s:device" % q.get("product"), "backend": "AndroidKeyStore", "exists": true, "securityLevel": 1})
+		"bk_info":
+			return _later(op, {"ok": true, "supported": backup_error == "", "cloud": true})
+		"bk_get", "bk_set", "bk_delete":
+			if backup_error != "":
+				return _later(op, {"ok": false, "error": "unavailable", "reason": backup_error})
+			var bk := "%s:%s" % [q.get("kind"), q.get("product")]
+			if op == "bk_get":
+				return _later(op, {"ok": true, "found": true, "value": backup[bk]} if backup.has(bk) else {"ok": true, "found": false})
+			if op == "bk_set":
+				backup[bk] = q.get("value")
+			else:
+				backup.erase(bk)
+			return _later(op, {"ok": true, "cloud": true})
 		"gid_silent", "gid_sheet", "gid_provider":
 			if flavor != "play" or not google_libraries:
 				return _later(op, {"ok": false, "error": "unavailable", "reason": "outlet" if flavor != "play" else "dependency"})

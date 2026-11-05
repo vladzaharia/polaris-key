@@ -46,7 +46,6 @@ var gc_result := {
 var app_attest_supported := true
 var attest_keys: Array[String] = []
 var attest_fail := ""
-var _key_serial := 0
 
 var keychain := {}
 ## The backed-up items (bk_* ops), keyed "restore:<product>" / "sync:<product>:<subject>:<ring>". `backup_status` set
@@ -60,6 +59,7 @@ var calls: Array[Dictionary] = []
 var finished: Array[String] = []
 var _queue: Array[Dictionary] = []
 var _req := 0
+var _key_serial := 0
 
 
 func push_event(ev: Dictionary) -> void:

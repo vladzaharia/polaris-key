@@ -239,7 +239,7 @@ func _discard() -> void:
 	var token := _token
 	_token = ""
 	if token != "":
-		await _identity._nearby_discard_token(token)
+		await _discard_held(token)
 	_signed_in = false
 	_discard_done = true
 	discard_finished.emit()
@@ -451,7 +451,7 @@ func confirm_account() -> PKeyResult:
 		return PKeyResult.success()
 	_confirmed = true
 	_cancel_deadline()
-	var verdict := _identity._nearby_confirm(_subject, _token)
+	var verdict := _confirm_held(_subject, _token)
 	if verdict == &"failed":
 		_confirmed = false
 		# Nothing was written: the request still lapses on its deadline.
@@ -469,7 +469,7 @@ func confirm_account() -> PKeyResult:
 	_request.confirm_account()
 	await _apply_wrap()
 	# The account is the device's now: its licence is fetched (the sync an unconfirmed token never ran).
-	await _identity._nearby_acquired()
+	await _acquired()
 	return PKeyResult.success()
 
 
@@ -481,3 +481,40 @@ func decline_account() -> void:
 		return
 	_halt()
 	await _discard()
+
+
+## The person confirmed a nearby sign-in's account: the held token becomes the sign-in, the subject is stored and
+## `signedIn` goes out, so Cloud Sync and Connect start now (section 12.11.5 rule 9). `&"ok"`, or why not
+## (see PKeyTokenManager.confirm_unconfirmed). No await: the compare and the write are one step.
+func _confirm_held(subject: String, token: String) -> StringName:
+	var core := _identity._core()
+	if core == null or subject == "":
+		return &"mismatch"
+	var verdict := core.tokens.confirm_unconfirmed(token)
+	if verdict == &"ok" and _identity._account != null:
+		_identity._account.note_signed_in(subject)
+	return verdict
+
+
+## The acquisition sync after a nearby sign-in was confirmed (`nearby_acquisition_sync` off skips it).
+func _acquired() -> void:
+	await _identity.restore.after_sign_in()
+	if _identity.nearby_acquisition_sync and _identity.on_acquired.is_valid():
+		await _identity.on_acquired.call()
+
+
+## An unconfirmed nearby sign-in ended: the Worker is asked to sign out (best effort) and, whatever it answered,
+## the token and its documents go locally. Only `token` is touched: a sign-in that replaced it is left alone.
+func _discard_held(token: String) -> void:
+	var core := _identity._core()
+	if core == null or core.tokens.current() != token:
+		return
+	if _identity._account != null:
+		await _identity._account.nearby_sign_out()
+	if core.tokens.current() != token:
+		return
+	core.tokens.bump_sign_out_generation()
+	core.tokens.clear()
+	core.cache.clear()
+	core.cache.set_explicit_sign_out(true)
+	_identity._on_account_wiped()
