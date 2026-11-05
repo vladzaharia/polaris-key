@@ -144,14 +144,14 @@ export function AuthCard({
     // portal and the console wear the same neutral ring; fields use their own 1 px strong-ink border.
     <div className="relative flex min-h-dvh flex-col bg-surface-raised text-fg [--pk-focus:var(--pk-text-strong)] sm:bg-surface-page">
       {/* The brand row (§3, §8): on a phone a 56 px row under the safe-area inset, no hairline;
-          from `sm` the lockup's top sits at clamp(2.5rem, 12vh, 7.5rem) and its ink 40 px above
+          from `sm` the lockup's top sits at clamp(2.5rem, 12vh, 6rem) and its ink 40 px above
           the card (24 px each on a short window). */}
       <header
         className={cn(
-          "relative z-10 flex h-[calc(3.5rem+env(safe-area-inset-top,0px))] items-center justify-center pt-[env(safe-area-inset-top,0px)] sm:h-auto sm:pt-[clamp(2.5rem,12vh,7.5rem)] short:pb-6 short:pt-6",
+          "relative z-10 flex h-[calc(3.5rem+env(safe-area-inset-top,0px))] items-center justify-center pt-[env(safe-area-inset-top,0px)] sm:h-auto sm:pt-[clamp(2.5rem,12vh,6rem)] short:pb-6 short:pt-6",
           brandAir === "canvas"
             ? // The lockup's canvas carries its own air (17 px above the ink): the ink starts where Locker's does.
-              "sm:pt-[calc(clamp(2.5rem,12vh,7.5rem)-1.0625rem)] sm:pb-6 short:pb-[7px] short:pt-1.5"
+              "sm:pt-[calc(clamp(2.5rem,12vh,6rem)-1.0625rem)] sm:pb-6 short:pb-[7px] short:pt-1.5"
             : "sm:pb-10",
         )}
       >
