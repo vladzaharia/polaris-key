@@ -95,16 +95,17 @@ func _provider(t: PKeyTestContext) -> void:
 
 func _export(t: PKeyTestContext) -> void:
 	var play := E.dependencies("play")
-	t.check("export: play carries WorkManager, Play Core and the three Credential Manager libraries", play.size() == 7)
+	t.check("export: play carries WorkManager, Play Core, the three Credential Manager libraries and Block Store", play.size() == 8)
 	var cm := "androidx.credentials:credentials"
 	t.check("export: …credentials and credentials-play-services-auth", play.has(cm + ":1.6.0") and play.has(cm + "-play-services-auth:1.6.0"))
 	t.check("export: …and googleid", play.has("com.google.android.libraries.identity.googleid:googleid:1.2.0"))
+	t.check("export: …and Block Store at the platform's pin", play.has("com.google.android.gms:play-services-auth-blockstore:16.4.0") and not E.is_credential_dependency("com.google.android.gms:play-services-auth-blockstore:16.4.0"))
 	t.check("export: direct carries no Credential Manager", E.dependencies("direct") == PackedStringArray(E.WORK_DEPENDENCIES))
 	var old := {"major": 4, "minor": 3}
 	var older := E.dependencies("play", old)
-	t.check("export: Godot 4.3 keeps Play Core and leaves Credential Manager out", older.size() == 4 and not Array(older).any(func(d): return E.is_credential_dependency(d)))
+	t.check("export: Godot 4.3 keeps Play Core and leaves Credential Manager out", older.size() == 5 and older.has("com.google.android.gms:play-services-auth-blockstore:16.4.0") and not Array(older).any(func(d): return E.is_credential_dependency(d)))
 	var sizes := [4, 7].map(func(minor): return E.dependencies("play", {"major": 4, "minor": minor}).size())
-	t.check("export: Godot 4.4 and 4.7 carry all seven", E.dependencies("play", {"major": 4, "minor": 4}).size() == 7 and sizes == [7, 7])
+	t.check("export: Godot 4.4 and 4.7 carry all eight", E.dependencies("play", {"major": 4, "minor": 4}).size() == 8 and sizes == [8, 8])
 	t.check("export: the old-engine omission is warned about", E.credentials_warning("play", old).contains("Godot 4.3"))
 	t.check("export: current engines and direct are not warned", E.credentials_warning("play", {"major": 4, "minor": 7}) == "" and E.credentials_warning("direct", old) == "")
 
@@ -136,5 +137,6 @@ func _drift(t: PKeyTestContext) -> void:
 	want.sort()
 	have.sort()
 	t.check("google: PLAY_DEPENDENCIES' Credential Manager pins equal libs.versions.toml's", want == have, "toml %s, export %s" % [want, have])
+	t.check("google: PLAY_DEPENDENCIES' Block Store pin equals libs.versions.toml's", E.PLAY_DEPENDENCIES.has(str(modules.get("play-blockstore", "missing"))), str(modules.get("play-blockstore", "missing")))
 	for key in ["playAppUpdate", "playAssetDelivery", "playIntegrity"]:
 		t.check("google: the Play Core pin %s is in PLAY_DEPENDENCIES" % key, E.PLAY_DEPENDENCIES.any(func(d): return d.ends_with(":" + str(versions.get(key, "?")))))

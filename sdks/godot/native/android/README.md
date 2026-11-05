@@ -45,6 +45,14 @@ in `direct`, and `dependency` in a `play` export that carries no `androidx.crede
 class name before anything loads). A token arrives only in the result event (`{ok: true, token}`);
 a failure is `{ok: false, error: cancelled | unavailable, reason}`.
 
+The OS backup ops `bk_info`, `bk_get {kind, product}`, `bk_set {kind, product, value}` and `bk_delete {kind, product}`
+(I-49.14) are in the main source set over `:platform`'s `PlatformBackup`: Block Store 16.4.0 in `play`, `unavailable` with
+reason `outlet` in `direct` (the `platformBackup` capability says which). `kind` is `restore` or `sync` and `product` a
+slug; the plugin builds the key (`pkey-restore-<product>`, `pkey-sync-<product>`: one entry per product, because an app may
+hold 16). `value` is base64, at most 4096 bytes. Every op answers `{ok: true, req}` and the result arrives as an event:
+`bk_get` gives `{found, value?}`, `bk_set` `{cloud}` (true only when end-to-end encryption is available), a failure
+`{ok: false, error: unavailable | refused, reason}` with a fixed word and never the value.
+
 The native redirect sign-in ops `auth_open {url, scheme, claimedUri, issuerHost}` and `auth_cancel` (I-48.17b) are in
 the main source set, with `PKeyGodotRedirectActivity` (declared not exported, no intent filter). `auth_open` opens
 the authorize page in a Custom Tab and answers `{ok: true}` once the browser started; it refuses (reason word only,

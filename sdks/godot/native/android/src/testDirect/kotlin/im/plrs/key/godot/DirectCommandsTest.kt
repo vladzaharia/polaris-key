@@ -108,4 +108,16 @@ class DirectCommandsTest {
         c.close()
         assertEquals(null, InstallEvents.listener)
     }
+
+    @Test
+    fun theBackupOpsAnswerUnavailableOutletInTheDirectBuild() {
+        val c = commands(null)
+        assertFalse(c.json(JSONObject().put("op", "capabilities")).getBoolean("platformBackup"))
+        for (op in listOf("bk_get", "bk_delete")) {
+            val ack = c.json(JSONObject().put("op", op).put("kind", "restore").put("product", "diceroll"))
+            val ev = c.awaitResult(ack.getInt("req"))
+            assertEquals("unavailable", ev.getString("error"))
+            assertEquals("outlet", ev.getString("reason"))
+        }
+    }
 }

@@ -8,6 +8,7 @@ import im.plrs.key.platform.AndroidKeyStoreProvider
 import im.plrs.key.platform.InstallSource
 import im.plrs.key.platform.KeyProvider
 import im.plrs.key.platform.KeystoreSealer
+import im.plrs.key.platform.PlatformBackup
 import im.plrs.key.platform.PolarisKeyPlatform
 import im.plrs.key.platform.SecureStore
 import im.plrs.key.platform.SecureStoreException
@@ -81,7 +82,8 @@ abstract class FlavorCommands(protected val c: Commands) {
  * Common ops: capabilities, install_source, ks_get / ks_set / ks_delete / ks_info, ks_seal / ks_open /
  * ks_destroy (the Godot device key store's sealer, CC-26.7), no_backup_dir, poll, the LAN discovery ops
  * nsd_* ([NsdCommands], CC-14b.9), the native redirect browser ops auth_open / auth_cancel ([RedirectCommands], I-48.17b) and the Google
- * sign-in ops gid_silent / gid_sheet / gid_provider / gid_sign_out ([GoogleIdentityCommands], I-48.5a).
+ * sign-in ops gid_silent / gid_sheet / gid_provider / gid_sign_out ([GoogleIdentityCommands], I-48.5a) and the OS backup
+ * ops bk_info / bk_get / bk_set / bk_delete ([BackupCommands], I-49.14).
  * Unsolicited events: update_state, update_result, pack_state, install_status, resumed.
  *
  * Calls arrive on Godot's render thread (notes/S-10 §5); Play Core and activity work is posted to
@@ -98,6 +100,8 @@ class Commands(
     nsdBackend: NsdCommands.Backend = NsdCommands.Real { host.appContext },
     /** The browser behind `auth_open` (tests pass a fake: Robolectric has no browser). */
     tabs: TabLauncher = CustomTabLauncher,
+    /** The OS backup behind the `bk_*` ops (tests pass a fake: Robolectric has no Block Store). */
+    backup: () -> PlatformBackup = { PlatformBackup.create(host.appContext) },
 ) {
     val queue = EventQueue()
 
@@ -107,6 +111,7 @@ class Commands(
     val worker: ExecutorService = Executors.newSingleThreadExecutor { r -> Thread(r, "pkey-android-worker") }
     private val flavor: FlavorCommands = (flavorFactory ?: ::createFlavorCommands)(this)
     private val googleId = GoogleIdentityCommands(this, identity)
+    private val platformBackup = BackupCommands(this, backup)
 
     /** The bulk-body channel (U-41.6a): byte[] ops next to the crypto entry, events through `poll`. */
     val bulk = BulkCommands(this)
@@ -160,6 +165,7 @@ class Commands(
         }
         "auth_open", "auth_cancel" -> redirect.handle(op, q)
         "gid_silent", "gid_sheet", "gid_provider", "gid_sign_out" -> googleId.handle(op, q)
+        "bk_info", "bk_get", "bk_set", "bk_delete" -> platformBackup.handle(op, q)
         "nsd_status", "nsd_advertise", "nsd_advertise_stop", "nsd_browse_start", "nsd_browse_stop", "nsd_accept", "nsd_stop_all" -> nsd.handle(op, q)
         else -> when {
             op in flavor.ops -> flavor.handle(op, q)
@@ -191,6 +197,7 @@ class Commands(
             .put("nsd", nsd.supported())
             .put("syncBulk", true)
             .put("authRedirect", true)
+            .put("platformBackup", platformBackup.available())
         flavor.capabilities(out)
         return out
     }

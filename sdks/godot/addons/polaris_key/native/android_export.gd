@@ -27,7 +27,8 @@ const DEFAULT_FLAVOR := "play"
 const BIN := "polaris_key/native/android/bin"
 ## Play Core: exactly the libraries polaris-key-platform-play's POM names (sdks/kotlin/gradle/
 ## libs.versions.toml), Play Integrity included (P6-02), and the Credential Manager libraries
-## (I-48.5b); sdks/kotlin/tools/check_publication.sh fails
+## (I-48.5b) and Block Store (I-49.14: the restore item, not engine-gated: minSdk 21, no AAR metadata constraint);
+## sdks/kotlin/tools/check_publication.sh fails
 ## when this list and that POM differ (P6-10).
 const PLAY_DEPENDENCIES := [
 	"com.google.android.play:app-update:2.1.0",
@@ -36,6 +37,7 @@ const PLAY_DEPENDENCIES := [
 	"androidx.credentials:credentials:1.6.0",
 	"androidx.credentials:credentials-play-services-auth:1.6.0",
 	"com.google.android.libraries.identity.googleid:googleid:1.2.0",
+	"com.google.android.gms:play-services-auth-blockstore:16.4.0",
 ]
 ## WorkManager, for background transfers (U-41.6b): exactly the androidx.work library polaris-key-platform's
 ## POMs name (sdks/kotlin/gradle/libs.versions.toml `androidxWork`). The AARs are local files and carry no
