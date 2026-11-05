@@ -2020,7 +2020,7 @@ PLAN_MATRIX_VERSION: Final[int] = 2
 
 
 #: `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
-SYNC_SCENARIOS_VERSION: Final[int] = 4
+SYNC_SCENARIOS_VERSION: Final[int] = 5
 
 
 #: `deviceLabelVersion` of conformance/corpus/v2/device-label.json.

@@ -274,7 +274,7 @@ describe("the sources", () => {
       updateMatrixVersion: 1,
       outletMatrixVersion: 1,
       planMatrixVersion: 2,
-      syncScenariosVersion: 4,
+      syncScenariosVersion: 5,
       deviceLabelVersion: 2,
       presentationMatrixVersion: 1,
       portalMatrixVersion: 1,
