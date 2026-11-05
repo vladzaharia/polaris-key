@@ -136,7 +136,11 @@ that serializes deploys so two tags can never race.
    — the tagged commit must be an ancestor of `origin/main`
    (`git merge-base --is-ancestor "$GITHUB_SHA" origin/main`). A tag name alone was once the
    only gate, which meant a tag pointing at any commit, reviewed or not, would deploy to
-   production; this closes that hole.
+   production; this closes that hole. Then require the CI workflow's `CI OK` check run on the
+   exact tagged commit to have concluded `success` (polled up to 120 minutes while CI runs;
+   any other conclusion, no such check run, or an API error refuses the deploy). The deploy does
+   not rebuild or retest: CI did. The usual path to a taggable commit is a push to `next`,
+   which runs the full CI and, when it passes, has `promote.yml` fast-forward `main` to it.
 2. **Apply D1 migrations** (`wrangler d1 migrations apply --remote`), then re-run the newest
    `migrations/*_index_assertion.sql` (`0018_index_assertion.sql`, succeeded by
    `0027_i_index_assertion.sql`) unconditionally on every deploy. Each successor carries the

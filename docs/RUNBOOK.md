@@ -105,6 +105,30 @@ git push origin v0.1.0
 
 Only semver-like `v*` tags deploy production. Pushes to `main` run CI but do not deploy.
 
+**The lead flow: push to `next`, `main` follows when green, tag from `main`.**
+
+```sh
+git push origin <sha>:refs/heads/next   # the full CI runs on next, like on main
+# CI completes with success -> promote.yml fast-forwards main to that SHA (nothing to do)
+git fetch origin main && git tag v0.1.0 origin/main && git push origin v0.1.0
+```
+
+`promote.yml` moves `main` only by fast-forward and only when `main` is already an ancestor of the
+tested SHA; if `main` holds a commit `next` lacks (a hotfix pushed straight to `main`) the run fails
+and says so: merge `main` into `next`, push, and the next green CI promotes it. Its token has
+`contents: write` and nothing else, so the push it makes does not start other workflows: CI already
+ran on that exact SHA (through `next`), and `deploy.yml` accepts that run as the proof. The
+`main`-channel SDK prerelease of a promoted commit is published on demand:
+`gh workflow run publish-sdks.yml --ref main`. A push straight to `main` (an admin, a hotfix) still
+runs CI and publishes the prerelease as before.
+
+`deploy.yml`'s `verify` job does not rebuild or retest. It waits (up to 120 minutes) for the CI
+workflow's `CI OK` check run on the tagged SHA and refuses on anything but `success`, on no such
+check run, and on an API error. A newer push to the same branch cancels the CI run in flight, so tag
+the SHA whose `CI OK` is green; a tag on a superseded SHA is refused. Production is protected by the
+environment-scoped token, the `v*` deployment tag policy, the admin-only `v*` tag ruleset and this
+gate; the `production` environment has no required reviewer (DEPLOYMENT.md §7).
+
 Smoke checks:
 
 ```sh
@@ -1358,15 +1382,21 @@ nothing to bump and no per-SDK tag:
 
 | Trigger          | Workflow                                       | Every SDK is published at                                 | Channel                 |
 | ---------------- | ---------------------------------------------- | --------------------------------------------------------- | ----------------------- |
-| a push to `main` | `publish-sdks.yml`                             | `<next>-main.<N>` (PyPI `<next>.dev<N>`)                  | `main` (npm dist-tag)   |
+| a push to `main` | `publish-sdks.yml`, after `CI OK` is green     | `<next>-main.<N>` (PyPI `<next>.dev<N>`)                  | `main` (npm dist-tag)   |
 | a `v*` tag       | `deploy.yml` → `publish-sdks.yml` after deploy | exactly the tag's version (`v0.9.0` → `0.9.0` everywhere) | `stable`, `beta` if pre |
 
 - **The version** comes from git (`tools/sdk-version.mjs derive`): `<next>` is the patch after the
   newest `v*` tag, `<N>` the commits since it. CI stamps it into every SDK's version file after
   the tests (`tools/sdk-version.mjs stamp`) and never commits it. A prerelease tag must be
   `-alpha.N`, `-beta.N` or `-rc.N` (PyPI has to spell it too); anything else fails the run.
+- **Never a red build:** a `main` publish first waits for the CI workflow's `CI OK` on that SHA
+  (`tools/require-ci-ok.sh`, the `ci-gate` job, up to 120 minutes) and publishes nothing, and runs
+  no drift check, if it is not `success`. The feed drift check still reads back what was published.
 - **To release:** tag a commit on `main` `vX.Y.Z` and push the tag. `deploy.yml` deploys the
-  Worker, registers the platform packages (below), then publishes every SDK at `X.Y.Z`.
+  Worker, registers the platform packages (below), then publishes every SDK at `X.Y.Z`. The tag's
+  publish passes `tested: true` (set only after `verify` proved `CI OK` green on the SHA), which
+  skips the SDK test suites CI already ran (Swift, Godot, Kotlin, the public npm packages,
+  Python) and keeps pack, build, publish and the drift check.
 - **Registration** (`deploy.yml`, "Register the platform packages"): the deploy hook bootstraps the
   system product, links it to this repository and applies the root `.pkey/` of the tag: the
   package deliverables, the `main` channel and the trusted publisher (DEPLOYMENT §2). It is
@@ -2562,15 +2592,23 @@ host is untouched. Detach before rolling back below that release.
 
 ## CI gates
 
-`.github/workflows/ci.yml` runs on PRs and `main` pushes. **`CI OK` is the one required check**
-(branch protection: require it and nothing else); it passes when every job passed or was skipped
-by scope.
+`.github/workflows/ci.yml` runs on PRs and on pushes to `main` and `next`. **`CI OK` is the one
+required check** (branch protection: require it and nothing else); it passes when every job passed
+or was skipped by scope. A newer push to the same branch or pull request cancels the run in flight
+(`concurrency`, `cancel-in-progress`). A push to `next` is a main push for the scope map (every
+lane, the full matrix); see "The lead flow" under Deploy for what follows.
+
+`nightly-advisory.yml` (a schedule and `workflow_dispatch`) runs the lanes that used to fail every
+push or only report: the Swift SDK on Linux (`swift-linux`), the SwiftUI kit's macOS renders
+(`swiftui-mac`), the Compose desktop kit (`compose-desktop`) and the iOS footprint report
+(`apple-footprint`). They are advisory (`continue-on-error`), `CI OK` does not need them, and a
+red one blocks nothing.
 
 - `js`, `js-worker`, `js-admin` and `js-rest` always run (static checks; the Worker, the admin SPA and every other package's tests): JS/TS build, typecheck, tests (the adapter conformance suites included),
   lint, the production-dependency audit, `pnpm gen --check` (the conformance corpus among the drift
   gates), the admin build and the docs link check.
 - The other lanes (workerd smoke, Node floor, browsers, console, UI kits, React kit, Python, the
-  Swift SDK and Apple plugin (four macOS jobs: `apple`, `apple-hosted`, `apple-footprint`,
+  Swift SDK and Apple plugin (three macOS jobs: `apple`, `apple-hosted`,
   `apple-plugin`, one lane because they read the same paths), the Swift floor, Kotlin, Android, Godot) run when a
   changed path is one of the lane's `paths` in `tools/ci-scope.json`, or one of its `shared` inputs
   (the contract, the shared packages, `tools/`, `.github/`, the lockfile). A lane's `paths` list

@@ -267,7 +267,11 @@ and push the result straight to `refs/tags/v9.9.9`; the commit never lands on a 
 never appears in a PR, and GitHub runs their edited workflow. So the semver check, the "must be
 an ancestor of `origin/main`" check and the CI-green check are all **advisory**: they stop
 mistakes, never someone who can write a tag, because that person edits them out in the same
-commit they deploy.
+commit they deploy. What does hold, today: the environment-scoped token (below), the `v*`
+deployment tag policy on the `production` environment, and the tag ruleset that restricts
+who can create, move or delete a `v*` tag (§2, "GitHub environment `package-registry`", item 3). The `production` environment has **no
+required reviewer**: a deploy does not pause for a human, and nothing in this document should be
+read as promising one.
 
 What such a person cannot rewrite from inside the tag is which secrets the job is allowed to
 see. A repository secret is visible to every workflow in the repo, so with a repository-scoped
@@ -287,19 +291,19 @@ Steps:
    repository-wide was readable by every workflow in the repo, including any workflow file
    introduced on a tag, so treat it as exposed and create a new Cloudflare API token rather
    than moving the old one.
-4. **Add protection rules to the `production` environment:**
+4. **Add the deployment policy to the `production` environment:**
 
-   | Rule                         | Value                                           |
-   | ---------------------------- | ----------------------------------------------- |
-   | Required reviewers           | at least one operator other than the tag pusher |
-   | Deployment branches and tags | **Selected branches and tags** → tag rule `v*`  |
+   | Rule                         | Value                                          |
+   | ---------------------------- | ---------------------------------------------- |
+   | Deployment branches and tags | **Selected branches and tags** → tag rule `v*` |
 
-   Required reviewers make a deploy pause for a human even when the workflow file in the tag
-   says otherwise. The `v*` tag policy makes the environment, and therefore the token,
-   unreachable from any ref that is not a release tag.
+   The `v*` tag policy makes the environment, and therefore the token, unreachable from any ref
+   that is not a release tag. The environment has no required reviewer today; adding one would
+   make a deploy pause for a human even when the workflow file in the tag says otherwise, and it
+   is a settings change, not something the workflows can do.
 
-5. **Verify.** Push a throwaway tag and confirm the run pauses for review before the first
-   step that uses the token, then reject it. Confirm
+5. **Verify.** Confirm a run from a branch cannot read the environment's secret (the policy
+   refuses the deployment), and confirm
    `gh api repos/vladzaharia/polaris-key/actions/secrets` does not list
    `CLOUDFLARE_API_TOKEN` (repository scope), while
    `gh api repos/vladzaharia/polaris-key/environments/production/secrets` does.
@@ -1095,17 +1099,26 @@ Before it touches production the unprivileged `verify` job requires, in order:
 
 1. the tag to be semver `vMAJOR.MINOR.PATCH` (optionally with a prerelease suffix);
 2. the tagged commit to be an ancestor of `origin/main`; and
-3. every check run recorded against that exact commit SHA (other than the deploy run's own) to
-   be green, skipped or neutral. A commit can reach `main` with CI red (an admin merge, a
-   check that was not required yet, a workflow that errored before reporting) and ancestry
-   alone does not notice. The gate fails closed: zero check runs, or an API error reading
-   them, is a failure. Runs still in progress are polled for up to 15 minutes, then the
-   deploy is refused.
+3. the CI workflow's `CI OK` check run on that exact commit SHA to have concluded `success`
+   (`tools/require-ci-ok.sh`). The check run is read only through `ci.yml`'s own push runs of
+   that SHA, so a job named `CI OK` in another workflow cannot satisfy it; the push to `next`
+   that `promote.yml` fast-forwards from counts, a pull request run does not (it runs a subset
+   of the lanes). While CI is queued or in progress the gate polls for up to 120 minutes. It
+   fails closed: any other conclusion (including `cancelled`, which a newer push causes), no
+   such check run, or an API error is a refusal. The other workflows' check runs (Publish SDKs,
+   native desktop, flatpak, feed closure) and the advisory jobs no longer gate the deploy.
 
-Then the `deploy-worker` job waits for approval from a required reviewer on the `production`
-environment. Only that approval and the environment-scoped token are enforcement; (1)–(3)
-live in the workflow file that the tag itself carries, so they catch mistakes and nothing more
-(see "GitHub Actions secret (environment-scoped, not repository-scoped)" in section 2).
+`verify` no longer repeats the build, typecheck, tests or lint: `CI OK` is the proof they passed
+on this SHA. `deploy-worker` still builds what it deploys. The SDK publish the tag then calls
+gets `tested: true` from `verify` and skips the SDK test suites CI already ran (Swift, Godot,
+Kotlin, the public npm packages, Python); pack, build, publish and the drift check still run.
+
+What enforces production today is the environment-scoped token (a workflow without
+`environment: production` has no token), the `v*` deployment tag policy on the environment, the
+`v*` tag ruleset (§2, `package-registry` item 3: admin-only), and the `CI OK` gate above. The `production`
+environment has no required reviewer. (1)–(3) live in the workflow file that the tag itself
+carries, so they catch mistakes and nothing more (see "GitHub Actions secret
+(environment-scoped, not repository-scoped)" in section 2).
 
 Create a production release tag:
 
@@ -1114,8 +1127,9 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-If a tag is malformed, if its commit is not on `main`, or if CI was not green on that commit,
-the workflow exits before applying migrations or deploying.
+If a tag is malformed, if its commit is not on `main`, or if `CI OK` was not green on that commit,
+the workflow exits before applying migrations or deploying. Push `next`, let CI go green, let
+`promote.yml` move `main`, then tag from `main` (RUNBOOK "Releasing").
 
 **Deploy identity.** Both `wrangler deploy` calls carry the release tag and commit:
 `--var PKEY_RELEASE_TAG:<tag>`, `--var PKEY_GIT_SHA:<sha>`, and the same values on the
@@ -1293,8 +1307,8 @@ Validate portal email:
 - DJDL SDK/app has the returned trust key pinned.
 - CI deploys production from semver tags only.
 - `CLOUDFLARE_API_TOKEN` exists as a `production` **environment** secret and **not** as a
-  repository secret, and the `production` environment has required reviewers and a `v*`
-  deployment tag policy.
+  repository secret, and the `production` environment has a `v*` deployment tag policy (it has
+  no required reviewer; the `v*` tag ruleset is admin-only, §2).
 - The GitHub environment `package-registry` admits the `main` branch and `v*` tags, holds the
   three `SWIFT_REGISTRY_*` secrets, `main` is protected and a tag ruleset covers `v*` (§3); `polaris-key`'s trusted
   publisher is `publish-package.yml` in `package-registry`, and it holds the root `.pkey/`

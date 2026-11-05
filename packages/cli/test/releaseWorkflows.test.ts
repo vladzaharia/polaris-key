@@ -66,8 +66,10 @@ interface Job {
   with?: Record<string, unknown>;
   steps?: Step[];
   "continue-on-error"?: boolean;
+  outputs?: Record<string, string>;
 }
 interface Workflow {
+  permissions?: Record<string, string>;
   on: Record<string, unknown>;
   jobs: Record<string, Job>;
 }
@@ -225,7 +227,12 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
   const wf = workflow(PUBLISH_SDKS);
 
   it("runs on every push to main, and on every v* tag through deploy.yml, and nothing else", () => {
-    expect(Object.keys(wf.on).sort()).toEqual(["push", "workflow_call"]);
+    // workflow_dispatch: publishes main on demand (a promote.yml fast-forward starts no push run).
+    expect(Object.keys(wf.on).sort()).toEqual([
+      "push",
+      "workflow_call",
+      "workflow_dispatch",
+    ]);
     const push = wf.on.push as { branches?: string[]; tags?: string[] };
     expect(push.branches).toEqual(["main"]);
     expect(push.tags).toBeUndefined();
@@ -233,7 +240,7 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
     const deploy = workflow("deploy.yml");
     expect((deploy.on.push as { tags: string[] }).tags).toEqual(["v*"]);
     expect(deploy.jobs["publish-sdks"]).toMatchObject({
-      needs: "deploy-worker",
+      needs: ["verify", "deploy-worker"],
       uses: "./.github/workflows/publish-sdks.yml",
       permissions: { contents: "read", "id-token": "write" },
       // Without it the called workflow's swift-sign job reads every package-registry secret as
@@ -1237,14 +1244,19 @@ describe("workflow hardening", () => {
     const deploy = workflow("deploy.yml");
     const verifySteps = deploy.jobs.verify!.steps ?? [];
     const gateAt = verifySteps.findIndex(
-      (s) => s.name === "Require green checks on the tagged commit",
+      (s) => s.name === "Require CI OK on the tagged commit",
     );
     const gate = verifySteps[gateAt]!;
+    const script = readFileSync(
+      path.join(ROOT, "tools", "require-ci-ok.sh"),
+      "utf8",
+    );
 
-    it("requires every check run on the tagged commit to be green, failing closed, before anything is installed", () => {
+    it("requires the CI workflow's CI OK on the tagged commit, failing closed, before anything is installed", () => {
       expect(deploy.jobs.verify!.permissions).toEqual({
         contents: "read",
         checks: "read",
+        actions: "read",
       });
       expect(gateAt).toBeGreaterThan(-1);
       const ancestry = verifySteps.findIndex((s) =>
@@ -1255,18 +1267,52 @@ describe("workflow hardening", () => {
       );
       expect(gateAt).toBeGreaterThan(ancestry);
       expect(gateAt).toBeLessThan(install);
-      // Reads the check runs of the tagged SHA, excludes this run's own, and fails closed on
-      // an API error and on zero check runs.
-      expect(gate.run).toContain("commits/$SHA/check-runs");
-      expect(gate.run).toContain('$ENV.RUN_ID + "/"');
-      expect(gate.run).toContain("could not read check runs");
-      expect(gate.run).toContain("no check runs recorded");
-      expect(gate.run).toContain(
-        "completed:success | completed:skipped | completed:neutral",
-      );
-      // In-progress runs are polled for a bounded number of attempts, never forever.
-      expect(gate.run).toMatch(/MAX_ATTEMPTS=\d+/);
-      expect(gate.run).not.toContain("while true");
+      expect(gate.run).toContain("tools/require-ci-ok.sh");
+      expect(gate.env).toMatchObject({
+        SHA: "${{ github.sha }}",
+        REPO: "${{ github.repository }}",
+      });
+      // The proof publish-sdks passes on: set only after the gate script succeeded.
+      expect(gate.run).toMatch(/require-ci-ok\.sh\n\s*echo "ok=true"/);
+      expect(deploy.jobs.verify!.outputs).toEqual({
+        ci_ok: "${{ steps.ci.outputs.ok }}",
+      });
+      // Reads the check run only through ci.yml's own push runs of the SHA (name AND workflow),
+      // fails closed on an API error, on a non-success conclusion and on no check run, and polls
+      // for 120 minutes at most, never forever.
+      expect(script).toContain("actions/workflows/$CI_WORKFLOW/runs");
+      expect(script).toContain('CI_WORKFLOW="${CI_WORKFLOW:-ci.yml}"');
+      expect(script).toContain('.path == $ENV.CI_PATH and .event == "push"');
+      expect(script).toContain(".name == $ENV.CHECK_NAME");
+      expect(script).toContain('(.app.slug // "") == "github-actions"');
+      expect(script).toContain('CHECK_NAME="${CHECK_NAME:-CI OK}"');
+      expect(script).toContain('[ "$BEST_CONCLUSION" = "success" ]');
+      expect(script).toContain("could not read the");
+      expect(script).toContain("could not list the CI runs");
+      expect(script).toContain('MAX_ATTEMPTS="${MAX_ATTEMPTS:-240}"');
+      expect(script).toContain('INTERVAL="${INTERVAL:-30}"');
+      expect(script).not.toContain("while true");
+    });
+
+    it("no longer rebuilds, typechecks, tests or lints: CI OK is the proof", () => {
+      const runs = verifySteps.map((s) => s.run ?? "").join("\n");
+      for (const cmd of [
+        "pnpm build",
+        "pnpm typecheck",
+        "pnpm test",
+        "pnpm lint",
+      ])
+        expect(runs, cmd).not.toContain(cmd);
+      expect(runs).not.toContain("check-runs");
+      // The agent kit it builds for agent-kit-release is the one thing verify still produces.
+      expect(runs).toContain("agent-kit-release.ts");
+    });
+
+    it("passes the proof to the SDK publish as `tested`, never a literal", () => {
+      const call = deploy.jobs["publish-sdks"]!;
+      expect(call.with).toEqual({
+        tested: "${{ needs.verify.outputs.ci_ok == 'true' }}",
+      });
     });
 
     it("keeps the privileged job's permissions free of checks", () => {
@@ -1323,6 +1369,187 @@ describe("workflow hardening", () => {
       expect(docs).toContain(
         "must exist **only** as an environment secret on the `production`",
       );
+      // production has no required reviewer; the doc must not promise one.
+      expect(docs).not.toMatch(/waits for approval from a required reviewer/);
+      expect(docs).not.toMatch(/\| Required reviewers\s+\|/);
+      expect(docs).toContain("no required reviewer");
+      expect(docs).toContain("`CI OK`");
     });
+  });
+});
+
+describe("publish-sdks.yml waits for CI OK and skips the tests CI already ran", () => {
+  const wf = workflow(PUBLISH_SDKS);
+  const gateScript = "tools/require-ci-ok.sh";
+
+  it("a main run publishes only after CI OK is green on the SHA, never a red build", () => {
+    const gate = wf.jobs["ci-gate"]!;
+    expect(gate.permissions).toEqual({
+      contents: "read",
+      checks: "read",
+      actions: "read",
+    });
+    // Branch runs only: a tag run was proven by deploy.yml's verify before it called this.
+    expect(gate.if).toContain("startsWith(github.ref, 'refs/heads/')");
+    expect((gate.steps ?? []).some((s) => s.run?.includes(gateScript))).toBe(
+      true,
+    );
+    const version = wf.jobs.version!;
+    expect(version.needs).toBe("ci-gate");
+    // A refusal (failure) skips version, so every job below it is skipped; a tag run's skipped
+    // gate passes.
+    expect(version.if).toContain("needs.ci-gate.result == 'success'");
+    expect(version.if).toContain("needs.ci-gate.result == 'skipped'");
+    expect(version.if).not.toContain("failure");
+    for (const [id, job] of Object.entries(wf.jobs)) {
+      if (id === "ci-gate" || id === "version") continue;
+      // Everything else descends from `version`, directly or through a job that does.
+      expect(
+        [job.needs ?? []].flat().length,
+        `${id} depends on something`,
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  it("the feed drift check still reads back what was published", () => {
+    expect(wf.jobs.drift!.if).toContain("needs.version.result == 'success'");
+    const check = (wf.jobs.drift!.steps ?? []).find((s) =>
+      s.run?.includes("tools/feed-drift.mjs"),
+    );
+    expect(check).toBeDefined();
+  });
+
+  it("takes a `tested` input and skips exactly the SDK test suites with it", () => {
+    const input = (
+      wf.on as {
+        workflow_call: {
+          inputs: { tested: { type: string; default: boolean } };
+        };
+      }
+    ).workflow_call.inputs.tested;
+    expect(input).toMatchObject({ type: "boolean", default: false });
+    // Whole-job suites: skipped, and the jobs that need them accept a skip (not a failure).
+    expect(wf.jobs["swift-test"]!.if).toBe("${{ !inputs.tested }}");
+    expect(wf.jobs["godot-test"]!.if).toBe("${{ !inputs.tested }}");
+    for (const [id, dep] of [
+      ["swift-sign", "swift-test"],
+      ["godot", "godot-test"],
+    ] as const) {
+      const cond = String(wf.jobs[id]!.if);
+      expect(cond, id).toContain(`needs.${dep}.result == 'success'`);
+      expect(cond, id).toContain(`needs.${dep}.result == 'skipped'`);
+      expect(cond, id).toContain("needs.version.result == 'success'");
+      expect(cond, id).toContain("!cancelled()");
+    }
+    // Test steps inside build jobs: the step is skipped, the pack/build/publish steps are not.
+    const skipped = (id: string, name: string) =>
+      (wf.jobs[id]!.steps ?? []).find((s) => s.name === name)?.if;
+    expect(skipped("npm-pack", "Test the public packages")).toBe(
+      "${{ !inputs.tested }}",
+    );
+    expect(skipped("python-build", "Test")).toBe("${{ !inputs.tested }}");
+    expect(skipped("kotlin-build", "Tests and boundaries")).toBe(
+      "${{ !inputs.tested }}",
+    );
+    // Nothing else is conditional on it: pack, stamp, build, publish and drift always run.
+    const conditional: string[] = [];
+    for (const [id, job] of Object.entries(wf.jobs)) {
+      if (String(job.if ?? "").includes("inputs.tested")) conditional.push(id);
+      for (const st of job.steps ?? [])
+        if (String(st.if ?? "").includes("inputs.tested"))
+          conditional.push(`${id}/${st.name}`);
+    }
+    expect(conditional.sort()).toEqual([
+      "godot-test",
+      "kotlin-build/Tests and boundaries",
+      "npm-pack/Test the public packages",
+      "python-build/Test",
+      "swift-test",
+    ]);
+    // Stamping still comes after (possibly skipped) tests, and the tag run is the only caller
+    // that passes it.
+    for (const file of workflowFiles)
+      for (const [id, job] of Object.entries(workflow(file).jobs ?? {}))
+        if (job.uses?.endsWith("publish-sdks.yml"))
+          expect([file, id, Object.keys(job.with ?? {})]).toEqual([
+            "deploy.yml",
+            "publish-sdks",
+            ["tested"],
+          ]);
+  });
+});
+
+describe("promote.yml fast-forwards main to the next that went green", () => {
+  const promote = workflow("promote.yml");
+  const job = promote.jobs.promote!;
+  const text = raw("promote.yml");
+
+  it("runs only after a successful push CI on next, from this repository", () => {
+    expect(Object.keys(promote.on)).toEqual(["workflow_run"]);
+    expect(promote.on.workflow_run).toEqual({
+      workflows: ["CI"],
+      types: ["completed"],
+    });
+    const cond = String(job.if).replace(/\s+/g, " ");
+    expect(cond).toContain("workflow_run.conclusion == 'success'");
+    expect(cond).toContain("workflow_run.event == 'push'");
+    expect(cond).toContain("workflow_run.head_branch == 'next'");
+    expect(cond).toContain(
+      "workflow_run.head_repository.full_name == github.repository",
+    );
+  });
+
+  it("holds contents: write for the push and actions: write for the publish dispatch, nothing else", () => {
+    expect(job.permissions).toEqual({ contents: "write", actions: "write" });
+    expect(promote.permissions).toEqual({});
+    expect(text).not.toMatch(/secrets\./);
+  });
+
+  it("dispatches the main SDK publish only after it pushed", () => {
+    const steps = job.steps ?? [];
+    const dispatch = steps.find((s) => s.run?.includes("gh workflow run"));
+    expect(dispatch?.run).toBe("gh workflow run publish-sdks.yml --ref main");
+    expect(dispatch?.if).toBe("steps.ff.outputs.promoted == 'true'");
+    const ff = steps.find((s) => s.id === "ff");
+    expect(ff?.run).toContain('echo "promoted=true" >> "$GITHUB_OUTPUT"');
+  });
+
+  it("only fast-forwards: ancestry check, no force, no merge, no script from the tree", () => {
+    const run = (job.steps ?? []).map((s) => s.run ?? "").join("\n");
+    expect(run).toContain('git merge-base --is-ancestor origin/main "$SHA"');
+    expect(run).toContain("Not fast-forwardable");
+    expect(run).toContain('git push origin "$SHA:refs/heads/main"');
+    expect(run).not.toMatch(
+      /--force|--force-with-lease|push -f|git merge |git rebase|git reset/,
+    );
+    // The SHA reaches the shell through the environment, never spliced into the script.
+    expect(run).not.toContain("${{");
+    // No step runs anything from the checked-out tree.
+    expect(run).not.toMatch(/pnpm|npm|node |tools\/|\.\/|bash /);
+    // Never the push event of a ref other than the tested SHA.
+    expect(run).toContain("is no longer on next");
+  });
+});
+
+describe("nightly-advisory.yml: advisory lanes off the push path", () => {
+  const nightly = workflow("nightly-advisory.yml");
+  const ci = workflow("ci.yml");
+
+  it("is scheduled and on demand, and CI OK does not need any of its jobs", () => {
+    expect(Object.keys(nightly.on).sort()).toEqual([
+      "schedule",
+      "workflow_dispatch",
+    ]);
+    const okNeeds = [ci.jobs["ci-ok"]!.needs ?? []].flat();
+    for (const id of Object.keys(nightly.jobs)) {
+      expect(okNeeds, id).not.toContain(id);
+      expect(ci.jobs[id], id).toBeUndefined();
+      expect(nightly.jobs[id]!["continue-on-error"], id).toBe(true);
+    }
+  });
+
+  it("deploy.yml's verify no longer waits on advisory jobs: it reads CI OK alone", () => {
+    expect(raw("deploy.yml")).not.toContain("mapfile");
+    expect(raw("deploy.yml")).not.toContain("ci.yml <<");
   });
 });
