@@ -267,7 +267,13 @@ building and run the gate once at hand-off. Run only what your change touches:
 - `pnpm gen --check` only when you changed a generator input;
 - a wire or corpus change runs every SDK's conformance and transcript runners, filtered to them.
 
-CI runs the full matrix on the push to `main`.
+CI runs the full matrix on the push to `main` and to `next`.
+
+Release flow (the lead pushes `next`): push to `next`; the full CI runs there; when it completes
+with success `promote.yml` fast-forwards `main` to that SHA (only if `main` is an ancestor of it,
+else it fails and says so: merge `main` into `next`); tag from `main`. The tag's `deploy.yml`
+requires the CI workflow's `CI OK` on the tagged SHA (it does not rebuild or retest). Details:
+`docs/RUNBOOK.md`, "Deploy".
 
 Run `pnpm gate` once at hand-off; the lead's `$PKEY_LEAD/gate.sh` wraps it. The gate retries a
 failed step once on its own. Fix the failure, then rerun only that step with `pnpm gate --only <n>`

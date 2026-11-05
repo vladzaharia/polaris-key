@@ -30,7 +30,21 @@ name: Publish SDKs
 on:
   push:
     branches: [main]
+  # A manual publish of main: the push GitHub fires for a commit that promote.yml fast-forwarded
+  # onto main is made with the workflow token and does not start workflows, so the main-channel
+  # prerelease of such a commit is published with
+  # `gh workflow run publish-sdks.yml --ref main`. The CI OK gate below still applies.
+  workflow_dispatch:
   workflow_call:
+    inputs:
+      # deploy.yml passes true only after its verify job proved the CI workflow's "CI OK" green on
+      # this exact SHA: the SDK test suites CI already ran (Swift, Godot, Kotlin, the public npm
+      # packages, Python) are not repeated. Pack, build, stamp, publish and drift always run.
+      tested:
+        description: "CI OK was proven green on this SHA: skip the SDK test suites CI already ran"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -42,11 +56,37 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Never publish a red build: a run on a branch (a push or a dispatch on main) waits for the CI
+  # workflow's "CI OK" on this exact SHA (tools/require-ci-ok.sh, up to 120 minutes) and refuses
+  # on any other conclusion. A tag run skips it: deploy.yml's verify job proved the same thing
+  # before it called this workflow. A refusal skips every job below (nothing is published and the
+  # drift check does not wait for a feed that was never written).
+  ci-gate:
+    name: CI OK gate (main)
+    runs-on: ubuntu-latest
+    timeout-minutes: 130
+    if: github.repository == 'vladzaharia/polaris-key' && startsWith(github.ref, 'refs/heads/')
+    permissions:
+      contents: read
+      checks: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require CI OK on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: tools/require-ci-ok.sh
+
   version:
     name: Lockstep version
+    needs: ci-gate
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.repository == 'vladzaharia/polaris-key'
+    if: ${{ !cancelled() && github.repository == 'vladzaharia/polaris-key' && (needs.ci-gate.result == 'success' || needs.ci-gate.result == 'skipped') }}
     outputs:
       kind: ${{ steps.v.outputs.kind }}
       version: ${{ steps.v.outputs.version }}
@@ -95,6 +135,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Test the public packages
+        if: ${{ !inputs.tested }}
         run: |
           read -r -a filters <<<"$(node -e 'import("./tools/sdk-version.mjs").then((m) => console.log(m.publicPackageJsons(".").map((f) => "--filter=./" + f.replace("/package.json", "")).join(" ")))')"
           pnpm exec turbo run test "${filters[@]}"
@@ -335,6 +376,7 @@ jobs:
         with:
           node-version: 22
       - name: Test
+        if: ${{ !inputs.tested }}
         working-directory: sdks/python
         run: |
           python -m venv .venv
@@ -378,6 +420,8 @@ jobs:
   swift-test:
     name: Test the Swift SDK
     needs: version
+    # Skipped (no macOS runner queued) when CI OK was proven on this SHA; swift-sign accepts that.
+    if: ${{ !inputs.tested }}
     runs-on: macos-26
     timeout-minutes: 30
     steps:
@@ -396,6 +440,8 @@ jobs:
   swift-sign:
     name: Sign the Swift registry release
     needs: [version, swift-test]
+    # swift-test is skipped, not passed, when CI OK was proven on this SHA (`tested`).
+    if: ${{ !cancelled() && needs.version.result == 'success' && (needs.swift-test.result == 'success' || needs.swift-test.result == 'skipped') }}
     runs-on: macos-26
     timeout-minutes: 15
     environment: package-registry
@@ -475,6 +521,7 @@ jobs:
           set -o pipefail
           "$SDKM" "platforms;android-36" "build-tools;36.1.0" >/dev/null
       - name: Tests and boundaries
+        if: ${{ !inputs.tested }}
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon :core:test :license:test :config:test :identity:test :release:test
@@ -582,6 +629,8 @@ jobs:
   godot-test:
     name: Test the Godot SDK (4.7.2 ${{ matrix.part }})
     needs: version
+    # Skipped when CI OK was proven on this SHA; the godot feed job accepts that.
+    if: ${{ !inputs.tested }}
     runs-on: ubuntu-latest
     # The same three parts as ci.yml's godot job (run_tests.sh PKEY_TEST_PART), one runner each, so
     # no step nears its limit; the editor and template run their suites as four parallel processes.
@@ -689,6 +738,8 @@ jobs:
   godot:
     name: Godot feed
     needs: [version, godot-test, godot-smoke]
+    # godot-test is skipped, not passed, when CI OK was proven on this SHA (`tested`).
+    if: ${{ !cancelled() && needs.version.result == 'success' && needs.godot-smoke.result == 'success' && (needs.godot-test.result == 'success' || needs.godot-test.result == 'skipped') }}
     permissions:
       contents: read
       id-token: write
