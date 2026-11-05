@@ -36,6 +36,7 @@ from .backend import BackendClient
 from .cloud_sync.api import CloudSyncApi, CloudSyncClient
 from .cloud_sync.saves import SavesApi
 from .cloud_sync.host import CloudSyncHost, CloudSyncHostDeps, CloudSyncHostOptions
+from .cloud_sync.merge import HostMergeMachine, MergeRegistry
 from .commerce import CommerceClient
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
 from .connect import CloudConnect, ConnectClient, NearbyDeps
@@ -394,6 +395,15 @@ class PolarisKeyClient:
             if isinstance(cloud_sync, CloudSyncHostOptions)
             else CloudSyncHostOptions(**dict(cloud_sync or {})),
         )
+        #: The MergeRequests of this client: record collections (the machine's) and saves.
+        self._merge = MergeRegistry(
+            HostMergeMachine(self.cloud_sync_host),
+            notice=lambda r: _log.warning(
+                "cloud sync: a conflict in %r is open and no client.cloud_sync.on_conflict listener is "
+                "registered; the device keeps its copy unsent until a request is answered",
+                r.collection,
+            ),
+        )
         self._cloud_sync_api = CloudSyncApi(
             ctx=self.core,
             host=self.cloud_sync_host,
@@ -404,6 +414,7 @@ class PolarisKeyClient:
             log=lambda m: _log.warning("%s", m),
             on_subject=lambda s: self._set_synced_subject(s),
             purge_saves=lambda: self._saves_api.purge(),
+            merge=self._merge,
         )
         self._synced_subject: Optional[str] = None
         self._saves_api = SavesApi(
@@ -414,6 +425,7 @@ class PolarisKeyClient:
             subject=lambda: self._synced_subject,
             attach=self._cloud_sync_api.attach,
             emit=self._emit_cloud_sync,
+            merge=self._merge,
         )
         #: Cloud Sync (WIRE-CONTRACT-V5 §13): ``status()`` and ``flush()``; changes arrive as
         #: ``client.events`` ``cloudSync`` events. A product without the Sync service gets the typed N/A.

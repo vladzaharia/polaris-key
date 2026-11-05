@@ -4093,6 +4093,69 @@
       "layer": "client"
     },
     {
+      "id": "cloudSync.onConflict",
+      "kind": "method",
+      "feature": "sync.conflict",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.conflicts",
+      "kind": "method",
+      "feature": "sync.conflict",
+      "sdks": {
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.cloudEmpty",
+      "kind": "method",
+      "feature": "sync.conflict",
+      "sdks": {
+        "python": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.mergeRequest.keep",
+      "kind": "method",
+      "feature": "sync.conflict",
+      "args": [
+        {
+          "name": "choice",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "python": {
+          "spelling": "MergeRequest.keep"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.conflictEvent",
+      "kind": "stream",
+      "feature": "sync.conflict",
+      "enum": "mergeEvent",
+      "sdks": {
+        "python": {
+          "spelling": "events.subscribe(\"cloudSync\")",
+          "reason": "one event stream on the client bus, kind cloudSync: conflictOpened and conflictClosed"
+        }
+      },
+      "layer": "client"
+    },
+    {
       "id": "cloudSync.saves",
       "kind": "property",
       "feature": "sync.saves",

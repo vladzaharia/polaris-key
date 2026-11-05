@@ -292,6 +292,10 @@ class CloudSyncHost:
     def started(self) -> bool:
         return self._started and not self._closed
 
+    def in_pump(self) -> bool:
+        """Whether the calling thread is the one running a pump (a listener reacting to an event)."""
+        return self._pump_thread == threading.get_ident()
+
     @contextmanager
     def locked(self) -> Iterator[CloudSyncMachine]:
         """Hold the machine lock for a call into the machine (``set``, ``status``, ``sign_in``...)."""

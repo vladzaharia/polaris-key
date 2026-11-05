@@ -90,15 +90,13 @@ COLLECTION_CONFLICTS = ("lastWrite", "max", "min", "revision", "merge", "union")
 
 def resolve_collection(c: Mapping[str, Any]) -> Dict[str, Any]:
     """The machine's declaration of a catalog collection: ``name``, ``policy`` (its ``conflict`` over
-    its template over ``revision``), ``field`` (``conflictField``) and, for ``revision``, ``resolve``.
-    Mirrors ``resolveCollection``."""
+    its template over ``revision``) and ``field`` (``conflictField``). A ``revision`` record has no
+    resolution here: its conflict opens a MergeRequest (plans/U-08.md §2.1). Mirrors ``resolveCollection``."""
     conflict = c.get("conflict") or _TEMPLATE_CONFLICT.get(str(c.get("template")), "revision")
     out: Dict[str, Any] = {"name": c["name"], "policy": conflict}
     field = c.get("conflictField")
     if field is not None:
         out["field"] = field
-    if conflict == "revision":
-        out["resolve"] = "keepServer"
     return out
 
 

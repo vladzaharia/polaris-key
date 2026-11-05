@@ -493,12 +493,12 @@
       "note": "client.cloud_sync.status()/flush() and the cloudSync event (polaris_key/cloud_sync): one machine per client over the shared keyring, driven by identity events, with typed N/A while the product has no Sync service. tests/test_cloud_sync_host.py; the cloudsync-* transcripts replay in tests/test_transcripts.py."
     },
     "sync.conflict": {
-      "status": "planned",
-      "wp": "U-08"
+      "status": "implemented",
+      "note": "client.cloud_sync.on_conflict(fn), conflicts() and cloud_empty() (the async client mirrors them; its keep is a coroutine), and MergeRequest.keep (cloud_sync/merge.py, a port of client-core's sync/merge.ts) over the machine's MergeRequests for revision records (cloud_sync/machine.py: open, freeze, exact-write supersede, keep, the journalled conflicts, status().conflicts, cloud_empty) and the saves layer's (cloud_sync/saves.py: S1 to S5, the base is the version seen this session). conflictOpened and conflictClosed arrive as cloudSync events. tests/test_sync_scenarios.py replays sync-scenarios.json v5 with no skip; tests/test_cloud_sync_saves.py holds the named saves tests and tests/test_cloud_sync_merge.py the host API."
     },
     "sync.saves": {
       "status": "implemented",
-      "note": "client.cloud_sync.saves (cloud_sync/saves.py, synchronous): list, read, write, delete, revisions and resolve, a port of client-core's SavesClient bound to the machine's records (rows keep the file pointer; put_at and remove_at at an exact version, one outcome each: the fileRecordCases family of sync-scenarios.json) and the Python file transport, journal and chunk cache under one TransferEngine (max_retry_after_seconds 3600). A write runs on its own thread: its handle has pause, resume, cancel and wait; client.cloud_sync.transfers() lists the writes in flight; transferProgress, transferDone and transferFailed arrive as cloudSync events. The journal and chunk cache go with the person. tests/test_cloud_sync_saves.py; the cloudsync-files-single transcript replays through the transport."
+      "note": "client.cloud_sync.saves (cloud_sync/saves.py, synchronous): list, read, write, delete and revisions (a conflict opens a MergeRequest: sync.conflict), a port of client-core's SavesClient bound to the machine's records (rows keep the file pointer; put_at and remove_at at an exact version, one outcome each: the fileRecordCases family of sync-scenarios.json) and the Python file transport, journal and chunk cache under one TransferEngine (max_retry_after_seconds 3600). A write runs on its own thread: its handle has pause, resume, cancel and wait; client.cloud_sync.transfers() lists the writes in flight; transferProgress, transferDone and transferFailed arrive as cloudSync events. The journal and chunk cache go with the person. tests/test_cloud_sync_saves.py; the cloudsync-files-single transcript replays through the transport."
     },
     "sync.keyring": {
       "status": "implemented",
