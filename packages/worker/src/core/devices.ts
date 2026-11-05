@@ -30,6 +30,7 @@
  * imports it back from core.
  */
 
+import { licenseState } from "./licensing/duration.js";
 import {
   FINGERPRINT_ANCHOR,
   MAX_DEVICE_PROBES,
@@ -237,9 +238,7 @@ export function licenseUsable(
   license: LicenseRow | null,
   now: number,
 ): license is LicenseRow {
-  if (!license || license.status !== "active") return false;
-  if (license.expires_at !== null && now > license.expires_at) return false;
-  return true;
+  return licenseState(license, now).usable;
 }
 
 /** Rehydrate a stored fingerprint row into the shape the pure matcher takes. */
