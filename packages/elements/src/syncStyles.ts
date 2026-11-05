@@ -44,7 +44,7 @@ export const SYNC_CSS = `
   padding: 0;
   list-style: none;
 }
-@container (max-width: 24rem) {
+@container (max-width: 30rem) {
   .save-cards {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -153,9 +153,25 @@ export const SYNC_CSS = `
   color: var(--pk-danger);
   box-shadow: inset 0 0 0 1px var(--pk-danger-border);
 }
-.body.note {
+/* The reopened line: under the lede, above the cards, the info glyph then one line in strong ink at
+   body size. */
+.body.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pk-space-2);
   color: var(--pk-text-strong);
-  font-weight: 500;
+}
+.body.notice .notice-glyph {
+  flex: none;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  margin-block-start: 0.125rem;
+}
+.body.note {
+  color: var(--pk-text-muted);
+  font-size: var(--pk-kit-type-meta-size);
+  line-height: var(--pk-kit-type-meta-line-height);
+  font-weight: 400;
 }
 /* The one fact to check on a changed ring: the device that set it up. */
 [data-key="ringChange.body"] bdi {

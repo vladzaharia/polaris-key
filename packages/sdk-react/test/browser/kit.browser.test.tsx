@@ -854,6 +854,8 @@ const SAVE_ROWS = {
   failed: "SaveConflict/failed: both saves are unchanged",
   counted: "CloudSyncStatus/transferring: how much is done, and never Synced",
   unknown: "CloudSyncStatus/transferring: saves are syncing",
+  reopened:
+    "SaveConflict/choose: a choice met a newer copy, so the versions are read again",
 };
 
 /** Every control and card answers a hit at its own centre (scrolled into view first). */
@@ -997,6 +999,42 @@ describe("the save screens at the §7.1 sizes", () => {
           const actions = kit.querySelector<HTMLElement>('[data-dock="none"]')!;
           expect(getComputedStyle(actions).position).toBe("static");
         });
+
+  for (const size of SAVE_SIZES.filter((s) =>
+    ["390", "1440"].includes(s.label),
+  ))
+    for (const scheme of SCHEMES)
+      it(`reopened ${size.label} ${scheme}: one visible line, under the lede, above the cards`, async () => {
+        await check(
+          { id: "SaveConflict.reopened", row: SAVE_ROWS.reopened },
+          scheme,
+          size,
+          "polaris-key",
+        );
+        const kit = document.querySelector<HTMLElement>(".pk-root")!;
+        const lines = [
+          ...kit.querySelectorAll('[data-key="saveConflict.reopened"]'),
+        ].filter((el) => visible(el));
+        expect(lines, "exactly one visible reopened line").toHaveLength(1);
+        const line = lines[0]!;
+        // The announcement lives in the hidden status node, not a second drawn line.
+        expect(line.querySelector("svg"), "the info glyph").not.toBeNull();
+        const lede = kit.querySelector('[data-part="lede"]')!;
+        const cards = kit.querySelector('[data-part="save-cards"]')!;
+        expect(lede.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+          line.getBoundingClientRect().top + 1,
+        );
+        expect(line.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+          cards.getBoundingClientRect().top + 1,
+        );
+        expect(getComputedStyle(line).color).not.toBe(
+          getComputedStyle(lede).color,
+        );
+        expect(
+          kit.querySelector('[role="status"]')?.textContent,
+          "announced",
+        ).toMatch(/Choose again/);
+      });
 
   for (const [name, row] of Object.entries(SAVE_ROWS).filter(([n]) =>
     ["counted", "unknown"].includes(n),

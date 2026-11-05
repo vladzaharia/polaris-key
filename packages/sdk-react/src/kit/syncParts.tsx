@@ -382,7 +382,8 @@ function SaveConflictBody(props: { c: KitCtx }): ReactNode {
   // may not be announced (UX2-web 6).
   const keeping = c.view.state === "keeping";
   // A choice met a newer copy: nothing was applied, and the versions shown are the new ones.
-  const reopened = c.view.state === "choose" && shown(c, "saveConflict.reopened");
+  const reopened =
+    c.view.state === "choose" && shown(c, "saveConflict.reopened");
   // The result is announced here too (the title is the heading, where focus rests, but a screen reader
   // that was on the removed button hears nothing without it).
   const keptKey =
@@ -399,7 +400,9 @@ function SaveConflictBody(props: { c: KitCtx }): ReactNode {
     : reopened
       ? "saveConflict.reopened"
       : keptKey;
-  const visible = keeping || reopened;
+  // Only keeping is drawn here. The reopened line is already under the lede (the texts block), so
+  // this node carries it hidden, for the announcement.
+  const visible = keeping;
   return (
     <>
       <SaveConflictStep c={c} />

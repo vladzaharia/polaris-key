@@ -1102,19 +1102,35 @@ export function titles(
   );
 }
 
+/** The one line that says what just happened to the screen (a choice met a newer copy). */
+const NOTICE_KEY = "saveConflict.reopened";
+
 export function paragraphs(c: KitCtx, keys: string[], cls = "body"): ReactNode {
   if (keys.length === 0) return null;
-  return keys.map((k, i) => (
-    <p
-      key={k}
-      hidden={silent(c, k) || undefined}
-      className={i === 0 && cls === "body" ? "lede" : cls}
-      data-part={cls === "body" ? (i === 0 ? "lede" : "body") : cls}
-      data-key={k}
-    >
-      {text(c, k)}
-    </p>
-  ));
+  return keys.map((k, i) =>
+    k === NOTICE_KEY ? (
+      <p
+        key={k}
+        hidden={silent(c, k) || undefined}
+        className="body notice"
+        data-part="body"
+        data-key={k}
+      >
+        {GLYPHS.info("notice-glyph")}
+        <span>{text(c, k)}</span>
+      </p>
+    ) : (
+      <p
+        key={k}
+        hidden={silent(c, k) || undefined}
+        className={i === 0 && cls === "body" ? "lede" : cls}
+        data-part={cls === "body" ? (i === 0 ? "lede" : "body") : cls}
+        data-key={k}
+      >
+        {text(c, k)}
+      </p>
+    ),
+  );
 }
 
 /** The message of a refusal (neutral, DL6) or an error (danger, DL7), under what caused it. */

@@ -646,6 +646,37 @@ describe("the save screens", () => {
         }
       });
 
+  it("reopened: one visible line with the info glyph, under the lede and above the cards", async () => {
+    await page.viewport(390, 844);
+    const el = await mount(
+      named(
+        "SaveConflict/choose: a choice met a newer copy, so the versions are read again",
+      ),
+      "dark",
+      844,
+      true,
+    );
+    const root = el.shadowRoot!;
+    const lines = [
+      ...root.querySelectorAll('[data-key="saveConflict.reopened"]'),
+    ].filter((n) => {
+      const r = n.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    });
+    expect(lines).toHaveLength(1);
+    const line = lines[0]!;
+    expect(line.querySelector("svg")).not.toBeNull();
+    const lede = root.querySelector('[data-part="lede"]')!;
+    const cards = root.querySelector('[data-part="save-cards"]')!;
+    expect(lede.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      line.getBoundingClientRect().top + 1,
+    );
+    expect(line.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      cards.getBoundingClientRect().top + 1,
+    );
+    expect(getComputedStyle(line).color).not.toBe(getComputedStyle(lede).color);
+  });
+
   it("a failed choice focuses the heading, never Try again", async () => {
     await page.viewport(390, 844);
     const el = await mount(
