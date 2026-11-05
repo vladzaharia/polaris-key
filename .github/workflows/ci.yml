@@ -675,7 +675,11 @@ jobs:
         run: tools/lint.sh check
       - name: pytest
         working-directory: sdks/python
-        run: .venv/bin/python -m pytest -q -n auto
+        # The PTY suites drive a real terminal and assert on redraw timing, so they run on their own
+        # after the parallel run instead of competing with xdist workers for the CPU.
+        run: |
+          .venv/bin/python -m pytest -q -n auto --ignore=tests/cli/test_pty.py --ignore=tests/cli/test_hostile.py
+          .venv/bin/python -m pytest -q -p no:xdist tests/cli/test_pty.py tests/cli/test_hostile.py
       # SP-41, the Python lane: the 3.14 leg also runs the live suite against a fresh `pkey dev` (the
       # `js-rest` job says what `start` and `check` do). It comes after the plain `pytest -q` above, where
       # tests/test_dev_live.py skips because none of the PKEY_DEV_* variables are set: the live test
@@ -892,7 +896,9 @@ jobs:
         run: |
           swift build --package-path sdks/swift --disable-index-store -Xswiftc -warnings-as-errors
           swift build --package-path sdks/swift --build-tests --disable-index-store
-          swift test --package-path sdks/swift --skip-build --parallel
+          swift test --package-path sdks/swift --skip-build --parallel --skip PkeyDevLiveTests
+          # The live suite shares one pkey dev server, so it runs serially.
+          swift test --package-path sdks/swift --skip-build --filter PkeyDevLiveTests
       - name: Stop pkey dev (Swift live lane)
         if: always()
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang swift --job-status "${{ job.status }}"
