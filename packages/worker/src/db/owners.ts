@@ -81,6 +81,8 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "console_role_bindings",
     // LK-FU-2: per-operator console preferences (migration 0148); store: core/accounts/operatorPrefs.ts.
     "operator_prefs",
+    // LX-41.2 (plans/LX-41.md §6.1): one live subscription per licence or grant; writer: core/licensing/subscriptions.ts (LX-41.9).
+    "subscriptions",
     // U-27's backfill ledger (no values, `entry_sha256` only); dropped in U-27b.
     "provisioned_secret_moves",
   ],

@@ -1,8 +1,8 @@
--- Report-only rollback of migrations 0154_a..0157_e (LX-41.1: duration columns).
+-- Report-only rollback of migrations 0154_a..0159_f (LX-41.1 duration columns, LX-41.2 subscriptions).
 --
 -- WHEN. After rolling the Worker back to a build that does not read `on_expiry` or
--- `fallback_version`. This script changes nothing: LX-41 moves no data, and the columns, triggers
--- and index stay for a roll-forward (the 0105_licensing.down.sql precedent).
+-- `fallback_version`. This script changes nothing: LX-41 moves no data, and the columns, the
+-- `subscriptions` table, triggers and indexes stay for a roll-forward (the 0105_licensing.down.sql precedent).
 --
 -- HOW. Run with
 --   wrangler d1 execute <DATABASE> --env <ENV> --remote --file scripts/rollback/0154_durations.down.sql

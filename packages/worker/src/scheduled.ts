@@ -187,6 +187,10 @@ export const REQUIRED_INDEXES: readonly string[] = [
   "idx_release_download_tokens_expiry",
   "idx_release_download_tokens_hash",
   "idx_release_metadata_seq",
+  "idx_subscriptions_due",
+  "idx_subscriptions_grant_live",
+  "idx_subscriptions_license_live",
+  "idx_subscriptions_ref",
   "idx_tiers_implicit",
 ];
 
