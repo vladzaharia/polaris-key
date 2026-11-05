@@ -21,6 +21,13 @@ and nothing else. A save is a record of the ``saves`` collection (its metadata) 
 * **Threads.** A write runs on its own thread; ``pause``, ``resume`` and ``cancel`` act on it, ``wait``
   returns its outcome. A read runs on the caller's thread.
 
+* **Conflicts** (plans/U-08.md §2.4). A write whose base is stale opens one :class:`MergeRequest` per slot
+  (S1) and the device keeps its copy unsent until the person or the app answers with ``request.keep``. A
+  write with no base is based on the version this device last listed, read or wrote for the slot this
+  session (S2); a slot not seen is create-only; a pulled version is never a base. While a request is open
+  a write with no base only replaces its local side (S3). Requests live in memory (S5): a relaunch drops
+  them and the next write raises the conflict again through S2.
+
 Nothing here puts a value, a key or a path in an event, an exception or a log line.
 """
 
@@ -44,6 +51,7 @@ from .chunk_cache import (
 )
 from .files import FileRoutes
 from .journal import FileJournal
+from .merge import SYNC_MERGE_CLOSED, MergeRegistry, merge_choice_name
 from .transfer import (
     ChunkedUploadRequest,
     DownloadRequest,
@@ -65,6 +73,7 @@ __all__ = [
     "SavesClient",
     "SavesError",
     "SaveTransfer",
+    "SavesSession",
     "MachineRecords",
     "memory_spool",
 ]
@@ -453,6 +462,69 @@ class SaveTransfer:
 # ── The client ──────────────────────────────────────────────────────────────────────────────────
 
 
+class _Slot:
+    """One open save request (S1): the device's copy, retained in memory until ``keep``."""
+
+    def __init__(
+        self,
+        id: str,
+        metadata: Obj,
+        source: RangedSource,
+        base: Optional[int],
+        remote: Optional[Obj],
+        remote_version: Any,
+        slots_free: bool,
+        on_progress: Optional[Callable[[int, int], None]],
+    ) -> None:
+        self.id = id
+        #: The stamped metadata of the copy.
+        self.metadata = metadata
+        self.source = source
+        self.on_progress = on_progress
+        #: The version the copy was written on; ``None``: create-only.
+        self.base = base
+        self.remote = remote
+        #: The server's version for ``keep("local")``; ``"*"`` when the save is gone.
+        self.remote_version = remote_version
+        self.slots_free = slots_free
+        #: A keep is running: a conflict it meets reopens the request when the keep ends.
+        self.keeping = False
+        self.reopen = False
+
+
+class SavesSession:
+    """What a client's saves remember while the process runs: the open requests (S1) and the version of
+    each slot this device last listed, read or wrote (S2). The api keeps one across :class:`SavesClient`
+    instances; a bare client makes its own."""
+
+    def __init__(self, merge: Optional[MergeRegistry] = None) -> None:
+        self.merge = merge if merge is not None else MergeRegistry()
+        self.lock = threading.RLock()
+        self.slots: Dict[str, _Slot] = {}
+        self.seen: Dict[str, int] = {}
+
+    def clear(self) -> None:
+        """The person and their data are gone: every request closes and nothing is remembered."""
+        with self.lock:
+            ids = list(self.slots)
+            self.slots.clear()
+            self.seen.clear()
+        for id in ids:
+            self.merge.close(request_id(id), "superseded")
+
+
+def request_id(id: str) -> str:
+    return f"w:{SAVES_COLLECTION}/{id}"
+
+
+def _number_of(v: Any) -> Optional[Union[int, float]]:
+    return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
+def _string_of(v: Any) -> Optional[str]:
+    return v if isinstance(v, str) else None
+
+
 class SavesClient:
     """The saves of one person. ``records`` is a :class:`SaveRecords`; ``engine`` a :class:`TransferEngine`;
     ``codec`` a :class:`FileCodec` (``enc`` ``"e2e"`` or ``"none"``); ``delta`` the collection's
@@ -472,7 +544,9 @@ class SavesClient:
         spool: Callable[..., Obj] = memory_spool,
         device_label: Optional[Callable[[], Optional[str]]] = None,
         now: Optional[Callable[[], int]] = None,
+        session: Optional[SavesSession] = None,
     ) -> None:
+        self._session = session if session is not None else SavesSession()
         self._records = records
         self._engine = engine
         self._codec = codec
@@ -484,6 +558,11 @@ class SavesClient:
         self._spool = spool
         self._device_label = device_label
         self._now = now or (lambda: int(time.time() * 1000))
+
+    @property
+    def merge(self) -> MergeRegistry:
+        """The requests of this client's host: the saves layer's are ``w:saves/<id>``."""
+        return self._session.merge
 
     @property
     def _e2e(self) -> bool:
@@ -509,7 +588,11 @@ class SavesClient:
 
     def list(self) -> List[Obj]:
         """The saves of this person, by id."""
-        return sorted((self._summary(r) for r in self._records.list()), key=lambda s: s["id"])
+        all_ = self._records.list()
+        with self._session.lock:
+            for r in all_:
+                self._session.seen[r["id"]] = r["version"]
+        return sorted((self._summary(r) for r in all_), key=lambda s: s["id"])
 
     def revisions(self, id: str) -> List[Obj]:
         """The kept revisions of a save's file, newest first."""
@@ -535,6 +618,8 @@ class SavesClient:
         rec = self._records.get(id)
         if rec is None:
             return {"ok": False, "reason": "not-found"}
+        with self._session.lock:
+            self._session.seen[id] = rec["version"]
         metadata, binding = _split_binding(rec["value"])
         fv = _format_of(metadata)
         if self._format is not None and fv is not None and fv > self._format:
@@ -618,58 +703,61 @@ class SavesClient:
         on_progress: Optional[Callable[[int, int], None]] = None,
     ) -> SaveTransfer:
         """Write a save. Returns a handle at once; ``wait()`` settles when the file is stored and the
-        metadata is pushed, or on a conflict, a failure or a cancel."""
+        metadata is pushed, or on a conflict (``{"state": "conflict", "request": MergeRequest}``), a failure
+        or a cancel. While a request is open for the slot, a write with no base only replaces the request's
+        local copy and settles ``conflict``; a write with a base supersedes the request (S3)."""
+        with self._session.lock:
+            slot = self._session.slots.get(id)
+        if slot is not None:
+            if base_version is not None:
+                self._close_slot(id, "superseded")
+            else:
+                source: RangedSource = ranged_bytes(bytes(data)) if isinstance(data, (bytes, bytearray)) else data
+                stamped = self._stamped(metadata)
+                check = self._precheck(id, source, stamped)
+                if check is not None:
+                    return self._settled(id, {"state": "failed", "error": check})
+                with self._session.lock:
+                    slot.metadata = stamped
+                    slot.source = source
+                    slot.on_progress = on_progress
+                self.merge.update(request_id(id), {"local": self._local_side(slot)})
+                return self._settled(id, {"state": "conflict", "request": self.merge.find(request_id(id))})
         return self._run(id, data, metadata, base_version, on_progress, None)
 
-    def resolve(
-        self,
-        conflict: Obj,
-        keep: str,
-        data: Union[bytes, RangedSource],
-        *,
-        on_progress: Optional[Callable[[int, int], None]] = None,
-    ) -> SaveTransfer:
-        """Settle a conflict. ``"remote"`` keeps the server's copy and writes nothing; ``"local"`` writes this
-        device's save on top of the server's version; ``"both"`` writes it as a new save in a free slot."""
-        cid = conflict["id"]
-        if keep == "remote":
-            # Pull first, so the cache holds the copy the person chose (not this device's old one).
-            def keep_remote(_cancel: threading.Event) -> Obj:
-                self._pull()
-                rec = self._records.get(cid)
-                return {"state": "done", "id": cid, "kept": "remote", "version": rec["version"] if rec else None}
-
-            return SaveTransfer(cid, {"done": 0, "total": 0}, keep_remote, lambda: None)
-        if keep == "both" and not conflict["bothAvailable"]:
-            return SaveTransfer(
-                cid,
-                {"done": 0, "total": 0},
-                lambda _c: {},
-                lambda: None,
-                settled={"state": "failed", "error": SavesError("slots-full")},
-            )
-        mode: Obj = (
-            {"copy": True}
-            if keep == "both"
-            else {
-                # A copy the server no longer holds is replaced on "record must not exist".
-                "baseVersion": "*"
-                if conflict["remote"] is None or not conflict["serverVersion"]
-                else conflict["serverVersion"]
-            }
-        )
-        return self._run(cid, data, conflict["local"]["metadata"], None, on_progress, mode, stamp=False)
-
     def delete(self, id: str, base_version: Optional[int] = None) -> Obj:
-        """Delete a save; its file is collected with the record."""
+        """Delete a save; its file is collected with the record. With a request open for the slot the
+        default base is the request's, so a delete that conflicts keeps the other copy (S3)."""
         self._check_id(id)
+        with self._session.lock:
+            slot = self._session.slots.get(id)
         base = base_version
         if base is None:
-            rec = self._records.get(id)
-            if rec is None:
-                return {"ok": False, "reason": "rejected", "code": "not_found"}
-            base = rec["version"]
-        return self._records.delete(id, base)
+            if slot is not None:
+                if slot.base is None:
+                    server = self._records.get(id)
+                    self._close_slot(id, "superseded")
+                    return {"ok": False, "reason": "conflict", "server": server}
+                base = slot.base
+            else:
+                rec = self._records.get(id)
+                if rec is None:
+                    return {"ok": False, "reason": "rejected", "code": "not_found"}
+                base = rec["version"]
+        r = self._records.delete(id, base)
+        if slot is not None and (r["ok"] or r["reason"] == "conflict"):
+            with self._session.lock:
+                current = self._session.slots.get(id) is slot
+            if current:
+                self._close_slot(id, "superseded")
+        if r["ok"]:
+            with self._session.lock:
+                self._session.seen.pop(id, None)
+        return r
+
+    @staticmethod
+    def _settled(id: str, outcome: Obj) -> SaveTransfer:
+        return SaveTransfer(id, {"done": 0, "total": 0}, lambda _c: {}, lambda: None, settled=outcome)
 
     # ── internals ───────────────────────────────────────────────────────────────────────────
 
@@ -691,8 +779,8 @@ class SavesClient:
         mode: Optional[Obj],
         stamp: bool = True,
     ) -> SaveTransfer:
-        # The SDK's own keys: when and where this save was written. A resolve keeps the stamps of the
-        # copy it writes (they are already in the conflict's local metadata).
+        # The SDK's own keys: when and where this save was written. A keep re-runs the write with the
+        # stamps of the copy it holds (``stamp`` false).
         if stamp:
             metadata = self._stamped(metadata)
         source: RangedSource = ranged_bytes(bytes(data)) if isinstance(data, (bytes, bytearray)) else data
@@ -717,13 +805,16 @@ class SavesClient:
             elif base_version is not None:
                 base = base_version
             else:
-                existing = self._records.get(id)
-                if existing is None:
-                    if len(self._records.list()) >= SYNC_SAVE_SLOTS:
+                # S2: the version this device saw this session; else create-only. A pulled version is
+                # never a base, so another device's newer save is a conflict, not an overwrite.
+                with self._session.lock:
+                    seen = self._session.seen.get(id)
+                if seen is not None:
+                    base = seen
+                else:
+                    if self._records.get(id) is None and len(self._records.list()) >= SYNC_SAVE_SLOTS:
                         return {"state": "failed", "error": SavesError("slots-full")}
                     base = "*"
-                else:
-                    base = existing["version"]
             wire = self._records.wire_id(target_id)
 
             def report(done: int, total: int) -> None:
@@ -769,7 +860,7 @@ class SavesClient:
                     )
             except TransferError as e:
                 if e.reason == "conflict":
-                    return self._conflict_outcome(id, metadata, source, e.server_version)
+                    return self._conflict_outcome(id, metadata, source, on_progress, base, e.server_version)
                 if e.reason == "aborted":
                     raise
                 return {"state": "failed", "error": _as_saves_error(e)}
@@ -781,9 +872,10 @@ class SavesClient:
                     "format": file["format"],
                 }
             pointer = {k: file[k] for k in ("version", "size", "sha256", "format")}
-            pointer = {k: file[k] for k in ("version", "size", "sha256", "format")}
             result = self._records.set(target_id, value, file["version"], hard, pointer)
             if result["ok"]:
+                with self._session.lock:
+                    self._session.seen[target_id] = result["version"]
                 out: Obj = {"state": "done", "id": id, "version": result["version"], "file": file}
                 if target_id != id:
                     out["copyId"] = target_id
@@ -791,7 +883,14 @@ class SavesClient:
             if result["reason"] == "conflict":
                 server = result["server"]
                 return self._conflict_outcome(
-                    id, metadata, source, server["version"] if server is not None else None, server, True
+                    id,
+                    metadata,
+                    source,
+                    on_progress,
+                    base,
+                    server["version"] if server is not None else None,
+                    server,
+                    True,
                 )
             return {"state": "failed", "error": SavesError("rejected", result["code"])}
 
@@ -851,6 +950,8 @@ class SavesClient:
         id: str,
         metadata: Obj,
         source: RangedSource,
+        on_progress: Optional[Callable[[int, int], None]],
+        base: Any,
         server_version: Optional[int],
         known: Any = None,
         has_known: bool = False,
@@ -881,16 +982,135 @@ class SavesClient:
             else:
                 remote = {"id": id, "version": server_version, "metadata": {}, "file": None, "newerFormat": False}
                 version = server_version
+        request = self._open_slot(
+            _Slot(
+                id,
+                metadata,
+                source,
+                base if isinstance(base, int) and not isinstance(base, bool) else None,
+                remote,
+                "*" if remote is None or not version else version,
+                slots < SYNC_SAVE_SLOTS,
+                on_progress,
+            ),
+            version,
+        )
+        return {"state": "conflict", "request": request}
+
+    # ── requests (S1, S3, S4) ───────────────────────────────────────────────────────────────
+
+    def _local_side(self, slot: _Slot) -> Obj:
+        plan = sf.plan_transfer(self._codec.stored_size(slot.source.size), self._delta)
         return {
-            "state": "conflict",
-            "conflict": {
-                "id": id,
-                "local": {"metadata": metadata, "size": source.size},
-                "remote": remote,
-                "serverVersion": version,
-                "bothAvailable": slots < SYNC_SAVE_SLOTS,
-            },
+            "value": dict(slot.metadata),
+            "version": slot.base,
+            "savedAt": _number_of(slot.metadata.get(SAVE_SAVED_AT_KEY)),
+            "device": _string_of(slot.metadata.get(SAVE_DEVICE_KEY)),
+            "file": {"size": slot.source.size, "format": "chunks" if plan.mode == "chunks" else "whole"},
         }
+
+    @staticmethod
+    def _remote_side(slot: _Slot, version: Optional[int]) -> Optional[Obj]:
+        r = slot.remote
+        if r is None:
+            return None
+        return {
+            "value": dict(r["metadata"]),
+            "version": version if version is not None else r["version"],
+            "savedAt": _number_of(r["metadata"].get(SAVE_SAVED_AT_KEY)),
+            "device": _string_of(r["metadata"].get(SAVE_DEVICE_KEY)),
+            "file": {"size": r["file"]["size"], "format": r["file"]["format"]} if r["file"] else None,
+        }
+
+    def _view(self, slot: _Slot, version: Optional[int], state: str, error: Optional[str]) -> Obj:
+        choices = ["local", "remote"]
+        if slot.remote is not None and slot.slots_free:
+            choices.append("both")
+        return {
+            "id": request_id(slot.id),
+            "cause": "write",
+            "collection": SAVES_COLLECTION,
+            "record": slot.id,
+            "local": self._local_side(slot),
+            "remote": self._remote_side(slot, version),
+            "choices": choices,
+            "state": state,
+            "error": error,
+        }
+
+    def _open_slot(self, init: _Slot, version: Optional[int]) -> Any:
+        """S1: open the slot's request, or (a keep conflicted again) bring the open one up to date."""
+        with self._session.lock:
+            have = self._session.slots.get(init.id)
+            if have is not None:
+                have.metadata, have.source, have.on_progress = init.metadata, init.source, init.on_progress
+                have.base, have.remote = init.base, init.remote
+                have.remote_version, have.slots_free = init.remote_version, init.slots_free
+                have.reopen = have.keeping
+                slot = have
+            else:
+                slot = init
+            self._session.slots[init.id] = slot
+            keeping = slot.keeping
+        view = self._view(slot, version, "applying" if keeping else "open", None)
+        if keeping:
+            # The keep ends first; ``_keep_slot`` reopens the request for the person.
+            self.merge.update(view["id"], view)
+            return self.merge.find(view["id"])
+        return self.merge.open(view, lambda choice: self._keep_slot(init.id, choice))
+
+    def _close_slot(self, id: str, how: str) -> None:
+        with self._session.lock:
+            self._session.slots.pop(id, None)
+        self.merge.close(request_id(id), how)
+
+    def _keep_slot(self, id: str, choice: Any) -> Obj:
+        """S4: answer the slot's request; the transfer's outcome settles the result."""
+        with self._session.lock:
+            slot = self._session.slots.get(id)
+        rid = request_id(id)
+        if slot is None:
+            return {"ok": False, "code": SYNC_MERGE_CLOSED, "reopened": False}
+        name = merge_choice_name(choice)
+        with self._session.lock:
+            slot.keeping = True
+            slot.reopen = False
+        self.merge.update(rid, {"state": "applying", "error": None})
+
+        def reopen(code: str) -> Obj:
+            with self._session.lock:
+                slot.keeping = False
+                again = slot.reopen
+                slot.reopen = False
+            self.merge.update(
+                rid, self._view(slot, slot.remote["version"] if slot.remote else None, "open", None if again else code)
+            )
+            if again:
+                self.merge.reannounce(rid)
+            return {"ok": False, "code": "conflict" if again else code, "reopened": True}
+
+        if name == "remote":
+            # Pull first, so the cache holds the copy the person chose (not this device's old one).
+            self._pull()
+            rec = self._records.get(id)
+            if rec is not None:
+                with self._session.lock:
+                    self._session.seen[id] = rec["version"]
+            self._close_slot(id, "remote")
+            return {"ok": True, "kept": "remote", "version": rec["version"] if rec else None}
+        if name == "both" and not slot.slots_free:
+            return reopen("slots-full")
+        mode: Obj = {"copy": True} if name == "both" else {"baseVersion": slot.remote_version}
+        out = self._run(id, slot.source, slot.metadata, None, slot.on_progress, mode, stamp=False).wait()
+        if out["state"] == "done" and "kept" not in out:
+            self._close_slot(id, name)
+            res: Obj = {"ok": True, "kept": name, "version": out["version"]}
+            if "copyId" in out:
+                res["copyId"] = out["copyId"]
+            return res
+        if out["state"] == "conflict":
+            return reopen("conflict")
+        return reopen(out["error"].code if out["state"] == "failed" else "cancelled")
 
 
 # ── client.cloud_sync.saves ─────────────────────────────────────────────────────────────────────
@@ -910,6 +1130,7 @@ class SavesApi:
         subject: Callable[[], Optional[str]],
         attach: Callable[[], None],
         emit: Callable[[Obj], None],
+        merge: Optional[MergeRegistry] = None,
     ) -> None:
         self._ctx = ctx
         self._host = host
@@ -925,6 +1146,13 @@ class SavesApi:
         )
         self._active: Dict[str, SaveTransfer] = {}
         self._lock = threading.Lock()
+        #: The requests and the seen versions outlive each :class:`SavesClient` the api builds.
+        self._session = SavesSession(merge)
+
+    @property
+    def merge(self) -> MergeRegistry:
+        """The client's requests: the saves layer's are ``w:saves/<id>``."""
+        return self._session.merge
 
     # ── What app code calls ──────────────────────────────────────────────────────────────────
 
@@ -980,20 +1208,6 @@ class SavesApi:
             )
         )
 
-    def resolve(
-        self,
-        conflict: Obj,
-        keep: str,
-        data: Union[bytes, RangedSource],
-        *,
-        on_progress: Optional[Callable[[int, int], None]] = None,
-    ) -> SaveTransfer:
-        """Settle a conflict: keep ``"remote"``, write ``"local"`` on top, or keep ``"both"``."""
-        client = self._client()
-        return self._track(
-            client.resolve(conflict, keep, data, on_progress=self._progress("saves:" + conflict["id"], on_progress))
-        )
-
     def delete(self, id: str, base_version: Optional[int] = None) -> Obj:
         """Delete a save; its file is collected with the record."""
         return self._client().delete(id, base_version)
@@ -1012,6 +1226,7 @@ class SavesApi:
             running = list(self._active.values())
             self._active.clear()
         self._records.drop_all()
+        self._session.clear()
         for t in running:
             try:
                 t.cancel()
@@ -1061,6 +1276,7 @@ class SavesApi:
             max_bytes=o["max_bytes"],
             save_format_version=o["save_format_version"],
             device_label=lambda: self._ctx.device_label(),
+            session=self._session,
         )
 
     def _track(self, t: SaveTransfer) -> SaveTransfer:

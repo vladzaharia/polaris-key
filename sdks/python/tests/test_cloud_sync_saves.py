@@ -1,4 +1,4 @@
-# @pkey-feature sync.saves sync.files
+# @pkey-feature sync.saves sync.files sync.conflict
 """``client.cloud_sync.saves`` on the Python client (U-22.5). Mirrors ``cloudSyncSaves.test.ts``.
 
 List, read, write and delete a save over the machine's records binding and the file transport, against a
@@ -241,19 +241,37 @@ def test_the_new_file_is_listed_at_once_with_no_echo_of_the_record_in_the_push_r
     c.close()
 
 
-def test_a_stale_write_is_a_conflict_that_carries_the_server_copy(tmp_path: Path) -> None:
-    w = SavesWorld()
+def theirs(w: SavesWorld, version: int = 400, chapter: str = "Two", saved_at: int = 5) -> None:
+    """Another device wrote ``slot-1``; this device's cache is not told."""
     w.rows["slot-1"] = {
-        "value": {"chapter": "two"},
-        "version": 7,
-        "file": {"version": 7, "size": 5, "sha256": "a" * 64, "format": "whole"},
+        "value": {"chapter": chapter, "savedAt": saved_at},
+        "version": version,
+        "file": {"version": version, "size": 5, "sha256": "a" * 64, "format": "whole"},
     }
-    w.version = 7
+    w.version = version
+
+
+def conflict_rig(tmp_path: Path, mine: bytes) -> Any:
+    """A signed-in client whose ``slot-1`` write meets another device's newer save: ``(w, c, request)``."""
+    w = SavesWorld()
     c = signed_in(w, tmp_path)
-    out = c.cloud_sync.saves.write("slot-1", data(500), {"chapter": "mine"}, base_version=5).wait(10)
+    first = c.cloud_sync.saves.write("slot-1", data(300, 1), {"chapter": "One"}).wait(10)
+    assert first["state"] == "done"
+    theirs(w)
+    out = c.cloud_sync.saves.write("slot-1", mine, {"chapter": "Mine"}).wait(10)
     assert out["state"] == "conflict"
-    assert out["conflict"]["remote"]["metadata"] == {"chapter": "two"}
-    assert out["conflict"]["serverVersion"] == 7
+    return w, c, out["request"]
+
+
+def test_save_conflict_opens_request(tmp_path: Path) -> None:
+    w, c, request = conflict_rig(tmp_path, data(700, 9))
+    assert (request.id, request.cause, request.collection, request.record) == ("w:saves/slot-1", "write", "saves", "slot-1")
+    assert request.state == "open" and request.error is None
+    assert request.choices == ["local", "remote", "both"]
+    assert request.remote["value"] == {"chapter": "Two", "savedAt": 5} and request.remote["version"] == 400
+    assert bare(request.local["value"]) == {"chapter": "Mine"} and request.local["file"]["size"] == 700
+    assert [r.id for r in c.cloud_sync.conflicts()] == ["w:saves/slot-1"]
+    assert c.cloud_sync.status()["conflicts"] == 1
     c.close()
 
 
@@ -263,55 +281,46 @@ def test_a_conflict_describes_the_server_version_not_the_cached_copy(tmp_path: P
     first = c.cloud_sync.saves.write("slot-1", data(300, 1), {"chapter": "one"}).wait(10)
     assert first["state"] == "done"
     # Another device writes version 400 and this device's cache is not told.
-    w.rows["slot-1"] = {
-        "value": {"chapter": "theirs"},
-        "version": 400,
-        "file": {"version": 400, "size": 5, "sha256": "a" * 64, "format": "whole"},
-    }
-    w.version = 400
+    theirs(w, chapter="theirs")
     cache = c.cloud_sync.saves._records
     stale = cache.get("slot-1")
     cache.get = lambda _id: stale  # type: ignore[method-assign]
     mine = data(500, 2)
     out = c.cloud_sync.saves.write("slot-1", mine, {"chapter": "mine"}, base_version=first["version"]).wait(10)
     assert out["state"] == "conflict"
-    assert out["conflict"]["serverVersion"] == 400
-    assert out["conflict"]["remote"]["version"] == 400
-    # Keep this device's version succeeds, and a later write does not repeat the conflict.
-    kept = c.cloud_sync.saves.resolve(out["conflict"], "local", mine).wait(10)
-    assert kept["state"] == "done"
+    request = out["request"]
+    assert request.remote["version"] == 400 and request.remote["version"] != stale["version"]
+    # Keep this device's version succeeds against the server's version, and a later write goes on.
+    kept = request.keep("local")
+    assert kept["ok"] is True and kept["kept"] == "local"
     del cache.get
     assert c.cloud_sync.saves.write("slot-1", data(4000, 3), {"chapter": "again"}).wait(10)["state"] == "done"
     c.close()
 
 
-def test_a_conflict_and_keeping_the_other_version_pull_first_and_saves_record_when_and_where(tmp_path: Path) -> None:
+def test_a_conflict_pulls_first_and_saves_record_when_and_where(tmp_path: Path) -> None:
     w = SavesWorld()
     c = signed_in(w, tmp_path)
     first = c.cloud_sync.saves.write("slot-1", data(300, 1), {"chapter": "one"}).wait(10)
     assert first["state"] == "done"
     meta = c.cloud_sync.saves.read("slot-1")["metadata"]
     assert meta["chapter"] == "one" and isinstance(meta["savedAt"], int) and meta["savedAt"] > 0
-    # Another device writes version 40; this device's cache is not told.
-    w.rows["slot-1"] = {
-        "value": {"chapter": "theirs", "savedAt": 5},
-        "version": 40,
-        "file": {"version": 40, "size": 5, "sha256": "a" * 64, "format": "whole"},
-    }
-    w.version = 40
+    theirs(w, version=40, chapter="theirs")
     assert c.cloud_sync.saves.list()[0]["version"] == first["version"]
     out = c.cloud_sync.saves.write("slot-1", data(500, 2), {"chapter": "mine"}, base_version=first["version"]).wait(10)
     assert out["state"] == "conflict"
+    request = out["request"]
     # The pull made the cards real: the server's metadata, and this device's own stamps.
-    assert out["conflict"]["remote"]["metadata"] == {"chapter": "theirs", "savedAt": 5}
-    assert out["conflict"]["local"]["metadata"]["savedAt"] >= meta["savedAt"]
-    kept = c.cloud_sync.saves.resolve(out["conflict"], "remote", b"").wait(10)
-    assert kept["state"] == "done" and kept["kept"] == "remote" and kept["version"] == 40
+    assert request.remote["value"] == {"chapter": "theirs", "savedAt": 5}
+    assert request.local["savedAt"] >= meta["savedAt"] and request.newer == "local"
+    assert request.remote["savedAt"] == 5
+    kept = request.keep("remote")
+    assert kept == {"ok": True, "kept": "remote", "version": 40}
     assert c.cloud_sync.saves.list()[0]["metadata"]["chapter"] == "theirs"
     c.close()
 
 
-def test_a_save_deleted_elsewhere_is_a_conflict_with_no_remote_and_keep_mine_succeeds(tmp_path: Path) -> None:
+def test_save_keep_after_delete_creates(tmp_path: Path) -> None:
     w = SavesWorld()
     c = signed_in(w, tmp_path)
     first = c.cloud_sync.saves.write("slot-1", data(300, 1), {"chapter": "one"}).wait(10)
@@ -321,13 +330,181 @@ def test_a_save_deleted_elsewhere_is_a_conflict_with_no_remote_and_keep_mine_suc
     stale = cache.get("slot-1")
     cache.get = lambda _id: stale  # type: ignore[method-assign]
     mine = data(500, 2)
-    out = c.cloud_sync.saves.write("slot-1", mine, {"chapter": "mine"}, base_version=first["version"]).wait(10)
+    out = c.cloud_sync.saves.write("slot-1", mine, {"chapter": "mine"}).wait(10)
     assert out["state"] == "conflict"
-    assert out["conflict"]["remote"] is None and out["conflict"]["serverVersion"] == 0
-    kept = c.cloud_sync.saves.resolve(out["conflict"], "local", mine).wait(10)
-    assert kept["state"] == "done"
+    request = out["request"]
+    assert request.remote is None and request.choices == ["local", "remote"]
+    kept = request.keep("local")
+    assert kept["ok"] is True and kept["kept"] == "local"
     assert bare(w.rows["slot-1"]["value"]) == {"chapter": "mine"}
     c.close()
+
+
+def test_save_keep_remote(tmp_path: Path) -> None:
+    w, c, request = conflict_rig(tmp_path, data(700, 9))
+    calls = len(w.seen)
+    closed: List[Dict[str, Any]] = []
+    c.events.subscribe(lambda e: closed.append(e.data) if e.data.get("type") == "conflictClosed" else None, ("cloudSync",))
+    kept = request.keep("remote")
+    # Keeping the other copy pulls (so read() returns it) and writes nothing to the files or the records.
+    assert kept == {"ok": True, "kept": "remote", "version": 400}
+    assert not any(r.method in ("POST", "PUT") for r in w.seen[calls:])
+    assert c.cloud_sync.conflicts() == []
+    assert closed == [{"type": "conflictClosed", "id": "w:saves/slot-1", "how": "remote"}]
+    assert [x["metadata"]["chapter"] for x in c.cloud_sync.saves.list()] == ["Two"]
+    c.close()
+
+
+def test_save_keep_local(tmp_path: Path) -> None:
+    mine = data(700, 9)
+    w, c, request = conflict_rig(tmp_path, mine)
+    kept = request.keep("local")
+    assert kept["ok"] is True and kept["kept"] == "local" and kept["version"] > 400
+    read = c.cloud_sync.saves.read("slot-1")
+    assert read["ok"] and read["metadata"]["chapter"] == "Mine" and read["bytes"] == mine
+    assert c.cloud_sync.conflicts() == []
+    c.close()
+
+
+def test_save_keep_both_writes_the_copy_in_a_free_slot(tmp_path: Path) -> None:
+    mine = data(700, 9)
+    w, c, request = conflict_rig(tmp_path, mine)
+    both = request.keep("both")
+    assert both["ok"] is True and both["kept"] == "both" and both["copyId"] == "slot-1.copy"
+    listed = {x["id"]: x["metadata"]["chapter"] for x in c.cloud_sync.saves.list()}
+    assert listed == {"slot-1": "Two", "slot-1.copy": "Mine"}
+    b = c.cloud_sync.saves.read("slot-1.copy")
+    assert b["ok"] and b["metadata"]["chapter"] == "Mine" and b["bytes"] == mine
+    c.close()
+
+
+def test_save_keep_both_needs_free_slot(tmp_path: Path) -> None:
+    w = SavesWorld()
+    c = signed_in(w, tmp_path)
+    for i in range(16):
+        assert c.cloud_sync.saves.write(f"s{i}", data(100, i + 1), {"n": i}).wait(10)["state"] == "done"
+    stale = c.cloud_sync.saves.write("s4", data(50), {"n": 4}, base_version=1).wait(10)
+    assert stale["state"] == "conflict"
+    request = stale["request"]
+    assert request.choices == ["local", "remote"]
+    calls = len(w.seen)
+    assert request.keep("both") == {"ok": False, "code": "bad_request", "reopened": False}
+    assert len(w.seen) == calls and request.state == "open"
+    c.close()
+
+
+def test_save_request_freezes_slot(tmp_path: Path) -> None:
+    w, c, request = conflict_rig(tmp_path, data(700, 9))
+    seen: List[str] = []
+    c.events.subscribe(lambda e: seen.append(e.data["type"]) if "conflict" in e.data.get("type", "") else None, ("cloudSync",))
+    calls = len(w.seen)
+    later = data(750, 4)
+    out = c.cloud_sync.saves.write("slot-1", later, {"chapter": "Later"}).wait(10)
+    # A write with no base only replaces the request's local side: nothing is sent, nothing is announced.
+    assert out["state"] == "conflict" and out["request"] is request
+    assert bare(request.local["value"]) == {"chapter": "Later"} and request.local["file"]["size"] == 750
+    assert len(w.seen) == calls and len(c.cloud_sync.conflicts()) == 1 and seen == []
+    # The later copy is the one that is kept.
+    assert request.keep("local")["ok"] is True
+    read = c.cloud_sync.saves.read("slot-1")
+    assert read["ok"] and read["metadata"]["chapter"] == "Later" and read["bytes"] == later
+    c.close()
+
+
+def test_save_request_freezes_slot_delete_keeps_the_other_copy(tmp_path: Path) -> None:
+    w, c, request = conflict_rig(tmp_path, data(700, 9))
+    out = c.cloud_sync.saves.delete("slot-1")
+    assert out["ok"] is False and out["reason"] == "conflict"
+    assert [x["id"] for x in c.cloud_sync.saves.list()] == ["slot-1"]
+    assert c.cloud_sync.conflicts() == []
+    assert request.keep("local") == {"ok": False, "code": "sync-merge-closed", "reopened": False}
+    c.close()
+
+
+def test_save_base_is_seen_version(tmp_path: Path) -> None:
+    w = SavesWorld()
+    c = signed_in(w, tmp_path)
+    assert c.cloud_sync.saves.write("slot-1", data(300, 1), {"chapter": "One"}).wait(10)["state"] == "done"
+    # Another device writes; this device's cache is refreshed by a pull.
+    theirs(w, version=400)
+    c.cloud_sync_host.start()
+    with c.cloud_sync_host.locked() as m:
+        m.pull()
+    c.cloud_sync_host.touch()
+    assert c.cloud_sync.saves._records.get("slot-1")["version"] == 400
+    # Not silently overwritten: the write is based on what this device saw, not on the pulled version.
+    mine = c.cloud_sync.saves.write("slot-1", data(700, 9), {"chapter": "Mine"}).wait(10)
+    assert mine["state"] == "conflict"
+    assert mine["request"].local["version"] != mine["request"].remote["version"]
+    mine["request"].keep("remote")
+    # A slot this session has not seen is create-only.
+    w.rows["slot-2"] = {
+        "value": {"chapter": "elsewhere"},
+        "version": 401,
+        "file": {"version": 401, "size": 5, "sha256": sha(b"hello"), "format": "whole"},
+    }
+    w.stored[401] = b"hello"
+    w.version = 401
+    with c.cloud_sync_host.locked() as m:
+        m.pull()
+    c.cloud_sync_host.touch()
+    created = c.cloud_sync.saves.write("slot-2", data(600, 2), {"chapter": "Mine"}).wait(10)
+    assert created["state"] == "conflict" and created["request"].local["version"] is None
+    created["request"].keep("remote")
+    # Reading the slot is seeing it.
+    assert c.cloud_sync.saves.read("slot-2")["ok"]
+    assert c.cloud_sync.saves.write("slot-2", data(600, 3), {"chapter": "Mine"}).wait(10)["state"] == "done"
+    c.close()
+
+
+def test_save_exact_write_supersedes(tmp_path: Path) -> None:
+    w, c, request = conflict_rig(tmp_path, data(700, 9))
+    closed: List[str] = []
+    c.events.subscribe(
+        lambda e: closed.append(f"{e.data['id']}:{e.data['how']}") if e.data.get("type") == "conflictClosed" else None,
+        ("cloudSync",),
+    )
+    out = c.cloud_sync.saves.write("slot-1", data(650, 6), {"chapter": "Exact"}, base_version=request.remote["version"]).wait(10)
+    assert out["state"] == "done"
+    assert closed == ["w:saves/slot-1:superseded"]
+    assert c.cloud_sync.conflicts() == []
+    assert request.keep("local") == {"ok": False, "code": "sync-merge-closed", "reopened": False}
+    c.close()
+
+
+def test_save_keep_on_closed_request(tmp_path: Path) -> None:
+    w, c, request = conflict_rig(tmp_path, data(700, 9))
+    assert request.keep("remote")["ok"] is True
+    calls = len(w.seen)
+    assert request.keep("local") == {"ok": False, "code": "sync-merge-closed", "reopened": False}
+    assert len(w.seen) == calls
+    c.close()
+
+
+def test_save_keep_conflicts_again(tmp_path: Path) -> None:
+    w, c, request = conflict_rig(tmp_path, data(700, 9))
+    opened: List[str] = []
+    c.events.subscribe(lambda e: opened.append(e.data["id"]) if e.data.get("type") == "conflictOpened" else None, ("cloudSync",))
+    before = request.remote["version"]
+    # Another device writes again before the keep lands.
+    theirs(w, version=500, chapter="Three")
+    out = request.keep("local")
+    assert out == {"ok": False, "code": "conflict", "reopened": True} or out["code"] == "conflict"
+    assert out["reopened"] is True and request.state == "open"
+    assert request.remote["version"] > before and request.remote["value"]["chapter"] == "Three"
+    assert request.keep("local")["ok"] is True
+    c.close()
+
+
+def test_save_request_not_journaled(tmp_path: Path) -> None:
+    w, c, request = conflict_rig(tmp_path, data(700, 9))
+    # Nothing about the request reaches the transfer journal ...
+    assert c._saves_api._journal.list() == []
+    c.close()
+    # ... or a new client: a relaunch drops it, and the next write raises the conflict again (S2).
+    c2 = signed_in(w, tmp_path)
+    assert c2.cloud_sync.conflicts() == []
+    c2.close()
 
 
 def test_delete_a_save_at_its_version(tmp_path: Path) -> None:

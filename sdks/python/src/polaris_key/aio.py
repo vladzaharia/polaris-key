@@ -163,6 +163,39 @@ class _AsyncCloudSync:
 
         return GuardedCoroutine(run(), "collection")
 
+    def conflicts(self) -> GuardedCoroutine:
+        """The open MergeRequests; each one's ``keep`` is a coroutine."""
+
+        async def run() -> Any:
+            return [_AsyncMergeRequest(r) for r in await _to_thread(self._target.conflicts)]
+
+        return GuardedCoroutine(run(), "conflicts")
+
+    def cloud_empty(self) -> GuardedCoroutine:
+        return GuardedCoroutine(_to_thread(self._target.cloud_empty), "cloud_empty")
+
+    def on_conflict(self, fn: Callable[[Any], Any]) -> Callable[[], None]:
+        """Listen for MergeRequests. ``fn`` is a plain function, called on the thread that opened the
+        request; a returned choice decides it. The request's ``keep`` is a coroutine."""
+        return self._target.on_conflict(lambda r: fn(_AsyncMergeRequest(r)))
+
+
+class _AsyncMergeRequest:
+    """An async view of a :class:`~polaris_key.cloud_sync.merge.MergeRequest`: ``keep`` is a coroutine
+    and every other member is the request's own."""
+
+    def __init__(self, request: Any) -> None:
+        object.__setattr__(self, "_request", request)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._request, name)
+
+    def __repr__(self) -> str:
+        return repr(self._request)
+
+    def keep(self, choice: Any) -> GuardedCoroutine:
+        return GuardedCoroutine(_to_thread(self._request.keep, choice), "keep")
+
 
 class _AsyncSignInSession:
     """An async view of a :class:`~polaris_key.identity.sign_in.SignInSession`: ``wait`` is a
