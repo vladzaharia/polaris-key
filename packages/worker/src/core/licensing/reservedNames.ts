@@ -13,10 +13,12 @@
  */
 
 import {
+  platformEntitlements,
   reservedNameDeclarations,
   type ReservedNameDeclaration,
   type ReservedNamesMode,
 } from "@polaris-key/manifest";
+import type { ServicesMap } from "../services.js";
 import type { Db } from "../../db/types.js";
 import type { SettingsEnv } from "../platformSettings.js";
 import { platformSetting } from "../settings/platformRead.js";
@@ -34,4 +36,13 @@ export function incompatibleReservedNames(
   catalog: unknown,
 ): ReservedNameDeclaration[] {
   return reservedNameDeclarations(catalog).filter((d) => !d.compatible);
+}
+
+/** The platform entitlements shown for a product: the rows whose service it has on. */
+export function platformEntitlementsFor(product: { services: ServicesMap }) {
+  return platformEntitlements(
+    Object.entries(product.services)
+      .filter(([, v]) => v.enabled)
+      .map(([slug]) => slug),
+  );
 }
