@@ -82,7 +82,8 @@ const PUT_POLICIES: ReadonlySet<CollectionPolicy> = new Set([
 ]);
 
 /** The collections a host gives the machine, from the catalog's resolved declarations: each
- *  member's policy, merge/max/min field and (for `revision`) the keep-server resolution. There is
+ *  member's policy and merge/max/min field. A `revision` record has no resolution here: its
+ *  conflict opens a MergeRequest (plans/U-08.md §2.1). There is
  *  no implicit collection: a name the catalog does not declare is `collection_unknown`. */
 export function collectionDecls(
   resolved: ReadonlyArray<{
@@ -95,7 +96,6 @@ export function collectionDecls(
     name: r.name,
     policy: r.conflict,
     ...(r.conflictField !== null ? { field: r.conflictField } : {}),
-    ...(r.conflict === "revision" ? { resolve: "keepServer" as const } : {}),
   }));
 }
 

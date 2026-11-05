@@ -507,7 +507,11 @@ describe("the strip and the screen together (final round)", () => {
       pause() {},
       resume() {},
       cancel: async () => undefined,
-      done: Promise.resolve({ state: "conflict", conflict: newer }),
+      done: Promise.resolve({
+        state: "conflict",
+        request: {} as never,
+        conflict: newer,
+      }),
     }));
     const { container } = inProvider(
       f.saves,

@@ -17,5 +17,6 @@ export * from "./transferJournal.js";
 export * from "./transfer.js";
 export * from "./chunkCache.js";
 export * from "./transferCodec.js";
+export * from "./merge.js";
 export * from "./saves.js";
 export * from "./collection.js";
