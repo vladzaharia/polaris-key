@@ -54,6 +54,10 @@ export type Surface = [
   ReturnType<typeof useCloudSync>["status"],
   ReturnType<typeof useCloudSync>["flush"],
   ReturnType<typeof useCloudSync>["status"],
+  ReturnType<typeof useConflicts>["conflicts"],
+  ReturnType<typeof useCloudSync>["cloudEmpty"],
+  ReturnType<typeof useConflicts>["keep"],
+  ReturnType<typeof useConflicts>["conflicts"],
   ReturnType<typeof useSaves>["list"],
   ReturnType<typeof useSaves>["read"],
   ReturnType<typeof useSaves>["write"],
@@ -64,10 +68,6 @@ export type Surface = [
   ReturnType<typeof useTransfers>["resume"],
   ReturnType<typeof useTransfers>["cancel"],
   ReturnType<typeof useTransfers>["transfers"],
-  ReturnType<typeof useConflicts>["conflicts"],
-  ReturnType<typeof useCloudSync>["cloudEmpty"],
-  ReturnType<typeof useConflicts>["keep"],
-  ReturnType<typeof useConflicts>["conflicts"],
   PolarisKeyConfig["auth"],
   PolarisKeyConfig["mode"],
   PolarisKeyConfig["bridge"],
@@ -93,8 +93,8 @@ it("config.setting", () => expect(typeof useConfigSetting).toBe("function"));
 it("entitlements.has", () => expect(typeof useEntitlement).toBe("function"));
 it("identity.useLicenseChoice", () =>
   expect(typeof useLicenseChoice).toBe("function"));
-it("cloudSync.saves", () => expect(typeof useSaves).toBe("function"));
 it("cloudSync.onConflict", () => expect(typeof useConflicts).toBe("function"));
+it("cloudSync.saves", () => expect(typeof useSaves).toBe("function"));
 it("cloudSync.collection", () => expect(typeof useCollection).toBe("function"));
 it("client.presentation", () =>
   expect(typeof usePresentation).toBe("function"));

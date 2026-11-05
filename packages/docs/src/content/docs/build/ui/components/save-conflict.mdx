@@ -30,9 +30,9 @@ Shown when the same save changed on two devices. Two cards, one per copy, carry 
   <TabItem label="React">
     <KitStatus kit="react" />
 
-    **Drop-in.** `<SaveConflict bytes={...} />` from `@polaris-key/react/kit`, inside `<PolarisKeyProvider config={polarisKey}>`. It follows the first conflict a write ended with and settles it with `resolve`; `bytes` returns this device's copy for Keep this and Keep both. With no conflict it draws nothing. A conflict that appears after a save takes focus once. Cancel keeps the conflict pending; the [Cloud Sync strip](/docs/build/ui/components/cloud-sync-status/) keeps asking, and Review opens the screen again.
+    **Drop-in.** `<SaveConflict />` from `@polaris-key/react/kit`, inside `<PolarisKeyProvider config={polarisKey}>`. It follows the first open MergeRequest of the saves collection and answers it with `request.keep`; the client holds this device's copy, so there is no `bytes` prop. With no conflict it draws nothing. A conflict that appears after a save takes focus once. Cancel keeps the conflict pending; the [Cloud Sync strip](/docs/build/ui/components/cloud-sync-status/) keeps asking, and Review opens the screen again.
 
-    **Cards.** Every SDK stores `savedAt` (milliseconds) and `deviceLabel` (the device's display name, never a hardware value) in the metadata of each save, and the cards read them. Your own `savedAt` or `deviceLabel` key is overwritten. `describe` is optional and overrides a card's `when`, `device` or `newer`.
+    **Cards.** Every SDK stores `savedAt` (milliseconds) and `deviceLabel` (the device's display name, never a hardware value) in the metadata of each save, and the cards read them. Your own `savedAt` or `deviceLabel` key is overwritten. `when` defaults to the platform's medium date and time of `savedAt`. `describe` is optional and overrides a card's `when`, `device` or `newer`.
 
     **Styled part and headless.** Given an `input.saveConflict` it is the plain part and the host drives it; `viewOf("SaveConflict", input)` returns the view.
 
@@ -40,38 +40,21 @@ Shown when the same save changed on two devices. Two cards, one per copy, carry 
   <TabItem label="SwiftUI">
     <KitStatus kit="swiftui" />
 
-    **Styled part.** `SaveConflictView(model:)` over `SaveConflictModel(conflict:inputs:host:)`, from `PolarisKeyUI` and `PolarisKeyUICore`. `KitSaveConflict` carries the two copies as display-ready text, `bothAvailable` and `newer`. The model applies a choice through `SaveConflictHost(keep:)`, one closure that throws when it could not. The kit is not bound to the saves client yet, so the host calls `resolve` with this device's bytes. `onKept`, `onCancel`, `onChooseAgain` and `onDone` on the model tell you where the person went.
+    **Styled part.** `SaveConflictView(model:)` over `SaveConflictModel(request:)`, from `PolarisKeyUI` and `PolarisKeyUICore`. The model reads both copies, `bothAvailable` and `newer` from the `MergeRequest` and applies a choice with `request.keep`, so the app passes no bytes. `SaveConflictModel(conflict:inputs:host:)` is the plain form, with `SaveConflictHost(keep:)`, one closure that throws when it could not apply the choice. `onKept`, `onCancel`, `onChooseAgain` and `onDone` on the model tell you where the person went.
 
     ```swift
-    import Foundation
-    import PolarisKey
-    import PolarisKeyUI
-    import PolarisKeyUICore
-    import SwiftUI
 
-    @MainActor
-    func saveConflictScreen(client: PolarisKeyClient, conflict: SaveConflict, bytes: Data) -> some View {
-        let shown = KitSaveConflict(
-            step: .choose,
-            local: .init(when: "Today, 21:04"),
-            remote: .init(
-                when: "Yesterday, 18:30",
-                device: conflict.remote?.metadata.objectValue?["deviceLabel"]?.stringValue),
-            remoteDeleted: conflict.remote == nil,
-            bothAvailable: conflict.bothAvailable)
-        let host = SaveConflictHost { keep in
-            let choice: SaveKeep
-            switch keep {
-            case .local: choice = .local
-            case .remote: choice = .remote
-            case .both: choice = .both
-            }
-            let transfer = try await client.cloudSync.saves.resolve(conflict, keep: choice, bytes: bytes)
-            if case .failed(let error) = await transfer.outcome() { throw error }
-        }
-        return SaveConflictView(model: SaveConflictModel(conflict: shown, host: host))
-    }
-    ```
+import PolarisKey
+import PolarisKeyUI
+import PolarisKeyUICore
+import SwiftUI
+
+@MainActor
+func saveConflictScreen(request: MergeRequest) -> some View {
+SaveConflictView(model: SaveConflictModel(request: request))
+}
+
+```
 
     **Headless.** `KitStates.saveConflict(_:)`. [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme and the restyle hooks.
 
@@ -83,3 +66,4 @@ Shown when the same save changed on two devices. Two cards, one per copy, carry 
 
   </TabItem>
 </Tabs>
+```

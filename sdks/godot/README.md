@@ -1380,7 +1380,8 @@ unsent, and reads it, and the cloud keeps the other. Nothing is lost if nobody a
 
 ```gdscript
 func _ready() -> void:
-	PolarisKey.cloud_sync.conflict_opened.connect(_on_conflict)
+	var sync: PKeyCloudSync = PolarisKey.cloud_sync
+	sync.conflict_opened.connect(_on_conflict)
 
 func _on_conflict(request: PKeyMergeRequest) -> void:
 	# request.local / request.remote: {value, version, saved_at, device, file}; request.choices; request.newer
@@ -1414,7 +1415,8 @@ func save_game(bytes: PackedByteArray) -> void:
 	match outcome.state:
 		"done": print("saved at version ", outcome.version)
 		"conflict":                                         # another device wrote first; this copy is held, unsent
-			var kept: PKeyResult = await outcome.request.keep("local")   # or "remote" or "both"
+			var request: PKeyMergeRequest = outcome.request
+			var kept: PKeyResult = await request.keep("local")   # or "remote" or "both"
 
 func load_game() -> void:
 	var saves: PKeySaves = PolarisKey.cloud_sync.saves

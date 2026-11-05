@@ -104,17 +104,32 @@ A collection has a `name` (the key charset `[A-Za-z0-9._:-]`, a trailing `.*` ma
 
 ## Conflicts
 
-You declare a conflict policy per setting and per collection. Both stores use one vocabulary.
+You declare a conflict policy per setting and per collection. Both stores use one vocabulary, and only `revision` ever asks.
 
-| Policy       | Settings                    | Records                                | What you declare                         |
-| ------------ | --------------------------- | -------------------------------------- | ---------------------------------------- |
-| `lastWrite`  | The default                 | Yes                                    | Keep the latest edit                     |
-| `max`, `min` | A number                    | With a `conflictField` naming a number | Keep the larger or smaller value         |
-| `merge`      | An object, member by member | Field by field                         | Keep each member's latest edit           |
-| `union`      | No                          | A list with `uniqueItems`              | Keep every element added and not removed |
-| `revision`   | No                          | The default for records and `saves`    | Keep both copies for the person to pick  |
+| Policy       | Settings                    | Records                                | Decided by                       | With no listener                                          |
+| ------------ | --------------------------- | -------------------------------------- | -------------------------------- | --------------------------------------------------------- |
+| `lastWrite`  | The default                 | Yes                                    | The server: the latest edit      | The server copy; the loser is not kept                    |
+| `max`, `min` | A number                    | With a `conflictField` naming a number | The server (the client when E2E) | The larger or smaller value                               |
+| `merge`      | An object, member by member | Field by field                         | The server: each field's latest  | Each member's latest edit                                 |
+| `union`      | No                          | A list with `uniqueItems`              | The server: nothing conflicts    | Every element added and not removed                       |
+| `revision`   | No                          | The default for records and `saves`    | The person or the app            | The request stays open; the device keeps its copy, unsent |
 
 `max` and `min` are not anti-cheat: a device can claim a larger value.
+
+A `revision` conflict on a plain `put` or a save write opens a `MergeRequest` and sends nothing. The request holds the server copy as `remote` and this device's copy as `local`, and its `choices` are `local`, `remote` and `value` for a record, or `local`, `remote` and `both` for a save (`both` while a slot is free and the other copy exists). `request.keep(choice)` answers it:
+
+| Keep     | Result                                                                              |
+| -------- | ----------------------------------------------------------------------------------- |
+| `local`  | This device's copy is written on the server's version                               |
+| `remote` | Nothing is sent. The device reads the server copy                                   |
+| `value`  | A record only: the value you pass is written on the server's version                |
+| `both`   | A save only: this device's copy is written to a free slot, and the other copy stays |
+
+`keep` never throws. It answers `{ ok: true, kept, version }`, or `{ ok: false, code, reopened }` when the server moved again (`conflict`, with a new request), the request was already closed (`sync-merge-closed`) or the choice is not in `choices` (`bad_request`).
+
+While a request is open the record reads as this device's copy, a later plain `put` replaces it without sending, and a `delete` conflicts so the other copy survives. A `putAt` or `removeAt` closes the request as `superseded` and is sent as asked. A change pulled from another device updates `remote`. Record requests (at most 64 KiB each) survive a relaunch, count as unsynced data at sign-out and go with `discardUnsynced`. A save request lives in memory, and the app's next write raises it again.
+
+Listen with `onConflict` (Node, Python, Swift, Kotlin; `useConflicts()` in React; the `conflict_opened` signal in Godot). A listener that returns a choice decides the request at once, and a listener added later is told about requests already open. `cloudSync.conflicts()` lists the open ones and `status().conflicts` counts them. With no listener the SDK says so once in development. `cloudSync.cloudEmpty()` is `true` when the first pull of a signed-in person found nothing in the cloud, so an app can offer to upload what is on this device, `false` once the cloud holds anything, and `null` before that first answer.
 
 ## The quota
 

@@ -242,11 +242,11 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `cloudSync.flush` | `cloudSync.flush` | `useCloudSync().flush` | `cloud_sync.flush` | `cloudSync.flush` | `cloudSync.flush` | `cloud_sync.flush` | `sync.settings` |
 | `cloudSync.encryption` | `cloudSync.encryption` | `BrowserAdapterOptions.cloudSync.encryption` | `cloud_sync.encryption` | `CloudSyncOptions(encryption:)` | `cloudSync.encryption` | `cloud_sync_encryption` | `sync.e2e` |
 | `cloudSync.event` | `events.on("cloudSync")` | `useCloudSync().status` | `cloud_sync.event` | `events` | `client.events` | `client.event` | `sync.settings` |
-| `cloudSync.onConflict` | — | — | `cloud_sync.on_conflict` | — | — | — | `sync.conflict` |
-| `cloudSync.conflicts` | — | — | `cloud_sync.conflicts` | — | — | — | `sync.conflict` |
-| `cloudSync.cloudEmpty` | — | — | `cloud_sync.cloud_empty` | — | — | — | `sync.conflict` |
-| `cloudSync.mergeRequest.keep` | — | — | `MergeRequest.keep` | — | — | — | `sync.conflict` |
-| `cloudSync.conflictEvent` | — | — | `events.subscribe("cloudSync")` | — | — | — | `sync.conflict` |
+| `cloudSync.onConflict` | `cloudSync.onConflict` | `useConflicts` | `cloud_sync.on_conflict` | `CloudSyncClient.onConflict` | `cloudSync.onConflict` | `conflict_opened` | `sync.conflict` |
+| `cloudSync.conflicts` | `cloudSync.conflicts` | `useConflicts().conflicts` | `cloud_sync.conflicts` | `CloudSyncClient.conflicts` | `cloudSync.conflicts` | `cloud_sync.conflicts` | `sync.conflict` |
+| `cloudSync.cloudEmpty` | `cloudSync.cloudEmpty` | `useCloudSync().cloudEmpty` | `cloud_sync.cloud_empty` | `CloudSyncClient.cloudEmpty` | `cloudSync.cloudEmpty` | `cloud_sync.cloud_empty` | `sync.conflict` |
+| `cloudSync.mergeRequest.keep` | `MergeRequest.keep` | `useConflicts().keep` | `MergeRequest.keep` | `MergeRequest.keep` | `MergeRequest.keep` | `PKeyMergeRequest.keep` | `sync.conflict` |
+| `cloudSync.conflictEvent` | `events.on("cloudSync")` | `useConflicts().conflicts` | `events.subscribe("cloudSync")` | `events` | `events` | `client.event` | `sync.conflict` |
 | `cloudSync.saves` | `cloudSync.saves` | `useSaves` | `cloud_sync.saves` | `cloudSync.saves` | `cloudSync.saves` | `cloud_sync.saves` | `sync.saves` |
 | `cloudSync.saves.list` | `cloudSync.saves.list` | `useSaves().list` | `cloud_sync.saves.list` | `SavesClient.list` | `SavesClient.list` | `PKeySaves.list` | `sync.saves` |
 | `cloudSync.saves.read` | `cloudSync.saves.read` | `useSaves().read` | `cloud_sync.saves.read` | `SavesClient.read` | `SavesClient.read` | `PKeySaves.read` | `sync.saves` |
@@ -258,11 +258,6 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `cloudSync.transfer.resume` | `cloudSync.transfer.resume` | `useTransfers().resume` | `cloud_sync.transfer.resume` | `SaveTransfer.resume` | `SaveTransfer.resume` | `PKeyTransfer.resume` | `sync.files` |
 | `cloudSync.transfer.cancel` | `cloudSync.transfer.cancel` | `useTransfers().cancel` | `cloud_sync.transfer.cancel` | `SaveTransfer.cancel` | `SaveTransfer.cancel` | `PKeyTransfer.cancel` | `sync.files` |
 | `cloudSync.transferEvent` | `cloudSync.transferEvent` | `useTransfers().transfers` | `cloud_sync.transfer_event` | `events` | `client.events` | `client.event` | `sync.files` |
-| `cloudSync.onConflict` | `cloudSync.onConflict` | `useConflicts` | — | — | — | — | `sync.conflict` |
-| `cloudSync.conflicts` | `cloudSync.conflicts` | `useConflicts().conflicts` | — | — | — | — | `sync.conflict` |
-| `cloudSync.cloudEmpty` | `cloudSync.cloudEmpty` | `useCloudSync().cloudEmpty` | — | — | — | — | `sync.conflict` |
-| `cloudSync.mergeRequest.keep` | `MergeRequest.keep` | `useConflicts().keep` | — | — | — | — | `sync.conflict` |
-| `cloudSync.conflictEvent` | `events.on("cloudSync")` | `useConflicts().conflicts` | — | — | — | — | `sync.conflict` |
 | `cloudSync.collection` | `cloudSync.collection` | `useCollection` | `cloud_sync.collection` | `cloudSync.collection` | `cloudSync.collection` | `PKeyCloudSync.collection` | `sync.records` |
 | `cloudSync.collection.get` | `cloudSync.collection.get` | `useCollection(name).get` | `cloud_sync.collection.get` | `CloudSyncCollection.get` | `SyncCollection.get` | `PKeyCollection.get_record` | `sync.records` |
 | `cloudSync.collection.ids` | `cloudSync.collection.ids` | `useCollection(name).ids` | `cloud_sync.collection.ids` | `CloudSyncCollection.ids` | `SyncCollection.ids` | `PKeyCollection.ids` | `sync.records` |
@@ -570,3 +565,4 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Python | `identity.poll_sign_in` | `identity.signIn.session.wait` | I-10a |
 | Python | `identity.wait_for_sign_in` | `identity.signIn.session.wait` | I-10a |
 | Python | `identity.accept_sign_in` | `identity.signIn.session.wait` | I-10a |
+| Godot | `PKeySaves.resolve` | `cloudSync.mergeRequest.keep` | U-08 |
