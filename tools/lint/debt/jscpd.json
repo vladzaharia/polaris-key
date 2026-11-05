@@ -105,7 +105,7 @@
       "jscpd:duplicate": 24
     },
     "packages/admin/e2e/consoleSignin.e2e.test.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 6
     },
     "packages/admin/e2e/consoleSigninPasskey.e2e.test.ts": {
       "jscpd:duplicate": 6
