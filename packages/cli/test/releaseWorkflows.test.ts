@@ -1499,10 +1499,19 @@ describe("promote.yml fast-forwards main to the next that went green", () => {
     );
   });
 
-  it("holds contents: write and no other permission", () => {
-    expect(job.permissions).toEqual({ contents: "write" });
+  it("holds contents: write for the push and actions: write for the publish dispatch, nothing else", () => {
+    expect(job.permissions).toEqual({ contents: "write", actions: "write" });
     expect(promote.permissions).toEqual({});
     expect(text).not.toMatch(/secrets\./);
+  });
+
+  it("dispatches the main SDK publish only after it pushed", () => {
+    const steps = job.steps ?? [];
+    const dispatch = steps.find((s) => s.run?.includes("gh workflow run"));
+    expect(dispatch?.run).toBe("gh workflow run publish-sdks.yml --ref main");
+    expect(dispatch?.if).toBe("steps.ff.outputs.promoted == 'true'");
+    const ff = steps.find((s) => s.id === "ff");
+    expect(ff?.run).toContain('echo "promoted=true" >> "$GITHUB_OUTPUT"');
   });
 
   it("only fast-forwards: ancestry check, no force, no merge, no script from the tree", () => {

@@ -11,11 +11,12 @@ name: Promote next
 # the next green CI promotes it.
 #
 # Security: `workflow_run` runs the copy of this file on the default branch, with this token. The
-# job runs no script from the checked-out tree: it only runs git, on a SHA CI already tested.
-# The token carries contents: write and nothing else. A push made with it does not start other
-# workflows (GitHub's rule for the workflow token): CI already ran on this exact SHA through next,
-# and deploy.yml accepts that run as the proof for a tag on it. The main-channel SDK prerelease of
-# a promoted commit is published on demand: `gh workflow run publish-sdks.yml --ref main`.
+# job runs no script from the checked-out tree: it only runs git, on a SHA CI already tested, and
+# then dispatches the SDK publish. The token carries contents: write (the push) and actions: write
+# (the dispatch) and nothing else. A push made with it does not start other workflows (GitHub's
+# rule for the workflow token): CI already ran on this exact SHA through next, and deploy.yml
+# accepts that run as the proof for a tag on it. So the main-channel SDK prerelease is started
+# here by a dispatch; publish-sdks.yml still waits for CI OK on the SHA before it publishes.
 
 on:
   workflow_run:
@@ -43,6 +44,7 @@ jobs:
       && github.event.workflow_run.head_repository.full_name == github.repository
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -51,6 +53,7 @@ jobs:
           # The push below uses this checkout's credentials (the job's token, contents: write).
           persist-credentials: true
       - name: Fast-forward main
+        id: ff
         env:
           SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
@@ -79,4 +82,11 @@ jobs:
             exit 1
           fi
           git push origin "$SHA:refs/heads/main"
+          echo "promoted=true" >> "$GITHUB_OUTPUT"
           echo "main fast-forwarded to $SHA." >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish the main-channel SDK prerelease
+        if: steps.ff.outputs.promoted == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run publish-sdks.yml --ref main
