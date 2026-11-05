@@ -272,8 +272,8 @@ def test_a_failed_lan_attempt_falls_back_to_the_relay_unless_the_host_said_no() 
         got: List[Any] = []
         a.on_channel(got.append)
         until(lambda: any(p.device_id == ID_A and p.lan for p in b.peers()))
-        b.refresh_peers()
-        until(lambda: any(p.relay for p in b.peers()))
+        until(lambda: a.status().relay == "open" and b.status().relay == "open")
+        until(lambda: any(p.relay for p in b.refresh_peers()))  # the room never pushes joins: ask until A is in it
         # A's advert now points at a port nothing listens on.
         lan = b._lan  # type: ignore[attr-defined]
         for inst, (peer, name) in list(lan._peers.items()):
@@ -292,8 +292,8 @@ def test_a_lan_attempt_that_runs_out_of_time_goes_to_the_relay_and_a_late_sessio
         got: List[Any] = []
         a.on_channel(got.append)
         until(lambda: any(p.device_id == ID_A and p.lan for p in b.peers()))
-        b.refresh_peers()
-        until(lambda: any(p.relay for p in b.peers()))
+        until(lambda: a.status().relay == "open" and b.status().relay == "open")
+        until(lambda: any(p.relay for p in b.refresh_peers()))  # the room never pushes joins: ask until A is in it
         closed: List[bool] = []
 
         class Late:
