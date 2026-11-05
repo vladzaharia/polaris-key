@@ -11,6 +11,11 @@
 //  - `kept` follows only a resolver that returned, and names the choice that was made.
 package im.plrs.key.ui
 
+import im.plrs.key.core.MergeChoice
+import im.plrs.key.core.sync.MergeKeep
+import im.plrs.key.core.sync.MergeSide
+import im.plrs.key.sdk.MergeOutcome
+import im.plrs.key.sdk.MergeRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -36,6 +41,25 @@ public data class PolarisSaveVersion(val whenText: String? = null, val device: S
 /** Applies a choice; throws when it could not (both copies then stay as they were). */
 public fun interface PolarisSaveResolver {
     public suspend fun keep(keep: PolarisSaveKeep)
+
+    public companion object {
+        /**
+         * The resolver of a saves [MergeRequest] (plans/U-08.md section 6): a choice is one `keep`, and a refusal throws so
+         * the screen says both saves are unchanged. The host holds the bytes, so nothing is asked of it here.
+         */
+        public fun of(request: MergeRequest): PolarisSaveResolver = of { request.keep(it) }
+
+        /** The resolver of any `keep`: [keep] answers a [MergeOutcome]. */
+        public fun of(keep: suspend (MergeKeep) -> MergeOutcome): PolarisSaveResolver = PolarisSaveResolver { choice ->
+            val mapped = when (choice) {
+                PolarisSaveKeep.Local -> MergeKeep.Local
+                PolarisSaveKeep.Remote -> MergeKeep.Remote
+                PolarisSaveKeep.Both -> MergeKeep.Both
+            }
+            val out = keep(mapped)
+            if (out is MergeOutcome.Refused) throw IllegalStateException(out.code)
+        }
+    }
 }
 
 /** Where the conflict is. */
@@ -163,4 +187,54 @@ public class PolarisSaveConflictState(
             v.device?.let { put("device", JsonPrimitive(it)) }
         },
     )
+
+    public companion object {
+        /**
+         * The state holder of a saves [MergeRequest]: the copies, `newer` and the free-slot flag come from the request,
+         * and a choice is its `keep`. [describe] names a copy for the screen; by default a copy shows the medium
+         * date-time of its `savedAt`, and the other copy also names its device.
+         */
+        public fun of(
+            request: MergeRequest,
+            scope: CoroutineScope,
+            describe: ((MergeSide, other: Boolean) -> PolarisSaveVersion)? = null,
+        ): PolarisSaveConflictState = of(
+            request.local ?: MergeSide(JsonNull, null),
+            request.remote,
+            request.choices,
+            request.newer,
+            PolarisSaveResolver.of(request),
+            scope,
+            describe,
+        )
+
+        /** [of] from the pieces of a request, so a host that holds them another way binds the same screen. */
+        @Suppress("LongParameterList")
+        public fun of(
+            local: MergeSide,
+            remote: MergeSide?,
+            choices: List<String>,
+            newer: String?,
+            resolver: PolarisSaveResolver,
+            scope: CoroutineScope,
+            describe: ((MergeSide, other: Boolean) -> PolarisSaveVersion)? = null,
+        ): PolarisSaveConflictState {
+            val name = describe ?: ::defaultVersion
+            return PolarisSaveConflictState(
+                name(local, false),
+                remote?.let { name(it, true) },
+                remote != null && MergeChoice.both in choices,
+                resolver,
+                scope,
+                PolarisSaveNewer.entries.firstOrNull { it.id == newer },
+            )
+        }
+
+        private fun defaultVersion(side: MergeSide, other: Boolean): PolarisSaveVersion {
+            val whenText = side.savedAt?.let {
+                java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.MEDIUM).format(java.util.Date(it))
+            }
+            return PolarisSaveVersion(whenText, if (other) side.device else null)
+        }
+    }
 }

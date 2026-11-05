@@ -1,14 +1,19 @@
 // @pkey-feature ui.kit
+// @pkey-feature sync.conflict
 // The SaveConflict state holder without a renderer (U-22.K4): the steps a choice goes through, that a
 // choice is applied once, that Keep both needs a free slot and a copy, and that `kept` never follows a
 // failure (UI-KITS Must not: a save is never discarded without a choice).
 package im.plrs.key.ui
 
+import im.plrs.key.core.sync.MergeKeep
+import im.plrs.key.core.sync.MergeSide
+import im.plrs.key.sdk.MergeOutcome
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -177,5 +182,52 @@ class PolarisSaveConflictStateTest {
         assertTrue(failed.shows("saveConflict.failedDeleted"))
         assertFalse(failed.shows("saveConflict.title"))
         assertFalse(failed.shows("saveConflict.failed"))
+    }
+
+    // ── bound to a MergeRequest (U-08.K4): the copies, `newer` and the free slot come from the request, a choice is its keep ──
+
+    private val mine = MergeSide(JsonNull, 3, savedAt = 1_700_000_000_000, device = "This PC")
+    private val theirs = MergeSide(JsonNull, 7, savedAt = 1_700_100_000_000, device = "Maya's Steam Deck")
+
+    @Test
+    fun aStateBoundToARequestTakesItsCopiesNewerAndFreeSlotAndKeepsThroughIt() = runTest {
+        val asked = mutableListOf<MergeKeep>()
+        val resolver = PolarisSaveResolver.of {
+            asked += it
+            MergeOutcome.Kept("remote", 7)
+        }
+        val state = PolarisSaveConflictState.of(
+            mine,
+            theirs,
+            listOf("local", "remote", "both"),
+            "remote",
+            resolver,
+            backgroundScope,
+            describe = { side, other -> PolarisSaveVersion("v${side.version}", if (other) side.device else null) },
+        )
+        val choose = state.kitScreen()!!
+        assertEquals(listOf("cancel", "keep-both", "keep-local", "keep-remote"), choose.actions.map(KitAction::id))
+        assertTrue(choose.shows("saveConflict.newerOther"))
+        state.keep(PolarisSaveKeep.Remote)
+        runCurrent()
+        assertEquals(listOf<MergeKeep>(MergeKeep.Remote), asked)
+        assertEquals(PolarisSaveConflictUi.Kept(PolarisSaveKeep.Remote), state.ui.value)
+    }
+
+    @Test
+    fun aRefusedKeepIsAFailureAndBothIsOfferedOnlyWhenTheRequestListsIt() = runTest {
+        val resolver = PolarisSaveResolver.of { MergeOutcome.Refused("conflict", reopened = true) }
+        val full = PolarisSaveConflictState.of(mine, theirs, listOf("local", "remote"), null, resolver, backgroundScope)
+        val screen = full.kitScreen()!!
+        assertEquals(listOf(KitAction.keepBoth), screen.disabledActions)
+        full.keep(PolarisSaveKeep.Both)
+        runCurrent()
+        assertEquals(PolarisSaveConflictUi.Choose, full.ui.value)
+        full.keep(PolarisSaveKeep.Local)
+        runCurrent()
+        assertEquals(PolarisSaveConflictUi.Failed(PolarisSaveKeep.Local), full.ui.value)
+        // The copy deleted elsewhere: no remote card, and the default medium date-time names the copy's time only.
+        val gone = PolarisSaveConflictState.of(mine, null, listOf("local", "remote"), "remote", resolver, backgroundScope)
+        assertFalse(gone.kitScreen()!!.shows("saveConflict.newerOther"))
     }
 }
