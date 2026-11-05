@@ -127,6 +127,12 @@ func _activate_done(t: PKeyTestContext) -> void:
 	t.check("done: License off hides it, and the description with it", not d.visible and primary.get("accessibility_description") == "")
 	_free(d)
 
+	d = await _sc.activate_done("ready")
+	d.no_add_action = true
+	await _settle()
+	t.check("done: with no Add action the card and the skip line are gone", not _shown(d, "Recommend") and not _shown(d, "Skip") and not _shown(d, "Add") and _shown(d, "Primary"))
+	_free(d)
+
 	d = await _sc.activate_done("ready, the device line unknown")
 	await _settle()
 	t.check("done: the device line is left out while a part is unknown", not _shown(d, "Device"))
@@ -249,6 +255,18 @@ func _add_to_account(t: PKeyTestContext) -> void:
 	a.cancelled.connect(func(): c3[0] += 1)
 	t.check("add: Escape does nothing while waiting", a._cancel() and c3[0] == 0)
 	_free(a)
+
+	# waiting on a TV: no browser opened, so one line says where to go and the QR sits with the text.
+	PKeyUiView.pad_only_override = true
+	a = await _sc.add_to_account("waiting")
+	a.address = "https://polarislocker.com/link"
+	a.link = "https://polarislocker.com/link?code=WDJB-MJHT"
+	await _settle()
+	var tv_ok := _text(a, "Check").begins_with("On any phone or computer") and not _shown(a, "Address")
+	t.check("add: a TV's wait says where to go, with no second address or caption", tv_ok and not _shown(a, "QrCaption"), _text(a, "Check"))
+	t.check("add: a TV's QR is left with the text column", a._qr.get_parent().size_flags_horizontal == Control.SIZE_SHRINK_BEGIN)
+	_free(a)
+	PKeyUiView.pad_only_override = false
 
 	# failed: the problem line with its glyph.
 	a = await _sc.add_to_account("failed")

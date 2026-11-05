@@ -539,6 +539,16 @@ func _on_add() -> void:
 		return
 	holders.begin_add()
 	refresh_view()
+	_focus_holders.call_deferred()
+
+
+## The form opened in the list's place: focus goes to the step's first field, not the Continue button.
+func _focus_holders() -> void:
+	if holders == null or not holders.is_open() or not is_visible_in_tree():
+		return
+	var c := holders._initial_focus()
+	if c != null and c.is_visible_in_tree() and c.focus_mode != Control.FOCUS_NONE:
+		c.grab_focus()
 
 
 func _on_holders_finished() -> void:
