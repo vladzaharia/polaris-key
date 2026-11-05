@@ -8,10 +8,10 @@
 
 import type { Unsupported } from "@polaris-key/client-core";
 import type {
+  ConflictListener,
+  MergeRequest,
   RangedSource,
   ReadOptions,
-  SaveConflict,
-  SaveKeep,
   SaveRead,
   SaveSetResult,
   SaveSummary,
@@ -26,10 +26,29 @@ import type {
   SyncStatus,
 } from "@polaris-key/client-core/cloud-sync";
 import type { BrowserCloudSyncHost } from "../browser/cloudSync/host.js";
-import { Feature, TransferEvent } from "../constants.generated.js";
+import { Feature, MergeEvent, TransferEvent } from "../constants.generated.js";
 import { UnsupportedError } from "./caps.js";
 
-export type { SyncEvent, SyncStatus };
+export type { ConflictListener, MergeRequest, SyncEvent, SyncStatus };
+
+/** A MergeRequest event on the `cloudSync` stream (`MergeEvent` in `conformance/parity/enums.json`).
+ *  Ids and names only; the request itself is in `conflicts()`. */
+export type ConflictStreamEvent =
+  | {
+      type: typeof MergeEvent.conflictopened;
+      id: string;
+      cause: "write" | "accountMerge";
+      collection: string;
+      record: string;
+    }
+  | {
+      type: typeof MergeEvent.conflictclosed;
+      id: string;
+      how: "local" | "remote" | "value" | "both" | "superseded";
+    };
+
+/** What `onEvents` delivers: the machine's events and the MergeRequest ones. */
+export type CloudSyncEvent = SyncEvent | ConflictStreamEvent;
 
 /** What the adapter tells Cloud Sync about the person: who signed in, or that they left. */
 export type IdentityNote =
@@ -47,7 +66,7 @@ export type SaveTransferEvent =
   | {
       type: typeof TransferEvent.transferdone;
       id: string;
-      /** `done`; `cancelled` (a state, not a failure); `conflict` (settle it with `resolve`). */
+      /** `done`; `cancelled` (a state, not a failure); `conflict` (a MergeRequest holds it: `conflicts()`). */
       state: "done" | "cancelled" | "conflict";
     }
   | { type: typeof TransferEvent.transferfailed; id: string; code: string };
@@ -55,7 +74,7 @@ export type SaveTransferEvent =
 /**
  * The saves of the signed-in person (sync.saves, U-22.7): records with one file each, over Cloud
  * Sync. Loaded on the first call. Where Cloud Sync cannot run every verb throws the typed
- * unsupported. Only the writer tab can write, delete or resolve (`sync-not-writer` otherwise).
+ * unsupported. Only the writer tab can write, delete or keep (`sync-not-writer` otherwise).
  */
 export interface BrowserSaves {
   list(): Promise<SaveSummary[]>;
@@ -67,20 +86,12 @@ export interface BrowserSaves {
     metadata: { [k: string]: Json },
     opts?: WriteOptions,
   ): Promise<SaveTransfer>;
-  resolve(
-    conflict: SaveConflict,
-    keep: SaveKeep,
-    bytes: Uint8Array | RangedSource,
-    opts?: WriteOptions,
-  ): Promise<SaveTransfer>;
   delete(id: string, baseVersion?: number): Promise<SaveSetResult>;
   revisions(id: string): Promise<FileRevision[]>;
   /** The writes in flight (running, paused or waiting). Empty before the saves have loaded. */
   transfers(): SaveTransfer[];
-  /** The conflicts a write ended with that nobody has settled (`resolve`) or dismissed yet. */
-  conflicts(): SaveConflict[];
-  /** Forget a conflict without settling it (the person cancelled). */
-  dismissConflict(id: string): void;
+  /** The save requests open now (`request.keep` settles one). Empty before the saves have loaded. */
+  conflicts(): MergeRequest[];
   /** Transfer events in order; `null` when the set of transfers changed. */
   onTransfers(listener: (event: SaveTransferEvent | null) => void): () => void;
   /** The adapter's wiring: the person's transfers, journal and chunk cache are gone. */
@@ -117,7 +128,17 @@ export interface CloudSyncClient {
    */
   purge(): Promise<void>;
   /** The machine's events, in order; subscribing before the host loads is fine. */
-  onEvents(listener: (events: SyncEvent[]) => void): () => void;
+  onEvents(listener: (events: CloudSyncEvent[]) => void): () => void;
+  /**
+   * Listen for MergeRequests as they open (`revision` conflicts the app has not decided); the ones
+   * already open are replayed. A listener that returns a choice decides the request at once.
+   * Loads nothing: it follows the host once the host has loaded.
+   */
+  onConflict(listener: ConflictListener): () => void;
+  /** The requests open now, in id order; each keeps the device's copy unsent until `keep`. */
+  conflicts(): MergeRequest[];
+  /** Whether the cloud held nothing at the person's first pull; `null` before one (or signed out). */
+  cloudEmpty(): boolean | null;
   /** The status may have moved (a send finished, a record was followed); read `status()`. */
   onStatus(listener: () => void): () => void;
   /**
@@ -153,12 +174,10 @@ export function unsupportedCloudSync(
     list: () => Promise.reject(savesUnsupported(unsupported)),
     read: () => Promise.reject(savesUnsupported(unsupported)),
     write: () => Promise.reject(savesUnsupported(unsupported)),
-    resolve: () => Promise.reject(savesUnsupported(unsupported)),
     delete: () => Promise.reject(savesUnsupported(unsupported)),
     revisions: () => Promise.reject(savesUnsupported(unsupported)),
     transfers: () => [],
     conflicts: () => [],
-    dismissConflict: () => undefined,
     onTransfers: () => () => undefined,
     purge: async () => undefined,
   };
@@ -175,6 +194,9 @@ export function unsupportedCloudSync(
     // Nothing can be held here, so there is nothing to delete.
     purge: async () => undefined,
     onEvents: () => () => undefined,
+    onConflict: () => () => undefined,
+    conflicts: () => [],
+    cloudEmpty: () => null,
     onStatus: () => () => undefined,
     // Nothing runs here, so there is nothing to wire.
     attach: async () => undefined,
@@ -198,7 +220,9 @@ export interface LazyCloudSyncSource {
 export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
   let real: CloudSyncClient | null = null;
   let loading: Promise<CloudSyncClient> | null = null;
-  const listeners = new Set<(events: SyncEvent[]) => void>();
+  const listeners = new Set<(events: CloudSyncEvent[]) => void>();
+  // A conflict listener follows the host once it has loaded (the remover is null until then).
+  const conflictListeners = new Map<ConflictListener, (() => void) | null>();
   const statusListeners = new Set<() => void>();
   const transferListeners = new Set<(e: SaveTransferEvent | null) => void>();
   // A product that does not run the Sync service answers the typed N/A on every verb.
@@ -214,6 +238,9 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
             c.onEvents((e) => listeners.forEach((l) => l(e))),
             c.onStatus(() => statusListeners.forEach((l) => l())),
             c.saves.onTransfers((e) => transferListeners.forEach((l) => l(e))),
+            conflictListeners.forEach((off, l) => {
+              if (off === null) conflictListeners.set(l, c.onConflict(l));
+            }),
             (real = c)
           ),
           (err) => ((loading = null), Promise.reject(err)),
@@ -223,12 +250,10 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
     list: async () => (await ready()).saves.list(),
     read: async (id, o) => (await ready()).saves.read(id, o),
     write: async (id, b, m, o) => (await ready()).saves.write(id, b, m, o),
-    resolve: async (c, k, b, o) => (await ready()).saves.resolve(c, k, b, o),
     delete: async (id, v) => (await ready()).saves.delete(id, v),
     revisions: async (id) => (await ready()).saves.revisions(id),
     transfers: () => real?.saves.transfers() ?? [],
     conflicts: () => real?.saves.conflicts() ?? [],
-    dismissConflict: (id) => real?.saves.dismissConflict(id),
     onTransfers: (l) => (
       transferListeners.add(l),
       () => transferListeners.delete(l)
@@ -264,6 +289,17 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
       ).purgeUnloaded(src.dbName);
     },
     onEvents: (l) => (listeners.add(l), () => listeners.delete(l)),
+    onConflict: (l) => {
+      conflictListeners.set(l, real ? real.onConflict(l) : null);
+      // A listener means the app syncs: the host loads now, as it would for any other verb.
+      if (!real && src.enabled()) void ready().catch(() => undefined);
+      return () => {
+        conflictListeners.get(l)?.();
+        conflictListeners.delete(l);
+      };
+    },
+    conflicts: () => real?.conflicts() ?? [],
+    cloudEmpty: () => real?.cloudEmpty() ?? null,
     onStatus: (l) => (statusListeners.add(l), () => statusListeners.delete(l)),
     attach: async () => {
       if (src.enabled()) await (await ready()).attach();

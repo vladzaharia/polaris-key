@@ -13,7 +13,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import type { JSONValue } from "@polaris-key/protocol/core";
-import type { SyncEvent } from "@polaris-key/client-core/cloud-sync";
+import type { CloudSyncEvent } from "../src/core/cloudSync.js";
 import {
   BrowserCloudSyncApi,
   clientOf,
@@ -136,7 +136,7 @@ async function tab(
     log,
     signInOrigin: "https://k.test",
   });
-  const events: SyncEvent[] = [];
+  const events: CloudSyncEvent[] = [];
   api.onEvents((e) => events.push(...e));
   const changes: ConfigChange[] = [];
   config.onConfigChange("*", (c) => changes.push(c));

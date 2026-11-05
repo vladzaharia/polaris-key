@@ -25,8 +25,13 @@ import {
 import type {
   BrowserSaves,
   CloudSyncClient,
+  CloudSyncEvent,
+  ConflictListener,
   IdentityNote,
+  MergeRequest,
 } from "../../core/cloudSync.js";
+import type { MergeEvent as RegistryEvent } from "@polaris-key/client-core/sync";
+import { MergeEvent } from "../../constants.generated.js";
 import type {
   ConfigSyncPort,
   LocalConfigEngine,
@@ -103,7 +108,7 @@ export interface BrowserCloudSyncApiDeps {
 
 export class BrowserCloudSyncApi {
   readonly #d: BrowserCloudSyncApiDeps;
-  readonly #listeners = new Set<(events: SyncEvent[]) => void>();
+  readonly #listeners = new Set<(events: CloudSyncEvent[]) => void>();
   #attached: Promise<void> | null = null;
   #subjectValue: string | null = null;
   /** The person the machine is signed in as; the host is told, so no request outlives them. */
@@ -121,14 +126,45 @@ export class BrowserCloudSyncApi {
 
   constructor(deps: BrowserCloudSyncApiDeps) {
     this.#d = deps;
+    // `conflictOpened` / `conflictClosed` come from the registry, which covers the machine's
+    // requests and the saves layer's; ids and names only (S7).
+    deps.host.merge.onEvent((e) => this.#onMerge(e));
+  }
+
+  #onMerge(e: RegistryEvent): void {
+    if (e.type === "conflictOpened") {
+      const r = e.request;
+      this.#emit({
+        type: MergeEvent.conflictopened,
+        id: r.id,
+        cause: r.cause,
+        collection: r.collection,
+        record: r.record,
+      });
+    } else
+      this.#emit({ type: MergeEvent.conflictclosed, id: e.id, how: e.how });
   }
 
   // ── What app code calls ──────────────────────────────────────────────────────────────────
 
   status(): SyncStatus {
-    return this.#d.host.started
-      ? this.#d.host.machine.status()
-      : { state: "local", pending: 0 };
+    if (!this.#d.host.started) return { state: "local", pending: 0 };
+    // The open requests of the machine and of the saves layer, present only above 0.
+    const { conflicts: _machine, ...status } = this.#d.host.machine.status();
+    const open = this.#d.host.merge.count();
+    return open > 0 ? { ...status, conflicts: open } : status;
+  }
+
+  onConflict(fn: ConflictListener): () => void {
+    return this.#d.host.merge.onConflict(fn);
+  }
+
+  conflicts(): MergeRequest[] {
+    return this.#d.host.merge.conflicts();
+  }
+
+  cloudEmpty(): boolean | null {
+    return this.#d.host.started ? this.#d.host.machine.cloudEmpty() : null;
   }
 
   async flush(): Promise<SyncStatus> {
@@ -139,7 +175,7 @@ export class BrowserCloudSyncApi {
     return this.status();
   }
 
-  onEvents(fn: (events: SyncEvent[]) => void): () => void {
+  onEvents(fn: (events: CloudSyncEvent[]) => void): () => void {
     this.#listeners.add(fn);
     return () => this.#listeners.delete(fn);
   }
@@ -286,6 +322,8 @@ export class BrowserCloudSyncApi {
     }
     if (left) this.#d.config.noteSyncChange(null, "remote");
     for (const e of events) {
+      // The registry reports these, for both kinds of request (`#onMerge`).
+      if (e.type === "conflict" || e.type === "conflictClosed") continue;
       // The offer follows the forget, so a person never sees it before their data is gone.
       if (left && e.type === "signInOffered") continue;
       this.#emit(e);
@@ -306,9 +344,9 @@ export class BrowserCloudSyncApi {
     }
   }
 
-  #emit(event: SyncEvent): void {
+  #emit(event: CloudSyncEvent): void {
     // The Worker's sign-in URL goes to the app only if it is a path or on the Worker's own origin.
-    const e: SyncEvent =
+    const e: CloudSyncEvent =
       event.type === "signInOffered"
         ? {
             type: "signInOffered",
@@ -382,6 +420,9 @@ export function clientOf(
     },
     purge: () => host.purge(),
     onEvents: (l) => api.onEvents(l),
+    onConflict: (l) => api.onConflict(l),
+    conflicts: () => api.conflicts(),
+    cloudEmpty: () => api.cloudEmpty(),
     onStatus: (l) => api.onStatus(l),
     attach: () => api.attach(),
     identity: (n) => api.identity(n),

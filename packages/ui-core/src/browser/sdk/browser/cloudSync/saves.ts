@@ -38,8 +38,7 @@ import {
   type HostCodec,
   type RangedSource,
   type ReadOptions,
-  type SaveConflict,
-  type SaveKeep,
+  type SavesDeps,
   type SaveOutcome,
   type SaveRead,
   type SaveRecord,
@@ -53,7 +52,11 @@ import {
 } from "@polaris-key/client-core/sync";
 import type { FileRevision } from "@polaris-key/protocol/sync";
 import { TransferEvent } from "../../constants.generated.js";
-import type { BrowserSaves, SaveTransferEvent } from "../../core/cloudSync.js";
+import type {
+  BrowserSaves,
+  MergeRequest,
+  SaveTransferEvent,
+} from "../../core/cloudSync.js";
 import type { KeyringClient } from "../../core/keyring.js";
 import { locked } from "../ring/codec.js";
 import type { FileFetch } from "./files.js";
@@ -311,7 +314,11 @@ export class SavesApi implements BrowserSaves {
   /** True once this page built a files layer (a later purge is then person-scoped). */
   #built = false;
   readonly #active = new Map<string, SaveTransfer>();
-  readonly #conflicts = new Map<string, SaveConflict>();
+  /** One client for the page: it holds the open save requests and the versions this device has
+   *  seen (S1, S2), so it is kept until the person or the settings change. */
+  #cached: { key: string; client: SavesClient } | null = null;
+  /** The codec the cached client reads; every call to `#client` refreshes it. */
+  #codec: FileCodec | null = null;
   /** Bumped by every purge: a call that began before one never builds on, or records into, what the
    *  purge deleted. */
   #gen = 0;
@@ -383,26 +390,6 @@ export class SavesApi implements BrowserSaves {
     );
   }
 
-  /** Settle a conflict: keep the remote copy, write the local one on top, or keep both. */
-  async resolve(
-    conflict: SaveConflict,
-    keep: SaveKeep,
-    bytes: Uint8Array | RangedSource,
-    opts: WriteOptions = {},
-  ): Promise<SaveTransfer> {
-    const gen = this.#gen;
-    const client = await this.#client(true);
-    return this.#track(
-      client.resolve(
-        conflict,
-        keep,
-        bytes,
-        this.#progress(`saves:${conflict.id}`, opts),
-      ),
-      gen,
-    );
-  }
-
   /** Delete a save; its file is collected with the record. */
   async delete(id: string, baseVersion?: number): Promise<SaveSetResult> {
     return (await this.#client(true)).delete(id, baseVersion);
@@ -413,14 +400,11 @@ export class SavesApi implements BrowserSaves {
     return [...this.#active.values()];
   }
 
-  /** The conflicts a write ended with that nobody has settled or dismissed yet. */
-  conflicts(): SaveConflict[] {
-    return [...this.#conflicts.values()];
-  }
-
-  /** Forget a conflict without settling it. */
-  dismissConflict(id: string): void {
-    if (this.#conflicts.delete(id)) this.#emit(null);
+  /** The save requests open now (`request.keep` settles one). */
+  conflicts(): MergeRequest[] {
+    return this.#d.host.merge
+      .conflicts()
+      .filter((r) => r.collection === SAVES_COLLECTION);
   }
 
   /** Transfer events, in order; `null` when the set of transfers changed. */
@@ -439,8 +423,12 @@ export class SavesApi implements BrowserSaves {
     this.#subject = null;
     const running = [...this.#active.values()];
     this.#active.clear();
-    this.#conflicts.clear();
     this.#records.dropAll();
+    // The requests of the person who left go with them (they live in memory only, S5).
+    this.#cached = null;
+    this.#codec = null;
+    for (const r of this.conflicts())
+      this.#d.host.merge.close(r.id, "superseded");
     const files = this.#files;
     this.#files = null;
     this.#engine = null;
@@ -510,24 +498,40 @@ export class SavesApi implements BrowserSaves {
       : serverFileCodec(webCryptoSyncPort);
     // A purge that ran while this waited wins: no files layer is built for the person who left.
     if (gen !== this.#gen) throw purged();
+    this.#codec = codec;
     const o = d.host.savesOptions;
-    const { files, engine } = this.#filesLayer();
     const subject = d.subject?.() ?? null;
     this.#subject = subject;
-    return new SavesClient({
+    const key = JSON.stringify([
+      subject,
+      o.delta,
+      o.maxBytes,
+      o.saveFormatVersion,
+    ]);
+    if (this.#cached?.key === key) return this.#cached.client;
+    const { files, engine } = this.#filesLayer();
+    const self = this;
+    const deps: SavesDeps = {
       records: this.#records,
       ...(d.deviceLabel ? { deviceLabel: d.deviceLabel } : {}),
       onState: () => this.#emit(null),
       engine,
       transport: files.transport,
-      codec,
+      // The latest codec any call built: a key ring that locked since refuses (`sync-locked`).
+      get codec(): FileCodec {
+        return self.#codec!;
+      },
       delta: o.delta,
+      merge: d.host.merge,
       ...(o.delta ? { cache: files.cacheFor(subject ?? "") } : {}),
       ...(o.maxBytes !== undefined ? { maxBytes: o.maxBytes } : {}),
       ...(o.saveFormatVersion !== undefined
         ? { saveFormatVersion: o.saveFormatVersion }
         : {}),
-    });
+    };
+    const client = new SavesClient(deps);
+    this.#cached = { key, client };
+    return client;
   }
 
   /** Register a write, emit its events, and drop it from `transfers()` when it settles. */
@@ -540,9 +544,6 @@ export class SavesApi implements BrowserSaves {
     this.#emit(null);
     void t.done.then((o: SaveOutcome) => {
       this.#active.delete(t.id);
-      if (o.state === "conflict")
-        this.#conflicts.set(o.conflict.id, o.conflict);
-      else if (o.state === "done" && "id" in o) this.#conflicts.delete(o.id);
       if (o.state === "failed")
         this.#emit({
           type: TransferEvent.transferfailed,

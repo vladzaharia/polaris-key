@@ -1,4 +1,4 @@
-// @pkey-feature sync.scenarios config.sync sync.e2e
+// @pkey-feature sync.scenarios sync.conflict config.sync sync.e2e
 // The browser conformance runner for `conformance/corpus/v2/sync-scenarios.json` (SYNC-E2E.F.R,
 // the React lane): the Cloud Sync client state machine (`@polaris-key/client-core/cloud-sync`)
 // and `settingCases`, driven in a real engine by the same steps, asserts and comparisons as
