@@ -329,7 +329,7 @@ func _pitch_cards(two: bool) -> void:
 			flat.set_border_width_all(0)
 			# The same card surface at every size: on a card that does not bleed, the tint would be the page's own.
 			if card_padding_x() > 0.0:
-				flat.bg_color = Color("#171c28") if PKeyUiTheme.is_dark(self) else Color("#eff1f5")
+				flat.bg_color = PKeyBrand.Dark.SURFACE_OVERLAY if PKeyUiTheme.is_dark(self) else PKeyBrand.Light.SURFACE_SUNKEN
 			(card as PanelContainer).add_theme_stylebox_override(&"panel", flat)
 		(card as Control).custom_minimum_size.y = _keep_local.get_combined_minimum_size().y if two else 0.0
 	if two:

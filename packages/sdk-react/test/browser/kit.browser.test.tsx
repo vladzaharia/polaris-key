@@ -877,6 +877,22 @@ function unreachable(kit: Element): string[] {
   return out;
 }
 
+/** Every visible text run's font size and weight, keyed `size/weight`, with the elements that set
+ *  it. The monogram's letter is the product's mark, not text, so it is left out. */
+function typeUse(kit: Element) {
+  const out: Record<string, string> = {};
+  const walker = document.createTreeWalker(kit, NodeFilter.SHOW_TEXT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const el = n.parentElement;
+    if (!el || !n.textContent?.trim() || !visible(el)) continue;
+    if (el.closest("[data-part=monogram]")) continue;
+    const c = getComputedStyle(el);
+    const k = `${c.fontSize}/${c.fontWeight}`;
+    out[k] = `${out[k] ? out[k] + " | " : ""}${describeEl(el)}`;
+  }
+  return out;
+}
+
 describe("the save screens at the §7.1 sizes", () => {
   for (const [name, row] of Object.entries(SAVE_ROWS).filter(([n]) =>
     ["choose", "full", "deleted", "failed"].includes(n),
@@ -927,6 +943,17 @@ describe("the save screens at the §7.1 sizes", () => {
             }
           }
           expect(unreachable(kit).join("\n")).toBe("");
+          // The screen's type: at most four sizes (the title, the product's name, the body and the
+          // meta; the monogram's letter is a mark) and three weights, as in the native kits.
+          const type = typeUse(kit);
+          expect(
+            new Set(Object.keys(type).map((k) => k.split("/")[0])).size,
+            `sizes: ${JSON.stringify(type)}`,
+          ).toBeLessThanOrEqual(4);
+          expect(
+            new Set(Object.keys(type).map((k) => k.split("/")[1])).size,
+            `weights: ${JSON.stringify(type)}`,
+          ).toBeLessThanOrEqual(3);
           const h1 = kit.querySelector("h1")!;
           expect(h1).not.toBeNull();
           // Focus lands on the heading, on the choice and on a failed one alike.

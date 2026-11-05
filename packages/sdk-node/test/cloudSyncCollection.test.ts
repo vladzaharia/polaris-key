@@ -14,7 +14,9 @@ import {
   SUBJECT,
   World,
   open,
-  type Body,
+  pushes,
+  serverWorld,
+  startSignedIn,
 } from "./cloudSyncFixtures.js";
 
 const CLOUD = {
@@ -27,36 +29,16 @@ const CLOUD = {
 };
 
 async function rig() {
-  const w = new World();
-  w.body = ((over: Body = {}) => ({
-    subject: SUBJECT,
-    serverNow: 1_700_000_000_000,
-    cursor: 0,
-    more: false,
-    lastMutationId: 0,
-    catalogVersion: 1,
-    aliases: {},
-    usage: { files: 0, records: 0, settings: 0, bytes: 0 },
-    quota: { files: true, bytes: 2 ** 28 },
-    encryption: "server",
-    changes: [],
-    tombstones: [],
-    ...over,
-  })) as typeof w.body;
+  const w = serverWorld();
   const client = await open(
     w,
     mkdtempSync(join(tmpdir(), "pkey-ccoll-")),
     { encryption: "server", catalog: { ...CATALOG(1), cloudSync: CLOUD } },
     false,
   );
-  await client.cloudSyncHost.start();
-  client.events.safeEmit("identity", { kind: "signedIn", subject: SUBJECT });
-  await client.cloudSync.flush();
+  await startSignedIn(client);
   return { w, client };
 }
-
-const pushes = (w: World) =>
-  w.syncReqs.filter((r) => r.method === "POST" && r.body?.mutations);
 
 describe("cloudSync.collection", () => {
   it("sends field operations for a merge update, one stamp, only the named fields", async () => {
@@ -207,9 +189,7 @@ describe("cloudSync.collection in end-to-end mode", () => {
       catalog: { ...CATALOG(1), cloudSync: CLOUD },
     });
     await client.keyring.create();
-    await client.cloudSyncHost.start();
-    client.events.safeEmit("identity", { kind: "signedIn", subject: SUBJECT });
-    await client.cloudSync.flush();
+    await startSignedIn(client);
     const prefs = await client.cloudSync.collection("notes.work");
     expect(prefs.put("main", { t: "x" })).toEqual({ ok: true });
     await client.cloudSync.flush();

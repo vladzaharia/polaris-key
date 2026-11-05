@@ -30,8 +30,7 @@ import type {
   IdentityNote,
   MergeRequest,
 } from "../../core/cloudSync.js";
-import type { MergeEvent as RegistryEvent } from "@polaris-key/client-core/sync";
-import { MergeEvent } from "../../constants.generated.js";
+import { mergeStreamEvent, mergedStatus } from "@polaris-key/client-core/sync";
 import type {
   ConfigSyncPort,
   LocalConfigEngine,
@@ -128,31 +127,13 @@ export class BrowserCloudSyncApi {
     this.#d = deps;
     // `conflictOpened` / `conflictClosed` come from the registry, which covers the machine's
     // requests and the saves layer's; ids and names only (S7).
-    deps.host.merge.onEvent((e) => this.#onMerge(e));
-  }
-
-  #onMerge(e: RegistryEvent): void {
-    if (e.type === "conflictOpened") {
-      const r = e.request;
-      this.#emit({
-        type: MergeEvent.conflictopened,
-        id: r.id,
-        cause: r.cause,
-        collection: r.collection,
-        record: r.record,
-      });
-    } else
-      this.#emit({ type: MergeEvent.conflictclosed, id: e.id, how: e.how });
+    deps.host.merge.onEvent((e) => this.#emit(mergeStreamEvent(e)));
   }
 
   // ── What app code calls ──────────────────────────────────────────────────────────────────
 
   status(): SyncStatus {
-    if (!this.#d.host.started) return { state: "local", pending: 0 };
-    // The open requests of the machine and of the saves layer, present only above 0.
-    const { conflicts: _machine, ...status } = this.#d.host.machine.status();
-    const open = this.#d.host.merge.count();
-    return open > 0 ? { ...status, conflicts: open } : status;
+    return mergedStatus(this.#d.host);
   }
 
   onConflict(fn: ConflictListener): () => void {

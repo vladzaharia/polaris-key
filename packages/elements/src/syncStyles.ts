@@ -86,6 +86,14 @@ export const SYNC_CSS = `
   inline-size: auto;
   align-self: center;
 }
+/* Three sizes of type on the screen, as in the SwiftUI, Compose and Godot kits: the title, the body
+   (the lede, the copy's name, the choices) and the meta (when it was saved). The copy's name is the
+   body at the choices' weight in the strong colour, so it is not a fourth size or weight. */
+.save-card .label {
+  color: var(--pk-text-strong);
+  font-size: var(--pk-kit-type-body-size);
+  font-weight: 500;
+}
 /* Newer: the tag on the card the app names; information only, it chooses nothing. */
 .save-card .newer {
   align-self: start;
@@ -132,6 +140,12 @@ export const SYNC_CSS = `
     grid-row: 1 / -1;
   }
   }
+}
+/* A short window's docked bar (the failed step's): its band ends in the card's rounded corners
+   instead of squaring them off. */
+.pk-root[data-shape="short"] .stage[data-kind="screen"] .card > .actions::before {
+  border-end-start-radius: var(--pk-kit-radius-card);
+  border-end-end-radius: var(--pk-kit-radius-card);
 }
 /* Delete it here too removes a save: the danger outline, quieter than a solid confirm. */
 .btn[data-variant="danger"][data-key="saveConflict.acceptDelete"] {

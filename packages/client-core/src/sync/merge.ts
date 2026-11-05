@@ -14,6 +14,7 @@ import {
   type MachineConflictSide,
   type RecordRow,
   type SyncEvent,
+  type SyncStatus,
 } from "../cloud-sync.js";
 
 export type MergeCause = "write" | "accountMerge";
@@ -60,6 +61,50 @@ export interface MergeRequest {
 export type MergeEvent =
   | { type: "conflictOpened"; request: MergeRequest }
   | { type: "conflictClosed"; id: string; how: MergeHow };
+
+/** A MergeRequest event on the `cloudSync` stream: ids and names only (S7); the request itself is
+ *  in `conflicts()`. */
+export type MergeStreamEvent =
+  | {
+      type: "conflictOpened";
+      id: string;
+      cause: MergeCause;
+      collection: string;
+      record: string;
+    }
+  | { type: "conflictClosed"; id: string; how: MergeHow };
+
+/** A transfer event of the saves on the `cloudSync` stream (`TransferEvent` in
+ *  `conformance/parity/enums.json`). */
+export type SaveTransferEvent =
+  | { type: "transferProgress"; id: string; done: number; total: number }
+  | {
+      type: "transferDone";
+      id: string;
+      /** `done`; `cancelled` (a state, not a failure); `conflict` (a MergeRequest holds it: `conflicts()`). */
+      state: "done" | "cancelled" | "conflict";
+    }
+  | { type: "transferFailed"; id: string; code: string };
+
+/** The stream's event for a registry event. */
+export function mergeStreamEvent(e: MergeEvent): MergeStreamEvent {
+  if (e.type === "conflictClosed") return e;
+  const { id, cause, collection, record } = e.request;
+  return { type: e.type, id, cause, collection, record };
+}
+
+/** A host's status: `local` before it has started, else the machine's with the count of open
+ *  requests of both sources (present only above 0). */
+export function mergedStatus(host: {
+  started: boolean;
+  machine: { status(): SyncStatus };
+  merge: { count(): number };
+}): SyncStatus {
+  if (!host.started) return { state: "local", pending: 0 };
+  const { conflicts: _machine, ...status } = host.machine.status();
+  const open = host.merge.count();
+  return open > 0 ? { ...status, conflicts: open } : status;
+}
 
 /** A listener may return a choice (or `void`/a promise): a returned choice decides inline. */
 export type ConflictListener = (
@@ -179,6 +224,42 @@ interface Pending {
   resolve: (o: MergeOutcome) => void;
 }
 
+/** What a host gives the registry it keeps: the machine it holds now and the steps around a keep. */
+export interface MergeHost {
+  /** The machine the host holds now (a rebuild swaps it), or null before `start()`. */
+  held(): MergeMachine | null;
+  /** The host's catch-up before a keep. */
+  catchUp(): void;
+  /** The host's save-and-send after a keep. */
+  touch(): unknown;
+  /** An answer that stops a keep (a tab that does not write), or null to go on. */
+  refuse?(): CallResult | null;
+}
+
+/** The registry of one host: it reads whichever machine the host holds, so a rebuild keeps it. */
+export function hostMergeRegistry(
+  host: MergeHost,
+  notice: (request: MergeRequest) => void,
+): MergeRegistry {
+  return new MergeRegistry({
+    machine: {
+      conflicts: () => host.held()?.conflicts() ?? [],
+      keep: (id, choice) => {
+        const refused = host.refuse?.();
+        if (refused) return refused;
+        host.catchUp();
+        const m = host.held();
+        if (m === null) throw new Error("Cloud Sync host: start() has not run");
+        const r = m.keep(id, choice);
+        void host.touch();
+        return r;
+      },
+      records: (c) => host.held()?.records(c) ?? [],
+    },
+    notice,
+  });
+}
+
 /** The open requests of one client, from the machine and from the saves layer. */
 export class MergeRegistry {
   private readonly machineReqs = new Map<string, Request>();
@@ -217,6 +298,15 @@ export class MergeRegistry {
   /** The count of open requests (the status's `conflicts`). */
   count(): number {
     return this.conflicts().length;
+  }
+
+  /** `feed` for a host's emit: a listener's failure never reaches the machine. */
+  tryFeed(events: readonly SyncEvent[]): void {
+    try {
+      this.feed(events);
+    } catch {
+      // A listener's failure never reaches the machine.
+    }
   }
 
   /** The machine's events, after `takeEvents`: opens, closes and settled keeps. */

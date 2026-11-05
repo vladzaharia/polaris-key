@@ -11,70 +11,17 @@ import { describe, expect, it } from "vitest";
 import { MergeEvent } from "../src/constants.generated.js";
 import {
   CATALOG,
-  SUBJECT,
-  World,
   open,
+  pushes,
+  rowsWorld,
+  serverWorld,
+  startSignedIn,
   type Body,
 } from "./cloudSyncFixtures.js";
 
-interface Row {
-  value: unknown;
-  version: number;
-}
-
 async function rig(over: Body = {}) {
-  const w = new World();
-  w.body = ((extra: Body = {}) => ({
-    subject: SUBJECT,
-    serverNow: 1_700_000_000_000,
-    cursor: 0,
-    more: false,
-    lastMutationId: 0,
-    catalogVersion: 1,
-    aliases: {},
-    usage: { files: 0, records: 0, settings: 0, bytes: 0 },
-    quota: { files: true, bytes: 2 ** 28 },
-    encryption: "server",
-    changes: [],
-    tombstones: [],
-    ...over,
-    ...extra,
-  })) as typeof w.body;
-  const rows = new Map<string, Row>();
-  const change = (id: string, r: Row): Body => ({
-    record: ["progress", id],
-    version: r.version,
-    value: r.value,
-  });
-  w.pull = () =>
-    w.body({
-      cursor: w.version,
-      changes: [...rows].map(([id, r]) => change(id, r)),
-    });
-  w.push = (body) => {
-    const results: Body[] = [];
-    const changes: Body[] = [];
-    for (const m of body.mutations as Array<Record<string, any>>) {
-      const id = m.target.record[1] as string;
-      const row = rows.get(id);
-      const base = m.baseVersion as number | "*";
-      const stale = base === "*" ? row !== undefined : row?.version !== base;
-      if (stale) {
-        results.push({
-          mutationId: m.mutationId,
-          status: "conflict",
-          server: row ? change(id, row) : { version: w.version },
-        });
-        continue;
-      }
-      const version = ++w.version;
-      const next: Row = { value: m.value, version };
-      rows.set(id, next);
-      changes.push(change(id, next));
-      results.push({ mutationId: m.mutationId, status: "ok", version });
-    }
-    return w.body({ cursor: w.version, results, changes });
-  };
+  const w = serverWorld(over);
+  const { rows } = rowsWorld(w, "progress");
   const client = await open(
     w,
     mkdtempSync(join(tmpdir(), "pkey-cconf-")),
@@ -89,28 +36,32 @@ async function rig(over: Body = {}) {
     },
     false,
   );
-  await client.cloudSyncHost.start();
-  client.events.safeEmit("identity", { kind: "signedIn", subject: SUBJECT });
-  await client.cloudSync.flush();
+  await startSignedIn(client);
   return { w, rows, client };
 }
 
-const pushes = (w: World) =>
-  w.syncReqs.filter((r) => r.method === "POST" && r.body?.mutations);
+type Rig = Awaited<ReturnType<typeof rig>>;
+
+/** Another device saved "a" first: this device's put of "a" meets a conflict. */
+async function clash({ w, rows, client }: Rig) {
+  rows.set("a", { value: "theirs", version: 7 });
+  w.version = 7;
+  const col = await client.cloudSync.collection("progress");
+  col.put("a", "mine");
+  await client.cloudSync.flush();
+  return col;
+}
 
 describe("cloudSync.conflicts", () => {
   it("opens a request on a refused revision put and holds the copy unsent until keep", async () => {
-    const { w, rows, client } = await rig();
+    const r = await rig();
+    const { w, rows, client } = r;
     const events: unknown[] = [];
     client.events.on("cloudSync", (e) => {
       if (e.type === MergeEvent.conflictopened || e.type === "conflictClosed")
         events.push(e);
     });
-    rows.set("a", { value: "theirs", version: 7 });
-    w.version = 7;
-    const col = await client.cloudSync.collection("progress");
-    col.put("a", "mine");
-    await client.cloudSync.flush();
+    const col = await clash(r);
 
     const [req] = client.cloudSync.conflicts();
     expect(req).toMatchObject({
@@ -154,12 +105,9 @@ describe("cloudSync.conflicts", () => {
   });
 
   it("replays open requests to a new listener, and a returned choice decides inline", async () => {
-    const { w, rows, client } = await rig();
-    rows.set("a", { value: "theirs", version: 7 });
-    w.version = 7;
-    const col = await client.cloudSync.collection("progress");
-    col.put("a", "mine");
-    await client.cloudSync.flush();
+    const r = await rig();
+    const { w, rows, client } = r;
+    await clash(r);
     expect(client.cloudSync.conflicts()).toHaveLength(1);
 
     const seen: string[] = [];
@@ -176,11 +124,9 @@ describe("cloudSync.conflicts", () => {
   });
 
   it("refuses a choice the request does not offer, and a closed request", async () => {
-    const { w, rows, client } = await rig();
-    rows.set("a", { value: "theirs", version: 7 });
-    w.version = 7;
-    (await client.cloudSync.collection("progress")).put("a", "mine");
-    await client.cloudSync.flush();
+    const r = await rig();
+    const { w, rows, client } = r;
+    await clash(r);
     const [req] = client.cloudSync.conflicts();
     expect(await req!.keep("both")).toMatchObject({
       ok: false,

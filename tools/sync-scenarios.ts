@@ -799,6 +799,107 @@ const closedEv = (collection: string, record: string, how: string): Obj => ({
   id: `w:${collection}/${record}`,
   how,
 });
+/** The server answers push `id` with a conflict whose server copy is `value` at `version`. */
+const refuse = (
+  id: number,
+  cursor: number,
+  value: J,
+  version: number,
+  rec: typeof recChange = recChange,
+): Obj =>
+  respond(
+    pushBody({
+      serverNow: T0,
+      cursor,
+      lastMutationId: id,
+      results: [conflict(id, { value, version })],
+      changes: [rec("progress", "main", value, version)],
+    }),
+  );
+/** The server accepts push `id` as `version`, and the cloud then holds `value`. */
+const accept = (id: number, cursor: number, version: number, value: J): Obj =>
+  respond(
+    pushBody({
+      serverNow: T0,
+      cursor,
+      lastMutationId: id,
+      results: [ok(id, version)],
+      changes: [recChange("progress", "main", value, version)],
+    }),
+  );
+/** The request of progress/main: the device's copy (on `lv`) and the server's (at `rv`). */
+const progressReq = (
+  localValue: J,
+  lv: number,
+  remoteValue: J,
+  rv: number,
+  over: Obj = {},
+): Obj =>
+  mergeReq(
+    "progress",
+    "main",
+    side(localValue, lv),
+    side(remoteValue, rv),
+    over,
+  );
+/** progress/main settled: nothing waits, the record reads the cloud's `value`, the request closed `how`. */
+const settled = (value: J, how: string): Obj =>
+  assert({
+    requests: [],
+    conflicts: [],
+    records: { "progress/main": val(value, "cloud") },
+    events: [closedEv("progress", "main", how)],
+    status: st("idle", 0),
+  });
+/** One request open on progress/main whose device copy was replaced by {level: 6} (still based on 7). */
+const heldCopy = (events: Obj[]): Obj =>
+  assert({
+    requests: [],
+    conflicts: [progressReq({ level: 6 }, 7, { level: 5 }, 8)],
+    records: { "progress/main": val({ level: 6 }, "pending") },
+    events,
+    status: stc("idle", 0, 1),
+  });
+/** The server's answer to the set or delete that superseded a request (mutation 2, at version 9). */
+const supersededAck = (extra: Obj): Obj =>
+  respond(
+    pushBody({
+      serverNow: T0,
+      cursor: 11,
+      lastMutationId: 2,
+      results: [ok(2, 9)],
+      ...extra,
+    }),
+  );
+/** The push of an exact write over an open request, which closes it as superseded. */
+const supersedes = (mutation: Obj): Obj =>
+  assert({
+    requests: [pushReq(C1, 10, [mutation])],
+    conflicts: [],
+    events: [closedEv("progress", "main", "superseded")],
+  });
+/** The set of the volume at 0.6 is acknowledged as version 1 (two seconds after the start). */
+const volAcked = (): Obj =>
+  respond(
+    pushBody({
+      serverNow: T0 + 2000,
+      cursor: 1,
+      lastMutationId: 1,
+      results: [ok(1, 1)],
+      changes: [change(VOL, 0.6, 1, hlc(T0))],
+    }),
+  );
+/** A pull, then a put of {level: 4} on {level: 3} that the server answers with a conflict
+ *  ({level: 5} at 8): one request is open. `extra` joins the assert after the push. */
+const putRefused = (rec: typeof recChange, extra: Obj = {}): Obj[] => [
+  ...started(9, [rec("progress", "main", { level: 3 }, 7)]),
+  local("put", ["progress", "main", { level: 4 }], { ok: true }),
+  assert({
+    requests: [pushReq(C1, 9, [put(1, "progress", "main", { level: 4 }, 7)])],
+    ...extra,
+  }),
+  refuse(1, 10, { level: 5 }, 8, rec),
+];
 /** A status with open requests (`conflicts` is present only above 0). */
 const stc = (state: string, pending: number, conflicts: number): Obj => ({
   state,
@@ -835,6 +936,13 @@ interface Scenario {
   init: Obj;
   steps: Obj[];
 }
+
+/** Version 5 scenarios (U-08; plans/U-08.md §5): `add` pushes one onto `list`, work package U-08. */
+const v5Into =
+  (list: Scenario[]) =>
+  (sc: Omit<Scenario, "wp">): void => {
+    list.push({ ...sc, wp: "U-08" });
+  };
 
 // ── scenarios ──────────────────────────────────────────────────────────────────────────────
 
@@ -1266,15 +1374,7 @@ function scenarios(): Scenario[] {
         ],
         records: { "progress/main": val({ level: 4 }, "pending") },
       }),
-      respond(
-        pushBody({
-          serverNow: T0,
-          cursor: 10,
-          lastMutationId: 1,
-          results: [conflict(1, { value: { level: 5 }, version: 8 })],
-          changes: [recChange("progress", "main", { level: 5 }, 8)],
-        }),
-      ),
+      refuse(1, 10, { level: 5 }, 8),
       assert({
         requests: [
           pushReq(C1, 10, [put(2, "progress", "main", { level: 4 }, 8)]),
@@ -1286,15 +1386,7 @@ function scenarios(): Scenario[] {
         },
         records: { "progress/main": val({ level: 4 }, "pending") },
       }),
-      respond(
-        pushBody({
-          serverNow: T0,
-          cursor: 11,
-          lastMutationId: 2,
-          results: [ok(2, 9)],
-          changes: [recChange("progress", "main", { level: 4 }, 9)],
-        }),
-      ),
+      accept(2, 11, 9, { level: 4 }),
       assert({
         records: { "progress/main": val({ level: 4 }, "cloud") },
         journal: { [ALICE]: partition(C1, 3, 11, []) },
@@ -1347,15 +1439,7 @@ function scenarios(): Scenario[] {
         },
         status: st("syncing", 3),
       }),
-      respond(
-        pushBody({
-          serverNow: T0,
-          cursor: 4,
-          lastMutationId: 1,
-          results: [ok(1, 3)],
-          changes: [recChange("progress", "main", { level: 2 }, 3)],
-        }),
-      ),
+      accept(1, 4, 3, { level: 2 }),
       assert({
         requests: [
           pushReq(C1, 4, [
@@ -2581,15 +2665,7 @@ function scenarios(): Scenario[] {
         values: { [WINDOW]: val("1920x1080", "device") },
         events: [],
       }),
-      respond(
-        pushBody({
-          serverNow: T0 + 2000,
-          cursor: 1,
-          lastMutationId: 1,
-          results: [ok(1, 1)],
-          changes: [change(VOL, 0.6, 1, hlc(T0))],
-        }),
-      ),
+      volAcked(),
       local("set", [WINDOW, "2560x1440"], { ok: true }),
       advance(2000),
       assert({
@@ -3874,33 +3950,13 @@ function scenarios(): Scenario[] {
   });
 
   // ── version 5 (U-08; plans/U-08.md §5) ───────────────────────────────────────────────────────
-  const addV5 = (sc: Omit<Scenario, "wp">): void => {
-    s.push({ ...sc, wp: "U-08" });
-  };
-  const PROGRESS_REQ = mergeReq(
-    "progress",
-    "main",
-    side({ level: 4 }, 7),
-    side({ level: 5 }, 8),
-  );
+  const addV5 = v5Into(s);
+  const PROGRESS_REQ = progressReq({ level: 4 }, 7, { level: 5 }, 8);
   /** A pull, then a put that the server answers with a conflict: one request is open. */
-  const opened = (): Obj[] => [
-    ...started(9, [recChange("progress", "main", { level: 3 }, 7)]),
-    local("put", ["progress", "main", { level: 4 }], { ok: true }),
-    assert({
-      requests: [pushReq(C1, 9, [put(1, "progress", "main", { level: 4 }, 7)])],
+  const opened = (): Obj[] =>
+    putRefused(recChange, {
       records: { "progress/main": val({ level: 4 }, "pending") },
-    }),
-    respond(
-      pushBody({
-        serverNow: T0,
-        cursor: 10,
-        lastMutationId: 1,
-        results: [conflict(1, { value: { level: 5 }, version: 8 })],
-        changes: [recChange("progress", "main", { level: 5 }, 8)],
-      }),
-    ),
-  ];
+    });
   const openAsserts: Obj = {
     requests: [],
     conflicts: [PROGRESS_REQ],
@@ -4005,20 +4061,7 @@ function scenarios(): Scenario[] {
       assert(openAsserts),
       local("put", ["progress", "main", { level: 6 }], { ok: true }),
       advance(10_000),
-      assert({
-        requests: [],
-        conflicts: [
-          mergeReq(
-            "progress",
-            "main",
-            side({ level: 6 }, 7),
-            side({ level: 5 }, 8),
-          ),
-        ],
-        records: { "progress/main": val({ level: 6 }, "pending") },
-        events: [],
-        status: stc("idle", 0, 1),
-      }),
+      heldCopy([]),
     ],
   });
 
@@ -4052,29 +4095,8 @@ function scenarios(): Scenario[] {
         conflicts: [],
         status: st("syncing", 2),
       }),
-      respond(
-        pushBody({
-          serverNow: T0,
-          cursor: 10,
-          lastMutationId: 1,
-          results: [conflict(1, { value: { level: 5 }, version: 8 })],
-          changes: [recChange("progress", "main", { level: 5 }, 8)],
-        }),
-      ),
-      assert({
-        requests: [],
-        conflicts: [
-          mergeReq(
-            "progress",
-            "main",
-            side({ level: 6 }, 7),
-            side({ level: 5 }, 8),
-          ),
-        ],
-        records: { "progress/main": val({ level: 6 }, "pending") },
-        events: [conflictEv("progress", "main")],
-        status: stc("idle", 0, 1),
-      }),
+      refuse(1, 10, { level: 5 }, 8),
+      heldCopy([conflictEv("progress", "main")]),
       advance(10_000),
       assert({ requests: [], status: stc("idle", 0, 1) }),
     ],
@@ -4099,32 +4121,27 @@ function scenarios(): Scenario[] {
           results: [conflict(2, { value: { level: 5 }, version: 8 })],
         }),
       ),
-      assert({
-        requests: [],
-        conflicts: [],
-        records: { "progress/main": val({ level: 5 }, "cloud") },
-        events: [closedEv("progress", "main", "superseded")],
-        status: st("idle", 0),
-      }),
+      settled({ level: 5 }, "superseded"),
     ],
   });
 
   // Rule 38: keep.
   const applying = (): Obj =>
-    mergeReq("progress", "main", side({ level: 4 }, 7), side({ level: 5 }, 8), {
-      state: "applying",
-    });
+    progressReq({ level: 4 }, 7, { level: 5 }, 8, { state: "applying" });
   /** The answer to the keep's set (mutation 2, based on the remote version 8). */
-  const keepAck = (value: J): Obj =>
-    respond(
-      pushBody({
-        serverNow: T0,
-        cursor: 11,
-        lastMutationId: 2,
-        results: [ok(2, 9)],
-        changes: [recChange("progress", "main", value, 9)],
-      }),
-    );
+  const keepAck = (value: J): Obj => accept(2, 11, 9, value);
+  /** Keeping the device's copy: the set goes out on the remote version and the request applies. */
+  const keepLocal = (records?: Obj): Obj[] => [
+    keep(PROGRESS_ID, "local"),
+    assert({
+      requests: [
+        pushReq(C1, 10, [put(2, "progress", "main", { level: 4 }, 8)]),
+      ],
+      conflicts: [applying()],
+      ...(records ? { records } : {}),
+      events: [],
+    }),
+  ];
 
   addV5({
     name: "merge-keep-local",
@@ -4135,23 +4152,9 @@ function scenarios(): Scenario[] {
     steps: [
       ...opened(),
       assert(openAsserts),
-      keep(PROGRESS_ID, "local"),
-      assert({
-        requests: [
-          pushReq(C1, 10, [put(2, "progress", "main", { level: 4 }, 8)]),
-        ],
-        conflicts: [applying()],
-        records: { "progress/main": val({ level: 4 }, "pending") },
-        events: [],
-      }),
+      ...keepLocal({ "progress/main": val({ level: 4 }, "pending") }),
       keepAck({ level: 4 }),
-      assert({
-        requests: [],
-        conflicts: [],
-        records: { "progress/main": val({ level: 4 }, "cloud") },
-        events: [closedEv("progress", "main", "local")],
-        status: st("idle", 0),
-      }),
+      settled({ level: 4 }, "local"),
     ],
   });
 
@@ -4165,13 +4168,7 @@ function scenarios(): Scenario[] {
       ...opened(),
       assert(openAsserts),
       keep(PROGRESS_ID, "remote"),
-      assert({
-        requests: [],
-        conflicts: [],
-        records: { "progress/main": val({ level: 5 }, "cloud") },
-        events: [closedEv("progress", "main", "remote")],
-        status: st("idle", 0),
-      }),
+      settled({ level: 5 }, "remote"),
       advance(10_000),
       assert({ requests: [], conflicts: [], status: st("idle", 0) }),
     ],
@@ -4194,13 +4191,7 @@ function scenarios(): Scenario[] {
         events: [],
       }),
       keepAck({ level: 9 }),
-      assert({
-        requests: [],
-        conflicts: [],
-        records: { "progress/main": val({ level: 9 }, "cloud") },
-        events: [closedEv("progress", "main", "value")],
-        status: st("idle", 0),
-      }),
+      settled({ level: 9 }, "value"),
     ],
   });
 
@@ -4213,33 +4204,11 @@ function scenarios(): Scenario[] {
     steps: [
       ...opened(),
       assert(openAsserts),
-      keep(PROGRESS_ID, "local"),
-      assert({
-        requests: [
-          pushReq(C1, 10, [put(2, "progress", "main", { level: 4 }, 8)]),
-        ],
-        conflicts: [applying()],
-        events: [],
-      }),
-      respond(
-        pushBody({
-          serverNow: T0,
-          cursor: 11,
-          lastMutationId: 2,
-          results: [conflict(2, { value: { level: 6 }, version: 10 })],
-          changes: [recChange("progress", "main", { level: 6 }, 10)],
-        }),
-      ),
+      ...keepLocal(),
+      refuse(2, 11, { level: 6 }, 10),
       assert({
         requests: [],
-        conflicts: [
-          mergeReq(
-            "progress",
-            "main",
-            side({ level: 4 }, 7),
-            side({ level: 6 }, 10),
-          ),
-        ],
+        conflicts: [progressReq({ level: 4 }, 7, { level: 6 }, 10)],
         records: { "progress/main": val({ level: 4 }, "pending") },
         events: [conflictEv("progress", "main")],
         status: stc("idle", 0, 1),
@@ -4251,22 +4220,8 @@ function scenarios(): Scenario[] {
         ],
         events: [],
       }),
-      respond(
-        pushBody({
-          serverNow: T0,
-          cursor: 12,
-          lastMutationId: 3,
-          results: [ok(3, 11)],
-          changes: [recChange("progress", "main", { level: 4 }, 11)],
-        }),
-      ),
-      assert({
-        requests: [],
-        conflicts: [],
-        records: { "progress/main": val({ level: 4 }, "cloud") },
-        events: [closedEv("progress", "main", "local")],
-        status: st("idle", 0),
-      }),
+      accept(3, 12, 11, { level: 4 }),
+      settled({ level: 4 }, "local"),
     ],
   });
 
@@ -4277,22 +4232,7 @@ function scenarios(): Scenario[] {
     rules: ["merge-request-keep"],
     init: init({ catalog: INLINE_REMOTE_CATALOG }),
     steps: [
-      ...started(9, [recChange("progress", "main", { level: 3 }, 7)]),
-      local("put", ["progress", "main", { level: 4 }], { ok: true }),
-      assert({
-        requests: [
-          pushReq(C1, 9, [put(1, "progress", "main", { level: 4 }, 7)]),
-        ],
-      }),
-      respond(
-        pushBody({
-          serverNow: T0,
-          cursor: 10,
-          lastMutationId: 1,
-          results: [conflict(1, { value: { level: 5 }, version: 8 })],
-          changes: [recChange("progress", "main", { level: 5 }, 8)],
-        }),
-      ),
+      ...putRefused(recChange),
       assert({
         requests: [],
         conflicts: [],
@@ -4363,14 +4303,7 @@ function scenarios(): Scenario[] {
       ),
       assert({
         requests: [],
-        conflicts: [
-          mergeReq(
-            "progress",
-            "main",
-            side({ level: 4 }, 7),
-            side({ level: 6 }, 9),
-          ),
-        ],
+        conflicts: [progressReq({ level: 4 }, 7, { level: 6 }, 9)],
         records: { "progress/main": val({ level: 4 }, "pending") },
         events: [],
         status: stc("idle", 0, 1),
@@ -4399,22 +4332,8 @@ function scenarios(): Scenario[] {
         ],
         events: [],
       }),
-      respond(
-        pushBody({
-          serverNow: T0,
-          cursor: 13,
-          lastMutationId: 2,
-          results: [ok(2, 11)],
-          changes: [recChange("progress", "main", { level: 4 }, 11)],
-        }),
-      ),
-      assert({
-        requests: [],
-        conflicts: [],
-        records: { "progress/main": val({ level: 4 }, "cloud") },
-        events: [closedEv("progress", "main", "local")],
-        status: st("idle", 0),
-      }),
+      accept(2, 13, 11, { level: 4 }),
+      settled({ level: 4 }, "local"),
     ],
   });
 
@@ -4439,15 +4358,7 @@ function scenarios(): Scenario[] {
         requests: [pushReq(C1, 0, [set(1, VOL, 0.6, hlc(T0))])],
         cloudEmpty: true,
       }),
-      respond(
-        pushBody({
-          serverNow: T0 + 2000,
-          cursor: 1,
-          lastMutationId: 1,
-          results: [ok(1, 1)],
-          changes: [change(VOL, 0.6, 1, hlc(T0))],
-        }),
-      ),
+      volAcked(),
       assert({ cloudEmpty: false, status: st("idle", 0) }),
     ],
   });
@@ -5533,34 +5444,12 @@ function fileRecordCases(): Scenario[] {
 
   // Version 5: an exact write of a record with an open request supersedes it (plans/U-08.md §2.3
   // rule 4). These two use a revision collection with no inline decider.
-  const addV5 = (sc: Omit<Scenario, "wp">): void => {
-    s.push({ ...sc, wp: "U-08" });
-  };
+  const addV5 = v5Into(s);
   const openedRequest = (): Obj[] => [
-    ...started(9, [recF("progress", "main", { level: 3 }, 7)]),
-    local("put", ["progress", "main", { level: 4 }], { ok: true }),
-    assert({
-      requests: [pushReq(C1, 9, [put(1, "progress", "main", { level: 4 }, 7)])],
-    }),
-    respond(
-      pushBody({
-        serverNow: T0,
-        cursor: 10,
-        lastMutationId: 1,
-        results: [conflict(1, { value: { level: 5 }, version: 8 })],
-        changes: [recF("progress", "main", { level: 5 }, 8)],
-      }),
-    ),
+    ...putRefused(recF),
     assert({
       requests: [],
-      conflicts: [
-        mergeReq(
-          "progress",
-          "main",
-          side({ level: 4 }, 7),
-          side({ level: 5 }, 8),
-        ),
-      ],
+      conflicts: [progressReq({ level: 4 }, 7, { level: 5 }, 8)],
       events: [conflictEv("progress", "main")],
       status: stc("idle", 0, 1),
     }),
@@ -5578,22 +5467,10 @@ function fileRecordCases(): Scenario[] {
         ok: true,
         mutationId: 1,
       }),
-      assert({
-        requests: [
-          pushReq(C1, 10, [put(2, "progress", "main", { level: 7 }, 8)]),
-        ],
-        conflicts: [],
-        events: [closedEv("progress", "main", "superseded")],
+      supersedes(put(2, "progress", "main", { level: 7 }, 8)),
+      supersededAck({
+        changes: [recF("progress", "main", { level: 7 }, 9)],
       }),
-      respond(
-        pushBody({
-          serverNow: T0,
-          cursor: 11,
-          lastMutationId: 2,
-          results: [ok(2, 9)],
-          changes: [recF("progress", "main", { level: 7 }, 9)],
-        }),
-      ),
       assert({
         outcomes: [outOk(1, 9)],
         conflicts: [],
@@ -5612,20 +5489,10 @@ function fileRecordCases(): Scenario[] {
     steps: [
       ...openedRequest(),
       local("removeAt", ["progress", "main", 8], { ok: true, mutationId: 1 }),
-      assert({
-        requests: [pushReq(C1, 10, [del(2, "progress", "main", 8)])],
-        conflicts: [],
-        events: [closedEv("progress", "main", "superseded")],
+      supersedes(del(2, "progress", "main", 8)),
+      supersededAck({
+        tombstones: [{ record: ["progress", "main"], version: 9 }],
       }),
-      respond(
-        pushBody({
-          serverNow: T0,
-          cursor: 11,
-          lastMutationId: 2,
-          results: [ok(2, 9)],
-          tombstones: [{ record: ["progress", "main"], version: 9 }],
-        }),
-      ),
       assert({
         outcomes: [outOk(1, 9)],
         conflicts: [],

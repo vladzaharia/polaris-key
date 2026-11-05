@@ -10,11 +10,11 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import type { Unsupported } from "@polaris-key/client-core";
 import type { JSONValue } from "@polaris-key/protocol/core";
-import { UnsupportedError } from "../core/caps.js";
 import { safeSignInUrl } from "../core/signInUrl.js";
 import type { SyncStatus } from "../core/cloudSync.js";
 import type { SettingSync } from "../core/localConfig.js";
 import { useConfigSetting, useCtx, type UseConfigSetting } from "./hooks.js";
+import { unsupportedOf } from "./unsupportedOf.js";
 
 /** A setting with its Cloud Sync state. */
 export interface UseSetting<T> extends UseConfigSetting<T> {
@@ -88,18 +88,7 @@ export function useCloudSync(): UseCloudSync {
         unsupported: null,
       };
     } catch (e) {
-      if (e instanceof UnsupportedError)
-        return {
-          status: LOCAL,
-          cloudEmpty: null,
-          unsupported: {
-            supported: false,
-            feature: e.feature,
-            reason: e.reason,
-            detail: e.detail,
-          },
-        };
-      throw e;
+      return { status: LOCAL, cloudEmpty: null, unsupported: unsupportedOf(e) };
     }
   }, [client]);
   const [view, setView] = useState(read);

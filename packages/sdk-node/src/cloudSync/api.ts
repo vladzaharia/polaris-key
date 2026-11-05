@@ -23,10 +23,11 @@ import {
 import {
   SyncCollection,
   type ConflictListener,
-  type MergeEvent as RegistryEvent,
   type MergeRequest,
+  mergeStreamEvent,
+  mergedStatus,
 } from "@polaris-key/client-core/sync";
-import { Feature, MergeEvent } from "../constants.generated.js";
+import { Feature } from "../constants.generated.js";
 import type { ConflictStreamEvent } from "../core/events.js";
 import type {
   ConfigClient,
@@ -80,21 +81,7 @@ export class CloudSyncApi {
     this.#d = deps;
     // `conflictOpened` / `conflictClosed` on the stream come from the registry, which covers the
     // machine's requests and the saves layer's; ids and names only (S7).
-    deps.host.merge.onEvent((e) => this.#onMerge(e));
-  }
-
-  #onMerge(e: RegistryEvent): void {
-    if (e.type === "conflictOpened") {
-      const r = e.request;
-      this.#d.emit({
-        type: MergeEvent.conflictopened,
-        id: r.id,
-        cause: r.cause,
-        collection: r.collection,
-        record: r.record,
-      });
-    } else
-      this.#d.emit({ type: MergeEvent.conflictclosed, id: e.id, how: e.how });
+    deps.host.merge.onEvent((e) => this.#d.emit(mergeStreamEvent(e)));
   }
 
   // ── What app code calls ──────────────────────────────────────────────────────────────────
@@ -103,11 +90,7 @@ export class CloudSyncApi {
    *  N/A when the product does not run the Sync service. */
   status(): SyncStatus {
     this.#d.ctx.requireService("sync", Feature.syncSettings);
-    if (!this.#d.host.started) return { state: "local", pending: 0 };
-    // The open requests of the machine and of the saves layer, present only above 0.
-    const { conflicts: _machine, ...status } = this.#d.host.machine.status();
-    const open = this.#d.host.merge.count();
-    return open > 0 ? { ...status, conflicts: open } : status;
+    return mergedStatus(this.#d.host);
   }
 
   /**

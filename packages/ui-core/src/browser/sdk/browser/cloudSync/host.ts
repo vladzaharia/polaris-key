@@ -50,6 +50,7 @@ import {
 } from "@polaris-key/client-core/cloud-sync";
 import {
   MergeRegistry,
+  hostMergeRegistry,
   collectionDecls,
   openPull,
   sealPush,
@@ -301,26 +302,12 @@ export class BrowserCloudSyncHost {
   constructor(deps: BrowserSyncHostDeps, opts: CloudSyncHostOptions = {}) {
     this.#deps = deps;
     this.#opts = opts;
-    this.merge = new MergeRegistry({
-      machine: {
-        conflicts: () =>
-          this.#machine === null ? [] : this.#machine.conflicts(),
-        keep: (id, choice) => {
-          if (!this.isWriter) return { ok: false, error: "sync-not-writer" };
-          this.catchUp();
-          const r = this.machine.keep(id, choice);
-          void this.touch();
-          return r;
-        },
-        records: (c) =>
-          this.#machine === null ? [] : this.#machine.records(c),
-      },
-      notice: () =>
-        developerError(
-          "sync-conflict-unheard",
-          "A Cloud Sync conflict is waiting for an answer and nothing listens: register cloudSync.onConflict (or useConflicts) and call request.keep(). The device keeps its copy until then.",
-        ),
-    });
+    this.merge = hostMergeRegistry(this, () =>
+      developerError(
+        "sync-conflict-unheard",
+        "A Cloud Sync conflict is waiting for an answer and nothing listens: register cloudSync.onConflict (or useConflicts) and call request.keep(). The device keeps its copy until then.",
+      ),
+    );
   }
 
   get #now(): number {
@@ -342,6 +329,16 @@ export class BrowserCloudSyncHost {
    *  (a tab just promoted is not the writer until it has, so nothing runs on a stale machine). */
   get isWriter(): boolean {
     return this.#writable && this.#holdsLock;
+  }
+
+  /** The machine held now, or null before `start()` (the merge registry reads it). */
+  held(): CloudSyncMachine | null {
+    return this.#machine;
+  }
+
+  /** Only the writer tab keeps a request. */
+  refuse(): CallResult | null {
+    return this.isWriter ? null : { ok: false, error: "sync-not-writer" };
   }
 
   get #holdsLock(): boolean {
@@ -855,11 +852,7 @@ export class BrowserCloudSyncHost {
     const events = m.takeEvents();
     if (events.length === 0) return;
     // The registry first: a listener that decides inline sees the request already open.
-    try {
-      this.merge.feed(events);
-    } catch {
-      // A listener's failure never reaches the machine.
-    }
+    this.merge.tryFeed(events);
     // A tab that left the principal drops the ring and the record, whichever tab asked.
     if (
       events.some((e) => e.type === "signedOut" && FORGETTING.has(e.reason))

@@ -9,9 +9,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Unsupported } from "@polaris-key/client-core";
 import type { MergeKeepArg, MergeOutcome } from "@polaris-key/client-core/sync";
-import { UnsupportedError } from "../core/caps.js";
 import type { MergeRequest } from "../core/cloudSync.js";
 import { useCtx } from "./hooks.js";
+import { unsupportedOf } from "./unsupportedOf.js";
 
 export interface UseConflicts {
   /** The requests open now, in id order. A request is live: `state`, `error` and `remote` follow. */
@@ -36,17 +36,7 @@ export function useConflicts(): UseConflicts {
     try {
       return { conflicts: client.conflicts(), unsupported: null };
     } catch (e) {
-      if (e instanceof UnsupportedError)
-        return {
-          conflicts: [],
-          unsupported: {
-            supported: false,
-            feature: e.feature,
-            reason: e.reason,
-            detail: e.detail,
-          },
-        };
-      throw e;
+      return { conflicts: [], unsupported: unsupportedOf(e) };
     }
   }, [client]);
   const [view, setView] = useState(read);

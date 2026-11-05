@@ -41,6 +41,7 @@ import {
 } from "@polaris-key/client-core/cloud-sync";
 import {
   MergeRegistry,
+  hostMergeRegistry,
   collectionDecls,
   openPull,
   sealPush,
@@ -213,21 +214,7 @@ export class CloudSyncHost {
   constructor(deps: CloudSyncHostDeps, opts: CloudSyncHostOptions = {}) {
     this.#deps = deps;
     this.#opts = opts;
-    this.merge = new MergeRegistry({
-      machine: {
-        conflicts: () =>
-          this.#machine === null ? [] : this.#machine.conflicts(),
-        keep: (id, choice) => {
-          this.catchUp();
-          const r = this.machine.keep(id, choice);
-          void this.touch();
-          return r;
-        },
-        records: (c) =>
-          this.#machine === null ? [] : this.#machine.records(c),
-      },
-      notice: noConflictListener,
-    });
+    this.merge = hostMergeRegistry(this, noConflictListener);
     this.#file = new CloudSyncStateFile(deps.ctx.dirs.state, deps.ctx.product);
   }
 
@@ -250,6 +237,11 @@ export class CloudSyncHost {
   onOutcome(fn: ((o: RecordOutcome) => void) | null): void {
     this.#outcome = fn;
     this.#machine?.onOutcome(fn);
+  }
+
+  /** The machine held now, or null before `start()` (the merge registry reads it). */
+  held(): CloudSyncMachine | null {
+    return this.#machine;
   }
 
   /** The `saves` settings the app gave, with defaults. */
@@ -587,11 +579,7 @@ export class CloudSyncHost {
     const events = m.takeEvents();
     if (events.length === 0) return;
     // The registry first: a listener that decides inline sees the request already open.
-    try {
-      this.merge.feed(events);
-    } catch {
-      // A listener's failure never reaches the machine.
-    }
+    this.merge.tryFeed(events);
     for (const fn of this.#listeners) {
       try {
         fn(events);

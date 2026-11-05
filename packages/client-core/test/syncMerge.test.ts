@@ -62,6 +62,15 @@ const opened = (record: string): SyncEvent => ({
   record,
 });
 
+/** A registry over the machine with request `a` open and fed. */
+function withOpenA() {
+  const f = fakeMachine();
+  const reg = new MergeRegistry({ machine: f.m });
+  f.open.set("w:notes/a", request("a"));
+  reg.feed([opened("a")]);
+  return { f, reg, r: reg.conflicts()[0]! };
+}
+
 describe("MergeRegistry over the machine", () => {
   it("lists open requests, replays them to a new listener and reports newer", () => {
     const f = fakeMachine();
@@ -119,11 +128,7 @@ describe("MergeRegistry over the machine", () => {
   });
 
   it("a keep that conflicts again reopens, a refused one reopens with its code", async () => {
-    const f = fakeMachine();
-    const reg = new MergeRegistry({ machine: f.m });
-    f.open.set("w:notes/a", request("a"));
-    reg.feed([opened("a")]);
-    const r = reg.conflicts()[0]!;
+    const { f, reg, r } = withOpenA();
     const first = r.keep("local");
     f.open.get("w:notes/a")!.state = "open";
     reg.feed([opened("a")]);
@@ -147,11 +152,8 @@ describe("MergeRegistry over the machine", () => {
   });
 
   it("a choice that is not offered is bad_request and sends nothing", async () => {
-    const f = fakeMachine();
-    const reg = new MergeRegistry({ machine: f.m });
-    f.open.set("w:notes/a", request("a"));
-    reg.feed([opened("a")]);
-    expect(await reg.conflicts()[0]!.keep("both")).toMatchObject({
+    const { f, r } = withOpenA();
+    expect(await r.keep("both")).toMatchObject({
       ok: false,
       code: "bad_request",
     });

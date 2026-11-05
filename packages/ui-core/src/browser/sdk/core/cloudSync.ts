@@ -10,8 +10,10 @@ import type { Unsupported } from "@polaris-key/client-core";
 import type {
   ConflictListener,
   MergeRequest,
+  MergeStreamEvent,
   RangedSource,
   ReadOptions,
+  SaveTransferEvent,
   SaveRead,
   SaveSetResult,
   SaveSummary,
@@ -26,26 +28,19 @@ import type {
   SyncStatus,
 } from "@polaris-key/client-core/cloud-sync";
 import type { BrowserCloudSyncHost } from "../browser/cloudSync/host.js";
-import { Feature, MergeEvent, TransferEvent } from "../constants.generated.js";
+import { Feature } from "../constants.generated.js";
 import { UnsupportedError } from "./caps.js";
 
-export type { ConflictListener, MergeRequest, SyncEvent, SyncStatus };
+export type {
+  ConflictListener,
+  MergeRequest,
+  SaveTransferEvent,
+  SyncEvent,
+  SyncStatus,
+};
 
-/** A MergeRequest event on the `cloudSync` stream (`MergeEvent` in `conformance/parity/enums.json`).
- *  Ids and names only; the request itself is in `conflicts()`. */
-export type ConflictStreamEvent =
-  | {
-      type: typeof MergeEvent.conflictopened;
-      id: string;
-      cause: "write" | "accountMerge";
-      collection: string;
-      record: string;
-    }
-  | {
-      type: typeof MergeEvent.conflictclosed;
-      id: string;
-      how: "local" | "remote" | "value" | "both" | "superseded";
-    };
+/** A MergeRequest event on the `cloudSync` stream (`MergeEvent` in `conformance/parity/enums.json`). */
+export type ConflictStreamEvent = MergeStreamEvent;
 
 /** What `onEvents` delivers: the machine's events and the MergeRequest ones. */
 export type CloudSyncEvent = SyncEvent | ConflictStreamEvent;
@@ -54,22 +49,6 @@ export type CloudSyncEvent = SyncEvent | ConflictStreamEvent;
 export type IdentityNote =
   | { kind: "signedIn"; subject: string }
   | { kind: "signedOut" };
-
-/** A transfer event of the saves (`transferEvent` in `conformance/parity/enums.json`). */
-export type SaveTransferEvent =
-  | {
-      type: typeof TransferEvent.transferprogress;
-      id: string;
-      done: number;
-      total: number;
-    }
-  | {
-      type: typeof TransferEvent.transferdone;
-      id: string;
-      /** `done`; `cancelled` (a state, not a failure); `conflict` (a MergeRequest holds it: `conflicts()`). */
-      state: "done" | "cancelled" | "conflict";
-    }
-  | { type: typeof TransferEvent.transferfailed; id: string; code: string };
 
 /**
  * The saves of the signed-in person (sync.saves, U-22.7): records with one file each, over Cloud

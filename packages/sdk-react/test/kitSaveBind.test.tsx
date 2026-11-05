@@ -112,6 +112,22 @@ const inProvider = (saves: BrowserSaves, ui: React.ReactNode) =>
     </PolarisContext.Provider>,
   );
 
+/** The SaveConflict screen over one open request; the first keep answers with `answer` and the
+ *  test has clicked "keep this device's". */
+async function keepThisAnswered(
+  answer: (f: ReturnType<typeof fakeSaves>) => Promise<MergeOutcome>,
+) {
+  const f = fakeSaves();
+  f.setConflicts([CONFLICT]);
+  f.resolve.mockImplementationOnce(async () => answer(f));
+  const view = inProvider(f.saves, <SaveConflict />);
+  fireEvent.click(
+    view.container.querySelector('button[data-key="saveConflict.keepThis"]')!,
+  );
+  await waitFor(() => expect(f.resolve).toHaveBeenCalledTimes(1));
+  return view;
+}
+
 const write = (done: number, total: number): SaveTransfer =>
   ({
     id: "saves:slot1",
@@ -501,18 +517,11 @@ describe("the strip and the screen together (final round)", () => {
   });
 
   it("N3: a choice that ends in a newer conflict goes back to choose, on the new copy", async () => {
-    const f = fakeSaves();
-    f.setConflicts([CONFLICT]);
-    f.resolve.mockImplementationOnce(async () => ({
+    const { container } = await keepThisAnswered(async () => ({
       ok: false,
       code: "conflict",
       reopened: true,
     }));
-    const { container } = inProvider(f.saves, <SaveConflict />);
-    fireEvent.click(
-      container.querySelector('button[data-key="saveConflict.keepThis"]')!,
-    );
-    await waitFor(() => expect(f.resolve).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(
         container.querySelector('button[data-key="saveConflict.keepThis"]'),
@@ -523,7 +532,8 @@ describe("the strip and the screen together (final round)", () => {
     ).toBeNull();
     // It says so: the other device saved again, and nothing was applied.
     expect(
-      container.querySelector('[data-key="saveConflict.reopened"]')?.textContent,
+      container.querySelector('[data-key="saveConflict.reopened"]')
+        ?.textContent,
     ).toMatch(/Choose again/);
   });
 
@@ -539,9 +549,9 @@ describe("the strip and the screen together (final round)", () => {
     fireEvent.click(keepThis);
     // The choice's own button goes with the step; focus lands on the screen's heading, then on kept.
     await waitFor(() =>
-      expect(container.querySelector('[data-part="title"]')?.textContent).toMatch(
-        /Kept/,
-      ),
+      expect(
+        container.querySelector('[data-part="title"]')?.textContent,
+      ).toMatch(/Kept/),
     );
     await waitFor(() =>
       expect(document.activeElement).toBe(
@@ -549,23 +559,20 @@ describe("the strip and the screen together (final round)", () => {
       ),
     );
     // The result is in the status region too, so a screen reader hears it.
-    expect(container.querySelector('[role="status"]')?.textContent).toMatch(/Kept/);
+    expect(container.querySelector('[role="status"]')?.textContent).toMatch(
+      /Kept/,
+    );
   });
 
   it("a closed request closes the screen, and a bound screen listens for conflicts", async () => {
-    const f = fakeSaves();
-    f.setConflicts([CONFLICT]);
-    f.resolve.mockImplementationOnce(async () => {
+    const { container } = await keepThisAnswered(async (f) => {
       f.setConflicts([]);
       return { ok: false, code: "sync-merge-closed", reopened: false };
     });
-    const { container } = inProvider(f.saves, <SaveConflict />);
-    fireEvent.click(
-      container.querySelector('button[data-key="saveConflict.keepThis"]')!,
-    );
-    await waitFor(() => expect(f.resolve).toHaveBeenCalledTimes(1));
     await waitFor(() =>
-      expect(container.querySelector('[data-key="common.tryAgain"]')).toBeNull(),
+      expect(
+        container.querySelector('[data-key="common.tryAgain"]'),
+      ).toBeNull(),
     );
     expect(container.querySelector("h1")).toBeNull();
   });

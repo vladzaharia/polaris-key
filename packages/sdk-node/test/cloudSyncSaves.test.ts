@@ -27,85 +27,22 @@ import {
   SUBJECT,
   World,
   open,
+  rowsWorld,
+  serverWorld,
+  startSignedIn,
   type Body,
 } from "./cloudSyncFixtures.js";
 
 const sha = (b: Uint8Array): string =>
   createHash("sha256").update(b).digest("hex");
 
-interface Row {
-  value: unknown;
-  version: number;
-  file?: { version: number; size: number; sha256: string; format: "whole" };
-}
-
 /** The Worker's saves, as far as a whole-file save needs. */
 function savesWorld() {
-  const w = new World();
-  w.body = ((over: Body = {}) => ({
-    subject: SUBJECT,
-    serverNow: 1_700_000_000_000,
-    cursor: 0,
-    more: false,
-    lastMutationId: 0,
-    catalogVersion: 1,
-    aliases: {},
-    usage: { files: 0, records: 0, settings: 0, bytes: 0 },
-    quota: { files: true, bytes: 2 ** 28 },
-    encryption: "server",
-    changes: [],
-    tombstones: [],
-    ...over,
-  })) as typeof w.body;
-  const rows = new Map<string, Row>();
+  const w = serverWorld();
+  const { rows } = rowsWorld(w, "saves");
   const stored = new Map<number, Uint8Array>();
   const uploads = new Map<string, { id: string; bytes?: Uint8Array }>();
   const files: string[] = [];
-  const change = (id: string, r: Row): Body => ({
-    record: ["saves", id],
-    version: r.version,
-    ...(r.value === undefined ? {} : { value: r.value }),
-    ...(r.file ? { file: r.file } : {}),
-  });
-  w.pull = () =>
-    w.body({
-      cursor: w.version,
-      changes: [...rows].map(([id, r]) => change(id, r)),
-    });
-  w.push = (body) => {
-    const results: Body[] = [];
-    const changes: Body[] = [];
-    const tombstones: Body[] = [];
-    for (const m of body.mutations as Array<Record<string, any>>) {
-      const id = m.target.record[1] as string;
-      const row = rows.get(id);
-      const base = m.baseVersion as number | "*";
-      const stale = base === "*" ? row !== undefined : row?.version !== base;
-      if (stale) {
-        results.push({
-          mutationId: m.mutationId,
-          status: "conflict",
-          server: row ? change(id, row) : { version: w.version },
-        });
-        continue;
-      }
-      const version = ++w.version;
-      if (m.op === "delete") {
-        rows.delete(id);
-        tombstones.push({ record: ["saves", id], version });
-      } else {
-        const next: Row = {
-          value: m.value,
-          version,
-          ...(row?.file ? { file: row.file } : {}),
-        };
-        rows.set(id, next);
-        changes.push(change(id, next));
-      }
-      results.push({ mutationId: m.mutationId, status: "ok", version });
-    }
-    return w.body({ cursor: w.version, results, changes, tombstones });
-  };
   const inner = w.fetch;
   const json = (b: unknown, status = 200): Response =>
     new Response(JSON.stringify(b), { status });
@@ -189,9 +126,7 @@ async function signedIn(w: World) {
       cloudSync: { collections: [{ name: "saves", conflict: "revision" }] },
     },
   });
-  await client.cloudSyncHost.start();
-  client.events.safeEmit("identity", { kind: "signedIn", subject: SUBJECT });
-  await client.cloudSync.flush();
+  await startSignedIn(client);
   return { client, stateDir };
 }
 
