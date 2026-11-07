@@ -81,7 +81,7 @@ let linuxPackages: [Package.Dependency] = [
     // Exact pin: 4.5.2, released 2026-09-02 (GitHub releases API, apple/swift-crypto), kept at
     // least 14 days old before adoption. 5.x declares swift-tools-version 6.2, which the Xcode 16.4
     // (Swift 6.1) floor job cannot read.
-    .package(url: "https://github.com/apple/swift-crypto", exact: "4.5.2")
+    .package(url: "https://github.com/apple/swift-crypto", exact: "5.1.1")
 ]
 #else
 let linuxCrypto: [Target.Dependency] = []
