@@ -51,7 +51,16 @@ export function CodeEntry({
   children?: React.ReactNode;
 }): React.ReactElement {
   const [code, setCode] = React.useState("");
-  const [wait, setWait] = React.useState(resendIn);
+  // The pause is a deadline read against the clock, not a count of timer ticks: a late or
+  // throttled tick cannot make it drift, and a pinned clock holds it still.
+  const [until, setUntil] = React.useState(() => Date.now() + resendIn * 1000);
+  const [now, setNow] = React.useState(() => Date.now());
+  const wait = Math.max(0, Math.ceil((until - now) / 1000));
+  const setWait = (seconds: number): void => {
+    const at = Date.now();
+    setUntil(at + seconds * 1000);
+    setNow(at);
+  };
   const [status, setStatus] = React.useState<{
     text: string;
     tone: "success" | "muted";
@@ -64,9 +73,9 @@ export function CodeEntry({
   const inputId = React.useId();
   React.useEffect(() => {
     if (wait <= 0) return;
-    const id = window.setTimeout(() => setWait((w) => w - 1), 1000);
+    const id = window.setTimeout(() => setNow(Date.now()), 1000);
     return () => window.clearTimeout(id);
-  }, [wait]);
+  }, [wait, now]);
 
   const submit = async (value: string): Promise<void> => {
     if (verifying) return;
