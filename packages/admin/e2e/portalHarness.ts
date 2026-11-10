@@ -619,7 +619,8 @@ export async function settle(page: Page): Promise<void> {
     // load into a baseline mismatch).
     await Promise.all(
       [...document.images].map((i) => {
-        if (i.complete) return null;
+        // A hidden image (display: none) is never drawn, so it is never fetched either: leave it be.
+        if (i.complete || i.getClientRects().length === 0) return null;
         i.loading = "eager";
         return i.decode().catch(() => null);
       }),

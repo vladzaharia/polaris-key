@@ -131,12 +131,12 @@ describe.concurrent("the storefront's flows (PS-05)", () => {
               .getByRole("radio", { name: /Included with Aperture Seven/ })
               .isChecked(),
           ).toBe(true);
-          expect(
-            await page
-              .getByRole("region", { name: "Screenshots" })
-              .getByRole("img")
-              .count(),
-          ).toBe(2);
+          const shots = page
+            .getByRole("region", { name: "Screenshots" })
+            .getByRole("img");
+          // The screenshots arrive with their own request: wait for the second, then count.
+          await shots.nth(1).waitFor();
+          expect(await shots.count()).toBe(2);
           if (w.width === 390) {
             // The one primary is in the first screen of a phone, above the tab bar.
             for (const [vw, vh] of [
