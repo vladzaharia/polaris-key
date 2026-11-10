@@ -928,11 +928,12 @@ export const REF_ADMISSION_WAITING = 4;
 export const REF_ADMISSION_WINDOW_SECONDS = 60;
 
 export type AdmissionEvent =
-  | { t: number; group: string; opens: boolean }
+  | { t: number; group: string; opens: boolean; later?: true }
+  | { t: number; settle: number }
   | { t: number; release: number };
 
 export interface AdmissionStep {
-  result: "tried" | "refused" | "released";
+  result: "tried" | "refused" | "released" | "settled";
   /** `tried`: the trial opened, so the connection holds a waiting slot until message 3. */
   hit?: boolean;
   /** `refused`: which limit closed the connection, the group's (first) or the shared one. */
@@ -953,12 +954,41 @@ export function refLocalAdmission(
   let failed: number[] = [];
   let waiting = 0;
   const holds = new Set<number>();
+  const pendingTrials = new Map<
+    number,
+    { group: string; t: number; opens: boolean }
+  >();
   const out: AdmissionStep[] = [];
   events.forEach((e, i) => {
     const live = (v: number[]): number[] =>
       v.filter((x) => e.t - x < REF_ADMISSION_WINDOW_SECONDS);
     failed = live(failed);
     for (const [g, v] of groups) groups.set(g, live(v));
+    if ("settle" in e) {
+      // The verdict of an earlier message 1 that was counted when it arrived (`later`): a trial that
+      // opens refunds the count and takes a waiting slot; one that does not spends the shared budget.
+      const was = pendingTrials.get(e.settle);
+      pendingTrials.delete(e.settle);
+      if (!was) {
+        out.push({ result: "settled", failed: failed.length, waiting });
+        return;
+      }
+      const g = groups.get(was.group) ?? [];
+      if (was.opens) {
+        const at = g.lastIndexOf(was.t);
+        if (at >= 0) g.splice(at, 1);
+        waiting++;
+        holds.add(e.settle);
+      } else failed.push(e.t);
+      out.push({
+        result: "settled",
+        hit: was.opens,
+        group: g.length,
+        failed: failed.length,
+        waiting,
+      });
+      return;
+    }
     if ("release" in e) {
       const was = holds.delete(e.release);
       if (was) waiting--;
@@ -975,7 +1005,12 @@ export function refLocalAdmission(
       waiting >= REF_ADMISSION_WAITING
     )
       step = { result: "refused", by: "shared" };
-    else if (e.opens) {
+    else if (e.later) {
+      // Counted as it arrives; its trial is settled by a later event.
+      mine.push(e.t);
+      pendingTrials.set(i, { group: e.group, t: e.t, opens: e.opens });
+      step = { result: "tried" };
+    } else if (e.opens) {
       // The count is refunded, and a waiting slot is taken.
       waiting++;
       holds.add(i);

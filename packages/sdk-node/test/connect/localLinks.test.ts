@@ -5,7 +5,7 @@
 // rotation, both people's consent, and the stored link. The codecs, the window machine and the
 // gate are the `peer-matrix.json` `local` rows (conformance/runners/node); this file covers what
 // the Node SDK does with them: the typed N/A, the dial budget across joins, the cap and the store.
-import { readFileSync, rmSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UnsupportedError } from "@polaris-key/client-core";
@@ -458,6 +458,23 @@ describe("the store", () => {
     expect(rec.schema).toBe("pkey.connect.local.v1");
     expect(rec.product).toBe(PRODUCT);
     expect(rec.links).toHaveLength(1);
+  });
+
+  it("a record with two rows of one id is unusable and is not replaced", async () => {
+    const w = await world();
+    const s = await show(w.a, w.net, ["notes"]);
+    await pairUp(w, s, { code: s.codes[0]!.code });
+    const state = (w.a as unknown as { core: { dirs: { state: string } } }).core
+      .dirs.state;
+    const file = join(state, LOCAL_STATE_FILE);
+    const rec = JSON.parse(readFileSync(file, "utf8"));
+    rec.links = [...rec.links, ...rec.links];
+    const raw = JSON.stringify(rec);
+    writeFileSync(file, raw);
+    await expect(w.a.cloudConnect.localLinks.list()).rejects.toMatchObject({
+      code: "store-failed",
+    });
+    expect(readFileSync(file, "utf8")).toBe(raw);
   });
 });
 

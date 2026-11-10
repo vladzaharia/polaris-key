@@ -11,6 +11,7 @@ import {
   LocalPairingGate,
   LocalExchange,
   HandshakeLimiter,
+  type LocalAdmission,
   LOCAL_GROUP_PER_MINUTE,
   MAX_LINK_SECRETS,
   MAX_LIVE_LOCAL_ADVERTS,
@@ -227,14 +228,15 @@ export interface LocalSection {
   admission: {
     id: string;
     events: (
-      | { t: number; group: string; opens: boolean }
+      | { t: number; group: string; opens: boolean; later?: true }
+      | { t: number; settle: number }
       | {
           t: number;
           release: number;
         }
     )[];
     want: {
-      result: "tried" | "refused" | "released";
+      result: "tried" | "refused" | "released" | "settled";
       hit?: boolean;
       by?: "group" | "shared";
       group?: number;
@@ -327,8 +329,20 @@ export function registerLocalSuites(
           l.constants.admissionGroupPerMinute,
         );
         const holds = new Map<number, () => void>();
+        const verdicts = new Map<
+          number,
+          Extract<LocalAdmission, { ok: true }>
+        >();
         const got = r.events.map((e, i) => {
           clock.t = e.t;
+          if ("settle" in e) {
+            const a = verdicts.get(e.settle);
+            verdicts.delete(e.settle);
+            const opens = (r.events[e.settle] as { opens: boolean }).opens;
+            if (opens) holds.set(e.settle, a!.hit());
+            else a!.miss();
+            return { result: "settled", hit: opens };
+          }
           if ("release" in e) {
             holds.get(e.release)?.();
             holds.delete(e.release);
@@ -336,6 +350,10 @@ export function registerLocalSuites(
           }
           const a = lim.beginLocal(e.group);
           if (!a.ok) return { result: "refused", by: a.by };
+          if (e.later) {
+            verdicts.set(i, a);
+            return { result: "tried" };
+          }
           if (e.opens) holds.set(i, a.hit());
           else a.miss();
           return { result: "tried", hit: e.opens };
