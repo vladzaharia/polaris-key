@@ -24,7 +24,10 @@ updates:
       - dependency-name: "@cloudflare/vitest-pool-workers"
       - dependency-name: miniflare
   - package-ecosystem: pip
-    directory: /sdks/python
+    # The constraints files (sdks/python/constraints/pyXY.txt) pin what CI installs.
+    directories:
+      - /sdks/python
+      - /sdks/python/constraints
     target-branch: next
     schedule:
       interval: weekly

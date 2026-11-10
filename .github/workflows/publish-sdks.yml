@@ -377,7 +377,7 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/pip install -e ".[dev]"
+          .venv/bin/pip install -e ".[dev]" -c constraints/py312.txt
           .venv/bin/python -m pytest -q
       - name: Stamp the version
         env:
