@@ -85,6 +85,7 @@ public fun productTag(slug: String, epoch: Long): String {
 public fun isInstanceName(name: String): Boolean = INSTANCE.matches(name)
 
 /** Why a TXT record was refused. The names are the corpus's. */
+@Suppress("EnumNaming", "ktlint:standard:enum-entry-name-case")
 public enum class TxtRefusal { duplicate, version, mode, tag, nameplate }
 
 /** The outcome of [parseTxt]. */

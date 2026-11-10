@@ -30,6 +30,7 @@ public const val MAX_VP_CHAIN_BYTES: Int = 16_384
 public const val MAX_CHAIN_RECORDS: Int = (MAX_PEER_MESSAGE_BYTES + MAX_RECORD_BODY - 1) / MAX_RECORD_BODY + 1
 
 /** The channel modes a record table distinguishes (`c` is the contact channel, `q` and `l` the local-link modes). */
+@Suppress("EnumNaming", "ktlint:standard:enum-entry-name-case")
 public enum class RecordMode {
     a,
     v,
@@ -87,6 +88,7 @@ private val ACL = setOf(RecordMode.a, RecordMode.c, RecordMode.l)
 private val PQ = setOf(RecordMode.p, RecordMode.q)
 private val Q = setOf(RecordMode.q)
 
+@Suppress("MagicNumber")
 private val TYPES = listOf(
     TypeRow(0x8001, 0x8001, ALL),
     TypeRow(0x0002, 0x0002, A),

@@ -284,6 +284,7 @@ public class PeerLink<H>(
         channel.close(PeerCloseCode.entries.firstOrNull { it.name == code } ?: PeerCloseCode.peer_bye)
     }
 
+    @Suppress("ComplexCondition")
     private fun onEvent(e: SessionEvent) {
         when (e) {
             is SessionEvent.Established -> {

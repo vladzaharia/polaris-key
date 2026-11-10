@@ -920,7 +920,8 @@ public class CoreContext(options: CoreOptions) {
     /**
      * Called first after every discovery read, before the document is stored, with the read's sequence number: numbers
      * are handed out as reads begin, so an answer that arrives late is known to be older than one that arrived before it
-     * (a gate applies reads in the order they began). A throw from another observer or store does not skip this one.
+     * (a gate applies reads in the order they began). The observer must not throw: a fault of its own is its to contain, so
+     * that it never keeps the document from being stored.
      */
     public fun onDiscoveryRead(fn: suspend (DiscoveryResult, Long) -> Unit) {
         sequencedObservers += fn
@@ -930,15 +931,7 @@ public class CoreContext(options: CoreOptions) {
     public suspend fun discover(): DiscoveryResult {
         val seq = discoverySeq.incrementAndGet()
         val result = Discovery.fetch(endpoints, transport, headers(), requestTimeoutSeconds)
-        for (fn in sequencedObservers) {
-            try {
-                fn(result, seq)
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // an observer's fault never keeps the document from being stored
-            }
-        }
+        for (fn in sequencedObservers) fn(result, seq)
         if (result is DiscoveryResult.Ok) {
             lock.withLock {
                 discoveryDocumentValue = result.document

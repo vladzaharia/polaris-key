@@ -16,6 +16,14 @@
 // A share or a K that breaks a rule is a refusal, not an exception: the caller closes the connection silently and
 // counts no failure (section 15.12 step 3).
 
+@file:Suppress(
+    "LongParameterList",
+    "MagicNumber",
+    "ReturnCount",
+    "SpreadOperator",
+    "TooManyFunctions",
+)
+
 package im.plrs.key.core.peer
 
 import im.plrs.key.core.DeviceCurves
@@ -25,7 +33,7 @@ import java.math.BigInteger
 import java.security.MessageDigest
 
 /** What a pairing's code or QR is made of: `code` for the 6-digit password, `qr` for the 16-byte secret. */
-public enum class CpaceKind(public val wire: Int) { code(1), qr(2) }
+public enum class CpaceKind(public val wire: Int) { Code(1), Qr(2) }
 
 /** The first byte of both frames. */
 public const val CPACE_FRAME_VERSION: Int = 1
@@ -230,13 +238,16 @@ public fun cpaceIsk(
     curves: DeviceCurves = DeviceCurvesSelection.curves,
 ): ByteArray? {
     val peer = if (initiator) yb else ya
-    val k = curves.x25519(scalar, peer)
-    scalar.fill(0)
-    if (!usable(k)) return null
-    val empty = ByteArray(0)
-    val isk = sha512(lvCat(utf8(DSI_ISK), sid, k!!), transcriptIr(ya, empty, yb, empty))
-    k.fill(0)
-    return isk
+    var k: ByteArray? = null
+    try {
+        k = curves.x25519(scalar, peer)
+        if (!usable(k)) return null
+        val empty = ByteArray(0)
+        return sha512(lvCat(utf8(DSI_ISK), sid, k!!), transcriptIr(ya, empty, yb, empty))
+    } finally {
+        scalar.fill(0)
+        k?.fill(0)
+    }
 }
 
 /** The Noise PSK of a pairing attempt: `HKDF-SHA256(salt = empty, ikm = ISK, info = "pkey-peer/1 cpace" 0x00 slug)`. */

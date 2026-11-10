@@ -100,10 +100,12 @@ class CpaceVectorsTest : ConformanceSuite() {
                 val input: JsonElement = k["in"]!!
                 when (v.s("fn")) {
                     "prepend_len" -> f.equal(k.s("out"), hex(prependLen(bytes(input.stringValue!!)))) { id }
+
                     "lv_cat" -> f.equal(k.s("out"), hex(lvCat(*input.arrayValue!!.map { bytes(it.stringValue!!) }.toTypedArray()))) { id }
+
                     "transcript_ir" -> {
-                        val (ya, ada, yb, adb) = input.arrayValue!!.map { bytes(it.stringValue!!) }
-                        f.equal(k.s("out"), hex(transcriptIr(ya, ada, yb, adb))) { id }
+                        val p = input.arrayValue!!.map { bytes(it.stringValue!!) }
+                        f.equal(k.s("out"), hex(transcriptIr(p[0], p[1], p[2], p[3]))) { id }
                     }
                 }
             }
@@ -174,7 +176,7 @@ class CpaceVectorsTest : ConformanceSuite() {
     }
 
     private fun verdictJson(v: FrameVerdict): Pair<Boolean, Map<String, String?>> = when (v) {
-        is FrameVerdict.Ok -> true to mapOf("kind" to v.kind?.name, "share" to hex(v.share))
+        is FrameVerdict.Ok -> true to mapOf("kind" to v.kind?.name?.lowercase(), "share" to hex(v.share))
         is FrameVerdict.Refused -> false to mapOf("reason" to v.reason)
     }
 
@@ -212,7 +214,7 @@ class CpaceVectorsTest : ConformanceSuite() {
         val f = Failures("cpace attempts")
         for (a in rows(c, "attempts")) {
             val id = a.s("id")
-            val kind = CpaceKind.valueOf(a.s("kind"))
+            val kind = CpaceKind.entries.first { it.name.equals(a.s("kind"), ignoreCase = true) }
             val (jSlug, jSid, jG) = sideGenerator(a, "joiner")
             val (sSlug, sSid, sG) = sideGenerator(a, "shower")
             f.equal(a.s("joinerG"), hex(jG)) { "$id joiner g" }
@@ -261,18 +263,34 @@ class CpaceVectorsTest : ConformanceSuite() {
         f.done(10)
     }
 
-    private fun handshake(role: NoiseRole, protocol: String, prologue: String, psk: String, static: String, eph: String, swap: ByteArray? = null): NoiseHandshake {
-        val e = bytes(eph)
+    /** One side's inputs of a handshake row, as the corpus writes them (hex). */
+    private class Side(val protocol: String, val prologue: String, val psk: String, val static: String, val eph: String)
+
+    private fun handshake(role: NoiseRole, side: Side, swap: ByteArray? = null): NoiseHandshake {
+        val e = bytes(side.eph)
         val used: DeviceCurves = if (role == NoiseRole.initiator && swap != null) {
             object : DeviceCurves by curves {
-                override fun x25519(privateKey: ByteArray, peer: ByteArray): ByteArray? =
-                    if (privateKey.contentEquals(e) && peer.contentEquals(im.plrs.key.core.X25519Points.BASE)) swap else curves.x25519(privateKey, peer)
+                override fun x25519(privateKey: ByteArray, peer: ByteArray): ByteArray? = if (privateKey.contentEquals(e) &&
+                    peer.contentEquals(im.plrs.key.core.X25519Points.BASE)
+                ) {
+                    swap
+                } else {
+                    curves.x25519(privateKey, peer)
+                }
             }
         } else {
             curves
         }
         return NoiseHandshake(
-            NoiseHandshakeOptions(role, protocol, bytes(prologue), bytes(psk), RawNoiseStatic(bytes(static), curves), e, NoisePorts(curves = used)),
+            NoiseHandshakeOptions(
+                role,
+                side.protocol,
+                bytes(side.prologue),
+                bytes(side.psk),
+                RawNoiseStatic(bytes(side.static), curves),
+                e,
+                NoisePorts(curves = used),
+            ),
         )
     }
 
@@ -289,8 +307,8 @@ class CpaceVectorsTest : ConformanceSuite() {
                 f.equal(h.s("psk"), a.s("joinerPsk")) { "$id psk" }
                 f.equal(h.sOrNull("isk"), a.s("joinerIsk")) { "$id isk" }
             }
-            val i = handshake(NoiseRole.initiator, h.s("protocol"), h.s("prologue"), h.s("psk"), h.s("initStatic"), h.s("initEphemeral"))
-            val r = handshake(NoiseRole.responder, h.s("protocol"), h.s("prologue"), h.s("psk"), h.s("respStatic"), h.s("respEphemeral"))
+            val i = handshake(NoiseRole.initiator, Side(h.s("protocol"), h.s("prologue"), h.s("psk"), h.s("initStatic"), h.s("initEphemeral")))
+            val r = handshake(NoiseRole.responder, Side(h.s("protocol"), h.s("prologue"), h.s("psk"), h.s("respStatic"), h.s("respEphemeral")))
             val msgs = rows(h, "messages")
             val hs = msgs.filter { it.s("kind") == "handshake" }
             for ((k, m) in hs.withIndex()) {
@@ -317,10 +335,16 @@ class CpaceVectorsTest : ConformanceSuite() {
         for (r in rows(c, "failures")) {
             val id = r.s("id")
             val swap = r.sOrNull("initEphemeralPublic")?.let(::bytes)
-            val i = handshake(NoiseRole.initiator, r.s("protocol"), r.s("prologue"), r.s("psk"), r.s("initStatic"), r.s("initEphemeral"), swap)
+            val i = handshake(NoiseRole.initiator, Side(r.s("protocol"), r.s("prologue"), r.s("psk"), r.s("initStatic"), r.s("initEphemeral")), swap)
             val re = handshake(
-                NoiseRole.responder, r.s("protocol"), r.sOrNull("responderPrologue") ?: r.s("prologue"), r.sOrNull("responderPsk") ?: r.s("psk"),
-                r.s("respStatic"), r.s("respEphemeral"),
+                NoiseRole.responder,
+                Side(
+                    r.s("protocol"),
+                    r.sOrNull("responderPrologue") ?: r.s("prologue"),
+                    r.sOrNull("responderPsk") ?: r.s("psk"),
+                    r.s("respStatic"),
+                    r.s("respEphemeral"),
+                ),
             )
             var failure: Pair<Int, String>? = null
             for ((idx, p) in r["payloads"]!!.arrayValue!!.withIndex()) {

@@ -56,8 +56,8 @@ import im.plrs.key.core.peer.PeerMode
 import im.plrs.key.core.peer.TxtResult
 import im.plrs.key.core.peer.accountInstance
 import im.plrs.key.core.peer.advertEpoch
-import im.plrs.key.core.peer.contactInstance
 import im.plrs.key.core.peer.browseLocalInstance
+import im.plrs.key.core.peer.contactInstance
 import im.plrs.key.core.peer.isInstanceName
 import im.plrs.key.core.peer.lan.JvmMdns
 import im.plrs.key.core.peer.lan.LAN_MAX_PENDING
@@ -243,6 +243,7 @@ internal fun lanSource(
 private class Held(val at: Long, val source: PeerSource)
 
 /** One running LAN service. Build it with [start]. */
+@Suppress("LargeClass")
 internal class LanService private constructor(
     private val src: LanSource,
     private val o: LanOptions,
@@ -373,7 +374,12 @@ internal class LanService private constructor(
         synchronized(lock) { stopped = true }
         val a = adv
         val b = browseHandle
-        val cs = synchronized(lock) { (contactAdv.values.toList() + localAdv.values.toList()).also { contactAdv.clear(); localAdv.clear() } }
+        val cs = synchronized(lock) {
+            (contactAdv.values.toList() + localAdv.values.toList()).also {
+                contactAdv.clear()
+                localAdv.clear()
+            }
+        }
         adv = null
         browseHandle = null
         unContacts?.invoke()
@@ -408,7 +414,12 @@ internal class LanService private constructor(
             for (s in socks) abort(s)
             quiet { adv?.stop() }
             quiet { browseHandle?.stop() }
-            for (h in synchronized(lock) { (contactAdv.values.toList() + localAdv.values.toList()).also { contactAdv.clear(); localAdv.clear() } }) {
+            for (h in synchronized(lock) {
+                (contactAdv.values.toList() + localAdv.values.toList()).also {
+                    contactAdv.clear()
+                    localAdv.clear()
+                }
+            }) {
                 quiet { h.stop() }
             }
             try {
@@ -540,6 +551,7 @@ internal class LanService private constructor(
     // -- links -----------------------------------------------------------------------------------
 
     /** [ident] is null for the local-only service (no account half); [group] is the source group of an inbound socket. */
+    @Suppress("CyclomaticComplexMethod")
     private fun link(pipe: TcpPipe, ident: PeerSource?, role: NoiseRole, group: String? = null): PeerLink<ConnectSession> {
         val base = ident?.let { ChannelBase(it, o.caps, o.label, { docs.pushed }, src.floored, o.rekeyMessages, o.rekeySeconds) }
         var self: PeerLink<ConnectSession>? = null
@@ -547,9 +559,12 @@ internal class LanService private constructor(
         // tries the account's keys, then each contact's secret, then each local link's, under the one limiter. Copies of the
         // secrets go to the channel and are zeroed when the link ends.
         val served = if (role == NoiseRole.responder && !localOnly) contacts else emptyList()
-        val liveLocals = if (role == NoiseRole.responder && localsOn()) locals else emptyList()
+        // A link a wipe emptied while it was being copied is left out: a zero key could not complete a handshake.
+        val candidates: List<LiveLocal> = if (role == NoiseRole.responder && localsOn()) locals else emptyList()
+        val localPairs: List<Pair<LiveLocal, LocalLink>> = candidates.mapNotNull { l -> copyLiveLocal(l)?.let { l to it } }
+        val liveLocals = localPairs.map { it.first }
         val copies = served.map { ContactLink(it.secret.copyOf(), it.agreeKey) }
-        val localCopies = liveLocals.map { LocalLink(it.secret.copyOf(), it.ownKey.copyOf(), it.peerKey.copyOf()) }
+        val localCopies = localPairs.map { it.second }
         val trial = copies.isNotEmpty() || localCopies.isNotEmpty()
         val handlers = sessionHandlers(
             role,
@@ -899,6 +914,7 @@ internal class LanService private constructor(
     /** Read the local links again and bring their adverts to match (serialised with the other reloads). */
     suspend fun refreshLocals() = reload(false)
 
+    @Suppress("ReturnCount")
     private suspend fun reload(account: Boolean) {
         if (stopped) return
         rotateLock.withLock {
@@ -1011,7 +1027,7 @@ internal class LanService private constructor(
     )
 
     /** The gate, read again: false stops every local call (section 15.12 "Gates"). */
-    private fun localsOn(): Boolean = src.localAllowed?.invoke() != false
+    private fun localsOn(): Boolean = src.localAllowed?.invoke() == true
 
     private fun dropLocals() {
         val old = locals
@@ -1091,6 +1107,7 @@ internal class LanService private constructor(
         quiet { refreshLocals() }
     }
 
+    @Suppress("ReturnCount")
     private suspend fun foundLocal(f: MdnsFound, hosts: List<String>, retries: Int = 2) {
         val held = locals
         if (held.isEmpty() || !localsOn() || synchronized(lock) { f.instance in miss }) return
@@ -1124,6 +1141,7 @@ internal class LanService private constructor(
      * the held list are read again before every dial. The pin is the session's: a peer that does not hold the link's key
      * ends it as `peer_revoked` before a byte is sent back.
      */
+    @Suppress("ThrowsCount")
     suspend fun connectLocal(id: String): ConnectSession {
         if (stopped) throw LanException(LanErrorReason.not_listening, "The LAN service is stopped.")
         val l = locals.firstOrNull { it.id == id }
@@ -1141,22 +1159,13 @@ internal class LanService private constructor(
             if (stopped || !localsOn() || still == null) throw LanException(LanErrorReason.closed, "That link is no longer available.")
             // The key and secret are copied before the dial: a reload during it wipes the held ones, and a copy made after
             // would hold zeros and fail the handshake.
-            val own = LocalLink(still.secret.copyOf(), still.ownKey.copyOf(), still.peerKey.copyOf())
+            val own = copyLiveLocal(still) ?: throw LanException(LanErrorReason.closed, "That link is no longer available.")
             val ref = still.ref
             try {
-                val (pipe, host) = dial(left, peer.port, peer.socketFactory)
-                // The link may have been forgotten, or the gate cleared, while the socket was opening.
-                if (stopped || !localsOn() || locals.none { it.id == id && it.tag == tag }) {
-                    pipe.close()
-                    throw LanException(LanErrorReason.closed, "That link is no longer available.")
-                }
-                try {
-                    return openLocalOnce(pipe, own, ref)
-                } catch (e: LanException) {
-                    if (e.reason != LanErrorReason.handshake_failed && e.reason != LanErrorReason.connect_failed) throw e
-                    failure = e
-                    left = left.filter { it != host }
-                }
+                val attempt = dialLocalOnce(LocalDial(id, tag, own, ref), left, peer)
+                attempt.session?.let { return it }
+                failure = attempt.error
+                left = left.filter { it != attempt.host }
             } finally {
                 // The channel needed the key for the handshake only.
                 own.secret.fill(0)
@@ -1164,6 +1173,32 @@ internal class LanService private constructor(
             }
         }
         throw failure ?: LanException(LanErrorReason.handshake_failed, "The handshake failed.")
+    }
+
+    /** What one dial of a local link is: the link, its tag, and the copies of its keys the channel uses. */
+    private class LocalDial(val id: String, val tag: String, val own: LocalLink, val ref: LocalRef) {
+        override fun toString(): String = "LocalDial"
+    }
+
+    /** The result of dialling one host: the session, or the host that failed and why (the next host is tried). */
+    private class DialTry(val host: String, val session: ConnectSession?, val error: LanException?) {
+        override fun toString(): String = "DialTry"
+    }
+
+    @Suppress("ComplexCondition")
+    private suspend fun dialLocalOnce(d: LocalDial, left: List<String>, peer: LocalPeer): DialTry {
+        val (pipe, host) = dial(left, peer.port, peer.socketFactory)
+        // The link may have been forgotten, or the gate cleared, while the socket was opening.
+        if (stopped || !localsOn() || locals.none { it.id == d.id && it.tag == d.tag }) {
+            pipe.close()
+            throw LanException(LanErrorReason.closed, "That link is no longer available.")
+        }
+        return try {
+            DialTry(host, openLocalOnce(pipe, d.own, d.ref), null)
+        } catch (e: LanException) {
+            if (e.reason != LanErrorReason.handshake_failed && e.reason != LanErrorReason.connect_failed) throw e
+            DialTry(host, null, e)
+        }
     }
 
     private suspend fun openLocalOnce(pipe: TcpPipe, own: LocalLink, ref: LocalRef): ConnectSession {
@@ -1216,15 +1251,12 @@ internal class LanService private constructor(
          * local links, and holds no identity, no K_disc and no roster. A listener that serves nothing (no link held, or the
          * gate off) closes every connection before reading a byte. Needs [LanSource.slug].
          */
-        suspend fun startLocal(
-            src: LanSource,
-            options: LanOptions = LanOptions(),
-            scope: CoroutineScope? = null,
-        ): LanService {
+        suspend fun startLocal(src: LanSource, options: LanOptions = LanOptions(), scope: CoroutineScope? = null): LanService {
             requireNotNull(src.slug) { "a local-only service needs the slug" }
             return begin(src, options, scope, null, localOnly = true)
         }
 
+        @Suppress("ThrowsCount")
         private suspend fun begin(
             src: LanSource,
             options: LanOptions,

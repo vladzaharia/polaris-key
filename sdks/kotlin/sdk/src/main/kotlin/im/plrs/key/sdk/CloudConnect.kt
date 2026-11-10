@@ -257,6 +257,7 @@ public class CloudConnect internal constructor(
         gate.withLock { startLocked(options) }
     }
 
+    @Suppress("CyclomaticComplexMethod", "LongMethod")
     private suspend fun startLocked(o: CloudConnectOptions) {
         if (running && !localOnly) return
         // A local-only service gives way to the full one.
@@ -340,6 +341,7 @@ public class CloudConnect internal constructor(
      * binds no listener (nothing to find, nothing to scan): it waits, and the first link (`pair`, `join`) brings the listener up
      * and the last one forgotten takes it down.
      */
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun startLocalOnly(o: CloudConnectOptions) {
         self = ""
         resumeWith = o
@@ -363,6 +365,7 @@ public class CloudConnect internal constructor(
     }
 
     /** Bring the local-only listener to match whether a link is held. */
+    @Suppress("ReturnCount", "SwallowedException", "ThrowsCount", "TooGenericExceptionCaught")
     private suspend fun syncLocalNow() {
         if (!localOnly) return
         val held = try {
@@ -516,6 +519,7 @@ public class CloudConnect internal constructor(
         withTimeoutOrNull(stopMillis) { quietly { resumeLocal() } }
     }
 
+    @Suppress("SwallowedException", "TooGenericExceptionCaught")
     private suspend fun resumeLocal() {
         gate.withLock {
             val o = resumeWith

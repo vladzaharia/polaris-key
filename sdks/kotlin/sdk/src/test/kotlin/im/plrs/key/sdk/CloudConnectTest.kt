@@ -7,16 +7,16 @@
 package im.plrs.key.sdk
 
 import im.plrs.key.core.CoreOptions
-import im.plrs.key.core.DeviceKeyStorage
-import im.plrs.key.core.ErrorCode
-import im.plrs.key.core.PolarisException
-import im.plrs.key.core.StoreException
 import im.plrs.key.core.DeviceKeyPort
+import im.plrs.key.core.DeviceKeyStorage
 import im.plrs.key.core.DeviceKeyStore
+import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.InMemoryDeviceKeyStorage
 import im.plrs.key.core.InMemoryStore
+import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisRequest
 import im.plrs.key.core.PolarisResponse
+import im.plrs.key.core.StoreException
 import im.plrs.key.core.jsonInt
 import im.plrs.key.core.peer.lan.MdnsAdapter
 import im.plrs.key.core.peer.lan.MdnsAdvert
@@ -204,31 +204,27 @@ class CloudConnectTest {
             else -> respond(404, "")
         }
 
-        fun client(
-            me: Device,
-            trustRefresh: Boolean = false,
-            state: DeviceKeyStorage? = null,
-            signedIn: Boolean = true,
-        ): PolarisKeyClient = runBlocking {
-            val store = InMemoryStore("djdl", me.id)
-            if (signedIn) store.setToken("pkeyt_held")
-            PolarisKeyClient.create(
-                PolarisKeyClientOptions(
-                    core = CoreOptions(
-                        productSlug = "djdl",
-                        version = "1.0.0",
-                        pinnedKeys = signer.trust,
-                        trustRefresh = trustRefresh,
-                        store = store,
-                        transport = ScriptedTransport { handle(me, it) },
-                        clock = { now },
-                        deviceName = "Test",
+        fun client(me: Device, trustRefresh: Boolean = false, state: DeviceKeyStorage? = null, signedIn: Boolean = true): PolarisKeyClient =
+            runBlocking {
+                val store = InMemoryStore("djdl", me.id)
+                if (signedIn) store.setToken("pkeyt_held")
+                PolarisKeyClient.create(
+                    PolarisKeyClientOptions(
+                        core = CoreOptions(
+                            productSlug = "djdl",
+                            version = "1.0.0",
+                            pinnedKeys = signer.trust,
+                            trustRefresh = trustRefresh,
+                            store = store,
+                            transport = ScriptedTransport { handle(me, it) },
+                            clock = { now },
+                            deviceName = "Test",
+                        ),
+                        license = LicenseClientOptions(fingerprint = false),
+                        connect = ConnectOptions(deviceKeys = me.port, allowEphemeralKeys = true, state = state),
                     ),
-                    license = LicenseClientOptions(fingerprint = false),
-                    connect = ConnectOptions(deviceKeys = me.port, allowEphemeralKeys = true, state = state),
-                ),
-            ).also { clients += it }
-        }
+                ).also { clients += it }
+            }
 
         fun options(lan: Boolean = true, relay: Boolean = true, permission: Boolean = true, attempt: Double = 4.0): CloudConnectOptions =
             CloudConnectOptions(
@@ -645,7 +641,33 @@ class CloudConnectTest {
         val r = java.security.SecureRandom()
 
         fun k() = ByteArray(32).also { r.nextBytes(it) }
-        c.connect.local.store.add(k(), k(), k(), k(), "Bo", listOf("docs"), 1L)!!
+        c.connect.local.store.add(NewLocalLink(k(), k(), k(), k(), "Bo", listOf("docs")), 1L)!!
+    }
+
+    @Test
+    fun localLinksKeptInMemoryOnlyWarnOnceThroughTheSdkLogger() = runBlocking {
+        val w = World()
+        val c = w.client(w.a, signedIn = false)
+        val seen = java.util.concurrent.CopyOnWriteArrayList<String>()
+        val logger = java.util.logging.Logger.getLogger("im.plrs.key")
+        val handler = object : java.util.logging.Handler() {
+            override fun publish(record: java.util.logging.LogRecord) {
+                seen += record.message
+            }
+
+            override fun flush() = Unit
+
+            override fun close() = Unit
+        }
+        logger.addHandler(handler)
+        try {
+            c.connect.local.store.rows()
+            c.connect.local.store.rows()
+            linkRow(c)
+        } finally {
+            logger.removeHandler(handler)
+        }
+        assertEquals(1, seen.count { it.contains("kept in memory only") })
     }
 
     private fun Network.kinds(): List<String> = synchronized(adverts) { adverts.values.map { a -> a.txt.first { it.startsWith("m=") } } }

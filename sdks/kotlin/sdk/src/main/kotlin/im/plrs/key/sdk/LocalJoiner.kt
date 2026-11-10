@@ -7,6 +7,14 @@
 // A typed code's Elligator map runs per dial, between a chosen advert and its connection (at most twice per code in 300 s,
 // the accepted case of the spec); a QR's is made before anything is dialled.
 
+@file:Suppress(
+    "CyclomaticComplexMethod",
+    "ReturnCount",
+    "SwallowedException",
+    "TooGenericExceptionCaught",
+    "TooManyFunctions",
+)
+
 package im.plrs.key.sdk
 
 import im.plrs.key.core.ErrorCode
@@ -82,11 +90,7 @@ private const val SPENT = "That code did not work. Wait a few minutes, or ask th
 
 private class Candidate(val hosts: List<String>, val port: Int, val socketFactory: SocketFactory?)
 
-internal class LocalJoiner(
-    private val src: LocalSource,
-    private val budget: DialBudget,
-    private val o: LocalJoinOptions,
-) {
+internal class LocalJoiner(private val src: LocalSource, private val budget: DialBudget, private val o: LocalJoinOptions) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val lock = Any()
     private val mdns: MdnsAdapter = o.mdns ?: JvmMdns(scope, allowLoopback = o.allowLoopback)
@@ -129,7 +133,9 @@ internal class LocalJoiner(
                     qrInstance = q.instance
                     qrSecret = q.secret
                 }
+
                 QrVerdict.OtherApp -> qrInvalidDetail = "This code is for another app."
+
                 QrVerdict.Invalid -> Unit
             }
         }
@@ -239,7 +245,9 @@ internal class LocalJoiner(
                     exhausted = true
                     null
                 }
+
                 c == null -> null
+
                 else -> next to c
             }
         }
@@ -299,6 +307,15 @@ internal class LocalJoiner(
         // A typed code's map runs now, once per dial and at most twice per code in 300 s.
         val gen = qrGen?.copyOf() ?: cpaceGenerator(cpacePrsCode(requireNotNull(password)), ci, sid)
         val y = cpaceScalar(o.random)
+        try {
+            dialWith(y, gen, sid, c)
+        } finally {
+            y.fill(0)
+            gen.fill(0)
+        }
+    }
+
+    private suspend fun dialWith(y: ByteArray, gen: ByteArray, sid: ByteArray, c: Candidate) {
         val ya = cpaceShare(y, gen)
         gen.fill(0)
         if (ya == null) {
@@ -323,7 +340,7 @@ internal class LocalJoiner(
         }
         val pipe = TcpPipe(socket)
         val at = o.mono()
-        val kind = if (qrInstance != null) CpaceKind.qr else CpaceKind.code
+        val kind = if (qrInstance != null) CpaceKind.Qr else CpaceKind.Code
         val reply = c2(pipe, encodeC1(kind, ya))
         if (reply == null) {
             pipe.close()
@@ -332,13 +349,19 @@ internal class LocalJoiner(
         }
         val isk = cpaceIsk(sid, y, ya, reply, initiator = true)
         if (isk == null || synchronized(lock) { done }) {
+            isk?.fill(0)
             pipe.close()
             ended(DialOutcome.BeforeC2)
             return
         }
         val psk = cpacePsk(isk, src.slug)
-        val held = src.store.count()
-        session(pipe, psk, isk, held, o.mono() - at)
+        try {
+            session(pipe, psk, isk, src.store.count(), o.mono() - at)
+        } finally {
+            // The session is over: its channel needed the keys for the handshake only.
+            isk.fill(0)
+            psk.fill(0)
+        }
     }
 
     /** Send C1 and read C2 within the attempt's 30 s; null for anything but a valid C2. */
@@ -452,6 +475,7 @@ internal class LocalJoiner(
         }
         qrSecret?.fill(0)
         qrGen?.fill(0)
+        current?.linkKey?.fill(0)
         if (ok != null) {
             result.complete(ok)
         } else {

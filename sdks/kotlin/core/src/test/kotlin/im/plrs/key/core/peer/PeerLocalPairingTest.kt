@@ -5,6 +5,10 @@
 // the shared listener's trial order and its limiter. The byte-level rows are noise-vectors.json `cpace` and
 // peer-matrix.json `local`, which :conformance runs. Mirrors client-core's `peerLocalPairing.test.ts`.
 
+@file:Suppress(
+    "LongParameterList",
+)
+
 package im.plrs.key.core.peer
 
 import kotlinx.coroutines.runBlocking
@@ -93,11 +97,15 @@ class PeerLocalPairingTest {
         val jKey = rnd()
         val sKey = rnd()
         val joiner = Side(
-            PeerMode.q, NoiseRole.initiator, jKey,
+            PeerMode.q,
+            NoiseRole.initiator,
+            jKey,
             pair = PairingOptions(j.psk, j.isk, 0, listOf("docs"), "Anna", 0.0),
         )
         val shower = Side(
-            PeerMode.q, NoiseRole.responder, sKey,
+            PeerMode.q,
+            NoiseRole.responder,
+            sKey,
             pair = PairingOptions(s.psk, s.isk, showerHeld, listOf("docs", "music"), "Bo", showerElapsed, permit),
         )
         return Pairing(joiner, shower, jKey, sKey)
@@ -224,12 +232,18 @@ class PeerLocalPairingTest {
     fun aPeerWithoutLocalCapClosesTheSessionBeforeAnyConsent() = runBlocking {
         val (j, s) = cpace("123456", "123456")
         val shower = Side(
-            PeerMode.q, NoiseRole.responder, rnd(),
+            PeerMode.q,
+            NoiseRole.responder,
+            rnd(),
             pair = PairingOptions(s.psk, s.isk, 0, emptyList(), "Bo", 0.0) { true },
         )
         val raw = NoiseHandshake(
             NoiseHandshakeOptions(
-                NoiseRole.initiator, peerNoiseProtocol(PeerMode.q), peerPrologue("djdl", PeerMode.q), j.psk, RawNoiseStatic(rnd()),
+                NoiseRole.initiator,
+                peerNoiseProtocol(PeerMode.q),
+                peerPrologue("djdl", PeerMode.q),
+                j.psk,
+                RawNoiseStatic(rnd()),
             ),
         )
         shower.s.receive(raw.writeMessage(utf8("{\"v\":1}")))
@@ -266,7 +280,10 @@ class PeerLocalPairingTest {
         val initiator = Side(PeerMode.l, NoiseRole.initiator, locals = listOf(link(secret.copyOf(), k.a, k.bPub)))
         val decoy = link(rnd(), rnd(), rnd())
         val responder = Side(
-            PeerMode.l, NoiseRole.responder, locals = listOf(decoy, link(secret.copyOf(), k.b, k.aPub)), limiter = HandshakeLimiter(),
+            PeerMode.l,
+            NoiseRole.responder,
+            locals = listOf(decoy, link(secret.copyOf(), k.b, k.aPub)),
+            limiter = HandshakeLimiter(),
         )
         initiator.s.start()
         pump(initiator, responder)
@@ -317,8 +334,12 @@ class PeerLocalPairingTest {
         val mine = link(secret.copyOf(), k.b, k.aPub)
 
         fun listener(limiter: HandshakeLimiter) = Side(
-            PeerMode.c, NoiseRole.responder, rnd(),
-            contacts = listOf(ContactLink(rnd(), "x".repeat(43))), locals = locals + mine, limiter = limiter,
+            PeerMode.c,
+            NoiseRole.responder,
+            rnd(),
+            contacts = listOf(ContactLink(rnd(), "x".repeat(43))),
+            locals = locals + mine,
+            limiter = limiter,
         )
 
         fun initiator() = Side(PeerMode.l, NoiseRole.initiator, locals = listOf(link(secret.copyOf(), k.a, k.bPub)))
@@ -355,9 +376,12 @@ class PeerLocalPairingTest {
             }
         }
         val responder = Side(
-            PeerMode.l, NoiseRole.responder,
+            PeerMode.l,
+            NoiseRole.responder,
             locals = listOf(link(if (opens) secret.copyOf() else rnd(), k.b, k.aPub)),
-            limiter = limiter, group = group, ports = NoisePorts(aead = counting),
+            limiter = limiter,
+            group = group,
+            ports = NoisePorts(aead = counting),
         )
         initiator.s.start()
         pump(initiator, responder)
