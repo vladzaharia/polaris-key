@@ -575,6 +575,9 @@ export const r = {
   updaters: (slug: string) => productPage(slug, "updaters"),
   feed: (slug: string) => productPage(slug, "feed"),
   appSignIn: (slug: string) => productPage(slug, "app-sign-in"),
+  identityClients: (slug: string) => productPage(slug, "identity-clients"),
+  identityClient: (slug: string, id: string) =>
+    productPage(slug, "identity-clients", { id }),
   syncSetup: (slug: string) => productPage(slug, "sync-setup"),
   syncUsage: (slug: string) => productPage(slug, "sync-usage"),
   connectSetup: (slug: string) => productPage(slug, "connect-setup"),

@@ -167,6 +167,7 @@ export type ProductPageId =
   | "feed"
   // identity
   | "app-sign-in"
+  | "identity-clients"
   // sync
   | "sync-setup"
   | "sync-usage"
@@ -832,6 +833,18 @@ export const SECTIONS: NavSection[] = [
         icon: LogIn,
         docs: "/docs/features/sign-in/customer-portal/",
         inNav: true,
+      },
+      {
+        // I-21.14: Sign in with <Product>: the issuer switch and URLs, and the registered clients.
+        page: "identity-clients",
+        tile: "service",
+        label: "Clients",
+        keywords: "openid oidc sign in with relying party redirect",
+        path: "identity/clients",
+        icon: AppWindow,
+        docs: "/docs/features/sign-in/sign-in-with-product/",
+        inNav: true,
+        record: { noun: "Client" },
       },
     ],
   },

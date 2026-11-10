@@ -56,6 +56,7 @@ import { AlertDestinations } from "../../notify/AlertDestinations.js";
 import { r } from "../../../routes.js";
 import { FeedPolicySection } from "./platformFeedPolicy.js";
 import { HistorySection } from "./platformHistory.js";
+import { IssuerKeysSection } from "./platformIssuerKeys.js";
 import { KeyringSection, SecretsSection } from "./platformKeyring.js";
 import { LicensingSection } from "./platformLicensing.js";
 import { PlatformReadyOnHomeRow } from "./platformHomeRow.js";
@@ -203,7 +204,7 @@ function AdvancedSection({
             Advanced
           </h2>
           <p className="text-sm text-fg-muted">
-            Identity provider, limits, keyring and secrets. Read-only.
+            Identity provider, limits, keyring, issuer keys and secrets.
           </p>
         </div>
         <Button
@@ -437,6 +438,7 @@ export function PlatformSettingsPage(): React.ReactElement {
           secrets={secrets}
           warning={kekWarning?.message}
         />
+        <IssuerKeysSection />
         <SecretsSection view={view} />
       </AdvancedSection>
 
