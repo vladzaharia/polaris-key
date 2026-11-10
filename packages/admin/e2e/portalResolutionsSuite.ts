@@ -16,6 +16,7 @@ import type { Page } from "playwright";
 import { portalRoutes, type Handler } from "./portalFixtures.js";
 import { SHIPPED, toConfirm } from "./portalStates.js";
 import { currentPart, partOf } from "./parts.js";
+import { focusStable } from "./settle.js";
 
 /**
  * The customer site at every other size (PORTAL.md §8, §9). `portalQuality.e2e.test.ts` holds
@@ -923,6 +924,8 @@ if (!currentPart() || currentPart()!.index === 0) {
             const seen = new Set<string>();
             for (let i = 0; i < 80; i++) {
               await o.page.keyboard.press("Tab");
+              // Sample once the scroll that brought the focus into view has stopped.
+              await focusStable(o.page);
               const f = await coveredFocus(o.page);
               if (!f) continue;
               if (seen.has(f.what) && i > 10) break;
