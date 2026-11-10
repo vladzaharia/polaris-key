@@ -105,6 +105,9 @@ export const DEFAULT_INVOKE_VERBS = [
   "identity.subject",
   "identity.attach",
   "identity.openAccount",
+  // I-21b: the device exchange. The access token crosses to the renderer, which is the app's own
+  // code; it is a sign-in proof for the app's backend, not a licence check.
+  "identity.accessToken",
   // v6 (UK-42.22.7): the licence and device choice after a device sign-in ends in `choose`. The
   // `grant` argument is an opaque ref the host bound to the polling window; no grant crosses IPC.
   "identity.choice.licenses",

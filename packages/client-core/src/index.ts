@@ -471,6 +471,17 @@ export {
 } from "./identityRedirect.js";
 
 export {
+  ACCESS_TOKEN_REUSE_MARGIN_SECONDS,
+  AccessTokenCache,
+  accessTokenRequest,
+  readAccessToken,
+  type AccessToken,
+  type AccessTokenGrant,
+  type AccessTokenRequest,
+  type AccessTokenRequestOptions,
+} from "./identityAccessToken.js";
+
+export {
   REDIRECT_UNAVAILABLE,
   authorizeUrlFor,
   chooseRedirectClass,

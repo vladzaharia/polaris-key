@@ -16,6 +16,7 @@ import type {
   LicenseStatus,
 } from "@polaris-key/protocol/license";
 import type {
+  AccessToken,
   ConfigSource,
   LicenseState,
   Support,
@@ -465,6 +466,17 @@ export interface PolarisAdapter {
   /** `attach({confirm: false})` previews the device's licence, `{confirm: true}` puts it in the
    *  signed-in account. Typed `UnsupportedError` where the transport or product cannot. */
   attach(opts: { confirm: boolean }): Promise<AttachResult>;
+  /**
+   * A short-lived (600 s) access token for the app's own backend, from this device's token
+   * (identity.accesstoken; RFC 8693 device exchange; send it as `Authorization: Bearer`). It
+   * proves the device holds a sign-in and is NOT a licence check (no tier, no entitlement): a
+   * backend that sells a licensed feature checks the licence too. The SDK keeps it in memory,
+   * reuses it until 60 seconds before it expires, asks once at a time and drops it at sign-out;
+   * `{refresh: true}` asks again. Typed `service-unavailable` where discovery names no access
+   * token (the product's issuer is off) or the transport holds no device token; `invalid_grant`
+   * when the device holds no sign-in; `rate_limited` (`retryAfterSeconds`) past ten a minute.
+   */
+  accessToken(opts?: { refresh?: boolean }): Promise<AccessToken>;
   /** The licence choice an app shows itself after `signIn` answered `choose` (identity.choice).
    *  Bearer mode; a page without pinned keys and the desktop renderer throw the typed `UnsupportedError`. */
   readonly choice: ChoiceNamespace;
