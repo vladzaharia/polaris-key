@@ -447,6 +447,38 @@ export class JoinPlan {
   }
 }
 
+/** At most this many dials per nameplate in any `LOCAL_DIAL_BUDGET_SECONDS`, across joins. */
+export const LOCAL_DIAL_BUDGET = 2;
+export const LOCAL_DIAL_BUDGET_SECONDS = 300;
+
+/**
+ * The joiner's dials per typed nameplate across joins, in memory, per product (§15.12). A person
+ * who retypes a code meets the same budget as one join: a fake advert that answers a dial gets one
+ * guess, so retries must not multiply the dials. A QR names its instance and is never limited.
+ */
+export class DialBudget {
+  private readonly dialled = new Map<string, number[]>();
+
+  private recent(nameplate: string, t: number): number[] {
+    const kept = (this.dialled.get(nameplate) ?? []).filter(
+      (d) => t - d < LOCAL_DIAL_BUDGET_SECONDS,
+    );
+    this.dialled.set(nameplate, kept);
+    return kept;
+  }
+
+  /** Whether a join of this nameplate may browse and dial now, and the dials already spent. */
+  check(nameplate: string, t: number): { allowed: boolean; used: number } {
+    const used = this.recent(nameplate, t).length;
+    return { allowed: used < LOCAL_DIAL_BUDGET, used };
+  }
+
+  /** The join made `dials` dials. */
+  spend(nameplate: string, t: number, dials: number): void {
+    this.recent(nameplate, t).push(...Array<number>(dials).fill(t));
+  }
+}
+
 // ── The pairing window (§15.12, "The pairing window") ────────────────────────────────────────
 
 export type WindowResult =
@@ -465,35 +497,53 @@ export type WindowClosed = "expired" | "too-many-tries" | "stored" | "person";
 
 export interface WindowOutcome {
   result?: WindowResult;
+  /** The id of the attempt a C1 admitted. */
+  id?: number;
   /** The error the host hears: the fifth failed guess. */
   host?: "pairing-code-failed";
-  /** The password and the QR secret rotate now (and both generators are recomputed). */
+  /**
+   * The password and the QR secret rotate now. The window is `rotating` (busy, uncounted) until
+   * the host has made the new code and QR secret and computed both generators, and calls `rotated`.
+   */
   rotate: boolean;
 }
 
 export interface WindowState {
   open: boolean;
-  holder: "attempt" | "session" | null;
+  holder: "attempt" | "session" | "rotating" | null;
+  /** Guesses counted: counted when permitted, refunded when one opens. */
   failures: number;
   rotations: number;
   closed: WindowClosed | null;
 }
 
 /**
- * The shower's window over events with a monotonic time in seconds. One attempt holds it from a
- * valid C1 until its message 1 or `LOCAL_ATTEMPT_SECONDS`; a session from a message 1 that opens
- * until it ends. A message 1 that does not open is one failed guess (rotate; the fifth closes the
- * window); an attempt that never sends one, a refused C1 and a session that ends without a link
- * count no failure. A session that ends without a link rotates and reopens the window. At most 5
- * C1s a minute are admitted, counted when admitted; a busy C1 is never counted. The window expires
+ * The shower's window over events with a monotonic time in seconds. A C1 that is admitted hands out
+ * an attempt id; one attempt holds the window from its C1 until its guess or `LOCAL_ATTEMPT_SECONDS`.
+ *
+ * A guess is counted before its tag is tried. The session asks `beginGuess(id, t)`, a synchronous
+ * permit given once, to the holder's own attempt only, while the window is open; it counts the
+ * failure now (the fifth closes the window once its verdict is in), and an attempt that was not
+ * permitted, a stale, expired or closed one, answers false and its tag is never tried. A guess that
+ * opens is refunded (`guessOpened`) and the attempt becomes the session; one that does not, and a
+ * permitted attempt whose connection ends (`abandon`) or runs out its 30 s, is a failed guess
+ * (`guessFailed`): the password and the QR secret rotate. The window is `rotating` until
+ * `rotated`, which the host calls once the new secrets and both generators are ready (§15.12,
+ * step 6), so a C1 never meets the old password or a generator that is still being made.
+ *
+ * A refused C1 and an attempt that never reached its guess count nothing; a session that ends
+ * without a link also rotates and holds the window until `rotated`. At most 5 C1s a minute are
+ * admitted, counted when admitted; a busy C1 is never counted. The window expires
  * `LOCAL_PAIR_SECONDS` after it opened, which closes a connection that has not reached the
- * transport and leaves a session running.
+ * transport (the host closes it) and leaves a session running. Attempt ids never repeat, so a
+ * connection of a closed window cannot touch the next one.
  */
 export class PairingWindow {
   private isOpen = false;
   private openedAt = 0;
-  private holder: "attempt" | "session" | null = null;
-  private attemptAt = 0;
+  private holder: WindowState["holder"] = null;
+  private attempt: { id: number; at: number; guessed: boolean } | null = null;
+  private nextId = 1;
   private failures = 0;
   private rotations = 0;
   private closedFor: WindowClosed | null = null;
@@ -510,17 +560,39 @@ export class PairingWindow {
   }
 
   /** Apply the clocks: the window's expiry and an attempt's deadline. */
-  tick(t: number): void {
+  tick(t: number): WindowOutcome {
+    let out: WindowOutcome = { rotate: false };
     if (this.isOpen && t - this.openedAt >= LOCAL_PAIR_SECONDS) {
       this.isOpen = false;
       this.closedFor = "expired";
-      if (this.holder === "attempt") this.holder = null;
+      // A counted guess stays counted; there is no window left to rotate.
+      if (this.holder === "attempt") this.drop();
+      if (this.holder === "rotating") this.holder = null;
     }
+    const a = this.attempt;
     if (
       this.holder === "attempt" &&
-      t - this.attemptAt >= LOCAL_ATTEMPT_SECONDS
-    )
-      this.holder = null;
+      a !== null &&
+      t - a.at >= LOCAL_ATTEMPT_SECONDS
+    ) {
+      if (a.guessed) out = this.failed();
+      else this.drop();
+    }
+    return out;
+  }
+
+  private drop(): void {
+    this.attempt = null;
+    this.holder = null;
+  }
+
+  private isHolder(id: number): boolean {
+    return (
+      this.isOpen &&
+      this.holder === "attempt" &&
+      this.attempt !== null &&
+      this.attempt.id === id
+    );
   }
 
   /** One window per device per product: an open window, or a session still running, answers `already-open`. */
@@ -531,6 +603,7 @@ export class PairingWindow {
     this.isOpen = true;
     this.openedAt = t;
     this.holder = null;
+    this.attempt = null;
     this.failures = 0;
     this.rotations = 0;
     this.closedFor = null;
@@ -548,24 +621,48 @@ export class PairingWindow {
       return { result: "limited", rotate: false };
     this.admits.push(t);
     if (!valid) return { result: "refused", rotate: false };
+    const id = this.nextId++;
     this.holder = "attempt";
-    this.attemptAt = t;
-    return { result: "attempt", rotate: false };
+    this.attempt = { id, at: t, guessed: false };
+    return { result: "attempt", id, rotate: false };
   }
 
-  /** The held attempt's message 1 arrived; `opens` is whether its tag verified under the code. */
-  msg1(t: number, opens: boolean): WindowOutcome {
+  /**
+   * The permit to try message 1's tag. True once, for the holder's own attempt, while the window is
+   * open and the attempt's 30 s have not run out; the guess is counted now. False otherwise: the
+   * session must not try the tag.
+   */
+  beginGuess(id: number, t: number): boolean {
     this.tick(t);
-    if (!this.isOpen || this.holder !== "attempt") return { rotate: false };
-    if (opens) {
-      this.holder = "session";
-      return { result: "transport", rotate: false };
-    }
-    this.holder = null;
+    if (!this.isHolder(id) || this.attempt!.guessed) return false;
+    this.attempt!.guessed = true;
     this.failures++;
+    return true;
+  }
+
+  /** The permitted guess opened: the count is refunded and the attempt is the session. */
+  guessOpened(id: number, t: number): WindowOutcome {
+    this.tick(t);
+    if (!this.isHolder(id) || !this.attempt!.guessed) return { rotate: false };
+    this.failures--;
+    this.attempt = null;
+    this.holder = "session";
+    return { result: "transport", rotate: false };
+  }
+
+  /** The permitted guess did not open. */
+  guessFailed(id: number, t: number): WindowOutcome {
+    this.tick(t);
+    if (!this.isHolder(id) || !this.attempt!.guessed) return { rotate: false };
+    return this.failed();
+  }
+
+  private failed(): WindowOutcome {
+    this.attempt = null;
     if (this.failures >= LOCAL_PAIR_FAILURES) {
       this.isOpen = false;
       this.closedFor = "too-many-tries";
+      this.holder = null;
       return {
         result: "too-many-tries",
         host: "pairing-code-failed",
@@ -573,17 +670,35 @@ export class PairingWindow {
       };
     }
     this.rotations++;
+    this.holder = "rotating";
     return { result: "failed", rotate: true };
   }
 
-  /** The held attempt closed or timed out before its message 1: nothing is counted. */
-  abandon(t: number): WindowOutcome {
+  /** Message 1 of `id`: the permit, then the verdict. Not permitted: nothing is tried, nothing changes. */
+  msg1(id: number, t: number, opens: boolean): WindowOutcome | null {
+    if (!this.beginGuess(id, t)) return null;
+    return opens ? this.guessOpened(id, t) : this.guessFailed(id, t);
+  }
+
+  /** The attempt's connection closed or timed out. A permitted guess with no verdict is failed. */
+  abandon(id: number, t: number): WindowOutcome {
     this.tick(t);
-    if (this.holder === "attempt") this.holder = null;
+    if (!this.isHolder(id)) return { rotate: false };
+    if (this.attempt!.guessed) return this.failed();
+    this.drop();
     return { rotate: false };
   }
 
-  /** The held session ended. A stored link closes the window; any other end rotates and reopens it. */
+  /** The new code, QR secret and both generators are ready: the window takes the next C1. */
+  rotated(t: number): void {
+    this.tick(t);
+    if (this.holder === "rotating") this.holder = null;
+  }
+
+  /**
+   * The held session ended. A stored link closes the window; any other end rotates and holds the
+   * window until `rotated`.
+   */
   sessionEnd(t: number, stored: boolean): WindowOutcome {
     this.tick(t);
     if (this.holder !== "session") return { rotate: false };
@@ -593,11 +708,10 @@ export class PairingWindow {
       this.closedFor = "stored";
       return { rotate: false };
     }
-    if (this.isOpen) {
-      this.rotations++;
-      return { rotate: true };
-    }
-    return { rotate: false };
+    if (!this.isOpen) return { rotate: false };
+    this.rotations++;
+    this.holder = "rotating";
+    return { rotate: true };
   }
 
   /** The person closed the window. */
@@ -606,7 +720,7 @@ export class PairingWindow {
     if (this.isOpen) {
       this.isOpen = false;
       this.closedFor = "person";
-      if (this.holder === "attempt") this.holder = null;
+      if (this.holder === "attempt" || this.holder === "rotating") this.drop();
     }
     return { rotate: false };
   }
@@ -638,16 +752,20 @@ export const GATED_CALLS = [
 export type GatedCall = (typeof GATED_CALLS)[number];
 
 /**
- * `services.connect.localPairing` of a discovery body: true only as the boolean `true`. A body of
- * any other shape, a disabled service and an absent member all read as false.
+ * `services.connect.localPairing` of a discovery body: true only as the boolean `true` while
+ * `services.connect.enabled` is the boolean `true`. A body of any other shape, a disabled service
+ * and an absent member all read as false.
  */
 export function localPairingOf(body: unknown): boolean {
-  if (body === null || typeof body !== "object") return false;
-  const services = (body as Record<string, unknown>).services;
-  if (services === null || typeof services !== "object") return false;
-  const connect = (services as Record<string, unknown>).connect;
-  if (connect === null || typeof connect !== "object") return false;
-  return (connect as Record<string, unknown>).localPairing === true;
+  const member = (o: unknown, key: string): unknown =>
+    o !== null && typeof o === "object"
+      ? (o as Record<string, unknown>)[key]
+      : undefined;
+  const connect = member(member(body, "services"), "connect");
+  return (
+    member(connect, "enabled") === true &&
+    member(connect, "localPairing") === true
+  );
 }
 
 /**
@@ -816,6 +934,13 @@ export const pairingRemoteOk = (
 ): boolean => !sameKey(own, remoteStatic);
 
 // ── The listener's trial order (§15.5 "One listener, one order") ─────────────────────────────
+
+/** The trials a full miss costs: two account keys, 72 contact secrets and 32 local-link secrets. */
+export const TRIAL_TOTAL = 2 + MAX_CONTACT_SECRETS + MAX_LOCAL_LINKS;
+
+/** Dummy trials after a miss behind the limiter, so a silent close costs `TRIAL_TOTAL` trials. */
+export const trialPadding = (tried: number): number =>
+  Math.max(0, TRIAL_TOTAL - tried);
 
 export interface TrialEntry {
   /** `a` an account discovery key, `c` a contact secret, `l` a local-link secret. */

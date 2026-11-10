@@ -100,6 +100,8 @@ async function pairSides(o: {
   joinerCats?: string[];
   showerCats?: string[];
   showerHeld?: number;
+  showerElapsed?: number;
+  permit?: () => boolean;
 }) {
   const c = await cpace(o.joinerCode ?? "123456", o.showerCode ?? "123456");
   const jKey = rnd();
@@ -111,6 +113,7 @@ async function pairSides(o: {
     pair: {
       ...c.joiner,
       held: 0,
+      elapsed: 0,
       cats: o.joinerCats ?? ["docs"],
       label: "Anna",
     },
@@ -122,6 +125,8 @@ async function pairSides(o: {
     pair: {
       ...c.shower,
       held: o.showerHeld ?? 0,
+      elapsed: o.showerElapsed ?? 0,
+      permit: o.permit ?? (() => true),
       cats: o.showerCats ?? ["docs", "music"],
       label: "Bo",
     },
@@ -195,6 +200,40 @@ describe("a mode-q pairing", () => {
     expect(of(p.shower, "local-link")).toHaveLength(0);
   });
 
+  it("never tries the tag without a permit or past 30 s, and tries it once with one", async () => {
+    for (const o of [{ permit: () => false }, { showerElapsed: 30 }]) {
+      const p = await pairSides(o);
+      await p.joiner.ch.start();
+      await pump(p.joiner, p.shower);
+      expect(of(p.shower, "guess")).toHaveLength(0);
+      expect(closed(p.shower)).toMatchObject({ code: "handshake_failed" });
+    }
+    let asked = 0;
+    const p = await pairSides({
+      permit: () => {
+        asked++;
+        return true;
+      },
+    });
+    await p.joiner.ch.start();
+    await pump(p.joiner, p.shower);
+    expect(asked).toBe(1);
+  });
+
+  it("refuses a mode-q responder without a permit and any pairing without an elapsed time", async () => {
+    const c = await cpace("123456", "123456");
+    const mk = (pair: Record<string, unknown>) => () =>
+      side({
+        mode: "q",
+        role: "responder",
+        staticKey: rnd(),
+        pair: pair as never,
+      });
+    const base = { ...c.shower, held: 0, cats: [] };
+    expect(mk({ ...base, elapsed: 0 })).toThrow(RangeError);
+    expect(mk({ ...base, permit: () => true })).toThrow(RangeError);
+  });
+
   it("a decline closes both sides peer_bye and stores nothing", async () => {
     const p = await settle(await pairSides({}), "decline");
     expect(closed(p.shower)).toMatchObject({ code: "peer_bye", byPeer: false });
@@ -220,7 +259,14 @@ describe("a mode-q pairing", () => {
       mode: "q",
       role: "responder",
       staticKey: rnd(),
-      pair: { ...c.shower, held: 0, cats: [], label: "Bo" },
+      pair: {
+        ...c.shower,
+        held: 0,
+        elapsed: 0,
+        permit: () => true,
+        cats: [],
+        label: "Bo",
+      },
     });
     const raw = new NoiseHandshake({
       role: "initiator",

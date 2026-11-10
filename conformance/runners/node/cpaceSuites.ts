@@ -62,6 +62,7 @@ interface Attempt {
   showerSid: string;
   ya: string;
   yb: string;
+  reflect?: boolean;
   joinerG: string;
   showerG: string;
   Ya: string;
@@ -341,7 +342,8 @@ export function registerCpaceSuites(
         expect(hex(j.g), a.id).toBe(a.joinerG);
         expect(hex(s.g), a.id).toBe(a.showerG);
         const Ya = (await cpaceShare(bytes(a.ya), j.g))!;
-        const Yb = (await cpaceShare(bytes(a.yb), s.g))!;
+        const Yb =
+          a.reflect === true ? Ya : (await cpaceShare(bytes(a.yb), s.g))!;
         expect(hex(Ya), a.id).toBe(a.Ya);
         expect(hex(Yb), a.id).toBe(a.Yb);
         expect(hex(encodeC1(a.kind, Ya)), a.id).toBe(a.c1);

@@ -441,6 +441,8 @@ interface AttemptIn {
   showerSlug?: string;
   sid?: Uint8Array;
   showerSid?: Uint8Array;
+  /** The responder's share is the initiator's, sent back. */
+  reflect?: boolean;
   /** Whether both sides derive one ISK. */
   agree: boolean;
 }
@@ -494,6 +496,14 @@ const ATTEMPTS: AttemptIn[] = [
     showerSid: mat("sid 2").slice(0, 10),
     agree: false,
   },
+  {
+    id: "code-reflected-share",
+    kind: "code",
+    joiner: "123456",
+    shower: "123456",
+    reflect: true,
+    agree: false,
+  },
 ];
 
 /** One attempt in full: each side's generator, share, K, ISK and PSK. */
@@ -509,7 +519,7 @@ export function cpaceAttemptRow(id: string) {
   const jGen = refCpaceGenerator(refPrs(r.kind, r.joiner), ci(jSlug), jSid);
   const sGen = refCpaceGenerator(refPrs(r.kind, r.shower), ci(sSlug), sSid);
   const Ya = refShare(ya, jGen.g);
-  const Yb = refShare(yb, sGen.g);
+  const Yb = r.reflect === true ? Ya : refShare(yb, sGen.g);
   const kJ = refX25519(ya, Yb);
   const kS = refX25519(yb, Ya);
   const iskJ = refIsk(jSid, kJ, Ya, Yb);
@@ -553,6 +563,7 @@ function buildAttempts(): unknown[] {
       showerSid: hex(a.sSid),
       ya: hex(a.ya),
       yb: hex(a.yb),
+      ...(a.r.reflect === true ? { reflect: true } : {}),
       joinerG: hex(a.jGen.g),
       showerG: hex(a.sGen.g),
       Ya: hex(a.Ya),
@@ -606,7 +617,7 @@ function buildAbort(): unknown {
 
 export function buildCpace(): unknown {
   return {
-    note: "CPace for account-free local pairing (WIRE-CONTRACT-V5 15.12). Suite CPACE-X25519-SHA512 of draft-irtf-cfrg-cpace-21, initiator-responder setting; DSI 'CPace255', DSI_ISK 'CPace255_ISK', H = SHA-512 with s_in_bytes 128, empty ADa and ADb in every row but the draft's. All fields are lower-case hex unless said. `anchors`: the draft's vectors, vendored and hash-checked. `elligator`: map_to_curve_elligator2 on 32 input bytes: decodeUCoordinate clears bit 255 and the result is reduced mod p (`r`), then v = -A / (1 + 2 r^2) with A = 486662; the result is v when v^3 + A v^2 + v is a square (`onCurve`) and -v - A otherwise, as 32 little-endian bytes. `generators`: g = elligator2(SHA-512(generator_string(DSI, PRS, CI, sid, 128))[0..32]); PRS is 'pkey-peer/1 code' 0x00 + the 6 digit characters, or 'pkey-peer/1 qr' 0x00 + the 16 secret bytes; CI is the mode-q prologue and sid the window's 10 bytes. `shares`: the share check of a received Y (32 bytes; bit 255 clear and u < 2^255 - 19, checked first, then not one of the seven low-order points of `lowOrder`); a refused share closes silently and counts no failure. `frames`: C1 (0x01, kind 0x01 code or 0x02 QR, Ya; 34 bytes) and C2 (0x01, Yb; 33 bytes) as the receiver judges them: length, version, kind, then the share. `attempts`: whole runs with fixed scalars ya, yb (X25519 clamps them): Y = X25519(y, g), K = X25519(y, Y_peer), ISK = SHA-512(lv_cat('CPace255_ISK', sid, K) || transcript_ir(Ya, '', Yb, '')) and psk = HKDF-SHA256(salt empty, ikm ISK, info 'pkey-peer/1 cpace' 0x00 slug), 32 bytes; `agree` says whether both sides derive the same ISK (a wrong password, a wrong QR secret, another slug or another sid does not). `abort`: X25519(scalar, u) for the low-order points is 32 zero bytes, and a K of 32 zero bytes aborts the attempt. Append-only: a new row keeps noiseVectorsVersion; a changed row or rule bumps it.",
+    note: "CPace for account-free local pairing (WIRE-CONTRACT-V5 15.12). Suite CPACE-X25519-SHA512 of draft-irtf-cfrg-cpace-21, initiator-responder setting; DSI 'CPace255', DSI_ISK 'CPace255_ISK', H = SHA-512 with s_in_bytes 128, empty ADa and ADb in every row but the draft's. All fields are lower-case hex unless said. `anchors`: the draft's vectors, vendored and hash-checked. `elligator`: map_to_curve_elligator2 on 32 input bytes: decodeUCoordinate clears bit 255 and the result is reduced mod p (`r`), then v = -A / (1 + 2 r^2) with A = 486662; the result is v when v^3 + A v^2 + v is a square (`onCurve`) and -v - A otherwise, as 32 little-endian bytes. `generators`: g = elligator2(SHA-512(generator_string(DSI, PRS, CI, sid, 128))[0..32]); PRS is 'pkey-peer/1 code' 0x00 + the 6 digit characters, or 'pkey-peer/1 qr' 0x00 + the 16 secret bytes; CI is the mode-q prologue and sid the window's 10 bytes. `shares`: the share check of a received Y (32 bytes; bit 255 clear and u < 2^255 - 19, checked first, then not one of the seven low-order points of `lowOrder`); a refused share closes silently and counts no failure. `frames`: C1 (0x01, kind 0x01 code or 0x02 QR, Ya; 34 bytes) and C2 (0x01, Yb; 33 bytes) as the receiver judges them: length, version, kind, then the share. `attempts`: whole runs with fixed scalars ya, yb (X25519 clamps them): Y = X25519(y, g), K = X25519(y, Y_peer), ISK = SHA-512(lv_cat('CPace255_ISK', sid, K) || transcript_ir(Ya, '', Yb, '')) and psk = HKDF-SHA256(salt empty, ikm ISK, info 'pkey-peer/1 cpace' 0x00 slug), 32 bytes; `agree` says whether both sides derive the same ISK (a wrong password, a wrong QR secret, another slug or another sid does not); `reflect` sends the initiator's share back as the responder's, which no honest responder derives the same ISK from. `abort`: X25519(scalar, u) for the low-order points is 32 zero bytes, and a K of 32 zero bytes aborts the attempt. Append-only: a new row keeps noiseVectorsVersion; a changed row or rule bumps it.",
     suite: "CPACE-X25519-SHA512",
     dsi: "CPace255",
     dsiIsk: "CPace255_ISK",

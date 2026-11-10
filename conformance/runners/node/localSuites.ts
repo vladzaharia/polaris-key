@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  DialBudget,
   GATED_CALLS,
   JoinPlan,
   LocalPairingGate,
@@ -33,6 +34,7 @@ import {
   localLinkSecret,
   localPin,
   makeQr,
+  trialPadding,
   negotiateLocalCaps,
   pairingInstance,
   pairingRemoteOk,
@@ -165,6 +167,15 @@ export interface LocalSection {
       want: { caps: string[]; close?: string };
     }[];
   };
+  joinBudget: {
+    id: string;
+    joins: {
+      t: number;
+      input: { kind: "code"; nameplate: string } | { kind: "qr" };
+      dials: number;
+    }[];
+    want: { allowed: boolean; used: number }[];
+  }[];
   window: {
     id: string;
     steps: {
@@ -173,6 +184,7 @@ export interface LocalSection {
       valid?: boolean;
       opens?: boolean;
       stored?: boolean;
+      id?: number;
     }[];
     want: Record<string, unknown>[];
   }[];
@@ -226,6 +238,7 @@ export interface LocalSection {
       hit: string | null;
       slot: boolean;
       close: string | null;
+      dummy: number;
     };
   }[];
   records: {
@@ -451,21 +464,37 @@ export function registerLocalSuites(l: LocalSection): void {
     for (const r of l.window)
       it(r.id, () => {
         const w = new PairingWindow();
+        // An event without an `id` names the latest attempt handed out.
+        let last = 0;
         const got = r.steps.map((s) => {
           const t = s.t ?? 0;
-          let out: { result?: string; host?: string } = {};
+          const id = s.id ?? last;
+          let out: { result?: string; id?: number; host?: string } = {};
           switch (s.event) {
             case "open":
               out = w.open(t);
               break;
             case "c1":
               out = w.c1(t, s.valid!);
+              if (out.id !== undefined) last = out.id;
+              break;
+            case "begin-guess":
+              out = { result: w.beginGuess(id, t) ? "permit" : "denied" };
               break;
             case "msg1":
-              out = w.msg1(t, s.opens!);
+              out = w.msg1(id, t, s.opens!) ?? { result: "denied" };
+              break;
+            case "guess-opened":
+              out = w.guessOpened(id, t);
+              break;
+            case "guess-failed":
+              out = w.guessFailed(id, t);
               break;
             case "abandon":
-              out = w.abandon(t);
+              out = w.abandon(id, t);
+              break;
+            case "rotated":
+              w.rotated(t);
               break;
             case "session-end":
               out = w.sessionEnd(t, s.stored!);
@@ -481,9 +510,24 @@ export function registerLocalSuites(l: LocalSection): void {
           }
           return {
             ...(out.result !== undefined ? { result: out.result } : {}),
+            ...(out.id !== undefined ? { id: out.id } : {}),
             ...w.state,
             ...(out.host !== undefined ? { host: out.host } : {}),
           };
+        });
+        expect(got).toEqual(r.want);
+      });
+  });
+
+  describe("peer-matrix local: joinBudget", () => {
+    for (const r of l.joinBudget)
+      it(r.id, () => {
+        const budget = new DialBudget();
+        const got = r.joins.map((j) => {
+          if (j.input.kind === "qr") return { allowed: true, used: 0 };
+          const verdict = budget.check(j.input.nameplate, j.t);
+          if (verdict.allowed) budget.spend(j.input.nameplate, j.t, j.dials);
+          return verdict;
         });
         expect(got).toEqual(r.want);
       });
@@ -590,8 +634,18 @@ export function registerLocalSuites(l: LocalSection): void {
           }
         }
         if (hit === null && close === null) close = "handshake_failed";
+        const behindLimiter = r.contacts.length + r.locals.length > 0;
         expect(
-          { tried, hit, slot: hit !== null && hit[0] !== "a", close },
+          {
+            tried,
+            hit,
+            slot: hit !== null && hit[0] !== "a",
+            close,
+            dummy:
+              close === "handshake_failed" && behindLimiter
+                ? trialPadding(tried.length)
+                : 0,
+          },
           r.id,
         ).toEqual(r.want);
       }

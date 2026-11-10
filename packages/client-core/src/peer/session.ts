@@ -74,6 +74,7 @@ import {
   buildLocalLink,
   listenerTrialOrder,
   localLinkSecret,
+  trialPadding,
   localPin,
   negotiateLocalCaps,
   pairingRemoteOk,
@@ -153,8 +154,17 @@ export interface PairingOptions {
   cats: readonly string[];
   /** This device's label for the peer to show. */
   label?: string;
-  /** Seconds already spent since the first byte (C1 and C2 ran before the session). Default 0. */
-  elapsed?: number;
+  /**
+   * Seconds already spent since the first byte (C1 and C2 ran before the session). At 30 or more
+   * the session starts no handshake and tries no tag.
+   */
+  elapsed: number;
+  /**
+   * A responder's permit to try message 1's tag (`PairingWindow.beginGuess`): synchronous, it counts
+   * the guess before the tag is tried. The session never tries a tag without one, and the
+   * constructor refuses a mode-q responder without it.
+   */
+  permit?: () => boolean;
 }
 
 /** This device's side of the contact exchange (mode p, §15.10). */
@@ -407,7 +417,9 @@ export class PeerSession {
         o.pair === undefined ||
         o.pair.psk.length !== 32 ||
         o.pair.isk.length !== 64 ||
-        o.pair.held < 0
+        o.pair.held < 0 ||
+        !(o.pair.elapsed >= 0) ||
+        (o.role === "responder" && o.pair.permit === undefined)
       )
         throw new RangeError("pairing");
     } else if (o.pair !== undefined)
@@ -604,6 +616,11 @@ export class PeerSession {
     return this.run(async () => {
       if (this.o.role !== "initiator" || this.hs !== null)
         throw new SessionFail("handshake_failed");
+      if (
+        this.o.pair !== undefined &&
+        this.o.pair.elapsed >= TRANSPORT_DEADLINE_SECONDS
+      )
+        throw new SessionFail("handshake_failed");
       const key = this.o.account?.discKeys[0] ?? undefined;
       if (this.mode === "a" && key === undefined)
         throw new SessionFail("handshake_failed");
@@ -791,9 +808,17 @@ export class PeerSession {
       // contact and local-link trials are admitted by the limiter first, so a refused attempt tries
       // no secret.
       let payload: Uint8Array | null = null;
+      let accountTried = 0;
       if (mode === "q") {
         // The pairing window's attempt: one secret, the code's PSK. A tag that fails is one
         // failed guess (§15.12): the host's window rotates the code.
+        // The permit counts the guess before the tag is tried; without it, or past the attempt's
+        // 30 s, the tag is never tried (§15.12, "Failure accounting").
+        if (
+          this.o.pair!.elapsed >= TRANSPORT_DEADLINE_SECONDS ||
+          !this.o.pair!.permit!()
+        )
+          throw new SessionFail("handshake_failed");
         const h = this.newHandshake("q", this.o.pair!.psk);
         try {
           payload = await h.readMessage(noise);
@@ -808,6 +833,7 @@ export class PeerSession {
           mode === "a" ? this.o.account!.discKeys.slice(0, 2) : [undefined];
         for (const k of keys) {
           if (k === null) continue;
+          accountTried++;
           try {
             const h = this.newHandshake(mode, await this.pskOf(mode, k));
             payload = await h.readMessage(noise);
@@ -824,6 +850,7 @@ export class PeerSession {
       ) {
         this.release = this.o.admission!.begin();
         if (this.release === null) throw new SessionFail("peer_busy");
+        let tried = 0;
         const plan = listenerTrialOrder(
           null,
           this.o.contacts?.length ?? 0,
@@ -847,7 +874,24 @@ export class PeerSession {
             this.asm = new RecordAssembler(this.mode);
             break;
           } catch {
-            /* try the next secret */
+            tried++;
+          }
+        }
+        // A miss costs the same whatever the host holds: dummy trials make up the difference.
+        if (this.hs === null) {
+          for (let n = trialPadding(tried + accountTried); n > 0; n--) {
+            try {
+              // On the default ports, so a host's own ports count only the real trials.
+              await new NoiseHandshake({
+                role: "responder",
+                protocol: peerNoiseProtocol("l"),
+                prologue: peerPrologue(this.o.slug, "l"),
+                psk: webCryptoNoisePorts.random(32),
+                staticKey: webCryptoNoisePorts.random(32),
+              }).readMessage(noise);
+            } catch {
+              /* a dummy secret opens nothing */
+            }
           }
         }
       }

@@ -48,6 +48,7 @@ export {
   type ShareVerdict,
 } from "./cpace.js";
 export {
+  DialBudget,
   GATED_CALLS,
   GATE_EFFECTS,
   JoinPlan,
@@ -55,6 +56,8 @@ export {
   LOCAL_C1_PER_WINDOW,
   LOCAL_C1_WINDOW_SECONDS,
   LOCAL_CAP,
+  LOCAL_DIAL_BUDGET,
+  LOCAL_DIAL_BUDGET_SECONDS,
   LOCAL_CODE_DIGITS,
   LOCAL_JOIN_BROWSE_SECONDS,
   LOCAL_JOIN_CANDIDATES,
@@ -69,6 +72,7 @@ export {
   MAX_LIVE_LOCAL_ADVERTS,
   MAX_LOCAL_LINKS,
   PairingWindow,
+  TRIAL_TOTAL,
   browseLocalInstance,
   buildLocalLink,
   displayCode,
@@ -89,6 +93,7 @@ export {
   parseLocalTxt,
   parseQr,
   randomByteSource,
+  trialPadding,
   type CodeVerdict,
   type DrawSource,
   type DialOutcome,

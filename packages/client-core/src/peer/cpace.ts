@@ -6,12 +6,13 @@
 //
 // Timing. Every scalar multiplication runs through the `X25519Port`, which is the platform's
 // constant-time X25519 (WebCrypto by default). The Elligator 2 map does not: it runs over `BigInt`,
-// whose arithmetic is variable-time, and its input is derived from the password. That is acceptable
-// only because of §15.12 step 6: the shower computes its generators at every rotation, and the joiner
-// computes its own before it dials, so the map never runs between a network event and its answer and
-// its timing is not observable by a peer. Callers MUST compute `cpaceGenerator` ahead of the
-// connection and keep it, never inside a request handler's latency path. The external cryptographer
-// confirms this (packet part P5).
+// whose arithmetic is variable-time, and its input is derived from the password. The shower makes
+// its generators at every rotation, before its window takes the next C1, and a joiner that scanned
+// a QR makes its own before it dials. A joiner that typed a code cannot: the `sid` is the advert's
+// instance, so its map runs between a chosen advert and its connection, at most twice per code and
+// 300 s (the dial budget, `local.ts`). Callers MUST make a generator ahead of the connection that
+// needs it, never inside the reply to a peer's frame. The external cryptographer confirms this
+// (packet part P5).
 //
 // A share or a K that breaks a rule is a refusal, not an exception: the caller closes the connection
 // silently and counts no failure (§15.12 step 3).
