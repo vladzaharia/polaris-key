@@ -107,13 +107,14 @@ final class NearbyApproverTests: XCTestCase {
     func testASessionPastTheTransportSurvivesARenewal() async throws {
         let r = Rig()
         try await r.start()
-        let d = try await r.dial()
+        // The prompt is up only after the approver has processed the established event, so the session is
+        // past the transport on both sides before the renewal fires (D seeing HELLO proves only D's side).
+        let (d, _) = try await r.prompted()
         r.timers.fire(100)
         await nearbyUntil("renewed") { r.net.handles.value.count == 2 }
         await nearbySettle()
         XCTAssertNil(d.closed)
-        await d.startSas()
-        await nearbyUntil("code") { d.code != nil }
+        XCTAssertEqual(r.approvals.value.count, 1)
         await r.approver.stop()
     }
 
