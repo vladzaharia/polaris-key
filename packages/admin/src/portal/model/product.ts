@@ -149,11 +149,26 @@ export function syncStorage(
   };
 }
 
+/** One device that synced; `label` is `null` for a device the Worker does not name. */
+export interface SyncDevice {
+  label: string | null;
+  lastSyncAt: number;
+}
+
 /** The devices that synced, most recent first. */
-export function syncDevices(
-  s: Pick<PortalCloudSync, "devices">,
-): PortalCloudSync["devices"] {
-  return [...s.devices].sort((a, b) => b.lastSyncAt - a.lastSyncAt);
+export function syncDevices(s: Pick<PortalCloudSync, "devices">): SyncDevice[] {
+  return [...s.devices]
+    .sort((a, b) => b.lastSyncAt - a.lastSyncAt)
+    .map((d) => {
+      const label = d.label.trim();
+      // The Worker writes the catalog's English "Unnamed device" for a device it may not name:
+      // one with no label, or one no longer signed in to this person (U-12.5 shows a label only
+      // while the device is bound to them).
+      return {
+        label: label && label !== t("devices.unnamed") ? label : null,
+        lastSyncAt: d.lastSyncAt,
+      };
+    });
 }
 
 export interface FileRowModel {

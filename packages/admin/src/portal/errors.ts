@@ -74,6 +74,14 @@ const DOWNLOAD_REFUSALS: Record<string, () => PortalErrorCopy> = {
       false,
     ),
   not_entitled: () => fromCode("not_entitled", false),
+  // Download synced data (PX-18): the zip would hold more files than one download can (U-12.3).
+  // Trying again gets the same answer.
+  export_too_large: () =>
+    own(
+      t("locker.error.exportTooLarge.title"),
+      t("locker.error.exportTooLarge.body"),
+      false,
+    ),
 };
 
 /** Polaris Locker's own wording: the line reads "Title. Description". */

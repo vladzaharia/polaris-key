@@ -5,6 +5,7 @@ import { Callout } from "../../../ui/Callout.js";
 import { Meter } from "../../../ui/charts/Meter.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
+import { cn } from "../../../lib/cn.js";
 import { formatRelative } from "../../../lib/format.js";
 import { t } from "../../../lib/copy.js";
 import type { PortalCloudSync } from "../../api.js";
@@ -159,8 +160,15 @@ function SyncBody({
                   >
                     {/* `anywhere`: a long label with no break point never holds the row wider
                         than a 320 px screen (WCAG 1.4.10). */}
-                    <bdi className="min-w-0 text-fg [overflow-wrap:anywhere]">
-                      {d.label}
+                    {/* A device the Worker does not name (no label, or not signed in to this
+                        person now) is "Another device", quieter than a name. */}
+                    <bdi
+                      className={cn(
+                        "min-w-0 [overflow-wrap:anywhere]",
+                        d.label ? "text-fg" : "text-fg-muted",
+                      )}
+                    >
+                      {d.label ?? t("locker.sync.otherDevice")}
                     </bdi>
                     <time
                       dateTime={new Date(d.lastSyncAt * 1000).toISOString()}

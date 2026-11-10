@@ -549,7 +549,7 @@ describe("Sync Across Devices (PX-18)", () => {
     ).toEqual({ text: "42 MB stored", meter: null, tier: "Free" });
   });
 
-  it("lists the devices that synced most recently first", () => {
+  it("lists the devices that synced most recently first; one the Worker doesn't name has no label", () => {
     expect(
       syncDevices({
         devices: [
@@ -558,6 +558,6 @@ describe("Sync Across Devices (PX-18)", () => {
           { label: "Unnamed device", lastSyncAt: NOW_S - DAY },
         ],
       }).map((d) => d.label),
-    ).toEqual(["Mara's MacBook Pro", "Unnamed device", "Studio PC"]);
+    ).toEqual(["Mara's MacBook Pro", null, "Studio PC"]);
   });
 });

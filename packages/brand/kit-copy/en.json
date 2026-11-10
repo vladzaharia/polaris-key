@@ -8931,10 +8931,25 @@
       "role": "body",
       "note": "Sync Across Devices card on a product page (PX-18): the card failed to load; the Try again button is separate."
     },
+    "locker.sync.otherDevice": {
+      "value": "Another device",
+      "role": "label",
+      "note": "Sync Across Devices card on a product page (PX-18): a device in the Last synced list with no name, or no longer signed in to this account."
+    },
     "locker.sync.download": {
       "value": "Download synced data",
       "role": "button",
       "note": "Sync Across Devices card on a product page (PX-18): downloads a zip of the app's data with every synced file."
+    },
+    "locker.error.exportTooLarge.title": {
+      "value": "Too much synced data",
+      "role": "title",
+      "note": "Download synced data refused: the app's synced data is more than one download file can hold."
+    },
+    "locker.error.exportTooLarge.body": {
+      "value": "It doesn't fit in one download.",
+      "role": "body",
+      "note": "Download synced data refused, after its title: the data is more than one download file can hold."
     },
     "locker.library.justAdded": {
       "value": "Added just now",

@@ -138,6 +138,31 @@ describe("Sync Across Devices on the product page (PX-18.1)", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
+  it("a device the Worker doesn't name (no label, or signed out) reads as Another device", async () => {
+    mockFetch(
+      routes(
+        true,
+        summary({
+          devices: [
+            { label: "Unnamed device", lastSyncAt: NOW_S - 600 },
+            { label: "Studio PC", lastSyncAt: NOW_S - DAY },
+          ],
+        }),
+      ),
+    );
+    renderPortal();
+    await page();
+    const card = await syncCard();
+    const rows = within(await within(card).findByRole("list")).getAllByRole(
+      "listitem",
+    );
+    expect(rows.map((r) => r.querySelector("bdi")?.textContent)).toEqual([
+      "Another device",
+      "Studio PC",
+    ]);
+    expect(card.textContent).not.toMatch(/Unnamed device/);
+  });
+
   it("says nothing about who can read it when the server holds the data readable", async () => {
     mockFetch(routes(true, summary({ encryption: "server" })));
     renderPortal();
@@ -478,21 +503,31 @@ describe("Download synced data and Remove my data from the card (PX-18.2)", () =
     await waitFor(() => expect(files.saved).toHaveLength(1));
   });
 
-  it("a refused download stays under the buttons in plain words", async () => {
-    mockFetch(
-      worker(undefined, { status: 429, body: { error: "rate_limited" } }),
-    );
-    renderPortal();
-    await page();
-    const card = await syncCard();
-    await userEvent.click(
-      await within(card).findByRole("button", { name: "Download synced data" }),
-    );
-    expect((await within(card).findByRole("alert")).textContent).toMatch(
-      /Too many/,
-    );
-    expect(files.saved).toHaveLength(0);
-  });
+  // A refusal stays under the buttons in plain words: too many tries, and an archive too large
+  // for one download (no Try again: it would get the same answer).
+  for (const [status, error, words] of [
+    [429, "rate_limited", /^Too many/],
+    [
+      413,
+      "export_too_large",
+      /^Too much synced data\. It doesn't fit in one download\.$/,
+    ],
+  ] as const)
+    it(`a refused download (${error}) says why under the buttons`, async () => {
+      mockFetch(worker(undefined, { status, body: { error } }));
+      renderPortal();
+      await page();
+      const card = await syncCard();
+      await userEvent.click(
+        await within(card).findByRole("button", {
+          name: "Download synced data",
+        }),
+      );
+      expect((await within(card).findByRole("alert")).textContent).toMatch(
+        words,
+      );
+      expect(files.saved).toHaveLength(0);
+    });
 
   it("Remove my data opens Your data's dialog; the card reads its sync data again and takes focus", async () => {
     mockFetch(worker());
