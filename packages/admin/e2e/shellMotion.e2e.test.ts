@@ -103,8 +103,7 @@ async function open(o: OpenOptions = {}): Promise<Page> {
         : route.fulfill({ json: body });
     }
     if (o.holdChunkMs && /\/assets\/platform-[\w-]+\.js$/.test(url.pathname))
-      // brittle-ok: the hold is the fixture (the chunk is late on purpose), not a wait for a state
-      await new Promise((r) => setTimeout(r, o.holdChunkMs));
+      await hold(o.holdChunkMs);
     const res = await route.fetch();
     const headers = { ...res.headers() };
     if (url.pathname.endsWith(".html"))
@@ -123,6 +122,10 @@ async function open(o: OpenOptions = {}): Promise<Page> {
   await settled(page);
   return page;
 }
+
+// brittle-ok: the chunk is held late on purpose; the delay is the fixture, not a wait for a state
+const hold = (ms: number): Promise<unknown> =>
+  new Promise((r) => setTimeout(r, ms));
 
 const violations = (page: Page): Promise<string[]> =>
   page.evaluate(() => (window as unknown as { __v: string[] }).__v);

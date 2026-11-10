@@ -100,17 +100,6 @@ function probe(dataMotion: boolean): void {
     return el.tagName.toLowerCase();
   };
   const timing = new WeakMap<Element, Map<string, EffectTiming>>();
-  const cssTiming = (el: Element, name: string): EffectTiming | undefined => {
-    const cs = getComputedStyle(el);
-    const i = cs.animationName.split(", ").indexOf(name);
-    if (i < 0) return undefined;
-    const ms = (list: string): number => {
-      const parts = list.split(", ");
-      const v = parts[i % parts.length]!;
-      return v.endsWith("ms") ? parseFloat(v) : parseFloat(v) * 1000;
-    };
-    return { duration: ms(cs.animationDuration), delay: ms(cs.animationDelay) };
-  };
   const record =
     (phase: AnimEvent["phase"], kind: AnimEvent["kind"]) =>
     (e: Event): void => {
@@ -134,13 +123,7 @@ function probe(dataMotion: boolean): void {
       });
       let byKey = timing.get(el);
       if (!byKey) timing.set(el, (byKey = new Map()));
-      // A finished animation has left `getAnimations()` by the time its end event is handled, and
-      // so has one whose start event was held up past its own length on a stalled frame: the
-      // element's computed animation longhands still name its timing.
-      const t =
-        anim?.effect?.getTiming() ??
-        byKey.get(key) ??
-        (kind === "animation" && !pseudo ? cssTiming(el, name) : undefined);
+      const t = anim?.effect?.getTiming() ?? byKey.get(key);
       if (t) byKey.set(key, t);
       w.__m.log.push({
         phase,

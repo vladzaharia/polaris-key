@@ -1,5 +1,4 @@
 import { existsSync, mkdirSync } from "node:fs";
-import { atRest } from "./atRest.js";
 import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -118,7 +117,7 @@ async function open(opts: {
   await page.goto(`${base}/manage.html#/p/djdl/license/licenses`);
   await page.locator("[data-page-title]").first().waitFor({ timeout: 15_000 });
   await page.evaluate(() => document.fonts.ready);
-  await atRest(page);
+  await page.waitForFunction(() => document.getAnimations().length === 0);
   return {
     page,
     expire: () => (expired = true),
