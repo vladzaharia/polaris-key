@@ -1,4 +1,4 @@
-// @pkey-feature ui.kit sync.status
+// @pkey-feature ui.kit
 //
 // The drop-in <CloudSyncStatus /> inside the provider, with no input, shows "Sync stopped." and
 // Sign in to sync once the SDK reads blocked with `account_required` (live, and after a

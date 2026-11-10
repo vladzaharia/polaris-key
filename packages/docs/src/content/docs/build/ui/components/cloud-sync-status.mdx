@@ -36,6 +36,8 @@ A small Cloud Sync status. It shows only while Cloud Sync is on and never implie
 
     **Headless.** `viewOf("CloudSyncStatus", input)` returns the view: its state and the copy keys it shows.
 
+    **Sync stopped.** Inside the provider, with no `input.cloudSync`, the strip follows the SDK: after a `403 account_required` (and after a relaunch) it reads "Sync stopped." with a secondary Sign in to sync. With no `onAction`, that button opens the kit's own sign-in in a sheet over the strip; pass `onAction` to answer it yourself.
+
     **Saves.** Inside the provider the strip follows the saves: moving, waiting for a connection, paused, failed or in conflict. Review on a conflict opens [`<SaveConflict />`](/docs/build/ui/components/save-conflict/); give the strip `bytes` for it. While that screen is open the strip stays on the conflict and is silent, and closing it returns focus to the strip. Every SDK stores `savedAt` and `deviceLabel` with a save, so the cards fill in on their own; `describe` is optional and overrides them. Without `bytes`, Keep this and Keep both cannot run (a development warning says so). Try again calls `onRetry` (or `onAction`): write the save again. With neither, Try again is not offered and the strip reads "Couldn't sync" until the next save succeeds. Cancel leaves the conflict pending and the strip keeps asking.
 
     ```tsx
@@ -72,18 +74,23 @@ A small Cloud Sync status. It shows only while Cloud Sync is on and never implie
 
     **Drop-in.** A host places `PolarisCloudSyncStatus(status)` beside its account row.
 
-    **Styled part.** `PolarisCloudSyncStatus`, given a `PolarisCloudSync` (synced, syncing, offline, conflict, error or signed out) with `onOpen`, `onRetry` and `onSignIn`.
+    **Styled part.** `PolarisCloudSyncStatus`, given a `PolarisCloudSync` (synced, syncing, offline, conflict, error or signed out) with `onOpen`, `onRetry` and `onSignIn`. Without `onSignIn`, Sign in to sync opens the kit's own sign-in, inside `PolarisKeyGate` or `PolarisKeyProvider`.
 
     **Headless.** `PolarisCloudSync` in `polaris-key-ui`.
 
     ```kotlin android
+    import androidx.compose.foundation.layout.Column
     import androidx.compose.runtime.Composable
     import im.plrs.key.ui.PolarisCloudSync
     import im.plrs.key.ui.PolarisCloudSyncStatus
 
     @Composable
-    fun SyncRow(retry: () -> Unit) {
-        PolarisCloudSyncStatus(PolarisCloudSync.Error, onRetry = retry)
+    fun SyncRow(retry: () -> Unit, signIn: () -> Unit) {
+        Column {
+            PolarisCloudSyncStatus(PolarisCloudSync.Error, onRetry = retry)
+            // Sync stopped: a muted label with Sign in to sync. Leave `onSignIn` out for the kit's own sign-in.
+            PolarisCloudSyncStatus(PolarisCloudSync.SignedOut, onSignIn = signIn)
+        }
     }
     ```
 

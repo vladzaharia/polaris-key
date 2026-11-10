@@ -1,4 +1,4 @@
-// @pkey-feature ui.kit sync.status
+// @pkey-feature ui.kit
 //
 // The Cloud Sync "Sync stopped." row in real Chromium: the documented drop-in inside the provider
 // (no input) shows it once the SDK reads blocked with `account_required`; the glyph stays with the

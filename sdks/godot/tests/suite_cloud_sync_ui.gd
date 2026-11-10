@@ -687,7 +687,7 @@ func _kit_strip(t: PKeyTestContext) -> void:
 	_free_node(sdk)
 
 
-## U-52: after `account_required` the strip SHOWS "You're signed out." and "Sign in to sync" (it is not hidden), after
+## U-52: after `account_required` the strip SHOWS "Sync stopped." and "Sign in to sync" (it is not hidden), after
 ## the 403, after the next event and after a relaunch; a plain sign-out still says nothing once it is done.
 func _kit_signed_out(t: PKeyTestContext) -> void:
 	var blocked := {"state": "blocked", "pending": 0, "reason": "account_required"}
@@ -705,15 +705,39 @@ func _kit_signed_out(t: PKeyTestContext) -> void:
 	await _frames()
 	t.check("signed-out strip: live after account_required", strip.state == "error" and not strip.signed_in and strip.visible)
 	t.check("signed-out strip: the words are cloudSync.syncStopped and cloudSync.signIn", \
-			(strip.find_child("Status", true, false) as Label).text == "You're signed out." \
+			(strip.find_child("Status", true, false) as Label).text == "Sync stopped." \
 			and (_buttons(strip)["Action"] as Button).text == "Sign in to sync")
 	sdk.event.emit("cloudSync", {"type": "change", "keys": [], "origin": "remote"})
 	await _frames()
 	t.check("signed-out strip: a later event keeps it (blocked is the machine's state)", strip.state == "error" and not strip.signed_in)
+	# Neutral, not a fault: the info glyph and the muted tint, an action that is a button of at least 44 px.
+	t.check("signed-out strip: the glyph is info, not the warning triangle", strip._glyph.get_meta(&"pkey_glyph") == "info")
+	t.check("signed-out strip: the glyph is tinted muted", strip._glyph.modulate.is_equal_approx(strip.get_theme_color("font_color", "PKeyMuted")))
+	var act: Button = _buttons(strip)["Action"]
+	t.check("signed-out strip: the action is a button at rest, never the game's primary", act.theme_type_variation == &"" and act.get_theme_stylebox("normal") != null)
+	t.check("signed-out strip: the action is at least 44 px tall", act.get_combined_minimum_size().y >= 44.0, str(act.get_combined_minimum_size().y))
+	# One line is the same height with or without the row: nothing moves when it appears.
+	var stopped_h := strip.get_combined_minimum_size().y
+	strip.state = "synced"
+	strip.signed_in = true
+	strip.refresh_view()
+	await _frames()
+	var synced_h := strip.get_combined_minimum_size().y
+	t.check("signed-out strip: the strip keeps its height when the row appears", is_equal_approx(synced_h, stopped_h), "%s %s" % [synced_h, stopped_h])
+	strip.state = "error"
+	strip.signed_in = false
+	strip.refresh_view()
+	await _frames()
+	# With nothing connected, the addon's own sign-in opens over the game; a connected handler keeps it.
+	(_buttons(strip)["Action"] as Button).pressed.emit()
+	await _frames()
+	t.check("signed-out strip: Sign in to sync opens the addon's own sign-in by default", strip._screen is PKeySignInDialog)
+	strip._drop_screen()
 	var signs := [0]
 	strip.sign_in_requested.connect(func() -> void: signs[0] += 1)
 	(_buttons(strip)["Action"] as Button).pressed.emit()
-	t.check("signed-out strip: Sign in to sync is offered to the game", signs[0] == 1)
+	await _frames()
+	t.check("signed-out strip: a connected handler answers it and the strip opens nothing", signs[0] == 1 and strip._screen == null)
 	_free_strip(strip)
 	_free_node(sdk)
 	# A relaunch: the machine reads `local` until Cloud Sync starts; the kit starts it, and the row is there.
@@ -1279,9 +1303,13 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	var retried: Array = []
 	bad.retry_requested.connect(func() -> void: retried.append(1))
 	t.check("strip: a failed transfer says so and Try again is secondary", (bad.find_child("Status", true,
-			false) as Label).text == "Couldn't sync your saves." and bad._action.text == "Try again" and bad._action.theme_type_variation == &"PKeyLink")
-	t.check("strip: Try again lines up with the words", is_equal_approx(bad._action.global_position.x, bad._text.global_position.x),
-			"%s %s" % [bad._action.global_position.x, bad._text.global_position.x])
+			false) as Label).text == "Couldn't sync your saves." and bad._action.text == "Try again" and bad._action.theme_type_variation != &"PKeyPrimary")
+	# On the label's line when it fits, else under the label's start.
+	var same_line: bool = bad._action.global_position.y < bad._text.global_position.y + bad._text.size.y
+	t.check("strip: Try again is on the label's line or lines up under it", \
+			(same_line and bad._action.global_position.x >= bad._text.global_position.x + bad._text.size.x - 1.0) \
+			or (not same_line and is_equal_approx(bad._action.global_position.x, bad._text.global_position.x)),
+			"%s %s" % [bad._action.global_position, bad._text.global_position])
 	bad._action.pressed.emit()
 	t.check("strip: Try again asks the game", retried == [1])
 	_free(bad)

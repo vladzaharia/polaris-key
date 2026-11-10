@@ -52,7 +52,7 @@ A device finds out at its next contact. Its Cloud Sync call answers `403 account
 
 Your app does two things:
 
-- Show a signed-out state, not an error. The kits do: "Sign in to sync" starts your sign-in.
-- Open the event's `signInUrl` if it is not null. The SDK has already checked it is on the Worker's origin; open nothing else.
+- Show "Sync stopped." with Sign in to sync, not an error. The kits do. Their button starts the kit's own sign-in unless your app handles it (`onAction`, `onSignIn`, `sign_in_requested`).
+- With your own UI, open the event's `signInUrl` if it is not null. The SDK has already checked it is on the Worker's origin; open nothing else. A kit needs no `signInUrl`.
 
 The block lifts when the person completes a sign-in in this run. The account the app replays at launch does not lift it. A signed-in person who is removed from another device is blocked the same way, since a device cannot tell a removal from any other cleared binding.
