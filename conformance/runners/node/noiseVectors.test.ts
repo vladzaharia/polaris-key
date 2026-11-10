@@ -25,6 +25,7 @@ import {
   type PeerMode,
 } from "@polaris-key/client-core";
 import { isX25519LowOrder } from "@polaris-key/jws";
+import { registerCpaceSuites, type CpaceSection } from "./cpaceSuites.js";
 
 interface Message {
   index: number;
@@ -124,6 +125,7 @@ interface NoiseVectors {
   handshakes: Handshake[];
   failures: Failure[];
   anchors: { vectors: Anchor[] };
+  cpace: CpaceSection;
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -442,3 +444,5 @@ describe("noise vectors: external anchors", () => {
     );
   }
 });
+
+registerCpaceSuites(V.cpace, { x25519: true });

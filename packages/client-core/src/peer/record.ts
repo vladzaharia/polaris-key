@@ -15,7 +15,7 @@ export const MAX_VP_CHAIN_BYTES = 16_384;
 export const MAX_CHAIN_RECORDS =
   Math.ceil(MAX_PEER_MESSAGE_BYTES / MAX_RECORD_BODY) + 1;
 
-export type RecordMode = "a" | "v" | "p" | "c";
+export type RecordMode = "a" | "v" | "p" | "c" | "q" | "l";
 /**
  * The channel close codes (§15.6, §15.9), the registry's `peer` kind in
  * `conformance/parity/errors.json`: the SDK constants are generated from it, and
@@ -45,6 +45,7 @@ export const RECORD = {
   VOUCH_RESULT: 0x8011,
   CONFIRM: 0x8012,
   CONTACT: 0x0013,
+  LOCAL_LINK: 0x0014,
   SAS_COMMIT: 0x8014,
   SAS_NONCE: 0x8015,
   SAS_REVEAL: 0x8016,
@@ -60,7 +61,7 @@ interface TypeRow {
   modes: readonly RecordMode[];
   bodyLen?: number;
 }
-const ALL: RecordMode[] = ["a", "v", "p", "c"];
+const ALL: RecordMode[] = ["a", "v", "p", "c", "q", "l"];
 export const RECORD_TYPES: readonly TypeRow[] = [
   { from: 0x8001, to: 0x8001, name: "HELLO", modes: ALL },
   { from: 0x0002, to: 0x0002, name: "RING", modes: ["a"] },
@@ -70,15 +71,16 @@ export const RECORD_TYPES: readonly TypeRow[] = [
   { from: 0x0006, to: 0x0006, name: "CANDIDATES", modes: ["a"] },
   { from: 0x8010, to: 0x8010, name: "VOUCH_REQ", modes: ["v"] },
   { from: 0x8011, to: 0x8011, name: "VOUCH_RESULT", modes: ["v"] },
-  { from: 0x8012, to: 0x8012, name: "CONFIRM", modes: ["p"] },
+  { from: 0x8012, to: 0x8012, name: "CONFIRM", modes: ["p", "q"] },
   { from: 0x0013, to: 0x0013, name: "CONTACT", modes: ["p"] },
+  { from: 0x0014, to: 0x0014, name: "LOCAL_LINK", modes: ["q"] },
   { from: 0x8014, to: 0x8014, name: "SAS_COMMIT", modes: ["v", "p"] },
   { from: 0x8015, to: 0x8015, name: "SAS_NONCE", modes: ["v", "p"] },
   { from: 0x8016, to: 0x8016, name: "SAS_REVEAL", modes: ["v", "p"] },
-  { from: 0x0020, to: 0x0025, name: "XFER", modes: ["a", "c"] },
+  { from: 0x0020, to: 0x0025, name: "XFER", modes: ["a", "c", "l"] },
   { from: 0x0030, to: 0x003f, name: "SYNC", modes: ["v"] },
-  { from: 0x0100, to: 0x7fff, name: "APP", modes: ["a", "c"] },
-  { from: 0x8100, to: 0xfffd, name: "APP_CRITICAL", modes: ["a", "c"] },
+  { from: 0x0100, to: 0x7fff, name: "APP", modes: ["a", "c", "l"] },
+  { from: 0x8100, to: 0xfffd, name: "APP_CRITICAL", modes: ["a", "c", "l"] },
   { from: 0x80fe, to: 0x80fe, name: "REKEY", modes: ALL, bodyLen: 0 },
   { from: 0x80ff, to: 0x80ff, name: "CLOSE", modes: ALL },
 ];
