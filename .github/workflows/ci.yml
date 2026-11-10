@@ -113,35 +113,47 @@ jobs:
         run: |
           python -m venv sdks/python/.venv
           sdks/python/.venv/bin/pip install -e "sdks/python[dev,qt]"
-      - run: pnpm build
+      # Every check below runs even when an earlier one failed, so one cycle reports every failure
+      # (tools/ciSteps.test.ts); only a broken build (or a cancelled run) stops them.
+      - id: build
+        run: pnpm build
       # The React bundle budget (SP-47): gzip JS of Provider + LicenseGate and Provider + useLicense
       # over bare React, and no .wasm emitted or inlined. The second step is its negative control:
       # it must fail when a budget is exceeded.
       - run: pnpm --filter @polaris-key/react size
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       - name: Size budget fails when exceeded (negative control)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
           if pnpm --filter @polaris-key/react size --budget provider+use-license=1000; then
             echo "::error::the size budget did not fail when exceeded"; exit 1
           fi
       - run: pnpm typecheck
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       - run: pnpm lint
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       # P0-46.3: copy-paste detection (jscpd, .jscpd.json) against the shrink-only ledger
       # tools/lint/debt/jscpd.json: a new duplicate block fails, a cleared one asks for a re-record.
       - name: Duplicate code (jscpd)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: pnpm lint:dupes
       # Unused files, exports and dependencies (knip), against the shrink-only ledger (P0-46.2).
       - run: pnpm lint:knip
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       # AX-07.5: the agent kit's skills against the repo (check) and against a real Claude Code
       # (validate). The CLI is pinned: the newest @anthropic-ai/claude-code published at least 14
       # days before the pin was set (2.1.296, 2026-10-09); keep in step with PINNED_CLAUDE_CODE in
       # tools/agent-kit-release.ts and with deploy.yml's verify job.
       - run: pnpm skills:check
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       - name: Validate the agent kit
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         env:
           PKEY_CLAUDE_BIN: npx --yes @anthropic-ai/claude-code@2.1.296
         run: pnpm skills:validate
       # P0-30.3: the 800-line budget for packages/worker/src, against tools/lint/debt/size.json.
       - name: Size budget
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: pnpm lint:size
       # Every drift gate, from the generator registry (tools/generators.ts): the signed conformance
       # corpus, the HTTP transcripts, the service table, the SDK constants, the platform inventory,
@@ -151,15 +163,18 @@ jobs:
       # generators page. Each is regenerated in memory; exit 1 on any difference. A new generator is
       # one registry entry and needs no change here.
       - run: pnpm gen --check
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       - run: pnpm --filter @polaris-key/admin build
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       # The docs site is built by `pnpm build` (turbo); assembling proves the worker's
       # single [assets] root composes from both frontends before any deploy does it.
       - run: pnpm --filter @polaris-key/worker assemble
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         env:
           PKEY_ELEMENTS_UNSTAMPED_OK: "1" # never published: the deploy job stamps the tag's version
       # Internal-link integrity across the built docs site (paths + anchors); when a change can
       # reach the site (tools/ci-scope.json lane docs).
-      - if: needs.changes.outputs.docs == 'true'
+      - if: ${{ !cancelled() && steps.build.outcome == 'success' && (needs.changes.outputs.docs == 'true') }}
         run: pnpm --filter @polaris-key/docs check:links
 
   js-worker:
@@ -681,6 +696,8 @@ jobs:
       # finding fails, and so does debt a tool no longer reports. One leg only (D-L5): the ledger is
       # recorded on 3.14, and 3.9 resolves older dependencies whose stubs differ (mypy import-untyped).
       - name: Lint (ruff, mypy)
+        id: lint
+        continue-on-error: true
         if: matrix.python == '3.14' && matrix.os == 'ubuntu-latest'
         working-directory: sdks/python
         run: tools/lint.sh check
@@ -736,6 +753,12 @@ jobs:
       - name: Stop pkey dev (Python live lane)
         if: always() && matrix.live
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang python --job-status "${{ job.status }}"
+      # A failed lint does not skip the tests above it; the job still fails (tools/ciSteps.test.ts).
+      - name: Fail the job when lint failed
+        if: ${{ !cancelled() && steps.lint.outcome == 'failure' }}
+        run: |
+          echo "::error::python lint failed; the steps above still ran"
+          exit 1
 
   # SP-65: a client SDK against an example backend against a live `pkey dev` (the Worker's own
   # router in this runner, loopback only, no secrets, no network beyond the runner). Node: the Node
@@ -891,6 +914,8 @@ jobs:
       # P0-46.6: swift-format lint on the lint-debt ledger (sdks/swift/lint-debt.json, recorded from
       # this step's swift-format-lint artifact of run 40144484635): a new finding fails the step.
       - name: Swift lint (swift-format, lint-debt ledger)
+        id: lint
+        continue-on-error: true
         env:
           PKEY_SWIFT_LINT_RAW: ${{ runner.temp }}/swift-format-lint.txt
         run: sdks/swift/tools/lint.sh check
@@ -966,6 +991,12 @@ jobs:
             xcodebuild -scheme "$scheme" -destination 'generic/platform=macOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
           done
+      # A failed lint does not skip the tests above it; the job still fails (tools/ciSteps.test.ts).
+      - name: Fail the job when lint failed
+        if: ${{ !cancelled() && steps.lint.outcome == 'failure' }}
+        run: |
+          echo "::error::swift lint failed; the steps above still ran"
+          exit 1
 
   # The hosted XCTest project on an iOS simulator. On this 3-vCPU runner a new simulator stays busy
   # for minutes and StoreKit Testing stalled inside that window, so the simulator boots first and
@@ -1170,6 +1201,8 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/next' }}
           cache-cleanup: on-success
       - name: Lint (ktlint and detekt against the lint-debt ledger)
+        id: lint
+        continue-on-error: true
         working-directory: sdks/kotlin
         run: tools/lint.sh check
       - name: Module tests, conformance (JCA and Tink), module boundaries, local publish
@@ -1210,6 +1243,12 @@ jobs:
       - name: Stop pkey dev (Kotlin live lane)
         if: always()
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang kotlin --job-status "${{ job.status }}"
+      # A failed lint does not skip the tests above it; the job still fails (tools/ciSteps.test.ts).
+      - name: Fail the job when lint failed
+        if: ${{ !cancelled() && steps.lint.outcome == 'failure' }}
+        run: |
+          echo "::error::kotlin lint failed; the steps above still ran"
+          exit 1
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -1657,6 +1696,8 @@ jobs:
           export PKEY_TEST_TIMEOUT=900
           if [ -n "${{ matrix.template }}" ]; then export GODOT_TEMPLATE="$D/linux_release.x86_64"; fi
           if [ -n "${{ matrix.suites }}" ]; then export PKEY_TEST_SUITES="${{ matrix.suites }}"; fi
+        id: lint
+        continue-on-error: true
           # The UI matrix legs say which presentation path (scrim 0, opaque page 1, or the engine's
           # own) and which of the path's shards they run (tools/ci-scope.json): the newest engine
           # covers both paths, each path in two jobs.
@@ -1718,6 +1759,12 @@ jobs:
         godot,
         e2e-backend,
         docs-snippets,
+      # A failed lint does not skip the tests above it; the job still fails (tools/ciSteps.test.ts).
+      - name: Fail the job when lint failed
+        if: ${{ !cancelled() && steps.lint.outcome == 'failure' }}
+        run: |
+          echo "::error::gdlint lint failed; the steps above still ran"
+          exit 1
         docs-snippets-swift,
       ]
     runs-on: ubuntu-latest
