@@ -820,7 +820,7 @@ import XCTest
             XCTAssertTrue(d.client.connect.localPairing())
             d.client.connect.noteLocalDiscovery(.error(status: 503, message: "down"), seq: 1_000_000)
             d.client.connect.noteLocalDiscovery(.notFound, seq: 999_999)
-            XCTAssertFalse(d.client.connect.localPairing(), "an error read changed nothing, so the older answer applies")
+            XCTAssertFalse(d.client.connect.localPairing(), "an error read changed nothing: the older answer applies")
             await d.client.close()
         }
 
