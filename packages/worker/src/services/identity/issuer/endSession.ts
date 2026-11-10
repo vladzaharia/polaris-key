@@ -38,10 +38,7 @@ import type { Product } from "../../../core/products.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import { methodNotAllowed } from "../../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
-import {
-  appForPage,
-  brandPageResponse,
-} from "../../../core/brandPage.js";
+import { appForPage, brandPageResponse } from "../../../core/brandPage.js";
 import { escapeHtml } from "../../../platform/html.js";
 import { customerHostname, customerOrigin } from "../../../core/hosts.js";
 import { cardPage } from "../card/http.js";

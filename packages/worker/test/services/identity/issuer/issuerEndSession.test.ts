@@ -183,10 +183,11 @@ describe("end-session", () => {
   });
 
   it("a refusal speaks about signing out, gives one instruction and a way to sign out of Polaris Locker", async () => {
-    for (const params of [
+    const refused: Record<string, string>[] = [
       { client_id: "cl_" + "z".repeat(22) },
       { post_logout_redirect_uri: OUT },
-    ]) {
+    ];
+    for (const params of refused) {
       const { res } = await endSession(params);
       const html = await res.text();
       expect(html).toContain("Couldn&#x27;t finish signing out");

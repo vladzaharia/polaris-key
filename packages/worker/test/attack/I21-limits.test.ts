@@ -58,7 +58,10 @@ describe("revoke (IS-14, IS-2)", () => {
   it("is 60 a minute per confidential client from anywhere", async () => {
     const web = (n: number) =>
       revoke(
-        { ...basic(s.web.clientId, s.secret), "cf-connecting-ip": `198.51.100.${n}` },
+        {
+          ...basic(s.web.clientId, s.secret),
+          "cf-connecting-ip": `198.51.100.${n}`,
+        },
         { token: "pkeyo_" + "A".repeat(43) },
       );
     for (let i = 0; i < 60; i++) expect((await web(i)).status).toBe(200);
