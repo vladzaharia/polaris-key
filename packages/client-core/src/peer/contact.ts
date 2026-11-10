@@ -111,7 +111,7 @@ export interface ContactBody {
 
 export type ContactVerdict = ({ ok: true } & ContactBody) | { ok: false };
 
-const validCats = (cats: readonly unknown[]): cats is string[] =>
+export const validCats = (cats: readonly unknown[]): cats is string[] =>
   cats.length <= MAX_CONTACT_CATS &&
   cats.every((c) => typeof c === "string" && CAT_RE.test(c)) &&
   new Set(cats).size === cats.length;

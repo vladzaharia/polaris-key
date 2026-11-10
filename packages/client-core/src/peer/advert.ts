@@ -82,7 +82,12 @@ export const isInstanceName = (name: string): boolean =>
 
 export type TxtResult =
   | { ok: true; mode: "a" | "v" | "p"; h?: string }
-  | { ok: false; reason: "duplicate" | "version" | "mode" | "tag" };
+  /** A pairing window's advert (§15.12): `h` the product tag, `n` the nameplate. */
+  | { ok: true; mode: "q"; h: string; n: string }
+  | {
+      ok: false;
+      reason: "duplicate" | "version" | "mode" | "tag" | "nameplate";
+    };
 
 /** An entry splits at its first `=`; one without `=` or with an empty key is ignored; a repeated key refuses. */
 export function parseTxt(entries: readonly string[]): TxtResult {
@@ -96,11 +101,19 @@ export function parseTxt(entries: readonly string[]): TxtResult {
   }
   if (kv.get("v") !== "1") return { ok: false, reason: "version" };
   const m = kv.get("m");
-  if (m !== "a" && m !== "v" && m !== "p") return { ok: false, reason: "mode" };
+  if (m !== "a" && m !== "v" && m !== "p" && m !== "q")
+    return { ok: false, reason: "mode" };
   if (m === "a") return { ok: true, mode: m };
   const h = kv.get("h");
   if (h === undefined || !/^[0-9a-f]{16}$/.test(h))
     return { ok: false, reason: "tag" };
+  if (m === "q") {
+    // `n` is read for `q` only: exactly two ASCII digits (§15.12).
+    const n = kv.get("n");
+    if (n === undefined || !/^[0-9]{2}$/.test(n))
+      return { ok: false, reason: "nameplate" };
+    return { ok: true, mode: m, h, n };
+  }
   return { ok: true, mode: m, h };
 }
 

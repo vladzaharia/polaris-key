@@ -14,6 +14,7 @@
 // A row an engine cannot run fails; it is never skipped (notes/A7 §5).
 
 import { describe, expect, it } from "vitest";
+import { registerLocalSuites, type LocalSection } from "./localSuites.js";
 import { base64UrlEncodeBytes } from "@polaris-key/jws";
 import {
   HandshakeLimiter,
@@ -1113,35 +1114,11 @@ function xferRun(row: any): void {
 }
 
 /**
- * `local` (CC-29.2, CC-29.3): the account-free local-pairing rows exist before the machines that
- * run them. CC-29.5 (client-core `peer/local.ts`) replaces this with real suites. Until then the
- * section is named here, so the coverage check below still fails on any other uncovered section.
+ * `local` (connect.localLinks): the account-free local-pairing rows, in `localSuites.ts`. Its
+ * sections that need a session (`exchange`, `pin`, `trialOrder`, `records`) are CC-29.5b.
  */
-function localPending(m: PeerMatrix): void {
-  describe("peer-matrix local (pending CC-29.5)", () => {
-    it.todo("local rows run once client-core peer/local.ts exists (CC-29.5)");
-    it("the section is present and has every sub-section", () => {
-      const x = (m as Record<string, unknown>).local as Record<string, unknown>;
-      expect(Object.keys(x)).toEqual(
-        expect.arrayContaining([
-          "codes",
-          "qr",
-          "adverts",
-          "txt",
-          "body",
-          "secrets",
-          "handshakePayloads",
-          "exchange",
-          "pin",
-          "trialOrder",
-          "window",
-          "join",
-          "gate",
-          "records",
-        ]),
-      );
-    });
-  });
+function local(m: PeerMatrix): void {
+  registerLocalSuites((m as unknown as { local: LocalSection }).local);
 }
 
 /** Keys of the matrix that are not sections. */
@@ -1164,7 +1141,7 @@ const SUITES: {
   { sections: ["vouch"], run: vouch },
   { sections: ["contact"], run: contact },
   { sections: ["xfer"], run: xferRows },
-  { sections: ["local"], run: localPending },
+  { sections: ["local"], run: local },
 ];
 
 /** Register every suite whose sections the matrix has, and fail on a section no suite covers. */
