@@ -26768,7 +26768,7 @@ components:
           type: array
           items:
             type: object
-            required: [platform, arches, updaters, state, checks, failures]
+            required: [platform, arches, updaters, state, devices]
             properties:
               platform: { type: string }
               arches: { type: array, items: { type: string } }
@@ -26791,8 +26791,12 @@ components:
               state:
                 type: string
                 enum: [verified, failing, not_seen, unavailable]
-              checks: { type: integer, minimum: 0 }
-              failures: { type: integer, minimum: 0 }
+              devices:
+                type: object
+                required: [reported, reverted]
+                properties:
+                  reported: { type: integer, minimum: 0 }
+                  reverted: { type: integer, minimum: 0 }
     AdminChannel:
       type: object
       required:

@@ -30,6 +30,7 @@ import { r } from "../../../routes.js";
 import { useUpdaters } from "../../distribution/data.js";
 import { publicUrl } from "../../distribution/model/format.js";
 import { useReleaseStore } from "../../release/data.js";
+import { channelNames } from "./feedEndpoints.js";
 import {
   PLATFORM_LABEL,
   renderUpdaterSetup,
@@ -53,13 +54,7 @@ export function UpdatesPage({ slug }: { slug: string }): React.ReactElement {
   const updaters = useUpdaters(slug);
   const store = useReleaseStore(slug);
   useLoadingAnnouncement("updaters", updaters.isPending);
-  const channels = React.useMemo(() => {
-    const set = new Set<string>(["stable"]);
-    for (const c of store.data?.channels ?? []) set.add(c.channel);
-    return [...set].sort((a, b) =>
-      a === "stable" ? -1 : b === "stable" ? 1 : a.localeCompare(b),
-    );
-  }, [store.data]);
+  const channels = React.useMemo(() => channelNames(store.data), [store.data]);
   const [channel, setChannel] = React.useState("stable");
   const current = channels.includes(channel) ? channel : "stable";
   const platforms = updaters.data?.platforms ?? [];
@@ -151,9 +146,9 @@ function footOf(p: UpdaterPlatform): string {
     `${formatCount(n)} ${n === 1 ? "device" : "devices"}`;
   switch (p.state) {
     case "verified":
-      return `${devices(p.checks)} reported an update.`;
+      return `${devices(p.devices.reported)} reported an update.`;
     case "failing":
-      return `${devices(p.failures)} reverted an update or rolled a boot back.`;
+      return `${devices(p.devices.reverted)} reverted an update or rolled a boot back.`;
     case "unavailable":
       return "The update counters could not be read.";
     default:

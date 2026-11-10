@@ -56,14 +56,12 @@ const PLATFORM_UPDATERS: Readonly<
 export type UpdaterState = "verified" | "failing" | "not_seen" | "unavailable";
 
 export interface UpdaterPlatform {
-  platform: string;
-  arches: string[];
-  updaters: UpdaterId[];
   state: UpdaterState;
-  /** Devices that reported an update outcome on a matching outlet. */
-  checks: number;
-  /** Devices that reverted an update or rolled a boot back. */
-  failures: number;
+  platform: string;
+  updaters: UpdaterId[];
+  arches: string[];
+  /** Distinct devices: those that reported an outcome on a matching outlet, and those that reverted. */
+  devices: { reported: number; reverted: number };
 }
 
 export interface UpdatersView {
@@ -99,8 +97,7 @@ export function updatersView(
           : n > 0
             ? "verified"
             : "not_seen",
-      checks: n,
-      failures,
+      devices: { reported: n, reverted: failures },
     });
   }
   return { platforms: out };

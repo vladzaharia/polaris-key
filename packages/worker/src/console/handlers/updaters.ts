@@ -6,16 +6,10 @@
  */
 
 import { adminJson, err, notFound } from "../../core/console/respond.js";
-import { loadProductPublic } from "../../core/products.js";
-import { serviceContext } from "../../core/registry.js";
-import { SERVICES } from "../../mount.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
-import {
-  liveBuilds,
-  productPlatforms,
-  updateChecks,
-} from "../../services/distribution/public.js";
+import { updateChecks } from "../../services/distribution/public.js";
+import { hostFacts } from "./channels.js";
 import type { AdminCtx } from "../routes.js";
 import { updatersView, type UpdatersView } from "../lib/updaterModel.js";
 
@@ -25,26 +19,10 @@ export async function updatersRead(
   slug: string,
   now: number,
 ): Promise<UpdatersView | null> {
-  const product = await loadProductPublic(db, slug);
-  if (!product) return null;
-  const hooks = serviceContext("host", SERVICES, product.services, {
-    env,
-    db,
-    product,
-    now,
-  }).hooks;
-  const builds = await liveBuilds(hooks);
-  const facts = await productPlatforms({
-    db,
-    product: slug,
-    hooks,
-    now,
-    builds,
-  });
-  return updatersView(
-    facts.platforms,
-    await updateChecks(env, slug, hooks, now),
-  );
+  const read = await hostFacts(env, db, slug, now);
+  if (!read) return null;
+  const checks = await updateChecks(env, slug, read.hooks, now);
+  return updatersView(read.facts.platforms, checks);
 }
 
 export async function handleUpdaters(c: AdminCtx): Promise<Response> {

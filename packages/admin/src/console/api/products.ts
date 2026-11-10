@@ -164,13 +164,9 @@ export type UpdaterState = "verified" | "failing" | "not_seen" | "unavailable";
 export interface UpdaterPlatform {
   platform: string;
   arches: string[];
-  /** The updaters the platform can use; the first is the usual one. */
   updaters: UpdaterId[];
   state: UpdaterState;
-  /** Devices that reported an update outcome on an outlet the platform's updaters use. */
-  checks: number;
-  /** Devices that reverted an update or rolled a boot back. */
-  failures: number;
+  devices: { reported: number; reverted: number };
 }
 export interface UpdatersView {
   product: string;

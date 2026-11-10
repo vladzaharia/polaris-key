@@ -3,12 +3,12 @@
  * state; the loading, empty, error, partial and failing states.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
-import { resetConsole } from "./consoleHarness.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiError, bootWith, P } from "./distributionFixture.js";
+import { resetConsole } from "./consoleHarness.js";
 import { partialLine } from "../src/console/sections/update/pages/UpdatesPage.js";
 import { renderUpdaterSetup } from "../src/console/sections/update/model/updaterSetup.js";
 
@@ -23,16 +23,14 @@ const mac = {
   arches: ["arm64"],
   updaters: ["sparkle", "velopack", "godot", "signed-feed"],
   state: "verified",
-  checks: 64,
-  failures: 0,
+  devices: { reported: 64, reverted: 0 },
 };
 const win = {
   platform: "windows",
   arches: ["x86_64"],
   updaters: ["winsparkle", "velopack", "app-installer", "godot", "signed-feed"],
   state: "not_seen",
-  checks: 0,
-  failures: 0,
+  devices: { reported: 0, reverted: 0 },
 };
 const view = (...platforms: unknown[]) => ({
   product: "djdl",
@@ -84,7 +82,13 @@ describe("Update → Updates", () => {
   });
 
   it("a failing card stays with what to do, and links to update health", async () => {
-    bootWith(HASH, { [KEY]: view({ ...mac, state: "failing", failures: 12 }) });
+    bootWith(HASH, {
+      [KEY]: view({
+        ...mac,
+        state: "failing",
+        devices: { reported: 5, reverted: 12 },
+      }),
+    });
     const card = await screen.findByRole("region", { name: "macOS" });
     expect(within(card).getByText("Updates reverted")).toBeTruthy();
     expect(
@@ -99,7 +103,7 @@ describe("Update → Updates", () => {
 
   it("says so when the counters cannot be read, not 'not seen'", async () => {
     bootWith(HASH, {
-      [KEY]: view({ ...mac, state: "unavailable", checks: 0 }),
+      [KEY]: view({ ...mac, state: "unavailable" }),
     });
     const card = await screen.findByRole("region", { name: "macOS" });
     expect(within(card).getByText("No data")).toBeTruthy();
