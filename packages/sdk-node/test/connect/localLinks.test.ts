@@ -452,14 +452,19 @@ describe("the gate and the cap", () => {
   });
 });
 
+/** Pair the two devices of a world and answer the path of the first one's local-link record. */
+async function pairedFile(w: World): Promise<string> {
+  const s = await show(w.a, w.net, ["notes"]);
+  await pairUp(w, s, { code: s.codes[0]!.code });
+  const state = (w.a as unknown as { core: { dirs: { state: string } } }).core
+    .dirs.state;
+  return join(state, LOCAL_STATE_FILE);
+}
+
 describe("the store", () => {
   it("is its own file, outlives the Connect record, and names the schema", async () => {
     const w = await world();
-    const s = await show(w.a, w.net, ["notes"]);
-    await pairUp(w, s, { code: s.codes[0]!.code });
-    const state = (w.a as unknown as { core: { dirs: { state: string } } }).core
-      .dirs.state;
-    const rec = JSON.parse(readFileSync(join(state, LOCAL_STATE_FILE), "utf8"));
+    const rec = JSON.parse(readFileSync(await pairedFile(w), "utf8"));
     expect(rec.schema).toBe("pkey.connect.local.v1");
     expect(rec.product).toBe(PRODUCT);
     expect(rec.links).toHaveLength(1);
@@ -494,11 +499,7 @@ describe("the store", () => {
 
   it("a record with two rows of one id is unusable and is not replaced", async () => {
     const w = await world();
-    const s = await show(w.a, w.net, ["notes"]);
-    await pairUp(w, s, { code: s.codes[0]!.code });
-    const state = (w.a as unknown as { core: { dirs: { state: string } } }).core
-      .dirs.state;
-    const file = join(state, LOCAL_STATE_FILE);
+    const file = await pairedFile(w);
     const rec = JSON.parse(readFileSync(file, "utf8"));
     rec.links = [...rec.links, ...rec.links];
     const raw = JSON.stringify(rec);
