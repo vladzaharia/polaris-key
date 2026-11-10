@@ -28,14 +28,17 @@ export function RequestHeader({
   const art = m.verified ? (view.client.artUrl ?? null) : null;
   // No art: the passport's pane centres the icon, large (96 px), as the Worker's page does.
   const big = art ? undefined : "passport:size-24 passport:rounded-3xl";
-  const icon =
-    m.verified && view.client.iconUrl ? (
+  const reg = view.client.registered;
+  // A registered client shows its own icon (never the product's); the product rides as a badge.
+  const iconSrc = reg ? reg.iconUrl : view.client.iconUrl;
+  const mark =
+    m.verified && iconSrc ? (
       <ProductIcon
         slug={m.product}
         name={m.name}
         tint={null}
         size={56}
-        src={view.client.iconUrl}
+        src={iconSrc}
         className={big}
       />
     ) : (
@@ -54,6 +57,22 @@ export function RequestHeader({
         )}
       </span>
     );
+  const icon = reg ? (
+    <span className="relative inline-flex" data-client-icon>
+      {mark}
+      <span className="absolute -bottom-1.5 -end-1.5 rounded-lg bg-surface p-0.5 ring-1 ring-border">
+        <ProductIcon
+          slug={m.product}
+          name={view.client.appName}
+          tint={null}
+          size={24}
+          src={view.client.iconUrl}
+        />
+      </span>
+    </span>
+  ) : (
+    mark
+  );
   if (onRamp)
     return (
       <CardHeader
@@ -75,6 +94,7 @@ export function RequestHeader({
       where={m.where}
       code={m.code}
       attach={view.purpose === "attach"}
+      via={m.via}
     />
   );
 }

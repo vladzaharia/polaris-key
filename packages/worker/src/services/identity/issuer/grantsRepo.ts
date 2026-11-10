@@ -84,14 +84,13 @@ export async function listAccountGrants(
   return rows.map(toGrant);
 }
 
-/** Write the decision. `granted_at` is kept across a change; `changed_at` moves. */
-export async function putClientGrant(
-  db: Db,
+/** The upsert of a decision, as a statement for a batch. `granted_at` is kept across a change. */
+export function clientGrantStatement(
   g: Omit<ClientGrant, "grantedAt" | "changedAt" | "lastUsedAt">,
   now: number,
-): Promise<void> {
-  await db.run(
-    `INSERT INTO identity_client_grants
+): DbStatement {
+  return {
+    sql: `INSERT INTO identity_client_grants
        (account_id, client_id, product, claims_granted_json, claims_declined_json, scopes_json,
         scope_hash, granted_at, changed_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -101,16 +100,28 @@ export async function putClientGrant(
        scopes_json = excluded.scopes_json,
        scope_hash = excluded.scope_hash,
        changed_at = excluded.changed_at`,
-    g.accountId,
-    g.clientId,
-    g.product,
-    JSON.stringify(g.claimsGranted),
-    JSON.stringify(g.claimsDeclined),
-    JSON.stringify(g.scopes),
-    g.scopeHash,
-    now,
-    now,
-  );
+    params: [
+      g.accountId,
+      g.clientId,
+      g.product,
+      JSON.stringify(g.claimsGranted),
+      JSON.stringify(g.claimsDeclined),
+      JSON.stringify(g.scopes),
+      g.scopeHash,
+      now,
+      now,
+    ],
+  };
+}
+
+/** Write the decision. `granted_at` is kept across a change; `changed_at` moves. */
+export async function putClientGrant(
+  db: Db,
+  g: Omit<ClientGrant, "grantedAt" | "changedAt" | "lastUsedAt">,
+  now: number,
+): Promise<void> {
+  const s = clientGrantStatement(g, now);
+  await db.run(s.sql, ...s.params);
 }
 
 export async function touchClientGrant(

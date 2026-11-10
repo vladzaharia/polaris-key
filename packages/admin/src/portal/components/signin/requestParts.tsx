@@ -7,7 +7,12 @@ import { portalErrorCopy } from "../../errors.js";
 import { cn } from "../../../lib/cn.js";
 import { t } from "../../../lib/copy.js";
 import { Avatar } from "../Avatar.js";
-import { AUTH_LINK_CLASS, AUTH_PRIMARY_CLASS } from "../../../ui/auth/parts.js";
+import {
+  AUTH_LINK_CLASS,
+  AUTH_METHOD_CLASS,
+  AUTH_PRIMARY_CLASS,
+} from "../../../ui/auth/parts.js";
+import { firstName } from "../../model/signInRequest.js";
 
 /**
  * The pieces the app card's steps share (PX-14a; SIGN-IN.md §3.6 to §3.9): the person row, a
@@ -298,5 +303,75 @@ export function DeviceChoiceBody({
         <span className="block text-sm/5 text-fg-muted">{meta}</span>
       </span>
     </span>
+  );
+}
+
+/** The consent steps' top: who is signing in, and "Continue to <App> as <first name>?". */
+export function ConsentHead({
+  person,
+  app,
+  onNotYou,
+}: {
+  person: {
+    displayName: string | null;
+    email: string | null;
+    avatarUrl: string | null;
+  };
+  app: string;
+  onNotYou: () => void;
+}): React.ReactElement {
+  return (
+    <>
+      <PersonRow
+        name={person.displayName}
+        email={person.email}
+        picture={person.avatarUrl}
+        onNotYou={onNotYou}
+      />
+      <AuthTitle>
+        {t("signin.consent.title", {
+          app,
+          name: firstName(person.displayName, person.email),
+        })}
+      </AuthTitle>
+    </>
+  );
+}
+
+/** The consent steps' pair: **Continue to <App>** and **Don't allow**, the same width and height. */
+export function ConsentActions({
+  app,
+  busy,
+  onContinue,
+  onDeny,
+}: {
+  app: string;
+  busy: "continue" | "deny" | null;
+  onContinue: () => void;
+  onDeny: () => void;
+}): React.ReactElement {
+  return (
+    <div className="space-y-3">
+      <Button
+        variant="neutral"
+        size="xl"
+        className={PRIMARY_CLASS}
+        loading={busy === "continue"}
+        aria-disabled={busy === "deny" || undefined}
+        onClick={onContinue}
+      >
+        {t("signin.consent.continue", { app })}
+      </Button>
+      <Button
+        variant="outline"
+        size="xl"
+        className={AUTH_METHOD_CLASS}
+        loading={busy === "deny"}
+        aria-disabled={busy === "continue" || undefined}
+        onClick={onDeny}
+      >
+        {t("signin.consent.deny")}
+      </Button>
+    </div>
   );
 }

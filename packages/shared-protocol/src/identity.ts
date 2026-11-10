@@ -296,6 +296,11 @@ export interface AppConsentView {
   firstTime: boolean;
   /** A consent is recorded, under a different `scopeHash`. */
   changed: boolean;
+  /**
+   * I-21.8 (§12.13.3 rule 2), a registered client's request only: Continue would be refused until
+   * the person signs in again (`prompt=login`, or a sign-in older than `max_age`). Absent otherwise.
+   */
+  reauth?: true;
 }
 
 /**

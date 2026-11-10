@@ -36,6 +36,7 @@ import {
 import { AuthLockup } from "../Lockup.js";
 import { LegalNav } from "./LegalNav.js";
 import { ConsentStep } from "./ConsentStep.js";
+import { ClientConsentStep, ReauthStep } from "./ClientConsentStep.js";
 import { LicenseChoiceStep } from "./LicenseChoiceStep.js";
 import { ReplaceDeviceStep } from "./ReplaceDeviceStep.js";
 import { ReplacedDone } from "./ReplacedDone.js";
@@ -77,8 +78,11 @@ export function RequestFlow({
   const qc = useQueryClient();
   const req = useSignInRequest(handle);
   const view = req.data;
+  // A registered client binds no device or licence: no choice, no Replace (V5 §12.13.3 rule 4).
+  const registered = view?.client.registered !== undefined;
   const cardChooses =
     view !== undefined &&
+    !registered &&
     view.client.services.license &&
     view.licenseChoice !== "app";
   const licenses = useSignInLicenses(handle, cardChooses);
@@ -159,11 +163,19 @@ export function RequestFlow({
     }
   };
 
-  const proceed = async (): Promise<void> => {
+  // The client asked for a fresh sign-in: end this session so the card signs the person in again.
+  const signInAgain = async (): Promise<void> => {
+    setBusy("continue");
+    await notYou();
+    setBusy(null);
+  };
+
+  const proceed = async (claims?: string[]): Promise<void> => {
     if (busy) return;
     setBusy("continue");
     setError(null);
     const body: SignInContinueRequest = {};
+    if (registered && claims) body.consent = { claims };
     if (chosen?.kind === "license")
       body.choice = {
         kind: "license",
@@ -183,7 +195,7 @@ export function RequestFlow({
         return;
       }
       // A native app gets the ReturnStep (§3.10); a web app's Continue is the redirect itself.
-      if (view?.client.kind === "native") {
+      if (view?.client.kind === "native" && !registered) {
         setBusy(null);
         go({
           kind: "return",
@@ -217,6 +229,11 @@ export function RequestFlow({
         go({ kind: "choice" }, "back");
         return;
       }
+      if (err instanceof HttpError && err.code === "reauth_required") {
+        // The session is too old for this request: the consent view now says so, and shows the step.
+        await qc.invalidateQueries({ queryKey: qk.signinConsent(handle) });
+        return;
+      }
       setError(refusalText(err));
     }
   };
@@ -236,7 +253,7 @@ export function RequestFlow({
         ? t("signin.replace.heading")
         : current?.kind === "consent"
           ? t("signin.consent.title", {
-              app: view?.client.appName ?? "",
+              app: view?.client.registered?.name ?? view?.client.appName ?? "",
               name: consent.data
                 ? firstName(
                     consent.data.person.displayName,
@@ -342,6 +359,34 @@ export function RequestFlow({
           setChosen({ kind: "license", row: current.row, replace: device });
           go({ kind: "consent" });
         }}
+      />
+    );
+  } else if (current?.kind === "consent" && consent.data?.reauth) {
+    key = "reauth";
+    body = (
+      <ReauthStep
+        app={view.client.registered?.name ?? view.client.appName}
+        busy={busy === "continue"}
+        onSignInAgain={() => void signInAgain()}
+        onDeny={() => void deny()}
+      />
+    );
+  } else if (
+    current?.kind === "consent" &&
+    consent.data &&
+    view.client.registered
+  ) {
+    key = "consent";
+    body = (
+      <ClientConsentStep
+        view={consent.data}
+        app={view.client.registered.name}
+        product={view.client.appName}
+        busy={busy}
+        error={error}
+        onContinue={(claims) => void proceed(claims)}
+        onDeny={() => void deny()}
+        onNotYou={() => void notYou()}
       />
     );
   } else if (current?.kind === "consent" && consent.data) {

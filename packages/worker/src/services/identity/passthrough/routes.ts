@@ -39,6 +39,10 @@ import { licenseChoiceView, replaceView } from "./choice.js";
 import { clientRecordFor, cloudSyncOn } from "./client.js";
 import { readSignInRequest } from "./request.js";
 import { getActiveClient } from "../issuer/clientsRepo.js";
+import { registeredConsentView } from "../issuer/consentView.js";
+import { claimsOfScopes, lineScopes } from "../issuer/coverage.js";
+import { getClientGrant } from "../issuer/grantsRepo.js";
+import { needsFreshSignIn, requestCreatedAt } from "../issuer/reauth.js";
 import { registeredClientRecord } from "../issuer/registeredView.js";
 import { issuerServed } from "../issuer/served.js";
 
@@ -236,12 +240,49 @@ export async function signInConsentView(
   now: number,
   /** The settings registry (ST-04), for the product's entitlement model; absent reads `legacy`. */
   settings?: SettingsRegistry,
+  /** The session's signed sign-in time, to tell a registered client's request it must sign in again. */
+  authTime: number = now,
 ): Promise<Reply> {
   const live = await liveRequest(env, db, req, handle, now);
   if (!live) return { status: 404 };
   const { product } = live;
   const account = await getPortalAccount(db, accountId, now);
   if (!account) return { status: 404 };
+  const authz = live.record.authz;
+  if (authz?.registered) {
+    // I-21.8 (§12.13.3): a registered client's consent: claims, entitlements, offline; no licence.
+    const client = (await issuerServed(db, product.slug))
+      ? await getActiveClient(db, product.slug, authz.clientId)
+      : null;
+    if (!client) return { status: 404 };
+    const lines = lineScopes(authz.scope);
+    return {
+      status: 200,
+      body: registeredConsentView({
+        handle,
+        person: {
+          displayName: account.display_name,
+          email: account.primary_email,
+          avatarUrl: avatarUrl(account.avatar_key ?? null),
+        },
+        client,
+        scope: authz.scope,
+        scopeHash: await consentScope(claimsOfScopes(authz.scope), lines),
+        grant: await getClientGrant(
+          db,
+          product.slug,
+          account.id,
+          client.clientId,
+        ),
+        reauth: needsFreshSignIn(
+          authz.registered,
+          authTime,
+          now,
+          requestCreatedAt(live.record.expiresAt),
+        ),
+      }),
+    };
+  }
 
   const { items, scopeHash, firstTime, changed } = await consentState(
     env,

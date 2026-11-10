@@ -56,3 +56,22 @@ export function grantCovers(
   }
   return lineScopes(scopes).every((s) => grant.scopes.includes(s));
 }
+
+/**
+ * The claims a Continue body grants: `consent.claims` read against `reached` (what the request can
+ * deliver). Absent `consent` grants all of `reached`. `null` when it is malformed or names something
+ * `reached` does not hold.
+ */
+export function claimsFromConsent<T extends string>(
+  body: Record<string, unknown>,
+  reached: readonly T[],
+): T[] | null {
+  if (body.consent === undefined) return [...reached];
+  const claims = (body.consent as { claims?: unknown } | null)?.claims;
+  if (
+    !Array.isArray(claims) ||
+    !claims.every((c) => typeof c === "string" && reached.some((r) => r === c))
+  )
+    return null;
+  return reached.filter((c) => claims.includes(c));
+}

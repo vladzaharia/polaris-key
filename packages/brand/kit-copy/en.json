@@ -2803,6 +2803,76 @@
       "role": "body",
       "note": "License key step (SIGN-IN.md §3.9), bold lead of the no-entries callout when Continue without an account was refused key_entry_limit (LK-SKIP.5)."
     },
+    "locker.issuer.header": {
+      "value": "{app} wants you to sign in with your {product} account",
+      "role": "body",
+      "note": "Header of the card when a registered client (a website or app that is not the product's own) asks (Sign in with <Product>, I-21.8). Arguments: {app} = the client's name (never translated); {product} = the product's name (never translated)."
+    },
+    "locker.issuer.returnsTo": {
+      "value": "Returns you to {host}",
+      "role": "label",
+      "note": "Where line of the card for a registered client with an https redirect. Arguments: {host} = the host the person returns to (never translated)."
+    },
+    "locker.issuer.returnsDevice": {
+      "value": "Returns you to an app on this device",
+      "role": "label",
+      "note": "Where line of the card for a registered client whose redirect returns to an app on the same device (loopback or private-use scheme)."
+    },
+    "locker.issuer.claim.name": {
+      "value": "Your screen name",
+      "role": "body",
+      "note": "Consent line for a registered client: the profile name."
+    },
+    "locker.issuer.claim.picture": {
+      "value": "Your picture",
+      "role": "body",
+      "note": "Consent line for a registered client: the profile picture."
+    },
+    "locker.issuer.claim.email": {
+      "value": "Your email address",
+      "role": "body",
+      "note": "Consent line for a registered client: the primary email."
+    },
+    "locker.issuer.entitlements": {
+      "value": "Which {product} features you have",
+      "role": "body",
+      "note": "Consent line for a registered client. Arguments: {product} = the product's name (never translated)."
+    },
+    "locker.issuer.offline": {
+      "value": "Staying signed in to {app} while you're away",
+      "role": "body",
+      "note": "Consent line for a registered client that asked for a refresh token. Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.issuer.required": {
+      "value": "Required",
+      "role": "label",
+      "note": "Tag on a consent line the person cannot switch off for a registered client."
+    },
+    "locker.issuer.sameForAll": {
+      "value": "What you share is the same for every app you sign in to with {product}.",
+      "role": "body",
+      "note": "Note under the consent lines for a registered client. Arguments: {product} = the product's name (never translated)."
+    },
+    "locker.issuer.reauth.title": {
+      "value": "Sign in again",
+      "role": "title",
+      "note": "Title when a registered client asked the person to sign in again before continuing."
+    },
+    "locker.issuer.reauth.body": {
+      "value": "{app} asked you to sign in again before you continue.",
+      "role": "body",
+      "note": "Body of the sign in again step. Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.issuer.reauth.button": {
+      "value": "Sign in again",
+      "role": "button",
+      "note": "Button of the sign in again step."
+    },
+    "locker.issuer.gets": {
+      "value": "{app} gets",
+      "role": "body",
+      "note": "Heading of the consent lines for a registered client. Arguments: {app} = the client's name (never translated)."
+    },
     "signin.key.skip": {
       "value": "Continue without an account",
       "role": "button",

@@ -307,6 +307,8 @@ export type CardHeaderProps =
       code?: string | null;
       /** `purpose: "attach"`: the headline reads "Add <App> to your account". */
       attach?: boolean;
+      /** A registered client's request: the headline names the product the person signs in with. */
+      via?: string | null;
     };
 
 const WHERE_GLYPH = {
@@ -441,7 +443,8 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
       </div>
     );
   }
-  const { variant, icon, name, developer, where, code, art, attach } = props;
+  const { variant, icon, name, developer, where, code, art, attach, via } =
+    props;
   return (
     <div data-header={variant} className={hasArt ? OUTER : OUTER_NO_ART}>
       <PaneArt src={art} />
@@ -456,9 +459,13 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
               )}
             >
               {tParts(
-                attach ? "signin.attach.header" : "signin.header.app",
-                [attach ? "product" : "app"],
-                {},
+                via
+                  ? "locker.issuer.header"
+                  : attach
+                    ? "signin.attach.header"
+                    : "signin.header.app",
+                [attach && !via ? "product" : "app"],
+                via ? { product: via } : {},
               ).map((part, i) =>
                 typeof part === "string" ? (
                   part

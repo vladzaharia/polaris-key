@@ -41,13 +41,16 @@ import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import { isSameOriginRequest } from "../../../core/accounts/browserRequestGuard.js";
 import { cardJson, readJsonObject } from "../card/http.js";
 import { getPortalAccount } from "../portal/repo.js";
-import { stmtRecordTermsAcceptance, termsAccepted } from "../accounts/terms.js";
-import { productTerms } from "../productTerms.js";
+import { stmtRecordTermsAcceptance } from "../accounts/terms.js";
+import { termsGate } from "../productTerms.js";
 import { issuerOf } from "./authorize.js";
 import { offerFor, replaceView, type ChoiceCx } from "./choice.js";
 import { mintAccountLicense } from "./mint.js";
 import type { LicenseChoiceInput } from "@polaris-key/protocol/identity";
 import { issueAuthorizationCode } from "./code.js";
+import { withQuery } from "../issuer/redirect.js";
+import { continueRegistered } from "../issuer/continue.js";
+import { claimsFromConsent } from "../issuer/coverage.js";
 import { takeSignInRequest } from "./request.js";
 import { takeNativeOnce, withLoopbackRequest } from "./pushedStore.js";
 import { askedScopeHash, liveRequest } from "./routes.js";
@@ -161,6 +164,14 @@ export async function handleSignInCancel(
   if (!record?.authz) return NOT_FOUND();
   if (!(await takeNativeOnce(env, record, now))) return NOT_FOUND();
   const { authz } = record;
+  if (authz.registered)
+    return cardJson({
+      redirect: withQuery(authz.redirectUri, {
+        error: ACCESS_DENIED,
+        ...(authz.state !== null ? { state: authz.state } : {}),
+        iss: issuerOf(req, { slug: record.product }),
+      }),
+    });
   return cardJson({
     redirect: withLoopbackRequest(
       target(
@@ -184,15 +195,14 @@ export async function handleSignInContinue(
   handle: string,
   now: number,
   settings?: SettingsRegistry,
+  /** The session's signed sign-in time, for a registered client's `auth_time` and fresh sign-in. */
+  authTime: number = now,
 ): Promise<Response> {
   const body = await readJsonObject(req);
   if (body === null) return refuse(400, ErrorCode.InvalidRequest);
   const live = await liveRequest(env, db, req, handle, now);
   if (!live || !live.record.authz) return NOT_FOUND();
   const { authz } = live.record;
-  // A registered client's Continue (consent, the client grant, its code) is I-21.8's; the own
-  // client's Continue never serves it, so no `account_product_grants` row is written for it.
-  if (authz.registered) return NOT_FOUND();
   const product = await loadProductPublic(db, live.record.product);
   if (!product) return NOT_FOUND();
   if (
@@ -210,32 +220,34 @@ export async function handleSignInContinue(
   if ((await erasureVerdict(env, now, account.id)) !== "clear")
     return refuse(503, "erasure_ledger_unavailable");
 
+  // I-21.8: a registered client's Continue is its own (consent, the client grant, its code).
+  if (authz.registered)
+    return continueRegistered({
+      req,
+      env,
+      db,
+      handle,
+      now,
+      settings,
+      record: live.record,
+      accountId: account.id,
+      authTime,
+      body,
+    });
+
   // The claims granted: a subset of what the request asked for. Absent grants all of it.
-  let granted: string[] = [...authz.scope];
-  if (body.consent !== undefined) {
-    const claims = (body.consent as { claims?: unknown } | null)?.claims;
-    if (
-      !Array.isArray(claims) ||
-      !claims.every((c) => typeof c === "string" && authz.scope.includes(c))
-    )
-      return refuse(400, ErrorCode.InvalidRequest);
-    granted = authz.scope.filter((s) => claims.includes(s));
-  }
+  const granted = claimsFromConsent(body, authz.scope);
+  if (granted === null) return refuse(400, ErrorCode.InvalidRequest);
 
   // The product's terms: asked once per version. A session that never went through the gate for
   // this product (already signed in) accepts here, by sending the version it was shown.
-  const terms = await productTerms(
+  const gate = await termsGate(
     { env, db, ...(settings ? { registry: settings } : {}) },
+    account.id,
     product.slug,
+    body.terms,
   );
-  let acceptTerms = false;
-  if (
-    terms &&
-    !(await termsAccepted(db, account.id, product.slug, terms.version))
-  ) {
-    if (body.terms !== terms.version) return refuse(409, "terms_required");
-    acceptTerms = true;
-  }
+  if (!gate.ok) return refuse(409, "terms_required");
 
   // The licence choice is never silent (S-19 decision 3, I-04 §A): an account that holds licences
   // for the product says which one this device runs on, and an account with none gets the first
@@ -316,8 +328,8 @@ export async function handleSignInContinue(
         scopeHash,
       ],
     },
-    ...(acceptTerms && terms
-      ? [stmtRecordTermsAcceptance(account.id, product.slug, terms, now)]
+    ...(gate.accept
+      ? [stmtRecordTermsAcceptance(account.id, product.slug, gate.accept, now)]
       : []),
   ]);
   await appendAudit(db, {

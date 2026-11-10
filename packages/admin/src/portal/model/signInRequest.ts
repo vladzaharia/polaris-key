@@ -41,6 +41,12 @@ export interface HeaderModel {
     | null;
   /** The device-code panel's code. */
   code: string | null;
+  /**
+   * A registered client's request (Sign in with <Product>): the product the person signs in with,
+   * so the header reads "<Client> wants you to sign in with your <Product> account". Absent for
+   * the product's own app.
+   */
+  via: string | null;
 }
 
 /** A registered origin as the person reads it: the host. */
@@ -55,6 +61,24 @@ function hostOf(origin: string): string {
 export function headerModel(view: SignInRequestView): HeaderModel {
   const { client } = view;
   const label = view.deviceLabel;
+  const reg = client.registered;
+  if (reg)
+    return {
+      variant: "app",
+      // The client's own name check, not the product's: a failing one draws the neutral frame.
+      verified: reg.nameVerified,
+      name: reg.name,
+      developer: reg.nameVerified ? reg.developerName : null,
+      product: client.product,
+      where: {
+        glyph: reg.returnHost ? "globe" : "device",
+        text: reg.returnHost
+          ? t("locker.issuer.returnsTo", { host: reg.returnHost })
+          : t("locker.issuer.returnsDevice"),
+      },
+      code: null,
+      via: client.nameVerified ? client.appName : client.product,
+    };
   const where: HeaderModel["where"] =
     client.kind === "web"
       ? client.origins[0]
@@ -79,6 +103,7 @@ export function headerModel(view: SignInRequestView): HeaderModel {
     product: client.product,
     where,
     code: client.kind === "device" ? view.userCode : null,
+    via: null,
   };
 }
 
@@ -369,3 +394,49 @@ export const navigation = {
     window.location.assign(url);
   },
 };
+
+/** One line of what a registered client gets (V5 §12.13.6): its words, and whether it has a switch. */
+export interface ClientLine {
+  id: "name" | "picture" | "email" | "entitlements" | "offline";
+  text: string;
+  /** A claim the person cannot switch off. */
+  required: boolean;
+  /** A claim with a switch; the entitlement and offline lines have none. */
+  claim: boolean;
+}
+
+/** The lines of a registered client's consent view, in the Worker's order. */
+export function clientLines(
+  view: AppConsentView,
+  app: string,
+  product: string,
+): ClientLine[] {
+  const out: ClientLine[] = [];
+  for (const item of view.items) {
+    if (item.kind === "profile") {
+      for (const c of item.claims) {
+        if (c !== "name" && c !== "picture" && c !== "email") continue;
+        out.push({
+          id: c,
+          text: t(`locker.issuer.claim.${c}`),
+          required: (item.required ?? []).some((r) => r === c),
+          claim: true,
+        });
+      }
+    } else if (item.kind === "entitlements")
+      out.push({
+        id: "entitlements",
+        text: t("locker.issuer.entitlements", { product }),
+        required: false,
+        claim: false,
+      });
+    else if (item.kind === "offline")
+      out.push({
+        id: "offline",
+        text: t("locker.issuer.offline", { app }),
+        required: false,
+        claim: false,
+      });
+  }
+  return out;
+}

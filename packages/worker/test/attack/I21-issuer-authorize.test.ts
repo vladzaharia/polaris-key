@@ -6,24 +6,19 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { dispatchWith } from "../../src/dispatch.js";
-import { pkcePair } from "../../src/platform/pkce.js";
-import {
-  createClient,
-  type ClientRecord,
-} from "../../src/services/identity/issuer/clientsRepo.js";
+import { type ClientRecord } from "../../src/services/identity/issuer/clientsRepo.js";
 import { putClientGrant } from "../../src/services/identity/issuer/grantsRepo.js";
 import { signIssuerJwt } from "../../src/services/identity/issuer/keys.js";
 import { revokeAllAccountSessions } from "../../src/services/identity/portal/accountSessions.js";
 import { PORTAL_COOKIE } from "../../src/services/identity/portal/session.js";
 import { NOW, seedProduct } from "../seed.js";
 import { issuePortalSessionRow } from "../portalSessionRow.js";
-import {
-  BASE,
-  SLUG,
-  world,
-  type World,
-} from "../services/connect/connectFixture.js";
+import { BASE, SLUG, type World } from "../services/connect/connectFixture.js";
 import { enableIssuer } from "../services/identity/issuer/issuerHelpers.js";
+import {
+  issuerWorld,
+  mkClient,
+} from "../services/identity/issuer/issuerWorld.js";
 
 const CB = "https://forum.example.com/cb";
 const EVIL = "https://evil.example.com/steal";
@@ -33,40 +28,20 @@ let victim: ClientRecord;
 let accountId: string;
 let pair: { verifier: string; challenge: string };
 
-async function mk(key: string, type: "web" | "spa" | "native", uris: string[]) {
-  const r = await createClient(
-    w.db,
-    {
-      product: SLUG,
-      key,
-      origin: "console",
-      name: key,
-      developerName: null,
-      type,
-      redirectUris: uris,
-      postLogoutRedirectUris: [],
-      scopes: ["openid", "profile"],
-      claimsRequired: [],
-      iconUrl: null,
-    },
-    NOW,
-  );
-  if (!r.ok) throw new Error(r.reason);
-  return r.client;
-}
+/** A sibling client, with the least a request needs. */
+const sibling = (key: string, uri: string) =>
+  mkClient(w, {
+    key,
+    type: "spa",
+    redirectUris: [uri],
+    scopes: ["openid", "profile"],
+  });
 
 beforeEach(async () => {
-  w = await world();
+  ({ w, accountId, pair } = await issuerWorld());
   (w.env as unknown as Record<string, unknown>).PORTAL_SESSION_SECRET =
     "attack-secret";
-  await enableIssuer(w.db, SLUG);
-  victim = await mk("forum", "spa", [CB]);
-  accountId = (await w.db.first<{ account_id: string }>(
-    "SELECT account_id FROM account_product_subjects WHERE product = ? AND subject = ?",
-    SLUG,
-    w.subject,
-  ))!.account_id;
-  pair = await pkcePair();
+  victim = await sibling("forum", CB);
 });
 
 const params = (c: ClientRecord, over: Record<string, string> = {}) =>
@@ -174,32 +149,22 @@ describe("open redirect (IS-3)", () => {
   });
 
   it("another client's registered URI does not work for this client, nor another product's client id", async () => {
-    await mk("other-app", "spa", ["https://other.example.com/cb"]);
+    await sibling("other-app", "https://other.example.com/cb");
     const res = await authorize(
       params(victim, { redirect_uri: "https://other.example.com/cb" }),
     );
     expect(res.status).toBe(400);
     await seedProduct(w.db, "rival");
     await enableIssuer(w.db, "rival");
-    const rival = await createClient(
-      w.db,
-      {
-        product: "rival",
-        key: "forum",
-        origin: "console",
-        name: "r",
-        developerName: null,
-        type: "spa",
-        redirectUris: [EVIL],
-        postLogoutRedirectUris: [],
-        scopes: ["openid"],
-        claimsRequired: [],
-        iconUrl: null,
-      },
-      NOW,
-    );
-    if (!rival.ok) throw new Error(rival.reason);
-    const cross = await authorize(params(rival.client, { redirect_uri: EVIL }));
+    const rival = await mkClient(w, {
+      product: "rival",
+      key: "forum",
+      type: "spa",
+      redirectUris: [EVIL],
+      scopes: ["openid"],
+      claimsRequired: [],
+    });
+    const cross = await authorize(params(rival, { redirect_uri: EVIL }));
     expect(cross.status).toBe(401);
     expect(cross.headers.get("location")).toBeNull();
   });
@@ -274,9 +239,9 @@ describe("prompt=none abuse (D4, IS-8)", () => {
 
   it("a grant for one client does not cover another client of the same product", async () => {
     await grant(victim);
-    const sibling = await mk("sibling", "spa", ["https://sib.example.com/cb"]);
+    const sib = await sibling("sibling", "https://sib.example.com/cb");
     const { cookie } = await login();
-    const a = await none(sibling, {
+    const a = await none(sib, {
       redirect_uri: "https://sib.example.com/cb",
     });
     const res = await a.enter([a.binder, cookie]);
@@ -341,13 +306,13 @@ describe("prompt=none abuse (D4, IS-8)", () => {
   });
 
   it("a hint issued to another client is refused: one client cannot probe with another's token", async () => {
-    const sibling = await mk("sibling", "spa", ["https://sib.example.com/cb"]);
+    const sib = await sibling("sibling", "https://sib.example.com/cb");
     const hint = await signIssuerJwt(
       w.env,
       w.db,
       SLUG,
       "JWT",
-      { iss: ISSUER, sub: w.subject, aud: sibling.clientId },
+      { iss: ISSUER, sub: w.subject, aud: sib.clientId },
       NOW,
     );
     const res = await authorize(params(victim, { id_token_hint: hint }));

@@ -5,9 +5,7 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { dispatchWith } from "../../../../src/dispatch.js";
-import { pkcePair } from "../../../../src/platform/pkce.js";
 import {
-  createClient,
   setClientStatus,
   type ClientRecord,
 } from "../../../../src/services/identity/issuer/clientsRepo.js";
@@ -17,52 +15,24 @@ import { redeemAuthorizationCode } from "../../../../src/services/identity/passt
 import { PORTAL_COOKIE } from "../../../../src/services/identity/portal/session.js";
 import { NOW } from "../../../seed.js";
 import { issuePortalSessionRow } from "../../../portalSessionRow.js";
-import { BASE, SLUG, world, type World } from "../../connect/connectFixture.js";
-import { enableIssuer, ingestIdentity } from "./issuerHelpers.js";
+import { BASE, SLUG, type World } from "../../connect/connectFixture.js";
+import { ingestIdentity } from "./issuerHelpers.js";
+import { issuerWorld, mkClient } from "./issuerWorld.js";
 
 const CB = "https://forum.example.com/cb";
 const ISSUER = `${BASE}/${SLUG}/identity`;
-let w: World;
-let client: ClientRecord;
-let accountId: string;
+let w: World, accountId: string, client: ClientRecord;
 let pair: { verifier: string; challenge: string };
 
 beforeEach(async () => {
-  w = await world();
+  ({ w, accountId, pair } = await issuerWorld());
   (w.env as unknown as Record<string, unknown>).PORTAL_SESSION_SECRET =
     "test-portal-secret";
-  await enableIssuer(w.db, SLUG);
-  const made = await createClient(
-    w.db,
-    {
-      product: SLUG,
-      key: "forum",
-      origin: "console",
-      name: "Forum",
-      developerName: null,
-      type: "spa",
-      redirectUris: [CB],
-      postLogoutRedirectUris: [],
-      scopes: [
-        "openid",
-        "profile",
-        "email",
-        "pkey:entitlements",
-        "offline_access",
-      ],
-      claimsRequired: ["name"],
-      iconUrl: null,
-    },
-    NOW,
-  );
-  if (!made.ok) throw new Error(made.reason);
-  client = made.client;
-  accountId = (await w.db.first<{ account_id: string }>(
-    "SELECT account_id FROM account_product_subjects WHERE product = ? AND subject = ?",
-    SLUG,
-    w.subject,
-  ))!.account_id;
-  pair = await pkcePair();
+  client = await mkClient(w, {
+    key: "silent",
+    type: "spa",
+    redirectUris: [CB],
+  });
 });
 
 const grant = (over: Partial<Parameters<typeof putClientGrant>[1]> = {}) =>
