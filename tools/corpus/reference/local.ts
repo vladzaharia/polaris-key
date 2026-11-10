@@ -823,9 +823,14 @@ export const REF_RECORD_ROWS: RecordRow[] = [
     modes: ["q"],
     needs: "local/1",
   },
-  { from: 0x8014, to: 0x8014, name: "SAS_COMMIT", modes: ["v", "p"] },
-  { from: 0x8015, to: 0x8015, name: "SAS_NONCE", modes: ["v", "p"] },
-  { from: 0x8016, to: 0x8016, name: "SAS_REVEAL", modes: ["v", "p"] },
+  ...(["SAS_COMMIT", "SAS_NONCE", "SAS_REVEAL"] as const).map(
+    (name, n): RecordRow => ({
+      from: 0x8014 + n,
+      to: 0x8014 + n,
+      name,
+      modes: ["v", "p"],
+    }),
+  ),
   {
     from: 0x0020,
     to: 0x0025,
