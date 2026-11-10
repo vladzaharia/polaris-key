@@ -93,7 +93,7 @@
       "jscpd:duplicate": 53
     },
     "packages/admin/e2e/artPng.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 3
     },
     "packages/admin/e2e/config.e2e.test.ts": {
       "jscpd:duplicate": 50
@@ -1155,7 +1155,7 @@
       "jscpd:duplicate": 2
     },
     "packages/cli/src/zip.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/cli/test/account.test.ts": {
       "jscpd:duplicate": 2
@@ -2957,9 +2957,6 @@
     "packages/worker/src/services/distribution/connectors/msstore/setup.ts": {
       "jscpd:duplicate": 2
     },
-    "packages/worker/src/services/distribution/connectors/msstore/zip.ts": {
-      "jscpd:duplicate": 3
-    },
     "packages/worker/src/services/distribution/connectors/play/controls.ts": {
       "jscpd:duplicate": 3
     },
@@ -3255,7 +3252,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/src/services/release/packages/native/swiftArchive.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 3
     },
     "packages/worker/src/services/release/packages/ociPush.ts": {
       "jscpd:duplicate": 3

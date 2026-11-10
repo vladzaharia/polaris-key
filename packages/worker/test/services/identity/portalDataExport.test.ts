@@ -15,7 +15,12 @@
  *     unless chosen, and, when chosen, kept OUT of the library by the very next portal request.
  */
 
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { ZIP_MAX_ENTRIES, ZipError } from "../../../src/platform/zipStream.js";
 import { makeTestDb } from "../../helpers.js";
 import { KvMock } from "../../kvMock.js";
 import { handlePortalApi } from "../../portalHarness.js";
@@ -104,8 +109,13 @@ interface Store {
 }
 
 let store: Store = { deleted: [] };
+/** What the test store adds to a zip export; a test sets it. */
+let entryNames: string[] = ["notes.txt", "deep/more.txt"];
 
-afterEach(() => unregisterSubjectStore("test.notes"));
+afterEach(() => {
+  unregisterSubjectStore("test.notes");
+  entryNames = ["notes.txt", "deep/more.txt"];
+});
 
 async function world(): Promise<World> {
   const db = makeTestDb();
@@ -126,6 +136,14 @@ async function world(): Promise<World> {
     export: async (_ctx, { product, subject }) => ({
       notes: [`notes of ${subject} in ${product}`],
     }),
+    exportEntries: async (_ctx, { product, subject }) =>
+      entryNames.map((name) => ({
+        name,
+        read: () =>
+          new TextEncoder().encode(
+            `${name}: notes of ${subject} in ${product}`,
+          ),
+      })),
   });
   return {
     db,
@@ -1569,5 +1587,143 @@ describe("the schema check is a real allow-list", () => {
     const errors = validateAgainst("PortalProductExport", doc);
     expect(errors.join("\n")).toContain("undocumented member hash");
     expect(errors.join("\n")).toContain("undocumented member tokenHash");
+  });
+});
+
+// ── The zip form of one product's export (U-12.3) ───────────────────────────────────────────
+
+describe("GET /api/products/<product>/export?format=zip", () => {
+  async function unzipTo(res: Response): Promise<string> {
+    const dir = mkdtempSync(join(tmpdir(), "pkey-zip-"));
+    const file = join(dir, "export.zip");
+    writeFileSync(file, new Uint8Array(await res.arrayBuffer()));
+    // `-t` verifies every CRC and size against the data descriptors and the central directory.
+    execFileSync("unzip", ["-tq", file]);
+    execFileSync("unzip", ["-qo", file, "-d", join(dir, "out")]);
+    return join(dir, "out");
+  }
+
+  it("is a streamed zip that unzip accepts, with data.json and each store's entries", async () => {
+    const w = await world();
+    const { ada, adaSubject } = await seed(w);
+    const res = await exportProduct(w, ada, "djdl", {});
+    const zip = await call(
+      w,
+      "GET",
+      "/api/products/djdl/export?format=zip",
+      ada,
+      {
+        now: NOW + 1,
+      },
+    );
+    expect(res.status).toBe(200);
+    expect(zip.status).toBe(200);
+    expect(zip.headers.get("content-type")).toBe("application/zip");
+    expect(zip.headers.get("cache-control")).toBe("no-store");
+    expect(zip.headers.get("content-disposition")).toBe(
+      'attachment; filename="polaris-locker-djdl-data.zip"',
+    );
+    const out = await unzipTo(zip);
+    const doc = JSON.parse(readFileSync(join(out, "data.json"), "utf8"));
+    expect(doc.schema).toBe("pkey-product-export/1");
+    expect(doc.subject).toBe(adaSubject.djdl);
+    expect(readFileSync(join(out, "README.txt"), "utf8")).toContain(
+      "data.json",
+    );
+    expect(
+      readFileSync(join(out, "stores/test.notes/deep/more.txt"), "utf8"),
+    ).toBe(`deep/more.txt: notes of ${adaSubject.djdl} in djdl`);
+    expect(
+      readFileSync(join(out, "stores/test.notes/notes.txt"), "utf8"),
+    ).toContain("notes.txt: notes of");
+  });
+
+  it("audits like the JSON form and leaves the gates in place", async () => {
+    const w = await world();
+    const { ada } = await seed(w);
+    const q = "/api/products/djdl/export?format=zip";
+    expect((await call(w, "GET", q, null)).status).toBe(401);
+    expect((await call(w, "GET", q, ada, { csrf: false })).status).toBe(403);
+    expect(
+      (await call(w, "GET", q, ada, { now: NOW + 5 * 60 + 1 })).status,
+    ).toBe(401);
+    expect((await call(w, "GET", q.replace("djdl", "nope"), ada)).status).toBe(
+      404,
+    );
+    expect(
+      await w.db.first(
+        "SELECT 1 FROM portal_audit WHERE action = 'portal.product.export'",
+      ),
+    ).toBeNull();
+    expect((await call(w, "GET", q, ada)).status).toBe(200);
+    expect(
+      await w.db.first(
+        "SELECT 1 FROM portal_audit WHERE action = 'portal.product.export'",
+      ),
+    ).not.toBeNull();
+    for (let i = 1; i < PRODUCT_EXPORT_LIMIT_PER_MINUTE; i++)
+      expect((await call(w, "GET", q, ada)).status).toBe(200);
+    expect((await call(w, "GET", q, ada)).status).toBe(429);
+  });
+
+  it("refuses an unknown or repeated format", async () => {
+    const w = await world();
+    const { ada } = await seed(w);
+    for (const q of ["?format=tar", "?format=zip&format=json", "?format="]) {
+      const res = await call(w, "GET", `/api/products/djdl/export${q}`, ada);
+      expect(res.status, q).toBe(400);
+      expect(await body(res)).toEqual({ error: "bad_request" });
+    }
+    const json = await call(
+      w,
+      "GET",
+      "/api/products/djdl/export?format=json",
+      ada,
+    );
+    expect(json.headers.get("content-type")).toContain("application/json");
+  });
+
+  it("never writes an entry whose name could leave the folder", async () => {
+    for (const bad of [
+      "../x",
+      "/abs",
+      "a/../b",
+      "a\\b",
+      "c:x",
+      "a//b",
+      "",
+      "a\u0000b",
+    ]) {
+      const w = await world();
+      const { ada } = await seed(w);
+      entryNames = [bad];
+      let failed = false;
+      try {
+        await call(w, "GET", "/api/products/djdl/export?format=zip", ada);
+      } catch (e) {
+        failed = e instanceof ZipError;
+      }
+      expect(failed, JSON.stringify(bad)).toBe(true);
+      unregisterSubjectStore("test.notes");
+    }
+  });
+
+  it("answers 413 export_too_large past 65,000 entries, before sending anything", async () => {
+    const w = await world();
+    const { ada } = await seed(w);
+    entryNames = Array.from({ length: ZIP_MAX_ENTRIES }, (_, i) => `e/${i}`);
+    const res = await call(
+      w,
+      "GET",
+      "/api/products/djdl/export?format=zip",
+      ada,
+    );
+    expect(res.status).toBe(413);
+    expect(await body(res)).toEqual({ error: "export_too_large" });
+    expect(
+      await w.db.first(
+        "SELECT 1 FROM portal_audit WHERE action = 'portal.product.export'",
+      ),
+    ).toBeNull();
   });
 });

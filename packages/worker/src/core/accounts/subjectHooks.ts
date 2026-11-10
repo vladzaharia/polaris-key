@@ -24,6 +24,7 @@ import {
   forgetRegistryTokens,
   stmtRevokeRegistryTokens,
 } from "../registry/registryTokens.js";
+import type { ZipEntry } from "../../platform/zipStream.js";
 import { appendAudit, SYSTEM_ACTORS } from "../audit.js";
 import { mirrorTokenSubject } from "./accountSubjects.js";
 import { retireDeviceBinding, writeDeviceSubject } from "../devices.js";
@@ -70,6 +71,13 @@ export interface SubjectStore {
     ctx: SubjectStoreContext,
     args: { product: string; subject: string },
   ): Promise<unknown>;
+  /** U-12.3: extra files for the zip form of the per-product export (`?format=zip`), named
+   *  relative to the store's own folder (`stores/<store name>/`). Entries are lazy: a name is
+   *  known up front, its bytes are read only when the archive reaches it, one at a time. */
+  exportEntries?(
+    ctx: SubjectStoreContext,
+    args: { product: string; subject: string },
+  ): Promise<ZipEntry[]>;
   /** How many bytes the subject's data for one product takes (the console Users page's account ×
    *  product data size, I-12). Optional: a store without it counts as 0. */
   size?(
@@ -191,6 +199,26 @@ export async function runSubjectExport(
   for (const name of subjectStoreNames()) {
     const store = all.get(name)!;
     out[name] = store.export ? await store.export(ctx, args) : null;
+  }
+  return out;
+}
+
+/**
+ * Every store's archive entries for one product, each name prefixed `stores/<store name>/`
+ * (U-12.3). Stores without `exportEntries` add none. Names are checked by the writer.
+ */
+export async function runSubjectExportArchive(
+  ctx: SubjectStoreContext,
+  args: { product: string; subject: string },
+): Promise<ZipEntry[]> {
+  const out: ZipEntry[] = [];
+  const all = allStores();
+  for (const name of subjectStoreNames()) {
+    const store = all.get(name)!;
+    if (!store.exportEntries) continue;
+    for (const entry of await store.exportEntries(ctx, args)) {
+      out.push({ name: `stores/${name}/${entry.name}`, read: entry.read });
+    }
   }
   return out;
 }
