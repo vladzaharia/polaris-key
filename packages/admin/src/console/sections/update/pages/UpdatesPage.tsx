@@ -1,7 +1,7 @@
 /**
  * Update → Updates (P2-11): the updaters for the platforms the product ships, grouped by what
  * verifies together. An update-health event names an outlet but no platform, so Verified and the
- * failing state belong to a group (direct downloads, Google Play), never to one platform of it.
+ * failing state belong to a group (Polaris Locker, Google Play), never to one platform of it.
  * Platforms a store updates are listed once, without a self-updater.
  *
  * Verified is the Ship builds fact from the update-health counters (updaters send no
@@ -17,7 +17,7 @@ import { cn } from "../../../../lib/cn.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { formatCount } from "../../../../lib/format.js";
 import { inlineCode } from "../../../../lib/inline.js";
-import { ACCESS_LABELS } from "../../../../lib/labels.js";
+import { ACCESS_LABELS, outletKindName } from "../../../../lib/labels.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { CodeBlock } from "../../../../ui/CodeBlock.js";
@@ -198,7 +198,7 @@ function LoadingCards(): React.ReactElement {
 }
 
 const GROUP_TITLE: Record<UpdaterGroup["id"], string> = {
-  direct: "Direct downloads",
+  direct: outletKindName("direct"),
   play: channelLabel("google-play"),
 };
 

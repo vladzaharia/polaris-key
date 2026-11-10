@@ -196,7 +196,7 @@ describe("Update → Updates in the built console", () => {
               await page.getByText("Updated by the store").first().waitFor();
             } else {
               await page
-                .getByRole("region", { name: /Direct downloads/ })
+                .getByRole("region", { name: /Polaris Locker/ })
                 .waitFor();
             }
             await page.waitForTimeout(400);

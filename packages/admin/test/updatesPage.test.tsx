@@ -57,7 +57,7 @@ describe("Update → Updates", () => {
       await screen.findByRole("heading", { level: 1, name: "Updates" }),
     ).toBeTruthy();
     const card = await screen.findByRole("region", {
-      name: /Direct downloads: macOS, Windows/,
+      name: /Polaris Locker: macOS, Windows/,
     });
     expect(within(card).getAllByText("Verified")).toHaveLength(1);
     expect(within(card).getByText("64 update reports.")).toBeTruthy();
@@ -69,7 +69,7 @@ describe("Update → Updates", () => {
   it("a Windows-only product has no Sparkle, and choosing a tab changes the setup", async () => {
     bootWith(HASH, { [KEY]: view([direct({ platforms: [win] })]) });
     const card = await screen.findByRole("region", {
-      name: /Direct downloads: Windows/,
+      name: /Polaris Locker: Windows/,
     });
     expect(within(card).queryByRole("tab", { name: "Sparkle" })).toBeNull();
     expect(within(card).getByText(/win_sparkle_set_appcast_url/)).toBeTruthy();
@@ -88,7 +88,7 @@ describe("Update → Updates", () => {
       ]),
     });
     const card = await screen.findByRole("region", {
-      name: /Direct downloads/,
+      name: /Polaris Locker/,
     });
     expect(within(card).getByText("12 reverted")).toBeTruthy();
     expect(within(card).getByText("4.2.2 did not hold")).toBeTruthy();
@@ -135,7 +135,7 @@ describe("Update → Updates", () => {
 
   it("has no axe violations", async () => {
     bootWith(HASH, { [KEY]: view([direct()], ["ios"]) });
-    await screen.findByRole("region", { name: /Direct downloads/ });
+    await screen.findByRole("region", { name: /Polaris Locker/ });
     expect((await axe(document.body)).violations).toEqual([]);
   });
 });
