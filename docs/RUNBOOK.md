@@ -2716,8 +2716,9 @@ red one blocks nothing.
   lint, the production-dependency audit, `pnpm gen --check` (the conformance corpus among the drift
   gates), the admin build and the docs link check.
 - The other lanes (workerd smoke, Node floor, browsers, console, UI kits, React kit, Python, the
-  Swift SDK and Apple plugin (three macOS jobs: `apple`, `apple-hosted`,
-  `apple-plugin`, one lane because they read the same paths), the Swift floor, Kotlin, Android, Godot) run when a
+  Swift SDK (`apple`, `apple-hosted`: lane `swift`), the Apple plugin (`apple-plugin`: its own lane,
+  the Godot addon's native code and facades and the Swift platform sources it compiles), the Swift
+  floor (`swift-sources`), Kotlin, Android, Godot) run when a
   changed path is one of the lane's `paths` in `tools/ci-scope.json`, or one of its `shared` inputs
   (the contract, the shared packages, `ci.yml` and its actions, the scope map, the lockfile). A lane's `paths` list
   what its job reads, not only its own tree: the Python lane names the Python samples under
@@ -2728,17 +2729,20 @@ red one blocks nothing.
   A push to `next` measures each lane against its own newest green ancestor (job conclusions, whole
   ancestry; contribute/setup docs). A new lane or matrix is one entry in that file, its `jobs` row and one job in `ci.yml`
   (`tools/ci-scope.test.ts` fails when the two disagree).
-- A pull request runs the floor and the latest of each matrix (Python 3.9 and 3.14 on Linux, Godot
-  4.7.2 and 4.4.1, Kotlin desktop on Linux, emulator API 24 and 36); `main` pushes run every lane
-  and the full matrix (Python on macOS too, all four Linux Godot engines and the Windows and macOS
+- A pull request, and a push to `next`, run the floor and the latest of each matrix (Python 3.9 and 3.14 on Linux, Godot
+  4.7.2 and 4.4.1, Kotlin desktop on Linux, emulator API 24 and 36); `main` pushes, a tag and a
+  dispatch run every lane and the full matrix (Python on macOS too, all four Linux Godot engines and the Windows and macOS
   smokes, Kotlin desktop on macOS and Windows, emulator API 34). So does a pull request whose
   changed files `git` cannot list: every lane, every matrix in full.
 - `swift-floor` keeps the Swift SDK building on the oldest toolchain it supports, Xcode 16.4 (Swift
   6.1) on macos-15. `PolarisKeyPlatform`'s Xcode 26+ code is behind `#if compiler(>=6.3)`, so
   `apple` (Xcode 26.6) compiles only the guarded branch and this job compiles the other. It builds
-  the package and the iOS schemes; the package's tests run once, on `apple`. Its lane is the
-  package alone (`sdks/swift/`), where `apple`'s also takes the Godot addon, the CLI and the kit
-  lint. `sdks/swift/tools/select-xcode-16.sh` fails it unless the compiler is Swift 6.0 to 6.2.
+  the package and the iOS schemes; the package's tests run once, on `apple`. Its lane
+  (`swift-sources`) is what the compiler reads (`Sources/`, `Package.*`, the Xcode scripts): a
+  test-only change, the Godot addon and the CLI leave it out, as they leave out `apple`, whose lane
+  keeps the whole package, the kit lint and the dev-server script. A GDScript-only change selects
+  no Apple lane and no Android lane (`android` reads `sdks/kotlin/`, the plugin's Kotlin in
+  `sdks/godot/native/android/` and the facades in `addons/polaris_key/native/`). `sdks/swift/tools/select-xcode-16.sh` fails it unless the compiler is Swift 6.0 to 6.2.
 - `ci.yml`, `native-desktop.yml` and `feed-closure.yml` set up pnpm, Node and the install through the
   composite action `.github/actions/setup-js`. `native-desktop.yml` runs only for its own paths, and
   its filter lists the composite action too: a change to it changes those jobs

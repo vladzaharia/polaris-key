@@ -274,34 +274,26 @@ describe("tools/require-ci-ok.sh with REQUIRE_FULL (a tag)", () => {
     expect(r.calls).toContain("actions/runs/1/jobs");
   });
 
+  // A narrowed push run: its CI OK is green and its Full run job was skipped.
+  const narrowed: Fixture = {
+    runs: [{ id: 1, status: "completed" }],
+    checks: [ci()],
+    jobs: { 1: [{ name: FULL, conclusion: "skipped" }] },
+  };
+
   it("refuses a narrowed push run, whose Full run job was skipped, and says how to dispatch one", () => {
-    const r = gate(
-      {
-        runs: [{ id: 1, status: "completed" }],
-        checks: [ci()],
-        jobs: { 1: [{ name: FULL, conclusion: "skipped" }] },
-      },
-      full,
-    );
+    const r = gate(narrowed, full);
     expect(r.status).toBe(1);
     expect(r.out).toContain("gh workflow run ci.yml --ref main");
     expect(r.out).not.toContain("concluded success");
   });
 
   it("refuses a run that has no Full run job at all", () => {
-    const r = gate(
-      { runs: [{ id: 1, status: "completed" }], checks: [ci()], jobs: {} },
-      full,
-    );
-    expect(r.status).toBe(1);
+    expect(gate({ ...narrowed, jobs: {} }, full).status).toBe(1);
   });
 
   it("passes the same narrowed run when a full one is not required", () => {
-    const r = gate({
-      runs: [{ id: 1, status: "completed" }],
-      checks: [ci()],
-      jobs: { 1: [{ name: FULL, conclusion: "skipped" }] },
-    });
+    const r = gate(narrowed);
     expect(r.status, r.out).toBe(0);
     expect(r.calls).not.toContain("/jobs");
   });

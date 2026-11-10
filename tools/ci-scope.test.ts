@@ -77,6 +77,8 @@ const NIGHTLY_JOBS = [
 ];
 /** Lanes whose only job lives in nightly-advisory.yml: no `changes` job there, so no ci.yml owner. */
 const NIGHTLY_LANES = ["swift-linux", "swiftui-mac", "compose-desktop"];
+/** Lanes no ci.yml job owns: the local gate's (tools/gate.mjs) view of "any change in the package". */
+const GATE_LANES = ["swift-floor"];
 
 const on = (files: string[] | null) =>
   Object.entries(selectLanes(scope, files))
@@ -95,6 +97,13 @@ const expectPrMatrices = (out: Record<string, string>) => {
     expect(JSON.parse(out[`${name}-matrix`]!), name).toEqual(
       matrixFor(scope, name, true),
     );
+};
+
+/** Every lane on, every matrix in its pull-request shape. */
+const expectEveryLaneOnPrMatrices = (out: Record<string, string>) => {
+  for (const lane of Object.keys(scope.lanes))
+    expect(out[lane], lane).toBe("true");
+  expectPrMatrices(out);
 };
 
 /** Every lane on, and every matrix in its full shape. */
@@ -177,20 +186,80 @@ describe("lane selection", () => {
     expect(on(["sdks/swift/Sources/PolarisKeyCore/Client.swift"])).toEqual([
       "docs-snippets",
       "swift",
+      "swift-sources",
       "swift-floor",
       "swift-linux",
     ]);
   });
 
-  it("keeps the Swift floor to the package: the Godot addon, the CLI and the kit lint need only the Apple job", () => {
+  it("runs the plugin lane too for the Swift sources the Godot plugin compiles", () => {
+    expect(
+      on(["sdks/swift/Sources/PolarisKeyPlatform/Keychain.swift"]),
+    ).toContain("apple-plugin");
+    expect(on(["sdks/swift/Sources/PolarisKeyGameCenterC/shim.h"])).toContain(
+      "apple-plugin",
+    );
+  });
+
+  it("keeps the compile floor to what the compiler reads: a test-only change does not run it", () => {
+    expect(on(["sdks/swift/Tests/PolarisKeyTests/ClientTests.swift"])).toEqual([
+      "docs-snippets",
+      "swift",
+      "swift-floor",
+      "swift-linux",
+    ]);
+    for (const file of [
+      "sdks/swift/Package.swift",
+      "sdks/swift/Package.resolved",
+    ])
+      expect(on([file]), file).toContain("swift-sources");
+  });
+
+  it("keeps the Apple jobs to what they read: the CLI and the kit lint need the Apple job, the plugin its own lane", () => {
+    expect(on(["packages/ui-qa/rules/kit-rules.json"])).toContain("swift");
+    expect(on(["packages/cli/scripts/start-dev-ci.mjs"])).toContain("swift");
+    expect(on(["packages/cli/src/index.ts"])).not.toContain("swift");
     for (const file of [
       "sdks/godot/native/ios/build.sh",
-      "packages/cli/src/index.ts",
-      "packages/ui-qa/rules/kit-rules.json",
+      "sdks/godot/addons/polaris_key/native/pkey_apple.gd",
+      "packages/cli/src/transportAppleBa.ts",
     ]) {
-      expect(on([file]), file).toContain("swift");
-      expect(on([file]), file).not.toContain("swift-floor");
+      const lanes = on([file]);
+      expect(lanes, file).toContain("apple-plugin");
+      expect(lanes, file).not.toContain("swift");
+      expect(lanes, file).not.toContain("swift-sources");
+      expect(lanes, file).not.toContain("swift-floor");
     }
+  });
+
+  it("a GDScript-only change selects no Apple lane and no Android lane", () => {
+    for (const file of [
+      "sdks/godot/addons/polaris_key/core/licence.gd",
+      "sdks/godot/addons/polaris_key/ui/dialog.gd",
+      "sdks/godot/tests/suite_core.gd",
+      "sdks/godot/README.md",
+    ]) {
+      const lanes = on([file]);
+      for (const lane of [
+        "swift",
+        "swift-sources",
+        "swift-floor",
+        "apple-plugin",
+        "android",
+      ])
+        expect(lanes, `${file} -> ${lane}`).not.toContain(lane);
+      expect(lanes, file).toContain("godot");
+    }
+  });
+
+  it("runs the Android lane for the plugin's Kotlin and facades, not for the GDScript core", () => {
+    for (const file of [
+      "sdks/godot/native/android/build.gradle.kts",
+      "sdks/godot/addons/polaris_key/native/pkey_android.gd",
+      "sdks/kotlin/platform/src/Main.kt",
+    ])
+      expect(on([file]), file).toContain("android");
+    expect(on(["sdks/godot/native/ios/build.sh"])).not.toContain("android");
   });
 
   it("runs the kit lint lane for a kit's UI sources", () => {
@@ -495,6 +564,10 @@ describe("ci.yml reads the scope", () => {
     for (const lane of Object.keys(scope.lanes)) {
       // The nightly lanes run unfiltered from nightly-advisory.yml, off the push path.
       if (NIGHTLY_LANES.includes(lane)) continue;
+      if (GATE_LANES.includes(lane)) {
+        expect(Object.keys(jobs.changes!.outputs ?? {}), lane).toContain(lane);
+        continue;
+      }
       // A lane gates a whole job (`if:`) or a step of one (the docs link check in `js`).
       const owner = Object.entries(jobs).filter(([, j]) =>
         JSON.stringify(j).includes(`needs.changes.outputs.${lane} ==`),
@@ -846,9 +919,7 @@ describe("a push to next narrows each lane to the files since its own base", () 
       expect(out[lane], lane).toBe("true");
     expect(out.full).toBe("true");
     expect(out["js-base"]).toBe("");
-    for (const lane of Object.keys(scope.lanes))
-      expect(out[lane], lane).toBe("true");
-    expectPrMatrices(out);
+    expectEveryLaneOnPrMatrices(out);
   });
 
   it("runs every lane when a shared path changed since its base", () => {
@@ -982,9 +1053,7 @@ describe("a push to next narrows each lane to the files since its own base", () 
     const out = outputsOf(run.stdout);
     expect(out.full).toBe("true");
     expect(out["js-base"]).toBe("");
-    for (const lane of Object.keys(scope.lanes))
-      expect(out[lane], lane).toBe("true");
-    expectPrMatrices(out);
+    expectEveryLaneOnPrMatrices(out);
   });
 });
 
@@ -1191,7 +1260,7 @@ describe("ci.yml keeps the Swift SDK building on its oldest toolchain", () => {
     expect(floor["runs-on"]).toBe("macos-15");
     // The Swift docs snippets ride this job (macOS slot diet), on their own lane.
     expect(floor.if).toBe(
-      "needs.changes.outputs.swift-floor == 'true' || needs.changes.outputs.docs-snippets == 'true'",
+      "needs.changes.outputs.swift-sources == 'true' || needs.changes.outputs.docs-snippets == 'true'",
     );
     expect(ci.jobs["docs-snippets-swift"]).toBeUndefined();
     expect([floor.needs ?? []].flat()).toContain("changes");

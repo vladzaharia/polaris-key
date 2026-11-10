@@ -5,25 +5,18 @@
  */
 
 import { spawnSync } from "node:child_process";
-import {
-  chmodSync,
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import * as fs from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const SCRIPT = join(ROOT, "tools", "ci-measure.sh");
+const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), "ci-measure.sh");
 
 const dirs: string[] = [];
 afterEach(() => {
-  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  for (const d of dirs.splice(0))
+    fs.rmSync(d, { recursive: true, force: true });
 });
 
 /** A fake time binary: GNU (-f FORMAT -o FILE), BSD (-l -o FILE), or none. */
@@ -44,8 +37,8 @@ out="$3"; shift 3
 printf '       12.50 real        20.25 user         1.75 sys\\n   482344960  maximum resident set size\\n' > "$out"
 exit $st
 `;
-  writeFileSync(file, flavor === "gnu" ? gnu : bsd);
-  chmodSync(file, 0o755);
+  fs.writeFileSync(file, flavor === "gnu" ? gnu : bsd);
+  fs.chmodSync(file, 0o755);
   return file;
 }
 
@@ -54,7 +47,7 @@ function measure(
   args: string[],
   env: Record<string, string> = {},
 ) {
-  const dir = mkdtempSync(join(tmpdir(), "cimeasure-"));
+  const dir = fs.mkdtempSync(join(tmpdir(), "cimeasure-"));
   dirs.push(dir);
   const summary = join(dir, "summary.md");
   const run = spawnSync("bash", [SCRIPT, ...args], {
@@ -74,7 +67,7 @@ function measure(
     status: run.status,
     out: run.stdout,
     err: run.stderr,
-    summary: existsSync(summary) ? readFileSync(summary, "utf8") : "",
+    summary: fs.existsSync(summary) ? fs.readFileSync(summary, "utf8") : "",
   };
 }
 
@@ -113,7 +106,7 @@ describe("tools/ci-measure.sh", () => {
   );
 
   it("appends one heading and one line per step to the job summary", () => {
-    const dir = mkdtempSync(join(tmpdir(), "cimeasure2-"));
+    const dir = fs.mkdtempSync(join(tmpdir(), "cimeasure2-"));
     dirs.push(dir);
     const summary = join(dir, "summary.md");
     const env = {
@@ -127,7 +120,7 @@ describe("tools/ci-measure.sh", () => {
     };
     for (const label of ["first", "second"])
       spawnSync("bash", [SCRIPT, label, "true"], { env });
-    const text = readFileSync(summary, "utf8");
+    const text = fs.readFileSync(summary, "utf8");
     expect(text.match(/^### Step cost/gm)).toHaveLength(1);
     expect(text).toContain("- `first`: wall 12.5 s");
     expect(text).toContain("- `second`: wall 12.5 s");
