@@ -54,7 +54,7 @@ With a Content-Security-Policy, automatic sign-in needs `connect-src https://acc
 
 Turn it off on the provider:
 
-```tsx
+```tsx no-compile
 <PolarisKeyProvider config={polarisKey} autoSignIn={false}>
   <PolarisKeyGate>
     <YourApp />

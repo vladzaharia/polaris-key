@@ -7,6 +7,7 @@
 import ast
 import importlib
 import json
+import os
 import pkgutil
 import subprocess
 import sys
@@ -20,8 +21,11 @@ def check(directory: Path) -> int:
             ast.parse(f.read_text(), filename=f.name, feature_version=(3, 9))
         except SyntaxError as e:
             print(f"{f.name}:{e.lineno}: error: {e.msg}  [syntax]")
+    # A persistent incremental cache (the vitest lane names it): the SDK is checked once, not per run.
+    cache = os.environ.get("PKEY_DOCS_MYPY_CACHE")
+    cache_args = ["--cache-dir", cache] if cache else ["--no-incremental", "--cache-dir=/dev/null"]
     proc = subprocess.run(
-        [sys.executable, "-m", "mypy", "--no-incremental", "--cache-dir=/dev/null", "--disable-error-code=import-untyped", *[f.name for f in files]],
+        [sys.executable, "-m", "mypy", *cache_args, "--disable-error-code=import-untyped", *[f.name for f in files]],
         cwd=directory,
         capture_output=True,
         text=True,

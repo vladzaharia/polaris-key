@@ -18,12 +18,12 @@ import {
   type Snippet,
 } from "./extract";
 import {
-  compilePython,
-  compileTs,
   laneOf,
   runSnippet,
   pythonBin,
   pythonSymbols,
+  sharedPython,
+  sharedTs,
   tsExports,
   type Failure,
 } from "./lanes";
@@ -64,6 +64,26 @@ const advisory = snippets.filter(
   (s) => coveredLanguage(s.file) === null && !s.optOut,
 );
 
+const brokenSource = readFileSync(join(HERE, "fixtures/broken.md"), "utf8");
+const brokenBlocks = extractFences("broken.md", brokenSource);
+
+// One TypeScript program and one mypy run per process: the covered pages, the advisory sources and
+// the deliberately broken control are each a group of independent modules in it, and the first
+// test that asks compiles all of them.
+const tsLane = sharedTs({
+  broken: brokenBlocks.filter((s) => s.lang === "ts" && !s.optOut),
+  covered: covered.filter(isTs),
+  advisory: advisory.filter(isTs),
+});
+const pyLane = sharedPython(
+  {
+    broken: brokenBlocks.filter((s) => s.lang === "python"),
+    covered: covered.filter(isPy),
+    advisory: advisory.filter(isPy),
+  },
+  python ?? "python3",
+);
+
 describe("the extractor", () => {
   it("reads fences by language and honours the opt-out marker", () => {
     const found = extractFences(
@@ -88,15 +108,13 @@ describe("the extractor", () => {
 });
 
 describe("a deliberately broken page", () => {
-  const source = readFileSync(join(HERE, "fixtures/broken.md"), "utf8");
-  const blocks = extractFences("broken.md", source);
+  const source = brokenSource;
+  const blocks = brokenBlocks;
 
   it(
     "fails the TypeScript lane",
     () => {
-      const failures = compileTs(
-        blocks.filter((s) => s.lang === "ts" && !s.optOut),
-      );
+      const failures = tsLane("broken");
       expect(show(failures).join("\n")).toMatch(/noSuchMethod/);
       expect(blocks.some((s) => s.optOut)).toBe(true);
     },
@@ -106,10 +124,7 @@ describe("a deliberately broken page", () => {
   pyIt(
     "fails the Python lane",
     () => {
-      const failures = compilePython(
-        blocks.filter((s) => s.lang === "python"),
-        python ?? "python3",
-      );
+      const failures = pyLane("broken");
       expect(show(failures).join("\n")).toMatch(/no_such_method/);
     },
     LONG,
@@ -153,8 +168,7 @@ describe("covered pages", () => {
   it(
     "compile in the TypeScript lane",
     () => {
-      const failures = compileTs(covered.filter(isTs));
-      expect(show(failures)).toEqual([]);
+      expect(show(tsLane("covered"))).toEqual([]);
     },
     LONG,
   );
@@ -162,8 +176,7 @@ describe("covered pages", () => {
   pyIt(
     "compile in the Python lane",
     () => {
-      const failures = compilePython(covered.filter(isPy), python ?? "python3");
-      expect(show(failures)).toEqual([]);
+      expect(show(pyLane("covered"))).toEqual([]);
     },
     LONG,
   );
@@ -221,20 +234,18 @@ describe("other sources (advisory)", () => {
     for (const f of fs) failing.add(idOf(f.snippet));
   };
 
-  // Disabled as flaky (owner 2026-10-23): advisory compile hits the hook/test timeout under machine load. Re-enable once the advisory lanes run in their own CI lane.
-  it.skip(
+  it(
     "compiles in the TypeScript lane",
     () => {
-      note(compileTs(advisory.filter(isTs)));
+      note(tsLane("advisory"));
     },
     LONG,
   );
 
-  // Disabled as flaky (owner 2026-10-23): advisory compile hits the timeout under machine load. Re-enable once the advisory lanes run in their own CI lane.
-  pyIt.skip(
+  pyIt(
     "compiles in the Python lane",
     () => {
-      note(compilePython(advisory.filter(isPy), python ?? "python3"));
+      note(pyLane("advisory"));
     },
     LONG,
   );
