@@ -302,7 +302,7 @@
       ],
       "note": "I-49.15: rung 2 of PolarisKey.identity.auto_sign_in (services/identity/restore.gd, PKeyIdentityRestore): the restore grant over the PKeyPlatformBackup item (iCloud Keychain through the pkp_call bk_* ops on iOS and macOS, Block Store through the plugin's bk_* ops on Android), enrolment after every completed sign-in and once a day on rung 1, sign-out deletion (DELETE restore queued in restore.v1 for the next launch, the item, the explicit-sign-out flag), the auto_sign_in options restore and backup_access_group. The secret is held as bytes and zeroed in place when a redeem or an enrolment is done (PKeyPlatformBackup.RestoreValue; tests/identity/test_restore.gd reads typed references after the call). A refused redeem deletes the item on Android only. Proven by tests/identity/test_restore.gd and the restore-* and discovery-identity-restore transcripts replayed in suite_transcripts."
     },
-    "identity.accessToken": { "status": "planned", "wp": "I-21b" },
+    "identity.accesstoken": { "status": "planned", "wp": "I-21b" },
     "identity.link": {
       "status": "implemented",
       "except": [

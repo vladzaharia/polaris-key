@@ -2,7 +2,7 @@
   "transcriptVersion": 1,
   "id": "identity-access-token",
   "description": "The device exchange (I-21.13, WIRE-CONTRACT-V5 §12.13.10, D6): the product's own app trades its device token for a 600 second access token for its developer's backend. Discovery names accessToken: true while the product's issuer is served. The app posts a token-exchange form to token: grant_type urn:ietf:params:oauth:grant-type:token-exchange, client_id the product slug, subject_token its own device token, subject_token_type urn:polaris-key:token-type:device and requested_token_type urn:ietf:params:oauth:token-type:access_token, with X-PKey-Device and no Authorization. The answer is exactly access_token (a compact RS256 JWS the client keeps in memory), issued_token_type, token_type Bearer, expires_in 600 and an empty scope: never a refresh token or an id_token. A device that is not signed in is 400 invalid_grant; the budget is ten a minute per device (429 rate_limited with retryAfter); with the issuer turned off the exchange is 400 invalid_request and discovery names no accessToken, so the client sends nothing and raises service-unavailable.",
-  "features": ["core.discover", "identity.accessToken"],
+  "features": ["core.discover", "identity.accesstoken"],
   "requires": ["core.store"],
   "product": "djdl",
   "baseUrl": "https://key.plrs.im",

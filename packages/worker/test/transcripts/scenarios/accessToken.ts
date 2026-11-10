@@ -39,7 +39,7 @@ import { signedInDevice } from "./restore.js";
 
 type Json = Record<string, JsonValue>;
 
-const FEATURES = ["identity.accessToken"];
+const FEATURES = ["identity.accesstoken"];
 const TOKEN = `/${PRODUCT}/identity/token`;
 
 /** Setup: a world with Identity on, the issuer served under the fixed test key, and Ada's device signed in. */

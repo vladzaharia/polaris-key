@@ -212,7 +212,7 @@
       "reason": "runtime",
       "note": "No iCloud Keychain or Block Store to keep a restore secret in (I-49)."
     },
-    "identity.accessToken": { "status": "planned", "wp": "I-21b" },
+    "identity.accesstoken": { "status": "planned", "wp": "I-21b" },
     "identity.link": {
       "status": "na",
       "runtime": ["python"],

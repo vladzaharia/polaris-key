@@ -389,7 +389,7 @@
 // Discovery for these transcripts: a `discover` step also pins `restore` (whether the identity
 // fragment carries `restore: true`) and `restoreEndpoint` (whether its endpoints name `restore`).
 
-// accessToken (I-21.13, WIRE-CONTRACT-V5 §12.13.10, `identity.accessToken`) — the device exchange of the
+// accessToken (I-21.13, WIRE-CONTRACT-V5 §12.13.10, `identity.accesstoken`) — the device exchange of the
 // `identity-access-token` transcript: the product's own app trades its device token for a 600 s access
 // token for its developer's backend. It is the one step; the client is the transcript's own device.
 //   accessToken   a form at `…/identity/token` with `grant_type`
@@ -606,7 +606,7 @@ export type Action =
   | "nearbyStart"
   | "nearbyApprove"
   | "nearbyPoll"
-  /** I-21.13 (WIRE-CONTRACT-V5 §12.13.10): the device exchange at `token`, `identity.accessToken()`. */
+  /** I-21.13 (WIRE-CONTRACT-V5 §12.13.10): the device exchange at `token`, `identity.accessToken()` (feature `identity.accesstoken`). */
   | "accessToken";
 
 export interface Step {

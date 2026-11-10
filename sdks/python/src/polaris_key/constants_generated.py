@@ -1045,7 +1045,7 @@ class Feature:
     IDENTITY_PGS: Final = "identity.pgs"
     IDENTITY_AUTOSIGNIN: Final = "identity.autosignin"
     IDENTITY_RESTORE: Final = "identity.restore"
-    IDENTITY_ACCESSTOKEN: Final = "identity.accessToken"
+    IDENTITY_ACCESSTOKEN: Final = "identity.accesstoken"
     IDENTITY_LINK: Final = "identity.link"
     IDENTITY_NEARBY: Final = "identity.nearby"
     RELEASE_CHANGELOG: Final = "release.changelog"
@@ -1193,7 +1193,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.pgs",
     "identity.autosignin",
     "identity.restore",
-    "identity.accessToken",
+    "identity.accesstoken",
     "identity.link",
     "identity.nearby",
     "release.changelog",
@@ -2694,7 +2694,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.pgs": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.autosignin": CapabilityRow("implemented", "identity", ()),
         "identity.restore": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
-        "identity.accessToken": CapabilityRow("planned", "identity", ()),
+        "identity.accesstoken": CapabilityRow("planned", "identity", ()),
         "identity.link": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.nearby": CapabilityRow("implemented", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
@@ -2765,4 +2765,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "d10b0894862bddaf93047c949fbf3f5e86f5d0e77fd5c5e1966cdc1598948105"
+CAPABILITY_DIGEST: Final[str] = "3c46593b6c9cd2344882b5ad543731523c5b56462da5c9c1147966ce8d866a28"

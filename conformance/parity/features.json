@@ -1699,7 +1699,7 @@
       "note": "I-49 (WIRE-CONTRACT-V5 §12.11.8): a signed-in device enrols a restore secret with POST /<p>/identity/restore and keeps it in an end-to-end platform backup (iCloud Keychain, Block Store). A new device of the same person redeems it at token with the urn:polaris-key:grant-type:restore grant and the pkey-proof/1 restore proof, once, and signs in with no click. Sign-out deletes the server row and the item. Discovery's restore member and endpoint gate it. Pinned by the restore-* and discovery-identity-restore transcripts (I-49.8); Swift, Kotlin and Godot implement it on their native lanes."
     },
     {
-      "id": "identity.accessToken",
+      "id": "identity.accesstoken",
       "family": "devices",
       "title": "Access token: a signed-in device trades its device token for a short-lived token its developer's backend can verify",
       "service": "identity",

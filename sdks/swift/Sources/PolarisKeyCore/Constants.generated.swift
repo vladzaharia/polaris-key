@@ -820,7 +820,7 @@ public enum Feature {
     public static let identityPgs = "identity.pgs"
     public static let identityAutosignin = "identity.autosignin"
     public static let identityRestore = "identity.restore"
-    public static let identityAccesstoken = "identity.accessToken"
+    public static let identityAccesstoken = "identity.accesstoken"
     public static let identityLink = "identity.link"
     public static let identityNearby = "identity.nearby"
     public static let releaseChangelog = "release.changelog"
@@ -968,7 +968,7 @@ public let FEATURE_VALUES: [String] = [
     "identity.pgs",
     "identity.autosignin",
     "identity.restore",
-    "identity.accessToken",
+    "identity.accesstoken",
     "identity.link",
     "identity.nearby",
     "release.changelog",
@@ -2196,7 +2196,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.pgs": CapabilityRow(status: "na", service: "identity", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "identity.autosignin": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.restore": CapabilityRow(status: "implemented", service: "identity", na: []),
-    "identity.accessToken": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.accesstoken": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.link": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.nearby": CapabilityRow(status: "implemented", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -2266,4 +2266,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "d940079d2e936940c3997424344660cab9202b6b376b5378f0083160e2a5880f"
+public let CAPABILITY_DIGEST = "cdd49787fab411c85944b2d9b897465237783648b40e1f1a82f9750b23d79363"
