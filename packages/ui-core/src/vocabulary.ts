@@ -115,6 +115,7 @@ export const ACTION_KEYS: Readonly<Record<Action, readonly string[]>> = {
     "signin.key.signIn",
     "activate.waitingSignIn",
     "activate.recommend.action",
+    "cloudSync.signIn",
   ],
   "copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
   retry: [

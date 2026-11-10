@@ -31,6 +31,9 @@ export interface CloudSyncFile {
   persisted: CloudSyncPersisted | null;
   catalog: ProductCatalog | null;
   openKeys: string[];
+  /** The subject `account_required` took away: while the machine is blocked, the host does not sign
+   *  that same subject in again. Cleared by a sign-out, a different subject or a purge. */
+  refused: string | null;
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
@@ -78,6 +81,7 @@ export class CloudSyncStateFile {
       persisted: null,
       catalog: null,
       openKeys: [],
+      refused: null,
     };
     const raw = await readJson<unknown>(this.path, null);
     if (!isRecord(raw) || raw.v !== 1 || raw.product !== this.product)
@@ -97,6 +101,7 @@ export class CloudSyncStateFile {
       openKeys: Array.isArray(raw.openKeys)
         ? raw.openKeys.filter((k): k is string => typeof k === "string")
         : [],
+      refused: typeof raw.refused === "string" ? raw.refused : null,
     };
   }
 

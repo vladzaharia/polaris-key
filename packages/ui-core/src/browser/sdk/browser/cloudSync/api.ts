@@ -10,6 +10,10 @@
 //   S6  When the machine leaves a principal (`signOut`, `accountRequired`, `subjectChanged`) the
 //       key ring is forgotten and the record deleted (the host does both, root first). A failure
 //       is logged and never replaces the sign-out's own error. The sign-in offer follows.
+//   S6b `account_required` keeps the record as the machine stands (blocked, partition gone) instead of
+//       deleting it, and the subject the Worker refused is not signed in again until a sign-out or
+//       a different subject. A key-ring or file `account_required` calls `accountRequired()` here,
+//       so a page with no `/sync` traffic learns it too. The offered `signInUrl` is vetted.
 //   S7  No event, log line or error here carries a value or the root; events name keys only.
 //   SEC-HOST2  A subject that could not be read (offline) is not a sign-out: nothing is forgotten
 //       on a guess.
@@ -195,7 +199,7 @@ export class BrowserCloudSyncApi {
     const subject = await this.#d.subject().catch(() => undefined);
     if (subject === undefined) return;
     if (subject !== null) await this.#signIn(subject);
-    else if (this.#subject !== null) await this.#leave();
+    else await this.#leave();
   }
 
   #recheck(): Promise<void> {
@@ -207,6 +211,8 @@ export class BrowserCloudSyncApi {
   async #signIn(subject: string): Promise<void> {
     const { host, config } = this.#d;
     if (!host.started) return;
+    // The Worker took this subject's account away: only a sign-out or another subject lifts it.
+    if (subject === host.refused) return;
     // Another person: the first one is dropped (never flushed: the token is the new person's now)
     // and forgotten before this one starts.
     if (this.#subject !== null && this.#subject !== subject)
@@ -227,6 +233,16 @@ export class BrowserCloudSyncApi {
     await host.touch();
     await this.#chain;
     this.#d.config.noteSyncChange(null, "remote");
+  }
+
+  /**
+   * A key-ring or file route answered `account_required` (V5 §11.5): the machine takes the same
+   * transition as for a `/sync` 403. Never throws into the route that saw it.
+   */
+  async accountRequired(signInUrl: string | null): Promise<void> {
+    await this.attach().catch(() => undefined);
+    this.#d.host.accountRequired(signInUrl);
+    await this.#chain;
   }
 
   /** The identity session's events drive the machine. */
@@ -278,6 +294,8 @@ export class BrowserCloudSyncApi {
    *  without a flush, and without a moment in which the old values read as the new person's. */
   async #leave(): Promise<void> {
     const { host } = this.#d;
+    // Signed out (or never signed in): what `account_required` refused is not refused any more.
+    await host.clearRefused();
     if (this.#subject === null) return;
     this.#subject = null;
     this.#d.config.noteSyncChange(null, "remote");
@@ -408,5 +426,6 @@ export function clientOf(
     attach: () => api.attach(),
     identity: (n) => api.identity(n),
     beforeSignOut: () => api.beforeSignOut(),
+    accountRequired: (u) => api.accountRequired(u),
   };
 }

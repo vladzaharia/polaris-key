@@ -127,6 +127,12 @@ export interface CloudSyncClient {
   attach(): Promise<void>;
   /** The adapter's wiring: the identity session's events drive the machine. */
   identity(note: IdentityNote): Promise<void>;
+  /**
+   * The adapter's wiring: a key-ring or file route answered `account_required` (WIRE-CONTRACT-V5
+   * §11.5), `signInUrl` being the answer's, unvetted. The machine leaves the person the way a
+   * `/sync` 403 does. Loads Cloud Sync; never throws into the route that saw it.
+   */
+  accountRequired(signInUrl: string | null): Promise<void>;
   /** The adapter's wiring, run before sign-out: send what is waiting (bounded), then leave. */
   beforeSignOut(): Promise<void>;
 }
@@ -181,6 +187,7 @@ export function unsupportedCloudSync(
     attach: async () => undefined,
     identity: async () => undefined,
     beforeSignOut: async () => undefined,
+    accountRequired: async () => undefined,
   };
 }
 
@@ -294,6 +301,9 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
     beforeSignOut: async () => {
       const c = real ?? (await loading?.catch(() => null)) ?? null;
       if (c) await c.beforeSignOut();
+    },
+    accountRequired: async (url) => {
+      if (src.enabled()) await (await ready()).accountRequired(url);
     },
   };
 }

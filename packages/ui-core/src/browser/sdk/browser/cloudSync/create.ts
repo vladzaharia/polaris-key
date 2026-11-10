@@ -10,6 +10,7 @@ import { UnsupportedError } from "../../core/caps.js";
 import type { BearerSession } from "../bearer/session.js";
 import type { CloudSyncClient } from "../../core/cloudSync.js";
 import type { LocalConfigEngine } from "../../core/localConfig.js";
+import { watchingAccountRequired } from "./accountRequired.js";
 import { BrowserCloudSyncApi, clientOf, importMarker } from "./api.js";
 import { filesDbName, purgeFilesStore } from "./filesPurge.js";
 import { lazySaves } from "./lazySaves.js";
@@ -127,7 +128,11 @@ export async function createBrowserCloudSync(
     keyring: o.keyring,
     product: o.product,
     dbName,
-    fileFetch: (path, init) => bearer.fileFetch(path, init),
+    // A file route's `account_required` reaches the machine like a `/sync` one does.
+    fileFetch: watchingAccountRequired(
+      (path, init) => bearer.fileFetch(path, init),
+      (url) => void api.accountRequired(url).catch(() => undefined),
+    ),
     locks,
     attach: () => api.attach(),
     subject: () => bearer.account,

@@ -35,6 +35,9 @@ export interface SyncStateRecord {
   /** The last served catalog: it may only add keys the compiled mirror lacks. */
   catalog: ProductCatalog | null;
   openKeys: string[];
+  /** The subject `account_required` took away: while the machine is blocked, the host does not sign
+   *  that same subject in again. Cleared by a sign-out, a different subject or a purge. */
+  refused: string | null;
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
@@ -84,6 +87,7 @@ export function parseSyncState(
           .filter((k): k is string => typeof k === "string")
           .slice(-OPEN_KEYS_MAX)
       : [],
+    refused: typeof v.refused === "string" ? v.refused : null,
   };
 }
 
@@ -94,6 +98,7 @@ export const emptySyncState = (product: string): SyncStateRecord => ({
   persisted: null,
   catalog: null,
   openKeys: [],
+  refused: null,
 });
 
 /** The database name for one product (the namespace is empty for the production host). */

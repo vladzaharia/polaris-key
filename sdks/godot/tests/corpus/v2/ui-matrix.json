@@ -39,7 +39,8 @@
         "signin.key.signIn",
         "signin.key.ownedSignIn",
         "activate.waitingSignIn",
-        "activate.recommend.action"
+        "activate.recommend.action",
+        "cloudSync.signIn"
       ],
       "open-manage-url": [
         "deviceLimit.openBrowser",
@@ -12522,6 +12523,26 @@
       },
       "mustNot": {
         "invariant": "A locked device never shows a sync time or an error.",
+        "copy": ["cloudSync.error", "cloudSync.synced"]
+      }
+    },
+    {
+      "name": "CloudSyncStatus/signed-out: Sign in to sync, never an error or a sync time",
+      "input": {
+        "cloudSync": {
+          "state": "error",
+          "signedIn": false,
+          "lastSynced": "2 min ago"
+        }
+      },
+      "expect": {
+        "component": "CloudSyncStatus",
+        "state": "error",
+        "copy": ["cloudSync.signIn", "cloudSync.signedOut"],
+        "actions": ["start-sign-in"]
+      },
+      "mustNot": {
+        "invariant": "A device whose account is gone says so and offers Sign in to sync; it is never an error or a sync time.",
         "copy": ["cloudSync.error", "cloudSync.synced"]
       }
     },

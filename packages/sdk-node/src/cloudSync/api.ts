@@ -10,6 +10,11 @@
 //       ring is forgotten in a `finally`: the root goes first, a failure to remove the pin is logged
 //       and never replaces the sign-out's own error, and nothing held means nothing to fail. The
 //       sign-in offer follows the forget.
+//   S6b `account_required` keeps the machine as it stands (blocked, partition gone) instead of
+//       rebuilding it empty, and the subject the Worker refused is not signed in again until a
+//       sign-out or a different subject. A key-ring or file `account_required` calls
+//       `accountRequired()` here, so a device with no `/sync` traffic learns it too. The offered
+//       `signInUrl` is vetted (https on the Worker's origin, else null).
 //   S7  No event, log line or error here carries a value or the root; events name keys only.
 // Licence state is never read or written from this module.
 
@@ -38,6 +43,7 @@ import type { CoreContext } from "../core/context.js";
 import type { IdentityEvent } from "../identity/signIn.js";
 import type { KeyringClient } from "../keyring/client.js";
 import type { CloudSyncHost } from "./host.js";
+import { safeSignInUrl } from "@polaris-key/ui-core/browser/sdk/core/signInUrl.js";
 
 /** The reasons the machine leaves a principal, each of which drops the key ring. */
 const FORGETTING = new Set(["signOut", "accountRequired", "subjectChanged"]);
@@ -73,12 +79,15 @@ export class CloudSyncApi {
     this.#d.onSubject?.(s);
   }
   #forgot = false;
+  /** The Worker's origin: the only host a sign-in offer may name. */
+  readonly #origin: string;
   #chain: Promise<void> = Promise.resolve();
   /** Identity events, one at a time and in order. */
   #work: Promise<void> = Promise.resolve();
 
   constructor(deps: CloudSyncApiDeps) {
     this.#d = deps;
+    this.#origin = new URL(deps.ctx.baseUrl).origin;
     // `conflictOpened` / `conflictClosed` on the stream come from the registry, which covers the
     // machine's requests and the saves layer's; ids and names only (S7).
     deps.host.merge.onEvent((e) => this.#d.emit(mergeStreamEvent(e)));
@@ -169,12 +178,14 @@ export class CloudSyncApi {
     this.#subject = host.machine.persist().subject;
     const subject = await this.#d.subject().catch(() => null);
     if (subject !== null) await this.#signIn(subject);
-    else if (this.#subject !== null) await this.#leave();
+    else await this.#leave();
   }
 
   async #signIn(subject: string): Promise<void> {
     const { host, config } = this.#d;
     if (!host.started) return;
+    // The Worker took this subject's account away: only a sign-out or another subject lifts it.
+    if (subject === host.refused) return;
     // Another person: the first one leaves (unsent edits dropped, then forgotten) before this one
     // starts. The device credential is already the new person's, so nothing is sent for the old one.
     if (this.#subject !== null && this.#subject !== subject)
@@ -237,9 +248,21 @@ export class CloudSyncApi {
   /** The device was deactivated or the identity forgotten: leave the principal without a flush. */
   async #leave(): Promise<void> {
     const { host } = this.#d;
+    // Signed out (or never signed in): what `account_required` refused is not refused any more.
+    await host.clearRefused();
     if (this.#subject === null) return;
     host.machine.signOut();
     await host.touch();
+    await this.#chain;
+  }
+
+  /**
+   * A key-ring or file route answered `account_required` (V5 §11.5): the machine takes the same
+   * transition as for a `/sync` 403. Never throws into the route that saw it.
+   */
+  async accountRequired(signInUrl: string | null): Promise<void> {
+    await this.#attach().catch(() => undefined);
+    this.#d.host.accountRequired(signInUrl);
     await this.#chain;
   }
 
@@ -259,8 +282,15 @@ export class CloudSyncApi {
     const left = events.some(
       (e) => e.type === "signedOut" && FORGETTING.has(e.reason),
     );
+    const blocked = events.some(
+      (e) => e.type === "signedOut" && e.reason === "accountRequired",
+    );
+    const was = this.#subject;
     // The root leaves memory before anything else runs (`forget` locks first, synchronously).
-    const forgotten = left ? this.#forget() : null;
+    // `account_required` keeps the machine as it stands; every other leave purges it.
+    const forgotten = left
+      ? this.#forget(blocked ? { subject: was } : null)
+      : null;
     const offers = events.filter((e) => e.type === "signInOffered");
     try {
       for (const e of events) {
@@ -270,28 +300,47 @@ export class CloudSyncApi {
         if (e.type === "change")
           this.#d.config.noteSyncChange(e.keys, e.origin);
         if (left && e.type === "signInOffered") continue;
-        this.#d.emit(e);
+        this.#emit(e);
       }
     } finally {
       if (forgotten !== null) {
         this.#chain = this.#chain.then(async () => {
           await forgotten;
           if (offers.length === 0)
-            this.#d.emit({ type: "signInOffered", signInUrl: null });
-          for (const o of offers) this.#d.emit(o);
+            this.#emit({ type: "signInOffered", signInUrl: null });
+          for (const o of offers) this.#emit(o);
         });
       }
     }
   }
 
+  /** The Worker's sign-in URL goes to the app only if it is a path or on the Worker's own origin. */
+  #emit(e: SyncEvent): void {
+    this.#d.emit(
+      e.type === "signInOffered"
+        ? {
+            type: "signInOffered",
+            signInUrl: safeSignInUrl(e.signInUrl, this.#origin),
+          }
+        : e,
+    );
+  }
+
   /** Drop the ring (the root first), then the synced data on disk and in memory. Each step is
-   *  tried whatever the other did; a failure is logged and never thrown. */
-  async #forget(): Promise<void> {
+   *  tried whatever the other did; a failure is logged and never thrown. With `blocked` (after
+   *  `account_required`) the data is not purged: the machine is saved as it stands. */
+  async #forget(
+    blocked: { subject: string | null } | null = null,
+  ): Promise<void> {
     this.#forgot = true;
     // The root leaves memory first, synchronously (a save codec stops with it); the pin goes last.
     this.#d.keyring.lock();
     // `purge` waits for an in-flight pump, so it runs after the events batch that asked for it.
-    const data = this.#d.host.purge().catch(() => {
+    const data = (
+      blocked === null
+        ? this.#d.host.purge()
+        : this.#d.host.saveBlocked(blocked.subject)
+    ).catch(() => {
       this.#d.log?.("cloud sync: the synced data could not be deleted");
     });
     // The save transfers (journal, chunk cache, running writes) go before the ring is forgotten.

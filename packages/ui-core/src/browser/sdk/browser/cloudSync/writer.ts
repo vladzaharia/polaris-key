@@ -46,7 +46,10 @@ export type TabMessage =
   /** A tab signed a person in or out: every other tab asks the session who it is now. */
   | { t: "principal" }
   /** The writer took edit `id` (applied to its machine, so its own journal carries it). */
-  | { t: "ack"; id: number };
+  | { t: "ack"; id: number }
+  /** A follower's key-ring or file route answered `account_required`: the writer's machine takes
+   *  the transition. `signInUrl` is the answer's, unvetted. */
+  | { t: "accountRequired"; signInUrl: string | null };
 
 /** A channel the host can post to and listen on. */
 export interface TabChannel {
@@ -85,6 +88,11 @@ export function parseTabMessage(v: unknown): TabMessage | null {
       return { t: "purge" };
     case "principal":
       return { t: "principal" };
+    case "accountRequired":
+      return v.signInUrl === null ||
+        (typeof v.signInUrl === "string" && v.signInUrl.length <= 2048)
+        ? { t: "accountRequired", signInUrl: v.signInUrl }
+        : null;
     case "ack":
       return Number.isSafeInteger(v.id)
         ? { t: "ack", id: v.id as number }

@@ -63,6 +63,7 @@ import {
   isCatalogShape,
   type CloudSyncFile,
 } from "./state.js";
+import { dropAbandoned } from "@polaris-key/ui-core/browser/sdk/core/abandoned.js";
 import { sendSync } from "./transport.js";
 
 /** What app code sets (`PolarisKeyClientOptions.cloudSync`). Never read from the Worker. */
@@ -205,6 +206,8 @@ export class CloudSyncHost {
   #purged = false;
   /** The person the machine's queued requests belong to (null for none). */
   #bound: string | null = null;
+  /** The subject `account_required` took away (saved with the journal; see `CloudSyncFile`). */
+  #refused: string | null = null;
   /** The listener for `putAt` / `removeAt` outcomes; survives a rebuild of the machine. */
   #outcome: ((o: RecordOutcome) => void) | null = null;
   /** The open MergeRequests of this client: the machine's and the saves layer's (plans/U-08.md).
@@ -276,6 +279,7 @@ export class CloudSyncHost {
     this.#started = true;
     const saved = await this.#file.load();
     this.#openKeys = new Set(saved.openKeys);
+    this.#refused = saved.refused;
     this.#mirror = vetted(this.#opts.catalog);
     this.#served = vetted(saved.catalog);
     this.#build(saved.persisted);
@@ -416,7 +420,7 @@ export class CloudSyncHost {
       ) {
         for (const req of reqs) {
           this.#used++;
-          await this.#exchange(req);
+          await this.#exchange(req).catch(dropAbandoned);
         }
       }
       this.#emit();
@@ -490,9 +494,10 @@ export class CloudSyncHost {
       // Locked since the request left: the answer is dropped and the cursor stays.
       return m.receive({ error: "transport" });
     }
-    this.#noteOpenedKeys(opened.body, opened.opened);
     const answer: SyncResponse = { status: 200, body: opened.body };
+    // `receive` first: an answer for an abandoned request throws (see `dropAbandoned`) and stops here.
     m.receive(answer, opened.opened);
+    this.#noteOpenedKeys(opened.body, opened.opened);
     await this.#maybeRefetch(opened.body);
   }
 
@@ -598,6 +603,7 @@ export class CloudSyncHost {
       persisted: persisted ?? this.machine.persist(),
       catalog: this.#served,
       openKeys: [...this.#openKeys],
+      refused: this.#refused,
     };
     await this.#file.save(file).catch(() => undefined);
   }
@@ -625,9 +631,11 @@ export class CloudSyncHost {
     if (!done) await this.#file.markImported().catch(() => undefined);
   }
 
-  /** A principal signed in: the journal is saved again. */
+  /** A principal signed in: the journal is saved again, and what `account_required` refused is
+   *  not refused any more. */
   resume(): void {
     this.#purged = false;
+    this.#refused = null;
   }
 
   /**
@@ -639,6 +647,7 @@ export class CloudSyncHost {
   async purge(): Promise<void> {
     this.#purged = true;
     this.#openKeys = new Set();
+    this.#refused = null;
     if (this.#timer !== null) clearTimeout(this.#timer);
     this.#timer = null;
     if (this.started) {
@@ -682,5 +691,44 @@ export class CloudSyncHost {
       await this.#pumping?.catch(() => undefined);
       await this.#save();
     }
+  }
+
+  /** The subject `account_required` took away, or null (see `CloudSyncFile.refused`). */
+  get refused(): string | null {
+    return this.#refused;
+  }
+
+  /** A sign-out forgets what was refused: the next sign-in is the person's to make. */
+  async clearRefused(): Promise<void> {
+    if (this.#refused !== null) {
+      this.#refused = null;
+      await this.#save();
+    }
+  }
+
+  /**
+   * `account_required` came from a route the machine does not drive (a key-ring call or a file
+   * transfer): the machine takes the same transition as for a `/sync` 403 and its events go out at
+   * once. A request in flight is abandoned; its answer is dropped (`dropAbandoned`). A no-op before
+   * `start()`, with no person signed in, or when already blocked this way.
+   */
+  accountRequired(signInUrl: string | null): void {
+    if (!this.started) return;
+    this.machine.accountRequired(signInUrl);
+    this.#emit();
+  }
+
+  /**
+   * The state after `account_required`, on this path only (sign-out and deactivation keep the full
+   * `purge`): the machine is saved as it stands, so the status is still `blocked` after a relaunch,
+   * and what the person's snapshot held is already gone with the partition. `subject` is the one
+   * the Worker refused. No timer stays armed.
+   */
+  async saveBlocked(subject: string | null): Promise<void> {
+    this.#openKeys = new Set();
+    this.#refused = subject;
+    if (this.#timer !== null) clearTimeout(this.#timer);
+    this.#timer = null;
+    await this.#save();
   }
 }

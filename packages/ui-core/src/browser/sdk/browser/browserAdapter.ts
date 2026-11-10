@@ -1796,6 +1796,9 @@ export class BrowserAdapter implements PolarisAdapter {
         product: this.product,
         bearer: b,
         options: { ...o, deviceKeys: await this.deviceKeyPort() },
+        // A ring route's `account_required` reaches Cloud Sync like a `/sync` one does.
+        onAccountRequired: (url) =>
+          void this.cloudSync.accountRequired(url).catch(() => undefined),
       }),
     ));
   }
