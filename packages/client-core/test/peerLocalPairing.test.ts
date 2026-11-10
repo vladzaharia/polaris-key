@@ -434,6 +434,110 @@ describe("mode l under the link a pairing made", () => {
     expect(of(busy, "established")).toHaveLength(0);
   });
 
+  describe("a listener with no account key: the source group's budget first (§15.10)", () => {
+    // One initiator holding a link that the responder either holds (`opens`) or does not.
+    async function attempt(
+      limiter: HandshakeLimiter,
+      group: string | undefined,
+      opens: boolean,
+    ) {
+      const k = await pairOfKeys();
+      const secret = rnd();
+      const initiator = side({
+        mode: "l",
+        role: "initiator",
+        locals: [link(secret, k.a, k.bPub)],
+      });
+      let tries = 0;
+      const ports = {
+        ...webCryptoNoisePorts,
+        aead: {
+          ...webCryptoNoisePorts.aead,
+          open: (...a: Parameters<typeof webCryptoNoisePorts.aead.open>) => {
+            tries++;
+            return webCryptoNoisePorts.aead.open(...a);
+          },
+        },
+      };
+      const responder = side({
+        mode: "l",
+        role: "responder",
+        locals: [link(opens ? secret : rnd(), k.b, k.aPub)],
+        admission: limiter,
+        ports,
+        ...(group !== undefined ? { admissionGroup: group } : {}),
+      });
+      await initiator.ch.start();
+      await pump(initiator, responder);
+      return { responder, tries: () => tries };
+    }
+    const clock = () => {
+      const c = { t: 0 };
+      return { c, limiter: new HandshakeLimiter(5, 4, () => c.t) };
+    };
+
+    it("a group that sent two message 1s is refused the third before any secret is tried; another group is not", async () => {
+      const { c, limiter } = clock();
+      for (const t of [0, 1]) {
+        c.t = t;
+        const r = await attempt(limiter, "g1", false);
+        expect(closed(r.responder)).toMatchObject({ code: "handshake_failed" });
+      }
+      c.t = 2;
+      const third = await attempt(limiter, "g1", true);
+      expect(closed(third.responder)).toMatchObject({ code: "peer_busy" });
+      expect(third.tries()).toBe(0);
+      const other = await attempt(limiter, "g2", true);
+      expect(of(other.responder, "established")).toHaveLength(1);
+      // The window slides: a minute on, the group is heard again.
+      c.t = 70;
+      const later = await attempt(limiter, "g1", true);
+      expect(of(later.responder, "established")).toHaveLength(1);
+    });
+
+    it("a trial that opens is not counted against the group, and only a failed trial spends the shared budget", async () => {
+      const { c, limiter } = clock();
+      // Three opening attempts from one group inside a minute (a group allows two failures).
+      for (let i = 0; i < 3; i++) {
+        c.t = i;
+        const r = await attempt(limiter, "g1", true);
+        expect(of(r.responder, "established")).toHaveLength(1);
+      }
+      // Five groups, one failure each, use the shared budget; a sixth is refused behind it.
+      for (let i = 0; i < 5; i++) {
+        c.t = 10 + i;
+        const r = await attempt(limiter, `f${i}`, false);
+        expect(closed(r.responder)).toMatchObject({ code: "handshake_failed" });
+      }
+      c.t = 20;
+      const six = await attempt(limiter, "f5", true);
+      expect(closed(six.responder)).toMatchObject({ code: "peer_busy" });
+      expect(six.tries()).toBe(0);
+    });
+
+    it("one group can use two of the shared five, not all of it", async () => {
+      const { c, limiter } = clock();
+      for (let i = 0; i < 6; i++) {
+        c.t = i;
+        await attempt(limiter, "noisy", false);
+      }
+      c.t = 7;
+      const legit = await attempt(limiter, "quiet", true);
+      expect(of(legit.responder, "established")).toHaveLength(1);
+    });
+
+    it("without a group the shared limiter counts the attempt as before", async () => {
+      const { c, limiter } = clock();
+      for (let i = 0; i < 5; i++) {
+        c.t = i;
+        await attempt(limiter, undefined, true);
+      }
+      c.t = 6;
+      const r = await attempt(limiter, undefined, true);
+      expect(closed(r.responder)).toMatchObject({ code: "peer_busy" });
+    });
+  });
+
   it("refuses constructions that name no link, too many links or no limiter", () => {
     const l = link(rnd(), rnd(), rnd());
     const mk =

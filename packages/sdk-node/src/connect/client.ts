@@ -732,13 +732,17 @@ export class ConnectClient {
 
   /** A session opened under a local link: its last-seen time moves. @internal */
   async touchLocal(ref: LocalRef): Promise<void> {
-    const now = this.ctx.now();
+    // At most one write an hour per link, and the time is coarsened to the hour: the file does not
+    // become a log of when the peer was near (§15.12).
+    const hour = Math.floor(this.ctx.now() / 3600) * 3600;
     await this.localStore().update((rows) =>
       rows.some(
         (r) =>
-          r.id === ref.id && localTag(base64UrlDecode(r.secret)) === ref.tag,
+          r.id === ref.id &&
+          (r.lastSeen === undefined || r.lastSeen < hour) &&
+          localTag(base64UrlDecode(r.secret)) === ref.tag,
       )
-        ? rows.map((r) => (r.id === ref.id ? { ...r, lastSeen: now } : r))
+        ? rows.map((r) => (r.id === ref.id ? { ...r, lastSeen: hour } : r))
         : null,
     );
   }

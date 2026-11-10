@@ -318,6 +318,8 @@ export class CloudConnect {
   readonly #localLinks: LocalLinks;
   readonly #transfer: CloudTransfer;
   #contactRelay: ContactRelay | null = null;
+  /** The local-only service's watch on the link list (set while it runs). */
+  #unLocal: (() => void) | null = null;
 
   constructor(
     private readonly connect: ConnectClient,
@@ -475,7 +477,7 @@ export class CloudConnect {
         lanAttemptMs: this.#lanAttemptMs,
         relayOn: this.#relayOn,
       });
-      if (this.#lan !== null) this.#localLinks.attach(this.#lan);
+      if (this.#lan !== null) await this.#localLinks.attach(this.#lan);
       this.#localOnly = false;
       this.#running = true;
     });
@@ -494,7 +496,11 @@ export class CloudConnect {
     );
   }
 
-  /** The LAN service with no account half: the local links alone (§15.5, §15.12). */
+  /**
+   * The local-only service (§15.5, §15.12): no account half, the local links alone. A device that
+   * holds no link binds no listener (nothing to find, nothing to scan): it waits, and the first
+   * link (`pair`, `join`) brings the listener up and the last one forgotten takes it down.
+   */
   async #startLocalOnly(
     opts: CloudConnectOptions,
     epoch: number,
@@ -503,23 +509,60 @@ export class CloudConnect {
     this.#resumeWith = opts;
     this.#relayOn = false;
     this.#lanFailed = null;
+    this.#localOnly = true;
+    this.#running = true;
+    this.#unLocal ??= this.connect.localSource().onChange(() => {
+      void this.#syncLocalListener().catch(() => undefined);
+    });
+    try {
+      await this.#syncLocalNow(epoch);
+    } catch (e) {
+      this.#localOnly = false;
+      this.#running = false;
+      this.#unLocal?.();
+      this.#unLocal = null;
+      throw e;
+    }
+  }
+
+  /** Bring the local-only listener to match whether a link is held. */
+  async #syncLocalNow(epoch: number): Promise<void> {
+    if (!this.#localOnly || epoch !== this.#epoch) return;
+    const held = await this.connect
+      .localStore()
+      .count()
+      .catch(() => 0);
+    if (held === 0) {
+      const lan = this.#lan;
+      if (lan === null) return;
+      // The last link is gone: the listener closes (the sessions of that link already ended).
+      this.#lan = null;
+      await this.#localLinks.detach();
+      await lan.stop().catch(() => undefined);
+      return;
+    }
+    if (this.#lan !== null) return;
     let lan: LanService;
     try {
       lan = await this.connect.lanLocal(
-        opts.lan === false ? {} : (opts.lan ?? {}),
+        this.#resumeWith?.lan === false ? {} : (this.#resumeWith?.lan ?? {}),
       );
     } catch (e) {
       this.#lanFailed = e instanceof Error ? e : new Error("LAN failed");
       throw e;
     }
-    if (epoch !== this.#epoch) {
+    if (epoch !== this.#epoch || !this.#localOnly || this.#lan !== null) {
       lan.abort();
       return;
     }
     this.#lan = lan;
-    this.#localLinks.attach(lan);
-    this.#localOnly = true;
-    this.#running = true;
+    await this.#localLinks.attach(lan);
+  }
+
+  /** A link was added or forgotten (or the gate moved) while only local links are served. */
+  #syncLocalListener(): Promise<void> {
+    const epoch = this.#epoch;
+    return this.#serial(() => this.#syncLocalNow(epoch));
   }
 
   /** Close the sessions, the relay socket and the LAN service. Safe to call more than once. */
@@ -537,6 +580,8 @@ export class CloudConnect {
     const epoch = this.#epoch;
     this.#running = false;
     this.#localOnly = false;
+    this.#unLocal?.();
+    this.#unLocal = null;
     for (const u of this.#unsub.splice(0)) u();
     const lan = this.#lan;
     const relay = this.#relay;
@@ -594,6 +639,8 @@ export class CloudConnect {
     this.#serial = serialQueue();
     this.#running = false;
     this.#localOnly = false;
+    this.#unLocal?.();
+    this.#unLocal = null;
     for (const u of this.#unsub.splice(0)) u();
     const held = [
       {

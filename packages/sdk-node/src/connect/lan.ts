@@ -300,14 +300,17 @@ export class LanService {
     await s.#loadLocals();
     await s.#listen();
     try {
-      if (o.advertise !== false) await s.#rotate();
-      if (o.browse !== false) await s.#startBrowse();
+      // Subscribed before the first advert, and read once more right after: a gate or a link
+      // that moved while the service was starting is applied, not left advertised.
       const refresh = (): void =>
         void s.refreshContacts().catch(() => undefined);
       const offs = [src.onContacts?.(refresh), src.onLocals?.(refresh)];
       s.#unContacts = (): void => {
         for (const f of offs) f?.();
       };
+      if (o.advertise !== false) await s.#rotate();
+      if (o.browse !== false) await s.#startBrowse();
+      await s.#refreshLocals().catch(() => undefined);
     } catch (e) {
       await s.stop();
       throw e;
@@ -379,19 +382,45 @@ export class LanService {
    * adverts, the accepted names and the listener's trial order to match. Safe to call at any time.
    */
   refreshContacts(): Promise<void> {
+    return this.#reload(true);
+  }
+
+  /** Read the local links again and bring their adverts to match (serialised with the other reloads). */
+  #refreshLocals(): Promise<void> {
+    return this.#reload(false);
+  }
+
+  #reload(account: boolean): Promise<void> {
     const run = this.#queue.then(async () => {
       if (this.#stopped) return;
       // The local links first: a withdrawal (the gate moved, a link was forgotten) must not wait
       // on the account half, which can fail when there is no account.
       await this.#loadLocals();
       await this.#advertLocals(advertEpoch(this.#src.now()));
-      if (this.#localOnly) return;
+      if (!account || this.#localOnly) return;
       await this.#loadContacts();
       const id = await this.#identity(true);
       await this.#advertContacts(id, advertEpoch(this.#src.now()));
     });
     this.#queue = run.catch(() => undefined);
     return run;
+  }
+
+  /**
+   * A link was forgotten: it leaves the held list now, before the reload, so no dial or handshake
+   * can use it afterwards. Resolves once the reload has run (adverts and accepted names follow).
+   */
+  async forgetLocal(id: string): Promise<void> {
+    const gone = this.#locals.filter((l) => l.id === id);
+    if (gone.length > 0) {
+      this.#locals = this.#locals.filter((l) => l.id !== id);
+      this.#localPeers.delete(id);
+      this.#pruneServes();
+      // The old list may be read by a dial or a browse that began before this: wiping it makes
+      // those copies fail closed, and they re-check the list afterwards.
+      wipeLocals(gone);
+    }
+    await this.refreshContacts().catch(() => undefined);
   }
 
   /** Dial a discovered device and run the handshake. */
@@ -702,6 +731,7 @@ export class LanService {
     socket: Socket,
     id: LanIdentity | null,
     role: "initiator" | "responder",
+    group?: string,
   ): SocketLink {
     // The shared listener (§15.5, §15.10, §15.12): a responder that holds contacts or local links
     // tries the account's keys, then each contact's secret, then each local link's, under the one
@@ -733,6 +763,8 @@ export class LanService {
               ...localChannel(this.#slug(), this.#o, now),
               locals,
               admission: this.#limiter,
+              // No account key to try: the source group's budget comes first (§15.10, "Admission").
+              ...(group !== undefined ? { admissionGroup: group } : {}),
             }
           : {
               mode: "a",
@@ -807,6 +839,15 @@ export class LanService {
   }
 
   #accept(socket: Socket): void {
+    // A fault here must end this socket and nothing else: the listener keeps serving.
+    try {
+      this.#admitSocket(socket);
+    } catch {
+      socket.destroy();
+    }
+  }
+
+  #admitSocket(socket: Socket): void {
     const slot = this.#gate.admit(
       socket,
       this.#stopped ||
@@ -821,24 +862,39 @@ export class LanService {
     (this.#localOnly ? Promise.resolve(null) : this.#identity(false)).then(
       (id) => {
         if (socket.destroyed) return;
-        const link = this.#link(socket, id, "responder");
-        link.opened.then(
-          (s) => {
-            slot.settle();
-            const to =
-              s.contact !== null
-                ? this.#onContactSession
-                : s.local !== null
-                  ? this.#onLocalSession
-                  : this.#onSession;
-            for (const f of [...to]) f(s);
-          },
-          () => undefined,
-        );
-        socket.resume();
+        try {
+          const link = this.#link(socket, id, "responder", slot.group);
+          link.opened.then(
+            (s) => {
+              slot.settle();
+              this.#deliver(s);
+            },
+            () => undefined,
+          );
+          socket.resume();
+        } catch {
+          socket.destroy();
+        }
       },
       () => socket.destroy(),
     );
+  }
+
+  /** Hand an open inbound session to the handlers of its kind. */
+  #deliver(s: ConnectSession): void {
+    const to =
+      s.contact !== null
+        ? this.#onContactSession
+        : s.local !== null
+          ? this.#onLocalSession
+          : this.#onSession;
+    // A local session nobody is listening for (the host has not attached yet) is ended, not left
+    // open and untracked: the peer dials again.
+    if (s.local !== null && to.size === 0) {
+      void s.close("peer_bye").catch(() => undefined);
+      return;
+    }
+    for (const f of [...to]) f(s);
   }
 
   // ── Contacts ────────────────────────────────────────────────────────────────────────────────
@@ -938,7 +994,7 @@ export class LanService {
 
   // ── Local links ─────────────────────────────────────────────────────────────────────────────
 
-  async #foundLocal(f: MdnsFound, hosts: string[]): Promise<void> {
+  async #foundLocal(f: MdnsFound, hosts: string[], retries = 2): Promise<void> {
     const locals = this.#locals;
     if (locals.length === 0 || !this.#localsOn() || this.#miss.has(f.instance))
       return;
@@ -953,8 +1009,11 @@ export class LanService {
     } finally {
       for (const k of keys) k.secret.fill(0);
     }
-    // The list may have moved while the MACs were worked out: nothing is learned or cached.
-    if (this.#locals !== locals || this.#stopped) return;
+    // The list may have moved while the MACs were worked out: nothing is learned or cached from
+    // this answer, and the name is tested against the new list (a peer announces rarely).
+    if (this.#stopped) return;
+    if (this.#locals !== locals)
+      return retries > 0 ? this.#foundLocal(f, hosts, retries - 1) : undefined;
     if (hit === null) {
       this.#remember(f.instance);
       return;
@@ -993,7 +1052,8 @@ export class LanService {
       const still = this.#locals.find((x) => x.id === id && x.tag === ref.tag);
       if (this.#stopped || !this.#localsOn() || still === undefined)
         throw new LanError("closed", "That link is no longer available.");
-      const { socket, host } = await this.#dial(left, peer.port);
+      // The key and secret are copied before the dial: a reload during it wipes the held ones, and
+      // a copy made after would hold zeros and fail the handshake.
       const own: LocalLink = {
         secret: new Uint8Array(still.secret),
         ownKey: new Uint8Array(still.ownKey),
@@ -1003,6 +1063,24 @@ export class LanService {
         own.secret.fill(0);
         own.ownKey.fill(0);
       };
+      let socket: Socket;
+      let host: string;
+      try {
+        ({ socket, host } = await this.#dial(left, peer.port));
+      } catch (e) {
+        wipe();
+        throw e;
+      }
+      // The link may have been forgotten, or the gate cleared, while the socket was opening.
+      if (
+        this.#stopped ||
+        !this.#localsOn() ||
+        !this.#locals.some((x) => x.id === id && x.tag === ref.tag)
+      ) {
+        wipe();
+        socket.destroy();
+        throw new LanError("closed", "That link is no longer available.");
+      }
       const link: SocketLink = new SocketLink({
         socket,
         handshakeMs: this.#o.handshakeMs,

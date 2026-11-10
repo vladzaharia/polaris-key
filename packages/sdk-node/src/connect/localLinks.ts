@@ -28,6 +28,7 @@
 
 import {
   DialBudget,
+  MAX_LIVE_LOCAL_ADVERTS,
   MAX_LOCAL_LINKS,
   cleanLabel,
 } from "@polaris-key/client-core/peer";
@@ -36,6 +37,7 @@ import {
   checkOptions,
   full,
   off,
+  reachableFull,
   type LocalJoinOptions,
   type LocalPairHandle,
   type LocalPairOptions,
@@ -52,6 +54,11 @@ import {
   type LocalLinkRow,
 } from "./localState.js";
 import { ConnectSession, LanError } from "./session.js";
+
+/** A dial to one link is not repeated sooner than this (seconds): a base, with jitter, doubled after each failure up to the cap. */
+const DIAL_COOLDOWN_S = 3;
+const DIAL_COOLDOWN_JITTER_S = 2;
+const DIAL_BACKOFF_CAP_S = 60;
 import { base64UrlDecode } from "@polaris-key/jws";
 
 export type {
@@ -94,6 +101,10 @@ export class LocalLinks {
   /** Bumped by `closeAll`: a window that began opening before it must not outlive it. */
   #epoch = 0;
   readonly #joins = new Set<{ cancel(): void }>();
+  /** One dial per link at a time: a second `open` for the same link joins it. */
+  readonly #dials = new Map<string, Promise<ConnectSession>>();
+  /** Per link: no dial before `until` (monotonic seconds), and the failures in a row. */
+  readonly #cool = new Map<string, { until: number; fails: number }>();
 
   constructor(
     src: LocalSource,
@@ -102,6 +113,10 @@ export class LocalLinks {
       adopt?: (s: ConnectSession) => void;
       /** Links were forgotten: their peers' link keys (32 raw bytes each). */
       removed?: (peerKeys: Uint8Array[]) => Promise<void>;
+      /** Monotonic seconds, for the dial cooldown. Default `performance.now() / 1000`. */
+      mono?: () => number;
+      /** A number in [0, 1) for the cooldown's jitter. Default `Math.random`. */
+      random?: () => number;
     } = {},
   ) {
     this.#src = src;
@@ -220,22 +235,38 @@ export class LocalLinks {
 
   /**
    * Advertise a link's `m=l` name on the LAN (at most 8 at once), or stop. False when `id` names no
-   * link. The adverts run while `cloudConnect.start()` does and the gate is on.
+   * link. A new link is reachable already; turning a ninth on throws `local-links-full`. The
+   * adverts run while `cloudConnect.start()` does and the gate is on.
    */
-  setReachable(id: string, reachable: boolean): Promise<boolean> {
+  async setReachable(id: string, reachable: boolean): Promise<boolean> {
     if (typeof reachable !== "boolean")
       throw new LanError("bad_input", "reachable must be a boolean.");
-    return this.#change(id, (r) => ({ ...r, reachable }));
+    let refused = false;
+    const found = await this.#change(id, (r, rows) => {
+      // At most `MAX_LIVE_LOCAL_ADVERTS` links are advertised: a ninth is refused, not left
+      // silently unadvertised (§15.12, "Reachable by default").
+      if (
+        reachable &&
+        !r.reachable &&
+        rows.filter((x) => x.reachable).length >= MAX_LIVE_LOCAL_ADVERTS
+      ) {
+        refused = true;
+        return r;
+      }
+      return { ...r, reachable };
+    });
+    if (refused) throw reachableFull();
+    return found;
   }
 
   async #change(
     id: string,
-    f: (r: LocalLinkRow) => LocalLinkRow,
+    f: (r: LocalLinkRow, rows: LocalLinkRow[]) => LocalLinkRow,
   ): Promise<boolean> {
     let found = false;
     await this.#src.store.update((rows) => {
       found = rows.some((r) => r.id === id);
-      return found ? rows.map((r) => (r.id === id ? f(r) : r)) : null;
+      return found ? rows.map((r) => (r.id === id ? f(r, rows) : r)) : null;
     });
     if (found) this.#src.notify();
     return found;
@@ -255,6 +286,9 @@ export class LocalLinks {
       return rows.filter((r) => r.id !== id);
     });
     if (gone.length === 0) return false;
+    // The listener drops the link before this resolves: a dial or a handshake that starts after
+    // `await remove()` cannot use it.
+    await this.#lan?.forgetLocal(id).catch(() => undefined);
     this.#src.notify();
     await this.#reconcile();
     await this.hooks.removed?.(gone).catch(() => undefined);
@@ -274,7 +308,20 @@ export class LocalLinks {
    * not seen on this network, and `peer_cert_invalid` (`handshake_failed`) when the peer does not
    * answer under the link (it forgot it: "Not reachable").
    */
-  async open(id: string): Promise<ConnectSession> {
+  open(id: string): Promise<ConnectSession> {
+    // One dial per link at a time; a caller that comes while one runs gets the same session.
+    const live = this.#dials.get(id);
+    if (live !== undefined) return live;
+    const run = this.#dial(id);
+    this.#dials.set(id, run);
+    const done = (): void => {
+      if (this.#dials.get(id) === run) this.#dials.delete(id);
+    };
+    run.then(done, done);
+    return run;
+  }
+
+  async #dial(id: string): Promise<ConnectSession> {
     this.#requireOn("open");
     const lan = this.#lan;
     if (lan === null)
@@ -284,6 +331,15 @@ export class LocalLinks {
         "unknown_peer",
         "That is not a local link on this device.",
       );
+    // A dial that failed is not repeated at once, and the wait grows with each failure in a row:
+    // a peer that closes on a message 1 (it is busy, or it forgot the link) is not hammered.
+    const mono = this.hooks.mono ?? ((): number => performance.now() / 1000);
+    const cool = this.#cool.get(id);
+    if (cool !== undefined && mono() < cool.until)
+      throw new LanError(
+        "busy",
+        "That device did not answer a moment ago; try again shortly.",
+      );
     let s: ConnectSession;
     try {
       s = await lan.connectLocal(id);
@@ -291,13 +347,32 @@ export class LocalLinks {
       // The gate was cleared while the dial ran.
       if (!this.#src.allowed())
         throw off("Pairing with a code was turned off (open).");
+      // Only a dial that reached the network is held off: "not seen yet" is no attempt.
+      const reached =
+        !(e instanceof LanError) ||
+        (e.reason !== "unknown_peer" && e.reason !== "not_started");
+      if (!reached) throw e;
+      const fails = (cool?.fails ?? 0) + 1;
+      const base =
+        DIAL_COOLDOWN_S +
+        DIAL_COOLDOWN_JITTER_S * (this.hooks.random ?? Math.random)();
+      this.#cool.set(id, {
+        fails,
+        until: mono() + Math.min(DIAL_BACKOFF_CAP_S, base * 2 ** (fails - 1)),
+      });
       throw e;
+    }
+    this.#cool.delete(id);
+    // Adopted (Direct Transfer takes it) and tracked only once the link is known to be held.
+    if (!(await this.#stillHeld(s))) {
+      if (!this.#src.allowed())
+        throw off("Pairing with a code was turned off (open).");
+      throw new LanError("unknown_peer", "That link was removed.");
     }
     this.hooks.adopt?.(s);
     this.#sessions.add(s);
     s.onClose(() => this.#sessions.delete(s));
-    if (await this.#stillHeld(s)) return s;
-    throw new LanError("unknown_peer", "That link was removed.");
+    return s;
   }
 
   /** Whether a link is held, and found on the network now. @internal */
@@ -307,9 +382,9 @@ export class LocalLinks {
 
   // ── Wiring (CloudConnect.start and stop) ────────────────────────────────────────────────────
 
-  /** @internal The LAN service the sessions come from. */
-  attach(lan: LanService): void {
-    void this.detach();
+  /** @internal The LAN service the sessions come from. The previous one's sessions are ended first. */
+  async attach(lan: LanService): Promise<void> {
+    await this.detach();
     this.#lan = lan;
     this.#unsub.push(lan.onLocalSession((s) => this.#inbound(s)));
   }
@@ -318,12 +393,12 @@ export class LocalLinks {
   async detach(): Promise<void> {
     for (const u of this.#unsub.splice(0)) u();
     this.#lan = null;
+    const mine = [...this.#sessions];
     await Promise.all(
-      [...this.#sessions].map((s) =>
-        s.close("peer_bye").catch(() => undefined),
-      ),
+      mine.map((s) => s.close("peer_bye").catch(() => undefined)),
     );
-    this.#sessions.clear();
+    // Only what this call ended: a session of a newer attach is left alone.
+    for (const s of mine) this.#sessions.delete(s);
   }
 
   #inbound(s: ConnectSession): void {

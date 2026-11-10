@@ -66,6 +66,7 @@ export type LanErrorReason =
   | "bad_type"
   | "not_started"
   | "not_picked"
+  | "busy"
   | "bad_input";
 
 /** The registered client code of each reason. */
@@ -82,6 +83,7 @@ const LAN_CODE: Record<LanErrorReason, string> = {
   too_large: ErrorCode.invalidArgument,
   bad_type: ErrorCode.invalidArgument,
   not_picked: ErrorCode.invalidArgument,
+  busy: ErrorCode.peerBusy,
   bad_input: ErrorCode.invalidArgument,
 };
 

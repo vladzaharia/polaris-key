@@ -254,6 +254,12 @@ export class PolarisKeyClient {
   private localReadApplied = 0;
   private localRetry: NodeJS.Timeout | null = null;
   private localRetryStep = 0;
+  /** The periodic read while the local-pairing gate is on (1 to 4 h apart). */
+  private localReread: NodeJS.Timeout | null = null;
+  private localRereadOff = false;
+  /** The wait before the next periodic read, in ms: a number in [1 h, 4 h). Replaced in tests. */
+  private localRereadMs: () => number = () =>
+    (1 + 3 * Math.random()) * 3_600_000;
   /** Epoch ms until which the cached `interAccount` answer counts; 0 while none is valid. */
   private linksUntil = 0;
   private linksTimer: NodeJS.Timeout | null = null;
@@ -651,6 +657,7 @@ export class PolarisKeyClient {
         this.#localGateRead(this.localGate.readNotFound());
       }
     }
+    this.#armLocalReread();
     // The local links follow the gate: turned on, the listener serves them and the adverts go up;
     // turned off, the adverts are withdrawn (and `localLinks.closeAll` ended the sessions).
     if (wasOn !== this.localGate.allowed) this.connect.notifyLocals();
@@ -675,6 +682,21 @@ export class PolarisKeyClient {
       this.connect.notifyContacts();
     }
     return result;
+  }
+
+  /**
+   * While the gate is on, discovery is read again every 1 to 4 hours (random, so a fleet does not
+   * move together): a withdrawal reaches an idle host in hours, not at the next start. Off clears it.
+   */
+  #armLocalReread(): void {
+    if (this.localReread !== null) clearTimeout(this.localReread);
+    this.localReread = null;
+    if (!this.localGate.allowed || this.localRereadOff) return;
+    this.localReread = setTimeout(() => {
+      this.localReread = null;
+      void this.discover().catch(() => this.#armLocalReread());
+    }, this.localRereadMs());
+    this.localReread.unref();
   }
 
   /** After a read that said nothing, read again in 5 min, then 10, then every 15, while the gate is "on". */
@@ -1114,6 +1136,9 @@ export class PolarisKeyClient {
     this.linksTimer = null;
     if (this.localRetry !== null) clearTimeout(this.localRetry);
     this.localRetry = null;
+    if (this.localReread !== null) clearTimeout(this.localReread);
+    this.localReread = null;
+    this.localRereadOff = true;
     void this.cloudConnect.localLinks.closeAll().catch(() => undefined);
     void this.cloudConnect.stop().catch(() => undefined);
     void this.cloudConnect.nearby.stopAll().catch(() => undefined);
