@@ -1133,6 +1133,20 @@ public struct ConnectLanSource: Sendable {
                     last = ConnectLanError(.connectFailed, "The device did not answer.")
                     continue
                 }
+                // The dial took time: the gate, the service and the held link (id and tag) are read again, and the
+                // socket that no longer has a footing is closed before a byte is sent on it.
+                let stillOK: Bool
+                if stopped {
+                    stillOK = false
+                } else {
+                    let allowed = await src.localAllowed?() ?? true
+                    stillOK = allowed && !stopped && locals.contains(where: { $0.id == id && $0.tag == l.tag })
+                }
+                guard stillOK else {
+                    await pipe.close()
+                    if stopped { throw ConnectLanError(.notListening, "The LAN service is stopped.") }
+                    throw ConnectLanError(.unknownPeer, "That link is no longer held.")
+                }
                 let key = ObjectIdentifier(pipe)
                 pending[key] = pipe
                 defer { pending[key] = nil }

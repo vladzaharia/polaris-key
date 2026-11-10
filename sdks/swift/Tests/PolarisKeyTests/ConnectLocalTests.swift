@@ -87,7 +87,10 @@ import XCTest
         let dialOptions = BonjourDialOptions(policy: BonjourDialPolicy(allowLoopback: true), timeout: 5)
         private let lock = NSLock()
         private var port: UInt16 = 0
+        private var afterDialHook: (@Sendable () -> Void)?
         init(_ dir: Directory) { self.dir = dir }
+        /// Runs once a dial has returned its socket, before the caller sees it.
+        func afterDial(_ hook: @escaping @Sendable () -> Void) { lock.withLock { afterDialHook = hook } }
 
         func listen(
             onPipe: @escaping @Sendable (NWPipe) -> Void, onEvent: @escaping @Sendable (BonjourListenerEvent) -> Void
@@ -110,7 +113,9 @@ import XCTest
         ) throws -> @Sendable () -> Void { dir.browse(up: onUp, down: onDown) }
         func resolve(_ endpoint: BonjourEndpoint) async throws -> [BonjourEndpoint] { [endpoint] }
         func dial(_ endpoint: BonjourEndpoint) async throws -> NWPipe {
-            try await BonjourPipes.dial(endpoint, options: dialOptions)
+            let pipe = try await BonjourPipes.dial(endpoint, options: dialOptions)
+            lock.withLock { afterDialHook }?()
+            return pipe
         }
         func rescan() { dir.replay() }
         func stop() async {
@@ -791,6 +796,101 @@ import XCTest
             await svcB.stop()
         }
 
+        // ── Dial budget, gate sequence, gate re-read, dial guard ─────────────────────────────
+
+        func testTheDialBudgetIsCheckedAndSpentInOneStep() async {
+            let b = LocalDialBudgets()
+            let taken = await withTaskGroup(of: Bool.self) { g -> Int in
+                for _ in 0..<64 { g.addTask { b.takeIfAllowed("12", 0) } }
+                var n = 0
+                for await ok in g where ok { n += 1 }
+                return n
+            }
+            XCTAssertEqual(taken, localDialBudget, "joiners that overlap cannot both take the last dial")
+            XCTAssertFalse(b.takeIfAllowed("12", 1))
+            // Once the window has passed no empty key stays behind.
+            XCTAssertTrue(b.check("12", Double(localDialBudgetSeconds) + 10).allowed)
+            XCTAssertEqual(b.keyCount, 0)
+            XCTAssertTrue(b.takeIfAllowed("77", 0))
+            XCTAssertEqual(b.keyCount, 1)
+        }
+
+        func testAnErrorReadDoesNotMakeAnOlderNotFoundStale() async throws {
+            let d = try await Device.make()
+            XCTAssertTrue(d.client.connect.localPairing())
+            d.client.connect.noteLocalDiscovery(.error(status: 503, message: "down"), seq: 1_000_000)
+            d.client.connect.noteLocalDiscovery(.notFound, seq: 999_999)
+            XCTAssertFalse(d.client.connect.localPairing(), "an error read changed nothing, so the older answer applies")
+            await d.client.close()
+        }
+
+        func testTheGateIsReadAgainWhenTheAppReturnsToTheFront() async throws {
+            let d = try await Device.make()
+            XCTAssertTrue(d.client.connect.localPairing())
+            let center = NotificationCenter()
+            let name = Notification.Name("test.foreground")
+            await d.client.installLocalGateForegroundHook(center: center, names: [name])
+            await d.serve(false)
+            center.post(name: name, object: nil)
+            await until("the gate is read again") { !d.client.connect.localPairing() }
+            await d.client.close()
+        }
+
+        func testTheWaitBeforeAGateReadRunsOnAClockThatCountsASleep() async throws {
+            let d = try await Device.make()
+            let clock = LockedValue(Date(timeIntervalSince1970: 0))
+            let sleeps = LockedValue(0)
+            let release = LockedValue(false)
+            await d.client.setLocalGateTime(
+                clock: { clock.current },
+                sleep: { _ in
+                    sleeps.with { $0 += 1 }
+                    // The machine sleeps: the wall clock moves a long way once the test lets the check end.
+                    while !release.current { try? await Task.sleep(nanoseconds: 5_000_000) }
+                    clock.set(clock.current.addingTimeInterval(20_000))
+                }, check: 60)
+            await d.client.discover()  // the gate is on: a read is armed on the new clock
+            await until("the wait started") { sleeps.current >= 1 }
+            XCTAssertTrue(d.client.connect.localPairing())
+            await d.serve(false)
+            release.set(true)
+            await until("the read ran when the clock passed the deadline") { !d.client.connect.localPairing() }
+            XCTAssertLessThan(sleeps.current, 10, "the wait is a deadline, not a count of sleeps")
+            await d.client.close()
+        }
+
+        func testADialThatTakesTimeIsCheckedAgainAndItsSocketClosedWhenTheGateWentOff() async throws {
+            let (la, lb) = try linkPair()
+            let dir = Directory()
+            let allowedB = LockedValue(true)
+            let netB = FakeNet(dir)
+            let svcA = try await ConnectLanService.startLocal(
+                ConnectLanSource(
+                    load: { throw ConnectLanError(.noIdentity, "no account") }, now: { 1_700_000_000 }, slug: "djdl",
+                    locals: { [la] }, localAllowed: { true }),
+                options: ConnectLanOptions(network: FakeNet(dir)))
+            let svcB = try await ConnectLanService.startLocal(
+                ConnectLanSource(
+                    load: { throw ConnectLanError(.noIdentity, "no account") }, now: { 1_700_000_000 }, slug: "djdl",
+                    locals: { [lb] }, localAllowed: { allowedB.current }),
+                options: ConnectLanOptions(network: netB))
+            let inbound = LockedValue(0)
+            svcA.onLocalSession { _ in inbound.with { $0 += 1 } }
+            await until("B sees A's link advert") { await svcB.currentLocalPeers().contains(lb.id) }
+            // The gate goes off while the socket opens.
+            netB.afterDial { allowedB.set(false) }
+            do {
+                _ = try await svcB.connectLocal(lb.id)
+                XCTFail("opened a session after the gate went off")
+            } catch let e as ConnectLanError {
+                XCTAssertEqual(e.reason, .unknownPeer)
+            }
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            XCTAssertEqual(inbound.current, 0, "no handshake ran on the socket")
+            await svcA.stop()
+            await svcB.stop()
+        }
+
         // ── Direct Transfer ──────────────────────────────────────────────────────────────────
 
         func testADirectTransferOverALocalLinkNamesTheLinkAndAppliesTheCategoryRule() async throws {
@@ -831,6 +931,24 @@ import XCTest
         }
 
         // ── The store ────────────────────────────────────────────────────────────────────────
+
+        func testAPairingAlreadyStoringWhenTheGateClearsWritesNothing() async throws {
+            let state = LocalLinkStateStore.inMemory(productSlug: "djdl")
+            let store = LocalLinkStore(state)
+            let on = LockedValue(true)
+            let k = Data(repeating: 7, count: 32)
+            // The gate clears between the pairing's last check and the write: it is read inside the store call.
+            on.set(false)
+            let off = try await store.add(
+                ownKey: k, ownPublic: k, peerKey: k, secret: k, label: nil, cats: [], now: 1, allowed: { on.current })
+            XCTAssertEqual(off, .off)
+            let rows = try await store.rows()
+            XCTAssertTrue(rows.isEmpty)
+            on.set(true)
+            let stored = try await store.add(
+                ownKey: k, ownPublic: k, peerKey: k, secret: k, label: nil, cats: [], now: 1, allowed: { on.current })
+            XCTAssertEqual(stored, .stored(id: PeerLocal.linkId(peerKey: k)))
+        }
 
         func testTheRecordIsStrictAndAnUnreadableOneIsNeverReplaced() throws {
             let vault = MemoryDeviceKeyVault()

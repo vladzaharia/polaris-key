@@ -524,7 +524,8 @@ public struct LocalDialBudget: Sendable {
 
     private mutating func recent(_ nameplate: String, _ t: Double) -> [Double] {
         let kept = (dialled[nameplate] ?? []).filter { t - $0 < Double(localDialBudgetSeconds) }
-        dialled[nameplate] = kept
+        // No empty key is kept for a nameplate that is not in use.
+        dialled[nameplate] = kept.isEmpty ? nil : kept
         return kept
     }
 
@@ -536,8 +537,19 @@ public struct LocalDialBudget: Sendable {
 
     /// The join made `dials` dials.
     public mutating func spend(_ nameplate: String, _ t: Double, dials: Int) {
-        dialled[nameplate] = recent(nameplate, t) + [Double](repeating: t, count: dials)
+        let all = recent(nameplate, t) + [Double](repeating: t, count: max(0, dials))
+        dialled[nameplate] = all.isEmpty ? nil : all
     }
+
+    /// Check and spend one dial together: true when the join may dial now (and the dial is counted).
+    public mutating func takeIfAllowed(_ nameplate: String, _ t: Double) -> Bool {
+        guard check(nameplate, t).allowed else { return false }
+        spend(nameplate, t, dials: 1)
+        return true
+    }
+
+    /// The nameplates that hold a record (tests).
+    public var keyCount: Int { dialled.count }
 }
 
 // ── The pairing window (§15.12, "The pairing window") ────────────────────────────────

@@ -65,6 +65,7 @@ struct Fe25519 {
     init(l: [Int64]) { self.l = l }
 
     /// One carry pass over the limbs (TweetNaCl `car25519`). No data-dependent branch.
+    @inline(__always)
     private mutating func carry() {
         for i in 0..<16 {
             l[i] += (1 << 16)
@@ -76,18 +77,21 @@ struct Fe25519 {
         }
     }
 
+    @inline(__always)
     static func + (a: Fe25519, b: Fe25519) -> Fe25519 {
         var o = a.l
         for i in 0..<16 { o[i] += b.l[i] }
         return Fe25519(l: o)
     }
 
+    @inline(__always)
     static func - (a: Fe25519, b: Fe25519) -> Fe25519 {
         var o = a.l
         for i in 0..<16 { o[i] -= b.l[i] }
         return Fe25519(l: o)
     }
 
+    @inline(__always)
     static func * (a: Fe25519, b: Fe25519) -> Fe25519 {
         var t = [Int64](repeating: 0, count: 31)
         for i in 0..<16 {
@@ -100,9 +104,11 @@ struct Fe25519 {
         return r
     }
 
+    @inline(__always)
     func squared() -> Fe25519 { self * self }
 
     /// `cond` is 1 to take `b`, 0 to take `a`; a masked select, no branch.
+    @inline(__always)
     static func select(_ a: Fe25519, _ b: Fe25519, _ cond: Int64) -> Fe25519 {
         let mask = ~(cond - 1)
         var o = a.l
@@ -112,6 +118,7 @@ struct Fe25519 {
 
     /// `self ^ e` for a public exponent (32 little-endian bytes): left-to-right square and multiply. The
     /// branch is on the exponent's bit, which is a fixed public constant, never on the base.
+    @inline(__always)
     func power(_ e: [UInt8]) -> Fe25519 {
         var r = Fe25519.one
         for bit in stride(from: 255, through: 0, by: -1) {
@@ -122,6 +129,7 @@ struct Fe25519 {
     }
 
     /// The canonical 32 little-endian bytes of the value, fully reduced into [0, p). No branch.
+    @inline(__always)
     func packed() -> [UInt8] {
         var t = self
         t.carry()
@@ -148,6 +156,7 @@ struct Fe25519 {
     }
 
     /// Overwrite the limbs.
+    @inline(__always)
     mutating func wipe() { for i in 0..<16 { l[i] = 0 } }
 }
 
@@ -241,12 +250,14 @@ public enum PeerCPace {
         let one = Fe25519.one.packed()
         var diffOne = 0 as UInt8
         for i in 0..<32 { diffOne |= eps[i] ^ one[i] }
-        // eps == 1 exactly when diffOne == 0; eps == p - 1 is the other allowed value.
-        let onCurve: Int64 = diffOne == 0 ? 1 : 0
+        // eps == 1 exactly when diffOne == 0; eps == p - 1 is the other allowed value. Both are read as 0 or 1
+        // by arithmetic on the difference (0 - 1 is negative, 1...255 - 1 is not), never a branch on it.
+        let onCurve: Int64 = ((Int64(diffOne) - 1) >> 8) & 1
         let pm1 = (Fe25519.zero - Fe25519.one).packed()
         var diffMinus = 0 as UInt8
         for i in 0..<32 { diffMinus |= eps[i] ^ pm1[i] }
-        guard onCurve == 1 || diffMinus == 0 else { return nil }
+        let isMinus: Int64 = ((Int64(diffMinus) - 1) >> 8) & 1
+        guard (onCurve | isMinus) == 1 else { return nil }
         let twist = Fe25519.zero - v - Fe25519.montA
         let u = Fe25519.select(twist, v, onCurve)
         return Elligator2Result(r: Data(r.packed()), onCurve: onCurve == 1, u: Data(u.packed()))

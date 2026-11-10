@@ -169,7 +169,9 @@ public struct ConnectOptions: Sendable {
     /// Where the identity is kept. Nil: the Keychain.
     public var store: ConnectStateStore?
     /// Where the local links (§15.12) are kept. Nil: the Keychain, or memory when `store` is given (a host or test
-    /// that supplies its own Connect record keeps no Keychain item of ours).
+    /// that supplies its own Connect record keeps no Keychain item of ours). A host that provides `store` and no
+    /// `localStore` therefore has memory-only local links: they are gone at the next launch. Pass a `localStore` to
+    /// keep them.
     public var localStore: LocalLinkStateStore?
     /// Accept a key store whose keys die with the process (`DeviceKeyStore.inMemory()`). Off by
     /// default: without it a memory-only store is `invalid-options`, because keys that are gone
@@ -890,7 +892,8 @@ extension ConnectClient {
     public nonisolated func localPairing() -> Bool { localGate.with { $0.gate.allowed } }
 
     /// A discovery read finished. A successful read replaces the answer, a not-found clears it, any other answer
-    /// changes nothing; a read older than the one that set the answer is ignored. A read that takes a cached
+    /// changes nothing (and does not advance the applied sequence); a read older than the one that set the answer is
+    /// ignored. A read that takes a cached
     /// `true` away reports the effects the host must carry out, and the links are told the gate moved either way.
     nonisolated func noteLocalDiscovery(_ result: DiscoveryResult, seq: Int) {
         let (effects, moved) = localGate.with { b -> ([LocalGateEffect], Bool) in
@@ -902,10 +905,14 @@ extension ConnectClient {
                 let f = doc.services[.connect]
                 effects = b.gate.readOk(
                     connectEnabled: f?.enabled == true, localPairing: f?.extras["localPairing"] == .bool(true))
-            case .notFound: effects = b.gate.readNotFound()
-            default: effects = b.gate.readError()
+                b.seq = seq
+            case .notFound:
+                effects = b.gate.readNotFound()
+                b.seq = seq
+            default:
+                // An error read changes nothing, so it does not make an older document or not-found stale.
+                effects = b.gate.readError()
             }
-            b.seq = seq
             return (effects, b.gate.state != was)
         }
         if !effects.isEmpty { localGateEffects.current?(effects) }
