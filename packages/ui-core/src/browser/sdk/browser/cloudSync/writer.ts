@@ -43,13 +43,19 @@ export type TabMessage =
   /** A follower's edit, for the writer to apply to its machine. `id` lets the writer confirm it. */
   | { t: "edit"; id: number; op: "set"; key: string; value: Json }
   | { t: "edit"; id: number; op: "clear"; key: string }
-  /** A tab signed a person in or out: every other tab asks the session who it is now. */
-  | { t: "principal" }
+  /** A tab signed a person in or out: every other tab asks the session who it is now. `fresh` names
+   *  the subject when the person completed a sign-in in that tab (it lifts an `account_required`
+   *  refusal of that subject). */
+  | { t: "principal"; fresh?: string }
   /** The writer took edit `id` (applied to its machine, so its own journal carries it). */
   | { t: "ack"; id: number }
   /** A follower's key-ring or file route answered `account_required`: the writer's machine takes
-   *  the transition. `signInUrl` is the answer's, unvetted. */
-  | { t: "accountRequired"; signInUrl: string | null };
+   *  the transition if it still holds `forSubject`. `signInUrl` is the answer's, unvetted. */
+  | {
+      t: "accountRequired";
+      signInUrl: string | null;
+      forSubject: string | null;
+    };
 
 /** A channel the host can post to and listen on. */
 export interface TabChannel {
@@ -87,12 +93,23 @@ export function parseTabMessage(v: unknown): TabMessage | null {
     case "purge":
       return { t: "purge" };
     case "principal":
-      return { t: "principal" };
-    case "accountRequired":
-      return v.signInUrl === null ||
-        (typeof v.signInUrl === "string" && v.signInUrl.length <= 2048)
-        ? { t: "accountRequired", signInUrl: v.signInUrl }
+      return typeof v.fresh === "string" && v.fresh.length <= 256
+        ? { t: "principal", fresh: v.fresh }
+        : { t: "principal" };
+    case "accountRequired": {
+      const subjectOk =
+        v.forSubject === null ||
+        (typeof v.forSubject === "string" && v.forSubject.length <= 256);
+      return subjectOk &&
+        (v.signInUrl === null ||
+          (typeof v.signInUrl === "string" && v.signInUrl.length <= 2048))
+        ? {
+            t: "accountRequired",
+            signInUrl: v.signInUrl as string | null,
+            forSubject: v.forSubject as string | null,
+          }
         : null;
+    }
     case "ack":
       return Number.isSafeInteger(v.id)
         ? { t: "ack", id: v.id as number }

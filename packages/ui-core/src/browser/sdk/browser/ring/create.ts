@@ -15,8 +15,14 @@ export function createRingEngine(a: {
       NonNullable<BrowserAdapterOptions["keyring"]>["deviceKeys"]
     >;
   };
-  /** A ring route answered `account_required`: Cloud Sync is told, with the answer's `signInUrl`. */
-  onAccountRequired?: (signInUrl: string | null) => void;
+  /** A ring route answered `account_required`: Cloud Sync is told, with the answer's `signInUrl`
+   *  and the person signed in when the call started. */
+  onAccountRequired?: (
+    signInUrl: string | null,
+    forSubject: string | null,
+  ) => void;
+  /** The Worker's origin: only its own answer counts. */
+  origin: string;
 }): RingEngine {
   const { product, bearer: b, options: o } = a;
   const keys = o.deviceKeys;
@@ -28,6 +34,7 @@ export function createRingEngine(a: {
         (path: string, init: { method: string; body?: string }) =>
           b.ringRequest(path, init),
         a.onAccountRequired,
+        { origin: a.origin, subject: () => b.account },
       ),
     },
     keys,

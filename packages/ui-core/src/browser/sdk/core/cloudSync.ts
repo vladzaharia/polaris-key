@@ -132,7 +132,10 @@ export interface CloudSyncClient {
    * §11.5), `signInUrl` being the answer's, unvetted. The machine leaves the person the way a
    * `/sync` 403 does. Loads Cloud Sync; never throws into the route that saw it.
    */
-  accountRequired(signInUrl: string | null): Promise<void>;
+  accountRequired(
+    signInUrl: string | null,
+    forSubject: string | null,
+  ): Promise<void>;
   /** The adapter's wiring, run before sign-out: send what is waiting (bounded), then leave. */
   beforeSignOut(): Promise<void>;
 }
@@ -302,8 +305,8 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
       const c = real ?? (await loading?.catch(() => null)) ?? null;
       if (c) await c.beforeSignOut();
     },
-    accountRequired: async (url) => {
-      if (src.enabled()) await (await ready()).accountRequired(url);
+    accountRequired: async (url, forSubject) => {
+      if (src.enabled()) await (await ready()).accountRequired(url, forSubject);
     },
   };
 }

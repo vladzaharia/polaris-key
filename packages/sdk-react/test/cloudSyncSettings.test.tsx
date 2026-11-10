@@ -27,9 +27,15 @@ import type {
 } from "../src/browser/cloudSync/writer.js";
 import { safeSignInUrl } from "../src/browser/cloudSync/api.js";
 import { sendSync } from "../src/browser/cloudSync/transport.js";
+import { IDBFactory } from "fake-indexeddb";
+import {
+  filesDbName,
+  purgeFilesLayer,
+} from "../src/browser/cloudSync/filesPurge.js";
 import {
   accountRequiredUrl,
   watchingAccountRequired,
+  workerOnly,
 } from "../src/browser/cloudSync/accountRequired.js";
 import { lazyCloudSync, unsupportedCloudSync } from "../src/core/cloudSync.js";
 import {
@@ -79,12 +85,13 @@ async function tab(
   b: Browser,
   who: { current: string | null | undefined; token?: string },
   seed: Record<string, JSONValue> = {},
+  hostOver: Partial<ConstructorParameters<typeof BrowserCloudSyncHost>[0]> = {},
 ) {
   const ring = {
     hasRoot: () => false,
     subscribe: () => () => undefined,
     codec: () => null,
-    forget: vi.fn(async () => undefined),
+    forget: vi.fn(async (): Promise<void> => undefined),
   };
   const log = vi.fn();
   const host = new BrowserCloudSyncHost(
@@ -105,6 +112,7 @@ async function tab(
       stateLock: "s",
       channel: b.hub.channel(),
       log,
+      ...hostOver,
     },
     { catalog: CATALOG as never, encryption: "server" },
   );
@@ -612,9 +620,14 @@ describe("account_required (U-52)", () => {
       }),
       { status: 403 },
     );
-  const refused = async (w: World, b: Browser, url?: string) => {
+  const refused = async (
+    w: World,
+    b: Browser,
+    url?: string,
+    hostOver: Parameters<typeof tab>[4] = {},
+  ) => {
     const who = { current: SUBJECT as string | null | undefined };
-    const t = await tab(w, b, who);
+    const t = await tab(w, b, who, {}, hostOver);
     await t.api.attach();
     w.push = () => refusal(url);
     await t.config.set("theme", "dark");
@@ -690,7 +703,7 @@ describe("account_required (U-52)", () => {
     const t = await tab(w, new Browser(), { current: SUBJECT });
     await t.api.attach();
     await t.config.set("theme", "dark");
-    await t.api.accountRequired("https://k.test/in");
+    await t.api.accountRequired("https://k.test/in", SUBJECT);
     expect(t.api.status().state).toBe("blocked");
     expect(t.ring.forget).toHaveBeenCalled();
     expect(t.events.find((e) => e.type === "signInOffered")).toEqual({
@@ -699,7 +712,7 @@ describe("account_required (U-52)", () => {
     });
     // Idempotent: a second answer changes nothing and offers nothing more.
     const offers = t.events.filter((e) => e.type === "signInOffered").length;
-    await t.api.accountRequired("https://k.test/in");
+    await t.api.accountRequired("https://k.test/in", SUBJECT);
     expect(t.events.filter((e) => e.type === "signInOffered").length).toBe(
       offers,
     );
@@ -709,7 +722,7 @@ describe("account_required (U-52)", () => {
   it("with no person signed in it does nothing", async () => {
     const t = await tab(new World(), new Browser(), { current: null });
     await t.api.attach();
-    await t.api.accountRequired(null);
+    await t.api.accountRequired(null, null);
     expect(t.api.status().state).toBe("local");
     expect(t.events).toEqual([]);
     await t.host.close();
@@ -717,12 +730,253 @@ describe("account_required (U-52)", () => {
 
   it("a follower tab hands the answer to the writer", async () => {
     const { writer, follower } = await tabPair();
-    await follower.api.accountRequired(null);
+    await follower.api.accountRequired(null, SUBJECT);
     await settle();
     await settle();
     expect(writer.api.status().state).toBe("blocked");
     await writer.host.close();
     await follower.host.close();
+  });
+
+  it("a sign-in the person completes in this run lifts the refusal; the replayed session does not", async () => {
+    const w = new World();
+    const b = new Browser();
+    const first = await refused(w, b);
+    await first.t.host.close();
+    const again = await tab(w, b, { current: SUBJECT });
+    await again.api.attach();
+    expect(again.api.status().state).toBe("blocked");
+    const before = requests(w);
+    await again.api.identity({ kind: "signedIn", subject: SUBJECT });
+    expect(requests(w)).toBeGreaterThan(before);
+    expect(again.api.status().state).not.toBe("blocked");
+    await again.host.close();
+  });
+
+  it("a sign-in completed in another tab lifts the writer's refusal", async () => {
+    const { writer, follower } = await tabPair();
+    await writer.api.accountRequired(null, SUBJECT);
+    expect(writer.api.status().state).toBe("blocked");
+    await follower.api.identity({ kind: "signedIn", subject: SUBJECT });
+    await settle();
+    await settle();
+    expect(writer.api.status().state).not.toBe("blocked");
+    await writer.host.close();
+    await follower.host.close();
+  });
+
+  it("a pin that could not be removed is saved, retried at start, and holds the sign-in", async () => {
+    const w = new World();
+    const b = new Browser();
+    const who = { current: SUBJECT as string | null | undefined };
+    const first = await tab(w, b, who);
+    await first.api.attach();
+    first.ring.forget.mockRejectedValue(new Error("stuck"));
+    w.push = () => refusal();
+    await first.config.set("theme", "dark");
+    await first.api.flush();
+    expect(first.api.status().state).toBe("blocked");
+    expect(JSON.parse((await b.store.get())!)).toMatchObject({
+      forgetPending: true,
+      refused: SUBJECT,
+    });
+    expect(first.log).toHaveBeenCalledWith(
+      "cloud sync: the key ring pin could not be removed",
+    );
+    await first.host.close();
+
+    // Relaunch, the pin still stuck: the person's sign-in waits.
+    const again = await tab(w, b, { current: SUBJECT });
+    again.ring.forget.mockRejectedValue(new Error("stuck"));
+    await again.api.attach();
+    expect(again.ring.forget).toHaveBeenCalled();
+    const before = requests(w);
+    await again.api.identity({ kind: "signedIn", subject: SUBJECT });
+    expect(again.api.status().state).toBe("blocked");
+    expect(requests(w)).toBe(before);
+    expect(JSON.parse((await b.store.get())!).forgetPending).toBe(true);
+
+    // The pin goes: the next sign-in is accepted and the flag is cleared.
+    again.ring.forget.mockResolvedValue(undefined);
+    await again.api.identity({ kind: "signedIn", subject: SUBJECT });
+    expect(again.api.status().state).not.toBe("blocked");
+    expect(JSON.parse((await b.store.get())!).forgetPending).toBe(false);
+    await again.host.close();
+  });
+
+  it("a pin that goes at once leaves no pending flag", async () => {
+    const w = new World();
+    const b = new Browser();
+    const { t } = await refused(w, b);
+    expect(JSON.parse((await b.store.get())!).forgetPending).toBe(false);
+    await t.host.close();
+  });
+
+  it("a record that cannot be rewritten is removed and the refusal is held in memory", async () => {
+    const w = new World();
+    const b = new Browser();
+    const failing = { on: false };
+    const store = {
+      ...b.store,
+      put: async (text: string) => {
+        if (failing.on) throw new Error("quota");
+        return b.store.put(text);
+      },
+    };
+    const who = { current: SUBJECT as string | null | undefined };
+    const t = await tab(w, b, who, {}, { store });
+    await t.api.attach();
+    await t.config.set("theme", "dark");
+    await t.api.flush();
+    expect(await b.store.get()).not.toBeNull();
+    failing.on = true;
+    w.push = () => refusal();
+    await t.config.set("theme", "light");
+    await t.api.flush();
+    expect(t.api.status().state).toBe("blocked");
+    expect(await b.store.get()).toBeNull();
+    expect(t.host.refused).toBe(SUBJECT);
+    await t.host.close();
+  });
+
+  it("blocking deletes the files database even when the saves layer was never built", async () => {
+    const idb = new IDBFactory();
+    const name = filesDbName("pkey-sync-test");
+    await new Promise<void>((done, fail) => {
+      const r = idb.open(name, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("chunks");
+      r.onsuccess = () => {
+        r.result.close();
+        done();
+      };
+      r.onerror = () => fail(r.error);
+    });
+    const has = async () =>
+      (await idb.databases()).some((d) => d.name === name);
+    expect(await has()).toBe(true);
+    const w = new World();
+    const b = new Browser();
+    const { t } = await refused(w, b, undefined, {
+      onPurge: () => purgeFilesLayer(null, "pkey-sync-test", idb),
+    });
+    expect(t.api.status().state).toBe("blocked");
+    expect(await has()).toBe(false);
+    await t.host.close();
+  });
+
+  it("a built saves layer is closed, and the database is left to it", async () => {
+    const idb = new IDBFactory();
+    const name = filesDbName("pkey-sync-test");
+    await new Promise<void>((done) => {
+      const r = idb.open(name, 1);
+      r.onsuccess = () => {
+        r.result.close();
+        done();
+      };
+    });
+    const purge = vi.fn(async () => undefined);
+    await purgeFilesLayer({ purge, built: () => true }, "pkey-sync-test", idb);
+    expect(purge).toHaveBeenCalled();
+    expect((await idb.databases()).some((d) => d.name === name)).toBe(true);
+  });
+
+  it("a late answer for the person who has gone does not block the new one", async () => {
+    const t = await tab(new World(), new Browser(), { current: SUBJECT });
+    await t.api.attach();
+    await t.api.identity({ kind: "signedOut" });
+    await t.api.identity({ kind: "signedIn", subject: OTHER });
+    await t.api.accountRequired("https://k.test/in", SUBJECT);
+    expect(t.api.status().state).not.toBe("blocked");
+    expect(
+      t.events.find(
+        (e) => e.type === "signedOut" && e.reason === "accountRequired",
+      ),
+    ).toBeUndefined();
+    await t.host.close();
+  });
+
+  it("a follower's hand-off is ignored by a writer that holds another person", async () => {
+    const { writer, follower } = await tabPair();
+    await writer.api.identity({ kind: "signedIn", subject: OTHER });
+    follower.host.accountRequired(null, SUBJECT);
+    await settle();
+    await settle();
+    expect(writer.api.status().state).not.toBe("blocked");
+    await writer.host.close();
+    await follower.host.close();
+  });
+
+  /** `res` as if it had been fetched from `url` after `redirected` redirects. */
+  const fetchedFrom = (res: Response, url: string, redirected = false) => {
+    Object.defineProperty(res, "url", { value: url });
+    Object.defineProperty(res, "redirected", { value: redirected });
+    return res;
+  };
+
+  describe("counts only from the Worker's own origin", () => {
+    const foreign = () =>
+      fetchedFrom(refusal("https://k.test/in"), "https://evil.test/r");
+    const redirected = () =>
+      fetchedFrom(refusal("https://k.test/in"), "https://k.test/r", true);
+
+    it("a 403 from another origin or after a redirect loses its body", async () => {
+      for (const make of [foreign, redirected]) {
+        const res = await workerOnly(
+          async (_p: string) => make(),
+          "https://k.test",
+        )("x");
+        expect(res.status).toBe(403);
+        expect(await res.text()).toBe("");
+      }
+      const own = await workerOnly(
+        async (_p: string) => fetchedFrom(refusal("/in"), "https://k.test/r"),
+        "https://k.test",
+      )("x");
+      expect(await accountRequiredUrl(own)).toBe("/in");
+      const ok = await workerOnly(
+        async (_p: string) => new Response("{}", { status: 200 }),
+        "https://k.test",
+      )("x");
+      expect(ok.status).toBe(200);
+    });
+
+    it("the sync transport reads such a 403 as an ordinary one", async () => {
+      for (const make of [foreign, redirected]) {
+        const answer = await sendSync(
+          PRODUCT,
+          workerOnly(async () => make(), "https://k.test"),
+          { method: "GET", path: `/${PRODUCT}/sync?cursor=0` },
+        );
+        expect(answer).toEqual({ status: 403 });
+      }
+    });
+
+    it("a watched route does not tell its owner", async () => {
+      const told: unknown[] = [];
+      const send = watchingAccountRequired(
+        async (_p: string) => foreign(),
+        (u) => told.push(u),
+        { origin: "https://k.test", subject: () => SUBJECT },
+      );
+      const res = await send("devices/keyring");
+      expect(res.status).toBe(403);
+      expect(told).toEqual([]);
+    });
+
+    it("a watched route tells its owner who was signed in when the call started", async () => {
+      const told: unknown[] = [];
+      let who: string | null = SUBJECT;
+      const send = watchingAccountRequired(
+        async (_p: string) => {
+          who = OTHER;
+          return refusal("https://k.test/in");
+        },
+        (u, s) => told.push([u, s]),
+        { origin: "https://k.test", subject: () => who },
+      );
+      await send("devices/keyring");
+      expect(told).toEqual([["https://k.test/in", SUBJECT]]);
+    });
   });
 
   const hostile: Array<[string | undefined, string | null]> = [
@@ -741,7 +995,7 @@ describe("account_required (U-52)", () => {
     it(`the offered URL ${JSON.stringify(given)} reaches the app as ${JSON.stringify(offered)}`, async () => {
       const t = await tab(new World(), new Browser(), { current: SUBJECT });
       await t.api.attach();
-      await t.api.accountRequired(given ?? null);
+      await t.api.accountRequired(given ?? null, SUBJECT);
       expect(t.events.find((e) => e.type === "signInOffered")).toEqual({
         type: "signInOffered",
         signInUrl: offered,
@@ -766,7 +1020,7 @@ describe("account_required (U-52)", () => {
     await t.config.set("theme", "dark");
     const flushing = t.api.flush();
     await waitFor(() => expect(release).not.toBeNull());
-    await t.api.accountRequired(null);
+    await t.api.accountRequired(null, SUBJECT);
     expect(t.api.status().state).toBe("blocked");
     release!();
     await expect(flushing).resolves.toMatchObject({ state: "blocked" });
@@ -815,6 +1069,7 @@ describe("account_required (U-52)", () => {
       const send = watchingAccountRequired(
         async (_p: string) => refusal("https://k.test/in"),
         (u) => told.push(u),
+        { origin: "https://k.test", subject: () => SUBJECT },
       );
       const res = await send("devices/keyring");
       expect(res.status).toBe(403);
@@ -822,6 +1077,7 @@ describe("account_required (U-52)", () => {
       const quiet = watchingAccountRequired(
         async (_p: string) => new Response("{}", { status: 200 }),
         (u) => told.push(u),
+        { origin: "https://k.test", subject: () => SUBJECT },
       );
       await quiet("devices/keyring");
       expect(told).toHaveLength(1);

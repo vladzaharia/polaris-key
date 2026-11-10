@@ -20,6 +20,20 @@ export function deleteDb(factory: IDBFactory, name: string): Promise<void> {
 }
 
 /**
+ * What a purge does to the file layer: the saves layer is closed first (a transfer still running
+ * cannot recreate the database), and a page that never built it knows no person's cache, so it
+ * deletes the whole database (the journal and the chunk cache).
+ */
+export async function purgeFilesLayer(
+  saves: { purge(): Promise<void>; built(): boolean } | null,
+  dbName: string,
+  idb?: IDBFactory | undefined,
+): Promise<void> {
+  await saves?.purge().catch(() => undefined);
+  if (!saves?.built()) await purgeFilesStore(filesDbName(dbName), idb);
+}
+
+/**
  * Delete the files database without opening it (a tab whose saves never ran). Where the database
  * is known to be absent there is nothing to do.
  */

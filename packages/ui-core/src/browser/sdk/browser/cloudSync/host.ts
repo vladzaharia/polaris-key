@@ -292,10 +292,12 @@ export class BrowserCloudSyncHost {
   #queued: Array<TabMessage & { t: "edit" }> = [];
   #forgetting: Promise<void> = Promise.resolve();
   #offPage: Array<() => void> = [];
-  readonly #principal = new Set<() => void>();
+  readonly #principal = new Set<(fresh?: string) => void>();
   #bound: string | null = null;
   /** The subject `account_required` took away (saved with the record; see `SyncStateRecord`). */
   #refused: string | null = null;
+  /** The key ring's pin is still to be removed (saved with the blocked record). */
+  #forgetPending = false;
   readonly #statusListeners = new Set<() => void>();
 
   /** The open MergeRequests of this page: the machine's and the saves layer's (plans/U-08.md). It
@@ -400,7 +402,7 @@ export class BrowserCloudSyncHost {
   }
 
   /** Another tab signed a person in or out. */
-  onPrincipal(fn: () => void): () => void {
+  onPrincipal(fn: (fresh?: string) => void): () => void {
     this.#principal.add(fn);
     return () => this.#principal.delete(fn);
   }
@@ -410,9 +412,12 @@ export class BrowserCloudSyncHost {
     this.#bound = subject;
   }
 
-  /** Tell the other tabs the person changed here. */
-  notePrincipal(): void {
-    this.#deps.channel.post({ t: "principal" });
+  /** Tell the other tabs the person changed here; `fresh` is the subject a person just completed a
+   *  sign-in as. */
+  notePrincipal(fresh?: string): void {
+    this.#deps.channel.post(
+      fresh === undefined ? { t: "principal" } : { t: "principal", fresh },
+    );
   }
 
   /** The keys the machine can hold a value for: the declared settings and the open ones. */
@@ -488,6 +493,7 @@ export class BrowserCloudSyncHost {
     this.#rev = rec.rev;
     this.#openKeys = new Set(rec.openKeys);
     this.#refused = rec.refused;
+    this.#forgetPending = rec.forgetPending;
     this.#mirror = vetted(this.#opts.catalog);
     this.#served = vetted(rec.catalog);
     this.#build(rec.persisted);
@@ -905,16 +911,22 @@ export class BrowserCloudSyncHost {
     await (this.#deps.purgeSaves?.() ?? Promise.resolve()).catch(() => {
       this.#deps.log?.("cloud sync: the save transfers could not be deleted");
     });
-    const ring = this.#deps.ring.forget().catch(() => {
-      // The root is already gone (`forget` locks first); only the pin failed to go.
-      this.#deps.log?.("cloud sync: the key ring pin could not be removed");
-    });
+    const ring = this.#deps.ring.forget().then(
+      () => true,
+      () => {
+        // The root is already gone (`forget` locks first); only the pin failed to go.
+        this.#deps.log?.("cloud sync: the key ring pin could not be removed");
+        return false;
+      },
+    );
+    // After `account_required` the pin is still to be removed until it is: the record says so.
     const data = (
-      blocked === null ? this.purge() : this.#saveBlocked(blocked.subject)
+      blocked === null ? this.purge() : this.#saveBlocked(blocked.subject, true)
     ).catch(() => {
       this.#deps.log?.("cloud sync: the synced data could not be deleted");
     });
-    await Promise.all([ring, data]);
+    const [removed] = await Promise.all([ring, data]);
+    if (blocked !== null && removed) await this.settleForget();
   }
 
   // ── Other tabs ───────────────────────────────────────────────────────────────────────────
@@ -934,13 +946,15 @@ export class BrowserCloudSyncHost {
         this.#outbox.delete(m.id);
         return;
       case "accountRequired":
-        // A follower's route saw it; only the writer's machine can take it.
-        if (this.isWriter) this.accountRequired(m.signInUrl);
+        // A follower's route saw it; only the writer's machine can take it, and only if it still
+        // holds the person the follower's call started for.
+        if (this.isWriter && m.forSubject === this.#bound)
+          this.accountRequired(m.signInUrl, m.forSubject);
         return;
       case "principal":
         for (const fn of this.#principal) {
           try {
-            fn();
+            fn(m.fresh);
           } catch {
             // A listener's failure is its own.
           }
@@ -1020,15 +1034,26 @@ export class BrowserCloudSyncHost {
    * missing record after we had written one means a purge, which we follow.
    */
   #save(persisted?: SyncStateRecord["persisted"]): Promise<void> {
-    if (this.#purged || !this.isWriter) return Promise.resolve();
+    return this.#saveChecked(persisted).then(() => undefined);
+  }
+
+  /** `#save`, saying whether the store took it. */
+  #saveChecked(persisted?: SyncStateRecord["persisted"]): Promise<boolean> {
+    if (this.#purged || !this.isWriter) return Promise.resolve(true);
     const journal = persisted ?? this.machine.persist();
     const next = this.#write.then(() => this.#saveNow(journal));
-    this.#write = next.catch(() => undefined);
+    this.#write = next.then(
+      () => undefined,
+      () => undefined,
+    );
     return next;
   }
 
-  async #saveNow(journal: SyncStateRecord["persisted"]): Promise<void> {
-    if (this.#purged || !this.isWriter) return;
+  /** False only when the store failed (a save that has nothing to write, or loses the race to a
+   *  newer record, is not a failure). */
+  async #saveNow(journal: SyncStateRecord["persisted"]): Promise<boolean> {
+    if (this.#purged || !this.isWriter) return true;
+    let saved = true;
     try {
       await this.#withStateLock(async () => {
         const raw = await this.#deps.store.get();
@@ -1056,6 +1081,7 @@ export class BrowserCloudSyncHost {
           catalog: this.#served,
           openKeys: [...this.#openKeys],
           refused: this.#refused,
+          forgetPending: this.#forgetPending,
         };
         if (this.#purged) return;
         await this.#deps.store.put(JSON.stringify(rec));
@@ -1064,7 +1090,9 @@ export class BrowserCloudSyncHost {
       });
     } catch {
       // A store that fails keeps the journal in memory; the next save tries again.
+      saved = false;
     }
+    return saved;
   }
 
   // ── Timer, flush, purge, close ───────────────────────────────────────────────────────────
@@ -1126,6 +1154,7 @@ export class BrowserCloudSyncHost {
     this.#purged = true;
     this.#openKeys = new Set();
     this.#refused = null;
+    this.#forgetPending = false;
     this.#outbox.clear();
     this.#queued = [];
     this.#clearTimer();
@@ -1216,10 +1245,11 @@ export class BrowserCloudSyncHost {
    * answer is dropped (`dropAbandoned`). A no-op before `start()`, with no person signed in, or when
    * already blocked this way.
    */
-  accountRequired(signInUrl: string | null): void {
+  accountRequired(signInUrl: string | null, forSubject: string | null): void {
     if (!this.started) return;
+    if (forSubject !== this.#bound) return;
     if (!this.isWriter) {
-      this.#deps.channel.post({ t: "accountRequired", signInUrl });
+      this.#deps.channel.post({ t: "accountRequired", signInUrl, forSubject });
       return;
     }
     this.machine.accountRequired(signInUrl);
@@ -1232,12 +1262,42 @@ export class BrowserCloudSyncHost {
    * and what the person's snapshot held is already gone with the partition. `subject` is the one
    * the Worker refused. The other tabs ask the session who it is again.
    */
-  async #saveBlocked(subject: string | null): Promise<void> {
+  async #saveBlocked(
+    subject: string | null,
+    forgetPending: boolean,
+  ): Promise<void> {
     this.#openKeys = new Set();
     this.#refused = subject;
+    this.#forgetPending = forgetPending;
     this.#clearTimer();
-    await this.#save();
+    if (!(await this.#saveChecked())) {
+      // The new record could not be written, so the old one (which holds the person's snapshot in
+      // the clear) must not stay: it is removed, nothing is saved again until a sign-in, and what
+      // was refused is held in memory for this run.
+      this.#purged = true;
+      await this.#withStateLock(() => removeSyncState(this.#deps.store)).catch(
+        () => {
+          this.#deps.log?.("cloud sync: the synced data could not be deleted");
+        },
+      );
+    }
+    // The file journal and chunk cache go too, whether or not the saves layer was ever built.
+    await this.#deps.onPurge?.().catch(() => {
+      this.#deps.log?.("cloud sync: the file state could not be deleted");
+    });
     this.#deps.channel.post({ t: "principal" });
     this.#noteStatus();
+  }
+
+  /** Whether the key ring's pin still has to be removed (see `SyncStateRecord.forgetPending`). */
+  get forgetPending(): boolean {
+    return this.#forgetPending;
+  }
+
+  /** The pin is gone: stop retrying. */
+  async settleForget(): Promise<void> {
+    if (!this.#forgetPending) return;
+    this.#forgetPending = false;
+    await this.#save();
   }
 }

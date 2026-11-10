@@ -1,5 +1,6 @@
 // Reading `account_required` off a key-ring or file answer (WIRE-CONTRACT-V5 §11.5). Those routes
 // are not the machine's, so the host's wiring watches their answers and tells Cloud Sync.
+import { fromWorkerOrigin } from "../../core/signInUrl.js";
 
 /** The most of an error body that is read to look for the code. */
 const MAX_BYTES = 16 * 1024;
@@ -38,16 +39,42 @@ export async function accountRequiredUrl(
   return typeof url === "string" ? url : null;
 }
 
-/** `request` that tells `onAccountRequired` about an `account_required` answer before returning it. */
-export function watchingAccountRequired<A extends unknown[]>(
+/**
+ * `request` whose 403 is the Worker's own: a 403 that was redirected, is opaque or ended on another
+ * origin loses its body, so `account_required` (or any other code) cannot be read from it; it is an
+ * ordinary 403. Anything else passes through unchanged.
+ */
+export function workerOnly<A extends unknown[]>(
   request: (...args: A) => Promise<Response>,
-  onAccountRequired: ((signInUrl: string | null) => void) | undefined,
+  origin: string | undefined,
 ): (...args: A) => Promise<Response> {
-  if (onAccountRequired === undefined) return request;
   return async (...args) => {
     const res = await request(...args);
+    if (res.status !== 403 || fromWorkerOrigin(res, origin)) return res;
+    await res.body?.cancel().catch(() => undefined);
+    return new Response(null, { status: 403 });
+  };
+}
+
+/**
+ * `request` that tells `onAccountRequired` about an `account_required` answer before returning it,
+ * with the person signed in when the call started (`subject`, read before the call goes out). Only
+ * the Worker's own answer counts (`workerOnly`).
+ */
+export function watchingAccountRequired<A extends unknown[]>(
+  request: (...args: A) => Promise<Response>,
+  onAccountRequired:
+    | ((signInUrl: string | null, forSubject: string | null) => void)
+    | undefined,
+  opts: { origin: string | undefined; subject: () => string | null },
+): (...args: A) => Promise<Response> {
+  const trusted = workerOnly(request, opts.origin);
+  if (onAccountRequired === undefined) return trusted;
+  return async (...args) => {
+    const forSubject = opts.subject();
+    const res = await trusted(...args);
     const url = await accountRequiredUrl(res);
-    if (url !== undefined) onAccountRequired(url);
+    if (url !== undefined) onAccountRequired(url, forSubject);
     return res;
   };
 }

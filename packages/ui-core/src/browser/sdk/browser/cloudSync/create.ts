@@ -10,9 +10,9 @@ import { UnsupportedError } from "../../core/caps.js";
 import type { BearerSession } from "../bearer/session.js";
 import type { CloudSyncClient } from "../../core/cloudSync.js";
 import type { LocalConfigEngine } from "../../core/localConfig.js";
-import { watchingAccountRequired } from "./accountRequired.js";
+import { watchingAccountRequired, workerOnly } from "./accountRequired.js";
 import { BrowserCloudSyncApi, clientOf, importMarker } from "./api.js";
-import { filesDbName, purgeFilesStore } from "./filesPurge.js";
+import { purgeFilesLayer } from "./filesPurge.js";
 import { lazySaves } from "./lazySaves.js";
 import { BrowserCloudSyncHost, type CloudSyncHostOptions } from "./host.js";
 import { syncStateStore } from "./store.js";
@@ -83,13 +83,17 @@ export async function createBrowserCloudSync(
         "Cloud Sync keeps one writer tab through Web Locks, and this browser has none.",
     });
   const page = pageEvents();
+  const workerOrigin = new URL(o.base).origin;
   // The saves layer, built on the first call; the host's purge reaches it through this.
   let saves: ReturnType<typeof lazySaves> | null = null;
   let api: BrowserCloudSyncApi;
   const host = new BrowserCloudSyncHost(
     {
       product: o.product,
-      request: (path, init) => bearer.ringRequest(path, init),
+      request: workerOnly(
+        (path, init) => bearer.ringRequest(path, init),
+        workerOrigin,
+      ),
       subject: () => bearer.account,
       ring: o.keyring,
       purgeSaves: () => saves?.purge() ?? Promise.resolve(),
@@ -108,12 +112,7 @@ export async function createBrowserCloudSync(
       ...(page ? { page } : {}),
       // The file journal and chunk cache go with the record (D-9).
       // The saves layer is closed first, so a transfer still running cannot recreate the database.
-      onPurge: async () => {
-        await saves?.purge().catch(() => undefined);
-        // A page that built the files layer purged the leaving person's chunks only; one that never
-        // did knows no person's cache and deletes the database.
-        if (!saves?.built()) await purgeFilesStore(filesDbName(dbName));
-      },
+      onPurge: () => purgeFilesLayer(saves, dbName),
     },
     {
       ...o.cloudSyncOptions,
@@ -131,7 +130,9 @@ export async function createBrowserCloudSync(
     // A file route's `account_required` reaches the machine like a `/sync` one does.
     fileFetch: watchingAccountRequired(
       (path, init) => bearer.fileFetch(path, init),
-      (url) => void api.accountRequired(url).catch(() => undefined),
+      (url, forSubject) =>
+        void api.accountRequired(url, forSubject).catch(() => undefined),
+      { origin: workerOrigin, subject: () => bearer.account },
     ),
     locks,
     attach: () => api.attach(),
@@ -145,7 +146,7 @@ export async function createBrowserCloudSync(
     config: o.config,
     subject: () => o.syncSubject(),
     marker: importMarker(`${dbName}:imported`),
-    signInOrigin: new URL(o.base).origin,
+    signInOrigin: workerOrigin,
   });
   return clientOf(api, host, saves);
 }
