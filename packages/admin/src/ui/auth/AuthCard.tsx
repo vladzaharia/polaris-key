@@ -394,7 +394,7 @@ function Where({
         className={cn(
           "mt-0.5 size-4 shrink-0",
           centered &&
-            "passport:mr-1.5 passport:mt-0 passport:inline passport:align-[-0.15em]",
+            "passport:me-1.5 passport:mt-0 passport:inline passport:align-[-0.15em]",
         )}
       />
       <span
