@@ -195,7 +195,7 @@ def cpace_scalar(random: Optional[Callable[[int], bytes]] = None) -> bytearray:
 def cpace_share(y: bytes, g: bytes, ports: Optional[NoisePorts] = None) -> Optional[bytes]:
     """``Y = X25519(y, g)``. ``None`` when the backend refuses (a degenerate generator)."""
     out = (ports or _DEFAULT_PORTS).dh(bytes(y), bytes(g))
-    return None if out is None or len(out) != 32 or not any(out) else out
+    return None if out is None or len(out) != 32 or int.from_bytes(out, "big") == 0 else out
 
 
 def _wipe(b: Union[bytes, bytearray]) -> None:
@@ -218,7 +218,7 @@ def cpace_isk(
     peer = yb if role == "initiator" else ya
     k = (ports or _DEFAULT_PORTS).dh(bytes(scalar), bytes(peer))
     _wipe(scalar)
-    if k is None or len(k) != 32 or not any(k):
+    if k is None or len(k) != 32 or int.from_bytes(k, "big") == 0:
         return None
     return hashlib.sha512(lv_cat(_DSI_ISK, bytes(sid), k) + transcript_ir(ya, b"", yb, b"")).digest()
 

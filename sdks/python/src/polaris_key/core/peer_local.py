@@ -437,7 +437,10 @@ class DialBudget:
 
     def _recent(self, nameplate: str, t: float) -> List[float]:
         kept = [d for d in self._dialled.get(nameplate, []) if t - d < LOCAL_DIAL_BUDGET_SECONDS]
-        self._dialled[nameplate] = kept
+        if kept:
+            self._dialled[nameplate] = kept
+        else:
+            self._dialled.pop(nameplate, None)  # no empty key is kept for a nameplate that is not in use
         return kept
 
     def check(self, nameplate: str, t: float) -> Dict[str, Any]:
@@ -447,7 +450,11 @@ class DialBudget:
 
     def spend(self, nameplate: str, t: float, dials: int) -> None:
         """The join made ``dials`` dials."""
-        self._recent(nameplate, t).extend([t] * dials)
+        if dials <= 0:
+            return
+        kept = self._recent(nameplate, t)
+        kept.extend([t] * dials)
+        self._dialled[nameplate] = kept
 
 
 # -- The pairing window (§15.12, "The pairing window") ----------------------------------------------

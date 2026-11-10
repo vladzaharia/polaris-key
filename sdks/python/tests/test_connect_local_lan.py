@@ -112,6 +112,37 @@ def test_a_session_opens_both_ways_with_the_stored_labels_and_categories_and_las
     s.close()
 
 
+def test_a_session_nobody_takes_is_closed_peer_bye(world: World) -> None:
+    w = world
+    _ida, idb = linked(w)
+    w.a.cloud_connect.start(opts(w))
+    w.b.cloud_connect.start(opts(w))
+    # A has no on_link subscriber and no Direct Transfer handler.
+    s = open_when_seen(w.b, idb)
+    closed: List[Any] = []
+    s.on_close(closed.append)
+    until(lambda: closed)
+    assert closed[0].code in ("peer_bye", "connection_lost")
+
+
+def test_remove_from_the_loop_thread_drops_the_link_before_it_returns(world: World) -> None:
+    from polaris_key.connect.loop import connect_loop
+
+    w = world
+    ida, _idb = linked(w)
+    w.a.cloud_connect.start(opts(w))
+    lan = w.a.cloud_connect._lan
+    assert lan is not None and any(x.id == ida for x in lan._locals)
+    seen: List[Any] = []
+
+    async def inside() -> None:
+        w.a.cloud_connect.local_links.remove(ida)
+        seen.append(any(x.id == ida for x in lan._locals))
+
+    connect_loop().submit(inside()).result(10)
+    assert seen == [False]
+
+
 def test_a_gate_that_clears_withdraws_the_adverts_ends_the_sessions_and_serves_nothing(world: World) -> None:
     w = world
     ida, idb = linked(w)
@@ -293,6 +324,7 @@ def test_the_gate_is_read_again_every_one_to_four_hours_while_it_is_on(world: Wo
     w = world
     t = _Timers()
     w.a._local_timer = t
+    w.a._local_after = t  # the wait itself, without the clock's checks
     w.a.discover()
     assert len(t.armed) >= 1
     lo, hi = 3600.0, 4 * 3600.0
@@ -310,10 +342,33 @@ def test_the_gate_is_read_again_every_one_to_four_hours_while_it_is_on(world: Wo
     assert w.a.cloud_connect.local_links.local_pairing() is False
 
 
+def test_the_wait_before_a_read_runs_on_a_clock_that_counts_a_sleep(world: World) -> None:
+    w = world
+    t = _Timers()
+    now = [1000.0]
+    w.a._local_timer = t
+    w.a._local_clock = lambda: now[0]
+    w.a._local_reread_s = lambda: 5000.0
+    w.a.discover()
+    # The wait is a deadline: the timer that fires is a short check, not the whole wait.
+    assert t.armed[-1][1] == w.a._local_check_s
+    w.disco.local = False
+    # A check before the deadline reads nothing and arms the next one.
+    armed = len(t.armed)
+    t.armed[-1][0]()
+    assert len(t.armed) == armed + 1
+    assert w.a.cloud_connect.local_links.local_pairing() is True
+    # The machine slept through the wait (no timer ran, the clock moved): the next check reads discovery.
+    now[0] += 5001.0
+    t.armed[-1][0]()
+    assert w.a.cloud_connect.local_links.local_pairing() is False
+
+
 def test_a_read_that_says_nothing_is_read_again_in_5_then_10_then_every_15_minutes(world: World) -> None:
     w = world
     t = _Timers()
     w.a._local_timer = t
+    w.a._local_after = t  # the wait itself, without the clock's checks
     w.a.discover()
     w.disco.status = 503
     seen: List[float] = []

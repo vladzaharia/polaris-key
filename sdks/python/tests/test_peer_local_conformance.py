@@ -63,9 +63,19 @@ def test_admission_rows() -> None:
             c["admissionGroupPerMinute"],
         )
         holds: Dict[int, Callable[[], None]] = {}
+        verdicts: Dict[int, Any] = {}
         got: List[Dict[str, Any]] = []
         for i, e in enumerate(r["events"]):
             clock[0] = e["t"]
+            if "settle" in e:
+                a0 = verdicts.pop(e["settle"])
+                opens = r["events"][e["settle"]]["opens"]
+                if opens:
+                    holds[e["settle"]] = a0.hit()
+                else:
+                    a0.miss()
+                got.append({"result": "settled", "hit": opens})
+                continue
             if "release" in e:
                 f = holds.pop(e["release"], None)
                 if f is not None:
@@ -76,6 +86,10 @@ def test_admission_rows() -> None:
             if not a.ok:
                 got.append({"result": "refused", "by": a.by})
                 continue
+            if e.get("later"):
+                verdicts[i] = a
+                got.append({"result": "tried"})
+                continue
             if e["opens"]:
                 holds[i] = a.hit()
             else:
@@ -83,6 +97,15 @@ def test_admission_rows() -> None:
             got.append({"result": "tried", "hit": e["opens"]})
         want = [{k: v for k, v in w.items() if k not in ("group", "failed", "waiting")} for w in r["want"]]
         assert got == want, r["id"]
+
+
+def test_the_dial_budget_keeps_no_empty_key() -> None:
+    b = L.DialBudget()
+    b.spend("12", 0.0, 2)
+    assert b.check("12", 1.0) == {"allowed": False, "used": 2}
+    assert b.check("12", 1.0e6) == {"allowed": True, "used": 0}
+    assert b._dialled == {}
+    assert b.check("77", 0.0)["used"] == 0 and b._dialled == {}
 
 
 def test_constants_match() -> None:

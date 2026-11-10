@@ -400,9 +400,9 @@ class LanService:
             ident = await self._identity(True)
             await self._advert_contacts(ident, advert_epoch(self._src.now()))
 
-    async def forget_local(self, link_id: str) -> None:
-        """A link was forgotten: it leaves the held list now, before the reload, so no dial or handshake can use
-        it afterwards. Resolves once the reload has run (adverts and accepted names follow)."""
+    def drop_local(self, link_id: str) -> None:
+        """A link was forgotten: it leaves the held list now (on the loop thread, no await), so no dial or
+        handshake can use it afterwards."""
         gone = [x for x in self._locals if x.id == link_id]
         if gone:
             self._locals = [x for x in self._locals if x.id != link_id]
@@ -411,6 +411,11 @@ class LanService:
             # The old list may be read by a dial or a browse that began before this: wiping it makes those
             # copies fail closed, and they re-check the list afterwards.
             wipe_locals(gone)
+
+    async def forget_local(self, link_id: str) -> None:
+        """:meth:`drop_local`, then the reload. Resolves once the reload has run (adverts and accepted names
+        follow)."""
+        self.drop_local(link_id)
         try:
             await self.refresh_contacts()
         except Exception:
