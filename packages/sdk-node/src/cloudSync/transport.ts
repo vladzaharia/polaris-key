@@ -8,6 +8,7 @@ import type {
   SyncRequest,
   SyncResponse,
 } from "@polaris-key/client-core/cloud-sync";
+import { fromWorkerOrigin } from "@polaris-key/ui-core/browser/sdk/core/signInUrl.js";
 import type { CoreContext } from "../core/context.js";
 import { MAX_BODY_BYTES, readCappedText } from "../core/boundedBody.js";
 import type { TokenManager } from "../core/token.js";
@@ -42,6 +43,14 @@ export async function sendSync(
   }
   try {
     const res = await ctx.request(`${ctx.baseUrl}${req.path}`, init, "sync");
+    // `account_required` is the Worker's to say: from a redirect target it is an ordinary 403.
+    if (
+      res.status === 403 &&
+      !fromWorkerOrigin(res, new URL(ctx.baseUrl).origin)
+    ) {
+      await res.body?.cancel().catch(() => undefined);
+      return { status: 403 };
+    }
     const text = await readCappedText(res, MAX_RESPONSE_BYTES);
     if (text === null) return TRANSPORT;
     if (text === "") return { status: res.status };

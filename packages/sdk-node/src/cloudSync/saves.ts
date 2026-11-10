@@ -76,8 +76,12 @@ export interface SavesApiDeps {
   attach: () => Promise<void>;
   /** `client.events.safeEmit("cloudSync", …)`. */
   emit: (e: SaveTransferEvent) => void;
-  /** A file route answered `account_required` (V5 §11.5): the Cloud Sync API's `accountRequired`. */
-  onAccountRequired?: (signInUrl: string | null) => void;
+  /** A file route answered `account_required` (V5 §11.5): the Cloud Sync API's `accountRequired`,
+   *  with the person signed in when the call started. */
+  onAccountRequired?: (
+    signInUrl: string | null,
+    forSubject: string | null,
+  ) => void;
 }
 
 const asMeta = (v: Json): Meta =>
@@ -266,6 +270,7 @@ export class SavesApi {
     this.#transport = new NodeFileTransport({
       ctx: deps.ctx,
       token: () => deps.tokens.current,
+      subject: deps.subject,
       ...(deps.onAccountRequired
         ? { onAccountRequired: deps.onAccountRequired }
         : {}),

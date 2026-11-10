@@ -208,6 +208,8 @@ export class CloudSyncHost {
   #bound: string | null = null;
   /** The subject `account_required` took away (saved with the journal; see `CloudSyncFile`). */
   #refused: string | null = null;
+  /** The key ring's pin is still to be removed (saved with the blocked journal). */
+  #forgetPending = false;
   /** The listener for `putAt` / `removeAt` outcomes; survives a rebuild of the machine. */
   #outcome: ((o: RecordOutcome) => void) | null = null;
   /** The open MergeRequests of this client: the machine's and the saves layer's (plans/U-08.md).
@@ -280,6 +282,7 @@ export class CloudSyncHost {
     const saved = await this.#file.load();
     this.#openKeys = new Set(saved.openKeys);
     this.#refused = saved.refused;
+    this.#forgetPending = saved.forgetPending;
     this.#mirror = vetted(this.#opts.catalog);
     this.#served = vetted(saved.catalog);
     this.#build(saved.persisted);
@@ -596,7 +599,12 @@ export class CloudSyncHost {
 
   /** Persist the journal. Committing the debounced edits is what `persist()` does by contract. */
   async #save(persisted?: CloudSyncFile["persisted"]): Promise<void> {
-    if (this.#purged) return;
+    await this.#saveChecked(persisted);
+  }
+
+  /** `#save` that says whether the file was written (true too when nothing is to be written). */
+  async #saveChecked(persisted?: CloudSyncFile["persisted"]): Promise<boolean> {
+    if (this.#purged) return true;
     const file: CloudSyncFile = {
       v: 1,
       product: this.#deps.ctx.product,
@@ -604,8 +612,12 @@ export class CloudSyncHost {
       catalog: this.#served,
       openKeys: [...this.#openKeys],
       refused: this.#refused,
+      forgetPending: this.#forgetPending,
     };
-    await this.#file.save(file).catch(() => undefined);
+    return this.#file.save(file).then(
+      () => true,
+      () => false,
+    );
   }
 
   /** The real-clock timer: wake while the machine holds work (an edit waiting out its debounce, a
@@ -648,6 +660,7 @@ export class CloudSyncHost {
     this.#purged = true;
     this.#openKeys = new Set();
     this.#refused = null;
+    this.#forgetPending = false;
     if (this.#timer !== null) clearTimeout(this.#timer);
     this.#timer = null;
     if (this.started) {
@@ -724,11 +737,32 @@ export class CloudSyncHost {
    * and what the person's snapshot held is already gone with the partition. `subject` is the one
    * the Worker refused. No timer stays armed.
    */
-  async saveBlocked(subject: string | null): Promise<void> {
+  async saveBlocked(
+    subject: string | null,
+    forgetPending = false,
+  ): Promise<void> {
     this.#openKeys = new Set();
     this.#refused = subject;
+    this.#forgetPending = forgetPending;
     if (this.#timer !== null) clearTimeout(this.#timer);
     this.#timer = null;
+    if (await this.#saveChecked()) return;
+    // The new state could not be written, so the old file (which holds the person's snapshot in
+    // the clear) must not stay: it is removed, nothing is saved again until a sign-in, and what
+    // was refused is held in memory for this run. Throws only if the file could not be removed.
+    this.#purged = true;
+    await this.#file.remove();
+  }
+
+  /** Whether the key ring's pin still has to be removed (see `CloudSyncFile.forgetPending`). */
+  get forgetPending(): boolean {
+    return this.#forgetPending;
+  }
+
+  /** The pin is gone: stop retrying. */
+  async settleForget(): Promise<void> {
+    if (!this.#forgetPending) return;
+    this.#forgetPending = false;
     await this.#save();
   }
 }

@@ -53,3 +53,23 @@ export function safeSignInUrl(
     tail.startsWith("/") ? tail : `/${tail}`
   }`;
 }
+
+/**
+ * Whether `res` came from the Worker itself: not redirected, not opaque, and (when it names a URL)
+ * on the Worker's `origin`. An `account_required` answer is honoured only then; from anywhere else
+ * it is an ordinary 403. A constructed `Response` has no URL and was never fetched, so it counts.
+ */
+export function fromWorkerOrigin(
+  res: Pick<Response, "url" | "redirected" | "type">,
+  origin: string | undefined,
+): boolean {
+  if (origin === undefined || res.redirected) return false;
+  if (res.type === "opaque" || res.type === "opaqueredirect") return false;
+  if (res.type === "error") return false;
+  if (res.url === "") return true;
+  try {
+    return new URL(res.url).origin === origin;
+  } catch {
+    return false;
+  }
+}

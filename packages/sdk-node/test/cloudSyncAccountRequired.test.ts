@@ -7,9 +7,10 @@
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { PolarisKeyClient } from "../src/client.js";
 import { NodeFileTransport } from "../src/cloudSync/files.js";
+import { CloudSyncStateFile } from "../src/cloudSync/state.js";
 import { writeStoredSubject } from "../src/identity/account.js";
 import {
   CATALOG,
@@ -128,6 +129,256 @@ describe("the blocked machine survives a relaunch", () => {
     await api(again).flush();
     expect(again.cloudSync.status().state).toBe("locked");
     again.close();
+  });
+});
+
+describe("a sign-in the person completes lifts the refusal", () => {
+  it("the same subject signing in during this run is accepted; the replayed cached one is not", async () => {
+    const w = new World();
+    const again = await relaunched(w, SUBJECT);
+    // The cached subject, replayed at launch, stayed refused.
+    expect(again.cloudSync.status().state).toBe("blocked");
+    w.seen = [];
+    again.events.safeEmit("identity", { kind: "signedIn", subject: SUBJECT });
+    await api(again).flush();
+    expect(again.cloudSync.status().state).not.toBe("blocked");
+    again.close();
+  });
+
+  it("a subjectChanged event naming the refused subject is not a completed sign-in", async () => {
+    const again = await relaunched(new World(), SUBJECT);
+    again.events.safeEmit("identity", {
+      kind: "subjectChanged",
+      subject: SUBJECT,
+    });
+    await api(again).flush();
+    expect(again.cloudSync.status().state).toBe("blocked");
+    again.close();
+  });
+});
+
+/** A key ring whose pin cannot be removed (the spy) while `down.on` is true. */
+function pinStuck(client: PolarisKeyClient) {
+  const down = { on: true, tries: 0 };
+  const real = client.keyring.forget.bind(client.keyring);
+  vi.spyOn(client.keyring, "forget").mockImplementation(async () => {
+    down.tries++;
+    if (down.on) throw new Error("the pin is stuck");
+    return real();
+  });
+  return down;
+}
+
+describe("a pin that could not be removed is retried", () => {
+  it("is saved with the blocked state, retried at start, and holds a sign-in until it goes", async () => {
+    const w = new World();
+    const { client, stateDir } = await signedIn(w);
+    const down = pinStuck(client);
+    await refuse(client, w);
+    expect(client.cloudSync.status().state).toBe("blocked");
+    expect(JSON.parse(readFileSync(stateFile(stateDir), "utf8"))).toMatchObject(
+      { forgetPending: true, refused: SUBJECT },
+    );
+    await session(client, OTHER);
+    client.close();
+    vi.restoreAllMocks();
+
+    // Relaunch with the pin still stuck: start retries and fails; another person's sign-in waits.
+    const again = await open(w, stateDir, { catalog: CATALOG(1) }, false);
+    const stuck = pinStuck(again);
+    await again.cloudSync.flush();
+    expect(stuck.tries).toBeGreaterThan(0);
+    w.seen = [];
+    again.events.safeEmit("identity", { kind: "signedIn", subject: OTHER });
+    await api(again).flush();
+    expect(again.cloudSync.status().state).toBe("blocked");
+    expect(w.syncReqs).toEqual([]);
+    expect(
+      JSON.parse(readFileSync(stateFile(stateDir), "utf8")).forgetPending,
+    ).toBe(true);
+
+    // The pin goes: the next sign-in is accepted and the flag is cleared.
+    stuck.on = false;
+    again.events.safeEmit("identity", { kind: "signedIn", subject: OTHER });
+    await api(again).flush();
+    expect(again.cloudSync.status().state).not.toBe("blocked");
+    expect(
+      JSON.parse(readFileSync(stateFile(stateDir), "utf8")).forgetPending,
+    ).toBe(false);
+    expect(down.tries).toBeGreaterThan(0);
+    again.close();
+  });
+
+  it("a pin that goes at once leaves no pending flag", async () => {
+    const w = new World();
+    const { client, stateDir } = await signedIn(w);
+    await refuse(client, w);
+    expect(
+      JSON.parse(readFileSync(stateFile(stateDir), "utf8")).forgetPending,
+    ).toBe(false);
+    client.close();
+  });
+});
+
+describe("a state that cannot be rewritten is removed", () => {
+  it("the old snapshot is deleted and the refusal is held in memory for the run", async () => {
+    const w = new World();
+    const { client, stateDir } = await signedIn(w);
+    expect(stateFile(stateDir)).not.toBe("");
+    vi.spyOn(CloudSyncStateFile.prototype, "save").mockRejectedValue(
+      new Error("disk full"),
+    );
+    await refuse(client, w);
+    expect(client.cloudSync.status()).toMatchObject({
+      state: "blocked",
+      reason: "account_required",
+    });
+    expect(stateFile(stateDir)).toBe("");
+    expect(client.cloudSyncHost.refused).toBe(SUBJECT);
+    client.close();
+    vi.restoreAllMocks();
+  });
+});
+
+describe("a late answer says nothing about the person signed in now", () => {
+  it("a key-ring 403 for the person who has gone does not block the new one", async () => {
+    const w = new World();
+    const base = w.fetch;
+    let release: (() => void) | null = null;
+    let hold = false;
+    w.fetch = (async (input: string | URL, init?: RequestInit) => {
+      if (
+        hold &&
+        new URL(String(input)).pathname.endsWith("/devices/keyring")
+      ) {
+        await new Promise<void>((r) => (release = r));
+        return refusal("https://k.test/signin");
+      }
+      return base(input, init);
+    }) as typeof fetch;
+    const { client } = await signedIn(w);
+    hold = true;
+    const reading = client.keyring.read().catch((e: unknown) => e);
+    for (let i = 0; i < 200 && release === null; i++)
+      await new Promise((r) => setTimeout(r, 5));
+    expect(release).not.toBeNull();
+    hold = false;
+    // The person changes while the call is out.
+    client.events.safeEmit("identity", { kind: "signedOut", released: false });
+    await api(client).flush();
+    client.events.safeEmit("identity", { kind: "signedIn", subject: OTHER });
+    await api(client).flush();
+    release!();
+    await expect(reading).resolves.toMatchObject({ code: "account_required" });
+    await api(client).flush();
+    expect(client.cloudSync.status().state).not.toBe("blocked");
+    client.close();
+  });
+
+  it("a file route reports the person signed in when its call started", async () => {
+    const told: Array<[string | null, string | null]> = [];
+    let who: string | null = SUBJECT;
+    const transport = new NodeFileTransport({
+      ctx: {
+        product: "djdl",
+        baseUrl: "https://k.test",
+        requestTimeoutMs: 15_000,
+        headers: (extra = {}) => extra,
+        plainFetcher: () =>
+          (async () => {
+            who = OTHER;
+            return refusal("https://k.test/in");
+          }) as typeof fetch,
+      },
+      token: () => TOKEN,
+      subject: () => who,
+      onAccountRequired: (u, s) => told.push([u, s]),
+    });
+    await transport.revisions({ collection: "saves", record: "slot-1" }, {});
+    expect(told).toEqual([["https://k.test/in", SUBJECT]]);
+  });
+});
+
+/** `res` as if it had been fetched from `url` after `redirected` redirects. */
+const fetchedFrom = (res: Response, url: string, redirected = false) => {
+  Object.defineProperty(res, "url", { value: url });
+  Object.defineProperty(res, "redirected", { value: redirected });
+  return res;
+};
+
+describe("account_required counts only from the Worker's own origin", () => {
+  it("a /sync 403 that ended on another origin is an ordinary 403", async () => {
+    const w = new World();
+    const { client } = await signedIn(w);
+    const offers: Array<string | null> = [];
+    client.events.on("cloudSync", (e) => {
+      if (e.type === "signInOffered") offers.push(e.signInUrl);
+    });
+    w.push = () =>
+      fetchedFrom(refusal("https://k.test/signin"), "https://evil.test/ops");
+    await client.config.set("theme", "dark");
+    await api(client).flush();
+    expect(client.cloudSync.status()).toMatchObject({
+      state: "blocked",
+      reason: "forbidden",
+    });
+    expect(offers).toEqual([]);
+    client.close();
+  });
+
+  it("a redirected /sync 403 is an ordinary 403 even on the Worker's origin", async () => {
+    const w = new World();
+    const { client } = await signedIn(w);
+    w.push = () =>
+      fetchedFrom(refusal("https://k.test/signin"), "https://k.test/ops", true);
+    await client.config.set("theme", "dark");
+    await api(client).flush();
+    expect(client.cloudSync.status().reason).toBe("forbidden");
+    client.close();
+  });
+
+  it("a key-ring 403 from another origin neither blocks nor keeps its code", async () => {
+    const w = new World();
+    const base = w.fetch;
+    let on = false;
+    w.fetch = (async (input: string | URL, init?: RequestInit) =>
+      on && new URL(String(input)).pathname.endsWith("/devices/keyring")
+        ? fetchedFrom(refusal("https://k.test/signin"), "https://evil.test/r")
+        : base(input, init)) as typeof fetch;
+    const { client } = await signedIn(w);
+    on = true;
+    await expect(client.keyring.read()).rejects.toMatchObject({
+      code: "forbidden",
+    });
+    await api(client).flush();
+    expect(client.cloudSync.status().state).not.toBe("blocked");
+    client.close();
+  });
+
+  it("a file 403 from another origin is not reported and answers forbidden", async () => {
+    const told: unknown[] = [];
+    const transport = new NodeFileTransport({
+      ctx: {
+        product: "djdl",
+        baseUrl: "https://k.test",
+        requestTimeoutMs: 15_000,
+        headers: (extra = {}) => extra,
+        plainFetcher: () =>
+          (async () =>
+            fetchedFrom(
+              refusal("https://k.test/in"),
+              "https://evil.test/f",
+            )) as typeof fetch,
+      },
+      token: () => TOKEN,
+      onAccountRequired: (u) => told.push(u),
+    });
+    const r = await transport.revisions(
+      { collection: "saves", record: "slot-1" },
+      {},
+    );
+    expect(r).toMatchObject({ ok: false, status: 403, code: "forbidden" });
+    expect(told).toEqual([]);
   });
 });
 

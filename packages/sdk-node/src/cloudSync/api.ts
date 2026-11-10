@@ -14,7 +14,10 @@
 //       rebuilding it empty, and the subject the Worker refused is not signed in again until a
 //       sign-out or a different subject. A key-ring or file `account_required` calls
 //       `accountRequired()` here, so a device with no `/sync` traffic learns it too. The offered
-//       `signInUrl` is vetted (https on the Worker's origin, else null).
+//       `signInUrl` is vetted (https on the Worker's origin, else null). A person who completes a
+//       sign-in during this run lifts the refusal; the cached subject replayed at launch does not.
+//       If the pin cannot be removed it is retried at start and before any sign-in, and the
+//       sign-in waits for it (`forgetPending` is saved with the blocked journal).
 //   S7  No event, log line or error here carries a value or the root; events name keys only.
 // Licence state is never read or written from this module.
 
@@ -173,6 +176,8 @@ export class CloudSyncApi {
     const { host, config } = this.#d;
     await host.start();
     host.onEvents((events) => this.#onEvents(events));
+    // A pin left behind by an earlier run goes now, before anything signs in.
+    await this.#retryForget();
     config.useSync(this.#port());
     // A journal saved while signed in still names its subject.
     this.#subject = host.machine.persist().subject;
@@ -181,11 +186,16 @@ export class CloudSyncApi {
     else await this.#leave();
   }
 
-  async #signIn(subject: string): Promise<void> {
+  /** `fresh`: the person completed this sign-in during this run (an identity event), not the
+   *  cached subject read at launch. */
+  async #signIn(subject: string, fresh = false): Promise<void> {
     const { host, config } = this.#d;
     if (!host.started) return;
-    // The Worker took this subject's account away: only a sign-out or another subject lifts it.
-    if (subject === host.refused) return;
+    // The Worker took this subject's account away: a sign-out, another subject or a sign-in the
+    // person completes now lifts it; the subject replayed from the cache at launch does not.
+    if (subject === host.refused && !fresh) return;
+    // The earlier key ring is not gone yet: nothing signs in until it is.
+    if (!(await this.#retryForget())) return;
     // Another person: the first one leaves (unsent edits dropped, then forgotten) before this one
     // starts. The device credential is already the new person's, so nothing is sent for the old one.
     if (this.#subject !== null && this.#subject !== subject)
@@ -213,7 +223,8 @@ export class CloudSyncApi {
     if (!host.started) return;
     const subject = e.kind === "signedOut" ? null : e.subject;
     if (subject === null) return this.#leave();
-    if (subject !== this.#subject) await this.#signIn(subject);
+    if (subject !== this.#subject)
+      await this.#signIn(subject, e.kind === "signedIn");
   }
 
   /** The person changed: the credential in use is already the new person's, so this never talks
@@ -258,10 +269,17 @@ export class CloudSyncApi {
 
   /**
    * A key-ring or file route answered `account_required` (V5 §11.5): the machine takes the same
-   * transition as for a `/sync` 403. Never throws into the route that saw it.
+   * transition as for a `/sync` 403. `forSubject` is who was signed in when the call started; the
+   * answer is ignored if the machine's person is another by now. Never throws into the route that
+   * saw it.
    */
-  async accountRequired(signInUrl: string | null): Promise<void> {
+  async accountRequired(
+    signInUrl: string | null,
+    forSubject: string | null,
+  ): Promise<void> {
     await this.#attach().catch(() => undefined);
+    // A late answer for a person who has gone says nothing about the one signed in now.
+    if (forSubject !== this.#subject) return;
     this.#d.host.accountRequired(signInUrl);
     await this.#chain;
   }
@@ -328,7 +346,8 @@ export class CloudSyncApi {
 
   /** Drop the ring (the root first), then the synced data on disk and in memory. Each step is
    *  tried whatever the other did; a failure is logged and never thrown. With `blocked` (after
-   *  `account_required`) the data is not purged: the machine is saved as it stands. */
+   *  `account_required`) the data is not purged: the machine is saved as it stands, with the pin
+   *  still to be removed until it is. */
   async #forget(
     blocked: { subject: string | null } | null = null,
   ): Promise<void> {
@@ -339,7 +358,7 @@ export class CloudSyncApi {
     const data = (
       blocked === null
         ? this.#d.host.purge()
-        : this.#d.host.saveBlocked(blocked.subject)
+        : this.#d.host.saveBlocked(blocked.subject, true)
     ).catch(() => {
       this.#d.log?.("cloud sync: the synced data could not be deleted");
     });
@@ -347,10 +366,35 @@ export class CloudSyncApi {
     await (this.#d.purgeSaves?.() ?? Promise.resolve()).catch(() => {
       this.#d.log?.("cloud sync: the save transfers could not be deleted");
     });
-    const ring = this.#d.keyring.forget().catch(() => {
+    const ring = this.#removePin();
+    await data;
+    const removed = await ring;
+    // A pin that stays is retried (start, sign-in) from the saved blocked state.
+    if (blocked !== null && removed) await this.#settle();
+  }
+
+  /** Remove the key ring's pin; false (logged, never thrown) when it stays. */
+  async #removePin(): Promise<boolean> {
+    try {
+      await this.#d.keyring.forget();
+      return true;
+    } catch {
       this.#d.log?.("cloud sync: the key ring pin could not be removed");
-    });
-    await Promise.all([ring, data]);
+      return false;
+    }
+  }
+
+  async #settle(): Promise<void> {
+    await this.#d.host.settleForget().catch(() => undefined);
+  }
+
+  /** Try again to remove a pin an earlier blocked state left; true when none is left. */
+  async #retryForget(): Promise<boolean> {
+    if (!this.#d.host.forgetPending) return true;
+    this.#d.keyring.lock();
+    if (!(await this.#removePin())) return false;
+    await this.#settle();
+    return true;
   }
 
   // ── The config client's port ─────────────────────────────────────────────────────────────

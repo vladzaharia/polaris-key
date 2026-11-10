@@ -50,7 +50,9 @@ import {
 import { base64UrlDecode, base64UrlEncodeBytes } from "@polaris-key/jws";
 import { ErrorCode } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
+import { fromWorkerOrigin } from "@polaris-key/ui-core/browser/sdk/core/signInUrl.js";
 import {
+  classify,
   classifyResponse,
   errorFrom,
   readJson,
@@ -253,8 +255,13 @@ export class KeyringClient {
   readonly codec: SyncCodec;
   readonly #pinFile: string;
   /** Told when a ring route answers `account_required` (the client wires Cloud Sync here), with the
-   *  answer's `signInUrl` unvetted. The call still throws its own error. */
-  onAccountRequired: ((signInUrl: string | null) => void) | null = null;
+   *  answer's `signInUrl` unvetted and the person signed in when the call started (`subject`). The
+   *  call still throws its own error. Only an answer from the Worker's own origin counts. */
+  onAccountRequired:
+    | ((signInUrl: string | null, forSubject: string | null) => void)
+    | null = null;
+  /** Who is signed in now (Cloud Sync's person), read when a call starts. */
+  subject: (() => string | null) | null = null;
 
   constructor(
     private readonly ctx: CoreContext,
@@ -908,12 +915,17 @@ export class KeyringClient {
       headers["content-type"] = "application/json";
       init.body = JSON.stringify(body);
     }
+    const forSubject = this.subject?.() ?? null;
     const res = await this.ctx.request(this.ctx.url(path), init, "key ring");
     if (!res.ok) {
-      const c = await classifyResponse(res);
-      // The Worker took the account away (V5 §11.5): Cloud Sync learns it from this route too.
-      if (c.status === 403 && c.code === ErrorCode.accountRequired)
-        this.onAccountRequired?.(signInUrlOf(c.body));
+      let c = await classifyResponse(res);
+      if (c.status === 403 && c.code === ErrorCode.accountRequired) {
+        // The Worker took the account away (V5 §11.5): Cloud Sync learns it from this route too,
+        // but only from the Worker's own answer; from a redirect target it is an ordinary 403.
+        if (fromWorkerOrigin(res, new URL(this.ctx.baseUrl).origin))
+          this.onAccountRequired?.(signInUrlOf(c.body), forSubject);
+        else c = classify(403, "", res.headers.get("retry-after"));
+      }
       throw errorFrom(c, "key ring");
     }
     return res;

@@ -34,6 +34,9 @@ export interface CloudSyncFile {
   /** The subject `account_required` took away: while the machine is blocked, the host does not sign
    *  that same subject in again. Cleared by a sign-out, a different subject or a purge. */
   refused: string | null;
+  /** The key ring's pin could not be removed when the machine was blocked: the host tries again at
+   *  start and before any sign-in, and holds the sign-in until it succeeds. */
+  forgetPending: boolean;
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
@@ -82,6 +85,7 @@ export class CloudSyncStateFile {
       catalog: null,
       openKeys: [],
       refused: null,
+      forgetPending: false,
     };
     const raw = await readJson<unknown>(this.path, null);
     if (!isRecord(raw) || raw.v !== 1 || raw.product !== this.product)
@@ -102,6 +106,7 @@ export class CloudSyncStateFile {
         ? raw.openKeys.filter((k): k is string => typeof k === "string")
         : [],
       refused: typeof raw.refused === "string" ? raw.refused : null,
+      forgetPending: raw.forgetPending === true,
     };
   }
 
