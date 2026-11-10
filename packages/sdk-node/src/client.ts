@@ -227,6 +227,7 @@ export class PolarisKeyClient {
     | "onConflict"
     | "conflicts"
     | "cloudEmpty"
+    | "export"
   > & {
     /** The saves of the signed-in person (U-22.5). */
     readonly saves: SavesApi;
@@ -443,6 +444,7 @@ export class PolarisKeyClient {
       ctx: this.core,
       host: this.cloudSyncHost,
       keyring: this.keyring,
+      tokens: this.tokens,
       config: this.config,
       subject: () => readStoredSubject(this.core.dirs.state),
       emit: (e) => this.events.safeEmit("cloudSync", e),
@@ -450,6 +452,12 @@ export class PolarisKeyClient {
         signedInAs = s;
       },
       purgeSaves: () => this.savesApi.purge(),
+      ...(opts.cloudSync?.exportClock?.now
+        ? { exportNow: opts.cloudSync.exportClock.now }
+        : {}),
+      ...(opts.cloudSync?.exportClock?.sleep
+        ? { exportSleep: opts.cloudSync.exportClock.sleep }
+        : {}),
     });
     this.savesApi = new SavesApi({
       ctx: this.core,
@@ -467,6 +475,8 @@ export class PolarisKeyClient {
       onConflict: (fn) => this.cloudSyncApi.onConflict(fn),
       conflicts: () => this.cloudSyncApi.conflicts(),
       cloudEmpty: () => this.cloudSyncApi.cloudEmpty(),
+      export: (destination, options) =>
+        this.cloudSyncApi.export(destination, options),
       saves: this.savesApi,
       transfers: () => this.savesApi.transfers(),
     };

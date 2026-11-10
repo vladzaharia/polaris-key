@@ -325,6 +325,34 @@ export class KeyringClient {
     };
   }
 
+  /**
+   * Runs `use` with the current root for the device export, which derives its file keys from it.
+   * The array is the ring's own, so `use` must not keep it or copy it; it is zeroed on `lock()`,
+   * and `locked` aborts then, so `use` stops before it can read the zeroes. A lock during `use`
+   * rejects with `sync-locked`. Refuses with `sync-locked` while locked.
+   * @internal
+   */
+  async withRoot<T>(
+    use: (root: Uint8Array, locked: AbortSignal) => Promise<T>,
+  ): Promise<T> {
+    const held = this.#need();
+    const gone = new AbortController();
+    const watch: RootListener = {
+      setRoot: () => {
+        if (this.#held !== held) gone.abort();
+      },
+    };
+    this.#listeners.add(watch);
+    try {
+      return await use(held.root, gone.signal);
+    } catch (e) {
+      if (gone.signal.aborted) throw locked();
+      throw e;
+    } finally {
+      this.#listeners.delete(watch);
+    }
+  }
+
   /** Whether this device holds a root right now. */
   get unlocked(): boolean {
     return this.#held !== null;

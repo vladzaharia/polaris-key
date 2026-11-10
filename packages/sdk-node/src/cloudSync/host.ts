@@ -75,6 +75,12 @@ export interface CloudSyncHostOptions {
   catalog?: ProductCatalog;
   /** Renames the app declares (old name to current name). Never taken from a served body. */
   aliases?: Readonly<Record<string, string>>;
+  /** Test seam of `cloudSync.export()`: the device clock (ms) and a wait that ends when its signal
+   *  fires. App code leaves it unset. @internal */
+  exportClock?: {
+    now?: () => number;
+    sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
+  };
   /** `cloudSync.saves`: the app's `saves` collection settings (all optional). */
   saves?: {
     /** Delta transfer of a changed save (the collection's `files.delta`). Default `true`. */

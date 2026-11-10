@@ -21,6 +21,7 @@ import {
   type SyncStatus,
 } from "@polaris-key/client-core/cloud-sync";
 import {
+  type CloudSyncExport,
   SyncCollection,
   type ConflictListener,
   type MergeRequest,
@@ -37,6 +38,12 @@ import type {
 import type { CoreContext } from "../core/context.js";
 import type { IdentityEvent } from "../identity/signIn.js";
 import type { KeyringClient } from "../keyring/client.js";
+import type { TokenManager } from "../core/token.js";
+import {
+  exportBusy,
+  runNodeExport,
+  type CloudSyncExportOptions,
+} from "./export.js";
 import type { CloudSyncHost } from "./host.js";
 
 /** The reasons the machine leaves a principal, each of which drops the key ring. */
@@ -46,6 +53,7 @@ export interface CloudSyncApiDeps {
   ctx: CoreContext;
   host: CloudSyncHost;
   keyring: KeyringClient;
+  tokens: TokenManager;
   config: ConfigClient;
   /** The persisted subject of the signed-in account, or null. */
   subject: () => Promise<string | null>;
@@ -57,6 +65,9 @@ export interface CloudSyncApiDeps {
   onSubject?: (subject: string | null) => void;
   /** Delete the person's save-transfer journal and chunk cache (U-22.5). */
   purgeSaves?: () => Promise<void>;
+  /** Test seams of `export()`: the device clock (ms) and a wait that ends when the signal fires. */
+  exportNow?: () => number;
+  exportSleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
 }
 
 export class CloudSyncApi {
@@ -73,6 +84,7 @@ export class CloudSyncApi {
     this.#d.onSubject?.(s);
   }
   #forgot = false;
+  #exporting = false;
   #chain: Promise<void> = Promise.resolve();
   /** Identity events, one at a time and in order. */
   #work: Promise<void> = Promise.resolve();
@@ -124,6 +136,44 @@ export class CloudSyncApi {
     await this.#d.host.flush();
     await this.#chain;
     return this.status();
+  }
+
+  /**
+   * Write a readable copy of what the app synced to `destination`, a zip in the layout of Polaris
+   * Locker's own export, with the data in plaintext (WIRE-CONTRACT-V5 §13.12). The file is NOT
+   * encrypted: an app that exports says so to the person first. It is written as
+   * `<destination>.partial` (created exclusively, owner-only), flushed and renamed over the
+   * destination; an error or a cancel removes the partial and leaves the old destination as it was.
+   * Refuses with `account_required`, `sync-locked`, `sync-encryption-pinned`, `cancelled`,
+   * `sync-export-too-large` (nothing is written) or `sync-export-failed` (`reason` `destination`,
+   * `network` or `busy`: one export per client). Throws the typed `product` N/A when the product
+   * does not run the Sync service.
+   */
+  async export(
+    destination: string,
+    options: CloudSyncExportOptions = {},
+  ): Promise<CloudSyncExport> {
+    this.#d.ctx.requireService("sync", Feature.syncExport);
+    if (this.#exporting) throw exportBusy();
+    this.#exporting = true;
+    try {
+      const d = this.#d;
+      return await runNodeExport(
+        {
+          ctx: d.ctx,
+          tokens: d.tokens,
+          host: d.host,
+          keyring: d.keyring,
+          flush: () => this.flush(),
+          ...(d.exportNow ? { now: d.exportNow } : {}),
+          ...(d.exportSleep ? { sleep: d.exportSleep } : {}),
+        },
+        destination,
+        options,
+      );
+    } finally {
+      this.#exporting = false;
+    }
   }
 
   /** The records handle of a collection the product's catalog declares (U-46). Starts the host

@@ -4552,9 +4552,7 @@
         "sync-export-failed"
       ],
       "sdks": {
-        "node": {
-          "planned": "U-51"
-        },
+        "node": {},
         "python": {
           "planned": "U-51"
         },
@@ -4581,6 +4579,12 @@
       "kind": "method",
       "feature": "sync.export",
       "sdks": {
+        "node": {
+          "reason": "cancels with the AbortSignal of cloudSync.export's options"
+        },
+        "react": {
+          "reason": "cancels with the AbortSignal of useCloudSync().export's options"
+        },
         "godot": {
           "planned": "U-51",
           "sdkOnly": true,

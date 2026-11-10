@@ -583,9 +583,8 @@
       "wp": "SP-67"
     },
     "sync.export": {
-      "status": "planned",
-      "wp": "U-51",
-      "note": "U-51.1 registered the feature; this SDK's slice implements it."
+      "status": "implemented",
+      "note": "client.cloudSync.export(destination, { includeRevisions, signal }) (src/cloudSync/{export,exportFile}.ts, wired in api.ts): flush, then pull from the start until more is false, then client-core's exportToSink into <destination>.partial (created O_CREAT|O_EXCL|O_NOFOLLOW at 0600, fsynced, renamed over the destination; any error or cancel removes it and the old destination survives), a stale partial removed at the next export, a non-regular destination refused. The end-to-end root is lent by keyring.withRoot and a lock aborts the export; the file source reads like saves.read and waits out a 429 within the bounded budget. test/cloudSyncExport.test.ts; exportCases in the Node conformance runner (syncVectors.test.ts, syncExportZip.test.ts)."
     }
   }
 }

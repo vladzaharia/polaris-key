@@ -91,6 +91,11 @@ export {
   type SyncCodec,
   type UnlockResult,
 } from "./keyring/index.js";
+export type { CloudSyncExportOptions } from "./cloudSync/export.js";
+export {
+  SyncExportError,
+  type CloudSyncExport,
+} from "@polaris-key/client-core/sync";
 export {
   CloudConnect,
   CloudNearby,
