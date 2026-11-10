@@ -24,6 +24,7 @@ import im.plrs.key.core.peer.ContactLink
 import im.plrs.key.core.peer.HandshakeLimiter
 import im.plrs.key.core.peer.HeldRing
 import im.plrs.key.core.peer.HelloInfo
+import im.plrs.key.core.peer.LocalLink
 import im.plrs.key.core.peer.NoisePorts
 import im.plrs.key.core.peer.NoiseRole
 import im.plrs.key.core.peer.PeerChannel
@@ -117,6 +118,7 @@ internal class ChannelBase(
         onEvent: (SessionEvent) -> Unit,
         contacts: List<ContactLink> = emptyList(),
         admission: HandshakeLimiter? = null,
+        locals: List<LocalLink> = emptyList(),
     ): PeerChannel {
         val clock = now ?: { System.currentTimeMillis() / 1000 }
         return PeerChannel(
@@ -125,7 +127,7 @@ internal class ChannelBase(
             send, onEvent,
             caps = caps, ports = ports ?: NoisePorts(), now = clock,
             rekeyMessages = rekeyMessages ?: (1 shl 20), rekeySeconds = rekeySeconds ?: 3600.0,
-            mode = PeerMode.a, admission = admission, contacts = contacts,
+            mode = PeerMode.a, admission = admission, contacts = contacts, locals = locals,
         )
     }
 
@@ -154,6 +156,30 @@ internal class ChannelBase(
 
     override fun toString(): String = "ChannelBase"
 }
+
+/**
+ * A mode-`l` channel for [role] (section 15.12): no account, no certificate, no device key. Each local link brings its
+ * own static key. An initiator names exactly one link; a responder names the links it serves, needs [admission], and
+ * with no account key to try is admitted by the source [group]'s budget first (section 15.10, "Admission").
+ */
+internal fun localChannel(
+    role: NoiseRole,
+    slug: String,
+    o: LanOptions,
+    send: (ByteArray) -> Unit,
+    onEvent: (SessionEvent) -> Unit,
+    locals: List<LocalLink>,
+    admission: HandshakeLimiter?,
+    group: String?,
+    now: () -> Long,
+): PeerChannel = PeerChannel(
+    role, slug, null, null,
+    HelloInfo(hostPlatform(), slug, o.label),
+    send, onEvent,
+    caps = o.caps, now = now,
+    rekeyMessages = o.rekeyMessages ?: (1 shl 20), rekeySeconds = o.rekeySeconds ?: 3600.0,
+    mode = PeerMode.l, admission = admission, locals = locals, admissionGroup = group,
+)
 
 /**
  * Handles `RING`, `TRUST` and "a peer is on a newer roster". [spawn] runs a job off the caller's

@@ -157,7 +157,8 @@ class PeerMatrixLocalTest : ConformanceSuite() {
                 }
             }
             // The state columns are the corpus's own bookkeeping; the limiter's answers are the rows'.
-            val want = rows(r["want"]).map { w -> w.entries.filter { it.key in setOf("result", "hit", "by") }.associate { it.key to plain(it.value) } }
+            val kept = setOf("result", "hit", "by")
+            val want = rows(r["want"]).map { w -> w.entries.filter { it.key in kept }.associate { it.key to plain(it.value) } }
             f.equal(want, got) { id }
         }
         f.done(11)
@@ -445,7 +446,9 @@ class PeerMatrixLocalTest : ConformanceSuite() {
                     },
                 )
             }
-            val got = mapOf<String, Any?>("browsed" to plan.browses, "kept" to plan.kept, "dialled" to dialled.toList(), "result" to plan.result().wire)
+            val got = mapOf<String, Any?>(
+                "browsed" to plan.browses, "kept" to plan.kept, "dialled" to dialled.toList(), "result" to plan.result().wire,
+            )
             f.equal(plain(r["want"]), got) { r.s("id") }
         }
         f.done(20)

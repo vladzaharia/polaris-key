@@ -24,7 +24,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Python | `python` | 111 | 16 | 15 | 1 |
 | Swift | `macos`, `ios` | 126 | 10 | 5 | 2 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 129 | 9 | 4 | 1 |
-| Kotlin | `android`, `jvm` | 127 | 9 | 5 | 2 |
+| Kotlin | `android`, `jvm` | 128 | 9 | 4 | 2 |
 
 ## Core
 
@@ -100,7 +100,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `connect.relay` | The relay: ticket, WebSocket channel, quotas | transcripts + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `connect.links` | Inter-account links: mode p pairing and contacts | transcripts + `peer-matrix.json` `contact` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | ✓ | web, desktop-bridge: runtime |
 | `connect.transfer` | Direct Transfer: data between Cloud Connect peers | `peer-matrix.json` `xfer` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `connect.local` | Local links: pairing by a code or QR without an account (mode q) and later LAN sessions (mode l) | unit + `noise-vectors.json` `cpace` + `peer-matrix.json` `local` + transcripts | ✓ | N/A (web, desktop-bridge: runtime) | planned (CC-29) | planned (CC-29) | planned (CC-29b); N/A (web: runtime) | planned (CC-29) | web, desktop-bridge: runtime |
+| `connect.local` | Local links: pairing by a code or QR without an account (mode q) and later LAN sessions (mode l) | unit + `noise-vectors.json` `cpace` + `peer-matrix.json` `local` + transcripts | ✓ | N/A (web, desktop-bridge: runtime) | planned (CC-29) | planned (CC-29) | planned (CC-29b); N/A (web: runtime) | ✓ | web, desktop-bridge: runtime |
 | `connect.app` | The cloudConnect API: start, stop, peers, devices, open, onChannel | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Devices and identity

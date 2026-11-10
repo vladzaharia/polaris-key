@@ -113,7 +113,10 @@ public class ContactLink(
     override fun toString(): String = "ContactLink(redacted)"
 }
 
-/** A local link the device holds (mode l, section 15.12): the link's secret (the PSK), its own private key and the peer's link key. Prints as redacted. */
+/**
+ * A local link the device holds (mode l, section 15.12): the link's secret (the PSK), its own private key and the peer's link
+ * key. Prints as redacted.
+ */
 public class LocalLink(
     /** The 32-byte link secret. */
     public val secret: ByteArray,
@@ -137,7 +140,10 @@ public class PairingOptions(
     public val cats: List<String>,
     /** This device's label for the peer to show. */
     public val label: String? = null,
-    /** Seconds already spent since the first byte (C1 and C2 ran before the session). At 30 or more the session starts no handshake and tries no tag. */
+    /**
+     * Seconds already spent since the first byte (C1 and C2 ran before the session). At 30 or more the session starts no handshake
+     * and tries no tag.
+     */
     public val elapsed: Double = 0.0,
     /**
      * A responder's permit to try message 1's tag ([PairingWindow.beginGuess]): synchronous, it counts the guess before
@@ -287,7 +293,6 @@ public class HandshakeLimiter(
     public fun beginLocal(group: String): LocalAdmission {
         var refusal: String? = null
         val t = mono()
-        val mine: ArrayList<Double>
         synchronized(lock) {
             stamps.removeAll { t - it >= RATE_WINDOW_SECONDS }
             val live = groups.entries.iterator()
@@ -296,7 +301,7 @@ public class HandshakeLimiter(
                 e.value.removeAll { s -> t - s >= RATE_WINDOW_SECONDS }
                 if (e.value.isEmpty()) live.remove()
             }
-            mine = groups[group] ?: ArrayList()
+            val mine = groups[group] ?: ArrayList()
             if (mine.size >= groupMax) {
                 refusal = "group"
             } else if (stamps.size >= maxPerMinute || pending >= maxPending) {
@@ -315,8 +320,14 @@ public class HandshakeLimiter(
                     if (!settled) {
                         settled = true
                         first = true
-                        val i = mine.lastIndexOf(t)
-                        if (i >= 0) mine.removeAt(i)
+                        // The refund takes this message's timestamp out of the group's LIVE list, not out of the list captured
+                        // when it arrived: the list may have been trimmed or replaced since, and other messages counted.
+                        val live = groups[group]
+                        val i = live?.lastIndexOf(t) ?: -1
+                        if (live != null && i >= 0) {
+                            live.removeAt(i)
+                            if (live.isEmpty()) groups.remove(group)
+                        }
                         pending++
                     }
                 }
@@ -471,7 +482,7 @@ public class PeerChannel(
     init {
         require((mode == PeerMode.a) == (account != null)) { "account context" }
         require(mode == PeerMode.l || staticKey != null) { "static key" }
-        require(contacts.all { it.secret.size == KEY_BYTES } && locals.all { it.secret.size == KEY_BYTES && it.ownKey.size == KEY_BYTES && it.peerKey.size == KEY_BYTES }) {
+        require(contacts.all { it.secret.size == KEY_BYTES } && locals.all { l -> listOf(l.secret, l.ownKey, l.peerKey).all { it.size == KEY_BYTES } }) {
             "secrets"
         }
         if (mode == PeerMode.c) {

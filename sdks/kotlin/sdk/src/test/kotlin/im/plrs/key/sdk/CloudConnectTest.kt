@@ -1,4 +1,4 @@
-// @pkey-feature connect.app
+// @pkey-feature connect.app connect.local
 //
 // `client.cloudConnect` (CC-12.15; WIRE-CONTRACT-V5 section 15; plans CC-01 G9, G18, G21): two real clients
 // of one person, a fake LAN, the in-process relay room and a scripted Worker that signs real rosters and
@@ -204,9 +204,14 @@ class CloudConnectTest {
             else -> respond(404, "")
         }
 
-        fun client(me: Device, trustRefresh: Boolean = false, state: DeviceKeyStorage? = null): PolarisKeyClient = runBlocking {
+        fun client(
+            me: Device,
+            trustRefresh: Boolean = false,
+            state: DeviceKeyStorage? = null,
+            signedIn: Boolean = true,
+        ): PolarisKeyClient = runBlocking {
             val store = InMemoryStore("djdl", me.id)
-            store.setToken("pkeyt_held")
+            if (signedIn) store.setToken("pkeyt_held")
             PolarisKeyClient.create(
                 PolarisKeyClientOptions(
                     core = CoreOptions(
@@ -628,5 +633,96 @@ class CloudConnectTest {
         val text = c.cloudConnect.toString() + c.cloudConnect.status().toString() + w.options().toString()
         assertFalse(text.contains("pkeyrt_"))
         assertFalse(text.contains(im.plrs.key.core.Base64Url.encode(disc)))
+    }
+
+    // -- local links with no account (CC-29; WIRE-CONTRACT-V5 section 15.12) -------------------------
+
+    private val localFragment =
+        """{"enabled":true,"localPairing":true,"relay":true,"endpoints":{"identity":"x","devices":"y",""" +
+            """"ticket":"https://key.plrs.im/djdl/connect/relay/ticket"}}"""
+
+    private fun linkRow(c: PolarisKeyClient): String = runBlocking {
+        val r = java.security.SecureRandom()
+
+        fun k() = ByteArray(32).also { r.nextBytes(it) }
+        c.connect.local.store.add(k(), k(), k(), k(), "Bo", listOf("docs"), 1L)!!
+    }
+
+    private fun Network.kinds(): List<String> = synchronized(adverts) { adverts.values.map { a -> a.txt.first { it.startsWith("m=") } } }
+
+    @Test
+    fun withNoAccountTheLanServiceServesLocalLinksAloneAndOnlyWhileALinkIsHeld() = runBlocking {
+        val w = World()
+        w.connectFragment = localFragment
+        val c = w.client(w.a, signedIn = false)
+        c.discover()
+        assertTrue(c.cloudConnect.localLinks.localPairing())
+        c.cloudConnect.start(w.options())
+        // No link yet: nothing is bound and nothing is advertised (nothing to find, nothing to scan).
+        assertTrue(c.cloudConnect.status().running)
+        assertEquals("off", c.cloudConnect.status().lan)
+        assertTrue(w.net.adverts.isEmpty())
+        // The first link brings the listener up, reachable by default; no account name is ever advertised.
+        val id = linkRow(c)
+        c.connect.local.notifyChanged()
+        until { c.cloudConnect.status().lan == "on" && w.net.kinds() == listOf("m=l") }
+        assertEquals(0, w.tickets.get())
+        // The last link forgotten takes it down again.
+        assertTrue(c.cloudConnect.localLinks.remove(id))
+        until { c.cloudConnect.status().lan == "off" && w.net.adverts.isEmpty() }
+        assertTrue(c.cloudConnect.status().running)
+    }
+
+    @Test
+    fun noAccountAndNoLocalGateStillAnswersTheAccountErrorAndStartsNothing() = runBlocking {
+        val w = World()
+        val c = w.client(w.a, signedIn = false)
+        c.discover()
+        assertFalse(c.cloudConnect.localLinks.localPairing())
+        try {
+            c.cloudConnect.start(w.options())
+            fail("expected no-token")
+        } catch (e: PolarisException) {
+            assertEquals(ErrorCode.noToken, e.code)
+        }
+        assertFalse(c.cloudConnect.status().running)
+    }
+
+    @Test
+    fun signOutKeepsLocalLinksReachableWithoutTheAccountHalfAndStopNeverRestartsThem() = runBlocking {
+        val w = World()
+        w.connectFragment = localFragment
+        val c = w.client(w.a)
+        c.discover()
+        linkRow(c)
+        c.cloudConnect.start(w.options(relay = false))
+        until { w.net.kinds().sorted() == listOf("m=a", "m=l") }
+        c.cloudConnect.stopForSignOut()
+        until { w.net.kinds() == listOf("m=l") }
+        assertTrue(c.cloudConnect.status().running)
+        // stop() ends everything and does not bring the local-only service back.
+        c.cloudConnect.stop()
+        until { w.net.adverts.isEmpty() }
+        assertFalse(c.cloudConnect.status().running)
+    }
+
+    @Test
+    fun aDiscoveryReadThatClearsTheGateWithdrawsTheLocalAdverts() = runBlocking {
+        val w = World()
+        w.connectFragment = localFragment
+        val c = w.client(w.a, signedIn = false)
+        c.discover()
+        linkRow(c)
+        c.cloudConnect.start(w.options())
+        until { w.net.kinds() == listOf("m=l") }
+        w.connectFragment = """{"enabled":true,"relay":true,"endpoints":{"identity":"x","devices":"y"}}"""
+        c.discover()
+        assertFalse(c.cloudConnect.localLinks.localPairing())
+        until { w.net.adverts.isEmpty() }
+        // The link stays on disk, inert; the gate coming back brings the advert back.
+        assertEquals(1, c.cloudConnect.localLinks.list().size)
+        w.connectFragment = localFragment
+        c.discover()
+        until { w.net.kinds() == listOf("m=l") }
     }
 }

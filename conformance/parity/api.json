@@ -7990,7 +7990,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8005,7 +8006,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8020,7 +8022,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -8029,7 +8032,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8048,7 +8052,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8063,7 +8068,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8082,7 +8088,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8097,7 +8104,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8112,7 +8120,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "kotlin": {}
       },
       "layer": "client"
     },

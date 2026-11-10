@@ -200,7 +200,16 @@ public fun checkShare(y: ByteArray): ShareVerdict {
 /** A fresh 32-byte scalar. X25519 clamps it. */
 public fun cpaceScalar(random: (Int) -> ByteArray = NoisePorts().random): ByteArray = random(SHARE_BYTES)
 
-private fun usable(k: ByteArray?): Boolean = k != null && k.size == SHARE_BYTES && k.any { it.toInt() != 0 }
+/**
+ * A DH output is usable when it is 32 bytes and not all zero. The test ORs every byte, with no early exit, so it does not
+ * branch on the secret; a backend may answer zeros rather than refuse a low-order share.
+ */
+private fun usable(k: ByteArray?): Boolean {
+    if (k == null || k.size != SHARE_BYTES) return false
+    var acc = 0
+    for (b in k) acc = acc or (b.toInt() and BYTE)
+    return acc != 0
+}
 
 /** `Y = X25519(y, g)`. Null when the backend refuses (a degenerate generator). */
 public fun cpaceShare(y: ByteArray, g: ByteArray, curves: DeviceCurves = DeviceCurvesSelection.curves): ByteArray? =

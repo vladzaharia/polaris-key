@@ -38,7 +38,9 @@
 package im.plrs.key.sdk
 
 import im.plrs.key.core.CoreContext
+import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.PeerTrustResult
+import im.plrs.key.core.PolarisException
 import im.plrs.key.core.ProductDiscoveryDocument
 import im.plrs.key.core.ServiceSlug
 import im.plrs.key.core.peer.PeerCloseCode
@@ -163,6 +165,30 @@ public class CloudConnect internal constructor(
         it.onRemoved = { key -> transfer.purgePeer(key) }
     }
 
+    /**
+     * Local links (CC-29): pair with a code with no account ([CloudLocalLinks.pair], [CloudLocalLinks.join]), then `list`,
+     * `rename`, `remove`, `setReachable`, `open` and `onLink`; off unless discovery says `localPairing`. They need no sign-in.
+     */
+    public val localLinks: CloudLocalLinks = CloudLocalLinks(
+        connect.local.source(),
+        LocalHooks(
+            adopt = { s -> transfer.bind(s) },
+            transferAccepting = { transfer.accepting },
+            removed = { keys -> for (k in keys) transfer.purgePeer(k) },
+        ),
+    ).also { l -> connect.local.gate.onCleared = { l.closeAll() } }
+
+    /** The running LAN service has no account half (it serves local links alone). */
+    @Volatile
+    private var localOnly = false
+
+    /** What a sign-out starts the local-only service with; null when the host did not start Connect. */
+    @Volatile
+    private var resumeWith: CloudConnectOptions? = null
+
+    /** The local-only service's watch on the link list (set while it runs). */
+    private var unLocal: (() -> Unit)? = null
+
     /** Test seam: the bound `stop()` waits ([CLOUD_STOP_MILLIS]). */
     @Volatile
     internal var stopMillis: Long = CLOUD_STOP_MILLIS
@@ -232,9 +258,21 @@ public class CloudConnect internal constructor(
     }
 
     private suspend fun startLocked(o: CloudConnectOptions) {
-        if (running) return
-        val ident = connect.identity()
+        if (running && !localOnly) return
+        // A local-only service gives way to the full one.
+        if (running) teardown()
+        val ident = try {
+            connect.identity()
+        } catch (e: PolarisException) {
+            if (!noAccount(e, o)) throw e
+            null
+        }
+        if (ident == null) {
+            startLocalOnly(o)
+            return
+        }
         self = ident.deviceId
+        resumeWith = o
         lanAttempt = o.lanAttemptSeconds
         transfersOn = o.transfers
         lanFailed = null
@@ -281,6 +319,8 @@ public class CloudConnect internal constructor(
                 cr.start()
             }
             links.attach(lan, contactRelay, o.lanAttemptSeconds, relayOn)
+            lan?.let { localLinks.attach(it) }
+            localOnly = false
             running = true
         } catch (e: Throwable) {
             teardown()
@@ -289,12 +329,105 @@ public class CloudConnect internal constructor(
     }
 
     /**
+     * A start that found no account (no token, or no sign-in): with `localPairing` cached on and the LAN not turned off it
+     * serves local links alone; any other failure is the caller's.
+     */
+    private fun noAccount(e: PolarisException, o: CloudConnectOptions): Boolean =
+        (e.code == ErrorCode.noToken || e.code == ErrorCode.accountRequired) && o.lan && connect.local.allowed()
+
+    /**
+     * The local-only service (sections 15.5 and 15.12): no account half, the local links alone. A device that holds no link
+     * binds no listener (nothing to find, nothing to scan): it waits, and the first link (`pair`, `join`) brings the listener up
+     * and the last one forgotten takes it down.
+     */
+    private suspend fun startLocalOnly(o: CloudConnectOptions) {
+        self = ""
+        resumeWith = o
+        transfersOn = o.transfers
+        lanAttempt = o.lanAttemptSeconds
+        lanFailed = null
+        lanReason = null
+        relayReason = "no_account"
+        localOnly = true
+        running = true
+        if (unLocal == null) unLocal = connect.local.onChange { scope.launch { gate.withLock { quietly { syncLocalNow() } } } }
+        try {
+            syncLocalNow()
+        } catch (e: Throwable) {
+            localOnly = false
+            running = false
+            unLocal?.invoke()
+            unLocal = null
+            throw e
+        }
+    }
+
+    /** Bring the local-only listener to match whether a link is held. */
+    private suspend fun syncLocalNow() {
+        if (!localOnly) return
+        val held = try {
+            connect.local.store.count()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            0
+        }
+        if (held == 0) {
+            val l = lan ?: return
+            // The last link is gone: the listener closes (the sessions of that link already ended).
+            lan = null
+            localLinks.detach()
+            quietly { l.stop() }
+            return
+        }
+        if (lan != null) return
+        val o = resumeWith ?: CloudConnectOptions()
+        val withCaps = if (o.transfers) o.lanOptions.withTransferCap() else o.lanOptions
+        val lanOptions = androidLanOptions(withCaps, ConnectPlatforms.android, ConnectPlatforms.installed)
+        if (lanOptions == null) {
+            lanReason = "unsupported"
+            return
+        }
+        val svc = try {
+            LanService.startLocal(localLanSource(), lanOptions)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            lanFailed = e
+            throw e
+        }
+        if (!localOnly || lan != null) {
+            svc.abort()
+            return
+        }
+        lan = svc
+        localLinks.attach(svc)
+    }
+
+    /** The LAN source of the local-only service: no identity, the local links alone. */
+    private fun localLanSource(): LanSource = LanSource(
+        load = { throw LanException(LanErrorReason.no_identity, "A local-only service holds no account.") },
+        now = now,
+        floored = floored,
+        slug = connect.productSlug(),
+        locals = { connect.local.live() },
+        onLocals = { fn -> connect.local.onChange(fn) },
+        localAllowed = { connect.local.allowed() },
+        localEstablished = { ref -> connect.local.touch(ref) },
+    )
+
+    /**
      * Close the sessions, the relay socket and the LAN service. Safe to call more than once, and before
      * `start` (it then does nothing). Waits at most [CLOUD_STOP_MILLIS]: when a callback or a socket holds
      * the teardown up, it stays queued and this throws `LanException(closed)`, so a caller such as sign-out
      * does not wait on the host's code (R-6P S6).
      */
     public suspend fun stop() {
+        resumeWith = null
+        stopBounded()
+    }
+
+    private suspend fun stopBounded() {
         if (!touched) return
         val job = scope.async { gate.withLock { teardown() } }
         if (withTimeoutOrNull(stopMillis) { job.await() } == null) {
@@ -312,6 +445,9 @@ public class CloudConnect internal constructor(
         dyingLan = null
         dyingRelay = null
         running = false
+        localOnly = false
+        unLocal?.invoke()
+        unLocal = null
         lan = null
         relay = null
         synchronized(lock) { unsub.clear() }
@@ -336,6 +472,9 @@ public class CloudConnect internal constructor(
 
     private suspend fun teardown() {
         running = false
+        localOnly = false
+        unLocal?.invoke()
+        unLocal = null
         val offs = synchronized(lock) { unsub.toList().also { unsub.clear() } }
         for (u in offs) u()
         val l = lan
@@ -347,6 +486,7 @@ public class CloudConnect internal constructor(
         dyingLan = l
         dyingRelay = r
         quietly { links.detach() }
+        quietly { localLinks.detach() }
         // The services first: each bounds itself and closes its own sessions and sockets, so a host
         // callback that blocks a session close cannot keep the listener or the relay socket up.
         quietly { l?.stop() }
@@ -361,7 +501,7 @@ public class CloudConnect internal constructor(
     /** Sign-out and `close()`: stop, never fail. A timeout is swallowed; the teardown stays queued. */
     internal suspend fun stopForSignOut() {
         try {
-            stop()
+            stopBounded()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -371,6 +511,25 @@ public class CloudConnect internal constructor(
         if (withTimeoutOrNull(stopMillis) { nearby.stopAll() } == null) nearby.forceStop()
         // The kept partial files are this person's: they go with the sign-out.
         withContext(Dispatchers.IO) { transfer.purgeAll() }
+        // Local links are not account data: the LAN service comes back up without the account half when links are reachable
+        // (section 15.12, "Forget and accounts").
+        withTimeoutOrNull(stopMillis) { quietly { resumeLocal() } }
+    }
+
+    private suspend fun resumeLocal() {
+        gate.withLock {
+            val o = resumeWith
+            if (running || o == null || !connect.local.allowed()) return@withLock
+            val rows = try {
+                connect.local.store.rows()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                emptyList()
+            }
+            if (rows.none { it.reachable }) return@withLock
+            quietly { startLocalOnly(o) }
+        }
     }
 
     /** The client's `close()`: tear down in the background, then release the facade's scope. */
@@ -382,6 +541,7 @@ public class CloudConnect internal constructor(
             teardown?.join()
         }.invokeOnCompletion {
             links.shutdown()
+            localLinks.shutdown()
             transfer.shutdown()
             scope.cancel()
         }
@@ -531,6 +691,14 @@ public class CloudConnect internal constructor(
             applyTrust = source.applyTrust,
             floored = source.floored,
             mono = source.mono,
+            contacts = source.contacts,
+            onContacts = source.onContacts,
+            contactEstablished = source.contactEstablished,
+            slug = source.slug,
+            locals = source.locals,
+            onLocals = source.onLocals,
+            localAllowed = source.localAllowed,
+            localEstablished = source.localEstablished,
         )
     }
 
