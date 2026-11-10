@@ -12,6 +12,10 @@
  *       green ancestor, see laneBases, on the FULL matrices). Every other event (a push to main, a
  *       tag, a manual run) runs every lane and the full matrices, and so does a push to `next` whose
  *       ancestry, API or diff cannot be read, and a lane that has no green ancestor.
+ *   node tools/ci-scope.mjs replay [--count <n>] [--head <rev>]
+ *       for each of the last <n> (default 70) commits reachable from <rev> (default HEAD), print
+ *       how many lanes the change since its first parent turns on (a measurement of the scope
+ *       map: a lint-ledger-only commit should print js only).
  *   node tools/ci-scope.mjs touches <lane> [--base <rev>] [--worktree]
  *       exit 0 when the lane runs for the changes since the merge base with <rev> (default main),
  *       exit 1 when it can be skipped; --worktree adds uncommitted changes (the gate's view). When
@@ -334,6 +338,31 @@ function main(argv) {
     );
     return 0;
   }
+  if (cmd === "replay") {
+    const count = Number(arg(rest, "--count") ?? 70);
+    const head = arg(rest, "--head") ?? "HEAD";
+    const shas = git(
+      ["rev-list", "--first-parent", "-n", String(count), head],
+      process.cwd(),
+    )
+      .split("\n")
+      .filter(Boolean);
+    let full = 0;
+    for (const sha of shas) {
+      const files = changedFiles({ base: `${sha}^`, head: sha });
+      const on = Object.entries(selectLanes(scope, files))
+        .filter(([, v]) => v)
+        .map(([k]) => k);
+      if (on.length === Object.keys(scope.lanes).length) full += 1;
+      process.stdout.write(
+        `${sha.slice(0, 10)} ${files === null ? "?" : files.length} file(s): ${on.length === Object.keys(scope.lanes).length ? "every lane" : on.join(",") || "js only"}\n`,
+      );
+    }
+    process.stdout.write(
+      `${full} of ${shas.length} commit(s) turn every lane on\n`,
+    );
+    return 0;
+  }
   if (cmd === "touches") {
     const lane = rest[0];
     if (!lane || !(lane in scope.lanes))
@@ -347,7 +376,7 @@ function main(argv) {
     return selectLanes(scope, files)[lane] ? 0 : 1;
   }
   throw new Error(
-    "usage: ci-scope.mjs ci [--event <name>] [--ref <ref>] [--repo <owner/name>] [--base <rev>] [--head <rev>] [--github-output] | touches <lane> [--base <rev>] [--worktree]",
+    "usage: ci-scope.mjs ci [--event <name>] [--ref <ref>] [--repo <owner/name>] [--base <rev>] [--head <rev>] [--github-output] | replay [--count <n>] [--head <rev>] | touches <lane> [--base <rev>] [--worktree]",
   );
 }
 

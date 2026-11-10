@@ -909,6 +909,72 @@ describe("a push to next narrows each lane to the files since its own base", () 
   });
 });
 
+describe("shared is narrowed to what every lane verifies", () => {
+  it("selects only the always-on js jobs for a lint-ledger-only commit", () => {
+    for (const f of [
+      "tools/lint/debt/jscpd.json",
+      "tools/lint/debt/knip.json",
+      "tools/lint/debt/size.json",
+    ])
+      expect(on([f]), f).toEqual([]);
+  });
+
+  it("keeps a generator or a tool script from turning every lane on", () => {
+    expect(on(["tools/sign-corpus.ts"])).toEqual([]);
+    expect(on(["tools/gate.mjs"])).toEqual([]);
+    expect(on(["tools/lint-staged.mjs"])).toEqual([]);
+  });
+
+  it("still turns every lane on for the scope, the registry, the workflow and its actions", () => {
+    for (const f of [
+      "tools/ci-scope.json",
+      "tools/ci-scope.mjs",
+      "tools/generators.ts",
+      "tools/gen.ts",
+      ".github/workflows/ci.yml",
+      ".github/actions/setup-js/action.yml",
+      "conformance/corpus/v2/cases.json",
+      "packages/shared-protocol/src/core.ts",
+      "pnpm-lock.yaml",
+    ])
+      expect(on([f]), f).toHaveLength(Object.keys(scope.lanes).length);
+  });
+
+  it("leaves another workflow, which ci.yml does not run, out", () => {
+    expect(on([".github/workflows/publish-sdks.yml"])).toEqual([]);
+    expect(on([".github/dependabot.yml"])).toEqual([]);
+  });
+
+  it("still runs the lanes that read the lint tree, but not for its debt ledgers", () => {
+    expect(on(["tools/lint/lint-debt.mjs"])).toEqual(
+      expect.arrayContaining(["python", "e2e-backend"]),
+    );
+    expect(on(["tools/lint/adapters/python.mjs"])).toContain("python");
+    expect(on(["tools/lint/debt/knip.json"])).not.toContain("python");
+  });
+
+  it("replays history: the command reports each commit's lanes and how many are full", () => {
+    const r = repo({ "README.md": "# r\n" });
+    r.write("tools/lint/debt/jscpd.json", "{}\n");
+    r.git("add", "-A");
+    r.git("commit", "-q", "-m", "ledger");
+    r.write("sdks/python/src/a.py", "x = 1\n");
+    r.git("add", "-A");
+    r.git("commit", "-q", "-m", "py");
+    r.write("tools/ci-scope.json", "{}\n");
+    r.git("add", "-A");
+    r.git("commit", "-q", "-m", "scope");
+    const out = cli(r.dir, "replay", "--count", "3");
+    expect(out.status, out.stderr).toBe(0);
+    const lines = out.stdout.trim().split("\n");
+    expect(lines[0]).toContain("every lane");
+    expect(lines[1]).toMatch(/python/);
+    expect(lines[1]).not.toContain("every lane");
+    expect(lines[2]).toContain("js only");
+    expect(lines[3]).toBe("1 of 3 commit(s) turn every lane on");
+  });
+});
+
 describe("the JS test jobs narrow with the js base", () => {
   const text = (id: string) => JSON.stringify(ci.jobs[id]);
 

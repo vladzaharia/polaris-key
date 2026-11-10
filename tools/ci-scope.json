@@ -5,8 +5,11 @@
     "packages/shared-",
     "packages/client-core/",
     "packages/brand/",
-    "tools/",
-    ".github/",
+    "tools/ci-scope.",
+    "tools/generators.ts",
+    "tools/gen.ts",
+    ".github/workflows/ci.yml",
+    ".github/actions/",
     "package.json",
     "pnpm-lock.yaml",
     "pnpm-workspace.yaml",
@@ -84,7 +87,10 @@
     "python": {
       "paths": [
         "sdks/python/",
-        "tools/lint/",
+        "tools/lint/adapters/",
+        "tools/lint/fixtures/",
+        "tools/lint/lint-debt.",
+        "tools/lint/generated.json",
         "packages/ui-qa/",
         "examples/python-cli/",
         "examples/python-renpy/",
@@ -102,7 +108,10 @@
         "packages/worker/",
         "packages/zstd-wasm/",
         "sdks/python/",
-        "tools/lint/",
+        "tools/lint/adapters/",
+        "tools/lint/fixtures/",
+        "tools/lint/lint-debt.",
+        "tools/lint/generated.json",
         "examples/server-"
       ]
     },
