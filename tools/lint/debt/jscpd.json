@@ -120,7 +120,7 @@
       "jscpd:duplicate": 18
     },
     "packages/admin/e2e/dataMotion.e2e.test.ts": {
-      "jscpd:duplicate": 37
+      "jscpd:duplicate": 36
     },
     "packages/admin/e2e/deviceMotion.e2e.test.ts": {
       "jscpd:duplicate": 12
@@ -183,7 +183,7 @@
       "jscpd:duplicate": 14
     },
     "packages/admin/e2e/pollMotion.e2e.test.ts": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 9
     },
     "packages/admin/e2e/portal.e2e.test.ts": {
       "jscpd:duplicate": 7

@@ -287,6 +287,27 @@ afterEach(() => {
 const frame = (): Promise<void> =>
   new Promise((r) => requestAnimationFrame(() => r()));
 
+/**
+ * Resolve once `f()` holds, re-checking after every change to the DOM under `el`: the wait is the
+ * condition itself, with no poll interval and no wall-clock budget. A condition that never holds
+ * fails as the test's own timeout, where a capped poll used to fail on a slow runner.
+ */
+const domUntil = (el: Node, f: () => boolean): Promise<void> =>
+  new Promise((resolve) => {
+    if (f()) return resolve();
+    const mo = new MutationObserver(() => {
+      if (!f()) return;
+      mo.disconnect();
+      resolve();
+    });
+    mo.observe(el, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      characterData: true,
+    });
+  });
+
 // NearbyApproval is not a public export (UXR-kits-v7 B4): the suite draws the internal component.
 const COMPONENTS = {
   ...Kit,
@@ -373,17 +394,14 @@ async function mount(
       </main>
     </Component>,
   );
-  for (let i = 0; i < 100 && !host.querySelector(".pk-root"); i++)
-    await new Promise((r) => setTimeout(r, 20));
+  const mounted = host;
+  await domUntil(mounted, () => mounted.querySelector(".pk-root") !== null);
   // A launch locale's copy pack loads on demand: wait for the kit to redraw in it.
   if (locale !== undefined)
-    for (
-      let i = 0;
-      i < 150 &&
-      host.querySelector(".pk-root")?.getAttribute("lang") !== locale;
-      i++
-    )
-      await new Promise((r) => setTimeout(r, 20));
+    await domUntil(
+      mounted,
+      () => mounted.querySelector(".pk-root")?.getAttribute("lang") === locale,
+    );
   await document.fonts.ready;
   await frame();
   // The step's entrance runs to its end before anything is measured (a fade blends colours).
@@ -607,11 +625,7 @@ async function gateToast(
       </Kit.PolarisKeyGate>
     </PolarisKeyProvider>,
   );
-  const until = async (f: () => boolean): Promise<void> => {
-    for (let i = 0; i < 150 && !f(); i++)
-      await new Promise((r) => setTimeout(r, 20));
-    expect(f()).toBe(true);
-  };
+  const until = (f: () => boolean): Promise<void> => domUntil(host!, f);
   const press = (key: string): void =>
     host!
       .querySelector<HTMLButtonElement>(`button[data-key="${key}"]`)!
@@ -1084,7 +1098,10 @@ describe("the Cloud Sync strip in a flex app bar", () => {
           />
         </div>,
       );
-      await new Promise((r) => setTimeout(r, 200));
+      await domUntil(host!, () => host!.querySelector(".pk-root") !== null);
+      await document.fonts.ready;
+      await frame();
+      await frame();
       const strip = host.querySelector<HTMLElement>(".pk-root")!;
       expect(
         strip.getBoundingClientRect().width,
