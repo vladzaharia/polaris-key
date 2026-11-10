@@ -190,6 +190,40 @@ export class FileTables {
       .map(toFile);
   }
 
+  /**
+   * The files a person's export carries (live and kept revisions), after the key `after`
+   * (collection, record id, version) in that order, at most `limit`.
+   */
+  exportable(
+    after: readonly [string, string, number] | undefined,
+    limit: number,
+  ): StoredFile[] {
+    const [c, r, v] = after ?? ["", "", 0];
+    return this.q
+      .all<FileRow>(
+        `SELECT ${FILE_COLUMNS} FROM files
+          WHERE status IN ('live', 'revision')
+            AND (collection > ? OR (collection = ? AND (record_id > ?
+                 OR (record_id = ? AND version > ?))))
+          ORDER BY collection, record_id, version LIMIT ?`,
+        c,
+        c,
+        r,
+        r,
+        v,
+        limit,
+      )
+      .map(toFile);
+  }
+
+  exportableCount(): number {
+    return Number(
+      this.q.all<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM files WHERE status IN ('live', 'revision')`,
+      )[0]?.n ?? 0,
+    );
+  }
+
   withStatus(status: FileStatus, limit: number): StoredFile[] {
     return this.q
       .all<FileRow>(

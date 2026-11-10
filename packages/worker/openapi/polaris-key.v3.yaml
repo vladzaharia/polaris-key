@@ -15278,7 +15278,8 @@ paths:
         what they consented to share with the product, the terms they accepted, the library
         entry, the licences they removed from the library, the package tokens they minted, the
         subject's change events, their activity about the product, and every registered store's
-        export for the subject (managed config overrides, entitlement events, later Cloud Sync),
+        export for the subject (managed config overrides, entitlement events, Cloud Sync: bounded, see
+        `PortalExportCloudSync`),
         in which a secret is named and said to be set, never given. It never holds the account's
         sign-in methods, sessions, birth date or anything about another product, and never a
         credential: no key (text or hash), device token, registry token (text or hash), session id
@@ -15289,17 +15290,41 @@ paths:
         account's history (`portal.product.export`). `404` for a product the account holds
         nothing in, which is the same answer for a product that does not exist; a product with the
         portal switched off is still exportable, the person's right does not depend on a toggle.
-      parameters: [{ $ref: "#/components/parameters/Product" }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: format
+          in: query
+          required: false
+          description: >
+            `json` (the default) or `zip` (U-12.3): the same document as `data.json` inside a zip
+            archive, with `README.txt` and one folder per registered store that keeps data in
+            files of its own (`stores/<store>/`). Streamed, entries stored uncompressed. Anything
+            else is `400 bad_request`; more than 65,000 entries is `413 export_too_large`. The
+            same gates and audit row as the JSON form. Cloud Sync's folder holds every record
+            (`records/<n>.ndjson`), every live file and kept revision (`files/<n>.bin`, listed in
+            `files.json`: the stored bytes, so ciphertext in end-to-end mode) and one container per
+            collection of delta chunks (`chunks/<n>.bin`, offsets in `chunks.json`), with
+            `index.json` naming each. Entry names are indexes, never the ids the data holds.
+          schema: { type: string, enum: [json, zip] }
       responses:
         "200":
           description: The export, as a download.
           headers:
             Content-Disposition:
-              description: '`attachment; filename="polaris-key-<product>-data.json"`.'
+              description: >
+                `attachment; filename="polaris-key-<product>-data.json"`, or
+                `polaris-locker-<product>-data.zip` with `format=zip`.
               schema: { type: string }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PortalProductExport" }
+            application/zip:
+              schema: { type: string, format: binary }
+        "400":
+          description: "`bad_request`: an unknown `format`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
         "401": { $ref: "#/components/responses/PasskeyStepUp" }
         "403":
           description: Missing or wrong CSRF header.
@@ -15308,11 +15333,40 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
         "404": { $ref: "#/components/responses/NotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "413":
+          description: "`export_too_large`: the archive would hold more than 65,000 entries."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
         "429":
           description: "`rate_limited`."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+  /api/products/{product}/sync:
+    get:
+      operationId: getPortalProductSync
+      tags: [portal]
+      summary: What Cloud Sync holds for the signed-in account in one product
+      description: >
+        U-12.5. The numbers behind Polaris Locker's Cloud Sync card: how much of their limit the
+        account uses, whether syncing is on hold (`state`: `active`, `paused` while the operator
+        has put writes on hold, `full` at the limit) and when each device last synced. Sizes and
+        times only: never a setting, a record, a collection name or a file name, in either
+        encryption mode, and a device is its label, never its id. A device's time is its last
+        push or last pull, at most an hour stale. Read-only: it never creates a subject or an
+        object. `404` for a product the account is not linked to, one that does not exist and
+        one with Cloud Sync off (the same answer for all three). Needs the portal session.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: The summary.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalCloudSyncSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /api/products/{product}/data:
     delete:
       operationId: removePortalProductData
@@ -28740,10 +28794,114 @@ components:
         stores:
           type: object
           additionalProperties: true
+          properties:
+            sync.cloudSync:
+              { $ref: "#/components/schemas/PortalExportCloudSync" }
           description: >
             Each registered store's export for the subject, by store name
-            (`config.accountOverrides`, `core.entitlementEvents`, later Cloud Sync). A secret is
+            (`config.accountOverrides`, `core.entitlementEvents`, `sync.cloudSync`). A secret is
             named and reported as `configured`, never given. `{}` without a subject.
+    PortalExportCloudSync:
+      type: object
+      additionalProperties: true
+      description: >
+        What Cloud Sync holds for the person in one product, bounded. Records are inline only while
+        they add up to 4 MiB of JSON (`recordsIn: "zip"` otherwise); file metadata is inline up to
+        2,000 rows (`filesIn: "zip"` otherwise); chunks are counted and always in the zip. The file
+        bytes, every record and the chunk containers are in the zip form of the export, under
+        `stores/sync.cloudSync/`. A person with no data here has `settings: null` and
+        `directory: null`. No R2 key, no encryption key and no other person's data is ever in it.
+      properties:
+        directory:
+          type: [object, "null"]
+          description: The directory's counters for the person (bytes, counts, quota, tier, last platform), or null before the first write was flushed.
+          additionalProperties: true
+        encryption:
+          type: string
+          enum: [server, e2e]
+          description: Whether the product keeps this data readable by the server or end to end encrypted.
+        encryptionSince:
+          type: integer
+          description: The store sequence from which every row is sealed; absent before the first sealed write.
+        usage:
+          type: object
+          additionalProperties: true
+          description: The person's stored bytes and counts, as the quota counts them.
+        settings:
+          type: [array, "null"]
+          description: The synced settings, tombstones included; ciphertext and `kid` for a sealed row. Null when the person has no object here.
+          items: { type: object, additionalProperties: true }
+        collections:
+          type: array
+          description: Counters per collection; never a value.
+          items:
+            type: object
+            additionalProperties: true
+            required:
+              [
+                name,
+                records,
+                bytes,
+                files,
+                fileBytes,
+                revisionBytes,
+                lastWriteAt,
+              ]
+            properties:
+              name: { type: string }
+              records: { type: integer, description: Live records. }
+              bytes: { type: integer }
+              files: { type: integer }
+              fileBytes: { type: integer }
+              revisionBytes: { type: integer }
+              lastWriteAt: { type: [integer, "null"] }
+        tombstones:
+          {
+            type: integer,
+            description: Deleted records still held (they expire).,
+          }
+        clients:
+          type: array
+          description: Each client binding with its device and when it was last here (epoch seconds).
+          items:
+            type: object
+            additionalProperties: false
+            required: [clientId, deviceId, lastSeen]
+            properties:
+              clientId: { type: string }
+              deviceId: { type: string }
+              lastSeen: { type: integer }
+        records:
+          type: array
+          description: Every record, tombstone and its fields or elements, in each collection's order. Absent when `recordsIn` is set or there are none.
+          items: { type: object, additionalProperties: true }
+        parked:
+          type: array
+          description: Copies an earlier account join parked. Absent when `recordsIn` is set or there are none.
+          items: { type: object, additionalProperties: true }
+        recordsIn:
+          type: string
+          enum: [zip]
+          description: The records and parked copies are in the zip, as `records/<n>.ndjson`; `index.json` names each.
+        fileCount:
+          { type: integer, description: Live files plus kept revisions. }
+        files:
+          type: array
+          description: Each file's pointer (collection, record id, version, size, SHA-256, format, status), never its R2 key. Absent when `filesIn` is set.
+          items: { type: object, additionalProperties: true }
+        filesIn:
+          type: string
+          enum: [zip]
+          description: The file metadata is in the zip as `files.json`.
+        chunks:
+          type: object
+          additionalProperties: false
+          description: The delta chunks the person's files reference; their bytes are in the zip as `chunks/<n>.bin` with an offset index.
+          required: [count, bytes, in]
+          properties:
+            count: { type: integer }
+            bytes: { type: integer }
+            in: { type: string, enum: [zip] }
     PortalExportConsent:
       type: object
       additionalProperties: false
@@ -29123,6 +29281,40 @@ components:
         products:
           type: array
           items: { $ref: "#/components/schemas/PortalExportProductSection" }
+    PortalCloudSyncSummary:
+      type: object
+      additionalProperties: false
+      description: Cloud Sync's sizes, state and device activity for one account in one product.
+      required: [encryption, empty, state, pausedSince, usage, quota, devices]
+      properties:
+        encryption: { type: string, enum: [e2e, server] }
+        empty: { type: boolean, description: Nothing is stored yet. }
+        state: { type: string, enum: [active, paused, full] }
+        pausedSince:
+          type: [integer, "null"]
+          description: Epoch seconds the hold began; only while `paused`.
+        usage:
+          type: object
+          additionalProperties: false
+          required: [bytes]
+          properties:
+            bytes: { type: integer }
+        quota:
+          type: object
+          additionalProperties: false
+          required: [bytes, tierLabel]
+          properties:
+            bytes: { type: integer }
+            tierLabel: { type: [string, "null"] }
+        devices:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [label, lastSyncAt]
+            properties:
+              label: { type: string }
+              lastSyncAt: { type: integer, description: Epoch seconds. }
     PortalProductExport:
       type: object
       additionalProperties: false

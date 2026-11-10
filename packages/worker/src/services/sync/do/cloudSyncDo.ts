@@ -68,6 +68,7 @@ import {
   releaseForMerge,
 } from "./fileGc.js";
 import { FILES_USED } from "./fileOps.js";
+import { exportPage, validExportPage } from "./exportPages.js";
 import { fileStoreOf } from "./client.js";
 import { SCHEMA_VERSION, SqlStore } from "./sqlStore.js";
 import { inspectValues } from "./inspectValues.js";
@@ -96,6 +97,8 @@ import { hexEncode } from "../../../platform/bytes.js";
 
 /** Records read per query by an export. */
 const EXPORT_PAGE = 500;
+/** A pull stamps its client binding at most this often (U-12.5). */
+const CLIENT_SEEN_STEP_SECONDS = 3600;
 
 const reply = (body: CloudSyncReply | CloudSyncError, status = 200): Response =>
   new Response(JSON.stringify(body), {
@@ -454,6 +457,31 @@ export class CloudSyncDO implements DurableObject {
               ? null
               : this.exportAll(op, op.forMerge === true),
         });
+      case "exportPage": {
+        if (!validExportPage(op.page))
+          return reply({ error: "bad_request" }, 400);
+        this.migrateIfBehind();
+        // Nothing to export from an absorbed, erased or never-written object.
+        const pin =
+          this.store.getMeta("absorbed_into") === undefined &&
+          this.store.getMeta("erased_at") === undefined
+            ? this.pinned()
+            : null;
+        const live = pin !== null;
+        // A page of an object that went away mid-export is an error, never an empty page: the
+        // stream stops instead of finishing short.
+        if (!live && op.page.part !== "summary")
+          return objectError("absorbed", 410);
+        return reply({
+          op: "exportPage",
+          result: exportPage(
+            this.store,
+            op.page,
+            pin,
+            absorbedFrom(this.fileHost()),
+          ),
+        });
+      }
       case "absorb":
         return this.absorb(op);
       case "deleteAll":
@@ -861,6 +889,14 @@ export class CloudSyncDO implements DurableObject {
       family: op.family,
       ...(op.encryption === "e2e" ? { e2e: true } : {}),
     });
+    // U-12.5: the portal shows when each device last synced, and a device that only pulls would
+    // never move `last_seen` (a push does). Hourly, and not a write the merge guard counts.
+    if (op.clientId)
+      this.store.touchClient(
+        op.clientId,
+        op.deviceId,
+        CLIENT_SEEN_STEP_SECONDS,
+      );
     return reply({ op: "pull", outcome, meter: this.store.takeMeter() });
   }
 
@@ -897,6 +933,7 @@ export class CloudSyncDO implements DurableObject {
             })),
       collections: tables.collections,
       uploadsOpen: tables.uploadsOpen,
+      devices: gone ? [] : this.store.deviceActivity(),
     });
   }
 

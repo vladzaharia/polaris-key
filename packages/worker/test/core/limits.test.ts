@@ -20,6 +20,8 @@ const NAME =
 /** Exported numeric constants that are implementation tuning, by file. A new one needs a row in `LIMITS` instead. */
 const INTERNAL: Record<string, string[]> = {
   "assetQueue.ts": ["MIRROR_BATCH_BUDGET_MS"],
+  // The zip32 format's own ceilings (U-12.3), not an operator setting.
+  "platform/zipStream.ts": ["ZIP_MAX_ENTRIES", "ZIP_MAX_BYTES"],
   "core/deviceEntry.ts": [
     "DEVICE_ENTRY_WIDE_LIMIT",
     "DEVICE_ENTRY_WIDE_WINDOW_SEC",

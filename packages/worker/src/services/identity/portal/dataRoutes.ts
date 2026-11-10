@@ -31,6 +31,12 @@ import { ErrorCode } from "../../../core/errors.js";
 import { appSecurityHeaders } from "../../../core/securityHeaders.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
+import {
+  checkEntries,
+  zipStream,
+  ZipError,
+  type ZipEntry,
+} from "../../../platform/zipStream.js";
 import { removeProductData } from "../accounts/productRemoval.js";
 import { ErasureLedgerError } from "../accounts/erasureLedger.js";
 import {
@@ -42,6 +48,7 @@ import {
 } from "./api.js";
 import {
   exportAccountData,
+  exportProductArchiveEntries,
   exportProductData,
   productLinked,
 } from "./dataExport.js";
@@ -116,6 +123,34 @@ export async function handleAccountExport(
   return downloadJson(document, "polaris-key-account-data.json");
 }
 
+/** The readme at the top of the zip: what is in it, in the reader's terms. */
+const ARCHIVE_README = `Your data in this app, from Polaris Locker.
+
+data.json   everything held for you here, as one JSON document.
+stores/     data that is kept in its own files, one folder per kind.
+`;
+
+/** `?format=` as the export reads it: absent or `json`, or `zip`; anything else is refused. */
+function exportFormat(url: URL): "json" | "zip" | null {
+  const values = url.searchParams.getAll("format");
+  if (values.length === 0) return "json";
+  if (values.length > 1) return null;
+  return values[0] === "json" || values[0] === "zip" ? values[0] : null;
+}
+
+/** The zip a browser saves: streamed, never cached. */
+function downloadZip(entries: ZipEntry[], filename: string): Response {
+  return new Response(zipStream(entries), {
+    headers: appSecurityHeaders(
+      new Headers({
+        "content-type": "application/zip",
+        "cache-control": "no-store",
+        "content-disposition": `attachment; filename="${filename.replace(/[^A-Za-z0-9._-]/g, "_")}"`,
+      }),
+    ),
+  });
+}
+
 /** `GET /api/products/<product>/export`. */
 export async function handleProductExport(
   req: Request,
@@ -130,6 +165,8 @@ export async function handleProductExport(
   if (!(await productLinked(db, session.accountId, product))) return notFound();
   const stale = portalStepUpGate(session, now);
   if (stale) return stale;
+  const format = exportFormat(new URL(req.url));
+  if (!format) return err(400, "bad_request");
   const limited = await requireActionRateLimit(
     req,
     env,
@@ -147,6 +184,36 @@ export async function handleProductExport(
   );
   // Unlinked between the check and the read (a licence moved away): the same answer as before.
   if (!document) return notFound();
+  // The zip's entries are listed (names only) before anything is sent, so a refusal is an
+  // ordinary response and never a cut-off download.
+  let archive: Response | null = null;
+  if (format === "zip") {
+    let entries: ZipEntry[];
+    try {
+      entries = [
+        {
+          name: "README.txt",
+          read: () => new TextEncoder().encode(ARCHIVE_README),
+        },
+        {
+          name: "data.json",
+          read: () =>
+            new TextEncoder().encode(JSON.stringify(document, null, 2)),
+        },
+        ...(await exportProductArchiveEntries(
+          { db, env, now, hooksFor },
+          document,
+        )),
+      ];
+      checkEntries(entries);
+    } catch (e) {
+      if (e instanceof ZipError && e.reason === "entries") {
+        return err(413, "export_too_large");
+      }
+      throw e;
+    }
+    archive = downloadZip(entries, `polaris-locker-${product}-data.zip`);
+  }
   await portalAudit(db, {
     accountId: session.accountId,
     action: "portal.product.export",
@@ -156,6 +223,7 @@ export async function handleProductExport(
     summary: "Downloaded a copy of the data held for the account in a product",
     now,
   });
+  if (archive) return archive;
   return downloadJson(document, `polaris-key-${product}-data.json`);
 }
 

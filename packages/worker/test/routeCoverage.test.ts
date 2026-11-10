@@ -131,6 +131,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // I-11: one product's export, and "Remove my data from this product".
     ["/api/products/{product}/export", ["get"]],
     ["/api/products/{product}/data", ["delete"]],
+    // U-12.5: Cloud Sync's usage, state and device activity for the signed-in account.
+    ["/api/products/{product}/sync", ["get"]],
     // I-11: "Get a support code" on the product page.
     ["/api/products/{product}/support-code", ["post"]],
     // PX-W10 (G24, G25): Discover's offers and "Add to library".

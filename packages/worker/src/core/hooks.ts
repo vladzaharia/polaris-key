@@ -26,6 +26,8 @@
  *   - `discoverVisibility`  (implemented by Identity): whether a new signed-in account with no
  *                            licence would see this product in Discover, for the download
  *                            page's "Add to library" row (LK-12b);
+ *   - `cloudSyncSummary`    (implemented by Cloud Sync): one person's usage, state and device
+ *                            activity for the portal's Cloud Sync card (U-12.5);
  *   - `storeProducts`       (implemented by Commerce): the product's store-product map, read-only,
  *                            for Distribution's App Store Connect catalog flows (CM-29).
  *
@@ -1369,6 +1371,45 @@ export interface LicenseProvenance {
   purchaseSources(licenseIds: readonly string[]): Promise<PurchaseSource[]>;
 }
 
+// ── cloudSyncSummary (Cloud Sync) ───────────────────────────────────────────────────────────
+
+/**
+ * What the Polaris Locker portal shows of a person's Cloud Sync data in one product (U-12.5): how
+ * full it is, whether syncing is on hold, and when each device last synced. Counts, sizes and
+ * times only. A value, a record id, a collection name and a file name never appear, in either
+ * encryption mode, and a device is its label (read server-side), never its id.
+ */
+export type CloudSyncState = "active" | "paused" | "full";
+
+export interface CloudSyncDeviceActivity {
+  /** The device's label, or `Unnamed device`. */
+  label: string;
+  /** Epoch seconds a push, or a pull at most an hour old, last stamped it. */
+  lastSyncAt: number;
+}
+
+export interface CloudSyncSummary {
+  /** `e2e`: the server holds only what the person's devices can read; `server`: it can read it. */
+  encryption: "e2e" | "server";
+  /** Nothing is stored yet. */
+  empty: boolean;
+  /** `paused`: the operator has put writes on hold; `full`: the person is at their limit. */
+  state: CloudSyncState;
+  /** Epoch seconds the hold began; only with `paused`. */
+  pausedSince: number | null;
+  usage: { bytes: number };
+  /** The limit in force; `tierLabel` is the tier that set it, if any. */
+  quota: { bytes: number; tierLabel: string | null };
+  devices: CloudSyncDeviceActivity[];
+}
+
+/** What Cloud Sync offers other services about one person's data. Read-only. */
+export interface CloudSyncSummaryReader {
+  /** The summary for this product's pairwise `subject`, or the empty one for `null` (the account
+   *  has no subject here yet). Never creates anything. */
+  summary(subject: string | null): Promise<CloudSyncSummary>;
+}
+
 // ── outletCapabilities (Distribution) ───────────────────────────────────────────────────────
 
 /**
@@ -1479,6 +1520,7 @@ export interface DescriptorHooks {
   ): Promise<OutletCapabilities | null>;
   licenseProvenance?(ctx: HookContext): LicenseProvenance;
   storeProducts?(ctx: HookContext): StoreProducts;
+  cloudSyncSummary?(ctx: HookContext): CloudSyncSummaryReader;
   discoverVisibility?(ctx: HookContext): Promise<DiscoverVisibility>;
   githubPrToken?(ctx: HookContext): GithubPrToken;
 }
@@ -1493,6 +1535,8 @@ export interface ServiceHooks {
   licenseProvenance(): LicenseProvenance | null;
   /** Commerce's store-product map; `null` while Commerce is off. */
   storeProducts(): StoreProducts | null;
+  /** Cloud Sync's per-person summary for the portal; `null` while Cloud Sync is off. */
+  cloudSyncSummary(): CloudSyncSummaryReader | null;
   /** Identity's Discover visibility for a new account; `null` while Identity is off. */
   discoverVisibility(): Promise<DiscoverVisibility | null>;
   /** Release's GitHub token minting for CI pull requests; `null` while Release is off. */
@@ -1546,6 +1590,7 @@ export function buildHooks(
     outletCapabilities: hookProvider(registry, "outletCapabilities"),
     licenseProvenance: hookProvider(registry, "licenseProvenance"),
     storeProducts: hookProvider(registry, "storeProducts"),
+    cloudSyncSummary: hookProvider(registry, "cloudSyncSummary"),
     discoverVisibility: hookProvider(registry, "discoverVisibility"),
     githubPrToken: hookProvider(registry, "githubPrToken"),
   };
@@ -1588,6 +1633,12 @@ export function buildHooks(
       storeProducts =
         p?.storeProducts && enabled(p.slug) ? p.storeProducts(ctx) : null;
       return storeProducts;
+    },
+    cloudSyncSummary() {
+      const p = providers.cloudSyncSummary;
+      return p?.cloudSyncSummary && enabled(p.slug)
+        ? p.cloudSyncSummary(ctx)
+        : null;
     },
     async discoverVisibility() {
       const p = providers.discoverVisibility;

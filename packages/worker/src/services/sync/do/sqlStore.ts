@@ -26,7 +26,7 @@
  * A row moves between `settings` and `tombstones` as `deleted` flips; its members stay put.
  *
  * Lazy: an object that was never written has no tables. Reads answer from "no schema" as an empty
- * store without creating anything (a pull never writes: T14); `prepare(true)` creates the schema
+ * store without creating anything (a pull writes no row but its client binding's `last_seen`, at most hourly: `touchClient`); `prepare(true)` creates the schema
  * (the first write) and `prepare(false)` only migrates one that already exists. Every statement
  * is parameterised: nothing here concatenates a value into SQL.
  */
@@ -339,6 +339,59 @@ export class SqlStore implements SyncStore {
     );
   }
 
+  /**
+   * A pull is a device being here: stamp the client's `last_seen` when it is older than
+   * `minAgeSeconds` (an hour: at most one write per client per hour). Not a store write in the
+   * merge's sense: `writes` and `seq` do not move, so the absorb guard and every cursor are
+   * unaffected, and nothing is stamped on an absorbed or erased object or on an unknown client.
+   */
+  touchClient(clientId: string, deviceId: string, minAgeSeconds: number): void {
+    if (!this.hasSchema()) return;
+    if (
+      this.getMeta("absorbed_into") !== undefined ||
+      this.getMeta("erased_at") !== undefined
+    )
+      return;
+    const now = this.clock();
+    this.run(
+      `UPDATE clients SET last_seen = ? WHERE client_id = ? AND device_id = ? AND last_seen <= ?`,
+      now,
+      clientId,
+      deviceId,
+      now - minAgeSeconds,
+    );
+  }
+
+  /** Each device with a client binding and when it was last here, newest first (counts and ids
+   *  only; the portal summary maps ids to labels). One entry per device. */
+  deviceActivity(): Array<{ deviceId: string; lastSeen: number }> {
+    if (!this.hasSchema()) return [];
+    return this.all<{ device_id: string; seen: number }>(
+      `SELECT device_id, MAX(last_seen) AS seen FROM clients
+        GROUP BY device_id ORDER BY seen DESC, device_id`,
+    ).map((r) => ({ deviceId: r.device_id, lastSeen: Number(r.seen) }));
+  }
+
+  /** Every client binding with its device and the epoch second it was last here (the export). */
+  clientsSeen(): Array<{
+    clientId: string;
+    deviceId: string;
+    lastSeen: number;
+  }> {
+    if (!this.hasSchema()) return [];
+    return this.all<{
+      client_id: string;
+      device_id: string;
+      last_seen: number;
+    }>(
+      `SELECT client_id, device_id, last_seen FROM clients ORDER BY client_id`,
+    ).map((r) => ({
+      clientId: r.client_id,
+      deviceId: r.device_id,
+      lastSeen: Number(r.last_seen),
+    }));
+  }
+
   clientCount(): number {
     if (!this.hasSchema()) return 0;
     return Number(
@@ -621,6 +674,55 @@ export class SqlStore implements SyncStore {
   }
 
   // ---- files (U-10; the rows are `sqlFiles.ts`'s) --------------------------------------------
+
+  // ---- the export's pages (U-12.4; `exportPages.ts`) -----------------------------------------
+
+  recordCollections(): string[] {
+    return this.hasSchema() ? this.recordTables.collectionNames() : [];
+  }
+
+  recordsPageIn(
+    collection: string,
+    after: number,
+    limit: number,
+  ): StoredRecord[] {
+    return this.hasSchema()
+      ? this.recordTables.pageIn(collection, after, limit)
+      : [];
+  }
+
+  parkedPage(offset: number, limit: number): ParkedRecord[] {
+    return this.hasSchema() ? this.recordTables.parkedPage(offset, limit) : [];
+  }
+
+  exportableFiles(
+    after: readonly [string, string, number] | undefined,
+    limit: number,
+  ): StoredFile[] {
+    return this.hasSchema() ? this.fileTables.exportable(after, limit) : [];
+  }
+
+  exportableFileCount(): number {
+    return this.hasSchema() ? this.fileTables.exportableCount() : 0;
+  }
+
+  referencedChunks(
+    collection: string,
+    afterId: string,
+    limit: number,
+  ): StoredChunk[] {
+    return this.hasSchema()
+      ? this.chunkTables.referenced(collection, afterId, limit)
+      : [];
+  }
+
+  referencedChunkTotals(): {
+    collection: string;
+    count: number;
+    bytes: number;
+  }[] {
+    return this.hasSchema() ? this.chunkTables.referencedTotals() : [];
+  }
 
   getFile(
     collection: string,

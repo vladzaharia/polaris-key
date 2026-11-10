@@ -910,12 +910,15 @@ describe("absorb: isolation", () => {
     // U-05.12, U-05.13: the device routes (the pull and the push) call the object too, and
     // `handlers/common.ts` maps its refusals. `absorbCloudSync` above stays the merge hook's alone.
     // U-11a.1: the console's Data tab summary reads the object (`inspect`, read-only).
+    // U-12.5: the portal's `cloudSyncSummary` hook reads the same `inspect`.
     // (Scoped to Sync's own files: Cloud Connect has a `do/client.js` of its own.)
     expect(
       users(/do\/client\.js"/).filter((f) => f.startsWith("services/sync/")),
     ).toEqual([
       "services/sync/admin/subject.ts",
       "services/sync/admin/values.ts",
+      // U-12.4: the portal export's bounded pages (`exportPage`, never the merge's `exportAll`).
+      "services/sync/exportSection.ts",
       "services/sync/handlers/common.ts",
       "services/sync/handlers/fileChunks.ts",
       "services/sync/handlers/fileFinalize.ts",
@@ -924,6 +927,7 @@ describe("absorb: isolation", () => {
       "services/sync/handlers/files.ts",
       "services/sync/handlers/pull.ts",
       "services/sync/handlers/push.ts",
+      "services/sync/portalSummary.ts",
       "services/sync/productDeletion.ts",
       "services/sync/subjectStore.ts",
     ]);

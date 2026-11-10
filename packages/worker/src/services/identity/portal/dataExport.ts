@@ -51,7 +51,11 @@ import {
   accountLicenses,
   existingSubjectFor,
 } from "../../../core/accounts/accountSubjects.js";
-import { runSubjectExport } from "../../../core/accounts/subjectHooks.js";
+import {
+  runSubjectExport,
+  runSubjectExportArchive,
+} from "../../../core/accounts/subjectHooks.js";
+import type { ZipEntry } from "../../../platform/zipStream.js";
 import { parseJsonOr, parseJsonStringList } from "../../../platform/json.js";
 import {
   EMAIL_ISSUER,
@@ -746,6 +750,22 @@ export async function exportProductData(
     activity: log.rows,
     activityTruncated: log.truncated,
   };
+}
+
+/**
+ * U-12.3: the entries of `?format=zip`, besides `data.json` and the readme: whatever the
+ * registered stores add (`SubjectStore.exportEntries`), under `stores/<store>/`. Empty without a
+ * subject. Read-only like the document.
+ */
+export async function exportProductArchiveEntries(
+  ctx: ExportContext,
+  document: ProductExport,
+): Promise<ZipEntry[]> {
+  if (!document.subject) return [];
+  return runSubjectExportArchive(
+    { db: ctx.db, env: ctx.env, now: ctx.now },
+    { product: document.product.slug, subject: document.subject },
+  );
 }
 
 // ── The whole account ───────────────────────────────────────────────────────────────────────

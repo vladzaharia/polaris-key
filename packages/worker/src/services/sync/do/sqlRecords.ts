@@ -267,6 +267,40 @@ export class RecordTables {
       .map((r) => this.hydrate(r));
   }
 
+  /** One collection's rows above `after` (a record's `version`), tombstones included, in version order. */
+  pageIn(collection: string, after: number, limit: number): StoredRecord[] {
+    return this.q
+      .all<RecordRow>(
+        `SELECT * FROM records WHERE collection = ? AND version > ?
+         ORDER BY version, id LIMIT ?`,
+        collection,
+        after,
+        limit,
+      )
+      .map((r) => this.hydrate(r));
+  }
+
+  /** Every collection that holds a record row or a tombstone, in name order. */
+  collectionNames(): string[] {
+    return this.q
+      .all<{
+        collection: string;
+      }>(`SELECT DISTINCT collection FROM records ORDER BY collection`)
+      .map((r) => r.collection);
+  }
+
+  /** Parked copies from the `offset`th, in the table's order (a rare, small table). */
+  parkedPage(offset: number, limit: number): ParkedRecord[] {
+    return this.q
+      .all<ParkedRow>(
+        `SELECT * FROM parked_records
+          ORDER BY parked_at, collection, id, from_subject LIMIT ? OFFSET ?`,
+        limit,
+        offset,
+      )
+      .map(parkedOf);
+  }
+
   liveCount(collection: string): number {
     return Number(
       this.q.all<{ n: number }>(
