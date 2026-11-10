@@ -1085,9 +1085,18 @@ out.
 
 ```sh
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,keyring]"
+pip install -e ".[dev,keyring]" -c constraints/py314.txt   # py39 / py312 / py314 to match your Python
 pytest
 ```
+
+### Dependency pins
+
+`constraints/py39.txt`, `py312.txt` and `py314.txt` hold exact pins for everything the extras resolve
+to on that CPython, each release at least 14 days old. CI installs with `-c`, so an upstream release
+cannot change a result; install the same way locally to match it. To bump, run `tools/constraints.sh`
+(needs `uv`; one version as an argument), read the diff, run the suite and `tools/lint.sh check` on
+3.14, and commit the files with any golden or ledger change the new versions cause. Dependabot's pip
+entry watches the directory; regenerate the files from `pyproject.toml` rather than editing them.
 
 The conformance suite reads `../../conformance/corpus/v2/` from the monorepo and asserts
 byte-identical verify outcomes alongside the Node / Swift / React runners — JWS cases,

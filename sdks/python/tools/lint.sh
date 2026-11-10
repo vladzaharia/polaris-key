@@ -3,7 +3,9 @@
 #   tools/lint.sh check    fail on a new finding, and on debt a tool no longer reports
 #   tools/lint.sh record   rewrite both tools' entries from today's findings
 #   tools/lint.sh check --files <list>   only the repo-relative files listed (the pre-commit hook)
-# Uses sdks/python/.venv (pip install -e ".[dev]"); both tools are pinned in pyproject.toml.
+# Uses sdks/python/.venv; both tools are pinned in pyproject.toml. Sync a venv to CI's pins with
+#   pip install -e ".[dev]" -c constraints/py314.txt     (the ledger is recorded on 3.14)
+# A stale venv (an older requests, say) reports different mypy findings than CI.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 mode="${1:-check}"
@@ -24,6 +26,7 @@ tmp="$(mktemp -d)"
 trap '/bin/rm -rf "$tmp"' EXIT
 
 # ruff exits 1 on findings and 2 on a crash; mypy 1 on findings and 2 on a crash. Only a crash stops us.
+[ -x "$bin/ruff" ] || { echo "no ruff in $bin: cd sdks/python && python3 -m venv .venv && .venv/bin/pip install -e \".[dev]\" -c constraints/py314.txt" >&2; exit 2; }
 "$bin/ruff" check --output-format json --no-cache --force-exclude "${targets[@]:-.}" >"$tmp/ruff.json"
 [ $? -le 1 ] || { echo "ruff crashed" >&2; exit 2; }
 "$bin/mypy" --output json --no-error-summary ${targets[@]+"${targets[@]}"} >"$tmp/mypy.jsonl"

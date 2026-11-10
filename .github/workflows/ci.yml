@@ -122,7 +122,7 @@ jobs:
       - name: Python venv for the docs snippet lane
         run: |
           python -m venv sdks/python/.venv
-          sdks/python/.venv/bin/pip install -e "sdks/python[dev,qt]"
+          sdks/python/.venv/bin/pip install -e "sdks/python[dev,qt]" -c sdks/python/constraints/py312.txt
       # Every check below runs even when an earlier one failed, so one cycle reports every failure
       # (tools/ciSteps.test.ts); only a broken build (or a cancelled run) stops them.
       - id: build
@@ -243,7 +243,7 @@ jobs:
       - name: Python venv for the docs snippet lane
         run: |
           python -m venv sdks/python/.venv
-          sdks/python/.venv/bin/pip install -e "sdks/python[dev,qt]"
+          sdks/python/.venv/bin/pip install -e "sdks/python[dev,qt]" -c sdks/python/constraints/py312.txt
       - run: pnpm build
       # SP-41, the React lane. The React SDK's live suite (packages/sdk-react/test) runs inside the
       # test step below, against a fresh `pkey dev` started here from the CLI that `pnpm build` just
@@ -715,12 +715,14 @@ jobs:
       # hit beyond the debt ledger (packages/ui-qa/rules/kit-debt.json) and on stale debt.
       - name: UI kit source lint (qt)
         run: node packages/ui-qa/bin/kit-lint.mjs --kit=qt
-      - name: Create venv + install (editable, dev extras)
+      - name: Create venv + install (editable, dev extras, pinned per CPython)
         working-directory: sdks/python
+        env:
+          PY_VER: ${{ matrix.python }}
         run: |
           python -m venv .venv
           .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/pip install -e ".[dev]"
+          .venv/bin/pip install -e ".[dev]" -c "constraints/py${PY_VER//./}.txt"
       # P0-46.4: ruff and mypy (pinned in the dev extras) against sdks/python/lint-debt.json. A new
       # finding fails, and so does debt a tool no longer reports. One leg only (D-L5): the ledger is
       # recorded on 3.14, and 3.9 resolves older dependencies whose stubs differ (mypy import-untyped).
@@ -744,12 +746,13 @@ jobs:
         working-directory: sdks/python
         env:
           QT_QPA_PLATFORM: offscreen
+          PY_VER: ${{ matrix.python }}
         run: |
           set -o pipefail
           sudo apt-get update -qq
           sudo apt-get install -y -qq libegl1 libgl1 libxkbcommon0 libdbus-1-3 libfontconfig1
-          # PySide6 exact for CPython >= 3.10 (what the Qt baselines were recorded with); 3.9 keeps the range.
-          .venv/bin/pip install -e ".[dev,qt]" "PySide6-Essentials==6.12.0; python_version >= '3.10'"
+          # PySide6 is pinned in the constraints file (the Qt baselines were recorded with it).
+          .venv/bin/pip install -e ".[dev,qt]" -c "constraints/py${PY_VER//./}.txt"
           .venv/bin/python -m pytest -q -rs tests/ui/test_qt_nearby.py | tee "$RUNNER_TEMP/qt-nearby.log"
           if grep -qi "skipped" "$RUNNER_TEMP/qt-nearby.log"; then echo "::error::the Qt nearby tests skipped"; exit 1; fi
       # SP-41, the Python lane: the 3.14 leg also runs the live suite against a fresh `pkey dev` (the
@@ -836,7 +839,7 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install --quiet --upgrade pip
-          .venv/bin/pip install --quiet -e ".[fastapi,flask]" uvicorn pytest
+          .venv/bin/pip install --quiet -e ".[fastapi,flask]" uvicorn pytest -c constraints/py312.txt
       - name: Start pkey dev (Python leg)
         run: node packages/cli/scripts/start-dev-ci.mjs start --lang python
       - name: Check the pkey dev lane (variables, config, server)
