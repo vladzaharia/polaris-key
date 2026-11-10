@@ -4553,9 +4553,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-51"
-        },
+        "python": {},
         "react": {
           "spelling": "useCloudSync().export",
           "shape": "hook",
@@ -4592,6 +4590,10 @@
           "sdkOnly": true,
           "spelling": "PKeyCloudSync.cancel_export",
           "reason": "GDScript has no cancellation token: the other SDKs cancel with an AbortSignal, a threading.Event or task cancellation"
+        },
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python cancels with the threading.Event passed as cancel, or by cancelling the awaiting task"
         }
       },
       "layer": "client"

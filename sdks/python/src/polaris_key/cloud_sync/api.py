@@ -54,8 +54,9 @@ _FORGET_WAIT = 5.0
 class CloudSyncClient:
     """``client.cloud_sync``: the two verbs. A product without the Sync service gets the typed N/A."""
 
-    def __init__(self, api: "CloudSyncApi", saves: Any = None) -> None:
+    def __init__(self, api: "CloudSyncApi", saves: Any = None, exporter: Any = None) -> None:
         self._api = api
+        self._exporter = exporter
         #: The saves of the signed-in person (U-22.5): list, read, write, delete, revisions, resolve.
         self.saves = saves
 
@@ -91,6 +92,34 @@ class CloudSyncClient:
         ``True`` after one that said so, ``False`` after one that did not or after any change, ``None``
         before any."""
         return self._api.cloud_empty()
+
+    def export(
+        self,
+        destination: Any,
+        include_revisions: bool = False,
+        *,
+        on_progress: Optional[Callable[[Obj], None]] = None,
+        cancel: Optional[threading.Event] = None,
+    ) -> Obj:
+        """Write a readable, **unencrypted** zip of this app's synced data to ``destination`` (a path) and
+        answer ``{path, bytes, entries, settings, records, files, skipped, unsynced}``. It flushes first,
+        then reads what the Worker holds; with ``include_revisions`` each file's kept revisions follow its
+        live file. ``<destination>.partial`` is created at ``0600``, flushed and renamed over the
+        destination; a failure or a cancel removes it and leaves the old destination as it was. A file that
+        does not check is written as far as it did and listed in ``skipped`` with ``partial: True``.
+        ``on_progress({"done", "total", "waiting"})`` counts plaintext file bytes; setting ``cancel`` (a
+        :class:`threading.Event`) ends the export and its waits at once.
+
+        Raises ``account_required``, ``sync-locked``, ``sync-encryption-pinned``, ``cancelled``,
+        ``sync-export-too-large`` (refused before the first byte) and ``sync-export-failed`` (its ``reason``
+        is ``destination``, ``network`` or ``busy``), and the typed ``product`` N/A when the product does not
+        run the Sync service."""
+        if self._exporter is None:
+            self._api._ctx.require_service("sync", Feature.SYNC_EXPORT)
+            raise RuntimeError("cloud_sync.export is not wired on this client")
+        return self._exporter.export(
+            destination, include_revisions=include_revisions, on_progress=on_progress, cancel=cancel
+        )
 
     def collection(self, name: str) -> SyncCollection:
         """The records handle of a collection the product's catalog declares (U-46): ``get``, ``ids``,
