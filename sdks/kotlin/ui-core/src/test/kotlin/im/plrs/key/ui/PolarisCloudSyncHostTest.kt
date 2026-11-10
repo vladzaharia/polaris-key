@@ -1,4 +1,4 @@
-// @pkey-feature ui.kit
+// @pkey-feature ui.kit sync.e2e.recovery
 // The Cloud Sync kit host with a fake source (U-42.4T): the status row from the machine's status and events,
 // locked against ring-changed through the key ring, screen switching, and "New recovery code".
 package im.plrs.key.ui

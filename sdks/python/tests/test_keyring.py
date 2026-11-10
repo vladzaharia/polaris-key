@@ -1,4 +1,4 @@
-# @pkey-feature sync.keyring
+# @pkey-feature sync.keyring sync.e2e.recovery
 """The Cloud Sync key ring client (U-38.3; WIRE-CONTRACT-V5 §13.11) against an in-memory key ring
 server that enforces the routes' rules the client depends on (create-only wraps, one ring per
 subject, the recovery read limit). No network. The transcript replayer pins the routes themselves

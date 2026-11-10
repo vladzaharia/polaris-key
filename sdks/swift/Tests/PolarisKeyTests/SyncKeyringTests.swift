@@ -1,4 +1,4 @@
-// @pkey-feature sync.keyring identity.nearby
+// @pkey-feature sync.keyring identity.nearby sync.e2e.recovery
 // U-39.3: the Cloud Sync key ring client (`client.keyring`) against a stub Worker that keeps one
 // ring, its wraps, the recovery blob and the adopted roots. The crypto bytes are pinned by
 // SyncVectorsTests; this file pins the client's rules: the pin, the Keychain root, the typed

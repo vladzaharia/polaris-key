@@ -1,4 +1,4 @@
-// @pkey-feature sync.e2e
+// @pkey-feature sync.e2e sync.e2e.recovery
 //
 // The Kotlin conformance runner for the Cloud Sync E2E primitives in
 // conformance/corpus/v2/sync-vectors.json (WIRE-CONTRACT-V5 section 13.10), read in place; it

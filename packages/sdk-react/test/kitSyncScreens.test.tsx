@@ -1,4 +1,4 @@
-// @pkey-feature ui.kit sync.keyring
+// @pkey-feature ui.kit sync.keyring sync.e2e.recovery
 //
 // U-42.2: the Cloud Sync screens in the React kit. UnlockSync takes the recovery code only in its
 // field and hands it to the ring on the press; the field keeps its text through every step; a

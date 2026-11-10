@@ -582,8 +582,8 @@
       "note": "The chunks mode in :sdk's FileTransferEngine and HttpFileTransport: content-defined chunks sealed per collection (E2E) or content-addressed (server mode), the plan, chunk and manifest PUTs, finalize with an upload_incomplete resend (a chunk reported present that the collector has taken is missing again), and chunked downloads through the chunk cache. CloudSyncTransferTest, SyncFileVectorsTest and the cloudsync-chunks* transcripts in TranscriptTest."
     },
     "sync.e2e.recovery": {
-      "status": "planned",
-      "wp": "U-39"
+      "status": "implemented",
+      "note": "The recovery code: client.keyring's setRecoveryCode(), recover(codeText) and reset(recovery) (create(recovery) returns the first code). The platform backup: Block Store on the Play flavour (KeyringOptions.backup, installed by PolarisKeyAndroid; keyBackup = false is the opt-out). A device with no wrap opens the ring from it before the code is asked for, a sign-out keeps it, and removeBackup() deletes it. The direct flavour and a JVM desktop have no backup and use the code (the registry's jvm allowance). SyncKeyringTest, the recoveryCodeCases of sync-vectors.json in :conformance's SyncVectorsTest (on the JCA and on Tink), :ui-core's PolarisCloudSyncHostTest and the Compose SyncScreensTest; keyring-recovery replays in TranscriptTest."
     },
     "sync.transfer.background": {
       "status": "implemented",

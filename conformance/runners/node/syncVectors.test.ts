@@ -1,4 +1,4 @@
-// @pkey-feature sync.e2e sync.files.delta
+// @pkey-feature sync.e2e sync.files.delta sync.e2e.recovery
 // The Node conformance runner for `conformance/corpus/v2/sync-vectors.json` (WIRE-CONTRACT-V5
 // §13.10). It covers React too, since both JS SDKs share `@polaris-key/client-core`.
 //

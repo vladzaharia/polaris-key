@@ -1,6 +1,6 @@
 // @vitest-environment node
 //
-// @pkey-feature sync.keyring sync.saves
+// @pkey-feature sync.keyring sync.saves sync.e2e.recovery
 //
 // U-38.2: the browser key ring engine against a small fake of the Worker's /devices/keyring routes
 // (real crypto, no mocks of it): create, unlock from this device's wrap, wrap to another device,

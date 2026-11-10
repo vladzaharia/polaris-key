@@ -517,8 +517,8 @@
       "note": "The same transport carries the chunk plan, chunk PUT and chunk GET calls; the chunker and chunk objects are core/sync_files.py (sync-vectors.json cdcCases and chunkCases run in tests/test_sync_crypto_conformance.py). The cloudsync-chunks* transcripts replay through the transport (cloudSyncChunk)."
     },
     "sync.e2e.recovery": {
-      "status": "planned",
-      "wp": "U-06"
+      "status": "implemented",
+      "note": "The recovery code: client.keyring's set_recovery_code(), recover(code) and reset() (create() returns the first code) over polaris_key.core.sync_crypto. The code is checked before any request; a wrong code is recovery-code-invalid. tests/test_keyring.py and the recoveryCodeCases of sync-vectors.json in tests/test_sync_crypto_conformance.py; keyring-recovery replays in tests/test_transcripts.py. Python has no platform backup API, so the code is its only backup (the registry's python allowance), and no kit (ui.kit is na)."
     },
     "sync.transfer.background": {
       "status": "na",

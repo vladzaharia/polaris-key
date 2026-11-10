@@ -517,8 +517,8 @@
       "note": "The same transport carries the chunk plan, chunk PUT and chunk GET calls; client-core's engine cuts and plans the chunks (sync-vectors.json cdcCases and chunkCases run in syncVectors.test.ts). The cloudsync-chunks* transcripts replay through the transport (cloudSyncChunk)."
     },
     "sync.e2e.recovery": {
-      "status": "planned",
-      "wp": "U-38"
+      "status": "implemented",
+      "note": "The recovery code: client.keyring's setRecoveryCode(), recover(code) and reset() (create() returns the first code) over client-core's sync/recovery.ts. The code is parsed and its checksum checked before any request; a wrong code is recovery-code-invalid. test/keyring.test.ts (keyring: recovery code, reset and adopt) and the recoveryCodeCases of sync-vectors.json in conformance/runners/node/syncVectors.test.ts; keyring-recovery replays in the Node transcript runner. Node has no platform backup API, so the code is its only backup (the registry's node allowance), and no kit (ui.kit is na)."
     },
     "sync.transfer.background": {
       "status": "na",

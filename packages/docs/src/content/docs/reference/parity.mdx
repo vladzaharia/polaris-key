@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 119 | 16 | 7 | 0 |
-| React | `web`, `desktop-bridge` | 114 | 25 | 3 | 0 |
-| Python | `python` | 109 | 16 | 17 | 0 |
-| Swift | `macos`, `ios` | 124 | 10 | 7 | 1 |
+| Node | `node` | 120 | 16 | 6 | 0 |
+| React | `web`, `desktop-bridge` | 115 | 25 | 2 | 0 |
+| Python | `python` | 110 | 16 | 16 | 0 |
+| Swift | `macos`, `ios` | 125 | 10 | 6 | 1 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 127 | 9 | 6 | 0 |
-| Kotlin | `android`, `jvm` | 125 | 9 | 7 | 1 |
+| Kotlin | `android`, `jvm` | 126 | 9 | 6 | 1 |
 
 ## Core
 
@@ -85,7 +85,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `sync.records` | cloudSync.collection(name): records of any collection with put, update, compare-and-set and union merge | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.files` | cloudSync files: single and multipart upload, resume, progress and ranged download | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.files.delta` | cloudSync file delta: content-defined chunks, only the missing chunks travel | `sync-vectors.json` `cdcCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `sync.e2e.recovery` | The recovery code, and the platform backup of the root where the OS has one | `sync-vectors.json` `recoveryCodeCases` + transcripts (U-36) | planned (U-38) | planned (U-20) | planned (U-06) | planned (U-39) | planned (U-40) | planned (U-39) | web, node, python, jvm, windows, linux: runtime |
+| `sync.e2e.recovery` | The recovery code, and the platform backup of the root where the OS has one | `sync-vectors.json` `recoveryCodeCases` + transcripts (U-36) | ✓ | ✓ | ✓ | ✓ | planned (U-40) | ✓ | web, node, python, jvm, windows, linux: runtime |
 | `sync.transfer.background` | Background transfer: an upload or download that continues when the app is suspended | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓ | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (macos: runtime); N/A (web: runtime) | ✓; N/A (jvm: runtime) | linux, windows, macos, web, desktop-bridge, node, python, jvm: runtime |
 | `sync.e2e` | End-to-end encrypted Cloud Sync on the client: envelope, blinding, root wrap and the encryption-mode machine | `sync-vectors.json` + `sync-scenarios.json` + transcripts (U-33) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
