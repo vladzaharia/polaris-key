@@ -62,6 +62,7 @@ jobs:
       godot: ${{ steps.scope.outputs.godot }}
       e2e-backend: ${{ steps.scope.outputs.e2e-backend }}
       docs: ${{ steps.scope.outputs.docs }}
+      docs-snippets: ${{ steps.scope.outputs.docs-snippets }}
       python-matrix: ${{ steps.scope.outputs.python-matrix }}
       kotlin-desktop-matrix: ${{ steps.scope.outputs.kotlin-desktop-matrix }}
       kotlin-emulator-matrix: ${{ steps.scope.outputs.kotlin-emulator-matrix }}
@@ -811,9 +812,9 @@ jobs:
   swift-floor:
     name: Swift SDK floor (macos-15, Xcode 16.4)
     needs: changes
-    if: needs.changes.outputs.swift-floor == 'true'
+    if: needs.changes.outputs.swift-floor == 'true' || needs.changes.outputs.docs-snippets == 'true'
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
@@ -822,6 +823,7 @@ jobs:
       - name: Xcode 16.4, Swift below 6.3
         run: sdks/swift/tools/select-xcode-16.sh
       - name: swift build (macOS host)
+        if: needs.changes.outputs.swift-floor == 'true'
         run: swift build --package-path sdks/swift
       # One invocation builds every library (the package scheme); the platform and its C surface
       # then rebuild with warnings as errors (the libzstd importer warnings fail PolarisKeyPacks
@@ -836,6 +838,19 @@ jobs:
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
           done
+      # SP-45b: the Swift half of the docs snippet lane, on the macOS runner Swift 6 needs (it ran in
+      # its own job, docs-snippets-swift). The package builds above only when its lane ran.
+      - if: needs.changes.outputs.docs-snippets == 'true'
+        uses: ./.github/actions/setup-js
+      - if: needs.changes.outputs.docs-snippets == 'true'
+        run: pnpm build
+      - name: Swift docs snippets (lane)
+        if: needs.changes.outputs.docs-snippets == 'true'
+        working-directory: packages/docs
+        env:
+          PKEY_DOCS_LANES: swift
+          PKEY_DOCS_SKIP_LANES: kotlin,gdscript
+        run: pnpm exec vitest run test/snippets/snippets.test.ts -t "swift lane"
 
   # The Swift SDK and the Apple platform plugin on macos-26, as four jobs (P0-43 put them on one
   # job; it grew past its 45 minutes, measured 2026-10-12: pkey dev build 5.5 min, swift test
@@ -1093,6 +1108,8 @@ jobs:
   # exports. PKEY_DOCS_LANES makes a lane that cannot run a failure instead of a skip.
   docs-snippets:
     name: Docs snippets (Kotlin, Godot)
+    needs: changes
+    if: needs.changes.outputs.docs-snippets == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1129,28 +1146,6 @@ jobs:
           PKEY_DOCS_LANES: kotlin,gdscript
           PKEY_DOCS_SKIP_LANES: swift
         run: GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2/godot" pnpm exec vitest run test/snippets/snippets.test.ts -t "kotlin lane|gdscript lane|Godot class names"
-
-  # SP-45b: the Swift half of the docs snippet lane, on the macOS runner Swift 6 needs.
-  docs-snippets-swift:
-    name: Docs snippets (Swift)
-    runs-on: macos-15
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - run: swift --version
-      - name: Swift lane
-        working-directory: packages/docs
-        env:
-          PKEY_DOCS_LANES: swift
-          PKEY_DOCS_SKIP_LANES: kotlin,gdscript
-        run: pnpm exec vitest run test/snippets/snippets.test.ts -t "swift lane"
 
   kotlin:
     name: Kotlin SDK (JVM modules + conformance runner)
@@ -1718,7 +1713,6 @@ jobs:
         godot,
         e2e-backend,
         docs-snippets,
-        docs-snippets-swift,
       ]
     runs-on: ubuntu-latest
     timeout-minutes: 10
