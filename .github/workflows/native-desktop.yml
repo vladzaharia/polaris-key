@@ -27,7 +27,8 @@ name: Native desktop plugins
 # trigger too: a change to it changes those jobs as much as an edit of this file does.
 on:
   push:
-    branches: [main]
+    # next: promote fast-forwards main with the workflow token, and that push starts no workflows.
+    branches: [main, next]
     paths:
       - "sdks/godot/**"
       - "sdks/swift/Sources/PolarisKeyPlatform/**"
