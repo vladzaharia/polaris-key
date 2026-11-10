@@ -173,7 +173,7 @@ public enum KitFormat {
 
     /// A calendar day (`2026-09-30`, as release notes carry it) in the locale's abbreviated style,
     /// never the raw ISO date (DL8); anything else is shown as given.
-    public static func day(_ iso: String) -> String {
+    public static func day(_ iso: String, locale: Locale = .current) -> String {
         let parser = DateFormatter()
         parser.locale = Locale(identifier: "en_US_POSIX")
         parser.timeZone = TimeZone(identifier: "UTC")
@@ -181,7 +181,7 @@ public enum KitFormat {
         guard let date = parser.date(from: String(iso.prefix(10))) else { return iso }
         var style = Date.FormatStyle(date: .abbreviated, time: .omitted)
         style.timeZone = TimeZone(identifier: "UTC")!
-        return date.formatted(style)
+        return date.formatted(style.locale(locale))
     }
 
     /// A platform id as people read it (DL8: never a raw id): `macos` is macOS.
