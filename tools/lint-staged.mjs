@@ -32,7 +32,7 @@ export const SDKS = [
   {
     id: "python",
     owns: (f) => /^sdks\/python\/.+\.py$/.test(f),
-    needs: "sdks/python/.venv/bin/ruff",
+    venv: true,
     setup:
       'cd sdks/python && python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"',
     fix: (files) =>
@@ -63,6 +63,29 @@ export const SDKS = [
       `swift format format -i --configuration sdks/swift/.swift-format ${files.join(" ")}`,
   },
 ];
+
+/**
+ * The Python venv to lint with: this checkout's, else the main checkout's (a worktree has none of
+ * its own; `git rev-parse --git-common-dir` leads to the main checkout), if it holds ruff and mypy.
+ * Null when neither has them.
+ */
+export function pythonVenv(root = ROOT) {
+  const has = (v) =>
+    existsSync(join(v, "bin", "ruff")) && existsSync(join(v, "bin", "mypy"));
+  const own = join(root, "sdks", "python", ".venv");
+  if (has(own)) return own;
+  const r = spawnSync(
+    "git",
+    ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+    {
+      cwd: root,
+      encoding: "utf8",
+    },
+  );
+  if (r.status !== 0) return null;
+  const main = join(dirname(r.stdout.trim()), "sdks", "python", ".venv");
+  return has(main) ? main : null;
+}
 
 /** Staged files that exist (added, copied, modified, renamed). */
 export function stagedFiles(cwd = ROOT) {
@@ -111,15 +134,20 @@ function main(argv) {
   const dir = mkdtempSync(join(tmpdir(), "lint-staged-"));
   try {
     for (const lane of lanesFor(files)) {
-      const missing = lane.needs
-        ? existsSync(join(ROOT, lane.needs))
+      const venv = lane.venv ? pythonVenv() : null;
+      const missing = lane.venv
+        ? venv
           ? null
-          : lane.needs
-        : lane.probe &&
-            spawnSync(lane.probe[0], lane.probe.slice(1), { stdio: "ignore" })
-              .status !== 0
-          ? lane.probe[0]
-          : null;
+          : "sdks/python/.venv (ruff, mypy)"
+        : lane.needs
+          ? existsSync(join(ROOT, lane.needs))
+            ? null
+            : lane.needs
+          : lane.probe &&
+              spawnSync(lane.probe[0], lane.probe.slice(1), { stdio: "ignore" })
+                .status !== 0
+            ? lane.probe[0]
+            : null;
       if (missing) {
         process.stderr.write(
           `lint-staged: ${lane.id} lint NOT run (${missing} is missing); CI runs it. Set it up: ${lane.setup}\n`,
@@ -128,11 +156,11 @@ function main(argv) {
       }
       const list = join(dir, `${lane.id}.txt`);
       writeFileSync(list, `${lane.files.join("\n")}\n`);
-      const r = run(`sdks/${lane.id}/tools/lint.sh`, [
-        lane.mode ?? "check",
-        "--files",
-        list,
-      ]);
+      const r = run(
+        `sdks/${lane.id}/tools/lint.sh`,
+        [lane.mode ?? "check", "--files", list],
+        venv ? { env: { ...process.env, PKEY_PYTHON_VENV: venv } } : {},
+      );
       if (r.status !== 0)
         failures.push(
           `${lane.id}: lint failed above (${lane.files.length} staged file(s)). Fix with:\n    ${lane.fix(lane.files.map(quote))}\n  then re-check: sdks/${lane.id}/tools/lint.sh check`,

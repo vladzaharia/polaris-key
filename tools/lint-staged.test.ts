@@ -3,11 +3,18 @@
  * ledger tool it relies on.
  */
 
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { lanesFor, SDKS } from "./lint-staged.mjs";
+import { lanesFor, pythonVenv, SDKS } from "./lint-staged.mjs";
 import { run } from "./lint/lint-debt.mjs";
 
 const dir = mkdtempSync(join(tmpdir(), "lint-staged-test-"));
@@ -84,5 +91,40 @@ describe("lint-debt --only", () => {
     // The whole-tree run sees b.py as cleared too.
     const whole = await run(args);
     expect(whole.out.join("\n")).toContain("cleared (re-record): b.py");
+  });
+});
+
+describe("pythonVenv", () => {
+  it("uses this checkout's venv, else the main checkout's, else none", () => {
+    const fake = (root: string) => {
+      for (const b of ["ruff", "mypy"]) {
+        mkdirSync(join(root, "sdks/python/.venv/bin"), { recursive: true });
+        writeFileSync(join(root, "sdks/python/.venv/bin", b), "");
+      }
+    };
+    const main = join(dir, "main");
+    mkdirSync(main);
+    const git = (cwd: string, ...a: string[]) =>
+      execFileSync("git", a, { cwd, stdio: "ignore" });
+    git(main, "init", "-q");
+    git(
+      main,
+      "-c",
+      "user.email=t@t",
+      "-c",
+      "user.name=t",
+      "commit",
+      "-q",
+      "--allow-empty",
+      "-m",
+      "x",
+    );
+    const wt = join(dir, "wt");
+    git(main, "worktree", "add", "-q", wt);
+    expect(pythonVenv(wt)).toBeNull();
+    fake(main);
+    expect(pythonVenv(wt)).toBe(join(realpathSync(main), "sdks/python/.venv"));
+    fake(wt);
+    expect(pythonVenv(wt)).toBe(join(wt, "sdks/python/.venv"));
   });
 });

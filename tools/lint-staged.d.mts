@@ -3,6 +3,7 @@
 export interface SdkLane {
   id: string;
   owns: (file: string) => boolean;
+  venv?: boolean;
   needs?: string | null;
   probe?: string[];
   setup?: string;
@@ -14,3 +15,4 @@ export declare function stagedFiles(cwd?: string): string[];
 export declare function lanesFor(
   files: string[],
 ): (SdkLane & { files: string[] })[];
+export declare function pythonVenv(root?: string): string | null;

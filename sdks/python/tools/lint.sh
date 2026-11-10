@@ -18,7 +18,7 @@ if [ "${2:-}" = --files ]; then
   [ "${#targets[@]}" -gt 0 ] || exit 0
 fi
 only_args=(); [ -n "$only" ] && only_args=(--only "$only")
-bin=".venv/bin"
+bin="${PKEY_PYTHON_VENV:-.venv}/bin"   # the hook points a worktree at the main checkout's venv
 debt="../../tools/lint/lint-debt.mjs"
 tmp="$(mktemp -d)"
 trap '/bin/rm -rf "$tmp"' EXIT
