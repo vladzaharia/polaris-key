@@ -1,3 +1,4 @@
+import "../../tools/pin-test-env.mjs"; // TZ and locale pinned for the run
 import { defineConfig } from "vitest/config";
 
 // The docs render the console's ui/ components with the docs' own React (astro.config.mjs dedupes

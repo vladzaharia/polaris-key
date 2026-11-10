@@ -1,3 +1,4 @@
+import "../../tools/pin-test-env.mjs"; // TZ and locale pinned for the run
 import { defineConfig } from "vitest/config";
 
 // The real-runtime kit harness (test/electron-e2e/): it launches the built Electron sample, so it

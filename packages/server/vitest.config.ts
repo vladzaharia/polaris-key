@@ -1,3 +1,4 @@
+import "../../tools/pin-test-env.mjs"; // TZ and locale pinned for the run
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vitest/config";

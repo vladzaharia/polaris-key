@@ -1,3 +1,4 @@
+import "../../tools/pin-test-env.mjs"; // TZ and locale pinned for the run
 import { defineConfig } from "vitest/config";
 
 // Default timeouts sized for a loaded machine or a slow CI runner, where vitest's 5 s / 10 s

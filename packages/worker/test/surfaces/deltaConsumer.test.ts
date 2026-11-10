@@ -678,6 +678,7 @@ describe("the queue consumer", () => {
       id,
       body,
       attempts: 1,
+      // brittle-ok: queue message envelope timestamp, never asserted
       timestamp: new Date(),
       ack: () => calls.push(`${id}:ack`),
       retry: (o?: { delaySeconds?: number }) =>

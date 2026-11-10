@@ -1,3 +1,4 @@
+import "../../tools/pin-test-env.mjs"; // TZ and locale pinned for the run
 import { defineConfig } from "vitest/config";
 
 // The browser suites: every rule against a seeded fixture, and the mockup boards clean. They need

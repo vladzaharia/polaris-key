@@ -227,6 +227,7 @@ describe("the consumer Worker", () => {
       const body = pairMessage(P, PACK, from, to);
       const run = async () => {
         const batch = createMessageBatch("pkey-deltas-test", [
+          // brittle-ok: queue message envelope timestamp, never asserted
           { id: crypto.randomUUID(), timestamp: new Date(), attempts: 1, body },
         ]);
         const ctx = createExecutionContext();
@@ -267,6 +268,7 @@ describe("the consumer Worker", () => {
       const batch = createMessageBatch("pkey-deltas-test", [
         {
           id: crypto.randomUUID(),
+          // brittle-ok: queue message envelope timestamp, never asserted
           timestamp: new Date(),
           attempts: 1,
           body: { not: "a delta message" },
