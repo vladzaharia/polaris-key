@@ -31,7 +31,8 @@ import { ErrorCode } from "../../../core/errors.js";
 import { appSecurityHeaders } from "../../../core/securityHeaders.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
-import { removeProductData } from "../accounts/deletion.js";
+import { removeProductData } from "../accounts/productRemoval.js";
+import { ErasureLedgerError } from "../accounts/erasureLedger.js";
 import {
   err,
   notFound,
@@ -246,19 +247,28 @@ export async function handleProductDataRemove(
     product,
   );
   if (limited) return limited;
-  const removed = await removeProductData(
-    { db, env, now, origin: new URL(req.url).origin },
-    {
-      accountId: session.accountId,
-      product,
-      alsoDetachLicenses: alsoLicense,
-    },
-  );
+  let removed;
+  try {
+    removed = await removeProductData(
+      { db, env, now, origin: new URL(req.url).origin },
+      {
+        accountId: session.accountId,
+        product,
+        alsoDetachLicenses: alsoLicense,
+      },
+    );
+  } catch (e) {
+    // The removal could not be recorded on the ledger: nothing was removed. Try again.
+    if (e instanceof ErasureLedgerError)
+      return err(503, "erasure_ledger_unavailable", "try again");
+    throw e;
+  }
   return portalJson({
     ok: true,
     product,
     // False when there was nothing left to remove (a repeat, or a product never signed in to).
     removed: removed.ok,
+    ...(removed.pending ? { pending: true } : {}),
     detachedLicenses: removed.detached,
   });
 }

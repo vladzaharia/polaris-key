@@ -416,7 +416,11 @@ export async function handleProductUsers(
       return err(405, ErrorCode.BadRequest, "method not allowed");
     const gate = requireStepUp(session, now);
     if (gate) return gate;
-    const { stores } = await deleteProductUserData(ctx, slug, found.subject);
+    const { stores, failed } = await deleteProductUserData(
+      ctx,
+      slug,
+      found.subject,
+    );
     await audit(
       db,
       slug,
@@ -424,8 +428,13 @@ export async function handleProductUsers(
       now,
       "user.data.delete",
       { kind: "subject", id: found.subject },
-      `Deleted ${found.subject}'s data for ${slug} (${stores.length === 0 ? "no stores" : stores.join(", ")})`,
+      `Deleted ${found.subject}'s data for ${slug} (${stores.length === 0 ? "no stores" : stores.join(", ")})${failed.length > 0 ? `; failed: ${failed.join(", ")}` : ""}`,
     );
+    if (failed.length > 0)
+      return adminJson(
+        { ok: false, error: "stores_failed", stores, failed },
+        502,
+      );
     return adminJson({ ok: true, stores });
   }
 

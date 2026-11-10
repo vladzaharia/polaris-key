@@ -399,6 +399,30 @@ describe("delete", () => {
     },
   );
 
+  it("removes the key ring before the object's bytes", async () => {
+    const { w, call } = await withData();
+    const ring = vi.spyOn(keyringStore, "delete");
+    const object = vi.spyOn(cloudSyncStore, "delete");
+    const res = await call("POST", SLUG, w.subject, "/delete", {
+      json: { confirm: true },
+    });
+    expect(res.status).toBe(200);
+    expect(ring.mock.invocationCallOrder[0]!).toBeLessThan(
+      object.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it("keeps the object when the key ring's removal fails", async () => {
+    const { w, call } = await withData();
+    vi.spyOn(keyringStore, "delete").mockRejectedValue(new Error("boom"));
+    const object = vi.spyOn(cloudSyncStore, "delete");
+    await expect(
+      call("POST", SLUG, w.subject, "/delete", { json: { confirm: true } }),
+    ).rejects.toThrow("boom");
+    expect(object).not.toHaveBeenCalled();
+    expect(w.r2.keys().length).toBeGreaterThan(0);
+  });
+
   it("needs a step-up and a confirmation, and is 404 for another product's subject", async () => {
     const { w, call, stale, otherSubject, audits } = await withData();
     expect(

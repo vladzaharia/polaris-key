@@ -46,6 +46,10 @@ import { enableServices } from "../releaseRoutesFixture.js";
 import { getAccountRow } from "../../src/services/identity/accounts/repo.js";
 import { recordErasure } from "../../src/services/identity/accounts/erasureLedger.js";
 import {
+  OBJECTS_REQUEST_KEY,
+  recordSubjectErasure,
+} from "../../src/services/identity/accounts/subjectErasureLedger.js";
+import {
   BLOB_LOCK_AGE_SECONDS,
   DEFAULT_GC_GRACE_SECONDS,
   MIN_GC_GRACE_SECONDS,
@@ -1440,6 +1444,42 @@ describe("scheduled erasure ledger replay (I-11)", () => {
     // Nothing is left to do: the next pass repairs nothing.
     expect(
       (await runScheduledMaintenance(db, NOW + 120, env)).counts.erasureLedger,
+    ).toBe(0);
+  });
+
+  it("the nightly pass completes a per-product removal a restore brought back, and spends an objects request", async () => {
+    const { db, env } = ledgerWorld();
+    const subject = "ps_" + "7".repeat(22);
+    const account = await getOrCreateAccountByEmail(
+      db,
+      "restored@example.com",
+      NOW,
+    );
+    await seedProduct(db, "djdl");
+    await db.run(
+      "INSERT INTO account_product_subjects (account_id, product, subject, created_at) VALUES (?, 'djdl', ?, ?)",
+      account.id,
+      subject,
+      NOW,
+    );
+    await recordSubjectErasure(env, "djdl", subject, NOW);
+    await env.HOT.put(OBJECTS_REQUEST_KEY, "djdl");
+
+    const report = await runScheduledMaintenance(db, NOW + 60, env);
+    expect(report.failures).toEqual({});
+    // The removal, then the objects pass over the one ledger subject.
+    expect(report.counts.subjectErasureLedger).toBe(2);
+    expect(
+      await db.first(
+        "SELECT 1 FROM account_product_subjects WHERE subject = ?",
+        subject,
+      ),
+    ).toBeNull();
+    expect(await env.HOT.get(OBJECTS_REQUEST_KEY)).toBeNull();
+    // Nothing is owed on the next pass.
+    expect(
+      (await runScheduledMaintenance(db, NOW + 120, env)).counts
+        .subjectErasureLedger,
     ).toBe(0);
   });
 

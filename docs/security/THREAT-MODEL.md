@@ -10811,6 +10811,51 @@ names the account, so there is nothing for a caller to substitute.
   id, so a person who hands it to a developer gives them that id (a per-product file never carries
   it).
 
+### Per-product removal: fence, isolation, ledger (U-12.1, U-12.2)
+
+`DELETE /api/products/<product>/data` used to run the stores one after another, so the first
+failing store aborted the run and nothing resumed it, and cleared the device bindings only after
+the stores, so a device that was still signed in could recreate a key ring or a Cloud Sync object
+mid-removal. A D1 restore also brought the removed rows back with nothing to remove them again.
+The route keeps every gate above (session, CSRF, sign-in no older than five minutes, licences
+removable, rate limit, audit). The cascade, in order:
+
+- **Write-ahead ledger.** `subject-erasures/<product>/<subject>` is written to the `BLOBS` bucket,
+  create-only, before anything changes (`subjectErasureLedger.ts`). It holds the product slug, the
+  random pairwise subject and a time, never an account id. A write that fails answers `503
+erasure_ledger_unavailable` with nothing changed. The prefix is not `erasures/`: the account
+  replay reads every key there as an account id.
+- **Fence.** The bindings of the subject and its aliases are cleared before any store runs, so a
+  device gets `account_required` and cannot recreate a ring or a sync object.
+- **Isolated stores, keys before bytes.** Every registered store deletes in name order and a
+  failure does not stop the others: the key ring (`core.keyring`) goes before the Cloud Sync object
+  (`sync.cloudSync`). The console's per-subject delete is isolated the same way and its Cloud Sync
+  delete removes the ring first. Account erasure moves its device fence ahead of the store rounds.
+- **Commit closes the gap.** The commit batch itself clears any device binding and deletes any key
+  ring or wrap for the subject and its aliases, and writes the history row and `subject.deleted`
+  only while the subject row exists, so a sign-in or ring write that raced the stores leaves
+  nothing behind and two completions record once.
+- **Commit and resume.** If a store fails the answer is `200` with `pending: true`; the subject
+  row stays, the developer is not told and nothing is audited yet. A ledger entry beside a live
+  subject row means a removal is owed, and the person's repeat or the maintenance pass (U-12.2)
+  re-runs the fence, stores and commit, which only delete by key.
+- **After a restore (U-12.2).** The 15-minute tick and the nightly maintenance walk the ledger
+  (`replaySubjectErasures`, at most 25 subjects a pass, cursor in KV) and complete the removal for
+  every entry whose subject row a restore brought back, together with its restored overrides,
+  ring and directory rows. A D1 restore does not touch Durable Object storage, so the object stays
+  erased. Entries are swept after 35 days, past the 30-day windows of D1 Time Travel and Durable
+  Object point-in-time recovery; subjects are random and cannot be re-minted, so no permanent
+  tombstone is needed.
+- **Residuals.** Between a restore and the next tick, up to 15 minutes, the restored rows are
+  readable; the request-time fence of account erasure has no per-subject counterpart (decision
+  D4). While a removal stays `pending`, devices that sign in again are fenced on each tick and
+  the data they create is removed when the stores finally succeed; the nightly step reports any
+  removal still owed after 7 days (a count, never an account). A Durable Object point-in-time restore brings its data back and the tick does not look for
+  it: the operator runs the objects pass for the product (its cursor belongs to one product, and
+  the request is cleared only after a whole cycle without a failure) (runbook, "After a D1 or Cloud Sync
+  Durable Object restore"). A person who removes their data while a store stays down is told
+  `pending`, and the data of that store stays until the pass succeeds.
+
 ### Account erasure is scheduled, then resumable (SEC-WP-04: SEC-PRV-1, SEC-PRV-19)
 
 `DELETE /api/me` used to flip the account to `deleted` and then run the registered stores' hooks
