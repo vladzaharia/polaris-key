@@ -124,9 +124,10 @@ class AccessTokenCache:
     :data:`ACCESS_TOKEN_REUSE_MARGIN_SECONDS` remain, and otherwise runs ``exchange`` once: callers with the
     same key that arrive while it runs share its answer, a caller with another key does not. ``refresh=True``
     skips the held token (an app whose backend refused it asks for a new one); it still joins an exchange in
-    flight. A refused or failed exchange is not cached. After :meth:`hold_off` no exchange starts until the
-    time has passed. ``clear`` drops the token and detaches any exchange in flight, so its answer is not kept
-    after a sign-out."""
+    flight. A refused or failed exchange is not cached, except that a ``rate_limited`` answer carrying
+    ``retry_after_seconds`` is remembered per key: until that wait has passed ``get`` fails fast with
+    ``rate_limited``, sending nothing, ``refresh`` included. ``clear`` drops the token, the wait and any exchange
+    in flight, so its answer is not kept after a sign-out."""
 
     def __init__(self, now: Callable[[], int]) -> None:
         self._now = now
@@ -134,14 +135,7 @@ class AccessTokenCache:
         self._held: Optional[AccessToken] = None
         self._held_key: Optional[str] = None
         self._pending: Optional[_Flight] = None
-        self._generation = 0
-        self._not_before = 0
-
-    def hold_off(self, seconds: int) -> None:
-        """No exchange starts for ``seconds`` (a 429's wait). The limit is the device's, so a sign-out
-        does not lift it."""
-        with self._lock:
-            self._not_before = max(self._not_before, self._now() + seconds)
+        self._limited: Optional["tuple[str, int]"] = None
 
     def get(
         self, key: str, exchange: Callable[[], "tuple[str, int]"], *, refresh: bool = False
@@ -160,16 +154,18 @@ class AccessTokenCache:
             if flight is not None and flight.key == key:
                 owner = False
             else:
-                if self._not_before > t:
-                    wait = self._not_before - t
-                    raise PolarisError(
-                        ErrorCode.RATE_LIMITED,
-                        f"too many access token requests: try again in {wait} seconds.",
-                        status=429,
-                        retry_after_seconds=wait,
-                    )
+                limited = self._limited
+                if limited is not None and limited[0] == key:
+                    if limited[1] > t:
+                        wait = limited[1] - t
+                        raise PolarisError(
+                            ErrorCode.RATE_LIMITED,
+                            f"too many access token requests: try again in {wait} seconds.",
+                            status=429,
+                            retry_after_seconds=wait,
+                        )
+                    self._limited = None
                 flight = self._pending = _Flight(key)
-                generation = self._generation
                 owner = True
         if not owner:
             flight.done.wait()
@@ -184,12 +180,17 @@ class AccessTokenCache:
             with self._lock:
                 # Kept only while this is still the client's exchange: a `clear()` (sign-out) or a call
                 # with another device token while it ran means the answer is not ours to keep.
-                if self._generation == generation and self._pending is flight:
+                if self._pending is flight:
                     self._held = token
                     self._held_key = key
             flight.token = token
             return token
         except BaseException as e:
+            retry = getattr(e, "retry_after_seconds", None)
+            if getattr(e, "code", None) == ErrorCode.RATE_LIMITED and isinstance(retry, int) and retry > 0:
+                with self._lock:
+                    if self._pending is flight:
+                        self._limited = (key, self._now() + retry)
             flight.error = e
             raise
         finally:
@@ -199,12 +200,12 @@ class AccessTokenCache:
             flight.done.set()
 
     def clear(self) -> None:
-        """Drop the token and any exchange in flight (sign-out, deactivation)."""
+        """Drop the token, the rate-limit wait and any exchange in flight (sign-out, deactivation)."""
         with self._lock:
-            self._generation += 1
             self._held = None
             self._held_key = None
             self._pending = None
+            self._limited = None
 
 
 class AccessTokens:
@@ -241,17 +242,9 @@ class AccessTokens:
         device_token = self._tokens.current
         if not device_token:
             raise PolarisError(ErrorCode.NO_TOKEN, "Sign in before asking for an access token.")
-        try:
-            return self._cache.get(
-                device_token, lambda: self._exchange(endpoint, device_token), refresh=refresh
-            )
-        except PolarisError as e:
-            if e.code == ErrorCode.INVALID_GRANT:
-                # The Worker's one refusal for a device that holds no sign-in: nothing held is good any more.
-                self._cache.clear()
-            elif e.code == ErrorCode.RATE_LIMITED and e.retry_after_seconds:
-                self._cache.hold_off(e.retry_after_seconds)
-            raise
+        return self._cache.get(
+            device_token, lambda: self._exchange(endpoint, device_token), refresh=refresh
+        )
 
     def _exchange(self, endpoint: str, device_token: str) -> "tuple[str, int]":
         ctx = self._ctx
@@ -265,8 +258,8 @@ class AccessTokens:
         )
         if 300 <= res.status_code < 400:
             raise PolarisError(
-                ErrorCode.BAD_RESPONSE,
-                "the access token endpoint answered with a redirect.",
+                ErrorCode.NETWORK_ERROR,
+                "the access token endpoint answered with a redirect; it is never followed.",
                 status=res.status_code,
             )
         if res.status_code != 200:
@@ -299,8 +292,15 @@ def _origin_of(url: str) -> "tuple[str, str, int]":
 
 
 def _retry_after_of(res: Any) -> Optional[int]:
-    """The 429's wait: the ``Retry-After`` header, else the body's ``retryAfter`` (the recording carries
-    only that), rounded up."""
+    """The 429's wait: the body's ``retryAfter`` (the recording carries only that), rounded up, else the
+    ``Retry-After`` header."""
+    try:
+        b = res.json()
+    except ValueError:
+        b = None
+    v = b.get("retryAfter") if isinstance(b, dict) else None
+    if isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0 and v == v and v != float("inf"):
+        return int(-(-v // 1))
     raw = res.headers.get("retry-after")
     if raw is not None:
         try:
@@ -309,11 +309,4 @@ def _retry_after_of(res: Any) -> Optional[int]:
                 return n
         except ValueError:
             pass
-    try:
-        b = res.json()
-    except ValueError:
-        return None
-    v = b.get("retryAfter") if isinstance(b, dict) else None
-    if isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0 and v == v and v != float("inf"):
-        return int(-(-v // 1))
     return None

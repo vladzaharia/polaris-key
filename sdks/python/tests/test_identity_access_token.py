@@ -92,6 +92,12 @@ def client(w: Worker, token: Optional[str] = TOKEN, http: Optional[httpx.Client]
     )
 
 
+def _failure_of(c: Any) -> PolarisError:
+    with pytest.raises(PolarisError) as e:
+        c.identity.access_token()
+    return e.value
+
+
 def _swap_token(c: Any, token: str) -> None:
     c._tokens.set(token, "activate", provenance="signin")
 
@@ -214,16 +220,41 @@ def test_failures_are_not_cached(clock: Clock) -> None:
     assert len(w.exchanges) == 2
 
 
-def test_a_refusal_keeps_its_wire_code_and_invalid_grant_drops_the_held_token(clock: Clock) -> None:
-    answers = [httpx.Response(200, json=grant()), httpx.Response(400, json={"error": "invalid_grant"})]
+def test_a_refusal_keeps_its_wire_code_and_is_not_cached(clock: Clock) -> None:
+    answers = [httpx.Response(400, json={"error": "invalid_grant"}), httpx.Response(200, json=grant())]
     w = Worker(answer=lambda r: answers.pop(0))
     c = client(w)
-    c.identity.access_token()
     with pytest.raises(PolarisError) as e:
-        c.identity.access_token(refresh=True)
+        c.identity.access_token()
     assert (e.value.code, e.value.status) == ("invalid_grant", 400)
-    answers.append(httpx.Response(200, json=grant("dddd.eeee.ffff")))
-    assert c.identity.access_token().access_token == "dddd.eeee.ffff"  # not the held one
+    assert c.identity.access_token().access_token == JWT  # asks again
+    assert len(w.exchanges) == 2
+
+
+def test_a_late_invalid_grant_for_a_replaced_token_leaves_the_new_one_alone(clock: Clock) -> None:
+    release = threading.Event()
+    entered = threading.Event()
+
+    def answer(r: httpx.Request) -> httpx.Response:
+        if f"subject_token={TOKEN}" in r.content.decode():
+            entered.set()
+            release.wait(5)
+            return httpx.Response(400, json={"error": "invalid_grant"})
+        return httpx.Response(200, json=grant("aaaa.bbbb.new1"))
+
+    w = Worker(answer=answer)
+    c = client(w)
+    old: List[Any] = []
+    t = threading.Thread(target=lambda: old.append(_failure_of(c)))
+    t.start()
+    assert entered.wait(5)
+    _swap_token(c, OTHER_TOKEN)
+    assert c.identity.access_token().access_token == "aaaa.bbbb.new1"
+    release.set()
+    t.join(5)
+    assert old[0].code == "invalid_grant"
+    assert c.identity.access_token().access_token == "aaaa.bbbb.new1"  # still held, nothing asked again
+    assert len(w.exchanges) == 2
 
 
 def test_forget_drops_the_held_token(clock: Clock) -> None:
@@ -345,12 +376,27 @@ def test_a_429_keeps_the_wait_from_the_body_and_holds_off_until_it_passes(clock:
     assert len(w.exchanges) == 2
 
 
-def test_a_429_header_wins_over_the_body(clock: Clock) -> None:
+def test_a_429_reads_the_body_first_then_the_header(clock: Clock) -> None:
     body = {"error": "rate_limited", "retryAfter": 60}
-    w = Worker(answer=lambda r: httpx.Response(429, headers={"retry-after": "7"}, json=body))
-    with pytest.raises(PolarisError) as e:
-        client(w).identity.access_token()
-    assert e.value.retry_after_seconds == 7
+    both = Worker(answer=lambda r: httpx.Response(429, headers={"retry-after": "7"}, json=body))
+    assert _failure_of(client(both)).retry_after_seconds == 60
+    header = Worker(answer=lambda r: httpx.Response(429, headers={"retry-after": "7"}, json={"error": "rate_limited"}))
+    assert _failure_of(client(header)).retry_after_seconds == 7
+
+
+def test_the_429_wait_is_per_device_token_and_a_sign_out_lifts_it(clock: Clock) -> None:
+    w = Worker(answer=lambda r: httpx.Response(429, json={"error": "rate_limited", "retryAfter": 60}))
+    c = client(w)
+    assert _failure_of(c).retry_after_seconds == 60
+    assert _failure_of(c).retry_after_seconds == 60  # fast: no second request
+    assert len(w.exchanges) == 1
+    _swap_token(c, OTHER_TOKEN)  # another key is not held off
+    assert _failure_of(c).code == ErrorCode.RATE_LIMITED
+    assert len(w.exchanges) == 2
+    c.identity.forget()
+    _swap_token(c, TOKEN)
+    assert _failure_of(c).code == ErrorCode.RATE_LIMITED
+    assert len(w.exchanges) == 3  # forget() dropped the wait, so it asked
 
 
 def test_a_held_token_is_still_handed_out_while_the_limit_holds(clock: Clock) -> None:
@@ -373,7 +419,7 @@ def test_a_redirect_is_not_followed_even_on_a_client_that_follows(clock: Clock) 
     c = client(w, http=http)
     with pytest.raises(PolarisError) as e:
         c.identity.access_token()
-    assert e.value.code == ErrorCode.BAD_RESPONSE
+    assert e.value.code == ErrorCode.NETWORK_ERROR
     assert len(w.exchanges) == 1
 
 
