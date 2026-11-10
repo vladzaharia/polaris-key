@@ -18,6 +18,7 @@ import { join } from "node:path";
 import { PolarisError } from "@polaris-key/client-core";
 import {
   MAX_CONTACT_CATS,
+  MAX_LIVE_LOCAL_ADVERTS,
   MAX_LOCAL_LINKS,
 } from "@polaris-key/client-core/peer";
 import { base64UrlDecode, base64UrlEncodeBytes } from "@polaris-key/jws";
@@ -349,8 +350,13 @@ export class LocalLinkStore {
         full = true;
         return null;
       }
+      const others = rows.filter((r) => r.id !== id);
+      // Reachable by default; with the live-advert limit already reached the new link is stored
+      // off and the list says so (§15.12, "Reachable by default").
+      const reachable =
+        others.filter((r) => r.reachable).length < MAX_LIVE_LOCAL_ADVERTS;
       return [
-        ...rows.filter((r) => r.id !== id),
+        ...others,
         {
           id,
           ownKey: base64UrlEncodeBytes(link.ownKey),
@@ -360,7 +366,7 @@ export class LocalLinkStore {
           ...(link.label !== undefined ? { label: link.label } : {}),
           cats: [...link.cats],
           createdAt: link.now,
-          reachable: false,
+          reachable,
         },
       ];
     });

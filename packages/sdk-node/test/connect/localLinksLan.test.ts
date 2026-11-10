@@ -6,8 +6,10 @@
 // codecs, the pin, the trial order and the gate predicate are the `peer-matrix.json` `local` rows
 // (conformance/runners/node); this file covers what the Node SDK does with them.
 import { readFileSync, readdirSync } from "node:fs";
+import { connect as tcp } from "node:net";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { encodeFrame } from "@polaris-key/client-core/peer";
 import type { PolarisKeyClient } from "../../src/client.js";
 import type {
   ConnectSession,
@@ -15,12 +17,15 @@ import type {
   LocalOffer,
   LocalPairHandle,
 } from "../../src/connect/index.js";
+import { ErrorCode } from "../../src/constants.generated.js";
+import { LanService } from "../../src/connect/lan.js";
 import { resetLocalBudgets } from "../../src/connect/localLinks.js";
-import { LOCAL_STATE_FILE } from "../../src/connect/localState.js";
+import { LOCAL_STATE_FILE, localTag } from "../../src/connect/localState.js";
 import {
   MemoryMdnsNetwork,
   MultiWorker,
   endTest,
+  T0,
   freezeAtT0,
   makeClient,
   text,
@@ -29,6 +34,25 @@ import {
   utf8,
 } from "../lanFixtures.js";
 
+// A dial can be held at the door: a test makes the reload happen while the socket is opening.
+const door = vi.hoisted(() => ({
+  hold: null as Promise<void> | null,
+  waiting: 0,
+}));
+vi.mock("../../src/connect/dial.js", async (orig) => {
+  const real = await orig<typeof import("../../src/connect/dial.js")>();
+  return {
+    ...real,
+    dialRaceTo: async (...a: Parameters<typeof real.dialRaceTo>) => {
+      if (door.hold !== null) {
+        door.waiting++;
+        await door.hold;
+      }
+      return real.dialRaceTo(...a);
+    },
+  };
+});
+
 const LOOP = { host: "127.0.0.1", allowLoopback: true } as const;
 
 let handles: LocalPairHandle[] = [];
@@ -36,6 +60,8 @@ let clients: PolarisKeyClient[] = [];
 let dirs: string[] = [];
 
 beforeEach(() => {
+  door.hold = null;
+  door.waiting = 0;
   resetLocalBudgets();
   freezeAtT0();
 });
@@ -56,7 +82,20 @@ async function world(o: { gate?: boolean; accountA?: boolean } = {}) {
   await a.discover();
   await b.discover();
   if (o.accountA === true) await a.connect.identity();
-  return { worker, a, b, net: new MemoryMdnsNetwork() };
+  // The listeners each client starts, so a test can reach the service under `cloudConnect`.
+  const lans = { a: [] as LanService[], b: [] as LanService[] };
+  for (const [c, list] of [
+    [a, lans.a],
+    [b, lans.b],
+  ] as const) {
+    const orig = c.connect.lanLocal.bind(c.connect);
+    c.connect.lanLocal = async (opts) => {
+      const l = await orig(opts);
+      list.push(l);
+      return l;
+    };
+  }
+  return { worker, a, b, net: new MemoryMdnsNetwork(), lans };
 }
 type World = Awaited<ReturnType<typeof world>>;
 
@@ -159,15 +198,22 @@ describe("a local link after the pairing, with no account", () => {
       lan: "on",
       relay: "off",
     });
-    // A link is advertised only once the host marks it reachable.
-    expect(lAdverts(w.net)).toEqual([]);
+    // A new link is reachable by default (§15.12): both are advertised, and the list says so.
+    await until(() => lAdverts(w.net).length === 2);
+    expect(
+      (await w.a.cloudConnect.localLinks.list()).map((l) => l.reachable),
+    ).toEqual([true]);
     expect(await w.a.cloudConnect.localLinks.setReachable("nope", true)).toBe(
       false,
     );
+    // Off withdraws that device's advert; on brings it back.
+    expect(await w.a.cloudConnect.localLinks.setReachable(idOfB, false)).toBe(
+      true,
+    );
+    await until(() => lAdverts(w.net).length === 1);
     expect(await w.a.cloudConnect.localLinks.setReachable(idOfB, true)).toBe(
       true,
     );
-    await w.b.cloudConnect.localLinks.setReachable(idOfA, true);
     await until(() => lAdverts(w.net).length === 2);
     // No account advert, no product tag, no nameplate: `v=1` and `m=l`, and nothing else.
     expect([...w.net.adverts.values()].map((a) => a.txt)).toEqual([
@@ -370,5 +416,305 @@ describe("a local link after the pairing, with no account", () => {
       code: "no-token",
     });
     expect(w.a.cloudConnect.status().running).toBe(false);
+  });
+});
+
+const links = (c: PolarisKeyClient) => c.cloudConnect.localLinks;
+const lastLan = (l: LanService[]): LanService => l[l.length - 1]!;
+const rnd32 = (): Uint8Array => crypto.getRandomValues(new Uint8Array(32));
+
+describe("who the listener answers", () => {
+  it("a source group that sends junk is refused after two, and a link's own sessions are never counted against it", async () => {
+    const w = await ready();
+    // Three sessions in a row from one source group: a session that opens is not counted.
+    for (let i = 0; i < 3; i++) {
+      const s = await openB(w);
+      await until(() => w.inbound.length === i + 1);
+      await s.close();
+      // The one dial per link is repeated at once only after a success; no cooldown applies.
+    }
+    // Two junk message 1s from the same group spend its budget; the third dial is refused before
+    // any secret is tried, so the real peer's handshake closes without a session.
+    const port = [...w.net.adverts.values()][0]!.port;
+    const junk = (): Promise<void> =>
+      new Promise((done) => {
+        const sock = tcp({ host: "127.0.0.1", port });
+        sock.on("error", () => undefined);
+        sock.on("close", () => done());
+        sock.write(encodeFrame(rnd32().subarray(0, 32)));
+        sock.write(encodeFrame(new Uint8Array(96)));
+      });
+    // Whichever listener the first advert is, the junk goes to a listener that holds the link.
+    const target = [...w.net.adverts.values()][0]!.port;
+    expect([lastLan(w.lans.a).port, lastLan(w.lans.b).port]).toContain(target);
+    await junk();
+    await junk();
+    const owner = lastLan(w.lans.a).port === target ? w.a : w.b;
+    const peer = owner === w.a ? w.b : w.a;
+    const peerLink = owner === w.a ? w.idOfA : w.idOfB;
+    const sessions: ConnectSession[] = [];
+    links(owner).onLink((s) => sessions.push(s));
+    await expect(
+      (async () => {
+        // The peer must find the owner first; then its handshake is refused.
+        await until(async () => {
+          try {
+            await links(peer).open(peerLink);
+            return true;
+          } catch (e) {
+            if ((e as { reason?: string }).reason === "unknown_peer")
+              return false;
+            throw e;
+          }
+        });
+      })(),
+    ).rejects.toMatchObject({ code: ErrorCode.peerCertInvalid });
+    expect(sessions).toHaveLength(0);
+  });
+});
+
+describe("reachable by default and the cap of eight (§15.12)", () => {
+  it("a new link is reachable; the ninth reachable link is refused with local-links-full and stored off", async () => {
+    const w = await world();
+    const store = w.a.connect.localStore();
+    const add = (n: number) =>
+      store.add({
+        ownKey: rnd32(),
+        ownPublic: rnd32(),
+        peerKey: rnd32(),
+        secret: rnd32(),
+        label: `p${n}`,
+        cats: [],
+        now: T0,
+      });
+    for (let n = 0; n < 9; n++) expect((await add(n)).stored).toBe(true);
+    const list = await links(w.a).list();
+    expect(list.map((l) => l.reachable)).toEqual([
+      ...Array(8).fill(true),
+      false,
+    ]);
+    const ninth = list[8]!.id;
+    await expect(links(w.a).setReachable(ninth, true)).rejects.toMatchObject({
+      code: ErrorCode.localLinksFull,
+    });
+    expect((await links(w.a).list())[8]!.reachable).toBe(false);
+    // Turning one off makes room; turning an already reachable one on is not refused.
+    expect(await links(w.a).setReachable(list[0]!.id, false)).toBe(true);
+    expect(await links(w.a).setReachable(ninth, true)).toBe(true);
+    expect(await links(w.a).setReachable(list[1]!.id, true)).toBe(true);
+    expect((await links(w.a).list()).filter((l) => l.reachable)).toHaveLength(
+      8,
+    );
+  });
+});
+
+describe("no listener until a link is held", () => {
+  it("start() with no link binds nothing; the first pairing brings the listener up and forgetting the last takes it down", async () => {
+    const w = await world();
+    await startLan(w.a, w.net);
+    expect(w.a.cloudConnect.status()).toMatchObject({
+      running: true,
+      lan: "off",
+    });
+    expect(w.lans.a).toHaveLength(0);
+    const { idOfB } = await pair(w);
+    await until(() => w.a.cloudConnect.status().lan === "on");
+    await until(() => lAdverts(w.net).length === 1);
+    expect(await links(w.a).remove(idOfB)).toBe(true);
+    await until(() => w.a.cloudConnect.status().lan === "off");
+    await until(() => lAdverts(w.net).length === 0);
+    // Still started: a link made later brings it up again.
+    expect(w.a.cloudConnect.status().running).toBe(true);
+  });
+});
+
+describe("the gate is read again while it is on", () => {
+  it("every 1 to 4 hours, with jitter: a withdrawal reaches an idle host", async () => {
+    const w = await world();
+    const gate = w.a as unknown as { localRereadMs: () => number };
+    const spy = vi.spyOn(Math, "random");
+    spy.mockReturnValue(0);
+    expect(gate.localRereadMs()).toBe(3_600_000);
+    spy.mockReturnValue(0.999999);
+    expect(gate.localRereadMs()).toBeLessThan(4 * 3_600_000);
+    expect(gate.localRereadMs()).toBeGreaterThan(3.99 * 3_600_000);
+    spy.mockRestore();
+
+    gate.localRereadMs = () => 2 * 3_600_000;
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    vi.setSystemTime(T0 * 1000);
+    await w.a.discover();
+    expect(links(w.a).localPairing()).toBe(true);
+    w.worker.localPairing = false;
+    await vi.advanceTimersByTimeAsync(2 * 3_600_000 - 1000);
+    expect(links(w.a).localPairing()).toBe(true);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(links(w.a).localPairing()).toBe(false);
+  });
+});
+
+describe("last seen", () => {
+  it("is written at most once an hour, coarsened to the hour", async () => {
+    const w = await world();
+    await pair(w);
+    const row = (await w.a.connect.localStore().rows())[0]!;
+    const ref = {
+      id: row.id,
+      label: null,
+      categories: [],
+      peerKey: row.peerKey,
+      tag: localTag(Buffer.from(row.secret, "base64url")),
+    };
+    const seen = async () => (await links(w.a).list())[0]!.lastSeen;
+    expect(await seen()).toBeNull();
+    const hour = Math.floor(T0 / 3600) * 3600;
+    vi.setSystemTime((hour + 1234) * 1000);
+    await w.a.connect.touchLocal(ref);
+    expect(await seen()).toBe(hour);
+    // Later in the same hour: nothing changes.
+    vi.setSystemTime((hour + 3500) * 1000);
+    await w.a.connect.touchLocal(ref);
+    expect(await seen()).toBe(hour);
+    vi.setSystemTime((hour + 3600 + 5) * 1000);
+    await w.a.connect.touchLocal(ref);
+    expect(await seen()).toBe(hour + 3600);
+  });
+});
+
+describe("a link is used only while it is held", () => {
+  it("a reload while the dial is in flight does not break the handshake", async () => {
+    const w = await ready();
+    await until(() => lastLan(w.lans.b).localPeers().length === 1);
+    let release!: () => void;
+    door.hold = new Promise<void>((r) => (release = r));
+    const opening = links(w.b).open(w.idOfA);
+    await until(() => door.waiting === 1);
+    // The reload wipes the secrets the listener held when the dial began.
+    await lastLan(w.lans.b).refreshContacts();
+    door.hold = null;
+    release();
+    const s = await opening;
+    expect(s.local?.id).toBe(w.idOfA);
+  });
+
+  it("after await remove(), a dial to that link fails at once", async () => {
+    const w = await ready();
+    // A second link keeps the listener up (with none left it closes).
+    await w.a.connect.localStore().add({
+      ownKey: rnd32(),
+      ownPublic: rnd32(),
+      peerKey: rnd32(),
+      secret: rnd32(),
+      cats: [],
+      now: T0,
+    });
+    await until(() => lastLan(w.lans.a).localPeers().length === 1);
+    expect(await links(w.a).remove(w.idOfB)).toBe(true);
+    await expect(lastLan(w.lans.a).connectLocal(w.idOfB)).rejects.toMatchObject(
+      { reason: "unknown_peer" },
+    );
+  });
+
+  it("a session delivered to no handler is ended peer_bye, not left open and untracked", async () => {
+    const w = await world();
+    const { idOfA } = await pair(w);
+    // A's service has no `LocalLinks` attached: nobody to hand the session to.
+    const bare = await w.a.connect.lanLocal({ mdns: w.net.adapter(), ...LOOP });
+    try {
+      await startLan(w.b, w.net);
+      const s = await openTo(w.b, idOfA);
+      const closes: { code: string; byPeer: boolean }[] = [];
+      s.onClose((c) => closes.push(c));
+      await until(() => closes.length === 1);
+      expect(closes[0]).toEqual({ code: "peer_bye", byPeer: true });
+    } finally {
+      await bare.stop();
+    }
+  });
+
+  it("attach waits for the previous attach's sessions to end, and keeps the sessions made after", async () => {
+    const w = await ready();
+    const s1 = await openB(w);
+    await until(() => w.inbound.length === 1);
+    const ended: { code: string; byPeer: boolean }[] = [];
+    w.inbound[0]!.onClose((c) => ended.push(c));
+    await links(w.a).attach(lastLan(w.lans.a));
+    expect(ended).toEqual([{ code: "peer_bye", byPeer: false }]);
+    await s1.close().catch(() => undefined);
+    const s2 = await openB(w);
+    await until(() => w.inbound.length === 2);
+    const closes: { code: string }[] = [];
+    w.inbound[1]!.onClose((c) => closes.push(c));
+    // The session is tracked: forgetting its link ends it.
+    await links(w.a).remove(w.idOfB);
+    await until(() => closes.length === 1);
+    expect(closes[0]).toEqual({ code: "peer_revoked", byPeer: false });
+    await s2.close().catch(() => undefined);
+  });
+
+  it("a gate that moved while the service was starting is applied: the adverts are withdrawn", async () => {
+    for (const notify of [true, false]) {
+      const w = await world();
+      await pair(w);
+      let on = true;
+      const base = w.net.adapter();
+      const mdns = {
+        ...base,
+        advertise: async (a: Parameters<typeof base.advertise>[0]) => {
+          const h = await base.advertise(a);
+          on = false;
+          if (notify) w.a.connect.notifyLocals();
+          return h;
+        },
+      };
+      const lan = await LanService.startLocal(
+        { ...w.a.connect.lanSource(), localAllowed: () => on },
+        { mdns, ...LOOP },
+      );
+      try {
+        await until(() => lAdverts(w.net).length === 0);
+      } finally {
+        await lan.stop();
+      }
+      await endTest({ clients, dirs, stoppables: handles });
+      freezeAtT0();
+    }
+  });
+
+  it("a fault while a connection is accepted ends that socket and the listener keeps serving", async () => {
+    const w = await world();
+    await pair(w);
+    let boom = false;
+    const lan = await LanService.startLocal(
+      {
+        ...w.a.connect.lanSource(),
+        localAllowed: () => {
+          if (boom) throw new Error("fault");
+          return true;
+        },
+      },
+      { mdns: w.net.adapter(), ...LOOP },
+    );
+    try {
+      boom = true;
+      const closed = await new Promise<boolean>((done) => {
+        const sock = tcp({ host: "127.0.0.1", port: lan.port });
+        sock.on("error", () => undefined);
+        sock.on("close", () => done(true));
+      });
+      expect(closed).toBe(true);
+      boom = false;
+      const up = await new Promise<boolean>((done) => {
+        const sock = tcp({ host: "127.0.0.1", port: lan.port });
+        sock.on("error", () => done(false));
+        sock.on("connect", () => {
+          sock.destroy();
+          done(true);
+        });
+      });
+      expect(up).toBe(true);
+    } finally {
+      await lan.stop();
+    }
   });
 });

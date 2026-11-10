@@ -38,6 +38,8 @@ export interface AcceptGateOptions {
 export interface GateSlot {
   /** The judged source address (a link-local one keeps its zone). */
   readonly address: string;
+  /** The source group (a link, an IPv4 /24 or an IPv6 /64; the address when it has none). */
+  readonly group: string;
   /** The transport is up: the handshake window ends, the slot is kept. */
   established(): void;
   /** Release the slot and end the window. Also runs when the socket closes. */
@@ -99,6 +101,7 @@ export class AcceptGate {
     socket.once("close", settle);
     return {
       address: v.key,
+      group: limiterKeys(v.key).group ?? v.key,
       established: () => {
         clearTimeout(deadline);
         this.#up.add(socket);

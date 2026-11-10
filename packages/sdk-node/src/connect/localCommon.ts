@@ -168,6 +168,13 @@ export const full = (): PolarisError =>
     "This device holds the most local links it can for this app.",
   );
 
+/** Eight links are reachable already: turn one off before another is advertised (§15.12). */
+export const reachableFull = (): PolarisError =>
+  new PolarisError(
+    ErrorCode.localLinksFull,
+    "Eight local links are already reachable on this network; turn one off first.",
+  );
+
 const catsOk = (c: unknown): boolean =>
   Array.isArray(c) &&
   c.length <= MAX_CONTACT_CATS &&
@@ -275,6 +282,8 @@ export async function storeLink(
       return null;
     }
     a.linked = true;
+    // The listener starts (a device that held no link) and the new link is advertised.
+    src.notify();
     return { id: r.id, label: e.label ?? null, categories: [...e.cats] };
   } finally {
     e.secret.fill(0);
