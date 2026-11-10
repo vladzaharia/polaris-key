@@ -915,8 +915,9 @@ describe("@polaris-key/protocol/identity: Sign in with <Product> (WIRE-CONTRACT-
     expect(meta.subject_types_supported).toEqual(["pairwise"]);
     const view: identity.EndSessionView = {
       request: `eo_${"A".repeat(22)}`,
-      product: { appName: "DJDL", iconUrl: null },
+      product: { slug: "djdl", appName: "DJDL", iconUrl: null },
       client: null,
+      returns: false,
       returnHost: null,
       signedIn: true,
       expiresAt: 1_800_000_120,

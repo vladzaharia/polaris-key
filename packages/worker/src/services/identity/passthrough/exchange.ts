@@ -51,7 +51,7 @@ import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { ErrorCode, errorResponse } from "../../../core/errors.js";
 import { appendAudit } from "../../../core/audit.js";
-import { rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { isValidClientDeviceId } from "../../../core/devices.js";
 import {
   deviceKeysHeldElsewhere,
@@ -168,7 +168,7 @@ export async function handleExchange(
     !(await rateLimitOk(
       env,
       product.slug,
-      { ...TOKEN_DEVICE_RATE, id: deviceId },
+      { ...TOKEN_DEVICE_RATE, id: `${deviceId}:${clientNetwork(req)}` },
       now,
     ))
   )

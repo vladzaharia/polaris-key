@@ -117,7 +117,7 @@ export { bindWithoutChoice };
 
 const CLIENT_ID_RE = new RegExp(CLIENT_ID_PATTERN);
 
-/** The token endpoint: 30 a minute per client network, 10 per device id; both fail closed. */
+/** The token endpoint: 30 a minute per client network, 10 per device id and network; both fail closed. */
 export const TOKEN_RATE = { bucket: "identityToken", limit: 30, windowSec: 60 };
 export const TOKEN_DEVICE_RATE = {
   bucket: "identityTokenDevice",
@@ -213,7 +213,7 @@ export async function handleToken(ctx: {
     !(await rateLimitOk(
       env,
       product.slug,
-      { ...TOKEN_DEVICE_RATE, id: deviceId },
+      { ...TOKEN_DEVICE_RATE, id: `${deviceId}:${clientNetwork(req)}` },
       now,
     ))
   )

@@ -33,16 +33,19 @@ const revoke = (
   );
 
 describe("revoke (IS-14, IS-2)", () => {
-  it("is 60 a minute per client, failing closed, and another client has its own budget", async () => {
-    const spa = (n: number) =>
+  it("is 60 a minute per public client and network, failing closed, and another network or client has its own", async () => {
+    const spa = (ip: string) =>
       revoke(
-        { "cf-connecting-ip": `198.51.100.${n % 250}` },
+        { "cf-connecting-ip": ip },
         { token: "pkeyo_" + "A".repeat(43), client_id: s.spa.clientId },
       );
-    for (let i = 0; i < 60; i++) expect((await spa(i)).status).toBe(200);
-    const limited = await spa(61);
+    for (let i = 0; i < 60; i++)
+      expect((await spa("198.51.100.1")).status).toBe(200);
+    const limited = await spa("198.51.100.1");
     expect(limited.status).toBe(429);
     expect(await err(limited)).toBe("rate_limited");
+    // A stranger who knows the public client_id cannot use up the client's budget elsewhere.
+    expect((await spa("203.0.113.9")).status).toBe(200);
     expect(
       (
         await revoke(basic(s.web.clientId, s.secret), {
@@ -50,6 +53,16 @@ describe("revoke (IS-14, IS-2)", () => {
         })
       ).status,
     ).toBe(200);
+  });
+
+  it("is 60 a minute per confidential client from anywhere", async () => {
+    const web = (n: number) =>
+      revoke(
+        { ...basic(s.web.clientId, s.secret), "cf-connecting-ip": `198.51.100.${n}` },
+        { token: "pkeyo_" + "A".repeat(43) },
+      );
+    for (let i = 0; i < 60; i++) expect((await web(i)).status).toBe(200);
+    expect((await web(61)).status).toBe(429);
   });
 
   it("audits a family it revokes, naming the client and holding no token", async () => {

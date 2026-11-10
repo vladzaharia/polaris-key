@@ -13,7 +13,7 @@
 import { ISSUER_REFRESH_TOKEN_PATTERN } from "@polaris-key/protocol/identity";
 import { appendAudit } from "../../../core/audit.js";
 import { ErrorCode, methodNotAllowed } from "../../../core/errors.js";
-import { rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { randomId } from "../../../platform/crypto.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
@@ -24,7 +24,11 @@ import { issuerServed } from "./served.js";
 
 const TOKEN_RE = new RegExp(ISSUER_REFRESH_TOKEN_PATTERN);
 
-/** `revoke`: 60 a minute per client (§12.13.11), failing closed. */
+/**
+ * `revoke` (§12.13.11), failing closed: 60 a minute per `client_id` and client network for a public
+ * client (a stranger who knows the id cannot use up its budget from elsewhere), per `client_id` for
+ * a confidential one (the developer's server).
+ */
 export const REVOKE_RATE = {
   bucket: "identityIssuerRevoke",
   limit: 60,
@@ -54,7 +58,13 @@ export async function handleRevoke(
     !(await rateLimitOk(
       env,
       slug,
-      { ...REVOKE_RATE, id: client.clientId },
+      {
+        ...REVOKE_RATE,
+        id:
+          client.type === "web"
+            ? client.clientId
+            : `${client.clientId}:${clientNetwork(req)}`,
+      },
       now,
     ))
   )

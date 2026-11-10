@@ -1504,7 +1504,7 @@ export interface EndSessionParams {
 export interface EndSessionView {
   /** {@link END_SESSION_HANDLE_PATTERN}. */
   request: string;
-  product: { appName: string; iconUrl: string | null };
+  product: { slug: string; appName: string; iconUrl: string | null };
   /** The client named, or null when none was. */
   client: {
     name: string;

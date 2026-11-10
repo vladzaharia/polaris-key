@@ -182,6 +182,20 @@ describe("end-session", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
+  it("a refusal speaks about signing out, gives one instruction and a way to sign out of Polaris Locker", async () => {
+    for (const params of [
+      { client_id: "cl_" + "z".repeat(22) },
+      { post_logout_redirect_uri: OUT },
+    ]) {
+      const { res } = await endSession(params);
+      const html = await res.text();
+      expect(html).toContain("Couldn&#x27;t finish signing out");
+      expect(html).toContain("sign-out isn&#x27;t set up correctly");
+      expect(html).toContain("Sign out in Polaris Locker");
+      expect(html).not.toMatch(/Sign-in can|try again|close this page/i);
+    }
+  });
+
   it("answers the registry's 404 while the issuer is off", async () => {
     await ingestIdentity(w.db, SLUG, { issuer: { enabled: false } });
     expect((await endSession({})).res.status).toBe(404);
@@ -249,6 +263,7 @@ describe("the sign-out page and its routes", () => {
     const v = (await res.json()) as EndSessionView;
     expect(v).toMatchObject({
       request: out.handle,
+      product: { slug: SLUG },
       client: { name: "Forum", developerName: "Forum Ltd", nameVerified: true },
       returns: true,
       returnHost: "forum.example.com",

@@ -116,7 +116,11 @@ export async function endSessionView(
   const returns = stored !== null && record.returnUri !== null;
   const view: EndSessionView = {
     request: handle,
-    product: { appName: app.appName, iconUrl: app.iconUrl },
+    product: {
+      slug: product.slug,
+      appName: app.appName,
+      iconUrl: app.iconUrl,
+    },
     client: registered
       ? {
           name: registered.name,

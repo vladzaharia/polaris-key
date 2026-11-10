@@ -1614,7 +1614,7 @@ differs from the pushed record renders `invalid_client`. Any other parameter alo
    A JSON body, a missing or repeated parameter is `invalid_request`. It needs `X-PKey-Device`;
    the metadata headers are read when present. The answer is `no-store`, and CORS answers the
    product's `web.origins` only, never with credentials. 30 a minute per client network and 10 a
-   minute per device id, failing closed (`429 rate_limited` with `retryAfter`).
+   minute per device id and client network, failing closed (`429 rate_limited` with `retryAfter`).
 2. **The code.** It is redeemed against the challenge derived from the verifier in one atomic
    operation. Match or mismatch, the code ends, so a wrong verifier cannot be guessed at and a
    second redemption finds nothing. An unknown, expired, used or mismatching code, another
@@ -2562,7 +2562,7 @@ The card shows the product, the client, "by <developer>" and the return host (IS
 3. **Other grants.** The token-exchange and restore grants are the own client's: a registered client that sends one gets `unauthorized_client`. `client_credentials` is `unsupported_grant_type` until U-16, and so is an unknown grant.
 4. **A `200`** (`IssuerTokenResponse`) carries exactly `access_token` (an `at+jwt`), `token_type: "Bearer"`, `expires_in: 600`, `scope` (the granted scope, space-delimited), `id_token`, and `refresh_token` only when `offline_access` is granted. It has no layer-1 member (`schemaVersion`, `device`, `license`, `subject`).
 5. **Errors** are flat (RFC 6749 §5.2), `{"error", "error_description"?}` (`IssuerTokenError`): `400 invalid_request`, `401 invalid_client`, `400 invalid_grant`, `400 unauthorized_client`, `400 unsupported_grant_type` and `400 invalid_scope`; and `429 rate_limited` with `Retry-After` (§12.13.11).
-6. **Budgets** (IS-12). The credential is verified first, and a correct one is never refused by a failure budget. A failed authentication is counted per `client_id` and network (10 a minute, then `429 rate_limited`); a high count per `client_id` alone is a signal and refuses nothing, so a stranger who knows a public `client_id` cannot lock the client out. A request is counted per `client_id` and network (60 a minute) after authentication. A `client_id` that does not match the id pattern is `401 invalid_client` and keys no budget (`revoke` too).
+6. **Budgets** (IS-12). The credential is verified first, and a correct one is never refused by a failure budget. A failed authentication is counted per `client_id` and network (20 a minute, then `429 rate_limited`); a high count per `client_id` alone is a signal and refuses nothing, so a stranger who knows a public `client_id` cannot lock the client out. A request is counted after authentication as §12.13.11 says: per `client_id` and network for a public client, per `client_id` for a confidential one. A `client_id` that does not match the id pattern is `401 invalid_client` and keys no budget (`revoke` too).
 
 #### 12.13.5 The tokens and the issuer key
 
@@ -2671,7 +2671,7 @@ A person reads "<Client> is signed out within 10 minutes", which is the access t
 
    | Route                                | Answer                                                                                                                                                             |
    | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-   | `GET /api/signout/requests/<handle>` | `EndSessionView`: `{request, product: {appName, iconUrl}, client: {name, developerName, iconUrl, nameVerified} \| null, returns, returnHost, signedIn, expiresAt}` |
+   | `GET /api/signout/requests/<handle>` | `EndSessionView`: `{request, product: {slug, appName, iconUrl}, client: {name, developerName, iconUrl, nameVerified} \| null, returns, returnHost, signedIn, expiresAt}` |
    | `POST …/confirm` (**Sign out**)      | Ends the Polaris Locker session on this host and no other. `{"redirect": "<post_logout_redirect_uri>?state=…"}`, or `{"redirect": null}` with no return            |
    | `POST …/cancel` (**Stay signed in**) | Ends nothing. The same answer                                                                                                                                      |
 
@@ -2681,7 +2681,7 @@ A person reads "<Client> is signed out within 10 minutes", which is the access t
 
 #### 12.13.10 The device exchange [C]
 
-D6. A product's own app gets a short-lived access token for its developer's backend (SP-68) from its device token, with no `openid` and no browser. Pinned by `identity-access-token.json` (I-21.13): the exchange, its refusals and Identity off. `POST /<p>/identity/token`, form-encoded, as §12.5 rule 1 (`X-PKey-Device` required, a `no-store` answer, CORS for `web.origins`, 30 a minute per client network and 10 a minute per device id, failing closed):
+D6. A product's own app gets a short-lived access token for its developer's backend (SP-68) from its device token, with no `openid` and no browser. Pinned by `identity-access-token.json` (I-21.13): the exchange, its refusals and Identity off. `POST /<p>/identity/token`, form-encoded, as §12.5 rule 1 (`X-PKey-Device` required, a `no-store` answer, CORS for `web.origins`, 30 a minute per client network and 10 a minute per device id and client network, failing closed):
 
 | Parameter              | Value                                                                           |
 | ---------------------- | ------------------------------------------------------------------------------- |
@@ -2693,7 +2693,7 @@ D6. A product's own app gets a short-lived access token for its developer's back
 
 1. **Served** while Identity is on and the issuer is served (§12.13), because its token verifies only against the issuer's key set. Otherwise the subject token type is unknown: `400 invalid_request`, as §12.11.7 answers an unknown type. Discovery's identity fragment carries `"accessToken": true` exactly while it is served (§12.6).
 2. **Checks** (IS-11). Each refusal is the one `400 invalid_grant`: the subject token is a live device token of this product, it belongs to the device `X-PKey-Device` names, and that device is signed in (it holds a sign-in binding, §12.3). `actor_token` or `actor_token_type` is `invalid_request`. `scope`, `audience` and `resource` are ignored. A registered client, once authenticated (§12.13.2), gets `unauthorized_client`; any other `client_id` that is not the slug is `invalid_client`.
-3. **A `200`** (`AccessTokenExchangeResponse`) carries exactly `access_token`, `issued_token_type: "urn:ietf:params:oauth:token-type:access_token"`, `token_type: "Bearer"`, `expires_in: 600` and `scope: ""`; never a refresh token or an `id_token`. The access token is §12.13.5's, with `sub` the device's pairwise subject, `client_id` the slug, `scope` `""`, and no `auth_time` or `pkey:entitlements`. It never yields more than the device token.
+3. **A `200`** (`AccessTokenExchangeResponse`) carries exactly `access_token`, `issued_token_type: "urn:ietf:params:oauth:token-type:access_token"`, `token_type: "Bearer"`, `expires_in: 600` and `scope: ""`; never a refresh token or an `id_token`. The access token is §12.13.5's, with `sub` the device's pairwise subject, `client_id` the slug, `scope` `""`, and no `auth_time` or `pkey:entitlements`. It is not a licence check (a backend that needs one verifies the licence document), and the exchange writes no audit row. It never yields more than the device token.
 4. **The client** (I-21b). An SDK asks only when `accessToken` is in discovery; without it the call raises `service-unavailable`. It keeps the token in memory only, reuses it until `expires_in − 60` seconds have passed, and drops it on sign-out.
 
 #### 12.13.11 Limits, errors and deployed clients
@@ -2709,7 +2709,7 @@ D6. A product's own app gets a short-lived access token for its developer's back
 | `token`                                          | 30 a minute per `client_id` and client network for a public client; 600 a minute per confidential `client_id`; 20 failed client authentications a minute per `client_id` and client network (a correct credential is never refused by it) |
 | The device exchange                              | §12.5 rule 1                                                                                                                                                                                                                              |
 | `userinfo`                                       | 120 a minute per client network, and 120 a minute per subject and client once the token verifies                                                                                                                                          |
-| `revoke`                                         | 60 a minute per client                                                                                                                                                                                                                    |
+| `revoke`                                         | 60 a minute per `client_id` and client network for a public client, per `client_id` for a confidential one                                                                                                                                |
 | `end-session`                                    | 30 a minute per client network                                                                                                                                                                                                            |
 
 **Errors.** Eight new wire codes are registered in `conformance/parity/errors.json`: `unsupported_response_type`, `request_not_supported`, `request_uri_not_supported`, `login_required`, `consent_required` and `interaction_required` in the `authorize` redirect, `unauthorized_client` on `token` and `revoke`, and `invalid_token` on `userinfo`. They reach a relying party and never an app built on a Polaris SDK. The rest are existing codes: `invalid_request`, `invalid_client`, `invalid_grant`, `invalid_scope`, `unsupported_grant_type`, `redirect_uri_mismatch`, `access_denied`, `server_error`, `bad_request`, `not_found` and `rate_limited`. No client code is new: I-21b's SDKs raise `service-unavailable` without `accessToken`.

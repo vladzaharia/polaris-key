@@ -424,6 +424,9 @@ back, and you decide what it gets.
 - **Signing out.** An app can send you to Polaris Locker to sign out. Polaris Locker asks first, and
   ends only the session in that browser. The audit trail keeps that the session ended and which app
   asked, with no token or address.
+- **Your own app's access token.** A product's own app can trade its device token for a 10-minute
+  access token its developer's server can check. It names your pairwise identifier and nothing
+  else, and no audit row is written for it.
 - **The developer's trail.** The product's developer sees, per app, how many people signed in over
   30 days and the sign-in history by pairwise identifier. They do not see what an app did with what
   you shared.

@@ -316,6 +316,19 @@ describe("refusals (IS-11)", () => {
   });
 });
 
+describe("the per-device budget is also per network", () => {
+  it("a stranger who knows a device id spends only their own network's budget", async () => {
+    const stranger = { "x-pkey-device": A, "cf-connecting-ip": "198.51.100.9" };
+    const owner = { "x-pkey-device": A, "cf-connecting-ip": "203.0.113.5" };
+    const guess = form({ subject_token: "pkeyt_" + "x".repeat(43) });
+    for (let i = 0; i < 10; i++)
+      expect((await exchange(guess, stranger)).status).toBe(400);
+    expect((await exchange(guess, stranger)).status).toBe(429);
+    // The device itself, from its own network, is not starved.
+    expect((await exchange(form(), owner)).status).toBe(200);
+  });
+});
+
 describe("what the token is not", () => {
   it("userinfo refuses it (no openid), and so does an id_token hint", async () => {
     const { access_token: token } = (await (await exchange()).json()) as {

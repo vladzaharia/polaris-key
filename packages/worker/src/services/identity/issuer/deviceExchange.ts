@@ -14,6 +14,10 @@
  * `client_id` the slug, its `aud` the issuer. A registered client never gets here (`token.ts` routes
  * it to `unauthorized_client`).
  *
+ * The access token says who the device's person is to the product, and no more. It is NOT a
+ * licence check: it carries no entitlement and does not show that a licence is valid, so a backend
+ * that needs one verifies the licence document. The exchange writes no audit row.
+ *
  * ── THE CHECKS, IN ORDER ────────────────────────────────────────────────────────────────────
  *
  *   1. Served only while Identity is on (the registry has established it) AND the issuer is served;
@@ -21,7 +25,8 @@
  *   2. Shape: `client_id`, `requested_token_type` and `subject_token` present, no `actor_token` or
  *      `actor_token_type`, `X-PKey-Device` well formed (all `invalid_request`; a `client_id` that
  *      is not the slug is `invalid_client`). `scope`, `audience` and `resource` are ignored.
- *   3. The budget, 10 a minute per device id, failing closed (the per-network budget ran before).
+ *   3. The budget, 10 a minute per device id and client network, failing closed (the per-network
+ *      budget ran before).
  *   4. One `invalid_grant` for every refusal of the credential: the subject token is not a live
  *      device token of this product, is not the one `X-PKey-Device` names, or the device holds no
  *      sign-in (a bound pairwise subject whose account is active and not erased).
@@ -35,7 +40,7 @@ import {
 } from "@polaris-key/protocol/identity";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 import { ErrorCode } from "../../../core/errors.js";
-import { rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   isValidClientDeviceId,
   validateDeviceToken,
@@ -90,7 +95,7 @@ export async function handleDeviceExchange(cx: {
   const withinBudget = await rateLimitOk(
     env,
     product.slug,
-    { ...TOKEN_DEVICE_RATE, id: deviceId },
+    { ...TOKEN_DEVICE_RATE, id: `${deviceId}:${clientNetwork(req)}` },
     now,
   );
   if (!withinBudget)

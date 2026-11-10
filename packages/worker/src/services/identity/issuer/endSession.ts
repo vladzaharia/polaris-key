@@ -18,9 +18,12 @@
  *   4. `post_logout_redirect_uri` is used only when the client is known and the string equals one
  *      of its registered `postLogoutRedirectUris` (`matchRedirectUri`: the exact string, the
  *      loopback port aside). One sent without a client, or unmatched, is `invalid_request`. The
- *      return stored is the REGISTERED string, never the one the request sent.
+ *      return stored is the REGISTERED string, never one the request sent; the loopback port
+ *      aside, which is the presented one (a native client's loopback port is free, RFC 8252 §7.3).
  *
- * Both refusals are branded pages with no way forward but "close this page". A product whose
+ * Every refusal is one branded page about signing out ("Couldn't finish signing out"): it names
+ * the app, says its sign-out isn't set up correctly, and links to Polaris Locker so the person can
+ * sign out there. It never offers "try again", which cannot help with a misconfigured client. A product whose
  * issuer is off answers the registry's `404` (a `null` here). The route has a budget of 30 a
  * minute per client network, failing closed.
  */
@@ -38,8 +41,6 @@ import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   appForPage,
   brandPageResponse,
-  codeRefusalPage,
-  CLOSE_PAGE,
 } from "../../../core/brandPage.js";
 import { escapeHtml } from "../../../platform/html.js";
 import { customerHostname, customerOrigin } from "../../../core/hosts.js";
@@ -80,15 +81,21 @@ async function readForm(req: Request): Promise<URLSearchParams | null> {
   }
 }
 
-function invalidRequestPage(app: {
-  name: string;
-  iconUrl?: string | null;
-}): Response {
-  const title = "Sign-out request not understood";
-  return brandPageResponse(400, {
+/**
+ * The one refusal of an end-session request that cannot go on (a request the issuer does not
+ * understand, a client that is not a live client's): it speaks about signing out, says one thing
+ * to do, and offers the way the person can still sign out of Polaris Locker themselves.
+ */
+function refusalPage(
+  status: number,
+  app: { name: string; iconUrl?: string | null },
+  library: string,
+): Response {
+  const title = "Couldn't finish signing out";
+  return brandPageResponse(status, {
     title,
     heading: title,
-    body: `<p>${escapeHtml("Go back to the app and try again.")}</p><p class="muted small">${CLOSE_PAGE}</p>`,
+    body: `<p>${escapeHtml(`${app.name}'s sign-out isn't set up correctly. Let its developer know.`)}</p><p class="actions"><a class="button" href="${escapeHtml(library)}">Sign out in Polaris Locker</a></p>`,
     app,
   });
 }
@@ -118,11 +125,15 @@ export async function handleEndSession(ctx: {
       body: "<p>Wait a minute, then try again.</p>",
     });
 
-  const app = () => appForPage(ctx);
+  const apiOrigin = new URL(req.url).origin;
+  const customer =
+    customerHostname(env) === null ? null : customerOrigin(env, req);
+  const refuse = async (status: number): Promise<Response> =>
+    refusalPage(status, await appForPage(ctx), `${customer ?? apiOrigin}/`);
   let params: URLSearchParams;
   if (req.method === "POST") {
     const form = await readForm(req);
-    if (form === null) return invalidRequestPage(await app());
+    if (form === null) return refuse(400);
     params = form;
   } else params = new URL(req.url).searchParams;
 
@@ -137,24 +148,24 @@ export async function handleEndSession(ctx: {
     stateParam === null ||
     (stateParam !== undefined && stateParam.length > AUTHORIZE_STATE_MAX)
   )
-    return invalidRequestPage(await app());
+    return refuse(400);
 
   // The client: named, or the hint's audience. They agree when both are sent.
   const audience = hint === undefined ? undefined : hintAudience(hint);
-  if (audience === null) return invalidRequestPage(await app());
+  if (audience === null) return refuse(400);
   if (
     clientParam !== undefined &&
     audience !== undefined &&
     clientParam !== audience
   )
-    return invalidRequestPage(await app());
+    return refuse(400);
   const clientId = clientParam ?? audience;
   let client = null;
   if (clientId !== undefined) {
     client = CLIENT_ID_RE.test(clientId)
       ? await getActiveClient(db, product.slug, clientId)
       : null;
-    if (!client) return codeRefusalPage(401, "invalid_client", await app());
+    if (!client) return refuse(401);
   }
 
   const issuer = `${new URL(req.url).origin}/${product.slug}/identity`;
@@ -167,7 +178,7 @@ export async function handleEndSession(ctx: {
       client.clientId,
       hint,
     );
-    if (hintSub === null) return invalidRequestPage(await app());
+    if (hintSub === null) return refuse(400);
   }
 
   // The return: only a registered string of a known client, never the one the request sent.
@@ -180,12 +191,9 @@ export async function handleEndSession(ctx: {
           client.type,
         )
       : null;
-    if (returnUri === null) return invalidRequestPage(await app());
+    if (returnUri === null) return refuse(400);
   }
 
-  const apiOrigin = new URL(req.url).origin;
-  const customer =
-    customerHostname(env) === null ? null : customerOrigin(env, req);
   const crossHost = customer !== null && customer !== apiOrigin;
   let created: Awaited<ReturnType<typeof createEndSession>>;
   try {
@@ -205,9 +213,9 @@ export async function handleEndSession(ctx: {
     );
   } catch {
     return cardPage(503, {
-      title: "Try again",
-      heading: "Try again",
-      body: "<p>Go back to the app and try again.</p>",
+      title: "Couldn't finish signing out",
+      heading: "Couldn't finish signing out",
+      body: `<p>Go back to the app and try again.</p><p class="actions"><a class="button" href="${escapeHtml(`${customer ?? apiOrigin}/`)}">Sign out in Polaris Locker</a></p>`,
     });
   }
   const origin = crossHost && created.bindToken ? customer : apiOrigin;

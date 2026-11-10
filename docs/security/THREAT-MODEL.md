@@ -11685,7 +11685,10 @@ the contract cites. Tests: `test/services/identity/issuer/*.test.ts` and `test/a
   `400 invalid_grant`; a registered client gets `unauthorized_client`, an unserved issuer
   `invalid_request`. The answer is 600 seconds, an empty scope, no refresh token, no `id_token`,
   no `auth_time` and no entitlements: never more than the device token. 10 a minute per device and
-  30 a minute per network, failing closed. Tests: `issuerDeviceExchange`.
+  network and 30 a minute per network, failing closed (a stranger who knows a device id spends only
+  the budget of their own network). The exchange writes no audit row: the access token is a short
+  statement of who the device's person is, never a licence check, and the exchange is a read of what
+  the device already holds. Tests: `issuerDeviceExchange`.
 - **IS-12 Client secret leakage.** `pkeycs_` has a scannable prefix, is stored only as an HMAC under
   the pepper, shown once, at most 2 live per client, with `last_used_at`. A public client holds no
   secret. The credential is hashed and compared against every live secret in constant time whether
@@ -11696,19 +11699,23 @@ the contract cites. Tests: `test/services/identity/issuer/*.test.ts` and `test/a
   of Polaris Locker too?". `post_logout_redirect_uri` is used only when the client is known (by
   `client_id`, or by the `id_token_hint`'s audience, which the hint's verification then binds) and
   the string equals one of its registered `postLogoutRedirectUris`; the redirect built is the
-  REGISTERED string plus `state`, never the one sent, and anything else renders a branded page and
-  redirects nowhere. The hint is checked as at `authorize` (`alg` and `typ` pinned, this product's
+  REGISTERED string plus `state`, never the one sent (the loopback port of a native client aside: it
+  is the presented one), and anything else renders a branded page and redirects nowhere. The hint is checked as at `authorize` (`alg` and `typ` pinned, this product's
   keys, `iss`, `aud`; expired accepted). A repeated or oversized parameter is refused. The handle
   (`eo_`, 120 seconds, single use) is bound to the browser by the `__Host-pk_req` binder; the page
   and its three JSON routes are same-origin, and Sign out and Stay signed in need the portal CSRF
   header while the browser holds a session, are refused cross-site by Fetch Metadata, and spend
   the handle only after every check has passed. Sign out ends this browser's one session, never
-  another session of the account; refresh tokens and grants survive it. Tests: `issuerEndSession`,
+  another session of the account; refresh tokens and grants survive it. Residual: redeeming the bind
+  token of a cross-host hand-off replaces the browser's `__Host-pk_req` binder (the LK-04
+  precedent), so a hostile link can break a sign-in card that is open in that browser; the
+  person starts it again, and nothing is granted or ended. Tests: `issuerEndSession`,
   `I21-endSession`.
 - **IS-14 Cost and denial of service.** Each limit of §12.13.11 fails closed: `authorize` 60 a
   minute per network, `token` 30 per client and network (public) or 600 per client (confidential)
   with 20 failed authentications per client and network, `userinfo` 120 per network and per subject
-  and client, `revoke` 60 per client, `end-session` 30 per network, the exchange 10 per device.
+  and client, `revoke` 60 per client and network (public) or per client (confidential), `end-session` 30 per
+  network, the exchange 10 per device and network.
   Client and redirect-URI counts are capped (20 clients, 10 redirect URIs, 10 post-logout URIs, 2
   secrets), refresh families are capped at 10, and discovery and the key set are public and cached.
   Residual: RSA signing is a CPU cost per token, bounded by those limits and by 600-second token
