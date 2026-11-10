@@ -2,6 +2,7 @@
 # Swift lint (P0-46.6): `swift format lint` against the ledger sdks/swift/lint-debt.json.
 #   tools/lint.sh check    fail on a new finding, and on debt the tool no longer reports
 #   tools/lint.sh record   rewrite the ledger from today's findings
+#   tools/lint.sh check --files <list>   only the repo-relative files listed (the pre-commit hook)
 #   tools/lint.sh check-or-skip   check, or skip with a note on another toolchain (pnpm gate's step)
 # swift-format ships with the Swift toolchain, so there is nothing to download: the version is the
 # toolchain's. CI's apple job selects Xcode 26.6 (tools/select-xcode-26.sh), Swift 6.3. A rule set
@@ -16,6 +17,16 @@ mode="${1:-check}"
 skip_other=""
 if [ "$mode" = check-or-skip ]; then mode=check; skip_other=1; fi
 case "$mode" in check | record) ;; *) echo "usage: tools/lint.sh check|record|check-or-skip" >&2; exit 2 ;; esac
+# `check --files <list>`: lint only those repo-relative paths (the pre-commit hook's staged files,
+# tools/lint-staged.mjs) and hold them to the same ledger; the whole-tree run is unchanged.
+only=""; targets=()
+if [ "${2:-}" = --files ]; then
+  [ "$mode" = check ] && [ -n "${3:-}" ] || { echo "usage: tools/lint.sh check --files <list>" >&2; exit 2; }
+  only="$3"
+  while IFS= read -r f; do [ -n "$f" ] && targets+=("${f#sdks/swift/}"); done <"$only"
+  [ "${#targets[@]}" -gt 0 ] || exit 0
+fi
+only_args=(); [ -n "$only" ] && only_args=(--only "$only")
 
 EXPECTED_SWIFT="6.3"
 have="$(swift --version 2>&1 | sed -n 's/.*Swift version \([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' | head -n 1)"
@@ -33,9 +44,14 @@ debt="../../tools/lint/lint-debt.mjs"
 tmp="$(mktemp -d)"
 trap '/bin/rm -rf "$tmp"' EXIT
 
-# The files to lint: tracked-or-not .swift under Sources and Tests, minus generated ones.
-find Sources Tests -name '*.swift' -not -path '*/.build/*' -not -path '*/Resources/*' \
-  -not -name '*.generated.swift' | LC_ALL=C sort | while IFS= read -r f; do
+# The files to lint: the listed ones, or every .swift under Sources and Tests, minus generated ones.
+if [ "${#targets[@]}" -gt 0 ]; then
+  printf '%s\n' "${targets[@]}"
+else
+  find Sources Tests -name '*.swift' -not -path '*/.build/*' -not -path '*/Resources/*' \
+    -not -name '*.generated.swift'
+fi | LC_ALL=C sort | while IFS= read -r f; do
+  case "$f" in */.build/* | */Resources/* | *.generated.swift) continue ;; esac
   head -n 8 "$f" | grep -q 'GENERATED' || printf '%s\n' "$f"
 done >"$tmp/files"
 
@@ -49,4 +65,4 @@ if [ "$rc" -ne 0 ] && ! grep -q ': warning: ' "$tmp/lint.txt"; then
   exit 2
 fi
 
-node "$debt" "$mode" --tool swift-format --ledger lint-debt.json --input "$tmp/lint.txt"
+node "$debt" "$mode" --tool swift-format --ledger lint-debt.json --input "$tmp/lint.txt" ${only_args[@]+"${only_args[@]}"}

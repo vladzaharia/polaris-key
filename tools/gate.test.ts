@@ -99,7 +99,7 @@ describe("plan", () => {
   });
   it("a shared input runs every lane step, format excepted", () => {
     const all = STEPS.map((s) => s.id).filter((id) => id !== "format");
-    expect(ran(["tools/x.ts"])).toEqual(all);
+    expect(ran(["tools/ci-scope.mjs"])).toEqual(all);
     expect(ran(["conformance/corpus/v2/cases.json"])).toEqual(all);
   });
   it("unknown changes (null) run every lane step", () => {

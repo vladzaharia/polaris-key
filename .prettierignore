@@ -130,3 +130,4 @@ examples/ui/recipes/pnpm-lock.yaml
 
 # SP-52b.5: the Swift kit copy is written minified by `pnpm gen brand` (byte-compared).
 sdks/swift/Sources/PolarisKeyUICore/Resources/kit-copy.json
+actions/publish/dist/

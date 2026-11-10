@@ -2,6 +2,7 @@
 # Kotlin lint (P0-46.5): ktlint and detekt against the shared ledger sdks/kotlin/lint-debt.json.
 #   tools/lint.sh check    fail on a new finding, and on debt a tool no longer reports
 #   tools/lint.sh record   rewrite both tools' entries from today's findings
+#   tools/lint.sh check --files <list>   only the repo-relative files listed (the pre-commit hook)
 # Runs the CLI jars (not Gradle plugins: detekt's plugin targets Kotlin 2.0, the build is on 2.1),
 # downloaded from Maven Central into build/lint-tools/ (gitignored) and verified against
 # tools/lint-tools.sha256 before every run. Default configs. Needs `java` (JDK 17), curl, node.
@@ -10,6 +11,16 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 mode="${1:-check}"
 case "$mode" in check | record) ;; *) echo "usage: tools/lint.sh check|record" >&2; exit 2 ;; esac
+# `check --files <list>`: lint only those repo-relative paths (the pre-commit hook's staged files,
+# tools/lint-staged.mjs) and hold them to the same ledger; the whole-tree run is unchanged.
+only=""; targets=()
+if [ "${2:-}" = --files ]; then
+  [ "$mode" = check ] && [ -n "${3:-}" ] || { echo "usage: tools/lint.sh check --files <list>" >&2; exit 2; }
+  only="$3"
+  while IFS= read -r f; do [ -n "$f" ] && targets+=("${f#sdks/kotlin/}"); done <"$only"
+  [ "${#targets[@]}" -gt 0 ] || exit 0
+fi
+only_args=(); [ -n "$only" ] && only_args=(--only "$only")
 debt="../../tools/lint/lint-debt.mjs"
 dir="${LINT_TOOLS_DIR:-build/lint-tools}"
 sums="tools/lint-tools.sha256"
@@ -43,9 +54,11 @@ fetch "$ktlint_jar"; fetch "$detekt_jar"
 dirs=()
 while IFS= read -r d; do dirs+=("$d"); done < <(find . -type d -path '*/src/*/kotlin' -not -path '*/build/*' | sed 's#^\./##' | sort)
 [ "${#dirs[@]}" -gt 0 ] || { echo "no Kotlin source trees found" >&2; exit 2; }
+# A partial run lints the listed files only (detekt takes files as well as directories).
+[ "${#targets[@]}" -gt 0 ] && dirs=("${targets[@]}")
 
 # ktlint exits 1 on findings; the adapter rejects anything that is not its JSON, so a crash cannot pass.
-globs=(); for d in "${dirs[@]}"; do globs+=("$d/**/*.kt"); done
+globs=(); for d in "${dirs[@]}"; do if [ -d "$d" ]; then globs+=("$d/**/*.kt"); else globs+=("$d"); fi; done
 java -jar "$dir/$ktlint_jar" --log-level=error --reporter=json --relative "${globs[@]}" >"$tmp/ktlint.json" 2>"$tmp/ktlint.err"
 [ -s "$tmp/ktlint.json" ] || { cat "$tmp/ktlint.err" >&2; echo "ktlint produced no report" >&2; exit 2; }
 
@@ -57,6 +70,6 @@ java -jar "$dir/$detekt_jar" --config tools/detekt.yml --build-upon-default-conf
 rc=0
 for tool in ktlint detekt; do
   f="$tmp/$tool.json"; [ "$tool" = detekt ] && f="$tmp/detekt.sarif"
-  node "$debt" "$mode" --tool "$tool" --ledger lint-debt.json --input "$f" || rc=$?
+  node "$debt" "$mode" --tool "$tool" --ledger lint-debt.json --input "$f" ${only_args[@]+"${only_args[@]}"} || rc=$?
 done
 exit "$rc"

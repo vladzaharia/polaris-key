@@ -24,6 +24,10 @@
       "project": ["tools/**/*.{ts,mjs}"],
       "ignoreDependencies": ["jscpd"]
     },
+    "tools": {
+      "entry": ["*.{ts,mjs}", "**/*.test.{ts,mjs}", "corpus/*.ts"],
+      "project": ["**/*.{ts,mjs}"]
+    },
     "packages/worker": {
       "entry": [
         "src/index.ts",

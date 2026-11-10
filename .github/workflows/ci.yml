@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    # `next` is the lead's integration branch: it runs the full CI exactly like main (the scope
-    # map runs every lane for any event but a pull request), and promote.yml fast-forwards main to
-    # the SHA that went green there. Releases are tagged from main.
+    # `next` is the lead's integration branch: it runs CI narrowed, per lane, to the files touched
+    # since that lane's newest green ancestor (tools/ci-scope.mjs), on the full matrices, and a lane
+    # runs whenever it has none; promote.yml fast-forwards main to the SHA that went green there. main runs the full CI,
+    # and releases are tagged from main.
     branches: [main, next]
   pull_request:
 
@@ -24,15 +25,33 @@ permissions:
 # One required check: `CI OK` (the ci-ok job at the end). Which jobs a pull request runs is decided
 # once, by the `changes` job from tools/ci-scope.json (the same map `pnpm gate` reads
 # through tools/ci-scope.mjs): a lane runs when a changed path is one of its `paths` or a `shared` input;
-# the four `js*` jobs always run. A pull request runs the floor and the latest of each matrix, `main`
-# (and any non-PR run, or a pull request whose changed files cannot be read) every lane and the full
-# matrix. A skipped lane counts as passed in `ci-ok`; a failed or cancelled one does not.
+# the four `js*` jobs always run. A pull request runs the floor and the latest of each matrix. A push
+# to `next` tracks green per lane: for each lane, the base is the newest ancestor of HEAD (the whole
+# ancestry, not a window) on which every job of the lane concluded success in this workflow's push
+# run (job conclusions, so a lane that passed inside a failed or cancelled run counts), or was
+# skipped by a successful `changes` job because it was green at its own base. A lane runs when a file
+# changed since ITS base is one of its paths or a shared input, or when it has no base, on the full
+# matrices. `CI OK` on such a run means: every lane touched since its own base passed here, and every
+# other lane was green at its base. `main`, a tag, a manual run, and any run whose ancestry, API or
+# diff cannot be read run every lane and the full matrix. A skipped lane counts as passed in `ci-ok`
+# only when the run narrowed (`changes.outputs.full` is "false"), which is sound only because a lane
+# is skipped only when it was green at its base; on a full run a skipped job fails it. A failed or
+# cancelled one never counts. tools/ci-scope.json `jobs` maps every job below to its lane
+# (tools/ci-scope.test.ts fails when a job is unmapped), so add a job there too.
 jobs:
   changes:
     name: Changes (which lanes run)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Read-only: the per-lane green lookup lists this workflow's runs and their jobs (a push to `next`).
+    permissions:
+      contents: read
+      actions: read
     outputs:
+      full: ${{ steps.scope.outputs.full }}
+      # The js group's green base when only packages/ changed since it, else empty: the test jobs
+      # then run turbo for the affected packages only (tools/ci-js-affected.mjs).
+      js-base: ${{ steps.scope.outputs.js-base }}
       # One per lane and matrix of tools/ci-scope.json (tools/ci-scope.test.ts checks the list).
       workerd: ${{ steps.scope.outputs.workerd }}
       node-floor: ${{ steps.scope.outputs.node-floor }}
@@ -52,6 +71,7 @@ jobs:
       godot: ${{ steps.scope.outputs.godot }}
       e2e-backend: ${{ steps.scope.outputs.e2e-backend }}
       docs: ${{ steps.scope.outputs.docs }}
+      docs-snippets: ${{ steps.scope.outputs.docs-snippets }}
       python-matrix: ${{ steps.scope.outputs.python-matrix }}
       kotlin-desktop-matrix: ${{ steps.scope.outputs.kotlin-desktop-matrix }}
       kotlin-emulator-matrix: ${{ steps.scope.outputs.kotlin-emulator-matrix }}
@@ -69,9 +89,10 @@ jobs:
       - id: scope
         env:
           BASE_REF: ${{ github.base_ref }}
-        # tools/ci-scope.mjs has no dependencies: plain Node, no install. Outside a pull request
-        # BASE_REF is empty and every lane runs.
-        run: node tools/ci-scope.mjs ci --event "$GITHUB_EVENT_NAME" --base "origin/$BASE_REF" --github-output
+          GH_TOKEN: ${{ github.token }}
+        # tools/ci-scope.mjs has no dependencies: plain Node, no install (it calls `gh` for a push to
+        # next). Outside a pull request BASE_REF is empty; a push to a branch but next runs every lane.
+        run: node tools/ci-scope.mjs ci --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" --base "origin/$BASE_REF" --github-output
 
   # The old single `js` job is four parallel jobs (CS-2): `js` (static checks, below) and the three
   # test jobs `js-worker`, `js-admin`, `js-rest`. Together they run exactly the packages the old
@@ -102,35 +123,47 @@ jobs:
         run: |
           python -m venv sdks/python/.venv
           sdks/python/.venv/bin/pip install -e "sdks/python[dev,qt]"
-      - run: pnpm build
+      # Every check below runs even when an earlier one failed, so one cycle reports every failure
+      # (tools/ciSteps.test.ts); only a broken build (or a cancelled run) stops them.
+      - id: build
+        run: pnpm build
       # The React bundle budget (SP-47): gzip JS of Provider + LicenseGate and Provider + useLicense
       # over bare React, and no .wasm emitted or inlined. The second step is its negative control:
       # it must fail when a budget is exceeded.
       - run: pnpm --filter @polaris-key/react size
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       - name: Size budget fails when exceeded (negative control)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
           if pnpm --filter @polaris-key/react size --budget provider+use-license=1000; then
             echo "::error::the size budget did not fail when exceeded"; exit 1
           fi
       - run: pnpm typecheck
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       - run: pnpm lint
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       # P0-46.3: copy-paste detection (jscpd, .jscpd.json) against the shrink-only ledger
       # tools/lint/debt/jscpd.json: a new duplicate block fails, a cleared one asks for a re-record.
       - name: Duplicate code (jscpd)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: pnpm lint:dupes
       # Unused files, exports and dependencies (knip), against the shrink-only ledger (P0-46.2).
       - run: pnpm lint:knip
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       # AX-07.5: the agent kit's skills against the repo (check) and against a real Claude Code
       # (validate). The CLI is pinned: the newest @anthropic-ai/claude-code published at least 14
       # days before the pin was set (2.1.296, 2026-10-09); keep in step with PINNED_CLAUDE_CODE in
       # tools/agent-kit-release.ts and with deploy.yml's verify job.
       - run: pnpm skills:check
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       - name: Validate the agent kit
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         env:
           PKEY_CLAUDE_BIN: npx --yes @anthropic-ai/claude-code@2.1.296
         run: pnpm skills:validate
       # P0-30.3: the 800-line budget for packages/worker/src, against tools/lint/debt/size.json.
       - name: Size budget
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: pnpm lint:size
       # Every drift gate, from the generator registry (tools/generators.ts): the signed conformance
       # corpus, the HTTP transcripts, the service table, the SDK constants, the platform inventory,
@@ -140,15 +173,18 @@ jobs:
       # generators page. Each is regenerated in memory; exit 1 on any difference. A new generator is
       # one registry entry and needs no change here.
       - run: pnpm gen --check
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       - run: pnpm --filter @polaris-key/admin build
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       # The docs site is built by `pnpm build` (turbo); assembling proves the worker's
       # single [assets] root composes from both frontends before any deploy does it.
       - run: pnpm --filter @polaris-key/worker assemble
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         env:
           PKEY_ELEMENTS_UNSTAMPED_OK: "1" # never published: the deploy job stamps the tag's version
       # Internal-link integrity across the built docs site (paths + anchors); when a change can
       # reach the site (tools/ci-scope.json lane docs).
-      - if: needs.changes.outputs.docs == 'true'
+      - if: ${{ !cancelled() && steps.build.outcome == 'success' && (needs.changes.outputs.docs == 'true') }}
         run: pnpm --filter @polaris-key/docs check:links
 
   js-worker:
@@ -159,11 +195,19 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-js
-      - run: pnpm build
+      # With a js base (a push to next where only packages/ changed since the js jobs were last
+      # green) the suite runs when turbo's `...[base]` selection holds the package; else always.
+      - id: affected
+        run: node tools/ci-js-affected.mjs @polaris-key/worker --github-output
+        env:
+          JS_BASE: ${{ needs.changes.outputs.js-base }}
+      - if: steps.affected.outputs.affected == 'true'
+        run: pnpm build
       # The Worker suite alone (638 files, D1 through better-sqlite3), the adapter conformance suites
       # included: test/storefront/, test/services/distribution/ascWriteGate.test.ts,
       # test/surfaces/feedAdapters.test.ts.
-      - run: pnpm exec turbo run test --filter=@polaris-key/worker
+      - if: steps.affected.outputs.affected == 'true'
+        run: pnpm exec turbo run test --filter=@polaris-key/worker
 
   js-admin:
     name: JS/TS tests (admin)
@@ -173,9 +217,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-js
-      - run: pnpm build
+      - id: affected
+        run: node tools/ci-js-affected.mjs @polaris-key/admin --github-output
+        env:
+          JS_BASE: ${{ needs.changes.outputs.js-base }}
+      - if: steps.affected.outputs.affected == 'true'
+        run: pnpm build
       # The admin SPA's jsdom suites (unit and axe) in their own job: the longest single-package tail.
-      - run: pnpm exec turbo run test --filter=@polaris-key/admin
+      - if: steps.affected.outputs.affected == 'true'
+        run: pnpm exec turbo run test --filter=@polaris-key/admin
 
   js-rest:
     name: JS/TS tests (other packages, conformance runners)
@@ -215,11 +265,16 @@ jobs:
       # below, each on the toolchain it needs; this job runs the TypeScript and Python lanes.
       # Every package except the Worker, the admin SPA and conformance-browser (its own job: it needs
       # a Playwright browser): the three filters of the three jobs partition the old `pnpm test`.
+      # With a js base (see js-worker) only the packages `...[base]` selects, and their dependents,
+      # run: turbo's `--filter=...[sha]` includes them and the three `!` filters take the other
+      # jobs' packages out. Without a base the three `!` filters alone select everything else.
       - run: >-
-          pnpm exec turbo run test --filter=!@polaris-key/worker --filter=!@polaris-key/admin
+          pnpm exec turbo run test ${JS_BASE:+"--filter=...[$JS_BASE]"}
+          --filter=!@polaris-key/worker --filter=!@polaris-key/admin
           --filter=!@polaris-key/conformance-browser
         env:
           PKEY_DOCS_SKIP_LANES: swift,kotlin,gdscript
+          JS_BASE: ${{ needs.changes.outputs.js-base }}
       - name: Stop pkey dev (React live lane)
         if: always()
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang react --job-status "${{ job.status }}"
@@ -670,6 +725,8 @@ jobs:
       # finding fails, and so does debt a tool no longer reports. One leg only (D-L5): the ledger is
       # recorded on 3.14, and 3.9 resolves older dependencies whose stubs differ (mypy import-untyped).
       - name: Lint (ruff, mypy)
+        id: lint
+        continue-on-error: true
         if: matrix.python == '3.14' && matrix.os == 'ubuntu-latest'
         working-directory: sdks/python
         run: tools/lint.sh check
@@ -726,6 +783,12 @@ jobs:
       - name: Stop pkey dev (Python live lane)
         if: always() && matrix.live
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang python --job-status "${{ job.status }}"
+      # A failed lint does not skip the tests above it; the job still fails (tools/ciSteps.test.ts).
+      - name: Fail the job when lint failed
+        if: ${{ !cancelled() && steps.lint.outcome == 'failure' }}
+        run: |
+          echo "::error::python lint failed; the steps above still ran"
+          exit 1
 
   # SP-65: a client SDK against an example backend against a live `pkey dev` (the Worker's own
   # router in this runner, loopback only, no secrets, no network beyond the runner). Node: the Node
@@ -801,9 +864,9 @@ jobs:
   swift-floor:
     name: Swift SDK floor (macos-15, Xcode 16.4)
     needs: changes
-    if: needs.changes.outputs.swift-floor == 'true'
+    if: needs.changes.outputs.swift-floor == 'true' || needs.changes.outputs.docs-snippets == 'true'
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
@@ -812,18 +875,34 @@ jobs:
       - name: Xcode 16.4, Swift below 6.3
         run: sdks/swift/tools/select-xcode-16.sh
       - name: swift build (macOS host)
+        if: needs.changes.outputs.swift-floor == 'true'
         run: swift build --package-path sdks/swift
-      - name: iOS build (packs, update, platform)
+      # One invocation builds every library (the package scheme); the platform and its C surface
+      # then rebuild with warnings as errors (the libzstd importer warnings fail PolarisKeyPacks
+      # under SWIFT_TREAT_WARNINGS_AS_ERRORS, so the package scheme runs without it).
+      - name: iOS build (every library, platform strict)
+        if: needs.changes.outputs.swift-floor == 'true'
         working-directory: sdks/swift
         run: |
-          for scheme in PolarisKeyPacks PolarisKeyUpdate; do
-            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
-              CODE_SIGNING_ALLOWED=NO -quiet build
-          done
+          xcodebuild -scheme PolarisKey-Package -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO -quiet build
           for scheme in PolarisKeyPlatform PolarisKeyPlatformC; do
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
           done
+      # SP-45b: the Swift half of the docs snippet lane, on the macOS runner Swift 6 needs (it ran in
+      # its own job, docs-snippets-swift). The package builds above only when its lane ran.
+      - if: needs.changes.outputs.docs-snippets == 'true'
+        uses: ./.github/actions/setup-js
+      - if: needs.changes.outputs.docs-snippets == 'true'
+        run: pnpm build
+      - name: Swift docs snippets (lane)
+        if: needs.changes.outputs.docs-snippets == 'true'
+        working-directory: packages/docs
+        env:
+          PKEY_DOCS_LANES: swift
+          PKEY_DOCS_SKIP_LANES: kotlin,gdscript
+        run: pnpm exec vitest run test/snippets/snippets.test.ts -t "swift lane"
 
   # The Swift SDK and the Apple platform plugin on macos-26, as four jobs (P0-43 put them on one
   # job; it grew past its 45 minutes, measured 2026-10-12: pkey dev build 5.5 min, swift test
@@ -881,6 +960,8 @@ jobs:
       # P0-46.6: swift-format lint on the lint-debt ledger (sdks/swift/lint-debt.json, recorded from
       # this step's swift-format-lint artifact of run 40144484635): a new finding fails the step.
       - name: Swift lint (swift-format, lint-debt ledger)
+        id: lint
+        continue-on-error: true
         env:
           PKEY_SWIFT_LINT_RAW: ${{ runner.temp }}/swift-format-lint.txt
         run: sdks/swift/tools/lint.sh check
@@ -904,13 +985,21 @@ jobs:
             ~/Library/Caches/org.swift.swiftpm
             ~/Library/org.swift.swiftpm
           key: swiftpm-${{ runner.os }}-xcode26.6-${{ hashFiles('sdks/swift/Package.resolved', 'sdks/swift/Package.swift') }}
-      # The libraries build strictly (the tests carry warnings of their own: code after a skip's
-      # throw, a deprecated Sparkle initialiser). Then the tests are built once and run in parallel
-      # without a second compile. Neither build writes the index store, which only an IDE reads.
-      - name: swift build + test (warnings as errors, parallel)
+      # One compile: the libraries and the tests build together (`--build-tests`), so `swift test
+      # --skip-build` reuses every product. The libraries stay strict without -warnings-as-errors,
+      # which would change the flags and recompile everything, and would also fail on the tests'
+      # own warnings (code after a skip's throw, a deprecated Sparkle initialiser): any Swift
+      # warning under sdks/swift/Sources fails the step instead. Neither build writes the index
+      # store, which only an IDE reads.
+      - name: swift build (one compile, library warnings fail)
         run: |
-          swift build --package-path sdks/swift --disable-index-store -Xswiftc -warnings-as-errors
-          swift build --package-path sdks/swift --build-tests --disable-index-store
+          swift build --package-path sdks/swift --build-tests --disable-index-store 2>&1 | tee "$RUNNER_TEMP/swift-build.log"
+          if grep -E '/sdks/swift/Sources/.*\.swift:[0-9]+:[0-9]+: warning:' "$RUNNER_TEMP/swift-build.log"; then
+            echo "::error::a library source warns (see above); the libraries build warning-free"
+            exit 1
+          fi
+      - name: swift test (parallel, no rebuild)
+        run: |
           swift test --package-path sdks/swift --skip-build --parallel --skip PkeyDevLiveTests
           # The live suite shares one pkey dev server, so it runs serially.
           swift test --package-path sdks/swift --skip-build --filter PkeyDevLiveTests
@@ -923,16 +1012,15 @@ jobs:
         run: sdks/swift/tools/check-registry-archive.sh
       - name: Swift resolve boundary
         run: sdks/swift/tools/check-resolve-clones.sh
+      # One invocation of the package scheme builds every library per destination (it lists the
+      # same targets as the schemes it replaces, plus UICore and the Game Center pair). The P5-05
+      # targets then rebuild with warnings as errors (the libzstd importer warnings make
+      # PolarisKeyPacks fail under SWIFT_TREAT_WARNINGS_AS_ERRORS, so the package scheme is plain).
       - name: iOS build of every library
         working-directory: sdks/swift
-        # Every library builds for iOS; the P5-05 targets with warnings as errors (the libzstd
-        # importer warnings make PolarisKeyPacks fail under SWIFT_TREAT_WARNINGS_AS_ERRORS).
         run: |
-          for scheme in PolarisKeyCore PolarisKeyLicense PolarisKeyConfig PolarisKeyRelease PolarisKeyIdentity \
-            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKeyUpdateUI PolarisKey; do
-            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
-              CODE_SIGNING_ALLOWED=NO -quiet build
-          done
+          xcodebuild -scheme PolarisKey-Package -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO -quiet build
           for scheme in PolarisKeyPlatform PolarisKeyPlatformC; do
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
@@ -942,20 +1030,24 @@ jobs:
         # SP-S16: Catalyst takes the iOS branches (identifierForVendor, no Sparkle: the Sparkle
         # product is conditioned on .macOS and every Sparkle file is #if os(macOS)).
         run: |
-          for scheme in PolarisKeyCore PolarisKeyLicense PolarisKeyConfig PolarisKeyRelease PolarisKeyIdentity \
-            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKeyUpdateUI PolarisKey PolarisKeyPlatform; do
-            xcodebuild -scheme "$scheme" -destination 'generic/platform=macOS,variant=Mac Catalyst' \
-              CODE_SIGNING_ALLOWED=NO -quiet build
-          done
+          xcodebuild -scheme PolarisKey-Package -destination 'generic/platform=macOS,variant=Mac Catalyst' \
+            CODE_SIGNING_ALLOWED=NO -quiet build
       - name: macOS build of the update and UI libraries
         working-directory: sdks/swift
         # UK-08.6: PolarisKeyUpdateUI is macOS only (the SwiftUI Sparkle user driver); it and the
-        # libraries it sits on build for the Mac with warnings as errors.
+        # libraries it sits on (Update, UI) build for the Mac with warnings as errors, and the package
+        # scheme builds the rest.
         run: |
-          for scheme in PolarisKeyUpdate PolarisKeyUI PolarisKeyUpdateUI; do
-            xcodebuild -scheme "$scheme" -destination 'generic/platform=macOS' \
-              CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
-          done
+          xcodebuild -scheme PolarisKey-Package -destination 'generic/platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO -quiet build
+          xcodebuild -scheme PolarisKeyUpdateUI -destination 'generic/platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
+      # A failed lint does not skip the tests above it; the job still fails (tools/ciSteps.test.ts).
+      - name: Fail the job when lint failed
+        if: ${{ !cancelled() && steps.lint.outcome == 'failure' }}
+        run: |
+          echo "::error::swift lint failed; the steps above still ran"
+          exit 1
 
   # The hosted XCTest project on an iOS simulator. On this 3-vCPU runner a new simulator stays busy
   # for minutes and StoreKit Testing stalled inside that window, so the simulator boots first and
@@ -1076,6 +1168,8 @@ jobs:
   # exports. PKEY_DOCS_LANES makes a lane that cannot run a failure instead of a skip.
   docs-snippets:
     name: Docs snippets (Kotlin, Godot)
+    needs: changes
+    if: needs.changes.outputs.docs-snippets == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1093,7 +1187,7 @@ jobs:
           java-version: "17"
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: true
       - name: Android SDK packages
         run: |
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -1113,28 +1207,6 @@ jobs:
           PKEY_DOCS_SKIP_LANES: swift
         run: GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2/godot" pnpm exec vitest run test/snippets/snippets.test.ts -t "kotlin lane|gdscript lane|Godot class names"
 
-  # SP-45b: the Swift half of the docs snippet lane, on the macOS runner Swift 6 needs.
-  docs-snippets-swift:
-    name: Docs snippets (Swift)
-    runs-on: macos-15
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - run: swift --version
-      - name: Swift lane
-        working-directory: packages/docs
-        env:
-          PKEY_DOCS_LANES: swift
-          PKEY_DOCS_SKIP_LANES: kotlin,gdscript
-        run: pnpm exec vitest run test/snippets/snippets.test.ts -t "swift lane"
-
   kotlin:
     name: Kotlin SDK (JVM modules + conformance runner)
     needs: changes
@@ -1152,12 +1224,16 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
-      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
+      # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
+      # and overflowed the repo's 10 GB cache quota).
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/next' }}
+          cache-cleanup: on-success
       - name: Lint (ktlint and detekt against the lint-debt ledger)
+        id: lint
+        continue-on-error: true
         working-directory: sdks/kotlin
         run: tools/lint.sh check
       - name: Module tests, conformance (JCA and Tink), module boundaries, local publish
@@ -1198,6 +1274,12 @@ jobs:
       - name: Stop pkey dev (Kotlin live lane)
         if: always()
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang kotlin --job-status "${{ job.status }}"
+      # A failed lint does not skip the tests above it; the job still fails (tools/ciSteps.test.ts).
+      - name: Fail the job when lint failed
+        if: ${{ !cancelled() && steps.lint.outcome == 'failure' }}
+        run: |
+          echo "::error::kotlin lint failed; the steps above still ran"
+          exit 1
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -1235,11 +1317,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
-      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
+      # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
+      # and overflowed the repo's 10 GB cache quota).
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: true
       - name: Secret Service (gnome-keyring) for the headless session
         if: runner.os == 'Linux'
         run: |
@@ -1321,11 +1404,13 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
-      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
+      # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
+      # and overflowed the repo's 10 GB cache quota).
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/next' }}
+          cache-cleanup: on-success
       # Per-kit modernity lint (UI-KITS.md §7.3, UK-15): the compose source rules of
       # packages/ui-qa/rules/kit-rules.json. Zero dependencies, so plain Node runs it; it fails on any
       # hit beyond the debt ledger (packages/ui-qa/rules/kit-debt.json) and on stale debt.
@@ -1424,11 +1509,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
-      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
+      # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
+      # and overflowed the repo's 10 GB cache quota).
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.toolchain != 'documented' }}
+          cache-read-only: true
       - name: Android SDK packages
         run: |
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -1488,11 +1574,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
-      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
+      # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
+      # and overflowed the repo's 10 GB cache quota).
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.api-level != 36 }}
+          cache-read-only: true
       - name: KVM for the emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -1511,8 +1598,41 @@ jobs:
           ./gradlew --no-daemon publishAllPublicationsToLocalRepository
           ./gradlew --no-daemon -p samples/android-consumer assembleLeanDebug assembleLeanDebugAndroidTest \
             assemblePacksDebug assemblePacksDebugAndroidTest
-      # The emulator now and then fails to boot ("could not connect to TCP port 5554") and passes on
-      # a rerun, so the step runs once more when it fails. A real test failure fails both.
+      # The AVD snapshot (the emulator action's documented cache): the first run per API level boots once
+      # and saves it, later runs start from it. Only next saves (a cache entry per API level would
+      # otherwise be written by every branch); everything else restores read-only.
+      - name: AVD cache
+        id: avd-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ runner.os }}-api${{ matrix.api-level }}-v1
+      - name: Create the AVD snapshot
+        id: avd
+        if: steps.avd-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/next'
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.api-level == 24 && 'default' || 'google_apis' }}
+          arch: x86_64
+          force-avd-creation: false
+          disable-animations: false
+          emulator-options: -no-window -noaudio -no-boot-anim -gpu swiftshader_indirect
+          script: echo "Generated the AVD snapshot for the cache."
+      - name: Save the AVD cache
+        if: steps.avd.outcome == 'success'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ runner.os }}-api${{ matrix.api-level }}-v1
+      # One more attempt only for an emulator or adb failure ("could not connect to TCP port 5554",
+      # INSTALL_FAILED, a device that went offline): tools/ci-emulator-run.sh keeps each attempt's output
+      # and tools/ci-emulator-retry.mjs reads it. A test that ran and failed fails the job at once.
       - name: Instrumented tests (lean and packs)
         id: emulator
         continue-on-error: true
@@ -1521,21 +1641,32 @@ jobs:
           api-level: ${{ matrix.api-level }}
           target: ${{ matrix.api-level == 24 && 'default' || 'google_apis' }}
           arch: x86_64
+          force-avd-creation: false
           disable-animations: true
-          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
-          working-directory: sdks/kotlin
-          script: ./gradlew --no-daemon -p samples/android-consumer connectedLeanDebugAndroidTest connectedPacksDebugAndroidTest
-      - name: Instrumented tests (lean and packs), second attempt
+          emulator-options: -no-window -no-snapshot-save -noaudio -no-boot-anim -gpu swiftshader_indirect
+          script: bash tools/ci-emulator-run.sh ${{ runner.temp }}/emulator-attempt-1.log
+      - name: Was the failure the emulator's
+        id: classify
         if: steps.emulator.outcome == 'failure'
+        run: node tools/ci-emulator-retry.mjs "$RUNNER_TEMP/emulator-attempt-1.log" --github-output
+      - name: Instrumented tests (lean and packs), second attempt
+        id: emulator2
+        if: steps.classify.outputs.retry == 'true'
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: ${{ matrix.api-level }}
           target: ${{ matrix.api-level == 24 && 'default' || 'google_apis' }}
           arch: x86_64
+          force-avd-creation: false
           disable-animations: true
-          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
-          working-directory: sdks/kotlin
-          script: ./gradlew --no-daemon -p samples/android-consumer connectedLeanDebugAndroidTest connectedPacksDebugAndroidTest
+          emulator-options: -no-window -no-snapshot-save -noaudio -no-boot-anim -gpu swiftshader_indirect
+          script: bash tools/ci-emulator-run.sh ${{ runner.temp }}/emulator-attempt-2.log
+      - name: Fail the job when the instrumented tests failed
+        if: ${{ !cancelled() && steps.emulator.outcome == 'failure' && steps.emulator2.outcome != 'success' }}
+        run: |
+          echo "::error::the instrumented tests failed"
+          exit 1
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -1553,7 +1684,7 @@ jobs:
   # floor); each engine is split over runners (the editor, the UI matrix, the release template), and
   # the editor and template legs run the `ci` selection as four parallel Godot processes, one per
   # vCPU, each with its own HOME (run_tests.sh PKEY_TEST_PARALLEL=1, the ci_p1..ci_p4 sets). The UI
-  # matrix is one job per presentation path (4.7.2: scrim and opaque) and, for 4.7.2 and 4.4.1, two
+  # matrix is one job per presentation path (4.7.2: scrim and opaque) and, for every engine, two
   # jobs per path, each running half of the 8 shards (ui_shards / ui_range in tools/ci-scope.json). The README's tested matrix names exactly these engines. run_tests.sh also exports the
   # harness preset headless with PKEY_BUILD_OUTLET=steam, PKEY_BUILD_CHANNEL=beta and
   # PKEY_BUILD_NUMBER=42 (the P1-11 build stamp): the export_stamps suite checks the stamps in the
@@ -1596,6 +1727,8 @@ jobs:
       # engine. tools/godotCiSplit.test.ts holds it to exactly one leg of each matrix.
       - name: GDScript lint (gdlint)
         if: runner.os == 'Linux' && matrix.godot == '4.7.2' && matrix.part == 'editor'
+        id: lint
+        continue-on-error: true
         run: sdks/godot/tools/lint.sh check
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -1657,6 +1790,12 @@ jobs:
       - name: Stop pkey dev (Godot live lane)
         if: always() && runner.os == 'Linux' && matrix.part != 'matrix'
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang godot --job-status "${{ job.status }}"
+      # A failed lint does not skip the tests above it; the job still fails (tools/ciSteps.test.ts).
+      - name: Fail the job when lint failed
+        if: ${{ !cancelled() && steps.lint.outcome == 'failure' }}
+        run: |
+          echo "::error::gdlint lint failed; the steps above still ran"
+          exit 1
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -1701,17 +1840,20 @@ jobs:
         godot,
         e2e-backend,
         docs-snippets,
-        docs-snippets-swift,
       ]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - env:
           NEEDS: ${{ toJSON(needs) }}
+          # "false" when the run narrowed its lanes (a pull request, or a push to next where a lane
+          # has a green base): only then is a skipped lane passed, because it was green at its own
+          # base. A full run needs every job to succeed.
+          FULL: ${{ needs.changes.outputs.full }}
         run: |
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
-          echo "$NEEDS" | jq -e '
+          echo "$NEEDS" | jq -e --arg full "$FULL" '
             (.changes.result == "success" and .js.result == "success" and ."js-worker".result == "success"
              and ."js-admin".result == "success" and ."js-rest".result == "success")
-            and all(.[]; .result == "success" or .result == "skipped")' >/dev/null \
-            || { echo "::error::a CI job failed, was cancelled, or changes or a js job did not run"; exit 1; }
+            and all(.[]; .result == "success" or (.result == "skipped" and $full == "false"))' >/dev/null \
+            || { echo "::error::a CI job failed, was cancelled, or changes or a js job did not run (a skipped lane passes only on a narrowed run)"; exit 1; }

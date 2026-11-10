@@ -1,12 +1,15 @@
 {
-  "$comment": "P0-43: the one scope map. ci.yml's `changes` job and `pnpm gate` (tools/gate.mjs) both read it through tools/ci-scope.mjs, so a lane runs for the same changed files in CI and in the local gate. A lane runs when a changed path starts with one of its `paths` (a directory ending in `/`, or one file), or with one of `shared` (the inputs every language verifies: the contract, the shared packages, the tool chain, the repository's own CI). A lane lists everything its job reads, not only its own tree: the Python lane names the samples and the two cross-SDK fixtures its tests open. A rename counts at its old and its new path. On a push to main, and whenever the changed files cannot be read, every lane runs and every matrix takes its full shape. `matrices` hold each matrix's two shapes: a pull request runs the floor and the latest, main runs the full set. Edit this file, never a path filter in a workflow.",
+  "$comment": "P0-43: the one scope map. ci.yml's `changes` job and `pnpm gate` (tools/gate.mjs) both read it through tools/ci-scope.mjs, so a lane runs for the same changed files in CI and in the local gate. A lane runs when a changed path starts with one of its `paths` (a directory ending in `/`, or one file), or with one of `shared` (the inputs every language verifies: the contract, the shared packages, the CI workflow and its actions, the scope map and generator registry; a generator's or a ledger's own file is not shared, because its outputs land in the lane's directories and the always-on js jobs check the drift). A lane lists everything its job reads, not only its own tree: the Python lane names the samples and the two cross-SDK fixtures its tests open. A rename counts at its old and its new path. A push to `next` tracks green per lane: `jobs` maps each lane (and `js`, the always-on test jobs) to the display names of its ci.yml jobs (`*` matches any run of characters, as in a matrix name; `always` holds the jobs no lane owns). For each lane the changes job walks the ancestry of HEAD, newest first, over the CI workflow's push runs on `next`, and takes the newest commit on which every job of the lane concluded success, or on which the lane was skipped by a successful `changes` job (it was green at its own base then). That commit is the lane's base. A lane runs when a file changed since ITS base is one of its paths or a `shared` input, and always when it has no base; the full matrices apply. Output `js-base` is the js group's base when every file changed since it lies under `packages/` (turbo then tests only the affected packages), else empty (everything runs). `CI OK` on a narrowed run therefore means: every lane touched since its own base passed on this run and every other lane was green at its base; `ci-ok` counts a skipped lane as passed only on such a run (output `full` is \"false\"), which is sound only because a lane is skipped only when it was green at its base. On a push to main, a tag, a manual run, and whenever the ancestry, the API or a diff cannot be read, every lane runs and every matrix takes its full shape. `matrices` hold each matrix's two shapes: a pull request runs the floor and the latest, main and next run the full set. Edit this file, never a path filter in a workflow.",
   "shared": [
     "conformance/",
     "packages/shared-",
     "packages/client-core/",
     "packages/brand/",
-    "tools/",
-    ".github/",
+    "tools/ci-scope.",
+    "tools/generators.ts",
+    "tools/gen.ts",
+    ".github/workflows/ci.yml",
+    ".github/actions/",
     "package.json",
     "pnpm-lock.yaml",
     "pnpm-workspace.yaml",
@@ -17,6 +20,9 @@
   "lanes": {
     "docs": {
       "paths": ["packages/docs/", "docs/", "packages/worker/src/"]
+    },
+    "docs-snippets": {
+      "paths": ["packages/docs/", "sdks/swift/", "sdks/kotlin/", "sdks/godot/"]
     },
     "workerd": {
       "paths": [
@@ -84,7 +90,10 @@
     "python": {
       "paths": [
         "sdks/python/",
-        "tools/lint/",
+        "tools/lint/adapters/",
+        "tools/lint/fixtures/",
+        "tools/lint/lint-debt.",
+        "tools/lint/generated.json",
         "packages/ui-qa/",
         "examples/python-cli/",
         "examples/python-renpy/",
@@ -102,7 +111,10 @@
         "packages/worker/",
         "packages/zstd-wasm/",
         "sdks/python/",
-        "tools/lint/",
+        "tools/lint/adapters/",
+        "tools/lint/fixtures/",
+        "tools/lint/lint-debt.",
+        "tools/lint/generated.json",
         "examples/server-"
       ]
     },
@@ -378,15 +390,26 @@
             "part": "template"
           },
           {
-            "name": "Godot SDK (4.6.3 UI matrix)",
+            "name": "Godot SDK (4.6.3 UI matrix 1/2)",
             "os": "ubuntu-latest",
             "godot": "4.6.3",
             "template": "",
             "suites": "",
             "part": "matrix",
             "ui_paths": "auto",
-            "ui_shards": "4",
+            "ui_shards": "8",
             "ui_range": "0-3"
+          },
+          {
+            "name": "Godot SDK (4.6.3 UI matrix 2/2)",
+            "os": "ubuntu-latest",
+            "godot": "4.6.3",
+            "template": "",
+            "suites": "",
+            "part": "matrix",
+            "ui_paths": "auto",
+            "ui_shards": "8",
+            "ui_range": "4-7"
           },
           {
             "name": "Godot SDK (4.5.2 editor)",
@@ -405,15 +428,26 @@
             "part": "template"
           },
           {
-            "name": "Godot SDK (4.5.2 UI matrix)",
+            "name": "Godot SDK (4.5.2 UI matrix 1/2)",
             "os": "ubuntu-latest",
             "godot": "4.5.2",
             "template": "",
             "suites": "",
             "part": "matrix",
             "ui_paths": "auto",
-            "ui_shards": "4",
+            "ui_shards": "8",
             "ui_range": "0-3"
+          },
+          {
+            "name": "Godot SDK (4.5.2 UI matrix 2/2)",
+            "os": "ubuntu-latest",
+            "godot": "4.5.2",
+            "template": "",
+            "suites": "",
+            "part": "matrix",
+            "ui_paths": "auto",
+            "ui_shards": "8",
+            "ui_range": "4-7"
           },
           {
             "name": "Godot SDK (4.4.1 editor)",
@@ -462,5 +496,46 @@
         ]
       }
     }
+  },
+  "jobs": {
+    "always": ["Changes (*", "CI OK"],
+    "js": [
+      "JS/TS static (*",
+      "JS/TS tests (Worker)",
+      "JS/TS tests (admin)",
+      "JS/TS tests (other packages, *"
+    ],
+    "workerd": ["Worker smoke (*"],
+    "node-floor": ["Node floor (*"],
+    "browser": ["Browser conformance (*"],
+    "console": [
+      "Console and portal (*",
+      "Console and portal debt ledgers",
+      "Console motion smoke (*"
+    ],
+    "docs": ["Help search (*"],
+    "docs-snippets": ["Docs snippets (*"],
+    "ui-kits": ["UI kits (*"],
+    "react-kit": ["React kit (*"],
+    "ui-recipes": ["UI recipes (*"],
+    "python": ["Python SDK (*"],
+    "e2e-backend": ["End to end (*"],
+    "swift": [
+      "Swift SDK (macos-26)",
+      "Apple platform hosted tests (*",
+      "Apple platform plugin (*"
+    ],
+    "swift-floor": ["Swift SDK floor (*"],
+    "swift-linux": [],
+    "swiftui-mac": [],
+    "compose-desktop": [],
+    "kotlin": [
+      "Kotlin SDK (JVM modules*",
+      "Kotlin SDK JVM desktop (*",
+      "Kotlin SDK consumer app (*",
+      "Kotlin SDK on the Android emulator (*"
+    ],
+    "android": ["Android platform AAR*"],
+    "godot": ["Godot SDK (*"]
   }
 }
