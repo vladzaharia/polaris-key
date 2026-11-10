@@ -173,3 +173,33 @@ export async function disconnectClient(
   const counts = await batchCounts(db, stmts);
   return (counts[1] ?? 0) === 1;
 }
+
+/** People who used each client since `since`, and how many hold a grant at all (console usage). */
+export async function clientUsage(
+  db: Db,
+  product: string,
+  since: number,
+): Promise<
+  Map<string, { recent: number; total: number; lastUsedAt: number | null }>
+> {
+  const rows = await db.all<{
+    client_id: string;
+    recent: number;
+    total: number;
+    last_used: number | null;
+  }>(
+    `SELECT client_id,
+            SUM(CASE WHEN last_used_at >= ? THEN 1 ELSE 0 END) AS recent,
+            COUNT(*) AS total,
+            MAX(last_used_at) AS last_used
+       FROM identity_client_grants WHERE product = ? GROUP BY client_id`,
+    since,
+    product,
+  );
+  return new Map(
+    rows.map((r) => [
+      r.client_id,
+      { recent: r.recent, total: r.total, lastUsedAt: r.last_used },
+    ]),
+  );
+}

@@ -205,5 +205,16 @@
   "POST /members/:memberId/sign-out": "members",
   "POST /products/:slug/members": "members",
   "PATCH /products/:slug/members/:bindingId": "members",
-  "DELETE /products/:slug/members/:bindingId": "members"
+  "DELETE /products/:slug/members/:bindingId": "members",
+  "GET /platform/issuer-keys": "platform",
+  "POST /platform/issuer-keys/:slug/rotate": "platform",
+  "GET /products/:slug/identity/clients": "signin",
+  "POST /products/:slug/identity/clients": "signin",
+  "GET /products/:slug/identity/clients/:id": "signin",
+  "PATCH /products/:slug/identity/clients/:id": "signin",
+  "DELETE /products/:slug/identity/clients/:id": "signin",
+  "POST /products/:slug/identity/clients/:id/secrets": "signin",
+  "DELETE /products/:slug/identity/clients/:id/secrets/:secretId": "signin",
+  "POST /products/:slug/identity/clients/:id/disable": "signin",
+  "POST /products/:slug/identity/clients/:id/enable": "signin"
 }

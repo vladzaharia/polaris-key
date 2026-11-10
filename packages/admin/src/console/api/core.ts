@@ -713,6 +713,94 @@ export interface UpdateServicesBody {
   services?: Partial<Record<ServiceSlug, { enabled: boolean }>>;
 }
 
+// ── Sign in with <Product> (I-21.14; worker `services/identity/issuer/consoleAdmin.ts`) ─────────
+
+export type IdentityClientType = "web" | "spa" | "native";
+export type IdentityClientScope =
+  | "openid"
+  | "profile"
+  | "email"
+  | "offline_access"
+  | "pkey:entitlements";
+export type IdentityClientClaim = "name" | "picture" | "email";
+
+/** A registered client as the console reads it. No secret, ever. */
+export interface IdentityClient {
+  id: string;
+  key: string;
+  name: string;
+  developerName: string | null;
+  /** D8: it names a developer of its own, so the card says "by <developer>". */
+  partner: boolean;
+  type: IdentityClientType;
+  /** `manifest` clients are edited in `.pkey/product`. */
+  origin: "console" | "manifest";
+  status: "active" | "disabled";
+  redirectUris: string[];
+  postLogoutRedirectUris: string[];
+  scopes: IdentityClientScope[];
+  claimsRequired: IdentityClientClaim[];
+  createdAt: number;
+  updatedAt: number;
+  /** People who used it in the last 30 days. */
+  people30d: number;
+  /** People who hold a grant for it. */
+  people: number;
+}
+
+export interface IdentityClientsPage {
+  issuer: {
+    enabled: boolean;
+    url: string;
+    discoveryUrl: string;
+    jwksUrl: string;
+  };
+  limit: number;
+  clients: IdentityClient[];
+}
+
+export interface IdentityClientRecord {
+  client: IdentityClient;
+  lastUsedAt: number | null;
+  refreshIdleDays: number;
+  /** Live secrets: the prefix and the last four characters, never the value. */
+  secrets: {
+    id: string;
+    hint: string;
+    createdAt: number;
+    lastUsedAt: number | null;
+  }[];
+  secretLimit: number;
+}
+
+/** The members a console form sends; a patch sends only the ones it changes. */
+export interface IdentityClientBody {
+  key?: string;
+  name?: string;
+  developerName?: string | null;
+  type?: IdentityClientType;
+  redirectUris?: string[];
+  postLogoutRedirectUris?: string[];
+  scopes?: IdentityClientScope[];
+  claimsRequired?: IdentityClientClaim[];
+}
+
+/** One product's issuer key ring (Platform → Issuer keys). No sealed or private member. */
+export interface IssuerKeyRing {
+  slug: string;
+  name: string;
+  issuerOn: boolean;
+  keys: {
+    kid: string;
+    state: "next" | "active" | "retired";
+    publishedAt: number;
+    activatedAt: number | null;
+    retiredAt: number | null;
+    /** An active key: when it is due to be replaced; a next key: when it may start to sign. */
+    dueAt: number | null;
+  }[];
+}
+
 export const coreApi = {
   /** Write-only. `usage` omitted keeps what is stored (a new secret is general). */
   putProductSecret: (
@@ -938,6 +1026,68 @@ export const coreApi = {
       `${p(slug)}/identity/sign-in-settings`,
       { method: "PATCH", body: JSON.stringify(patch) },
     ),
+
+  /** I-21.14: the issuer switch and URLs, and the registered clients with their usage. */
+  identityClients: (slug: string) =>
+    call<IdentityClientsPage>(`${p(slug)}/identity/clients`),
+  identityClient: (slug: string, id: string) =>
+    call<IdentityClientRecord>(`${p(slug)}/identity/clients/${enc(id)}`),
+  /** Needs a step-up. */
+  createIdentityClient: (slug: string, body: IdentityClientBody) =>
+    call<{ ok: true; client: IdentityClient }>(`${p(slug)}/identity/clients`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateIdentityClient: (slug: string, id: string, body: IdentityClientBody) =>
+    call<{ ok: true; client: IdentityClient }>(
+      `${p(slug)}/identity/clients/${enc(id)}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+  /** Needs a step-up; `confirmKey` is the typed client key. */
+  deleteIdentityClient: (slug: string, id: string, confirmKey: string) =>
+    call<{ ok: true }>(`${p(slug)}/identity/clients/${enc(id)}`, {
+      method: "DELETE",
+      body: JSON.stringify({ confirmKey }),
+    }),
+  /** Needs a step-up. The value is in this answer only. */
+  mintIdentityClientSecret: (slug: string, id: string) =>
+    call<{ ok: true; secret: { id: string; value: string; hint: string } }>(
+      `${p(slug)}/identity/clients/${enc(id)}/secrets`,
+      { method: "POST" },
+    ),
+  revokeIdentityClientSecret: (slug: string, id: string, secretId: string) =>
+    call<{ ok: true }>(
+      `${p(slug)}/identity/clients/${enc(id)}/secrets/${enc(secretId)}`,
+      { method: "DELETE" },
+    ),
+  disableIdentityClient: (slug: string, id: string) =>
+    call<{ ok: true; client: IdentityClient }>(
+      `${p(slug)}/identity/clients/${enc(id)}/disable`,
+      { method: "POST" },
+    ),
+  /** Needs a step-up. */
+  enableIdentityClient: (slug: string, id: string) =>
+    call<{ ok: true; client: IdentityClient }>(
+      `${p(slug)}/identity/clients/${enc(id)}/enable`,
+      { method: "POST" },
+    ),
+  /** Platform → Issuer keys: every product's ring. */
+  issuerKeys: () =>
+    call<{ products: IssuerKeyRing[] }>("/manage/api/platform/issuer-keys"),
+  /** Superadmin and a step-up: drops every earlier key at once. */
+  rotateIssuerKey: (
+    slug: string,
+    body: { confirmSlug: string; reason?: string },
+  ) =>
+    call<{
+      ok: true;
+      kid: string;
+      dropped: number;
+      keys: IssuerKeyRing["keys"];
+    }>(`/manage/api/platform/issuer-keys/${enc(slug)}/rotate`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   /** ST-40: per enabled feature, its prerequisites and where it is Verified. */
   integration: (slug: string) =>

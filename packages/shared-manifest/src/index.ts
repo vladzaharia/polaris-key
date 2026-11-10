@@ -5975,6 +5975,24 @@ export function validateConsoleMintBlocks(
   return errors.map((e) => `${e.path}: ${e.message}`);
 }
 
+/**
+ * Validates one registered client a console form submits (I-21.14) with the manifest's own
+ * `identity.clients` rules, as if the issuer were on. Each message's `path` starts at the client:
+ * `/key`, `/redirectUris/1`. Empty when the client is valid. Uniqueness of the key is the
+ * store's.
+ */
+export function validateConsoleClient(
+  client: unknown,
+): { field: string; code: string; message: string }[] {
+  const errors: ValidationMessage[] = [];
+  validateIssuer({ issuer: { enabled: true }, clients: [client] }, errors);
+  return errors.map((e) => ({
+    field: e.path.split("/")[4] ?? "client",
+    code: e.code,
+    message: e.message,
+  }));
+}
+
 /** U-30: `secret: true` on a `secret` entry says what `kind` already says. Dropped at ingest. */
 function dropRedundantSecretFlags(catalog: ManifestCatalog): ManifestCatalog {
   return {

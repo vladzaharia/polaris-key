@@ -385,6 +385,51 @@ export async function rotateIssuerKeys(
   return changes;
 }
 
+/** One key of a product's ring as the Platform panel reads it: never the sealed half. */
+export interface IssuerKeyInfo {
+  kid: string;
+  state: IssuerKeyState;
+  publishedAt: number;
+  activatedAt: number | null;
+  retiredAt: number | null;
+  /** An active key: when it is due to be replaced; a next key: when it may start to sign; else null. */
+  dueAt: number | null;
+}
+
+/** The ring of one product, active first. */
+export async function listIssuerKeys(
+  db: Db,
+  product: string,
+): Promise<IssuerKeyInfo[]> {
+  const rows = await db.all<KeyRow>(
+    `SELECT kid, state, published_at, activated_at, retired_at FROM identity_issuer_keys
+     WHERE product = ? ORDER BY ${STATE_RANK}, created_at, kid`,
+    product,
+  );
+  const active = rows.find((r) => r.state === "active");
+  return rows.map((r) => ({
+    kid: r.kid,
+    state: r.state,
+    publishedAt: r.published_at,
+    activatedAt: r.activated_at,
+    retiredAt: r.retired_at,
+    dueAt:
+      r.state === "active" && r.activated_at !== null
+        ? r.activated_at + ISSUER_KEY_ROTATION_SECONDS
+        : r.state === "next" && active?.activated_at != null
+          ? active.activated_at + ISSUER_KEY_ROTATION_SECONDS
+          : null,
+  }));
+}
+
+/** The products that have a key ring: those whose issuer has ever served a token. */
+export async function productsWithIssuerKeys(db: Db): Promise<string[]> {
+  const rows = await db.all<{ product: string }>(
+    "SELECT DISTINCT product FROM identity_issuer_keys ORDER BY product",
+  );
+  return rows.map((r) => r.product);
+}
+
 /**
  * Emergency rotation (Superadmin, step-up: the caller's gate): a new key becomes active and every
  * other key of the product is deleted, sealed half included, in one batch. Every token the old

@@ -56,6 +56,8 @@ import { AlertDestinations } from "../../notify/AlertDestinations.js";
 import { r } from "../../../routes.js";
 import { FeedPolicySection } from "./platformFeedPolicy.js";
 import { HistorySection } from "./platformHistory.js";
+import { IssuerKeysSection, ROTATE_STEP_UP_KEY } from "./platformIssuerKeys.js";
+import { hasSavedStepUp } from "../../../../ui/ConfirmDialog.js";
 import { KeyringSection, SecretsSection } from "./platformKeyring.js";
 import { LicensingSection } from "./platformLicensing.js";
 import { PlatformReadyOnHomeRow } from "./platformHomeRow.js";
@@ -181,7 +183,10 @@ function AdvancedSection({
   forceOpen: boolean;
   children: React.ReactNode;
 }): React.ReactElement {
-  const [open, setOpen] = React.useState(forceOpen);
+  // A rotate waiting for its sign-in reopens inside the folded card.
+  const [open, setOpen] = React.useState(
+    forceOpen || hasSavedStepUp(ROTATE_STEP_UP_KEY),
+  );
   React.useEffect(() => {
     const on = () => setOpen(true);
     window.addEventListener(OPEN_ADVANCED, on);
@@ -203,7 +208,7 @@ function AdvancedSection({
             Advanced
           </h2>
           <p className="text-sm text-fg-muted">
-            Identity provider, limits, keyring and secrets. Read-only.
+            Identity provider, limits, keyring, issuer keys and secrets.
           </p>
         </div>
         <Button
@@ -437,6 +442,7 @@ export function PlatformSettingsPage(): React.ReactElement {
           secrets={secrets}
           warning={kekWarning?.message}
         />
+        <IssuerKeysSection />
         <SecretsSection view={view} />
       </AdvancedSection>
 
