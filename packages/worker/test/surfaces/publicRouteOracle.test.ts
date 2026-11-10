@@ -19,7 +19,6 @@
  * changed route.
  */
 
-import { createHash } from "node:crypto";
 import { format, resolveConfig } from "prettier";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -38,7 +37,7 @@ import { issuerMetadataResponse } from "../oidcIssuerFake.js";
 import type { Db } from "../../src/db/types.js";
 import type { Env } from "../../src/platform/env.js";
 import { TEST_ROOT as here } from "../paths.js";
-import { isHtml, skipForHtml } from "../helpers/oracleHtml.js";
+import { recordedBody, recordedHeader } from "../helpers/oracleHtml.js";
 
 const FIXTURE = join(here, "fixtures", "public-route-oracle.json");
 const SLUG = "djdl";
@@ -268,8 +267,7 @@ interface Row {
 async function observe(res: Response): Promise<Row> {
   const headers: Record<string, string> = {};
   for (const name of CARRIED) {
-    const v = res.headers.get(name);
-    if (skipForHtml(res, name)) continue;
+    const v = recordedHeader(res, name);
     if (v !== null) headers[name] = normalise(v);
   }
   const setCookies =
@@ -292,9 +290,7 @@ async function observe(res: Response): Promise<Row> {
     status: res.status,
     headers,
     cookies,
-    body: isHtml(res)
-      ? "html"
-      : `${text.length}:${createHash("sha256").update(text).digest("hex").slice(0, 16)}`,
+    body: recordedBody(res, text),
   };
 }
 
