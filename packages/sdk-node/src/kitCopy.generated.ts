@@ -670,6 +670,8 @@ export const KIT_COPY: Readonly<
       "{left, plural, one {# key entry left} other {# key entries left}}",
     "signin.key.noEntries":
       "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
+    "signin.unreachable.network": "Check your connection.",
+    "signin.unreachable.wait": "Wait a moment.",
     "signin.key.skip": "Continue without an account",
     "signin.key.ownedSignIn": "Sign in to that account",
     "signin.key.signIn": "Sign in",
@@ -2729,6 +2731,8 @@ export const KIT_COPY: Readonly<
       "{left, plural, one {Noch # Schlüsseleingabe} other {Noch # Schlüsseleingaben}}",
     "signin.key.noEntries":
       "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an.",
+    "signin.unreachable.network": "Prüfe deine Verbindung.",
+    "signin.unreachable.wait": "Warte einen Moment.",
     "signin.key.skip": "Ohne Konto fortfahren",
     "signin.key.ownedSignIn": "Bei diesem Konto anmelden",
     "signin.key.signIn": "Anmelden",
@@ -4874,6 +4878,8 @@ export const KIT_COPY: Readonly<
       "{left, plural, one {# saisie de clé restante} many {# de saisies de clé restantes} other {# saisies de clé restantes}}",
     "signin.key.noEntries":
       "Cette clé n’a plus de saisies disponibles dans {product}. Ajoutez-la à votre compte et {product} vous connectera à la place.",
+    "signin.unreachable.network": "Vérifiez votre connexion.",
+    "signin.unreachable.wait": "Patientez un instant.",
     "signin.key.skip": "Continuer sans compte",
     "signin.key.ownedSignIn": "Se connecter à ce compte",
     "signin.key.signIn": "Se connecter",
@@ -7001,6 +7007,8 @@ export const KIT_COPY: Readonly<
       "{left, plural, one {Queda # uso de la clave} many {Quedan # de usos de la clave} other {Quedan # usos de la clave}}",
     "signin.key.noEntries":
       "A esta clave no le quedan usos en {product}. Añádela a tu cuenta y {product} iniciará tu sesión.",
+    "signin.unreachable.network": "Comprueba tu conexión.",
+    "signin.unreachable.wait": "Espera un momento.",
     "signin.key.skip": "Continuar sin cuenta",
     "signin.key.ownedSignIn": "Iniciar sesión en esa cuenta",
     "signin.key.signIn": "Iniciar sesión",
@@ -9134,6 +9142,8 @@ export const KIT_COPY: Readonly<
       "{left, plural, one {# uso da chave restante} many {# de usos da chave restantes} other {# usos da chave restantes}}",
     "signin.key.noEntries":
       "Esta chave não tem mais usos em {product}. Adicione-a à sua conta e entre em {product} com sua conta.",
+    "signin.unreachable.network": "Verifique sua conexão.",
+    "signin.unreachable.wait": "Aguarde um momento.",
     "signin.key.skip": "Continuar sem conta",
     "signin.key.ownedSignIn": "Entrar nessa conta",
     "signin.key.signIn": "Entrar",
@@ -11214,6 +11224,8 @@ export const KIT_COPY: Readonly<
       "{left, plural, one {# inserimento della chiave rimasto} many {# di inserimenti della chiave rimasti} other {# inserimenti della chiave rimasti}}",
     "signin.key.noEntries":
       "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo.",
+    "signin.unreachable.network": "Controlla la connessione.",
+    "signin.unreachable.wait": "Attendi un momento.",
     "signin.key.skip": "Continua senza account",
     "signin.key.ownedSignIn": "Accedi a quell'account",
     "signin.key.signIn": "Accedi",
@@ -13324,6 +13336,8 @@ export const KIT_COPY: Readonly<
     "signin.key.entriesLeftShort": "{left, plural, other {キー入力の残り#回}}",
     "signin.key.noEntries":
       "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりにサインインで{product}を使えます。",
+    "signin.unreachable.network": "接続を確認してください。",
+    "signin.unreachable.wait": "しばらくお待ちください。",
     "signin.key.skip": "アカウントなしで続ける",
     "signin.key.ownedSignIn": "そのアカウントにサインイン",
     "signin.key.signIn": "サインイン",
@@ -15426,6 +15440,8 @@ export const KIT_COPY: Readonly<
     "signin.key.entriesLeftShort": "{left, plural, other {키 등록 #회 남음}}",
     "signin.key.noEntries":
       "이 키는 {product}에서 남은 등록 횟수가 없어요. 계정에 추가하면 {product}에서 로그인으로 사용할 수 있어요.",
+    "signin.unreachable.network": "연결을 확인하세요.",
+    "signin.unreachable.wait": "잠시만 기다려 주세요.",
     "signin.key.skip": "계정 없이 계속",
     "signin.key.ownedSignIn": "그 계정으로 로그인",
     "signin.key.signIn": "로그인",
@@ -17408,6 +17424,8 @@ export const KIT_COPY: Readonly<
       "{left, plural, other {还剩#次密钥输入机会}}",
     "signin.key.noEntries":
       "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。",
+    "signin.unreachable.network": "请检查网络连接。",
+    "signin.unreachable.wait": "请稍候。",
     "signin.key.skip": "不使用账户继续",
     "signin.key.ownedSignIn": "登录那个账户",
     "signin.key.signIn": "登录",

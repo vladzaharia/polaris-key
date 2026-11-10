@@ -3433,6 +3433,16 @@ msgstr[2] "{left} saisies de clé restantes"
 msgid "signin.key.noEntries"
 msgstr "Cette clé n’a plus de saisies disponibles dans {product}. Ajoutez-la à votre compte et {product} vous connectera à la place."
 
+#. Check your connection.
+#. Body of a request card that could not be reached because the network failed; a Try again button follows.
+msgid "signin.unreachable.network"
+msgstr "Vérifiez votre connexion."
+
+#. Wait a moment.
+#. Body of a request card refused for too many attempts; a Try again button follows.
+msgid "signin.unreachable.wait"
+msgstr "Patientez un instant."
+
 #. Continue without an account
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"

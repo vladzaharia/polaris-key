@@ -8903,9 +8903,9 @@ paths:
         is the one `client_id` names or the `id_token_hint`'s `aud`; the hint is checked as at
         `authorize` and an expired one is accepted. `post_logout_redirect_uri` is used only when it
         equals one of that client's registered `postLogoutRedirectUris` (the loopback port aside);
-        otherwise the branded `invalid_request` page renders (400) and nothing redirects. An
-        unknown or disabled client renders `invalid_client` (401). A repeated parameter is
-        `invalid_request`. 30 calls a minute per client network. Served only while the issuer is on.
+        otherwise the branded "Couldn't finish signing out" page renders (400) and nothing
+        redirects. An unknown or disabled client renders the same page (401), as does a repeated
+        parameter (400); it links to Polaris Locker so the person can sign out there. 30 calls a minute per client network. Served only while the issuer is on.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - {

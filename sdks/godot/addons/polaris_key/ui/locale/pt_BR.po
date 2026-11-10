@@ -3433,6 +3433,16 @@ msgstr[2] "{left} usos da chave restantes"
 msgid "signin.key.noEntries"
 msgstr "Esta chave não tem mais usos em {product}. Adicione-a à sua conta e entre em {product} com sua conta."
 
+#. Check your connection.
+#. Body of a request card that could not be reached because the network failed; a Try again button follows.
+msgid "signin.unreachable.network"
+msgstr "Verifique sua conexão."
+
+#. Wait a moment.
+#. Body of a request card refused for too many attempts; a Try again button follows.
+msgid "signin.unreachable.wait"
+msgstr "Aguarde um momento."
+
 #. Continue without an account
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"

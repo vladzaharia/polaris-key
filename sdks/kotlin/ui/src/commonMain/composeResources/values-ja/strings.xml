@@ -1258,6 +1258,10 @@
     </plurals>
     <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_noEntries">このキーは%1$sでの入力回数が残っていません。アカウントに追加すると、代わりにサインインで%1$sを使えます。</string>
+    <!-- Body of a request card that could not be reached because the network failed; a Try again button follows. -->
+    <string name="signin_unreachable_network">接続を確認してください。</string>
+    <!-- Body of a request card refused for too many attempts; a Try again button follows. -->
+    <string name="signin_unreachable_wait">しばらくお待ちください。</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">アカウントなしで続ける</string>
     <string name="signin_key_skip__macos">アカウントなしで続ける</string>

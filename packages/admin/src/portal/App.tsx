@@ -174,7 +174,10 @@ function Boot(): React.ReactElement {
   // and works with or without a session here.
   if (window.location.pathname === "/signout") {
     const handle = endSessionHandleFromUrl();
-    if (handle) return <SignOutFlow handle={handle} />;
+    if (handle)
+      return (
+        <SignOutFlow handle={handle} account={session.data?.account ?? null} />
+      );
   }
   if (!session.data) return <SignInPage />;
   // An app's sign-in (`/signin?request=rq_…`) continues in the card, not in the library.

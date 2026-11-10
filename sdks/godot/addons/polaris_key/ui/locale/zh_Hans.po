@@ -3415,6 +3415,16 @@ msgstr[0] "还剩{left}次密钥输入机会"
 msgid "signin.key.noEntries"
 msgstr "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。"
 
+#. Check your connection.
+#. Body of a request card that could not be reached because the network failed; a Try again button follows.
+msgid "signin.unreachable.network"
+msgstr "请检查网络连接。"
+
+#. Wait a moment.
+#. Body of a request card refused for too many attempts; a Try again button follows.
+msgid "signin.unreachable.wait"
+msgstr "请稍候。"
+
 #. Continue without an account
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"

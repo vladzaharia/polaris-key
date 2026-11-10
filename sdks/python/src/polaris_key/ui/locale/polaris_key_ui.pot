@@ -3423,6 +3423,16 @@ msgstr[1] ""
 msgid "signin.key.noEntries"
 msgstr ""
 
+#. Check your connection.
+#. Body of a request card that could not be reached because the network failed; a Try again button follows.
+msgid "signin.unreachable.network"
+msgstr ""
+
+#. Wait a moment.
+#. Body of a request card refused for too many attempts; a Try again button follows.
+msgid "signin.unreachable.wait"
+msgstr ""
+
 #. Continue without an account
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"

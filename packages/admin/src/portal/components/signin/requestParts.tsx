@@ -92,7 +92,10 @@ export function pendingOrMissing(req: {
   };
 }
 
-/** The request could not be reached: the error's own copy and a retry. */
+/**
+ * The request could not be reached: the error's title and, where a retry can help, what to do
+ * before it (the button says "Try again" once); a refusal a retry cannot fix keeps its own sentence.
+ */
 export function Unreachable({
   error,
   onRetry,
@@ -101,11 +104,19 @@ export function Unreachable({
   onRetry: () => void;
 }): React.ReactElement {
   const copy = portalErrorCopy(error, { account: true });
+  const status = error instanceof HttpError ? error.status : null;
+  const description = !copy.retry
+    ? copy.description
+    : status === 0
+      ? t("signin.unreachable.network")
+      : status === 429
+        ? t("signin.unreachable.wait")
+        : null;
   return (
     <>
       <div className="space-y-2">
         <AuthTitle>{copy.title}</AuthTitle>
-        <p className="text-fg-muted">{copy.description}</p>
+        {description ? <p className="text-fg-muted">{description}</p> : null}
       </div>
       <Button
         variant="neutral"

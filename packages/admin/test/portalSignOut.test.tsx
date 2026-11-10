@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { EndSessionView } from "@polaris-key/protocol/identity";
+import { consumeQuietSignOut } from "../src/portal/data.js";
 import { navigation } from "../src/portal/model/signInRequest.js";
 import {
+  ACCOUNT,
   axeViolations,
   fetchedRequests,
   mockFetch,
@@ -13,15 +15,16 @@ import {
 
 /**
  * Polaris Locker's sign-out page (I-21.12; V5 §12.13.9): "Sign out of Polaris Locker too?" with
- * **Sign out** and **Stay signed in**, the variant for a browser with no session, the variants with
- * no return, and a handle that is gone.
+ * **Sign out** and **Stay signed in**, the person it ends, a browser with no session (which returns
+ * at once when the request has a return), the variants with no return, the expired step for a
+ * handle that is spent or gone, and a stale CSRF token.
  */
 const HANDLE = "eo_BBBBBBBBBBBBBBBBBBBBBB";
 const REQUEST = `/api/signout/requests/${HANDLE}`;
 
 const VIEW: EndSessionView = {
   request: HANDLE,
-  product: { appName: "Forum App", iconUrl: null },
+  product: { slug: "forum", appName: "Forum App", iconUrl: null },
   client: {
     name: "Community",
     developerName: "Partner Ltd",
@@ -62,7 +65,7 @@ function open(view: EndSessionView = VIEW, signedOut = false) {
 }
 
 describe("the sign-out page", () => {
-  it("asks, names the client and where it returns, and offers the two answers", async () => {
+  it("asks, shows the account, names the client and where it returns, and offers the two answers", async () => {
     open();
     expect(
       await screen.findByRole("heading", {
@@ -70,10 +73,23 @@ describe("the sign-out page", () => {
         name: "Sign out of Polaris Locker too?",
       }),
     ).toBeTruthy();
+    // The header is the sign-in card's: the client signed the person out; the developer; the return.
     expect(screen.getByText("Community")).toBeTruthy();
+    expect(document.body.textContent).toContain("Community signed you out");
+    expect(screen.getByText("Partner Ltd")).toBeTruthy();
     expect(
       screen.getByText("Returns you to community.example.com"),
     ).toBeTruthy();
+    // Whose session ends, and what staying signed in means; no "Not you?" (Sign out is the change).
+    expect(screen.getByText("Mara Fennick")).toBeTruthy();
+    expect(screen.getByText("mara@fennick.studio")).toBeTruthy();
+    expect(screen.queryByText("Not you?")).toBeNull();
+    expect(
+      screen.getByText(
+        "Polaris Locker can still sign you in to apps in this browser.",
+      ),
+    ).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/Your license, downloads/);
     expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Stay signed in" })).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/Polaris Key/);
@@ -102,15 +118,17 @@ describe("the sign-out page", () => {
     expect(fetchedRequests()).not.toContain(`POST ${REQUEST}/confirm`);
   });
 
-  it("with no return, Sign out says so and offers sign-in again", async () => {
+  it("with no client the question has no 'too', and with no return Sign out says so and offers sign-in again", async () => {
     open({ ...VIEW, client: null, returns: false, returnHost: null });
     expect(
-      await screen.findByText(
-        "This ends your Polaris Locker session on this device.",
-      ),
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Sign out of Polaris Locker?",
+      }),
     ).toBeTruthy();
-    // No client: the header names the product.
+    // No client: the header names the product alone, and does not claim it signed anyone out.
     expect(screen.getByText("Forum App")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("signed you out");
     mockFetch({
       ...signedIn(),
       [REQUEST]: { ...VIEW, client: null, returns: false, returnHost: null },
@@ -122,40 +140,152 @@ describe("the sign-out page", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: "You're signed out",
+        name: "You're signed out of Polaris Locker",
       }),
     ).toBeTruthy();
     expect(screen.getByRole("link", { name: "Sign in again" })).toBeTruthy();
     expect(went).toEqual([]);
   });
 
-  it("with no session here it says so, without asking, and returns on request", async () => {
-    open({ ...VIEW, signedIn: false }, true);
+  it("Stay signed in with no return says you are still signed in, once", async () => {
+    mockFetch({
+      ...signedIn(),
+      [REQUEST]: { ...VIEW, returns: false, returnHost: null },
+      [`POST ${REQUEST}/cancel`]: { redirect: null },
+    });
+    renderPortal();
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: "Stay signed in" }));
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: "You're not signed in",
+        name: "You're still signed in to Polaris Locker",
+      }),
+    ).toBeTruthy();
+    expect(document.body.textContent).not.toContain("Nothing changed");
+    expect(
+      screen.getByRole("link", { name: "Open Polaris Locker" }),
+    ).toBeTruthy();
+  });
+
+  it("with no session here and a registered return it returns at once, without asking", async () => {
+    open({ ...VIEW, signedIn: false }, true);
+    await vi.waitFor(() => expect(went).toHaveLength(1));
+    expect(fetchedRequests()).toContain(`POST ${REQUEST}/cancel`);
+    expect(fetchedRequests()).not.toContain(`POST ${REQUEST}/confirm`);
+    // Until the browser leaves, the page says where it is going and offers nothing to press.
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Returning you to Community",
+      }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("with no session and no return it says so, with a way into Polaris Locker", async () => {
+    open({ ...VIEW, signedIn: false, returns: false, returnHost: null }, true);
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "You're not signed in to Polaris Locker",
       }),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
-    await userEvent
-      .setup()
-      .click(screen.getByRole("button", { name: "Back to Community" }));
-    await vi.waitFor(() => expect(went).toHaveLength(1));
-    expect(fetchedRequests()).toContain(`POST ${REQUEST}/cancel`);
+    expect(
+      screen.getByRole("link", { name: "Open Polaris Locker" }),
+    ).toBeTruthy();
+    expect(fetchedRequests().some((r) => r.includes("/cancel"))).toBe(false);
   });
 
-  it("a request that is gone is the gone card, with no way to sign out", async () => {
+  it("if the automatic return fails, the page keeps the button and says why", async () => {
+    mockFetch({
+      "/api/me": { status: 401 },
+      [REQUEST]: { ...VIEW, signedIn: false },
+      [`POST ${REQUEST}/cancel`]: { status: 500, body: { error: "boom" } },
+    });
+    renderPortal();
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Back to Community" }),
+    ).toBeTruthy();
+    expect(went).toEqual([]);
+  });
+
+  it("a request that is gone is the expired step: never sign-in words, and whether you are still signed in", async () => {
     mockFetch({
       ...signedIn(),
       [REQUEST]: { status: 404, body: { error: "not_found" } },
     });
     renderPortal();
-    expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "This page has expired",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("You're still signed in to Polaris Locker."),
+    ).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(
+      /sign-in has ended|sign in again|library/i,
+    );
     expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Sign out of Polaris Locker" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Open Polaris Locker" }),
+    ).toBeTruthy();
+    expect(await axeViolations()).toEqual([]);
   });
 
-  it("a refused answer shows the card's own words and goes nowhere", async () => {
+  it("the expired step's Sign out ends the session and then says you are not signed in", async () => {
+    let live = true;
+    mockFetch({
+      ...signedIn(),
+      "/api/me": () =>
+        live
+          ? { account: ACCOUNT, csrf: "csrf-token" }
+          : { status: 401, body: { error: "unauthorized" } },
+      "POST /logout": () => {
+        live = false;
+        return { status: 204 };
+      },
+      [REQUEST]: { status: 404, body: { error: "not_found" } },
+    });
+    renderPortal();
+    await userEvent.setup().click(
+      await screen.findByRole("button", {
+        name: "Sign out of Polaris Locker",
+      }),
+    );
+    expect(
+      await screen.findByText("You're not signed in to Polaris Locker."),
+    ).toBeTruthy();
+    expect(fetchedRequests()).toContain("POST /logout");
+    expect(
+      screen.getByRole("link", { name: "Open Polaris Locker" }),
+    ).toBeTruthy();
+  });
+
+  it("a request that is gone with no session offers to open Polaris Locker", async () => {
+    mockFetch({
+      "/api/me": { status: 401 },
+      [REQUEST]: { status: 404, body: { error: "not_found" } },
+    });
+    renderPortal();
+    expect(
+      await screen.findByText("You're not signed in to Polaris Locker."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Open Polaris Locker" }),
+    ).toBeTruthy();
+  });
+
+  it("an answer that finds the request spent lands on the expired step, not a line under live buttons", async () => {
     mockFetch({
       ...signedIn(),
       [REQUEST]: VIEW,
@@ -168,8 +298,103 @@ describe("the sign-out page", () => {
     await userEvent
       .setup()
       .click(await screen.findByRole("button", { name: "Sign out" }));
-    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "This page has expired",
+      }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Stay signed in" })).toBeNull();
     expect(went).toEqual([]);
+    // Nothing ended: the next genuine sign-out still earns its toast.
+    expect(consumeQuietSignOut()).toBe(false);
+  });
+
+  it("a failed answer shows the card's callout and keeps the buttons", async () => {
+    mockFetch({
+      ...signedIn(),
+      [REQUEST]: VIEW,
+      [`POST ${REQUEST}/confirm`]: { status: 500, body: { error: "boom" } },
+    });
+    renderPortal();
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: "Sign out" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.querySelector("svg")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Stay signed in" })).toBeTruthy();
+    expect(went).toEqual([]);
+    expect(consumeQuietSignOut()).toBe(false);
+  });
+
+  it("a stale CSRF token is refreshed and the answer is tried once more", async () => {
+    let tries = 0;
+    let token = "stale";
+    mockFetch({
+      ...signedIn(),
+      "/api/me": () => {
+        token = "fresh";
+        return { account: ACCOUNT, csrf: token };
+      },
+      [REQUEST]: VIEW,
+      [`POST ${REQUEST}/confirm`]: () => {
+        tries++;
+        return tries === 1
+          ? { status: 403, body: { error: "forbidden", message: "csrf" } }
+          : { redirect: "https://community.example.com/bye?state=s1" };
+      },
+    });
+    renderPortal();
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: "Sign out" }));
+    await vi.waitFor(() =>
+      expect(went).toEqual(["https://community.example.com/bye?state=s1"]),
+    );
+    expect(tries).toBe(2);
+    expect(token).toBe("fresh");
+  });
+
+  it("a CSRF refusal that persists lands on the expired step", async () => {
+    mockFetch({
+      ...signedIn(),
+      [REQUEST]: VIEW,
+      [`POST ${REQUEST}/confirm`]: {
+        status: 403,
+        body: { error: "forbidden", message: "csrf" },
+      },
+    });
+    renderPortal();
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: "Sign out" }));
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "This page has expired",
+      }),
+    ).toBeTruthy();
+    expect(went).toEqual([]);
+  });
+
+  it("while the request loads the card has the passport's header and an h1", async () => {
+    mockFetch({ ...signedIn(), [REQUEST]: () => new Promise(() => undefined) });
+    renderPortal();
+    await vi.waitFor(() =>
+      expect(document.querySelector('[data-header="loading"]')).not.toBeNull(),
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Opening Polaris Locker" }),
+    ).toBeTruthy();
+  });
+
+  it("a request that cannot be reached says Try again once", async () => {
+    mockFetch({ ...signedIn(), [REQUEST]: { status: 500, body: {} } });
+    renderPortal();
+    expect(
+      await screen.findByRole("button", { name: "Try again" }),
+    ).toBeTruthy();
+    expect(screen.getAllByText(/try again/i)).toHaveLength(1);
   });
 
   it("never navigates to a javascript: return", async () => {
