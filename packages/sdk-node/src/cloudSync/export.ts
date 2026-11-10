@@ -19,6 +19,7 @@ import {
   ExportWaits,
   SyncExportError,
   checkExportCancel,
+  exportSleep,
   exportToSink,
   pullChanges,
   refuseExportByStatus,
@@ -54,18 +55,6 @@ export interface NodeExportDeps {
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
 }
 
-const defaultSleep = (ms: number, signal?: AbortSignal): Promise<void> =>
-  new Promise((resolve) => {
-    if (signal?.aborted) return resolve();
-    const done = (): void => {
-      clearTimeout(timer);
-      signal?.removeEventListener("abort", done);
-      resolve();
-    };
-    const timer = setTimeout(done, ms);
-    signal?.addEventListener("abort", done, { once: true });
-  });
-
 export async function runNodeExport(
   d: NodeExportDeps,
   destination: string,
@@ -94,7 +83,7 @@ export async function runNodeExport(
           ? locked
           : AbortSignal.any([signal, locked]);
     const waits = new ExportWaits({
-      sleep: d.sleep ?? defaultSleep,
+      sleep: d.sleep ?? exportSleep,
       ...(sig === undefined ? {} : { signal: sig }),
     });
     const changes = await pullChanges(

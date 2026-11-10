@@ -99,6 +99,19 @@ const MAX_ATTEMPTS = 8;
 const BACKOFF_BASE_MS = 500;
 const BACKOFF_CAP_MS = 30_000;
 
+/** A wait that ends early, resolving, when the signal fires (the caller checks for the cancel). */
+export const exportSleep = (ms: number, signal?: AbortSignal): Promise<void> =>
+  new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    const done = (): void => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal?.addEventListener("abort", done, { once: true });
+  });
+
 /** The one wait budget of an export. `sleep` rejects or resolves when the signal fires. */
 export class ExportWaits {
   #used = 0;

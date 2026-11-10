@@ -46,39 +46,36 @@ import {
 const sha = (b: Uint8Array): string =>
   createHash("sha256").update(b).digest("hex");
 
-/** The entries of a STORED zip, by its central directory. */
+/** The entries of a STORED zip: the central directory's records, read with Buffer. */
 function readZip(zip: Uint8Array): Map<string, Uint8Array> {
-  const v = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
-  let end = zip.length - 22;
-  while (v.getUint32(end, true) !== 0x06054b50) end--;
-  const count = v.getUint16(end + 10, true);
-  let at = v.getUint32(end + 16, true);
-  const out = new Map<string, Uint8Array>();
-  for (let i = 0; i < count; i++) {
-    const size = v.getUint32(at + 20, true);
-    const nameLen = v.getUint16(at + 28, true);
-    const extra = v.getUint16(at + 30, true);
-    const comment = v.getUint16(at + 32, true);
-    const local = v.getUint32(at + 42, true);
-    const name = new TextDecoder().decode(
-      zip.subarray(at + 46, at + 46 + nameLen),
+  const buf = Buffer.from(zip.buffer, zip.byteOffset, zip.byteLength);
+  const end = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  const entries = new Map<string, Uint8Array>();
+  let at = buf.readUInt32LE(end + 16);
+  for (let left = buf.readUInt16LE(end + 10); left > 0; left--) {
+    const [size, nameLen, extra, comment, local] = [
+      buf.readUInt32LE(at + 20),
+      buf.readUInt16LE(at + 28),
+      buf.readUInt16LE(at + 30),
+      buf.readUInt16LE(at + 32),
+      buf.readUInt32LE(at + 42),
+    ];
+    const start =
+      local + 30 + buf.readUInt16LE(local + 26) + buf.readUInt16LE(local + 28);
+    entries.set(
+      buf.toString("utf8", at + 46, at + 46 + nameLen),
+      buf.subarray(start, start + size),
     );
-    const data =
-      local +
-      30 +
-      v.getUint16(local + 26, true) +
-      v.getUint16(local + 28, true);
-    out.set(name, zip.subarray(data, data + size));
     at += 46 + nameLen + extra + comment;
   }
-  return out;
+  return entries;
 }
 
 const same = (a: Uint8Array | undefined, b: Uint8Array): boolean =>
   a !== undefined && Buffer.compare(a, b) === 0;
 
 const text = (b: Uint8Array | undefined): string =>
-  new TextDecoder().decode(b ?? new Uint8Array());
+  Buffer.from(b ?? []).toString("utf8");
 
 const bytes = (n: number, seed = 7): Uint8Array =>
   Uint8Array.from({ length: n }, (_, i) => (i * 31 + seed) & 0xff);
@@ -379,12 +376,18 @@ describe("cloudSync.export: end-to-end rows and the ring", () => {
     ...over,
   });
 
-  it("opens sealed settings and lists one that does not open", async () => {
+  /** A signed-in end-to-end client whose Worker serves one sealed `theme` setting. */
+  async function sealedTheme() {
     const w = new World();
     const { client } = await signedIn(w, {}, "e2e");
     const sealed = base64UrlEncodeBytes(
       await client.keyring.codec.seal("$settings", "theme", "dark"),
     );
+    return { w, client, sealed };
+  }
+
+  it("opens sealed settings and lists one that does not open", async () => {
+    const { w, client, sealed } = await sealedTheme();
     w.pull = () =>
       w.body({
         cursor: 6,
@@ -418,11 +421,7 @@ describe("cloudSync.export: end-to-end rows and the ring", () => {
   });
 
   it("a ring that locks during the export ends it with sync-locked and no file", async () => {
-    const w = new World();
-    const { client } = await signedIn(w, {}, "e2e");
-    const sealed = base64UrlEncodeBytes(
-      await client.keyring.codec.seal("$settings", "theme", "dark"),
-    );
+    const { w, client, sealed } = await sealedTheme();
     w.pull = () => {
       // The person signs out while the export is pulling.
       client.keyring.lock();

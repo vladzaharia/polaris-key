@@ -22,6 +22,7 @@ import {
   ExportWaits,
   SyncExportError,
   checkExportCancel,
+  exportSleep,
   exportToSink,
   isExportCancel,
   pullChanges,
@@ -54,18 +55,6 @@ export interface BrowserExportDeps {
   now?: () => number;
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
 }
-
-const defaultSleep = (ms: number, signal?: AbortSignal): Promise<void> =>
-  new Promise((resolve) => {
-    if (signal?.aborted) return resolve();
-    const done = (): void => {
-      clearTimeout(timer);
-      signal?.removeEventListener("abort", done);
-      resolve();
-    };
-    const timer = setTimeout(done, ms);
-    signal?.addEventListener("abort", done, { once: true });
-  });
 
 const destination = (what: string, cause?: unknown): SyncExportError =>
   new SyncExportError(
@@ -143,7 +132,7 @@ export async function runBrowserExport(
   const sig =
     signal === undefined ? gone.signal : AbortSignal.any([signal, gone.signal]);
   const waits = new ExportWaits({
-    sleep: d.sleep ?? defaultSleep,
+    sleep: d.sleep ?? exportSleep,
     signal: sig,
   });
 
