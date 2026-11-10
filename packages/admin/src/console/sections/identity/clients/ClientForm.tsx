@@ -30,7 +30,9 @@ import {
   claimsDelivered,
   CLAIMS,
   EMPTY_CLIENT,
+  FIELD_ORDER,
   keyFromName,
+  refusalCopy,
   SCOPES,
   TYPE_HELP,
   TYPE_LABEL,
@@ -39,7 +41,9 @@ import {
   type ClientValues,
 } from "./model.js";
 
-const STEP_UP_KEY = (slug: string) => `identity-client:${slug}`;
+/** One draft per drawer: registering, or editing one client. */
+const STEP_UP_KEY = (slug: string, client?: IdentityClient) =>
+  client ? `identity-client:${slug}:${client.id}` : `identity-client:${slug}`;
 
 export function ClientDrawer({
   slug,
@@ -56,7 +60,7 @@ export function ClientDrawer({
   onCreated?: (client: IdentityClient) => void;
 }): React.ReactElement {
   const creating = client === undefined;
-  const stepUp = useStepUpDraft(STEP_UP_KEY(slug), open && creating, () =>
+  const stepUp = useStepUpDraft(STEP_UP_KEY(slug, client), open, () =>
     onOpenChange(true),
   );
   return (
@@ -99,19 +103,16 @@ function ClientFormBody({
 }): React.ReactElement {
   const creating = client === undefined;
   const start = React.useMemo<ClientValues>(() => {
-    if (client) return valuesOf(client);
+    const base = client ? valuesOf(client) : EMPTY_CLIENT;
     const saved = stepUp.take();
     if (saved?.values) {
       try {
-        return {
-          ...EMPTY_CLIENT,
-          ...(JSON.parse(saved.values) as ClientValues),
-        };
+        return { ...base, ...(JSON.parse(saved.values) as ClientValues) };
       } catch {
-        return EMPTY_CLIENT;
+        return base;
       }
     }
-    return EMPTY_CLIENT;
+    return base;
     // Read once, when the drawer opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -120,15 +121,21 @@ function ClientFormBody({
     validate: (v) => validateClient(v, { creating }),
     mapServerErrors: (e) => {
       if (!(e instanceof HttpError) || !e.fields?.length) return null;
-      const messages =
-        (e.body as { messages?: Record<string, string> } | undefined)
-          ?.messages ?? {};
+      const body = (e.body ?? {}) as {
+        messages?: Record<string, string>;
+        reasons?: Record<string, string>;
+      };
+      // In the order the form reads, so focus lands on the first field to fix.
+      const fields = [...e.fields].sort((a, b) => rank(a) - rank(b));
       return Object.fromEntries(
-        e.fields.map((f) => [f, messages[f] ?? "Check this value."]),
+        fields.map((f) => [
+          f,
+          refusalCopy(f, body.reasons?.[f] ?? e.reason, body.messages?.[f]),
+        ]),
       );
     },
     onSubmit: async (v) => {
-      if (creating && stepUp.needed) {
+      if (stepUp.needed) {
         stepUp.signIn({ values: JSON.stringify(v) });
         return;
       }
@@ -173,22 +180,28 @@ function ClientFormBody({
       className="flex min-h-0 flex-1 flex-col"
     >
       <DrawerBody className="space-y-5">
-        <ClientFields creating={creating} />
-        {stepUp.needed ? <StepUpNotice /> : null}
+        {stepUp.needed ? (
+          <Notice>
+            <StepUpNotice />
+          </Notice>
+        ) : null}
         {failure ? (
-          <Callout tone="danger" title="The client wasn't saved" live>
-            {form.submitError instanceof HttpError &&
-            form.submitError.reason === "key_exists"
-              ? "A client with that key already exists."
-              : form.submitError instanceof HttpError &&
-                  form.submitError.reason === "client_limit"
+          <Notice>
+            <Callout tone="danger" title="The client wasn't saved" live>
+              {form.submitError instanceof HttpError &&
+              form.submitError.reason === "client_limit"
                 ? "A product has at most 20 clients. Delete one first."
                 : form.submitError instanceof HttpError &&
                     form.submitError.reason === "issuer_off"
                   ? "Turn on Sign in with this product first."
                   : errorCopy(failure, { thing: "Client" }).description}
-          </Callout>
+            </Callout>
+          </Notice>
         ) : null}
+        <ClientFields
+          creating={creating}
+          keyTyped={start.key !== "" && start.key !== keyFromName(start.name)}
+        />
       </DrawerBody>
       <DrawerFooter>
         <Button
@@ -211,7 +224,32 @@ function ClientFormBody({
   );
 }
 
-function ClientFields({ creating }: { creating: boolean }): React.ReactElement {
+/** A refusal above the fields: scrolled into view when it appears, so the reason is not off-screen. */
+function Notice({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement {
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    ref.current?.scrollIntoView?.({ block: "nearest" });
+  }, []);
+  return <div ref={ref}>{children}</div>;
+}
+
+const rank = (f: string): number => {
+  const i = (FIELD_ORDER as readonly string[]).indexOf(f);
+  return i === -1 ? FIELD_ORDER.length : i;
+};
+
+function ClientFields({
+  creating,
+  keyTyped,
+}: {
+  creating: boolean;
+  /** The key came back from a step-up with a value the person typed: the name no longer drives it. */
+  keyTyped: boolean;
+}): React.ReactElement {
   const form = useFormContext<ClientValues>();
   useDismissGuard(!!form?.isDirty && !form.isSubmitting);
   const watch = form!.rhf.watch;
@@ -219,7 +257,7 @@ function ClientFields({ creating }: { creating: boolean }): React.ReactElement {
   const type = watch("type");
   const delivered = claimsDelivered(scopes);
   // A key follows the name until the person edits it.
-  const keyTouched = React.useRef(false);
+  const keyTouched = React.useRef(keyTyped);
   const name = watch("name");
   React.useEffect(() => {
     if (creating && !keyTouched.current)
@@ -238,7 +276,7 @@ function ClientFields({ creating }: { creating: boolean }): React.ReactElement {
             {...f}
             autoFocus
             maxLength={64}
-            placeholder="Community forum"
+            placeholder="e.g. Community forum"
           />
         )}
       </FormField>
@@ -337,7 +375,7 @@ function ClientFields({ creating }: { creating: boolean }): React.ReactElement {
         name="claimsRequired"
         label="Always shared"
         group
-        help="People can't switch these off. Declining means cancelling the sign-in."
+        help="People can't switch these off. Declining means canceling the sign-in."
       >
         {(f) => (
           <div className="flex flex-wrap gap-x-6 gap-y-2">
@@ -365,7 +403,7 @@ function ClientFields({ creating }: { creating: boolean }): React.ReactElement {
         name="developerName"
         label="Developer"
         optional
-        help="Leave blank for your own apps. Another company's client names its developer: people see “by <developer>”, and it recognises them as your apps do."
+        help="Leave blank for your own apps. Another company's client names its developer: people see “by <developer>”, and it recognizes them as your apps do."
       >
         {(f) => (
           <Input {...f} maxLength={64} placeholder="Example Partner Ltd" />

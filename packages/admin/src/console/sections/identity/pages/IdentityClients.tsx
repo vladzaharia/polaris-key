@@ -7,8 +7,9 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import type { IdentityClient } from "../../../../api.js";
+import { errorCopy } from "../../../../lib/errorCopy.js";
 import { formatCount } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
@@ -17,16 +18,23 @@ import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { Section } from "../../../../ui/Section.js";
+import { Textarea } from "../../../../ui/Textarea.js";
+import { toast } from "../../../../ui/toast.js";
+import { blocker, NEEDS_REASON } from "../../../../ui/confirmReasons.js";
+import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { ProductSettingsSection } from "../../../components/ProductSettingsSection.js";
 import { useProduct } from "../../../data/hooks.js";
+import { mutate } from "../../../data/mutations.js";
+import { reads } from "../../../data/reads.js";
+import { SettingsSection } from "../../../templates/Settings.js";
 import { Link, navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { identityClientsQuery } from "../data.js";
 import { ClientDrawer } from "../clients/ClientForm.js";
-import { hostOf, TYPE_LABEL } from "../clients/model.js";
+import { hostsOf, TYPE_LABEL } from "../clients/model.js";
 import { IdentityClientPage } from "./IdentityClient.js";
 
 export const ISSUER_AREA = "identity.platformSignIn";
@@ -48,7 +56,7 @@ export function IdentityClientsRoute({
 }
 
 /** One column template for the header and every row, in rem so it follows the text size. */
-const COLS = "sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_6rem_6rem]";
+const COLS = "sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_6rem_1rem]";
 
 export function clientStatus(c: IdentityClient): {
   tone: "neutral" | "info";
@@ -58,17 +66,121 @@ export function clientStatus(c: IdentityClient): {
   return null;
 }
 
+/** An address that wraps at its slashes, never inside a word. */
+function Breakable({ value }: { value: string }): React.ReactElement {
+  const parts = value.split("/");
+  return (
+    <>
+      {parts.map((p, i) => (
+        <React.Fragment key={i}>
+          {i > 0 ? (
+            <>
+              /<wbr />
+            </>
+          ) : null}
+          {p}
+        </React.Fragment>
+      ))}
+    </>
+  );
+}
+
 function Address({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-      <dt className="shrink-0 text-sm text-fg-muted sm:w-24">{label}</dt>
-      <dd className="flex min-w-0 flex-1 items-center gap-2">
-        <code className="min-w-0 break-all text-sm text-fg-strong">
-          {value}
+    <div className="min-w-0 space-y-1">
+      <dt className="text-xs text-fg-muted">{label}</dt>
+      <dd className="flex min-w-0 items-start gap-2">
+        <code className="min-w-0 flex-1 text-sm text-fg-strong [overflow-wrap:break-word]">
+          <Breakable value={value} />
         </code>
         <CopyButton value={value} label={`Copy ${label.toLowerCase()}`} />
       </dd>
     </div>
+  );
+}
+
+/** What the switch's confirmation and the first-run action both say about turning the provider on. */
+const providerCopy = (name: string) => ({
+  title: (to: unknown) =>
+    to === true
+      ? `Turn on Sign in with ${name}?`
+      : `Turn off Sign in with ${name}?`,
+  label: (to: unknown) => (to === true ? "Turn on" : "Turn off"),
+  consequences: (to: unknown) =>
+    to === true
+      ? [
+          "Clients you register can sign people in, once they agree on the card.",
+        ]
+      : [
+          "Every client stops working. Tokens already issued expire within 10 minutes, and refresh tokens are revoked.",
+        ],
+});
+
+/**
+ * The first run's one step: turn the provider on. The same confirmation as the switch (a
+ * caution, a reason for the activity log), saved against the version the switch row reads.
+ */
+function TurnOnDialog({
+  slug,
+  name,
+  open,
+  onOpenChange,
+}: {
+  slug: string;
+  name: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}): React.ReactElement {
+  const settings = useQuery(reads.productSettings(slug, ISSUER_AREA));
+  const row = settings.data?.settings.find((x) => x.key === ISSUER_KEY);
+  const [reason, setReason] = React.useState("");
+  const copy = providerCopy(name);
+  return (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) setReason("");
+        onOpenChange(o);
+      }}
+      intent="caution"
+      title={copy.title(true)}
+      consequences={copy.consequences(true)}
+      confirmLabel={copy.label(true)}
+      confirmDisabled={reason.trim() === "" || !row}
+      confirmDisabledReason={blocker(
+        [!row, "Wait for the setting to load"],
+        [reason.trim() === "", NEEDS_REASON],
+      )}
+      stepUpKey={`identity-issuer-on:${slug}`}
+      stepUpState={{ reason }}
+      onRestore={(saved) => setReason(saved.reason ?? "")}
+      describeError={(e) => errorCopy(e, { thing: "Setting" })}
+      onConfirm={async () => {
+        if (!row) return;
+        await mutate("updateProductSetting", slug, ISSUER_KEY, {
+          value: true,
+          expectedVersion: row.version,
+          reason: reason.trim(),
+        });
+        toast.success(`Sign in with ${name} is on`);
+      }}
+    >
+      <div className="space-y-1 text-sm">
+        <label className="block space-y-1">
+          <span className="font-medium text-fg-strong">Reason</span>
+          <Textarea
+            value={reason}
+            onValueChange={setReason}
+            maxLength={500}
+            rows={2}
+            placeholder="Why this changes"
+          />
+        </label>
+        <p className="text-xs text-fg-muted">
+          Required. Kept in the activity log.
+        </p>
+      </div>
+    </ConfirmDialog>
   );
 }
 
@@ -80,14 +192,14 @@ export function IdentityClientsPage({
   const product = useProduct(slug);
   const q = useQuery(identityClientsQuery(slug));
   const gate = useWriteGate("signin", slug);
+  const keys = useWriteGate("keys", slug);
   const [open, setOpen] = React.useState(false);
+  const [turnOn, setTurnOn] = React.useState(false);
   const name = product.data?.name ?? slug;
   const d = q.data;
   const full = !!d && d.clients.length >= d.limit;
   const offReason =
-    d && !d.issuer.enabled
-      ? "Turn on Sign in with this product first."
-      : undefined;
+    d && !d.issuer.enabled ? `Turn on Sign in with ${name} first.` : undefined;
   const registerReason =
     gate.disabledReason ??
     offReason ??
@@ -103,8 +215,8 @@ export function IdentityClientsPage({
   );
   const header = (
     <PageHeader
-      title={`Sign in with ${name}`}
-      description="Let your websites and apps sign people in with their Polaris Locker account."
+      title="Clients"
+      description={`Websites and apps that sign people in with ${name}.`}
       primaryAction={d ? register : undefined}
       refetching={q.isFetching && !q.isPending}
     />
@@ -113,7 +225,7 @@ export function IdentityClientsPage({
     return (
       <div className="space-y-6">
         {header}
-        <PageSkeleton template="form" label="Sign in with this product" />
+        <PageSkeleton template="form" label="Clients" />
       </div>
     );
   if (q.isError || !d)
@@ -127,41 +239,38 @@ export function IdentityClientsPage({
         />
       </div>
     );
+  const copy = providerCopy(name);
   return (
     <div className="space-y-6">
       {header}
-      <ProductSettingsSection
-        slug={slug}
-        area={ISSUER_AREA}
-        keys={[ISSUER_KEY]}
-        id="issuer"
-        title="Provider"
-        description="Off, no client can sign anyone in and no token is issued."
-        copy={{
-          [ISSUER_KEY]: {
-            consequences: (to) =>
-              to === true
-                ? [
-                    "Clients you register can sign people in, once they agree on the card.",
-                  ]
-                : [
-                    "Every client stops working. Tokens already issued expire within 10 minutes, and refresh tokens are revoked.",
-                  ],
-          },
-        }}
-      />
-      {d.issuer.enabled ? (
-        <Section
-          title="Addresses"
-          description="What a relying party needs to find this provider."
-        >
-          <dl className="space-y-3">
+      <SettingsSection id="issuer" title={`Sign in with ${name}`}>
+        <ProductSettingsSection
+          bare
+          slug={slug}
+          area={ISSUER_AREA}
+          keys={[ISSUER_KEY]}
+          id="issuer"
+          title="Provider"
+          copy={{
+            [ISSUER_KEY]: {
+              consequences: copy.consequences,
+              confirm: (to) => ({
+                title: copy.title(to),
+                confirmLabel: copy.label(to),
+              }),
+              saved: (to) => `Sign in with ${name} is ${to ? "on" : "off"}`,
+            },
+          }}
+        />
+        {d.issuer.enabled ? (
+          <dl className="grid gap-4 px-5 py-4 lg:grid-cols-2">
             <Address label="Issuer" value={d.issuer.url} />
             <Address label="Discovery" value={d.issuer.discoveryUrl} />
           </dl>
-        </Section>
-      ) : d.clients.length > 0 ? (
-        <Callout tone="warning" title="Sign in with this product is off">
+        ) : null}
+      </SettingsSection>
+      {!d.issuer.enabled && d.clients.length > 0 ? (
+        <Callout tone="warning" title={`Sign in with ${name} is off`}>
           {formatCount(d.clients.length)}{" "}
           {d.clients.length === 1 ? "client is" : "clients are"} registered, and
           none can sign anyone in.
@@ -172,14 +281,32 @@ export function IdentityClientsPage({
         description={`${d.clients.length} of ${d.limit}`}
       >
         {d.clients.length === 0 ? (
-          <EmptyState
-            kind="first-run"
-            variant="inline"
-            title="No clients yet"
-            description="Register a website or app, or declare clients in .pkey/product."
-            primaryAction={d.issuer.enabled ? register : undefined}
-            docs="/docs/features/sign-in/sign-in-with-product/"
-          />
+          d.issuer.enabled ? (
+            <EmptyState
+              kind="first-run"
+              variant="inline"
+              title="No clients yet"
+              description="Register a website or app, or declare clients in .pkey/product."
+              primaryAction={register}
+              docs="/docs/features/sign-in/sign-in-with-product/"
+            />
+          ) : (
+            <EmptyState
+              kind="first-run"
+              variant="inline"
+              title={`Turn on Sign in with ${name} to register your first website or app`}
+              description="Clients can sign people in with their Polaris Locker account once it is on. You can also declare clients in .pkey/product."
+              primaryAction={
+                <Button
+                  disabledReason={keys.disabledReason}
+                  onClick={() => setTurnOn(true)}
+                >
+                  {`Turn on Sign in with ${name}`}
+                </Button>
+              }
+              docs="/docs/features/sign-in/sign-in-with-product/"
+            />
+          )
         ) : (
           <ul className="divide-y divide-border">
             <li
@@ -189,10 +316,11 @@ export function IdentityClientsPage({
               <span>Client</span>
               <span>Redirects to</span>
               <span className="text-end">People, 30 days</span>
-              <span className="text-end">Status</span>
+              <span />
             </li>
             {d.clients.map((c) => {
               const s = clientStatus(c);
+              const hosts = hostsOf(c.redirectUris);
               return (
                 <li key={c.id}>
                   <Link
@@ -200,35 +328,41 @@ export function IdentityClientsPage({
                     className={`grid items-center gap-x-4 gap-y-1 py-3 hover:bg-hover ${COLS}`}
                   >
                     <span className="min-w-0">
-                      <span className="font-medium text-accent-fg">
-                        {c.name}
+                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="text-sm font-medium text-accent-fg">
+                          {c.name}
+                        </span>
+                        {s ? (
+                          <StatusPill tone={s.tone} size="sm">
+                            {s.label}
+                          </StatusPill>
+                        ) : null}
                       </span>
                       <span className="block text-xs text-fg-muted">
                         {TYPE_LABEL[c.type]}
                         {c.partner && c.developerName
                           ? ` · by ${c.developerName}`
                           : ""}
-                        {c.origin === "manifest" ? " · From .pkey" : ""}
+                        {c.origin === "manifest" ? " · From .pkey/product" : ""}
+                      </span>
+                      <span className="block break-words text-xs text-fg-muted sm:hidden">
+                        {hosts}
+                        {hosts ? " · " : ""}
+                        {formatCount(c.people30d)} in 30 days
                       </span>
                     </span>
-                    <span className="min-w-0 break-all text-xs text-fg-muted">
-                      {c.redirectUris.map(hostOf).join(", ")}
+                    <span className="hidden min-w-0 break-words text-xs text-fg-muted sm:block">
+                      <span className="sr-only">Redirects to: </span>
+                      {hosts}
                     </span>
-                    <span className="text-sm text-fg sm:text-end">
-                      <span className="sm:hidden text-fg-muted">
-                        People, 30 days:{" "}
-                      </span>
+                    <span className="hidden text-end text-sm text-fg sm:block">
+                      <span className="sr-only">People, 30 days: </span>
                       {formatCount(c.people30d)}
                     </span>
-                    <span className="sm:text-end">
-                      {s ? (
-                        <StatusPill tone={s.tone} size="sm">
-                          {s.label}
-                        </StatusPill>
-                      ) : (
-                        <span className="text-sm text-fg-muted">Active</span>
-                      )}
-                    </span>
+                    <ChevronRight
+                      aria-hidden
+                      className="hidden size-4 text-fg-muted sm:block"
+                    />
                   </Link>
                 </li>
               );
@@ -241,6 +375,12 @@ export function IdentityClientsPage({
         open={open}
         onOpenChange={setOpen}
         onCreated={(c) => navigate(r.identityClient(slug, c.id))}
+      />
+      <TurnOnDialog
+        slug={slug}
+        name={name}
+        open={turnOn}
+        onOpenChange={setTurnOn}
       />
     </div>
   );

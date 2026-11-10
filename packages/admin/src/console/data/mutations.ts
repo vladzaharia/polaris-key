@@ -1111,6 +1111,8 @@ export const MUTATIONS: MutationTable = {
     invalidates: (slug) => [
       prefix(qk.productSettingsAll(slug)),
       prefix(qk.activity(slug)),
+      // The Clients page reads the issuer switch from its own query.
+      prefix(qk.identityClients(slug)),
     ],
   },
   revertProductSetting: {
@@ -1118,6 +1120,8 @@ export const MUTATIONS: MutationTable = {
     invalidates: (slug) => [
       prefix(qk.productSettingsAll(slug)),
       prefix(qk.activity(slug)),
+      // The Clients page reads the issuer switch from its own query.
+      prefix(qk.identityClients(slug)),
     ],
   },
   createProfile: {

@@ -11,6 +11,7 @@ import type {
   IdentityClientScope,
   IdentityClientType,
 } from "../../../../api.js";
+import { formatCount } from "../../../../lib/format.js";
 
 export const CLIENT_KEY_RE = /^[a-z][a-z0-9-]{1,31}$/;
 export const NAME_MAX = 64;
@@ -186,14 +187,87 @@ export function bodyOf(
   ) as IdentityClientBody;
 }
 
-/** The host of an address, or the address itself when it is not a URL. */
+/** The host of an address; a private-use scheme without its colon; the address itself otherwise. */
 export function hostOf(uri: string): string {
   try {
     const u = new URL(uri);
     return u.protocol === "https:" || u.protocol === "http:"
       ? u.host
-      : u.protocol;
+      : u.protocol.replace(/:$/, "");
   } catch {
     return uri;
+  }
+}
+
+/** The first host, and how many more there are: "forum.example.com +9". */
+export function hostsOf(uris: readonly string[]): string {
+  const hosts = [...new Set(uris.map(hostOf))];
+  if (hosts.length === 0) return "";
+  return hosts.length === 1
+    ? hosts[0]!
+    : `${hosts[0]} +${formatCount(hosts.length - 1)}`;
+}
+
+/** The form's fields in the order a person reads them: the first refusal is the one to fix first. */
+export const FIELD_ORDER = [
+  "name",
+  "key",
+  "type",
+  "redirectUris",
+  "postLogoutRedirectUris",
+  "scopes",
+  "claimsRequired",
+  "developerName",
+] as const;
+
+const ADDRESS_FIELD = /^(redirectUris|postLogoutRedirectUris)\[(\d+)\] (.*)\.$/;
+
+/**
+ * What the Worker's refusal of one field means in the console's words. `reason` is the rule's code
+ * and `message` the manifest's sentence for it (which names the list index); a code this does not
+ * know keeps the Worker's own sentence.
+ */
+export function refusalCopy(
+  field: string,
+  reason: string | undefined,
+  message: string | undefined,
+): string {
+  switch (reason) {
+    case "key_exists":
+      return "A client with this key already exists. Choose another.";
+    case "invalid_client_key":
+      return "2 to 32 characters: a lower-case letter, then letters, digits or hyphens.";
+    case "invalid_client_type":
+      return "Choose a type.";
+    case "client_scope_unknown":
+      return "Sign-in is always on, and each item is listed once.";
+    case "client_claim_not_requested":
+      return "An item can be always shared only when the client gets what delivers it: Name and picture, or Email address.";
+    case "invalid_client_redirect": {
+      const m = ADDRESS_FIELD.exec(message ?? "");
+      const line = m ? `Line ${Number(m[2]) + 1}` : null;
+      const what = m?.[3] ?? "";
+      if (line) {
+        if (what.startsWith("must be an https URI"))
+          return `${line} isn't https. Loopback and app-scheme addresses are for native apps.`;
+        if (what.startsWith("must be https, a loopback"))
+          return `${line} isn't a valid address. Use https, a loopback address with a path and no port, or your reverse-DNS app scheme.`;
+        if (what.startsWith("must not contain"))
+          return `${line} has a space, a # fragment or a *. Remove it.`;
+        if (what.startsWith("must have a host"))
+          return `${line} needs a host and no sign-in details.`;
+        if (what.startsWith("is not a valid https"))
+          return `${line} isn't a valid https address.`;
+        if (what.startsWith("must be at most")) return `${line} is too long.`;
+        return `${line} isn't a valid address.`;
+      }
+      if ((message ?? "").includes("must not repeat"))
+        return "Each address can appear only once.";
+      return field === "redirectUris"
+        ? `Add 1 to ${REDIRECT_MAX} addresses.`
+        : `Use up to ${REDIRECT_MAX} addresses.`;
+    }
+    default:
+      return message ?? "Check this value.";
   }
 }

@@ -27,6 +27,7 @@ import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { Breadcrumbs } from "../../../components/Breadcrumbs.js";
+import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { Link, navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
@@ -35,7 +36,25 @@ import { identityClientQuery, identityClientsQuery } from "../data.js";
 import { ClientDrawer } from "../clients/ClientForm.js";
 import { CLAIMS, scopeLabel, TYPE_LABEL } from "../clients/model.js";
 
-const FROM_MANIFEST = "This client comes from .pkey/product. Edit it there.";
+const FROM_MANIFEST =
+  "This client is declared in .pkey/product. Edit it there.";
+
+/** Focus the element `find` returns once it exists (the page re-renders after a change). */
+function focusSoon(find: () => HTMLElement | null | undefined): void {
+  let tries = 0;
+  const go = () => {
+    const el = find();
+    if (el) el.focus();
+    else if (tries++ < 30) requestAnimationFrame(go);
+  };
+  // After the dialog has closed and handed focus back to a button that may be gone.
+  window.setTimeout(go, 250);
+}
+
+const buttonNamed = (name: string) => () =>
+  [...document.querySelectorAll<HTMLElement>("main button")].find(
+    (b) => b.textContent?.trim() === name,
+  );
 
 function List({ items }: { items: string[] }): React.ReactElement {
   return items.length === 0 ? (
@@ -60,10 +79,16 @@ export function IdentityClientPage({
 }): React.ReactElement {
   const q = useQuery(identityClientQuery(slug, id));
   const page = useQuery(identityClientsQuery(slug));
+  const product = useProduct(slug);
   const gate = useWriteGate("signin", slug);
   const [editing, setEditing] = React.useState(false);
   const [confirm, setConfirm] = React.useState<
-    null | "disable" | "enable" | "delete" | "secret" | { revoke: string }
+    | null
+    | "disable"
+    | "enable"
+    | "delete"
+    | "secret"
+    | { revoke: { id: string; hint: string; lastUsedAt: number | null } }
   >(null);
   const [minted, setMinted] = React.useState<{
     value: string;
@@ -105,14 +130,21 @@ export function IdentityClientPage({
         />
       </div>
     ) : (
-      <ErrorState
-        error={q.error}
-        onRetry={() => void q.refetch()}
-        context={{ thing: "Client" }}
-      />
+      <div className="space-y-6">
+        <PageHeader eyebrow={<Breadcrumbs items={crumbs} />} title="Client" />
+        <ErrorState
+          error={q.error}
+          onRetry={() => void q.refetch()}
+          context={{ thing: "Client" }}
+        />
+      </div>
     );
   }
   const fromManifest = c.origin === "manifest";
+  const revoking =
+    typeof confirm === "object" && confirm !== null
+      ? confirm.revoke
+      : undefined;
   const issuerOff = page.data ? !page.data.issuer.enabled : false;
   const editReason =
     gate.disabledReason ?? (fromManifest ? FROM_MANIFEST : undefined);
@@ -137,7 +169,7 @@ export function IdentityClientPage({
             </StatusPill>
           ) : undefined
         }
-        description={`${TYPE_LABEL[c.type]}${c.partner && c.developerName ? ` · by ${c.developerName}` : ""}`}
+        description={TYPE_LABEL[c.type]}
         meta={
           fromManifest ? (
             <StatusPill tone="neutral" size="sm">
@@ -177,13 +209,9 @@ export function IdentityClientPage({
         ]}
       />
       {issuerOff ? (
-        <Callout tone="warning" title="Sign in with this product is off">
-          This client can't sign anyone in until you turn it on.
-        </Callout>
-      ) : null}
-      {fromManifest ? (
-        <Callout tone="info" title="Declared in .pkey/product">
-          Edit it there. Secrets are minted here: they never live in a manifest.
+        <Callout tone="warning" title="Sign in is off">
+          This client can't sign anyone in until you turn Sign in with{" "}
+          {product.data?.name ?? slug} on.
         </Callout>
       ) : null}
       <Section title="Settings">
@@ -199,8 +227,29 @@ export function IdentityClientPage({
                 </span>
               ),
             },
+            ...(page.data
+              ? [
+                  {
+                    term: "Discovery",
+                    detail: (
+                      <span className="flex items-start gap-2">
+                        <code className="min-w-0 text-sm [overflow-wrap:break-word]">
+                          {page.data.issuer.discoveryUrl}
+                        </code>
+                        <CopyButton
+                          value={page.data.issuer.discoveryUrl}
+                          label="Copy discovery address"
+                        />
+                      </span>
+                    ),
+                  },
+                ]
+              : []),
             { term: "Key", detail: <code className="text-sm">{c.key}</code> },
-            { term: "Developer", detail: c.developerName ?? "Your own" },
+            {
+              term: "Developer",
+              detail: c.developerName ?? "The product's developer",
+            },
             {
               term: "Redirect addresses",
               detail: <List items={c.redirectUris} />,
@@ -221,7 +270,7 @@ export function IdentityClientPage({
               term: "Always shared",
               detail:
                 c.claimsRequired.length === 0
-                  ? "Nothing: people choose"
+                  ? "None"
                   : c.claimsRequired
                       .map((x) => CLAIMS.find((k) => k.id === x)?.label ?? x)
                       .join(", "),
@@ -239,6 +288,7 @@ export function IdentityClientPage({
         actions={
           c.type === "web" ? (
             <Button
+              id="generate-secret"
               size="sm"
               iconStart={<KeyRound />}
               disabledReason={secretReason}
@@ -290,8 +340,17 @@ export function IdentityClientPage({
                 <Button
                   size="sm"
                   variant="outline"
+                  aria-label={`Revoke secret ending ${s.hint.slice(-4)}`}
                   disabledReason={gate.disabledReason}
-                  onClick={() => setConfirm({ revoke: s.id })}
+                  onClick={() =>
+                    setConfirm({
+                      revoke: {
+                        id: s.id,
+                        hint: s.hint,
+                        lastUsedAt: s.lastUsedAt,
+                      },
+                    })
+                  }
                 >
                   Revoke
                 </Button>
@@ -334,8 +393,7 @@ export function IdentityClientPage({
         onOpenChange={(o) => {
           if (!o) setMinted(null);
         }}
-        title="Client secret"
-        description={c.name}
+        title={`Copy ${c.name}'s secret`}
         label="Client secret"
         value={minted?.value ?? ""}
         hint="Shown once. Polaris Key stores only its hash. Keep it on the client's server."
@@ -343,7 +401,8 @@ export function IdentityClientPage({
       />
       <ConfirmDialog
         open={confirm === "secret"}
-        onOpenChange={(o) => !o && setConfirm(null)}
+        onOpenChange={(o) => setConfirm(o ? "secret" : null)}
+        stepUpKey={`identity-client-secret:${c.id}`}
         intent="caution"
         title="Generate a secret?"
         consequences={[
@@ -360,11 +419,23 @@ export function IdentityClientPage({
         }}
       />
       <ConfirmDialog
-        open={typeof confirm === "object" && confirm !== null}
+        open={revoking !== undefined}
         onOpenChange={(o) => !o && setConfirm(null)}
         intent="danger"
-        title="Revoke this secret?"
+        title={`Revoke ${revoking?.hint ?? "this secret"}?`}
         consequences={[
+          revoking?.lastUsedAt == null ? (
+            "It has never been used."
+          ) : (
+            <>
+              Last used{" "}
+              <Timestamp
+                at={fromSeconds(revoking.lastUsedAt)}
+                format="relative"
+              />
+              : the client may still be using it.
+            </>
+          ),
           "The client can no longer use it. A sign-in in progress that depends on it fails.",
         ]}
         confirmLabel="Revoke secret"
@@ -375,9 +446,10 @@ export function IdentityClientPage({
             "revokeIdentityClientSecret",
             slug,
             c.id,
-            confirm.revoke,
+            confirm.revoke.id,
           );
           toast.success("Secret revoked");
+          focusSoon(() => document.getElementById("generate-secret"));
         }}
       />
       <ConfirmDialog
@@ -395,11 +467,13 @@ export function IdentityClientPage({
         onConfirm={async () => {
           await mutate("disableIdentityClient", slug, c.id);
           toast.success("Client disabled");
+          focusSoon(buttonNamed("Enable"));
         }}
       />
       <ConfirmDialog
         open={confirm === "enable"}
-        onOpenChange={(o) => !o && setConfirm(null)}
+        onOpenChange={(o) => setConfirm(o ? "enable" : null)}
+        stepUpKey={`identity-client-enable:${c.id}`}
         title={`Enable ${c.name}?`}
         consequences={["People can sign in through it again."]}
         confirmLabel="Enable client"
@@ -407,11 +481,13 @@ export function IdentityClientPage({
         onConfirm={async () => {
           await mutate("enableIdentityClient", slug, c.id);
           toast.success("Client enabled");
+          focusSoon(buttonNamed("Disable"));
         }}
       />
       <ConfirmDialog
         open={confirm === "delete"}
-        onOpenChange={(o) => !o && setConfirm(null)}
+        onOpenChange={(o) => setConfirm(o ? "delete" : null)}
+        stepUpKey={`identity-client-delete:${c.id}`}
         intent="danger"
         title={`Delete ${c.name}?`}
         consequences={[

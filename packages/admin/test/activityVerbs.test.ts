@@ -57,3 +57,19 @@ describe("activity verbs for nearby approval (I-40.3)", () => {
     );
   });
 });
+
+describe("activity verbs for sign-in clients (I-21.14)", () => {
+  it("words every client write and the emergency rotation", () => {
+    for (const a of [
+      "identity.client.created",
+      "identity.client.updated",
+      "identity.client.deleted",
+      "identity.client.disabled",
+      "identity.client.enabled",
+      "identity.client.secret.created",
+      "identity.client.secret.revoked",
+      "identity.issuer.key.emergency_rotated",
+    ])
+      expect(verbFor(a)).not.toBe(a);
+  });
+});

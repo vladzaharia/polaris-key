@@ -3,9 +3,12 @@ import {
   bodyOf,
   claimsDelivered,
   EMPTY_CLIENT,
+  FIELD_ORDER,
   hostOf,
+  hostsOf,
   keyFromName,
   lines,
+  refusalCopy,
   validateClient,
   type ClientValues,
 } from "../src/console/sections/identity/clients/model.js";
@@ -69,6 +72,50 @@ describe("client form model", () => {
 
   it("shows an address as its host", () => {
     expect(hostOf("https://forum.example.com/cb")).toBe("forum.example.com");
-    expect(hostOf("com.example.app:/cb")).toBe("com.example.app:");
+    expect(hostOf("com.example.app:/cb")).toBe("com.example.app");
+  });
+
+  it("shows many hosts as the first and a count", () => {
+    expect(hostsOf([])).toBe("");
+    expect(
+      hostsOf(["https://a.example.com/cb", "https://a.example.com/x"]),
+    ).toBe("a.example.com");
+    expect(
+      hostsOf(
+        Array.from({ length: 10 }, (_, i) => `https://h${i}.example.com/cb`),
+      ),
+    ).toBe("h0.example.com +9");
+  });
+
+  it("words the Worker's refusals for the console", () => {
+    const at = (m: string) =>
+      refusalCopy("redirectUris", "invalid_client_redirect", m);
+    expect(
+      at(
+        "redirectUris[0] must be an https URI (loopback and private-use schemes are for native clients).",
+      ),
+    ).toBe(
+      "Line 1 isn't https. Loopback and app-scheme addresses are for native apps.",
+    );
+    expect(
+      at("redirectUris[2] must not contain whitespace, a fragment or *."),
+    ).toMatch(/^Line 3 has a space/);
+    expect(at("redirectUris must not repeat a URI.")).toBe(
+      "Each address can appear only once.",
+    );
+    expect(refusalCopy("key", "key_exists", undefined)).toBe(
+      "A client with this key already exists. Choose another.",
+    );
+    expect(refusalCopy("name", "reserved_display_name", "Use your own.")).toBe(
+      "Use your own.",
+    );
+    expect(refusalCopy("name", undefined, undefined)).toBe("Check this value.");
+  });
+
+  it("lists the form's fields in reading order", () => {
+    expect(FIELD_ORDER[0]).toBe("name");
+    expect(FIELD_ORDER.indexOf("redirectUris")).toBeLessThan(
+      FIELD_ORDER.indexOf("developerName"),
+    );
   });
 });

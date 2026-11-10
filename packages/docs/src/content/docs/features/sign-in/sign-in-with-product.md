@@ -18,7 +18,7 @@ To sign people in with your product:
 3. Point your OpenID Connect library at the discovery address, or use the code below.
 4. Verify the ID token before you trust it.
 
-It needs the product's Identity service and the **Sign in with this product** setting, both off until you turn them on. Off, every route answers as an unknown route and no token is issued.
+It needs the product's Identity service. Off, every issuer route answers as an unknown route.
 
 ## Register a client
 
@@ -72,7 +72,7 @@ People see each item on the sign-in card and can decline the optional ones. A de
 | `pkey:entitlements` | Which features of your product they have | `pkey:entitlements`       |
 | `offline_access`    | Stay signed in to the client while away  | A refresh token           |
 
-`sub` is the person's id **for your product**: the same in every client of the product and different in another product. A partner client gets the same `sub` as your own apps, so it can recognise a person across them, and the card says so. Treat a shared name or email as a join key, not as proof of who someone is.
+`sub` is the person's id **for your product**: the same in every client of the product and different in another product. A partner client gets the same `sub` as your own apps, so it can recognize a person across them, and the card says so. Treat a shared name or email as a join key, not as proof of who someone is.
 
 ## The sign-in
 
@@ -126,7 +126,7 @@ export function beginSignIn(): { url: string; pending: Pending } {
 
 type Jwk = JsonWebKey & { kid: string };
 
-/** The provider's key for `kid`. Cache the key set for 60 seconds, as its headers say. */
+/** The provider's key for `kid`. In production cache the key set for 60 seconds, as its headers say. */
 async function signingKey(kid: string) {
   const res = await fetch(`${ISSUER}/jwks`);
   const { keys } = (await res.json()) as { keys: Jwk[] };

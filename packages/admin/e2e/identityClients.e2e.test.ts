@@ -5,7 +5,7 @@ import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { preview, type PreviewServer } from "vite";
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium, type Browser, type Locator, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 /**
@@ -75,7 +75,7 @@ const issuerSetting = (on: boolean) => ({
   description: "Whether clients you register may sign people in.",
   docs: "/docs/features/sign-in/",
   spec: { kind: "boolean" },
-  confirm: { on: "L1", off: "L0" },
+  confirm: { on: "L1", off: "L1" },
   critical: true,
   manifestPath: "product:identity.issuer.enabled",
   visibleWhen: { service: "identity", offBehaviour: "hide" },
@@ -269,7 +269,7 @@ async function check(
   );
 }
 
-const TITLE = "Sign in with DJDL";
+const TITLE = "Clients";
 const LIST_HASH = "#/p/djdl/identity/clients";
 const title = (page: Page, text: string) =>
   page.locator("[data-page-title]", { hasText: text }).first().waitFor();
@@ -311,7 +311,7 @@ describe("Sign in with <Product> in the console", () => {
               await page.getByText("No clients yet").waitFor();
             if (name === "list-off")
               await page
-                .getByText("Sign in with this product is off")
+                .getByText("Sign in with DJDL is off")
                 .first()
                 .waitFor();
             await check(page, name, theme, width, text200);
@@ -358,7 +358,7 @@ describe("Sign in with <Product> in the console", () => {
               record({ ...FORUM, type: "spa" }),
               "holds no secret",
             ],
-            ["record-manifest", record(DOCS), "Declared in .pkey/product"],
+            ["record-manifest", record(DOCS), "From .pkey/product"],
             ["record-disabled", record(PARTNER), "Disabled"],
           ];
           for (const [name, body, text] of cases) {
@@ -472,4 +472,261 @@ describe("Sign in with <Product> in the console", () => {
       }
     });
   }
+
+  describe("the flows that need state", () => {
+    const json = (status: number, body: unknown) =>
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "content-type": "application/json" },
+      });
+    const STEP_UP = () =>
+      json(403, {
+        error: {
+          code: "step_up_required",
+          message:
+            "Sign in again to confirm it's you. This needs a sign-in from the last 5 minutes.",
+        },
+        code: "step_up_required",
+      });
+    /** "Sign in again" leaves for the sign-in; coming back is opening the same page again. */
+    const signInAgain = async (page: Page, button: Locator, hash: string) => {
+      await button.click();
+      await page.waitForURL(/\/manage\/login/);
+      await page.goto(`${app.url}/manage.html${hash}`);
+    };
+
+    it("turning the provider on from the first run makes Register ready without a reload", async () => {
+      let on = false;
+      const page = await open(
+        "light",
+        LIST_HASH,
+        base({ [`${P}/identity/clients`]: page_([], false) }),
+        {
+          handler: (url, method) => {
+            if (url.pathname === `${P}/identity/clients`) return page_([], on);
+            if (url.pathname === `${P}/settings/effective`)
+              return { settings: [issuerSetting(on)] };
+            if (
+              method === "PATCH" &&
+              url.pathname === `${P}/settings/identity.issuer.enabled`
+            ) {
+              on = true;
+              return { ok: true, claimed: true, setting: issuerSetting(true) };
+            }
+            return undefined;
+          },
+        },
+      );
+      await title(page, TITLE);
+      const register = page
+        .getByRole("button", { name: "Register client" })
+        .first();
+      await register.waitFor();
+      expect(await register.getAttribute("aria-disabled")).toBe("true");
+      await page
+        .getByRole("button", { name: "Turn on Sign in with DJDL" })
+        .click();
+      const dialog = page.getByRole("alertdialog");
+      await dialog.getByRole("textbox").fill("First client");
+      await dialog.getByRole("button", { name: "Turn on" }).click();
+      await page.getByText(ISSUER).first().waitFor();
+      expect(await register.getAttribute("aria-disabled")).not.toBe("true");
+      await closeContext(page.context());
+    });
+
+    it("a key you typed survives the step-up sign-in", async () => {
+      const page = await open("light", LIST_HASH, LIST, {
+        handler: (url, method) =>
+          method === "POST" && url.pathname === `${P}/identity/clients`
+            ? STEP_UP()
+            : undefined,
+      });
+      await title(page, TITLE);
+      await page
+        .getByRole("button", { name: "Register client" })
+        .first()
+        .click();
+      const drawer = page.getByRole("dialog");
+      await drawer.getByRole("textbox", { name: /^Name\b/ }).fill("Forum Two");
+      await drawer.getByRole("textbox", { name: /^Key\b/ }).fill("community");
+      await drawer
+        .getByRole("textbox", { name: /^Redirect addresses/ })
+        .fill("https://two.example.com/cb");
+      await drawer.getByRole("button", { name: "Register client" }).click();
+      await signInAgain(
+        page,
+        drawer.getByRole("button", { name: "Sign in again" }),
+        LIST_HASH,
+      );
+      const back = page.getByRole("dialog");
+      await back.getByRole("textbox", { name: /^Key\b/ }).waitFor();
+      expect(
+        await back.getByRole("textbox", { name: /^Key\b/ }).inputValue(),
+      ).toBe("community");
+      expect(
+        await back.getByRole("textbox", { name: /^Name\b/ }).inputValue(),
+      ).toBe("Forum Two");
+      await closeContext(page.context());
+    });
+
+    it("an edit that adds an address asks for a sign-in and keeps the entry", async () => {
+      const hash = `${LIST_HASH}/${FORUM.id}`;
+      const page = await open(
+        "light",
+        hash,
+        base({
+          [`${P}/identity/clients`]: page_([FORUM]),
+          [`${P}/identity/clients/${FORUM.id}`]: record(FORUM, [SECRETS[0]]),
+        }),
+        {
+          handler: (url, method) =>
+            method === "PATCH" &&
+            url.pathname === `${P}/identity/clients/${FORUM.id}`
+              ? STEP_UP()
+              : undefined,
+        },
+      );
+      await page.getByRole("button", { name: "Edit" }).first().click();
+      const drawer = page.getByRole("dialog");
+      const redirects = drawer.getByRole("textbox", {
+        name: /^Redirect addresses/,
+      });
+      await redirects.fill(
+        "https://forum.example.com/auth/callback\nhttps://new.example.com/cb",
+      );
+      await drawer.getByRole("button", { name: "Save" }).click();
+      await signInAgain(
+        page,
+        drawer.getByRole("button", { name: "Sign in again" }),
+        hash,
+      );
+      const back = page.getByRole("dialog");
+      expect(
+        await back
+          .getByRole("textbox", { name: /^Redirect addresses/ })
+          .inputValue(),
+      ).toContain("https://new.example.com/cb");
+      await closeContext(page.context());
+    });
+
+    it("Generate secret and Delete reopen after the sign-in", async () => {
+      const hash = `${LIST_HASH}/${FORUM.id}`;
+      const page = await open(
+        "light",
+        hash,
+        base({
+          [`${P}/identity/clients`]: page_([FORUM]),
+          [`${P}/identity/clients/${FORUM.id}`]: record(FORUM, [SECRETS[0]]),
+        }),
+        {
+          handler: (url, method) =>
+            (method === "POST" && url.pathname.endsWith("/secrets")) ||
+            (method === "DELETE" &&
+              url.pathname === `${P}/identity/clients/${FORUM.id}`)
+              ? STEP_UP()
+              : undefined,
+        },
+      );
+      await page
+        .getByRole("button", { name: "Generate secret" })
+        .first()
+        .click();
+      const dialog = page.getByRole("alertdialog");
+      await dialog.getByRole("button", { name: "Generate secret" }).click();
+      await signInAgain(
+        page,
+        dialog.getByRole("button", { name: "Sign in again" }),
+        hash,
+      );
+      await page
+        .getByRole("alertdialog")
+        .getByText("Generate a secret?")
+        .waitFor();
+      await page.getByRole("button", { name: "Cancel" }).click();
+      await page.getByRole("button", { name: "More actions" }).first().click();
+      await page.getByRole("menuitem", { name: "Delete" }).click();
+      const del = page.getByRole("alertdialog");
+      await del.getByRole("textbox").fill(FORUM.key);
+      await del.getByRole("button", { name: "Delete client" }).click();
+      await signInAgain(
+        page,
+        del.getByRole("button", { name: "Sign in again" }),
+        hash,
+      );
+      const back = page.getByRole("alertdialog");
+      await back.getByText(`Delete ${FORUM.name}?`).waitFor();
+      expect(await back.getByRole("textbox").inputValue()).toBe(FORUM.key);
+      await closeContext(page.context());
+    });
+
+    it("a record that fails to load keeps its header", async () => {
+      const page = await open(
+        "light",
+        `${LIST_HASH}/${FORUM.id}`,
+        base({ [`${P}/identity/clients`]: page_([FORUM]) }),
+        {
+          handler: (url) =>
+            url.pathname === `${P}/identity/clients/${FORUM.id}`
+              ? json(500, { error: { code: "internal" } })
+              : undefined,
+        },
+      );
+      await page
+        .getByRole("button", { name: /try again|retry/i })
+        .first()
+        .waitFor({ timeout: 30_000 });
+      expect(await page.getByRole("heading", { level: 1 }).count()).toBe(1);
+      await page.getByRole("navigation", { name: /breadcrumb/i }).waitFor();
+      await closeContext(page.context());
+    });
+
+    it("Rotate now reopens inside Advanced with the slug and reason", async () => {
+      const routes = {
+        ...base({}),
+        "/manage/api/platform/issuer-keys": {
+          products: [
+            {
+              slug: "djdl",
+              name: "DJDL",
+              issuerOn: true,
+              keys: [KEY("a", "active")],
+            },
+          ],
+        },
+      };
+      const page = await open("light", "#/platform/settings", routes, {
+        handler: (url, method) =>
+          method === "POST" && url.pathname.endsWith("/rotate")
+            ? STEP_UP()
+            : undefined,
+      });
+      await page
+        .locator("#platform-advanced")
+        .getByRole("button", { name: "Show" })
+        .click();
+      await page.getByRole("button", { name: "Rotate now" }).first().click();
+      const dialog = page.getByRole("alertdialog");
+      await dialog
+        .getByRole("textbox", { name: /Type the product slug/ })
+        .fill("djdl");
+      await dialog.getByRole("textbox", { name: "Reason" }).fill("Key leaked");
+      await dialog.getByRole("button", { name: "Rotate now" }).click();
+      await signInAgain(
+        page,
+        dialog.getByRole("button", { name: "Sign in again" }),
+        "#/platform/settings",
+      );
+      const back = page.getByRole("alertdialog");
+      await back.getByRole("textbox", { name: "Reason" }).waitFor();
+      expect(
+        await back
+          .getByRole("textbox", { name: /Type the product slug/ })
+          .inputValue(),
+      ).toBe("djdl");
+      expect(
+        await back.getByRole("textbox", { name: "Reason" }).inputValue(),
+      ).toBe("Key leaked");
+      await closeContext(page.context());
+    });
+  });
 });
