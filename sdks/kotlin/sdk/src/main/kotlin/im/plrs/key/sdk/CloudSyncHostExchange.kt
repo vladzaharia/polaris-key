@@ -48,19 +48,29 @@ internal class CloudSyncHostExchange(private val st: CloudSyncHostState) {
             } catch (e: CancellationException) {
                 // A flush that timed out cancels the call. The machine must hear that nothing was processed, or its
                 // request stays in flight for good and nothing is ever sent again.
-                withContext(NonCancellable) { if (st.generation == generation) m.receive(SyncResponse.TRANSPORT) }
+                withContext(NonCancellable) { if (st.generation == generation && m.awaiting) m.receive(SyncResponse.TRANSPORT) }
                 throw e
             }
-            when {
-                // A purge ran while the request was out: the machine is gone, so the answer is never read (H-7).
-                st.generation != generation -> Unit
+            deliver(m, res, Sent(bound, generation, e2e, mutations ?: emptyList()))
+        }
+    }
 
-                otherPerson(bound) -> m.receive(SyncResponse.TRANSPORT)
+    /** What the request was when it left: the person it was bound to, the generation, the mode and the mutations. */
+    private class Sent(val bound: String?, val generation: Long, val e2e: Boolean, val mutations: List<JsonElement>)
 
-                else -> {
-                    st.failures = if (res.transportError) st.failures + 1 else 0
-                    answer(m, res, e2e, mutations ?: emptyList())
-                }
+    private suspend fun deliver(m: CloudSyncMachine, res: SyncResponse, sent: Sent) {
+        when {
+            // A purge ran while the request was out: the machine is gone, so the answer is never read (H-7).
+            st.generation != sent.generation -> Unit
+
+            // The machine left meanwhile (`account_required` on another route): the answer is dropped whole.
+            !m.awaiting -> Unit
+
+            otherPerson(sent.bound) -> m.receive(SyncResponse.TRANSPORT)
+
+            else -> {
+                st.failures = if (res.transportError) st.failures + 1 else 0
+                answer(m, res, sent.e2e, sent.mutations)
             }
         }
     }

@@ -50,6 +50,8 @@ internal class CloudSyncHostDataImpl(
             st.purging = true
             st.rebuildWanted = false
             st.openKeys.clear()
+            st.refused = null
+            st.forgetOwed = false
             val previous = st.machine
             if (st.live) {
                 builder.buildNow(null, st.documentValue, st.discoveryValue)

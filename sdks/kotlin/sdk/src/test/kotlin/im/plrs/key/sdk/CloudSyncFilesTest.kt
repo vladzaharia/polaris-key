@@ -141,6 +141,29 @@ class CloudSyncFilesTest {
     }
 
     @Test
+    fun aFile403AccountRequiredIsReportedWithItsSignInUrlAndAnotherOneIsNot() = withServer { server ->
+        server.enqueue(MockResponse().setResponseCode(403).setBody("""{"error":{"code":"account_required","signInUrl":"/djdl/signin"}}"""))
+        server.enqueue(MockResponse().setResponseCode(403).setBody("""{"error":{"code":"quota_exceeded","message":"x"}}"""))
+        server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":{"code":"account_required"}}"""))
+        val heard = mutableListOf<Pair<String?, String?>>()
+        val t = HttpFileTransport(core(server, subject = "ps_alice"), { url, who -> heard += url to who })
+        assertEquals("account_required", ((t.status(target, "up_1")) as FileReply.Refused).refusal.code)
+        t.status(target, "up_1")
+        t.status(target, "up_1")
+        // The subject the call started for rides along; a quota 403 and a 401 say nothing.
+        assertEquals(listOf<Pair<String?, String?>>("/djdl/signin" to "ps_alice"), heard)
+    }
+
+    @Test
+    fun aRedirectedAccountRequiredIsNotHonoured() = withServer { server ->
+        server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "https://other.example/x"))
+        val heard = mutableListOf<String?>()
+        val t = HttpFileTransport(core(server), { url, _ -> heard += url })
+        assertEquals("redirect_refused", (t.status(target, "up_1") as FileReply.Refused).refusal.code)
+        assertTrue(heard.isEmpty())
+    }
+
+    @Test
     fun aBodyPastTheCapIsNoAnswer() = withServer { server ->
         server.enqueue(MockResponse().setResponseCode(200).setBody(Buffer().write(ByteArray(SYNC_CHUNK_MAX_STORED_BYTES + 1))))
         server.enqueue(MockResponse().setResponseCode(206).setHeader("Content-Range", "bytes 0-9/100").setBody(Buffer().write(ByteArray(11))))
