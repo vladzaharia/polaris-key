@@ -660,6 +660,9 @@ function renderKotlin(api: Api): string {
     } else if (r.id.startsWith("cloudConnect.links.")) {
       // Inter-account links (CC-19): the verbs live on `cloudConnect.links` (`CloudLinks`).
       lines.push(`CloudLinks::${r.name}  // ${r.id}`);
+    } else if (r.id.startsWith("cloudConnect.localLinks.")) {
+      // Local links (CC-29): the verbs live on `cloudConnect.localLinks` (`CloudLocalLinks`).
+      lines.push(`CloudLocalLinks::${r.name}  // ${r.id}`);
     } else if (r.id === "cloudConnect.transfer.cancel") {
       // `cancel(id)` and `cancel(peer, id)` overload; the typed reference picks the one the rows name.
       lines.push(
@@ -701,6 +704,7 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.sdk.BackendClient`,
     `import im.plrs.key.sdk.CloudConnect`,
     `import im.plrs.key.sdk.CloudLinks`,
+    `import im.plrs.key.sdk.CloudLocalLinks`,
     `import im.plrs.key.sdk.CloudNearby`,
     `import im.plrs.key.sdk.CloudSyncClient`,
     `import im.plrs.key.sdk.CloudSyncExport`,

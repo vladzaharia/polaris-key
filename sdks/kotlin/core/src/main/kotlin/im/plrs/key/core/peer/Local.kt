@@ -477,6 +477,18 @@ public class DialBudget {
         synchronized(lock) { repeat(dials) { recent(nameplate, t) += t } }
     }
 
+    /**
+     * Check and spend in one step under one lock: one dial ([dials], default 1) is taken only when the budget allows it, so
+     * dials that overlap across threads cannot multiply. Answers the verdict from before the spend.
+     */
+    public fun takeIfAllowed(nameplate: String, t: Double, dials: Int = 1): DialVerdict = synchronized(lock) {
+        val list = recent(nameplate, t)
+        val used = list.size
+        val allowed = used < LOCAL_DIAL_BUDGET
+        if (allowed) repeat(dials) { list += t }
+        DialVerdict(allowed, used)
+    }
+
     override fun toString(): String = "DialBudget"
 }
 

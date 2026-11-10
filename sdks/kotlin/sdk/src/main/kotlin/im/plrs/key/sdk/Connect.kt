@@ -312,6 +312,9 @@ public class ConnectClient internal constructor(
     private var port: DeviceKeyPort? = options.deviceKeys
     private var storage: DeviceKeyStorage? = null
 
+    /** Local links (CC-29; section 15.12): the gate, the store of links and the listeners of changes. Needs no account. */
+    internal val local: LocalSupport = LocalSupport(core, options)
+
     override fun toString(): String = "ConnectClient"
 
     /** Use these device keys from now on. */

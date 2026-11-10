@@ -265,7 +265,9 @@ class PeerLocalPairingTest {
         val k = keys()
         val initiator = Side(PeerMode.l, NoiseRole.initiator, locals = listOf(link(secret.copyOf(), k.a, k.bPub)))
         val decoy = link(rnd(), rnd(), rnd())
-        val responder = Side(PeerMode.l, NoiseRole.responder, locals = listOf(decoy, link(secret.copyOf(), k.b, k.aPub)), limiter = HandshakeLimiter())
+        val responder = Side(
+            PeerMode.l, NoiseRole.responder, locals = listOf(decoy, link(secret.copyOf(), k.b, k.aPub)), limiter = HandshakeLimiter(),
+        )
         initiator.s.start()
         pump(initiator, responder)
         val ei = initiator.of<SessionEvent.Established>().single()
@@ -430,6 +432,30 @@ class PeerLocalPairingTest {
     }
 
     @Test
+    fun aRefundTakesTheMessageOutOfTheLiveGroupListAfterOtherMessagesWereCounted() {
+        val (c, limiter) = clocked()
+        c.t = 0.0
+        val a = limiter.beginLocal("g") as LocalAdmission.Admitted
+        c.t = 1.0
+        (limiter.beginLocal("g") as LocalAdmission.Admitted).miss()
+        // The group holds two messages: a third is refused until the first opens and is refunded.
+        c.t = 1.5
+        assertEquals("group", (limiter.beginLocal("g") as LocalAdmission.Refused).by)
+        a.hit()
+        c.t = 2.0
+        val third = limiter.beginLocal("g")
+        assertTrue("the refunded message no longer counts against the group", third is LocalAdmission.Admitted)
+        c.t = 3.0
+        assertEquals("group", (limiter.beginLocal("g") as LocalAdmission.Refused).by)
+        // A message that left the window by time is not refunded a second time over a newer one.
+        c.t = 62.0
+        val later = limiter.beginLocal("g") as LocalAdmission.Admitted
+        later.hit()
+        c.t = 62.5
+        assertTrue(limiter.beginLocal("g") is LocalAdmission.Admitted)
+    }
+
+    @Test
     fun aMissCountsOnlyTheRealTrialsOnTheHostsPorts() {
         // The dummy trials that pad a miss to TRIAL_TOTAL run on the default ports, so a host's own ports see one trial here.
         val (_, limiter) = clocked()
@@ -445,6 +471,8 @@ class PeerLocalPairingTest {
         assertThrows(IllegalArgumentException::class.java) {
             Side(PeerMode.l, NoiseRole.responder, locals = List(MAX_LOCAL_LINKS + 1) { l }, limiter = HandshakeLimiter())
         }
-        assertThrows(IllegalArgumentException::class.java) { Side(PeerMode.l, NoiseRole.initiator, locals = listOf(LocalLink(ByteArray(31), rnd(), rnd()))) }
+        assertThrows(IllegalArgumentException::class.java) {
+            Side(PeerMode.l, NoiseRole.initiator, locals = listOf(LocalLink(ByteArray(31), rnd(), rnd())))
+        }
     }
 }

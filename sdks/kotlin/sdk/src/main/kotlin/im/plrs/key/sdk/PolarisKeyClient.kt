@@ -645,6 +645,9 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         scope.launch { update.offers.collect { eventFlow.emit(PolarisEvent.UpdateAvailable(it)) } }
         packs.on { eventFlow.tryEmit(PolarisEvent.Packs(it)) }
         core.onDiscovery { discoveryRead(it) }
+        // The local-pairing gate reads first and in the order the reads began (CC-29, section 15.12 "Gates").
+        core.onDiscoveryRead { result, seq -> connect.local.gate.read(result, seq) }
+        connect.local.gate.discover = { discover() }
     }
     private var refreshJob: Job? = null
     private val startLock = kotlinx.coroutines.sync.Mutex()
@@ -1057,6 +1060,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public fun close() {
         refreshJob?.cancel()
         refreshJob = null
+        connect.local.close()
         cloudConnect.shutdown()
         cloudSyncImpl.closeSoon()
         // SP-51: the client's own scope (event fan-out, the refresh loop, the launch confirmation) and

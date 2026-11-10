@@ -9,7 +9,7 @@
 // @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
 // @pkey-feature license.manage identity.keyentry
 // @pkey-feature core.presentation identity.account identity.attach
-// @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity connect.relay connect.links
+// @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity connect.relay connect.links connect.local
 // @pkey-feature identity.redirect.native
 // @pkey-feature identity.exchange identity.pgs sync.keyring sync.settings identity.restore sync.files sync.files.delta sync.saves sync.records
 // @pkey-feature identity.nearby
@@ -470,6 +470,8 @@ object KotlinReplay {
                 }
                 // connect.links (CC-19): the cached `services.connect.interAccount` the SDK gates links on.
                 out["interAccount"] = JsonPrimitive(client.connect.interAccount())
+                // connect.local (CC-29): the cached `services.connect.localPairing` the SDK gates local pairing on.
+                out["localPairing"] = JsonPrimitive(client.cloudConnect.localLinks.localPairing())
             }
 
             // `client.identity.exchange` (I-45.3, `identity.exchange`): a platform ID token for a device token. A step with

@@ -8066,7 +8066,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8083,7 +8084,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8100,7 +8102,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -8111,7 +8114,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8132,7 +8136,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8149,7 +8154,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8170,7 +8176,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8187,7 +8194,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -8204,7 +8212,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {}
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },

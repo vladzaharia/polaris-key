@@ -230,6 +230,9 @@ public class TransferOffer internal constructor(
     public val category: String?,
     private val answer: (Boolean, File?) -> Unit,
 ) {
+    /** Who the offer comes from: a device of the person's, a contact or a local link, with the link's id on this device. */
+    public val from: TransferOrigin get() = peer.origin
+
     @Volatile
     private var gone = false
     private val goneFns = CopyOnWriteArrayList<() -> Unit>()
@@ -401,6 +404,11 @@ public class CloudTransfer internal constructor(
     /** A deleted contact: its partials go. [agreeKey] is the contact's key as 43 base64url characters. */
     internal fun purgePeer(agreeKey: String) {
         val key = Base64Url.decodeStrict(agreeKey) ?: return
+        purgePeer(key)
+    }
+
+    /** A forgotten link: the partials kept for its peer go. [key] is the peer's static key (32 raw bytes). */
+    internal fun purgePeer(key: ByteArray) {
         runCatching { store.purgePeer(key) }
     }
 
@@ -426,14 +434,18 @@ public class CloudTransfer internal constructor(
 
         private val machine = XferMachine(
             XferMachineOptions(
-                mode = if (session.contact != null) RecordMode.c else RecordMode.a,
+                mode = when {
+                    session.contact != null -> RecordMode.c
+                    session.local != null -> RecordMode.l
+                    else -> RecordMode.a
+                },
                 caps = session.caps,
                 maxMessage = MAX_PEER_MESSAGE_BYTES.toLong(),
                 peerKey = key,
                 handler = XferHandler { decide(it) },
                 hostLimit = maxIncomingBytes,
                 free = { store.free() },
-                categories = session.contact?.categories.orEmpty(),
+                categories = (session.contact?.categories ?: session.local?.categories).orEmpty(),
                 partials = store.partialsFor(key),
                 rehash = { ref, offset -> store.rehash(ref, offset, this@Bound, key, epoch) },
             ),
