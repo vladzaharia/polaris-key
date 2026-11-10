@@ -1,5 +1,5 @@
 /**
- * tools/require-ci-ok.sh: the gate deploy.yml (verify) and publish-sdks.yml (ci-gate) share. It
+ * tools/require-ci-ok.sh: the gate deploy.yml (verify) and publish-sdks.yml (version) share. It
  * must pass only on a successful "CI OK" check run that belongs to a push run of ci.yml on the
  * exact SHA, and fail closed on everything else. `gh` is replaced by a stub that serves JSON
  * fixtures through the real `jq` with the script's own --jq program, so the filters run too.

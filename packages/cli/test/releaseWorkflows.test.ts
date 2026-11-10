@@ -576,10 +576,14 @@ describe("the backstop prune after a stable tag (P0-48, feed retention)", () => 
         "version",
       ].sort(),
     );
-    // No status function: GitHub ANDs success(), so a failed publish or drift skips it.
-    expect(job.if).toBe(
-      "needs.version.outputs.channel == 'stable' && startsWith(github.ref, 'refs/tags/v')",
-    );
+    // An explicit status check, because the implicit success() also fails on a skipped ancestor
+    // (swift-test and godot-test are skipped on a tested tag): every need must have succeeded.
+    const cond = String(job.if);
+    expect(cond).toContain("!cancelled()");
+    expect(cond).toContain("needs.version.outputs.channel == 'stable'");
+    expect(cond).toContain("startsWith(github.ref, 'refs/tags/v')");
+    for (const need of job.needs as string[])
+      expect(cond, need).toContain(`needs.${need}.result == 'success'`);
     const guard = steps[at("A stable vX.Y.Z tag")]!;
     expect(guard.run).toContain("^[0-9]+\\.[0-9]+\\.[0-9]+$");
     expect(guard.run).toContain('"refs/tags/v$VERSION"');
@@ -1385,37 +1389,56 @@ describe("workflow hardening", () => {
 
 describe("publish-sdks.yml waits for CI OK and skips the tests CI already ran", () => {
   const wf = workflow(PUBLISH_SDKS);
-  // The version job folds both proofs (the `tested` input, a passed ci-gate) into one output.
+  // The version job folds both proofs (the `tested` input, a passed CI OK step) into one output.
   const UNPROVEN = "${{ needs.version.outputs.tested != 'true' }}";
   const gateScript = "tools/require-ci-ok.sh";
 
   it("a main run publishes only after CI OK is green on the SHA, never a red build", () => {
-    const gate = wf.jobs["ci-gate"]!;
-    expect(gate.permissions).toEqual({
+    // The wait is a step of `version`, not a job upstream of it (a skipped upstream job skips
+    // every dependent without a status-check `if`).
+    expect(wf.jobs["ci-gate"]).toBeUndefined();
+    const version = wf.jobs.version!;
+    expect(version.needs).toBeUndefined();
+    expect(version.permissions).toEqual({
       contents: "read",
       checks: "read",
       actions: "read",
     });
+    const gate = (version.steps ?? []).find((s) => s.id === "ci");
     // Branch runs only: a tag run was proven by deploy.yml's verify before it called this.
-    expect(gate.if).toContain("startsWith(github.ref, 'refs/heads/')");
-    expect((gate.steps ?? []).some((s) => s.run?.includes(gateScript))).toBe(
-      true,
-    );
-    const version = wf.jobs.version!;
-    expect(version.needs).toBe("ci-gate");
-    // A refusal (failure) skips version, so every job below it is skipped; a tag run's skipped
-    // gate passes.
-    expect(version.if).toContain("needs.ci-gate.result == 'success'");
-    expect(version.if).toContain("needs.ci-gate.result == 'skipped'");
-    expect(version.if).not.toContain("failure");
+    expect(gate?.if).toContain("startsWith(github.ref, 'refs/heads/')");
+    expect(gate?.run).toContain(gateScript);
+    // A refusal fails `version`, which skips every job below it.
+    expect(String(version.if)).not.toContain("failure");
     for (const [id, job] of Object.entries(wf.jobs)) {
-      if (id === "ci-gate" || id === "version") continue;
+      if (id === "version") continue;
       // Everything else descends from `version`, directly or through a job that does.
       expect(
-        [job.needs ?? []].flat().length,
-        `${id} depends on something`,
-      ).toBeGreaterThan(0);
+        ancestors(wf.jobs, id).has("version"),
+        `${id} waits for version`,
+      ).toBe(true);
     }
+  });
+
+  it("no job's implicit success() can be defeated by a job a tag run skips", () => {
+    // On a tag run, the test suites are skipped (`tested`) and the CI OK step is skipped. A job
+    // whose transitive `needs` holds a skippable job must carry an explicit status-check `if`.
+    const skippable = (job: Job) =>
+      /outputs\.tested|refs\/heads\//.test(String(job.if ?? ""));
+    const status = /!cancelled\(\)|always\(\)/;
+    for (const [id, job] of Object.entries(wf.jobs)) {
+      const skipped = [...ancestors(wf.jobs, id)].filter((n) =>
+        skippable(wf.jobs[n]!),
+      );
+      if (skipped.length === 0) continue;
+      expect(
+        String(job.if ?? ""),
+        `${id} needs ${skipped.join(", ")}, which a tag run skips`,
+      ).toMatch(status);
+    }
+    // Nothing may be gated on a branch ref at job level: every job runs on a tag.
+    for (const [id, job] of Object.entries(wf.jobs))
+      expect(String(job.if ?? ""), id).not.toContain("refs/heads/");
   });
 
   it("the feed drift check still reads back what was published", () => {
@@ -1455,7 +1478,7 @@ describe("publish-sdks.yml waits for CI OK and skips the tests CI already ran", 
     expect(skipped("python-build", "Test")).toBe(UNPROVEN);
     expect(skipped("kotlin-build", "Tests and boundaries")).toBe(UNPROVEN);
     expect(String(wf.jobs.version!.outputs?.tested)).toBe(
-      "${{ inputs.tested || needs.ci-gate.result == 'success' }}",
+      "${{ inputs.tested || steps.ci.outcome == 'success' }}",
     );
     // Nothing else is conditional on it: pack, stamp, build, publish and drift always run.
     const conditional: string[] = [];
