@@ -1,3 +1,4 @@
+import "../../tools/pin-test-env.mjs"; // TZ and locale pinned for the run
 import { defineConfig } from "vitest/config";
 
 // Node-only suites (no browser): the string lint, the kit source lints, the pixel diff, the report

@@ -165,6 +165,7 @@ async function steamCallback(h: ProviderHarness): Promise<Response> {
     string
   >;
   fields["openid.return_to"] = real;
+  // brittle-ok: the OpenID nonce must be fresh against the verifier's real clock
   fields["openid.response_nonce"] = `${new Date()
     .toISOString()
     .replace(/\.\d{3}Z$/, "Z")}8ZvVbJ3TfRZi1M5Xx0M1dXyX5Y4=`;

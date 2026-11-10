@@ -253,6 +253,7 @@ export class R2Mock {
     const stored: Stored = {
       bytes,
       etag: randomBytes(16).toString("hex"),
+      // brittle-ok: the mock's upload time is the object's real creation instant
       uploaded: new Date(),
       md5: ab(createHash("md5").update(bytes).digest()),
       customMetadata: options?.customMetadata ?? {},
@@ -384,6 +385,7 @@ export class R2Mock {
         const stored: Stored = {
           bytes,
           etag: randomBytes(16).toString("hex"),
+          // brittle-ok: the mock's upload time is the object's real creation instant
           uploaded: new Date(),
           md5: ab(createHash("md5").update(bytes).digest()),
           customMetadata: {},
@@ -408,6 +410,7 @@ export class R2Mock {
     this.store.set(key, {
       bytes,
       etag: randomBytes(16).toString("hex"),
+      // brittle-ok: the mock's upload time is the object's real creation instant
       uploaded: new Date(),
       md5: ab(createHash("md5").update(bytes).digest()),
       customMetadata: {},

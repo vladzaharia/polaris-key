@@ -196,16 +196,31 @@ describe("<NearbySignIn> endings and choices", () => {
       nearbyChoose: vi.fn(async () => req("waiting", { code: "123 456" })),
     });
     const a = await adapterOf(bridge);
-    const { container } = wrap(
-      a,
-      <NearbySignIn prompt={false} settleMs={150} />,
-    );
-    await waitFor(() => expect(bridge.nearbyStart).toHaveBeenCalled());
-    await new Promise((r) => setTimeout(r, 40));
-    expect(bridge.nearbyChoose).not.toHaveBeenCalled();
-    await waitFor(() => expect(bridge.nearbyChoose).toHaveBeenCalled());
+    // Capture the settle timer instead of waiting on it: the test releases it by hand, so no
+    // wall-clock race decides whether the choice was made early. (150 is this test's own prop.)
+    const realSetTimeout = globalThis.setTimeout;
+    let settle: (() => void) | undefined;
+    const spy = vi.spyOn(globalThis, "setTimeout").mockImplementation(((
+      fn: () => void,
+      ms?: number,
+      ...rest: unknown[]
+    ) => {
+      if (ms === 150) {
+        settle = fn;
+        return 0 as unknown as ReturnType<typeof setTimeout>;
+      }
+      return realSetTimeout(fn, ms, ...rest);
+    }) as typeof setTimeout);
+    try {
+      wrap(a, <NearbySignIn prompt={false} settleMs={150} />);
+      await waitFor(() => expect(settle).toBeDefined());
+      expect(bridge.nearbyChoose).not.toHaveBeenCalled();
+      act(() => settle!());
+      await waitFor(() => expect(bridge.nearbyChoose).toHaveBeenCalled());
+    } finally {
+      spy.mockRestore();
+    }
     a.dispose();
-    void container;
   });
 
   it("no device after a while: says so and offers Try again", async () => {

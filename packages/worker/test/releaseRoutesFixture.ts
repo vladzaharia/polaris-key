@@ -98,6 +98,7 @@ export interface GitHubCalls {
 }
 
 function amzNow(): string {
+  // brittle-ok: the SigV4 timestamp must be inside the verifier's real-clock skew window
   return new Date()
     .toISOString()
     .replace(/[-:]/g, "")

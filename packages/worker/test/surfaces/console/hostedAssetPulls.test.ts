@@ -1096,6 +1096,7 @@ describe("handleAssetQueue", () => {
         queue,
         messages: bodies.map((body, i) => ({
           id: String(i),
+          // brittle-ok: queue message envelope timestamp, never asserted
           timestamp: new Date(),
           attempts: 1,
           body,
