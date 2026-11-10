@@ -332,20 +332,24 @@ class _AsyncLinks(_AsyncFacet):
     """``cloud_connect.links`` on the async client: ``pair``, ``list``, ``remove``, ``set_reachable`` and
     ``open`` are coroutines run on a worker thread. ``on_link`` and ``inter_account`` return at once; the
     callbacks (and the pairing offers' ``confirm`` and ``decline``, which block) are the Connect thread's."""
+
+    def on_link(self, fn: Callable[..., Any]) -> Callable[[], None]:
+        return self._target.on_link(fn)  # type: ignore[no-any-return]
+
+    def inter_account(self) -> bool:
+        return self._target.inter_account()  # type: ignore[no-any-return]
+
+
 class _AsyncNearbyRequest(_AsyncFacet):
     """A nearby request on the async client: ``choose``, ``confirm_account``, ``decline_account`` and
     ``close`` are coroutines; the listeners (``on_approvers``, ``on_result``, ``on_record``, ``on_close``)
     register at once and run on the Connect thread."""
 
-    def on_link(self, fn: Callable[..., Any]) -> Callable[[], None]:
-        return self._target.on_link(fn)  # type: ignore[no-any-return]
     def __getattr__(self, name: str) -> Any:
         if name in ("on_approvers", "on_result", "on_record", "on_close"):
             return getattr(self._target, name)
         return super().__getattr__(name)
 
-    def inter_account(self) -> bool:
-        return self._target.inter_account()  # type: ignore[no-any-return]
 
 class _AsyncNearbyApprover(_AsyncFacet):
     """A nearby approver handle on the async client: ``stop``, ``pause``, ``resume``, ``set_prompt`` and
