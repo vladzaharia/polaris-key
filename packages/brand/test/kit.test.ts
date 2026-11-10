@@ -213,23 +213,37 @@ describe("the drift gate covers every kit output", () => {
     expect(kitOutputs.filter((p) => !owned.has(p))).toEqual([]);
   });
 
-  it.each(kitOutputs)(
-    "a hand edit to %s fails --check",
-    async (path) => {
-      const target = join(ROOT, path);
-      const stale = await run({
-        check: true,
-        read: (abs) => {
-          const bytes = readFileSync(abs);
-          return abs === target
-            ? Buffer.concat([bytes, Buffer.from(" ")])
-            : bytes;
-        },
-      });
-      expect(stale).toEqual([path]);
-    },
-    60_000,
-  );
+  // One generator run with every kit output edited: the stale list must be exactly the kit outputs,
+  // so each one is individually covered by the drift gate.
+  it("a hand edit to every kit output fails --check, and to no other output", async () => {
+    const targets = new Set(kitOutputs.map((p) => join(ROOT, p)));
+    const stale = await run({
+      check: true,
+      read: (abs) => {
+        const bytes = readFileSync(abs);
+        return targets.has(abs)
+          ? Buffer.concat([bytes, Buffer.from(" ")])
+          : bytes;
+      },
+    });
+    expect([...stale].sort()).toEqual([...kitOutputs].sort());
+  }, 60_000);
+
+  // A single edit names only that file (the stale list is not "everything" by accident).
+  it("a hand edit to one output fails --check for that output alone", async () => {
+    const path = kitOutputs[0]!;
+    const target = join(ROOT, path);
+    const stale = await run({
+      check: true,
+      read: (abs) => {
+        const bytes = readFileSync(abs);
+        return abs === target
+          ? Buffer.concat([bytes, Buffer.from(" ")])
+          : bytes;
+      },
+    });
+    expect(stale).toEqual([path]);
+  }, 60_000);
 
   it("every text output carries the GENERATED banner", () => {
     for (const path of kitOutputs) {
