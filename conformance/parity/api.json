@@ -8065,7 +8065,8 @@
       "feature": "connect.local",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client",
       "args": [
@@ -8081,7 +8082,8 @@
       "feature": "connect.local",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client",
       "args": [
@@ -8097,7 +8099,8 @@
       "feature": "connect.local",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },
@@ -8107,7 +8110,8 @@
       "feature": "connect.local",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client",
       "args": [
@@ -8127,7 +8131,8 @@
       "feature": "connect.local",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client",
       "args": [
@@ -8143,7 +8148,8 @@
       "feature": "connect.local",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client",
       "args": [
@@ -8163,7 +8169,8 @@
       "feature": "connect.local",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client",
       "args": [
@@ -8179,7 +8186,8 @@
       "feature": "connect.local",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client",
       "args": [
@@ -8195,7 +8203,8 @@
       "feature": "connect.local",
       "sdks": {
         "node": {},
-        "python": {}
+        "python": {},
+        "swift": {}
       },
       "layer": "client"
     },

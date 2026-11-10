@@ -563,6 +563,9 @@ function renderSwift(api: Api): string {
     } else if (r.id.startsWith("cloudConnect.links.")) {
       // Inter-account links (CC-19): the verbs live on `cloudConnect.links` (`CloudLinks`).
       lines.push(`_ = CloudLinks.${ref}  // ${r.id}`);
+    } else if (r.id.startsWith("cloudConnect.localLinks.")) {
+      // Local links (CC-29): the verbs live on `cloudConnect.localLinks` (`LocalLinks`).
+      lines.push(`_ = LocalLinks.${ref}  // ${r.id}`);
     } else if (r.id.startsWith("cloudConnect.nearby.")) {
       // Nearby approval (CC-15): request and onRequest live on `cloudConnect.nearby`.
       lines.push(`_ = CloudNearby.${ref}  // ${r.id}`);

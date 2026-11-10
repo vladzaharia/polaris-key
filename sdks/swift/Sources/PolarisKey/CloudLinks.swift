@@ -125,6 +125,7 @@ import PolarisKeyCore
             }
             return { [state] in state.with { $0.fns.removeAll { $0.0 == id } } }
         }
+        var isEmpty: Bool { state.with { $0.fns.isEmpty } }
         func fire(_ s: ConnectSession) { for f in state.with({ $0.fns.map(\.1) }) { f(s) } }
     }
 

@@ -209,6 +209,17 @@ public struct ConnectLanSource: Sendable {
     public var onContacts: (@Sendable (@escaping @Sendable () -> Void) -> @Sendable () -> Void)?
     /// A session opened under a contact: the first handshake of a pending one promotes it.
     public var contactEstablished: (@Sendable (ConnectContactRef) async -> Void)?
+    /// The product slug, for a listener with no account (§15.12): it has no identity to read it from.
+    public var slug: String?
+    /// The local links (§15.12) in held order, secrets decoded: empty while pairing with a code is off (no cached
+    /// `localPairing`) or none are held.
+    public var locals: (@Sendable () async -> [ConnectLiveLocal])?
+    /// Called when the local links changed (stored, renamed, re-marked, forgotten, or the gate moved).
+    public var onLocals: (@Sendable (@escaping @Sendable () -> Void) -> @Sendable () -> Void)?
+    /// The cached discovery answer `localPairing` is still true: read at every accept, advert and dial.
+    public var localAllowed: (@Sendable () async -> Bool)?
+    /// A session opened under a local link: its `lastSeen` is written (at most hourly).
+    public var localEstablished: (@Sendable (ConnectLocalRef) async -> Void)?
 
     public init(
         load: @escaping @Sendable () async throws -> PeerSource, now: @escaping @Sendable () -> Int,
@@ -218,8 +229,17 @@ public struct ConnectLanSource: Sendable {
         changes: ConnectIdentityEpoch = ConnectIdentityEpoch(),
         contacts: (@Sendable () async -> [ConnectLiveContact])? = nil,
         onContacts: (@Sendable (@escaping @Sendable () -> Void) -> @Sendable () -> Void)? = nil,
-        contactEstablished: (@Sendable (ConnectContactRef) async -> Void)? = nil
+        contactEstablished: (@Sendable (ConnectContactRef) async -> Void)? = nil, slug: String? = nil,
+        locals: (@Sendable () async -> [ConnectLiveLocal])? = nil,
+        onLocals: (@Sendable (@escaping @Sendable () -> Void) -> @Sendable () -> Void)? = nil,
+        localAllowed: (@Sendable () async -> Bool)? = nil,
+        localEstablished: (@Sendable (ConnectLocalRef) async -> Void)? = nil
     ) {
+        self.slug = slug
+        self.locals = locals
+        self.onLocals = onLocals
+        self.localAllowed = localAllowed
+        self.localEstablished = localEstablished
         self.contacts = contacts
         self.onContacts = onContacts
         self.contactEstablished = contactEstablished
@@ -254,7 +274,9 @@ public struct ConnectLanSource: Sendable {
                             && ConnectContacts.tag(Base64URL.decode($0.secret) ?? Data()) == ref.tag
                     } ? ConnectContacts.promote(rows, agreeKey: ref.agreeKey, tag: ref.tag) : nil
                 }
-            })
+            },
+            slug: c.core.product, locals: { await c.liveLocals() }, onLocals: { fn in c.localChanges.add(fn) },
+            localAllowed: { c.localPairing() }, localEstablished: { await c.touchLocal(id: $0.id) })
     }
 }
 
@@ -377,6 +399,10 @@ public struct ConnectLanSource: Sendable {
         /// Browse and advertise over AWDL too (D-5). Off by default. Ignored when `network` is given.
         public var peerToPeer: Bool
         public var network: (any ConnectLanNetwork)?
+        /// A network for each LAN service that is made, when `network` is nil: a device with no account brings the
+        /// service up and down as it gains and loses links (§15.12), and a stopped network is spent. Default: the system
+        /// one.
+        public var makeNetwork: (@Sendable () -> any ConnectLanNetwork)?
         public var maxSessions: Int
         public var rekeyMessages: Int?
         public var rekeySeconds: TimeInterval?
@@ -387,7 +413,8 @@ public struct ConnectLanSource: Sendable {
         public init(
             caps: [String] = ["app/1", xferCap], label: String? = nil, advertise: Bool = true, browse: Bool = true,
             allowLoopback: Bool = false, peerToPeer: Bool = false, network: (any ConnectLanNetwork)? = nil,
-            maxSessions: Int = connectLanMaxSessions, rekeyMessages: Int? = nil, rekeySeconds: TimeInterval? = nil,
+            makeNetwork: (@Sendable () -> any ConnectLanNetwork)? = nil, maxSessions: Int = connectLanMaxSessions,
+            rekeyMessages: Int? = nil, rekeySeconds: TimeInterval? = nil,
             handshakeSeconds: TimeInterval = PeerLink.handshakeSeconds, timer: ConnectPeerDocs.Timer? = nil
         ) {
             self.caps = caps
@@ -397,6 +424,7 @@ public struct ConnectLanSource: Sendable {
             self.allowLoopback = allowLoopback
             self.peerToPeer = peerToPeer
             self.network = network
+            self.makeNetwork = makeNetwork
             self.maxSessions = maxSessions
             self.rekeyMessages = rekeyMessages
             self.rekeySeconds = rekeySeconds
@@ -469,23 +497,38 @@ public struct ConnectLanSource: Sendable {
         private let limiter = HandshakeLimiter()
         private var unContacts: (@Sendable () -> Void)?
         private var contactsSig = ""
+        // Local links (§15.12): held in memory for the life of the service and dropped at `stop()`.
+        private let localOnly: Bool
+        nonisolated let localIndex = ConnectLocalIndex()
+        private var locals: [ConnectLiveLocal] = []
+        private var localPeers: [String: (peer: ConnectLiveLocal, instance: String, endpoint: BonjourEndpoint)] = [:]
+        private let localSessionSubs = Subscribers<ConnectSession>()
+        private var unLocals: (@Sendable () -> Void)?
+        private var localsSig = ""
+        private var slugValue = ""
         private var pending: [ObjectIdentifier: NWPipe] = [:]
         /// For a handshake still running: the contacts (id and secret tag) its trial list holds.
         private var pendingServes: [ObjectIdentifier: Set<String>] = [:]
         private var sessions: [ObjectIdentifier: ConnectSession] = [:]
 
-        private init(_ src: ConnectLanSource, _ o: ConnectLanOptions) {
+        private init(_ src: ConnectLanSource, _ o: ConnectLanOptions, localOnly: Bool = false) {
             self.src = src
             self.o = o
+            self.localOnly = localOnly
+            slugValue = src.slug ?? ""
             let index = ConnectBrowseIndex()
             self.index = index
             let cindex = contactIndex
+            let lindex = localIndex
             let now = src.now
             network =
-                o.network
+                o.network ?? o.makeNetwork?()
                 ?? SystemConnectLanNetwork(
                     peerToPeer: o.peerToPeer, allowLoopback: o.allowLoopback,
-                    accept: { index.lookup($0, now: now()) != nil || cindex.lookup($0, now: now()) != nil })
+                    accept: {
+                        index.lookup($0, now: now()) != nil || cindex.lookup($0, now: now()) != nil
+                            || lindex.lookup($0, now: now()) != nil
+                    })
             timer =
                 o.timer ?? { s, fn in
                     let t = Task {
@@ -525,9 +568,40 @@ public struct ConnectLanSource: Sendable {
             return s
         }
 
-        private func begin() async throws {
-            _ = try await identity(force: true)
-            await loadContacts()
+        /// A listener with no account (§15.12): it holds local links alone, so it reads no identity, advertises no
+        /// account name and answers only mode `l`. Throws `ConnectLanError`: `permissionDenied`, `notConfigured`,
+        /// `notListening`, `notStarted` (no slug, or no local links in the source).
+        public static func startLocal(_ src: ConnectLanSource, options: ConnectLanOptions = ConnectLanOptions())
+            async throws -> ConnectLanService
+        {
+            guard src.slug != nil, src.locals != nil else {
+                throw ConnectLanError(.notStarted, "A listener with no account needs the product slug and its links.")
+            }
+            let s = ConnectLanService(src, options, localOnly: true)
+            do {
+                try await s.beginLocal()
+            } catch {
+                await s.stop()
+                throw error
+            }
+            return s
+        }
+
+        private func beginLocal() async throws {
+            // Subscribed before the first advert, and the links read again once the browse runs, so a gate that flips
+            // while the service starts is not missed.
+            unLocals = src.onLocals?({ [weak self] in
+                guard let self else { return }
+                Task { await self.refreshLocals() }
+            })
+            await loadLocals()
+            try await listenNetwork()
+            if o.browse { try browseNetwork() }
+            await refreshLocals()
+            armEpoch(src.now())
+        }
+
+        private func listenNetwork() async throws {
             do {
                 port = try await network.listen(
                     onPipe: { [weak self] pipe in
@@ -550,25 +624,38 @@ public struct ConnectLanSource: Sendable {
                 throw Self.lanError(e)
             }
             listening = true
+        }
+
+        private func browseNetwork() throws {
+            do {
+                stopBrowse = try network.browse(
+                    onUp: { [weak self] f in
+                        guard let self else { return }
+                        Task { await self.found(f) }
+                    },
+                    onDown: { [weak self] n in
+                        guard let self else { return }
+                        Task { await self.gone(n) }
+                    },
+                    onError: { [errorSubs] e in errorSubs.fire(Self.lanError(e)) })
+                browseStop.set(stopBrowse)
+            } catch let e as BonjourBrowseError {
+                throw Self.lanError(e)
+            }
+        }
+
+        private func begin() async throws {
+            unLocals = src.onLocals?({ [weak self] in
+                guard let self else { return }
+                Task { await self.refreshLocals() }
+            })
+            _ = try await identity(force: true)
+            await loadContacts()
+            await loadLocals()
+            try await listenNetwork()
             if o.advertise { try await rotate() }
             if o.browse && !o.advertise { armEpoch(src.now()) }
-            if o.browse {
-                do {
-                    stopBrowse = try network.browse(
-                        onUp: { [weak self] f in
-                            guard let self else { return }
-                            Task { await self.found(f) }
-                        },
-                        onDown: { [weak self] n in
-                            guard let self else { return }
-                            Task { await self.gone(n) }
-                        },
-                        onError: { [errorSubs] e in errorSubs.fire(Self.lanError(e)) })
-                    browseStop.set(stopBrowse)
-                } catch let e as BonjourBrowseError {
-                    throw Self.lanError(e)
-                }
-            }
+            if o.browse { try browseNetwork() }
             unContacts = src.onContacts?({ [weak self] in
                 guard let self else { return }
                 Task { await self.refreshContacts() }
@@ -625,11 +712,16 @@ public struct ConnectLanSource: Sendable {
             cancelEpoch = nil
             unContacts?()
             unContacts = nil
+            unLocals?()
+            unLocals = nil
             stopBrowse?()
             stopBrowse = nil
             contacts = []
             contactPeers = [:]
             contactIndex.clear()
+            locals = []
+            localPeers = [:]
+            localIndex.clear()
             for p in pending.values { await p.close() }
             pending = [:]
             for s in sessions.values { await s.close() }
@@ -650,6 +742,7 @@ public struct ConnectLanSource: Sendable {
             docs.close()
             index.clear()
             contactIndex.clear()
+            localIndex.clear()
             let net = network
             Task { await net.stop() }
             Task { await self.abortInActor() }
@@ -667,6 +760,10 @@ public struct ConnectLanSource: Sendable {
             contactPeers = [:]
             unContacts?()
             unContacts = nil
+            locals = []
+            localPeers = [:]
+            unLocals?()
+            unLocals = nil
             let (p, s) = (Array(pending.values), Array(sessions.values))
             pending = [:]
             sessions = [:]
@@ -726,7 +823,7 @@ public struct ConnectLanSource: Sendable {
 
         private func makeLink(
             pipe: NWPipe, ident: PeerSource, role: PeerChannel.Role, handlers: ConnectSessionHandlers,
-            served: [ConnectLiveContact] = []
+            served: [ConnectLiveContact] = [], locals servedLocals: [ConnectLiveLocal] = []
         ) async throws -> PeerLink {
             let docs = docs
             let epoch = ident.ringEpoch
@@ -741,8 +838,9 @@ public struct ConnectLanSource: Sendable {
                 rekeySeconds: o.rekeySeconds)
             // The shared listener (§15.5, §15.10): a responder that holds contacts tries the account's keys,
             // then each contact's secret, under the one limiter.
-            if role == .responder, !served.isEmpty {
+            if role == .responder, !served.isEmpty || !servedLocals.isEmpty {
                 opts.contacts = served.map { PeerContactLink(secret: $0.secret, agreeKey: $0.agreeKey) }
+                opts.locals = servedLocals.map(\.channel)
                 opts.admission = limiter
             }
             let link = try await PeerLink.make(
@@ -753,10 +851,31 @@ public struct ConnectLanSource: Sendable {
             return link
         }
 
-        private func handlers(role: String, served: [ConnectLiveContact] = []) -> ConnectSessionHandlers {
+        /// The link of a listener with no account (§15.12): mode `l` alone, the links' own keys, the limiter's
+        /// per-group budget ahead of the shared one, and no certificate or roster.
+        private func makeLocalLink(pipe: NWPipe, handlers: ConnectSessionHandlers, served: [ConnectLiveLocal])
+            async throws -> PeerLink
+        {
+            let opts = PeerChannelOptions(
+                role: .responder, slug: slugValue, staticKey: nil, admission: limiter, caps: o.caps,
+                hello: (o.label, connectPlatformName, slugValue, nil), mode: .l, locals: served.map(\.channel),
+                admissionGroup: lanGroupKey(pipe.remoteAddress) ?? pipe.remoteAddress, now: src.now,
+                rekeyMessages: o.rekeyMessages ?? (1 << 20), rekeySeconds: o.rekeySeconds ?? 3600)
+            let link = try await PeerLink.make(
+                pipe: LanPipe(pipe: pipe), options: opts, handlers: handlers.handlers,
+                handshakeSeconds: o.handshakeSeconds)
+            handlers.attach(link)
+            Task { await link.run() }
+            return link
+        }
+
+        private func handlers(
+            role: String, served: [ConnectLiveContact] = [], locals servedLocals: [ConnectLiveLocal] = []
+        ) -> ConnectSessionHandlers {
             let docs = docs
             return ConnectSessionHandlers(
-                role: role, contacts: served.map(\.ref), onRing: { docs.onRing($0, $1) }, onTrust: { docs.onTrust($0) },
+                role: role, contacts: served.map(\.ref), locals: servedLocals.map(\.ref),
+                onRing: { docs.onRing($0, $1) }, onTrust: { docs.onTrust($0) },
                 onRingWanted: { docs.onRingWanted() })
         }
 
@@ -778,20 +897,38 @@ public struct ConnectLanSource: Sendable {
             let key = ObjectIdentifier(pipe)
             pending[key] = pipe
             do {
-                // The identity is read before the first byte is handled; the socket buffers meanwhile.
-                let ident = try await identity(force: false)
-                if stopped { throw ConnectLanError(.notListening, "stopped") }
+                // The local links answer only while pairing with a code is on (§15.12 "Gates"): the source hands out
+                // none while it is off. A listener with no account and nothing to try closes before a byte is read.
+                let servedLocals = locals
+                if localOnly && servedLocals.isEmpty { throw ConnectLanError(.notListening, "no links") }
+                let link: PeerLink
+                let h: ConnectSessionHandlers
                 let served = contacts
-                if !served.isEmpty { pendingServes[key] = Set(served.map { "\($0.id)|\($0.tag)" }) }
-                let h = handlers(role: "responder", served: served)
-                let link = try await makeLink(pipe: pipe, ident: ident, role: .responder, handlers: h, served: served)
+                if localOnly {
+                    h = handlers(role: "responder", locals: servedLocals)
+                    pendingServes[key] = Set(servedLocals.map { "l:\($0.id)|\($0.tag)" })
+                    link = try await makeLocalLink(pipe: pipe, handlers: h, served: servedLocals)
+                } else {
+                    // The identity is read before the first byte is handled; the socket buffers meanwhile.
+                    let ident = try await identity(force: false)
+                    if stopped { throw ConnectLanError(.notListening, "stopped") }
+                    let serves =
+                        Set(served.map { "\($0.id)|\($0.tag)" } + servedLocals.map { "l:\($0.id)|\($0.tag)" })
+                    if !serves.isEmpty { pendingServes[key] = serves }
+                    h = handlers(role: "responder", served: served, locals: servedLocals)
+                    link = try await makeLink(
+                        pipe: pipe, ident: ident, role: .responder, handlers: h, served: served, locals: servedLocals)
+                }
                 let session = try await h.opened(link)
                 pending[key] = nil
                 pendingServes[key] = nil
                 pipe.markAuthenticated()
                 if stopped { return await session.close() }
                 track(session)
-                if let ref = session.contact {
+                if let ref = session.local {
+                    Task { await self.src.localEstablished?(ref) }
+                    localSessionSubs.fire(session)
+                } else if let ref = session.contact {
                     if ref.pending { Task { await self.src.contactEstablished?(ref) } }
                     contactSessionSubs.fire(session)
                 } else {
@@ -877,6 +1014,156 @@ public struct ConnectLanSource: Sendable {
             }
         }
 
+        /// Read the local links again (stored, renamed, re-marked, forgotten, or the gate moved) and bring the
+        /// adverts, the accepted names and the listener's trial order to match. Safe at any time.
+        public func refreshLocals() async {
+            if stopped { return }
+            await loadLocals()
+            if stopped || !listening { return }
+            if localOnly {
+                await advertExtras()
+            } else if o.advertise, let ident = try? await identity(force: false) {
+                await advertContacts(ident)
+            }
+        }
+
+        /// Forget a link at once: it leaves the served list before this returns, so a dial or a handshake that
+        /// starts after it cannot use it; a handshake still running under it is closed before the host sees it.
+        public func forgetLocal(_ id: String) async {
+            locals.removeAll { $0.id == id }
+            localPeers[id] = nil
+            for (k, served) in pendingServes {
+                let heldNow = Set(locals.map { "l:\($0.id)|\($0.tag)" })
+                let left = served.filter { $0.hasPrefix("l:") }
+                if !left.isSubset(of: heldNow) {
+                    pendingServes[k] = nil
+                    if let p = pending[k] { Task { await p.close() } }
+                }
+            }
+            localsSig = ""
+            await refreshLocals()
+        }
+
+        private func loadLocals() async {
+            let next = (await src.locals?()) ?? []
+            if stopped { return }
+            let sig = next.map { "\($0.id)\($0.reachable ? "r" : "-")|\($0.tag)" }.joined(separator: ",")
+            let changed = sig != localsSig || localIndex.stale(now: src.now())
+            let moved = sig != localsSig
+            locals = next
+            localsSig = sig
+            // A peer seen under a link that is gone is forgotten.
+            let have = Set(next.map(\.id))
+            for k in localPeers.keys where !have.contains(k) { localPeers[k] = nil }
+            // A handshake still running under a link that is gone (or whose secret was replaced) or while pairing
+            // with a code is off is ended; an established session is the links layer's to close.
+            let heldNow = Set(next.map { "l:\($0.id)|\($0.tag)" })
+            for (k, served) in pendingServes {
+                let local = served.filter { $0.hasPrefix("l:") }
+                if !local.isSubset(of: heldNow) {
+                    pendingServes[k] = nil
+                    if let p = pending[k] { Task { await p.close() } }
+                }
+            }
+            if changed {
+                localIndex.update(next, now: src.now())
+                network.rescan()
+            }
+            _ = moved
+        }
+
+        /// The adverts of the links marked reachable, at most 8 (`m=l`, TXT exactly `v=1`, `m=l`), together with the
+        /// contacts' (`m=c`), on the listener's port. A listener with no account advertises these alone.
+        private func advertExtras() async {
+            await network.advertiseContacts(contactAdvertList(ident: nil) + localAdvertList())
+        }
+
+        private func localAdvertList() -> [BonjourAdvert] {
+            let epoch = peerAdvertEpoch(src.now())
+            return locals.filter(\.reachable).prefix(maxLiveLocalAdverts).map {
+                BonjourAdvert(
+                    instance: PeerLocal.localInstance(secret: $0.secret, advertiserLinkKey: $0.ownPublic, epoch: epoch),
+                    txt: ["v=1", "m=l"])
+            }
+        }
+
+        private func foundLocal(_ f: BonjourFound) {
+            guard let id = localIndex.lookup(f.instance, now: src.now()), let l = locals.first(where: { $0.id == id })
+            else { return }
+            localPeers[id] = (l, f.instance, f.endpoint)
+        }
+
+        /// The links seen on this network now, by link `id`.
+        public func currentLocalPeers() -> [String] { Array(localPeers.keys) }
+
+        /// Called for each inbound mode-`l` session (a local link's peer dialled this device) once it is open.
+        @discardableResult
+        public nonisolated func onLocalSession(_ fn: @escaping @Sendable (ConnectSession) -> Void)
+            -> @Sendable () -> Void
+        {
+            localSessionSubs.add(fn)
+        }
+
+        /// Dial a local link's peer seen on this network and run the mode-`l` handshake under its secret
+        /// (§15.12). The pin is the session's: a peer that does not hold the link's key ends it as `peer_revoked`
+        /// before a byte is sent back. The link's secret and keys are copied before the dial. Throws
+        /// `ConnectLanError`: `unknownPeer`, `notListening`, `connectFailed`, `permissionDenied`, `handshakeFailed`.
+        public func connectLocal(_ id: String) async throws -> ConnectSession {
+            if stopped { throw ConnectLanError(.notListening, "The LAN service is stopped.") }
+            guard await src.localAllowed?() ?? true else {
+                throw ConnectLanError(.notListening, "Pairing with a code is off.")
+            }
+            guard let entry = localPeers[id], let l = locals.first(where: { $0.id == id }) else {
+                throw ConnectLanError(.unknownPeer, "That link was not found on this network.")
+            }
+            let targets: [BonjourEndpoint]
+            do { targets = try await network.resolve(entry.endpoint) } catch let e as BonjourPipeError {
+                if case .browse(.permissionDenied) = e { throw Self.lanError(e) }
+                throw ConnectLanError(.connectFailed, "The device did not answer.")
+            }
+            var last = ConnectLanError(.connectFailed, "The device did not answer.")
+            for target in targets {
+                if stopped { throw ConnectLanError(.notListening, "The LAN service is stopped.") }
+                // The gate and the held link are read again before every dial.
+                guard await src.localAllowed?() ?? true, locals.contains(where: { $0.id == id && $0.tag == l.tag })
+                else { throw ConnectLanError(.unknownPeer, "That link is no longer held.") }
+                let pipe: NWPipe
+                do { pipe = try await network.dial(target) } catch let e as BonjourPipeError {
+                    if case .browse(.permissionDenied) = e { throw Self.lanError(e) }
+                    last = ConnectLanError(.connectFailed, "The device did not answer.")
+                    continue
+                }
+                let key = ObjectIdentifier(pipe)
+                pending[key] = pipe
+                defer { pending[key] = nil }
+                do {
+                    let h = ConnectSessionHandlers(role: "initiator", locals: [l.ref])
+                    let slug = slugValue.isEmpty ? (try await identity(force: false).slug) : slugValue
+                    let opts = PeerChannelOptions(
+                        role: .initiator, slug: slug, staticKey: nil, caps: o.caps,
+                        hello: (o.label, connectPlatformName, slug, nil), mode: .l, locals: [l.channel], now: src.now,
+                        rekeyMessages: o.rekeyMessages ?? (1 << 20), rekeySeconds: o.rekeySeconds ?? 3600)
+                    let link = try await PeerLink.make(
+                        pipe: LanPipe(pipe: pipe), options: opts, handlers: h.handlers,
+                        handshakeSeconds: o.handshakeSeconds)
+                    h.attach(link)
+                    Task { await link.run() }
+                    await link.start()
+                    let session = try await h.opened(link)
+                    track(session)
+                    Task { await self.src.localEstablished?(l.ref) }
+                    return session
+                } catch let e as ConnectLanError {
+                    await pipe.close()
+                    last = e
+                } catch {
+                    await pipe.close()
+                    last = ConnectLanError(.handshakeFailed, "The handshake failed.")
+                }
+            }
+            throw last
+        }
+
         private func loadContacts() async {
             let next = (await src.contacts?()) ?? []
             if stopped { return }
@@ -900,16 +1187,21 @@ public struct ConnectLanSource: Sendable {
             }
         }
 
-        /// The contact adverts for the contacts marked reachable, at most 8, on the listener's port.
+        /// The contact adverts for the contacts marked reachable, at most 8, and the local links' (`m=l`, at most 8),
+        /// on the listener's port.
         private func advertContacts(_ ident: PeerSource) async {
+            await network.advertiseContacts(contactAdvertList(ident: ident) + localAdvertList())
+        }
+
+        private func contactAdvertList(ident: PeerSource?) -> [BonjourAdvert] {
+            guard let ident else { return [] }
             let epoch = peerAdvertEpoch(src.now())
-            let adverts = contacts.filter(\.reachable).prefix(maxLiveContactAdverts).map {
+            return contacts.filter(\.reachable).prefix(maxLiveContactAdverts).map {
                 BonjourAdvert(
                     instance: PeerContacts.instance(
                         secret: $0.secret, advertiserAgreeKey: ident.agreePublic, epoch: epoch),
                     txt: ["v=1", "m=c"])
             }
-            await network.advertiseContacts(Array(adverts))
         }
 
         private func foundContact(_ f: BonjourFound) {
@@ -991,8 +1283,9 @@ public struct ConnectLanSource: Sendable {
                 advName = name
                 await network.advertise(BonjourAdvert(instance: name, txt: ["v=1", "m=a"]))
             }
-            // Contacts: the names rotate with the epoch like the account's.
+            // Contacts and local links: the names rotate with the epoch like the account's.
             await loadContacts()
+            await loadLocals()
             await advertContacts(ident)
             armEpoch(src.now())
         }
@@ -1011,18 +1304,26 @@ public struct ConnectLanSource: Sendable {
 
         private func epochTick() async {
             if stopped { return }
+            if localOnly {
+                await loadLocals()
+                await advertExtras()
+                armEpoch(src.now())
+                return
+            }
             if o.advertise {
                 try? await rotate()
                 return
             }
             if index.refresh(now: src.now()) { network.rescan() }
             await loadContacts()
+            await loadLocals()
             armEpoch(src.now())
         }
 
         private func gone(_ instance: String) {
             for k in peers.keys where peers[k]?.instance == instance { peers[k] = nil }
             for k in contactPeers.keys where contactPeers[k]?.instance == instance { contactPeers[k] = nil }
+            for k in localPeers.keys where localPeers[k]?.instance == instance { localPeers[k] = nil }
         }
 
         private func found(_ f: BonjourFound) async {
@@ -1030,6 +1331,9 @@ public struct ConnectLanSource: Sendable {
             // A contact advert (`m=c`) is judged by `PeerContacts.parseTxt` and by no other path (§15.4): the
             // generic parser answers an unknown mode, so it can never be dialled as `a`.
             if PeerContacts.parseTxt(f.txt) == .ok { return foundContact(f) }
+            // A local-link advert (`m=l`, §15.12) is judged by `PeerLocal.parseLocalTxt` and by no other path.
+            if PeerLocal.parseLocalTxt(f.txt) == nil { return foundLocal(f) }
+            if localOnly { return }
             guard case .ok(let mode, _) = PeerAdvert.parseTxt(f.txt), mode == .a else { return }
             guard (try? await identity(force: false)) != nil, let hit = index.lookup(f.instance, now: src.now()) else {
                 return
