@@ -54,12 +54,23 @@ With a Content-Security-Policy, automatic sign-in needs `connect-src https://acc
 
 Turn it off on the provider:
 
-```tsx no-compile
-<PolarisKeyProvider config={polarisKey} autoSignIn={false}>
-  <PolarisKeyGate>
-    <YourApp />
-  </PolarisKeyGate>
-</PolarisKeyProvider>
+```tsx
+import { PolarisKeyProvider, type PolarisKeyConfig } from "@polaris-key/react";
+import { PolarisKeyGate } from "@polaris-key/react/kit";
+
+const polarisKey = {
+  productSlug: "acme",
+} satisfies PolarisKeyConfig;
+
+export function App() {
+  return (
+    <PolarisKeyProvider config={polarisKey} autoSignIn={false}>
+      <PolarisKeyGate>
+        <YourApp />
+      </PolarisKeyGate>
+    </PolarisKeyProvider>
+  );
+}
 ```
 
 The gate never shows the browser's account chooser by itself.
