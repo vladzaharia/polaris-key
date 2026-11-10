@@ -258,8 +258,8 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `cloudSync.transfer.resume` | `cloudSync.transfer.resume` | `useTransfers().resume` | `cloud_sync.transfer.resume` | `SaveTransfer.resume` | `SaveTransfer.resume` | `PKeyTransfer.resume` | `sync.files` |
 | `cloudSync.transfer.cancel` | `cloudSync.transfer.cancel` | `useTransfers().cancel` | `cloud_sync.transfer.cancel` | `SaveTransfer.cancel` | `SaveTransfer.cancel` | `PKeyTransfer.cancel` | `sync.files` |
 | `cloudSync.transferEvent` | `cloudSync.transferEvent` | `useTransfers().transfers` | `cloud_sync.transfer_event` | `events` | `client.events` | `client.event` | `sync.files` |
-| `cloudSync.export` | planned (U-51) | planned (U-51) | planned (U-51) | planned (U-51) | planned (U-51) | planned (U-51) | `sync.export` |
-| `cloudSync.cancelExport` | — | — | — | — | — | `PKeyCloudSync.cancel_export` (planned: U-51) | `sync.export` |
+| `cloudSync.export` | planned (U-51) | planned (U-51) | `cloud_sync.export` | planned (U-51) | planned (U-51) | planned (U-51) | `sync.export` |
+| `cloudSync.cancelExport` | — | — | `cloud_sync.cancel_export` | — | — | `PKeyCloudSync.cancel_export` (planned: U-51) | `sync.export` |
 | `cloudSync.collection` | `cloudSync.collection` | `useCollection` | `cloud_sync.collection` | `cloudSync.collection` | `cloudSync.collection` | `PKeyCloudSync.collection` | `sync.records` |
 | `cloudSync.collection.get` | `cloudSync.collection.get` | `useCollection(name).get` | `cloud_sync.collection.get` | `CloudSyncCollection.get` | `SyncCollection.get` | `PKeyCollection.get_record` | `sync.records` |
 | `cloudSync.collection.ids` | `cloudSync.collection.ids` | `useCollection(name).ids` | `cloud_sync.collection.ids` | `CloudSyncCollection.ids` | `SyncCollection.ids` | `PKeyCollection.ids` | `sync.records` |
