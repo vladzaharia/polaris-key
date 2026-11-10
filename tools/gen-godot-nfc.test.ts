@@ -85,19 +85,29 @@ describe.skipIf(!nodeHasNfc16)(
       expect(bad).toEqual([]);
     });
 
-    it("for every (starter, mark) pair", () => {
-      const starters = new Set<number>();
-      for (const k of t.pairs.keys()) starters.add(Number(k.split(",")[0]));
-      for (const cp of t.decomp.keys()) starters.add(cp);
-      const marks = [...t.ccc.keys()];
-      const bad: string[] = [];
-      for (const a of starters)
-        for (const m of marks) {
-          const s = String.fromCodePoint(a, m);
-          if (nfcReference(s, t) !== s.normalize("NFC")) bad.push(s);
+    // The sweep is ~2M normalisations: under 1 s idle, but a loaded CI runner runs it 20x slower,
+    // so it is split into slices (starter index modulo SLICES), each its own test with its own
+    // budget. Together the slices cover every starter exactly once.
+    const SLICES = 16;
+    it.each(Array.from({ length: SLICES }, (_, i) => i))(
+      "for every (starter, mark) pair, slice %i of 16",
+      (slice) => {
+        const starters = new Set<number>();
+        for (const k of t.pairs.keys()) starters.add(Number(k.split(",")[0]));
+        for (const cp of t.decomp.keys()) starters.add(cp);
+        const marks = [...t.ccc.keys()];
+        const bad: string[] = [];
+        let i = 0;
+        for (const a of [...starters].sort((x, y) => x - y)) {
+          if (i++ % SLICES !== slice) continue;
+          for (const m of marks) {
+            const s = String.fromCodePoint(a, m);
+            if (nfcReference(s, t) !== s.normalize("NFC")) bad.push(s);
+          }
         }
-      expect(bad).toEqual([]);
-    });
+        expect(bad).toEqual([]);
+      },
+    );
 
     it("for the fixture inputs and a seeded fuzz over the whole BMP and the supplementary planes", () => {
       expect(crossCheckWithNode(t)?.bad).toEqual([]);
