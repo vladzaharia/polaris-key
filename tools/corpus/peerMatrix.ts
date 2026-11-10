@@ -63,6 +63,7 @@ import {
 import { buildNoiseVectors } from "./noise.js";
 import { buildContact } from "./contact.js";
 import { buildXfer } from "./xfer.js";
+import { buildLocal } from "./local.js";
 import { refX25519Public, sha256 } from "./reference/noise.js";
 import {
   type RefInterface,
@@ -3490,7 +3491,7 @@ export function buildPeerMatrix(): unknown {
   return {
     peerMatrixVersion: 1,
     description:
-      "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`; `lanAddresses` (which peer addresses a device dials or accepts, and the per-address count key); `mdnsAnswers` (which A and AAAA records a browser believes); `vouch` (the mode-v vouch of 15.6.1: `requests`, `results`, `flows`, `finish`); `contact` (inter-account links, 15.10: `secrets`, `bodies`, `categories`, `exchange`, `store`, `listener`, `pin`, `adverts`, `rooms`, `tickets`); `xfer` (Direct Transfer, 15.11: `codecs`, `window`, `offer`, `hash`, `ending`, `resume`, `name`, `limits`); mode c also adds rows to `prologue` and `handshakePayloads`. A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
+      "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`; `lanAddresses` (which peer addresses a device dials or accepts, and the per-address count key); `mdnsAnswers` (which A and AAAA records a browser believes); `vouch` (the mode-v vouch of 15.6.1: `requests`, `results`, `flows`, `finish`); `contact` (inter-account links, 15.10: `secrets`, `bodies`, `categories`, `exchange`, `store`, `listener`, `pin`, `adverts`, `rooms`, `tickets`); `xfer` (Direct Transfer, 15.11: `codecs`, `window`, `offer`, `hash`, `ending`, `resume`, `name`, `limits`); `local` (account-free local pairing, 15.12: see its own note); mode c also adds rows to `prologue` and `handshakePayloads`. A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
     adverts: buildAdverts(),
     prologue: buildPrologue(),
     psk: buildPsk(),
@@ -3504,5 +3505,6 @@ export function buildPeerMatrix(): unknown {
     vouch: buildVouch(),
     contact: buildContact(),
     xfer: buildXfer(),
+    local: buildLocal(),
   };
 }

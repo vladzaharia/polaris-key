@@ -279,6 +279,7 @@ interface GenIn {
 
 const QR_SECRET = hex(mat("qr secret").slice(0, 16));
 const QR_SECRET_2 = hex(mat("qr secret 2").slice(0, 16));
+export const CPACE_QR_SECRET_2 = QR_SECRET_2;
 
 function buildGenerators(): unknown[] {
   const rows: GenIn[] = [
@@ -433,111 +434,141 @@ export function cpaceAttempt(
 export const CPACE_CODE_PASSWORD = "123456";
 export const CPACE_QR_SECRET = QR_SECRET;
 
+interface AttemptIn {
+  id: string;
+  kind: CpaceKind;
+  joiner: string;
+  shower: string;
+  slug?: string;
+  showerSlug?: string;
+  sid?: Uint8Array;
+  showerSid?: Uint8Array;
+  /** Whether both sides derive one ISK. */
+  agree: boolean;
+}
+
+const ATTEMPTS: AttemptIn[] = [
+  { id: "code", kind: "code", joiner: "123456", shower: "123456", agree: true },
+  {
+    id: "code-leading-zeros",
+    kind: "code",
+    joiner: "000042",
+    shower: "000042",
+    agree: true,
+  },
+  { id: "qr", kind: "qr", joiner: QR_SECRET, shower: QR_SECRET, agree: true },
+  {
+    id: "code-wrong-password",
+    kind: "code",
+    joiner: "123457",
+    shower: "123456",
+    agree: false,
+  },
+  {
+    id: "qr-wrong-secret",
+    kind: "qr",
+    joiner: QR_SECRET_2,
+    shower: QR_SECRET,
+    agree: false,
+  },
+  {
+    id: "code-other-slug",
+    kind: "code",
+    joiner: "123456",
+    shower: "123456",
+    slug: "other",
+    agree: true,
+  },
+  {
+    id: "code-slug-mismatch",
+    kind: "code",
+    joiner: "123456",
+    shower: "123456",
+    slug: "other",
+    showerSlug: SLUG,
+    agree: false,
+  },
+  {
+    id: "code-sid-mismatch",
+    kind: "code",
+    joiner: "123456",
+    shower: "123456",
+    showerSid: mat("sid 2").slice(0, 10),
+    agree: false,
+  },
+];
+
+/** One attempt in full: each side's generator, share, K, ISK and PSK. */
+export function cpaceAttemptRow(id: string) {
+  const r = ATTEMPTS.find((a) => a.id === id);
+  if (r === undefined) throw new Error(`cpace attempt ${id}`);
+  const jSlug = r.slug ?? SLUG;
+  const sSlug = r.showerSlug ?? jSlug;
+  const jSid = r.sid ?? SID;
+  const sSid = r.showerSid ?? jSid;
+  const ya = mat("scalar a");
+  const yb = mat("scalar b");
+  const jGen = refCpaceGenerator(refPrs(r.kind, r.joiner), ci(jSlug), jSid);
+  const sGen = refCpaceGenerator(refPrs(r.kind, r.shower), ci(sSlug), sSid);
+  const Ya = refShare(ya, jGen.g);
+  const Yb = refShare(yb, sGen.g);
+  const kJ = refX25519(ya, Yb);
+  const kS = refX25519(yb, Ya);
+  const iskJ = refIsk(jSid, kJ, Ya, Yb);
+  const iskS = refIsk(sSid, kS, Ya, Yb);
+  const agree = hex(iskJ) === hex(iskS);
+  if (agree !== r.agree)
+    throw new Error(`cpace attempt ${r.id}: ISK agreement is ${agree}`);
+  return {
+    r,
+    jSlug,
+    sSlug,
+    jSid,
+    sSid,
+    ya,
+    yb,
+    jGen,
+    sGen,
+    Ya,
+    Yb,
+    kJ,
+    kS,
+    iskJ,
+    iskS,
+    pskJ: refCpaceRunPsk(iskJ, jSlug),
+    pskS: refCpaceRunPsk(iskS, sSlug),
+    agree,
+  };
+}
+
 function buildAttempts(): unknown[] {
-  interface AIn {
-    id: string;
-    kind: CpaceKind;
-    joiner: string;
-    shower: string;
-    showerKind?: CpaceKind;
-    slug?: string;
-    showerSlug?: string;
-    sid?: Uint8Array;
-    showerSid?: Uint8Array;
-  }
-  const rows: AIn[] = [
-    { id: "code", kind: "code", joiner: "123456", shower: "123456" },
-    {
-      id: "code-leading-zeros",
-      kind: "code",
-      joiner: "000042",
-      shower: "000042",
-    },
-    { id: "qr", kind: "qr", joiner: QR_SECRET, shower: QR_SECRET },
-    {
-      id: "code-wrong-password",
-      kind: "code",
-      joiner: "123457",
-      shower: "123456",
-    },
-    {
-      id: "qr-wrong-secret",
-      kind: "qr",
-      joiner: QR_SECRET_2,
-      shower: QR_SECRET,
-    },
-    {
-      id: "code-other-slug",
-      kind: "code",
-      joiner: "123456",
-      shower: "123456",
-      slug: "other",
-    },
-    {
-      id: "code-slug-mismatch",
-      kind: "code",
-      joiner: "123456",
-      shower: "123456",
-      slug: "other",
-      showerSlug: SLUG,
-    },
-    {
-      id: "code-sid-mismatch",
-      kind: "code",
-      joiner: "123456",
-      shower: "123456",
-      showerSid: mat("sid 2").slice(0, 10),
-    },
-  ];
-  return rows.map((r) => {
-    const jSlug = r.slug ?? SLUG;
-    const sSlug = r.showerSlug ?? jSlug;
-    const jSid = r.sid ?? SID;
-    const sSid = r.showerSid ?? jSid;
-    const ya = mat("scalar a");
-    const yb = mat("scalar b");
-    const jGen = refCpaceGenerator(refPrs(r.kind, r.joiner), ci(jSlug), jSid);
-    const sGen = refCpaceGenerator(refPrs(r.kind, r.shower), ci(sSlug), sSid);
-    const Ya = refShare(ya, jGen.g);
-    const Yb = refShare(yb, sGen.g);
-    const kJ = refX25519(ya, Yb);
-    const kS = refX25519(yb, Ya);
-    const iskJ = refIsk(jSid, kJ, Ya, Yb);
-    const iskS = refIsk(sSid, kS, Ya, Yb);
-    const matches = hex(iskJ) === hex(iskS);
-    const want =
-      r.id.startsWith("code-wrong") ||
-      r.id.startsWith("qr-wrong") ||
-      r.id.endsWith("mismatch");
-    if (matches === want)
-      throw new Error(`cpace attempt ${r.id}: ISK agreement is ${matches}`);
-    const pskJ = refCpaceRunPsk(iskJ, jSlug);
-    const pskS = refCpaceRunPsk(iskS, sSlug);
+  return ATTEMPTS.map(({ id }) => {
+    const a = cpaceAttemptRow(id);
     return {
-      id: r.id,
-      kind: r.kind,
-      joinerSecret: r.joiner,
-      showerSecret: r.shower,
-      joinerSlug: jSlug,
-      showerSlug: sSlug,
-      joinerSid: hex(jSid),
-      showerSid: hex(sSid),
-      ya: hex(ya),
-      yb: hex(yb),
-      joinerG: hex(jGen.g),
-      showerG: hex(sGen.g),
-      Ya: hex(Ya),
-      Yb: hex(Yb),
-      c1: hex(refC1(r.kind, Ya)),
-      c2: hex(refC2(Yb)),
-      joinerK: hex(kJ),
-      showerK: hex(kS),
-      joinerIsk: hex(iskJ),
-      showerIsk: hex(iskS),
-      joinerPsk: hex(pskJ),
-      showerPsk: hex(pskS),
+      id,
+      kind: a.r.kind,
+      joinerSecret: a.r.joiner,
+      showerSecret: a.r.shower,
+      joinerSlug: a.jSlug,
+      showerSlug: a.sSlug,
+      joinerSid: hex(a.jSid),
+      showerSid: hex(a.sSid),
+      ya: hex(a.ya),
+      yb: hex(a.yb),
+      joinerG: hex(a.jGen.g),
+      showerG: hex(a.sGen.g),
+      Ya: hex(a.Ya),
+      Yb: hex(a.Yb),
+      c1: hex(refC1(a.r.kind, a.Ya)),
+      c2: hex(refC2(a.Yb)),
+      joinerK: hex(a.kJ),
+      showerK: hex(a.kS),
+      joinerIsk: hex(a.iskJ),
+      showerIsk: hex(a.iskS),
+      joinerPsk: hex(a.pskJ),
+      showerPsk: hex(a.pskS),
       // True when both sides derive one ISK, and so one PSK: the Noise message 1 then opens.
-      agree: matches,
+      agree: a.agree,
     };
   });
 }

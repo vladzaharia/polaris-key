@@ -2149,6 +2149,489 @@
           "shareRefused": false
         }
       ]
-    }
+    },
+    "handshakes": [
+      {
+        "id": "mode-q",
+        "mode": "q",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "slug": "demo",
+        "prologue": "706b65792d706565722f310064656d6f007100",
+        "psk": "50202d326d5d4f05256b38755336fc2633e049be3aea888ca820e1385d4a472b",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initStaticPublic": "e75ba644cc6a6da64b62706e1f5d9803a4c0bc681bc92be780db08394055d624",
+        "initEphemeral": "078030ff8aedc6738d007bb5d6c2f528d00cc874a02d5d35d9eb424e830d2c28",
+        "initEphemeralPublic": "cca3983961df0c6d47360b3a7fbfa2b46e2b8de9155f9d2108c267039fe91f2b",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respStaticPublic": "8bead5d7ce9897ea78dcd31f1be0e277213c2aef2a11b7e8c196478761aa713d",
+        "respEphemeral": "0a2e9d0eebbbfe70e689a9fefbfc83b892b9a9e4e70b74825854b058fe5122da",
+        "respEphemeralPublic": "422acf6ea92144e6d984ce024a140b130a9d5c381a7a6d2ea4e81bb64fe71a09",
+        "handshakeHash": "315dbf54204e82c0e1150c94554ce659814304302a0f2a39c2f76de2180df2ba",
+        "attempt": "code",
+        "isk": "02721faaf6b9709ab897d5c9e66f878be15353167f2a74e680d45611393bfec085ff4043003ef6000b534cd917b5ffa175a4053c2ecb9f98f20e5f21fd96a223",
+        "messages": [
+          {
+            "index": 0,
+            "from": "i",
+            "kind": "handshake",
+            "payload": "7b2276223a317d",
+            "ciphertext": "cca3983961df0c6d47360b3a7fbfa2b46e2b8de9155f9d2108c267039fe91f2b233d80728ef24802261cdc92c4dd0277386444d746f2b3"
+          },
+          {
+            "index": 1,
+            "from": "r",
+            "kind": "handshake",
+            "payload": "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d",
+            "ciphertext": "422acf6ea92144e6d984ce024a140b130a9d5c381a7a6d2ea4e81bb64fe71a0927f391b1cff6d85d8042b41b62a77f8679afee8e0eaa916c3d3373596366ff47396562fdaa76bf9df4b9a56bada795db2ec550bc367b341dd1cdefdd7e132beea3234936a8b0efda5957ff6ec4bd1f5e17bbb2e086de3e1a30f5"
+          },
+          {
+            "index": 2,
+            "from": "i",
+            "kind": "handshake",
+            "payload": "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d",
+            "ciphertext": "e7dd30ae7d8784eff6d822ff96e223bfb39e56f102058ad704a3642887ac2eaaf54c2448e80024fdc7dded9a981ecb9ffa68359dbd5a77ea2fae4c6561bee9fc4b130261b7b5c1fee50bc547a4d8a75103bdc18291132168759f"
+          },
+          {
+            "index": 3,
+            "from": "i",
+            "kind": "transport",
+            "payload": "8001007b22706c6174666f726d223a226e6f6465222c22617070223a22696e69746961746f72222c226d61784d657373616765223a313034383537367d",
+            "ciphertext": "286431d7fcaaeced0525c1fed292fa2ba1e3aaf96b6a54ddc05ab3b68acc2539f039afe4dc31ee59c4a27c0d860bdbd850694ac56c412f4a79d04d13cb1863e4bca68cabd741683a0bce0b4c32"
+          },
+          {
+            "index": 4,
+            "from": "r",
+            "kind": "transport",
+            "payload": "8001007b22706c6174666f726d223a226e6f6465222c22617070223a22726573706f6e646572222c226d61784d657373616765223a313034383537367d",
+            "ciphertext": "5cb77ac552cf1d2beb9a25c63e722e9414b04abc9284a4abe31c78f7c5300c42e5ad52dc5300a5ffdc00e52e0d96278525d08dfa17bf8d14d594e844f05f5dda1a8d7a543bf871ae4a8ff1b3db"
+          },
+          {
+            "index": 5,
+            "from": "i",
+            "kind": "transport",
+            "payload": "0004000000000000000001",
+            "ciphertext": "c946d0e06e065877d40bc0fac91a6b4899c8682ffb4ea80d9cafd7"
+          },
+          {
+            "index": 6,
+            "from": "r",
+            "kind": "transport",
+            "payload": "0005000000000000000001",
+            "ciphertext": "ddb43686086973e3475c5d1b51a10d69f5067211e87ace42640276"
+          },
+          {
+            "index": 7,
+            "from": "i",
+            "kind": "transport",
+            "payload": "80fe00",
+            "ciphertext": "28da7ed72a02d71bc3f9eb5bf07f1834ec1eff",
+            "rekeyAfter": true
+          },
+          {
+            "index": 8,
+            "from": "i",
+            "kind": "transport",
+            "payload": "0004000000000000000002",
+            "ciphertext": "bbc75417f8a4eb20fc2d77b3b62e3acb7bb54641a2ef701159f069"
+          },
+          {
+            "index": 9,
+            "from": "r",
+            "kind": "transport",
+            "payload": "80fe00",
+            "ciphertext": "ea64250829f26bd16679067705c03d4d0935ef",
+            "rekeyAfter": true
+          },
+          {
+            "index": 10,
+            "from": "r",
+            "kind": "transport",
+            "payload": "0005000000000000000002",
+            "ciphertext": "1ac247de1b4aa4f46db756fe742d94a844fd67e6c1754f1f47ce61"
+          }
+        ]
+      },
+      {
+        "id": "mode-l",
+        "mode": "l",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "slug": "demo",
+        "prologue": "706b65792d706565722f310064656d6f006c00",
+        "psk": "96d36bc11cd77ee9ec8c66cde9aabf416fcb56c697ba76a852e333b67080ed32",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initStaticPublic": "e75ba644cc6a6da64b62706e1f5d9803a4c0bc681bc92be780db08394055d624",
+        "initEphemeral": "e1431779f417d29ba168832ba0c4169fc248200eddf292ee2f5f62757bf18b07",
+        "initEphemeralPublic": "3f75d7c9003607f006480b37ba8be242dbf9796f2f057308fc41d363d41fcc06",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respStaticPublic": "8bead5d7ce9897ea78dcd31f1be0e277213c2aef2a11b7e8c196478761aa713d",
+        "respEphemeral": "f89214889f2df40f69f50e04ae78aea5d4b97676907ef815bd3053c3715567b2",
+        "respEphemeralPublic": "759f5f78960c769313af9fee1a622e7ea189fc72e87d285ec4b5b52262f65c32",
+        "handshakeHash": "e8906dc74b9563c69dafb0145f2da52a934309e38bacee67cd080fbaed5ab743",
+        "secretFrom": "q",
+        "messages": [
+          {
+            "index": 0,
+            "from": "i",
+            "kind": "handshake",
+            "payload": "7b2276223a317d",
+            "ciphertext": "3f75d7c9003607f006480b37ba8be242dbf9796f2f057308fc41d363d41fcc068c1935e45c3ef9d12ff5b784023a3e90cab13234aff095"
+          },
+          {
+            "index": 1,
+            "from": "r",
+            "kind": "handshake",
+            "payload": "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d",
+            "ciphertext": "759f5f78960c769313af9fee1a622e7ea189fc72e87d285ec4b5b52262f65c3293b7030a7da0cb826b60b8f97e13cba98df58e828eb2a0a62963901f4a482240a3ddc9bdf391771e89afd005f78e1ea327a899fc154436af7b20fdd0456df4b4dc4cebf3db7a332a961a54d82457921fe2e6ed6b5cfc751ba8b2ebaa2ec7a19f7e"
+          },
+          {
+            "index": 2,
+            "from": "i",
+            "kind": "handshake",
+            "payload": "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d",
+            "ciphertext": "5c287ce9f325831e8d70c034ad1a2bcdee9a4074cc93945095e81f766671df8466788116a54e89f3ae175c8d986bbfe90fe670aa3f25453848101973c80b7eaa7c8f5a7e150f5b565cff91b086bdd6412358879907d4eac088d71a8640816f90df"
+          },
+          {
+            "index": 3,
+            "from": "i",
+            "kind": "transport",
+            "payload": "8001007b22706c6174666f726d223a226e6f6465222c22617070223a22696e69746961746f72222c226d61784d657373616765223a313034383537367d",
+            "ciphertext": "dd857caf04f4210d5329049b6b748113d3d5ad5afa2c8feda7059f677e7ed2cebd06f9312dec72fce8133360d12c46af7efdd515737978bc27416d89ba7abccb445fab0ba93c10e8759294a7b3"
+          },
+          {
+            "index": 4,
+            "from": "r",
+            "kind": "transport",
+            "payload": "8001007b22706c6174666f726d223a226e6f6465222c22617070223a22726573706f6e646572222c226d61784d657373616765223a313034383537367d",
+            "ciphertext": "8b73a8035595d011563416106e65247154ab2654abb09f55261de9752a8197242514c7b29c0a7b0bc1da442fe36afcee46fa1edd85c21496440fb7658ff96a88cfb0a2ae51b1a8fbfaa3ef166a"
+          },
+          {
+            "index": 5,
+            "from": "i",
+            "kind": "transport",
+            "payload": "0004000000000000000001",
+            "ciphertext": "93e455ba093f6128808b6a5c4cfe8bbddd6bdd09b5d1e568c9f87c"
+          },
+          {
+            "index": 6,
+            "from": "r",
+            "kind": "transport",
+            "payload": "0005000000000000000001",
+            "ciphertext": "4782208e35cba719211a127dea7eb4712f985961f8425eceedb124"
+          },
+          {
+            "index": 7,
+            "from": "i",
+            "kind": "transport",
+            "payload": "80fe00",
+            "ciphertext": "cec95da05b221f854c9962a042366767606ef8",
+            "rekeyAfter": true
+          },
+          {
+            "index": 8,
+            "from": "i",
+            "kind": "transport",
+            "payload": "0004000000000000000002",
+            "ciphertext": "6d7e34bf8e9234521dfaae78d454e0ffd11c5830a8129411ca63e8"
+          },
+          {
+            "index": 9,
+            "from": "r",
+            "kind": "transport",
+            "payload": "80fe00",
+            "ciphertext": "379944e110612b5c615d50ebe06525a64e1398",
+            "rekeyAfter": true
+          },
+          {
+            "index": 10,
+            "from": "r",
+            "kind": "transport",
+            "payload": "0005000000000000000002",
+            "ciphertext": "87a6190166beeabcccff58c5f877bd72667f6daf4618b02412d148"
+          }
+        ]
+      }
+    ],
+    "failures": [
+      {
+        "id": "q-wrong-code",
+        "mode": "q",
+        "description": "The joiner typed another password than the shower holds: its ISK and PSK differ, so message 1's payload fails its tag.",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "prologue": "706b65792d706565722f310064656d6f007100",
+        "psk": "035502bbecd7aa91a3506a1f5591bf70762b9ba7fc31f208c45e52aaf19ba3c6",
+        "responderPsk": "cd21b7b8d5511e335859eb7ed146a7e31520655eaae164e102f2673654b6a0dc",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initEphemeral": "078030ff8aedc6738d007bb5d6c2f528d00cc874a02d5d35d9eb424e830d2c28",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respEphemeral": "0a2e9d0eebbbfe70e689a9fefbfc83b892b9a9e4e70b74825854b058fe5122da",
+        "payloads": [
+          "7b2276223a317d",
+          "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d",
+          "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d"
+        ],
+        "failedAt": 0,
+        "reason": "decrypt"
+      },
+      {
+        "id": "q-wrong-qr-secret",
+        "mode": "q",
+        "description": "The joiner scanned another QR secret than the shower holds: the PSKs differ.",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "prologue": "706b65792d706565722f310064656d6f007100",
+        "psk": "fcb65b3812722aa3dec464804ac9f8257152d02dc227e69297347cb7c5f6f736",
+        "responderPsk": "0ed3ffaa8d6223de7246efa5b2fcadea4bfa20b9523b8e0a6a045fe7631111c9",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initEphemeral": "078030ff8aedc6738d007bb5d6c2f528d00cc874a02d5d35d9eb424e830d2c28",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respEphemeral": "0a2e9d0eebbbfe70e689a9fefbfc83b892b9a9e4e70b74825854b058fe5122da",
+        "payloads": [
+          "7b2276223a317d",
+          "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d",
+          "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d"
+        ],
+        "failedAt": 0,
+        "reason": "decrypt"
+      },
+      {
+        "id": "q-wrong-slug",
+        "mode": "q",
+        "description": "The responder's prologue names another product.",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "prologue": "706b65792d706565722f310064656d6f007100",
+        "responderPrologue": "706b65792d706565722f31006f74686572007100",
+        "psk": "50202d326d5d4f05256b38755336fc2633e049be3aea888ca820e1385d4a472b",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initEphemeral": "078030ff8aedc6738d007bb5d6c2f528d00cc874a02d5d35d9eb424e830d2c28",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respEphemeral": "0a2e9d0eebbbfe70e689a9fefbfc83b892b9a9e4e70b74825854b058fe5122da",
+        "payloads": [
+          "7b2276223a317d",
+          "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d",
+          "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d"
+        ],
+        "failedAt": 0,
+        "reason": "decrypt"
+      },
+      {
+        "id": "q-wrong-slug-psk",
+        "mode": "q",
+        "description": "The responder derived its PSK for another slug (the HKDF info differs).",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "prologue": "706b65792d706565722f310064656d6f007100",
+        "psk": "50202d326d5d4f05256b38755336fc2633e049be3aea888ca820e1385d4a472b",
+        "responderPsk": "39a6dd1c3586c35f48080f798e0d5604bad25ce27e4204319ad34e734c8da210",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initEphemeral": "078030ff8aedc6738d007bb5d6c2f528d00cc874a02d5d35d9eb424e830d2c28",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respEphemeral": "0a2e9d0eebbbfe70e689a9fefbfc83b892b9a9e4e70b74825854b058fe5122da",
+        "payloads": [
+          "7b2276223a317d",
+          "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d",
+          "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d"
+        ],
+        "failedAt": 0,
+        "reason": "decrypt"
+      },
+      {
+        "id": "q-wrong-mode-l",
+        "mode": "q",
+        "description": "The responder's prologue says mode l: the same PSK shape, another mode byte.",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "prologue": "706b65792d706565722f310064656d6f007100",
+        "responderPrologue": "706b65792d706565722f310064656d6f006c00",
+        "psk": "50202d326d5d4f05256b38755336fc2633e049be3aea888ca820e1385d4a472b",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initEphemeral": "078030ff8aedc6738d007bb5d6c2f528d00cc874a02d5d35d9eb424e830d2c28",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respEphemeral": "0a2e9d0eebbbfe70e689a9fefbfc83b892b9a9e4e70b74825854b058fe5122da",
+        "payloads": [
+          "7b2276223a317d",
+          "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d",
+          "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d"
+        ],
+        "failedAt": 0,
+        "reason": "decrypt"
+      },
+      {
+        "id": "q-wrong-mode-p",
+        "mode": "q",
+        "description": "The responder's prologue says mode p.",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "prologue": "706b65792d706565722f310064656d6f007100",
+        "responderPrologue": "706b65792d706565722f310064656d6f007000",
+        "psk": "50202d326d5d4f05256b38755336fc2633e049be3aea888ca820e1385d4a472b",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initEphemeral": "078030ff8aedc6738d007bb5d6c2f528d00cc874a02d5d35d9eb424e830d2c28",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respEphemeral": "0a2e9d0eebbbfe70e689a9fefbfc83b892b9a9e4e70b74825854b058fe5122da",
+        "payloads": [
+          "7b2276223a317d",
+          "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d",
+          "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d"
+        ],
+        "failedAt": 0,
+        "reason": "decrypt"
+      },
+      {
+        "id": "q-low-order-ephemeral-zero",
+        "mode": "q",
+        "description": "The joiner's ephemeral key is the low-order point 0: the responder's DH is all zeros and it aborts.",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "prologue": "706b65792d706565722f310064656d6f007100",
+        "psk": "50202d326d5d4f05256b38755336fc2633e049be3aea888ca820e1385d4a472b",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initEphemeral": "078030ff8aedc6738d007bb5d6c2f528d00cc874a02d5d35d9eb424e830d2c28",
+        "initEphemeralPublic": "0000000000000000000000000000000000000000000000000000000000000000",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respEphemeral": "0a2e9d0eebbbfe70e689a9fefbfc83b892b9a9e4e70b74825854b058fe5122da",
+        "payloads": [
+          "7b2276223a317d",
+          "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d",
+          "7b2276223a312c2263617073223a5b226c6f63616c2f31225d7d"
+        ],
+        "failedAt": 1,
+        "reason": "dh_zero"
+      },
+      {
+        "id": "l-wrong-secret",
+        "mode": "l",
+        "description": "The responder holds another link's secret: message 1's payload fails its tag.",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "prologue": "706b65792d706565722f310064656d6f006c00",
+        "psk": "96d36bc11cd77ee9ec8c66cde9aabf416fcb56c697ba76a852e333b67080ed32",
+        "responderPsk": "23d08f6c216c75259e99825d422df2316ab311f6c873287cd466b0f2b1f48052",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initEphemeral": "e1431779f417d29ba168832ba0c4169fc248200eddf292ee2f5f62757bf18b07",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respEphemeral": "f89214889f2df40f69f50e04ae78aea5d4b97676907ef815bd3053c3715567b2",
+        "payloads": [
+          "7b2276223a317d",
+          "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d",
+          "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d"
+        ],
+        "failedAt": 0,
+        "reason": "decrypt"
+      },
+      {
+        "id": "l-contact-secret",
+        "mode": "l",
+        "description": "The responder tries a mode-c contact secret under the mode-l prologue.",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "prologue": "706b65792d706565722f310064656d6f006c00",
+        "psk": "96d36bc11cd77ee9ec8c66cde9aabf416fcb56c697ba76a852e333b67080ed32",
+        "responderPsk": "e65adf994933cd7fbcf31382b4f68103d32d071e1c6c2a57f61e32f0605d18f1",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initEphemeral": "e1431779f417d29ba168832ba0c4169fc248200eddf292ee2f5f62757bf18b07",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respEphemeral": "f89214889f2df40f69f50e04ae78aea5d4b97676907ef815bd3053c3715567b2",
+        "payloads": [
+          "7b2276223a317d",
+          "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d",
+          "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d"
+        ],
+        "failedAt": 0,
+        "reason": "decrypt"
+      },
+      {
+        "id": "l-cpace-psk",
+        "mode": "l",
+        "description": "The responder tries the pairing's PSK (the CPace output) as a link secret.",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "prologue": "706b65792d706565722f310064656d6f006c00",
+        "psk": "96d36bc11cd77ee9ec8c66cde9aabf416fcb56c697ba76a852e333b67080ed32",
+        "responderPsk": "50202d326d5d4f05256b38755336fc2633e049be3aea888ca820e1385d4a472b",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initEphemeral": "e1431779f417d29ba168832ba0c4169fc248200eddf292ee2f5f62757bf18b07",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respEphemeral": "f89214889f2df40f69f50e04ae78aea5d4b97676907ef815bd3053c3715567b2",
+        "payloads": [
+          "7b2276223a317d",
+          "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d",
+          "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d"
+        ],
+        "failedAt": 0,
+        "reason": "decrypt"
+      },
+      {
+        "id": "l-wrong-slug",
+        "mode": "l",
+        "description": "The responder's prologue names another product.",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "prologue": "706b65792d706565722f310064656d6f006c00",
+        "responderPrologue": "706b65792d706565722f31006f74686572006c00",
+        "psk": "96d36bc11cd77ee9ec8c66cde9aabf416fcb56c697ba76a852e333b67080ed32",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initEphemeral": "e1431779f417d29ba168832ba0c4169fc248200eddf292ee2f5f62757bf18b07",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respEphemeral": "f89214889f2df40f69f50e04ae78aea5d4b97676907ef815bd3053c3715567b2",
+        "payloads": [
+          "7b2276223a317d",
+          "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d",
+          "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d"
+        ],
+        "failedAt": 0,
+        "reason": "decrypt"
+      },
+      {
+        "id": "l-wrong-mode-c",
+        "mode": "l",
+        "description": "The responder's prologue says mode c.",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "prologue": "706b65792d706565722f310064656d6f006c00",
+        "responderPrologue": "706b65792d706565722f310064656d6f006300",
+        "psk": "96d36bc11cd77ee9ec8c66cde9aabf416fcb56c697ba76a852e333b67080ed32",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initEphemeral": "e1431779f417d29ba168832ba0c4169fc248200eddf292ee2f5f62757bf18b07",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respEphemeral": "f89214889f2df40f69f50e04ae78aea5d4b97676907ef815bd3053c3715567b2",
+        "payloads": [
+          "7b2276223a317d",
+          "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d",
+          "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d"
+        ],
+        "failedAt": 0,
+        "reason": "decrypt"
+      },
+      {
+        "id": "l-wrong-mode-q",
+        "mode": "l",
+        "description": "The responder's prologue says mode q.",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "prologue": "706b65792d706565722f310064656d6f006c00",
+        "responderPrologue": "706b65792d706565722f310064656d6f007100",
+        "psk": "96d36bc11cd77ee9ec8c66cde9aabf416fcb56c697ba76a852e333b67080ed32",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initEphemeral": "e1431779f417d29ba168832ba0c4169fc248200eddf292ee2f5f62757bf18b07",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respEphemeral": "f89214889f2df40f69f50e04ae78aea5d4b97676907ef815bd3053c3715567b2",
+        "payloads": [
+          "7b2276223a317d",
+          "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d",
+          "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d"
+        ],
+        "failedAt": 0,
+        "reason": "decrypt"
+      },
+      {
+        "id": "l-low-order-ephemeral-zero",
+        "mode": "l",
+        "description": "The initiator's ephemeral key is the low-order point 0: the responder's DH is all zeros and it aborts.",
+        "protocol": "Noise_XXpsk0_25519_AESGCM_SHA256",
+        "prologue": "706b65792d706565722f310064656d6f006c00",
+        "psk": "96d36bc11cd77ee9ec8c66cde9aabf416fcb56c697ba76a852e333b67080ed32",
+        "initStatic": "c7ed3216000231162af291f4524216b31935739ff51d75a0b2850b51f2dfc70a",
+        "initEphemeral": "e1431779f417d29ba168832ba0c4169fc248200eddf292ee2f5f62757bf18b07",
+        "initEphemeralPublic": "0000000000000000000000000000000000000000000000000000000000000000",
+        "respStatic": "f71997d3a64c7d95dcb5f19b008b36c3cb0c75b0e0427ac3ba75053db079f145",
+        "respEphemeral": "f89214889f2df40f69f50e04ae78aea5d4b97676907ef815bd3053c3715567b2",
+        "payloads": [
+          "7b2276223a317d",
+          "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d",
+          "7b2276223a312c2263617073223a5b226170702f31222c22786665722f31225d7d"
+        ],
+        "failedAt": 1,
+        "reason": "dh_zero"
+      }
+    ]
   }
 }
