@@ -16,6 +16,10 @@ import {
   deviceIdBytes,
   isInstanceName,
   base32Lower,
+  cat,
+  txtEntries,
+  u64be,
+  utf8,
 } from "./advert.js";
 import { cleanLabel } from "./display.js";
 import { hkdfSha256, hmac, sha256 } from "./noise.js";
@@ -48,15 +52,6 @@ export const CONTACT_EXCHANGE_SECONDS = 30;
 const CAT_RE = /^[a-z0-9-]{1,32}$/;
 const KEY_RE = /^[A-Za-z0-9_-]{43}$/;
 const RID_RE = /^[A-Za-z0-9_-]{22}$/;
-const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
-const cat = (...p: Uint8Array[]): Uint8Array =>
-  Uint8Array.from(p.flatMap((x) => Array.from(x)));
-const u64be = (n: number): Uint8Array => {
-  const b = new Uint8Array(8);
-  new DataView(b.buffer).setBigUint64(0, BigInt(n));
-  return b;
-};
-
 /** A canonical base64url of 32 bytes, decoded, or null. */
 function key32(v: unknown): Uint8Array | null {
   if (typeof v !== "string" || !KEY_RE.test(v) || !isCanonicalB64url(v))
@@ -66,7 +61,7 @@ function key32(v: unknown): Uint8Array | null {
 }
 
 /** Unsigned byte order of two equal-length byte strings. */
-function byteCompare(a: Uint8Array, b: Uint8Array): number {
+export function byteCompare(a: Uint8Array, b: Uint8Array): number {
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i]! - b[i]!;
   return 0;
 }
@@ -111,7 +106,7 @@ export interface ContactBody {
 
 export type ContactVerdict = ({ ok: true } & ContactBody) | { ok: false };
 
-const validCats = (cats: readonly unknown[]): cats is string[] =>
+export const validCats = (cats: readonly unknown[]): cats is string[] =>
   cats.length <= MAX_CONTACT_CATS &&
   cats.every((c) => typeof c === "string" && CAT_RE.test(c)) &&
   new Set(cats).size === cats.length;
@@ -428,14 +423,8 @@ export type ContactTxtResult =
 
 /** `v=1` and `m=c`. An entry splits at its first `=`; one without `=` or with an empty key is ignored; a repeated key refuses; `h` is not read. */
 export function parseContactTxt(entries: readonly string[]): ContactTxtResult {
-  const kv = new Map<string, string>();
-  for (const e of entries) {
-    const at = e.indexOf("=");
-    if (at < 1) continue;
-    const k = e.slice(0, at);
-    if (kv.has(k)) return { ok: false, reason: "duplicate" };
-    kv.set(k, e.slice(at + 1));
-  }
+  const kv = txtEntries(entries);
+  if (kv === null) return { ok: false, reason: "duplicate" };
   if (kv.get("v") !== "1") return { ok: false, reason: "version" };
   if (kv.get("m") !== "c") return { ok: false, reason: "mode" };
   return { ok: true };

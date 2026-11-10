@@ -1320,22 +1320,19 @@
       "jscpd:duplicate": 1
     },
     "packages/client-core/src/peer/advert.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 1
     },
     "packages/client-core/src/peer/cert.ts": {
       "jscpd:duplicate": 1
     },
     "packages/client-core/src/peer/contact.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 5
     },
     "packages/client-core/src/peer/frame.ts": {
       "jscpd:duplicate": 1
     },
     "packages/client-core/src/peer/payload.ts": {
       "jscpd:duplicate": 3
-    },
-    "packages/client-core/src/peer/record.ts": {
-      "jscpd:duplicate": 1
     },
     "packages/client-core/src/peer/relay.ts": {
       "jscpd:duplicate": 4
@@ -4872,7 +4869,7 @@
       "jscpd:duplicate": 2
     },
     "tools/corpus/reference/peerMatrix.ts": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 10
     },
     "tools/corpus/reference/record.ts": {
       "jscpd:duplicate": 2

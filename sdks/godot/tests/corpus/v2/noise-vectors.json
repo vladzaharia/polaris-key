@@ -1129,7 +1129,7 @@
     ]
   },
   "cpace": {
-    "note": "CPace for account-free local pairing (WIRE-CONTRACT-V5 15.12). Suite CPACE-X25519-SHA512 of draft-irtf-cfrg-cpace-21, initiator-responder setting; DSI 'CPace255', DSI_ISK 'CPace255_ISK', H = SHA-512 with s_in_bytes 128, empty ADa and ADb in every row but the draft's. All fields are lower-case hex unless said. `anchors`: the draft's vectors, vendored and hash-checked. `elligator`: map_to_curve_elligator2 on 32 input bytes: decodeUCoordinate clears bit 255 and the result is reduced mod p (`r`), then v = -A / (1 + 2 r^2) with A = 486662; the result is v when v^3 + A v^2 + v is a square (`onCurve`) and -v - A otherwise, as 32 little-endian bytes. `generators`: g = elligator2(SHA-512(generator_string(DSI, PRS, CI, sid, 128))[0..32]); PRS is 'pkey-peer/1 code' 0x00 + the 6 digit characters, or 'pkey-peer/1 qr' 0x00 + the 16 secret bytes; CI is the mode-q prologue and sid the window's 10 bytes. `shares`: the share check of a received Y (32 bytes; bit 255 clear and u < 2^255 - 19, checked first, then not one of the seven low-order points of `lowOrder`); a refused share closes silently and counts no failure. `frames`: C1 (0x01, kind 0x01 code or 0x02 QR, Ya; 34 bytes) and C2 (0x01, Yb; 33 bytes) as the receiver judges them: length, version, kind, then the share. `attempts`: whole runs with fixed scalars ya, yb (X25519 clamps them): Y = X25519(y, g), K = X25519(y, Y_peer), ISK = SHA-512(lv_cat('CPace255_ISK', sid, K) || transcript_ir(Ya, '', Yb, '')) and psk = HKDF-SHA256(salt empty, ikm ISK, info 'pkey-peer/1 cpace' 0x00 slug), 32 bytes; `agree` says whether both sides derive the same ISK (a wrong password, a wrong QR secret, another slug or another sid does not). `abort`: X25519(scalar, u) for the low-order points is 32 zero bytes, and a K of 32 zero bytes aborts the attempt. Append-only: a new row keeps noiseVectorsVersion; a changed row or rule bumps it.",
+    "note": "CPace for account-free local pairing (WIRE-CONTRACT-V5 15.12). Suite CPACE-X25519-SHA512 of draft-irtf-cfrg-cpace-21, initiator-responder setting; DSI 'CPace255', DSI_ISK 'CPace255_ISK', H = SHA-512 with s_in_bytes 128, empty ADa and ADb in every row but the draft's. All fields are lower-case hex unless said. `anchors`: the draft's vectors, vendored and hash-checked. `elligator`: map_to_curve_elligator2 on 32 input bytes: decodeUCoordinate clears bit 255 and the result is reduced mod p (`r`), then v = -A / (1 + 2 r^2) with A = 486662; the result is v when v^3 + A v^2 + v is a square (`onCurve`) and -v - A otherwise, as 32 little-endian bytes. `generators`: g = elligator2(SHA-512(generator_string(DSI, PRS, CI, sid, 128))[0..32]); PRS is 'pkey-peer/1 code' 0x00 + the 6 digit characters, or 'pkey-peer/1 qr' 0x00 + the 16 secret bytes; CI is the mode-q prologue and sid the window's 10 bytes. `shares`: the share check of a received Y (32 bytes; bit 255 clear and u < 2^255 - 19, checked first, then not one of the seven low-order points of `lowOrder`); a refused share closes silently and counts no failure. `frames`: C1 (0x01, kind 0x01 code or 0x02 QR, Ya; 34 bytes) and C2 (0x01, Yb; 33 bytes) as the receiver judges them: length, version, kind, then the share. `attempts`: whole runs with fixed scalars ya, yb (X25519 clamps them): Y = X25519(y, g), K = X25519(y, Y_peer), ISK = SHA-512(lv_cat('CPace255_ISK', sid, K) || transcript_ir(Ya, '', Yb, '')) and psk = HKDF-SHA256(salt empty, ikm ISK, info 'pkey-peer/1 cpace' 0x00 slug), 32 bytes; `agree` says whether both sides derive the same ISK (a wrong password, a wrong QR secret, another slug or another sid does not); `reflect` sends the initiator's share back as the responder's, which no honest responder derives the same ISK from. `abort`: X25519(scalar, u) for the low-order points is 32 zero bytes, and a K of 32 zero bytes aborts the attempt. Append-only: a new row keeps noiseVectorsVersion; a changed row or rule bumps it.",
     "suite": "CPACE-X25519-SHA512",
     "dsi": "CPace255",
     "dsiIsk": "CPace255_ISK",
@@ -2037,6 +2037,32 @@
         "showerIsk": "d56497e40684ac3cfa219945a1ed4b60fdad06eb5ed5b3191dab4437ee1f538bd8af8d8568c7a4fad6c693d4d4b2cc6b594b6fcff58ab31a5b0ce120c667c18d",
         "joinerPsk": "a87856217891195b021d753fdff096bb0988a3462d7ed73e4945d41936d0f2b4",
         "showerPsk": "34229790653e82856a5dbccb560b38b0e5e3089924e75616c2adced38a06f74b",
+        "agree": false
+      },
+      {
+        "id": "code-reflected-share",
+        "kind": "code",
+        "joinerSecret": "123456",
+        "showerSecret": "123456",
+        "joinerSlug": "demo",
+        "showerSlug": "demo",
+        "joinerSid": "08d3055674cfe8caef0f",
+        "showerSid": "08d3055674cfe8caef0f",
+        "ya": "41d93b4b4278fbac7d5cb8376cb225d0374e10f22b2a322d9784a74e001f2c6f",
+        "yb": "2a16a3350a334af739c047e11367efaa1d12ff6e658361a678b607ff8cc12bf4",
+        "reflect": true,
+        "joinerG": "42e9881304403dfb83391ce830a466a3772660ee7ab96f4915014447f90c882c",
+        "showerG": "42e9881304403dfb83391ce830a466a3772660ee7ab96f4915014447f90c882c",
+        "Ya": "add78d8f4a7c1519186ec6996ade40eb79ae7276dba5992e807fe58d8940677c",
+        "Yb": "add78d8f4a7c1519186ec6996ade40eb79ae7276dba5992e807fe58d8940677c",
+        "c1": "0101add78d8f4a7c1519186ec6996ade40eb79ae7276dba5992e807fe58d8940677c",
+        "c2": "01add78d8f4a7c1519186ec6996ade40eb79ae7276dba5992e807fe58d8940677c",
+        "joinerK": "22958d6ed390b995c60e18c251331c0f23dd51efa1a0abe3ce63994849baff69",
+        "showerK": "418230f4bfbfbcffdc3ed54042e0d6baeafaf971934a2bf29d815c8e1bb66b0a",
+        "joinerIsk": "c700c6d379d6f6fb118ff97e7fa89199dce92ea8af95dc17c364c69e7c59d51cc27661028d3686162727de1b32cf139d41e29a081f10aea5319e33b95f1298ba",
+        "showerIsk": "b19e6dd53404e109006974630279eac4ef64d6d738c0992c1597db787081f10ff66b455a86b5b3acff80eea4fa2c82faf697433943d99aac58efaa113a343227",
+        "joinerPsk": "5dd1c5c124e35513b4c2bca23bc56b38a260481adf4815692995d5bc413697c6",
+        "showerPsk": "a82e180793ea6d0ab9c4cc931625a308128f7562c78b5ecd45975dd76eadc645",
         "agree": false
       }
     ],

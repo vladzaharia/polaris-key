@@ -12,6 +12,14 @@
 // agreeKey as the static key, no code. The remote static key must equal the contact's agreeKey. A
 // mode-p session can also run the contact exchange (`exchange`): after both CONFIRMs each side
 // sends CONTACT, and the session answers with a `contact` event carrying the new secret.
+//
+// Modes q and l (§15.12) are the account-free local links. Mode q is the pairing: XXpsk0 under a
+// PSK from CPace (`cpace.ts`, run by the caller before message 1), a fresh link key as the static
+// key, then HELLO, the person's consent, CONFIRM each way and one LOCAL_LINK each way
+// (`LocalExchange`); a side that reads the peer's LOCAL_LINK reports a `local-link` event and closes
+// `peer_bye`. Mode l is a later session: XXpsk0 under a link's secret, the link's own key as the
+// static key, and the remote static key pinned to the stored peer link key. A responder that holds
+// local links tries them after the account keys and the contacts, behind the same limiter.
 
 import {
   base64UrlDecode,
@@ -59,6 +67,19 @@ import {
 } from "./sas.js";
 import { VOUCH_CAP, VouchFlow } from "./vouch.js";
 import { XFER_CAP, isXferType } from "./xfer.js";
+import {
+  LOCAL_CAP,
+  LocalExchange,
+  MAX_LOCAL_LINKS,
+  buildLocalLink,
+  listenerTrialOrder,
+  localLinkSecret,
+  trialPadding,
+  localPin,
+  negotiateLocalCaps,
+  pairingRemoteOk,
+  type LocalExchangeEvent,
+} from "./local.js";
 import {
   CONTACT_EXCHANGE_SECONDS,
   ContactExchange,
@@ -111,6 +132,41 @@ export interface ContactLink {
   agreeKey: string;
 }
 
+/** A local link the device holds (mode l, §15.12): the link's secret and both link keys. */
+export interface LocalLink {
+  /** The 32-byte link secret, the PSK. */
+  secret: Uint8Array;
+  /** This device's private key for the link, the static key of every session under it. */
+  ownKey: Uint8Array;
+  /** The peer's link public key: the remote static key must equal it. */
+  peerKey: Uint8Array;
+}
+
+/** What a mode-`q` session needs (§15.12): the CPace outputs and this side's part of the exchange. */
+export interface PairingOptions {
+  /** `HKDF-SHA256(ISK)`, the Noise PSK (`cpacePsk`). Overwritten once the handshake is done. */
+  psk: Uint8Array;
+  /** The CPace ISK, 64 bytes: it makes the link secret. Overwritten when the session ends. */
+  isk: Uint8Array;
+  /** The number of local links the device holds for the product (`MAX_LOCAL_LINKS` refuses a link). */
+  held: number;
+  /** The categories this side's person approved. */
+  cats: readonly string[];
+  /** This device's label for the peer to show. */
+  label?: string;
+  /**
+   * Seconds already spent since the first byte (C1 and C2 ran before the session). At 30 or more
+   * the session starts no handshake and tries no tag.
+   */
+  elapsed: number;
+  /**
+   * A responder's permit to try message 1's tag (`PairingWindow.beginGuess`): synchronous, it counts
+   * the guess before the tag is tried. The session never tries a tag without one, and the
+   * constructor refuses a mode-q responder without it.
+   */
+  permit?: () => boolean;
+}
+
 /** This device's side of the contact exchange (mode p, §15.10). */
 export interface ContactOffer {
   /** This device's own agreeKey, 43 canonical base64url characters. */
@@ -126,8 +182,11 @@ export interface PeerSessionOptions {
   mode: PeerMode;
   role: "initiator" | "responder";
   slug: string;
-  /** The X25519 private key: the device's agreeKey in modes a and c, a one-time key in v and p. */
-  staticKey: Uint8Array;
+  /**
+   * The X25519 private key: the device's agreeKey in modes a and c, a one-time key in v and p, the
+   * new link key in mode q. Mode l takes each link's own key from `locals` instead.
+   */
+  staticKey?: Uint8Array;
   /** Mode a only. */
   account?: AccountContext;
   /**
@@ -137,6 +196,14 @@ export interface PeerSessionOptions {
    * each secret in order; the first tag that verifies decides the mode. It needs `admission`.
    */
   contacts?: readonly ContactLink[];
+  /**
+   * Mode l, and a responder that also serves local links (§15.12): the links the device holds in
+   * held order, at most 32. A mode-l initiator names exactly one. A responder tries them after the
+   * account's keys and the contacts, behind the same `admission` limiter.
+   */
+  locals?: readonly LocalLink[];
+  /** Mode q only. */
+  pair?: PairingOptions;
   /**
    * Mode p only: take part in the contact exchange. The session then owns `CONFIRM` and
    * `CONTACT` and ends it with a `contact` event; without it the host sees both as records.
@@ -183,6 +250,26 @@ export type SessionEvent =
       peerDeviceId?: string;
       /** Mode c: the index, in `contacts`, of the contact the peer is. */
       contactIndex?: number;
+      /** Mode l: the index, in `locals`, of the link the peer is. */
+      localIndex?: number;
+    }
+  /**
+   * Mode q, responder: its message 1 was judged (§15.12, "Failure accounting"). `opens` false is one
+   * failed guess: the window rotates the code, and the session closes silently.
+   */
+  | { type: "guess"; opens: boolean }
+  /**
+   * Mode q: the peer's valid `LOCAL_LINK`, read in order. `secret` is the link secret (key
+   * material: store it, never log it) with `ownKey`, `peerKey` the two link public keys and `cats`
+   * the categories both sides listed. The host stores the link; the session closes `peer_bye`.
+   */
+  | {
+      type: "local-link";
+      secret: Uint8Array;
+      ownKey: Uint8Array;
+      peerKey: Uint8Array;
+      label?: string;
+      cats: string[];
     }
   /** Modes v and p: the code both screens show; the host calls `confirmSas()` when the person agrees. */
   | { type: "sas"; code: number; display: string }
@@ -261,39 +348,84 @@ export class PeerSession {
   private xfer: ((type: number, body: Uint8Array) => void) | null = null;
   private hash: Uint8Array | null = null;
   private contactIdx = -1;
+  private localIdx = -1;
   private readonly xchg: ContactExchange | null;
+  /** Mode q: the pairing's order guard, and the clock that runs once both CONFIRMs are done. */
+  private readonly lx: LocalExchange | null;
+  private lxTimer = false;
+  private ownPub: Uint8Array | null = null;
 
   constructor(private readonly o: PeerSessionOptions) {
     if ((o.mode === "a") !== (o.account !== undefined))
       throw new RangeError("account context");
     this.mode = o.mode;
+    const nC = o.contacts?.length ?? 0;
+    const nL = o.locals?.length ?? 0;
+    const bad32 = (list: readonly Uint8Array[]): boolean =>
+      list.some((k) => k.length !== 32);
+    if (o.mode !== "l" && o.staticKey === undefined)
+      throw new RangeError("static key");
     if (o.mode === "c") {
-      const n = o.contacts?.length ?? 0;
       if (
-        n < 1 ||
-        n > MAX_CONTACT_SECRETS ||
-        (o.role === "initiator" && n !== 1)
+        nC < 1 ||
+        nC > MAX_CONTACT_SECRETS ||
+        (o.role === "initiator" && nC !== 1)
       )
-        throw new RangeError("contacts");
-      if (o.contacts!.some((c) => c.secret.length !== 32))
         throw new RangeError("contacts");
       if (o.role === "responder" && o.admission === undefined)
         throw new RangeError("a contact responder needs an admission limiter");
-    } else if (o.contacts !== undefined) {
-      // The shared listener: a mode-a responder that also serves contacts.
-      const n = o.contacts.length;
+      if (
+        o.locals !== undefined &&
+        (o.role !== "responder" || nL < 1 || nL > MAX_LOCAL_LINKS)
+      )
+        throw new RangeError("locals");
+    } else if (o.mode === "l") {
+      if (
+        nL < 1 ||
+        nL > MAX_LOCAL_LINKS ||
+        (o.role === "initiator" && nL !== 1)
+      )
+        throw new RangeError("locals");
+      if (
+        o.contacts !== undefined &&
+        (o.role !== "responder" || nC < 1 || nC > MAX_CONTACT_SECRETS)
+      )
+        throw new RangeError("contacts");
+      if (o.role === "responder" && o.admission === undefined)
+        throw new RangeError(
+          "a local-link responder needs an admission limiter",
+        );
+    } else if (o.contacts !== undefined || o.locals !== undefined) {
+      // The shared listener: a mode-a responder that also serves contacts and local links.
       if (
         o.mode !== "a" ||
         o.role !== "responder" ||
-        n < 1 ||
-        n > MAX_CONTACT_SECRETS
+        (o.contacts !== undefined && (nC < 1 || nC > MAX_CONTACT_SECRETS)) ||
+        (o.locals !== undefined && (nL < 1 || nL > MAX_LOCAL_LINKS))
       )
-        throw new RangeError("contacts");
-      if (o.contacts.some((c) => c.secret.length !== 32))
         throw new RangeError("contacts");
       if (o.admission === undefined)
         throw new RangeError("a contact responder needs an admission limiter");
     }
+    if (
+      bad32((o.contacts ?? []).map((c) => c.secret)) ||
+      bad32((o.locals ?? []).flatMap((l) => [l.secret, l.ownKey, l.peerKey]))
+    )
+      throw new RangeError("secrets");
+    if (o.mode === "q") {
+      if (
+        o.pair === undefined ||
+        o.pair.psk.length !== 32 ||
+        o.pair.isk.length !== 64 ||
+        o.pair.held < 0 ||
+        !(o.pair.elapsed >= 0) ||
+        (o.role === "responder" && o.pair.permit === undefined)
+      )
+        throw new RangeError("pairing");
+    } else if (o.pair !== undefined)
+      throw new RangeError("pairing is for mode q");
+    this.lx =
+      o.pair !== undefined ? new LocalExchange(o.pair.held, o.pair.cats) : null;
     if (o.exchange !== undefined && o.mode !== "p")
       throw new RangeError("exchange is for mode p");
     this.xchg =
@@ -320,6 +452,9 @@ export class PeerSession {
       });
     this.asm = new RecordAssembler(o.mode);
     this.caps = [...(o.caps ?? [])];
+    // Mode q needs `local/1` on both sides (§15.12): the host cannot leave it out of its payload.
+    if (o.mode === "q" && !this.caps.includes(LOCAL_CAP))
+      this.caps.push(LOCAL_CAP);
     // Both mode-v payloads list `vouch/1` (§15.6.1 rule 1); the host cannot leave it out.
     if (o.mode === "v") {
       if (!this.caps.includes(VOUCH_CAP)) this.caps.push(VOUCH_CAP);
@@ -401,6 +536,28 @@ export class PeerSession {
     });
   }
 
+  /**
+   * Mode q: the person agreed to pair. Sends `CONFIRM`, and `LOCAL_LINK` once the peer's `CONFIRM`
+   * has been read. Only once, only after `established`; any other call closes the session
+   * `peer_not_allowed`.
+   */
+  confirmPairing(): Promise<void> {
+    return this.run(async () => {
+      if (this.lx === null || this.phase !== "sas-shown")
+        throw new SessionFail("peer_not_allowed");
+      this.phase = "open";
+      await this.localStep({ event: "own-confirm" });
+    });
+  }
+
+  /** Mode q: the person declined. Closes `peer_bye` (a decline after the person agreed is ignored). */
+  declinePairing(): Promise<void> {
+    return this.run(async () => {
+      if (this.lx === null) throw new SessionFail("peer_not_allowed");
+      await this.localStep({ event: "own-decline" });
+    });
+  }
+
   /** A deadline that closes the session `peer_timeout` after `sec` seconds. */
   private guard(sec: number): () => void {
     return this.timer(
@@ -412,9 +569,19 @@ export class PeerSession {
   private startClock(): void {
     if (this.started) return;
     this.started = true;
-    this.transportCancel = this.guard(TRANSPORT_DEADLINE_SECONDS);
+    // Mode q: C1 and C2 ran before this session, so their time counts against both deadlines.
+    const spent = this.o.pair?.elapsed ?? 0;
+    this.transportCancel = this.guard(
+      Math.max(0, TRANSPORT_DEADLINE_SECONDS - spent),
+    );
     if (this.mode === "v" || this.mode === "p")
       this.sasCancel = this.guard(SAS_DEADLINE_SECONDS);
+    else if (this.mode === "q")
+      // 120 s from the first byte until both CONFIRMs are done (§15.12).
+      this.sasCancel = this.timer(
+        () => void this.run(() => this.localStep({ event: "timeout-confirm" })),
+        Math.max(0, SAS_DEADLINE_SECONDS - spent) * 1000,
+      );
   }
 
   /** The transport is up: its deadline ends. */
@@ -435,6 +602,9 @@ export class PeerSession {
     this.transportUp();
     this.settle();
     for (const c of this.cancels.splice(0)) c();
+    // The CPace outputs are key material: gone once the session is over.
+    this.o.pair?.psk.fill(0);
+    this.o.pair?.isk.fill(0);
   }
 
   get closed(): boolean {
@@ -446,17 +616,32 @@ export class PeerSession {
     return this.run(async () => {
       if (this.o.role !== "initiator" || this.hs !== null)
         throw new SessionFail("handshake_failed");
+      if (
+        this.o.pair !== undefined &&
+        this.o.pair.elapsed >= TRANSPORT_DEADLINE_SECONDS
+      )
+        throw new SessionFail("handshake_failed");
       const key = this.o.account?.discKeys[0] ?? undefined;
       if (this.mode === "a" && key === undefined)
         throw new SessionFail("handshake_failed");
       this.startClock();
       if (this.mode === "c") this.contactIdx = 0;
-      this.hs = this.newHandshake(
-        this.mode,
-        this.mode === "c"
-          ? this.o.contacts![0]!.secret
-          : await this.pskOf(this.mode, key),
-      );
+      if (this.mode === "l") this.localIdx = 0;
+      this.hs =
+        this.mode === "l"
+          ? this.newHandshake(
+              "l",
+              this.o.locals![0]!.secret,
+              this.o.locals![0]!.ownKey,
+            )
+          : this.newHandshake(
+              this.mode,
+              this.mode === "c"
+                ? this.o.contacts![0]!.secret
+                : this.mode === "q"
+                  ? this.o.pair!.psk
+                  : await this.pskOf(this.mode, key),
+            );
       this.o.send(await this.hs.writeMessage(payload1()));
       this.hsStep = 1;
     });
@@ -489,6 +674,9 @@ export class PeerSession {
     // Host records wait for the person's confirmation (modes v and p); the session owns the rest.
     if (this.phase !== "open")
       return Promise.reject(new Error("session not open"));
+    // A pairing carries no host records: the session owns every one it may send (§15.12).
+    if (this.mode === "q")
+      return Promise.reject(new Error("record owned by the session"));
     if (
       type === RECORD.HELLO ||
       type === RECORD.CLOSE ||
@@ -585,6 +773,7 @@ export class PeerSession {
   private newHandshake(
     mode: PeerMode,
     psk: Uint8Array | undefined,
+    staticKey: Uint8Array | undefined = this.o.staticKey,
   ): NoiseHandshake {
     const { slug } = this.o;
     return new NoiseHandshake({
@@ -592,7 +781,7 @@ export class PeerSession {
       protocol: peerNoiseProtocol(mode),
       prologue: peerPrologue(slug, mode),
       psk,
-      staticKey: this.o.staticKey,
+      staticKey: staticKey!,
       ports: this.ports,
     });
   }
@@ -612,17 +801,39 @@ export class PeerSession {
     const { role } = this.o;
     const mode = this.mode;
     if (role === "responder" && this.hs === null) {
-      // Message 1, tried in a fixed order (§15.5, §15.10): the account's current then previous
-      // discovery key (mode a), then each contact's secret in the order given (mode c; no DH
-      // happens before the tag). The first tag that verifies decides the mode and the contact; a
-      // failed tag on every one closes silently. The contact trial is admitted by the limiter
-      // first, so a refused attempt tries no secret.
+      // Message 1, tried in a fixed order (§15.5, §15.10, §15.12): the account's current then
+      // previous discovery key (mode a), then each contact's secret and each local link's secret in
+      // the order of `listenerTrialOrder` (no DH happens before the tag). The first tag that
+      // verifies decides the mode and the secret; a failed tag on every one closes silently. The
+      // contact and local-link trials are admitted by the limiter first, so a refused attempt tries
+      // no secret.
       let payload: Uint8Array | null = null;
-      if (mode !== "c") {
+      let accountTried = 0;
+      if (mode === "q") {
+        // The pairing window's attempt: one secret, the code's PSK. A tag that fails is one
+        // failed guess (§15.12): the host's window rotates the code.
+        // The permit counts the guess before the tag is tried; without it, or past the attempt's
+        // 30 s, the tag is never tried (§15.12, "Failure accounting").
+        if (
+          this.o.pair!.elapsed >= TRANSPORT_DEADLINE_SECONDS ||
+          !this.o.pair!.permit!()
+        )
+          throw new SessionFail("handshake_failed");
+        const h = this.newHandshake("q", this.o.pair!.psk);
+        try {
+          payload = await h.readMessage(noise);
+          this.hs = h;
+        } catch {
+          this.o.onEvent({ type: "guess", opens: false });
+          throw new SessionFail("handshake_failed");
+        }
+        this.o.onEvent({ type: "guess", opens: true });
+      } else if (mode !== "c" && mode !== "l") {
         const keys: (Uint8Array | null | undefined)[] =
           mode === "a" ? this.o.account!.discKeys.slice(0, 2) : [undefined];
         for (const k of keys) {
           if (k === null) continue;
+          accountTried++;
           try {
             const h = this.newHandshake(mode, await this.pskOf(mode, k));
             payload = await h.readMessage(noise);
@@ -633,24 +844,55 @@ export class PeerSession {
           }
         }
       }
-      if (this.hs === null && this.o.contacts !== undefined) {
+      if (
+        this.hs === null &&
+        (this.o.contacts !== undefined || this.o.locals !== undefined)
+      ) {
         this.release = this.o.admission!.begin();
         if (this.release === null) throw new SessionFail("peer_busy");
-        const cs = this.o.contacts;
-        for (let i = 0; i < cs.length; i++) {
+        let tried = 0;
+        const plan = listenerTrialOrder(
+          null,
+          this.o.contacts?.length ?? 0,
+          this.o.locals?.length ?? 0,
+        );
+        for (const t of plan) {
           try {
-            const h = this.newHandshake("c", cs[i]!.secret);
+            const h =
+              t.kind === "c"
+                ? this.newHandshake("c", this.o.contacts![t.index]!.secret)
+                : this.newHandshake(
+                    "l",
+                    this.o.locals![t.index]!.secret,
+                    this.o.locals![t.index]!.ownKey,
+                  );
             payload = await h.readMessage(noise);
             this.hs = h;
-            this.contactIdx = i;
+            if (t.kind === "c") this.contactIdx = t.index;
+            else this.localIdx = t.index;
+            this.mode = t.kind === "c" ? "c" : "l";
+            this.asm = new RecordAssembler(this.mode);
             break;
           } catch {
-            /* try the next secret */
+            tried++;
           }
         }
-        if (this.hs !== null) {
-          this.mode = "c";
-          this.asm = new RecordAssembler("c");
+        // A miss costs the same whatever the host holds: dummy trials make up the difference.
+        if (this.hs === null) {
+          for (let n = trialPadding(tried + accountTried); n > 0; n--) {
+            try {
+              // On the default ports, so a host's own ports count only the real trials.
+              await new NoiseHandshake({
+                role: "responder",
+                protocol: peerNoiseProtocol("l"),
+                prologue: peerPrologue(this.o.slug, "l"),
+                psk: webCryptoNoisePorts.random(32),
+                staticKey: webCryptoNoisePorts.random(32),
+              }).readMessage(noise);
+            } catch {
+              /* a dummy secret opens nothing */
+            }
+          }
         }
       }
       if (this.hs === null || payload === null)
@@ -675,6 +917,18 @@ export class PeerSession {
       // The pin (§15.10): the peer must be the key the contact was made with. Nothing is sent.
       if (!contactPin(this.o.contacts![this.contactIdx]!.agreeKey, remote))
         throw new SessionFail("peer_revoked");
+    }
+    if (mode === "l") {
+      // The pin (§15.12): the peer must be the key the link was made with. Nothing is sent.
+      if (!localPin(this.o.locals![this.localIdx]!.peerKey, remote))
+        throw new SessionFail("peer_revoked");
+    }
+    if (mode === "q") {
+      // A reflected handshake (the peer's static key is our own) ends silently, before the
+      // transport (§15.12, "Link keys").
+      this.ownPub = await this.ports.x25519.publicKey(this.o.staticKey!);
+      if (!pairingRemoteOk(this.ownPub, remote))
+        throw new SessionFail("handshake_failed");
     }
     if (mode === "a") {
       const a = this.o.account!;
@@ -719,6 +973,7 @@ export class PeerSession {
       this.o.send(await hs.writeMessage(this.ownPayload()));
     }
     this.tp = await hs.transport();
+    this.o.pair?.psk.fill(0);
     this.transportUp();
     this.keyedAt = this.mono();
     this.phase = "hello";
@@ -778,13 +1033,20 @@ export class PeerSession {
         if (!v.ok) throw new SessionFail(v.close);
       }
       const caps = capsIntersection(this.caps, this.peerCaps);
+      if (this.mode === "q") {
+        // `local/1` is mandatory (§15.12): without it, close before any consent prompt.
+        const n = negotiateLocalCaps("q", this.caps, this.peerCaps);
+        if (n.close !== undefined) throw new SessionFail(n.close);
+      }
       this.caps = caps;
       this.asm.xferAllowed = caps.includes(XFER_CAP);
       const p = this.pending!;
       this.pending = null;
       this.hash = this.hs!.handshakeHash.slice();
-      const direct = this.mode === "a" || this.mode === "c";
-      this.phase = direct ? "open" : "sas";
+      const direct =
+        this.mode === "a" || this.mode === "c" || this.mode === "l";
+      // Mode q has no code to compare: its person's consent follows (`confirmPairing`).
+      this.phase = direct ? "open" : this.mode === "q" ? "sas-shown" : "sas";
       // A contact responder's slot among the connections waiting for message 3 ends here.
       if (direct) this.settle();
       this.o.onEvent({
@@ -797,10 +1059,12 @@ export class PeerSession {
         remoteStatic: p.remote,
         peerDeviceId: p.peerDeviceId,
         ...(this.mode === "c" ? { contactIndex: this.contactIdx } : {}),
+        ...(this.mode === "l" ? { localIndex: this.localIdx } : {}),
       });
       if (this.mode === "a") await this.pushRing();
       else if (
         !direct &&
+        this.mode !== "q" &&
         this.o.role === "initiator" &&
         this.o.holdSas !== true
       ) {
@@ -850,6 +1114,18 @@ export class PeerSession {
         return;
       case RECORD.CONFIRM:
       case RECORD.CONTACT:
+      case RECORD.LOCAL_LINK:
+        if (this.lx !== null) {
+          // Mode q: the session owns both records. Only after the transport is up.
+          if (this.phase !== "sas-shown" && this.phase !== "open")
+            throw new SessionFail("peer_not_allowed");
+          await this.localStep(
+            type === RECORD.CONFIRM
+              ? { event: "peer-confirm" }
+              : { event: "peer-link", body },
+          );
+          return;
+        }
         if (this.xchg !== null) {
           // With the exchange on, the session owns both. Only after the code is shown.
           if (this.phase !== "sas-shown" && this.phase !== "open")
@@ -971,6 +1247,55 @@ export class PeerSession {
     this.sasDone = true;
     this.phase = "sas-shown";
     this.o.onEvent({ type: "sas", code, display: sasDisplay(code) });
+  }
+
+  /** Run one event through the pairing exchange (mode q) and act on what it says. */
+  private async localStep(e: LocalExchangeEvent): Promise<void> {
+    const x = this.lx!;
+    const r = x.step(e);
+    if (r.sends.includes("CONFIRM"))
+      await this.emitRecords(RECORD.CONFIRM, utf8("{}"));
+    if (r.sends.includes("LOCAL_LINK"))
+      await this.emitRecords(
+        RECORD.LOCAL_LINK,
+        buildLocalLink({
+          ...(this.o.pair!.label !== undefined
+            ? { label: this.o.pair!.label }
+            : {}),
+          cats: this.o.pair!.cats,
+        }),
+      );
+    // Both CONFIRMs done: the 120 s deadline ends and the exchange's 30 s begins.
+    if (x.bothConfirmed && !this.lxTimer) {
+      this.lxTimer = true;
+      this.settle();
+      this.cancels.push(
+        this.timer(
+          () =>
+            void this.run(() => this.localStep({ event: "timeout-exchange" })),
+          CONTACT_EXCHANGE_SECONDS * 1000,
+        ),
+      );
+    }
+    if (r.stored !== undefined) {
+      const own = this.ownPub!;
+      const peer = this.hs!.remoteStatic!;
+      const secret = await localLinkSecret(
+        this.hash!,
+        this.o.pair!.isk,
+        own,
+        peer,
+      );
+      this.o.onEvent({
+        type: "local-link",
+        secret,
+        ownKey: own.slice(),
+        peerKey: peer.slice(),
+        ...(r.stored.label !== undefined ? { label: r.stored.label } : {}),
+        cats: r.stored.cats,
+      });
+    }
+    if (r.close !== undefined) throw new SessionFail(r.close);
   }
 
   /** Run one event through the contact exchange and act on what it says. */

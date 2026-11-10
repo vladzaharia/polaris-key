@@ -20,6 +20,7 @@ import {
   REF_MAX_LOCAL_LINKS,
   type RefLink,
   type ExchangeEvent,
+  type BudgetJoin,
   type GateEvent,
   type GateOp,
   type JoinIn,
@@ -31,6 +32,7 @@ import {
   refCodeParse,
   refLinkBody,
   refLinkSecret,
+  refDialBudget,
   refLocalBrowse,
   refLocalExchange,
   refLocalGate,
@@ -1296,12 +1298,33 @@ function buildWindow(): unknown[] {
     t,
     valid,
   });
-  const m1 = (t: number, opens: boolean): WindowEvent => ({
+  const m1 = (t: number, opens: boolean, id?: number): WindowEvent => ({
     event: "msg1",
     t,
+    ...(id !== undefined ? { id } : {}),
     opens,
   });
-  const ab = (t: number): WindowEvent => ({ event: "abandon", t });
+  const ab = (t: number, id?: number): WindowEvent => ({
+    event: "abandon",
+    t,
+    ...(id !== undefined ? { id } : {}),
+  });
+  const bg = (t: number, id?: number): WindowEvent => ({
+    event: "begin-guess",
+    t,
+    ...(id !== undefined ? { id } : {}),
+  });
+  const go = (t: number, id?: number): WindowEvent => ({
+    event: "guess-opened",
+    t,
+    ...(id !== undefined ? { id } : {}),
+  });
+  const gf = (t: number, id?: number): WindowEvent => ({
+    event: "guess-failed",
+    t,
+    ...(id !== undefined ? { id } : {}),
+  });
+  const rot = (t: number): WindowEvent => ({ event: "rotated", t });
   const se = (t: number, stored: boolean): WindowEvent => ({
     event: "session-end",
     t,
@@ -1309,9 +1332,111 @@ function buildWindow(): unknown[] {
   });
   const tick = (t: number): WindowEvent => ({ event: "tick", t });
   const cl = (t: number): WindowEvent => ({ event: "close", t });
-  const fail = (t: number): WindowEvent[] => [c1(t), m1(t + 1, false)];
+  const fail = (t: number): WindowEvent[] => [
+    c1(t),
+    m1(t + 1, false),
+    rot(t + 1),
+  ];
   const rows: { id: string; events: WindowEvent[] }[] = [
     { id: "opens", events: [o(0)] },
+    {
+      id: "an-old-attempts-message-1-is-denied-and-never-tried",
+      events: [o(0), c1(1), tick(31), c1(32), bg(33, 1), m1(34, false, 1)],
+    },
+    {
+      id: "an-old-attempts-abandon-does-not-clear-the-new-holder",
+      events: [o(0), c1(1), tick(31), c1(32), ab(33, 1), c1(34), bg(35)],
+    },
+    {
+      id: "stalled-a-then-b-admitted-then-a-message-1",
+      events: [o(0), c1(1), c1(2), tick(31), c1(32), bg(33, 1), bg(34, 2)],
+    },
+    {
+      id: "a-guess-is-counted-when-permitted",
+      events: [o(0), c1(1), bg(2)],
+    },
+    {
+      id: "one-permit-per-attempt",
+      events: [o(0), c1(1), bg(2), bg(3)],
+    },
+    {
+      id: "a-guess-that-opens-is-refunded",
+      events: [o(0), c1(1), bg(2), go(3)],
+    },
+    {
+      id: "a-permitted-guess-that-fails-rotates",
+      events: [o(0), c1(1), bg(2), gf(3), rot(3)],
+    },
+    {
+      id: "five-permits-refunded-count-nothing",
+      events: [
+        o(0),
+        ...[1, 11, 21, 31, 41].flatMap((t) => [
+          c1(t),
+          bg(t + 1),
+          go(t + 1),
+          se(t + 2, false),
+          rot(t + 2),
+        ]),
+      ],
+    },
+    {
+      id: "five-permits-without-a-refund-close-the-window",
+      events: [
+        o(0),
+        ...[1, 11, 21, 31].flatMap((t) => [
+          c1(t),
+          bg(t + 1),
+          gf(t + 1),
+          rot(t + 1),
+        ]),
+        c1(41),
+        bg(42),
+        gf(43),
+        c1(44),
+      ],
+    },
+    {
+      id: "abandon-after-a-permit-is-a-failed-guess",
+      events: [o(0), c1(1), bg(2), ab(3)],
+    },
+    {
+      id: "a-permitted-guess-with-no-verdict-is-failed-at-30-s",
+      events: [o(0), c1(1), bg(2), tick(31)],
+    },
+    {
+      id: "a-verdict-after-the-expiry-changes-nothing",
+      events: [o(0), c1(298), bg(299), tick(301), gf(302)],
+    },
+    {
+      id: "a-closed-windows-connection-cannot-touch-the-next-window",
+      events: [o(0), c1(1), cl(5), o(6), bg(7, 1), ab(8, 1), c1(9), bg(10)],
+    },
+    {
+      id: "c1-during-rotation-is-busy-and-uncounted",
+      events: [o(0), c1(1), m1(2, false), c1(3), c1(4), rot(5), c1(6)],
+    },
+    {
+      id: "rotated-is-idempotent",
+      events: [o(0), c1(1), m1(2, false), rot(3), rot(4), c1(5)],
+    },
+    { id: "rotated-with-no-rotation-is-quiet", events: [o(0), rot(1)] },
+    {
+      id: "a-session-that-ends-without-a-link-holds-the-window-until-rotated",
+      events: [
+        o(0),
+        c1(1),
+        m1(2, true),
+        se(20, false),
+        c1(21),
+        rot(22),
+        c1(23),
+      ],
+    },
+    {
+      id: "closing-during-a-rotation-drops-it",
+      events: [o(0), c1(1), m1(2, false), cl(3), rot(4), c1(5)],
+    },
     { id: "second-open-while-open", events: [o(0), o(10)] },
     { id: "c1-before-open", events: [c1(0)] },
     {
@@ -1324,7 +1449,15 @@ function buildWindow(): unknown[] {
     },
     {
       id: "session-ends-without-a-link-rotates-and-reopens",
-      events: [o(0), c1(1), m1(2, true), se(20, false), c1(21), m1(22, true)],
+      events: [
+        o(0),
+        c1(1),
+        m1(2, true),
+        se(20, false),
+        rot(20),
+        c1(21),
+        m1(22, true),
+      ],
     },
     {
       id: "session-ends-without-a-link-counts-no-failure",
@@ -1383,6 +1516,7 @@ function buildWindow(): unknown[] {
         c1(15),
         m1(16, true),
         se(30, false),
+        rot(30),
         ...fail(40),
       ],
     },
@@ -1428,7 +1562,7 @@ function buildWindow(): unknown[] {
     },
     {
       id: "late-message-1-after-the-deadline-is-ignored",
-      events: [o(0), c1(1), m1(40, false)],
+      events: [o(0), c1(1), bg(40)],
     },
     {
       id: "message-1-without-an-attempt-is-ignored",
@@ -1540,6 +1674,7 @@ function buildWindow(): unknown[] {
         c1(15),
         m1(16, true),
         se(30, false),
+        rot(30),
         ...fail(40),
       ],
     },
@@ -1547,10 +1682,11 @@ function buildWindow(): unknown[] {
   return rows.map((r) => ({
     id: r.id,
     steps: r.events,
-    // One entry per event: what it decided (`result`), and the window after it: open, who holds it
-    // (an `attempt` from a valid C1 to its message 1 or its 30 s, a `session` from a message 1
-    // that opens until it ends), the failed guesses and the rotations of the code and QR secret
-    // in this window, and why it is closed. `host` is what the person hears.
+    // One entry per event: what it decided (`result`, and the attempt `id` of an `attempt`), and
+    // the window after it: open, who holds it (an `attempt` from a valid C1 until its guess or its
+    // 30 s, a `session` from a guess that opens until it ends, `rotating` from a failed guess or a
+    // session without a link until `rotated`), the guesses counted so far and the rotations in
+    // this window, and why it is closed. `host` is what the person hears.
     want: refLocalWindow(r.events),
   }));
 }
@@ -1710,6 +1846,90 @@ function buildJoin(): unknown[] {
   return rows.map(({ id, ...i }) => ({ id, ...i, want: refLocalJoin(i) }));
 }
 
+// ── joinBudget ───────────────────────────────────────────────────────────────
+
+function buildJoinBudget(): unknown[] {
+  const code = (nameplate: string): BudgetJoin["input"] => ({
+    kind: "code",
+    nameplate,
+  });
+  const rows: { id: string; joins: BudgetJoin[] }[] = [
+    {
+      id: "a-first-join-is-allowed",
+      joins: [{ t: 0, input: code("48"), dials: 2 }],
+    },
+    {
+      id: "two-dials-spend-the-budget",
+      joins: [
+        { t: 0, input: code("48"), dials: 2 },
+        { t: 10, input: code("48"), dials: 1 },
+      ],
+    },
+    {
+      id: "one-dial-at-a-time-spends-it-over-two-joins",
+      joins: [
+        { t: 0, input: code("48"), dials: 1 },
+        { t: 10, input: code("48"), dials: 1 },
+        { t: 20, input: code("48"), dials: 1 },
+      ],
+    },
+    {
+      id: "a-join-with-no-dial-spends-nothing",
+      joins: [
+        { t: 0, input: code("48"), dials: 0 },
+        { t: 10, input: code("48"), dials: 0 },
+        { t: 20, input: code("48"), dials: 2 },
+        { t: 30, input: code("48"), dials: 1 },
+      ],
+    },
+    {
+      id: "the-budget-is-per-nameplate",
+      joins: [
+        { t: 0, input: code("48"), dials: 2 },
+        { t: 1, input: code("49"), dials: 2 },
+        { t: 2, input: code("48"), dials: 1 },
+        { t: 3, input: code("49"), dials: 1 },
+      ],
+    },
+    {
+      id: "the-budget-frees-after-300-s",
+      joins: [
+        { t: 0, input: code("48"), dials: 2 },
+        { t: 299, input: code("48"), dials: 1 },
+        { t: 300, input: code("48"), dials: 1 },
+      ],
+    },
+    {
+      id: "a-refused-join-does-not-extend-the-budget",
+      joins: [
+        { t: 0, input: code("48"), dials: 2 },
+        { t: 200, input: code("48"), dials: 1 },
+        { t: 300, input: code("48"), dials: 1 },
+      ],
+    },
+    {
+      id: "a-qr-is-never-limited",
+      joins: [
+        { t: 0, input: { kind: "qr" }, dials: 2 },
+        { t: 1, input: { kind: "qr" }, dials: 2 },
+        { t: 2, input: { kind: "qr" }, dials: 2 },
+      ],
+    },
+    {
+      id: "a-qr-does-not-spend-a-code-budget",
+      joins: [
+        { t: 0, input: { kind: "qr" }, dials: 2 },
+        { t: 1, input: code("48"), dials: 2 },
+      ],
+    },
+  ];
+  return rows.map((r) => ({
+    id: r.id,
+    joins: r.joins,
+    want: refDialBudget(r.joins),
+  }));
+}
+
 // ── gate ─────────────────────────────────────────────────────────────────────
 
 function buildGate(): unknown[] {
@@ -1819,6 +2039,31 @@ function buildGate(): unknown[] {
       id: "number-one-is-not-true",
       start: "none",
       steps: [read(doc({ enabled: true, localPairing: 1 })), call("pair")],
+    },
+    {
+      id: "member-true-with-the-service-disabled-reads-as-false",
+      start: "none",
+      steps: [read(doc({ enabled: false, localPairing: true })), call("pair")],
+    },
+    {
+      id: "member-true-without-enabled-reads-as-false",
+      start: "none",
+      steps: [read(doc({ localPairing: true })), call("pair")],
+    },
+    {
+      id: "enabled-as-a-string-reads-as-false",
+      start: "none",
+      steps: [read(doc({ enabled: "true", localPairing: true })), call("pair")],
+    },
+    {
+      id: "connect-as-an-array-reads-as-false",
+      start: "on",
+      steps: [read(doc([true, true])), call("pair")],
+    },
+    {
+      id: "connect-as-a-string-reads-as-false",
+      start: "on",
+      steps: [read(doc("enabled")), call("pair")],
     },
     {
       id: "read-false-withdraws",
@@ -1934,7 +2179,7 @@ export function buildLocal(): unknown {
     if (REF_X25519_LOW_ORDER_HEX[k]!.length !== 64)
       throw new Error("local: low-order reference");
   return {
-    note: "Account-free local pairing (15.12, 15.4, 15.5). `codes`: `nameplate` (a byte stream drawn one byte at a time: 200 or more is drawn again, then mod 100; a nameplate in `inUse` is drawn again unless all 100 are in use; `want.consumed` is the bytes read and a null nameplate means the stream ran out), `password` (4 bytes a draw as a u32be, drawn again at 4294000000 or more, then mod 10^6, written with leading zeros), `display` (two groups of four digits, one space) and `parse` (a typed code: ASCII spaces and hyphens removed, then exactly 8 ASCII digits; nothing else, another script's digits included). `qr`: `make` (PKP1:SLUG:INSTANCE:SECRET in upper case, the instance's 16 base32 characters and the secret's 26 with the two unused low bits zero) and `parse` (fold ASCII case, four fields split at ':', then ok, other-app when the slug is well formed but not `own`, or invalid; the secret's last character must keep its low two bits zero). `adverts`: `pairing` (the m=q instance p1- + the 16 base32 characters of the window's 10 bytes), `names` (the m=l instance p1- + the first 16 characters of the lower-case base32 of HMAC-SHA256(secret, 'pkey-peer/1 ldisc' || 0x00 || u64be(epoch) || the advertiser's own link key)) and `browse` (which held link, in held order and among the first 32, an instance belongs to in the current or previous epoch; each link lists its `secret` and the peer's link key `peerKey`, the key the peer advertises with). `txt`: `parser` txt is parseTxt (m = a, v, p or q; for q `h` is 16 lower-case hex characters and `n` exactly two ASCII digits; n is read for q only; c and l are unknown modes there), `parser` local is parseLocalTxt (v=1 and m=l; no h and no n are read); an entry splits at its first '='; one without '=' or with an empty key is ignored; a repeated key refuses. `body`: a LOCAL_LINK body, strict JSON of at most 4 KiB, v = 1, an optional label cleaned as a HELLO label (nothing left means none), cats an array of at most 8 distinct strings of ^[a-z0-9-]{1,32}$; unknown members are ignored. `secrets`: HKDF-SHA256(salt = h, ikm = ISK (64 bytes), info = 'pkey-peer/1 local' || 0x00 || lo || hi), 32 bytes, lo and hi the two link public keys by unsigned byte order (the row real-pairing-inputs uses the mode-q handshake of noise-vectors.json `cpace.handshakes`). `handshakePayloads`: the payloads of modes q and l and the capability negotiation. `exchange`: one side's pairing events in order (own-confirm, own-decline, peer-confirm, peer-link with the body text, timeout-confirm: the 120 s from the first byte ran out, timeout-exchange: the 30 s after both CONFIRMs ran out), with `held` the local links the device holds and `cats` this side's approved categories; `want` has one entry per step: what that step makes this side send (CONFIRM, LOCAL_LINK, the second once this side's CONFIRM is sent and the peer's read), the code it closes with, and the link it stores (`label`, and `cats` the entries both sides listed in byte order, then peer_bye); after a close nothing more happens, so a side that stored the first valid LOCAL_LINK (and closed peer_bye) never answers a second one (row link-twice-is-quiet-after-the-first); a decline before this side's CONFIRM closes peer_bye. `pin`: mode l checks the remote static key against the peer link key of the link whose secret opened the session (after message 2 for the initiator, after message 3 for the responder): a mismatch is peer_revoked and nothing is sent; mode q ends the handshake silently when the remote static key is this side's own link key. `trialOrder`: the shared listener's trial of message 1: account discKeys (null = none; two tried), then contact secrets (72 tried), then local-link secrets (32 tried), at most 104 secrets after the account keys; `opens` names the key whose tag verifies; `limiter` is what the contact limiter says to a contact or local-link trial; `want.tried` lists a:<i>, c:<i> and l:<i> in order, `hit` the key that decided, `slot` whether the connection holds a limiter slot until message 3 (a contact or local-link hit), `close` the silent end (peer_busy when the limiter refused before any secret was tried, handshake_failed otherwise). `window`: the pairing window's machine over events with a monotonic time t in seconds (open, c1 with `valid`, msg1 with `opens`, abandon, session-end with `stored`, tick, close); `want` has one entry per event: `result` (opened, already-open, closed, busy, limited, refused, attempt, transport, failed, too-many-tries), `open`, `holder` (attempt from a valid C1 until its message 1 or 30 s; session from a message 1 that opens until it ends), `failures`, `rotations` (the password and QR secret rotate after every failed guess below the fifth and after a session that ends without a link while the window is open), `closed` (expired at 300 s, too-many-tries, stored, person) and `host`; a window admits at most 5 C1s in any 60 s, counted when it admits them. `join`: the joiner: `input` is what the reader said (a code's nameplate, a QR's instance or invalid), `adverts` the m=q adverts seen in first-seen order (`h` current, previous or other, `n` the nameplate), `dials` how each dial ends (transport, before-c2, after-c2); `want` has the instances kept (matching h and the nameplate or the instance, at most 8, once each), those dialled (at most 2, in order), whether anything was browsed, and the result: transport, pairing-code-failed (an invalid input, or no transport and an attempt failed after C2) or pairing-not-found. `gate`: the cached discovery answer (`start` on, off or none) over reads (ok with the discovery body, not-found, error) and calls; services.connect.localPairing is true only as the boolean true; an ok read replaces the answer, a not-found clears it, an error changes nothing; a read that leaves a cached true behind has the effects close-windows, withdraw-adverts and end-sessions; a call that opens, joins, advertises, browses, dials or answers needs on and otherwise answers local-pairing-off, and list, rename, remove and set-reachable are never gated. `records`: the mode rules of 15.6 for q and l (and the new rows in the other modes): a known type in a mode that does not allow it closes peer_not_allowed, an unknown type with the critical bit closes peer_unknown_critical and any other is ignored; `needs` is the capability the session must hold. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
+    note: "Account-free local pairing (15.12, 15.4, 15.5). `codes`: `nameplate` (a byte stream drawn one byte at a time: 200 or more is drawn again, then mod 100; a nameplate in `inUse` is drawn again unless all 100 are in use; `want.consumed` is the bytes read and a null nameplate means the stream ran out), `password` (4 bytes a draw as a u32be, drawn again at 4294000000 or more, then mod 10^6, written with leading zeros), `display` (two groups of four digits, one space) and `parse` (a typed code: ASCII spaces and hyphens removed, then exactly 8 ASCII digits; nothing else, another script's digits included). `qr`: `make` (PKP1:SLUG:INSTANCE:SECRET in upper case, the instance's 16 base32 characters and the secret's 26 with the two unused low bits zero) and `parse` (fold ASCII case, four fields split at ':', then ok, other-app when the slug is well formed but not `own`, or invalid; the secret's last character must keep its low two bits zero). `adverts`: `pairing` (the m=q instance p1- + the 16 base32 characters of the window's 10 bytes), `names` (the m=l instance p1- + the first 16 characters of the lower-case base32 of HMAC-SHA256(secret, 'pkey-peer/1 ldisc' || 0x00 || u64be(epoch) || the advertiser's own link key)) and `browse` (which held link, in held order and among the first 32, an instance belongs to in the current or previous epoch; each link lists its `secret` and the peer's link key `peerKey`, the key the peer advertises with). `txt`: `parser` txt is parseTxt (m = a, v, p or q; for q `h` is 16 lower-case hex characters and `n` exactly two ASCII digits; n is read for q only; c and l are unknown modes there), `parser` local is parseLocalTxt (v=1 and m=l; no h and no n are read); an entry splits at its first '='; one without '=' or with an empty key is ignored; a repeated key refuses. `body`: a LOCAL_LINK body, strict JSON of at most 4 KiB, v = 1, an optional label cleaned as a HELLO label (nothing left means none), cats an array of at most 8 distinct strings of ^[a-z0-9-]{1,32}$; unknown members are ignored. `secrets`: HKDF-SHA256(salt = h, ikm = ISK (64 bytes), info = 'pkey-peer/1 local' || 0x00 || lo || hi), 32 bytes, lo and hi the two link public keys by unsigned byte order (the row real-pairing-inputs uses the mode-q handshake of noise-vectors.json `cpace.handshakes`). `handshakePayloads`: the payloads of modes q and l and the capability negotiation. `exchange`: one side's pairing events in order (own-confirm, own-decline, peer-confirm, peer-link with the body text, timeout-confirm: the 120 s from the first byte ran out, timeout-exchange: the 30 s after both CONFIRMs ran out), with `held` the local links the device holds and `cats` this side's approved categories; `want` has one entry per step: what that step makes this side send (CONFIRM, LOCAL_LINK, the second once this side's CONFIRM is sent and the peer's read), the code it closes with, and the link it stores (`label`, and `cats` the entries both sides listed in byte order, then peer_bye); after a close nothing more happens, so a side that stored the first valid LOCAL_LINK (and closed peer_bye) never answers a second one (row link-twice-is-quiet-after-the-first); a decline before this side's CONFIRM closes peer_bye. `pin`: mode l checks the remote static key against the peer link key of the link whose secret opened the session (after message 2 for the initiator, after message 3 for the responder): a mismatch is peer_revoked and nothing is sent; mode q ends the handshake silently when the remote static key is this side's own link key. `trialOrder`: the shared listener's trial of message 1: account discKeys (null = none; two tried), then contact secrets (72 tried), then local-link secrets (32 tried), at most 104 secrets after the account keys; `opens` names the key whose tag verifies; `limiter` is what the contact limiter says to a contact or local-link trial; `want.tried` lists a:<i>, c:<i> and l:<i> in order, `dummy` the dummy trials that follow a miss so a silent close costs 106 trials (2 + 72 + 32) whatever the host holds (0 on a hit, on peer_busy and for a host with no contact or local-link secret, which the limiter does not cover), `hit` the key that decided, `slot` whether the connection holds a limiter slot until message 3 (a contact or local-link hit), `close` the silent end (peer_busy when the limiter refused before any secret was tried, handshake_failed otherwise). `window`: the pairing window's machine over events with a monotonic time t in seconds (open, c1 with `valid`, begin-guess, guess-opened, guess-failed, msg1 (begin-guess then its verdict, `opens`), abandon, rotated, session-end with `stored`, tick, close). A c1 that admits an attempt hands out its `id` (1, 2, ... across windows); an event that names an attempt carries its `id`, and without one it names the latest attempt handed out. A guess is counted when it is permitted (begin-guess, `permit`), before its tag is tried, and only the holder's own attempt is permitted, once; any other id, an expired or closed attempt, answers `denied` and its tag is never tried. A guess that opens is refunded (guess-opened); one that does not, and a connection that ends after its permit, is a failed guess (guess-failed, abandon), and the fifth closes the window. `want` has one entry per event: `result` (opened, already-open, closed, busy, limited, refused, attempt, permit, denied, transport, failed, too-many-tries), `id`, `open`, `holder` (attempt from a valid C1 until its guess or 30 s; session from a guess that opens until it ends; rotating, busy and uncounted, from a failed guess or a session that ends without a link until rotated, which the host sends once the new password, QR secret and both generators are ready), `failures` (guesses counted), `rotations`, `closed` (expired at 300 s, too-many-tries, stored, person) and `host`; a window admits at most 5 C1s in any 60 s, counted when it admits them. `joinBudget`: joins in time order; per nameplate at most 2 dials in any 300 s across joins (a join with no dial spends none, a refused join records none and answers pairing-code-failed without browsing), a QR is never limited; `want` has `allowed` and `used`, the dials of the nameplate in the last 300 s before the join. `join`: the joiner: `input` is what the reader said (a code's nameplate, a QR's instance or invalid), `adverts` the m=q adverts seen in first-seen order (`h` current, previous or other, `n` the nameplate), `dials` how each dial ends (transport, before-c2, after-c2); `want` has the instances kept (matching h and the nameplate or the instance, at most 8, once each), those dialled (at most 2, in order), whether anything was browsed, and the result: transport, pairing-code-failed (an invalid input, or no transport and an attempt failed after C2) or pairing-not-found. `gate`: the cached discovery answer (`start` on, off or none) over reads (ok with the discovery body, not-found, error) and calls; services.connect.localPairing is true only as the boolean true while services.connect.enabled is the boolean true; an ok read replaces the answer, a not-found clears it, an error changes nothing; a read that leaves a cached true behind has the effects close-windows, withdraw-adverts and end-sessions; a call that opens, joins, advertises, browses, dials or answers needs on and otherwise answers local-pairing-off, and list, rename, remove and set-reachable are never gated. `records`: the mode rules of 15.6 for q and l (and the new rows in the other modes): a known type in a mode that does not allow it closes peer_not_allowed, an unknown type with the critical bit closes peer_unknown_critical and any other is ignored; `needs` is the capability the session must hold. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
     constants: {
       pairSeconds: REF_LOCAL_PAIR_SECONDS,
       codeDigits: REF_LOCAL_CODE_DIGITS,
@@ -1962,6 +2207,7 @@ export function buildLocal(): unknown {
     trialOrder: buildTrialOrder(),
     window: buildWindow(),
     join: buildJoin(),
+    joinBudget: buildJoinBudget(),
     gate: buildGate(),
     records: buildRecords(),
   };

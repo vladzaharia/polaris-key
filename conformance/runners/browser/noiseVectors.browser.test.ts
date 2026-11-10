@@ -10,6 +10,7 @@ import {
   webCryptoAead,
   webCryptoX25519,
 } from "@polaris-key/client-core";
+import { registerCpaceSuites } from "../node/cpaceSuites.js";
 
 interface Msg {
   index: number;
@@ -98,3 +99,5 @@ withX("noise vectors in the browser: X25519 and handshakes", () => {
     });
   }
 });
+
+registerCpaceSuites(V.cpace, { x25519 });

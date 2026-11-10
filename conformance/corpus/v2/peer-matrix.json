@@ -28027,7 +28027,7 @@
     ]
   },
   "local": {
-    "note": "Account-free local pairing (15.12, 15.4, 15.5). `codes`: `nameplate` (a byte stream drawn one byte at a time: 200 or more is drawn again, then mod 100; a nameplate in `inUse` is drawn again unless all 100 are in use; `want.consumed` is the bytes read and a null nameplate means the stream ran out), `password` (4 bytes a draw as a u32be, drawn again at 4294000000 or more, then mod 10^6, written with leading zeros), `display` (two groups of four digits, one space) and `parse` (a typed code: ASCII spaces and hyphens removed, then exactly 8 ASCII digits; nothing else, another script's digits included). `qr`: `make` (PKP1:SLUG:INSTANCE:SECRET in upper case, the instance's 16 base32 characters and the secret's 26 with the two unused low bits zero) and `parse` (fold ASCII case, four fields split at ':', then ok, other-app when the slug is well formed but not `own`, or invalid; the secret's last character must keep its low two bits zero). `adverts`: `pairing` (the m=q instance p1- + the 16 base32 characters of the window's 10 bytes), `names` (the m=l instance p1- + the first 16 characters of the lower-case base32 of HMAC-SHA256(secret, 'pkey-peer/1 ldisc' || 0x00 || u64be(epoch) || the advertiser's own link key)) and `browse` (which held link, in held order and among the first 32, an instance belongs to in the current or previous epoch; each link lists its `secret` and the peer's link key `peerKey`, the key the peer advertises with). `txt`: `parser` txt is parseTxt (m = a, v, p or q; for q `h` is 16 lower-case hex characters and `n` exactly two ASCII digits; n is read for q only; c and l are unknown modes there), `parser` local is parseLocalTxt (v=1 and m=l; no h and no n are read); an entry splits at its first '='; one without '=' or with an empty key is ignored; a repeated key refuses. `body`: a LOCAL_LINK body, strict JSON of at most 4 KiB, v = 1, an optional label cleaned as a HELLO label (nothing left means none), cats an array of at most 8 distinct strings of ^[a-z0-9-]{1,32}$; unknown members are ignored. `secrets`: HKDF-SHA256(salt = h, ikm = ISK (64 bytes), info = 'pkey-peer/1 local' || 0x00 || lo || hi), 32 bytes, lo and hi the two link public keys by unsigned byte order (the row real-pairing-inputs uses the mode-q handshake of noise-vectors.json `cpace.handshakes`). `handshakePayloads`: the payloads of modes q and l and the capability negotiation. `exchange`: one side's pairing events in order (own-confirm, own-decline, peer-confirm, peer-link with the body text, timeout-confirm: the 120 s from the first byte ran out, timeout-exchange: the 30 s after both CONFIRMs ran out), with `held` the local links the device holds and `cats` this side's approved categories; `want` has one entry per step: what that step makes this side send (CONFIRM, LOCAL_LINK, the second once this side's CONFIRM is sent and the peer's read), the code it closes with, and the link it stores (`label`, and `cats` the entries both sides listed in byte order, then peer_bye); after a close nothing more happens, so a side that stored the first valid LOCAL_LINK (and closed peer_bye) never answers a second one (row link-twice-is-quiet-after-the-first); a decline before this side's CONFIRM closes peer_bye. `pin`: mode l checks the remote static key against the peer link key of the link whose secret opened the session (after message 2 for the initiator, after message 3 for the responder): a mismatch is peer_revoked and nothing is sent; mode q ends the handshake silently when the remote static key is this side's own link key. `trialOrder`: the shared listener's trial of message 1: account discKeys (null = none; two tried), then contact secrets (72 tried), then local-link secrets (32 tried), at most 104 secrets after the account keys; `opens` names the key whose tag verifies; `limiter` is what the contact limiter says to a contact or local-link trial; `want.tried` lists a:<i>, c:<i> and l:<i> in order, `hit` the key that decided, `slot` whether the connection holds a limiter slot until message 3 (a contact or local-link hit), `close` the silent end (peer_busy when the limiter refused before any secret was tried, handshake_failed otherwise). `window`: the pairing window's machine over events with a monotonic time t in seconds (open, c1 with `valid`, msg1 with `opens`, abandon, session-end with `stored`, tick, close); `want` has one entry per event: `result` (opened, already-open, closed, busy, limited, refused, attempt, transport, failed, too-many-tries), `open`, `holder` (attempt from a valid C1 until its message 1 or 30 s; session from a message 1 that opens until it ends), `failures`, `rotations` (the password and QR secret rotate after every failed guess below the fifth and after a session that ends without a link while the window is open), `closed` (expired at 300 s, too-many-tries, stored, person) and `host`; a window admits at most 5 C1s in any 60 s, counted when it admits them. `join`: the joiner: `input` is what the reader said (a code's nameplate, a QR's instance or invalid), `adverts` the m=q adverts seen in first-seen order (`h` current, previous or other, `n` the nameplate), `dials` how each dial ends (transport, before-c2, after-c2); `want` has the instances kept (matching h and the nameplate or the instance, at most 8, once each), those dialled (at most 2, in order), whether anything was browsed, and the result: transport, pairing-code-failed (an invalid input, or no transport and an attempt failed after C2) or pairing-not-found. `gate`: the cached discovery answer (`start` on, off or none) over reads (ok with the discovery body, not-found, error) and calls; services.connect.localPairing is true only as the boolean true; an ok read replaces the answer, a not-found clears it, an error changes nothing; a read that leaves a cached true behind has the effects close-windows, withdraw-adverts and end-sessions; a call that opens, joins, advertises, browses, dials or answers needs on and otherwise answers local-pairing-off, and list, rename, remove and set-reachable are never gated. `records`: the mode rules of 15.6 for q and l (and the new rows in the other modes): a known type in a mode that does not allow it closes peer_not_allowed, an unknown type with the critical bit closes peer_unknown_critical and any other is ignored; `needs` is the capability the session must hold. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
+    "note": "Account-free local pairing (15.12, 15.4, 15.5). `codes`: `nameplate` (a byte stream drawn one byte at a time: 200 or more is drawn again, then mod 100; a nameplate in `inUse` is drawn again unless all 100 are in use; `want.consumed` is the bytes read and a null nameplate means the stream ran out), `password` (4 bytes a draw as a u32be, drawn again at 4294000000 or more, then mod 10^6, written with leading zeros), `display` (two groups of four digits, one space) and `parse` (a typed code: ASCII spaces and hyphens removed, then exactly 8 ASCII digits; nothing else, another script's digits included). `qr`: `make` (PKP1:SLUG:INSTANCE:SECRET in upper case, the instance's 16 base32 characters and the secret's 26 with the two unused low bits zero) and `parse` (fold ASCII case, four fields split at ':', then ok, other-app when the slug is well formed but not `own`, or invalid; the secret's last character must keep its low two bits zero). `adverts`: `pairing` (the m=q instance p1- + the 16 base32 characters of the window's 10 bytes), `names` (the m=l instance p1- + the first 16 characters of the lower-case base32 of HMAC-SHA256(secret, 'pkey-peer/1 ldisc' || 0x00 || u64be(epoch) || the advertiser's own link key)) and `browse` (which held link, in held order and among the first 32, an instance belongs to in the current or previous epoch; each link lists its `secret` and the peer's link key `peerKey`, the key the peer advertises with). `txt`: `parser` txt is parseTxt (m = a, v, p or q; for q `h` is 16 lower-case hex characters and `n` exactly two ASCII digits; n is read for q only; c and l are unknown modes there), `parser` local is parseLocalTxt (v=1 and m=l; no h and no n are read); an entry splits at its first '='; one without '=' or with an empty key is ignored; a repeated key refuses. `body`: a LOCAL_LINK body, strict JSON of at most 4 KiB, v = 1, an optional label cleaned as a HELLO label (nothing left means none), cats an array of at most 8 distinct strings of ^[a-z0-9-]{1,32}$; unknown members are ignored. `secrets`: HKDF-SHA256(salt = h, ikm = ISK (64 bytes), info = 'pkey-peer/1 local' || 0x00 || lo || hi), 32 bytes, lo and hi the two link public keys by unsigned byte order (the row real-pairing-inputs uses the mode-q handshake of noise-vectors.json `cpace.handshakes`). `handshakePayloads`: the payloads of modes q and l and the capability negotiation. `exchange`: one side's pairing events in order (own-confirm, own-decline, peer-confirm, peer-link with the body text, timeout-confirm: the 120 s from the first byte ran out, timeout-exchange: the 30 s after both CONFIRMs ran out), with `held` the local links the device holds and `cats` this side's approved categories; `want` has one entry per step: what that step makes this side send (CONFIRM, LOCAL_LINK, the second once this side's CONFIRM is sent and the peer's read), the code it closes with, and the link it stores (`label`, and `cats` the entries both sides listed in byte order, then peer_bye); after a close nothing more happens, so a side that stored the first valid LOCAL_LINK (and closed peer_bye) never answers a second one (row link-twice-is-quiet-after-the-first); a decline before this side's CONFIRM closes peer_bye. `pin`: mode l checks the remote static key against the peer link key of the link whose secret opened the session (after message 2 for the initiator, after message 3 for the responder): a mismatch is peer_revoked and nothing is sent; mode q ends the handshake silently when the remote static key is this side's own link key. `trialOrder`: the shared listener's trial of message 1: account discKeys (null = none; two tried), then contact secrets (72 tried), then local-link secrets (32 tried), at most 104 secrets after the account keys; `opens` names the key whose tag verifies; `limiter` is what the contact limiter says to a contact or local-link trial; `want.tried` lists a:<i>, c:<i> and l:<i> in order, `dummy` the dummy trials that follow a miss so a silent close costs 106 trials (2 + 72 + 32) whatever the host holds (0 on a hit, on peer_busy and for a host with no contact or local-link secret, which the limiter does not cover), `hit` the key that decided, `slot` whether the connection holds a limiter slot until message 3 (a contact or local-link hit), `close` the silent end (peer_busy when the limiter refused before any secret was tried, handshake_failed otherwise). `window`: the pairing window's machine over events with a monotonic time t in seconds (open, c1 with `valid`, begin-guess, guess-opened, guess-failed, msg1 (begin-guess then its verdict, `opens`), abandon, rotated, session-end with `stored`, tick, close). A c1 that admits an attempt hands out its `id` (1, 2, ... across windows); an event that names an attempt carries its `id`, and without one it names the latest attempt handed out. A guess is counted when it is permitted (begin-guess, `permit`), before its tag is tried, and only the holder's own attempt is permitted, once; any other id, an expired or closed attempt, answers `denied` and its tag is never tried. A guess that opens is refunded (guess-opened); one that does not, and a connection that ends after its permit, is a failed guess (guess-failed, abandon), and the fifth closes the window. `want` has one entry per event: `result` (opened, already-open, closed, busy, limited, refused, attempt, permit, denied, transport, failed, too-many-tries), `id`, `open`, `holder` (attempt from a valid C1 until its guess or 30 s; session from a guess that opens until it ends; rotating, busy and uncounted, from a failed guess or a session that ends without a link until rotated, which the host sends once the new password, QR secret and both generators are ready), `failures` (guesses counted), `rotations`, `closed` (expired at 300 s, too-many-tries, stored, person) and `host`; a window admits at most 5 C1s in any 60 s, counted when it admits them. `joinBudget`: joins in time order; per nameplate at most 2 dials in any 300 s across joins (a join with no dial spends none, a refused join records none and answers pairing-code-failed without browsing), a QR is never limited; `want` has `allowed` and `used`, the dials of the nameplate in the last 300 s before the join. `join`: the joiner: `input` is what the reader said (a code's nameplate, a QR's instance or invalid), `adverts` the m=q adverts seen in first-seen order (`h` current, previous or other, `n` the nameplate), `dials` how each dial ends (transport, before-c2, after-c2); `want` has the instances kept (matching h and the nameplate or the instance, at most 8, once each), those dialled (at most 2, in order), whether anything was browsed, and the result: transport, pairing-code-failed (an invalid input, or no transport and an attempt failed after C2) or pairing-not-found. `gate`: the cached discovery answer (`start` on, off or none) over reads (ok with the discovery body, not-found, error) and calls; services.connect.localPairing is true only as the boolean true while services.connect.enabled is the boolean true; an ok read replaces the answer, a not-found clears it, an error changes nothing; a read that leaves a cached true behind has the effects close-windows, withdraw-adverts and end-sessions; a call that opens, joins, advertises, browses, dials or answers needs on and otherwise answers local-pairing-off, and list, rename, remove and set-reachable are never gated. `records`: the mode rules of 15.6 for q and l (and the new rows in the other modes): a known type in a mode that does not allow it closes peer_not_allowed, an unknown type with the critical bit closes peer_unknown_critical and any other is ignored; `needs` is the capability the session must hold. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
     "constants": {
       "pairSeconds": 300,
       "codeDigits": 8,
@@ -31357,7 +31357,13 @@
         "locals": ["l", "l", "l"],
         "opens": { "mode": "a", "key": 0 },
         "limiter": "admit",
-        "want": { "tried": ["a:0"], "hit": "a:0", "slot": false, "close": null }
+        "want": {
+          "tried": ["a:0"],
+          "hit": "a:0",
+          "slot": false,
+          "close": null,
+          "dummy": 0
+        }
       },
       {
         "id": "previous-account-key",
@@ -31370,7 +31376,8 @@
           "tried": ["a:0", "a:1"],
           "hit": "a:1",
           "slot": false,
-          "close": null
+          "close": null,
+          "dummy": 0
         }
       },
       {
@@ -31380,7 +31387,13 @@
         "locals": ["l", "l"],
         "opens": { "mode": "a", "key": 1 },
         "limiter": "admit",
-        "want": { "tried": ["a:1"], "hit": "a:1", "slot": false, "close": null }
+        "want": {
+          "tried": ["a:1"],
+          "hit": "a:1",
+          "slot": false,
+          "close": null,
+          "dummy": 0
+        }
       },
       {
         "id": "contact-before-local-links",
@@ -31393,7 +31406,8 @@
           "tried": ["a:0", "a:1", "c:0", "c:1", "c:2"],
           "hit": "c:2",
           "slot": true,
-          "close": null
+          "close": null,
+          "dummy": 0
         }
       },
       {
@@ -31407,7 +31421,8 @@
           "tried": ["a:0", "a:1", "c:0", "c:1", "c:2", "l:0"],
           "hit": "l:0",
           "slot": true,
-          "close": null
+          "close": null,
+          "dummy": 0
         }
       },
       {
@@ -31421,7 +31436,8 @@
           "tried": ["a:0", "a:1", "l:0", "l:1", "l:2"],
           "hit": "l:2",
           "slot": true,
-          "close": null
+          "close": null,
+          "dummy": 0
         }
       },
       {
@@ -31435,7 +31451,8 @@
           "tried": ["l:0", "l:1"],
           "hit": "l:1",
           "slot": true,
-          "close": null
+          "close": null,
+          "dummy": 0
         }
       },
       {
@@ -31449,7 +31466,8 @@
           "tried": ["c:0", "c:1", "l:0", "l:1"],
           "hit": "l:1",
           "slot": true,
-          "close": null
+          "close": null,
+          "dummy": 0
         }
       },
       {
@@ -31459,7 +31477,13 @@
         "locals": ["l", "l", "l", "l", "l"],
         "opens": { "mode": "l", "link": 0 },
         "limiter": "admit",
-        "want": { "tried": ["l:0"], "hit": "l:0", "slot": true, "close": null }
+        "want": {
+          "tried": ["l:0"],
+          "hit": "l:0",
+          "slot": true,
+          "close": null,
+          "dummy": 0
+        }
       },
       {
         "id": "last-of-32-is-tried",
@@ -31538,7 +31562,8 @@
           ],
           "hit": "l:31",
           "slot": true,
-          "close": null
+          "close": null,
+          "dummy": 0
         }
       },
       {
@@ -31619,7 +31644,8 @@
           ],
           "hit": null,
           "slot": false,
-          "close": "handshake_failed"
+          "close": "handshake_failed",
+          "dummy": 74
         }
       },
       {
@@ -31779,7 +31805,8 @@
           ],
           "hit": "c:71",
           "slot": true,
-          "close": null
+          "close": null,
+          "dummy": 0
         }
       },
       {
@@ -31942,7 +31969,8 @@
           ],
           "hit": null,
           "slot": false,
-          "close": "handshake_failed"
+          "close": "handshake_failed",
+          "dummy": 32
         }
       },
       {
@@ -32167,7 +32195,8 @@
           ],
           "hit": "l:31",
           "slot": true,
-          "close": null
+          "close": null,
+          "dummy": 0
         }
       },
       {
@@ -32394,7 +32423,8 @@
           ],
           "hit": null,
           "slot": false,
-          "close": "handshake_failed"
+          "close": "handshake_failed",
+          "dummy": 0
         }
       },
       {
@@ -32637,7 +32667,8 @@
           ],
           "hit": null,
           "slot": false,
-          "close": "handshake_failed"
+          "close": "handshake_failed",
+          "dummy": 0
         }
       },
       {
@@ -32651,7 +32682,8 @@
           "tried": ["a:0", "a:1"],
           "hit": null,
           "slot": false,
-          "close": "handshake_failed"
+          "close": "handshake_failed",
+          "dummy": 0
         }
       },
       {
@@ -32665,7 +32697,8 @@
           "tried": [],
           "hit": null,
           "slot": false,
-          "close": "handshake_failed"
+          "close": "handshake_failed",
+          "dummy": 0
         }
       },
       {
@@ -32679,7 +32712,8 @@
           "tried": ["a:0", "a:1"],
           "hit": null,
           "slot": false,
-          "close": "peer_busy"
+          "close": "peer_busy",
+          "dummy": 0
         }
       },
       {
@@ -32693,7 +32727,8 @@
           "tried": [],
           "hit": null,
           "slot": false,
-          "close": "peer_busy"
+          "close": "peer_busy",
+          "dummy": 0
         }
       },
       {
@@ -32703,7 +32738,13 @@
         "locals": ["l", "l"],
         "opens": { "mode": "a", "key": 0 },
         "limiter": "refuse",
-        "want": { "tried": ["a:0"], "hit": "a:0", "slot": false, "close": null }
+        "want": {
+          "tried": ["a:0"],
+          "hit": "a:0",
+          "slot": false,
+          "close": null,
+          "dummy": 0
+        }
       },
       {
         "id": "limiter-after-failed-account-keys",
@@ -32716,7 +32757,8 @@
           "tried": ["a:0", "a:1"],
           "hit": null,
           "slot": false,
-          "close": "peer_busy"
+          "close": "peer_busy",
+          "dummy": 0
         }
       },
       {
@@ -32730,7 +32772,8 @@
           "tried": ["a:0", "a:1"],
           "hit": null,
           "slot": false,
-          "close": "handshake_failed"
+          "close": "handshake_failed",
+          "dummy": 0
         }
       }
     ],
@@ -32746,6 +32789,1321 @@
             "failures": 0,
             "rotations": 0,
             "closed": null
+          }
+        ]
+      },
+      {
+        "id": "an-old-attempts-message-1-is-denied-and-never-tried",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "tick", "t": 31 },
+          { "event": "c1", "t": 32, "valid": true },
+          { "event": "begin-guess", "t": 33, "id": 1 },
+          { "event": "msg1", "t": 34, "id": 1, "opens": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 2,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "denied",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "denied",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "an-old-attempts-abandon-does-not-clear-the-new-holder",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "tick", "t": 31 },
+          { "event": "c1", "t": 32, "valid": true },
+          { "event": "abandon", "t": 33, "id": 1 },
+          { "event": "c1", "t": 34, "valid": true },
+          { "event": "begin-guess", "t": 35 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 2,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "busy",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "stalled-a-then-b-admitted-then-a-message-1",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "c1", "t": 2, "valid": true },
+          { "event": "tick", "t": 31 },
+          { "event": "c1", "t": 32, "valid": true },
+          { "event": "begin-guess", "t": 33, "id": 1 },
+          { "event": "begin-guess", "t": 34, "id": 2 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "busy",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 2,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "denied",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "a-guess-is-counted-when-permitted",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "begin-guess", "t": 2 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "one-permit-per-attempt",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "begin-guess", "t": 2 },
+          { "event": "begin-guess", "t": 3 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "denied",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "a-guess-that-opens-is-refunded",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "begin-guess", "t": 2 },
+          { "event": "guess-opened", "t": 3 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "a-permitted-guess-that-fails-rotates",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "begin-guess", "t": 2 },
+          { "event": "guess-failed", "t": 3 },
+          { "event": "rotated", "t": 3 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "five-permits-refunded-count-nothing",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "begin-guess", "t": 2 },
+          { "event": "guess-opened", "t": 2 },
+          { "event": "session-end", "t": 3, "stored": false },
+          { "event": "rotated", "t": 3 },
+          { "event": "c1", "t": 11, "valid": true },
+          { "event": "begin-guess", "t": 12 },
+          { "event": "guess-opened", "t": 12 },
+          { "event": "session-end", "t": 13, "stored": false },
+          { "event": "rotated", "t": 13 },
+          { "event": "c1", "t": 21, "valid": true },
+          { "event": "begin-guess", "t": 22 },
+          { "event": "guess-opened", "t": 22 },
+          { "event": "session-end", "t": 23, "stored": false },
+          { "event": "rotated", "t": 23 },
+          { "event": "c1", "t": 31, "valid": true },
+          { "event": "begin-guess", "t": 32 },
+          { "event": "guess-opened", "t": 32 },
+          { "event": "session-end", "t": 33, "stored": false },
+          { "event": "rotated", "t": 33 },
+          { "event": "c1", "t": 41, "valid": true },
+          { "event": "begin-guess", "t": 42 },
+          { "event": "guess-opened", "t": 42 },
+          { "event": "session-end", "t": 43, "stored": false },
+          { "event": "rotated", "t": 43 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": "rotating",
+            "failures": 0,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 2,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": "rotating",
+            "failures": 0,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 3,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": "rotating",
+            "failures": 0,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 4,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": "rotating",
+            "failures": 0,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 5,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": "rotating",
+            "failures": 0,
+            "rotations": 5,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 5,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "five-permits-without-a-refund-close-the-window",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "begin-guess", "t": 2 },
+          { "event": "guess-failed", "t": 2 },
+          { "event": "rotated", "t": 2 },
+          { "event": "c1", "t": 11, "valid": true },
+          { "event": "begin-guess", "t": 12 },
+          { "event": "guess-failed", "t": 12 },
+          { "event": "rotated", "t": 12 },
+          { "event": "c1", "t": 21, "valid": true },
+          { "event": "begin-guess", "t": 22 },
+          { "event": "guess-failed", "t": 22 },
+          { "event": "rotated", "t": 22 },
+          { "event": "c1", "t": 31, "valid": true },
+          { "event": "begin-guess", "t": 32 },
+          { "event": "guess-failed", "t": 32 },
+          { "event": "rotated", "t": 32 },
+          { "event": "c1", "t": 41, "valid": true },
+          { "event": "begin-guess", "t": 42 },
+          { "event": "guess-failed", "t": 43 },
+          { "event": "c1", "t": 44, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 2,
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 2,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 3,
+            "open": true,
+            "holder": "attempt",
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 3,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 4,
+            "open": true,
+            "holder": "attempt",
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 4,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 4,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 4,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 5,
+            "open": true,
+            "holder": "attempt",
+            "failures": 4,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 5,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "result": "too-many-tries",
+            "open": false,
+            "holder": null,
+            "failures": 5,
+            "rotations": 4,
+            "closed": "too-many-tries",
+            "host": "pairing-code-failed"
+          },
+          {
+            "result": "closed",
+            "open": false,
+            "holder": null,
+            "failures": 5,
+            "rotations": 4,
+            "closed": "too-many-tries"
+          }
+        ]
+      },
+      {
+        "id": "abandon-after-a-permit-is-a-failed-guess",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "begin-guess", "t": 2 },
+          { "event": "abandon", "t": 3 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "a-permitted-guess-with-no-verdict-is-failed-at-30-s",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "begin-guess", "t": 2 },
+          { "event": "tick", "t": 31 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "a-verdict-after-the-expiry-changes-nothing",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 298, "valid": true },
+          { "event": "begin-guess", "t": 299 },
+          { "event": "tick", "t": 301 },
+          { "event": "guess-failed", "t": 302 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 1,
+            "rotations": 0,
+            "closed": "expired"
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 1,
+            "rotations": 0,
+            "closed": "expired"
+          }
+        ]
+      },
+      {
+        "id": "a-closed-windows-connection-cannot-touch-the-next-window",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "close", "t": 5 },
+          { "event": "open", "t": 6 },
+          { "event": "begin-guess", "t": 7, "id": 1 },
+          { "event": "abandon", "t": 8, "id": 1 },
+          { "event": "c1", "t": 9, "valid": true },
+          { "event": "begin-guess", "t": 10 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "person"
+          },
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "denied",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 2,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "permit",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "c1-during-rotation-is-busy-and-uncounted",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": false },
+          { "event": "c1", "t": 3, "valid": true },
+          { "event": "c1", "t": 4, "valid": true },
+          { "event": "rotated", "t": 5 },
+          { "event": "c1", "t": 6, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "busy",
+            "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "busy",
+            "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 2,
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "rotated-is-idempotent",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": false },
+          { "event": "rotated", "t": 3 },
+          { "event": "rotated", "t": 4 },
+          { "event": "c1", "t": 5, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 2,
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "rotated-with-no-rotation-is-quiet",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "rotated", "t": 1 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "a-session-that-ends-without-a-link-holds-the-window-until-rotated",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": true },
+          { "event": "session-end", "t": 20, "stored": false },
+          { "event": "c1", "t": 21, "valid": true },
+          { "event": "rotated", "t": 22 },
+          { "event": "c1", "t": 23, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": "rotating",
+            "failures": 0,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "busy",
+            "open": true,
+            "holder": "rotating",
+            "failures": 0,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 2,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 1,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "closing-during-a-rotation-drops-it",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": false },
+          { "event": "close", "t": 3 },
+          { "event": "rotated", "t": 4 },
+          { "event": "c1", "t": 5, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "id": 1,
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": "person"
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": "person"
+          },
+          {
+            "result": "closed",
+            "open": false,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": "person"
           }
         ]
       },
@@ -32806,6 +34164,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -32841,6 +34200,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -32871,6 +34231,7 @@
           { "event": "c1", "t": 1, "valid": true },
           { "event": "msg1", "t": 2, "opens": true },
           { "event": "session-end", "t": 20, "stored": false },
+          { "event": "rotated", "t": 20 },
           { "event": "c1", "t": 21, "valid": true },
           { "event": "msg1", "t": 22, "opens": true }
         ],
@@ -32885,6 +34246,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -32901,6 +34263,13 @@
           },
           {
             "open": true,
+            "holder": "rotating",
+            "failures": 0,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
             "holder": null,
             "failures": 0,
             "rotations": 1,
@@ -32908,6 +34277,7 @@
           },
           {
             "result": "attempt",
+            "id": 2,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -32943,6 +34313,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -32959,7 +34330,7 @@
           },
           {
             "open": true,
-            "holder": null,
+            "holder": "rotating",
             "failures": 0,
             "rotations": 1,
             "closed": null
@@ -32984,6 +34355,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -32993,7 +34365,7 @@
           {
             "result": "failed",
             "open": true,
-            "holder": null,
+            "holder": "rotating",
             "failures": 1,
             "rotations": 1,
             "closed": null
@@ -33006,8 +34378,10 @@
           { "event": "open", "t": 0 },
           { "event": "c1", "t": 1, "valid": true },
           { "event": "msg1", "t": 2, "opens": false },
+          { "event": "rotated", "t": 2 },
           { "event": "c1", "t": 5, "valid": true },
-          { "event": "msg1", "t": 6, "opens": false }
+          { "event": "msg1", "t": 6, "opens": false },
+          { "event": "rotated", "t": 6 }
         ],
         "want": [
           {
@@ -33020,6 +34394,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33029,6 +34404,13 @@
           {
             "result": "failed",
             "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
             "holder": null,
             "failures": 1,
             "rotations": 1,
@@ -33036,6 +34418,7 @@
           },
           {
             "result": "attempt",
+            "id": 2,
             "open": true,
             "holder": "attempt",
             "failures": 1,
@@ -33044,6 +34427,13 @@
           },
           {
             "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
             "open": true,
             "holder": null,
             "failures": 2,
@@ -33058,12 +34448,16 @@
           { "event": "open", "t": 0 },
           { "event": "c1", "t": 1, "valid": true },
           { "event": "msg1", "t": 2, "opens": false },
+          { "event": "rotated", "t": 2 },
           { "event": "c1", "t": 15, "valid": true },
           { "event": "msg1", "t": 16, "opens": false },
+          { "event": "rotated", "t": 16 },
           { "event": "c1", "t": 30, "valid": true },
           { "event": "msg1", "t": 31, "opens": false },
+          { "event": "rotated", "t": 31 },
           { "event": "c1", "t": 45, "valid": true },
-          { "event": "msg1", "t": 46, "opens": false }
+          { "event": "msg1", "t": 46, "opens": false },
+          { "event": "rotated", "t": 46 }
         ],
         "want": [
           {
@@ -33076,6 +34470,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33085,6 +34480,13 @@
           {
             "result": "failed",
             "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
             "holder": null,
             "failures": 1,
             "rotations": 1,
@@ -33092,6 +34494,7 @@
           },
           {
             "result": "attempt",
+            "id": 2,
             "open": true,
             "holder": "attempt",
             "failures": 1,
@@ -33100,6 +34503,13 @@
           },
           {
             "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
             "open": true,
             "holder": null,
             "failures": 2,
@@ -33108,6 +34518,7 @@
           },
           {
             "result": "attempt",
+            "id": 3,
             "open": true,
             "holder": "attempt",
             "failures": 2,
@@ -33117,6 +34528,13 @@
           {
             "result": "failed",
             "open": true,
+            "holder": "rotating",
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "open": true,
             "holder": null,
             "failures": 3,
             "rotations": 3,
@@ -33124,6 +34542,7 @@
           },
           {
             "result": "attempt",
+            "id": 4,
             "open": true,
             "holder": "attempt",
             "failures": 3,
@@ -33132,6 +34551,13 @@
           },
           {
             "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 4,
+            "rotations": 4,
+            "closed": null
+          },
+          {
             "open": true,
             "holder": null,
             "failures": 4,
@@ -33146,14 +34572,19 @@
           { "event": "open", "t": 0 },
           { "event": "c1", "t": 1, "valid": true },
           { "event": "msg1", "t": 2, "opens": false },
+          { "event": "rotated", "t": 2 },
           { "event": "c1", "t": 15, "valid": true },
           { "event": "msg1", "t": 16, "opens": false },
+          { "event": "rotated", "t": 16 },
           { "event": "c1", "t": 30, "valid": true },
           { "event": "msg1", "t": 31, "opens": false },
+          { "event": "rotated", "t": 31 },
           { "event": "c1", "t": 45, "valid": true },
           { "event": "msg1", "t": 46, "opens": false },
+          { "event": "rotated", "t": 46 },
           { "event": "c1", "t": 61, "valid": true },
-          { "event": "msg1", "t": 62, "opens": false }
+          { "event": "msg1", "t": 62, "opens": false },
+          { "event": "rotated", "t": 62 }
         ],
         "want": [
           {
@@ -33166,6 +34597,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33175,6 +34607,13 @@
           {
             "result": "failed",
             "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
             "holder": null,
             "failures": 1,
             "rotations": 1,
@@ -33182,6 +34621,7 @@
           },
           {
             "result": "attempt",
+            "id": 2,
             "open": true,
             "holder": "attempt",
             "failures": 1,
@@ -33190,6 +34630,13 @@
           },
           {
             "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
             "open": true,
             "holder": null,
             "failures": 2,
@@ -33198,6 +34645,7 @@
           },
           {
             "result": "attempt",
+            "id": 3,
             "open": true,
             "holder": "attempt",
             "failures": 2,
@@ -33207,6 +34655,13 @@
           {
             "result": "failed",
             "open": true,
+            "holder": "rotating",
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "open": true,
             "holder": null,
             "failures": 3,
             "rotations": 3,
@@ -33214,6 +34669,7 @@
           },
           {
             "result": "attempt",
+            "id": 4,
             "open": true,
             "holder": "attempt",
             "failures": 3,
@@ -33222,6 +34678,13 @@
           },
           {
             "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 4,
+            "rotations": 4,
+            "closed": null
+          },
+          {
             "open": true,
             "holder": null,
             "failures": 4,
@@ -33230,6 +34693,7 @@
           },
           {
             "result": "attempt",
+            "id": 5,
             "open": true,
             "holder": "attempt",
             "failures": 4,
@@ -33244,6 +34708,13 @@
             "rotations": 4,
             "closed": "too-many-tries",
             "host": "pairing-code-failed"
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 5,
+            "rotations": 4,
+            "closed": "too-many-tries"
           }
         ]
       },
@@ -33253,14 +34724,19 @@
           { "event": "open", "t": 0 },
           { "event": "c1", "t": 1, "valid": true },
           { "event": "msg1", "t": 2, "opens": false },
+          { "event": "rotated", "t": 2 },
           { "event": "c1", "t": 15, "valid": true },
           { "event": "msg1", "t": 16, "opens": false },
+          { "event": "rotated", "t": 16 },
           { "event": "c1", "t": 30, "valid": true },
           { "event": "msg1", "t": 31, "opens": false },
+          { "event": "rotated", "t": 31 },
           { "event": "c1", "t": 45, "valid": true },
           { "event": "msg1", "t": 46, "opens": false },
+          { "event": "rotated", "t": 46 },
           { "event": "c1", "t": 61, "valid": true },
           { "event": "msg1", "t": 62, "opens": false },
+          { "event": "rotated", "t": 62 },
           { "event": "c1", "t": 70, "valid": true }
         ],
         "want": [
@@ -33274,6 +34750,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33283,6 +34760,13 @@
           {
             "result": "failed",
             "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
             "holder": null,
             "failures": 1,
             "rotations": 1,
@@ -33290,6 +34774,7 @@
           },
           {
             "result": "attempt",
+            "id": 2,
             "open": true,
             "holder": "attempt",
             "failures": 1,
@@ -33298,6 +34783,13 @@
           },
           {
             "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
             "open": true,
             "holder": null,
             "failures": 2,
@@ -33306,6 +34798,7 @@
           },
           {
             "result": "attempt",
+            "id": 3,
             "open": true,
             "holder": "attempt",
             "failures": 2,
@@ -33315,6 +34808,13 @@
           {
             "result": "failed",
             "open": true,
+            "holder": "rotating",
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "open": true,
             "holder": null,
             "failures": 3,
             "rotations": 3,
@@ -33322,6 +34822,7 @@
           },
           {
             "result": "attempt",
+            "id": 4,
             "open": true,
             "holder": "attempt",
             "failures": 3,
@@ -33330,6 +34831,13 @@
           },
           {
             "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 4,
+            "rotations": 4,
+            "closed": null
+          },
+          {
             "open": true,
             "holder": null,
             "failures": 4,
@@ -33338,6 +34846,7 @@
           },
           {
             "result": "attempt",
+            "id": 5,
             "open": true,
             "holder": "attempt",
             "failures": 4,
@@ -33352,6 +34861,13 @@
             "rotations": 4,
             "closed": "too-many-tries",
             "host": "pairing-code-failed"
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 5,
+            "rotations": 4,
+            "closed": "too-many-tries"
           },
           {
             "result": "closed",
@@ -33369,14 +34885,19 @@
           { "event": "open", "t": 0 },
           { "event": "c1", "t": 1, "valid": true },
           { "event": "msg1", "t": 2, "opens": false },
+          { "event": "rotated", "t": 2 },
           { "event": "c1", "t": 15, "valid": true },
           { "event": "msg1", "t": 16, "opens": false },
+          { "event": "rotated", "t": 16 },
           { "event": "c1", "t": 30, "valid": true },
           { "event": "msg1", "t": 31, "opens": false },
+          { "event": "rotated", "t": 31 },
           { "event": "c1", "t": 45, "valid": true },
           { "event": "msg1", "t": 46, "opens": false },
+          { "event": "rotated", "t": 46 },
           { "event": "c1", "t": 61, "valid": true },
           { "event": "msg1", "t": 62, "opens": false },
+          { "event": "rotated", "t": 62 },
           { "event": "open", "t": 100 },
           { "event": "c1", "t": 101, "valid": true }
         ],
@@ -33391,6 +34912,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33400,6 +34922,13 @@
           {
             "result": "failed",
             "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
             "holder": null,
             "failures": 1,
             "rotations": 1,
@@ -33407,6 +34936,7 @@
           },
           {
             "result": "attempt",
+            "id": 2,
             "open": true,
             "holder": "attempt",
             "failures": 1,
@@ -33415,6 +34945,13 @@
           },
           {
             "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
             "open": true,
             "holder": null,
             "failures": 2,
@@ -33423,6 +34960,7 @@
           },
           {
             "result": "attempt",
+            "id": 3,
             "open": true,
             "holder": "attempt",
             "failures": 2,
@@ -33432,6 +34970,13 @@
           {
             "result": "failed",
             "open": true,
+            "holder": "rotating",
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "open": true,
             "holder": null,
             "failures": 3,
             "rotations": 3,
@@ -33439,6 +34984,7 @@
           },
           {
             "result": "attempt",
+            "id": 4,
             "open": true,
             "holder": "attempt",
             "failures": 3,
@@ -33447,6 +34993,13 @@
           },
           {
             "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 4,
+            "rotations": 4,
+            "closed": null
+          },
+          {
             "open": true,
             "holder": null,
             "failures": 4,
@@ -33455,6 +35008,7 @@
           },
           {
             "result": "attempt",
+            "id": 5,
             "open": true,
             "holder": "attempt",
             "failures": 4,
@@ -33471,6 +35025,13 @@
             "host": "pairing-code-failed"
           },
           {
+            "open": false,
+            "holder": null,
+            "failures": 5,
+            "rotations": 4,
+            "closed": "too-many-tries"
+          },
+          {
             "result": "opened",
             "open": true,
             "holder": null,
@@ -33480,6 +35041,7 @@
           },
           {
             "result": "attempt",
+            "id": 6,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33494,11 +35056,14 @@
           { "event": "open", "t": 0 },
           { "event": "c1", "t": 1, "valid": true },
           { "event": "msg1", "t": 2, "opens": false },
+          { "event": "rotated", "t": 2 },
           { "event": "c1", "t": 15, "valid": true },
           { "event": "msg1", "t": 16, "opens": true },
           { "event": "session-end", "t": 30, "stored": false },
+          { "event": "rotated", "t": 30 },
           { "event": "c1", "t": 40, "valid": true },
-          { "event": "msg1", "t": 41, "opens": false }
+          { "event": "msg1", "t": 41, "opens": false },
+          { "event": "rotated", "t": 41 }
         ],
         "want": [
           {
@@ -33511,6 +35076,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33520,6 +35086,13 @@
           {
             "result": "failed",
             "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
             "holder": null,
             "failures": 1,
             "rotations": 1,
@@ -33527,6 +35100,7 @@
           },
           {
             "result": "attempt",
+            "id": 2,
             "open": true,
             "holder": "attempt",
             "failures": 1,
@@ -33543,6 +35117,13 @@
           },
           {
             "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "open": true,
             "holder": null,
             "failures": 1,
             "rotations": 2,
@@ -33550,6 +35131,7 @@
           },
           {
             "result": "attempt",
+            "id": 3,
             "open": true,
             "holder": "attempt",
             "failures": 1,
@@ -33558,6 +35140,13 @@
           },
           {
             "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 2,
+            "rotations": 3,
+            "closed": null
+          },
+          {
             "open": true,
             "holder": null,
             "failures": 2,
@@ -33618,6 +35207,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33652,6 +35242,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33686,6 +35277,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33721,6 +35313,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33769,6 +35362,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33824,6 +35418,7 @@
           },
           {
             "result": "attempt",
+            "id": 2,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33850,6 +35445,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33885,6 +35481,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33900,6 +35497,7 @@
           },
           {
             "result": "attempt",
+            "id": 2,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33935,6 +35533,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33950,6 +35549,7 @@
           },
           {
             "result": "attempt",
+            "id": 2,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33977,6 +35577,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -33992,6 +35593,7 @@
           },
           {
             "result": "attempt",
+            "id": 2,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -34005,7 +35607,7 @@
         "steps": [
           { "event": "open", "t": 0 },
           { "event": "c1", "t": 1, "valid": true },
-          { "event": "msg1", "t": 40, "opens": false }
+          { "event": "begin-guess", "t": 40 }
         ],
         "want": [
           {
@@ -34018,6 +35620,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -34025,6 +35628,7 @@
             "closed": null
           },
           {
+            "result": "denied",
             "open": true,
             "holder": null,
             "failures": 0,
@@ -34049,6 +35653,7 @@
             "closed": null
           },
           {
+            "result": "denied",
             "open": true,
             "holder": null,
             "failures": 0,
@@ -34329,6 +35934,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -34408,6 +36014,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -34474,6 +36081,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -34525,6 +36133,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -34560,6 +36169,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -34610,6 +36220,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -34660,6 +36271,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -34725,6 +36337,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -34752,6 +36365,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -34766,6 +36380,7 @@
             "closed": "expired"
           },
           {
+            "result": "denied",
             "open": false,
             "holder": null,
             "failures": 0,
@@ -34826,6 +36441,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -34840,6 +36456,7 @@
             "closed": "person"
           },
           {
+            "result": "denied",
             "open": false,
             "holder": null,
             "failures": 0,
@@ -34886,6 +36503,7 @@
           { "event": "open", "t": 0 },
           { "event": "c1", "t": 1, "valid": true },
           { "event": "msg1", "t": 2, "opens": false },
+          { "event": "rotated", "t": 2 },
           { "event": "close", "t": 10 },
           { "event": "open", "t": 11 }
         ],
@@ -34900,6 +36518,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -34908,6 +36527,13 @@
           },
           {
             "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
             "open": true,
             "holder": null,
             "failures": 1,
@@ -34937,11 +36563,14 @@
           { "event": "open", "t": 0 },
           { "event": "c1", "t": 1, "valid": true },
           { "event": "msg1", "t": 2, "opens": false },
+          { "event": "rotated", "t": 2 },
           { "event": "c1", "t": 15, "valid": true },
           { "event": "msg1", "t": 16, "opens": true },
           { "event": "session-end", "t": 30, "stored": false },
+          { "event": "rotated", "t": 30 },
           { "event": "c1", "t": 40, "valid": true },
-          { "event": "msg1", "t": 41, "opens": false }
+          { "event": "msg1", "t": 41, "opens": false },
+          { "event": "rotated", "t": 41 }
         ],
         "want": [
           {
@@ -34954,6 +36583,7 @@
           },
           {
             "result": "attempt",
+            "id": 1,
             "open": true,
             "holder": "attempt",
             "failures": 0,
@@ -34963,6 +36593,13 @@
           {
             "result": "failed",
             "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
             "holder": null,
             "failures": 1,
             "rotations": 1,
@@ -34970,6 +36607,7 @@
           },
           {
             "result": "attempt",
+            "id": 2,
             "open": true,
             "holder": "attempt",
             "failures": 1,
@@ -34986,6 +36624,13 @@
           },
           {
             "open": true,
+            "holder": "rotating",
+            "failures": 1,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "open": true,
             "holder": null,
             "failures": 1,
             "rotations": 2,
@@ -34993,6 +36638,7 @@
           },
           {
             "result": "attempt",
+            "id": 3,
             "open": true,
             "holder": "attempt",
             "failures": 1,
@@ -35001,6 +36647,13 @@
           },
           {
             "result": "failed",
+            "open": true,
+            "holder": "rotating",
+            "failures": 2,
+            "rotations": 3,
+            "closed": null
+          },
+          {
             "open": true,
             "holder": null,
             "failures": 2,
@@ -35382,6 +37035,191 @@
         }
       }
     ],
+    "joinBudget": [
+      {
+        "id": "a-first-join-is-allowed",
+        "joins": [
+          { "t": 0, "input": { "kind": "code", "nameplate": "48" }, "dials": 2 }
+        ],
+        "want": [{ "allowed": true, "used": 0 }]
+      },
+      {
+        "id": "two-dials-spend-the-budget",
+        "joins": [
+          {
+            "t": 0,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 2
+          },
+          {
+            "t": 10,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 1
+          }
+        ],
+        "want": [
+          { "allowed": true, "used": 0 },
+          { "allowed": false, "used": 2 }
+        ]
+      },
+      {
+        "id": "one-dial-at-a-time-spends-it-over-two-joins",
+        "joins": [
+          {
+            "t": 0,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 1
+          },
+          {
+            "t": 10,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 1
+          },
+          {
+            "t": 20,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 1
+          }
+        ],
+        "want": [
+          { "allowed": true, "used": 0 },
+          { "allowed": true, "used": 1 },
+          { "allowed": false, "used": 2 }
+        ]
+      },
+      {
+        "id": "a-join-with-no-dial-spends-nothing",
+        "joins": [
+          {
+            "t": 0,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 0
+          },
+          {
+            "t": 10,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 0
+          },
+          {
+            "t": 20,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 2
+          },
+          {
+            "t": 30,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 1
+          }
+        ],
+        "want": [
+          { "allowed": true, "used": 0 },
+          { "allowed": true, "used": 0 },
+          { "allowed": true, "used": 0 },
+          { "allowed": false, "used": 2 }
+        ]
+      },
+      {
+        "id": "the-budget-is-per-nameplate",
+        "joins": [
+          {
+            "t": 0,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 2
+          },
+          {
+            "t": 1,
+            "input": { "kind": "code", "nameplate": "49" },
+            "dials": 2
+          },
+          {
+            "t": 2,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 1
+          },
+          { "t": 3, "input": { "kind": "code", "nameplate": "49" }, "dials": 1 }
+        ],
+        "want": [
+          { "allowed": true, "used": 0 },
+          { "allowed": true, "used": 0 },
+          { "allowed": false, "used": 2 },
+          { "allowed": false, "used": 2 }
+        ]
+      },
+      {
+        "id": "the-budget-frees-after-300-s",
+        "joins": [
+          {
+            "t": 0,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 2
+          },
+          {
+            "t": 299,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 1
+          },
+          {
+            "t": 300,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 1
+          }
+        ],
+        "want": [
+          { "allowed": true, "used": 0 },
+          { "allowed": false, "used": 2 },
+          { "allowed": true, "used": 0 }
+        ]
+      },
+      {
+        "id": "a-refused-join-does-not-extend-the-budget",
+        "joins": [
+          {
+            "t": 0,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 2
+          },
+          {
+            "t": 200,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 1
+          },
+          {
+            "t": 300,
+            "input": { "kind": "code", "nameplate": "48" },
+            "dials": 1
+          }
+        ],
+        "want": [
+          { "allowed": true, "used": 0 },
+          { "allowed": false, "used": 2 },
+          { "allowed": true, "used": 0 }
+        ]
+      },
+      {
+        "id": "a-qr-is-never-limited",
+        "joins": [
+          { "t": 0, "input": { "kind": "qr" }, "dials": 2 },
+          { "t": 1, "input": { "kind": "qr" }, "dials": 2 },
+          { "t": 2, "input": { "kind": "qr" }, "dials": 2 }
+        ],
+        "want": [
+          { "allowed": true, "used": 0 },
+          { "allowed": true, "used": 0 },
+          { "allowed": true, "used": 0 }
+        ]
+      },
+      {
+        "id": "a-qr-does-not-spend-a-code-budget",
+        "joins": [
+          { "t": 0, "input": { "kind": "qr" }, "dials": 2 },
+          { "t": 1, "input": { "kind": "code", "nameplate": "48" }, "dials": 2 }
+        ],
+        "want": [
+          { "allowed": true, "used": 0 },
+          { "allowed": true, "used": 0 }
+        ]
+      }
+    ],
     "gate": [
       {
         "id": "no-cached-document-is-off",
@@ -35675,6 +37513,89 @@
         ],
         "want": [
           { "cached": "off" },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "member-true-with-the-service-disabled-reads-as-false",
+        "start": "none",
+        "steps": [
+          {
+            "read": "ok",
+            "body": {
+              "services": {
+                "connect": { "enabled": false, "localPairing": true }
+              }
+            }
+          },
+          { "call": "pair" }
+        ],
+        "want": [
+          { "cached": "off" },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "member-true-without-enabled-reads-as-false",
+        "start": "none",
+        "steps": [
+          {
+            "read": "ok",
+            "body": { "services": { "connect": { "localPairing": true } } }
+          },
+          { "call": "pair" }
+        ],
+        "want": [
+          { "cached": "off" },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "enabled-as-a-string-reads-as-false",
+        "start": "none",
+        "steps": [
+          {
+            "read": "ok",
+            "body": {
+              "services": {
+                "connect": { "enabled": "true", "localPairing": true }
+              }
+            }
+          },
+          { "call": "pair" }
+        ],
+        "want": [
+          { "cached": "off" },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "connect-as-an-array-reads-as-false",
+        "start": "on",
+        "steps": [
+          { "read": "ok", "body": { "services": { "connect": [true, true] } } },
+          { "call": "pair" }
+        ],
+        "want": [
+          {
+            "cached": "off",
+            "effects": ["close-windows", "withdraw-adverts", "end-sessions"]
+          },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "connect-as-a-string-reads-as-false",
+        "start": "on",
+        "steps": [
+          { "read": "ok", "body": { "services": { "connect": "enabled" } } },
+          { "call": "pair" }
+        ],
+        "want": [
+          {
+            "cached": "off",
+            "effects": ["close-windows", "withdraw-adverts", "end-sessions"]
+          },
           { "cached": "off", "call": "local-pairing-off" }
         ]
       },

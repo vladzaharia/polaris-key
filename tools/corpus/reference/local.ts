@@ -449,7 +449,14 @@ export interface TrialOut {
   /** A limiter slot is held until message 3 (a contact or local-link hit only). */
   slot: boolean;
   close: "handshake_failed" | "peer_busy" | null;
+  /** Dummy trials that follow a miss behind the limiter, so a silent close takes as long whatever
+   *  the host holds (0 on a hit, on peer_busy and for a host with no contact or local-link secret). */
+  dummy: number;
 }
+
+/** The trials a full miss costs: two account keys, 72 contact secrets and 32 local-link secrets. */
+export const REF_TRIAL_TOTAL =
+  2 + REF_MAX_CONTACT_SECRETS + REF_MAX_LOCAL_LINKS;
 
 export function refLocalTrial(i: TrialIn): TrialOut {
   const tried: string[] = [];
@@ -459,11 +466,17 @@ export function refLocalTrial(i: TrialIn): TrialOut {
     opens?.mode === "a" ? opens.key : null,
     tried,
   );
-  if (a !== null) return { tried, hit: a, slot: false, close: null };
+  if (a !== null) return { tried, hit: a, slot: false, close: null, dummy: 0 };
   if (i.contacts.length + i.locals.length === 0)
-    return { tried, hit: null, slot: false, close: "handshake_failed" };
+    return {
+      tried,
+      hit: null,
+      slot: false,
+      close: "handshake_failed",
+      dummy: 0,
+    };
   if (i.limiter === "refuse")
-    return { tried, hit: null, slot: false, close: "peer_busy" };
+    return { tried, hit: null, slot: false, close: "peer_busy", dummy: 0 };
   const hit =
     refTrialList(
       "c",
@@ -480,19 +493,35 @@ export function refLocalTrial(i: TrialIn): TrialOut {
       tried,
     );
   return hit !== null
-    ? { tried, hit, slot: true, close: null }
-    : { tried, hit: null, slot: false, close: "handshake_failed" };
+    ? { tried, hit, slot: true, close: null, dummy: 0 }
+    : {
+        tried,
+        hit: null,
+        slot: false,
+        close: "handshake_failed",
+        dummy: REF_TRIAL_TOTAL - tried.length,
+      };
 }
 
 // ── The pairing window (§15.12, "The pairing window") ────────────────────────
 
+/** An event that names an attempt carries its `id`; without one it names the attempt the latest
+ *  `attempt` result handed out. */
 export type WindowEvent =
   | { event: "open"; t: number }
   | { event: "c1"; t: number; valid: boolean }
-  /** Message 1 of the attempt that holds the window: whether its tag opens under the PSK. */
-  | { event: "msg1"; t: number; opens: boolean }
-  /** The attempt closed or timed out before message 1 (or its connection dropped). */
-  | { event: "abandon"; t: number }
+  /** Message 1 of an attempt: the permit, then (when it was given) its tag's verdict. */
+  | { event: "msg1"; t: number; id?: number; opens: boolean }
+  /** Only the permit: the guess is counted now, before the tag is tried. */
+  | { event: "begin-guess"; t: number; id?: number }
+  /** The permitted guess opened: the count is refunded and the attempt becomes the session. */
+  | { event: "guess-opened"; t: number; id?: number }
+  /** The permitted guess did not open. */
+  | { event: "guess-failed"; t: number; id?: number }
+  /** The attempt's connection closed or timed out (a permitted guess with no verdict is failed). */
+  | { event: "abandon"; t: number; id?: number }
+  /** The new code, QR secret and both generators are ready after a rotation. */
+  | { event: "rotated"; t: number }
   /** The session that reached the transport ended; `stored` when a link was stored. */
   | { event: "session-end"; t: number; stored: boolean }
   | { event: "tick"; t: number }
@@ -506,6 +535,8 @@ export type WindowResult =
   | "limited"
   | "refused"
   | "attempt"
+  | "permit"
+  | "denied"
   | "transport"
   | "failed"
   | "too-many-tries";
@@ -513,9 +544,11 @@ export type WindowResult =
 export interface WindowStep {
   /** What the event did, when it asks for a decision. */
   result?: WindowResult;
+  /** The attempt's id, with the result `attempt`. */
+  id?: number;
   open: boolean;
-  holder: "attempt" | "session" | null;
-  /** Failed guesses so far in this window. */
+  holder: "attempt" | "session" | "rotating" | null;
+  /** Guesses counted so far in this window: counted when permitted, refunded when one opens. */
   failures: number;
   /** Rotations of the password and the QR secret so far in this window. */
   rotations: number;
@@ -526,30 +559,68 @@ export interface WindowStep {
 }
 
 /** The window's machine: one window per device per product, at most 300 s, one attempt at a time,
- *  at most 5 admitted C1s in any 60 s, an attempt's 30 s to the transport, five failed guesses. */
+ *  at most 5 admitted C1s in any 60 s, an attempt's 30 s to the transport, five counted guesses.
+ *  A guess is counted before its tag is tried; a rotation holds the window until it is done. */
 export function refLocalWindow(events: readonly WindowEvent[]): WindowStep[] {
   let open = false;
   let openedAt = 0;
-  let holder: "attempt" | "session" | null = null;
-  let attemptAt = 0;
+  let holder: WindowStep["holder"] = null;
+  let attempt: { id: number; at: number; guessed: boolean } | null = null;
+  let nextId = 1;
+  let last = 0;
   let failures = 0;
   let rotations = 0;
   let closed: WindowStep["closed"] = null;
+  const note: { host?: "pairing-code-failed" } = {};
   const admitted: number[] = [];
   const out: WindowStep[] = [];
+  /** A permitted guess that did not open. */
+  const guessFailed = (): WindowResult => {
+    attempt = null;
+    if (failures >= REF_LOCAL_PAIR_FAILURES) {
+      open = false;
+      closed = "too-many-tries";
+      note.host = "pairing-code-failed";
+      holder = null;
+      return "too-many-tries";
+    }
+    rotations++;
+    holder = "rotating";
+    return "failed";
+  };
   const settle = (t: number): void => {
     if (open && t - openedAt >= REF_LOCAL_PAIR_SECONDS) {
       open = false;
       closed = "expired";
       // A connection that has not reached the transport is closed; a session runs on.
-      if (holder === "attempt") holder = null;
+      if (holder === "attempt") {
+        // A counted guess stays counted; there is no window left to rotate.
+        attempt = null;
+        holder = null;
+      }
+      if (holder === "rotating") holder = null;
     }
-    if (holder === "attempt" && t - attemptAt >= 30) holder = null;
+    if (holder === "attempt" && attempt !== null && t - attempt.at >= 30) {
+      if (attempt.guessed) guessFailed();
+      else {
+        attempt = null;
+        holder = null;
+      }
+    }
+  };
+  const own = (id: number | undefined): boolean =>
+    holder === "attempt" && attempt !== null && attempt.id === (id ?? last);
+  const begin = (id: number | undefined): boolean => {
+    if (!own(id) || attempt!.guessed) return false;
+    attempt!.guessed = true;
+    failures++;
+    return true;
   };
   for (const e of events) {
     settle(e.t);
+    note.host = undefined;
     let result: WindowResult | undefined;
-    let host: WindowStep["host"];
+    let id: number | undefined;
     switch (e.event) {
       case "open":
         if (open || holder === "session") result = "already-open";
@@ -557,6 +628,7 @@ export function refLocalWindow(events: readonly WindowEvent[]): WindowStep[] {
           open = true;
           openedAt = e.t;
           holder = null;
+          attempt = null;
           failures = 0;
           rotations = 0;
           closed = null;
@@ -577,35 +649,49 @@ export function refLocalWindow(events: readonly WindowEvent[]): WindowStep[] {
             if (!e.valid) result = "refused";
             else {
               holder = "attempt";
-              attemptAt = e.t;
+              attempt = { id: nextId, at: e.t, guessed: false };
+              last = nextId;
+              id = nextId++;
               result = "attempt";
             }
           }
         }
         break;
       }
+      case "begin-guess":
+        result = begin(e.id) ? "permit" : "denied";
+        break;
       case "msg1":
-        if (holder === "attempt") {
-          if (e.opens) {
-            holder = "session";
-            result = "transport";
-          } else {
+        if (!begin(e.id)) result = "denied";
+        else if (e.opens) {
+          failures--;
+          attempt = null;
+          holder = "session";
+          result = "transport";
+        } else result = guessFailed();
+        break;
+      case "guess-opened":
+        if (own(e.id) && attempt!.guessed) {
+          failures--;
+          attempt = null;
+          holder = "session";
+          result = "transport";
+        }
+        break;
+      case "guess-failed":
+        if (own(e.id) && attempt!.guessed) result = guessFailed();
+        break;
+      case "abandon":
+        if (own(e.id)) {
+          if (attempt!.guessed) result = guessFailed();
+          else {
+            attempt = null;
             holder = null;
-            failures++;
-            if (failures >= REF_LOCAL_PAIR_FAILURES) {
-              open = false;
-              closed = "too-many-tries";
-              host = "pairing-code-failed";
-              result = "too-many-tries";
-            } else {
-              rotations++;
-              result = "failed";
-            }
           }
         }
         break;
-      case "abandon":
-        if (holder === "attempt") holder = null;
+      case "rotated":
+        if (holder === "rotating") holder = null;
         break;
       case "session-end":
         if (holder === "session") {
@@ -613,7 +699,10 @@ export function refLocalWindow(events: readonly WindowEvent[]): WindowStep[] {
           if (e.stored) {
             open = false;
             closed = "stored";
-          } else if (open) rotations++;
+          } else if (open) {
+            rotations++;
+            holder = "rotating";
+          }
         }
         break;
       case "tick":
@@ -622,18 +711,22 @@ export function refLocalWindow(events: readonly WindowEvent[]): WindowStep[] {
         if (open) {
           open = false;
           closed = "person";
-          if (holder === "attempt") holder = null;
+          if (holder === "attempt" || holder === "rotating") {
+            holder = null;
+            attempt = null;
+          }
         }
         break;
     }
     out.push({
       ...(result !== undefined ? { result } : {}),
+      ...(id !== undefined ? { id } : {}),
       open,
       holder,
       failures,
       rotations,
       closed,
-      ...(host !== undefined ? { host } : {}),
+      ...(note.host !== undefined ? { host: note.host } : {}),
     });
   }
   return out;
@@ -706,6 +799,43 @@ export function refLocalJoin(i: JoinIn): JoinOut {
   };
 }
 
+// ── The joiner's dial budget (§15.12, "The joiner") ──────────────────────────
+
+/** A join of a typed code (by nameplate) or a QR, and how many dials it made. */
+export interface BudgetJoin {
+  t: number;
+  input: { kind: "code"; nameplate: string } | { kind: "qr" };
+  dials: number;
+}
+
+export const REF_DIAL_BUDGET = 2;
+export const REF_DIAL_BUDGET_SECONDS = 300;
+
+export interface BudgetStep {
+  /** Whether the join may browse and dial; false answers `pairing-code-failed` at once. */
+  allowed: boolean;
+  /** Dials of this nameplate in the last 300 s before the join. */
+  used: number;
+}
+
+/** Per nameplate, at most 2 dials in any 300 s across joins; a QR names its instance and has none. */
+export function refDialBudget(joins: readonly BudgetJoin[]): BudgetStep[] {
+  const dialled = new Map<string, number[]>();
+  return joins.map((j) => {
+    if (j.input.kind === "qr") return { allowed: true, used: 0 };
+    const key = j.input.nameplate;
+    const recent = (dialled.get(key) ?? []).filter(
+      (d) => j.t - d < REF_DIAL_BUDGET_SECONDS,
+    );
+    const allowed = recent.length < REF_DIAL_BUDGET;
+    dialled.set(
+      key,
+      allowed ? [...recent, ...Array<number>(j.dials).fill(j.t)] : recent,
+    );
+    return { allowed, used: recent.length };
+  });
+}
+
 // ── The gate (§15.12, "Gates") ───────────────────────────────────────────────
 
 export type GateRead =
@@ -750,14 +880,16 @@ const GATED: GateOp[] = [
   "answer-l",
 ];
 
-/** `services.connect.localPairing` of a discovery body: true only for the boolean `true`. */
+/** `services.connect.localPairing` of a discovery body: true only when `connect.enabled` and the
+ *  member are both the boolean `true`. */
 export function refGateMember(body: unknown): boolean {
   if (body === null || typeof body !== "object") return false;
   const svc = (body as Record<string, unknown>).services;
   if (svc === null || typeof svc !== "object") return false;
   const c = (svc as Record<string, unknown>).connect;
   if (c === null || typeof c !== "object") return false;
-  return (c as Record<string, unknown>).localPairing === true;
+  const m = c as Record<string, unknown>;
+  return m.enabled === true && m.localPairing === true;
 }
 
 export function refLocalGate(
@@ -823,9 +955,14 @@ export const REF_RECORD_ROWS: RecordRow[] = [
     modes: ["q"],
     needs: "local/1",
   },
-  { from: 0x8014, to: 0x8014, name: "SAS_COMMIT", modes: ["v", "p"] },
-  { from: 0x8015, to: 0x8015, name: "SAS_NONCE", modes: ["v", "p"] },
-  { from: 0x8016, to: 0x8016, name: "SAS_REVEAL", modes: ["v", "p"] },
+  ...(["SAS_COMMIT", "SAS_NONCE", "SAS_REVEAL"] as const).map(
+    (name, n): RecordRow => ({
+      from: 0x8014 + n,
+      to: 0x8014 + n,
+      name,
+      modes: ["v", "p"],
+    }),
+  ),
   {
     from: 0x0020,
     to: 0x0025,
