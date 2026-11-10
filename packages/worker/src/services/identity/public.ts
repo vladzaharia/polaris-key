@@ -117,6 +117,5 @@ export {
   emergencyRotateIssuerKey,
   listIssuerKeys,
   productsWithIssuerKeys,
-  type IssuerKeyInfo,
 } from "./issuer/keys.js";
 export { readIssuerSetting } from "./issuer/served.js";
