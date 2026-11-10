@@ -180,6 +180,7 @@ function LoadingCards(): React.ReactElement {
   return (
     <div
       className="space-y-3"
+      role="status"
       aria-busy="true"
       aria-label="Loading the updaters"
     >
@@ -403,6 +404,18 @@ function Setup({
         {setup.steps.map((s) => (
           <li key={s}>{inlineCode(s)}</li>
         ))}
+        {setup.docs ? (
+          <li className="list-none">
+            <a
+              className={LINK}
+              href={setup.docs.href}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {setup.docs.label}
+            </a>
+          </li>
+        ) : null}
       </ol>
       {setup.snippets.length > 0 ? (
         <div className="min-w-0 space-y-3">

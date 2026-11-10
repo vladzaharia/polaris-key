@@ -127,6 +127,12 @@ describe("Update → Updates", () => {
     ).toBeTruthy();
   });
 
+  it("has no axe violations while loading", async () => {
+    bootWith(HASH, { [KEY]: () => new Promise(() => {}) });
+    await screen.findByRole("status", { name: "Loading the updaters" });
+    expect((await axe(document.body)).violations).toEqual([]);
+  });
+
   it("has no axe violations", async () => {
     bootWith(HASH, { [KEY]: view([direct()], ["ios"]) });
     await screen.findByRole("region", { name: /Direct downloads/ });
@@ -152,7 +158,8 @@ describe("renderUpdaterSetup", () => {
         platform: "windows",
       }).snippets[0]!.code;
     expect(code("public")).not.toContain("Authorization");
-    expect(code("licensed")).toContain("Authorization");
+    expect(code("licensed")).toContain("snprintf");
+    expect(code("licensed")).not.toContain('" + ');
   });
   it("puts the Godot key where each platform reads it", () => {
     const at = (platform: string) =>

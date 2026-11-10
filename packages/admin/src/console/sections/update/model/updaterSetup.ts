@@ -35,6 +35,8 @@ export interface Snippet {
 
 export interface UpdaterSetup {
   steps: string[];
+  /** A docs page that covers what the snippets do not. */
+  docs?: { label: string; href: string };
   snippets: Snippet[];
 }
 
@@ -109,7 +111,9 @@ export function renderUpdaterSetup(i: UpdaterSetupInput): UpdaterSetup {
               `win_sparkle_set_eddsa_public_key("YOUR_SPARKLE_PUBLIC_KEY");`,
               ...(token
                 ? [
-                    `win_sparkle_set_http_header("Authorization", "Bearer " + license_token);`,
+                    `char header[512];`,
+                    `snprintf(header, sizeof header, "Bearer %s", license_token);`,
+                    `win_sparkle_set_http_header("Authorization", header);`,
                   ]
                 : []),
               `win_sparkle_init();`,
@@ -123,17 +127,21 @@ export function renderUpdaterSetup(i: UpdaterSetupInput): UpdaterSetup {
       return {
         steps: [
           "Pack each release with `vpk` and publish its files through Polaris Key.",
-          token
-            ? `Point \`UpdateManager\` at the feed, \`releases.${vch}.json\`, with the device's license token as a bearer.`
-            : `Point \`UpdateManager\` at the feed, \`releases.${vch}.json\`.`,
+          `Point \`UpdateManager\` at the feed, \`releases.${vch}.json\`.`,
         ],
+        ...(token
+          ? {
+              docs: {
+                label: "How Velopack checks an authenticated feed",
+                href: "/docs/features/ship-builds/updates/updater-feeds/",
+              },
+            }
+          : {}),
         snippets: [
           {
             label: "C#, UpdateManager",
             language: "text",
-            code: token
-              ? `var mgr = new UpdateManager(new SimpleWebSource("${base}", bearerToken: licenseToken));`
-              : `var mgr = new UpdateManager(new SimpleWebSource("${base}"));`,
+            code: `var mgr = new UpdateManager(new SimpleWebSource("${base}"));`,
           },
         ],
       };
