@@ -17,7 +17,7 @@
 import { expect } from "vitest";
 import type { JsonValue } from "../format.js";
 import { ingestIdentity } from "../../services/identity/issuer/issuerHelpers.js";
-import { rateLimitOk } from "../../../src/core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../src/core/rateLimit.js";
 import { TOKEN_DEVICE_RATE } from "../../../src/services/identity/passthrough/token.js";
 import {
   ACCESS_TOKEN_TYPE,
@@ -123,7 +123,7 @@ export const identityAccessToken: Scenario = {
       const r = new TranscriptRecorder({
         id: "identity-access-token",
         description:
-          "The device exchange (I-21.13, WIRE-CONTRACT-V5 §12.13.10, D6): the product's own app trades its device token for a 600 second access token for its developer's backend. Discovery names accessToken: true while the product's issuer is served. The app posts a token-exchange form to token: grant_type urn:ietf:params:oauth:grant-type:token-exchange, client_id the product slug, subject_token its own device token, subject_token_type urn:polaris-key:token-type:device and requested_token_type urn:ietf:params:oauth:token-type:access_token, with X-PKey-Device and no Authorization. The answer is exactly access_token (a compact RS256 JWS the client keeps in memory), issued_token_type, token_type Bearer, expires_in 600 and an empty scope: never a refresh token or an id_token. A device that is not signed in is 400 invalid_grant; the budget is ten a minute per device (429 rate_limited with retryAfter); with the issuer turned off the exchange is 400 invalid_request and discovery names no accessToken, so the client sends nothing and raises service-unavailable.",
+          "The device exchange (I-21.13, WIRE-CONTRACT-V5 §12.13.10, D6): the product's own app trades its device token for a 600 second access token for its developer's backend. Discovery names accessToken: true while the product's issuer is served. The app posts a token-exchange form to token: grant_type urn:ietf:params:oauth:grant-type:token-exchange, client_id the product slug, subject_token its own device token, subject_token_type urn:polaris-key:token-type:device and requested_token_type urn:ietf:params:oauth:token-type:access_token, with X-PKey-Device and no Authorization. The answer is exactly access_token (a compact RS256 JWS the client keeps in memory), issued_token_type, token_type Bearer, expires_in 600 and an empty scope: never a refresh token or an id_token. A device that is not signed in is 400 invalid_grant; the budget is ten a minute per device and network (429 rate_limited with retryAfter); with the issuer turned off the exchange is 400 invalid_request and discovery names no accessToken, so the client sends nothing and raises service-unavailable.",
         features: ["core.discover", ...FEATURES],
         requires: ["core.store"],
         product: PRODUCT,
@@ -166,13 +166,16 @@ export const identityAccessToken: Scenario = {
           expiresIn: 600,
         },
       );
-      // The budget: ten calls in this minute fill the device's ten a minute.
+      // The budget: ten calls in this minute fill the device's ten a minute on the caller's network.
       for (let i = 0; i < TOKEN_DEVICE_RATE.limit; i += 1)
         expect(
           await rateLimitOk(
             w.env,
             PRODUCT,
-            { ...TOKEN_DEVICE_RATE, id: DEVICE },
+            {
+              ...TOKEN_DEVICE_RATE,
+              id: `${DEVICE}:${clientNetwork(new Request("https://key.test/"))}`,
+            },
             T0 + 120,
           ),
         ).toBe(true);
