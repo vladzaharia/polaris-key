@@ -4733,9 +4733,6 @@
     "packages/worker/test/transcripts/scenarios/cloudSyncFiles.ts": {
       "jscpd:duplicate": 10
     },
-    "packages/worker/test/transcripts/scenarios/connect.ts": {
-      "jscpd:duplicate": 1
-    },
     "packages/worker/test/transcripts/scenarios/devices.ts": {
       "jscpd:duplicate": 4
     },

@@ -147,6 +147,7 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
     LAUNCH_IDENTITY_RESTORE: "on",
     LAUNCH_GAME_SIGN_IN: "on",
     LAUNCH_CONNECT_LINKS: "on",
+    LAUNCH_LOCAL_PAIRING: "on",
     LAUNCH_IDENTITY_NEARBY: "on",
   } as unknown as Env;
 

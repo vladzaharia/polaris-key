@@ -2546,6 +2546,11 @@
     },
     {
       "sdk": "node",
+      "path": "cloudConnect.localLinks",
+      "reason": "the accessor of the local links namespace (cloudConnect.localLinks.pair, .join, .list; CC-29.7); the verbs get registry rows when the namespace is complete (CC-29.8); not a verb"
+    },
+    {
+      "sdk": "node",
       "path": "cloudConnect.transfer",
       "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb"
     },

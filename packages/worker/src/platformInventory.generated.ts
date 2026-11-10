@@ -189,6 +189,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: "LAUNCH_CONNECT_LINKS",
   },
   {
+    name: "LAUNCH_LOCAL_PAIRING",
+    kind: "var",
+    area: "jobs",
+    optional: true,
+    editable: "LAUNCH_LOCAL_PAIRING",
+  },
+  {
     name: "LAUNCH_IDENTITY_NEARBY",
     kind: "var",
     area: "jobs",

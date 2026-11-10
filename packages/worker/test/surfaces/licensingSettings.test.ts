@@ -739,6 +739,8 @@ describe("the settings API refuses what the registry refuses", () => {
     expect(served).toEqual([
       // CC-19.3: links between accounts, read with the relay switch by the ticket route and discovery.
       "cloudConnect.interAccount",
+      // CC-29.6: pairing with a code, read by discovery.
+      "cloudConnect.localPairing",
       // CC-07.3: the relay switch, read by the relay ticket route.
       "cloudConnect.relay.enabled",
       // I-09: the identity block's live row-backed settings (claimByKey since ST-14).

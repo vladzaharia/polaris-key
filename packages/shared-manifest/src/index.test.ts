@@ -698,9 +698,26 @@ describe("the connect block (CC-02.2)", () => {
       schema: catalogWithSecretDelivery(),
     });
 
-  it("accepts relay and interAccount, and reads them back", () => {
-    const res = withConnect({ relay: false, interAccount: true });
+  it("accepts relay, interAccount and localPairing, and reads them back", () => {
+    const res = withConnect({
+      relay: false,
+      interAccount: true,
+      localPairing: true,
+    });
     expect(res.ok).toBe(true);
+    const parsed = parseManifest({
+      product: JSON.stringify({
+        ...PRODUCT,
+        modules: { identity: { enabled: true }, connect: { enabled: true } },
+        connect: { relay: false, interAccount: true, localPairing: true },
+      }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+    });
+    expect(parsed.ok && parsed.manifest.connect).toEqual({
+      relay: false,
+      interAccount: true,
+      localPairing: true,
+    });
     expect(codes(res).warnings).not.toContain("connect_block_without_service");
   });
 
@@ -710,6 +727,9 @@ describe("the connect block (CC-02.2)", () => {
       "invalid_connect",
     ]);
     expect(codes(withConnect({ relay: "yes" })).errors).toEqual([
+      "invalid_connect",
+    ]);
+    expect(codes(withConnect({ localPairing: 1 })).errors).toEqual([
       "invalid_connect",
     ]);
   });

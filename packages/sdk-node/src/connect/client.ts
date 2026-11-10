@@ -89,6 +89,8 @@ import {
 } from "./contacts.js";
 import type { ContactRelaySource } from "./contactRelay.js";
 import type { PairSource } from "./pairing.js";
+import type { LocalSource } from "./localLinks.js";
+import { LocalLinkStore, localStorage } from "./localState.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -161,6 +163,12 @@ export interface ConnectDeps {
    * are off. It never fetches.
    */
   interAccount?: () => boolean;
+  /**
+   * The cached discovery answer `services.connect.localPairing` (§15.9, §15.12 "Gates"): true only
+   * while the product's setting, `launch.localPairing` and the service are on. Without it local
+   * pairing is off. It never fetches.
+   */
+  localPairing?: () => boolean;
 }
 
 /** A refusal of the identity answer: `peer-cert-invalid` when a certificate or roster failed
@@ -652,6 +660,39 @@ export class ConnectClient {
         r.agreeKey === ref.agreeKey &&
         secretTag(base64UrlDecode(r.secret)) === ref.tag,
     );
+  }
+
+  /** The cached `localPairing` answer of discovery; false while none is known. @internal */
+  localPairing(): boolean {
+    return this.deps.localPairing?.() === true;
+  }
+
+  #local: LocalLinkStore | null = null;
+
+  /**
+   * The local links this device holds for the product (`pkey.connect.local.v1`, §15.12). It needs
+   * no account and no held identity: it is not account data. @internal
+   */
+  localStore(): LocalLinkStore {
+    this.#local ??= new LocalLinkStore(this.ctx.product, async () => {
+      const port = this.#port;
+      const persistence =
+        port !== null && (await port.persistence?.()) === "memory"
+          ? "memory"
+          : "durable";
+      return localStorage(this.ctx.dirs.state, persistence);
+    });
+    return this.#local;
+  }
+
+  /** What local pairing reads of this client (§15.12). @internal */
+  localSource(): LocalSource {
+    return {
+      slug: this.ctx.product,
+      now: () => this.ctx.now(),
+      allowed: () => this.localPairing(),
+      store: this.localStore(),
+    };
   }
 
   /** The cached `interAccount` answer of discovery; false while none is known. @internal */

@@ -101,6 +101,7 @@ export default defineConfig(async () => {
             LAUNCH_RELAY: "on",
             LAUNCH_IDENTITY_RESTORE: "on",
             LAUNCH_CONNECT_LINKS: "on",
+            LAUNCH_LOCAL_PAIRING: "on",
             // 32 zero bytes, base64 — the same constant the Node lane seeds with.
             PLATFORM_KEK: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
           },

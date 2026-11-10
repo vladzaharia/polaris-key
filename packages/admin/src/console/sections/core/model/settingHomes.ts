@@ -266,6 +266,7 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "cloudConnect.relay.enabled": at("connect-setup", "Relay"),
   "cloudConnect.ceiling.relayBytes": at("connect-setup", "Relay"),
   "cloudConnect.interAccount": at("connect-setup", "Relay"),
+  "cloudConnect.localPairing": at("connect-setup", "Relay"),
 };
 
 /**

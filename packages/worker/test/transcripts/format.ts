@@ -336,7 +336,8 @@
 // before it uses the contact relay, `protocol`, `url` and `expiresIn`) | "refused" (with `status` and
 // `code`: 400 bad_request, 403 connect_links_disabled). The `discover` steps of the
 // `connect-links-disabled` transcript also expect `interAccount`, the discovery member an SDK
-// reads before it pairs or answers mode `c` on the LAN (§15.9).
+// reads before it pairs or answers mode `c` on the LAN (§15.9). Those of `connect-local-pairing` (feature
+// `connect.local`) expect `localPairing`, the member an SDK reads before it opens a pairing window (§15.12).
 //
 // connectIdentity / connectDevices (CC-06.4, WIRE-CONTRACT-V5 §15.2 to §15.4, §15.9) — the SDK's
 // Cloud Connect identity (`client.connect.identity()` and `.listDevices()`), replayed only by an SDK

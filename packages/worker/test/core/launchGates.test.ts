@@ -30,7 +30,8 @@ type Gate =
   | "LAUNCH_IDENTITY_RESTORE"
   | "LAUNCH_GAME_SIGN_IN"
   | "LAUNCH_CONNECT_LINKS"
-  | "LAUNCH_IDENTITY_NEARBY";
+  | "LAUNCH_IDENTITY_NEARBY"
+  | "LAUNCH_LOCAL_PAIRING";
 
 interface W {
   db: Db;
@@ -259,6 +260,7 @@ describe("launch gates, as settings", () => {
     ["launch.identityRestore", "LAUNCH_IDENTITY_RESTORE"],
     ["launch.gameSignIn", "LAUNCH_GAME_SIGN_IN"],
     ["launch.connectLinks", "LAUNCH_CONNECT_LINKS"],
+    ["launch.localPairing", "LAUNCH_LOCAL_PAIRING"],
     ["launch.identityNearby", "LAUNCH_IDENTITY_NEARBY"],
   ] as const;
 

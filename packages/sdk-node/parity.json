@@ -560,7 +560,7 @@
     "connect.local": {
       "status": "planned",
       "wp": "CC-29",
-      "note": "CC-29.7 and CC-29.8 build it (WIRE-CONTRACT-V5 §15.12): client.cloudConnect.localLinks over a LAN service that runs with no account, and the pkey.connect.local.v1 store."
+      "note": "CC-29.7 built the pairing half (WIRE-CONTRACT-V5 §15.12): client.cloudConnect.localLinks (packages/sdk-node/src/connect/localLinks.ts) with pair() (a window with its own m=q advert and listener, CPace, mode q, the permit, guess accounting and rotation), join() (the 2-dial budget across joins, a QR unlimited) and list(), all gated on the cached discovery localPairing (typed N/A local-pairing-off; a read that clears it closes the window and joins), over the pkey.connect.local.v1 store (localState.ts, 0600, not account data). It needs no sign-in. CC-29.8 adds the mode-l half (adverts, the shared listener with no account, open, onLink, rename, remove, setReachable, Direct Transfer) and flips this row; test/connect/localLinks.test.ts (@pkey-feature connect.local) is the loopback pairing of two clients with no credential."
     },
     "connect.app": {
       "status": "implemented",

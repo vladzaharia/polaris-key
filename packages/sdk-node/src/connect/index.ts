@@ -82,3 +82,15 @@ export {
   type TransferSource,
 } from "./transfer.js";
 export { PartialStore } from "./transferStore.js";
+export {
+  LocalLinks,
+  type LocalCode,
+  type LocalJoinOptions,
+  type LocalOffer,
+  type LocalOptions,
+  type LocalPairFailure,
+  type LocalPairHandle,
+  type LocalPairOptions,
+  type LocalPaired,
+} from "./localLinks.js";
+export { type LocalLinkInfo } from "./localState.js";

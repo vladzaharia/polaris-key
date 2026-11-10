@@ -287,6 +287,7 @@ LAUNCH_RELAY = "runtime"
 LAUNCH_IDENTITY_RESTORE = "runtime"
 LAUNCH_GAME_SIGN_IN = "runtime"
 LAUNCH_CONNECT_LINKS = "runtime"
+LAUNCH_LOCAL_PAIRING = "runtime"
 LAUNCH_IDENTITY_NEARBY = "runtime"
 # F-10 automation: the deploy hook (src/platformDeploy.ts, POST /webhooks/deploy). Only this
 # repository's .github/workflows/deploy.yml, in the `production` environment, at a protected
@@ -429,6 +430,7 @@ LAUNCH_RELAY = "on"
 LAUNCH_IDENTITY_RESTORE = "on"
 LAUNCH_GAME_SIGN_IN = "on"
 LAUNCH_CONNECT_LINKS = "on"
+LAUNCH_LOCAL_PAIRING = "runtime"
 LAUNCH_IDENTITY_NEARBY = "on"
 # I-18: staging sends from the production auth sending subdomain, so the staging deliverability
 # check proves the very records production uses (RUNBOOK "Sign-in email"). Until the owner
@@ -553,6 +555,7 @@ LAUNCH_RELAY = "on"
 LAUNCH_IDENTITY_RESTORE = "on"
 LAUNCH_GAME_SIGN_IN = "on"
 LAUNCH_CONNECT_LINKS = "on"
+LAUNCH_LOCAL_PAIRING = "runtime"
 LAUNCH_IDENTITY_NEARBY = "on"
 # I-07: Turnstile site key (public); the secret stays unset until the portal renders the widget.
 TURNSTILE_SITE_KEY = "0x4AAAAAAFPA80GfFwEcAJOR"

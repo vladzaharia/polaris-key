@@ -1913,6 +1913,10 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "interAccount": {
           "description": "Whether devices of different accounts may connect (cloudConnect.interAccount). Default false.",
           "type": "boolean"
+        },
+        "localPairing": {
+          "description": "Whether two devices with no account may pair on the same network by a code or QR (cloudConnect.localPairing). Also needs the operator's launch gate. Default false.",
+          "type": "boolean"
         }
       }
     },
@@ -25360,7 +25364,11 @@ function validatePlatformSignIn(psi, errors) {
     }
   }
 }
-var CONNECT_MEMBERS = ["relay", "interAccount"];
+var CONNECT_MEMBERS = [
+  "relay",
+  "interAccount",
+  "localPairing"
+];
 function validateConnectBlock(productRoot, modules, errors, warnings) {
   const connect = productRoot.connect;
   if (connect === void 0) return;
@@ -25370,7 +25378,7 @@ function validateConnectBlock(productRoot, modules, errors, warnings) {
       "product",
       "/connect",
       "invalid_connect",
-      "connect must be an object with relay and interAccount."
+      "connect must be an object with relay, interAccount and localPairing."
     );
     return;
   }
@@ -25381,7 +25389,7 @@ function validateConnectBlock(productRoot, modules, errors, warnings) {
         "product",
         `/connect/${key}`,
         "invalid_connect",
-        "connect takes only relay and interAccount."
+        "connect takes only relay, interAccount and localPairing."
       );
     } else if (typeof connect[key] !== "boolean") {
       add4(
@@ -25409,6 +25417,8 @@ function normalizeConnectBlock(raw) {
   if (typeof raw.relay === "boolean") out.relay = raw.relay;
   if (typeof raw.interAccount === "boolean")
     out.interAccount = raw.interAccount;
+  if (typeof raw.localPairing === "boolean")
+    out.localPairing = raw.localPairing;
   return Object.keys(out).length > 0 ? out : void 0;
 }
 var IDENTITY_MEMBERS = [

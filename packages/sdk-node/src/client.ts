@@ -80,6 +80,10 @@ import { SavesApi } from "./cloudSync/saves.js";
 import { readStoredSubject } from "./identity/account.js";
 import { ConnectClient, type ConnectOptions } from "./connect/client.js";
 import { CloudConnect } from "./connect/cloudConnect.js";
+import {
+  LocalPairingGate,
+  type GateEffect,
+} from "@polaris-key/client-core/peer";
 import { crashTagsFor, type CrashTags } from "./server.js";
 import { UpdateClient, type UpdateClientOptions } from "./update/client.js";
 import {
@@ -244,6 +248,12 @@ export class PolarisKeyClient {
   private readonly probes: DevicesClientOptions["probes"];
   private timer: ReturnType<typeof setInterval> | null = null;
   private discoveryDoc: ProductDiscoveryDocument | null = null;
+  /** The cached discovery answer for pairing with a code (§15.12 "Gates"): no document is off. */
+  private readonly localGate = new LocalPairingGate();
+  private localReadSeq = 0;
+  private localReadApplied = 0;
+  private localRetry: NodeJS.Timeout | null = null;
+  private localRetryStep = 0;
   /** Epoch ms until which the cached `interAccount` answer counts; 0 while none is valid. */
   private linksUntil = 0;
   private linksTimer: NodeJS.Timeout | null = null;
@@ -372,6 +382,8 @@ export class PolarisKeyClient {
           if (this.discoveryDoc === null) await this.discover();
           return this.discoveryDoc;
         },
+        // WIRE-CONTRACT-V5 §15.12: local pairing follows the cached document, with no lapse.
+        localPairing: () => this.localGate.allowed,
         // WIRE-CONTRACT-V5 §15.9: links are on only while the cached document says so.
         interAccount: () => {
           // A cached answer lapses (INTER_ACCOUNT_TTL_MS); a failed or empty re-read clears it.
@@ -619,12 +631,28 @@ export class PolarisKeyClient {
     // global `fetch` — which is how a transportless client would end up opening a socket to
     // the control plane, the one thing `./local` exists to make impossible.
     const fetchImpl = this.core.fetcher();
+    // Reads apply in the order they began: a slow older answer never overwrites a newer one.
+    const seq = ++this.localReadSeq;
     const result = await discoverProduct({
       baseUrl: this.core.baseUrl,
       product: this.product,
       fetchImpl,
       signal: this.core.deadline(),
     });
+    // The local gate first: a throw in a store below must not leave a cleared gate "on".
+    if (seq > this.localReadApplied) {
+      if (result.kind === "ok") {
+        this.localReadApplied = seq;
+        this.localRetryStep = 0;
+        this.#localGateRead(this.localGate.readOk(result.manifest));
+      } else if (result.kind === "not-found") {
+        this.localReadApplied = seq;
+        this.#localGateRead(this.localGate.readNotFound());
+      }
+    }
+    // An error or an invalid body changes nothing, but a cached "on" is read again soon.
+    if (result.kind !== "ok" && result.kind !== "not-found")
+      this.#armLocalRetry();
     if (result.kind === "ok") {
       this.discoveryDoc = result.manifest;
       this.core.setServices(result.services);
@@ -636,12 +664,30 @@ export class PolarisKeyClient {
       this.#rereadLinksGate();
       // `interAccount` may have moved: links follow the document (§15.10 "Gates").
       this.connect.notifyContacts();
-    } else if (this.linksUntil !== 0) {
+    }
+    if (result.kind !== "ok" && this.linksUntil !== 0) {
       // Not found, invalid or unreachable: the cached links answer is no longer trusted.
       this.linksUntil = 0;
       this.connect.notifyContacts();
     }
     return result;
+  }
+
+  /** After a read that said nothing, read again in 5 min, then 10, then every 15, while the gate is "on". */
+  #armLocalRetry(): void {
+    if (this.localRetry !== null || !this.localGate.allowed) return;
+    const minutes = [5, 10, 15][Math.min(this.localRetryStep++, 2)]!;
+    this.localRetry = setTimeout(() => {
+      this.localRetry = null;
+      void this.discover().catch(() => undefined);
+    }, minutes * 60_000);
+    this.localRetry.unref();
+  }
+
+  /** A read cleared the cached local-pairing answer: the windows and joins close (§15.12 "Gates"). */
+  #localGateRead(effects: readonly GateEffect[]): void {
+    if (effects.length > 0)
+      void this.cloudConnect.localLinks.closeAll().catch(() => undefined);
   }
 
   /** Re-read discovery when the cached links answer lapses, so a lapse withdraws the adverts. */
@@ -1059,6 +1105,9 @@ export class PolarisKeyClient {
   close(): void {
     if (this.linksTimer !== null) clearTimeout(this.linksTimer);
     this.linksTimer = null;
+    if (this.localRetry !== null) clearTimeout(this.localRetry);
+    this.localRetry = null;
+    void this.cloudConnect.localLinks.closeAll().catch(() => undefined);
     void this.cloudConnect.stop().catch(() => undefined);
     void this.cloudConnect.nearby.stopAll().catch(() => undefined);
     void this.cloudSyncHost.close().catch(() => undefined);

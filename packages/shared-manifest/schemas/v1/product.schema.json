@@ -744,6 +744,10 @@
         "interAccount": {
           "description": "Whether devices of different accounts may connect (cloudConnect.interAccount). Default false.",
           "type": "boolean"
+        },
+        "localPairing": {
+          "description": "Whether two devices with no account may pair on the same network by a code or QR (cloudConnect.localPairing). Also needs the operator's launch gate. Default false.",
+          "type": "boolean"
         }
       }
     },

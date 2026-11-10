@@ -38,6 +38,7 @@ import { serialQueue, type ConnectNotice } from "./channel.js";
 import type { ConnectClient, ConnectDevice } from "./client.js";
 import { ContactRelay } from "./contactRelay.js";
 import { CloudLinks } from "./links.js";
+import { LocalLinks } from "./localLinks.js";
 import { contactId } from "./contacts.js";
 import { CloudTransfer } from "./transfer.js";
 import { PartialStore } from "./transferStore.js";
@@ -303,6 +304,7 @@ export class CloudConnect {
 
   readonly #nearby: CloudNearby;
   readonly #links: CloudLinks;
+  readonly #localLinks: LocalLinks;
   readonly #transfer: CloudTransfer;
   #contactRelay: ContactRelay | null = null;
 
@@ -322,6 +324,7 @@ export class CloudConnect {
       hasLink: async (id) =>
         (await connect.contactRows()).some((r) => contactId(r.agreeKey) === id),
     });
+    this.#localLinks = new LocalLinks(connect.localSource());
     this.#links = new CloudLinks(connect, {
       adopt: (s) => this.#transfer.adopt(s),
       removed: (keys) =>
@@ -334,6 +337,14 @@ export class CloudConnect {
   /** Direct Transfer (CC-20.3): `send(peer, source)`, `onOffer(handler)`, `onResult(fn)`. */
   get transfer(): CloudTransfer {
     return this.#transfer;
+  }
+
+  /**
+   * Local links (CC-29): pair with a code with no account. `pair`, `join` and `list`; off unless
+   * discovery says `localPairing`. It needs no sign-in and no `start()`.
+   */
+  get localLinks(): LocalLinks {
+    return this.#localLinks;
   }
 
   /** Inter-account links (CC-19): `pair`, `list`, `remove`, `setReachable`, `open`, `onLink`. */

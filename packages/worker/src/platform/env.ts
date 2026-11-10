@@ -247,6 +247,16 @@ export interface Env {
    */
   LAUNCH_CONNECT_LINKS?: string;
   /**
+   * LG-1 launch gate for pairing with a code, with no account (CC-29; the discovery member
+   * `localPairing`). Off until the feature's security sign-off. A `[vars]` value, read only through
+   * the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off` is a hard off;
+   * `runtime` lets the console decide, default off; `on` means on unless the console says off. An
+   * unreadable store reads off.
+   * @inventory var jobs
+   * @editable LAUNCH_LOCAL_PAIRING
+   */
+  LAUNCH_LOCAL_PAIRING?: string;
+  /**
    * LG-1 launch gate for nearby approval (I-40; the three `identity/nearby/*` routes and the discovery
    * members that name them). Off until the feature's security sign-off. A `[vars]` value, read
    * only through the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off`
