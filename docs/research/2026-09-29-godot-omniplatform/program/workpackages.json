@@ -20036,7 +20036,7 @@
         "plans/DEVICE-REMOVAL.md (lead plan, 2026-10-31; lives in the lead directory, not in the repo)"
       ],
       "brief": "wp/I-53-device-removal.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "UK-65",
