@@ -1085,6 +1085,35 @@ function settingRoutes(): Record<string, unknown> {
   return out;
 }
 
+/** P2-11: the Updates page and the nav's danger count read this (`GET …/distribution/updaters`). */
+const UPDATERS = {
+  product: "djdl",
+  now: 1_760_000_000_000,
+  access: "licensed",
+  groups: [
+    {
+      id: "direct",
+      state: "verified",
+      reports: 64,
+      reverted: 0,
+      release: null,
+      platforms: [
+        {
+          platform: "macos",
+          arches: ["arm64", "x86_64"],
+          updaters: ["sparkle", "velopack"],
+        },
+        {
+          platform: "windows",
+          arches: ["x86_64"],
+          updaters: ["winsparkle", "velopack", "app-installer"],
+        },
+      ],
+    },
+  ],
+  store: ["ios"],
+};
+
 /** Every read the chunk 9 pages make, keyed by path. */
 export const DISTRIBUTION_ROUTES: Record<string, unknown> = {
   [P("/distribution/matrix")]: MATRIX,
@@ -1100,6 +1129,7 @@ export const DISTRIBUTION_ROUTES: Record<string, unknown> = {
   [ASC("iap/products")]: ASC_IAP_PRODUCTS,
   [ASC("iap/price-points")]: ASC_PRICE_POINTS,
   [P("/distribution/update-health")]: HEALTH,
+  [P("/distribution/updaters")]: UPDATERS,
   ...settingRoutes(),
   [P("/outlet-credentials")]: CREDENTIALS,
   [P("/release/releases")]: RELEASES,

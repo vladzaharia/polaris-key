@@ -62,7 +62,7 @@ export function UpdatesPage({ slug }: { slug: string }): React.ReactElement {
         title="Updates"
         refetching={updaters.isFetching && !updaters.isPending}
         primaryAction={
-          <Button variant="ghost" asChild>
+          <Button variant="outline" asChild>
             <a href={docsUrl("updates")} target="_blank" rel="noopener">
               Guide
             </a>
