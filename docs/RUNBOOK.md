@@ -2120,6 +2120,7 @@ tracks:
 | `identity.seed-platform-connection`   | The lead | An apply report exists. Its seeded audience is recorded here as above.                                                                                                                                                     |
 | `distribution.listing-truth`          | The lead | A dry run reports no `missing` and no `refused` field, the apply is recorded here with its run id, and a fresh dry run reports 0 changes. After phase 2, prune `dist_listing_truth_moves`; down is only valid before then. |
 | `license.limits-materialise`          | The lead | A dry run after the apply reports changes 0 and docDiffs 0, and no license has a tier of NULL. Its run ids are recorded under Entries.                                                                                     |
+| `license.entitlement-buckets`         | The lead | A dry run after the apply reports changes 0 and docDiffs 0. Its run ids are recorded under Entries; the read switch waits for them.                                                                                        |
 | Resolver comparison                   | The lead | Zero blocking rows, every expected row acknowledged below by class and count, and no `workflow-channel` row's old answer newer than the latest `materialise-workflow-beta` run.                                            |
 | Resolver switch                       | The lead | The dry run after the switch shows zero blocking rows and nothing was rolled back. A later release then deletes the old resolver.                                                                                          |
 
@@ -2201,6 +2202,32 @@ switch deploys; otherwise repeat steps 1 to 5.
 **Roll back.** Run `down` on the apply before rolling the Worker back. It puts each column back to
 its recorded value only while the column still holds the value the job wrote, and removes the
 seeded Default tier once no license uses it. A later edit stays.
+
+### Entitlement buckets (`license.entitlement-buckets`)
+
+Copies each tier profile's entitlements to its tier and puts each license profile's entitlements
+under the license's own overrides, so no document changes. Run it after the Worker that carries it
+is live, before the release that reads entitlements from tiers. Run `license.limits-materialise`
+first, so every license has a tier. A dry run writes nothing.
+
+1. `pkey migrate dry-run license.entitlement-buckets`, then `pkey migrate report <run>`. Per product
+   it lists `tierWrites`, `licenceWrites`, `keys` and `docDiffs` (by reason), with up to 20 ids each.
+2. `docDiffs` above 0: stop. Send the report to the lead. Those rows are left as they are:
+   `grant-key` is a profile key that a store or OIDC grant also sets, `tier-bucket-differs` a tier
+   whose bucket already holds something else, `overrides-unreadable` a license whose overrides are
+   not JSON, `key-order` and `value` a document that would change. The owner decides each case.
+3. Apply from the console (Platform, Migrations), pinned to the run id. A killed apply resumes with
+   the same call.
+4. Dry-run again. It must show changes 0 and docDiffs 0. A row edited while the apply ran is skipped
+   and shows here as one change: apply that run.
+5. Record both run ids under Entries.
+
+Freeze edits to profiles, tiers and license overrides from step 1 until the read switch deploys;
+otherwise repeat steps 1 to 5. Profiles are never changed by the job.
+
+**Roll back.** Run `down` on the apply before rolling the Worker back. It puts each tier bucket and
+each license's overrides back to the value recorded before the first apply, only while the column
+still holds what the job last wrote. A later edit stays.
 
 ### Provisioned secrets (`core.provisioned-secrets-to-account`)
 

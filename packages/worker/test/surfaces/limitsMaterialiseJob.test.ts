@@ -8,46 +8,42 @@
  */
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "../helpers.js";
-import { KvMock } from "../kvMock.js";
+import {
+  applyOf,
+  applyKeepingDocuments,
+  downOf,
+  expectContributed,
+  dumpTables,
+  expectDownRestores,
+  expectSettled,
+  finishWorld,
+  dryThenApply,
+  dryOf,
+  killingBatch,
+  newEnv,
+  SLUG,
+  unitDetail,
+  type World,
+} from "./migrationJobHarness.js";
 import {
   DJDL_CATALOG,
-  makeEnv,
-  mkReq,
   NOW,
   seedLicenseWithKey,
   seedProduct,
   seedTier,
 } from "../seed.js";
-import type { Db, DbStatement } from "../../src/db/types.js";
-import type { Env } from "../../src/platform/env.js";
-import { matchRoute } from "../../src/router.js";
-import { dispatchService } from "../../src/core/registry.js";
-import { loadProduct, type Product } from "../../src/core/products.js";
-import { SERVICES } from "../../src/mount.js";
-import { apply, down, dryRun, getRun } from "../../src/core/migrate/runner.js";
-import type { MigrationContext } from "../../src/core/migrate/job.js";
+import type { Db } from "../../src/db/types.js";
 import {
   applyLimitsUnit,
   limitsMaterialiseJob as job,
   LIMITS_BATCH,
 } from "../../src/services/license/migrations/limitsMaterialise.js";
 import { insertLicense } from "../../src/core/licensing/store.js";
-import { migrationJobs } from "../../src/core/contributions.js";
-
-const SLUG = "djdl";
-const ACTOR = { sub: "op", name: "Op", email: null };
-
-interface World {
-  db: Db;
-  env: Env;
-  product: Product;
-  licences: Array<{ id: string; key: string }>;
-}
 
 /** Tiers and licences covering every rule: assign, union, tighter bound, offline days. */
 async function world(): Promise<World> {
   const db = makeTestDb();
-  const env = makeEnv(new KvMock(), [SLUG]);
+  const env = newEnv();
   await seedProduct(db, SLUG, { catalog: DJDL_CATALOG });
   await seedTier(db, SLUG, "pro", {
     channels: ["beta"],
@@ -86,78 +82,11 @@ async function world(): Promise<World> {
     await mk("lic_c", { tierId: "pro" }),
     await mk("lic_d", { deviceLimit: 3, offline: 7, channels: ["dev"] }),
   ];
-  return {
-    db,
-    env,
-    product: (await loadProduct(env, db, SLUG))!,
-    licences,
-  };
+  return finishWorld(db, env, licences);
 }
 
-const ctxOf =
-  (w: { db: Db; env: Env }) =>
-  (at = NOW): MigrationContext => ({ env: w.env, db: w.db, now: at });
-
-async function dump(db: Db): Promise<string> {
-  const out: unknown[] = [];
-  for (const t of ["licenses", "tiers", "license_limit_backfill"])
-    out.push(await db.all(`SELECT * FROM ${t} ORDER BY 1, 2, 3, 4`));
-  return JSON.stringify(out);
-}
-
-async function call(w: World, path: string, headers: Record<string, string>) {
-  const route = matchRoute(path);
-  if (route.kind !== "service") throw new Error(`not a service route: ${path}`);
-  return dispatchService(SERVICES, route.slug, w.product.services, {
-    req: mkReq("GET", headers),
-    env: w.env,
-    db: w.db,
-    product: w.product,
-    rest: route.rest,
-    now: NOW,
-  });
-}
-
-/** Activate each licence once; the tokens serve both the before and the after read. */
-async function tokens(w: World): Promise<string[]> {
-  const out: string[] = [];
-  for (const l of w.licences) {
-    const route = matchRoute(`/${SLUG}/license/activate`);
-    if (route.kind !== "service") throw new Error("route");
-    const res = await dispatchService(
-      SERVICES,
-      route.slug,
-      w.product.services,
-      {
-        req: mkReq("POST", {
-          authorization: `Bearer ${l.key}`,
-          "x-pkey-device": `dev-${l.id}`,
-        }),
-        env: w.env,
-        db: w.db,
-        product: w.product,
-        rest: route.rest,
-        now: NOW,
-      },
-    );
-    expect(res.status).toBe(200);
-    out.push(((await res.json()) as { token: string }).token);
-  }
-  return out;
-}
-
-async function documents(w: World, toks: string[]): Promise<string[]> {
-  const out: string[] = [];
-  for (const t of toks) {
-    const headers = { authorization: `Bearer ${t}`, "x-pkey-version": "1.5.0" };
-    for (const kind of ["license", "config"]) {
-      const res = await call(w, `/${SLUG}/${kind}/document`, headers);
-      expect(res.status).toBe(200);
-      out.push(await res.text());
-    }
-  }
-  return out;
-}
+const dump = (db: Db): Promise<string> =>
+  dumpTables(db, ["licenses", "tiers", "license_limit_backfill"]);
 
 const noTier = (db: Db) =>
   db.first<{ n: number }>(
@@ -167,15 +96,13 @@ const noTier = (db: Db) =>
 
 describe("license.limits-materialise", () => {
   it("is contributed by the License service and runs License products only", async () => {
-    expect(migrationJobs().map((j) => j.id)).toContain(job.id);
-    const w = await world();
-    expect(await job.units(ctxOf(w)())).toEqual([SLUG]);
+    await expectContributed(await world(), job);
   });
 
   it("a dry run writes nothing and reports counts and capped ids", async () => {
     const w = await world();
     const before = await dump(w.db);
-    const report = await dryRun(ctxOf(w)(), job, ACTOR);
+    const report = await dryOf(w, job);
     expect(await dump(w.db)).toBe(before);
     // 1 seed + lic_a, lic_b, lic_c, lic_d (assigned to Default); lic_b also gets its union,
     // lic_c/lic_b their offline days.
@@ -200,11 +127,7 @@ describe("license.limits-materialise", () => {
 
   it("applies: every licence has a tier, documents are byte-identical, the second apply and dry run do nothing", async () => {
     const w = await world();
-    const toks = await tokens(w);
-    const docsBefore = await documents(w, toks);
-    const report = await dryRun(ctxOf(w)(), job, ACTOR);
-    const res = await apply(ctxOf(w)(NOW + 1), job, ACTOR, report.id);
-    expect(res.ok && res.run.status).toBe("applied");
+    const report = await applyKeepingDocuments(w, job);
 
     expect((await noTier(w.db))!.n).toBe(0);
     expect(
@@ -225,13 +148,8 @@ describe("license.limits-materialise", () => {
       modified_at: NOW,
       modified_by: null,
     });
-    expect(await documents(w, toks)).toEqual(docsBefore);
 
-    const again = await apply(ctxOf(w)(NOW + 2), job, ACTOR, report.id);
-    expect(again.ok && again.noop).toBe(true);
-    const second = await dryRun(ctxOf(w)(NOW + 3), job, ACTOR);
-    expect(second.changes).toBe(0);
-    expect(((await unitDetail(w.db, second.id)) as any).docDiffs).toBe(0);
+    await expectSettled(w, job, report.id);
     // A direct re-apply changes no row either.
     const snap = await dump(w.db);
     expect(await applyLimitsUnit({ db: w.db, now: NOW + 4 }, SLUG)).toBe(0);
@@ -260,35 +178,18 @@ describe("license.limits-materialise", () => {
         modified_by: null,
         modified_at: NOW,
       });
-    const report = await dryRun(ctxOf(w)(), job, ACTOR);
-    let batches = 0;
-    const flaky: Db = {
-      all: (s, ...p) => w.db.all(s, ...p),
-      first: (s, ...p) => w.db.first(s, ...p),
-      run: (s, ...p) => w.db.run(s, ...p),
-      runChanges: (s, ...p) => w.db.runChanges(s, ...p),
-      batch: (s: DbStatement[]) => w.db.batch(s),
-      batchChanges: async (s: DbStatement[]) => {
-        // The seed is batch 1; kill the second licence batch.
-        if (++batches === 3) throw new Error("killed");
-        return w.db.batchChanges!(s);
-      },
-    };
-    const killed = await apply(
-      { env: w.env, db: flaky, now: NOW + 1 },
-      job,
-      ACTOR,
-      report.id,
-    );
+    const report = await dryOf(w, job);
+    const flaky = killingBatch(w.db, 3);
+    const killed = await applyOf(w, job, report.id, NOW + 1, flaky);
     expect(killed.ok && killed.run.status).toBe("failed");
     const left = (await noTier(w.db))!.n;
     expect(left).toBeGreaterThan(0);
     expect(left).toBeLessThan(LIMITS_BATCH + 24);
 
-    const resumed = await apply(ctxOf(w)(NOW + 2), job, ACTOR, report.id);
+    const resumed = await applyOf(w, job, report.id, NOW + 2);
     expect(resumed.ok && resumed.run.status).toBe("applied");
     expect((await noTier(w.db))!.n).toBe(0);
-    expect((await dryRun(ctxOf(w)(NOW + 3), job, ACTOR)).changes).toBe(0);
+    expect((await dryOf(w, job, NOW + 3)).changes).toBe(0);
   });
 
   it("skips a licence edited between its read and its write; the next dry run shows it", async () => {
@@ -315,28 +216,18 @@ describe("license.limits-materialise", () => {
       ),
     ).toEqual([]);
     expect(n).toBeGreaterThan(0);
-    const next = await dryRun(ctxOf(w)(NOW + 2), job, ACTOR);
+    const next = await dryOf(w, job, NOW + 2);
     expect(next.changes).toBe(1);
     expect(((await unitDetail(w.db, next.id)) as any).seed).toBe("none");
   });
 
   it("down restores the rows byte for byte and removes the seeded tier", async () => {
-    const w = await world();
-    const before = await dump(w.db);
-    const report = await dryRun(ctxOf(w)(), job, ACTOR);
-    const applied = await apply(ctxOf(w)(NOW + 1), job, ACTOR, report.id);
-    if (!applied.ok) throw new Error("apply");
-    expect(await dump(w.db)).not.toBe(before);
-    const undone = await down(ctxOf(w)(NOW + 2), job, ACTOR, applied.run.id);
-    expect(undone.ok && undone.run.status).toBe("reverted");
-    expect(await dump(w.db)).toBe(before);
+    await expectDownRestores(await world(), job, dump);
   });
 
   it("down keeps a later edit and a seeded tier that a licence now uses", async () => {
     const w = await world();
-    const report = await dryRun(ctxOf(w)(), job, ACTOR);
-    const applied = await apply(ctxOf(w)(NOW + 1), job, ACTOR, report.id);
-    if (!applied.ok) throw new Error("apply");
+    const { applied } = await dryThenApply(w, job);
     await w.db.run(
       "UPDATE licenses SET max_offline_days = 99 WHERE product = ? AND id = 'lic_c'",
       SLUG,
@@ -360,7 +251,7 @@ describe("license.limits-materialise", () => {
       modified_by: null,
       modified_at: NOW,
     });
-    await down(ctxOf(w)(NOW + 2), job, ACTOR, applied.run.id);
+    await downOf(w, job, applied.run.id, NOW + 2);
     const c = await w.db.first<Record<string, unknown>>(
       "SELECT max_offline_days FROM licenses WHERE product = ? AND id = 'lic_c'",
       SLUG,
@@ -382,9 +273,9 @@ describe("license.limits-materialise", () => {
       SLUG,
     );
     const before = await dump(w.db);
-    const report = await dryRun(ctxOf(w)(), job, ACTOR);
+    const report = await dryOf(w, job);
     expect(((await unitDetail(w.db, report.id)) as any).seed).toBe("update");
-    const applied = await apply(ctxOf(w)(NOW + 1), job, ACTOR, report.id);
+    const applied = await applyOf(w, job, report.id, NOW + 1);
     if (!applied.ok) throw new Error("apply");
     const t = await w.db.first<Record<string, unknown>>(
       "SELECT policy_device_limit, policy_offline_grace_days FROM tiers WHERE product = ? AND id = 'default'",
@@ -394,7 +285,7 @@ describe("license.limits-materialise", () => {
       policy_device_limit: 5,
       policy_offline_grace_days: 30,
     });
-    await down(ctxOf(w)(NOW + 2), job, ACTOR, applied.run.id);
+    await downOf(w, job, applied.run.id, NOW + 2);
     expect(await dump(w.db)).toBe(before);
   });
 
@@ -407,12 +298,12 @@ describe("license.limits-materialise", () => {
       },
     });
     await seedLicenseWithKey(w.db, SLUG, { id: "lic_f", tierId: "gone" });
-    const report = await dryRun(ctxOf(w)(), job, ACTOR);
+    const report = await dryOf(w, job);
     const d = (await unitDetail(w.db, report.id)) as any;
     expect(d.docDiffIds).toContain("lic_e");
     expect(d.docDiffReasons["device-entitlement"]).toBeGreaterThan(0);
     expect(d.danglingIds).toEqual(["lic_f"]);
-    await apply(ctxOf(w)(NOW + 1), job, ACTOR, report.id);
+    await applyOf(w, job, report.id, NOW + 1);
     const f = await w.db.first<{ tier_id: string }>(
       "SELECT tier_id FROM licenses WHERE product = ? AND id = 'lic_f'",
       SLUG,
@@ -420,11 +311,3 @@ describe("license.limits-materialise", () => {
     expect(f!.tier_id).toBe("gone");
   });
 });
-
-/** The stored detail of a dry run's only unit. */
-async function unitDetail(db: Db, runId: string): Promise<unknown> {
-  const run = (await getRun(db, runId)) as unknown as {
-    units: Array<{ unit: string; detail?: unknown }>;
-  };
-  return run.units.find((u) => u.unit === SLUG)?.detail;
-}

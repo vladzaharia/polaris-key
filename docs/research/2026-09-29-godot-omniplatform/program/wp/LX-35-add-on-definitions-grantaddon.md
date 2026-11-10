@@ -57,6 +57,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Corrections to this brief (2026-11-09, verified against the code)
+
+- Wire is v5 (`PROTOCOL_VERSION = 5`); nothing here changes the wire.
+- There is no `grantAddOn` and no `grants.addon_id` yet, and nothing writes the `comp` or `redeem` grant sources. Store grants are dual-written by `services/license/storeGrants.ts` `applyStoreGrant`.
+- LX-35.1 (migrations `0161_a`, `0161_b`, `0161_c`, provisional) ships `addons`, `addon_backfill`, the nullable `grants.addon_id` with `idx_grants_addon`, and the index assertion that names it. The NULL-refusing trigger is LX-35.10 (D35-1).
+
 ## UX coverage (2026-10-09)
 
 Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
