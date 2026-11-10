@@ -18,7 +18,7 @@ export declare function matrixFor(
 ): unknown;
 export declare function ciOutputs(
   scope: CiScope,
-  input: { event: string; files: string[] | null },
+  input: { event: string; ref?: string; files: string[] | null },
 ): Record<string, string>;
 export declare function changedFiles(opts: {
   base: string;
@@ -26,3 +26,15 @@ export declare function changedFiles(opts: {
   worktree?: boolean;
   cwd?: string;
 }): string[] | null;
+export declare const NEXT_REF: string;
+export declare const ANCESTOR_LOOKBACK: number;
+export declare function findGreenAncestor(
+  commits: string[],
+  greenShas: Iterable<string>,
+): string | null;
+export declare function greenAncestorOf(opts: {
+  repo: string;
+  head?: string;
+  cwd?: string;
+  run?: (cmd: string, args: string[]) => string;
+}): string | null;
