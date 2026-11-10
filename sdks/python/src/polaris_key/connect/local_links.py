@@ -326,6 +326,11 @@ class LocalLinks:
             if connect_loop().in_loop():
                 import asyncio
 
+                # On the loop thread the held list is cut inline, so the link is gone before this returns;
+                # the reload and the sessions' close follow on the loop.
+                lan = self._lan
+                if lan is not None:
+                    lan.drop_local(id)
                 asyncio.ensure_future(self._forget(id))
             else:
                 try:
@@ -471,9 +476,16 @@ class LocalLinks:
     async def _deliver(self, s: "ConnectSession") -> None:
         if not await self._still_held(s):
             return
-        self._track(s)
         with self._lock:
             subs = list(self._on_link)
+        # A session nobody will take is closed: no ``on_link`` subscriber and no Direct Transfer handler.
+        if not subs and not self._cloud._transfer.listening:
+            try:
+                s.close("peer_bye")
+            except Exception:
+                pass
+            return
+        self._track(s)
         for f in subs:
             try:
                 f(s)

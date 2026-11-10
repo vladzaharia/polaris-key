@@ -27,6 +27,7 @@ import logging
 import os
 import random
 import threading
+import time
 import weakref
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Union
@@ -120,6 +121,49 @@ def _daemon_timer(fn: Callable[[], None], seconds: float) -> "threading.Timer":
     t.daemon = True
     t.start()
     return t
+
+
+class _Deadline:
+    """A wait counted on a clock, checked by short timers: ``cancel()`` stops it."""
+
+    def __init__(
+        self,
+        timer: Callable[[Callable[[], None], float], Any],
+        clock: Callable[[], float],
+        check: float,
+        fn: Callable[[], None],
+        seconds: float,
+    ) -> None:
+        self._timer = timer
+        self._clock = clock
+        self._check = check
+        self._fn = fn
+        self._due = clock() + seconds
+        self._lock = threading.Lock()
+        self._cancelled = False
+        self._t: Any = None
+        self._arm()
+
+    def _arm(self) -> None:
+        with self._lock:
+            if self._cancelled:
+                return
+            self._t = self._timer(self._tick, max(0.0, min(self._due - self._clock(), self._check)))
+
+    def _tick(self) -> None:
+        if self._cancelled:
+            return
+        if self._clock() >= self._due:
+            self._fn()
+        else:
+            self._arm()
+
+    def cancel(self) -> None:
+        with self._lock:
+            self._cancelled = True
+            t = self._t
+        if t is not None:
+            t.cancel()
 
 
 @dataclass(frozen=True)
@@ -503,6 +547,12 @@ class PolarisKeyClient:
         self._local_reread_s: Callable[[], float] = lambda: (1 + 3 * random.random()) * 3600
         #: ``(fn, seconds)`` to a started timer with ``cancel()``. Replaced in tests.
         self._local_timer: Callable[[Callable[[], None], float], Any] = _daemon_timer
+        #: The wall clock the re-read waits are counted on, in seconds (a monotonic timer does not run while the
+        #: machine sleeps, so a wait is a deadline checked every ``_local_check_s``). Replaced in tests.
+        self._local_clock: Callable[[], float] = time.time
+        self._local_check_s = 60.0
+        #: ``(fn, seconds)`` to a handle with ``cancel()``: the wait the re-reads use. Replaced in tests.
+        self._local_after: Callable[[Callable[[], None], float], Any] = self._deadline_after
         #: The product's presentation (discovery's ``core.presentation``, HA-13): the seam the UI
         #: kits read (``polaris_key.presentation.PresentationSource``). Icons and the last member
         #: live under ``<cache>/presentation`` when the host named a ``cache_dir`` or the store
@@ -824,7 +874,7 @@ class PolarisKeyClient:
             except Exception:
                 self._arm_local_reread()
 
-        self._local_reread = self._local_timer(again, self._local_reread_s())
+        self._local_reread = self._local_after(again, self._local_reread_s())
 
     def _arm_local_retry(self) -> None:
         """After a read that said nothing, read again in 5 min, then 10, then every 15, while the gate is on."""
@@ -840,7 +890,11 @@ class PolarisKeyClient:
             except Exception:
                 pass
 
-        self._local_retry = self._local_timer(again, minutes * 60.0)
+        self._local_retry = self._local_after(again, minutes * 60.0)
+
+    def _deadline_after(self, fn: Callable[[], None], seconds: float) -> "_Deadline":
+        """``fn`` once ``seconds`` have passed on the wall clock, however long the machine slept."""
+        return _Deadline(self._local_timer, self._local_clock, self._local_check_s, fn, seconds)
 
     def _reread_links_gate(self) -> None:
         """Re-read discovery when the cached links answer lapses, so a lapse withdraws the adverts."""

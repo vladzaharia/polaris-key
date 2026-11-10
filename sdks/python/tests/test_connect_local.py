@@ -447,6 +447,21 @@ def test_the_store_is_one_file_0600_with_the_links_in_held_order_and_a_damaged_f
     assert w.a.connect.live_locals() == []
 
 
+def test_a_record_with_two_rows_of_one_id_is_unusable_and_never_replaced(world: World) -> None:
+    w = world
+    s = show(w, w.a, ["notes"])
+    pair_up(w, s, {"code": s.codes[0].code})
+    path = Path(w.a.core.dirs.state) / LOCAL_STATE_FILE
+    doc = json.loads(path.read_text())
+    doc["links"] = doc["links"] + doc["links"]
+    raw = json.dumps(doc)
+    path.write_text(raw)
+    with pytest.raises(PolarisError) as e:
+        w.a.cloud_connect.local_links.list()
+    assert e.value.code == "store-failed"
+    assert path.read_text() == raw
+
+
 def test_the_store_judges_the_cap_under_its_lock_when_threads_add_together(world: World) -> None:
     w = world
     store = w.a.connect.local_store()

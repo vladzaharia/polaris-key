@@ -25,7 +25,7 @@ import os
 import re
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from ..constants_generated import ErrorCode
 from ..core.b64url import b64url_decode, b64url_encode
@@ -152,12 +152,14 @@ def _parse_rows(v: Any) -> Optional[List[LocalLinkRow]]:
     if not isinstance(v, list) or len(v) > MAX_LOCAL_LINKS:
         return None
     out: List[LocalLinkRow] = []
+    seen: Set[str] = set()
     for r in v:
         if not isinstance(r, dict):
             return None
         rid = r.get("id")
-        if not isinstance(rid, str) or _ID.match(rid) is None:
+        if not isinstance(rid, str) or _ID.match(rid) is None or rid in seen:
             return None
+        seen.add(rid)
         if not all(_key32(r.get(k)) for k in ("ownKey", "ownPublic", "peerKey", "secret")):
             return None
         cats = r.get("cats")
