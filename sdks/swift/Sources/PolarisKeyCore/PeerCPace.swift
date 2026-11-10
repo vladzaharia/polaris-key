@@ -21,6 +21,7 @@
 // are released.
 
 import Foundation
+
 #if canImport(CryptoKit)
     import CryptoKit
 #else
@@ -308,7 +309,8 @@ public enum PeerCPace {
             let shared = try? priv.sharedSecretFromKeyAgreement(with: pub)
         else { return nil }
         let out = shared.withUnsafeBytes { Data($0) }
-        return out.contains(where: { $0 != 0 }) ? out : nil
+        // K is secret: the all-zero test reads every byte (no early exit on the first non-zero one).
+        return out.reduce(UInt8(0)) { $0 | $1 } != 0 ? out : nil
     }
 
     /// `Y = X25519(y, g)`. Nil when the backend refuses (a degenerate generator) or the output is zero.
