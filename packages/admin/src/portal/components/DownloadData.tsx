@@ -54,6 +54,44 @@ export function DownloadData({
   /** An Account screen: no developer to contact. */
   account?: boolean;
 }): React.ReactElement {
+  const flow = useDataDownload(download, account);
+  return (
+    <DataRow
+      icon={<FileDown aria-hidden />}
+      title={title}
+      description={description}
+      below={flow.below}
+    >
+      <Button
+        ref={flow.button}
+        variant="outline"
+        className="h-auto min-h-9 w-full whitespace-normal py-1.5 max-sm:min-h-11 sm:w-auto"
+        iconStart={<Download aria-hidden />}
+        loading={download.isPending}
+        aria-label={label}
+        onClick={flow.start}
+      >
+        {t("boot.consent.download")}
+      </Button>
+    </DataRow>
+  );
+}
+
+/**
+ * The flow behind a download button, for a caller that lays out its own button (the Sync Across
+ * Devices card): `start` for its click, `button` for its ref (focus comes back to it), and `below`
+ * for the confirm-it's-you prompt or the refusal, placed under it. The rules are the ones above.
+ */
+export function useDataDownload(
+  download: DataDownload,
+  account = false,
+): {
+  start: () => void;
+  button: React.RefObject<HTMLButtonElement | null>;
+  below: React.ReactNode;
+  /** `below` has something in it (the prompt, or a refusal). */
+  open: boolean;
+} {
   const button = React.useRef<HTMLButtonElement>(null);
   // A stale sign-in: the prompt takes the refusal's place, and confirming runs the download again.
   const [askFirst, setAskFirst] = React.useState(false);
@@ -80,46 +118,29 @@ export function DownloadData({
         }),
     });
   };
-  return (
-    <DataRow
-      icon={<FileDown aria-hidden />}
-      title={title}
-      description={description}
-      below={
-        <>
-          {askFirst ? (
-            <StepUpInline
-              verb={t("locker.verb.downloadData")}
-              onConfirmed={() => {
-                setAskFirst(false);
-                start();
-              }}
-              onCancel={() => {
-                setAskFirst(false);
-                requestAnimationFrame(() => button.current?.focus());
-              }}
-            />
-          ) : null}
-          {failure ? (
-            <p role="alert" className="flex gap-2 text-sm text-danger">
-              <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
-              <span>{failure.line}</span>
-            </p>
-          ) : null}
-        </>
-      }
-    >
-      <Button
-        ref={button}
-        variant="outline"
-        className="h-auto min-h-9 w-full whitespace-normal py-1.5 max-sm:min-h-11 sm:w-auto"
-        iconStart={<Download aria-hidden />}
-        loading={download.isPending}
-        aria-label={label}
-        onClick={start}
-      >
-        {t("boot.consent.download")}
-      </Button>
-    </DataRow>
+  // Always a fragment, empty or not: DataRow lays its row out the same either way.
+  const below = (
+    <>
+      {askFirst ? (
+        <StepUpInline
+          verb={t("locker.verb.downloadData")}
+          onConfirmed={() => {
+            setAskFirst(false);
+            start();
+          }}
+          onCancel={() => {
+            setAskFirst(false);
+            requestAnimationFrame(() => button.current?.focus());
+          }}
+        />
+      ) : null}
+      {failure ? (
+        <p role="alert" className="flex gap-2 text-sm text-danger">
+          <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>{failure.line}</span>
+        </p>
+      ) : null}
+    </>
   );
+  return { start, button, below, open: askFirst || failure !== null };
 }

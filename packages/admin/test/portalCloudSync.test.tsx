@@ -4,6 +4,12 @@ import userEvent from "@testing-library/user-event";
 import type { PortalCloudSync } from "../src/portal/api.js";
 import { formatDayTime } from "../src/portal/date.js";
 import {
+  captureDownloads,
+  confirmItsYou,
+  STALE,
+  type DownloadCapture,
+} from "./portalDataKit.js";
+import {
   axeViolations,
   DAY,
   detail,
@@ -370,5 +376,201 @@ describe("the jump palette's sync action (PX-18.1, D10)", () => {
       within(dialog).getByText("Manage devices for Glyphsmith"),
     ).toBeTruthy();
     expect(within(dialog).queryByText(/See synced data/)).toBeNull();
+  });
+});
+
+describe("Download synced data and Remove my data from the card (PX-18.2)", () => {
+  const STEP_UP = { status: 401, body: { error: "step_up_required" } };
+  const ZIP = "/api/products/mossgarden/export?format=zip";
+  let files: DownloadCapture;
+
+  beforeEach(() => {
+    files = captureDownloads();
+  });
+  afterEach(() => files.restore());
+
+  /** The page with sync on, its zip, and the removal answered by `removal`. */
+  function worker(
+    removal: MockRoute = {
+      ok: true,
+      product: "mossgarden",
+      removed: true,
+      detachedLicenses: [],
+    },
+    zip: MockRoute = "PK zip bytes",
+  ): Record<string, MockRoute> {
+    return {
+      ...routes(true, summary()),
+      [ZIP]: zip,
+      "DELETE /api/products/mossgarden/data": removal,
+    };
+  }
+
+  const syncReads = (): number =>
+    fetchedRequests().filter((r) => r === "GET /api/products/mossgarden/sync")
+      .length;
+
+  async function removeFromCard(card: HTMLElement): Promise<HTMLElement> {
+    await userEvent.click(
+      within(card).getByRole("button", {
+        name: "Remove my data from Mossgarden",
+      }),
+    );
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Remove your data from Mossgarden?",
+    });
+    await userEvent.type(
+      within(dialog).getByRole("textbox", {
+        name: /Type the app's name to confirm/,
+      }),
+      "mossgarden",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Remove my data" }),
+    );
+    return dialog;
+  }
+
+  it("saves the product's zip under Polaris Locker's name, with the binder header, on a press only", async () => {
+    mockFetch(worker());
+    renderPortal();
+    await page();
+    const card = await syncCard();
+    await within(card).findByRole("meter", { name: "Storage" });
+    expect(fetchedRequests().some((r) => r.includes("/export"))).toBe(false);
+    await userEvent.click(
+      within(card).getByRole("button", { name: "Download synced data" }),
+    );
+    await waitFor(() => expect(files.saved).toHaveLength(1));
+    expect(files.saved[0]!.filename).toBe("polaris-locker-mossgarden-data.zip");
+    const sent = vi
+      .mocked(fetch)
+      .mock.calls.find(([url]) => String(url) === ZIP)!;
+    expect(new Headers(sent[1]?.headers).get("X-PKey-Portal-CSRF")).toBe(
+      "csrf-token",
+    );
+    expect(await screen.findByText("Your download has started")).toBeTruthy();
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("a stale sign-in asks to confirm it's you in the card, then downloads", async () => {
+    let asked = 0;
+    mockFetch({
+      ...worker(undefined, () => (++asked === 1 ? STEP_UP : "PK zip bytes")),
+      "/api/me/methods": STALE,
+      "POST /api/signin/email/start": {
+        ok: true,
+        expiresIn: 600,
+        codeLength: 6,
+        resendIn: 60,
+      },
+      "POST /api/signin/email/verify": { status: "signed_in", next: "/" },
+    });
+    renderPortal();
+    await page();
+    const card = await syncCard();
+    await userEvent.click(
+      await within(card).findByRole("button", { name: "Download synced data" }),
+    );
+    // The prompt takes the refusal's place, in the card.
+    await confirmItsYou(card);
+    expect(within(card).queryByRole("alert")).toBeNull();
+    await waitFor(() => expect(files.saved).toHaveLength(1));
+  });
+
+  it("a refused download stays under the buttons in plain words", async () => {
+    mockFetch(
+      worker(undefined, { status: 429, body: { error: "rate_limited" } }),
+    );
+    renderPortal();
+    await page();
+    const card = await syncCard();
+    await userEvent.click(
+      await within(card).findByRole("button", { name: "Download synced data" }),
+    );
+    expect((await within(card).findByRole("alert")).textContent).toMatch(
+      /Too many/,
+    );
+    expect(files.saved).toHaveLength(0);
+  });
+
+  it("Remove my data opens Your data's dialog; the card reads its sync data again and takes focus", async () => {
+    mockFetch(worker());
+    renderPortal();
+    await page();
+    const card = await syncCard();
+    await within(card).findByRole("meter", { name: "Storage" });
+    const before = syncReads();
+    await removeFromCard(card);
+    expect(
+      await screen.findByText("Your data was removed from Mossgarden"),
+    ).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() => expect(syncReads()).toBe(before + 1));
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("section-sync-h"),
+    );
+    expect(window.location.hash).toBe("#/p/mossgarden");
+  });
+
+  it("a removal that finishes in the background says so, and that there is nothing to do", async () => {
+    mockFetch(
+      worker({
+        ok: true,
+        product: "mossgarden",
+        removed: true,
+        pending: true,
+        detachedLicenses: [],
+      }),
+    );
+    renderPortal();
+    await page();
+    const card = await syncCard();
+    await within(card).findByRole("meter", { name: "Storage" });
+    await removeFromCard(card);
+    expect(
+      await screen.findByText("Removing your data from Mossgarden"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("It finishes shortly. There's nothing else to do."),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("Your data was removed from Mossgarden"),
+    ).toBeNull();
+  });
+
+  it("a removal that could not be recorded changed nothing: the dialog says so and stays", async () => {
+    mockFetch(
+      worker({
+        status: 503,
+        body: { error: "erasure_ledger_unavailable", message: "try again" },
+      }),
+    );
+    renderPortal();
+    await page();
+    const card = await syncCard();
+    await within(card).findByRole("meter", { name: "Storage" });
+    const before = syncReads();
+    const dialog = await removeFromCard(card);
+    expect(await within(dialog).findByText("Nothing was removed")).toBeTruthy();
+    expect(within(dialog).getByText("Try again in a moment.")).toBeTruthy();
+    expect(screen.getByRole("alertdialog")).toBe(dialog);
+    expect(syncReads()).toBe(before);
+  });
+
+  it("offers neither action while nothing is synced", async () => {
+    mockFetch({
+      ...worker(),
+      "/api/products/mossgarden/sync": summary({
+        empty: true,
+        usage: { bytes: 0 },
+        devices: [],
+      }),
+    });
+    renderPortal();
+    await page();
+    const card = await syncCard();
+    await within(card).findByText(/Nothing synced yet/);
+    expect(within(card).queryByRole("button")).toBeNull();
   });
 });

@@ -8366,6 +8366,16 @@
       "role": "hint",
       "note": "Portal shell, library and product pages (P0-36)."
     },
+    "locker.productData.removing": {
+      "value": "Removing your data from {product}",
+      "role": "title",
+      "note": "Remove my data: the toast when the removal is accepted but part of it finishes in the background. Arguments: {product} = the app's name."
+    },
+    "locker.productData.removingBody": {
+      "value": "It finishes shortly. There's nothing else to do.",
+      "role": "body",
+      "note": "Remove my data: under the toast title when part of the removal finishes in the background."
+    },
     "locker.productData.removeAsk": {
       "value": "Remove your data from {product}?",
       "role": "title",
@@ -8920,6 +8930,11 @@
       "value": "Couldn't load your synced data.",
       "role": "body",
       "note": "Sync Across Devices card on a product page (PX-18): the card failed to load; the Try again button is separate."
+    },
+    "locker.sync.download": {
+      "value": "Download synced data",
+      "role": "button",
+      "note": "Sync Across Devices card on a product page (PX-18): downloads a zip of the app's data with every synced file."
     },
     "locker.library.justAdded": {
       "value": "Added just now",

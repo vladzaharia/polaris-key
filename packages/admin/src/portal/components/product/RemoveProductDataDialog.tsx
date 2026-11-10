@@ -38,21 +38,27 @@ import type { LibraryProduct } from "../../model/library.js";
  * about one.
  *
  * A refusal (`409 not_removable`) wrote nothing, so the data is still there too: the dialog says
- * so, stops offering the choice for this page and lets the person remove the data alone. Any other
- * error stays inline as well. Only a success refreshes the library and the product (and, with the
- * license gone, hands the page back to `onLeftLibrary`).
+ * so, stops offering the choice for this page and lets the person remove the data alone. So did a
+ * `503 erasure_ledger_unavailable` (the removal could not be recorded first): "Nothing was
+ * removed", try again. Any other error stays inline as well. Only a success refreshes the library,
+ * the product and its synced data (and, with the license gone, hands the page back to
+ * `onLeftLibrary`); a success whose last part finishes in the background (`pending`, U-12.1) says
+ * so in its toast, with nothing for the person to do.
  */
 export function RemoveProductDataDialog({
   open,
   onOpenChange,
   product,
   onLeftLibrary,
+  onRemoved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   product: LibraryProduct;
   /** The licenses went with the data: the product has left the library, so the page should too. */
   onLeftLibrary?: () => void;
+  /** The data went and the product stays: where focus goes when the opener may be gone. */
+  onRemoved?: () => void;
 }): React.ReactElement {
   const { name } = product;
   const licenses = product.licenses.length;
@@ -87,8 +93,9 @@ export function RemoveProductDataDialog({
 
   /** The removal, its toast and the close; throws what the Worker refused. */
   const run = async (alsoRemoveLicense: boolean): Promise<void> => {
+    let res: Awaited<ReturnType<typeof remove.mutateAsync>>;
     try {
-      await remove.mutateAsync(alsoRemoveLicense);
+      res = await remove.mutateAsync(alsoRemoveLicense);
     } catch (err) {
       // Nothing was written: the license can't go, but the data still can.
       if (isNotRemovable(err)) {
@@ -97,10 +104,16 @@ export function RemoveProductDataDialog({
       }
       throw err;
     }
-    // The dialog said what stays and what goes; the toast only says it is done.
-    toast.success(t("locker.productData.removed", { product: name }));
+    // The dialog said what stays and what goes; the toast only says it is done, or that its last
+    // part finishes by itself.
+    if (res.pending)
+      toast.success(t("locker.productData.removing", { product: name }), {
+        description: t("locker.productData.removingBody"),
+      });
+    else toast.success(t("locker.productData.removed", { product: name }));
     onOpenChange(false);
     if (alsoRemoveLicense) onLeftLibrary?.();
+    else onRemoved?.();
   };
 
   return (
@@ -129,7 +142,12 @@ export function RemoveProductDataDialog({
       describeError={(err) =>
         isNotRemovable(err)
           ? notRemovableCopy(name, err.reason)
-          : portalErrorCopy(err)
+          : isNotRecorded(err)
+            ? {
+                title: t("yourData.remove.refused.title"),
+                description: t("locker.error.boot.body"),
+              }
+            : portalErrorCopy(err)
       }
       onConfirm={async () => {
         setRetryError(null);
@@ -179,6 +197,11 @@ export function RemoveProductDataDialog({
 /** `409 not_removable`: a license the key could not bring back, so the Worker wrote nothing. */
 function isNotRemovable(err: unknown): err is HttpError {
   return err instanceof HttpError && err.code === "not_removable";
+}
+
+/** `503 erasure_ledger_unavailable`: the removal could not be recorded first, so nothing changed. */
+function isNotRecorded(err: unknown): boolean {
+  return err instanceof HttpError && err.code === "erasure_ledger_unavailable";
 }
 
 /**

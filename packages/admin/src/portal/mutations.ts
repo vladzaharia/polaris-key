@@ -236,10 +236,12 @@ export const PORTAL_MUTATIONS = {
   },
   removeProductData: {
     label: "Remove my data from a product",
-    // The arguments do not name the licences: every licence view refreshes.
+    // The arguments do not name the licences: every licence view refreshes. The Sync Across Devices
+    // card reads what is left (nothing, or what a pending removal has still to clear).
     invalidates: (product: string) => [
       prefix(qkFamily("license")),
       ...licenceViews(product),
+      exact(qk.productSync(product)),
       exact(qk.releases()),
       exact(qk.discover()),
     ],

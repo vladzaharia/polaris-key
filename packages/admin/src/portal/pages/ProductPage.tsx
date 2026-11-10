@@ -457,11 +457,12 @@ function ProductBody({
           <div className={cn(group, "split:col-start-1 split:row-start-2")}>
             {has("sync") ? (
               <CloudSyncCard
-                productName={product.name}
+                product={product}
                 summary={sync.data}
                 loading={sync.isPending}
                 error={sync.error}
                 onRetry={() => void sync.refetch()}
+                onLeftLibrary={() => navigate(href.library())}
               />
             ) : null}
             {has("new") ? <WhatsNew product={product} /> : null}

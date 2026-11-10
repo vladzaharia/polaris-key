@@ -294,8 +294,28 @@ export const productApi = {
       `polaris-key-${product}-data.json`,
     ),
 
+  /**
+   * U-12.3: the same export as a zip with every synced record and file in it (`?format=zip`;
+   * end-to-end encrypted files as the stored ciphertext), for the Sync Across Devices card.
+   */
+  exportProductArchive: (product: string) =>
+    download(
+      `/api/products/${enc(product)}/export?format=zip`,
+      `polaris-locker-${product}-data.zip`,
+    ),
+
+  /**
+   * `removed: false` when there was nothing left to remove; `pending: true` when part of it (a
+   * store that failed) finishes in the background: the Worker's pass completes it (U-12.1).
+   */
   removeProductData: (product: string, alsoRemoveLicense: boolean) =>
-    call<{ ok: true; product: string; detachedLicenses: string[] }>(
+    call<{
+      ok: true;
+      product: string;
+      removed?: boolean;
+      pending?: true;
+      detachedLicenses: string[];
+    }>(
       `/api/products/${enc(product)}/data${
         alsoRemoveLicense ? "?alsoRemoveLicense=1" : ""
       }`,

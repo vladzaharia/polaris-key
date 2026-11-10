@@ -478,6 +478,17 @@ export function useExportProductData(product: string) {
 }
 
 /**
+ * PX-18: Download synced data, the product's export as a zip with every synced record and file
+ * (`GET /api/products/<p>/export?format=zip`). Started by a press, like the JSON file; it reads
+ * and changes nothing.
+ */
+export function useExportSyncedData(product: string) {
+  return useMutation({
+    mutationFn: () => portalApi.exportProductArchive(product),
+  });
+}
+
+/**
  * I-11: "Get a support code" (`POST /api/products/<p>/support-code`). The product view carries the
  * code once it exists, so a success reads that view again.
  */

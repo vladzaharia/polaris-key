@@ -20,6 +20,7 @@ import {
   captureDownloads,
   deferred,
   settle,
+  STALE,
   type DownloadCapture,
 } from "./portalDataKit.js";
 
@@ -842,47 +843,6 @@ describe("an open product's page (I-11)", () => {
 });
 
 describe("A stale sign-in and the support code (I-11)", () => {
-  const STALE = {
-    methods: [
-      {
-        id: "lnk_mail1",
-        kind: "email",
-        group: "email",
-        label: "Email",
-        display: ACCOUNT.email,
-        connectedAt: NOW_S - 90 * 86_400,
-        lastUsedAt: NOW_S - 3 * 86_400,
-        canRemove: false,
-        reason: "last_link",
-        flag: null,
-        relay: false,
-        tenantScoped: false,
-      },
-    ],
-    emails: [
-      {
-        methodId: "lnk_mail1",
-        email: ACCOUNT.email,
-        primary: true,
-        connectedAt: NOW_S - 90 * 86_400,
-        lastUsedAt: NOW_S - 3 * 86_400,
-        canRemove: false,
-        reason: "last_link",
-      },
-    ],
-    passkeys: [],
-    providers: [],
-    passkey: { canAdd: false, reason: null },
-    primaryEmail: ACCOUNT.email,
-    hideMyEmail: false,
-    stepUp: {
-      authenticatedAt: NOW_S - 3600,
-      freshUntil: NOW_S - 3300,
-      fresh: false,
-      maxAgeSeconds: 300,
-    },
-  };
-
   it("remove: shows 'Confirm it's you first' in the dialog, then removes once confirmed", async () => {
     let asked = 0;
     const { routes, removals } = worker([mine()], (_url, done) =>
