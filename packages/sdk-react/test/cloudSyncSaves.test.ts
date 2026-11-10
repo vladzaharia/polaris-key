@@ -664,32 +664,28 @@ describe("cloudSync.saves in the browser host", () => {
 
 // ── cloudSync.export (U-51.4) ────────────────────────────────────────────────────────────────
 
-/** The entries of a STORED zip, by its central directory. */
+/** The entries of a STORED zip, from the central directory's records. */
 function readZip(zip: Uint8Array): Map<string, Uint8Array> {
-  const v = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
-  let end = zip.length - 22;
-  while (v.getUint32(end, true) !== 0x06054b50) end--;
-  const count = v.getUint16(end + 10, true);
-  let at = v.getUint32(end + 16, true);
-  const out = new Map<string, Uint8Array>();
-  for (let i = 0; i < count; i++) {
-    const size = v.getUint32(at + 20, true);
-    const nameLen = v.getUint16(at + 28, true);
-    const extra = v.getUint16(at + 30, true);
-    const comment = v.getUint16(at + 32, true);
-    const local = v.getUint32(at + 42, true);
-    const name = new TextDecoder().decode(
-      zip.subarray(at + 46, at + 46 + nameLen),
+  const view = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
+  const u16 = (at: number): number => view.getUint16(at, true);
+  const u32 = (at: number): number => view.getUint32(at, true);
+  let eocd = zip.length - 22;
+  while (u32(eocd) !== 0x06054b50) eocd--;
+  const entries = new Map<string, Uint8Array>();
+  let record = u32(eocd + 16);
+  for (let n = u16(eocd + 10); n > 0; n--) {
+    const nameAt = record + 46;
+    const nameEnd = nameAt + u16(record + 28);
+    const body = u32(record + 42) + 30;
+    const from = body + u16(body - 4) + u16(body - 2);
+    const size = u32(record + 20);
+    entries.set(
+      new TextDecoder().decode(zip.subarray(nameAt, nameEnd)),
+      zip.subarray(from, from + size),
     );
-    const data =
-      local +
-      30 +
-      v.getUint16(local + 26, true) +
-      v.getUint16(local + 28, true);
-    out.set(name, zip.subarray(data, data + size));
-    at += 46 + nameLen + extra + comment;
+    record = nameEnd + u16(record + 30) + u16(record + 32);
   }
-  return out;
+  return entries;
 }
 
 const text = (b: Uint8Array | undefined): string =>
