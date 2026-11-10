@@ -4570,9 +4570,7 @@
         "kotlin": {
           "planned": "U-51"
         },
-        "godot": {
-          "planned": "U-51"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4582,7 +4580,6 @@
       "feature": "sync.export",
       "sdks": {
         "godot": {
-          "planned": "U-51",
           "sdkOnly": true,
           "spelling": "PKeyCloudSync.cancel_export",
           "reason": "GDScript has no cancellation token: the other SDKs cancel with an AbortSignal, a threading.Event or task cancellation"

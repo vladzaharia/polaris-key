@@ -277,6 +277,9 @@ class Sealer:
 class Opener:
 	extends RefCounted
 	var error := ""
+	## True lifts the `LANE_MAX_BYTES` bound on the stream: a caller that feeds it in pieces and writes each
+	## segment out (the export) holds one segment, whatever the file's size.
+	var unbounded := false
 	var _coll_key := PackedByteArray()
 	var _kid := PackedByteArray()
 	var _key := PackedByteArray()
@@ -295,7 +298,7 @@ class Opener:
 		if error != "":
 			return out
 		_total += data.size()
-		if _total > PKeySyncFileStream.sealed_size(PKeySyncFileStream.LANE_MAX_BYTES):
+		if not unbounded and _total > PKeySyncFileStream.sealed_size(PKeySyncFileStream.LANE_MAX_BYTES):
 			error = "unsupported"
 			_buf = PackedByteArray()
 			return out
