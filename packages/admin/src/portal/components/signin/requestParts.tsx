@@ -2,7 +2,9 @@ import * as React from "react";
 import { RadioGroup } from "radix-ui";
 import { RefreshCw } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
+import { Spinner } from "../../../ui/Spinner.js";
 import { AuthNotice, AuthTitle } from "../../../ui/auth/index.js";
+import { HttpError } from "../../api.js";
 import { portalErrorCopy } from "../../errors.js";
 import { cn } from "../../../lib/cn.js";
 import { t } from "../../../lib/copy.js";
@@ -43,6 +45,52 @@ export function RequestGone({
       </Button>
     </>
   );
+}
+
+/** The request is still loading: a centred spinner the card's height holds while it waits. */
+export function RequestLoading(): React.ReactElement {
+  return (
+    <div className="flex min-h-40 items-center justify-center" aria-busy="true">
+      <Spinner />
+    </div>
+  );
+}
+
+/**
+ * A request that did not load: gone (a 404, or no data), or unreachable with a retry (any other
+ * failure). Every card that reads one request by its handle answers the same way.
+ */
+export function RequestMissing({
+  error,
+  onRetry,
+}: {
+  error: unknown;
+  onRetry: () => void;
+}): React.ReactElement {
+  return error instanceof HttpError && error.status !== 404 ? (
+    <Unreachable error={error} onRetry={onRetry} />
+  ) : (
+    <RequestGone />
+  );
+}
+
+/**
+ * What a card that reads one request by its handle draws before the request has data: the loading
+ * body while it is pending, the missing body when it failed, and `null` once there is a view.
+ */
+export function pendingOrMissing(
+  req: { isPending: boolean; error: unknown; refetch: () => unknown },
+  hasView: boolean,
+): { key: "loading" | "gone"; body: React.ReactElement } | null {
+  if (req.isPending) return { key: "loading", body: <RequestLoading /> };
+  if (req.error || !hasView)
+    return {
+      key: "gone",
+      body: (
+        <RequestMissing error={req.error} onRetry={() => void req.refetch()} />
+      ),
+    };
+  return null;
 }
 
 /** The request could not be reached: the error's own copy and a retry. */

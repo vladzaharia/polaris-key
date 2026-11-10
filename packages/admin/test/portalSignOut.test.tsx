@@ -36,15 +36,15 @@ const VIEW: EndSessionView = {
 
 const went: string[] = [];
 beforeEach(() => {
-  went.length = 0;
   window.history.replaceState(null, "", `/signout?request=${HANDLE}`);
   vi.spyOn(navigation, "go").mockImplementation((to) => void went.push(to));
 });
 afterEach(() => {
+  went.length = 0;
+  cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   window.history.replaceState(null, "", "/");
-  cleanup();
 });
 
 function open(view: EndSessionView = VIEW, signedOut = false) {

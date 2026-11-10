@@ -3,10 +3,9 @@
  * 1.0; threat IS-13). `end-session` validates and hands the browser to `/signout`; the person
  * decides there. Time is the injected `now`.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { dispatchWith } from "../../../../src/dispatch.js";
 import type { ClientRecord } from "../../../../src/services/identity/issuer/clientsRepo.js";
-import { signIssuerJwt } from "../../../../src/services/identity/issuer/keys.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
@@ -16,6 +15,7 @@ import type { EndSessionView } from "@polaris-key/protocol/identity";
 import { NOW } from "../../../seed.js";
 import { issuePortalSessionRow } from "../../../portalSessionRow.js";
 import { BASE, SLUG, type World } from "../../connect/connectFixture.js";
+import { holdWallClock, idHint, setCookies } from "./endSessionKit.js";
 import { ingestIdentity } from "./issuerHelpers.js";
 import { issuerWorld, mkClient } from "./issuerWorld.js";
 
@@ -26,9 +26,8 @@ const ENDPOINT = `${ISSUER}/end-session`;
 let w: World, accountId: string, client: ClientRecord;
 
 // The portal API reads the wall clock (`handlePortal`): hold it at the injected time.
+holdWallClock();
 beforeEach(async () => {
-  vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(NOW * 1000);
   ({ w, accountId } = await issuerWorld());
   (w.env as unknown as Record<string, unknown>).PORTAL_SESSION_SECRET =
     "test-portal-secret";
@@ -42,30 +41,8 @@ beforeEach(async () => {
   });
 });
 
-afterEach(() => {
-  vi.useRealTimers();
-});
-
 const hint = (over: Record<string, unknown> = {}, sub = w.subject) =>
-  signIssuerJwt(
-    w.env,
-    w.db,
-    SLUG,
-    "JWT",
-    {
-      iss: ISSUER,
-      sub,
-      aud: client.clientId,
-      exp: NOW - 1000,
-      iat: NOW - 1600,
-      ...over,
-    },
-    NOW,
-  );
-
-/** Every `Set-Cookie` of a response, one per entry. */
-const setCookies = (res: Response): string[] =>
-  (res.headers as Headers & { getSetCookie(): string[] }).getSetCookie();
+  idHint(w, client.clientId, { sub, ...over });
 
 const send = (url: string, init: RequestInit = {}, at = NOW) =>
   dispatchWith(new Request(url, init), w.env, w.db, at);

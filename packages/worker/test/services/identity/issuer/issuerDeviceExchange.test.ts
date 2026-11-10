@@ -24,6 +24,13 @@ import { ingestIdentity } from "./issuerHelpers.js";
 import { issuerWorld, mkClient } from "./issuerWorld.js";
 
 const ISSUER = `${BASE}/${SLUG}/identity`;
+const FIVE_MEMBERS = [
+  "access_token",
+  "expires_in",
+  "issued_token_type",
+  "scope",
+  "token_type",
+];
 let w: World;
 
 beforeEach(async () => {
@@ -49,20 +56,17 @@ const exchange = (
   fields: Record<string, string> = form(),
   headers: Record<string, string> = { "x-pkey-device": A },
   at = NOW,
-) =>
-  dispatchWith(
-    new Request(`${ISSUER}/token`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        ...headers,
-      },
-      body: new URLSearchParams(fields).toString(),
-    }),
+) => {
+  const body = new URLSearchParams(fields).toString();
+  const sent = new Headers(headers);
+  sent.set("content-type", "application/x-www-form-urlencoded");
+  return dispatchWith(
+    new Request(`${ISSUER}/token`, { body, headers: sent, method: "POST" }),
     w.env,
     w.db,
     at,
   );
+};
 
 const refusal = async (res: Response, status: number, error: string) => {
   expect(res.status).toBe(status);
@@ -73,16 +77,12 @@ const refusal = async (res: Response, status: number, error: string) => {
 describe("the exchange", () => {
   it("answers exactly the five members, 600 s, no refresh token and no id_token", async () => {
     const res = await exchange();
-    expect(res.status).toBe(200);
-    expect(res.headers.get("cache-control")).toBe("no-store");
     const body = (await res.json()) as Record<string, unknown>;
-    expect(Object.keys(body).sort()).toEqual([
-      "access_token",
-      "expires_in",
-      "issued_token_type",
-      "scope",
-      "token_type",
+    expect([res.status, res.headers.get("cache-control")]).toEqual([
+      200,
+      "no-store",
     ]);
+    expect(Object.keys(body).sort()).toEqual(FIVE_MEMBERS);
     expect(body).toMatchObject({
       issued_token_type: ACCESS_TOKEN_TYPE,
       token_type: "Bearer",

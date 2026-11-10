@@ -40578,6 +40578,66 @@
     "cookies": [],
     "body": "32:97af5772e08c551c"
   },
+  "cors GET /djdl/identity/end-session": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors GET+origin /djdl/identity/end-session": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors OPTIONS+origin+preflight /djdl/identity/end-session": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors GET+other /djdl/identity/end-session": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors OPTIONS+other+preflight /djdl/identity/end-session": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors OPTIONS /djdl/identity/end-session": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors POST+body+origin /djdl/identity/end-session": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
   "cors GET /djdl/identity/jwks": {
     "status": 404,
     "headers": {

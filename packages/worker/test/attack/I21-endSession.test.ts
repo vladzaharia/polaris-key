@@ -3,10 +3,9 @@
  * sign-out page (threat IS-13; V5 §12.13.9). Each case states what the attacker wants and asserts
  * the one outcome that denies it. Time is the injected `now`.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { dispatchWith } from "../../src/dispatch.js";
 import type { ClientRecord } from "../../src/services/identity/issuer/clientsRepo.js";
-import { signIssuerJwt } from "../../src/services/identity/issuer/keys.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
@@ -14,6 +13,11 @@ import {
 import { NOW } from "../seed.js";
 import { issuePortalSessionRow } from "../portalSessionRow.js";
 import { BASE, SLUG, type World } from "../services/connect/connectFixture.js";
+import {
+  holdWallClock,
+  idHint,
+  setCookies,
+} from "../services/identity/issuer/endSessionKit.js";
 import {
   issuerWorld,
   mkClient,
@@ -28,9 +32,8 @@ let accountId: string;
 let victim: ClientRecord;
 let other: ClientRecord;
 
+holdWallClock();
 beforeEach(async () => {
-  vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(NOW * 1000);
   ({ w, accountId } = await issuerWorld());
   (w.env as unknown as Record<string, unknown>).PORTAL_SESSION_SECRET =
     "attack-secret";
@@ -47,13 +50,6 @@ beforeEach(async () => {
     postLogoutRedirectUris: ["https://other.example.com/bye"],
   });
 });
-afterEach(() => {
-  vi.useRealTimers();
-});
-
-/** Every `Set-Cookie` of a response, one per entry. */
-const setCookies = (res: Response): string[] =>
-  (res.headers as Headers & { getSetCookie(): string[] }).getSetCookie();
 
 const send = (url: string, init: RequestInit = {}) =>
   dispatchWith(new Request(url, init), w.env, w.db, NOW);
@@ -62,22 +58,7 @@ const hint = (
   c: ClientRecord,
   over: Record<string, unknown> = {},
   typ: "JWT" | "at+jwt" = "JWT",
-) =>
-  signIssuerJwt(
-    w.env,
-    w.db,
-    SLUG,
-    typ,
-    {
-      iss: ISSUER,
-      sub: w.subject,
-      aud: c.clientId,
-      exp: NOW - 100,
-      iat: NOW - 700,
-      ...over,
-    },
-    NOW,
-  );
+) => idHint(w, c.clientId, over, typ);
 
 const end = (p: Record<string, string>, init: RequestInit = {}) =>
   send(`${ENDPOINT}?${new URLSearchParams(p)}`, init);

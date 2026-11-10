@@ -87,14 +87,13 @@ export async function handleDeviceExchange(cx: {
   const deviceId = req.headers.get(HEADER_DEVICE);
   if (!deviceId || !isValidClientDeviceId(deviceId))
     return oauth(400, ErrorCode.InvalidRequest, "X-PKey-Device is required.");
-  if (
-    !(await rateLimitOk(
-      env,
-      product.slug,
-      { ...TOKEN_DEVICE_RATE, id: deviceId },
-      now,
-    ))
-  )
+  const withinBudget = await rateLimitOk(
+    env,
+    product.slug,
+    { ...TOKEN_DEVICE_RATE, id: deviceId },
+    now,
+  );
+  if (!withinBudget)
     return oauth(429, "rate_limited", undefined, {
       retryAfter: TOKEN_DEVICE_RATE.windowSec,
     });

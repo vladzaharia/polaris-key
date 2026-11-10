@@ -15,67 +15,43 @@
 // the token as an opaque string.
 
 import { expect } from "vitest";
+import type { JsonValue } from "../format.js";
+import { ingestIdentity } from "../../services/identity/issuer/issuerHelpers.js";
+import { rateLimitOk } from "../../../src/core/rateLimit.js";
+import { TOKEN_DEVICE_RATE } from "../../../src/services/identity/passthrough/token.js";
 import {
   ACCESS_TOKEN_TYPE,
   DEVICE_SUBJECT_TOKEN_TYPE,
   TOKEN_EXCHANGE_GRANT_TYPE,
 } from "@polaris-key/protocol/identity";
-import type { JsonValue } from "../format.js";
-import {
-  pinned,
-  PRODUCT,
-  productWorld,
-  registered,
-  servicesOn,
-} from "../world.js";
-import { DEVICE, discovery, T0, VERSION } from "../client.js";
 import {
   TranscriptRecorder,
   type StepRecorder,
   type World,
 } from "../recorder.js";
+import { pinned, PRODUCT, productWorld, servicesOn } from "../world.js";
 import type { Scenario } from "../world.js";
 import { installIssuerKey } from "../issuerKey.js";
+import { DEVICE, discovery, T0, VERSION } from "../client.js";
 import { seedAccount } from "./account.js";
 import { codeOf, jsonOf, services } from "./exchange.js";
-import { setServices } from "../../../src/core/products/store.js";
-import { serializeServices } from "../../../src/core/services.js";
-import { setDeviceSubject } from "../../../src/core/accounts/accountSubjects.js";
-import { rateLimitOk } from "../../../src/core/rateLimit.js";
-import { TOKEN_DEVICE_RATE } from "../../../src/services/identity/passthrough/token.js";
-import { ingestIdentity } from "../../services/identity/issuer/issuerHelpers.js";
+import { signedInDevice } from "./restore.js";
 
 type Json = Record<string, JsonValue>;
 
 const FEATURES = ["identity.accessToken"];
 const TOKEN = `/${PRODUCT}/identity/token`;
 
-/** Setup: a world with Identity on and the issuer served under the fixed test key. */
+/** Setup: a world with Identity on, the issuer served under the fixed test key, and Ada's device signed in. */
 async function accessTokenWorld(): Promise<{ w: World; token: string }> {
   const w = await productWorld(servicesOn("config", "identity"));
   w.env.PORTAL_SESSION_SECRET = "transcript-portal-session-secret";
   await ingestIdentity(w.db, PRODUCT, { issuer: { enabled: true } }, T0);
   await installIssuerKey(w.env, w.db, PRODUCT, T0);
-  const ada = await seedAccount(w, "ada@example.com");
-  // The client's device registers (the open policy of a product with Config alone), then Identity goes on.
-  await setServices(
-    w.db,
-    PRODUCT,
-    serializeServices({ services: servicesOn("config") }),
-    "manifest",
-    T0,
+  const token = await signedInDevice(
+    w,
+    await seedAccount(w, "ada@example.com"),
   );
-  const token = await registered(w);
-  await setServices(
-    w.db,
-    PRODUCT,
-    serializeServices({ services: servicesOn("config", "identity") }),
-    "manifest",
-    T0,
-  );
-  expect(
-    await setDeviceSubject(w.env, w.db, PRODUCT, DEVICE, ada.subject),
-  ).toBe(true);
   return { w, token };
 }
 
@@ -125,12 +101,12 @@ const discoverStep = (
       ...(note ? { note } : {}),
     },
     async (s) => {
-      const res = await discovery(s, PRODUCT);
-      expect(res.status).toBe(200);
-      const doc = (await res.json()) as {
-        services: { identity: { accessToken?: unknown } };
-      };
-      expect(doc.services.identity.accessToken).toBe(offered ? true : undefined);
+      const answer = await discovery(s, PRODUCT);
+      expect(answer.status).toBe(200);
+      const fragment = (
+        (await jsonOf(answer)).services as Record<string, unknown>
+      ).identity as Record<string, unknown>;
+      expect(fragment.accessToken).toBe(offered ? true : undefined);
     },
     {
       result: "ok",
@@ -183,7 +159,12 @@ export const identityAccessToken: Scenario = {
           expect(json.expires_in).toBe(600);
           expect(json.scope).toBe("");
         },
-        { result: "ok", accessTokenHeld: true, tokenType: "Bearer", expiresIn: 600 },
+        {
+          result: "ok",
+          accessTokenHeld: true,
+          tokenType: "Bearer",
+          expiresIn: 600,
+        },
       );
       // The budget: ten calls in this minute fill the device's ten a minute.
       for (let i = 0; i < TOKEN_DEVICE_RATE.limit; i += 1)
@@ -207,7 +188,9 @@ export const identityAccessToken: Scenario = {
           expect(res.status).toBe(429);
           expect(codeOf(json)).toBe("rate_limited");
         },
-        refused("rate_limited", 429, { retryAfter: TOKEN_DEVICE_RATE.windowSec }),
+        refused("rate_limited", 429, {
+          retryAfter: TOKEN_DEVICE_RATE.windowSec,
+        }),
       );
       await r.step(
         {

@@ -51,6 +51,7 @@ import {
   PersonRow,
   PRIMARY_CLASS,
   RequestGone,
+  pendingOrMissing,
   Unreachable,
 } from "./requestParts.js";
 import { qk } from "../../queries.js";
@@ -310,24 +311,9 @@ export function RequestFlow({
 
   let body: React.ReactNode;
   let key: string;
-  if (req.isPending) {
-    key = "loading";
-    body = (
-      <div
-        className="flex min-h-40 items-center justify-center"
-        aria-busy="true"
-      >
-        <Spinner />
-      </div>
-    );
-  } else if (req.error || !view) {
-    key = "gone";
-    body =
-      req.error instanceof HttpError && req.error.status !== 404 ? (
-        <Unreachable error={req.error} onRetry={() => void req.refetch()} />
-      ) : (
-        <RequestGone />
-      );
+  const early = pendingOrMissing(req, view !== undefined);
+  if (early) {
+    ({ key, body } = early);
   } else if (
     (cardChooses && licenses.isPending) ||
     (current?.kind === "consent" && consent.isPending)

@@ -1,7 +1,6 @@
 import * as React from "react";
 import type { EndSessionView } from "@polaris-key/protocol/identity";
 import { Button } from "../../../ui/Button.js";
-import { Spinner } from "../../../ui/Spinner.js";
 import {
   AUTH_METHOD_CLASS,
   AuthCard,
@@ -19,11 +18,7 @@ import { useDocumentTitle } from "../../router.js";
 import { AuthLockup } from "../Lockup.js";
 import { ProductIcon } from "../ProductIcon.js";
 import { LegalNav } from "../signin/LegalNav.js";
-import {
-  PRIMARY_CLASS,
-  RequestGone,
-  Unreachable,
-} from "../signin/requestParts.js";
+import { PRIMARY_CLASS, pendingOrMissing } from "../signin/requestParts.js";
 
 /**
  * Polaris Locker's sign-out page (I-21.12; V5 §12.13.9; UX item `hosted:signout`): a relying party
@@ -106,24 +101,9 @@ export function SignOutFlow({
 
   let key: string;
   let body: React.ReactNode;
-  if (req.isPending) {
-    key = "loading";
-    body = (
-      <div
-        className="flex min-h-40 items-center justify-center"
-        aria-busy="true"
-      >
-        <Spinner />
-      </div>
-    );
-  } else if (req.error || !view) {
-    key = "gone";
-    body =
-      req.error instanceof HttpError && req.error.status !== 404 ? (
-        <Unreachable error={req.error} onRetry={() => void req.refetch()} />
-      ) : (
-        <RequestGone />
-      );
+  const early = pendingOrMissing(req, view !== undefined);
+  if (early) {
+    ({ key, body } = early);
   } else if (phase === "done" || phase === "stayed") {
     key = phase;
     body = (

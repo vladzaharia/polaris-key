@@ -66,10 +66,10 @@ import {
   END_SESSION_HANDLE_PATTERN,
   REQUEST_HANDLE_PATTERN,
 } from "@polaris-key/protocol/identity";
-import { handleSignOutBind } from "./core/signOutEntry.js";
 import {
   handleSignInBind,
   handleSignInEntry,
+  handleSignOutBind,
   isBindHop,
 } from "./core/signInEntry.js";
 import { handleDeviceEntry } from "./core/deviceEntry.js";
@@ -306,6 +306,19 @@ async function routeRequest(
   if ("product" in route && PRODUCT_ROUTES.has(route.kind))
     return runProduct(req, route);
 
+  // The portal's card shell for a page that reads nothing from the store (`/signin/return`,
+  // `/signout`): never cached, and no referrer to leak a handle.
+  const cardShell = async (): Promise<Response> => {
+    const shell = await handlePortal(req, env, db, "/", {
+      hooksFor,
+      settings: SETTINGS,
+    });
+    const headers = new Headers(shell.headers);
+    headers.set("cache-control", "no-store");
+    headers.set("referrer-policy", "no-referrer");
+    return new Response(shell.body, { status: shell.status, headers });
+  };
+
   // Admin + platform routes. The credentialed ones never answer CORS: they share this origin
   // with the admin cookie (THREAT-MODEL R1-09). The Elements CDN route below is the exception:
   // public bytes, `*` and no cookie.
@@ -363,14 +376,7 @@ async function routeRequest(
         (cancelled !== null && cancelled !== "1")
       )
         return notFound();
-      const shell = await handlePortal(req, env, db, "/", {
-        hooksFor,
-        settings: SETTINGS,
-      });
-      const headers = new Headers(shell.headers);
-      headers.set("cache-control", "no-store");
-      headers.set("referrer-policy", "no-referrer");
-      return new Response(shell.body, { status: shell.status, headers });
+      return cardShell();
     }
     // I-21.12 (§12.13.9): the page `end-session` hands the browser. The bind hop on the customer
     // host, then the portal shell for the browser that holds the binder; the SPA reads the handle
@@ -386,14 +392,7 @@ async function routeRequest(
         !/(?:^|;\s*)__Host-pk_req=/.test(req.headers.get("cookie") ?? "")
       )
         return notFound();
-      const shell = await handlePortal(req, env, db, "/", {
-        hooksFor,
-        settings: SETTINGS,
-      });
-      const headers = new Headers(shell.headers);
-      headers.set("cache-control", "no-store");
-      headers.set("referrer-policy", "no-referrer");
-      return new Response(shell.body, { status: shell.status, headers });
+      return cardShell();
     }
     case "lockerLink":
       return lockerLink(req, env, route.to, url);
