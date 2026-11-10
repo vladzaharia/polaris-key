@@ -701,24 +701,17 @@ describe("ci.yml keeps the Swift SDK building on its oldest toolchain", () => {
     expect(apple["runs-on"]).toBe("macos-26");
   });
 
-  it("builds the package for macOS and, for iOS, packs, update, the platform and its C surface", () => {
+  it("builds the package for macOS and, for iOS, every library, then the platform and its C surface strictly", () => {
     expect(runs).toContain("swift build --package-path sdks/swift");
     expect(runs.join("\n")).not.toMatch(/swift test/);
     const ios = runs
       .find((r) => r.includes("generic/platform=iOS"))!
       .replace(/\\\n\s*/g, " ");
-    // Which schemes each `for` loop builds, with and without warnings as errors.
-    const plain: string[] = [];
-    const strict: string[] = [];
-    for (const [, schemes, body] of ios.matchAll(
-      /for scheme in ([^;]+); do([\s\S]*?)done/g,
-    ))
-      (body!.includes("SWIFT_TREAT_WARNINGS_AS_ERRORS=YES")
-        ? strict
-        : plain
-      ).push(...schemes!.trim().split(/\s+/));
-    expect(plain.sort()).toEqual(["PolarisKeyPacks", "PolarisKeyUpdate"]);
-    expect(strict.sort()).toEqual([
+    // One plain invocation of the package scheme, then the strict loop.
+    expect(ios).toMatch(/xcodebuild -scheme PolarisKey-Package /);
+    const loop = /for scheme in ([^;]+); do([\s\S]*?)done/.exec(ios)!;
+    expect(loop[2]).toContain("SWIFT_TREAT_WARNINGS_AS_ERRORS=YES");
+    expect(loop[1]!.trim().split(/\s+/).sort()).toEqual([
       "PolarisKeyPlatform",
       "PolarisKeyPlatformC",
     ]);

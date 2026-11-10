@@ -823,13 +823,15 @@ jobs:
         run: sdks/swift/tools/select-xcode-16.sh
       - name: swift build (macOS host)
         run: swift build --package-path sdks/swift
-      - name: iOS build (packs, update, platform)
+      # One invocation builds every library (the package scheme); the platform and its C surface
+      # then rebuild with warnings as errors (the libzstd importer warnings fail PolarisKeyPacks
+      # under SWIFT_TREAT_WARNINGS_AS_ERRORS, so the package scheme runs without it).
+      - name: iOS build (every library, platform strict)
+        if: needs.changes.outputs.swift-floor == 'true'
         working-directory: sdks/swift
         run: |
-          for scheme in PolarisKeyPacks PolarisKeyUpdate; do
-            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
-              CODE_SIGNING_ALLOWED=NO -quiet build
-          done
+          xcodebuild -scheme PolarisKey-Package -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO -quiet build
           for scheme in PolarisKeyPlatform PolarisKeyPlatformC; do
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
@@ -941,16 +943,15 @@ jobs:
         run: sdks/swift/tools/check-registry-archive.sh
       - name: Swift resolve boundary
         run: sdks/swift/tools/check-resolve-clones.sh
+      # One invocation of the package scheme builds every library per destination (it lists the
+      # same targets as the schemes it replaces, plus UICore and the Game Center pair). The P5-05
+      # targets then rebuild with warnings as errors (the libzstd importer warnings make
+      # PolarisKeyPacks fail under SWIFT_TREAT_WARNINGS_AS_ERRORS, so the package scheme is plain).
       - name: iOS build of every library
         working-directory: sdks/swift
-        # Every library builds for iOS; the P5-05 targets with warnings as errors (the libzstd
-        # importer warnings make PolarisKeyPacks fail under SWIFT_TREAT_WARNINGS_AS_ERRORS).
         run: |
-          for scheme in PolarisKeyCore PolarisKeyLicense PolarisKeyConfig PolarisKeyRelease PolarisKeyIdentity \
-            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKeyUpdateUI PolarisKey; do
-            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
-              CODE_SIGNING_ALLOWED=NO -quiet build
-          done
+          xcodebuild -scheme PolarisKey-Package -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO -quiet build
           for scheme in PolarisKeyPlatform PolarisKeyPlatformC; do
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
@@ -960,20 +961,18 @@ jobs:
         # SP-S16: Catalyst takes the iOS branches (identifierForVendor, no Sparkle: the Sparkle
         # product is conditioned on .macOS and every Sparkle file is #if os(macOS)).
         run: |
-          for scheme in PolarisKeyCore PolarisKeyLicense PolarisKeyConfig PolarisKeyRelease PolarisKeyIdentity \
-            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKeyUpdateUI PolarisKey PolarisKeyPlatform; do
-            xcodebuild -scheme "$scheme" -destination 'generic/platform=macOS,variant=Mac Catalyst' \
-              CODE_SIGNING_ALLOWED=NO -quiet build
-          done
+          xcodebuild -scheme PolarisKey-Package -destination 'generic/platform=macOS,variant=Mac Catalyst' \
+            CODE_SIGNING_ALLOWED=NO -quiet build
       - name: macOS build of the update and UI libraries
         working-directory: sdks/swift
         # UK-08.6: PolarisKeyUpdateUI is macOS only (the SwiftUI Sparkle user driver); it and the
-        # libraries it sits on build for the Mac with warnings as errors.
+        # libraries it sits on (Update, UI) build for the Mac with warnings as errors, and the package
+        # scheme builds the rest.
         run: |
-          for scheme in PolarisKeyUpdate PolarisKeyUI PolarisKeyUpdateUI; do
-            xcodebuild -scheme "$scheme" -destination 'generic/platform=macOS' \
-              CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
-          done
+          xcodebuild -scheme PolarisKey-Package -destination 'generic/platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO -quiet build
+          xcodebuild -scheme PolarisKeyUpdateUI -destination 'generic/platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
 
   # The hosted XCTest project on an iOS simulator. On this 3-vCPU runner a new simulator stays busy
   # for minutes and StoreKit Testing stalled inside that window, so the simulator boots first and
