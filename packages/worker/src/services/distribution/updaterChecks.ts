@@ -59,7 +59,13 @@ export async function updateChecks(
   const sums = new Map<string, OutletChecks>(
     outlets.map((o) => [
       o.outletId,
-      { outlet: o.outletId, kind: o.kind, checks: 0, failures: 0, worstVersion: null },
+      {
+        outlet: o.outletId,
+        kind: o.kind,
+        checks: 0,
+        failures: 0,
+        worstVersion: null,
+      },
     ]),
   );
   if (!env.UPDATE_HEALTH)
