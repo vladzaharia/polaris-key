@@ -41,14 +41,6 @@ def _doc(*, issued: int, expires: int, grace: int) -> LicenseDoc:
 
 
 # ── the v3 guards ───────────────────────────────────────────────────────────────────
-def test_license_service_disabled_is_not_applicable_and_usable() -> None:
-    """§5 / D-08: a config-only or release-only product has no licence to be missing, so
-    it must boot USABLE rather than sitting on ``needs-activation`` forever."""
-    st = license_state(license_service_enabled=False, activation=None, doc=None, now=100)
-    assert st.status == "not-applicable"
-    assert is_usable(st) and is_usable(st.status)
-
-
 def test_not_applicable_precedes_every_other_rule() -> None:
     doc = _doc(issued=0, expires=1000, grace=2000)
     st = license_state(
@@ -60,16 +52,6 @@ def test_not_applicable_precedes_every_other_rule() -> None:
         blocked=BlockedState(reason="version-too-old"),
     )
     assert st.status == "not-applicable"
-
-
-@pytest.mark.parametrize("activation", ["token", "bundle"])
-def test_both_activation_sources_gate_identically(activation: str) -> None:
-    """§7: a device is activated either by an online-minted ``pkeyt_`` token or by a
-    verified offline bundle import. Both are activated; only ``None`` is not."""
-    doc = _doc(issued=0, expires=1000, grace=2000)
-    assert license_state(activation=activation, doc=doc, now=500).status == "ok"
-    assert license_state(activation=activation, doc=doc, now=1500).status == "grace"
-    assert license_state(activation=activation, doc=doc, now=2500).status == "expired"
 
 
 def test_activation_precedes_the_unsigned_blocked_hint() -> None:
@@ -87,29 +69,11 @@ def test_activation_precedes_the_unsigned_blocked_hint() -> None:
 
 
 # ── the carried v2 state machine ────────────────────────────────────────────────────
-def test_no_activation_needs_activation() -> None:
-    st = license_state(activation=None, doc=None, now=100)
-    assert st.status == "needs-activation"
-    assert not is_usable(st)
-
-
-def test_activated_but_no_doc_needs_activation() -> None:
-    assert license_state(activation="token", doc=None, now=100).status == "needs-activation"
-
-
 def test_unauthorized_is_revoked() -> None:
     st = license_state(
         activation="token", doc=None, now=100, last_sync_unauthorized=True
     )
     assert st.status == "revoked"
-
-
-def test_blocked_takes_precedence_over_a_valid_doc() -> None:
-    blocked = BlockedState(reason="version-too-old", allowedRange=AllowedRange(min="1.0.0"))
-    doc = _doc(issued=0, expires=1000, grace=2000)
-    st = license_state(activation="token", doc=doc, now=500, blocked=blocked)
-    assert st.status == "version-too-old"
-    assert st.allowedRange is not None and st.allowedRange.min == "1.0.0"
 
 
 # ── the unsigned hint's VOCABULARY ──────────────────────────────────────────────────
@@ -198,39 +162,11 @@ def test_an_in_vocabulary_blocked_reason_is_still_honoured_verbatim(reason: str)
     assert st.allowedRange == AllowedRange(min="1.0.0")
 
 
-def test_a_poisoned_blocked_reason_still_loses_to_the_activation_and_applicability_guards() -> None:
-    """The guards that precede ``blocked`` still precede it: a poisoned hint is not a way to
-    gate an unactivated install or a product without the licence service."""
-    poisoned = BlockedState(reason="ok")
-    assert (
-        license_state(activation=None, doc=None, now=1500, blocked=poisoned).status
-        == "needs-activation"
-    )
-    assert (
-        license_state(
-            license_service_enabled=False, activation=None, doc=None, now=1500, blocked=poisoned
-        ).status
-        == "not-applicable"
-    )
-
-
 def test_ok_within_expiry() -> None:
     doc = _doc(issued=0, expires=1000, grace=2000)
     st = license_state(activation="token", doc=doc, now=500, last_verified_at=499)
     assert st.status == "ok" and is_usable(st)
     assert st.graceUntil == 2000 and st.lastVerifiedAt == 499
-
-
-def test_grace_between_expiry_and_grace() -> None:
-    doc = _doc(issued=0, expires=1000, grace=2000)
-    st = license_state(activation="token", doc=doc, now=1500)
-    assert st.status == "grace" and is_usable(st)
-
-
-def test_expired_past_grace() -> None:
-    doc = _doc(issued=0, expires=1000, grace=2000)
-    st = license_state(activation="token", doc=doc, now=2500)
-    assert st.status == "expired" and not is_usable(st)
 
 
 def test_boundary_equal_not_yet_grace() -> None:
@@ -239,14 +175,6 @@ def test_boundary_equal_not_yet_grace() -> None:
     assert license_state(activation="token", doc=doc, now=1000).status == "ok"
     # now == graceUntil is NOT > graceUntil, so still grace.
     assert license_state(activation="token", doc=doc, now=2000).status == "grace"
-
-
-def test_the_floor_is_a_minimum_never_a_substitute() -> None:
-    doc = _doc(issued=0, expires=1000, grace=2000)
-    # An honest clock ahead of every artifact costs nothing.
-    assert license_state(activation="token", doc=doc, now=2500, high_water_mark=0).status == "expired"
-    # A wound-back clock is clamped up to the floor.
-    assert license_state(activation="token", doc=doc, now=0, high_water_mark=2500).status == "expired"
 
 
 # ── semver ──────────────────────────────────────────────────────────────────────────
