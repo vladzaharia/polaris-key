@@ -307,7 +307,7 @@
     },
     "packages/shared-manifest/src/integration/index.ts": {
       "knip:exports": 19,
-      "knip:types": 25
+      "knip:types": 24
     },
     "packages/shared-manifest/src/integration/pins.ts": {
       "knip:exports": 2
@@ -390,9 +390,6 @@
       "knip:exports": 1
     },
     "packages/worker/src/core/products/store.ts": {
-      "knip:exports": 1
-    },
-    "packages/worker/src/core/rbac/matrix.ts": {
       "knip:exports": 1
     },
     "packages/worker/src/core/registry/registryVocabulary.ts": {
@@ -613,181 +610,8 @@
       "knip:exports": 3,
       "knip:types": 1
     },
-    "tools/corpus/backend.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/bundle.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/cases.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/claims.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/clock.ts": {
-      "knip:files": 1
-    },
     "tools/corpus/common.ts": {
-      "knip:duplicates": 1,
-      "knip:exports": 22,
-      "knip:types": 1
-    },
-    "tools/corpus/config.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/content-fixture.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/content.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/delegation.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/deviceProof.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/ed25519.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/feed-url.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/feed.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/fingerprint.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/gate.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/headers.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/jws.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/license-user.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/nonwire.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/outlet.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/pack-records.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/packs.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/record.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/backend.ts": {
-      "knip:exports": 1
-    },
-    "tools/corpus/reference/claims.ts": {
-      "knip:exports": 2
-    },
-    "tools/corpus/reference/config.ts": {
-      "knip:exports": 1
-    },
-    "tools/corpus/reference/content.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/delegation.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/ed25519.ts": {
-      "knip:exports": 3
-    },
-    "tools/corpus/reference/feed-url.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/feed.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/fingerprint.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/headers.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/outlet.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/pack-claims.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/packs.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/patterns.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/record.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/revocation.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/syncVectors.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/tokens.ts": {
-      "knip:exports": 2
-    },
-    "tools/corpus/reference/trust.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/update.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/versions.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/release-records.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/revocation.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/self-check.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/stage.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/syncVectors.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/trust.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/update.ts": {
-      "knip:files": 1
-    },
-    "tools/gen-content-corpus.ts": {
-      "knip:exports": 4
-    },
-    "tools/gen-integration.ts": {
-      "knip:files": 1
-    },
-    "tools/gen-mirrors.ts": {
-      "knip:types": 1
-    },
-    "tools/gen-roles-matrix.ts": {
-      "knip:files": 1
-    },
-    "tools/gen-route-ledger.ts": {
-      "knip:files": 1
-    },
-    "tools/gen-transcripts.mjs": {
-      "knip:files": 1
+      "knip:duplicates": 1
     },
     "tools/lint/adapters/jsonl-test.mjs": {
       "knip:files": 1
@@ -802,15 +626,6 @@
       "knip:files": 1
     },
     "tools/mockups/shoot.mjs": {
-      "knip:files": 1
-    },
-    "tools/package.json": {
-      "knip:devDependencies": 1
-    },
-    "tools/sign-corpus.ts": {
-      "knip:files": 1
-    },
-    "tools/sync-scenarios.ts": {
       "knip:files": 1
     }
   }
