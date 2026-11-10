@@ -44,6 +44,7 @@ import {
   userSettingIssues,
   type ConfigEntry,
 } from "@polaris-key/catalog";
+import { safeSignInUrl } from "../../../packages/ui-core/src/browser/sdk/core/signInUrl.js";
 import {
   CloudSyncMachine,
   SYNC_DEBOUNCE_MS,
@@ -106,6 +107,12 @@ interface SyncScenarios {
   rules: { id: string }[];
   scenarios: Scenario[];
   settingCases: SettingCase[];
+  signInUrlCases: {
+    name: string;
+    origin: string;
+    url: string | null;
+    expect: string | null;
+  }[];
   /** Appended with the records binding of cloudSync.saves (plans/U-22.5.md). */
   fileRecordCases: {
     calls: string[];
@@ -340,5 +347,11 @@ describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client 
           routes.some((r) => r.key === key),
           `${c.name}: ${key} is open`,
         ).toBe(false);
+    });
+
+  // The one sign-in URL rule (U-52): the host's answer for each case, exactly.
+  for (const c of corpus.signInUrlCases)
+    it(`signInUrlCases: ${c.name}`, () => {
+      expect(safeSignInUrl(c.url, c.origin)).toBe(c.expect);
     });
 });

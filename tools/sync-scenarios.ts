@@ -58,7 +58,11 @@
 // Four scenarios are new (`account-required-discards-partition`, `e2e-account-required-drops-root`,
 // `e2e-locked-account-required-from-keyring`, `account-required-drops-merge-request`) and two
 // change (`account-required-on-push`, `relink-clears-binding`): the journal no longer holds the
-// subject's partition after the 403. Every other v5 row is unchanged.
+// subject's partition after the 403. A fifth scenario, `account-required-same-subject-signs-in-again`,
+// pins the way back: a relaunch stays blocked and a sign-in as the same subject is accepted (a host
+// skips the subject it replays at launch, and lifts its own refusal on a sign-in the person completes
+// in the run). `signInUrlCases` is a new section: the one sign-in URL rule every host applies, with
+// each case's expected accept (and normalised URL) or refusal. Every other v5 row is unchanged.
 //
 // Append-only: a scenario's expectations never change under the same `syncScenariosVersion`;
 // a vocabulary or expectation change bumps it.
@@ -4580,7 +4584,163 @@ function scenarios(): Scenario[] {
     ],
   });
 
+  addV6({
+    name: "account-required-same-subject-signs-in-again",
+    description:
+      "After a 403 account_required the same subject comes back: a relaunch still sends nothing and stays blocked (the host skips the cached subject it replays at launch), and a sign-in the person completes in this run as that same subject is accepted: the pull starts at cursor 0 under a new clientId and the device is idle again.",
+    rules: ["account-required", "account-required-forgets", "relaunch"],
+    init: init(),
+    steps: [
+      ...pushRefusedAccountRequired(),
+      assert({
+        events: SIGNED_OUT_OFFER(1, [changed([VOL], "remote")]),
+        journal: {},
+        status: BLOCKED,
+      }),
+      { relaunch: {} },
+      assert({ requests: [], journal: {}, status: BLOCKED }),
+      local("flush"),
+      advance(10_000),
+      assert({ requests: [], status: BLOCKED }),
+      signIn(ALICE),
+      assert({ requests: [pullReq(0, C2)], status: st("syncing", 0) }),
+      respond(pullBody({ subject: ALICE, serverNow: T0 + 12_000, cursor: 0 })),
+      assert({ status: st("idle", 0) }),
+    ],
+  });
+
   return s;
+}
+
+// ── signInUrlCases: the one sign-in URL rule every host applies (U-52) ─────────────────────────
+//
+// `safeSignInUrl(url, origin)`: the URL the Worker offered, or null. The rule, written so that no
+// URL library is needed (the output is by construction the same in every language):
+//   - `origin` is `https://host` or `https://host:port`; anything else answers null;
+//   - null, empty, any character outside 0x21..0x7E (control, space, DEL, C1, non-ASCII) or a
+//     backslash answers null;
+//   - `https://` (any case) or `//` start an authority, read up to the first `/`, `?` or `#`; the
+//     authority, lower-cased, must be exactly the origin's host, with the port written only when it
+//     is not 443 (`host:443` is the same as `host` for a 443 origin); userinfo, a trailing dot, an
+//     empty port, a punycode or Unicode lookalike and any other port all fail that comparison;
+//   - any other `scheme:` prefix (`http:`, `javascript:`, `data:`, `https:` without the slashes)
+//     answers null;
+//   - everything else is a path on the origin, rooted with `/` when it is not already;
+//   - the answer is `https://host[:port]` plus the path, query and fragment as written; an empty
+//     path becomes `/`. Dot segments and escapes are not rewritten; there is no path restriction.
+interface SignInUrlCase {
+  name: string;
+  origin: string;
+  url: string | null;
+  /** The normalised answer, or null for a refusal. */
+  expect: string | null;
+}
+
+function signInUrlCases(): SignInUrlCase[] {
+  const O = "https://key.plrs.im";
+  const P = "https://key.plrs.im:8443";
+  const row = (
+    name: string,
+    url: string | null,
+    expect: string | null,
+    origin = O,
+  ): SignInUrlCase => ({ name, origin, url, expect });
+  return [
+    row("path", "/signin", "https://key.plrs.im/signin"),
+    row(
+      "path-query-fragment",
+      "/signin?product=demo&x=1#top",
+      "https://key.plrs.im/signin?product=demo&x=1#top",
+    ),
+    row("path-not-rooted", "signin", "https://key.plrs.im/signin"),
+    row("query-only", "?product=demo", "https://key.plrs.im/?product=demo"),
+    row(
+      "absolute-same-origin",
+      "https://key.plrs.im/signin?product=demo",
+      "https://key.plrs.im/signin?product=demo",
+    ),
+    row("absolute-no-path", "https://key.plrs.im", "https://key.plrs.im/"),
+    row(
+      "absolute-query-no-path",
+      "https://key.plrs.im?a=1",
+      "https://key.plrs.im/?a=1",
+    ),
+    row(
+      "absolute-upper-case",
+      "HTTPS://KEY.PLRS.IM/Signin",
+      "https://key.plrs.im/Signin",
+    ),
+    row(
+      "absolute-default-port",
+      "https://key.plrs.im:443/x",
+      "https://key.plrs.im/x",
+    ),
+    row(
+      "scheme-relative-same-host",
+      "//key.plrs.im/x",
+      "https://key.plrs.im/x",
+    ),
+    row(
+      "any-path-deep",
+      "/a/b/../c/%2e/d",
+      "https://key.plrs.im/a/b/../c/%2e/d",
+    ),
+    row("origin-port-path", "/x", "https://key.plrs.im:8443/x", P),
+    row(
+      "origin-port-absolute",
+      "https://key.plrs.im:8443/x",
+      "https://key.plrs.im:8443/x",
+      P,
+    ),
+    row("origin-port-default-refused", "https://key.plrs.im/x", null, P),
+    row("origin-port-other-refused", "https://key.plrs.im:9443/x", null, P),
+    row(
+      "origin-443-written",
+      "/x",
+      "https://key.plrs.im/x",
+      "https://key.plrs.im:443",
+    ),
+    row("null", null, null),
+    row("empty", "", null),
+    row("http", "http://key.plrs.im/x", null),
+    row("other-host", "https://evil.example/x", null),
+    row("suffix-host", "https://key.plrs.im.evil.example/x", null),
+    row("prefix-host", "https://evilkey.plrs.im/x", null),
+    row("subdomain", "https://a.key.plrs.im/x", null),
+    row("other-port", "https://key.plrs.im:444/x", null),
+    row("empty-port", "https://key.plrs.im:/x", null),
+    row("zero-padded-port", "https://key.plrs.im:0443/x", null),
+    row("userinfo", "https://user@key.plrs.im/x", null),
+    row("userinfo-password", "https://user:pw@key.plrs.im/x", null),
+    row("userinfo-host-trick", "https://key.plrs.im@evil.example/x", null),
+    row("userinfo-host-first", "https://evil.example@key.plrs.im/x", null),
+    row("userinfo-port-trick", "https://key.plrs.im:443@evil.example/x", null),
+    row("backslash-after-host", "https://key.plrs.im\\@evil.example/", null),
+    row("backslash-path", "/\\evil.example", null),
+    row("backslash-leading", "\\\\evil.example\\x", null),
+    row("trailing-dot", "https://key.plrs.im./x", null),
+    row("punycode-lookalike", "https://xn--key-plrs.im/x", null),
+    row("unicode-lookalike", "https://k\u0435y.plrs.im/x", null),
+    row("percent-encoded-dot", "https://key%2eplrs.im/x", null),
+    row("scheme-relative-other-host", "//evil.example/x", null),
+    row("scheme-relative-empty-authority", "///key.plrs.im/x", null),
+    row("scheme-no-slashes", "https:key.plrs.im/x", null),
+    row("javascript", "javascript:alert(1)", null),
+    row("data", "data:text/html,x", null),
+    row("mailto", "mailto:a@key.plrs.im", null),
+    row("leading-space", " /x", null),
+    row("trailing-space", "/x ", null),
+    row("inner-space", "/x y", null),
+    row("tab", "/x\ty", null),
+    row("newline", "/x\ny", null),
+    row("carriage-return", "https://key.plrs.im/x\r\nHost: evil", null),
+    row("nul", "/x\u0000", null),
+    row("delete", "/x\u007f", null),
+    row("c1-control", "/x\u0085", null),
+    row("non-ascii-path", "/caf\u00e9", null),
+    row("origin-not-https", "/x", null, "http://key.plrs.im"),
+    row("origin-with-path", "/x", null, "https://key.plrs.im/app"),
+  ];
 }
 
 // ── settingCases: catalog entries in, `syncedSettings` routes out (plans/U-01b.md §3.1) ──────
@@ -4871,6 +5031,12 @@ function selfCheck(file: Obj): void {
   }
   for (const r of ruleIds)
     if (!covered.has(r)) fail(`rule ${r} has no scenario`);
+  const urlCases = new Set<string>();
+  for (const c of file.signInUrlCases as unknown as SignInUrlCase[]) {
+    if (!NAME_RE.test(c.name)) fail(`signInUrlCases ${c.name}: not kebab-case`);
+    if (urlCases.has(c.name)) fail(`signInUrlCases ${c.name}: duplicate name`);
+    urlCases.add(c.name);
+  }
   const caseNames = new Set<string>();
   for (const c of file.settingCases as unknown as SettingCase[]) {
     const at = (m: string): never => fail(`settingCases ${c.name}: ${m}`);
@@ -5743,7 +5909,7 @@ export function buildSyncScenarios(): Obj {
   const file: Obj = {
     syncScenariosVersion: SYNC_SCENARIOS_VERSION,
     description:
-      "Cloud Sync client behaviour, outside the wire contract (WIRE-CONTRACT-V4 §11.5, plans/U-01.md §4.1 as amended by plans/U-01b.md §4). Each scenario starts from `init` (when `legacyLocal` is not null, the client first imports it as its legacy `config.local` store) and runs its steps in order against a fake clock and a fake transport: `local` calls the SDK, `advance` moves the clock (firing debounce commits and the sign-out deadline), `network` goes online or offline, `respond` answers the one request in flight, `signIn`, `signOut` and `relaunch` act on the device, and `assert` compares the listed views. `requests` and `events` are what was sent and emitted since the previous assert. `settingCases` pins the setting routes a host derives from catalog entries (`syncedSettings`) and the user-block issues a publish reports. Version 6 adds the `accountRequired` call (args `[signInUrl]`, the host reporting the code from a key-ring or file route) and changes what a device does on `account_required`: the subject's partition is deleted whole, the root is forgotten, nothing is sent until a sign-in, and the status stays blocked across a relaunch. Version 5 adds the conflict vocabulary: the `keep` step (`request`, `choice`, and an `expect` of `{ok: false, error}` when the keep is refused at once), the `delete` call, the asserts `conflicts` and `cloudEmpty`, the events `conflict` and `conflictClosed`, and `status.conflicts` (the open count, present only above 0); a collection's `resolve` is the host's inline decider (`keepLocal` or `keepRemote`). Version 3 adds the end-to-end policy: `init.encryption` and `init.hasRoot`, the `root` step (the device gains or loses the ring's root), `respond.opened` (what the host codec found for each opened row; the fake transport itself speaks plaintext) and the `encryptionSince` assert. Literal data, not generated by an implementation. `fileRecordCases` (appended with the records binding of cloudSync.saves, plans/U-22.5.md) is a second family run by the same steps: its `calls` add `putAt` and `removeAt`, its `asserts` add `rows` (a collection's cloud rows, as `records(collection)` lists them) and `outcomes` (what `onOutcome` reported since the previous assert); its rows keep the pull's `file` pointer, and `putAt` takes an optional fifth argument, the file pointer the save's finalize returned, which an acknowledged `ok` adopts. A runner without the binding skips the family by name.",
+      "Cloud Sync client behaviour, outside the wire contract (WIRE-CONTRACT-V4 §11.5, plans/U-01.md §4.1 as amended by plans/U-01b.md §4). Each scenario starts from `init` (when `legacyLocal` is not null, the client first imports it as its legacy `config.local` store) and runs its steps in order against a fake clock and a fake transport: `local` calls the SDK, `advance` moves the clock (firing debounce commits and the sign-out deadline), `network` goes online or offline, `respond` answers the one request in flight, `signIn`, `signOut` and `relaunch` act on the device, and `assert` compares the listed views. `requests` and `events` are what was sent and emitted since the previous assert. `settingCases` pins the setting routes a host derives from catalog entries (`syncedSettings`) and the user-block issues a publish reports. Version 6 adds the `accountRequired` call (args `[signInUrl]`, the host reporting the code from a key-ring or file route) and changes what a device does on `account_required`: the subject's partition is deleted whole, the root is forgotten, nothing is sent until a sign-in, and the status stays blocked across a relaunch; `signInUrlCases` (`{name, origin, url, expect}`) pins the rule that decides which sign-in URL a host may offer the app (see its comment in `tools/sync-scenarios.ts`: https on the Worker origin only, answer normalised, else null). Version 5 adds the conflict vocabulary: the `keep` step (`request`, `choice`, and an `expect` of `{ok: false, error}` when the keep is refused at once), the `delete` call, the asserts `conflicts` and `cloudEmpty`, the events `conflict` and `conflictClosed`, and `status.conflicts` (the open count, present only above 0); a collection's `resolve` is the host's inline decider (`keepLocal` or `keepRemote`). Version 3 adds the end-to-end policy: `init.encryption` and `init.hasRoot`, the `root` step (the device gains or loses the ring's root), `respond.opened` (what the host codec found for each opened row; the fake transport itself speaks plaintext) and the `encryptionSince` assert. Literal data, not generated by an implementation. `fileRecordCases` (appended with the records binding of cloudSync.saves, plans/U-22.5.md) is a second family run by the same steps: its `calls` add `putAt` and `removeAt`, its `asserts` add `rows` (a collection's cloud rows, as `records(collection)` lists them) and `outcomes` (what `onOutcome` reported since the previous assert); its rows keep the pull's `file` pointer, and `putAt` takes an optional fifth argument, the file pointer the save's finalize returned, which an acknowledged `ok` adopts. A runner without the binding skips the family by name.",
     product: PRODUCT,
     constants: {
       debounceMs: 2000,
@@ -5759,6 +5925,7 @@ export function buildSyncScenarios(): Obj {
     rules: RULES,
     scenarios: scenarios() as unknown as J,
     settingCases: settingCases() as unknown as J,
+    signInUrlCases: signInUrlCases() as unknown as J,
     fileRecordCases: {
       calls: [...FILE_RECORD_CALLS],
       asserts: [...FILE_RECORD_ASSERTS],
