@@ -276,9 +276,11 @@ export async function storeLink(
       ...(e.label !== undefined ? { label: e.label } : {}),
       cats: e.cats,
       now: src.now(),
+      // The gate is read again inside the store call: a pairing already storing when it clears writes nothing.
+      allowed: () => src.allowed(),
     });
     if (!r.stored) {
-      a.failure = "full";
+      a.failure = r.off ? "closed" : "full";
       return null;
     }
     a.linked = true;
