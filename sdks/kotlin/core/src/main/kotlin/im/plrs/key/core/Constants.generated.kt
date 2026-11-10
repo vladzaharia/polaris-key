@@ -174,6 +174,10 @@ public object ErrorCode {
     public const val peerClosed: String = "peer-closed"
     public const val transferCancelled: String = "transfer-cancelled"
     public const val linkUnknown: String = "link-unknown"
+    public const val localPairingOff: String = "local-pairing-off"
+    public const val pairingCodeFailed: String = "pairing-code-failed"
+    public const val pairingNotFound: String = "pairing-not-found"
+    public const val localLinksFull: String = "local-links-full"
     public const val peerRevoked: String = "peer_revoked"
     public const val peerExpired: String = "peer_expired"
     public const val peerBadFrame: String = "peer_bad_frame"
@@ -406,6 +410,10 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "peer-closed",
     "transfer-cancelled",
     "link-unknown",
+    "local-pairing-off",
+    "pairing-code-failed",
+    "pairing-not-found",
+    "local-links-full",
     "peer_revoked",
     "peer_expired",
     "peer_bad_frame",
@@ -638,6 +646,10 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "peer-closed" to "client",
     "transfer-cancelled" to "client",
     "link-unknown" to "client",
+    "local-pairing-off" to "client",
+    "pairing-code-failed" to "client",
+    "pairing-not-found" to "client",
+    "local-links-full" to "client",
     "peer_revoked" to "peer",
     "peer_expired" to "peer",
     "peer_bad_frame" to "peer",
@@ -759,6 +771,7 @@ public object Feature {
     public const val connectRelay: String = "connect.relay"
     public const val connectLinks: String = "connect.links"
     public const val connectTransfer: String = "connect.transfer"
+    public const val connectLocal: String = "connect.local"
     public const val connectApp: String = "connect.app"
     public const val devicesFingerprint: String = "devices.fingerprint"
     public const val devicesFacts: String = "devices.facts"
@@ -905,6 +918,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "connect.relay",
     "connect.links",
     "connect.transfer",
+    "connect.local",
     "connect.app",
     "devices.fingerprint",
     "devices.facts",
@@ -2151,6 +2165,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "connect.relay" to CapabilityRow("implemented", "connect", listOf()),
     "connect.links" to CapabilityRow("implemented", "connect", listOf()),
     "connect.transfer" to CapabilityRow("implemented", "connect", listOf()),
+    "connect.local" to CapabilityRow("planned", "connect", listOf()),
     "connect.app" to CapabilityRow("implemented", "connect", listOf()),
     "devices.fingerprint" to CapabilityRow("implemented", "core", listOf()),
     "devices.facts" to CapabilityRow("implemented", "core", listOf()),
@@ -2246,4 +2261,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "7b2b16cfa54324ed98b90da719e38d2b407bdf4a7f83ba636a88569d4d4ae9b5"
+public const val CAPABILITY_DIGEST: String = "bcd7ad3a47e03c0be073918745556dbb5e044db055dd1e04f8ee142f0d2c90fc"

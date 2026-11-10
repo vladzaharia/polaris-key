@@ -2991,6 +2991,22 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_link_unknown_message">해당 기기는 더 이상 이 기기와 페어링되어 있지 않습니다.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_pairing_off_title">페어링을 사용할 수 없음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_pairing_off_message">이 앱에서는 코드로 페어링하기가 꺼져 있습니다.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_code_failed_title">페어링하지 못함</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_code_failed_message">코드가 맞지 않습니다. 확인한 후 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_not_found_title">기기를 찾을 수 없음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_not_found_message">상대 기기를 찾을 수 없습니다. 두 기기가 같은 네트워크에 있는지 확인하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_links_full_title">더 이상 페어링할 수 없음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_links_full_message">이 기기에는 더 이상 페어링을 저장할 수 없습니다. 먼저 페어링된 기기를 삭제하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_title">더 이상 신뢰할 수 없는 기기</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_message">상대 기기가 계정에서 제거되었습니다. 공유된 내용은 없습니다.</string>

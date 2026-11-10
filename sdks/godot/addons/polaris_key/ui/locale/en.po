@@ -7881,6 +7881,46 @@ msgstr "Not paired"
 msgid "core.codes.link-unknown.message"
 msgstr "That device is no longer paired with this one."
 
+#. Pairing unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.local-pairing-off.title"
+msgstr "Pairing unavailable"
+
+#. Pairing with a code is off for this app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.local-pairing-off.message"
+msgstr "Pairing with a code is off for this app."
+
+#. Couldn't pair
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pairing-code-failed.title"
+msgstr "Couldn't pair"
+
+#. That code didn't work. Check it and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pairing-code-failed.message"
+msgstr "That code didn't work. Check it and try again."
+
+#. Device not found
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pairing-not-found.title"
+msgstr "Device not found"
+
+#. Can't find the other device. Check you're both on the same network.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pairing-not-found.message"
+msgstr "Can't find the other device. Check you're both on the same network."
+
+#. No room to pair
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.local-links-full.title"
+msgstr "No room to pair"
+
+#. This device has no room for another pairing. Forget a paired device first.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.local-links-full.message"
+msgstr "This device has no room for another pairing. Forget a paired device first."
+
 #. Device no longer trusted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.peer_revoked.title"

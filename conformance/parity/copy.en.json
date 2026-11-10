@@ -652,6 +652,22 @@
       "title": "Not paired",
       "message": "That device is no longer paired with this one."
     },
+    "local-pairing-off": {
+      "title": "Pairing unavailable",
+      "message": "Pairing with a code is off for this app."
+    },
+    "pairing-code-failed": {
+      "title": "Couldn't pair",
+      "message": "That code didn't work. Check it and try again."
+    },
+    "pairing-not-found": {
+      "title": "Device not found",
+      "message": "Can't find the other device. Check you're both on the same network."
+    },
+    "local-links-full": {
+      "title": "No room to pair",
+      "message": "This device has no room for another pairing. Forget a paired device first."
+    },
     "peer_revoked": {
       "title": "Device no longer trusted",
       "message": "The other device was removed from the account. Nothing was shared."

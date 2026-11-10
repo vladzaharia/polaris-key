@@ -1035,6 +1035,34 @@
       "allowedNa": []
     },
     {
+      "id": "connect.local",
+      "family": "connect",
+      "title": "Local links: pairing by a code or QR without an account (mode q) and later LAN sessions (mode l)",
+      "service": "connect",
+      "proof": [
+        {
+          "kind": "unit"
+        },
+        {
+          "kind": "transcript",
+          "wp": "CC-29"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser has no LAN discovery or sockets, and local links never use the relay."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer has no sockets; the host process's Node SDK pairs and holds the links."
+        }
+      ],
+      "note": "WIRE-CONTRACT-V5 §15.12 (CC-29.0). The corpus proofs follow with the sections they name: noise-vectors.json cpace (CC-29.1) and peer-matrix.json local (CC-29.2, CC-29.3). The discovery transcript is CC-29.6's."
+    },
+    {
       "id": "connect.app",
       "family": "connect",
       "title": "The cloudConnect API: start, stop, peers, devices, open, onChannel",

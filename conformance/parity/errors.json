@@ -967,7 +967,31 @@
       "code": "link-unknown",
       "kind": "client",
       "service": "connect",
-      "description": "The host named a contact this device does not hold, or one that was removed (WIRE-CONTRACT-V5 \u00a715.10, \u00a715.11). Nothing was sent; a host refreshes its list."
+      "description": "The host named a contact or a local link this device does not hold, or one that was removed (WIRE-CONTRACT-V5 \u00a715.10, \u00a715.11, \u00a715.12). Nothing was sent; a host refreshes its list."
+    },
+    {
+      "code": "local-pairing-off",
+      "kind": "client",
+      "service": "connect",
+      "description": "Pairing with a code and local links are off for this app: the cached discovery document does not say services.connect.localPairing is true, or there is none (WIRE-CONTRACT-V5 \u00a715.12). Nothing was advertised or dialled; a host hides its local-pairing surface."
+    },
+    {
+      "code": "pairing-code-failed",
+      "kind": "client",
+      "service": "connect",
+      "description": "The pairing code or QR did not pair: on the joining device the code was malformed, the QR was for another app or malformed, or the code did not open the other device's pairing window; on the showing device the fifth wrong code closed the window (WIRE-CONTRACT-V5 \u00a715.12). Nothing was stored; the person checks the code, or shows a new one."
+    },
+    {
+      "code": "pairing-not-found",
+      "kind": "client",
+      "service": "connect",
+      "description": "The joining device found no pairing window for the code or QR on the local network within 15 seconds, or none it dialled answered (WIRE-CONTRACT-V5 \u00a715.12). Nothing was stored; the person checks that both devices are on the same network."
+    },
+    {
+      "code": "local-links-full",
+      "kind": "client",
+      "service": "connect",
+      "description": "This device already holds the most local links it may keep for the product (32), so it opens no pairing window and joins none (WIRE-CONTRACT-V5 \u00a715.12). The person forgets a link first."
     },
     {
       "code": "peer_revoked",

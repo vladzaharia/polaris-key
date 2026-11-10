@@ -350,6 +350,29 @@ find each other and talk over the local network or a relay.
   product is removed or the account is deleted; relay counters 90 days.
 - **Admin view.** Rosters with labels and relay totals, never content.
 
+### Pairing without an account — local links
+
+Two devices of an app whose product turns it on (off by default) can pair on the same network with
+no account, by a code or a QR, and then reach each other on that network.
+
+- **Stored by Polaris Key.** No record of any link. The only server state is the product's switch.
+- **Kept on each device.** Per link: a key made for that link alone (never the device's own keys),
+  the link's secret, the other device's key, its label (renamable on this device), the approved data
+  categories, and when the link was made and last seen. The key and the secret are in the platform's
+  secret store. Forgetting a link deletes all of it; sign-out, license deactivation and account
+  deletion leave it.
+- **Exchanged.** A label, the categories and the per-link keys, only after the code is proven. No
+  account id, subject, device id or device key. Keys are per link, so two people cannot tell that
+  they paired with the same device, and neither can match a link to an account.
+- **On the local network.** While a pairing window is open, for at most 300 seconds, its advert
+  carries the product tag and the public first two digits of the code, so anyone who knows the
+  product's slug can tell that a window is open. A link's advert carries no label, id or product
+  tag, and only its two devices can recognise its name, which changes every 15 minutes. The host
+  name, the MAC address and the IP address stay visible, as above.
+- **Limits.** Nothing goes through the relay, and nothing is metered. A lost device keeps reaching
+  its links on that network until each other device forgets it: there is no remote removal. Turning
+  the switch off reaches a device only when it next reads the product's settings from the server.
+
 ### Silent restore — a key for signing back in
 
 A signed-in app may keep a restore key in the person's own platform backup (iCloud Keychain on

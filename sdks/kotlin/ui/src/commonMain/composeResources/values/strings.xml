@@ -3004,6 +3004,22 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_link_unknown_message">That device is no longer paired with this one.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_pairing_off_title">Pairing unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_pairing_off_message">Pairing with a code is off for this app.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_code_failed_title">Couldn't pair</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_code_failed_message">That code didn't work. Check it and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_not_found_title">Device not found</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_not_found_message">Can't find the other device. Check you're both on the same network.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_links_full_title">No room to pair</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_links_full_message">This device has no room for another pairing. Forget a paired device first.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_title">Device no longer trusted</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_message">The other device was removed from the account. Nothing was shared.</string>

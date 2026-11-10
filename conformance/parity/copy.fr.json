@@ -653,6 +653,22 @@
       "title": "Non associé",
       "message": "Cet appareil n'est plus associé à celui-ci."
     },
+    "local-pairing-off": {
+      "title": "Association indisponible",
+      "message": "L'association avec un code est désactivée pour cette app."
+    },
+    "pairing-code-failed": {
+      "title": "Association impossible",
+      "message": "Ce code n'a pas fonctionné. Vérifiez-le et réessayez."
+    },
+    "pairing-not-found": {
+      "title": "Appareil introuvable",
+      "message": "L'autre appareil est introuvable. Vérifiez que les deux sont sur le même réseau."
+    },
+    "local-links-full": {
+      "title": "Plus de place pour associer",
+      "message": "Cet appareil n'a plus de place pour une autre association. Oubliez d'abord un appareil associé."
+    },
     "peer_revoked": {
       "title": "Appareil non fiable",
       "message": "L'autre appareil a été retiré du compte. Rien n'a été partagé."

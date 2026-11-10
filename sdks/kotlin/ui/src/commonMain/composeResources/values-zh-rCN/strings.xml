@@ -2991,6 +2991,22 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_link_unknown_message">该设备已不再与此设备配对。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_pairing_off_title">无法配对</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_pairing_off_message">此应用已关闭通过代码配对。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_code_failed_title">配对失败</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_code_failed_message">该代码无效。请检查后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_not_found_title">未找到设备</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pairing_not_found_message">找不到另一台设备。请确认两台设备在同一网络中。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_links_full_title">无法再配对</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_links_full_message">此设备已无法再保存配对。请先移除一台已配对的设备。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_title">设备不再受信任</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_message">对方设备已从账户中移除。未共享任何内容。</string>

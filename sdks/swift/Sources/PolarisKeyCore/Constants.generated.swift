@@ -172,6 +172,10 @@ public enum ErrorCode {
     public static let peerClosed = "peer-closed"
     public static let transferCancelled = "transfer-cancelled"
     public static let linkUnknown = "link-unknown"
+    public static let localPairingOff = "local-pairing-off"
+    public static let pairingCodeFailed = "pairing-code-failed"
+    public static let pairingNotFound = "pairing-not-found"
+    public static let localLinksFull = "local-links-full"
     public static let peerRevoked = "peer_revoked"
     public static let peerExpired = "peer_expired"
     public static let peerBadFrame = "peer_bad_frame"
@@ -404,6 +408,10 @@ public let ERROR_CODE_VALUES: [String] = [
     "peer-closed",
     "transfer-cancelled",
     "link-unknown",
+    "local-pairing-off",
+    "pairing-code-failed",
+    "pairing-not-found",
+    "local-links-full",
     "peer_revoked",
     "peer_expired",
     "peer_bad_frame",
@@ -636,6 +644,10 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "peer-closed": "client",
     "transfer-cancelled": "client",
     "link-unknown": "client",
+    "local-pairing-off": "client",
+    "pairing-code-failed": "client",
+    "pairing-not-found": "client",
+    "local-links-full": "client",
     "peer_revoked": "peer",
     "peer_expired": "peer",
     "peer_bad_frame": "peer",
@@ -757,6 +769,7 @@ public enum Feature {
     public static let connectRelay = "connect.relay"
     public static let connectLinks = "connect.links"
     public static let connectTransfer = "connect.transfer"
+    public static let connectLocal = "connect.local"
     public static let connectApp = "connect.app"
     public static let devicesFingerprint = "devices.fingerprint"
     public static let devicesFacts = "devices.facts"
@@ -903,6 +916,7 @@ public let FEATURE_VALUES: [String] = [
     "connect.relay",
     "connect.links",
     "connect.transfer",
+    "connect.local",
     "connect.app",
     "devices.fingerprint",
     "devices.facts",
@@ -2129,6 +2143,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "connect.relay": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.links": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.transfer": CapabilityRow(status: "implemented", service: "connect", na: []),
+    "connect.local": CapabilityRow(status: "planned", service: "connect", na: []),
     "connect.app": CapabilityRow(status: "implemented", service: "connect", na: []),
     "devices.fingerprint": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.facts": CapabilityRow(status: "implemented", service: "core", na: []),
@@ -2224,4 +2239,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "0563d54bea2ff5278685e4b0ee5a537cc35d136d0e2eb6e827ec78edba0d5ce6"
+public let CAPABILITY_DIGEST = "9e417c651b995b2e155590e43a8c46ebb2aa6a851114144b34629e49eb5019c7"

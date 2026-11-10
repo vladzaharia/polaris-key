@@ -392,6 +392,10 @@ class ErrorCode:
     PEER_CLOSED: Final = "peer-closed"
     TRANSFER_CANCELLED: Final = "transfer-cancelled"
     LINK_UNKNOWN: Final = "link-unknown"
+    LOCAL_PAIRING_OFF: Final = "local-pairing-off"
+    PAIRING_CODE_FAILED: Final = "pairing-code-failed"
+    PAIRING_NOT_FOUND: Final = "pairing-not-found"
+    LOCAL_LINKS_FULL: Final = "local-links-full"
     PEER_REVOKED: Final = "peer_revoked"
     PEER_EXPIRED: Final = "peer_expired"
     PEER_BAD_FRAME: Final = "peer_bad_frame"
@@ -624,6 +628,10 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "peer-closed",
     "transfer-cancelled",
     "link-unknown",
+    "local-pairing-off",
+    "pairing-code-failed",
+    "pairing-not-found",
+    "local-links-full",
     "peer_revoked",
     "peer_expired",
     "peer_bad_frame",
@@ -858,6 +866,10 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "peer-closed": "client",
         "transfer-cancelled": "client",
         "link-unknown": "client",
+        "local-pairing-off": "client",
+        "pairing-code-failed": "client",
+        "pairing-not-found": "client",
+        "local-links-full": "client",
         "peer_revoked": "peer",
         "peer_expired": "peer",
         "peer_bad_frame": "peer",
@@ -982,6 +994,7 @@ class Feature:
     CONNECT_RELAY: Final = "connect.relay"
     CONNECT_LINKS: Final = "connect.links"
     CONNECT_TRANSFER: Final = "connect.transfer"
+    CONNECT_LOCAL: Final = "connect.local"
     CONNECT_APP: Final = "connect.app"
     DEVICES_FINGERPRINT: Final = "devices.fingerprint"
     DEVICES_FACTS: Final = "devices.facts"
@@ -1128,6 +1141,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "connect.relay",
     "connect.links",
     "connect.transfer",
+    "connect.local",
     "connect.app",
     "devices.fingerprint",
     "devices.facts",
@@ -2627,6 +2641,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "connect.relay": CapabilityRow("implemented", "connect", ()),
         "connect.links": CapabilityRow("implemented", "connect", ()),
         "connect.transfer": CapabilityRow("implemented", "connect", ()),
+        "connect.local": CapabilityRow("planned", "connect", ()),
         "connect.app": CapabilityRow("implemented", "connect", ()),
         "devices.fingerprint": CapabilityRow("implemented", "core", ()),
         "devices.facts": CapabilityRow("implemented", "core", ()),
@@ -2723,4 +2738,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "51cbfa048598798b0e7691da29dd1ade7b5ecdd3d7aead8aefbd4729a409cc5b"
+CAPABILITY_DIGEST: Final[str] = "3ba8c185757ceb06bf043b482d6a9c50c3d07ef861c6c31960ca662302aedd20"
