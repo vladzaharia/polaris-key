@@ -2421,7 +2421,7 @@
       "jscpd:duplicate": 19
     },
     "packages/ui-core/src/browser/sdk/browser/connect/cloud.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 2
     },
     "packages/ui-core/src/browser/sdk/browser/connect/errors.ts": {
       "jscpd:duplicate": 2

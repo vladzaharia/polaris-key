@@ -90,7 +90,14 @@ import {
 import type { ContactRelaySource } from "./contactRelay.js";
 import type { PairSource } from "./pairing.js";
 import type { LocalSource } from "./localLinks.js";
-import { LocalLinkStore, localStorage } from "./localState.js";
+import {
+  LocalLinkStore,
+  liveOfLocal,
+  localStorage,
+  localTag,
+  type LiveLocal,
+  type LocalRef,
+} from "./localState.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -343,10 +350,23 @@ export class ConnectClient {
     return LanService.start(this.lanSource(), opts);
   }
 
+  /**
+   * The LAN service with no account (CC-29.8, §15.5 "A listener can now run with no account"):
+   * it serves the local links alone and needs no identity, token or K_disc. Stop it with `stop()`.
+   */
+  async lanLocal(opts: LanOptions = {}): Promise<LanService> {
+    return LanService.startLocal(this.lanSource(), opts);
+  }
+
   /** What the LAN service reads: the held identity, K_disc and the device's key operations. @internal */
   lanSource(): LanSource {
     return {
+      slug: this.ctx.product,
       now: () => this.ctx.now(),
+      locals: () => this.liveLocals(),
+      onLocals: (fn) => this.onLocalsChanged(fn),
+      localAllowed: () => this.localPairing(),
+      localEstablished: (ref) => this.touchLocal(ref),
       refresh: async () => {
         await this.identity({ refresh: true });
       },
@@ -692,7 +712,54 @@ export class ConnectClient {
       now: () => this.ctx.now(),
       allowed: () => this.localPairing(),
       store: this.localStore(),
+      notify: () => this.notifyLocals(),
+      onChange: (fn) => this.onLocalsChanged(fn),
     };
+  }
+
+  /**
+   * The local links in held order, decoded; `[]` while the gate is off or the record is unusable
+   * (a corrupt file serves nothing and is never replaced). The caller wipes them. @internal
+   */
+  async liveLocals(): Promise<LiveLocal[]> {
+    if (!this.localPairing()) return [];
+    try {
+      return (await this.localStore().rows()).map(liveOfLocal);
+    } catch {
+      return [];
+    }
+  }
+
+  /** A session opened under a local link: its last-seen time moves. @internal */
+  async touchLocal(ref: LocalRef): Promise<void> {
+    const now = this.ctx.now();
+    await this.localStore().update((rows) =>
+      rows.some(
+        (r) =>
+          r.id === ref.id && localTag(base64UrlDecode(r.secret)) === ref.tag,
+      )
+        ? rows.map((r) => (r.id === ref.id ? { ...r, lastSeen: now } : r))
+        : null,
+    );
+  }
+
+  readonly #onLocals = new Set<() => void>();
+
+  /** Called when the local links changed or the `localPairing` answer may have. @internal */
+  onLocalsChanged(fn: () => void): () => void {
+    this.#onLocals.add(fn);
+    return () => this.#onLocals.delete(fn);
+  }
+
+  /** Tell the listeners the local links or the gate moved. @internal */
+  notifyLocals(): void {
+    for (const f of [...this.#onLocals]) {
+      try {
+        f();
+      } catch {
+        // a host's listener cannot stop the others
+      }
+    }
   }
 
   /** The cached `interAccount` answer of discovery; false while none is known. @internal */

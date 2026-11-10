@@ -28,6 +28,7 @@ import {
   type SessionEvent,
 } from "@polaris-key/client-core/peer";
 import type { ContactRef } from "./contacts.js";
+import type { LocalRef } from "./localState.js";
 
 /** The `HELLO` a mode-v end sends: the optional label, this platform and the product slug. */
 export const nearbyHello = (
@@ -182,6 +183,8 @@ export class ConnectSession {
     readonly contact: ContactRef | null = null,
     /** The peer's authenticated static key (its certificate's agreeKey, or the pinned contact key). */
     remoteStatic: Uint8Array | null = null,
+    /** The local link a mode-`l` session runs over (§15.12); null otherwise. */
+    readonly local: LocalRef | null = null,
   ) {
     this.#link = link;
     // Direct Transfer (§15.11): when both sides listed `xfer/1`, the six record types are taken at
@@ -198,7 +201,11 @@ export class ConnectSession {
     // The link holds the channel and with it the discovery keys: never printed.
     printAs(this, () => ({
       session: "ConnectSession",
-      ...(contact !== null ? { contact: contact.id } : { peerDeviceId }),
+      ...(contact !== null
+        ? { contact: contact.id }
+        : local !== null
+          ? { local: local.id }
+          : { peerDeviceId }),
       path,
       role,
     }));
@@ -375,6 +382,8 @@ export interface SocketLinkOptions {
    * opened it by index (§15.10), and its `ConnectSession` carries that link.
    */
   contacts?: readonly ContactRef[];
+  /** The local links the channel was given (same order): a mode-`l` session names its link by index. */
+  locals?: readonly LocalRef[];
   channel: Omit<PeerSessionOptions, "send" | "onEvent">;
   onRing?: (jws: string, epoch: number) => void;
   onTrust?: (jws: string) => void;
@@ -480,7 +489,16 @@ export class SocketLink {
           e.contactIndex !== undefined
             ? this.#o.contacts?.[e.contactIndex]
             : undefined;
-        if (e.peerDeviceId === undefined && ref === undefined) break;
+        const local =
+          e.localIndex !== undefined
+            ? this.#o.locals?.[e.localIndex]
+            : undefined;
+        if (
+          e.peerDeviceId === undefined &&
+          ref === undefined &&
+          local === undefined
+        )
+          break;
         this.#up = true;
         clearTimeout(this.#deadline);
         this.#session = new ConnectSession(
@@ -493,6 +511,7 @@ export class SocketLink {
           "lan",
           ref ?? null,
           e.remoteStatic,
+          local ?? null,
         );
         this.#session.peerStatic = e.remoteStatic;
         this.#o.onEstablished?.(this.#session);

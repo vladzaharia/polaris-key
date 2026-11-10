@@ -18,7 +18,12 @@
 //    a device with several learned addresses dials them in a race (dial.ts), and when the
 //    handshake with the winner fails it races the addresses that are left;
 //  - the device's X25519 private key never leaves the `DeviceKeyPort`: Noise is given a handle
-//    whose static-key operations call `port.dh`.
+//    whose static-key operations call `port.dh`;
+//  - local links (CC-29.8, §15.5 "One listener, one order", §15.12 "Mode l"): the same listener also
+//    tries the local-link secrets after the account keys and the contacts, under the one limiter,
+//    and advertises `m=l` names for the links the host marked reachable (at most 8). With no
+//    account (`startLocal`) the service has no identity: it serves local links only and advertises
+//    and browses no account name. Every local call reads the gate again (`localAllowed`).
 
 import type { Server, Socket } from "node:net";
 import type { TrustSet } from "@polaris-key/jws";
@@ -28,12 +33,17 @@ import {
   ADVERT_EPOCH_SECONDS,
   browseAccountInstance,
   browseContactInstance,
+  browseLocalInstance,
   contactInstance,
   HandshakeLimiter,
+  localInstance,
   MAX_LIVE_CONTACT_ADVERTS,
+  MAX_LIVE_LOCAL_ADVERTS,
   parseContactTxt,
+  parseLocalTxt,
   parseTxt,
   type ContactLink,
+  type LocalLink,
 } from "@polaris-key/client-core/peer";
 import {
   refOf,
@@ -47,11 +57,18 @@ import {
   channelBase,
   contactChannel,
   defaultTimer,
+  localChannel,
   type ConnectNotice,
   type RingAdoption,
   type TrustApplication,
 } from "./channel.js";
 import { dialRaceTo } from "./dial.js";
+import {
+  refOfLocal,
+  wipeLocals,
+  type LiveLocal,
+  type LocalRef,
+} from "./localState.js";
 import { AcceptGate, listenTcp, textVerdict } from "./lanGate.js";
 import {
   MulticastDnsAdapter,
@@ -102,6 +119,19 @@ export interface LanSource {
   onContacts?(fn: () => void): () => void;
   /** A session opened under a contact: the first handshake of a pending one promotes it. */
   contactEstablished?(ref: ContactRef): Promise<void>;
+  /** The product slug. A service with no identity (`startLocal`) has no other way to know it. */
+  slug?: string;
+  /**
+   * The local links (§15.12) in held order, secrets and keys decoded: empty while the gate is off
+   * or none are held. The service wipes what it replaces.
+   */
+  locals?(): Promise<LiveLocal[]>;
+  /** Called when the local links changed (added, removed, renamed, re-marked) or the gate moved. */
+  onLocals?(fn: () => void): () => void;
+  /** The cached `localPairing` answer, read again for every local call (§15.12 "Gates"). */
+  localAllowed?(): boolean;
+  /** A session opened under a local link: its last-seen time moves. */
+  localEstablished?(ref: LocalRef): Promise<void>;
 }
 
 export interface LanOptions {
@@ -144,6 +174,20 @@ export interface LanPeer {
 const IDENTITY_TTL_S = 30;
 const CERT_MARGIN_S = 60;
 const MISS_CACHE = 1024;
+
+/**
+ * A dial that failed before the transport (the connection closed, a tag failed, the deadline ran
+ * out) is the next address's to try; any other failure ends the dial.
+ */
+function retryable(e: unknown): LanError {
+  const err =
+    e instanceof LanError
+      ? e
+      : new LanError("handshake_failed", "The handshake failed.", { cause: e });
+  if (err.reason !== "handshake_failed" && err.reason !== "connect_failed")
+    throw err;
+  return err;
+}
 
 export class LanService {
   #server: Server | null = null;
@@ -188,6 +232,18 @@ export class LanService {
   >();
   #onContactSession = new Set<(s: ConnectSession) => void>();
   #unContacts: (() => void) | null = null;
+  /** No account: the service serves local links only (`startLocal`). */
+  #localOnly = false;
+  /** The local links held now (empty while the gate is off), in held order. */
+  #locals: LiveLocal[] = [];
+  #localsSig = "";
+  /** One live `m=l` advert per name; at most `MAX_LIVE_LOCAL_ADVERTS`. */
+  #localAdv = new Map<string, MdnsHandle>();
+  #localPeers = new Map<
+    string,
+    { id: string; instance: string; hosts: string[]; port: number }
+  >();
+  #onLocalSession = new Set<(s: ConnectSession) => void>();
   /** One limiter per listener for the contact trial (§15.10, "Admission"). */
   readonly #limiter = new HandshakeLimiter(
     5,
@@ -214,18 +270,44 @@ export class LanService {
   }
 
   /** Listen, then advertise and browse. Throws a `LanError` when there is no identity. */
-  static async start(src: LanSource, o: LanOptions = {}): Promise<LanService> {
+  static start(src: LanSource, o: LanOptions = {}): Promise<LanService> {
+    return LanService.#begin(src, o, false);
+  }
+
+  /**
+   * The service with no account (§15.5, §15.12): it listens, and advertises and browses `m=l` names
+   * for the local links, and holds no identity, no K_disc and no roster. A listener that serves
+   * nothing (no link held, or the gate off) closes every connection before reading a byte. Needs
+   * `src.slug`.
+   */
+  static startLocal(src: LanSource, o: LanOptions = {}): Promise<LanService> {
+    if (src.slug === undefined)
+      throw new LanError("bad_input", "A local-only service needs the slug.");
+    return LanService.#begin(src, o, true);
+  }
+
+  static async #begin(
+    src: LanSource,
+    o: LanOptions,
+    localOnly: boolean,
+  ): Promise<LanService> {
     const s = new LanService(src, o);
-    await s.#identity(true);
-    await s.#loadContacts();
+    s.#localOnly = localOnly;
+    if (!localOnly) {
+      await s.#identity(true);
+      await s.#loadContacts();
+    }
+    await s.#loadLocals();
     await s.#listen();
     try {
       if (o.advertise !== false) await s.#rotate();
       if (o.browse !== false) await s.#startBrowse();
-      s.#unContacts =
-        src.onContacts?.(
-          () => void s.refreshContacts().catch(() => undefined),
-        ) ?? null;
+      const refresh = (): void =>
+        void s.refreshContacts().catch(() => undefined);
+      const offs = [src.onContacts?.(refresh), src.onLocals?.(refresh)];
+      s.#unContacts = (): void => {
+        for (const f of offs) f?.();
+      };
     } catch (e) {
       await s.stop();
       throw e;
@@ -270,6 +352,17 @@ export class LanService {
     return () => this.#onContactSession.delete(fn);
   }
 
+  /** Called for each inbound mode-`l` session (a local link dialled this device) once it is open. */
+  onLocalSession(fn: (s: ConnectSession) => void): () => void {
+    this.#onLocalSession.add(fn);
+    return () => this.#onLocalSession.delete(fn);
+  }
+
+  /** The local links seen on this network now, by link `id`. The host picks one to dial (`connectLocal`). */
+  localPeers(): { id: string }[] {
+    return [...this.#localPeers.values()].map(({ id }) => ({ id }));
+  }
+
   /**
    * The contacts seen on this network now, by link `id` and whether it is the pending secret of a
    * re-pair (§15.10). The host picks one to dial; `connectContact` runs the handshake.
@@ -288,6 +381,11 @@ export class LanService {
   refreshContacts(): Promise<void> {
     const run = this.#queue.then(async () => {
       if (this.#stopped) return;
+      // The local links first: a withdrawal (the gate moved, a link was forgotten) must not wait
+      // on the account half, which can fail when there is no account.
+      await this.#loadLocals();
+      await this.#advertLocals(advertEpoch(this.#src.now()));
+      if (this.#localOnly) return;
       await this.#loadContacts();
       const id = await this.#identity(true);
       await this.#advertContacts(id, advertEpoch(this.#src.now()));
@@ -332,18 +430,7 @@ export class LanService {
         session = await link.opened;
       } catch (e) {
         socket.destroy();
-        const err =
-          e instanceof LanError
-            ? e
-            : new LanError("handshake_failed", "The handshake failed.", {
-                cause: e,
-              });
-        if (
-          err.reason !== "handshake_failed" &&
-          err.reason !== "connect_failed"
-        )
-          throw err;
-        failure = err;
+        failure = retryable(e);
         left = left.filter((h) => h !== host);
       }
     }
@@ -373,7 +460,7 @@ export class LanService {
     );
     await Promise.all([
       this.#adv?.stop().catch(() => undefined),
-      ...[...this.#contactAdv.values()].map((h) =>
+      ...[...this.#contactAdv.values(), ...this.#localAdv.values()].map((h) =>
         h.stop().catch(() => undefined),
       ),
       this.#browse?.stop().catch(() => undefined),
@@ -385,8 +472,12 @@ export class LanService {
     this.#adv = this.#browse = null;
     this.#contactAdv.clear();
     this.#contactPeers.clear();
+    this.#localAdv.clear();
+    this.#localPeers.clear();
     wipeLive(this.#contacts);
     this.#contacts = [];
+    wipeLocals(this.#locals);
+    this.#locals = [];
   }
 
   /** Stop at once: no goodbyes, nothing waited on, the held identity dropped. The sign-out
@@ -401,12 +492,16 @@ export class LanService {
     for (const k of [...this.#links]) k.destroy();
     this.#id = null;
     void this.#adv?.stop().catch(() => undefined);
-    for (const h of this.#contactAdv.values())
+    for (const h of [...this.#contactAdv.values(), ...this.#localAdv.values()])
       void h.stop().catch(() => undefined);
     this.#contactAdv.clear();
     this.#contactPeers.clear();
+    this.#localAdv.clear();
+    this.#localPeers.clear();
     wipeLive(this.#contacts);
     this.#contacts = [];
+    wipeLocals(this.#locals);
+    this.#locals = [];
     void this.#browse?.stop().catch(() => undefined);
     this.#adv = this.#browse = null;
     this.#server?.close();
@@ -427,30 +522,48 @@ export class LanService {
     if (this.#id !== null && this.#id.v.ringEpoch !== v.ringEpoch)
       this.#miss.clear();
     this.#id = { at: now, v };
-    await this.#refreshNames(v);
+    await this.#refreshNames();
     if (this.#docs.pushed !== null && this.#docs.pushed.epoch <= v.ringEpoch)
       this.#docs.pushed = null;
     return v;
   }
 
   /** The names `accept` lets into the adapter's tables, worked out again when the epoch, keys or roster change. */
-  async #refreshNames(id: LanIdentity): Promise<void> {
+  async #refreshNames(): Promise<void> {
+    const id = this.#id?.v ?? null;
     const now = this.#src.now();
     const epoch = advertEpoch(now);
     const hex = (b: Uint8Array | null): string =>
       b === null ? "-" : Buffer.from(b).toString("hex");
-    const sig = `${epoch}|${hex(id.keys.current)}|${hex(id.keys.previous)}|${id.roster.join(",")}|${this.#contactsSig}`;
+    const sig =
+      `${epoch}|${id === null ? "-" : `${hex(id.keys.current)}|${hex(id.keys.previous)}|${id.roster.join(",")}`}` +
+      `|${this.#contactsSig}|${this.#localsSig}`;
     if (sig === this.#namesSig) return;
     const names = new Set<string>();
-    const keys = [
-      id.keys.current,
-      ...(id.keys.previous ? [id.keys.previous] : []),
-    ];
-    for (const back of [0, 1])
-      for (const k of keys)
-        for (const d of id.roster.slice(0, 128))
-          if (d !== id.deviceId)
-            names.add(await accountInstance(k, epoch - back, d));
+    if (id !== null) {
+      const keys = [
+        id.keys.current,
+        ...(id.keys.previous ? [id.keys.previous] : []),
+      ];
+      for (const back of [0, 1])
+        for (const k of keys)
+          for (const d of id.roster.slice(0, 128))
+            if (d !== id.deviceId)
+              names.add(await accountInstance(k, epoch - back, d));
+    }
+    // The names a local link's peer can announce (its own link key in the MAC). The secrets are
+    // copied first: a reload may wipe the held ones while the MACs are worked out.
+    const locals = this.#locals.map((l) => ({
+      secret: l.secret.slice(),
+      peerKey: l.peerKey,
+    }));
+    try {
+      for (const back of [0, 1])
+        for (const l of locals)
+          names.add(await localInstance(l.secret, l.peerKey, epoch - back));
+    } finally {
+      for (const l of locals) l.secret.fill(0);
+    }
     // The names a contact can announce (its own agreeKey in the MAC): this and the last epoch.
     for (const back of [0, 1])
       for (const c of this.#contacts)
@@ -471,42 +584,98 @@ export class LanService {
       .map((c) => `${c.id}${c.pending ? "p" : "h"}${c.reachable ? "r" : "-"}`)
       .join(",");
     wipeLive(old);
-    // A handshake still running under a contact that is gone (or whose secret was replaced) or
-    // while links are off is ended; an established session is the links layer's to close.
-    const held = new Set(next.map((c) => `${c.id}|${c.tag}`));
+    this.#pruneServes();
+    // A peer seen under a contact that is gone is forgotten.
+    const have = new Set(next.map((c) => `${c.id}|${c.pending}`));
+    for (const [k, p] of this.#contactPeers)
+      if (!have.has(`${p.id}|${p.pending}`)) this.#contactPeers.delete(k);
+    if (this.#id !== null) await this.#refreshNames();
+  }
+
+  /**
+   * A handshake still running under a contact or local link that is gone (or whose secret was
+   * replaced), or while links are off, is ended; an established session is the links layer's to
+   * close.
+   */
+  #pruneServes(): void {
+    const held = new Set([
+      ...this.#contacts.map((c) => `c|${c.id}|${c.tag}`),
+      ...this.#locals.map((l) => `l|${l.id}|${l.tag}`),
+    ]);
     for (const [k, served] of [...this.#serves])
       if ([...served].some((x) => !held.has(x))) {
         this.#serves.delete(k);
         k.destroy();
       }
-    // A peer seen under a contact that is gone is forgotten.
-    const have = new Set(next.map((c) => `${c.id}|${c.pending}`));
-    for (const [k, p] of this.#contactPeers)
-      if (!have.has(`${p.id}|${p.pending}`)) this.#contactPeers.delete(k);
-    if (this.#id !== null) await this.#refreshNames(this.#id.v);
+  }
+
+  /** Read the local links from the source; the old ones are wiped. */
+  async #loadLocals(): Promise<void> {
+    const next = (await this.#src.locals?.()) ?? [];
+    const old = this.#locals;
+    this.#locals = next;
+    const sig = next
+      .map((l) => `${l.id}${l.tag}${l.reachable ? "r" : "-"}`)
+      .join(",");
+    // A name judged a miss before a link existed may be that link's.
+    if (sig !== this.#localsSig) this.#miss.clear();
+    this.#localsSig = sig;
+    wipeLocals(old);
+    this.#pruneServes();
+    // A peer seen under a link that is gone is forgotten.
+    const have = new Set(next.map((l) => l.id));
+    for (const k of [...this.#localPeers.keys()])
+      if (!have.has(k)) this.#localPeers.delete(k);
+    if (this.#id !== null || this.#localOnly) await this.#refreshNames();
+  }
+
+  /** The gate, read again: false stops every local call (§15.12 "Gates"). */
+  #localsOn(): boolean {
+    return this.#src.localAllowed?.() !== false;
   }
 
   /** The contact adverts for the contacts marked reachable, at most 8, on this listener's port. */
   async #advertContacts(id: LanIdentity, epoch: number): Promise<void> {
     if (this.#o.advertise === false) return;
-    const want = new Map<string, true>();
+    const want = new Set<string>();
     for (const c of this.#contacts
       .filter((x) => x.reachable)
       .slice(0, MAX_LIVE_CONTACT_ADVERTS))
-      want.set(await contactInstance(c.secret, id.agreePublic, epoch), true);
-    for (const [name, h] of [...this.#contactAdv]) {
+      want.add(await contactInstance(c.secret, id.agreePublic, epoch));
+    await this.#syncAdverts(this.#contactAdv, want, "c");
+  }
+
+  /** The `m=l` adverts for the links marked reachable, at most 8, on this listener's port. */
+  async #advertLocals(epoch: number): Promise<void> {
+    if (this.#o.advertise === false) return;
+    const want = new Set<string>();
+    if (this.#localsOn())
+      for (const l of this.#locals
+        .filter((x) => x.reachable)
+        .slice(0, MAX_LIVE_LOCAL_ADVERTS))
+        want.add(await localInstance(l.secret, l.ownPublic, epoch));
+    await this.#syncAdverts(this.#localAdv, want, "l");
+  }
+
+  /** Bring the live adverts of one mode to exactly `want`: stop the others, start the missing. */
+  async #syncAdverts(
+    live: Map<string, MdnsHandle>,
+    want: ReadonlySet<string>,
+    mode: "c" | "l",
+  ): Promise<void> {
+    for (const [name, h] of [...live]) {
       if (want.has(name)) continue;
-      this.#contactAdv.delete(name);
+      live.delete(name);
       await h.stop().catch(() => undefined);
     }
-    for (const name of want.keys()) {
-      if (this.#contactAdv.has(name)) continue;
-      this.#contactAdv.set(
+    for (const name of want) {
+      if (live.has(name) || this.#stopped) continue;
+      live.set(
         name,
         await this.#mdns.advertise({
           instance: name,
           port: this.#port,
-          txt: ["v=1", "m=c"],
+          txt: ["v=1", `m=${mode}`],
         }),
       );
     }
@@ -514,14 +683,13 @@ export class LanService {
 
   /** The adapter's roster filter. When the epoch has moved it starts the recount; the next packet sees it. */
   #accepts = (instance: string): boolean => {
-    const held = this.#id;
     if (
-      held !== null &&
+      (this.#id !== null || this.#localOnly) &&
       !this.#namesBusy &&
       this.#namesEpoch !== advertEpoch(this.#src.now())
     ) {
       this.#namesBusy = true;
-      void this.#refreshNames(held.v)
+      void this.#refreshNames()
         .catch(() => undefined)
         .finally(() => {
           this.#namesBusy = false;
@@ -532,51 +700,81 @@ export class LanService {
 
   #link(
     socket: Socket,
-    id: LanIdentity,
+    id: LanIdentity | null,
     role: "initiator" | "responder",
   ): SocketLink {
-    // The shared listener (§15.5, §15.10): a responder that holds contacts tries the account's
-    // keys, then each contact's secret, under the one limiter. Copies of the secrets go to the
-    // channel; they are wiped when the link ends.
+    // The shared listener (§15.5, §15.10, §15.12): a responder that holds contacts or local links
+    // tries the account's keys, then each contact's secret, then each local link's, under the one
+    // limiter. Copies of the secrets go to the channel; they are wiped when the link ends.
     const served = role === "responder" ? this.#contacts : [];
+    const live = role === "responder" && this.#localsOn() ? this.#locals : [];
     const links: ContactLink[] = served.map((c) => ({
       secret: new Uint8Array(c.secret),
       agreeKey: c.agreeKey,
     }));
+    const locals: LocalLink[] = live.map((l) => ({
+      secret: new Uint8Array(l.secret),
+      ownKey: new Uint8Array(l.ownKey),
+      peerKey: new Uint8Array(l.peerKey),
+    }));
+    const trial = links.length > 0 || locals.length > 0;
+    const now = (): number => this.#src.now();
     const link: SocketLink = new SocketLink({
       socket,
       handshakeMs: this.#o.handshakeMs,
       contacts: served.map(refOf),
-      channel: {
-        mode: "a",
-        role,
-        ...channelBase(
-          id,
-          this.#o,
-          () => this.#src.now(),
-          () => this.#docs.pushed,
-        ),
-        ...(links.length > 0
-          ? { contacts: links, admission: this.#limiter }
-          : {}),
-      },
+      locals: live.map(refOfLocal),
+      channel:
+        id === null
+          ? {
+              // No account: the listener serves local links alone, and the mode is `l`.
+              mode: "l",
+              role,
+              ...localChannel(this.#slug(), this.#o, now),
+              locals,
+              admission: this.#limiter,
+            }
+          : {
+              mode: "a",
+              role,
+              ...channelBase(id, this.#o, now, () => this.#docs.pushed),
+              ...(links.length > 0 ? { contacts: links } : {}),
+              ...(locals.length > 0 ? { locals } : {}),
+              ...(trial ? { admission: this.#limiter } : {}),
+            },
       ...this.#docs.hooks,
       onEstablished: (s) => {
         this.#serves.delete(link);
         this.#sessions.add(s);
         s.onClose(() => this.#sessions.delete(s));
         if (s.contact?.pending) void this.#src.contactEstablished?.(s.contact);
+        if (s.local !== null)
+          void this.#src.localEstablished?.(s.local)?.catch(() => undefined);
       },
       onEnded: () => {
         this.#links.delete(link);
         this.#serves.delete(link);
         for (const l of links) l.secret.fill(0);
+        for (const l of locals) {
+          l.secret.fill(0);
+          l.ownKey.fill(0);
+        }
       },
     });
     this.#links.add(link);
-    if (served.length > 0)
-      this.#serves.set(link, new Set(served.map((c) => `${c.id}|${c.tag}`)));
+    if (trial)
+      this.#serves.set(
+        link,
+        new Set([
+          ...served.map((c) => `c|${c.id}|${c.tag}`),
+          ...live.map((l) => `l|${l.id}|${l.tag}`),
+        ]),
+      );
     return link;
+  }
+
+  #slug(): string {
+    return this.#src.slug ?? this.#id?.v.slug ?? "";
   }
 
   // ── TCP ─────────────────────────────────────────────────────────────────────────────────────
@@ -611,12 +809,16 @@ export class LanService {
   #accept(socket: Socket): void {
     const slot = this.#gate.admit(
       socket,
-      this.#stopped || this.#sessions.size >= (this.#o.maxSessions ?? 64),
+      this.#stopped ||
+        this.#sessions.size >= (this.#o.maxSessions ?? 64) ||
+        // With no account the listener serves local links alone: with none to try (or the gate
+        // off) a connection is closed before a byte is read.
+        (this.#localOnly && (this.#locals.length === 0 || !this.#localsOn())),
     );
     if (slot === null) return;
     // The identity is read before the first byte is handled.
     socket.pause();
-    this.#identity(false).then(
+    (this.#localOnly ? Promise.resolve(null) : this.#identity(false)).then(
       (id) => {
         if (socket.destroyed) return;
         const link = this.#link(socket, id, "responder");
@@ -624,7 +826,11 @@ export class LanService {
           (s) => {
             slot.settle();
             const to =
-              s.contact !== null ? this.#onContactSession : this.#onSession;
+              s.contact !== null
+                ? this.#onContactSession
+                : s.local !== null
+                  ? this.#onLocalSession
+                  : this.#onSession;
             for (const f of [...to]) f(s);
           },
           () => undefined,
@@ -637,6 +843,13 @@ export class LanService {
 
   // ── Contacts ────────────────────────────────────────────────────────────────────────────────
 
+  /** Bounded negative cache: a forged instance is not worked out twice. */
+  #remember(instance: string): void {
+    if (this.#miss.size >= MISS_CACHE)
+      this.#miss.delete(this.#miss.keys().next().value!);
+    this.#miss.set(instance, this.#src.now());
+  }
+
   async #foundContact(f: MdnsFound, hosts: string[]): Promise<void> {
     const contacts = this.#contacts;
     if (contacts.length === 0 || this.#miss.has(f.instance)) return;
@@ -646,9 +859,7 @@ export class LanService {
       this.#src.now(),
     );
     if (hit === null) {
-      if (this.#miss.size >= MISS_CACHE)
-        this.#miss.delete(this.#miss.keys().next().value!);
-      this.#miss.set(f.instance, this.#src.now());
+      this.#remember(f.instance);
       return;
     }
     const c = contacts[hit.contact];
@@ -712,18 +923,7 @@ export class LanService {
           return await link.opened;
         } catch (e) {
           socket.destroy();
-          const err =
-            e instanceof LanError
-              ? e
-              : new LanError("handshake_failed", "The handshake failed.", {
-                  cause: e,
-                });
-          if (
-            err.reason !== "handshake_failed" &&
-            err.reason !== "connect_failed"
-          )
-            throw err;
-          failure = err;
+          failure = retryable(e);
           left = left.filter((h) => h !== host);
         }
       }
@@ -736,28 +936,134 @@ export class LanService {
     }
   }
 
+  // ── Local links ─────────────────────────────────────────────────────────────────────────────
+
+  async #foundLocal(f: MdnsFound, hosts: string[]): Promise<void> {
+    const locals = this.#locals;
+    if (locals.length === 0 || !this.#localsOn() || this.#miss.has(f.instance))
+      return;
+    // At most 64 HMACs, on copies: a reload may wipe the held secrets while they are worked out.
+    const keys = locals.map((l) => ({
+      secret: l.secret.slice(),
+      peerKey: l.peerKey,
+    }));
+    let hit;
+    try {
+      hit = await browseLocalInstance(f.instance, keys, this.#src.now());
+    } finally {
+      for (const k of keys) k.secret.fill(0);
+    }
+    // The list may have moved while the MACs were worked out: nothing is learned or cached.
+    if (this.#locals !== locals || this.#stopped) return;
+    if (hit === null) {
+      this.#remember(f.instance);
+      return;
+    }
+    const l = locals[hit.link]!;
+    this.#localPeers.set(l.id, {
+      id: l.id,
+      instance: f.instance,
+      hosts,
+      port: f.port,
+    });
+  }
+
+  /**
+   * Dial a local link seen on this network and run the mode-`l` handshake under its secret
+   * (§15.12). The gate and the held list are read again before every dial. The pin is the
+   * session's: a peer that does not hold the link's key ends it as `peer_revoked` before a byte is
+   * sent back.
+   */
+  async connectLocal(id: string): Promise<ConnectSession> {
+    if (this.#stopped)
+      throw new LanError("not_listening", "The LAN service is stopped.");
+    const l = this.#locals.find((x) => x.id === id);
+    const peer = this.#localPeers.get(id);
+    const hosts = (peer?.hosts ?? []).filter((h) => this.#dialable(h));
+    if (l === undefined || peer === undefined || hosts.length === 0)
+      throw new LanError(
+        "unknown_peer",
+        "That link was not found on this network.",
+      );
+    const ref = refOfLocal(l);
+    let left = [...hosts];
+    let failure: LanError | null = null;
+    while (left.length > 0) {
+      // The gate and the link are read again for every dial (§15.12 "Gates").
+      const still = this.#locals.find((x) => x.id === id && x.tag === ref.tag);
+      if (this.#stopped || !this.#localsOn() || still === undefined)
+        throw new LanError("closed", "That link is no longer available.");
+      const { socket, host } = await this.#dial(left, peer.port);
+      const own: LocalLink = {
+        secret: new Uint8Array(still.secret),
+        ownKey: new Uint8Array(still.ownKey),
+        peerKey: new Uint8Array(still.peerKey),
+      };
+      const wipe = (): void => {
+        own.secret.fill(0);
+        own.ownKey.fill(0);
+      };
+      const link: SocketLink = new SocketLink({
+        socket,
+        handshakeMs: this.#o.handshakeMs,
+        locals: [ref],
+        channel: {
+          mode: "l",
+          role: "initiator",
+          ...localChannel(this.#slug(), this.#o, () => this.#src.now()),
+          locals: [own],
+        },
+        onEstablished: (s) => {
+          this.#sessions.add(s);
+          s.onClose(() => this.#sessions.delete(s));
+          if (s.local !== null)
+            void this.#src.localEstablished?.(s.local)?.catch(() => undefined);
+        },
+        onEnded: () => this.#links.delete(link),
+      });
+      this.#links.add(link);
+      void link.channel.start();
+      try {
+        return await link.opened;
+      } catch (e) {
+        socket.destroy();
+        failure = retryable(e);
+        left = left.filter((h) => h !== host);
+      } finally {
+        // The channel needed the key for the handshake only.
+        wipe();
+      }
+    }
+    throw failure ?? new LanError("handshake_failed", "The handshake failed.");
+  }
+
   // ── mDNS ────────────────────────────────────────────────────────────────────────────────────
 
   /** Advertise under the current epoch and key; set the timer for the next boundary. */
   #rotate(): Promise<void> {
     const run = this.#queue.then(async () => {
       if (this.#stopped) return;
-      const id = await this.#identity(true);
       const epoch = advertEpoch(this.#src.now());
-      const name = await accountInstance(id.keys.current, epoch, id.deviceId);
-      if (name !== this.#advName) {
-        const old = this.#adv;
-        this.#adv = await this.#mdns.advertise({
-          instance: name,
-          port: this.#port,
-          txt: ["v=1", "m=a"],
-        });
-        this.#advName = name;
-        await old?.stop().catch(() => undefined);
+      if (!this.#localOnly) {
+        const id = await this.#identity(true);
+        const name = await accountInstance(id.keys.current, epoch, id.deviceId);
+        if (name !== this.#advName) {
+          const old = this.#adv;
+          this.#adv = await this.#mdns.advertise({
+            instance: name,
+            port: this.#port,
+            txt: ["v=1", "m=a"],
+          });
+          this.#advName = name;
+          await old?.stop().catch(() => undefined);
+        }
+        // Contacts: the names rotate with the epoch like the account's.
+        await this.#loadContacts();
+        await this.#advertContacts(id, epoch);
       }
-      // Contacts: the names rotate with the epoch like the account's.
-      await this.#loadContacts();
-      await this.#advertContacts(id, epoch);
+      // Local links: their names rotate with the epoch too.
+      await this.#loadLocals();
+      await this.#advertLocals(epoch);
       const next = (epoch + 1) * ADVERT_EPOCH_SECONDS - this.#src.now();
       this.#cancelEpoch?.();
       this.#cancelEpoch = (this.#o.timer ?? defaultTimer)(
@@ -782,12 +1088,17 @@ export class LanService {
       if (p.instance === instance) this.#peers.delete(id);
     for (const [k, p] of this.#contactPeers)
       if (p.instance === instance) this.#contactPeers.delete(k);
+    for (const [k, p] of this.#localPeers)
+      if (p.instance === instance) this.#localPeers.delete(k);
   }
 
   async #found(f: MdnsFound): Promise<void> {
     // Keep the addresses that could be dialled; the connected socket is judged again.
     const hosts = f.hosts.filter((h) => this.#dialable(h));
     if (this.#stopped || hosts.length === 0) return;
+    // A local-link advert (`m=l`) is judged by parseLocalTxt and by no other path (§15.4).
+    if (parseLocalTxt(f.txt).ok) return this.#foundLocal(f, hosts);
+    if (this.#localOnly) return;
     // A contact advert (`m=c`) is judged by parseContactTxt and by no other path (§15.4): the
     // generic parser answers an unknown mode, so it can never be dialled as a or v.
     if (parseContactTxt(f.txt).ok) return this.#foundContact(f, hosts);
@@ -806,10 +1117,7 @@ export class LanService {
       id.roster.filter((d) => d !== id.deviceId),
     );
     if (hit === null) {
-      // Bounded negative cache: a forged instance is not worked out twice.
-      if (this.#miss.size >= MISS_CACHE)
-        this.#miss.delete(this.#miss.keys().next().value!);
-      this.#miss.set(f.instance, this.#src.now());
+      this.#remember(f.instance);
       return;
     }
     const had = this.#peers.get(hit.deviceId);

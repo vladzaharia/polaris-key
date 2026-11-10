@@ -11,6 +11,7 @@ import {
   EntitlementsClient,
   IdentityClient,
   LicenseClient,
+  LocalLinks,
   NativeRedirectSession,
   NearbySignInSession,
   PolarisKeyClient,
@@ -242,6 +243,24 @@ it("cloudConnect.links.onLink", () =>
   expect("onLink" in CloudLinks.prototype).toBe(true));
 it("cloudConnect.links.interAccount", () =>
   expect("interAccount" in CloudLinks.prototype).toBe(true));
+it("cloudConnect.localLinks.pair", () =>
+  expect("pair" in LocalLinks.prototype).toBe(true));
+it("cloudConnect.localLinks.join", () =>
+  expect("join" in LocalLinks.prototype).toBe(true));
+it("cloudConnect.localLinks.list", () =>
+  expect("list" in LocalLinks.prototype).toBe(true));
+it("cloudConnect.localLinks.rename", () =>
+  expect("rename" in LocalLinks.prototype).toBe(true));
+it("cloudConnect.localLinks.remove", () =>
+  expect("remove" in LocalLinks.prototype).toBe(true));
+it("cloudConnect.localLinks.setReachable", () =>
+  expect("setReachable" in LocalLinks.prototype).toBe(true));
+it("cloudConnect.localLinks.open", () =>
+  expect("open" in LocalLinks.prototype).toBe(true));
+it("cloudConnect.localLinks.onLink", () =>
+  expect("onLink" in LocalLinks.prototype).toBe(true));
+it("cloudConnect.localLinks.localPairing", () =>
+  expect("localPairing" in LocalLinks.prototype).toBe(true));
 it("cloudConnect.transfer.send", () =>
   expect("send" in CloudTransfer.prototype).toBe(true));
 it("cloudConnect.transfer.onOffer", () =>

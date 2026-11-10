@@ -1044,6 +1044,18 @@
           "kind": "unit"
         },
         {
+          "kind": "corpus",
+          "file": "noise-vectors.json",
+          "family": "cpace",
+          "wp": "CC-29"
+        },
+        {
+          "kind": "corpus",
+          "file": "peer-matrix.json",
+          "family": "local",
+          "wp": "CC-29"
+        },
+        {
           "kind": "transcript",
           "wp": "CC-29"
         }
@@ -1060,7 +1072,7 @@
           "why": "The renderer has no sockets; the host process's Node SDK pairs and holds the links."
         }
       ],
-      "note": "WIRE-CONTRACT-V5 §15.12 (CC-29.0). The corpus proofs follow with the sections they name: noise-vectors.json cpace (CC-29.1) and peer-matrix.json local (CC-29.2, CC-29.3). The discovery transcript is CC-29.6's."
+      "note": "WIRE-CONTRACT-V5 §15.12 (CC-29.0). The corpus proofs are the sections they name: noise-vectors.json cpace (CC-29.1) and peer-matrix.json local (CC-29.2, CC-29.3). The discovery transcript is CC-29.6's."
     },
     {
       "id": "connect.app",

@@ -1,9 +1,10 @@
 // Shared fixtures for the Cloud Connect LAN tests (CC-08.2): an in-process mDNS network, a small
 // multi-device fake of the Worker's connect routes, and helpers to build clients.
 import { randomBytes } from "node:crypto";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { vi } from "vitest";
 import { base64UrlEncodeBytes, signJws } from "@polaris-key/jws";
 import { ISSUER } from "@polaris-key/protocol/core";
 import { PolarisKeyClient } from "../src/client.js";
@@ -356,3 +357,24 @@ export const loopLan = (net: MemoryMdnsNetwork) => ({
 
 export const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
 export const text = (b: Uint8Array): string => new TextDecoder().decode(b);
+
+/** Freeze only `Date` at `T0`: the sockets and the timers of a LAN test run for real. */
+export function freezeAtT0(): void {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(T0 * 1000);
+}
+
+/** The end of a LAN test: stop what it started, close its clients, remove its directories. */
+export async function endTest(o: {
+  clients: PolarisKeyClient[];
+  dirs: string[];
+  stoppables?: { stop(): Promise<unknown> }[];
+}): Promise<void> {
+  for (const h of o.stoppables?.splice(0) ?? []) await h.stop().catch(() => {});
+  for (const c of o.clients.splice(0)) {
+    await c.cloudConnect.stop().catch(() => {});
+    c.close();
+  }
+  vi.useRealTimers();
+  for (const d of o.dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+}

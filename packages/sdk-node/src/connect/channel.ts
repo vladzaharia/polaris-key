@@ -321,3 +321,26 @@ export function contactChannel(
     rekeySeconds: o.rekeySeconds,
   };
 }
+
+/**
+ * What a mode-`l` channel needs (§15.12): no account, no certificate, no device key. Each link's
+ * own key rides in `locals`, so the session has no static key of its own.
+ */
+export function localChannel(
+  slug: string,
+  o: Pick<
+    LanOptions,
+    "caps" | "label" | "timer" | "rekeyMessages" | "rekeySeconds"
+  >,
+  now: () => number,
+): Omit<PeerSessionOptions, "send" | "onEvent" | "mode" | "role"> {
+  return {
+    slug,
+    caps: o.caps ?? DEFAULT_CAPS,
+    hello: { label: o.label, platform: process.platform, app: slug },
+    now,
+    timer: o.timer,
+    rekeyMessages: o.rekeyMessages,
+    rekeySeconds: o.rekeySeconds,
+  };
+}

@@ -2546,11 +2546,6 @@
     },
     {
       "sdk": "node",
-      "path": "cloudConnect.localLinks",
-      "reason": "the accessor of the local links namespace (cloudConnect.localLinks.pair, .join, .list; CC-29.7); the verbs get registry rows when the namespace is complete (CC-29.8); not a verb"
-    },
-    {
-      "sdk": "node",
       "path": "cloudConnect.transfer",
       "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb"
     },
@@ -2663,6 +2658,11 @@
       "sdk": "godot",
       "path": "client.cloudConnect",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "node",
+      "path": "cloudConnect.localLinks",
+      "reason": "the accessor of the local links namespace (cloudConnect.localLinks.pair, .join, .list, .rename, .remove, .setReachable, .open, .onLink); not a verb"
     }
   ],
   "concepts": [
@@ -7982,6 +7982,137 @@
         "godot": {
           "spelling": "PKeyCloudLinks.inter_account"
         }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.localLinks.pair",
+      "kind": "method",
+      "feature": "connect.local",
+      "sdks": {
+        "node": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.localLinks.join",
+      "kind": "method",
+      "feature": "connect.local",
+      "sdks": {
+        "node": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.localLinks.list",
+      "kind": "method",
+      "feature": "connect.local",
+      "sdks": {
+        "node": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.localLinks.rename",
+      "kind": "method",
+      "feature": "connect.local",
+      "sdks": {
+        "node": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "label",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.localLinks.remove",
+      "kind": "method",
+      "feature": "connect.local",
+      "sdks": {
+        "node": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.localLinks.setReachable",
+      "kind": "method",
+      "feature": "connect.local",
+      "sdks": {
+        "node": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "reachable",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.localLinks.open",
+      "kind": "method",
+      "feature": "connect.local",
+      "sdks": {
+        "node": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.localLinks.onLink",
+      "kind": "method",
+      "feature": "connect.local",
+      "sdks": {
+        "node": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.localLinks.localPairing",
+      "kind": "method",
+      "feature": "connect.local",
+      "sdks": {
+        "node": {}
       },
       "layer": "client"
     },

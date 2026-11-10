@@ -192,6 +192,11 @@ function renderNode(api: Api): string {
       lines.push(
         `it(${q(r.id)}, () => expect(${q(r.name)} in CloudLinks.prototype).toBe(true));`,
       );
+    } else if (r.id.startsWith("cloudConnect.localLinks.")) {
+      // Local links (CC-29): the verbs live on `cloudConnect.localLinks`.
+      lines.push(
+        `it(${q(r.id)}, () => expect(${q(r.name)} in LocalLinks.prototype).toBe(true));`,
+      );
     } else if (r.id.startsWith("cloudConnect.transfer.")) {
       // Direct Transfer (CC-20): the verbs live on `cloudConnect.transfer` (`CloudTransfer`). The offer's answer is
       // the handler's return value in Node, so accept and decline have no member to assert.
@@ -235,6 +240,7 @@ function renderNode(api: Api): string {
     `  EntitlementsClient,`,
     `  IdentityClient,`,
     `  LicenseClient,`,
+    `  LocalLinks,`,
     `  NativeRedirectSession,`,
     `  NearbySignInSession,`,
     `  PolarisKeyClient,`,
