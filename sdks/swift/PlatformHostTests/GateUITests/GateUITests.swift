@@ -30,6 +30,8 @@ final class GateUITests: XCTestCase {
     private func launch(_ scenario: String, extra: [String] = []) -> XCUIApplication {
         app.launchArguments = ["-pkScenario", scenario] + extra
         app.launch()
+        // Readiness is the app's own state, not a delay: the test goes on once it is in the foreground.
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30), "the gate host did not reach the foreground")
         return app
     }
 
