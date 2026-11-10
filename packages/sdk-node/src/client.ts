@@ -80,6 +80,10 @@ import { SavesApi } from "./cloudSync/saves.js";
 import { readStoredSubject } from "./identity/account.js";
 import { ConnectClient, type ConnectOptions } from "./connect/client.js";
 import { CloudConnect } from "./connect/cloudConnect.js";
+import {
+  LocalPairingGate,
+  type GateEffect,
+} from "@polaris-key/client-core/peer";
 import { crashTagsFor, type CrashTags } from "./server.js";
 import { UpdateClient, type UpdateClientOptions } from "./update/client.js";
 import {
@@ -244,6 +248,8 @@ export class PolarisKeyClient {
   private readonly probes: DevicesClientOptions["probes"];
   private timer: ReturnType<typeof setInterval> | null = null;
   private discoveryDoc: ProductDiscoveryDocument | null = null;
+  /** The cached discovery answer for pairing with a code (§15.12 "Gates"): no document is off. */
+  private readonly localGate = new LocalPairingGate();
   /** Epoch ms until which the cached `interAccount` answer counts; 0 while none is valid. */
   private linksUntil = 0;
   private linksTimer: NodeJS.Timeout | null = null;
@@ -372,6 +378,8 @@ export class PolarisKeyClient {
           if (this.discoveryDoc === null) await this.discover();
           return this.discoveryDoc;
         },
+        // WIRE-CONTRACT-V5 §15.12: local pairing follows the cached document, with no lapse.
+        localPairing: () => this.localGate.allowed,
         // WIRE-CONTRACT-V5 §15.9: links are on only while the cached document says so.
         interAccount: () => {
           // A cached answer lapses (INTER_ACCOUNT_TTL_MS); a failed or empty re-read clears it.
@@ -632,16 +640,27 @@ export class PolarisKeyClient {
       await this.portalStore.accept(result.manifest);
       this.cloudSyncHost.noteDiscovery();
       void this.cloudSyncApi.attach().catch(() => undefined);
+      this.#localGateRead(this.localGate.readOk(result.manifest));
       this.linksUntil = Date.now() + INTER_ACCOUNT_TTL_MS;
       this.#rereadLinksGate();
       // `interAccount` may have moved: links follow the document (§15.10 "Gates").
       this.connect.notifyContacts();
-    } else if (this.linksUntil !== 0) {
+    } else if (result.kind === "not-found") {
+      // A not-found clears the cached local-pairing answer; an error or an invalid body changes nothing.
+      this.#localGateRead(this.localGate.readNotFound());
+    }
+    if (result.kind !== "ok" && this.linksUntil !== 0) {
       // Not found, invalid or unreachable: the cached links answer is no longer trusted.
       this.linksUntil = 0;
       this.connect.notifyContacts();
     }
     return result;
+  }
+
+  /** A read cleared the cached local-pairing answer: the windows and joins close (§15.12 "Gates"). */
+  #localGateRead(effects: readonly GateEffect[]): void {
+    if (effects.length > 0)
+      void this.cloudConnect.localLinks.closeAll().catch(() => undefined);
   }
 
   /** Re-read discovery when the cached links answer lapses, so a lapse withdraws the adverts. */
@@ -1059,6 +1078,7 @@ export class PolarisKeyClient {
   close(): void {
     if (this.linksTimer !== null) clearTimeout(this.linksTimer);
     this.linksTimer = null;
+    void this.cloudConnect.localLinks.closeAll().catch(() => undefined);
     void this.cloudConnect.stop().catch(() => undefined);
     void this.cloudConnect.nearby.stopAll().catch(() => undefined);
     void this.cloudSyncHost.close().catch(() => undefined);

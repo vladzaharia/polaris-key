@@ -71,9 +71,9 @@ export interface ContactRow {
 
 const KEY = /^[A-Za-z0-9_-]{43}$/;
 const CAT = /^[a-z0-9-]{1,32}$/;
-const key32 = (v: unknown): v is string =>
+export const key32 = (v: unknown): v is string =>
   typeof v === "string" && KEY.test(v) && isCanonicalB64url(v);
-const isRecord = (v: unknown): v is Record<string, unknown> =>
+export const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** The contact rows of a record, or null when any row breaks a rule (the record is then unusable). */

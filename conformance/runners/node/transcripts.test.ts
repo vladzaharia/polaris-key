@@ -1449,6 +1449,8 @@ async function act(
       out.portal = client.portal() as JsonValue;
       // connect.links (CC-19): the cached `services.connect.interAccount` the SDK gates links on.
       out.interAccount = client.cloudConnect.links.interAccount();
+      // connect.local (CC-29): the cached `services.connect.localPairing` the SDK gates local pairing on.
+      out.localPairing = client.cloudConnect.localLinks.localPairing();
       break;
     case "sync": {
       const r = await client.sync({ force: step.args.force === true });

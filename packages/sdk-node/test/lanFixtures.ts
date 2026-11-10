@@ -85,12 +85,13 @@ const sign = (
 ): Promise<string> =>
   signJws({ iss: ISSUER, aud: PRODUCT, ...claims }, TEST_PEM, TEST_KID, typ);
 
-const discovery = (interAccount: boolean) => ({
+const discovery = (interAccount: boolean, localPairing: boolean) => ({
   product: PRODUCT,
   services: {
     connect: {
       enabled: true,
       interAccount,
+      localPairing,
       endpoints: { identity: `${BASE}/${PRODUCT}/connect/identity` },
     },
   },
@@ -123,6 +124,8 @@ export class MultiWorker {
   relayUrl = `wss://k.test/${PRODUCT}/connect/relay`;
   /** Discovery's `services.connect.interAccount` and whether contact tickets are served (§15.7). */
   interAccount = false;
+  /** Discovery's `services.connect.localPairing` (§15.9, §15.12). */
+  localPairing = false;
   /** The status of the discovery route (200 answers the document). */
   discoveryStatus = 200;
   /** An older Worker ignores the contact body and answers an account ticket. */
@@ -171,7 +174,7 @@ export class MultiWorker {
       new Response(JSON.stringify(b), { status: s });
     if (path === ".well-known/polaris.json")
       return this.discoveryStatus === 200
-        ? j(discovery(this.interAccount))
+        ? j(discovery(this.interAccount, this.localPairing))
         : j({}, this.discoveryStatus);
     const auth = new Headers(init?.headers).get("authorization") ?? "";
     const deviceId = this.tokens.get(auth.replace("Bearer ", ""));

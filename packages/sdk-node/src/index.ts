@@ -147,6 +147,16 @@ export {
   type ConnectIdentity,
   type ConnectOptions,
   type DiscoveryKeys,
+  LocalLinks,
+  type LocalCode,
+  type LocalJoinOptions,
+  type LocalLinkInfo,
+  type LocalOffer,
+  type LocalOptions,
+  type LocalPairFailure,
+  type LocalPairHandle,
+  type LocalPairOptions,
+  type LocalPaired,
 } from "./connect/index.js";
 export { activationRefusal } from "./license/endpoints.js";
 // The error copy catalog (SDK parity pass §3.2): one sentence and title per code.
