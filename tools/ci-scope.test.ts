@@ -267,7 +267,9 @@ describe("the changes job outputs", () => {
     expect(out.python).toBe("true");
     expect(out.swift).toBe("false");
     expect(out.full).toBe("false");
-    expect(JSON.parse(out["python-matrix"]!)).toEqual(scope.matrices.python!.pr);
+    expect(JSON.parse(out["python-matrix"]!)).toEqual(
+      scope.matrices.python!.pr,
+    );
     expect(JSON.parse(out["kotlin-desktop-matrix"]!).os).toEqual([
       "ubuntu-latest",
     ]);
@@ -431,7 +433,9 @@ describe("the ci-scope command", () => {
     expect(out["swift-linux"]).toBe("true");
     expect(out.python).toBe("false");
     expect(out.full).toBe("false");
-    expect(JSON.parse(out["python-matrix"]!)).toEqual(scope.matrices.python!.pr);
+    expect(JSON.parse(out["python-matrix"]!)).toEqual(
+      scope.matrices.python!.pr,
+    );
   });
 
   it.each([
