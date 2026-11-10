@@ -26,6 +26,8 @@ import { parse as parseYaml } from "yaml";
 import {
   changedFiles,
   ciOutputs,
+  findGreenAncestor,
+  greenAncestorOf,
   loadScope,
   matrixFor,
   selectLanes,
@@ -507,15 +509,144 @@ describe("ci.yml reads the scope", () => {
     expect(concurrency["cancel-in-progress"]).toBe(true);
   });
 
-  it("treats a push to next as a push to main: every lane, the full matrix", () => {
-    // The scope map narrows only a pull request; ci.yml hands it the event name, not the branch.
-    const lanes = ciOutputs(scope, { event: "push", files: ["README.md"] });
+  it("runs the full CI on a push to next that has no green ancestor, like main", () => {
+    // ci.yml hands the scope the event name and the ref; no ancestor means no files.
+    const lanes = ciOutputs(scope, {
+      event: "push",
+      ref: "refs/heads/next",
+      files: null,
+    });
     for (const lane of Object.keys(scope.lanes))
       expect(lanes[lane], lane).toBe("true");
+    expect(lanes.full).toBe("true");
     for (const name of Object.keys(scope.matrices))
       expect(JSON.parse(String(lanes[`${name}-matrix`]))).toEqual(
         matrixFor(scope, name, false),
       );
+  });
+
+  it("scopes ci-ok's skipped lanes to a narrowed run", () => {
+    const ok = jobs["ci-ok"]!;
+    const run = ok.steps!.map((st) => st.run ?? "").join("\n");
+    expect(jobs.changes!.outputs).toHaveProperty("full");
+    expect(JSON.stringify(ok.steps)).toContain("needs.changes.outputs.full");
+    // A skipped job passes only when FULL is "false"; success always passes.
+    expect(run).toContain('.result == "skipped" and $full == "false"');
+  });
+
+  it("lets the changes job read this workflow's runs, and nothing more", () => {
+    const perms = (
+      jobs.changes as unknown as { permissions: Record<string, string> }
+    ).permissions;
+    expect(perms).toEqual({ contents: "read", actions: "read" });
+    const step = jobs.changes!.steps!.find((st) =>
+      st.run?.includes("ci-scope"),
+    )!;
+    expect(step.run).toContain('--ref "$GITHUB_REF"');
+    expect(JSON.stringify(step)).toContain("github.token");
+  });
+});
+
+describe("a push to next narrows to the files since its green ancestor", () => {
+  const next = "refs/heads/next";
+  const swiftFile = "sdks/swift/Sources/PolarisKeyCore/Client.swift";
+
+  it("narrows the lanes and keeps the FULL matrices when a green ancestor is found", () => {
+    const out = ciOutputs(scope, {
+      event: "push",
+      ref: next,
+      files: ["sdks/python/src/polaris_key/a.py"],
+    });
+    expect(out.python).toBe("true");
+    expect(out.swift).toBe("false");
+    expect(out.full).toBe("false");
+    // Not the pull-request floor and latest: the lanes that run take every leg.
+    for (const name of Object.keys(scope.matrices))
+      expect(JSON.parse(String(out[`${name}-matrix`]))).toEqual(
+        matrixFor(scope, name, false),
+      );
+    expect(JSON.parse(out["python-matrix"]!).include).toHaveLength(3);
+  });
+
+  it("runs every lane when a shared path changed since the ancestor", () => {
+    const out = ciOutputs(scope, {
+      event: "push",
+      ref: next,
+      files: [swiftFile, "tools/ci-scope.mjs"],
+    });
+    for (const lane of Object.keys(scope.lanes))
+      expect(out[lane], lane).toBe("true");
+    expectFullMatrices(out);
+  });
+
+  it.each(["refs/heads/main", "refs/tags/v1.2.3", ""])(
+    "runs the full CI on a push to %s, whatever the diff",
+    (ref) => {
+      const out = ciOutputs(scope, {
+        event: "push",
+        ref,
+        files: ["README.md"],
+      });
+      for (const lane of Object.keys(scope.lanes))
+        expect(out[lane], lane).toBe("true");
+      expect(out.full).toBe("true");
+      expectFullMatrices(out);
+    },
+  );
+
+  it("takes the newest commit whose CI run succeeded, within the lookback", () => {
+    const commits = ["c1", "c2", "c3", "c4"];
+    expect(findGreenAncestor(commits, ["c4", "c2", "zzz"])).toBe("c2");
+    expect(findGreenAncestor(commits, ["other"])).toBeNull();
+    expect(findGreenAncestor([], ["c1"])).toBeNull();
+  });
+
+  it("looks up the ancestor with git and the API, HEAD excluded, 30 commits back", () => {
+    const calls: string[][] = [];
+    const found = greenAncestorOf({
+      repo: "o/r",
+      run: (cmd: string, args: string[]) => {
+        calls.push([cmd, ...args]);
+        if (cmd === "git") return "head\nc1\nc2\nc3\n";
+        return "c3\nold\n";
+      },
+    });
+    expect(found).toBe("c3");
+    expect(calls[0]).toEqual(["git", "rev-list", "-n", "31", "HEAD"]);
+    expect(calls[1]![2]).toContain(
+      "repos/o/r/actions/workflows/ci.yml/runs?branch=next&event=push&status=success",
+    );
+  });
+
+  it("finds none when no run is green, the API fails, or git fails", () => {
+    const none = (cmd: string) => (cmd === "git" ? "head\nc1\n" : "x\n");
+    expect(greenAncestorOf({ repo: "o/r", run: none })).toBeNull();
+    const boom = (cmd: string) => {
+      if (cmd === "gh") throw new Error("403");
+      return "head\nc1\n";
+    };
+    expect(greenAncestorOf({ repo: "o/r", run: boom })).toBeNull();
+    const noGit = () => {
+      throw new Error("not a repo");
+    };
+    expect(greenAncestorOf({ repo: "o/r", run: noGit })).toBeNull();
+  });
+
+  it("the command runs everything on a push to next when no repository is named", () => {
+    const r = repo({ "README.md": "# r\n" });
+    const run = spawnSync(
+      process.execPath,
+      [CLI, "ci", "--event", "push", "--ref", next],
+      {
+        cwd: r.dir,
+        encoding: "utf8",
+        env: { ...process.env, GITHUB_REPOSITORY: "" },
+      },
+    );
+    expect(run.status, run.stderr).toBe(0);
+    const out = outputsOf(run.stdout);
+    expect(out.full).toBe("true");
+    expectFullMatrices(out);
   });
 });
 

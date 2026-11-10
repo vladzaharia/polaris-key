@@ -3,6 +3,9 @@
 # most common "broke the contract" mistakes locally before a commit lands. The full
 # six-language matrix (Python/Swift/Godot suites, admin build, format) runs in CI, not here.
 #
+#   0. lint of the staged files — tools/lint-staged.mjs: prettier on what prettier owns, and each SDK's
+#      own linter (ruff + mypy, ktlint + detekt, gdlint, swift-format) over its staged files against its
+#      ledger: the same checks `pnpm gate` runs, so a format or lint slip fails here, not in CI.
 #   1. cheap generators — `pnpm gen --fast --check` runs the registry families marked `fast` in
 #      tools/generators.ts: the signed corpus must regenerate in place (no wire drift), every
 #      language's service constants match tools/services.json, and the generators page is current.
@@ -10,5 +13,6 @@
 #
 # Escape hatch: `git commit --no-verify` skips this for trivial/docs-only commits.
 
+node tools/lint-staged.mjs || exit 1
 pnpm gen --fast --check
 pnpm typecheck

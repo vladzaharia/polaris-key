@@ -65,6 +65,28 @@ the 4.4.1 editor (the floor).
 `pnpm build` does not typecheck the Worker — esbuild strips types on the way through — so
 `pnpm typecheck` is never redundant with it, even though both build.
 
+## Which lanes CI runs
+
+`tools/ci-scope.json` is the one map of lanes to paths; the `changes` job of `ci.yml` and
+`pnpm gate` both read it through `tools/ci-scope.mjs`. A change under a `shared` path (the
+contract, the shared packages, `tools/`, `.github/`) runs every lane.
+
+| Run                             | Lanes                                                        | Matrices                 |
+| ------------------------------- | ------------------------------------------------------------ | ------------------------ |
+| pull request                    | the lanes the changed files touch                            | the floor and the latest |
+| push to `next`                  | the lanes touched since the newest green ancestor, see below | full                     |
+| push to `main`, tag, manual run | every lane                                                   | full                     |
+
+A push to `next` looks back up to 30 commits for the newest ancestor whose CI workflow run
+succeeded, and diffs against it. With no green ancestor in that range, or when the diff or the
+GitHub API cannot be read, every lane runs. The static checks (`js`) and `CI OK` always run.
+
+A narrowed run's `CI OK` means: every lane touched since the last green ancestor passed on this
+run, and the rest passed on that ancestor. `CI OK` counts a skipped lane as passed only on a
+narrowed run; on a full run a skipped job fails it. `deploy.yml`, `publish-sdks.yml` and
+`promote.yml` rely on `CI OK` (`tools/require-ci-ok.sh`), and a narrowed `CI OK` on `next` is
+the same proof.
+
 ## Pre-commit hooks
 
 `pnpm install` runs the `prepare` script, which sets up [husky](https://typicode.github.io/husky/)
@@ -72,9 +94,17 @@ git hooks automatically — no manual step. The committed `.husky/pre-commit` ho
 fast, fail-early guards before every commit:
 
 ```sh
-pnpm gen --fast --check   # the cheap generators: corpus, service table, generators page
+node tools/lint-staged.mjs  # the staged files: prettier, and each SDK's own linter
+pnpm gen --fast --check     # the cheap generators: corpus, service table, generators page
 pnpm typecheck
 ```
+
+`tools/lint-staged.mjs` runs `prettier --check` on the staged files and, for each SDK with staged
+source, `sdks/<sdk>/tools/lint.sh check --files <list>` (ruff and mypy, ktlint and detekt,
+gdlint, swift-format). It holds them to the same ledger as `pnpm gate`, so a file with old debt
+passes and a new finding fails. A failure prints the command that fixes it. A linter whose tool
+is not installed (no `sdks/python/.venv`, no JDK) says so and does not run; CI runs it. Swift
+lints only on the 6.3 toolchain, as in the gate.
 
 It is intentionally lightweight — the full cross-language matrix runs in CI, not locally. For a
 trivial or docs-only commit you can skip it with `git commit --no-verify`.
