@@ -11,9 +11,9 @@
 #                created on the newest installed iOS runtime and reused; it is erased first,
 #                because storekitd keeps a StoreKit configuration per bundle id across runs)
 #   BUILD_DIR    where the generated project, derived data and logs go (default: ./build)
-#   SETTLE_MAX   the longest wait, in seconds, for the simulator to go quiet (default 300; 60 while
-#                the StoreKit tests are disabled, see STOREKIT_WAITS). With the StoreKit tests on, the
-#                settle wait runs three times, so the worst case is three times this
+#   SETTLE_MAX   the longest wait, in seconds, for the simulator to go quiet (default 300). Only with
+#                the StoreKit tests on (see STOREKIT_WAITS), where the settle wait runs three times.
+#                With them off there is no settle: the gate host's launch is the readiness signal
 #
 #   XCODEGEN     the xcodegen binary (default: xcodegen on PATH; CI pins 2.45.4 by SHA-256)
 #
@@ -33,11 +33,11 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 BUILD="${BUILD_DIR:-$HERE/build}"
 # The waits below exist for the StoreKit purchase, refund and AppTransaction tests. While those are
 # disabled in StoreKitHostTests.swift ("disabled as flaky") nothing left in the suite stalls on a
-# busy simulator, so only the boot settle runs, capped at 60 s, and the warm-up and the later settles
-# are skipped. Re-enabling the tests (removing the marker) restores every wait and the 300 s cap.
+# busy simulator, so no settle runs at all (the gate host's launch is the readiness check) and the
+# warm-up is skipped. Re-enabling the tests (removing the marker) restores every wait and the 300 s cap.
 if grep -q 'disabled as flaky' "$HERE/HostTests/StoreKitHostTests.swift"; then
   STOREKIT_WAITS=0
-  SETTLE_MAX="${SETTLE_MAX:-60}"
+  SETTLE_MAX="${SETTLE_MAX:-300}"
 else
   STOREKIT_WAITS=1
   SETTLE_MAX="${SETTLE_MAX:-300}"
@@ -160,7 +160,33 @@ xcodebuild build-for-testing "${XB_GATE[@]}" >"$BUILD/logs/xcodebuild-build-gate
   exit 65
 }
 
-settle "after the boot"
+# Readiness, not a delay: with the StoreKit tests off, the gate host is installed and launched until
+# it stays running (the signal the XCUITests need), at most 6 tries. A simulator that is still busy
+# after its first boot fails these launches, and the loop returns as soon as one holds.
+gate_host_ready() {
+  local app="$BUILD/dd/Build/Products/Debug-iphonesimulator/PKGateHost.app" bid=dev.polariskey.gatehost try pid
+  [ -d "$app" ] || { echo "run.sh: $app missing" >&2; return 1; }
+  xcrun simctl install "$udid" "$app"
+  for try in 1 2 3 4 5 6; do
+    pid="$(xcrun simctl launch "$udid" "$bid" -pkScenario needsActivation 2>/dev/null | awk -F': ' 'NF > 1 { print $2 }')" || pid=""
+    if [ -n "$pid" ]; then
+      # Still alive after a second launch round-trip: it did not crash at start-up.
+      if xcrun simctl spawn "$udid" launchctl list 2>/dev/null | grep -q "UIKitApplication:$bid"; then
+        xcrun simctl terminate "$udid" "$bid" >/dev/null 2>&1 || true
+        echo "run.sh: gate host launches (try $try)"
+        return 0
+      fi
+    fi
+    xcrun simctl terminate "$udid" "$bid" >/dev/null 2>&1 || true
+    echo "run.sh: gate host did not launch (try $try of 6)" >&2
+  done
+  return 1
+}
+if [ "$STOREKIT_WAITS" = 1 ]; then
+  settle "after the boot"
+else
+  gate_host_ready || { echo "run.sh: the gate host never launched on $udid" >&2; exit 4; }
+fi
 if [ "$STOREKIT_WAITS" = 1 ]; then
   # The warm-up's result does not count: the suite below runs both tests again.
   xcodebuild test-without-building "${XB[@]}" "${TIMEOUTS[@]}" \
