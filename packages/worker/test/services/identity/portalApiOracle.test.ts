@@ -52,6 +52,7 @@ import {
 import type { Db } from "../../../src/db/types.js";
 import type { Env } from "../../../src/platform/env.js";
 import { TEST_ROOT as here } from "../../paths.js";
+import { isHtml, skipForHtml } from "../../helpers/oracleHtml.js";
 
 const FIXTURE = join(here, "fixtures", "portal-api-oracle.json");
 const SLUG = "djdl";
@@ -410,6 +411,7 @@ async function observe(
   const headers: Record<string, string> = {};
   for (const name of CARRIED) {
     const v = res.headers.get(name);
+    if (skipForHtml(res, name)) continue;
     // The export's byte length follows its random ids; its normalised digest below stands in.
     if (name === "content-length" && res.headers.get("content-disposition"))
       continue;
@@ -447,7 +449,9 @@ async function observe(
     headers,
     cookies,
     after: "",
-    body: `${text.length}:${createHash("sha256").update(text).digest("hex").slice(0, 16)}`,
+    body: isHtml(res)
+      ? "html"
+      : `${text.length}:${createHash("sha256").update(text).digest("hex").slice(0, 16)}`,
   };
 }
 

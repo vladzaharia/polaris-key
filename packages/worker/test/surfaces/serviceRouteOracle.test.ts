@@ -39,6 +39,7 @@ import { seedDeliveryAccess } from "../releaseSurface.js";
 import type { Db } from "../../src/db/types.js";
 import type { Env } from "../../src/platform/env.js";
 import { TEST_ROOT as here } from "../paths.js";
+import { isHtml, skipForHtml } from "../helpers/oracleHtml.js";
 
 const FIXTURE = join(here, "fixtures", "service-route-oracle.json");
 const FIXTURE3 = join(here, "fixtures", "service-route-oracle-3.json");
@@ -361,6 +362,7 @@ async function observe(res: Response): Promise<Row> {
   const headers: Record<string, string> = {};
   for (const name of CARRIED) {
     const v = res.headers.get(name);
+    if (skipForHtml(res, name)) continue;
     if (v !== null) headers[name] = normalise(v);
   }
   const setCookies =
@@ -373,7 +375,9 @@ async function observe(res: Response): Promise<Row> {
     status: res.status,
     headers,
     cookies,
-    body: `${text.length}:${createHash("sha256").update(text).digest("hex").slice(0, 16)}`,
+    body: isHtml(res)
+      ? "html"
+      : `${text.length}:${createHash("sha256").update(text).digest("hex").slice(0, 16)}`,
   };
 }
 
