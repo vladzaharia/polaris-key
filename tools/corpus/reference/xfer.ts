@@ -333,7 +333,7 @@ export interface RefCtx {
   free: number | null;
   /** How the host answers an offer: at once, later (`ask`), at once with a refusal or not at all. */
   handler: "accept" | "ask" | "decline" | "none";
-  /** The link's categories (mode c). */
+  /** The link's categories (modes c and l). */
   cats: string[];
   partials: RefPartial[];
   /** The remote static key, hex (the partial key). */
@@ -642,7 +642,11 @@ export class RefXferSide {
   private rx(ev: Extract<RefEv, { rx: string }>): void {
     if (ev.rx === "PING") return;
     // Step 1: the mode and the capability.
-    if (this.ctx.mode !== "a" && this.ctx.mode !== "c") {
+    if (
+      this.ctx.mode !== "a" &&
+      this.ctx.mode !== "c" &&
+      this.ctx.mode !== "l"
+    ) {
       this.o.close = "peer_not_allowed";
       this.closed = true;
       return;
@@ -713,7 +717,7 @@ export class RefXferSide {
       return refuse("busy");
     // Step 5: the category, before the person is asked.
     if (
-      this.ctx.mode === "c" &&
+      (this.ctx.mode === "c" || this.ctx.mode === "l") &&
       (f.cat === undefined || !this.ctx.cats.includes(f.cat))
     )
       return refuse("category");

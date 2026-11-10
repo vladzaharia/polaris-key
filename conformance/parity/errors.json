@@ -1039,7 +1039,7 @@
       "code": "local-links-full",
       "kind": "client",
       "service": "connect",
-      "description": "This device already holds the most local links it may keep for the product (32), so it opens no pairing window and joins none (WIRE-CONTRACT-V5 \u00a715.12). The person forgets a link first."
+      "description": "This device already holds the most local links it may keep for the product (32), so it opens no pairing window and joins none (WIRE-CONTRACT-V5 \u00a715.12). It also answers a request to make a ninth link reachable when 8 already are (the limit of live adverts). The person forgets a link, or turns one off, first."
     },
     {
       "code": "peer_revoked",
