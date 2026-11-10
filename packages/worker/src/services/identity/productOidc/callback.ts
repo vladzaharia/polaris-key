@@ -12,19 +12,13 @@ import {
 } from "../../../core/oidc/client.js";
 import { representabilityIssue } from "@polaris-key/catalog";
 import { hashKey } from "../../../platform/crypto.js";
-import { platformOidcConfig } from "../../../platform/platformOidc.js";
 import { type Env } from "../../../platform/env.js";
 import { parseFlowRecord } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
 import { errorResponse } from "../../../core/errors.js";
 import { clientNetwork } from "../../../core/rateLimit.js";
-import { getLicense } from "../../../core/licensing/store.js";
 import { shownAppName } from "../../../core/accounts/reservedDisplayNames.js";
-import {
-  createBrowserSession,
-  type BrowserSessionSubject,
-} from "../browserSession.js";
 import { noticeOrigin } from "../accounts/libraryNotice.js";
 import { readBinder } from "../licenseChoice.js";
 import { appModeAccount } from "./appMode.js";
@@ -33,7 +27,6 @@ import {
   claimPlatformSubject,
   platformSignInEnded,
   platformSubjectStanding,
-  platformSubjectLink,
 } from "../accounts/platformMigration.js";
 import {
   deleteArtefact,
@@ -58,7 +51,6 @@ import {
 } from "./config.js";
 import {
   type OidcIdentity,
-  getOidcConfig,
   identityRefusal,
 } from "../../../core/licensing/issue.js";
 import {
@@ -262,7 +254,6 @@ export async function handleAuthCallback(
     await deleteArtefact(env, stateKey);
     return productAccountDisabledPage(
       product,
-      flow,
       await flowView(env, db, product, flow),
     );
   }
@@ -385,15 +376,12 @@ export async function handleAuthCallback(
       noticeOrigin(env, req),
     );
   return completeBrowserFlow(
-    req,
     env,
     db,
     product,
     stateKey,
     flow,
     result.licenseId,
-    identity.sub,
-    now,
     [],
     migration.notice,
   );
@@ -460,7 +448,6 @@ export async function migratePlatformSubject(
         await deleteArtefact(env, stateKey);
         return productAccountDisabledPage(
           product,
-          flow,
           await flowView(env, db, product, flow),
         );
       }
@@ -492,97 +479,24 @@ export async function signInAccountRefused(
 }
 
 /**
- * What a browser session opened by this sign-in is bound to: on a `provider: platform` product,
- * the platform-IdP subject itself (N9's check runs on it at every read, so an account it joins
- * or is moved to later counts too) and the account holding its method now, if any (kept for
- * erasure, which deletes the method); otherwise nothing. The session then ends when either can
- * no longer sign in (`loadBrowserSession`); a custom issuer's subject opens a session bound to
- * nothing, as before. Read-only, and like {@link pollAccountRefused} it reads the provider from
- * the product's row and the issuer from the Worker's secrets.
- */
-export async function browserSessionBinding(
-  env: Env,
-  db: Db,
-  product: Product,
-  sub: string,
-): Promise<{
-  subject: BrowserSessionSubject;
-  accountId: string | null;
-} | null> {
-  const row = await getOidcConfig(db, product.slug);
-  if ((row?.provider ?? "platform") !== "platform") return null;
-  const platform = platformOidcConfig(env);
-  if (!platform) return null;
-  const link = await platformSubjectLink(db, platform.issuer, sub);
-  return {
-    subject: { issuer: platform.issuer, sub: sub.trim() },
-    accountId: link?.account_id ?? null,
-  };
-}
-
-/**
- * The end of a browser-redirect flow once its licence is known: a `returnTo` flow gets the
- * browser session and a redirect back; any other gets `licenseId` recorded for the poll and the
- * "signed in" page. Shared by the callback and the licence chooser's choice (I-26).
+ * The end of a browser-redirect flow once its licence is known: `licenseId` is recorded for the
+ * poll, and the person sees the "signed in" page.
  */
 export async function completeBrowserFlow(
-  req: Request,
   env: Env,
   db: Db,
   product: Product,
   stateKey: ArtefactRef,
   flow: FlowRecord,
   licenseId: string,
-  /** The verified subject that signed in: a `returnTo` flow's browser session is bound to it
-   *  and to its account, if it has one ({@link browserSessionBinding}). */
-  sub: string,
-  now: number,
   extraCookies: string[] = [],
-  /** I-17: TRUSTED markup the "signed in" page adds (the join offer); a `returnTo` flow has no
-   *  page to show it on. */
+  /** I-17: TRUSTED markup the "signed in" page adds (the join offer). */
   notice: string | null = null,
 ): Promise<Response> {
   // Defence in depth (I-37): a device-code flow completes only through its approval.
   if (isDeviceCodeFlow(flow))
     return errorResponse(403, "forbidden", "not entitled");
   flow.licenseId = licenseId;
-  if (flow.returnTo) {
-    const license = await getLicense(db, product.slug, licenseId);
-    if (!license) {
-      await deleteArtefact(env, stateKey);
-      return errorResponse(401, "unauthorized", "license unavailable");
-    }
-    const binding = await browserSessionBinding(env, db, product, sub);
-    const session = await createBrowserSession(
-      env,
-      db,
-      product,
-      license,
-      now,
-      req,
-      {
-        subject: binding?.subject ?? null,
-        accountId: binding?.accountId ?? null,
-      },
-    );
-    await deleteArtefact(env, stateKey);
-    if (!session.ok) {
-      return errorResponse(
-        session.status,
-        session.code,
-        session.message,
-        session.extra,
-      );
-    }
-    const headers = new Headers({ location: flow.returnTo });
-    headers.append("set-cookie", session.cookie);
-    for (const c of extraCookies) headers.append("set-cookie", c);
-    // 302 from the callback (a GET), as before; the chooser's POST answers 303.
-    return new Response(null, {
-      status: req.method === "POST" ? 303 : 302,
-      headers,
-    });
-  }
   await updateArtefact(env, stateKey, { set: { licenseId } });
   return signedInPage(
     extraCookies,

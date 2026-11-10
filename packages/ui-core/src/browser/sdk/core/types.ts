@@ -105,7 +105,7 @@ export type PolarisErrorCode =
   | ErrorCode;
 
 /** Loopback hosts keep `http:` usable for `wrangler dev` and integration tests; nothing else may
- *  carry a session cookie or a device bearer, or receive a user the SDK sent there. Mirrors
+ *  carry a device bearer, or receive a user the SDK sent there. Mirrors
  *  `@polaris-key/node`'s `LOOPBACK_HOSTS`: four SDKs, one rule. A `Set`, not an object literal:
  *  a hostname is attacker-influenced text, and `{}["constructor"]` is truthy. */
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
@@ -422,9 +422,6 @@ export interface FeedUrlOptions {
 /** `feedUrl()`'s answer: the URL, or the typed reason there is none (PARITY §2.2). */
 export type FeedUrl = { supported: true; url: string } | Unsupported;
 
-/** How a browser adapter authenticates (SDK-PARITY-PASS §3.17). */
-export type BrowserAuthMode = "cookie" | "bearer";
-
 /** The unified transport contract. The hooks ONLY ever talk to this — they never know
  *  which mode is active. Both `browserAdapter` and `desktopAdapter` implement it. */
 export interface PolarisAdapter {
@@ -462,14 +459,14 @@ export interface PolarisAdapter {
    *  without them it deauthorizes and wipes local state, as it always did. */
   signOut(): Promise<SignOutResult>;
   /** The account this device's licence is in (a pairwise `ps_` subject), or `null`. Bearer and
-   *  desktop modes; a cookie page, or a product with no account endpoint, throws the typed
+   *  desktop modes; a page without pinned keys, or a product with no account endpoint, throws the typed
    *  `UnsupportedError`. */
   subject(): Promise<string | null>;
   /** `attach({confirm: false})` previews the device's licence, `{confirm: true}` puts it in the
    *  signed-in account. Typed `UnsupportedError` where the transport or product cannot. */
   attach(opts: { confirm: boolean }): Promise<AttachResult>;
   /** The licence choice an app shows itself after `signIn` answered `choose` (identity.choice).
-   *  Bearer mode; a cookie page and the desktop renderer throw the typed `UnsupportedError`. */
+   *  Bearer mode; a page without pinned keys and the desktop renderer throw the typed `UnsupportedError`. */
   readonly choice: ChoiceNamespace;
   /** The link offer after a redirect sign-in (identity.link). Present on the browser adapter
    *  (typed `unavailable` where the page has no bearer session); absent elsewhere, which the kit
@@ -477,7 +474,7 @@ export interface PolarisAdapter {
   readonly link?: LinkClient;
   /** The automatic sign-in ladder (identity.autosignin): a stored token, then the platform
    *  provider silently, then (only with `prompt: "optional"`) its chooser. Bearer mode runs it;
-   *  the desktop renderer, a cookie page and the local adapter answer `unavailable`. */
+   *  the desktop renderer, a page without pinned keys and the local adapter answer `unavailable`. */
   autoSignIn(opts?: AutoSignInOptions): Promise<AutoSignInResult>;
   /** Open the product's page in the customer portal (discovery's `accountPortal`). Typed
    *  `UnsupportedError` when the product names none. */
@@ -564,7 +561,7 @@ export interface PolarisAdapter {
    * device report, which carries at most 16, oldest first. `event` is a P6-03 name
    * (`UpdateEvent`); the adapter fills in the id, the outlet, the channel (unless given) and the
    * time. Resolves to the journalled entry, or null when a value was malformed (the event is not
-   * recorded). Browser: bearer mode's in-page journal; a cookie page holds no device token and
+   * recorded). Browser: bearer mode's in-page journal; a page without pinned keys holds no device token and
    * throws the typed `UnsupportedError` (`runtime`). Desktop: forwarded to the host's journal
    * over bridge v4 (`invoke("update", "journal", {event, ...input})`); an older host answers
    * the typed `version` N/A.
@@ -581,26 +578,26 @@ export interface PolarisAdapter {
   /** `signIn.start(opts)` (identity.signIn): a device-code session (browser bearer mode: the
    *  CORS-covered device-code routes; desktop: the bridge's `beginSignIn`/`pollSignIn`) or a web
    *  redirect session (bearer mode), and `signIn.complete(callbackUrl)` after the navigation
-   *  back. A cookie page refuses with the typed `UnsupportedError`. */
+   *  back. A page without pinned keys refuses with the typed `UnsupportedError`. */
   readonly signIn: SignInNamespace;
   /**
    * The Cloud Sync key ring (sync.keyring, WIRE-CONTRACT-V5 §13.11): create, unlock with the
    * recovery code, set a new code, reset, and wrap the root to another device. Browser bearer
-   * mode runs it in-page. A cookie page, the desktop bridge (until the host serves a ring verb)
+   * mode runs it in-page. A page without pinned keys, the desktop bridge (until the host serves a ring verb)
    * and the local adapter answer the typed `UnsupportedError`; `unsupported` says which.
    */
   readonly keyring: import("./keyring.js").KeyringClient;
   /**
    * Cloud Sync for settings (sync.settings, WIRE-CONTRACT-V5 section 13.10): the host that runs the
-   * sync machine, its state in IndexedDB with one writer tab. Browser bearer mode runs it. A cookie
-   * page, the desktop bridge (until bridge v4 carries the verbs) and the local adapter answer the
+   * sync machine, its state in IndexedDB with one writer tab. Browser bearer mode runs it. A page
+   * without pinned keys, the desktop bridge (until bridge v4 carries the verbs) and the local adapter answer the
    * typed `UnsupportedError`; `unsupported` says which.
    */
   readonly cloudSync: import("./cloudSync.js").CloudSyncClient;
   /**
    * Cloud Connect over the relay (connect.app, WIRE-CONTRACT-V5 §15.7): start, stop, peers,
    * open a session to another device of the person, and the channels and notices that arrive.
-   * Browser bearer mode runs it (the relay is a page's only path). A cookie page and the local
+   * Browser bearer mode runs it (the relay is a page's only path). A page without pinned keys and the local
    * adapter answer the typed `UnsupportedError`; the desktop renderer's host runs it in its Node SDK.
    */
   readonly cloudConnect: import("../browser/connect/index.js").CloudConnectClient;
@@ -628,7 +625,7 @@ export interface PolarisAdapter {
    *  this transport keeps none. */
   offlineDeviceId(): Promise<string | null>;
   /** Where the device credential lives, and why if that is weaker than this platform's best
-   *  (core.store). Null where the transport holds no credential (the cookie session). */
+   *  (core.store). Null where the transport holds no credential (a page without pinned keys). */
   storeStatus(): Promise<import("@polaris-key/client-core").StoreStatus | null>;
   // ── SP-12: boot, the verified download, the download model, feed URLs, crash tags ──
   /**
@@ -636,7 +633,7 @@ export interface PolarisAdapter {
    * fresh install on an `open` product, the sync (trust, documents, report), the reacquire per
    * `core.registration`, the gate, the update decision and the required packs, through
    * client-core's stage machine to its outcome. Never prompts: a gate that needs the player
-   * ends `waiting`. Browser: in-page (the bearer engine, or the cookie session). Desktop: the
+   * ends `waiting`. Browser: in-page (the device-token engine). Desktop: the
    * host's `client.boot()` over bridge v4 (`invoke("core", "boot")`), refused typed (`version`)
    * on an older host.
    */
@@ -644,8 +641,8 @@ export interface PolarisAdapter {
   /**
    * The verified download (release.fetch, §3.6): one build's payload with the device bearer,
    * resumed with `Range`/`If-Range` after an interruption, its size and SHA-256 checked against
-   * the verified release record before it is returned. Browser: a `Blob`, in bearer mode (a
-   * cookie page holds no device bearer; a build that needs none still downloads). Desktop: the
+   * the verified release record before it is returned. Browser: a `Blob`, in bearer mode (a page
+   * without pinned keys holds no device bearer; a build that needs none still downloads). Desktop: the
    * host's `client.release.fetch(target, {to})` over bridge v4, which writes the file in the
    * privileged process and answers its `path` (no `blob`).
    */
@@ -677,7 +674,7 @@ export interface PolarisAdapter {
    * A document within the refresh margin of its expiry is synced first, and concurrent callers
    * share that sync; `force` syncs unconditionally and throws when the sync fails. Never the
    * device token or the config document. Raw: use `usePolarisFetch()` to send them. Browser:
-   * bearer mode (a cookie page holds no signed document and throws the typed
+   * bearer mode (a page without pinned keys holds no signed document and throws the typed
    * `UnsupportedError`). Desktop: the host's `client.backend.headers()` over bridge v4
    * (`invoke("core", "backendHeaders")`).
    */

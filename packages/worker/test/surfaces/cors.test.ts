@@ -541,8 +541,6 @@ describe("surfaces that never answer CORS", () => {
   for (const path of [
     "/manage/api/me",
     "/api/capabilities",
-    `/${SLUG}/identity/session`,
-    `/${SLUG}/identity/session/license`,
     `/${SLUG}/identity/auth/start`,
     `/${SLUG}/config/mint/applemusic/auth`,
     "/docs/",

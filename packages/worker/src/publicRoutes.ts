@@ -139,9 +139,8 @@ export const CORE_ROUTES: readonly CoreRouteDecl[] = [
     handler: (c) =>
       handleReport(c.req, c.env, c.db, c.product, c.now, hooksOf(c)),
   },
-  // The registry is threaded through because `requires-identity` registration is authorized by
-  // the Identity descriptor (`ServiceDescriptor.authorizeRegistration`); Core asks the registry
-  // rather than importing the service.
+  // The registry is threaded through for `ServiceDescriptor.authorizeRegistration`; no service
+  // supplies one now, so `requires-identity` registration refuses every caller (SP-40).
   {
     kind: "register",
     surface: [{ path: "/{product}/devices/register", methods: ["post"] }],

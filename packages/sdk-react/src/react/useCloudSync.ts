@@ -3,7 +3,7 @@
 // and the sign-in offer.
 //
 // Nothing here loads Cloud Sync: the adapter's lazy client does, on the first call that needs it,
-// so a page that never syncs pays only for this file. Where Cloud Sync cannot run (a cookie page,
+// so a page that never syncs pays only for this file. Where Cloud Sync cannot run (a page without pinned keys,
 // the desktop bridge until v4, a product without Sync) `unsupported` says why and every setting
 // stays `local`. No value ever passes through the status or the offer.
 

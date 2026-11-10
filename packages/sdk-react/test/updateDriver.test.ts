@@ -31,7 +31,7 @@ import {
   NOW_SEC,
   emptyBridgeState,
   makeFakeBridge,
-  makeFakeFetch,
+  fakeWorld,
   makeDoc,
   services,
 } from "./fixtures.js";
@@ -517,9 +517,9 @@ describe("update.driver on web: the service-worker hand-off", () => {
     const waiting = new FakeWorker("installed");
     const reload = vi.fn();
     const a = browserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc(), {
+      ...fakeWorld(makeDoc(), {
         capabilities: services("license", "config", "update"),
       }),
       now: () => NOW_SEC,
@@ -543,9 +543,9 @@ describe("update.driver on web: the service-worker hand-off", () => {
     const reload = vi.fn();
     vi.stubGlobal("navigator", { serviceWorker: container });
     const a = browserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc(), {
+      ...fakeWorld(makeDoc(), {
         capabilities: services("license", "config", "update"),
       }),
       now: () => NOW_SEC,
@@ -568,9 +568,9 @@ describe("update.driver on web: the service-worker hand-off", () => {
 
   it("the browser adapter with no service worker answers unsupported", async () => {
     const a = browserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc(), {}),
+      ...fakeWorld(makeDoc(), {}),
       now: () => NOW_SEC,
       serviceWorker: { container: null },
     });

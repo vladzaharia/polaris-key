@@ -135,8 +135,7 @@ export function retryAfterSeconds(
 }
 
 /**
- * Classify one activation-like answer (`license/activate`, `license/enroll`, the cookie
- * session's `session/license`). `body` is the parsed JSON body, or null when there was none.
+ * Classify one activation-like answer (`license/activate`, `license/enroll`). `body` is the parsed JSON body, or null when there was none.
  */
 export function classifyActivation(
   status: number,

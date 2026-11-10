@@ -8,6 +8,8 @@ import type { LicenseDoc } from "@polaris-key/protocol/license";
 import type { BridgeState, PolarisBridge } from "../src/desktop/bridge.js";
 import type { ServiceSlug, ServicesMap } from "../src/core/services.js";
 import { noServices } from "../src/core/services.js";
+import { memoryStore, type BrowserStore } from "../src/browser/bearer/store.js";
+import type { OfflineRecord } from "../src/browser/offline.js";
 
 /** A fixed "now" (seconds) every adapter is pinned to so the gate is deterministic. */
 export const NOW_SEC = 2000;
@@ -175,14 +177,15 @@ export function discoveryBody(
   });
 }
 
+const FIXTURE_TOKEN = "pkeyt_fixture";
+
 /**
- * A fake `fetch` answering the browser adapter's routes: v3 discovery plus the identity
- * session endpoints at their §R1 homes (`/<p>/identity/session`, `/session/license`,
- * `/auth/logout`). The session body is still the FUSED document the identity service mints —
- * §R1 moved the routes and left the response shapes alone.
+ * A fake Worker for the browser adapter: v3 discovery plus the signed licence and config
+ * documents a page holding `FIXTURE_TOKEN` syncs (`doc` is the licence; `null` serves none, so a
+ * page without a token stays signed out). Documents are signed with `FIXTURE_KEY`.
  */
 export function makeFakeFetch(
-  doc: LicenseDoc | null,
+  source: LicenseDoc | null | (() => LicenseDoc | null),
   opts: {
     config?: Record<string, ManagedEntry>;
     capabilities?: ServicesMap;
@@ -190,69 +193,96 @@ export function makeFakeFetch(
   } = {},
 ): typeof fetch {
   const product = opts.product ?? "acme";
-  const body = JSON.stringify({
-    authenticated: doc !== null,
-    doc: doc ? fuse(doc, opts.config ?? makeConfig()) : null,
-    csrfToken: "csrf-1",
-  });
-  return (async (input: RequestInfo | URL) => {
+  return (async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const doc = typeof source === "function" ? source() : source;
     const url =
       typeof input === "string"
         ? input
         : input instanceof URL
           ? input.href
           : input.url;
-    if (url.includes("/.well-known/polaris.json")) {
+    const json = (b: unknown, status = 200) =>
+      new Response(JSON.stringify(b), {
+        status,
+        headers: { "content-type": "application/json" },
+      });
+    if (url.includes("/.well-known/polaris.json"))
       return new Response(
         discoveryBody(opts.capabilities ?? services(), product),
-        {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        },
+        { status: 200, headers: { "content-type": "application/json" } },
       );
-    }
-    if (url.includes("/identity/session/license")) {
-      return new Response(JSON.stringify({ ok: true }), {
-        status: 201,
-        headers: { "content-type": "application/json" },
-      });
-    }
-    if (url.includes("/identity/session")) {
-      return new Response(body, {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
-    }
-    if (url.includes("/identity/auth/logout")) {
-      return new Response(null, { status: 204 });
-    }
+    if (url.includes("/.well-known/polaris-trust.jws"))
+      return new Response("", { status: 404 });
+    const authorized =
+      new Headers(init.headers).get("authorization") ===
+      `Bearer ${FIXTURE_TOKEN}`;
+    if (doc && authorized && url.endsWith("/license/document"))
+      return new Response(
+        await signCompact(
+          { ...doc, aud: product },
+          FIXTURE_KEY,
+          "pkey-license+jws",
+        ),
+        { status: 200, headers: { etag: '"L1"' } },
+      );
+    if (doc && authorized && url.endsWith("/config/document"))
+      return new Response(
+        await signCompact(
+          {
+            iss: doc.iss,
+            aud: product,
+            deviceId: doc.deviceId,
+            issuedAt: doc.issuedAt,
+            expiresAt: doc.expiresAt,
+            graceUntil: doc.graceUntil,
+            schemaVersion: 1,
+            secrets: {},
+            config: opts.config ?? makeConfig(),
+          },
+          FIXTURE_KEY,
+          "pkey-config+jws",
+        ),
+        { status: 200, headers: { etag: '"C1"' } },
+      );
+    if (url.endsWith("/devices/report")) return json({ ok: true });
+    if (url.endsWith("/license/activate"))
+      return json({ token: FIXTURE_TOKEN, schemaVersion: 1 });
+    if (url.includes("/license/") || url.includes("/config/"))
+      return json({ error: { code: "unauthorized" } }, 401);
     return new Response("not found", { status: 404 });
   }) as unknown as typeof fetch;
 }
 
-/** Re-fuse the split v3 pair into the artifact the identity session still returns, so a test
- *  writes ONE fixture and both transports read the shape they actually receive. */
-export function fuse(
-  doc: LicenseDoc,
-  config: Record<string, ManagedEntry>,
-): Record<string, unknown> {
-  return {
-    schemaVersion: 1,
-    aud: doc.aud,
-    iss: doc.iss,
-    licenseId: doc.licenseId,
-    deviceId: doc.deviceId,
-    issuedAt: doc.issuedAt,
-    expiresAt: doc.expiresAt,
-    graceUntil: doc.graceUntil,
-    profile: doc.profile,
-    payload: {
-      config,
-      secrets: {
-        "api.token": { state: "enforced", value: "s3cr3t", updatedAt: 950 },
-      },
-      entitlements: doc.entitlements,
+/**
+ * The browser adapter's options for a signed-in (`doc`) or signed-out (`null`) page against
+ * `makeFakeFetch`: the fetch, the pins that verify its documents, and a store that holds the
+ * device token and the document's device id.
+ */
+export function fakeWorld(
+  source: LicenseDoc | null | (() => LicenseDoc | null),
+  opts: Parameters<typeof makeFakeFetch>[1] = {},
+): {
+  fetchImpl: typeof fetch;
+  trust: typeof FIXTURE_TRUST;
+  store: BrowserStore;
+} {
+  const product = opts.product ?? "acme";
+  const doc = typeof source === "function" ? source() : source;
+  const records = new Map<string, OfflineRecord>();
+  if (doc) records.set(product, { deviceId: doc.deviceId });
+  const store = memoryStore(product, {
+    async read(p) {
+      return records.get(p) ?? null;
     },
+    async write(p, r) {
+      records.set(p, r);
+    },
+  });
+  if (doc) void store.setToken(FIXTURE_TOKEN);
+  return {
+    fetchImpl: makeFakeFetch(source, opts),
+    trust: FIXTURE_TRUST,
+    store,
   };
 }
 
@@ -346,3 +376,9 @@ export async function settled(adapter: {
   for (let i = 0; i < 200 && adapter.snapshot().phase === "loading"; i += 1)
     await new Promise((r) => setTimeout(r, 2));
 }
+
+/** The pinned key every fixture world signs with, and the `trust` a page pins to verify it. */
+export const FIXTURE_KEY: TestKey = await newTestKey("pkey-fixture");
+export const FIXTURE_TRUST = {
+  pinnedKeys: { [FIXTURE_KEY.kid]: FIXTURE_KEY.raw },
+};

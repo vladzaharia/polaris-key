@@ -938,13 +938,11 @@ describe("REFUTED: KV namespace confusion via crafted state / device_code / toke
       // The real key derivations (R12-04: hashed, so the suffix is always hex).
       const flow = await flowKey(e, ACME, s);
       const deviceFlow = await deviceFlowKey(e, ACME, s);
-      const browser = `p:${ACME}:browser-session:${s}`;
       for (const other of [ACME, EVILCO]) {
         // A real token key for either tenant, with any hash the attacker can imagine.
         const tokenKey = pk(other, "token", s);
         expect(flow).not.toBe(tokenKey);
         expect(deviceFlow).not.toBe(tokenKey);
-        expect(browser).not.toBe(tokenKey);
       }
       // Nor can it reach the platform-global admin/portal kinds (I-02: flow records are
       // single-use store artefacts whose KIND is fixed by the derivation, never by input, and

@@ -1,10 +1,9 @@
-// @polaris-key/react/browser — the cookie-session OIDC transport (online-only).
+// @polaris-key/react/browser — the browser transport (a device token in the page).
 
 export {
   BrowserAdapter,
   InsecureBaseUrlError,
   browserAdapter,
-  splitSessionDoc,
   WEB_OUTLET_STAMP,
   type BrowserAdapterOptions,
   type BrowserUpdateConfig,

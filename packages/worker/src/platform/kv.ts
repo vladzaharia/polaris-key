@@ -6,9 +6,7 @@
 //
 // Every KV entry that holds a *directly usable* credential is sealed under `PLATFORM_KEK`
 // before it is written, so a KV dump yields ciphertext: the GitHub App installation token
-// (`release/githubApp.ts`), the outlet access tokens (`core/outletTokens.ts`) and the browser
-// session's device bearer (`identity/browserSession.ts`: a live `pkeyt_` principal that used to
-// sit here in cleartext for 30 days). Everything else credential-shaped in KV is a hash.
+// (`release/githubApp.ts`), the outlet access tokens (`core/outletTokens.ts`). Everything else credential-shaped in KV is a hash.
 
 import type { Env } from "./env.js";
 

@@ -94,15 +94,15 @@ publishes a newer build, an update dialog opens over the app with up to three li
 release's changelog entry, the version you have, and All changes. Every control also raises
 `pk-action` on the gate.
 
-| `config` member    | What it sets                                                                                 |
-| ------------------ | -------------------------------------------------------------------------------------------- |
-| `product`          | The product's slug (required)                                                                |
-| `baseUrl`          | The control-plane origin; default `https://key.plrs.im`                                      |
-| `version`          | The app's version: reported with the device, and what the update dialog says you have        |
-| `auth`             | `"cookie"`, `"bearer"` or `"auto"` (the default); a page on another origin signs in by token |
-| `trust`            | `{ "pinnedKeys": {…} }`, the keys a bearer page verifies documents against                   |
-| `expectedServices` | The services the app expects until the product answers                                       |
-| `returnUrl`        | The app's address, added to the device-limit link as `return=`                               |
+| `config` member    | What it sets                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------- |
+| `product`          | The product's slug (required)                                                         |
+| `baseUrl`          | The control-plane origin; default `https://key.plrs.im`                               |
+| `version`          | The app's version: reported with the device, and what the update dialog says you have |
+| `auth`             | `"bearer"` or `"auto"` (the default); `"cookie"` was removed and is refused           |
+| `trust`            | `{ "pinnedKeys": {…} }`, the keys a bearer page verifies documents against            |
+| `expectedServices` | The services the app expects until the product answers                                |
+| `returnUrl`        | The app's address, added to the device-limit link as `return=`                        |
 
 `config` wins over `input`; a bad config raises `pk-error` (`detail.code` is `invalid-options`) and
 draws nothing.

@@ -70,7 +70,7 @@ export interface ConnectClient {
   onRosterRemoved?: ((agreeKeys: Uint8Array[]) => void) | null;
 }
 
-/** A cookie page holds no device token, so it has no Connect identity. */
+/** A page without pinned keys holds no device token, so it has no Connect identity. */
 export function unsupportedConnect(detail: string): ConnectClient {
   const no = (): never => {
     throw new UnsupportedError(
@@ -211,7 +211,7 @@ export interface CloudConnectClient {
   readonly transfer: TransferClient;
 }
 
-/** A cookie page or a host without sockets: every verb that needs the relay is the typed N/A. */
+/** A page without pinned keys or a host without sockets: every verb that needs the relay is the typed N/A. */
 export function unsupportedCloudConnect(
   reason: "runtime" | "version",
   detail: string,

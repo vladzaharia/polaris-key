@@ -506,11 +506,8 @@ export interface IdentityDiscovery {
   /** I-49 (§12.11.8): silent restore is served; the `restore` endpoint comes with it. */
   restore?: true;
   endpoints: {
-    session: string;
-    sessionLicense: string;
     authStart: string;
     authCallback: string;
-    authLogout: string;
     authDeviceStart: string;
     authDeviceEntry: string;
     authDeviceVerify: string;

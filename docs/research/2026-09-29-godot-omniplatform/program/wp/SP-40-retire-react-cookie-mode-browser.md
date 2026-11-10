@@ -55,6 +55,15 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Gated on owner decision 7 ([README §8](../../../2026-10-07-dx-consolidation/README.md#8-owner-decisions)), answered on 2026-10-07 under delegated authority with the recommendation and open to the owner's veto; a veto takes that row's "If the answer is no" column.
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Corrections (verified against the code, 2026-11-09)
+
+- `BrowserAuthMode` and the `auth` option live in `packages/ui-core/src/browser/sdk/` (`core/types.ts`, `browser/browserAdapter.ts`); `packages/sdk-react/src/browser/` re-exports them, and the elements kit shares the same adapter, so removing the mode there removes it from `<pk-gate config>` too.
+- The Worker's cookie surface is three routes, not one: `GET identity/session`, `POST identity/session/license` and `POST identity/auth/logout` (`identity/browserSession.ts`, deleted), plus the cookie the OIDC callback set on a `return_to` flow. `GET identity/auth/start` now refuses a `return_to` with `400`.
+- `requires-identity` registration was defined in terms of that cookie (`identity/registration.ts`). Identity no longer supplies an authorizer, so `POST devices/register` refuses every caller under that policy; sign-in mints the device token. Core's `authorizeRegistration` plumbing is left for I-32b.
+- The discovery `identity.endpoints` lose `session`, `sessionLicense` and `authLogout` (the type in `shared-protocol/src/identity.ts`, the Worker fragment, the OpenAPI example, the golden and the recorded transcripts). No SDK reads them.
+- `auth` keeps `"bearer"` and `"auto"` (the default; it reports `invalid-options` in state instead of throwing when `trust.pinnedKeys` is missing). `"cookie"` throws `invalid-options` naming bearer mode (SP-35 D7).
+- `identity.oidc` is `na` on web for React (an `except` row and an `allowedNa` entry); its desktop-bridge row stays implemented.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
@@ -62,11 +71,11 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] `api.json` has the `removed` row with its note
-- [ ] Cookie mode and its Worker route are removed in the same release as I-10a (test)
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`; `operate/platform/connections`; `help/work-account`, `help/account`, `help/connected-apps`; the React cookie note removed.
-- [ ] **Upgrade to 0.9:** a changelog entry whose `replaces` rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10 item 7).
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] `api.json` has the `removed` row with its note
+- [x] Cookie mode and its Worker route are removed in the same release as I-10a (test)
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`; `operate/platform/connections`; `help/work-account`, `help/account`, `help/connected-apps`; the React cookie note removed.
+- [x] **Upgrade to 0.9:** a changelog entry whose `replaces` rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10 item 7).
+- [x] The green gate passes (scoped, per the lead: the generators, typecheck, lint:ts, and the suites each slice touched) (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 

@@ -1,4 +1,4 @@
-// @polaris-key/react — one hook API over two transports (browser cookie-session OIDC and
+// @polaris-key/react — one hook API over two transports (browser device-token sign-in and
 // desktop Electron/Tauri bridge), with the production UI in `@polaris-key/react/kit`.
 //
 // TWO AXES OF SUBPATH ENTRIES, and they compose:
@@ -146,7 +146,6 @@ export {
   browserAdapter,
   BrowserAdapter,
   InsecureBaseUrlError,
-  splitSessionDoc,
   type BrowserAdapterOptions,
 } from "./browser/browserAdapter.js";
 export { fetchCatalog } from "./browser/catalog.js";

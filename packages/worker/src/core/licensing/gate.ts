@@ -6,12 +6,9 @@
 // ── WHY THIS IS IN CORE ──────────────────────────────────────────────────────────────────────
 //
 // D-20 makes channel/version enforcement a LICENSE concern, and the licence document is where a
-// blocked build is refused (`services/license/document.ts`). But spec §3.2 names a second
-// enforcement point in the same breath — identity's `GET /<p>/identity/session`, which mints its
-// own document for a browser and must refuse exactly the builds `/license/document` refuses. Two
-// services asking the same question of the same rows may not import each other
-// (`test/boundaries.test.ts`), so the predicate lives here, once, beside the entitlement algebra
-// it is built from, and both services import it from here.
+// blocked build is refused (`services/license/document.ts`). The predicate lives
+// here, once, beside the entitlement algebra it is built from, because services may not import
+// each other (`test/boundaries.test.ts`).
 //
 // R3-01 — this module is fed `X-PKey-Version` / `X-PKey-Channel`, i.e. two strings the caller
 // chooses, over the wire. So:

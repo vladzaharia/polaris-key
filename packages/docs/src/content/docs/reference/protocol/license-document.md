@@ -195,8 +195,7 @@ out.
 
 ## The build gate
 
-Channel and version enforcement lives on **this route** and on identity's
-`GET /<product>/identity/session`, and nowhere else.
+Channel and version enforcement lives on **this route**, and nowhere else.
 
 ### Why here
 

@@ -216,7 +216,7 @@ export class BootGuard {
     try {
       await record(event, input);
     } catch {
-      // A journal that cannot take the event (a cookie page holds none) never fails a launch.
+      // A journal that cannot take the event (a page without pinned keys holds none) never fails a launch.
     }
   }
 

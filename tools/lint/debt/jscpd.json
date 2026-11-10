@@ -1971,7 +1971,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/src/desktop/desktopAdapter.ts": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 8
     },
     "packages/sdk-react/src/kit/connect.tsx": {
       "jscpd:duplicate": 1
@@ -2085,7 +2085,7 @@
       "jscpd:duplicate": 6
     },
     "packages/sdk-react/test/browserAdapter.test.ts": {
-      "jscpd:duplicate": 14
+      "jscpd:duplicate": 6
     },
     "packages/sdk-react/test/bundleImport.test.ts": {
       "jscpd:duplicate": 1
@@ -2136,7 +2136,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/desktopAdapter.test.ts": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 6
     },
     "packages/sdk-react/test/desktopIdentity.test.tsx": {
       "jscpd:duplicate": 1
@@ -2154,7 +2154,7 @@
       "jscpd:duplicate": 2
     },
     "packages/sdk-react/test/headers.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/keyring.test.ts": {
       "jscpd:duplicate": 4
@@ -2239,9 +2239,6 @@
     },
     "packages/sdk-react/test/signInSession.test.ts": {
       "jscpd:duplicate": 4
-    },
-    "packages/sdk-react/test/storeNamespace.test.ts": {
-      "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/transcripts.test.ts": {
       "jscpd:duplicate": 27
@@ -2391,7 +2388,7 @@
       "jscpd:duplicate": 6
     },
     "packages/ui-core/src/browser/sdk/browser/browserAdapter.ts": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 7
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/api.ts": {
       "jscpd:duplicate": 5
@@ -3089,9 +3086,6 @@
     "packages/worker/src/services/identity/attach.ts": {
       "jscpd:duplicate": 2
     },
-    "packages/worker/src/services/identity/browserSession.ts": {
-      "jscpd:duplicate": 1
-    },
     "packages/worker/src/services/identity/card/avatars.ts": {
       "jscpd:duplicate": 1
     },
@@ -3183,7 +3177,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/src/services/license/activation.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 2
     },
     "packages/worker/src/services/license/admin/devices.ts": {
       "jscpd:duplicate": 1
@@ -3417,7 +3411,7 @@
       "jscpd:duplicate": 7
     },
     "packages/worker/test/attack/R10-dos.test.ts": {
-      "jscpd:duplicate": 31
+      "jscpd:duplicate": 26
     },
     "packages/worker/test/attack/R11-data.test.ts": {
       "jscpd:duplicate": 6
@@ -3426,13 +3420,13 @@
       "jscpd:duplicate": 12
     },
     "packages/worker/test/attack/R12-secrets.test.ts": {
-      "jscpd:duplicate": 29
+      "jscpd:duplicate": 28
     },
     "packages/worker/test/attack/R3-licensing.test.ts": {
       "jscpd:duplicate": 5
     },
     "packages/worker/test/attack/R5-isolation.test.ts": {
-      "jscpd:duplicate": 13
+      "jscpd:duplicate": 12
     },
     "packages/worker/test/attack/R6-release.test.ts": {
       "jscpd:duplicate": 55
@@ -3534,7 +3528,7 @@
       "jscpd:duplicate": 2
     },
     "packages/worker/test/core/migrations/identityPlatformMigration.test.ts": {
-      "jscpd:duplicate": 53
+      "jscpd:duplicate": 36
     },
     "packages/worker/test/core/migrations/licenseEmailIssuerMigration.test.ts": {
       "jscpd:duplicate": 2
@@ -3591,7 +3585,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/test/core/updateHealth.test.ts": {
-      "jscpd:duplicate": 13
+      "jscpd:duplicate": 12
     },
     "packages/worker/test/docsCspParity.test.ts": {
       "jscpd:duplicate": 1
@@ -3824,9 +3818,6 @@
     "packages/worker/test/services/identity/accountBirthdate.test.ts": {
       "jscpd:duplicate": 3
     },
-    "packages/worker/test/services/identity/browserSession.test.ts": {
-      "jscpd:duplicate": 15
-    },
     "packages/worker/test/services/identity/connectionCallback.test.ts": {
       "jscpd:duplicate": 7
     },
@@ -3915,7 +3906,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/test/services/identity/portalEmailGate.test.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 9
     },
     "packages/worker/test/services/identity/portalErasureFence.test.ts": {
       "jscpd:duplicate": 3
@@ -4509,7 +4500,7 @@
       "jscpd:duplicate": 2
     },
     "packages/worker/test/surfaces/graceClamp.test.ts": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 8
     },
     "packages/worker/test/surfaces/hooks.test.ts": {
       "jscpd:duplicate": 1
@@ -4527,7 +4518,7 @@
       "jscpd:duplicate": 12
     },
     "packages/worker/test/surfaces/identityBrowserErasureFence.test.ts": {
-      "jscpd:duplicate": 31
+      "jscpd:duplicate": 23
     },
     "packages/worker/test/surfaces/identityChoice.test.ts": {
       "jscpd:duplicate": 6
@@ -4545,7 +4536,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/test/surfaces/keyEntries.test.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 4
     },
     "packages/worker/test/surfaces/keyReturn.test.ts": {
       "jscpd:duplicate": 2

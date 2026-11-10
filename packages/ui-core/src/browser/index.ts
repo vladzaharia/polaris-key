@@ -1,6 +1,6 @@
 // @polaris-key/ui-core/browser: the framework-neutral browser client and gate controller both
-// web kits share (UI-KITS.md DL18). The browser adapter itself lives in ./sdk (the cookie and
-// bearer transports, discovery, the offline store); `@polaris-key/react` re-exports it from its
+// web kits share (UI-KITS.md DL18). The browser adapter itself lives in ./sdk (the device-token
+// transport, discovery, the offline store); `@polaris-key/react` re-exports it from its
 // own subpaths, and `@polaris-key/elements` builds `<pk-gate config>` on the controller. Nothing
 // here imports a framework.
 

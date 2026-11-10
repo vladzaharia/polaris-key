@@ -41,7 +41,7 @@ For the kit components, theming, server-rendered hosts, headless models and fixt
 that offers Google through FedCM, the gate asks for the account the person is already signed in
 with and signs the device in without a form. The person sees one confirm, or the license choice,
 only when the sign-in needs one. When nothing is offered, or the product has no platform sign-in,
-the gate shows its normal sign-in. A page that cannot do it (a cookie page, the desktop renderer,
+the gate shows its normal sign-in. A page that cannot do it (one without `trust.pinnedKeys`, the desktop renderer,
 `localAdapter`) behaves as before.
 
 After an explicit sign-out the gate stays signed out on this device until the person signs in
@@ -114,7 +114,7 @@ back for later crashes.
   It needs the adapter's `version`; without one `markBootAttempt()` throws `not-configured` and
   `boot()` skips the stage. `update_confirmed`, `update_reverted` and `boot_rolled_back` go
   through `recordUpdateEvent` (bearer mode keeps the journal and sends it as soon as a rollback
-  or a first confirmation is saved, since no later sync need follow; a cookie page holds none,
+  or a first confirmation is saved, since no later sync need follow; a page without pinned keys holds none,
   and the guard never fails a launch for it).
 - **Desktop.** The host's guard, over `invoke("update", "markBootAttempt")` and
   `invoke("update", "confirmBoot")`; the host's own `boot()` already runs it.

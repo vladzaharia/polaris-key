@@ -4,6 +4,10 @@
 > since (the sections below describe the system as it is now, not as it was then).
 > This is the document the codebase was missing. When code and this document disagree, that is
 > a finding — open a PR to reconcile one or the other.
+>
+> Note (SP-40): the browser cookie session (`pkey_<product>_session`, its routes and the KV
+> record) is removed. Passages below that describe it are historical; a web page now holds a
+> device token and verifies documents in the page.
 
 ## 1. What this system is
 
@@ -6219,8 +6223,8 @@ directory holds operators only, which closes G5 (operator and customer in one di
   again before it shows the identity, activates or mints, because an account can be disabled
   while the flow waits, and answers the generic `error` (D8). A subject that holds no method (a
   floating licence only, an erased account, which leaves no link, or a custom-issuer product's
-  subject) signs in as before. A product browser session signed in before the disable ends too.
-  The OIDC return path records two things on the session's KV record (`browserSessionBinding`;
+  subject) signs in as before. (The product browser session that once ended here is removed, SP-40.)
+  The OIDC return path recorded two things on the session's KV record (`browserSessionBinding`;
   neither for a custom issuer): the platform subject itself (issuer and `sub`), and the account
   that holds its platform-IdP method at sign-in, if any. At every read, `loadBrowserSession` runs
   this same N9 check on the subject (`platformSubjectStanding`, so whichever account holds
@@ -6356,8 +6360,8 @@ CSRF header like every other portal mutation.
   until passkeys (S-16 I-14) a recent sign-in is the strongest presence check the portal has; an
   attacker who can complete a fresh sign-in (a mailbox compromise) can replace the key, which the
   notice to the licence email surfaces.
-  Browser sessions opened earlier with the old key (`browserSession.ts`) are not revoked
-  either; like device tokens they run to their own expiry, and the reissue notice is the signal.
+  Device tokens opened earlier with the old key are not revoked either; they run to their own
+  expiry, and the reissue notice is the signal.
 - **Device names are display text, held to plain text.** At most 64 characters, trimmed, with no
   control or format characters (no bidirectional overrides that make one name render as another);
   owner-only, rate limited in the product's shard, audited. They are rendered as text everywhere.
@@ -11589,7 +11593,7 @@ license_owned` with `signInUrl` and nothing is counted. A licence that is not us
   just before the seat batch). The guard is on the seat claim of `token` always and of
   `license/activate` while `identity.keyEntryRefusals` is on; with it off, `license/activate`
   admits an owned licence outright, as before. The browser-session key entry
-  (`identity/session/license`) is guarded the same way while the switch is on. `token`
+  (`identity/session/license`, removed in SP-40) was guarded the same way. `token`
   carries no fingerprint, so a `strict` tier always answers `fingerprint_required` there (the code
   is spent), and other modes record the device unverified, as a sign-in at `token` does.
 - **The key stays in the body.** It is never in a URL, the redirect, the request or code record,

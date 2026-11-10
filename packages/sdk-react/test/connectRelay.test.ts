@@ -544,7 +544,7 @@ class FakeWorker {
 }
 
 async function adapterWorld(
-  auth: "bearer" | "cookie" = "bearer",
+  pinned = true,
   share?: { worker: FakeWorker; factory: IDBFactory },
 ) {
   const worker = share?.worker ?? new FakeWorker();
@@ -555,8 +555,7 @@ async function adapterWorld(
   await bearer.setToken(TOKEN);
   const adapter = new BrowserAdapter({
     productSlug: PRODUCT,
-    auth,
-    trust: { pinnedKeys: TRUST },
+    ...(pinned ? { trust: { pinnedKeys: TRUST } } : {}),
     fetchImpl: worker.fetch,
     now: () => T0,
     store: bearer,
@@ -769,8 +768,8 @@ describe("leave() and the database", () => {
 });
 
 describe("adapter.cloudConnect", () => {
-  it("is the typed runtime N/A on a cookie page and the desktop's version N/A", async () => {
-    const { adapter } = await adapterWorld("cookie");
+  it("is the typed runtime N/A on a page without pinned keys and the desktop's version N/A", async () => {
+    const { adapter } = await adapterWorld(false);
     expect(adapter.cloudConnect.unsupported).toMatchObject({
       reason: "runtime",
       feature: "connect.app",
@@ -1020,7 +1019,7 @@ describe("two tabs of one app", () => {
   it("serialise the record across tabs: one identity fetch at a time, and a leave is not resurrected", async () => {
     undo = installLocks();
     const t1 = await adapterWorld();
-    const t2 = await adapterWorld("bearer", t1);
+    const t2 = await adapterWorld(true, t1);
     t1.worker.delay = 15;
     await Promise.all([
       t1.adapter.connect.identity({ refresh: true }),
@@ -1039,7 +1038,7 @@ describe("two tabs of one app", () => {
   it("keep a stale K_disc stale and never roll a roster back", async () => {
     undo = installLocks();
     const t1 = await adapterWorld();
-    const t2 = await adapterWorld("bearer", t1);
+    const t2 = await adapterWorld(true, t1);
     await t1.adapter.connect.identity();
     const src2 = t2.adapter.connect.relaySource();
     // Tab 2 adopts a pushed roster that dropped a device: K_disc is stale for both tabs.
@@ -1070,7 +1069,7 @@ describe("two tabs of one app", () => {
   it("hold the relay socket in one tab; the other reports elsewhere and takes over when it stops", async () => {
     undo = installLocks();
     const t1 = await adapterWorld();
-    const t2 = await adapterWorld("bearer", t1);
+    const t2 = await adapterWorld(true, t1);
     const room = new FakeRoom();
     room.members.add(ME);
     const sock = (url: string, protocols: string[]): RelaySocket => {
@@ -1093,7 +1092,7 @@ describe("two tabs of one app", () => {
   it("run transfers in the tab that owns the relay only; another tab's send is the typed elsewhere (CC-20.4)", async () => {
     undo = installLocks();
     const t1 = await adapterWorld();
-    const t2 = await adapterWorld("bearer", t1);
+    const t2 = await adapterWorld(true, t1);
     const room = new FakeRoom();
     room.members.add(ME);
     const sock = (url: string, protocols: string[]): RelaySocket => {

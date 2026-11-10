@@ -13,9 +13,9 @@ The framework page is [Web components](https://key.plrs.im/docs/build/ui/framewo
 
 ## Run it
 
-`index.html` talks to the Worker the config names (`baseUrl`, default `https://key.plrs.im`) and,
-in cookie mode, must be served from that origin; on another origin the SDK signs in with a device
-token and needs `trust` in the config. Run it for a real product, or open the fixtures page:
+`index.html` talks to the Worker the config names (`baseUrl`, default `https://key.plrs.im`). The
+SDK signs in with a device token, so the config needs `trust`, and the page's origin must be one the
+product lists under `web.origins`. Run it for a real product, or open the fixtures page:
 
 ```sh
 npm install

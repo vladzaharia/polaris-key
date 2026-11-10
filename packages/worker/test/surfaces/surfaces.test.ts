@@ -290,11 +290,8 @@ describe("worker surfaces", () => {
       enabled: true,
       configured: true,
       endpoints: {
-        session: "https://key.plrs.im/djdl/identity/session",
-        sessionLicense: "https://key.plrs.im/djdl/identity/session/license",
         authStart: "https://key.plrs.im/djdl/identity/auth/start",
         authCallback: "https://key.plrs.im/djdl/identity/auth/callback",
-        authLogout: "https://key.plrs.im/djdl/identity/auth/logout",
         authDeviceStart: "https://key.plrs.im/djdl/identity/auth/device/start",
         authDeviceEntry: "https://key.plrs.im/djdl/identity/auth/device",
         authDeviceVerify:

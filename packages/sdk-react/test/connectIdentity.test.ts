@@ -5,7 +5,7 @@
 // Cloud Connect identity in the browser (CC-09.1; WIRE-CONTRACT-V5 §15.2 to §15.4): keys on first
 // need, registration, the identity fetch, verification against the pinned set, the `pkey.connect.v1`
 // record in IndexedDB, the previous-K_disc rule, the stale and foreign roster refusals, the typed
-// errors, the cookie page's N/A and the sign-out hook, through the browser adapter against a small
+// errors, the unpinned page's N/A and the sign-out hook, through the browser adapter against a small
 // fake of the Worker's connect routes. Mirrors sdk-node's connect.test.ts.
 
 import {
@@ -241,7 +241,7 @@ async function setup(
     pinned?: Record<string, string>;
     durable?: boolean;
     factory?: IDBFactory;
-    auth?: "bearer" | "cookie";
+    unpinned?: boolean;
   } = {},
 ) {
   const worker = opts.worker ?? new FakeWorker();
@@ -255,8 +255,13 @@ async function setup(
   const keys = opts.keys ?? keyPort();
   const adapter = new BrowserAdapter({
     productSlug: PRODUCT,
-    auth: opts.auth ?? "bearer",
-    trust: { pinnedKeys: opts.pinned ?? { [PIN.kid]: PIN.publicKeyRaw } },
+    ...(opts.unpinned
+      ? {}
+      : {
+          trust: {
+            pinnedKeys: opts.pinned ?? { [PIN.kid]: PIN.publicKeyRaw },
+          },
+        }),
     fetchImpl: worker.fetch,
     now: () => clock,
     store: bearer,
@@ -460,8 +465,8 @@ describe("adapter.connect.identity", () => {
     expect(s.worker.maxInFlight).toBe(1);
   });
 
-  it("a cookie page answers the typed runtime N/A", async () => {
-    const s = await setup({ auth: "cookie" });
+  it("a page without pinned keys answers the typed runtime N/A", async () => {
+    const s = await setup({ unpinned: true });
     await expect(s.connect.identity()).rejects.toMatchObject({
       name: "UnsupportedError",
       code: "connect-unavailable",

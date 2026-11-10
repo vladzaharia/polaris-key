@@ -15,7 +15,7 @@ import { useCtx } from "./hooks.js";
 export type SyncLockState =
   /** Reading the ring. */
   | "loading"
-  /** This transport has no key ring (a cookie page, the desktop bridge): see `unsupported`. */
+  /** This transport has no key ring (a page without pinned keys, the desktop bridge): see `unsupported`. */
   | "unsupported"
   /** The product has no ring yet. */
   | "none"

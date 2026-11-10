@@ -19,6 +19,7 @@ import {
   NOW_SEC,
   okBridgeState,
   services,
+  FIXTURE_TRUST,
 } from "./fixtures.js";
 
 afterEach(cleanup);
@@ -66,7 +67,8 @@ function browserWith(
     return inner(input, init);
   }) as typeof fetch;
   const adapter = browserAdapter({
-    auth: "cookie",
+    trust: FIXTURE_TRUST,
+    auth: "bearer",
     productSlug: "acme",
     fetchImpl,
     now: () => NOW_SEC,

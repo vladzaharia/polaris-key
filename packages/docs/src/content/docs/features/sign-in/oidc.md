@@ -27,7 +27,7 @@ A custom issuer is repo-controlled: whoever can push `.pkey/product` can point i
 
 `GET /<product>/identity/auth/start` begins PKCE and redirects to the provider. `GET /<product>/identity/auth/callback` is the registered redirect URI.
 
-`start` generates `state`, `nonce` and a 32-byte PKCE verifier with its `S256` challenge, and stores them for 600 seconds keyed by the peppered hash of `state`. Flow records live in the Worker's atomic single-use store, so every once-only step is one atomic operation. A `return_to` must be same-origin and may not point into the console (`/manage`), else `400 bad_request`. It turns the callback into a cookie-issuing redirect.
+`start` generates `state`, `nonce` and a 32-byte PKCE verifier with its `S256` challenge, and stores them for 600 seconds keyed by the peppered hash of `state`. Flow records live in the Worker's atomic single-use store, so every once-only step is one atomic operation. A return address on the start request is refused with `400 bad_request`: it belonged to the cookie session, which is removed. A web page signs in with the [web redirect](/docs/features/sign-in/web-redirect/).
 
 `callback` claims the `state` first, so a replayed `state` gets the same generic `400` as an unknown one. It then exchanges the code with the verifier and verifies the ID token:
 
@@ -38,7 +38,7 @@ A custom issuer is repo-controlled: whoever can push `.pkey/product` can point i
 
 A verified token with an empty `sub` is invalid. The Worker trusts an `email` only when `email_verified` is true, because Locker may later use it to link accounts.
 
-With a `return_to`, the callback sets a `pkey_<product>_session` cookie ([Browser sessions](/docs/features/sign-in/sessions/)). Without one, it hands the result to a poller that redeems a device token. There is no `state`-keyed poll: `state` isn't a secret, so a device completes the flow on the device-code poll with its secret device code.
+The callback hands the result to a poller that redeems a device token. There is no `state`-keyed poll: `state` isn't a secret, so a device completes the flow on the device-code poll with its secret device code.
 
 ## Groups to tier
 
@@ -70,5 +70,5 @@ The platform-level providers (a company's single sign-on, Google, Apple, Steam) 
 ## Next steps
 
 - [Device flow](/docs/features/sign-in/device-flow/): the same mint step without a redirect.
-- [Browser sessions](/docs/features/sign-in/sessions/): what a `return_to` callback produces.
+- [Browser sessions](/docs/features/sign-in/sessions/): how a web page holds a sign-in.
 - [Locker](/docs/features/sign-in/customer-portal/): the platform-level login.

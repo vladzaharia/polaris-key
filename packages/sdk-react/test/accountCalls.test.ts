@@ -21,6 +21,7 @@ import {
   okBridgeState,
   settled,
   signedDocs,
+  FIXTURE_TRUST,
 } from "./fixtures.js";
 
 const NOW = 1_700_000_000;
@@ -394,9 +395,8 @@ describe("bearer: the account calls", () => {
     expect(adapter.snapshot().status).toBe("needs-activation");
   });
 
-  it("a cookie page refuses them with the runtime reason", async () => {
+  it("a page without pinned keys refuses them", async () => {
     const adapter = browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
       offlineStore: null,
       autoStart: false,
@@ -404,13 +404,13 @@ describe("bearer: the account calls", () => {
     for (const f of [Feature.identityAccount, Feature.identityAttach])
       expect(adapter.supports(f)).toMatchObject({ supported: false });
     await expect(adapter.subject()).rejects.toMatchObject({
-      reason: "runtime",
+      code: "invalid-options",
     });
     await expect(adapter.attach({ confirm: false })).rejects.toMatchObject({
-      reason: "runtime",
+      code: "invalid-options",
     });
     await expect(adapter.openAccount()).rejects.toMatchObject({
-      reason: "runtime",
+      code: "invalid-options",
     });
   });
 });

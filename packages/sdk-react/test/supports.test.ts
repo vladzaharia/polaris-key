@@ -18,7 +18,7 @@ import { PolarisError, UnsupportedError } from "../src/index.js";
 import {
   makeDoc,
   makeFakeBridge,
-  makeFakeFetch,
+  fakeWorld,
   NOW_SEC,
   okBridgeState,
   services,
@@ -32,9 +32,9 @@ async function ready(adapter: PolarisAdapter): Promise<void> {
 
 function browser(capabilities = services("license", "config", "update")) {
   return browserAdapter({
-    auth: "cookie",
+    auth: "bearer",
     productSlug: "acme",
-    fetchImpl: makeFakeFetch(makeDoc(), { capabilities }),
+    ...fakeWorld(makeDoc(), { capabilities }),
     now: () => NOW_SEC,
   });
 }
@@ -87,21 +87,17 @@ describe("supports() — the browser adapter (runtime web)", () => {
     a.dispose();
   });
 
-  it("device management and telemetry refuse with UnsupportedError, keeping their codes", async () => {
-    const a = browser();
+  it("device management and telemetry refuse on a page without pinned keys", async () => {
+    const a = browserAdapter({ productSlug: "acme", now: () => NOW_SEC });
     await ready(a);
     await expect(a.listDevices()).rejects.toMatchObject({
-      code: "device-management-unsupported",
-      feature: "devices.manage",
-      reason: "runtime",
+      code: "invalid-options",
     });
-    await expect(a.renameDevice("dev-2", "x")).rejects.toBeInstanceOf(
-      UnsupportedError,
-    );
+    await expect(a.renameDevice("dev-2", "x")).rejects.toMatchObject({
+      code: "invalid-options",
+    });
     await expect(a.report()).rejects.toMatchObject({
-      code: "report-unsupported",
-      feature: "devices.report",
-      reason: "runtime",
+      code: "invalid-options",
     });
     a.dispose();
   });

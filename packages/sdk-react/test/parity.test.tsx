@@ -14,7 +14,7 @@ import type { PolarisAdapter } from "../src/core/index.js";
 import {
   makeDoc,
   makeFakeBridge,
-  makeFakeFetch,
+  fakeWorld,
   NOW_SEC,
   okBridgeState,
 } from "./fixtures.js";
@@ -89,9 +89,9 @@ describe("mode parity", () => {
     const desktopOut = await renderWith(desktop);
 
     const browser = browserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(doc),
+      ...fakeWorld(doc),
       now: () => NOW_SEC,
     });
     const browserOut = await renderWith(browser);
@@ -112,11 +112,11 @@ describe("mode parity", () => {
     browser.dispose();
   });
 
-  it("browser submitKey activates through the cookie-session exchange", async () => {
+  it("browser submitKey activates through the licence exchange", async () => {
     const browser = browserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc()),
+      ...fakeWorld(makeDoc()),
       now: () => NOW_SEC,
     });
     await expect(browser.submitKey("anything")).resolves.toBeUndefined();
@@ -127,9 +127,9 @@ describe("mode parity", () => {
   // @pkey-feature core.caps
   it("browser never exposes secrets", async () => {
     const browser = browserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc()),
+      ...fakeWorld(makeDoc()),
       now: () => NOW_SEC,
     });
     await new Promise((r) => setTimeout(r, 0));

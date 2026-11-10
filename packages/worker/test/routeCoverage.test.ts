@@ -817,16 +817,12 @@ describe("image host (HA-02, rule 10)", () => {
 });
 
 /**
- * The product routes that must NEVER answer CORS (P0-05): they set or read the per-product
- * browser-session cookie, or they are top-level navigations to the IdP or an HTML page. They stay
+ * The product routes that must NEVER answer CORS (P0-05): they are top-level navigations to the IdP or an HTML page. They stay
  * first-party. Everything else in the three tables above is covered.
  */
 const CORS_EXCLUDED = new Set([
-  "/{product}/identity/session",
-  "/{product}/identity/session/license",
   "/{product}/identity/auth/start",
   "/{product}/identity/auth/callback",
-  "/{product}/identity/auth/logout",
   "/{product}/identity/auth/device",
   "/{product}/identity/auth/device/verify",
   "/{product}/identity/auth/device/approve",

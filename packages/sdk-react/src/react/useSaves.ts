@@ -1,6 +1,6 @@
 // Cloud Sync saves as hooks (sync.saves, U-22.7): `useSaves()` is the saves of the signed-in person
 // (list, read, write, delete, revisions) and `useTransfers()` the writes in flight, with
-// pause, resume and cancel. Where Cloud Sync cannot run (a cookie page, the desktop bridge until
+// pause, resume and cancel. Where Cloud Sync cannot run (a page without pinned keys, the desktop bridge until
 // v4, a product without Sync) `unsupported` says why and every verb throws the typed unsupported.
 //
 // Nothing here loads the saves layer: the adapter's lazy client does, on the first verb, so a page

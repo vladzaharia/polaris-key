@@ -306,7 +306,7 @@ export type KeyEntryGate =
   | { kind: "refuse"; keyEntries: KeyEntries };
 
 /**
- * §12.2 steps 2 to 4 for `license/activate` and `identity/session/license`, after the key and
+ * §12.2 steps 2 to 4 for `license/activate` and the browser licence choice, after the key and
  * the licence have been resolved. An enrolled device is admitted. A device that is not is refused
  * only when the switch is on and the licence is usable (an unusable one keeps its `401` from
  * `authorizeDevice`, so neither refusal says anything about a licence the key cannot use): with

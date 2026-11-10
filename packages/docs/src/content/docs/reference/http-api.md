@@ -23,7 +23,6 @@ A route names the credential it takes. The spec's security schemes are:
 | `licenseKey`     | The customer's license key, `pkey_<product>_…`    | `Authorization: Bearer`, on activation only       |
 | `ciToken`        | A CI token, `pkeyci_`, scoped to a product        | `Authorization: Bearer`                           |
 | `adminApiToken`  | An admin API token, `pkeya_`                      | `Authorization: Bearer`, for `pkey bundle` and CI |
-| `browserSession` | The per-product sign-in session cookie            | A cookie, on the sign-in routes only              |
 | `adminSession`   | The console session cookie                        | A cookie, with a CSRF token, on the console API   |
 
 A license key is redeemed once per device for a device token. Send it to no other route.

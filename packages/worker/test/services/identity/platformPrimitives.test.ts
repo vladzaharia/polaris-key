@@ -75,7 +75,6 @@ import { randomHex, randomToken } from "../../../src/platform/random.js";
 import {
   CARD_RETURN_TO,
   PORTAL_SIGNIN_RETURN_TO,
-  PRODUCT_SIGNIN_RETURN_TO,
   safeReturnTo,
 } from "../../../src/platform/returnTo.js";
 import type { Env } from "../../../src/platform/env.js";
@@ -510,8 +509,7 @@ describe("returnTo", () => {
     ["https://evil.example/", undefined, undefined, undefined],
     ["javascript:alert(1)", undefined, undefined, undefined],
   ];
-  it.each(cases)("%s", (raw, product, portal, card) => {
-    expect(safeReturnTo(req, raw, PRODUCT_SIGNIN_RETURN_TO)).toBe(product);
+  it.each(cases)("%s", (raw, _product, portal, card) => {
     expect(safeReturnTo(req, raw, PORTAL_SIGNIN_RETURN_TO)).toBe(portal);
     expect(safeReturnTo(req, raw, CARD_RETURN_TO)).toBe(card);
   });

@@ -30,13 +30,6 @@ export interface ReturnToPolicy {
   readonly pathOnly: boolean;
 }
 
-/** Product OIDC sign-in (`services/identity/oidc.ts`): an absolute same-origin URL, never under `/manage`. */
-export const PRODUCT_SIGNIN_RETURN_TO: ReturnToPolicy = {
-  relative: false,
-  refuseConsole: true,
-  pathOnly: false,
-};
-
 /** Portal and hosted-provider sign-in: an absolute same-origin URL, never under `/manage`. */
 export const PORTAL_SIGNIN_RETURN_TO: ReturnToPolicy = {
   relative: false,

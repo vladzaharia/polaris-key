@@ -231,9 +231,9 @@ tenant you do not trust. Some concrete problems:
   100% convention: a `WHERE product = ?` that a future contributor must remember to write. The
   schema makes it _natural_ to get right (`product` is column 1 of every PK, so an unscoped query
   is also a slow query) but nothing _enforces_ it.
-- **`pk()` is not the only KV key constructor**, despite `kv.ts:1-2`. Five hand-rolled
-  constructors exist: `browserSession.ts:50` (`p:${product}:browser-session:${hash}`),
-  `oidc.ts:190` and `oidc.ts:194` (`p:${product}:flow:` / `device-flow:`), plus the deliberately
+- **`pk()` is not the only KV key constructor**, despite `kv.ts:1-2`. Hand-rolled
+  constructors exist (the browser-session one, `p:${product}:browser-session:${hash}`, was removed
+  in SP-40): `oidc.ts:190` and `oidc.ts:194` (`p:${product}:flow:` / `device-flow:`), plus the deliberately
   platform-global `console/auth.ts:30` and `portal/auth.ts:24-25`. The three `p:`-prefixed ones
   happen to be correct today; they are three future bugs away from not being.
 - **One isolate serves every tenant.** Any RCE, prototype-pollution or dependency compromise in

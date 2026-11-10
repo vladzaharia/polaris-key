@@ -8,6 +8,16 @@ description: "Changes to the SDKs, the CLI, the manifest and the API, newest fir
 
 Changes to the SDKs, the CLI, the manifest and the API, newest version first. The tables of what each removal is replaced by are in [Upgrade to 0.9](/docs/build/upgrade-to-0-9/).
 
+## 0.10.5
+
+### React cookie sessions are removed
+
+Removed · 2026-11-09 · identity · react
+
+**Action required:** a React or elements page (`PolarisKeyProvider`, `<pk-gate config>`) on `auth: "cookie"` must move to bearer mode before it upgrades. The cookie session and its Worker routes are removed together, with no window.
+
+A page signs in with a device token it keeps in IndexedDB, verifies each document against `trust.pinnedKeys`, and lists its origin under `web.origins`. A product on Identity without License refuses `POST /<product>/devices/register`: sign-in mints the token. See [Browser sessions](/docs/features/sign-in/sessions/).
+
 ## 0.10.4
 
 ### Godot PKeySaves.resolve is removed

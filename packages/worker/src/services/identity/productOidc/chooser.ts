@@ -652,15 +652,12 @@ export async function completeChoice(
   if (!done.ok) return startAgainPage();
   await audit();
   return completeBrowserFlow(
-    req,
     env,
     db,
     product,
     c.stateKey,
     flow,
     licenseId,
-    identity.sub,
-    now,
     cookies,
   );
 }

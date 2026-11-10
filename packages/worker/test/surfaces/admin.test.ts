@@ -36,13 +36,9 @@ import { updateService } from "../../src/services/update/index.js";
 import { handleActivate } from "../../src/services/license/activation.js";
 import { handleLicenseDocument } from "../../src/services/license/document.js";
 import { handleMintToken } from "../../src/services/config/mint.js";
-import { buildDoc } from "../../src/services/identity/doc.js";
 import { signDoc } from "../../src/core/signing.js";
 import { open } from "../../src/platform/keyvault.js";
 import { verifyJws } from "@polaris-key/jws";
-import type { DocProfile } from "@polaris-key/protocol";
-import type { FusedSessionDoc } from "../../src/services/identity/doc.js";
-import type { ManagedPayload } from "../../src/core/licensing/payload.js";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
 import { getTokenRecord, putTokenRecord } from "../../src/platform/kv.js";
@@ -1010,33 +1006,13 @@ describe("admin api", () => {
     expect(await schemaRes.text()).toContain("run.concurrency");
 
     // /config signs: a doc signed under the product key verifies against its published pub.
-    const profile: DocProfile = {
-      name: "Ada",
-      firstName: "Ada",
-      email: "a@x.io",
-      activatedAt: NOW,
-    };
-    const payload: ManagedPayload = {
-      config: {},
-      secrets: {},
-      entitlements: {},
-    };
-    const doc = buildDoc({
-      schemaVersion: product!.schemaVersion,
-      aud: "manualco",
-      licenseId: "lic_1",
-      deviceId: "dev-1",
-      now: NOW,
-      maxOfflineDays: 30,
-      profile,
-      payload,
-    });
+    const doc = { aud: "manualco", licenseId: "lic_1", deviceId: "dev-1" };
     const jws = await signDoc(
       doc,
       (await product!.signingKey())!,
       product!.signingKid,
     );
-    const verified = await verifyJws<FusedSessionDoc>(jws, {
+    const verified = await verifyJws<typeof doc>(jws, {
       [product!.signingKid]: product!.signingPub!,
     });
     expect(verified).not.toBeNull();

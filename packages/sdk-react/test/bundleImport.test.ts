@@ -133,7 +133,7 @@ async function seededStore(c: BundleCase): Promise<OfflineStore> {
 function browserFor(
   c: BundleCase,
   store: OfflineStore,
-  opts: { session?: boolean; offline?: boolean } = {},
+  opts: { offline?: boolean } = {},
 ): PolarisAdapter {
   const fixture = makeFakeFetch(null, {
     product: c.expectedAud,
@@ -142,15 +142,10 @@ function browserFor(
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (opts.offline) throw new TypeError("Failed to fetch");
     const url = String(input);
-    if (opts.session && url.endsWith("/identity/session"))
-      return new Response(
-        JSON.stringify({ authenticated: true, doc: null, csrfToken: "c" }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
     return fixture(input, init);
   }) as typeof fetch;
   return browserAdapter({
-    auth: "cookie",
+    auth: "bearer",
     productSlug: c.expectedAud,
     fetchImpl,
     now: () => c.now,
@@ -317,16 +312,6 @@ describe("the imported bundle across a reload", () => {
     expect(offline.snapshot().activation).toBe("bundle");
   });
 
-  it("an authenticated session supersedes the bundle (§7)", async () => {
-    const store = await seededStore(VALID);
-    const first = browserFor(VALID, store);
-    await settled(first);
-    await first.importBundle(VALID.bundleJws);
-    const signedIn = browserFor(VALID, store, { session: true });
-    await settled(signedIn);
-    expect(signedIn.snapshot().activation).toBe("token");
-  });
-
   it("sign-out wipes the bundle but keeps the device id", async () => {
     const store = await seededStore(VALID);
     const adapter = browserFor(VALID, store);
@@ -336,6 +321,7 @@ describe("the imported bundle across a reload", () => {
     expect(adapter.snapshot().activation).toBeNull();
     expect(await store.read(VALID.expectedAud)).toEqual({
       deviceId: VALID.deviceId,
+      cache: { v: 3 },
     });
   });
 });
@@ -344,7 +330,7 @@ describe("browser bundle import prerequisites", () => {
   it("mints and keeps a random 32-character device id", async () => {
     const store = indexedDbOfflineStore(new IDBFactory())!;
     const adapter = browserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "djdl",
       fetchImpl: makeFakeFetch(null, { product: "djdl" }),
       offlineStore: store,
@@ -359,7 +345,6 @@ describe("browser bundle import prerequisites", () => {
 
   it("without pinned keys, or without IndexedDB, import is unsupported — not a silent no-op", async () => {
     const noTrust = browserAdapter({
-      auth: "cookie",
       productSlug: "djdl",
       fetchImpl: makeFakeFetch(null, { product: "djdl" }),
       offlineStore: indexedDbOfflineStore(new IDBFactory()),
@@ -368,7 +353,7 @@ describe("browser bundle import prerequisites", () => {
       code: "bundle-import-unsupported",
     });
     const noStore = browserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "djdl",
       fetchImpl: makeFakeFetch(null, { product: "djdl" }),
       offlineStore: null,

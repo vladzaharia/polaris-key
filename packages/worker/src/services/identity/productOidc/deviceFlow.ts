@@ -103,24 +103,15 @@ export async function handleAuthDeviceStart(
   const parsed = parseDeviceStart(body);
   if (!parsed) return errorResponse(400, "bad_request", "invalid hints");
   const { deviceName, hints } = parsed;
-  const flow = await beginAuthFlow(
-    req,
-    env,
-    db,
-    product,
-    undefined,
-    deviceId,
-    true,
-    {
-      deviceName,
-      // I-37: shown on the DeviceConfirm page, set by the edge and never by the client.
-      startedAt: Math.floor(Date.now() / 1000),
-      startPlace: (({ country, label }) => ({ country, label }))(
-        requestLocation(req),
-      ),
-      appChoice: hints?.licenseChoice === "app",
-    },
-  );
+  const flow = await beginAuthFlow(req, env, db, product, deviceId, true, {
+    deviceName,
+    // I-37: shown on the DeviceConfirm page, set by the edge and never by the client.
+    startedAt: Math.floor(Date.now() / 1000),
+    startPlace: (({ country, label }) => ({ country, label }))(
+      requestLocation(req),
+    ),
+    appChoice: hints?.licenseChoice === "app",
+  });
   if (flow instanceof Response) return flow;
   const deviceCode = randomToken(16);
   // The user code is independent of the device code (RFC 8628 §6.1). A live collision would
