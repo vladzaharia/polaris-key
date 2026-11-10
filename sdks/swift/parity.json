@@ -516,8 +516,8 @@
       "note": "The chunks mode over the same transport (planChunks, putChunk, getChunk, the manifest through putSingle; the chunk-size cap is the generated SYNC_CHUNK_MAX_STORED_BYTES) and the S4 engine; a present chunk that became missing is sent again. The cloudsync-chunks and cloudsync-chunks-delta transcripts replay in TranscriptTests."
     },
     "sync.e2e.recovery": {
-      "status": "planned",
-      "wp": "U-39"
+      "status": "implemented",
+      "note": "Both halves. The recovery code: client.keyring's setRecoveryCode(), recover(_:) and reset(recovery:) (create(recovery:) returns the first code). The platform backup: the root in one synchronizable iCloud Keychain item (service pkey-sync:<product>), on by default (SyncKeyringOptions.backup; .off is the opt-out). A new device opens the ring from it before the code is asked for, a sign-out keeps it, and deleteBackup() removes it. SyncKeyringTests (the code, the backup, reset), the recoveryCodeCases of sync-vectors.json in SyncVectorsTests, and the kit's CloudSyncKitHostTests (Unlock sync, Start over, New recovery code); keyring-recovery replays in TranscriptTests."
     },
     "sync.transfer.background": {
       "status": "implemented",

@@ -1,4 +1,4 @@
-// @pkey-feature sync.keyring
+// @pkey-feature sync.keyring sync.e2e.recovery
 // The Cloud Sync key ring client (U-38.1; WIRE-CONTRACT-V5 §13.10, §13.11) against a small fake of
 // the Worker's key ring routes: create, unlock after a restart, wrap to a second device, the
 // recovery code, reset and adopt, the codec, the typed refusals, and that the root never leaves

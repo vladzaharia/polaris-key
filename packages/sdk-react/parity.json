@@ -603,8 +603,8 @@
       "note": "U-22.6: the chunks mode of the same transport and engine (plan, put chunk, manifest, GET chunk). The cloudsync-chunks and cloudsync-chunks-delta transcripts replay through the transport; sync-vectors.json cdcCases run in the browser runner. A chunk the Worker stored with zstd (codec 1) is refused as sync-file-invalid: the browser carries no zstd decoder, and every writer emits raw chunks (D-4)."
     },
     "sync.e2e.recovery": {
-      "status": "planned",
-      "wp": "U-20"
+      "status": "implemented",
+      "note": "The recovery code in the browser bearer engine's key ring (ui-core browser/ring): useRecoveryCode()'s unlock(code), replace() and reset() (create() returns the first code), and the kit's UnlockSync, RecoveryCode and RingChange screens over it. test/keyring.test.ts (the recovery code, start over, the pin), test/kitSyncScreens.test.tsx (UnlockSync, RecoveryCode, RingChange and the locked CloudSyncStatus row) and the recoveryCodeCases of sync-vectors.json in conformance/runners/browser/syncVectors.browser.test.ts; keyring-recovery replays in test/transcripts.test.ts. A browser has no platform backup API, so the code is its only backup (the registry's web allowance). A cookie page, the local adapter and the desktop bridge answer the typed N/A, as for sync.keyring."
     },
     "sync.transfer.background": {
       "status": "na",

@@ -77,6 +77,16 @@ The role agent sets `--set U-15a in-review` when it hands off. After review, the
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set U-15a done`.
 
+## Corrections from the code (2026-11-09)
+
+Recorded when the package was built. Where they differ from the text above, they win.
+
+- **Scope as built.** Help: `help/sync-new-device.mdx` (**Sync is locked**, the recovery code, start over, a changed key) and `help/recovery-code.mdx` ([`plans/CC-01.md`](../plans/CC-01.md) R-14); `help/sync.md` keeps one pointer to them, and the `sync-locked`, `keyring_conflict` and `recovery-code-invalid` Help messages link them. Developers: `features/cloud-sync/encryption.md` (what the server sees, the key ring, the platform backup, the recovery code, start over, a changed ring, the kit screens, server mode). Parity: `sync.e2e.recovery` is `implemented` in Node, React, Python, Swift and Kotlin; Godot stays `planned` (U-40) because it has no platform backup on macOS, iOS or Android, which the registry does not allow it to omit.
+- **No nearby unlock in Help.** CC-01-cloud-sync §4.2 lists "approve on a nearby device", but no kit offers it (the kit copy says so), so Help leaves it out.
+- **Paths.** The docs live under `packages/docs/src/content/docs/features/cloud-sync/` and `help/`, not `services/`. A new page needs no `site-map.json` row: that file holds moves and the docs plan's stubs only, and later pages (`help/nearby-devices`, `features/cloud-sync/files`) have none. Pages are listed in `src/lib/doors.ts`.
+- **U-06** is still `todo` in the graph, but the synced-settings calls it names ship in Node and Python and are documented on those SDK pages; this package documents the code.
+- **Left for a follow-up:** the five-minute quick start with per-SDK tabs, the operators' license-override migration notice and the clock limits.
+
 ## Amendment (2026-10-26, combined program)
 
 Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.

@@ -711,7 +711,8 @@
     },
     "sync.e2e.recovery": {
       "status": "planned",
-      "wp": "U-40"
+      "wp": "U-40",
+      "note": "The recovery code is built: PolarisKey.keyring's set_recovery_code(), recover(code_text) and reset(), proven by suite_sync_ring, the recoveryCodeCases in suite_sync_vectors and the kit's suite_cloud_sync_ui. The platform backup of the root (iCloud Keychain on macOS and iOS, Block Store on Android) is not, and the registry allows its absence only on linux, windows and web."
     },
     "sync.transfer.background": {
       "status": "implemented",

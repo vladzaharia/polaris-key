@@ -1,4 +1,4 @@
-# @pkey-feature sync.keyring sync.e2e sync.files.delta
+# @pkey-feature sync.keyring sync.e2e sync.files.delta sync.e2e.recovery
 """The Cloud Sync E2E crypto against ``conformance/corpus/v2/sync-vectors.json`` (U-38.3;
 WIRE-CONTRACT-V5 §13.10, §13.11): hkdfCases, envelopeCases, blindCases, hpkeAnchor, wrapCases,
 recoveryCodeCases, adoptCases and canonicalJsonCases, and (U-22.8) cdcCases, cdcEditCases,

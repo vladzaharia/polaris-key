@@ -3,7 +3,7 @@ title: "Sync Across Devices"
 description: "How your settings follow you between devices, what its status messages mean, and what happens when your storage is full."
 type: "help"
 status: "shipped"
-lastReviewed: "2026-11-01"
+lastReviewed: "2026-11-09"
 sidebar:
   order: 9
 ---
@@ -24,27 +24,9 @@ If a save changed on two devices, the app shows **Two versions**. Choose **Keep 
 
 Saves belong to the account that is signed in. Another person on the same device sees their own. If a save fails to send or load, choose **Try again**.
 
-## Unlock sync on a new device
+## Encrypted sync
 
-An app can encrypt your synced settings so only your devices read them. A new device then says **Sync is locked** and offers **Unlock sync**. Enter your recovery code and choose **Unlock**. Until then the device keeps its own settings and does not pull yours.
-
-If the app says the code isn't right, check it and try again. A mistyped code is caught before anything is sent. You get five tries a day.
-
-## Your recovery code
-
-The app shows the code once, when you turn encryption on. Save it in a password manager or write it down. Polaris Locker does not keep a copy and cannot show it again. If you are signed in on an unlocked device, choose **New recovery code** there.
-
-**Enter it only in the app.** No one from Polaris Locker or the app's developer asks for it, by email, chat, phone or on a web page. Anyone who asks is trying to read your data. If an email says [recovery started](/docs/help/emails/#recovery-started) and it wasn't you, remove that device under **See your devices**.
-
-## Start over
-
-If you have no unlocked device and no code, nothing can read your old synced data. Choose **Start over** in the app. It makes a new key and a new recovery code, and your current synced data is lost. A device that still has the old key can move it across for 30 days.
-
-Start over is open to any signed-in device on your account, so you get an email, [encryption was reset](/docs/help/emails/#encryption-reset). If it wasn't you, [secure your account](/docs/help/secure-your-account/).
-
-## If your sync key changed
-
-The app says a device set up a new key. Choose **That was me** only if you did. If not, choose **Use recovery code**, then [secure your account](/docs/help/secure-your-account/).
+Synced data is usually encrypted on your devices, so Polaris Locker can't read it. A new device needs your key before it syncs, and until then the app says **Sync is locked**. See [Unlock sync on a new device](/docs/help/sync-new-device/) and [Your recovery code](/docs/help/recovery-code/).
 
 ## If a change doesn't arrive
 
@@ -59,5 +41,7 @@ Sign in at [polaris.locker](https://polaris.locker) and see [Manage your data](/
 
 ## Related
 
+- [Unlock sync on a new device](/docs/help/sync-new-device/)
+- [Your recovery code](/docs/help/recovery-code/)
 - [Remove an app from your library](/docs/help/remove-from-library/)
 - [Your data](/docs/help/your-data/)

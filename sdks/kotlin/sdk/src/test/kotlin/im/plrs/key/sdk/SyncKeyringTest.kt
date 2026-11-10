@@ -1,4 +1,4 @@
-// @pkey-feature sync.keyring
+// @pkey-feature sync.keyring sync.e2e.recovery
 //
 // `client.keyring` (U-39.8): create, unlock through this device's own wrap, a restart that gets the
 // root back offline, the pin (a served ring that differs is never opened), recovery, and forget. A

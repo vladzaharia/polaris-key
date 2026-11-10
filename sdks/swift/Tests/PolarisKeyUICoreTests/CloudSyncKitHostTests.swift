@@ -1,4 +1,4 @@
-// @pkey-feature ui.settings
+// @pkey-feature ui.settings sync.e2e.recovery
 // The Cloud Sync kit host's binding (U-42.3T): status and events drive the row, its buttons open
 // the screens, and the screens' outcomes switch back. A fake source stands in for the client.
 

@@ -1,4 +1,4 @@
-// @pkey-feature ui.kit
+// @pkey-feature ui.kit sync.e2e.recovery
 // The Cloud Sync screens (U-42; ui-matrix `cloudSync`): UnlockSync, RecoveryCode, RingChange and the
 // locked and ring-changed CloudSyncStatus. What each shows, what each control reports, and the
 // security points the screens keep: the typed code goes to one callback, the shown code is never an

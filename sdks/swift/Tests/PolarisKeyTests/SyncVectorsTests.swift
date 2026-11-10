@@ -1,4 +1,4 @@
-// @pkey-feature sync.e2e
+// @pkey-feature sync.e2e sync.e2e.recovery
 // The Cloud Sync E2E primitives against `conformance/corpus/v2/sync-vectors.json` (U-39.1;
 // WIRE-CONTRACT-V5 §13.10): hkdfCases, envelopeCases, blindCases and canonicalJsonCases. The
 // other sections belong to later work packages; a runner reads named sections only.
