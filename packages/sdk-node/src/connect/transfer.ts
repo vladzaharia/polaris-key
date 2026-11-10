@@ -52,7 +52,10 @@ import {
   type DeliverTo,
 } from "./transferStore.js";
 
-/** A device of the person's, a link (`cloudConnect.links.list()[i].id`), or an open session. */
+/**
+ * A device of the person's, a link (`cloudConnect.links.list()[i].id`, or a local link's,
+ * `cloudConnect.localLinks.list()[i].id`), or an open session.
+ */
 export type TransferPeer = string | { link: string } | ConnectSession;
 
 /** What to send: a file path, bytes already in memory, or a stream (spooled to disk and hashed first). */
@@ -99,7 +102,8 @@ export interface IncomingOffer {
   category?: string;
   from:
     | { kind: "device"; deviceId: string; label: string | null }
-    | { kind: "link"; linkId: string; label: string | null };
+    | { kind: "link"; linkId: string; label: string | null }
+    | { kind: "local"; linkId: string; label: string | null };
   path: "lan" | "relay";
 }
 
@@ -414,7 +418,8 @@ export class CloudTransfer {
     };
     const ep = new XferEndpoint({
       machine: {
-        mode: session.contact !== null ? "c" : "a",
+        mode:
+          session.contact !== null ? "c" : session.local !== null ? "l" : "a",
         caps: session.caps,
         maxMessage: MAX_PEER_MESSAGE_BYTES,
         hostLimit: this.#maxSize,
@@ -423,7 +428,9 @@ export class CloudTransfer {
         handler: () => (this.#handler === null ? "decline" : "ask"),
         ...(session.contact !== null
           ? { categories: session.contact.categories }
-          : {}),
+          : session.local !== null
+            ? { categories: session.local.categories }
+            : {}),
         peerKey: port.peerKey,
         partials,
         delivered: this.#delivered.forPeer(port.peerKey),
@@ -602,11 +609,13 @@ export class CloudTransfer {
           from:
             s.contact !== null
               ? { kind: "link", linkId: s.contact.id, label: s.contact.label }
-              : {
-                  kind: "device",
-                  deviceId: s.peerDeviceId,
-                  label: s.hello.label ?? null,
-                },
+              : s.local !== null
+                ? { kind: "local", linkId: s.local.id, label: s.local.label }
+                : {
+                    kind: "device",
+                    deviceId: s.peerDeviceId,
+                    label: s.hello.label ?? null,
+                  },
           path: s.path,
         };
         to = await destination(await handler(offer));

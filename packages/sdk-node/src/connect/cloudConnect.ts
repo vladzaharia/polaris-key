@@ -12,6 +12,9 @@
 //                `request()` on the new device, `onRequest()` on the approver
 //   links        inter-account links (mode p pairing, mode c sessions, CC-19): `pair()`, `list()`,
 //                `remove()`, `open()`, `onLink()`; off unless discovery says `interAccount`
+//   localLinks   local links (CC-29): `pair()` and `join()` with a code, `list()`, `rename()`,
+//                `remove()`, `setReachable()`, `open()`, `onLink()`; off unless discovery says
+//                `localPairing`, and needing no account
 //
 // Rules this module keeps:
 //  - the order is LAN, then relay. The LAN attempt is bounded (`lanAttemptMs`); when it fails or
@@ -22,6 +25,10 @@
 //  - the account relay carries only mode `a` sessions (see relay.ts). Modes `v` and `p` are not
 //    reachable through this API at all, and mode `c` runs over contact rooms (contactRelay.ts)
 //    that only `links` opens;
+//  - with no account, `start()` brings up the LAN service for the local links alone when discovery
+//    says `localPairing` (§15.5, "A host that holds only local links runs the listener with no
+//    account at all"); a sign-out takes the account half away and, when links are reachable,
+//    brings that service back up (§15.12, "Forget and accounts");
 //  - a failure on one path is never swallowed: when no path works the last typed error is thrown
 //    (`LanError` or `RelayError`).
 
@@ -285,6 +292,10 @@ export class CloudConnect {
   #lanFailed: Error | null = null;
   #self = "";
   #running = false;
+  /** The running LAN service has no account half (it serves local links alone). */
+  #localOnly = false;
+  /** What a sign-out starts the local-only service with; null when the host did not start Connect. */
+  #resumeWith: CloudConnectOptions | null = null;
   #relayOn = false;
   #lanAttemptMs = LAN_ATTEMPT_MS;
   #onChannel = new Set<(s: ConnectSession) => void>();
@@ -320,11 +331,22 @@ export class CloudConnect {
     this.#transfer = new CloudTransfer({
       store: transferDir === null ? null : new PartialStore(transferDir),
       openDevice: (id) => this.open(id),
-      openLink: (id) => this.#links.open(id),
+      openLink: async (id) =>
+        (await this.#localLinks.has(id))
+          ? this.#localLinks.open(id)
+          : this.#links.open(id),
       hasLink: async (id) =>
-        (await connect.contactRows()).some((r) => contactId(r.agreeKey) === id),
+        (await connect.contactRows()).some(
+          (r) => contactId(r.agreeKey) === id,
+        ) || (await this.#localLinks.has(id)),
     });
-    this.#localLinks = new LocalLinks(connect.localSource());
+    this.#localLinks = new LocalLinks(connect.localSource(), {
+      adopt: (s) => this.#transfer.adopt(s),
+      removed: (keys) =>
+        Promise.all(keys.map((k) => this.#transfer.purgePeer(k))).then(
+          () => undefined,
+        ),
+    });
     this.#links = new CloudLinks(connect, {
       adopt: (s) => this.#transfer.adopt(s),
       removed: (keys) =>
@@ -340,8 +362,9 @@ export class CloudConnect {
   }
 
   /**
-   * Local links (CC-29): pair with a code with no account. `pair`, `join` and `list`; off unless
-   * discovery says `localPairing`. It needs no sign-in and no `start()`.
+   * Local links (CC-29): pair with a code with no account (`pair`, `join`), then `list`, `rename`,
+   * `remove`, `setReachable`, `open` and `onLink`; off unless discovery says `localPairing`. It
+   * needs no sign-in; the later sessions (`open`, `onLink`, the adverts) run while `start()` does.
    */
   get localLinks(): LocalLinks {
     return this.#localLinks;
@@ -393,11 +416,20 @@ export class CloudConnect {
    */
   start(opts: CloudConnectOptions = {}): Promise<void> {
     return this.#serial(async () => {
-      if (this.#running) return;
+      if (this.#running && !this.#localOnly) return;
+      // A local-only service gives way to the full one.
+      if (this.#running) await this.#stopNow();
       const epoch = this.#epoch;
-      const id = await this.connect.identity();
+      let id: { deviceId: string } | null = null;
+      try {
+        id = await this.connect.identity();
+      } catch (e) {
+        if (!this.#noAccount(e, opts)) throw e;
+      }
       if (epoch !== this.#epoch) return;
+      if (id === null) return this.#startLocalOnly(opts, epoch);
       this.#self = id.deviceId;
+      this.#resumeWith = opts;
       this.#lanAttemptMs = opts.lanAttemptMs ?? LAN_ATTEMPT_MS;
       this.#relayOn = opts.relay !== false;
       this.#lanFailed = null;
@@ -443,34 +475,86 @@ export class CloudConnect {
         lanAttemptMs: this.#lanAttemptMs,
         relayOn: this.#relayOn,
       });
+      if (this.#lan !== null) this.#localLinks.attach(this.#lan);
+      this.#localOnly = false;
       this.#running = true;
     });
   }
 
+  /**
+   * A start that found no account (no token, or no sign-in): with `localPairing` cached on and the
+   * LAN not turned off it serves local links alone; any other failure is the caller's.
+   */
+  #noAccount(e: unknown, opts: CloudConnectOptions): boolean {
+    return (
+      e instanceof PolarisError &&
+      (e.code === ErrorCode.noToken || e.code === ErrorCode.accountRequired) &&
+      opts.lan !== false &&
+      this.connect.localPairing()
+    );
+  }
+
+  /** The LAN service with no account half: the local links alone (§15.5, §15.12). */
+  async #startLocalOnly(
+    opts: CloudConnectOptions,
+    epoch: number,
+  ): Promise<void> {
+    this.#self = "";
+    this.#resumeWith = opts;
+    this.#relayOn = false;
+    this.#lanFailed = null;
+    let lan: LanService;
+    try {
+      lan = await this.connect.lanLocal(
+        opts.lan === false ? {} : (opts.lan ?? {}),
+      );
+    } catch (e) {
+      this.#lanFailed = e instanceof Error ? e : new Error("LAN failed");
+      throw e;
+    }
+    if (epoch !== this.#epoch) {
+      lan.abort();
+      return;
+    }
+    this.#lan = lan;
+    this.#localLinks.attach(lan);
+    this.#localOnly = true;
+    this.#running = true;
+  }
+
   /** Close the sessions, the relay socket and the LAN service. Safe to call more than once. */
   stop(): Promise<void> {
-    return this.#serial(async () => {
-      if (!this.#running && this.#lan === null && this.#relay === null) return;
-      const epoch = this.#epoch;
-      this.#running = false;
-      for (const u of this.#unsub.splice(0)) u();
-      const lan = this.#lan;
-      const relay = this.#relay;
-      const contactRelay = this.#contactRelay;
-      this.#lan = this.#relay = this.#contactRelay = null;
-      this.#draining = { lan, relay, contactRelay };
-      await this.#links.detach();
-      await Promise.all(
-        [...this.#sessions].map((s) => s.close().catch(() => undefined)),
-      );
-      if (epoch === this.#epoch) this.#sessions.clear();
-      await Promise.all([
-        lan?.stop().catch(() => undefined),
-        relay?.stop().catch(() => undefined),
-        contactRelay?.stop().catch(() => undefined),
-      ]);
-      if (epoch === this.#epoch) this.#draining = null;
-    });
+    this.#resumeWith = null;
+    return this.#stopSerial();
+  }
+
+  #stopSerial(): Promise<void> {
+    return this.#serial(() => this.#stopNow());
+  }
+
+  async #stopNow(): Promise<void> {
+    if (!this.#running && this.#lan === null && this.#relay === null) return;
+    const epoch = this.#epoch;
+    this.#running = false;
+    this.#localOnly = false;
+    for (const u of this.#unsub.splice(0)) u();
+    const lan = this.#lan;
+    const relay = this.#relay;
+    const contactRelay = this.#contactRelay;
+    this.#lan = this.#relay = this.#contactRelay = null;
+    this.#draining = { lan, relay, contactRelay };
+    await this.#links.detach();
+    await this.#localLinks.detach();
+    await Promise.all(
+      [...this.#sessions].map((s) => s.close().catch(() => undefined)),
+    );
+    if (epoch === this.#epoch) this.#sessions.clear();
+    await Promise.all([
+      lan?.stop().catch(() => undefined),
+      relay?.stop().catch(() => undefined),
+      contactRelay?.stop().catch(() => undefined),
+    ]);
+    if (epoch === this.#epoch) this.#draining = null;
   }
 
   /**
@@ -480,18 +564,36 @@ export class CloudConnect {
    * the sign-out goes on.
    */
   async stopForSignOut(boundMs: number = SIGN_OUT_BOUND_MS): Promise<void> {
-    if (await stopWithin(() => this.stop(), boundMs)) this.#forceStop();
+    if (await stopWithin(() => this.#stopSerial(), boundMs)) this.#forceStop();
     // The partial files of received transfers go with the session (they are the peer's bytes).
     await stopWithin(() => this.#transfer.purge(), boundMs);
     // Then the nearby adverts and sessions (after Connect, before the device leaves it).
     if (await stopWithin(() => this.#nearby.stopAll(), boundMs))
       this.#nearby.forceStop();
+    // Local links are not account data: the LAN service comes back up without the account half
+    // when links are reachable (§15.12, "Forget and accounts").
+    await stopWithin(() => this.#resumeLocal(), boundMs);
+  }
+
+  #resumeLocal(): Promise<void> {
+    return this.#serial(async () => {
+      const opts = this.#resumeWith;
+      if (this.#running || opts === null || !this.connect.localPairing())
+        return;
+      const rows = await this.connect
+        .localStore()
+        .rows()
+        .catch(() => []);
+      if (!rows.some((r) => r.reachable)) return;
+      await this.#startLocalOnly(opts, this.#epoch).catch(() => undefined);
+    });
   }
 
   #forceStop(): void {
     this.#epoch++;
     this.#serial = serialQueue();
     this.#running = false;
+    this.#localOnly = false;
     for (const u of this.#unsub.splice(0)) u();
     const held = [
       {
@@ -505,6 +607,7 @@ export class CloudConnect {
     this.#draining = null;
     this.#sessions.clear();
     void this.#links.detach().catch(() => undefined);
+    void this.#localLinks.detach().catch(() => undefined);
     for (const h of held) {
       h?.lan?.abort();
       h?.relay?.abort();

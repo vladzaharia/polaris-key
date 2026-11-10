@@ -51,6 +51,10 @@ export interface LocalSource {
   /** The cached discovery answer `localPairing` is true (§15.12 "Gates"). */
   allowed(): boolean;
   store: LocalLinkStore;
+  /** The links changed (renamed, re-marked, forgotten): the listener and the adverts follow. */
+  notify(): void;
+  /** Called by `notify()` and when the gate moves. Returns the unsubscribe. */
+  onChange(fn: () => void): () => void;
 }
 
 /** The code a shower shows now. It changes after every failed guess. */

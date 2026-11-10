@@ -633,6 +633,7 @@ export class PolarisKeyClient {
     const fetchImpl = this.core.fetcher();
     // Reads apply in the order they began: a slow older answer never overwrites a newer one.
     const seq = ++this.localReadSeq;
+    const wasOn = this.localGate.allowed;
     const result = await discoverProduct({
       baseUrl: this.core.baseUrl,
       product: this.product,
@@ -650,6 +651,9 @@ export class PolarisKeyClient {
         this.#localGateRead(this.localGate.readNotFound());
       }
     }
+    // The local links follow the gate: turned on, the listener serves them and the adverts go up;
+    // turned off, the adverts are withdrawn (and `localLinks.closeAll` ended the sessions).
+    if (wasOn !== this.localGate.allowed) this.connect.notifyLocals();
     // An error or an invalid body changes nothing, but a cached "on" is read again soon.
     if (result.kind !== "ok" && result.kind !== "not-found")
       this.#armLocalRetry();
@@ -684,7 +688,10 @@ export class PolarisKeyClient {
     this.localRetry.unref();
   }
 
-  /** A read cleared the cached local-pairing answer: the windows and joins close (§15.12 "Gates"). */
+  /**
+   * A read cleared the cached local-pairing answer: the windows and joins close, the open mode-`l`
+   * sessions end with `peer_bye` and the `m=l` adverts are withdrawn (§15.12 "Gates").
+   */
   #localGateRead(effects: readonly GateEffect[]): void {
     if (effects.length > 0)
       void this.cloudConnect.localLinks.closeAll().catch(() => undefined);

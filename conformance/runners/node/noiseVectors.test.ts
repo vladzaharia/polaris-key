@@ -1,4 +1,4 @@
-// @pkey-feature connect.noise
+// @pkey-feature connect.noise connect.local
 // The Node conformance runner for `conformance/corpus/v2/noise-vectors.json` (WIRE-CONTRACT-V5
 // §15.5, §15.6). It covers React too, since both JS SDKs share `@polaris-key/client-core`.
 //

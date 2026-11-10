@@ -1,4 +1,4 @@
-// @pkey-feature connect.protocol connect.lan connect.links identity.nearby connect.transfer
+// @pkey-feature connect.protocol connect.lan connect.links identity.nearby connect.transfer connect.local
 // The Node conformance runner for `conformance/corpus/v2/peer-matrix.json` (WIRE-CONTRACT-V5
 // §15.4 to §15.7). It covers React too, since both JS SDKs share `@polaris-key/client-core`. The
 // suites are `peerMatrixSuites.ts`, shared with the browser runner; this file only reads the

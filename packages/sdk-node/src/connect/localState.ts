@@ -10,7 +10,8 @@
 //    surface, never silently replaced (replacing it would forget the held links);
 //  - a private key and a secret are fields of the record and of nothing else here: `LocalLinkInfo`
 //    carries neither, and no error or print names one;
-//  - a link is added under the store's lock, which also holds the cap (`MAX_LOCAL_LINKS`).
+//  - a link is added under the store's lock, which also holds the cap (`MAX_LOCAL_LINKS`);
+//  - a link in use (`LiveLocal`) carries its decoded key and secret: the user of one wipes it.
 
 import { createHash } from "node:crypto";
 import { join } from "node:path";
@@ -19,7 +20,7 @@ import {
   MAX_CONTACT_CATS,
   MAX_LOCAL_LINKS,
 } from "@polaris-key/client-core/peer";
-import { base64UrlEncodeBytes } from "@polaris-key/jws";
+import { base64UrlDecode, base64UrlEncodeBytes } from "@polaris-key/jws";
 import { ErrorCode } from "../constants.generated.js";
 import {
   DeviceKeyStoreError,
@@ -144,6 +145,71 @@ export function parseLocalState(
   if (v.product !== product) return null;
   return parseRows(v.links);
 }
+
+/** The link a session was made over (mode `l`). No key, no secret. */
+export interface LocalRef {
+  id: string;
+  /** The stored label, or the one the person gave it with `rename`. */
+  label: string | null;
+  categories: readonly string[];
+  /** The peer's link public key, canonical base64url of 32 bytes. */
+  peerKey: string;
+  /** @internal A one-way tag of the secret the session opened under (not the secret). */
+  tag: string;
+}
+
+/** A link in use: the row with its key and secret decoded. `wipeLocals` zeroes them. */
+export interface LiveLocal {
+  readonly id: string;
+  readonly ownKey: Uint8Array;
+  readonly ownPublic: Uint8Array;
+  readonly peerKey: Uint8Array;
+  readonly secret: Uint8Array;
+  readonly label: string | null;
+  readonly cats: readonly string[];
+  readonly reachable: boolean;
+  readonly tag: string;
+}
+
+/** A one-way tag that tells two secrets apart without holding either. */
+export const localTag = (secret: Uint8Array): string =>
+  createHash("sha256")
+    .update("pkey-local-tag/1")
+    .update(Uint8Array.of(0))
+    .update(secret)
+    .digest()
+    .subarray(0, 12)
+    .toString("base64url");
+
+export const liveOfLocal = (r: LocalLinkRow): LiveLocal => {
+  const secret = base64UrlDecode(r.secret);
+  return {
+    id: r.id,
+    ownKey: base64UrlDecode(r.ownKey),
+    ownPublic: base64UrlDecode(r.ownPublic),
+    peerKey: base64UrlDecode(r.peerKey),
+    secret,
+    label: r.label ?? null,
+    cats: r.cats,
+    reachable: r.reachable,
+    tag: localTag(secret),
+  };
+};
+
+export const refOfLocal = (l: LiveLocal): LocalRef => ({
+  id: l.id,
+  label: l.label,
+  categories: l.cats,
+  peerKey: base64UrlEncodeBytes(l.peerKey),
+  tag: l.tag,
+});
+
+export const wipeLocals = (ls: readonly LiveLocal[]): void => {
+  for (const l of ls) {
+    l.secret.fill(0);
+    l.ownKey.fill(0);
+  }
+};
 
 /** The record's home: the file store in the state directory, or memory. */
 export function localStorage(
