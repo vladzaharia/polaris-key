@@ -328,6 +328,10 @@ private final class GuardedFileCodec: FileCodec, CustomReflectable, CustomString
         try check()
         return GuardedOpener(inner: inner.makeOpener(), codec: self)
     }
+    func makePlannedOpener(plainSize: Int) throws -> any FileOpener {
+        try check()
+        return GuardedOpener(inner: try inner.makePlannedOpener(plainSize: plainSize), codec: self)
+    }
 }
 
 private final class GuardedOpener: FileOpener, @unchecked Sendable {

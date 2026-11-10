@@ -4560,7 +4560,6 @@
           "reason": "a browser has no path: the hook's export (useCloudSync().export, spelled by U-51.4) takes options and answers a Blob, or writes to options.sink; the desktop bridge answers unsupported"
         },
         "swift": {
-          "planned": "U-51",
           "labels": ["to", "options"]
         },
         "kotlin": {
@@ -4594,6 +4593,10 @@
         "python": {
           "sdkOnly": true,
           "reason": "Python cancels with the threading.Event passed as cancel, or by cancelling the awaiting task"
+        },
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift cancels with the Task that awaits cloudSync.export(to:options:)"
         }
       },
       "layer": "client"

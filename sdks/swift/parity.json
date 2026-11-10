@@ -611,9 +611,8 @@
       ]
     },
     "sync.export": {
-      "status": "planned",
-      "wp": "U-51",
-      "note": "U-51.1 registered the feature; this SDK's slice implements it."
+      "status": "implemented",
+      "note": "client.cloudSync.export(to:options:) (PolarisKey/CloudSyncExport.swift: the preconditions, the pulls and their bounds, the file source over the transfer engine and the path destination; Sync/SyncExport.swift: the plan, the serialisers and the streaming; Sync/SyncExportZip.swift: the STORED zip32 writer with data descriptors and an incremental CRC-32): a readable zip of the synced data written to <destination>.partial (exclusive create with O_NOFOLLOW at 0600, iOS data protection completeUnlessOpen, fsync) and renamed over the destination; a failure or a cancel of the task removes the partial and keeps the old file. The key ring's file codec gains makePlannedOpener(plainSize:), so the last segment comes from the plan and the root stays in the ring. SyncExportVectorsTests replays every exportCases row (and unzip -t reads each archive), CloudSyncExportTests the host."
     }
   }
 }

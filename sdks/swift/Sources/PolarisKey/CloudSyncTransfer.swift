@@ -39,6 +39,7 @@
 
 import Foundation
 import PolarisKeyCore
+
 #if canImport(CryptoKit)
     import CryptoKit
 #else
@@ -334,7 +335,7 @@ public struct DownloadRequest: Sendable {
 private func sha256Hex(_ d: Data) -> String { SHA256.hash(data: d).map { String(format: "%02x", $0) }.joined() }
 
 /// A time before which no request is sent: a `Retry-After` holds every part, not just the one told.
-private final class Hold: @unchecked Sendable {
+final class Hold: @unchecked Sendable {
     private var until = 0.0
     private let lock = NSLock()
     var value: Double { lock.withLock { until } }
@@ -521,8 +522,7 @@ public final class FileTransferEngine: Sendable {
     }
 
     /// One request with the recovery rules: a refusal is returned, a retryable failure is waited out.
-    fileprivate func call<T: Sendable>(_ hold: Hold, _ op: () async throws -> FileReply<T>) async throws -> FileReply<T>
-    {
+    func call<T: Sendable>(_ hold: Hold, _ op: () async throws -> FileReply<T>) async throws -> FileReply<T> {
         var attempt = 0
         while true {
             try checkCancelled()
