@@ -133,8 +133,10 @@ function overlay(store: MemoryStore, body: Record<string, unknown>): void {
     });
   }
   for (const t of (body.tombstones as
-    | Array<{ setting: string; editedHlc: string }>
+    | Array<{ setting?: string; editedHlc: string }>
     | undefined) ?? []) {
+    // A record tombstone names no setting either: it is U-09's, like a record change.
+    if (typeof t.setting !== "string") continue;
     store.putSetting({
       key: t.setting,
       scope: "user",
