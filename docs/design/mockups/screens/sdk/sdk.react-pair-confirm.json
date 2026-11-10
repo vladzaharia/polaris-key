@@ -198,7 +198,7 @@
   "platforms": {
     "react": "Electron over Node: show, enter and manage; no scanning. In a browser or a desktop-bridge page there is no local network (connect-unavailable), so the kit renders nothing and the host shows no entry.",
     "swiftui": "iOS and iPadOS: scan first, then show, enter and manage (sdk.swiftui-pair-scan: AVFoundation, the kit's own viewfinder); the app declares NSCameraUsageDescription and the Local Network keys. macOS: show, enter and manage, no scanning, as the React boards.",
-    "compose": "Android: scan first, then show, enter and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so sdk.swiftui-pair-scan 2, 3 and 3c are iOS only; a build without Play services has no Scan a code and types the code. Desktop: show, enter and manage.",
+    "compose": "Android: scan first, then show, enter and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so sdk.swiftui-pair-scan 2, 3 and 3c are iOS only; because Google's scanner cannot show the categories, its choose screen (1) shows 'Each of you shares' and the pills under Scan a code before the scanner opens. A build without Play services has no Scan a code and types the code. Desktop: show, enter and manage.",
     "godot": "Show (QR from ui/qr/), enter and manage; no scanning. Two panes by its own two_pane_fits() rule.",
     "python": "API only (no kit yet)."
   },

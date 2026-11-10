@@ -10,12 +10,12 @@
   "compare": [
     "1: on a device that can scan, the choices are Scan a code (first) and Show a code, two equal glass block buttons; a QR is never limited by the dial budget, carries 128 bits and cannot be mistyped, so it never reaches Too many tries. Typing is reached from the scan screens. The L-11 footnote 'If asked, allow Diceroll to find devices on your network.' shows until iOS has asked once.",
     "2: once, before iOS's own camera prompt, in the shipped signin.nearby.prePrompt pattern: 'Scan the code' / 'Next, allow Diceroll to use the camera, so you can scan the code.' with Continue (which raises the system prompt) and 'Enter the code instead'.",
-    "3: the camera view with the viewfinder's corners, dark in both themes; it pairs as soon as a code reads (no shutter). 'Enter the code instead' and Cancel. 3b: another app's QR shows 'This code is for another app.' under the view and scanning goes on (R6 reason other-app).",
+    "3: the camera view with the viewfinder's corners, dark in both themes; it pairs as soon as a code reads (no shutter). 'Each of you shares' and the category pills sit under the view on 3, 3b and 3c, before anything is dialled. Scanning is this person's yes, as Pair is on 4. 'Enter the code instead' and Cancel. 3b: another app's QR shows 'This code is for another app.' under the view and scanning goes on (R6 reason other-app).",
     "3c: with the camera off the view says 'Camera access is off' / 'Allow it in Settings.' and Open Settings opens the app's page in Settings; 'Enter the code instead' stays.",
     "4: entering the code: the field in the kit's code face, the number pad, digits only; 'Scan the code instead'; the shared categories before Pair, which is this person's consent; the rules of sdk.react-pair-enter (wrong code keeps the first two digits, no countdown after too many tries, 6's answers).",
     "5: showing a code: 'Scan or enter this code on the other device.', the code over its time and the QR, the waiting row, Cancel and 'Scan a code instead', with sdk.react-pair-show's rules (the changed code, Show a new code, the cooldown).",
     "Every text link is a 44pt target (Enter the code instead, Scan the code instead, Scan a code instead, Back). The primary is the bottom-anchored accent capsule; secondaries are glass.",
-    "Android (Compose): the same screens; the Play flavour opens Google's code scanner instead of 2, 3 and 3c (its own UI, no camera permission); a build without Play services has no Scan a code.",
+    "Android (Compose): the same screens; the Play flavour opens Google's code scanner instead of 2, 3 and 3c (its own UI, no camera permission), so its choose screen (1) shows 'Each of you shares' and the pills under Scan a code before the scanner opens; a build without Play services has no Scan a code.",
     "Four sizes: the phones four a row at wide with the answers card in the fourth cell of the second row, three at desktop with the card across two cells, two at tablet, one on phone.",
     "Accent, type, radii and glass match sdk.swiftui-activate; no Polaris Key or Polaris Locker words or marks.",
     "Words are the copyKeys below, verbatim ('revised' marks a key this round added or changed; 'was' is the old value)."
@@ -137,7 +137,8 @@
       "key": "linkPairing.shares",
       "value": "Each of you shares",
       "role": "label",
-      "existing": true
+      "existing": true,
+      "note": "Over the categories on 3, 3b, 3c and 4 (and on Android's choose screen before Google's scanner opens)."
     },
     {
       "key": "localPairing.pair",
@@ -214,7 +215,7 @@
     },
     {
       "id": "R7",
-      "need": "Joiner: dialsLeft(code) returns { left: 0 | 1 | 2, freesAt } from the process-wide budget, so the kit shows the tries left and enables Pair for other first two digits without a round trip.",
+      "need": "Joiner: dialsLeft(text) returns 0 | 1 | 2, or null until two digits are typed (D5).",
       "states": ["6"]
     },
     {
@@ -226,7 +227,7 @@
   "platforms": {
     "react": "Electron over Node: show, enter and manage; no scanning. In a browser or a desktop-bridge page there is no local network (connect-unavailable), so the kit renders nothing and the host shows no entry.",
     "swiftui": "iOS and iPadOS: scan first, then show, enter and manage (sdk.swiftui-pair-scan: AVFoundation, the kit's own viewfinder); the app declares NSCameraUsageDescription and the Local Network keys. macOS: show, enter and manage, no scanning, as the React boards.",
-    "compose": "Android: scan first, then show, enter and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so sdk.swiftui-pair-scan 2, 3 and 3c are iOS only; a build without Play services has no Scan a code and types the code. Desktop: show, enter and manage.",
+    "compose": "Android: scan first, then show, enter and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so sdk.swiftui-pair-scan 2, 3 and 3c are iOS only; because Google's scanner cannot show the categories, its choose screen (1) shows 'Each of you shares' and the pills under Scan a code before the scanner opens. A build without Play services has no Scan a code and types the code. Desktop: show, enter and manage.",
     "godot": "Show (QR from ui/qr/), enter and manage; no scanning. Two panes by its own two_pane_fits() rule.",
     "python": "API only (no kit yet)."
   },
@@ -254,6 +255,12 @@
         "issue": "Fixture and ownership of the phone frames.",
         "resolution": "Diceroll in the SwiftUI kit; owned by K.2 (SwiftUI and Compose) and K.3 (scanning).",
         "ref": "Q10"
+      },
+      {
+        "severity": "major",
+        "issue": "Re-check: scanning pairs as soon as a code reads, but 3, 3b and 3c never showed what each of you shares, so the main phone path skipped the joiner's consent.",
+        "resolution": "'Each of you shares' and the pills under the viewfinder on 3, 3b and 3c; scanning is this person's yes, as Pair is on 4. Compose's Play scanner shows them on choose (1) before Google's scanner opens.",
+        "ref": "recheck-1"
       }
     ]
   }
