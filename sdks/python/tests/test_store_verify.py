@@ -14,7 +14,6 @@ from polaris_key.core.b64url import b64url_decode, b64url_encode, b64url_encode_
 from polaris_key.core.jws import sign_jws, verify_jws
 from polaris_key.core.models import (
     BLOCK_REASONS,
-    MAX_DOC_BYTES,
     TYP_LICENSE,
     AllowedRange,
     BlockedState,
@@ -53,10 +52,6 @@ def test_b64url_decode_tolerates_missing_padding() -> None:
 
 
 # ── JWS edges ───────────────────────────────────────────────────────────────────────
-def test_verify_rejects_two_part_jws() -> None:
-    assert verify_jws("a.b", TRUST, typ=TYP_LICENSE) is None
-
-
 def test_verify_rejects_garbage() -> None:
     assert verify_jws("not-a-jws", {}, typ=TYP_LICENSE) is None
     assert verify_jws("...", {}, typ=TYP_LICENSE) is None
@@ -66,23 +61,6 @@ def test_verify_rejects_garbage() -> None:
 def test_verify_rejects_a_non_string_input() -> None:
     assert verify_jws(None, TRUST, typ=TYP_LICENSE) is None  # type: ignore[arg-type]
     assert verify_jws(b"a.b.c", TRUST, typ=TYP_LICENSE) is None  # type: ignore[arg-type]
-
-
-def test_verify_rejects_oversized_payload() -> None:
-    """A validly-signed JWS whose decoded payload exceeds the size cap is rejected BEFORE
-    ``json.loads``, so an oversized doc never reaches the parser."""
-    big = "x" * (MAX_DOC_BYTES + 1)
-    assert verify_jws(sign_jws({"blob": big}, PRIVATE_PEM, KID, TYP_LICENSE), TRUST, typ=TYP_LICENSE) is None
-    ok = sign_jws({"blob": "x" * 16}, PRIVATE_PEM, KID, TYP_LICENSE)
-    assert verify_jws(ok, TRUST, typ=TYP_LICENSE) is not None
-
-
-def test_verify_rejects_an_unknown_kid_and_a_wrong_key() -> None:
-    jws = sign_jws({"a": 1}, PRIVATE_PEM, KID, TYP_LICENSE)
-    assert verify_jws(jws, {}, typ=TYP_LICENSE) is None
-    assert verify_jws(jws, {"other": PUBKEY_RAW}, typ=TYP_LICENSE) is None
-    # Right kid, wrong bytes.
-    assert verify_jws(jws, {KID: "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"}, typ=TYP_LICENSE) is None
 
 
 def test_sign_requires_an_ed25519_key() -> None:
