@@ -476,8 +476,11 @@ public actor SyncKeyring: CustomReflectable {
     }
     private nonisolated let memory = RingMemory()
     /// Told when a ring route answers `account_required` (the client wires Cloud Sync here), with the answer's
-    /// `signInUrl` unvetted. The call still throws its own error.
-    nonisolated let accountRequiredHook = LockedValue<(@Sendable (String?) -> Void)?>(nil)
+    /// `signInUrl` unvetted and the person signed in when the call started. The call still throws its own
+    /// error. Only an answer from the Worker's own origin counts.
+    nonisolated let accountRequiredHook = LockedValue<(@Sendable (String?, String?) -> Void)?>(nil)
+    /// Who is signed in now (Cloud Sync's person), read when a call starts.
+    nonisolated let subjectProvider = LockedValue<(@Sendable () async -> String?)?>(nil)
     private var madeKeys: (any DeviceKeyPort)?
     private var madeRoots: RingRootStore?
     private var madeBackup: (any SyncRootBackupPort)?
@@ -1140,12 +1143,18 @@ public actor SyncKeyring: CustomReflectable {
             headers["content-type"] = "application/json"
             data = try JSONSerialization.data(withJSONObject: body)
         }
+        let forSubject = await subjectProvider.current?()
         let res = try await core.request(core.endpoints.url(path), method: method, headers: headers, body: data)
         guard res.isOK else {
             let error = Self.refusal(res)
-            // The Worker took the account away (WIRE-CONTRACT-V5 section 11.5): Cloud Sync learns it here too.
             if res.status == 403, error.code == ErrorCode.accountRequired {
-                accountRequiredHook.current?(Self.signInUrl(res.body))
+                // Only the Worker's own answer counts; from a redirect target it is an ordinary 403.
+                guard res.isFromOrigin(of: core.endpoints.baseUrl) else {
+                    throw PolarisError(
+                        code: ErrorCode.forbidden, message: "The server answered 403.", status: 403)
+                }
+                // The Worker took the account away (WIRE-CONTRACT-V5 section 11.5): Cloud Sync learns it here too.
+                accountRequiredHook.current?(Self.signInUrl(res.body), forSubject)
             }
             throw error
         }

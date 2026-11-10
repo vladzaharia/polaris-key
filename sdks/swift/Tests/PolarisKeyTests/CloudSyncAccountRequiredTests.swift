@@ -24,7 +24,7 @@ import Testing
         #expect(await h.machineSubject() == nil)
         #expect(await h.status()?.state == .blocked)
         #expect(await h.status()?.reason == .accountRequired)
-        await h.saveBlocked(subject: hALICE)
+        try await h.saveBlocked(subject: hALICE)
         #expect(await h.refused == hALICE)
         await h.close()
         // A relaunch over the same directory keeps it blocked, with the partition gone.
@@ -43,6 +43,46 @@ import Testing
         await again.close()
     }
 
+    @Test func aPinThatStaysIsSavedWithTheBlockedStateAndSettledOnceItGoes() async throws {
+        let rig = HostRig()
+        rig.responder = { _, _ in .transport }
+        let h = try await edited(rig)
+        await h.accountRequired(signInUrl: nil)
+        try await h.saveBlocked(subject: hALICE, forgetPending: true)
+        #expect(await h.forgetPending)
+        let file = CloudSyncStateFile(stateDir: rig.dir, product: "demo")
+        #expect(file.load().forgetPending)
+        await h.close()
+        // A relaunch still knows the pin is pending; settling clears it on disk.
+        let again = try await rig.host()
+        #expect(await again.forgetPending)
+        await again.settleForget()
+        #expect(await again.forgetPending == false)
+        #expect(file.load().forgetPending == false)
+        #expect(file.load().refused == hALICE)
+        await again.close()
+    }
+
+    @Test func aBlockedStateThatCannotBeWrittenRemovesTheFileAndHoldsTheRefusalInMemory() async throws {
+        let rig = HostRig()
+        rig.responder = { _, _ in .transport }
+        let h = try await edited(rig)
+        await h.accountRequired(signInUrl: nil)
+        let file = CloudSyncStateFile(stateDir: rig.dir, product: "demo")
+        try file.save(CloudSyncFile(openKeys: ["x"], refused: nil))
+        // The state path is a non-empty directory now: the rename over it fails, the removal does not.
+        try FileManager.default.removeItem(at: file.url)
+        try FileManager.default.createDirectory(
+            at: file.url.appendingPathComponent("held"), withIntermediateDirectories: true)
+        try await h.saveBlocked(subject: hALICE)
+        #expect(!FileManager.default.fileExists(atPath: file.url.path))
+        #expect(await h.refused == hALICE)
+        // Nothing is saved again until a sign-in.
+        await h.flush(maxMs: 100)
+        #expect(!FileManager.default.fileExists(atPath: file.url.path))
+        await h.close()
+    }
+
     @Test func noPersonSignedInIsANoOp() async throws {
         let rig = HostRig()
         let h = try await rig.host()
@@ -57,7 +97,12 @@ import Testing
         // The first request in flight: the route hears account_required while it waits.
         let fired = LockedValue<Bool>(false)
         rig.onSend = { _ in
-            if fired.with({ let was = $0; $0 = true; return was }) { return }
+            let was = fired.with { flag -> Bool in
+                let before = flag
+                flag = true
+                return before
+            }
+            if was { return }
             Task { await box.current?.accountRequired(signInUrl: nil) }
         }
         // The answer names a newer catalog: a host that read it would fetch the schema.

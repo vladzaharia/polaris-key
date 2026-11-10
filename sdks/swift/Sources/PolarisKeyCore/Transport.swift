@@ -78,11 +78,32 @@ public struct PolarisResponse: Sendable {
     public let body: Data
     /// Response headers, looked up case-insensitively via `header(_:)`.
     public let headers: [String: String]
+    /// The URL the answer came from after any redirects; nil for a transport that does not say (a stub).
+    public let finalUrl: String?
+    /// Whether a redirect was followed on the way (the final URL is not the one asked).
+    public let redirected: Bool
 
-    public init(status: Int, body: Data, headers: [String: String] = [:]) {
+    public init(
+        status: Int, body: Data, headers: [String: String] = [:], finalUrl: String? = nil, redirected: Bool = false
+    ) {
         self.status = status
         self.body = body
         self.headers = headers
+        self.finalUrl = finalUrl
+        self.redirected = redirected
+    }
+
+    /// Whether the answer came from `baseUrl`'s own origin (https, same host and port, no userinfo) without a
+    /// redirect on the way. An answer that names no URL was never fetched from anywhere else. `account_required` is honoured only from the
+    /// Worker's own answer; from anywhere else it is an ordinary 403.
+    public func isFromOrigin(of baseUrl: String) -> Bool {
+        if redirected { return false }
+        guard let finalUrl else { return true }
+        guard let u = URL(string: finalUrl), let b = URL(string: baseUrl), u.scheme?.lowercased() == "https",
+            b.scheme?.lowercased() == "https", u.user == nil, u.password == nil,
+            let uh = u.host?.lowercased(), let bh = b.host?.lowercased(), uh == bh
+        else { return false }
+        return (u.port ?? 443) == (b.port ?? 443)
     }
 
     /// Case-insensitive header read — HTTP header names are not case-sensitive and `ETag` vs
@@ -247,7 +268,9 @@ public struct URLSessionTransport: PolarisTransport {
         for (key, value) in http.allHeaderFields {
             if let key = key as? String, let value = value as? String { headers[key] = value }
         }
-        return PolarisResponse(status: http.statusCode, body: data, headers: headers)
+        return PolarisResponse(
+            status: http.statusCode, body: data, headers: headers, finalUrl: http.url?.absoluteString,
+            redirected: http.url.map { $0.absoluteString != request.url.absoluteString } ?? false)
     }
 
     public func stream(_ request: PolarisRequest) async throws -> PolarisStreamResponse {

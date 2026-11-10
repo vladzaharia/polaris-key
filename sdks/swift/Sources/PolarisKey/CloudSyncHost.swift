@@ -209,6 +209,8 @@ public actor CloudSyncHost {
     private var openKeys: [String] = []
     /// The subject `account_required` took away (saved with the journal; see `CloudSyncFile.refused`).
     private var refusedSubject: String?
+    /// The key ring's pin is still to be removed (saved with the blocked journal).
+    private var forgetPendingFlag = false
     private var documentJSON = ""
     private var triedCatalogVersion: Int?
     private var rebuildWanted = false
@@ -504,6 +506,7 @@ public actor CloudSyncHost {
         let saved = file.load()
         openKeys = saved.openKeys
         refusedSubject = saved.refused
+        forgetPendingFlag = saved.forgetPending
         mirror = Self.vetted(options.catalog)
         // N-1: a served catalog is never persisted; the mirror is authoritative and a fresh start asks
         // the Worker again when there is no mirror.
@@ -692,11 +695,29 @@ public actor CloudSyncHost {
     /// The state after `account_required`, on this path only (sign-out and deactivation keep the full
     /// `purge`): the machine is saved as it stands, so the status is still `blocked` after a relaunch and the
     /// partition is already gone. `subject` is the one the Worker refused. No timer stays armed.
-    func saveBlocked(subject: String?) {
+    ///
+    /// `forgetPending` says the key ring's pin is still to be removed. If the file cannot be written the old
+    /// one (which holds the person's snapshot in the clear) is removed, nothing is saved again until a
+    /// sign-in, and what was refused is held in memory for this run. Throws only if the file could not be
+    /// removed.
+    func saveBlocked(subject: String?, forgetPending: Bool = false) throws {
         openKeys = []
         refusedSubject = subject
+        forgetPendingFlag = forgetPending
         timer?.cancel()
         timer = nil
+        if saveChecked() { return }
+        purged = true
+        try file.remove()
+    }
+
+    /// Whether the key ring's pin still has to be removed (see `CloudSyncFile.forgetPending`).
+    var forgetPending: Bool { forgetPendingFlag }
+
+    /// The pin is gone: stop retrying.
+    func settleForget() {
+        if !forgetPendingFlag { return }
+        forgetPendingFlag = false
         save()
     }
 
@@ -971,11 +992,22 @@ public actor CloudSyncHost {
 
     /// Persist the journal. Committing the debounced edits is what `persist()` does by contract. The
     /// file never holds the root.
-    private func save(_ persisted: SyncMachineState? = nil) {
-        guard !purged, let m = machine else { return }
+    private func save(_ persisted: SyncMachineState? = nil) { _ = saveChecked(persisted) }
+
+    /// `save`, saying whether the file was written (true too when nothing is to be written).
+    private func saveChecked(_ persisted: SyncMachineState? = nil) -> Bool {
+        guard !purged, let m = machine else { return true }
         let snapshot = persisted ?? m.persist()
         // A failure to persist never fails the call that produced it.
-        try? file.save(CloudSyncFile(persisted: snapshot, catalog: nil, openKeys: openKeys, refused: refusedSubject))
+        do {
+            try file.save(
+                CloudSyncFile(
+                    persisted: snapshot, catalog: nil, openKeys: openKeys, refused: refusedSubject,
+                    forgetPending: forgetPendingFlag))
+            return true
+        } catch {
+            return false
+        }
     }
 
     // MARK: bounds: flush, purge, close (H-7, H-9)
@@ -1039,6 +1071,7 @@ public actor CloudSyncHost {
         detach = nil
         feed = nil
         refusedSubject = nil
+        forgetPendingFlag = false
         generation += 1
         var failure: (any Error)?
         do { try file.remove() } catch { failure = error }

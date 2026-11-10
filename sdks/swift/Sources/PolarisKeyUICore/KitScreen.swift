@@ -106,6 +106,7 @@ public enum KitAction: String, Sendable, CaseIterable, Codable, Comparable {
         "common.cancel": .cancel,
         "unlockSync.unlock": .unlock,
         "cloudSync.unlock": .unlock,
+        "cloudSync.signIn": .startSignIn,
         "unlockSync.startOver": .startOver,
         "unlockSync.startOverConfirm": .confirmStartOver,
         "ringChange.accept": .acceptRingChange,

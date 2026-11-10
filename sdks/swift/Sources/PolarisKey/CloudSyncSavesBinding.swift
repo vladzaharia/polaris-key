@@ -219,14 +219,16 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
         #endif
         background = bulk
         engine = FileTransferEngine(
-            transport: CloudSyncFileTransport(core: core, bulk: bulk, onAccountRequired: Self.accountRequired(api)),
+            transport: CloudSyncFileTransport(
+                core: core, bulk: bulk, onAccountRequired: Self.accountRequired(api),
+                subject: { await api.currentSubject() }),
             journal: journal,
             maxRetryAfterSeconds: savesMaxRetryAfterSeconds)
     }
 
     /// A file route's `account_required` reaches Cloud Sync like a `/sync` 403 does.
-    private static func accountRequired(_ api: CloudSyncApi) -> @Sendable (String?) -> Void {
-        { url in Task { await api.accountRequired(signInUrl: url) } }
+    private static func accountRequired(_ api: CloudSyncApi) -> @Sendable (String?, String?) -> Void {
+        { url, who in Task { await api.accountRequired(signInUrl: url, forSubject: who) } }
     }
 
     /// The records port for the host the API holds; one per host.
@@ -260,9 +262,10 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
                     stateDir: core.dirs.state, subject: subject, collection: savesCollection),
                 maxBytes: chunkCacheBudget(largestSave: options.maxBytes))
         }
-        return SavesContext(
-            records: recs, engine: engine, revisions: CloudSyncFileTransport(core: core, onAccountRequired: Self.accountRequired(api)), codec: codec,
-            cache: cache)
+        let api = self.api
+        let revisions = CloudSyncFileTransport(
+            core: core, onAccountRequired: Self.accountRequired(api), subject: { await api.currentSubject() })
+        return SavesContext(records: recs, engine: engine, revisions: revisions, codec: codec, cache: cache)
     }
 
     func release(transferId: String) async { await engine.cancel(id: transferId) }
