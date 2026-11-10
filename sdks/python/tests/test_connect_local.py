@@ -488,3 +488,72 @@ def test_the_listing_is_not_gated_and_a_label_is_renamed_on_this_device_only(wor
     assert w.a.cloud_connect.local_links.remove(info.id) is True
     assert w.a.cloud_connect.local_links.remove(info.id) is False
     assert w.a.cloud_connect.local_links.list() == []
+
+
+# -- the gate's read order, and a window that is still opening --------------------------------------------
+
+
+def test_the_gate_is_applied_before_the_stores_and_an_older_read_never_overwrites_a_newer_one(world: World) -> None:
+    from polaris_key.discovery import DiscoveryNotFound, DiscoveryOk
+
+    w = world
+    # A store that throws on discovery must not leave a cleared gate on.
+    s = show(w, w.a, ["notes"])
+    w.a.presentation_source.accept = lambda manifest: (_ for _ in ()).throw(RuntimeError("store"))  # type: ignore[method-assign]
+    w.disco.local = False
+    w.a.discover()
+    assert w.a.cloud_connect.local_links.local_pairing() is False
+    until(lambda: not s.handle.open)
+    # Reads apply in the order they began: the answer of read 2 is not undone by a slow read 1.
+    c = w.b
+    doc = {"services": {"connect": {"enabled": True, "localPairing": True}}}
+    ok = DiscoveryOk(manifest=doc, services=None)  # type: ignore[arg-type]
+    c._read_local_gate(5, ok)
+    assert c.cloud_connect.local_links.local_pairing() is True
+    c._read_local_gate(4, DiscoveryNotFound())
+    assert c.cloud_connect.local_links.local_pairing() is True
+    c._read_local_gate(6, DiscoveryNotFound())
+    assert c.cloud_connect.local_links.local_pairing() is False
+
+
+def test_a_gate_clearing_read_while_a_window_is_still_opening_closes_it_before_anyone_sees_a_code(
+    tmp_path: Path,
+) -> None:
+    import asyncio
+
+    class Held(Network):
+        hold: Any = None
+
+        async def browse(self, *a: Any, **k: Any) -> Any:
+            if self.hold is not None:
+                await self.hold.wait()
+            return await super().browse(*a, **k)
+
+    w = World(tmp_path)
+    try:
+        net = Held()
+        w.net = net
+        net.hold = w.a.cloud_connect._read(lambda: asyncio.Event())
+        codes: List[Any] = []
+        errs: List[BaseException] = []
+
+        def go() -> None:
+            try:
+                show(w, w.a, ["notes"])
+            except BaseException as e:  # noqa: BLE001 - the test reads it
+                errs.append(e)
+
+        t = w.pool.submit(go)
+        until(lambda: w.a.cloud_connect.local_links._starting is not None)
+        # The slot is taken: a second pair meets it while the first is still opening.
+        with pytest.raises(LanError):
+            w.a.cloud_connect.local_links.pair(categories=[], on_code=codes.append, on_confirm=lambda o: None)
+        w.disco.local = False
+        w.a.discover()
+        w.a.cloud_connect._read(net.hold.set)
+        t.result(10)
+        assert errs and isinstance(errs[0], UnsupportedError) and errs[0].code == "local-pairing-off"
+        assert codes == [] and w.a.cloud_connect.local_links._shower is None
+        until(lambda: m_q(w) == [])
+    finally:
+        w.close()
