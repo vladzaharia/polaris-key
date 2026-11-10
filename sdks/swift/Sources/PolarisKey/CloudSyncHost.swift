@@ -685,6 +685,23 @@ public actor CloudSyncHost {
     public func settingState(_ key: String) -> SyncSettingState? { machine?.settingState(key) }
     public func status() -> SyncStatus? { machine?.status() }
 
+    /// What `cloudSync.export` settles before it reads anything: the status, the mode, the person the machine
+    /// holds and the client id of that person's partition.
+    struct ExportFacts: Sendable {
+        let status: SyncStatus
+        let e2e: Bool
+        let subject: String?
+        let clientId: String?
+    }
+
+    func exportFacts() -> ExportFacts? {
+        guard isStarted, let m = machine else { return nil }
+        let state = m.persist()
+        return ExportFacts(
+            status: m.status(), e2e: m.encryptionMode == .e2e, subject: state.subject,
+            clientId: state.subject.flatMap { state.partitions[$0]?.clientId })
+    }
+
     /// The routes the machine uses now (for tests and diagnostics: keys and routes only).
     public func routeKeys() -> [String] { routes.map(\.key) }
     func routeTable() -> [SettingRoute] { routes }

@@ -476,6 +476,7 @@ const SWIFT_UNASSERTED = new Set([
   "config.decode",
   "cloudSync.encryption", // CloudSyncOptions(encryption:), nested under PolarisKeyClientOptions.cloudSync
   "identity.signIn.keyReturn", // an argument of the native redirect start (LK-SKIP.9), not a member
+  "cloudSync.cancelExport", // the cancelled Task that awaits export(to:options:), not a member
 ]);
 /** The handle's async properties: no key path reaches them, so each is read inside an async closure. */
 const SWIFT_ASYNC_HANDLE = new Set([

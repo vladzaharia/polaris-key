@@ -358,6 +358,36 @@ func runExportRow(_ row: ExportRow) async throws -> (sink: CollectingSink, sourc
 struct SyncExportVectorsTests {
     @Test func hasRows() { #expect(!exportRows.isEmpty) }
 
+    /// The planned opener takes "last" from the plan: a stream cut on a segment boundary still yields every
+    /// whole segment before it fails, bytes past the last segment are refused, and a wrong plan fails a tag.
+    @Test func thePlannedOpenerTakesTheLastSegmentFromThePlan() throws {
+        let root = Data((0..<32).map { UInt8($0) })
+        let collKey = SyncCrypto.deriveCollKey(root: root, collection: "saves")
+        let kid = SyncCrypto.deriveKid(root: root)
+        let plain = xStream("planned", 2 * SyncFileStream.segmentBytes + 500)
+        let sealed = try SyncFileStream.sealFile(collKey: collKey, kid: kid, plain: plain)
+        let seg = SyncFileStream.segmentBytes + SyncFileStream.tagBytes
+
+        var whole = try SyncFileStream.PlannedOpener(collKey: collKey, kid: kid, plainSize: plain.count)
+        var got = Data()
+        for at in stride(from: 0, to: sealed.count, by: 300_007) {
+            for p in try whole.push(sealed.subdata(in: at..<min(sealed.count, at + 300_007))) { got.append(p) }
+        }
+        try whole.finish()
+        #expect(got == plain)
+
+        var cut = try SyncFileStream.PlannedOpener(collKey: collKey, kid: kid, plainSize: plain.count)
+        let early = try cut.push(sealed.prefix(SyncFileStream.headerBytes + 2 * seg))
+        #expect(early.count == 2)
+        #expect(throws: SyncFileStream.Failure.self) { try cut.finish() }
+
+        var longer = try SyncFileStream.PlannedOpener(collKey: collKey, kid: kid, plainSize: plain.count)
+        #expect(throws: SyncFileStream.Failure.self) { _ = try longer.push(sealed + Data([0])) }
+
+        var wrong = try SyncFileStream.PlannedOpener(collKey: collKey, kid: kid, plainSize: plain.count - 1)
+        #expect(throws: SyncFileStream.Failure.self) { _ = try wrong.push(sealed) }
+    }
+
     @Test(arguments: exportRows.map(\.id))
     func row(id: String) async throws {
         let row = exportRows.first { $0.id == id }!

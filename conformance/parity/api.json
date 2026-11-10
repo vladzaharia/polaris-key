@@ -4564,7 +4564,6 @@
           "reason": "a browser has no path: the hook's export (useCloudSync().export, spelled by U-51.4) takes options and answers a Blob, or writes to options.sink; the desktop bridge answers unsupported"
         },
         "swift": {
-          "planned": "U-51",
           "labels": ["to", "options"]
         },
         "kotlin": {
@@ -4581,6 +4580,10 @@
       "kind": "method",
       "feature": "sync.export",
       "sdks": {
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Swift cancels with the Task that awaits cloudSync.export(to:options:)"
+        },
         "godot": {
           "planned": "U-51",
           "sdkOnly": true,

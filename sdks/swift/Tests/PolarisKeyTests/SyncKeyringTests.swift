@@ -884,6 +884,10 @@ final class SyncKeyringTests: XCTestCase {
         let opener = try codec.makeOpener()
         let first = try opener.push(sealed.prefix(10))
         XCTAssertTrue(first.isEmpty)
+        // The export's opener takes the last segment from the planned size and never shows the root.
+        let planned = try codec.makePlannedOpener(plainSize: 6)
+        XCTAssertEqual(try planned.push(sealed), [Data("a save".utf8)])
+        XCTAssertEqual(try planned.finish(), Data())
         let id = try codec.chunkId(Data("chunk".utf8))
         let object = try codec.sealChunk(id: id, plain: Data("chunk".utf8))
         let manifest = try codec.sealManifest(Data("m".utf8))
@@ -899,6 +903,7 @@ final class SyncKeyringTests: XCTestCase {
             lockedCode { _ = try codec.sealManifest(Data("x".utf8)) },
             lockedCode { _ = try codec.openManifest(manifest) },
             lockedCode { _ = try codec.makeOpener() },
+            lockedCode { _ = try codec.makePlannedOpener(plainSize: 6) },
             // A stream that was open when the ring locked stops at its next piece.
             lockedCode { _ = try opener.push(sealed.dropFirst(10)) },
             lockedCode { _ = try opener.finish() },
