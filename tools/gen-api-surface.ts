@@ -357,6 +357,9 @@ function renderPython(api: Api): string {
     } else if (r.id.startsWith("cloudConnect.links.")) {
       // Inter-account links (CC-19): the verbs live on `cloud_connect.links`.
       attrs.push(`(${q(r.id)}, "CloudLinks", ${q(r.name)})`);
+    } else if (r.id.startsWith("cloudConnect.localLinks.")) {
+      // Local links (CC-29): the verbs live on `cloud_connect.local_links` (`LocalLinks`).
+      attrs.push(`(${q(r.id)}, "LocalLinks", ${q(r.name)})`);
     } else if (r.id.startsWith("cloudConnect.transfer.")) {
       // Direct Transfer (CC-20): the verbs live on `cloud_connect.transfer` (`Transfer`); the offer answers on `IncomingOffer`.
       attrs.push(
@@ -385,6 +388,7 @@ from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
 from polaris_key.connect.links import CloudLinks
+from polaris_key.connect.local_links import LocalLinks
 from polaris_key.connect.nearby import CloudNearby
 from polaris_key.connect.transfer import IncomingOffer, Transfer
 from polaris_key.identity.client import IdentityClient
@@ -408,6 +412,7 @@ CLASSES = {
     "EntitlementsClient": EntitlementsClient,
     "CloudConnect": CloudConnect,
     "CloudLinks": CloudLinks,
+    "LocalLinks": LocalLinks,
     "CloudNearby": CloudNearby,
     "IncomingOffer": IncomingOffer,
     "Transfer": Transfer,

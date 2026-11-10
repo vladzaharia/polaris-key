@@ -35,7 +35,13 @@ Rules this module keeps:
   :class:`~polaris_key.core.peer_session.HandshakeLimiter`; ``m=c`` adverts (at most 8) are published on the
   same port and browsed with ``browse_contact_instance``; a name no contact can announce never enters the
   adapter's tables; with links off (no cached ``interAccount``) the contacts are empty, so nothing is
-  advertised and no mode ``c`` is answered.
+  advertised and no mode ``c`` is answered;
+- local links (CC-29.9, §15.5 "One listener, one order", §15.12 "Mode l") ride the same listener too: it also
+  tries the local-link secrets after the account keys and the contacts, under the one limiter, and publishes
+  ``m=l`` names (at most 8) for the links the host marked reachable. With no account (:meth:`LanService.start_local`)
+  the service has no identity: it serves local links alone and advertises and browses no account name, and a
+  listener that serves nothing (no link held, or the gate off) closes every connection before reading a byte.
+  Every local call reads the gate again (``local_allowed``).
 """
 
 from __future__ import annotations
@@ -56,14 +62,22 @@ from ..core.peer_contact import (
 )
 from ..core.peer_dial import dial_race
 from ..core.peer_lan_gate import Admitted, GatedProtocol, admit_transport, listen_socket
-from ..core.peer_lan_judge import PendingLimiter, text_verdict
+from ..core.peer_lan_judge import PendingLimiter, limiter_keys, text_verdict
 from ..core.peer_link import SocketLink
+from ..core.peer_local import (
+    MAX_LIVE_LOCAL_ADVERTS,
+    LocalLinkKey,
+    browse_local_instance,
+    local_instance,
+    parse_local_txt,
+)
 from ..core.peer_mdns import MdnsAdapter, MdnsAdvert, MdnsFound, MdnsHandle, MulticastDnsAdapter
-from ..core.peer_session import ContactLink, HandshakeLimiter
-from .channel import ConnectNotice, PeerDocs, PeerDocsSource, channel_base, contact_channel
+from ..core.peer_session import ContactLink, HandshakeLimiter, LocalLink
+from .channel import ConnectNotice, PeerDocs, PeerDocsSource, channel_base, contact_channel, local_channel
 from .client import ConnectClient, PeerSource
 from .contacts import ContactRef, LiveContact, ref_of, wipe_live
 from .errors import LanError
+from .local_state import LiveLocal, LocalRef, ref_of_local, wipe_locals
 from .session import ConnectSession, session_handlers, wait_opened
 
 __all__ = [
@@ -118,6 +132,23 @@ class LanSource:
     on_contacts: Optional[Callable[[Callable[[], None]], Callable[[], None]]] = None
     #: A session opened under a pending contact passed the pin: it replaces the held one. Blocking.
     contact_established: Optional[Callable[[ContactRef], None]] = None
+    #: The product slug. A service with no identity (:meth:`LanService.start_local`) has no other way to know it.
+    slug: Optional[str] = None
+    #: The local links (§15.12) in held order, secrets and keys decoded: empty while the gate is off or none
+    #: are held. Blocking; the service wipes what it replaces.
+    locals: Optional[Callable[[], List[LiveLocal]]] = None
+    #: Called when the local links changed (added, removed, renamed, re-marked) or the gate moved (from any
+    #: thread); returns the unsubscribe.
+    on_locals: Optional[Callable[[Callable[[], None]], Callable[[], None]]] = None
+    #: The cached ``localPairing`` answer, read again for every local call (§15.12 "Gates"). Absent: allowed.
+    local_allowed: Optional[Callable[[], bool]] = None
+    #: A session opened under a local link: its last-seen time moves. Blocking.
+    local_established: Optional[Callable[[LocalRef], None]] = None
+
+
+def _zero(b: bytearray) -> None:
+    for i in range(len(b)):
+        b[i] = 0
 
 
 def lan_source(
@@ -139,6 +170,11 @@ def lan_source(
         contact_established=(lambda ref: client.promote_contact(ref.agree_key, ref.tag))
         if hasattr(client, "promote_contact")
         else None,
+        slug=getattr(client, "slug", None),
+        locals=getattr(client, "live_locals", None),
+        on_locals=getattr(client, "on_locals_changed", None),
+        local_allowed=getattr(client, "local_pairing", None),
+        local_established=getattr(client, "touch_local", None),
     )
 
 
@@ -206,13 +242,16 @@ class LanService:
         self._tab: Optional[Tuple[Tuple[int, Tuple[bytes, ...], Tuple[str, ...]], Dict[str, BrowseHit]]] = None
         #: The last identity read, kept when ``_id`` is dropped: the roster filter works from it (``_accepts``).
         self._known: Optional[PeerSource] = None
-        self._names: Optional[Tuple[PeerSource, int, "frozenset[str]", str]] = None
+        self._names: Optional[Tuple[Optional[PeerSource], int, "frozenset[str]", str]] = None
         self._pending: Set[Any] = set()
         self._limit = PendingLimiter(o.max_pending, o.max_pending_per_address, o.max_pending_per_64)
         #: Accepted transports that hold a slot and have not reached ``_accept`` yet.
         self._slots: Dict[Any, Callable[[], None]] = {}
+        #: The source group of each accepted transport (the pre-handshake limiter's own key).
+        self._groups: Dict[Any, str] = {}
         self._links: Set[SocketLink] = set()
-        #: For a handshake still running: the contacts (id and secret tag) its trial list holds.
+        #: For a handshake still running: the contacts (``c|id|tag``) and local links (``l|id|tag``) its trial list
+        #: holds.
         self._serves: Dict[SocketLink, Set[str]] = {}
         self._sessions: Set[ConnectSession] = set()
         self._tasks: Set["asyncio.Future[Any]"] = set()
@@ -227,6 +266,16 @@ class LanService:
         self._contact_peers: Dict[Tuple[str, bool], Tuple[str, List[str], int]] = {}
         self._on_contact_session: List[Callable[[ConnectSession], None]] = []
         self._un_contacts: Optional[Callable[[], None]] = None
+        #: No account: the service serves local links only (:meth:`start_local`).
+        self._local_only = False
+        #: The local links held now (empty while the gate is off), in held order.
+        self._locals: List[LiveLocal] = []
+        self._locals_sig = ""
+        #: One live ``m=l`` advert per name; at most ``MAX_LIVE_LOCAL_ADVERTS``.
+        self._local_adv: Dict[str, MdnsHandle] = {}
+        #: link id to ``(instance, hosts, port)``.
+        self._local_peers: Dict[str, Tuple[str, List[str], int]] = {}
+        self._on_local_session: List[Callable[[ConnectSession], None]] = []
         #: One limiter per listener for the contact trial (§15.10, "Admission").
         self._limiter = HandshakeLimiter(5, 4)
         self._stopped = False
@@ -250,17 +299,41 @@ class LanService:
     async def start(cls, src: LanSource, options: Optional[LanOptions] = None) -> "LanService":
         """Listen, then advertise and browse. Raises :class:`LanError` (``no_identity``, ``no_keys``)
         when there is no identity to start with."""
-        s = cls(src, options or LanOptions())
+        return await cls._begin(src, options or LanOptions(), False)
+
+    @classmethod
+    async def start_local(cls, src: LanSource, options: Optional[LanOptions] = None) -> "LanService":
+        """The service with no account (§15.5, §15.12): it listens, and advertises and browses ``m=l`` names for
+        the local links, and holds no identity, no K_disc and no roster. A listener that serves nothing (no link
+        held, or the gate off) closes every connection before reading a byte. Needs ``src.slug``."""
+        if src.slug is None:
+            raise LanError("bad_input", "A local-only service needs the slug.")
+        return await cls._begin(src, options or LanOptions(), True)
+
+    @classmethod
+    async def _begin(cls, src: LanSource, options: LanOptions, local_only: bool) -> "LanService":
+        s = cls(src, options)
+        s._local_only = local_only
         try:
-            await s._identity(True)
-            await s._load_contacts()
+            if not local_only:
+                await s._identity(True)
+                await s._load_contacts()
+            await s._load_locals()
             await s._listen()
+            # Subscribed before the first advert, and read once more right after: a gate or a link that moved
+            # while the service was starting is applied, not left advertised.
+            offs = [f(s._contacts_changed) for f in (src.on_contacts, src.on_locals) if f is not None]
+
+            def unsubscribe() -> None:
+                for off in offs:
+                    off()
+
+            s._un_contacts = unsubscribe
             if s._o.advertise:
                 await s._rotate()
             if s._o.browse:
                 await s._start_browse()
-            if src.on_contacts is not None:
-                s._un_contacts = src.on_contacts(s._contacts_changed)
+            await s._quiet(s._reload(False))
         except BaseException:
             await s.stop()
             raise
@@ -293,20 +366,55 @@ class LanService:
         self._on_contact_session.append(fn)
         return lambda: self._on_contact_session.remove(fn) if fn in self._on_contact_session else None
 
+    def on_local_session(self, fn: Callable[[ConnectSession], None]) -> Callable[[], None]:
+        """Called for each inbound mode-``l`` session (a local link dialled this device) once it is open."""
+        self._on_local_session.append(fn)
+        return lambda: self._on_local_session.remove(fn) if fn in self._on_local_session else None
+
+    def local_peers(self) -> List[str]:
+        """The local links seen on this network now, by link id. The host picks one to dial
+        (:meth:`connect_local`)."""
+        return list(self._local_peers.keys())
+
     def contact_peers(self) -> List[Tuple[str, bool]]:
         """The contacts seen on this network now, as ``(id, pending)`` (``pending`` is the pending secret
         of a re-pair, §15.10). The host picks one to dial; :meth:`connect_contact` runs the handshake."""
         return list(self._contact_peers.keys())
 
     async def refresh_contacts(self) -> None:
-        """Read the contacts again (stored, promoted, removed, re-marked, or the gate moved) and bring the
-        adverts, the accepted names and the listener's trial order to match."""
+        """Read the contacts and the local links again (stored, promoted, removed, re-marked, or the gate moved)
+        and bring the adverts, the accepted names and the listener's trial order to match."""
+        await self._reload(True)
+
+    async def _reload(self, account: bool) -> None:
         async with self._rotate_lock:
             if self._stopped:
+                return
+            # The local links first: a withdrawal (the gate moved, a link was forgotten) must not wait on the
+            # account half, which can fail when there is no account.
+            await self._load_locals()
+            await self._advert_locals(advert_epoch(self._src.now()))
+            if not account or self._local_only:
                 return
             await self._load_contacts()
             ident = await self._identity(True)
             await self._advert_contacts(ident, advert_epoch(self._src.now()))
+
+    async def forget_local(self, link_id: str) -> None:
+        """A link was forgotten: it leaves the held list now, before the reload, so no dial or handshake can use
+        it afterwards. Resolves once the reload has run (adverts and accepted names follow)."""
+        gone = [x for x in self._locals if x.id == link_id]
+        if gone:
+            self._locals = [x for x in self._locals if x.id != link_id]
+            self._local_peers.pop(link_id, None)
+            self._prune_serves()
+            # The old list may be read by a dial or a browse that began before this: wiping it makes those
+            # copies fail closed, and they re-check the list afterwards.
+            wipe_locals(gone)
+        try:
+            await self.refresh_contacts()
+        except Exception:
+            pass
 
     def _contacts_changed(self) -> None:
         """From any thread: the contacts moved."""
@@ -340,15 +448,19 @@ class LanService:
                 pass
         await asyncio.gather(
             self._quiet(self._adv.stop() if self._adv is not None else None),
-            *[self._quiet(h.stop()) for h in list(self._contact_adv.values())],
+            *[self._quiet(h.stop()) for h in [*self._contact_adv.values(), *self._local_adv.values()]],
             self._quiet(self._browse.stop() if self._browse is not None else None),
             self._close_server(),
         )
         self._adv = self._browse = None
         self._contact_adv.clear()
         self._contact_peers.clear()
+        self._local_adv.clear()
+        self._local_peers.clear()
         wipe_live(self._contacts)
         self._contacts = []
+        wipe_locals(self._locals)
+        self._locals = []
 
     def abort(self) -> None:
         """Force-end the service from another thread, without a graceful close, when the loop's thread is
@@ -383,14 +495,18 @@ class LanService:
                 srv.close()
             except Exception:
                 pass
-        for h in (self._adv, self._browse, *self._contact_adv.values()):
+        for h in (self._adv, self._browse, *self._contact_adv.values(), *self._local_adv.values()):
             if h is not None:
                 asyncio.ensure_future(self._stop_handle(h))
         self._adv = self._browse = None
         self._contact_adv.clear()
         self._contact_peers.clear()
+        self._local_adv.clear()
+        self._local_peers.clear()
         wipe_live(self._contacts)
         self._contacts = []
+        wipe_locals(self._locals)
+        self._locals = []
 
     def _abort_unadmitted(self) -> None:
         for w in list(self._pending):
@@ -552,27 +668,42 @@ class LanService:
     # -- links ------------------------------------------------------------------------------------
 
     def _link(
-        self, reader: Any, writer: Any, ident: PeerSource, role: str, expect: Optional[str] = None
+        self,
+        reader: Any,
+        writer: Any,
+        ident: Optional[PeerSource],
+        role: str,
+        expect: Optional[str] = None,
+        group: Optional[str] = None,
     ) -> SocketLink:
         o = self._o
         docs = self._docs
 
-        # The shared listener (§15.5, §15.10): a responder that holds contacts tries the account's keys, then
-        # each contact's secret, under the one limiter. Copies of the secrets go to the engine.
+        # The shared listener (§15.5, §15.10, §15.12): a responder that holds contacts or local links tries the
+        # account's keys, then each contact's secret, then each local link's, under the one limiter. Copies of
+        # the secrets go to the engine; they are wiped when the link ends.
         served = list(self._contacts) if role == "responder" else []
+        live = list(self._locals) if role == "responder" and self._locals_on() else []
         refs = [ref_of(c) for c in served]
+        lrefs = [ref_of_local(x) for x in live]
+        locals_copy = [LocalLink(bytearray(x.secret), bytearray(x.own_key), bytes(x.peer_key)) for x in live]
+        trial = bool(served) or bool(live)
 
         def established(s: ConnectSession) -> None:
             self._serves.pop(link, None)
             self._sessions.add(s)
             s.on_close(lambda _c: self._sessions.discard(s))
             self._promote_if_pending(s)
+            self._touch_local(s)
 
         link: SocketLink
 
         def ended() -> None:
             self._links.discard(link)
             self._serves.pop(link, None)
+            for lk in locals_copy:
+                _zero(lk.secret)  # type: ignore[arg-type]
+                _zero(lk.own_key)  # type: ignore[arg-type]
 
         def ring_wanted() -> None:
             # The refresh calls the Worker: never on the loop.
@@ -586,39 +717,71 @@ class LanService:
             on_ring_wanted=ring_wanted,
             on_ended=ended,
             contacts=refs,
+            locals_=lrefs,
             xfer=o.xfer,
         )
         extra: Dict[str, Any] = {}
-        if served:
-            extra = {
-                "contacts": [ContactLink(bytes(c.secret), c.agree_key) for c in served],
-                "admission": self._limiter,
-            }
-        link = SocketLink(
-            reader,
-            writer,
-            {
-                **channel_base(
-                    ident,
+        if ident is None:
+            # No account: the listener serves local links alone, and the mode is ``l``. No account key to try:
+            # the source group's budget comes first (§15.10, "Admission").
+            base = {
+                **local_channel(
+                    self._slug(),
                     caps=o.caps,
                     label=o.label,
-                    ring=lambda: docs.pushed,
                     now=self._src.now,
                     rekey_messages=o.rekey_messages,
                     rekey_seconds=o.rekey_seconds,
                 ),
-                "role": role,
-                **extra,
-            },
+                "local_links": locals_copy,
+                "admission": self._limiter,
+            }
+            if group is not None:
+                base["admission_group"] = group
+        else:
+            base = channel_base(
+                ident,
+                caps=o.caps,
+                label=o.label,
+                ring=lambda: docs.pushed,
+                now=self._src.now,
+                rekey_messages=o.rekey_messages,
+                rekey_seconds=o.rekey_seconds,
+            )
+            if served:
+                extra["contacts"] = [ContactLink(bytes(c.secret), c.agree_key) for c in served]
+            if locals_copy:
+                extra["local_links"] = locals_copy
+            if trial:
+                extra["admission"] = self._limiter
+        link = SocketLink(
+            reader,
+            writer,
+            {**base, "role": role, **extra},
             handlers,
             handshake_seconds=o.handshake_seconds,
             expect_peer=expect,
             peer_full=self._peer_full,
         )
         self._links.add(link)
-        if served:
-            self._serves[link] = {"%s|%s" % (c.id, c.tag) for c in served}
+        if trial:
+            self._serves[link] = {
+                *("c|%s|%s" % (c.id, c.tag) for c in served),
+                *("l|%s|%s" % (x.id, x.tag) for x in live),
+            }
         return link
+
+    def _slug(self) -> str:
+        if self._src.slug is not None:
+            return self._src.slug
+        held = self._known
+        return held.slug if held is not None else ""
+
+    def _touch_local(self, s: ConnectSession) -> None:
+        ref = s.local
+        fn = self._src.local_established
+        if ref is not None and fn is not None:
+            self._loop.run_in_executor(None, lambda: self._quiet_sync(fn, ref))
 
     def _peer_full(self, device_id: str) -> bool:
         """True when this device already holds its share of the open sessions."""
@@ -655,19 +818,30 @@ class LanService:
     def _gate(self, transport: Any) -> bool:
         """An accepted socket is judged first, on its own addresses, before a slot and before any byte is
         read: a source off the LAN is closed at once and costs nothing (§15.4.1)."""
-        admitted = admit_transport(
-            transport,
-            self._limit,
-            self._o.allow_loopback,
-            refuse=self._stopped or len(self._sessions) >= self._o.max_sessions,
-        )
+        try:
+            admitted = admit_transport(
+                transport,
+                self._limit,
+                self._o.allow_loopback,
+                refuse=self._stopped
+                or len(self._sessions) >= self._o.max_sessions
+                # With no account the listener serves local links alone: with none to try (or the gate off) a
+                # connection is closed before a byte is read.
+                or (self._local_only and (not self._locals or not self._locals_on())),
+            )
+        except Exception:
+            # A fault here must end this socket and nothing else: the listener keeps serving.
+            return False
         if admitted is None:
             return False
         self._slots[transport] = admitted.release
+        keys = limiter_keys(admitted.address)
+        self._groups[transport] = keys.group or keys.address
         return True
 
     async def _accept(self, reader: Any, writer: Any) -> None:
         release = self._slots.pop(writer.transport, None)
+        group = self._groups.pop(writer.transport, None)
         if release is None:  # not admitted by the gate: cannot happen, and closes if it does
             return self._abort(writer)
         self._pending.add(writer)
@@ -684,17 +858,21 @@ class LanService:
         link: Optional[SocketLink] = None
         try:
             # The identity is read before the first byte is handled; the socket buffers meanwhile. The
-            # read is cancelled at the handshake deadline, so a hung ``load`` cannot hold the slot.
-            ident = await asyncio.wait_for(self._identity(False), self._o.handshake_seconds)
+            # read is cancelled at the handshake deadline, so a hung ``load`` cannot hold the slot. With no
+            # account there is none to read.
+            ident: Optional[PeerSource] = None
+            if not self._local_only:
+                ident = await asyncio.wait_for(self._identity(False), self._o.handshake_seconds)
             if self._stopped:
                 return self._abort(writer)
-            link = self._link(reader, writer, ident, "responder")
+            link = self._link(reader, writer, ident, "responder", group=group)
             link.opened.add_done_callback(lambda f: self._admitted(f, done))
             await link.run()
         except asyncio.CancelledError:
             self._abort(writer)
             raise
         except Exception:
+            # A fault here must end this socket and nothing else: the listener keeps serving.
             self._abort(writer)
         finally:
             done()
@@ -703,8 +881,25 @@ class LanService:
         if f.cancelled() or f.exception() is not None:
             return
         done()
-        session = f.result()
-        for fn in list(self._on_contact_session if session.contact is not None else self._on_session):
+        self._deliver(f.result())
+
+    def _deliver(self, session: ConnectSession) -> None:
+        """Hand an open inbound session to the handlers of its kind."""
+        if session.contact is not None:
+            to = self._on_contact_session
+        elif session.local is not None:
+            to = self._on_local_session
+        else:
+            to = self._on_session
+        # A local session nobody is listening for (the host has not attached yet) is ended, not left open and
+        # untracked: the peer dials again.
+        if session.local is not None and not to:
+            try:
+                session.close("peer_bye")
+            except Exception:
+                pass
+            return
+        for fn in list(to):
             try:
                 fn(session)
             except Exception:
@@ -735,16 +930,65 @@ class LanService:
             "%s%s%s" % (c.id, "p" if c.pending else "h", "r" if c.reachable else "-") for c in nxt
         )
         wipe_live(old)
-        # A handshake still running under a contact that is gone (or whose secret was replaced) or while
-        # links are off is ended; an established session is the links layer's to close.
-        held = {"%s|%s" % (c.id, c.tag) for c in nxt}
-        for lk in [k for k, served in self._serves.items() if not served <= held]:
-            self._serves.pop(lk, None)
-            lk.destroy()
+        self._prune_serves()
         # A peer seen under a contact that is gone is forgotten.
         have = {(c.id, c.pending) for c in nxt}
         for k in [k for k in self._contact_peers if k not in have]:
             del self._contact_peers[k]
+
+    def _prune_serves(self) -> None:
+        """A handshake still running under a contact or local link that is gone (or whose secret was replaced),
+        or while links are off, is ended; an established session is the links layer's to close."""
+        held = {
+            *("c|%s|%s" % (c.id, c.tag) for c in self._contacts),
+            *("l|%s|%s" % (x.id, x.tag) for x in self._locals),
+        }
+        for lk in [k for k, served in self._serves.items() if not served <= held]:
+            self._serves.pop(lk, None)
+            lk.destroy()
+
+    def _locals_on(self) -> bool:
+        """The gate, read again: False stops every local call (§15.12 "Gates")."""
+        f = self._src.local_allowed
+        return f is None or f() is not False
+
+    async def _load_locals(self) -> None:
+        """Read the local links from the source; the old ones are wiped."""
+        fn = self._src.locals
+        nxt: List[LiveLocal] = list(await self._loop.run_in_executor(None, fn)) if fn is not None else []
+        old, self._locals = self._locals, nxt
+        sig = ",".join("%s%s%s" % (x.id, x.tag, "r" if x.reachable else "-") for x in nxt)
+        # A name judged a miss before a link existed may be that link's.
+        if sig != self._locals_sig:
+            self._miss.clear()
+        self._locals_sig = sig
+        wipe_locals(old)
+        self._prune_serves()
+        # A peer seen under a link that is gone is forgotten.
+        have = {x.id for x in nxt}
+        for k in [k for k in self._local_peers if k not in have]:
+            del self._local_peers[k]
+
+    async def _advert_locals(self, epoch: int) -> None:
+        """The ``m=l`` adverts for the links marked reachable, at most 8, on this listener's port."""
+        if not self._o.advertise:
+            return
+        want: List[str] = []
+        if self._locals_on():
+            want = [
+                local_instance(bytes(x.secret), x.own_public, epoch)
+                for x in [x for x in self._locals if x.reachable][:MAX_LIVE_LOCAL_ADVERTS]
+            ]
+        await self._sync_adverts(self._local_adv, want, "l")
+
+    async def _sync_adverts(self, live: Dict[str, MdnsHandle], want: Sequence[str], mode: str) -> None:
+        """Bring the live adverts of one mode to exactly ``want``: stop the others, start the missing."""
+        for name in [n for n in live if n not in want]:
+            await self._quiet(live.pop(name).stop())
+        for name in want:
+            if name in live or self._stopped:
+                continue
+            live[name] = await self._mdns.advertise(MdnsAdvert(name, self._port, ["v=1", "m=" + mode]))
 
     async def _advert_contacts(self, ident: PeerSource, epoch: int) -> None:
         """The contact adverts for the contacts marked reachable, at most 8, on this listener's port."""
@@ -754,12 +998,13 @@ class LanService:
             contact_instance(bytes(c.secret), ident.agree_public, epoch)
             for c in [c for c in self._contacts if c.reachable][:MAX_LIVE_CONTACT_ADVERTS]
         ]
-        for name in [n for n in self._contact_adv if n not in want]:
-            await self._quiet(self._contact_adv.pop(name).stop())
-        for name in want:
-            if name in self._contact_adv:
-                continue
-            self._contact_adv[name] = await self._mdns.advertise(MdnsAdvert(name, self._port, ["v=1", "m=c"]))
+        await self._sync_adverts(self._contact_adv, want, "c")
+
+    def _remember(self, instance: str) -> None:
+        """Bounded negative cache: a forged instance is not worked out twice."""
+        if len(self._miss) >= MISS_CACHE:
+            del self._miss[next(iter(self._miss))]
+        self._miss[instance] = self._src.now()
 
     def _found_contact(self, f: MdnsFound, hosts: List[str]) -> None:
         contacts = self._contacts
@@ -769,12 +1014,121 @@ class LanService:
             f.instance, [ContactKey(bytes(c.secret), c.agree_key_bytes) for c in contacts], self._src.now()
         )
         if hit is None:
-            if len(self._miss) >= MISS_CACHE:
-                del self._miss[next(iter(self._miss))]
-            self._miss[f.instance] = self._src.now()
+            self._remember(f.instance)
             return
         c = contacts[hit["contact"]]
         self._contact_peers[(c.id, c.pending)] = (f.instance, hosts, f.port)
+
+    def _found_local(self, f: MdnsFound, hosts: List[str]) -> None:
+        """A local-link advert (``m=l``): at most 64 HMACs, on the links held now."""
+        links = self._locals
+        if not links or not self._locals_on() or f.instance in self._miss:
+            return
+        hit = browse_local_instance(
+            f.instance, [LocalLinkKey(bytes(x.secret), x.peer_key) for x in links], self._src.now()
+        )
+        if hit is None:
+            self._remember(f.instance)
+            return
+        x = links[hit["link"]]
+        self._local_peers[x.id] = (f.instance, hosts, f.port)
+
+    async def connect_local(self, link_id: str) -> ConnectSession:
+        """Dial a local link seen on this network and run the mode-``l`` handshake under its secret (§15.12).
+        The gate and the held list are read again before every dial. The pin is the session's: a peer that does
+        not hold the link's key ends it as ``peer_revoked`` before a byte is sent back."""
+        if self._stopped:
+            raise LanError("not_listening", "The LAN service is stopped.")
+        found = next((x for x in self._locals if x.id == link_id), None)
+        seen = self._local_peers.get(link_id)
+        hosts = [h for h in (seen[1] if seen is not None else []) if self._dialable(h)]
+        if found is None or seen is None or not hosts:
+            raise LanError("unknown_peer", "That link was not found on this network.")
+        ref = ref_of_local(found)
+        left = list(hosts)
+        failure: Optional[LanError] = None
+        while left:
+            # The gate and the link are read again for every dial (§15.12 "Gates").
+            still = next((x for x in self._locals if x.id == link_id and x.tag == ref.tag), None)
+            if self._stopped or not self._locals_on() or still is None:
+                raise LanError("closed", "That link is no longer available.")
+            # The key and secret are copied before the dial: a reload during it wipes the held ones, and a copy
+            # made after would hold zeros and fail the handshake.
+            own = LocalLink(bytearray(still.secret), bytearray(still.own_key), bytes(still.peer_key))
+            try:
+                reader, writer, host = await self._dial(left, seen[2])
+            except BaseException:
+                _zero(own.secret)  # type: ignore[arg-type]
+                _zero(own.own_key)  # type: ignore[arg-type]
+                raise
+            # The link may have been forgotten, or the gate cleared, while the socket was opening.
+            if (
+                self._stopped
+                or not self._locals_on()
+                or not any(x.id == link_id and x.tag == ref.tag for x in self._locals)
+            ):
+                _zero(own.secret)  # type: ignore[arg-type]
+                _zero(own.own_key)  # type: ignore[arg-type]
+                self._abort(writer)
+                raise LanError("closed", "That link is no longer available.")
+            link = self._local_link(reader, writer, ref, own)
+            task = self._spawn(link.run())
+            link.start()
+            try:
+                return await wait_opened(link, self._o.handshake_seconds + 5)  # type: ignore[no-any-return]
+            except LanError as e:
+                self._abort(writer)
+                if e.reason not in ("connect_failed", "handshake_failed"):
+                    raise
+                failure = e
+                left = [h for h in left if h != host]
+            except Exception:
+                task.cancel()
+                self._abort(writer)
+                failure = LanError("handshake_failed", "The handshake failed.")
+                left = [h for h in left if h != host]
+            finally:
+                # The channel needed the key for the handshake only.
+                _zero(own.secret)  # type: ignore[arg-type]
+                _zero(own.own_key)  # type: ignore[arg-type]
+        raise failure or LanError("handshake_failed", "The handshake failed.")
+
+    def _local_link(self, reader: Any, writer: Any, ref: LocalRef, own: LocalLink) -> SocketLink:
+        o = self._o
+
+        def established(s: ConnectSession) -> None:
+            self._sessions.add(s)
+            s.on_close(lambda _c: self._sessions.discard(s))
+            self._touch_local(s)
+
+        link: SocketLink
+        handlers = session_handlers(
+            "initiator",
+            on_established=established,
+            on_ended=lambda: self._links.discard(link),
+            locals_=[ref],
+            xfer=o.xfer,
+        )
+        link = SocketLink(
+            reader,
+            writer,
+            {
+                **local_channel(
+                    self._slug(),
+                    caps=o.caps,
+                    label=o.label,
+                    now=self._src.now,
+                    rekey_messages=o.rekey_messages,
+                    rekey_seconds=o.rekey_seconds,
+                ),
+                "role": "initiator",
+                "local_links": [own],
+            },
+            handlers,
+            handshake_seconds=o.handshake_seconds,
+        )
+        self._links.add(link)
+        return link
 
     async def connect_contact(self, contact_id: str, pending: bool = False) -> ConnectSession:
         """Dial a contact seen on this network and run the mode-``c`` handshake under its secret (§15.10).
@@ -861,19 +1215,22 @@ class LanService:
         async with self._rotate_lock:
             if self._stopped:
                 return
-            ident = await self._identity(True)
-            now = self._src.now()
-            epoch = advert_epoch(now)
-            name = account_instance(ident.keys.current, epoch, ident.device_id)
-            if name != self._adv_name:
-                old = self._adv
-                self._adv = await self._mdns.advertise(MdnsAdvert(name, self._port, ["v=1", "m=a"]))
-                self._adv_name = name
-                if old is not None:
-                    await self._quiet(old.stop())
-            # Contacts: the names rotate with the epoch like the account's.
-            await self._load_contacts()
-            await self._advert_contacts(ident, epoch)
+            epoch = advert_epoch(self._src.now())
+            if not self._local_only:
+                ident = await self._identity(True)
+                name = account_instance(ident.keys.current, epoch, ident.device_id)
+                if name != self._adv_name:
+                    old = self._adv
+                    self._adv = await self._mdns.advertise(MdnsAdvert(name, self._port, ["v=1", "m=a"]))
+                    self._adv_name = name
+                    if old is not None:
+                        await self._quiet(old.stop())
+                # Contacts: the names rotate with the epoch like the account's.
+                await self._load_contacts()
+                await self._advert_contacts(ident, epoch)
+            # Local links: their names rotate with the epoch too.
+            await self._load_locals()
+            await self._advert_locals(epoch)
             nxt = (epoch + 1) * ADVERT_EPOCH_SECONDS - self._src.now()
             if self._cancel_epoch is not None:
                 self._cancel_epoch()
@@ -889,23 +1246,30 @@ class LanService:
 
     def _accepts(self, instance: str) -> bool:
         """The adapter's roster filter: may this instance name enter its tables? Only a name a roster
-        device (never this one) can announce, under the current or previous epoch and either delivered key.
-        The names are worked out once per (epoch, keys, roster) (``_table``)."""
+        device (never this one) can announce, under the current or previous epoch and either delivered key,
+        or one a contact or local link's peer can announce. The names are worked out once per (epoch, keys,
+        roster) (``_table``)."""
         ident = self._known
-        if ident is None:
+        if ident is None and not self._local_only:
             return False
         epoch = advert_epoch(self._src.now())
         held = self._names
-        if held is None or held[0] is not ident or held[1] != epoch or held[3] != self._contacts_sig:
-            keys = [ident.keys.current] + ([ident.keys.previous] if ident.keys.previous else [])
-            names = set(self._table(keys, [d for d in ident.roster if d != ident.device_id]))
-            # The names a contact can announce (its own agreeKey in the MAC): this and the last epoch.
+        sig = "%s|%s" % (self._contacts_sig, self._locals_sig)
+        if held is None or held[0] is not ident or held[1] != epoch or held[3] != sig:
+            names: Set[str] = set()
+            if ident is not None:
+                keys = [ident.keys.current] + ([ident.keys.previous] if ident.keys.previous else [])
+                names.update(self._table(keys, [d for d in ident.roster if d != ident.device_id]))
+            # The names a contact or a local link's peer can announce (its own key in the MAC): this and the
+            # last epoch.
             for back in (0, 1):
                 if epoch - back < 0:
                     continue
                 for c in self._contacts:
                     names.add(contact_instance(bytes(c.secret), c.agree_key_bytes, epoch - back))
-            held = self._names = (ident, epoch, frozenset(names), self._contacts_sig)
+                for x in self._locals:
+                    names.add(local_instance(bytes(x.secret), x.peer_key, epoch - back))
+            held = self._names = (ident, epoch, frozenset(names), sig)
         return instance in held[2]
 
     def _found_later(self, f: MdnsFound) -> None:
@@ -919,6 +1283,8 @@ class LanService:
             del self._peers[k]
         for ck in [k for k, (inst, _h, _p) in self._contact_peers.items() if inst == instance]:
             del self._contact_peers[ck]
+        for lk in [k for k, (inst, _h, _p) in self._local_peers.items() if inst == instance]:
+            del self._local_peers[lk]
 
     def _table(self, keys: List[bytes], roster: List[str]) -> Dict[str, BrowseHit]:
         """The expected instance names, worked out once per (epoch, keys, roster): a forged name is an
@@ -933,6 +1299,11 @@ class LanService:
         # Keep the addresses that could be dialled; the connected socket is judged again.
         hosts = [h for h in (f.hosts or (f.host,)) if self._dialable(h)]
         if self._stopped or not hosts:
+            return
+        # A local-link advert (``m=l``) is judged by parse_local_txt and by no other path (§15.4).
+        if parse_local_txt(f.txt)["ok"]:
+            return self._found_local(f, hosts)
+        if self._local_only:
             return
         # A contact advert (``m=c``) is judged by parse_contact_txt and by no other path (§15.4): the
         # generic parser answers an unknown mode, so it can never be dialled as a or v.

@@ -350,7 +350,7 @@ Handler = Callable[[Json], str]
 
 
 class XferMachine:
-    """One side of one session. ``mode`` is the session's mode (transfers run in ``a`` and ``c``),
+    """One side of one session. ``mode`` is the session's mode (transfers run in ``a``, ``c`` and ``l``),
     ``caps`` its capabilities (the intersection of both payloads), ``max_message`` this side's own
     ``HELLO`` value. ``handler`` answers an offer ``"accept"``, ``"decline"`` or ``"ask"`` (None
     declines every offer). ``partials`` are the kept partial files of this peer key (dicts: ``ref``,
@@ -638,7 +638,7 @@ class XferMachine:
 
     def _on_record(self, type_: int, body: bytes, more: bool) -> None:
         # Step 1: the mode and the capability.
-        if self._mode not in ("a", "c") or XFER_CAP not in self._caps:
+        if self._mode not in ("a", "c", "l") or XFER_CAP not in self._caps:
             self._out.close = "peer_not_allowed"
             self._closed = True
             return
@@ -714,7 +714,7 @@ class XferMachine:
         ):
             return refuse("busy")
         # Step 5: the category, before the person is asked.
-        if self._mode == "c" and ("cat" not in f or f["cat"] not in self._cats):
+        if self._mode in ("c", "l") and ("cat" not in f or f["cat"] not in self._cats):
             return refuse("category")
         # Step 6: size and quota; a resume counts only the bytes still to come.
         if self._host_limit is not None and f["size"] > self._host_limit:

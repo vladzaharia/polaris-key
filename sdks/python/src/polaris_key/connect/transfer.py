@@ -4,7 +4,8 @@ Mirrors the contract of ``packages/sdk-node/src/connect/transfer.ts``.
 - ``send(peer, source, name=, type=, cat=, chunk=)``: offer content to a peer and return a
   :class:`TransferHandle`. ``peer`` is an open :class:`~polaris_key.connect.session.ConnectSession`, a device
   id (a session is opened, LAN first), or a :class:`~polaris_key.connect.contacts.ContactInfo` from
-  ``links.list()``. ``source`` is a path, ``bytes`` or a seekable binary file object. The whole content is
+  ``links.list()`` or a :class:`~polaris_key.connect.local_state.LocalLinkInfo` from ``local_links.list()``.
+  ``source`` is a path, ``bytes`` or a seekable binary file object. The whole content is
   read once to hash it before the ``OFFER`` goes out; ``name`` is display data only.
 - ``on_offer(handler)``: every ``OFFER`` from a peer is put to the handler, one transfer at a time. Without a
   handler the offer is declined. The handler returns an :class:`Accept` (the destination, which the host
@@ -21,7 +22,7 @@ Rules this module keeps:
   delivered file is the host's ``dest``, written by a temp file and a rename, never over an existing file
   unless ``overwrite`` is set;
 - a transfer is declined, not accepted, when there is no handler, no state directory for the partial files,
-  or no usable destination; in mode ``c`` the category is checked before the person is asked;
+  or no usable destination; in modes ``c`` and ``l`` the category is checked before the person is asked;
 - a partial is kept when a session ends, and offered again when the same peer sends the same transfer
   (the verified prefix is hashed again first); sign-out and removing a link delete partials.
 """
@@ -196,6 +197,7 @@ class IncomingOffer:
         peer_device_id: str,
         contact_id: Optional[str],
         answer: Callable[["IncomingOffer", Optional[Accept]], None],
+        local_id: Optional[str] = None,
     ) -> None:
         self.id = id_
         self.size = size
@@ -204,6 +206,9 @@ class IncomingOffer:
         self.cat = cat
         self.peer_device_id = peer_device_id
         self.contact_id = contact_id
+        #: The local link (``cloud_connect.local_links.list()``) the offer came over (mode ``l``, §15.12), else
+        #: ``None``. A local offer names no device: ``peer_device_id`` is empty.
+        self.local_id = local_id
         self.withdrawn = False
         self._answer = answer
 
@@ -470,7 +475,7 @@ class Transfer:
         if XFER_CAP not in e.caps or not hasattr(link, "attach_xfer"):
             return
         wire = _Wire(self, session, e, bytes(e.remote_static))
-        mode = "c" if session.contact is not None else "a"
+        mode = "c" if session.contact is not None else "l" if session.local is not None else "a"
         store = self._get_store()
         own_max = link.channel.own_max_message
         holder: List[Optional[XferEndpoint]] = [None]
@@ -513,7 +518,11 @@ class Transfer:
             max_message=own_max,
             peer_key=peer_key,
             handler=lambda ask: self._decide(wire, ask),
-            categories=session.contact.categories if session.contact is not None else (),
+            categories=session.contact.categories
+            if session.contact is not None
+            else session.local.categories
+            if session.local is not None
+            else (),
             free=store.free if store is not None else None,
             partials=partials,
             rehash=(lambda ref, off: store.rehash(ref, off, wire)) if store is not None else None,
@@ -607,6 +616,7 @@ class Transfer:
             wire.session.peer_device_id,
             wire.session.contact.id if wire.session.contact is not None else None,
             lambda o, a: self._answer(wire, o, a),
+            wire.session.local.id if wire.session.local is not None else None,
         )
         try:
             r = handler(offer)

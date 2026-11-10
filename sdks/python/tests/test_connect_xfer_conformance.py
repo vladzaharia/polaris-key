@@ -1,4 +1,4 @@
-# @pkey-feature connect.transfer
+# @pkey-feature connect.transfer connect.local
 """``peer-matrix.json`` ``xfer`` (WIRE-CONTRACT-V5 §15.11) through the Python machine: the codecs, the
 partial file's path and the shown name, and every ``window``, ``offer``, ``hash``, ``ending``, ``resume``
 and ``limits`` row replayed step by step."""
@@ -257,4 +257,16 @@ def test_every_xfer_row_is_present() -> None:
 
 @pytest.mark.parametrize("section,row", _ROWS, ids=["%s/%s" % (s, r["id"]) for s, r in _ROWS])
 def test_xfer_row(section: str, row: Dict[str, Any]) -> None:
+    _run(row)
+
+
+# Direct Transfer in mode l (CC-29.8, §15.11 "Where it runs"): allowed, and mode c's category rule applies. The
+# rows are the shape and run of the `xfer` machine rows, kept under `local.xfer` so a port that has not adopted
+# mode l keeps passing the section above.
+_LOCAL_ROWS: List[Dict[str, Any]] = _M["local"]["xfer"]
+
+
+@pytest.mark.parametrize("row", _LOCAL_ROWS, ids=_ids(_LOCAL_ROWS))
+def test_local_xfer_row(row: Dict[str, Any]) -> None:
+    assert _LOCAL_ROWS
     _run(row)
