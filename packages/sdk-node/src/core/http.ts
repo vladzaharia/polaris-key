@@ -199,3 +199,15 @@ export async function readJson<T = unknown>(
     );
   }
 }
+
+/** The `signInUrl` of an `account_required` body: `{error: {signInUrl}}` or beside the error. */
+export function signInUrlOf(body: unknown): string | null {
+  const o = (v: unknown): Record<string, unknown> | null =>
+    typeof v === "object" && v !== null && !Array.isArray(v)
+      ? (v as Record<string, unknown>)
+      : null;
+  const b = o(body);
+  const nested = o(b?.["error"]);
+  const url = nested?.["signInUrl"] ?? b?.["signInUrl"];
+  return typeof url === "string" ? url : null;
+}

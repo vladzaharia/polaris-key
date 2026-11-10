@@ -52,6 +52,7 @@ import {
   codeForStatus,
   parseErrorBody,
   retryAfterSeconds,
+  signInUrlOf,
 } from "../core/http.js";
 
 /** The most a JSON answer of a file route may be. */
@@ -106,6 +107,9 @@ export interface NodeFileTransportDeps {
   >;
   /** The device bearer now, or null when signed out. */
   token: () => string | null;
+  /** Told when a route answers `account_required` (V5 §11.5), with the answer's `signInUrl`
+   *  unvetted. The call still returns its refusal. */
+  onAccountRequired?: (signInUrl: string | null) => void;
 }
 
 type Refusal = Extract<FileReply<unknown>, { ok: false }>;
@@ -238,6 +242,8 @@ export class NodeFileTransport implements FileTransport {
         : {};
     const { error: _error, ...top } = parsed.body;
     const { code: _code, message: _message, ...inner } = nested;
+    if (res.status === 403 && parsed.code === ErrorCode.accountRequired)
+      this.#d.onAccountRequired?.(signInUrlOf(parsed.body));
     return {
       ok: false,
       status: res.status,

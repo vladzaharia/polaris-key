@@ -5,7 +5,7 @@
 // `local-config.json`, and the identity subject driving the machine. Security (S6): every way the
 // machine leaves a principal forgets the key ring, and the licence state is never touched.
 
-import { existsSync, mkdtempSync, readdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -258,7 +258,7 @@ describe("the identity subject drives the machine; leaving forgets the ring (S6)
     expect(client.config.get("theme", "none")).toBe("none");
   });
 
-  it("deletes the synced data when the account is required again", async () => {
+  it("keeps the machine blocked, without the person's data, when the account is required again", async () => {
     const w = new World();
     const { client, stateDir } = await signedIn(w);
     w.push = () =>
@@ -267,7 +267,10 @@ describe("the identity subject drives the machine; leaving forgets the ring (S6)
       });
     await client.config.set("theme", "dark");
     await client.cloudSync.flush();
-    expect(stateFile(stateDir)).toBe("");
+    // The journal stays (cloudSyncAccountRequired.test.ts), but holds nothing of the person's.
+    expect(stateFile(stateDir)).not.toBe("");
+    expect(readFileSync(stateFile(stateDir), "utf8")).not.toContain("dark");
+    expect(client.cloudSync.status().state).toBe("blocked");
     expect(client.keyring.unlocked).toBe(false);
     client.close();
   });

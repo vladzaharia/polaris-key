@@ -50,7 +50,12 @@ import {
 import { base64UrlDecode, base64UrlEncodeBytes } from "@polaris-key/jws";
 import { ErrorCode } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
-import { readJson, responseError } from "../core/http.js";
+import {
+  classifyResponse,
+  errorFrom,
+  readJson,
+  signInUrlOf,
+} from "../core/http.js";
 import {
   readJson as readJsonFile,
   removeJson,
@@ -247,6 +252,9 @@ export class KeyringClient {
   #keys: DeviceKeyPort | undefined;
   readonly codec: SyncCodec;
   readonly #pinFile: string;
+  /** Told when a ring route answers `account_required` (the client wires Cloud Sync here), with the
+   *  answer's `signInUrl` unvetted. The call still throws its own error. */
+  onAccountRequired: ((signInUrl: string | null) => void) | null = null;
 
   constructor(
     private readonly ctx: CoreContext,
@@ -901,7 +909,13 @@ export class KeyringClient {
       init.body = JSON.stringify(body);
     }
     const res = await this.ctx.request(this.ctx.url(path), init, "key ring");
-    if (!res.ok) throw await responseError(res, "key ring");
+    if (!res.ok) {
+      const c = await classifyResponse(res);
+      // The Worker took the account away (V5 §11.5): Cloud Sync learns it from this route too.
+      if (c.status === 403 && c.code === ErrorCode.accountRequired)
+        this.onAccountRequired?.(signInUrlOf(c.body));
+      throw errorFrom(c, "key ring");
+    }
     return res;
   }
 

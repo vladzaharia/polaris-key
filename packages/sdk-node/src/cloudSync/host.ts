@@ -128,6 +128,9 @@ export interface CloudSyncHostDeps {
   clock?: { now: () => number };
 }
 
+/** The machine's answer to `receive` when it abandoned the request meanwhile (client-core). */
+const NO_REQUEST_IN_FLIGHT = "respond: no request is in flight";
+
 /** How often the real-clock timer wakes the machine while it holds work (ms). */
 export const TICK_MS = 250;
 /** The most exchanges one pump makes, whatever the machine keeps asking for. */
@@ -205,6 +208,8 @@ export class CloudSyncHost {
   #purged = false;
   /** The person the machine's queued requests belong to (null for none). */
   #bound: string | null = null;
+  /** The subject `account_required` took away (saved with the journal; see `CloudSyncFile`). */
+  #refused: string | null = null;
   /** The listener for `putAt` / `removeAt` outcomes; survives a rebuild of the machine. */
   #outcome: ((o: RecordOutcome) => void) | null = null;
   /** The open MergeRequests of this client: the machine's and the saves layer's (plans/U-08.md).
@@ -276,6 +281,7 @@ export class CloudSyncHost {
     this.#started = true;
     const saved = await this.#file.load();
     this.#openKeys = new Set(saved.openKeys);
+    this.#refused = saved.refused;
     this.#mirror = vetted(this.#opts.catalog);
     this.#served = vetted(saved.catalog);
     this.#build(saved.persisted);
@@ -431,6 +437,26 @@ export class CloudSyncHost {
     this.#bound = subject;
   }
 
+  /**
+   * Hand an answer to the machine. A request the machine abandoned meanwhile (`accountRequired()`
+   * from a key-ring or file route, a sign-out) has no one to take its answer: it is dropped, and
+   * nothing it carried reaches the journal. Returns whether the machine took it.
+   */
+  #deliver(
+    m: CloudSyncMachine,
+    res: SyncResponse,
+    opened?: OpenedBody,
+  ): boolean {
+    try {
+      m.receive(res, opened);
+      return true;
+    } catch (e) {
+      if (e instanceof Error && e.message === NO_REQUEST_IN_FLIGHT)
+        return false;
+      throw e;
+    }
+  }
+
   /** One request: seal it (E2E), send it, open the answer, hand both to the machine. */
   async #exchange(req: SyncRequest): Promise<void> {
     const m = this.machine;
@@ -438,7 +464,10 @@ export class CloudSyncHost {
     const codec = this.#deps.keyring.codec;
     const e2e = m.encryptionMode() === "e2e";
     // S3: a locked ring sends nothing, a pull included.
-    if (e2e && codec.locked) return m.receive({ error: "transport" });
+    if (e2e && codec.locked) {
+      this.#deliver(m, { error: "transport" });
+      return;
+    }
 
     let wire: SyncRequest = req;
     let mutations: ReadonlyArray<WireMutation> | undefined;
@@ -460,21 +489,31 @@ export class CloudSyncHost {
           m.refuseMutations(
             await unsealableMutations(req.body, codec, this.#routes),
           );
-          return m.receive({ error: "transport" });
+          {
+            this.#deliver(m, { error: "transport" });
+            return;
+          }
         }
       }
     }
 
     // Queued for one person: if the session is another person's now, nothing is sent.
     const now = (await this.#deps.subject?.().catch(() => null)) ?? null;
-    if (bound !== null && now !== null && now !== bound)
-      return m.receive({ error: "transport" });
+    if (bound !== null && now !== null && now !== bound) {
+      this.#deliver(m, { error: "transport" });
+      return;
+    }
     const res = await sendSync(this.#deps.ctx, this.#deps.tokens, wire);
     if (!e2e || !("status" in res) || res.status !== 200 || !isObj(res.body)) {
       // Server mode, an error answer, or no answer: the machine reads it as it is.
-      if (e2e && "status" in res && res.status === 200)
-        return m.receive({ error: "transport" });
-      return m.receive(res);
+      if (e2e && "status" in res && res.status === 200) {
+        this.#deliver(m, { error: "transport" });
+        return;
+      }
+      {
+        this.#deliver(m, res);
+        return;
+      }
     }
     let opened;
     try {
@@ -488,11 +527,15 @@ export class CloudSyncHost {
       });
     } catch {
       // Locked since the request left: the answer is dropped and the cursor stays.
-      return m.receive({ error: "transport" });
+      {
+        this.#deliver(m, { error: "transport" });
+        return;
+      }
     }
-    this.#noteOpenedKeys(opened.body, opened.opened);
     const answer: SyncResponse = { status: 200, body: opened.body };
-    m.receive(answer, opened.opened);
+    // An abandoned request's answer is dropped whole: no open names, no catalog fetch.
+    if (!this.#deliver(m, answer, opened.opened)) return;
+    this.#noteOpenedKeys(opened.body, opened.opened);
     await this.#maybeRefetch(opened.body);
   }
 
@@ -598,6 +641,7 @@ export class CloudSyncHost {
       persisted: persisted ?? this.machine.persist(),
       catalog: this.#served,
       openKeys: [...this.#openKeys],
+      refused: this.#refused,
     };
     await this.#file.save(file).catch(() => undefined);
   }
@@ -625,9 +669,49 @@ export class CloudSyncHost {
     if (!done) await this.#file.markImported().catch(() => undefined);
   }
 
-  /** A principal signed in: the journal is saved again. */
+  /** A principal signed in: the journal is saved again, and what `account_required` refused is
+   *  not refused any more. */
   resume(): void {
     this.#purged = false;
+    this.#refused = null;
+  }
+
+  /** The subject `account_required` took away, or null (see `CloudSyncFile.refused`). */
+  get refused(): string | null {
+    return this.#refused;
+  }
+
+  /** A sign-out forgets what was refused: the next sign-in is the person's to make. */
+  async clearRefused(): Promise<void> {
+    if (this.#refused === null) return;
+    this.#refused = null;
+    await this.#save();
+  }
+
+  /**
+   * `account_required` came from a route the machine does not drive (a key-ring call or a file
+   * transfer): the machine takes the same transition as for a `/sync` 403 and its events go out at
+   * once. A request in flight is abandoned; its answer is dropped in `#deliver`. A no-op before
+   * `start()`, with no person signed in, or when already blocked this way.
+   */
+  accountRequired(signInUrl: string | null): void {
+    if (!this.started) return;
+    this.machine.accountRequired(signInUrl);
+    this.#emit();
+  }
+
+  /**
+   * The state after `account_required`, on this path only (sign-out and deactivation keep the full
+   * `purge`): the machine is saved as it stands, so the status is still `blocked` after a relaunch,
+   * and what the person's snapshot held is already gone with the partition. `subject` is the one
+   * the Worker refused. No timer stays armed.
+   */
+  async saveBlocked(subject: string | null): Promise<void> {
+    this.#openKeys = new Set();
+    this.#refused = subject;
+    if (this.#timer !== null) clearTimeout(this.#timer);
+    this.#timer = null;
+    await this.#save();
   }
 
   /**
@@ -639,6 +723,7 @@ export class CloudSyncHost {
   async purge(): Promise<void> {
     this.#purged = true;
     this.#openKeys = new Set();
+    this.#refused = null;
     if (this.#timer !== null) clearTimeout(this.#timer);
     this.#timer = null;
     if (this.started) {
