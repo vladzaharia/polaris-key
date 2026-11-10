@@ -1,20 +1,20 @@
 # CC-29b Local links on Android and Godot
 
-| Field       | Value                                                                                                                                         |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CC                                                                                                                                            |
-| Size        | 0.15–0.2 engineer-weeks                                                                                                                       |
-| Depends on  | [CC-29](CC-29-local-links.md), [CC-19](CC-19-inter-account-links.md), [CC-20](CC-20-direct-transfer.md), [CC-23L](CC-23L-local-links-plan.md) |
-| Unblocks    | [CC-29K](CC-29K-local-links-kit-screens.md), [CC-29S](CC-29S-local-links-signoff.md)                                                          |
-| Role        | `pkey-godot-engineer` (the plan is written first by `pkey-wire-planner`)                                                                      |
-| Plan mode   | yes                                                                                                                                           |
-| Gates       | plan-mode, drift-gate, all-sdks                                                                                                               |
-| Human input | none                                                                                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                     |
+| Field       | Value                                                                                                                                                                                        |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | CC                                                                                                                                                                                           |
+| Size        | 0.15–0.2 engineer-weeks                                                                                                                                                                      |
+| Depends on  | [CC-29](CC-29-local-links.md), [CC-19](CC-19-inter-account-links.md), [CC-20](CC-20-direct-transfer.md), [CC-23L](CC-23L-local-links-plan.md), [CC-29.15](CC-29.15-local-pairing-kit-api.md) |
+| Unblocks    | [CC-29K](CC-29K-local-links-kit-screens.md), [CC-29S](CC-29S-local-links-signoff.md)                                                                                                         |
+| Role        | `pkey-godot-engineer` (the plan is written first by `pkey-wire-planner`)                                                                                                                     |
+| Plan mode   | yes                                                                                                                                                                                          |
+| Gates       | plan-mode, drift-gate, all-sdks                                                                                                                                                              |
+| Human input | none                                                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                    |
 
 ## Goal
 
-CC-29b.A: Android `:platform` `PeerNsd` handles `m=q` and `m=l`, the Keystore-wrapped store, an instrumented loopback test. CC-29b.G1-G4: Godot `core/peer/cpace.gd`, modes `q` and `l` with the `local` rows, `services/connect/local_links.gd`, and the native lanes (Apple CryptoKit, Windows Monocypher, Android `:platform`) with export checks and parity.
+CC-29b.A: Android `:platform` `PeerNsd` handles `m=q` and `m=l`, the Keystore-wrapped store, an instrumented loopback test. CC-29b.G1-G4: Godot `core/peer/cpace.gd`, modes `q` and `l` with the `local` rows, `services/connect/local_links.gd`, and the native lanes (Apple CryptoKit, Windows Monocypher, Android `:platform`) with export checks and parity. It also carries the kit-API work of CC-29.15 §8: Android keeps the `platform` member in the sealed store; Godot adds `renew()`, `dials_left()`, `on_change` and `cancel_join()`, the `LocalCode` fields, `on_interrupted` and `on_end`, the error `reason` and `cap`, and `platform`, and its runner replays the `local.nameplateMemory` and `local.joinReasons` sub-sections.
 
 ## Why
 

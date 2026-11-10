@@ -1,20 +1,20 @@
 # CC-29D Local links docs and Help
 
-| Field       | Value                                                               |
-| ----------- | ------------------------------------------------------------------- |
-| Phase       | CC                                                                  |
-| Size        | 0.05 engineer-weeks                                                 |
-| Depends on  | [CC-29](CC-29-local-links.md), [CC-23L](CC-23L-local-links-plan.md) |
-| Unblocks    | none                                                                |
-| Role        | `pkey-implementer`                                                  |
-| Plan mode   | no                                                                  |
-| Gates       | docs-links, docs-generated                                          |
-| Human input | none                                                                |
-| Repo        | `vladzaharia/polaris-key`                                           |
+| Field       | Value                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------ |
+| Phase       | CC                                                                                                                 |
+| Size        | 0.05 engineer-weeks                                                                                                |
+| Depends on  | [CC-29](CC-29-local-links.md), [CC-23L](CC-23L-local-links-plan.md), [CC-29.15](CC-29.15-local-pairing-kit-api.md) |
+| Unblocks    | none                                                                                                               |
+| Role        | `pkey-implementer`                                                                                                 |
+| Plan mode   | no                                                                                                                 |
+| Gates       | docs-links, docs-generated                                                                                         |
+| Human input | none                                                                                                               |
+| Repo        | `vladzaharia/polaris-key`                                                                                          |
 
 ## Goal
 
-`features/cloud-connect/local-links.md` (with the entitlement snippet), a Help section "Pair with a code" in `help/pair-with-someone.mdx`, `site-map.json`, and the snippet lanes in `covered.ts` (Node, Python).
+Document the kit API of CC-29.15 (reasons, `renew`, `dialsLeft`, `onChange`, cancel) and the new copy. `features/cloud-connect/local-links.md` (with the entitlement snippet), a Help section "Pair with a code" in `help/pair-with-someone.mdx`, `site-map.json`, and the snippet lanes in `covered.ts` (Node, Python).
 
 ## Why
 

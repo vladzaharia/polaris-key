@@ -1051,7 +1051,7 @@ wait for the owner's go and are never listed by `--ready` (see `deferred` in wor
 
 ## CC: Cloud Connect: device keys, peer certificates, LAN discovery, encrypted channels, the relay and inter-account links (plans/CC-01-cloud-connect.md)
 
-36 work packages, 17.1–23 weeks for the required ones.
+37 work packages, 17.3–23.23 weeks for the required ones.
 
 | Id                                                   | Title                                                                                                                                                                             | Depends on                               | Role           | Weeks    | Status      |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------- | -------- | ----------- |
@@ -1087,9 +1087,10 @@ wait for the owner's go and are never listed by `--ready` (see `deferred` in wor
 | [CC-28](wp/CC-28-a6-fix.md)                          | Connect pass fixes from the C3a/C5 reviews: A6-FIX-NP (Node, Python), A6-FIX-SK (Swift, Kotlin), A6-FIX-G (Godot)                                                                 | CC-15                                    | sdk-porter     | 0.3–0.6  | done        |
 | [CC-23L](wp/CC-23L-local-links-plan.md) ⚑            | Plan: account-free local pairing (local links)                                                                                                                                    | —                                        | wire-planner   | 0.1–0.2  | done        |
 | [CC-29](wp/CC-29-local-links.md) ⚑                   | Local links: V5 §15.12, corpus, client-core, product switch, Node, Python, Swift, Kotlin (slices CC-29.0-CC-29.14)                                                                | CC-23L, CC-19, CC-20                     | sdk-porter     | 0.4–0.5  | in-progress |
-| [CC-29b](wp/CC-29b-local-links-android-godot.md) ⚑   | Local links on Android and Godot                                                                                                                                                  | CC-29, CC-19, CC-20, CC-23L              | godot-engineer | 0.15–0.2 | todo        |
-| [CC-29K](wp/CC-29K-local-links-kit-screens.md) ✋    | Pair with a Code kit screens and QR scanning                                                                                                                                      | CC-29, CC-29b, CC-23L                    | sdk-porter     | 0.15     | todo        |
-| [CC-29D](wp/CC-29D-local-links-docs.md)              | Local links docs and Help                                                                                                                                                         | CC-29, CC-23L                            | implementer    | 0.05     | todo        |
+| [CC-29.15](wp/CC-29.15-local-pairing-kit-api.md) ⚑   | Local pairing: the kit API (R1–R16)                                                                                                                                               | CC-29, CC-23L                            | sdk-porter     | 0.17–0.2 | in-progress |
+| [CC-29b](wp/CC-29b-local-links-android-godot.md) ⚑   | Local links on Android and Godot                                                                                                                                                  | CC-29, CC-19, CC-20, CC-23L, CC-29.15    | godot-engineer | 0.15–0.2 | todo        |
+| [CC-29K](wp/CC-29K-local-links-kit-screens.md) ✋    | Pair with a Code kit screens and QR scanning                                                                                                                                      | CC-29, CC-29b, CC-23L, CC-29.15          | sdk-porter     | 0.175    | todo        |
+| [CC-29D](wp/CC-29D-local-links-docs.md)              | Local links docs and Help                                                                                                                                                         | CC-29, CC-23L, CC-29.15                  | implementer    | 0.05     | todo        |
 | [CC-29S](wp/CC-29S-local-links-signoff.md)           | Local links security sign-off (LP1-LP3) and cryptographer part P5                                                                                                                 | CC-29, CC-29b, CC-23L                    | implementer    | 0.15–0.2 | todo        |
 
 ## Plans
@@ -1255,6 +1256,7 @@ Every ⚑ package needs an approved plan in [`plans/`](plans/) before implementa
 | [U-46](wp/U-46-collection-records-every-sdk.md)                  | `plans/U-46.md`                        | sdk-porter     |
 | [CC-23L](wp/CC-23L-local-links-plan.md)                          | `plans/CC-23L.md`                      | planning only  |
 | [CC-29](wp/CC-29-local-links.md)                                 | `plans/CC-23L.md` (shared with CC-23L) | sdk-porter     |
+| [CC-29.15](wp/CC-29.15-local-pairing-kit-api.md)                 | `plans/CC-29.15.md`                    | sdk-porter     |
 | [CC-29b](wp/CC-29b-local-links-android-godot.md)                 | `plans/CC-23L.md` (shared with CC-23L) | godot-engineer |
 | [U-51](wp/U-51-cloud-sync-export-device.md)                      | `plans/U-51.md`                        | sdk-porter     |
 | [U-52](wp/U-52-sdk-stop-after-removal.md)                        | `plans/U-52.md`                        | sdk-porter     |

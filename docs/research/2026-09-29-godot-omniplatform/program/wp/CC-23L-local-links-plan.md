@@ -1,16 +1,16 @@
 # CC-23L Plan: account-free local pairing (local links)
 
-| Field       | Value                                                                                                                                                                                                    |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CC                                                                                                                                                                                                       |
-| Size        | 0.1–0.2 engineer-weeks                                                                                                                                                                                   |
-| Depends on  | none                                                                                                                                                                                                     |
-| Unblocks    | [CC-29](CC-29-local-links.md), [CC-29b](CC-29b-local-links-android-godot.md), [CC-29K](CC-29K-local-links-kit-screens.md), [CC-29D](CC-29D-local-links-docs.md), [CC-29S](CC-29S-local-links-signoff.md) |
-| Role        | `pkey-wire-planner` (planning only)                                                                                                                                                                      |
-| Plan mode   | yes                                                                                                                                                                                                      |
-| Gates       | plan-mode, human-approval, threat-model, protocol-version                                                                                                                                                |
-| Human input | none                                                                                                                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                |
+| Field       | Value                                                                                                                                                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | CC                                                                                                                                                                                                                                                      |
+| Size        | 0.1–0.2 engineer-weeks                                                                                                                                                                                                                                  |
+| Depends on  | none                                                                                                                                                                                                                                                    |
+| Unblocks    | [CC-29](CC-29-local-links.md), [CC-29.15](CC-29.15-local-pairing-kit-api.md), [CC-29b](CC-29b-local-links-android-godot.md), [CC-29K](CC-29K-local-links-kit-screens.md), [CC-29D](CC-29D-local-links-docs.md), [CC-29S](CC-29S-local-links-signoff.md) |
+| Role        | `pkey-wire-planner` (planning only)                                                                                                                                                                                                                     |
+| Plan mode   | yes                                                                                                                                                                                                                                                     |
+| Gates       | plan-mode, human-approval, threat-model, protocol-version                                                                                                                                                                                               |
+| Human input | none                                                                                                                                                                                                                                                    |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                               |
 
 ## Goal
 
