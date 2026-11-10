@@ -88,6 +88,10 @@ jobs:
     timeout-minutes: 10
     if: ${{ !cancelled() && github.repository == 'vladzaharia/polaris-key' && (needs.ci-gate.result == 'success' || needs.ci-gate.result == 'skipped') }}
     outputs:
+      # CI OK is proven on this SHA: deploy.yml's verify passed `tested`, or ci-gate above just
+      # waited for CI OK (a promote dispatch or a main push). The SDK suites CI already ran are
+      # skipped on either proof; with neither (never today) they run as the safety net.
+      tested: ${{ inputs.tested || needs.ci-gate.result == 'success' }}
       kind: ${{ steps.v.outputs.kind }}
       version: ${{ steps.v.outputs.version }}
       pep440: ${{ steps.v.outputs.pep440 }}
@@ -135,7 +139,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Test the public packages
-        if: ${{ !inputs.tested }}
+        if: ${{ needs.version.outputs.tested != 'true' }}
         run: |
           read -r -a filters <<<"$(node -e 'import("./tools/sdk-version.mjs").then((m) => console.log(m.publicPackageJsons(".").map((f) => "--filter=./" + f.replace("/package.json", "")).join(" ")))')"
           pnpm exec turbo run test "${filters[@]}"
@@ -376,7 +380,7 @@ jobs:
         with:
           node-version: 22
       - name: Test
-        if: ${{ !inputs.tested }}
+        if: ${{ needs.version.outputs.tested != 'true' }}
         working-directory: sdks/python
         run: |
           python -m venv .venv
@@ -420,8 +424,8 @@ jobs:
   swift-test:
     name: Test the Swift SDK
     needs: version
-    # Skipped (no macOS runner queued) when CI OK was proven on this SHA; swift-sign accepts that.
-    if: ${{ !inputs.tested }}
+    # Skipped (no macOS runner queued) when CI OK was proven on this SHA (`tested`, or ci-gate passed); swift-sign accepts that.
+    if: ${{ needs.version.outputs.tested != 'true' }}
     runs-on: macos-26
     timeout-minutes: 30
     steps:
@@ -521,7 +525,7 @@ jobs:
           set -o pipefail
           "$SDKM" "platforms;android-36" "build-tools;36.1.0" >/dev/null
       - name: Tests and boundaries
-        if: ${{ !inputs.tested }}
+        if: ${{ needs.version.outputs.tested != 'true' }}
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon :core:test :license:test :config:test :identity:test :release:test
@@ -630,7 +634,7 @@ jobs:
     name: Test the Godot SDK (4.7.2 ${{ matrix.part }})
     needs: version
     # Skipped when CI OK was proven on this SHA; the godot feed job accepts that.
-    if: ${{ !inputs.tested }}
+    if: ${{ needs.version.outputs.tested != 'true' }}
     runs-on: ubuntu-latest
     # The same three parts as ci.yml's godot job (run_tests.sh PKEY_TEST_PART), one runner each, so
     # no step nears its limit; the editor and template run their suites as four parallel processes.
