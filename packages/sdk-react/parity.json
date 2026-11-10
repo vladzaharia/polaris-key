@@ -289,6 +289,7 @@
       "reason": "runtime",
       "note": "A browser has no platform backup item and the desktop renderer holds no device key (I-49)."
     },
+    "identity.accessToken": { "status": "planned", "wp": "I-21b" },
     "identity.link": {
       "status": "implemented",
       "except": [

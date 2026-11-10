@@ -1699,6 +1699,20 @@
       "note": "I-49 (WIRE-CONTRACT-V5 §12.11.8): a signed-in device enrols a restore secret with POST /<p>/identity/restore and keeps it in an end-to-end platform backup (iCloud Keychain, Block Store). A new device of the same person redeems it at token with the urn:polaris-key:grant-type:restore grant and the pkey-proof/1 restore proof, once, and signs in with no click. Sign-out deletes the server row and the item. Discovery's restore member and endpoint gate it. Pinned by the restore-* and discovery-identity-restore transcripts (I-49.8); Swift, Kotlin and Godot implement it on their native lanes."
     },
     {
+      "id": "identity.accessToken",
+      "family": "devices",
+      "title": "Access token: a signed-in device trades its device token for a short-lived token its developer's backend can verify",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "I-21b"
+        }
+      ],
+      "allowedNa": [],
+      "note": "I-21 (WIRE-CONTRACT-V5 §12.13.10, D6): with discovery's identity accessToken member, identity.accessToken() posts a token-exchange form to token with the device's own pkeyt_ token as the subject token (subject_token_type urn:polaris-key:token-type:device) and gets a 600 second RS256 access token (at+jwt) for the developer's backend (SP-68). The client keeps it in memory only, reuses it until expires_in minus 60 seconds and drops it on sign-out. Without accessToken in discovery the call fails service-unavailable. Pinned by identity-access-token (I-21.13); I-21b implements it in client-core and the six SDKs."
+    },
+    {
       "id": "identity.link",
       "family": "devices",
       "title": "The link offer: attach a platform identity to the account after a fresh sign-in",

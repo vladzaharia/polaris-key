@@ -41,6 +41,7 @@
  */
 
 import {
+  DEVICE_SUBJECT_TOKEN_TYPE,
   RESTORE_GRANT_TYPE,
   TOKEN_EXCHANGE_GRANT_TYPE,
   type KeyReturnTokenResponse,
@@ -65,6 +66,7 @@ import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { oauth, readForm, withNoStore } from "./oauthHttp.js";
 import { CLIENT_ID_PATTERN } from "@polaris-key/protocol/identity";
 import { namedClientId } from "../issuer/clientAuth.js";
+import { handleDeviceExchange } from "../issuer/deviceExchange.js";
 import { handleIssuerToken } from "../issuer/token.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import {
@@ -166,6 +168,14 @@ export async function handleToken(ctx: {
   const grant = form.get("grant_type");
   if (!grant)
     return oauth(400, ErrorCode.InvalidRequest, "grant_type is required.");
+  // I-21.13 (§12.13.10): the own app's device token for an access token. Its token type is its own
+  // branch, ahead of `launch.identityExchange`: it is not a platform-identity exchange. It answers
+  // `invalid_request` while the issuer is off, as an unknown subject token type does.
+  if (
+    grant === TOKEN_EXCHANGE_GRANT_TYPE &&
+    form.get("subject_token_type") === DEVICE_SUBJECT_TOKEN_TYPE
+  )
+    return handleDeviceExchange({ req, env, db, product, now, form });
   // LG-1: with the gate off the grant is not one this build knows (`unsupported_grant_type`).
   if (
     grant === TOKEN_EXCHANGE_GRANT_TYPE &&
