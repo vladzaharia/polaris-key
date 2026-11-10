@@ -1385,6 +1385,8 @@ describe("workflow hardening", () => {
 
 describe("publish-sdks.yml waits for CI OK and skips the tests CI already ran", () => {
   const wf = workflow(PUBLISH_SDKS);
+  // The version job folds both proofs (the `tested` input, a passed ci-gate) into one output.
+  const UNPROVEN = "${{ needs.version.outputs.tested != 'true' }}";
   const gateScript = "tools/require-ci-ok.sh";
 
   it("a main run publishes only after CI OK is green on the SHA, never a red build", () => {
@@ -1434,8 +1436,8 @@ describe("publish-sdks.yml waits for CI OK and skips the tests CI already ran", 
     ).workflow_call.inputs.tested;
     expect(input).toMatchObject({ type: "boolean", default: false });
     // Whole-job suites: skipped, and the jobs that need them accept a skip (not a failure).
-    expect(wf.jobs["swift-test"]!.if).toBe("${{ !inputs.tested }}");
-    expect(wf.jobs["godot-test"]!.if).toBe("${{ !inputs.tested }}");
+    expect(wf.jobs["swift-test"]!.if).toBe(UNPROVEN);
+    expect(wf.jobs["godot-test"]!.if).toBe(UNPROVEN);
     for (const [id, dep] of [
       ["swift-sign", "swift-test"],
       ["godot", "godot-test"],
@@ -1449,19 +1451,18 @@ describe("publish-sdks.yml waits for CI OK and skips the tests CI already ran", 
     // Test steps inside build jobs: the step is skipped, the pack/build/publish steps are not.
     const skipped = (id: string, name: string) =>
       (wf.jobs[id]!.steps ?? []).find((s) => s.name === name)?.if;
-    expect(skipped("npm-pack", "Test the public packages")).toBe(
-      "${{ !inputs.tested }}",
-    );
-    expect(skipped("python-build", "Test")).toBe("${{ !inputs.tested }}");
-    expect(skipped("kotlin-build", "Tests and boundaries")).toBe(
-      "${{ !inputs.tested }}",
+    expect(skipped("npm-pack", "Test the public packages")).toBe(UNPROVEN);
+    expect(skipped("python-build", "Test")).toBe(UNPROVEN);
+    expect(skipped("kotlin-build", "Tests and boundaries")).toBe(UNPROVEN);
+    expect(String(wf.jobs.version!.outputs?.tested)).toBe(
+      "${{ inputs.tested || needs.ci-gate.result == 'success' }}",
     );
     // Nothing else is conditional on it: pack, stamp, build, publish and drift always run.
     const conditional: string[] = [];
     for (const [id, job] of Object.entries(wf.jobs)) {
-      if (String(job.if ?? "").includes("inputs.tested")) conditional.push(id);
+      if (String(job.if ?? "").includes("outputs.tested")) conditional.push(id);
       for (const st of job.steps ?? [])
-        if (String(st.if ?? "").includes("inputs.tested"))
+        if (String(st.if ?? "").includes("outputs.tested"))
           conditional.push(`${id}/${st.name}`);
     }
     expect(conditional.sort()).toEqual([
