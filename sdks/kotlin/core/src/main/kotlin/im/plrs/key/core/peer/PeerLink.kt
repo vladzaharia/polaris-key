@@ -101,8 +101,12 @@ public class LinkHandlers<H>(
     public val onContact: (SessionEvent.Contact) -> Unit = {},
     /** Modes v and p: the code both screens show (CC-15). */
     public val onSas: (PeerLinkPort, SessionEvent.Sas) -> Unit = { _, _ -> },
+    /** Mode q, responder: its message 1 was judged (section 15.12): the verdict of the permitted guess. */
+    public val onGuess: (SessionEvent.Guess) -> Unit = {},
+    /** Mode q: the peer's valid `LOCAL_LINK`, read in order, with the link secret (key material: store it, then zero it). */
+    public val onLocalLink: (SessionEvent.LocalLinked) -> Unit = {},
     /**
-     * Modes v and p: the peer has no device id, so an established session is the transport and the HELLO, and
+     * Modes v, p and q: the peer has no device id, so an established session is the transport and the HELLO, and
      * the handshake deadline ends there. Mode a admits by certificate and leaves this false.
      */
     public val anonymous: Boolean = false,
@@ -283,7 +287,7 @@ public class PeerLink<H>(
     private fun onEvent(e: SessionEvent) {
         when (e) {
             is SessionEvent.Established -> {
-                if (e.peerDeviceId == null && e.contactIndex == null && !handlers.anonymous) return
+                if (e.peerDeviceId == null && e.contactIndex == null && e.localIndex == null && !handlers.anonymous) return
                 deadline?.cancel()
                 deadline = null
                 open = true
@@ -301,6 +305,10 @@ public class PeerLink<H>(
             is SessionEvent.Sas -> handlers.onSas(this, e)
 
             is SessionEvent.Contact -> handlers.onContact(e)
+
+            is SessionEvent.Guess -> handlers.onGuess(e)
+
+            is SessionEvent.LocalLinked -> handlers.onLocalLink(e)
 
             is SessionEvent.Closed -> finish(if (lost && !closing && !e.byPeer) SessionEvent.Closed("connection_lost", false) else e)
         }

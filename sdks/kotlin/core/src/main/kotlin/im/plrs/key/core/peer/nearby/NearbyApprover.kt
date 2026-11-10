@@ -573,7 +573,7 @@ public class NearbyApprover private constructor(
             handshakeSeconds = o.handshakeSeconds,
             schedule = ::after,
         )
-        val limiter = HandshakeLimiter(PER_MINUTE, WAITING, o.mono)
+        val limiter = HandshakeLimiter(PER_MINUTE, WAITING, mono = o.mono)
         val server = bind()
         sockets += server
         val adv: MdnsHandle
