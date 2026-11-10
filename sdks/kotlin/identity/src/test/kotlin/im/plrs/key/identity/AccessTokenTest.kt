@@ -21,6 +21,7 @@ import im.plrs.key.core.testing.path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -46,6 +47,7 @@ class AccessTokenTest {
 
     private class World(val core: CoreContext, val client: IdentityClient, val transport: ScriptedTransport, val store: InMemoryStore) {
         @Volatile var now = 1_000L
+        @Volatile var clockFails = false
         val exchanges = AtomicInteger()
         suspend fun posts(): List<PolarisRequest> = transport.requests().filter { it.path == "/djdl/identity/token" }
     }
@@ -74,7 +76,7 @@ class AccessTokenTest {
                 trustRefresh = false,
                 store = store,
                 transport = transport,
-                clock = { w.now },
+                clock = { if (w.clockFails) error("clock") else w.now },
             ),
         )
         runBlocking { core.start() }
@@ -269,6 +271,16 @@ class AccessTokenTest {
             val w = world(exchange = { _, _ -> respond(200, body) })
             assertEquals(body, ErrorCode.badResponse, w.refusal().code)
         }
+    }
+
+    @Test
+    fun aClockThatThrowsWhileSettlingFailsTheCallerInsteadOfHangingIt() = runBlocking {
+        val w = world(exchange = { world, _ -> if (world.exchanges.get() == 0) world.clockFails = true; respond(200, grant()) })
+        val failure = withTimeout(5_000) { runCatching { w.client.accessToken() }.exceptionOrNull() }
+        assertNotNull(failure)
+        w.clockFails = false
+        w.client.accessToken()  // nothing was cached and nothing is stuck in flight: it asks again
+        assertEquals(2, w.posts().size)
     }
 
     @Test

@@ -202,11 +202,11 @@ static func _failure(r: PKeyResult, status: int) -> PKeyResult:
 	# The wait is in the body when no `Retry-After` header came with it (the recorded 429 has the body's only).
 	var retry = b.get("retryAfter")
 	if PKeyClaims.is_number(retry) and not is_nan(float(retry)) and not is_inf(float(retry)) and float(retry) > 0.0:
-		detail["retry_after_seconds"] = int(minf(ceilf(float(retry)), 3600.0))
+		detail["retry_after_seconds"] = int(minf(ceilf(float(retry)), 2147483647.0))
 	else:
 		var header = r.detail["headers"].get("retry-after") if r.detail["headers"] is Dictionary else null
 		if header is String and (header as String).strip_edges().is_valid_int() and int((header as String).strip_edges()) > 0:
-			detail["retry_after_seconds"] = mini(int((header as String).strip_edges()), 3600)
+			detail["retry_after_seconds"] = mini(int((header as String).strip_edges()), 2147483647)
 	var wire := StringName(code) if code is String and code != "" else StringName("http_%d" % status)
 	return PKeyResult.failure(wire, "The access token exchange was refused (%s)." % wire, detail)
 

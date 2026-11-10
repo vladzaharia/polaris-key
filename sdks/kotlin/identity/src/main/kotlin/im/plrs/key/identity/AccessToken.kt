@@ -232,10 +232,19 @@ internal class AccessTokenCache(private val now: suspend () -> Long) {
      * it hears a failure must not find the failed exchange still in flight.
      */
     private suspend fun settle(mine: Pending, exchange: suspend () -> AccessTokenGrant) {
-        val outcome = runCatching { exchange() }
-        val token = outcome.getOrNull()?.let { AccessToken(it.accessToken, "Bearer", it.expiresIn, now() + it.expiresIn) }
-        val wait = (outcome.exceptionOrNull() as? PolarisException)?.takeIf { it.code == ErrorCode.rateLimited }?.retryAfterSeconds
-        val limitedUntil = if (wait != null && wait > 0) now() + wait else null
+        // Every call that can throw is inside the guard: a failing clock must not leave the callers waiting.
+        var limitedUntil: Long? = null
+        val outcome = runCatching {
+            try {
+                val grant = exchange()
+                AccessToken(grant.accessToken, "Bearer", grant.expiresIn, now() + grant.expiresIn)
+            } catch (e: PolarisException) {
+                val wait = e.takeIf { it.code == ErrorCode.rateLimited }?.retryAfterSeconds
+                if (wait != null && wait > 0) limitedUntil = now() + wait
+                throw e
+            }
+        }
+        val token = outcome.getOrNull()
         lock.withLock {
             // Kept only while this is still the client's exchange: a clear() or a caller with another key took it over.
             if (pending === mine) {
