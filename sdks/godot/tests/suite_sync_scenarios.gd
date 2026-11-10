@@ -46,10 +46,19 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_constants(t, corpus)
 	_shape(t, corpus)
 	_setting_cases(t, corpus["settingCases"])
+	_sign_in_url_cases(t, corpus["signInUrlCases"])
 	_scenarios(t, corpus)
 	_file_record_cases(t, corpus, corpus["fileRecordCases"])
 	_misuse(t, corpus)
 	return true
+
+
+## The one sign-in URL rule every host applies (U-52): the shared table is the contract.
+func _sign_in_url_cases(t: PKeyTestContext, cases: Array) -> void:
+	t.check("signInUrlCases is not empty", cases.size() > 0)
+	for c: Dictionary in cases:
+		var got: Variant = PKeyCloudSync.safe_sign_in_url(c["url"], c["origin"])
+		t.check("signInUrlCases: %s" % c["name"], got == c["expect"], "got %s" % str(got))
 
 
 func _constants(t: PKeyTestContext, corpus: Dictionary) -> void:

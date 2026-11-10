@@ -708,7 +708,7 @@ func _on_events(events: Array) -> void:
 func _deliver(e: Dictionary) -> void:
 	var out := e.duplicate()
 	if e.get("type") == "signInOffered":
-		out["signInUrl"] = safe_sign_in_url(e.get("signInUrl"), _core.base_url)
+		out["signInUrl"] = safe_sign_in_url(e.get("signInUrl"), worker_origin(_core.base_url))
 	if _emit.is_valid():
 		_emit.call(out)
 
@@ -780,30 +780,72 @@ func _join_chain() -> void:
 		push_warning("Cloud Sync: a forget is still waiting")
 
 
-## A sign-in URL fit to hand to the app (A-5): no control character, whitespace or backslash; a path is
-## resolved against the Worker origin; only an https URL on that origin is kept (the default port :443
-## normalised; no userinfo, trailing-dot or punycode lookalike host: the origin must match exactly). The
-## path is not restricted. Else null.
+## A sign-in URL fit to hand to the app: https on the Worker's origin (`https://host[:port]`), normalised, else
+## null. `https://` or `//` start an authority that must be exactly the Worker's host (and port; 443 is the
+## default); any other `scheme:`, userinfo, a trailing dot, a lookalike host, a backslash, whitespace or a
+## control or non-ASCII character answers null. Anything else is a path on the origin; there is no path
+## restriction. The rule is the same in every SDK and pinned by the corpus's `signInUrlCases`; it uses no URL
+## library. `base_url` is the Worker's origin (`worker_origin`); an origin with a path or not https answers null.
 static func safe_sign_in_url(url: Variant, base_url: String) -> Variant:
 	if not (url is String) or url == "":
 		return null
 	var s: String = url
 	for i in s.length():
 		var c := s.unicode_at(i)
-		if c <= 0x20 or c == 0x7f or (c >= 0x80 and c <= 0x9f) or c == 0x5c:
-			return null  # a control character, whitespace or a backslash anywhere
-	var base := PKeyTransport.parse_url(base_url)
-	if base.is_empty():
-		return null
-	var resolved := s
-	if s.begins_with("/"):
-		if s.begins_with("//"):
+		if c < 0x21 or c > 0x7e or c == 0x5c:
 			return null
-		resolved = PKeyTransport.resolve(base_url, s)
-	var u := PKeyTransport.parse_url(resolved)
-	if u.is_empty() or u["scheme"] != "https" or u["origin"] != base["origin"]:
+	var om := _origin_re().search(base_url.to_lower())
+	if om == null:
 		return null
-	return resolved
+	var host := om.get_string(1)
+	var port := int(om.get_string(2)) if om.get_string(2) != "" else 443
+	var rest := ""
+	var has_authority := false
+	if s.to_lower().begins_with("https://"):
+		rest = s.substr(8)
+		has_authority = true
+	elif s.begins_with("//"):
+		rest = s.substr(2)
+		has_authority = true
+	var tail := s
+	if has_authority:
+		var end := -1
+		for i in rest.length():
+			if rest[i] == "/" or rest[i] == "?" or rest[i] == "#":
+				end = i
+				break
+		var authority := (rest if end < 0 else rest.substr(0, end)).to_lower()
+		var allowed := PackedStringArray(["%s:%d" % [host, port]])
+		if port == 443:
+			allowed = PackedStringArray([host, "%s:443" % host])
+		if not allowed.has(authority):
+			return null
+		tail = "" if end < 0 else rest.substr(end)
+	elif _scheme_re().search(s) != null:
+		return null
+	if not tail.begins_with("/"):
+		tail = "/" + tail
+	return "https://%s%s%s" % [host, "" if port == 443 else ":%d" % port, tail]
+
+
+## The origin (`https://host[:port]`) of the client's base URL, which may carry a path; "" when it is not https.
+static func worker_origin(base_url: String) -> String:
+	var u := PKeyTransport.parse_url(base_url)
+	if u.is_empty() or u["scheme"] != "https":
+		return ""
+	return "https://%s%s" % [u["host"], "" if u["port"] == 443 else ":%d" % u["port"]]
+
+
+static func _origin_re() -> RegEx:
+	var re := RegEx.new()
+	re.compile("^https://([a-z0-9.-]+)(?::([0-9]{1,5}))?$")
+	return re
+
+
+static func _scheme_re() -> RegEx:
+	var re := RegEx.new()
+	re.compile("^[A-Za-z][A-Za-z0-9+.-]*:")
+	return re
 
 
 ## The saves' port onto this API: every dependency PKeySaves holds is a method here, which reaches the API

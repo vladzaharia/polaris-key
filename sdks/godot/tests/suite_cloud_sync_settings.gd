@@ -168,7 +168,7 @@ func _urls_and_options(t: PKeyTestContext) -> void:
 			and Sync.safe_sign_in_url("//evil.example/a", base) == null and Sync.safe_sign_in_url("/\\evil.example", base) == null and Sync.safe_sign_in_url("javascript:alert(1)", base) == null)
 	t.check("A-5: control characters and whitespace are refused", Sync.safe_sign_in_url("/a b", base) == null and Sync.safe_sign_in_url("/a\n", base) == null and Sync.safe_sign_in_url("\thttps://key.plrs.im/", base) == null)
 	t.check("A-5: the default port is normalised, the path is not restricted", \
-			Sync.safe_sign_in_url("https://key.plrs.im:443/a/b?c=d#e", base) == "https://key.plrs.im:443/a/b?c=d#e" \
+			Sync.safe_sign_in_url("https://key.plrs.im:443/a/b?c=d#e", base) == "https://key.plrs.im/a/b?c=d#e" \
 			and Sync.safe_sign_in_url("https://key.plrs.im/", base) == "https://key.plrs.im/")
 	t.check("A-5: userinfo, any backslash, a trailing dot, a punycode lookalike and another port are refused", \
 			Sync.safe_sign_in_url("https://user@key.plrs.im/a", base) == null \
