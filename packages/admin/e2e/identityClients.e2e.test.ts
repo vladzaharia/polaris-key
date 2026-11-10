@@ -1,12 +1,12 @@
-import { existsSync, mkdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { chromium, type Browser, type Page } from "playwright";
-import { preview, type PreviewServer } from "vite";
-import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
+import { closeContext } from "./teardown.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
 import { DATA_ROUTES } from "./layoutData.js";
-import { closeContext } from "./teardown.js";
+import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
+import { existsSync, mkdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { preview, type PreviewServer } from "vite";
+import { chromium, type Browser, type Page } from "playwright";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 /**
  * Sign in with <Product> in the console (I-21.14): the Clients page, the client record and the
@@ -17,12 +17,12 @@ import { closeContext } from "./teardown.js";
  * Set `PK_SHOTS_DIR` to also save a screenshot of each state.
  */
 
-const here = fileURLToPath(new URL("..", import.meta.url));
-const CSP = appSecurityHeaders().get("content-security-policy")!;
-const SHOTS = process.env.PK_SHOTS_DIR;
 const NOW = Math.floor(Date.now() / 1000);
 const DAY = 86_400;
 const P = "/manage/api/products/djdl";
+const SHOTS = process.env.PK_SHOTS_DIR;
+const CSP = appSecurityHeaders().get("content-security-policy")!;
+const here = fileURLToPath(new URL("..", import.meta.url));
 
 const ISSUER = "https://key.plrs.im/djdl/identity";
 const client = (over: Record<string, unknown>) => ({
@@ -150,30 +150,50 @@ const base = (over: Record<string, unknown>): Record<string, unknown> => ({
 
 const LIST = base({ [`${P}/identity/clients`]: page_([FORUM, DOCS, PARTNER]) });
 
-let server: PreviewServer;
-let browser: Browser;
-let origin: string;
+/** What the browser's CSP refused on each page the test opened. */
+const refusals = new WeakMap<Page, string[]>();
+
+const app: { site?: PreviewServer; chrome?: Browser; url: string } = {
+  url: "",
+};
 
 beforeAll(async () => {
-  if (!existsSync(`${here}dist/manage.html`))
+  const built = `${here}dist/manage.html`;
+  if (!existsSync(built))
     throw new Error(
       "Build the console first: pnpm --filter @polaris-key/admin build",
     );
   if (SHOTS) mkdirSync(SHOTS, { recursive: true });
-  server = await preview({
-    root: here,
+  app.site = await preview({
     configFile: `${here}vite.config.ts`,
-    preview: { port: 0, strictPort: false, host: "127.0.0.1" },
+    root: here,
     logLevel: "silent",
+    preview: { host: "127.0.0.1", port: 0, strictPort: false },
   });
-  origin = server.resolvedUrls!.local[0]!.replace(/\/$/, "");
-  browser = await chromium.launch();
+  app.url = (app.site.resolvedUrls?.local[0] ?? "").replace(/\/$/, "");
+  app.chrome = await chromium.launch();
 });
 
 afterAll(async () => {
-  await browser?.close();
-  await new Promise<void>((r) => server?.httpServer.close(() => r()));
+  await app.chrome?.close();
+  await new Promise<void>((done) => app.site?.httpServer.close(() => done()));
 });
+
+/** Answer an admin API call from the scripted routes, or from `handler` when it has a reply. */
+async function answer(
+  routes: Record<string, unknown>,
+  handler: Handler | undefined,
+  url: URL,
+  method: string,
+): Promise<{ status: number; json: unknown }> {
+  const given = await handler?.(url, method);
+  if (given instanceof Response)
+    return { status: given.status, json: await given.json() };
+  const known = given ?? routes[url.pathname];
+  return known
+    ? { status: 200, json: known }
+    : { status: 404, json: { error: "not_found" } };
+}
 
 async function open(
   theme: "dark" | "light",
@@ -182,54 +202,50 @@ async function open(
   opts: { width?: number; handler?: Handler; text200?: boolean } = {},
 ): Promise<Page> {
   const width = opts.width ?? 1440;
-  const ctx = await browser.newContext({
-    viewport: { width, height: SHOTS ? 2000 : width < 600 ? 844 : 1000 },
+  const context = await app.chrome!.newContext({
     colorScheme: theme,
     reducedMotion: "reduce",
+    viewport: { height: SHOTS ? 2000 : width < 600 ? 844 : 1000, width },
   });
-  await ctx.addInitScript(
-    ([t, big]) => {
-      window.localStorage.setItem("pk-admin-theme", t as string);
-      (window as unknown as { __v: string[] }).__v = [];
-      document.addEventListener("securitypolicyviolation", (e) =>
-        (window as unknown as { __v: string[] }).__v.push(
-          `${e.violatedDirective} ${e.blockedURI} ${e.sample}`,
-        ),
-      );
-      if (big)
+  await context.addInitScript(
+    ([mode, enlarge]) => {
+      window.localStorage.setItem("pk-admin-theme", mode as string);
+      if (enlarge)
         document.addEventListener("DOMContentLoaded", () => {
           document.documentElement.style.fontSize = "200%";
         });
     },
     [theme, opts.text200 === true],
   );
-  await ctx.route("**/*", async (route) => {
+  await context.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith("/manage/api/")) {
-      const custom = await opts.handler?.(url, route.request().method());
-      if (custom instanceof Response)
-        return route.fulfill({
-          status: custom.status,
-          json: await custom.json(),
-        });
-      const body = custom ?? routes[url.pathname];
-      return body
-        ? route.fulfill({ json: body })
-        : route.fulfill({ status: 404, json: { error: "not_found" } });
+      const reply = await answer(
+        routes,
+        opts.handler,
+        url,
+        route.request().method(),
+      );
+      return route.fulfill({ status: reply.status, json: reply.json });
     }
-    const res = await route.fetch();
-    const headers = { ...res.headers() };
+    const upstream = await route.fetch();
+    const headers = { ...upstream.headers() };
     if (url.pathname.endsWith(".html"))
       headers["content-security-policy"] = CSP;
-    return route.fulfill({ response: res, headers });
+    return route.fulfill({ response: upstream, headers });
   });
-  const page = await ctx.newPage();
-  await page.goto(`${origin}/manage.html${hash}`);
+  const page = await context.newPage();
+  const refused: string[] = [];
+  page.on("console", (m) => {
+    if (/content security policy/i.test(m.text())) refused.push(m.text());
+  });
+  await page.goto(`${app.url}/manage.html${hash}`);
+  refusals.set(page, refused);
   return page;
 }
 
-const violations = (page: Page): Promise<string[]> =>
-  page.evaluate(() => (window as unknown as { __v: string[] }).__v.splice(0));
+const violations = async (page: Page): Promise<string[]> =>
+  refusals.get(page)?.splice(0) ?? [];
 
 async function check(
   page: Page,
