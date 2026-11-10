@@ -14,8 +14,8 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 from connect_relay_fake import FakeRoom, ManualSleep
-from test_connect_lan import Network, World, run, until
 from support.clock import barrier
+from test_connect_lan import Network, World, run, until
 from test_connect_peer_session import ID_A, ID_B, NOW
 
 import polaris_key.connect.cloud_connect as cc_mod
@@ -519,7 +519,6 @@ def test_the_async_client_mirrors_the_facade_as_coroutines() -> None:
 def test_stop_force_cancels_after_the_bound_when_a_host_callback_blocks_the_connect_thread(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import time
 
     from polaris_key.connect.loop import connect_loop
 

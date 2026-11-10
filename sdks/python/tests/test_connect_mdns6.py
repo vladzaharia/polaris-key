@@ -10,7 +10,6 @@ import socket
 from typing import Any, Callable, Dict, List, Optional
 
 import pytest
-
 from support.clock import until
 
 from polaris_key.connect.loop import connect_loop
