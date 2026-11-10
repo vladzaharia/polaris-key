@@ -238,7 +238,7 @@ jobs:
       # included: test/storefront/, test/services/distribution/ascWriteGate.test.ts,
       # test/surfaces/feedAdapters.test.ts.
       - if: steps.affected.outputs.affected == 'true'
-        run: pnpm exec turbo run test --filter=@polaris-key/worker
+        run: tools/ci-measure.sh "js-worker tests" pnpm exec turbo run test --filter=@polaris-key/worker
 
   js-admin:
     name: JS/TS tests (admin)
@@ -256,7 +256,7 @@ jobs:
         run: pnpm build
       # The admin SPA's jsdom suites (unit and axe) in their own job: the longest single-package tail.
       - if: steps.affected.outputs.affected == 'true'
-        run: pnpm exec turbo run test --filter=@polaris-key/admin
+        run: tools/ci-measure.sh "js-admin tests" pnpm exec turbo run test --filter=@polaris-key/admin
 
   js-rest:
     name: JS/TS tests (other packages, conformance runners)
@@ -300,7 +300,7 @@ jobs:
       # run: turbo's `--filter=...[sha]` includes them and the three `!` filters take the other
       # jobs' packages out. Without a base the three `!` filters alone select everything else.
       - run: >-
-          pnpm exec turbo run test ${JS_BASE:+"--filter=...[$JS_BASE]"}
+          tools/ci-measure.sh "js-rest tests" pnpm exec turbo run test ${JS_BASE:+"--filter=...[$JS_BASE]"}
           --filter=!@polaris-key/worker --filter=!@polaris-key/admin
           --filter=!@polaris-key/conformance-browser
         env:
@@ -343,7 +343,7 @@ jobs:
         env:
           PKEY_ELEMENTS_UNSTAMPED_OK: "1" # never published: the deploy job stamps the tag's version
       - run: pnpm --filter @polaris-key/worker typecheck:workerd
-      - run: pnpm --filter @polaris-key/worker test:workerd
+      - run: tools/ci-measure.sh "workerd tests" pnpm --filter @polaris-key/worker test:workerd
 
   # P1b-05 Part B: the Node conformance runner and the Node SDK suites on the LOWEST Node that
   # `engines.node` allows. One runtime is not proof: notes/A7 §6 found decoder behaviour that only
@@ -667,7 +667,7 @@ jobs:
       - run: pnpm exec turbo run build --filter=@polaris-key/react...
       # The Vitest workspace has React 18 and React 19 projects; keep both supported majors live.
       - if: matrix.part == 'rest'
-        run: pnpm --filter @polaris-key/react test
+        run: tools/ci-measure.sh "react tests" pnpm --filter @polaris-key/react test
       - if: matrix.part == 'kit'
         run: pnpm --filter @polaris-key/react exec vitest run -c vitest.browser.config.ts kit.browser.test.tsx
       - if: matrix.part == 'rest'
@@ -766,8 +766,8 @@ jobs:
         # The PTY suites drive a real terminal and assert on redraw timing, so they run on their own
         # after the parallel run instead of competing with xdist workers for the CPU.
         run: |
-          .venv/bin/python -m pytest -q -n auto --ignore=tests/cli/test_pty.py --ignore=tests/cli/test_hostile.py
-          .venv/bin/python -m pytest -q -p no:xdist tests/cli/test_pty.py tests/cli/test_hostile.py
+          "$GITHUB_WORKSPACE/tools/ci-measure.sh" "pytest (parallel)" .venv/bin/python -m pytest -q -n auto --ignore=tests/cli/test_pty.py --ignore=tests/cli/test_hostile.py
+          "$GITHUB_WORKSPACE/tools/ci-measure.sh" "pytest (pty)" .venv/bin/python -m pytest -q -p no:xdist tests/cli/test_pty.py tests/cli/test_hostile.py
       # The Qt nearby sign-in tests skip without PySide6 (the leg above installs `.[dev]` only). The live
       # leg installs the qt extra and runs them headless; a skip here is a failure, not a pass.
       - name: pytest, Qt nearby sign-in (PySide6, offscreen)
@@ -1031,9 +1031,9 @@ jobs:
           fi
       - name: swift test (parallel, no rebuild)
         run: |
-          swift test --package-path sdks/swift --skip-build --parallel --skip PkeyDevLiveTests
+          tools/ci-measure.sh "swift test (parallel)" swift test --package-path sdks/swift --skip-build --parallel --skip PkeyDevLiveTests
           # The live suite shares one pkey dev server, so it runs serially.
-          swift test --package-path sdks/swift --skip-build --filter PkeyDevLiveTests
+          tools/ci-measure.sh "swift test (live)" swift test --package-path sdks/swift --skip-build --filter PkeyDevLiveTests
       - name: Stop pkey dev (Swift live lane)
         if: always()
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang swift --job-status "${{ job.status }}"
@@ -1270,7 +1270,7 @@ jobs:
       - name: Module tests, conformance (JCA and Tink), module boundaries, local publish
         working-directory: sdks/kotlin
         run: >-
-          ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test
+          "$GITHUB_WORKSPACE/tools/ci-measure.sh" "kotlin module tests" ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test
           :release:test :update:test :packs:test :sdk:test :ui-core:test :server:test :server-ktor:test :spring-boot-starter:test :desktop:test :conformance:test :sample-cli:test checkModuleBoundaries
           :core:publishCorePublicationToLocalRepository :license:publishLicensePublicationToLocalRepository
           :config:publishConfigPublicationToLocalRepository :identity:publishIdentityPublicationToLocalRepository
@@ -1369,7 +1369,8 @@ jobs:
       - name: JVM desktop suites (macOS, login Keychain)
         if: runner.os == 'macOS'
         working-directory: sdks/kotlin
-        run: ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test :update:test :sdk:test :desktop:test
+        run: >-
+          "$GITHUB_WORKSPACE/tools/ci-measure.sh" "kotlin desktop tests (macOS)" ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test :update:test :sdk:test :desktop:test
       - name: JVM desktop suites (Windows, Credential Manager)
         if: runner.os == 'Windows'
         working-directory: sdks/kotlin
@@ -1458,7 +1459,7 @@ jobs:
       - name: Unit tests (play and direct)
         working-directory: sdks/kotlin
         run: >-
-          ./gradlew --no-daemon :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest
+          "$GITHUB_WORKSPACE/tools/ci-measure.sh" "android unit tests" ./gradlew --no-daemon :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest
           :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest :ui:verifyRoborazziDebug
           :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest :billing:testDebugUnitTest
           :games:testDebugUnitTest
@@ -1815,7 +1816,7 @@ jobs:
           # run the `ci` selection as four parallel processes; the Windows and macOS smoke legs
           # run it all (PKEY_TEST_PART unset).
           if [ -n "${{ matrix.part }}" ]; then export PKEY_TEST_PART="${{ matrix.part }}"; export PKEY_TEST_PARALLEL=1; fi
-          sdks/godot/tools/run_tests.sh
+          tools/ci-measure.sh "godot ${{ matrix.godot }} ${{ matrix.part || 'smoke' }} ${{ matrix.ui_paths }} ${{ matrix.ui_range }}" sdks/godot/tools/run_tests.sh
       # Import, export and runs must leave the tree as committed: no rewritten file, no new .uid.
       - run: git diff --exit-code -- sdks/godot && test -z "$(git status --porcelain -- sdks/godot)"
       - name: Stop pkey dev (Godot live lane)

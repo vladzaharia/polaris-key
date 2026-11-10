@@ -88,3 +88,45 @@ describe("SDK jobs: a failed lint does not skip the tests", () => {
     });
   }
 });
+
+describe("test steps report their cost (tools/ci-measure.sh)", () => {
+  const MEASURE = /(?:tools|\$GITHUB_WORKSPACE\/tools)\/ci-measure\.sh/;
+  const measured = Object.entries(ci.jobs).flatMap(([job, j]) =>
+    j.steps
+      .filter((s) => MEASURE.test(s.run ?? ""))
+      .map((s) => ({ job, step: s })),
+  );
+
+  it("wraps the main test step of every JS lane, Python, Swift, Kotlin, Android and Godot", () => {
+    const jobs = new Set(measured.map((m) => m.job));
+    for (const job of [
+      "js-worker",
+      "js-admin",
+      "js-rest",
+      "workerd",
+      "react-kit",
+      "python",
+      "apple",
+      "kotlin",
+      "kotlin-desktop",
+      "android",
+      "godot",
+    ])
+      expect(jobs.has(job), job).toBe(true);
+  });
+
+  it("gives every measured command a label and keeps the command it measures", () => {
+    for (const { job, step } of measured)
+      for (const line of (step.run ?? "").split("\n"))
+        if (MEASURE.test(line))
+          expect(line, `${job}: ${line}`).toMatch(
+            /ci-measure\.sh"? "[^"]+" \S+/,
+          );
+  });
+
+  it("measures only where bash runs the step", () => {
+    // The Windows desktop leg runs its own step, which stays unmeasured.
+    for (const { job, step } of measured)
+      expect(step.if ?? "", `${job}/${step.name}`).not.toContain("Windows");
+  });
+});
