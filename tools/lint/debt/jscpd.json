@@ -1445,12 +1445,6 @@
     "packages/client-core/test/syncSaves.test.ts": {
       "jscpd:duplicate": 1
     },
-    "packages/client-core/test/syncTransfer.test.ts": {
-      "jscpd:duplicate": 2
-    },
-    "packages/client-core/test/syncTransferChunks.test.ts": {
-      "jscpd:duplicate": 1
-    },
     "packages/client-core/test/trust.test.ts": {
       "jscpd:duplicate": 1
     },
@@ -4938,13 +4932,13 @@
       "jscpd:duplicate": 3
     },
     "tools/gen-sdk-constants.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "tools/gen-sdk-constants.ts": {
       "jscpd:duplicate": 7
     },
     "tools/gen-services.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "tools/gen-services.ts": {
       "jscpd:duplicate": 4

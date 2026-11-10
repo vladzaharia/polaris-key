@@ -17,6 +17,7 @@ import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 
 import { LAYOUTS, TAGS, type PkElement, type PkSignIn } from "../src/index.js";
 import { resetMissingWarnings } from "../src/render.js";
+import { stringsOutsideCatalog } from "./stringsLint.js";
 import {
   COMPONENT_FAMILIES,
   familyRows,
@@ -87,17 +88,18 @@ function labelGone(copy: string[], key: string): boolean {
   return values.every((k) => dropped.has(k));
 }
 
-async function draw(row: Row): Promise<PkElement> {
+// One render per row serves both checks: the string lint and the DOM contract read the same
+// element, drawn by a host that answers the controls that open another screen.
+async function draw(row: Row): Promise<{ el: PkElement; strings: string }> {
   const tag = TAGS[row.expect.component as ComponentName];
   const el = document.createElement(tag) as PkElement;
   // A row without `elapsedMs` means the DL7 delay has passed; the element's live model would
   // otherwise hold the loading state empty for its first 250 ms.
-  // The runner plays a host that answers the controls that open another screen.
   el.handles = "unlock review use-code key";
   el.input = { elapsedMs: 60_000, ...withDefaults(row.input, defaults) };
   document.body.replaceChildren(el);
   await el.updateComplete;
-  return el;
+  return { el, strings: stringsOutsideCatalog(el) };
 }
 
 /** The literal text of a message (its longest run outside `{…}`), to find it with any args. */
@@ -112,7 +114,8 @@ for (const family of COMPONENT_FAMILIES) {
   const rows = familyRows(matrix, family);
   describe(`elements × ui-matrix.json ${family}`, () => {
     it.each(rows.map((r) => [r.name, r] as const))("%s", async (_n, row) => {
-      const el = await draw(row);
+      const { el, strings } = await draw(row);
+      expect(strings, "strings outside the catalog").toBe("");
       const view = el.view;
       expect({
         component: view.component,

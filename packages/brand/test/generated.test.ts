@@ -1,4 +1,4 @@
-// Generator drift and the generated formats: every output equals what `gen` would write now, the
+// The generated formats (freshness is `pnpm gen brand --check`): the
 // CSS carries both themes with the system/attribute mechanics, and the Tailwind v4 theme compiles
 // into utilities that read the live tokens.
 
@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { compile } from "tailwindcss";
 import { describe, expect, it } from "vitest";
 
-import { run, svgTree } from "../scripts/gen.js";
+import { svgTree } from "../scripts/gen.js";
 import { SERVICE_ACCENTS, THEME_TOKENS } from "../src/generated/tokens.js";
 import { KIT_MOTION, KIT_MOTION_MEASURES } from "../src/tokens/kit.js";
 import { MOTION } from "../src/tokens/scales.js";
@@ -23,10 +23,6 @@ const css = readFileSync(join(PKG, "css", "tokens.css"), "utf8");
 const themeCss = readFileSync(join(PKG, "css", "theme.css"), "utf8");
 
 describe("generator drift", () => {
-  it("every generated output is up to date (pnpm gen brand --check)", async () => {
-    expect(await run({ check: true })).toEqual([]);
-  }, 60_000);
-
   it("tokens.json mirrors the TS constants", () => {
     const json = JSON.parse(readFileSync(join(PKG, "tokens.json"), "utf8"));
     expect(json.themes).toEqual(THEME_TOKENS);

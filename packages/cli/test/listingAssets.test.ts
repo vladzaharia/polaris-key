@@ -14,12 +14,13 @@
  *   - The slot names and text rules agree with the Worker's listing model.
  */
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   listingAssets,
   type ListingAssetsOptions,
@@ -244,10 +245,12 @@ function capture() {
   };
 }
 
-async function run(
-  extra: Partial<ListingAssetsOptions> = {},
-): Promise<{ report: ListingAssetsReport; dir: string; out: string }> {
-  const cwd = await tempDir();
+type RunResult = { report: ListingAssetsReport; dir: string; out: string };
+
+async function runIn(
+  cwd: string,
+  extra: Partial<ListingAssetsOptions>,
+): Promise<RunResult> {
   const io = capture();
   const result = await listingAssets({
     cwd,
@@ -265,6 +268,37 @@ async function run(
   });
   return { report: result.report, dir: result.dir, out: io.out };
 }
+
+async function run(
+  extra: Partial<ListingAssetsOptions> = {},
+): Promise<RunResult> {
+  return runIn(await tempDir(), extra);
+}
+
+// One shared run per option set, for tests that only read the report, the output folder or the
+// printed text. Its folder outlives the per-test cleanup and goes in afterAll. Tests that need a
+// fresh run (determinism, --out handling, uploads) call run().
+const shared = new Map<string, Promise<RunResult>>();
+const sharedDirs: string[] = [];
+function runOnce(
+  extra: Partial<ListingAssetsOptions> = {},
+): Promise<RunResult> {
+  const key = JSON.stringify(extra, (_k, v) =>
+    v === undefined ? "\u0000undefined" : v,
+  );
+  let hit = shared.get(key);
+  if (!hit) {
+    hit = mkdtemp(path.join(tmpdir(), "listing-assets-shared-")).then((cwd) => {
+      sharedDirs.push(cwd);
+      return runIn(cwd, extra);
+    });
+    shared.set(key, hit);
+  }
+  return hit;
+}
+afterAll(async () => {
+  for (const d of sharedDirs) await rm(d, { recursive: true, force: true });
+});
 
 // ── S-15 §7.4, written out again ───────────────────────────────────────────────────────────────
 
@@ -365,7 +399,8 @@ describe("pkey listing assets: golden images", () => {
   }, 180_000);
 
   it("is deterministic: a second run writes the same pixels and bytes", async () => {
-    const a = await run();
+    // The shared run against one fresh run.
+    const a = await runOnce();
     const b = await run();
     expect(
       b.report.slots.map((s) => [s.slot, s.pixelSha256, s.sha256]),
@@ -376,7 +411,7 @@ describe("pkey listing assets: golden images", () => {
 
 describe("pkey listing assets: each output matches S-15 §7.4", () => {
   it("has the slot's dimensions, alpha and format, in the report and in the file", async () => {
-    const { report, dir } = await run();
+    const { report, dir } = await runOnce();
     expect(report.slots.map((s) => s.slot).sort()).toEqual(
       Object.keys(SPEC).sort(),
     );
@@ -418,8 +453,8 @@ describe("pkey listing assets: each output matches S-15 §7.4", () => {
   it("never puts the wordmark on a no-text slot", async () => {
     // The same key art with and without a wordmark: a `none` slot's pixels do not change, every
     // `title` slot's do.
-    const a = await run({ screenshots: undefined });
-    const b = await run({ screenshots: undefined, wordmark: undefined });
+    const a = await runOnce({ screenshots: undefined });
+    const b = await runOnce({ screenshots: undefined, wordmark: undefined });
     for (const s of a.report.slots) {
       const other = b.report.slots.find((x) => x.slot === s.slot)!;
       if (s.textAllowed === "none")
@@ -443,17 +478,26 @@ describe("pkey listing assets: each output matches S-15 §7.4", () => {
     });
     expect(coverRect(4000, 2250, 1, 1, { x: 0, y: 0 }).x).toBe(0);
     expect(coverRect(4000, 2250, 1, 1, { x: 1, y: 1 }).x).toBe(1750);
-    const left = await run({ screenshots: undefined, focal: "0,0.5" });
-    const right = await run({ screenshots: undefined, focal: "1,0.5" });
+    // The shared run's focal point is 0.3,0.4 (x offset 75); this one sits at the left edge.
+    const centre = await runOnce({ screenshots: undefined });
+    const left = await runOnce({ screenshots: undefined, focal: "0,0.5" });
     const box = (r: ListingAssetsReport) =>
       r.slots.find((s) => s.slot === "ms-store:box-art")!.pixelSha256;
-    expect(box(left.report)).not.toBe(box(right.report));
+    expect(box(left.report)).not.toBe(box(centre.report));
   }, 180_000);
 });
 
+// The screenshot tests read only the screenshot results: no key art or wordmark, so the key-art
+// slots are not derived (the icon fallbacks are).
+const SHOTS_ONLY = {
+  keyArt: undefined,
+  keyArtPortrait: undefined,
+  wordmark: undefined,
+} as const;
+
 describe("pkey listing assets: screenshots (S-15 §5.6)", () => {
   it('proposes a crop for iPhone 6.9" on Play and a crop for Mac 16:10 on Steam, used only when accepted', async () => {
-    const { report, dir, out } = await run();
+    const { report, dir, out } = await runOnce();
     const phone = report.screenshots.find(
       (s) => s.id === "play/phone-portrait/01-menu",
     )!;
@@ -513,6 +557,7 @@ describe("pkey listing assets: screenshots (S-15 §5.6)", () => {
 
   it("applies an accepted crop, or a pad, per image", async () => {
     const { report } = await run({
+      ...SHOTS_ONLY,
       accept: ["play/phone-portrait/01-menu", "steam/desktop-16x10/01-mac"],
     });
     expect(
@@ -533,7 +578,10 @@ describe("pkey listing assets: screenshots (S-15 §5.6)", () => {
       width: 2880,
       height: 1620,
     });
-    const padded = await run({ pad: ["play/phone-portrait/01-menu"] });
+    const padded = await run({
+      ...SHOTS_ONLY,
+      pad: ["play/phone-portrait/01-menu"],
+    });
     expect(
       padded.report.screenshots.find(
         (s) => s.id === "play/phone-portrait/01-menu",
@@ -547,13 +595,13 @@ describe("pkey listing assets: screenshots (S-15 §5.6)", () => {
   }, 180_000);
 
   it("refuses an id no proposal has (a typo must not look accepted)", async () => {
-    await expect(run({ accept: ["play/phone-portrait/nope"] })).rejects.toThrow(
-      /no screenshot proposal/,
-    );
+    await expect(
+      run({ ...SHOTS_ONLY, accept: ["play/phone-portrait/nope"] }),
+    ).rejects.toThrow(/no screenshot proposal/);
     // An image that already fits needs no acceptance.
-    await expect(run({ accept: ["play/tablet/01-board"] })).rejects.toThrow(
-      /no screenshot proposal/,
-    );
+    await expect(
+      run({ ...SHOTS_ONLY, accept: ["play/tablet/01-board"] }),
+    ).rejects.toThrow(/no screenshot proposal/);
   }, 180_000);
 });
 

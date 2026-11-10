@@ -17,10 +17,10 @@
 // Environment (CI job `e2e-backend`, or by hand from the repository root):
 //
 //   eval "$(node packages/cli/scripts/start-dev-ci.mjs start --lang node)"
-//   pnpm --filter @polaris-key/server exec vitest run test/e2e.live.test.ts
+//   PKEY_E2E_REQUIRED=1 pnpm --filter @polaris-key/server exec vitest run test/e2e.live.test.ts
 //   node packages/cli/scripts/start-dev-ci.mjs stop --lang node
 //
-// With PKEY_DEV_BASE_URL unset the suite skips; the CI job fails when it is unset (it runs this
+// Without PKEY_E2E_REQUIRED the suite skips; with it set and PKEY_DEV_BASE_URL unset it fails (it runs this
 // file by name and `start-dev-ci check` has already verified the variable).
 //
 // Named slots for the clients SP-59 adds (Swift, Kotlin, Godot) and the React client: they join
@@ -38,7 +38,12 @@ import {
   PolarisKeyClient,
 } from "@polaris-key/node";
 
-const BASE = process.env.PKEY_DEV_BASE_URL?.replace(/\/$/, "");
+// The live suite runs only where it is asked for (CI job `e2e-backend` sets PKEY_E2E_REQUIRED; by
+// hand, set it too). A stray PKEY_DEV_BASE_URL in another job's environment must not start it.
+const REQUIRED = Boolean(process.env.PKEY_E2E_REQUIRED);
+const BASE = REQUIRED
+  ? process.env.PKEY_DEV_BASE_URL?.replace(/\/$/, "")
+  : undefined;
 const examples = join(
   dirname(fileURLToPath(import.meta.url)),
   "..",
@@ -231,12 +236,9 @@ function scenario(b: () => Backend, clocked: boolean) {
 }
 
 // CI sets PKEY_E2E_REQUIRED: a leg whose variables were lost must fail, not skip.
-it.runIf(!BASE && process.env.PKEY_E2E_REQUIRED)(
-  "has a live pkey dev (PKEY_DEV_BASE_URL)",
-  () => {
-    expect(BASE).toBeTruthy();
-  },
-);
+it.runIf(REQUIRED && !BASE)("has a live pkey dev (PKEY_DEV_BASE_URL)", () => {
+  expect(BASE).toBeTruthy();
+});
 
 describe.runIf(BASE)("client -> example backend -> pkey dev (Node)", () => {
   beforeAll(async () => {
