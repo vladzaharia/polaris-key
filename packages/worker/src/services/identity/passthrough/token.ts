@@ -62,7 +62,9 @@ import {
   methodNotAllowed,
 } from "../../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
-import { readBodyText, BodyTooLargeError } from "../../../core/cappedBody.js";
+import { oauth, readForm, withNoStore } from "./oauthHttp.js";
+import { CLIENT_ID_PATTERN } from "@polaris-key/protocol/identity";
+import { handleIssuerToken, namedClientId } from "../issuer/token.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import {
   accountForSubject,
@@ -110,6 +112,8 @@ import {
 // `choice/complete` binds without a choice through the same function (settle.ts).
 export { bindWithoutChoice };
 
+const CLIENT_ID_RE = new RegExp(CLIENT_ID_PATTERN);
+
 /** The token endpoint: 30 a minute per client network, 10 per device id; both fail closed. */
 export const TOKEN_RATE = { bucket: "identityToken", limit: 30, windowSec: 60 };
 export const TOKEN_DEVICE_RATE = {
@@ -118,55 +122,11 @@ export const TOKEN_DEVICE_RATE = {
   windowSec: 60,
 };
 
-/** The largest form body read. A code and a verifier are under 200 bytes. */
-const MAX_FORM_BYTES = 4 * 1024;
-
 const CODE_RE = /^[A-Za-z0-9_-]{43}$/;
 /** RFC 7636 §4.1. */
 const VERIFIER_RE = /^[A-Za-z0-9._~-]{43,128}$/;
 
-export const oauth = (
-  status: number,
-  error: string,
-  description?: string,
-  extra?: Record<string, unknown>,
-): Response =>
-  withNoStore(
-    errorResponse(status, error, undefined, {
-      ...(description ? { error_description: description } : {}),
-      ...(extra ?? {}),
-    }),
-  );
-
-function withNoStore(res: Response): Response {
-  res.headers.set("cache-control", "no-store");
-  res.headers.set("pragma", "no-cache");
-  return res;
-}
-
-/** The form body as single-valued parameters, or `null` when it is not a plain form. */
-export async function readForm(
-  req: Request,
-): Promise<Map<string, string> | null> {
-  const type = (req.headers.get("content-type") ?? "")
-    .split(";")[0]!
-    .trim()
-    .toLowerCase();
-  if (type !== "application/x-www-form-urlencoded") return null;
-  let raw: string;
-  try {
-    raw = await readBodyText(req, MAX_FORM_BYTES);
-  } catch (e) {
-    if (e instanceof BodyTooLargeError) return null;
-    throw e;
-  }
-  const out = new Map<string, string>();
-  for (const [k, v] of new URLSearchParams(raw)) {
-    if (out.has(k)) return null; // a repeated parameter is refused (RFC 6749 §3.1)
-    out.set(k, v);
-  }
-  return out;
-}
+export { oauth, readForm };
 
 export async function handleToken(ctx: {
   req: Request;
@@ -197,6 +157,11 @@ export async function handleToken(ctx: {
       ErrorCode.InvalidRequest,
       "A form-encoded body is required.",
     );
+  // I-21.9 (§12.13.4): a request that names a registered client, in the header or the body, is
+  // the issuer's; the own client's grants below never see it.
+  const named = namedClientId(req, form);
+  if (named !== null && CLIENT_ID_RE.test(named))
+    return handleIssuerToken({ req, env, db, slug: product.slug, now, form });
   const grant = form.get("grant_type");
   if (!grant)
     return oauth(400, ErrorCode.InvalidRequest, "grant_type is required.");

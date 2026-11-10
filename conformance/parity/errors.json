@@ -343,7 +343,6 @@
       "code": "unauthorized_client",
       "kind": "wire",
       "service": "identity",
-      "plannedBy": "I-21.9",
       "description": "400 from POST /<p>/identity/token and /revoke (flat): the client is known but may not do this. A registered client sent a grant only the product's own client may use (token exchange, restore), or asked `revoke` to end another client's token (WIRE-CONTRACT-V5 §12.13.4, §12.13.7; I-21)."
     },
     {

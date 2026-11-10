@@ -292,6 +292,7 @@ export const identityService: ServiceDescriptor = {
 export { handlePortal } from "./portal/index.js";
 // I-21.7: the card entry's `prompt=none` decision for a registered client (composition root).
 export { silentSignInEntry } from "./issuer/entry.js";
+export { issuerPreflightOrigins } from "./issuer/token.js";
 export { createBrowserSession } from "./browserSession.js";
 // The customer host's device approval page has no product in its URL: the dispatcher asks which
 // product the binder belongs to, then serves that product's approval handler on the customer host.
