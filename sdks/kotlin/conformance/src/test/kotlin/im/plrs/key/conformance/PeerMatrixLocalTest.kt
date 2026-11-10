@@ -99,8 +99,11 @@ class PeerMatrixLocalTest : ConformanceSuite() {
     /** A JSON value as plain Kotlin: a map, a list, a string, a boolean, a long, a double or null. */
     private fun plain(e: JsonElement?): Any? = when (e) {
         null, JsonNull -> null
+
         is JsonObject -> e.entries.associate { it.key to plain(it.value) }
+
         is JsonArray -> e.map(::plain)
+
         is JsonPrimitive -> when {
             e.isString -> e.content
             e.content == "true" -> true
@@ -133,35 +136,99 @@ class PeerMatrixLocalTest : ConformanceSuite() {
 
     // -- admission ------------------------------------------------------------------------------------
 
+    /**
+     * The limiter's answers to one admission row. A `later` event is admitted and held open (its trial is not judged yet);
+     * `settle: i` judges event `i`'s trial: a hit refunds the group's live count and takes a waiting slot, a miss spends the
+     * shared budget.
+     */
+    private fun admissionAnswers(r: JsonObject): List<Map<String, Any?>> {
+        var now = 0.0
+        val lim = HandshakeLimiter(const("admissionSharedPerMinute"), const("admissionWaiting"), const("admissionGroupPerMinute")) { now }
+        val holds = HashMap<Int, () -> Unit>()
+        val open = HashMap<Int, LocalAdmission.Admitted>()
+        return rows(r["events"]).mapIndexed { i, e ->
+            now = e.d("t")
+            when {
+                e["release"] != null -> {
+                    holds.remove(e.i("release"))?.invoke()
+                    mapOf("result" to "released")
+                }
+
+                e["settle"] != null -> settleAnswer(rows(r["events"]), e.i("settle"), open, holds)
+
+                else -> when (val a = lim.beginLocal(e.s("group"))) {
+                    is LocalAdmission.Refused -> mapOf("result" to "refused", "by" to a.by)
+                    is LocalAdmission.Admitted -> admittedAnswer(i, e, a, open, holds)
+                }
+            }
+        }
+    }
+
+    private fun admittedAnswer(
+        i: Int,
+        e: JsonObject,
+        a: LocalAdmission.Admitted,
+        open: MutableMap<Int, LocalAdmission.Admitted>,
+        holds: MutableMap<Int, () -> Unit>,
+    ): Map<String, Any?> {
+        if (e["later"].boolValue == true) {
+            open[i] = a
+            return mapOf("result" to "tried")
+        }
+        val opens = e["opens"].boolValue == true
+        if (opens) holds[i] = a.hit() else a.miss()
+        return mapOf("result" to "tried", "hit" to opens)
+    }
+
+    private fun settleAnswer(
+        events: List<JsonObject>,
+        at: Int,
+        open: MutableMap<Int, LocalAdmission.Admitted>,
+        holds: MutableMap<Int, () -> Unit>,
+    ): Map<String, Any?> {
+        val a = checkNotNull(open.remove(at)) { "settle $at: no admission is held open" }
+        val opens = events[at]["opens"].boolValue == true
+        if (opens) holds[at] = a.hit() else a.miss()
+        return mapOf("result" to "settled", "hit" to opens)
+    }
+
+    private fun admissionRow(f: Failures, r: JsonObject) {
+        val kept = setOf("result", "hit", "by")
+        // The state columns are the corpus's own bookkeeping; the limiter's answers are the rows'.
+        val want = rows(r["want"]).map { w -> w.entries.filter { it.key in kept }.associate { it.key to plain(it.value) } }
+        f.equal(want, admissionAnswers(r)) { r.s("id") }
+    }
+
     @Test
     fun admissionTheGroupsBudgetThenTheSharedLimiterThatOnlyAFailedTrialSpends() {
         val f = Failures("peer-matrix local admission")
-        for (r in rows(l["admission"])) {
-            val id = r.s("id")
-            var now = 0.0
-            val lim = HandshakeLimiter(const("admissionSharedPerMinute"), const("admissionWaiting"), const("admissionGroupPerMinute")) { now }
-            val holds = HashMap<Int, () -> Unit>()
-            val got = rows(r["events"]).mapIndexed { i, e ->
-                now = e.d("t")
-                if (e["release"] != null) {
-                    holds.remove(e.i("release"))?.invoke()
-                    return@mapIndexed mapOf<String, Any?>("result" to "released")
-                }
-                when (val a = lim.beginLocal(e.s("group"))) {
-                    is LocalAdmission.Refused -> mapOf("result" to "refused", "by" to a.by)
-                    is LocalAdmission.Admitted -> {
-                        val opens = e["opens"].boolValue == true
-                        if (opens) holds[i] = a.hit() else a.miss()
-                        mapOf("result" to "tried", "hit" to opens)
-                    }
-                }
-            }
-            // The state columns are the corpus's own bookkeeping; the limiter's answers are the rows'.
-            val kept = setOf("result", "hit", "by")
-            val want = rows(r["want"]).map { w -> w.entries.filter { it.key in kept }.associate { it.key to plain(it.value) } }
-            f.equal(want, got) { id }
-        }
+        for (r in rows(l["admission"])) admissionRow(f, r)
         f.done(11)
+    }
+
+    /**
+     * The two rows of the Node/Python corpus that hold an admission open and settle it later (`later`, `settle`), kept here
+     * until the corpus on this branch carries them: a refund reaches the group's live count after other messages came in, and a
+     * late failure spends the shared budget when it is settled.
+     */
+    @Test
+    fun anAdmissionHeldOpenIsSettledByALaterEvent() {
+        val f = Failures("peer-matrix local admission (later, settle)")
+        val fixture = """
+            [{"id": "a-refund-after-other-messages", "events": [{"t": 0, "group": "g1", "opens": true, "later": true},
+              {"t": 1, "group": "g2", "opens": false}, {"t": 2, "group": "g3", "opens": false}, {"t": 3, "settle": 0},
+              {"t": 4, "group": "g1", "opens": false}, {"t": 5, "group": "g1", "opens": false}, {"t": 6, "group": "g1", "opens": false}],
+              "want": [{"result": "tried"}, {"result": "tried", "hit": false}, {"result": "tried", "hit": false},
+              {"result": "settled", "hit": true}, {"result": "tried", "hit": false}, {"result": "tried", "hit": false},
+              {"result": "refused", "by": "group"}]},
+             {"id": "a-late-failure-spends-the-shared-budget-when-settled", "events": [{"t": 0, "group": "g1", "opens": false, "later": true},
+              {"t": 1, "group": "g2", "opens": false}, {"t": 2, "settle": 0}, {"t": 3, "group": "g1", "opens": false},
+              {"t": 4, "group": "g1", "opens": false}],
+              "want": [{"result": "tried"}, {"result": "tried", "hit": false}, {"result": "settled", "hit": false},
+              {"result": "tried", "hit": false}, {"result": "refused", "by": "group"}]}]
+        """.trimIndent()
+        for (r in rows(kotlinx.serialization.json.Json.parseToJsonElement(fixture))) admissionRow(f, r)
+        f.done(2)
     }
 
     // -- codes ----------------------------------------------------------------------------------------
@@ -271,6 +338,7 @@ class PeerMatrixLocalTest : ConformanceSuite() {
                         v.h?.let { put("h", it) }
                         v.n?.let { put("n", it) }
                     }
+
                     is TxtResult.Refused -> mapOf("ok" to false, "reason" to v.reason.name)
                 }
             } else {
@@ -286,14 +354,9 @@ class PeerMatrixLocalTest : ConformanceSuite() {
 
     // -- body and secrets -----------------------------------------------------------------------------
 
-    private fun bodyBytes(r: JsonObject): ByteArray {
-        r["bodyHex"]?.let { return bytes(it.stringValue!!) }
-        r["bodyPad"]?.let {
-            val p = it.obj
-            return (p.s("prefix") + p.s("fill").repeat(p.i("count")) + p.s("suffix")).toByteArray(Charsets.UTF_8)
-        }
-        return r.s("body").toByteArray(Charsets.UTF_8)
-    }
+    private fun bodyBytes(r: JsonObject): ByteArray = r["bodyHex"]?.let { bytes(it.stringValue!!) }
+        ?: r["bodyPad"]?.obj?.let { p -> (p.s("prefix") + p.s("fill").repeat(p.i("count")) + p.s("suffix")).toByteArray(Charsets.UTF_8) }
+        ?: r.s("body").toByteArray(Charsets.UTF_8)
 
     @Test
     fun theLocalLinkBody() {
@@ -352,6 +415,58 @@ class PeerMatrixLocalTest : ConformanceSuite() {
 
     // -- window, joinBudget, join, exchange -----------------------------------------------------------
 
+    /** What one window event produced: the outcome, or the word of a permit that was denied or given. */
+    private class WindowStep(val out: im.plrs.key.core.peer.WindowOutcome, val denied: String?)
+
+    @Suppress("CyclomaticComplexMethod")
+    private fun applyWindowEvent(w: PairingWindow, s: JsonObject, t: Double, id: Int, row: String): WindowStep {
+        var out = im.plrs.key.core.peer.WindowOutcome()
+        var denied: String? = null
+        when (val e = s.s("event")) {
+            "open" -> out = w.open(t)
+
+            "c1" -> out = w.c1(t, s["valid"].boolValue == true)
+
+            "begin-guess" -> denied = if (w.beginGuess(id, t)) "permit" else "denied"
+
+            "msg1" -> {
+                val m = w.msg1(id, t, s["opens"].boolValue == true)
+                if (m == null) denied = "denied" else out = m
+            }
+
+            "guess-opened" -> out = w.guessOpened(id, t)
+
+            "guess-failed" -> out = w.guessFailed(id, t)
+
+            "abandon" -> out = w.abandon(id, t)
+
+            "rotated" -> w.rotated(t)
+
+            "session-end" -> out = w.sessionEnd(t, s["stored"].boolValue == true)
+
+            "tick" -> w.tick(t)
+
+            "close" -> out = w.close(t)
+
+            else -> error("$row: event $e")
+        }
+        return WindowStep(out, denied)
+    }
+
+    private fun windowView(w: PairingWindow, step: WindowStep): Map<String, Any?> {
+        val st = w.state
+        return buildMap {
+            (step.denied ?: step.out.result?.wire)?.let { put("result", it) }
+            step.out.id?.let { put("id", it.toLong()) }
+            put("open", st.open)
+            put("holder", st.holder?.wire)
+            put("failures", st.failures.toLong())
+            put("rotations", st.rotations.toLong())
+            put("closed", st.closed?.wire)
+            step.out.host?.let { put("host", it) }
+        }
+    }
+
     @Test
     fun window() {
         val f = Failures("peer-matrix local window")
@@ -362,39 +477,9 @@ class PeerMatrixLocalTest : ConformanceSuite() {
             val got = rows(r["steps"]).map { s ->
                 val t = if (s["t"] != null) s.d("t") else 0.0
                 val id = if (s["id"] != null) s.i("id") else last
-                var out = im.plrs.key.core.peer.WindowOutcome()
-                var denied: String? = null
-                when (val e = s.s("event")) {
-                    "open" -> out = w.open(t)
-                    "c1" -> {
-                        out = w.c1(t, s["valid"].boolValue == true)
-                        out.id?.let { last = it }
-                    }
-                    "begin-guess" -> denied = if (w.beginGuess(id, t)) "permit" else "denied"
-                    "msg1" -> {
-                        val m = w.msg1(id, t, s["opens"].boolValue == true)
-                        if (m == null) denied = "denied" else out = m
-                    }
-                    "guess-opened" -> out = w.guessOpened(id, t)
-                    "guess-failed" -> out = w.guessFailed(id, t)
-                    "abandon" -> out = w.abandon(id, t)
-                    "rotated" -> w.rotated(t)
-                    "session-end" -> out = w.sessionEnd(t, s["stored"].boolValue == true)
-                    "tick" -> w.tick(t)
-                    "close" -> out = w.close(t)
-                    else -> error("${r.s("id")}: event $e")
-                }
-                val st = w.state
-                buildMap<String, Any?> {
-                    (denied ?: out.result?.wire)?.let { put("result", it) }
-                    out.id?.let { put("id", it.toLong()) }
-                    put("open", st.open)
-                    put("holder", st.holder?.wire)
-                    put("failures", st.failures.toLong())
-                    put("rotations", st.rotations.toLong())
-                    put("closed", st.closed?.wire)
-                    out.host?.let { put("host", it) }
-                }
+                val step = applyWindowEvent(w, s, t, id, r.s("id"))
+                step.out.id?.let { if (s.s("event") == "c1") last = it }
+                windowView(w, step)
             }
             f.equal(plain(r["want"]), got) { r.s("id") }
         }
@@ -447,7 +532,10 @@ class PeerMatrixLocalTest : ConformanceSuite() {
                 )
             }
             val got = mapOf<String, Any?>(
-                "browsed" to plan.browses, "kept" to plan.kept, "dialled" to dialled.toList(), "result" to plan.result().wire,
+                "browsed" to plan.browses,
+                "kept" to plan.kept,
+                "dialled" to dialled.toList(),
+                "result" to plan.result().wire,
             )
             f.equal(plain(r["want"]), got) { r.s("id") }
         }
@@ -475,7 +563,13 @@ class PeerMatrixLocalTest : ConformanceSuite() {
                     put("sends", step.sends)
                     step.close?.let { put("close", it.name) }
                     step.stored?.let { st ->
-                        put("stored", buildMap<String, Any?> { st.label?.let { put("label", it) }; put("cats", st.cats) })
+                        put(
+                            "stored",
+                            buildMap<String, Any?> {
+                                st.label?.let { put("label", it) }
+                                put("cats", st.cats)
+                            },
+                        )
                     }
                 }
             }
@@ -505,6 +599,16 @@ class PeerMatrixLocalTest : ConformanceSuite() {
         f.done(10)
     }
 
+    private fun opensTrial(opens: JsonObject?, e: im.plrs.key.core.peer.TrialEntry): Boolean {
+        if (opens == null || opens.s("mode") != e.kind.toString()) return false
+        val want = when (opens.s("mode")) {
+            "a" -> opens.i("key")
+            "c" -> opens.i("contact")
+            else -> opens.i("link")
+        }
+        return want == e.index
+    }
+
     @Test
     fun trialOrder() {
         val f = Failures("peer-matrix local trialOrder")
@@ -513,38 +617,21 @@ class PeerMatrixLocalTest : ConformanceSuite() {
             val contacts = r["contacts"]!!.arrayValue!!.size
             val locals = r["locals"]!!.arrayValue!!.size
             val plan = listenerTrialOrder(account, contacts, locals)
-            val tried = ArrayList<String>()
-            var hit: String? = null
-            var close: String? = null
-            var limiterAsked = false
             val opens = r["opens"]?.takeIf { it !is JsonNull }?.obj
-            for (e in plan) {
-                if (e.kind != 'a' && !limiterAsked) {
-                    // The contact limiter admits the secret trial once; a refusal tries no secret.
-                    limiterAsked = true
-                    if (r.s("limiter") == "refuse") {
-                        close = "peer_busy"
-                        break
-                    }
-                }
-                val name = "${e.kind}:${e.index}"
-                tried += name
-                if (opens != null && opens.s("mode") == e.kind.toString()) {
-                    val want = when (opens.s("mode")) {
-                        "a" -> opens.i("key")
-                        "c" -> opens.i("contact")
-                        else -> opens.i("link")
-                    }
-                    if (want == e.index) {
-                        hit = name
-                        break
-                    }
-                }
+            // The contact limiter admits the secret trials once; a refusal tries no secret.
+            val refusedAt = if (r.s("limiter") == "refuse") plan.indexOfFirst { it.kind != 'a' } else -1
+            val reachable = if (refusedAt >= 0) plan.subList(0, refusedAt) else plan
+            val hitAt = reachable.indexOfFirst { opensTrial(opens, it) }
+            val tried = (if (hitAt >= 0) reachable.subList(0, hitAt + 1) else reachable).map { "${it.kind}:${it.index}" }
+            val hit = if (hitAt >= 0) tried.last() else null
+            val close = when {
+                hit != null -> null
+                refusedAt >= 0 -> "peer_busy"
+                else -> "handshake_failed"
             }
-            if (hit == null && close == null) close = "handshake_failed"
             val behind = contacts + locals > 0
             val got = mapOf<String, Any?>(
-                "tried" to tried.toList(),
+                "tried" to tried,
                 "hit" to hit,
                 "slot" to (hit != null && hit[0] != 'a'),
                 "close" to close,

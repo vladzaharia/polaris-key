@@ -1,8 +1,15 @@
 // Pairing with a code, with no account: the types and the pieces the shower and the joiner share (CC-29.13;
-// WIRE-CONTRACT-V5 section 15.12). The window is `ConnectLocalShower.kt`, the dialling side is `ConnectLocalJoiner.kt`, and
+// WIRE-CONTRACT-V5 section 15.12). The window is `LocalShower.kt`, the dialling side is `LocalJoiner.kt`, and
 // `ConnectLocalLinks.kt` is the `client.cloudConnect.localLinks` facade. Mirrors sdk-node's `connect/localCommon.ts`.
 //
 // A password, a QR secret and a link secret are key material: nothing here logs one, prints one or puts one in an error.
+
+@file:Suppress(
+    "LongParameterList",
+    "MagicNumber",
+    "SwallowedException",
+    "TooGenericExceptionCaught",
+)
 
 package im.plrs.key.sdk
 
@@ -11,6 +18,7 @@ import im.plrs.key.core.Feature
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.Unsupported
 import im.plrs.key.core.UnsupportedReason
+import im.plrs.key.core.peer.LocalLink
 import im.plrs.key.core.peer.MAX_CONTACT_CATS
 import im.plrs.key.core.peer.PeerHello
 import im.plrs.key.core.peer.PeerLink
@@ -222,11 +230,7 @@ internal class LocalAttempt {
     val closers = CloseSubscribers()
 }
 
-private class OfferImpl(
-    private val a: LocalAttempt,
-    override val categories: List<String>,
-    hello: PeerHello,
-) : LocalOffer {
+private class OfferImpl(private val a: LocalAttempt, override val categories: List<String>, hello: PeerHello) : LocalOffer {
     override val label: String? = hello.label
     override val platform: String = hello.platform
 
@@ -262,9 +266,10 @@ internal fun offerOf(a: LocalAttempt, cats: List<String>, hello: PeerHello): Loc
  */
 internal suspend fun storeLocalLink(src: LocalSource, a: LocalAttempt, e: SessionEvent.LocalLinked): LocalPaired? {
     try {
-        val id = src.store.add(a.linkKey, e.ownKey, e.peerKey, e.secret, e.label, e.cats, src.now())
+        // The gate is read again inside the store call: a window that closed while the store waited leaves no link.
+        val id = src.store.add(NewLocalLink(a.linkKey, e.ownKey, e.peerKey, e.secret, e.label, e.cats), src.now(), src.allowed)
         if (id == null) {
-            a.failure = LocalPairFailureReason.Full
+            a.failure = if (src.allowed()) LocalPairFailureReason.Full else LocalPairFailureReason.Closed
             return null
         }
         a.linked = true
@@ -285,4 +290,16 @@ internal fun bindServer(host: String?): ServerSocket {
     } else {
         runCatching { ServerSocket(0, BACKLOG, any6) }.getOrElse { ServerSocket(0, BACKLOG, any4) }
     }
+}
+
+/**
+ * A copy of a link's keys for one channel, or null when the copy came out empty because a reload wiped the held ones
+ * between the read and the copy (a zero key could not complete a handshake).
+ */
+internal fun copyLiveLocal(l: LiveLocal): LocalLink? {
+    val copy = LocalLink(l.secret.copyOf(), l.ownKey.copyOf(), l.peerKey.copyOf())
+    if (copy.secret.any { it != 0.toByte() } && copy.ownKey.any { it != 0.toByte() }) return copy
+    copy.secret.fill(0)
+    copy.ownKey.fill(0)
+    return null
 }

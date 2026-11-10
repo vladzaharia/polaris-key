@@ -10,6 +10,7 @@ import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.PolarisException
 
 /** Why a LAN call failed. */
+@Suppress("EnumNaming", "ktlint:standard:enum-entry-name-case")
 public enum class LanErrorReason(public val code: String) {
     no_identity(ErrorCode.notConfigured),
     no_keys(ErrorCode.notConfigured),

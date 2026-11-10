@@ -13,6 +13,13 @@
 //   are one step under the storage's own lock, so a second process on the directory cannot pass the cap;
 // - a link in use ([LiveLocal]) carries its decoded key and secret: the user of one wipes it.
 
+@file:Suppress(
+    "CyclomaticComplexMethod",
+    "LongParameterList",
+    "ReturnCount",
+    "ThrowsCount",
+)
+
 package im.plrs.key.sdk
 
 import im.plrs.key.core.Base64Url
@@ -211,6 +218,18 @@ internal fun parseLocalState(raw: ByteArray, product: String): List<LocalLinkRow
     return out
 }
 
+/** The parts of a link about to be stored: the keys and secret as raw bytes. */
+internal class NewLocalLink(
+    val ownKey: ByteArray,
+    val ownPublic: ByteArray,
+    val peerKey: ByteArray,
+    val secret: ByteArray,
+    val label: String?,
+    val cats: List<String>,
+) {
+    override fun toString(): String = "NewLocalLink"
+}
+
 /** The links this device holds for one product. Every call is serialised. */
 internal class LocalLinkStore(private val product: String, private val open: suspend () -> DeviceKeyStorage) {
     private val lock = Mutex()
@@ -270,31 +289,24 @@ internal class LocalLinkStore(private val product: String, private val open: sus
     /**
      * Add a link, unless the device already holds [MAX_LOCAL_LINKS]. The cap is judged under the lock, so two pairings that
      * finish together cannot both pass it. The new link is reachable while fewer than [MAX_LIVE_LOCAL_ADVERTS] are, else it
-     * is stored off and the list says so (section 15.12, "Reachable by default"). Null at the cap.
+     * is stored off and the list says so (section 15.12, "Reachable by default"). Null at the cap, and null when [admit] says
+     * no: it is read inside the store's lock, so a gate that went off while the add waited leaves no link.
      */
-    suspend fun add(
-        ownKey: ByteArray,
-        ownPublic: ByteArray,
-        peerKey: ByteArray,
-        secret: ByteArray,
-        label: String?,
-        cats: List<String>,
-        now: Long,
-    ): String? {
-        val id = localLinkId(peerKey)
-        var full = false
+    suspend fun add(link: NewLocalLink, now: Long, admit: () -> Boolean = { true }): String? {
+        val id = localLinkId(link.peerKey)
+        var refused = false
         update { rows ->
-            if (rows.size >= MAX_LOCAL_LINKS) {
-                full = true
+            if (rows.size >= MAX_LOCAL_LINKS || !admit()) {
+                refused = true
                 return@update null
             }
             val others = rows.filter { it.id != id }
             val reachable = others.count { it.reachable } < MAX_LIVE_LOCAL_ADVERTS
             others + LocalLinkRow(
-                id, Base64Url.encode(ownKey), Base64Url.encode(ownPublic), Base64Url.encode(peerKey), Base64Url.encode(secret),
-                label, cats, now, null, reachable,
+                id, Base64Url.encode(link.ownKey), Base64Url.encode(link.ownPublic), Base64Url.encode(link.peerKey),
+                Base64Url.encode(link.secret), link.label, link.cats, now, null, reachable,
             )
         }
-        return if (full) null else id
+        return if (refused) null else id
     }
 }

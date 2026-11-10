@@ -1,6 +1,6 @@
 // Pairing with a code, with no account, `client.cloudConnect.localLinks` (CC-29.13; WIRE-CONTRACT-V5 section 15.12): two
-// devices of one app on one LAN pair by an 8-digit code or a QR. One device shows ([pair], the responder: `ConnectLocalShower.kt`),
-// the other types or scans ([join], the initiator: `ConnectLocalJoiner.kt`). CPace turns the code into a key, mode `q` runs
+// devices of one app on one LAN pair by an 8-digit code or a QR. One device shows ([pair], the responder: `LocalShower.kt`),
+// the other types or scans ([join], the initiator: `LocalJoiner.kt`). CPace turns the code into a key, mode `q` runs
 // Noise over it, both people confirm, and each side stores a link in `pkey.connect.local.v1` (`ConnectLocalState.kt`).
 // Mirrors sdk-node's `connect/localLinks.ts`.
 //
@@ -26,8 +26,19 @@
 //   (an app that makes a new client per screen meets the same budget);
 // - `open` is one dial per link at a time (callers share it); a dial that reached the network and failed is not repeated for
 //   3 to 5 s, and the wait doubles with each failure in a row, to 60 s;
+// - links are kept in the state directory; with no state directory, or with memory-only device keys, they are memory-only and
+//   lost when the process ends. The SDK logger (`im.plrs.key`, WARNING) says so once per client;
 // - a session nobody takes (no `onLink` listener and no transfer taker) is closed `peer_bye`; one whose link was forgotten, or
 //   whose gate went off, while its handshake ran is closed before the host sees it.
+
+@file:Suppress(
+    "MagicNumber",
+    "ReturnCount",
+    "SwallowedException",
+    "ThrowsCount",
+    "TooGenericExceptionCaught",
+    "TooManyFunctions",
+)
 
 package im.plrs.key.sdk
 
@@ -44,6 +55,7 @@ import im.plrs.key.core.peer.cleanLocalLabel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -293,10 +305,11 @@ public class CloudLocalLinks internal constructor(private val src: LocalSource, 
     public suspend fun open(id: String): ConnectSession {
         // One dial per link at a time; a caller that comes while one runs gets the same session.
         val d = synchronized(lock) {
-            dials.getOrPut(id) {
-                scope.async { dial(id) }.also { run ->
-                    run.invokeOnCompletion { synchronized(lock) { if (dials[id] === run) dials.remove(id) } }
-                }
+            dials[id] ?: scope.async(start = CoroutineStart.LAZY) { dial(id) }.also { run ->
+                // Stored and watched before it starts: a dial that fails at once is still removed, never cached.
+                dials[id] = run
+                run.invokeOnCompletion { synchronized(lock) { if (dials[id] === run) dials.remove(id) } }
+                run.start()
             }
         }
         return d.await()
@@ -320,8 +333,8 @@ public class CloudLocalLinks internal constructor(private val src: LocalSource, 
             // The gate was cleared while the dial ran.
             if (!src.allowed()) throw LocalPairingOffException("open")
             // Only a dial that reached the network is held off: "not seen yet" is no attempt.
-            val reached = e !is LanException || (e.reason != LanErrorReason.unknown_peer && e.reason != LanErrorReason.not_started)
-            if (!reached) throw e
+            val reason = (e as? LanException)?.reason
+            if (reason == LanErrorReason.unknown_peer || reason == LanErrorReason.not_started) throw e
             val fails = (cooling?.second ?: 0) + 1
             val base = DIAL_COOLDOWN_S + DIAL_COOLDOWN_JITTER_S * hooks.random()
             synchronized(lock) { cool[id] = minOf(DIAL_BACKOFF_CAP_S, base * (1L shl minOf(fails - 1, 20))) + src.mono() to fails }
@@ -397,13 +410,15 @@ public class CloudLocalLinks internal constructor(private val src: LocalSource, 
     private suspend fun stillHeld(s: ConnectSession): Boolean {
         val ref = s.local ?: return true
         val on = src.allowed()
-        val held = on && (try {
-            src.store.rows()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            emptyList()
-        }).any { it.id == ref.id && localTag(Base64Url.decode(it.secret) ?: ByteArray(0)) == ref.tag }
+        val held = on && (
+            try {
+                src.store.rows()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                emptyList()
+            }
+            ).any { it.id == ref.id && localTag(Base64Url.decode(it.secret) ?: ByteArray(0)) == ref.tag }
         if (held) return true
         quiet { s.close(if (on) "peer_revoked" else "peer_bye") }
         return false
@@ -417,13 +432,15 @@ public class CloudLocalLinks internal constructor(private val src: LocalSource, 
             for (s in open) quiet { s.close("peer_bye") }
             return
         }
-        val held = (try {
-            src.store.rows()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            emptyList()
-        }).map { "${it.id}|${localTag(Base64Url.decode(it.secret) ?: ByteArray(0))}" }.toSet()
+        val held = (
+            try {
+                src.store.rows()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                emptyList()
+            }
+            ).map { "${it.id}|${localTag(Base64Url.decode(it.secret) ?: ByteArray(0))}" }.toSet()
         for (s in open) {
             val r = s.local
             if (r != null && "${r.id}|${r.tag}" !in held) quiet { s.close("peer_revoked") }

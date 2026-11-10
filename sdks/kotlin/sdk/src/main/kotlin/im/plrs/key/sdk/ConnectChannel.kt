@@ -112,6 +112,7 @@ internal class ChannelBase(
      * A mode-a channel for [role]; [send] takes Noise messages, [onEvent] its events. A responder that holds
      * [contacts] also serves them (the shared listener, section 15.10) under [admission].
      */
+    @Suppress("LongParameterList")
     fun channel(
         role: NoiseRole,
         send: (ByteArray) -> Unit,
@@ -162,6 +163,7 @@ internal class ChannelBase(
  * own static key. An initiator names exactly one link; a responder names the links it serves, needs [admission], and
  * with no account key to try is admitted by the source [group]'s budget first (section 15.10, "Admission").
  */
+@Suppress("LongParameterList")
 internal fun localChannel(
     role: NoiseRole,
     slug: String,

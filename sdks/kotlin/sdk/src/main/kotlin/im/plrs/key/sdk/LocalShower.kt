@@ -8,8 +8,17 @@
 //  - the password, the QR secret, the generators, the scalars and the ISK are wiped when the attempt or the window ends. (A
 //    password is a short string and is dropped, not overwritten.)
 
+@file:Suppress(
+    "CyclomaticComplexMethod",
+    "ReturnCount",
+    "SwallowedException",
+    "TooGenericExceptionCaught",
+    "TooManyFunctions",
+)
+
 package im.plrs.key.sdk
 
+import im.plrs.key.core.peer.DrawSource
 import im.plrs.key.core.peer.FrameReader
 import im.plrs.key.core.peer.FrameVerdict
 import im.plrs.key.core.peer.HelloInfo
@@ -25,6 +34,7 @@ import im.plrs.key.core.peer.PeerLink
 import im.plrs.key.core.peer.PeerMode
 import im.plrs.key.core.peer.RawNoiseStatic
 import im.plrs.key.core.peer.SessionEvent
+import im.plrs.key.core.peer.TxtResult
 import im.plrs.key.core.peer.WindowOutcome
 import im.plrs.key.core.peer.WindowResult
 import im.plrs.key.core.peer.advertEpoch
@@ -38,7 +48,6 @@ import im.plrs.key.core.peer.cpaceShare
 import im.plrs.key.core.peer.displayCode
 import im.plrs.key.core.peer.drawNameplate
 import im.plrs.key.core.peer.drawPassword
-import im.plrs.key.core.peer.DrawSource
 import im.plrs.key.core.peer.encodeC2
 import im.plrs.key.core.peer.encodeFrame
 import im.plrs.key.core.peer.isInstanceName
@@ -56,7 +65,6 @@ import im.plrs.key.core.peer.parseC1
 import im.plrs.key.core.peer.parseTxt
 import im.plrs.key.core.peer.peerPrologue
 import im.plrs.key.core.peer.productTag
-import im.plrs.key.core.peer.TxtResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -85,11 +93,8 @@ private class Gens(val code: ByteArray, val qr: ByteArray) {
     }
 }
 
-internal class LocalShower private constructor(
-    private val src: LocalSource,
-    private val o: LocalPairOptions,
-    private val onEnd: () -> Unit,
-) : LocalPairHandle {
+internal class LocalShower private constructor(private val src: LocalSource, private val o: LocalPairOptions, private val onEnd: () -> Unit) :
+    LocalPairHandle {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val lock = Any()
     private val window = PairingWindow()
@@ -259,7 +264,10 @@ internal class LocalShower private constructor(
         quiet { a?.stop() }
         quiet { b?.stop() }
         val ending = synchronized(lock) { attempts.filter { !keepSessions || it.phase != "session" } }
-        for (x in ending) quiet { end(x) }
+        for (x in ending) {
+            quiet { end(x) }
+            x.linkKey.fill(0)
+        }
         // The code, the QR secret and the generators are of no use to anyone now.
         synchronized(lock) {
             qrSecret?.fill(0)
@@ -331,42 +339,63 @@ internal class LocalShower private constructor(
         if (out.result != WindowResult.Attempt || v !is FrameVerdict.Ok || v.kind == null) return false
         val id = out.id!!
         a.id = id
-        val isCode = v.kind == im.plrs.key.core.peer.CpaceKind.code
+        val isCode = v.kind == im.plrs.key.core.peer.CpaceKind.Code
         val g = synchronized(lock) { gens?.let { if (isCode) it.code.copyOf() else it.qr.copyOf() } } ?: return false
         val y = cpaceScalar(o.random)
-        val yb = cpaceShare(y, g) ?: return false
-        g.fill(0)
-        pipe.write(encodeFrame(encodeC2(yb)))
-        val isk = cpaceIsk(sid, y, v.share, yb, initiator = false) ?: return false
-        val psk = cpacePsk(isk, src.slug)
-        val held = src.store.count()
-        if (stopped) {
-            isk.fill(0)
-            psk.fill(0)
-            return false
+        var isk: ByteArray? = null
+        var psk: ByteArray? = null
+        var owned = false
+        try {
+            val yb = cpaceShare(y, g) ?: return false
+            g.fill(0)
+            pipe.write(encodeFrame(encodeC2(yb)))
+            isk = cpaceIsk(sid, y, v.share, yb, initiator = false) ?: return false
+            psk = cpacePsk(isk, src.slug)
+            owned = startSession(a, SessionKeys(pipe, slot, psk, isk), id, at)
+            return owned
+        } finally {
+            // Whatever the path: the scalar and the generator go, and so does a key pair no session took over.
+            y.fill(0)
+            g.fill(0)
+            if (!owned) {
+                isk?.fill(0)
+                psk?.fill(0)
+                a.linkKey.fill(0)
+            }
         }
+    }
+
+    /** What the session of one attempt starts from. */
+    private class SessionKeys(val pipe: TcpPipe, val slot: GateSlot, val psk: ByteArray, val isk: ByteArray) {
+        override fun toString(): String = "SessionKeys"
+    }
+
+    /** Starts the session under [k]. False when the window closed first; the caller then wipes the keys. */
+    private suspend fun startSession(a: LocalAttempt, k: SessionKeys, id: Int, at: Double): Boolean {
+        val held = src.store.count()
+        if (stopped) return false
         val key = o.random(KEY_BYTES)
         a.linkKey = key
         val elapsed = o.mono() - at
         val handlers = LinkHandlers<Unit>(
             onEstablished = { _, e ->
-                slot.established()
+                k.slot.established()
                 a.hello = e.hello
                 offer(a)
             },
             onClosed = { c -> scope.launch { closed(a, SessionClosed(c.code, c.byPeer)) } },
-            onEnded = { slot.settle() },
+            onEnded = { k.slot.settle() },
             onGuess = { g2 -> guess(a, g2) },
             onLocalLink = { e -> a.storing = scope.launch { store(a, e) } },
             anonymous = true,
         )
         val remaining = maxOf(1.0, LOCAL_ATTEMPT_SECONDS - elapsed)
-        val link = PeerLink(pipe, scope, handlers, remaining) { send, onEvent ->
+        val link = PeerLink(k.pipe, scope, handlers, remaining) { send, onEvent ->
             PeerChannel(
                 NoiseRole.responder, src.slug, RawNoiseStatic(key), null, HelloInfo(hostPlatform(), src.slug, o.label), send, onEvent,
                 caps = emptyList(), mode = PeerMode.q,
                 // The required permit: it counts the guess before the tag is tried.
-                pair = PairingOptions(psk, isk, held, cats, o.label, elapsed) { window.beginGuess(id, o.mono()) },
+                pair = PairingOptions(k.psk, k.isk, held, cats, o.label, elapsed) { window.beginGuess(id, o.mono()) },
             )
         }
         a.link = link
@@ -379,7 +408,13 @@ internal class LocalShower private constructor(
         val t = o.mono()
         // The verdict of the permitted guess: opened (the count is refunded and the attempt is the session) or failed (the
         // code rotates).
-        val out = if (id == null) null else if (e.opens) window.guessOpened(id, t) else window.guessFailed(id, t)
+        val out = if (id == null) {
+            null
+        } else if (e.opens) {
+            window.guessOpened(id, t)
+        } else {
+            window.guessFailed(id, t)
+        }
         a.phase = if (e.opens) "session" else "done"
         if (out != null) applyOutcome(out)
     }

@@ -129,6 +129,7 @@ public class LocalLink(
 }
 
 /** What a mode-`q` session needs (section 15.12): the CPace outputs and this side's part of the exchange. */
+@Suppress("LongParameterList")
 public class PairingOptions(
     /** `HKDF-SHA256(ISK)`, the Noise PSK ([cpacePsk]). Overwritten once the handshake is done. */
     public val psk: ByteArray,
@@ -176,6 +177,7 @@ public data class HelloInfo(val platform: String, val app: String, val label: St
 /** Everything a session tells its host. */
 public sealed class SessionEvent {
     /** The handshake and the HELLO exchange are done (modes v and p still need the SAS). */
+    @Suppress("LongParameterList")
     public class Established(
         public val caps: List<String>,
         public val hello: PeerHello,
@@ -290,6 +292,7 @@ public class HandshakeLimiter(
      * failed trials (and the sessions waiting on message 3). A refusal costs no trial. `hit()` refunds the group's
      * count and takes a waiting slot; `miss()` spends the shared budget.
      */
+    @Suppress("CyclomaticComplexMethod")
     public fun beginLocal(group: String): LocalAdmission {
         var refusal: String? = null
         val t = mono()
@@ -383,6 +386,7 @@ private class Pending(val remote: ByteArray, val peerDeviceId: String?)
  * also needs [admission]). [staticKey] is the device's agreement key (a [NoiseStatic]); [send] takes
  * one Noise message (the host frames it); [onEvent] runs inside whichever call produced the event.
  */
+@Suppress("LargeClass")
 public class PeerChannel(
     private val role: NoiseRole,
     private val slug: String,
@@ -448,8 +452,10 @@ public class PeerChannel(
     // Both mode-v payloads list `vouch/1` (rule 1); the host cannot leave it out.
     private var caps: List<String> = when {
         mode == PeerMode.v && VOUCH_CAP !in caps -> caps + VOUCH_CAP
+
         // Mode q needs `local/1` on both sides (section 15.12): the host cannot leave it out of its payload.
         mode == PeerMode.q && LOCAL_CAP !in caps -> caps + LOCAL_CAP
+
         else -> caps.toList()
     }
     private val flow: VouchFlow<VouchMessage>? =
@@ -482,7 +488,11 @@ public class PeerChannel(
     init {
         require((mode == PeerMode.a) == (account != null)) { "account context" }
         require(mode == PeerMode.l || staticKey != null) { "static key" }
-        require(contacts.all { it.secret.size == KEY_BYTES } && locals.all { l -> listOf(l.secret, l.ownKey, l.peerKey).all { it.size == KEY_BYTES } }) {
+        require(
+            contacts.all {
+                it.secret.size == KEY_BYTES
+            } && locals.all { l -> listOf(l.secret, l.ownKey, l.peerKey).all { it.size == KEY_BYTES } },
+        ) {
             "secrets"
         }
         if (mode == PeerMode.c) {
@@ -508,7 +518,9 @@ public class PeerChannel(
             require(pair == null) { "pairing is for mode q" }
         }
         require(exchange == null || mode == PeerMode.p) { "exchange is for mode p" }
-        require(mode != PeerMode.v && mode != PeerMode.p || role != NoiseRole.responder || admission != null) { "an approver needs an admission limiter" }
+        require(mode != PeerMode.v && mode != PeerMode.p || role != NoiseRole.responder || admission != null) {
+            "an approver needs an admission limiter"
+        }
         require(!holdSas || (mode == PeerMode.v && role == NoiseRole.initiator)) { "holdSas is for the mode v initiator" }
     }
 
@@ -582,6 +594,7 @@ public class PeerChannel(
     private fun deadlinePassed(due: Double?): Boolean = due != null && mono() >= due
 
     /** Initiator only: write message 1. */
+    @Suppress("CyclomaticComplexMethod")
     public suspend fun start(): Unit = guarded {
         if (role != NoiseRole.initiator || hs != null || phase != "hs") throw Fail(HANDSHAKE_FAILED)
         if (pair != null && pair.elapsed >= TRANSPORT_DEADLINE_SECONDS) throw Fail(HANDSHAKE_FAILED)
@@ -618,7 +631,10 @@ public class PeerChannel(
         check(phase == "open") { "session not open" }
         // A pairing carries no host records: the session owns every one it may send (section 15.12).
         require(mode != PeerMode.q) { "record owned by the session" }
-        require(type !in OWNED && !isXferType(type) && !(type == RecordType.CONFIRM && mode == PeerMode.p) && !(type == RecordType.CONTACT && xchg != null)) {
+        require(
+            type !in OWNED && !isXferType(type) && !(type == RecordType.CONFIRM && mode == PeerMode.p) &&
+                !(type == RecordType.CONTACT && xchg != null),
+        ) {
             "record owned by the session"
         }
         require(body.size <= maxSend) { "message too large" }
@@ -882,9 +898,11 @@ public class PeerChannel(
      * closes silently. The contact and local-link trials are admitted by the limiter first, so a refused attempt tries no
      * secret.
      */
+    @Suppress("SwallowedException")
     private suspend fun onFirstMessage(noise: ByteArray) {
         var payload: ByteArray? = null
         var accountTried = 0
+
         val acct = account
         if (mode == PeerMode.q) {
             // The pairing window's attempt: one secret, the code's PSK. A tag that fails is one failed guess (section
@@ -940,36 +958,46 @@ public class PeerChannel(
         var tried = 0
         var payload: ByteArray? = null
         for (t in listenerTrialOrder(null, contacts.size, locals.size)) {
-            var key: RawNoiseStatic? = null
-            try {
-                val h = if (t.kind == 'c') {
-                    newHandshake(PeerMode.c, contacts[t.index].secret)
-                } else {
-                    val l = locals[t.index]
-                    newHandshake(PeerMode.l, l.secret, RawNoiseStatic(l.ownKey, ports.curves).also { key = it })
-                }
-                payload = h.readMessage(noise)
-                hs = h
-                if (t.kind == 'c') {
-                    contactIdx = t.index
-                } else {
-                    localIdx = t.index
-                    key?.let { linkKeys += it }
-                }
-                mode = if (t.kind == 'c') PeerMode.c else PeerMode.l
-                asm = RecordAssembler(RecordMode.valueOf(mode.name))
+            payload = openTrial(t, noise)
+            if (hs != null) {
                 if (attempt != null) release = attempt.hit()
                 break
-            } catch (e: NoiseException) {
-                tried++
-                key?.wipe()
             }
+            tried++
         }
         if (hs == null) {
             attempt?.miss()
             for (n in trialPadding(tried + accountTried) downTo 1) dummyTrial(noise)
         }
         return payload
+    }
+
+    /** One trial of message 1 under a held secret. On success the session is bound to that secret's mode and `hs` is set. */
+    @Suppress("SwallowedException")
+    private suspend fun openTrial(t: TrialEntry, noise: ByteArray): ByteArray? {
+        var key: RawNoiseStatic? = null
+        try {
+            val h = if (t.kind == 'c') {
+                newHandshake(PeerMode.c, contacts[t.index].secret)
+            } else {
+                val l = locals[t.index]
+                newHandshake(PeerMode.l, l.secret, RawNoiseStatic(l.ownKey, ports.curves).also { key = it })
+            }
+            val payload = h.readMessage(noise)
+            hs = h
+            if (t.kind == 'c') {
+                contactIdx = t.index
+            } else {
+                localIdx = t.index
+                key?.let { linkKeys += it }
+            }
+            mode = if (t.kind == 'c') PeerMode.c else PeerMode.l
+            asm = RecordAssembler(RecordMode.valueOf(mode.name))
+            return payload
+        } catch (e: NoiseException) {
+            key?.wipe()
+            return null
+        }
     }
 
     /** One trial under a random secret, on the default ports (so a host's own ports count only the real trials): it opens nothing. */
@@ -1064,12 +1092,22 @@ public class PeerChannel(
             val acctMode = mode == PeerMode.a
             val direct = acctMode || mode == PeerMode.c || mode == PeerMode.l
             // Mode q has no code to compare: its person's consent follows ([confirmPairing]).
-            phase = if (direct) "open" else if (mode == PeerMode.q) "sas-shown" else "sas"
+            phase = if (direct) {
+                "open"
+            } else if (mode == PeerMode.q) {
+                "sas-shown"
+            } else {
+                "sas"
+            }
             // A contact responder's slot among the connections waiting for message 3 ends here.
             if (direct) settle()
             onEvent(
                 SessionEvent.Established(
-                    caps.toList(), h, acctMode, p.remote, p.peerDeviceId,
+                    caps.toList(),
+                    h,
+                    acctMode,
+                    p.remote,
+                    p.peerDeviceId,
                     contactIndex = if (mode == PeerMode.c) contactIdx else null,
                     localIndex = if (mode == PeerMode.l) localIdx else null,
                 ),

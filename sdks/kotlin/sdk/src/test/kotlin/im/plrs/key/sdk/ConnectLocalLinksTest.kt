@@ -12,14 +12,17 @@ import im.plrs.key.core.InMemoryDeviceKeyStorage
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.peer.MAX_LIVE_LOCAL_ADVERTS
 import im.plrs.key.core.peer.MAX_LOCAL_LINKS
+import im.plrs.key.core.peer.SessionEvent
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -113,7 +116,8 @@ class ConnectLocalLinksTest : ConnectLanBase() {
             )
             val l = runBlocking {
                 LanService.startLocal(
-                    s, LanOptions(mdns = net, host = "127.0.0.1", allowLoopback = true, handshakeSeconds = 10.0, dialSeconds = 5.0),
+                    s,
+                    LanOptions(mdns = net, host = "127.0.0.1", allowLoopback = true, handshakeSeconds = 10.0, dialSeconds = 5.0),
                 )
             }
             lan = l
@@ -260,7 +264,7 @@ class ConnectLocalLinksTest : ConnectLanBase() {
     fun aDeviceAtTheCapAnswersLinksFullBeforeAnythingIsAdvertised() = runBlocking {
         val net = Network()
         val a = Dev(net)
-        for (i in 0 until MAX_LOCAL_LINKS) a.store.add(rnd(), rnd(), rnd(), rnd(), "L$i", emptyList(), 1L)
+        for (i in 0 until MAX_LOCAL_LINKS) a.store.add(NewLocalLink(rnd(), rnd(), rnd(), rnd(), "L$i", emptyList()), 1L)
         assertEquals(MAX_LOCAL_LINKS, a.store.count())
         assertEquals(ErrorCode.localLinksFull, assertThrows(PolarisException::class.java) { runBlocking { a.links.pair(a.pairOptions()) } }.code)
         val joined = assertThrows(PolarisException::class.java) { runBlocking { a.links.join(a.joinOptions(code = "48123456")) } }
@@ -278,13 +282,16 @@ class ConnectLocalLinksTest : ConnectLanBase() {
         val a = Dev(Network())
         a.storage.put("{\"schema\":\"pkey.connect.local.v1\",\"product\":\"djdl\",\"links\":[{\"id\":\"x\"}]}".toByteArray())
         assertEquals(ErrorCode.storeFailed, assertThrows(PolarisException::class.java) { runBlocking { a.links.list() } }.code)
-        val added = assertThrows(PolarisException::class.java) { runBlocking { a.store.add(rnd(), rnd(), rnd(), rnd(), null, emptyList(), 1L) } }
+        val added =
+            assertThrows(PolarisException::class.java) {
+                runBlocking { a.store.add(NewLocalLink(rnd(), rnd(), rnd(), rnd(), null, emptyList()), 1L) }
+            }
         assertEquals(ErrorCode.storeFailed, added.code)
         // Nothing replaced the record, and the live links are none while it cannot be read.
         assertTrue(String(a.storage.get()!!).contains("\"id\":\"x\""))
         // A record that names one link twice is as unusable.
         val b = Dev(Network())
-        b.store.add(rnd(), rnd(), rnd(), rnd(), null, emptyList(), 1L)
+        b.store.add(NewLocalLink(rnd(), rnd(), rnd(), rnd(), null, emptyList()), 1L)
         val one = String(b.storage.get()!!)
         val row = one.substringAfter("\"links\":[").substringBeforeLast("]}")
         b.storage.put(one.replace(row, "$row,$row").toByteArray())
@@ -294,7 +301,7 @@ class ConnectLocalLinksTest : ConnectLanBase() {
     @Test
     fun aRecordHoldsTheCapAndTwoWritersCannotPassIt() = runBlocking {
         val a = Dev(Network())
-        val results = (0 until 40).map { i -> scope.launch { a.store.add(rnd(), rnd(), rnd(), rnd(), "L$i", emptyList(), 1L) } }
+        val results = (0 until 40).map { i -> scope.launch { a.store.add(NewLocalLink(rnd(), rnd(), rnd(), rnd(), "L$i", emptyList()), 1L) } }
         results.forEach { it.join() }
         assertEquals(MAX_LOCAL_LINKS, a.store.count())
     }
@@ -339,8 +346,12 @@ class ConnectLocalLinksTest : ConnectLanBase() {
         val (la, lb) = pairUp(a, b)
         // `a` starts its listener but registers no onLink listener.
         val lanSrc = LanSource(
-            load = { throw LanException(LanErrorReason.no_identity, "no account") }, now = { System.currentTimeMillis() / 1000 }, slug = "djdl",
-            locals = a.src.live, onLocals = a.src.onChange, localAllowed = { true },
+            load = { throw LanException(LanErrorReason.no_identity, "no account") },
+            now = { System.currentTimeMillis() / 1000 },
+            slug = "djdl",
+            locals = a.src.live,
+            onLocals = a.src.onChange,
+            localAllowed = { true },
         )
         val la2 = runBlocking { LanService.startLocal(lanSrc, LanOptions(mdns = net, host = "127.0.0.1", allowLoopback = true)) }
         a.lan = la2
@@ -417,5 +428,48 @@ class ConnectLocalLinksTest : ConnectLanBase() {
     fun openBeforeStartAndOpenOfNoLinkAreTyped() = runBlocking {
         val a = Dev(Network())
         assertEquals(LanErrorReason.not_started, assertThrows(LanException::class.java) { runBlocking { a.links.open("x") } }.reason)
+    }
+
+    @Test
+    fun anOpenAfterAFastFailureDialsAgain() = runBlocking {
+        val a = Dev(Network())
+        val id = a.store.add(NewLocalLink(rnd(), rnd(), rnd(), rnd(), "Bo", emptyList()), 1L)!!
+        // Not started: the dial fails at once.
+        val first = assertThrows(LanException::class.java) { runBlocking { a.links.open(id) } }
+        assertEquals(LanErrorReason.not_started, first.reason)
+        a.startLan()
+        // The failed dial was not kept: this open dials again, and now meets the service (the peer is not on the network).
+        val second = assertThrows(LanException::class.java) { runBlocking { a.links.open(id) } }
+        assertEquals(LanErrorReason.unknown_peer, second.reason)
+    }
+
+    @Test
+    fun aLinkWipedWhileItWasBeingCopiedIsNotServed() {
+        val live = LiveLocal("x", rnd(), rnd(), rnd(), rnd(), null, emptyList(), true)
+        val copy = copyLiveLocal(live)!!
+        assertArrayEquals(live.secret, copy.secret)
+        assertNotSame(live.secret, copy.secret)
+        // A reload wipes the held keys: a copy taken after is all zeros, so the link is left out.
+        live.secret.fill(0)
+        live.ownKey.fill(0)
+        assertNull(copyLiveLocal(live))
+    }
+
+    @Test
+    fun aGateThatWentOffBeforeTheStoreLeavesNoLink() = runBlocking {
+        val a = Dev(Network())
+        a.gate = false
+        val attempt = LocalAttempt()
+        attempt.linkKey = rnd()
+        val event = SessionEvent.LocalLinked(rnd(), rnd(), rnd(), "Bo", listOf("docs"))
+        assertNull(storeLocalLink(a.src, attempt, event))
+        assertFalse(attempt.linked)
+        assertEquals(0, a.store.count())
+        // With the gate on, the same event stores a link.
+        a.gate = true
+        val again = LocalAttempt()
+        again.linkKey = rnd()
+        assertNotNull(storeLocalLink(a.src, again, SessionEvent.LocalLinked(rnd(), rnd(), rnd(), "Bo", listOf("docs"))))
+        assertEquals(1, a.store.count())
     }
 }

@@ -14,8 +14,16 @@
 // - a read that clears a cached `true` closes the windows and joins, ends the open sessions `peer_bye` and withdraws the
 //   adverts.
 
+@file:Suppress(
+    "LongParameterList",
+    "MagicNumber",
+    "SwallowedException",
+    "TooGenericExceptionCaught",
+)
+
 package im.plrs.key.sdk
 
+import im.plrs.key.core.CoreContext
 import im.plrs.key.core.DeviceKeyPersistence
 import im.plrs.key.core.DeviceKeyStorage
 import im.plrs.key.core.DiscoveryResult
@@ -27,7 +35,6 @@ import im.plrs.key.core.ProductDiscoveryDocument
 import im.plrs.key.core.RuntimeFamily
 import im.plrs.key.core.ServiceSlug
 import im.plrs.key.core.boolValue
-import im.plrs.key.core.CoreContext
 import im.plrs.key.core.peer.GateEffect
 import im.plrs.key.core.peer.GateState
 import im.plrs.key.core.peer.LocalPairingGate
@@ -87,6 +94,16 @@ internal class LocalGateKeeper(
 
     /** One discovery read finished. [seq] is the number it was given when it began. */
     suspend fun read(result: DiscoveryResult, seq: Long) {
+        try {
+            apply(result, seq)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // the gate's own fault never keeps the discovery document from being stored
+        }
+    }
+
+    private suspend fun apply(result: DiscoveryResult, seq: Long) {
         if (closed) return
         val wasOn = gate.allowed
         var effects: List<GateEffect> = emptyList()
@@ -203,6 +220,7 @@ internal class LocalSupport(private val core: CoreContext, private val options: 
     val gate = LocalGateKeeper()
     private val listeners = CopyOnWriteArrayList<() -> Unit>()
     private var storage: DeviceKeyStorage? = null
+    private val warned = java.util.concurrent.atomic.AtomicBoolean(false)
 
     val store = LocalLinkStore(core.product) { open() }
 
@@ -246,12 +264,22 @@ internal class LocalSupport(private val core: CoreContext, private val options: 
         val dir: File? = core.store.stateDirectory
         val memory = options.deviceKeys?.persistence() == DeviceKeyPersistence.memory
         val s = if (dir == null || memory) {
+            warnMemoryOnly()
             InMemoryDeviceKeyStorage()
         } else {
             FileDeviceKeyStorage(File(dir, LOCAL_STATE_FILE), null, "pkey-connect-local-state/1".toByteArray(Charsets.UTF_8))
         }
         storage = s
         return s
+    }
+
+    /** Once per client: local links with no state directory (or memory-only device keys) end with the process. */
+    private fun warnMemoryOnly() {
+        if (warned.compareAndSet(false, true)) {
+            java.util.logging.Logger.getLogger("im.plrs.key").warning(
+                "Local links are kept in memory only (no state directory, or memory-only device keys): they are lost when the process ends.",
+            )
+        }
     }
 
     /**

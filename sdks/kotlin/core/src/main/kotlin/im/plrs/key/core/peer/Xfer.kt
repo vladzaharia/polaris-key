@@ -642,6 +642,7 @@ public class XferMachine(private val o: XferMachineOptions) {
 
     // -- records ---------------------------------------------------------------------------------------------
 
+    @Suppress("ComplexCondition")
     private fun onRecord(type: Int, body: ByteArray, more: Boolean) {
         // Step 1: the mode and the capability.
         if ((o.mode != RecordMode.a && o.mode != RecordMode.c && o.mode != RecordMode.l) || XFER_CAP !in o.caps) {
@@ -693,6 +694,7 @@ public class XferMachine(private val o: XferMachineOptions) {
         out.drop = true
     }
 
+    @Suppress("ComplexCondition")
     private fun onOffer(body: ByteArray) {
         val f = parseXferOffer(body, o.maxMessage) ?: return fault()
         if (tr.containsKey(f.id) || ended.any { it.id == f.id }) return fault()

@@ -8,6 +8,13 @@
 // error. Time comes in as arguments (a monotonic clock, in seconds, for the window), so a machine never reads a
 // clock of its own.
 
+@file:Suppress(
+    "CyclomaticComplexMethod",
+    "MagicNumber",
+    "ReturnCount",
+    "TooManyFunctions",
+)
+
 package im.plrs.key.core.peer
 
 import im.plrs.key.core.StrictJson
@@ -129,10 +136,9 @@ public fun drawNameplate(source: DrawSource, inUse: Collection<String> = emptyLi
     while (true) {
         val b = source.draw(1) ?: return null
         val v = b[0].toInt() and LOW_BYTE
-        if (v >= NAMEPLATE_LIMIT) continue
         val n = two(v % NAMEPLATE_MOD)
-        if (!all && n in used) continue
-        return n
+        // 200 or more is drawn again, and so is a nameplate in use while one is free.
+        if (v < NAMEPLATE_LIMIT && (all || n !in used)) return n
     }
 }
 
