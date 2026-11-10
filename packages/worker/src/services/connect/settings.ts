@@ -72,6 +72,30 @@ export const CONNECT_SETTINGS_SLICE: ServiceSettingsSlice = {
       since: "CC-02.2",
       readers: ["services/connect/relay/access.ts"],
     }),
+    // CC-29.6: account-free pairing on the LAN. Turning it on lets two devices with no account pair
+    // by a code, so it is confirmed and needs a reason; `launch.localPairing` also has to be on.
+    setting({
+      key: "cloudConnect.localPairing",
+      scope: "product",
+      service: "connect",
+      area: AREA,
+      label: "Pair with a code",
+      description:
+        "Whether two devices with no account may pair on the same network by a code or QR. Off, devices pair only through sign-in. Also needs the operator's launch gate.",
+      keywords: ["pair", "code", "local", "lan", "nearby", "no account"],
+      docs: DOCS,
+      value: { kind: "boolean" },
+      defaultValue: false,
+      merge: "cascade",
+      ownership: "claimable",
+      manifest: { path: "product:connect.localPairing" },
+      critical: true,
+      confirm: { on: "L1", off: "L0" },
+      visibleWhen: VISIBLE,
+      storage: { kind: "scalar" },
+      since: "CC-29.6",
+      readers: ["services/connect/relay/access.ts"],
+    }),
     // The operator's cost control: all relay bytes of every person on the product together, per
     // UTC month. Raising it costs the platform more, so it is confirmed more strictly than lowering.
     setting({

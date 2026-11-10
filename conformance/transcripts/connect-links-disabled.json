@@ -145,6 +145,7 @@
                     "lan": true,
                     "relay": true,
                     "interAccount": false,
+                    "localPairing": false,
                     "endpoints": {
                       "identity": "https://key.plrs.im/djdl/connect/identity",
                       "devices": "https://key.plrs.im/djdl/connect/devices",
@@ -336,6 +337,7 @@
                     "lan": true,
                     "relay": true,
                     "interAccount": true,
+                    "localPairing": false,
                     "endpoints": {
                       "identity": "https://key.plrs.im/djdl/connect/identity",
                       "devices": "https://key.plrs.im/djdl/connect/devices",
@@ -479,6 +481,7 @@
                     "lan": true,
                     "relay": true,
                     "interAccount": false,
+                    "localPairing": false,
                     "endpoints": {
                       "identity": "https://key.plrs.im/djdl/connect/identity",
                       "devices": "https://key.plrs.im/djdl/connect/devices",

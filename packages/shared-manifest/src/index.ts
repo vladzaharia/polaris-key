@@ -475,6 +475,8 @@ export interface ManifestConnect {
   relay?: boolean;
   /** Whether devices of different accounts may connect (default off). */
   interAccount?: boolean;
+  /** Whether two devices with no account may pair on the same network by a code (default off). */
+  localPairing?: boolean;
 }
 
 /** A product-declared companion-application probe the client answers present/absent. */
@@ -7571,10 +7573,14 @@ function validatePlatformSignIn(
 }
 
 /** The members of the `connect:` block. */
-const CONNECT_MEMBERS: readonly string[] = ["relay", "interAccount"];
+const CONNECT_MEMBERS: readonly string[] = [
+  "relay",
+  "interAccount",
+  "localPairing",
+];
 
 /**
- * CC-02.2: the `connect:` block of `.pkey/product`: `relay` and `interAccount`, each a boolean.
+ * CC-02.2: the `connect:` block of `.pkey/product`: `relay`, `interAccount` and `localPairing`, each a boolean.
  * Each `add` is written out with literal arguments so the generated validation-codes page lists it.
  */
 function validateConnectBlock(
@@ -7591,7 +7597,7 @@ function validateConnectBlock(
       "product",
       "/connect",
       "invalid_connect",
-      "connect must be an object with relay and interAccount.",
+      "connect must be an object with relay, interAccount and localPairing.",
     );
     return;
   }
@@ -7602,7 +7608,7 @@ function validateConnectBlock(
         "product",
         `/connect/${key}`,
         "invalid_connect",
-        "connect takes only relay and interAccount.",
+        "connect takes only relay, interAccount and localPairing.",
       );
     } else if (typeof connect[key] !== "boolean") {
       add(
@@ -7632,6 +7638,8 @@ function normalizeConnectBlock(raw: unknown): ManifestConnect | undefined {
   if (typeof raw.relay === "boolean") out.relay = raw.relay;
   if (typeof raw.interAccount === "boolean")
     out.interAccount = raw.interAccount;
+  if (typeof raw.localPairing === "boolean")
+    out.localPairing = raw.localPairing;
   return Object.keys(out).length > 0 ? out : undefined;
 }
 

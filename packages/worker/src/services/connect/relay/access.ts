@@ -100,6 +100,31 @@ export async function contactLinksOn(
   }
 }
 
+/**
+ * Is pairing with a code, with no account, available on this product right now (V5 §15.9, §15.12)?
+ * True only while `cloudConnect.localPairing` is on, `launch.localPairing` is on and the service is
+ * on. Fails closed like `contactLinksOn`. The one reader of both; discovery asks it. (The service is
+ * only reached with `launch.connect` on, so that gate holds too.)
+ */
+export async function localPairingOn(
+  ctx: Pick<
+    ServiceContext | DiscoveryContext,
+    "env" | "db" | "settings" | "product"
+  >,
+  now?: number,
+): Promise<boolean> {
+  if (!ctx.product.services.connect.enabled) return false;
+  if (!(await launchGateOn(ctx.env, ctx.db, "launch.localPairing")))
+    return false;
+  try {
+    return (
+      (await productSetting(ctx, "cloudConnect.localPairing", now)) === true
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** The switch, the pause and the month, read fresh. Fails closed on an unreadable pause. */
 export async function relayProductState(
   ctx: ServiceContext,

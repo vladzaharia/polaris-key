@@ -62,6 +62,7 @@ export interface PlatformValues {
   "launch.identityRestore": "on" | "off";
   "launch.gameSignIn": "on" | "off";
   "launch.connectLinks": "on" | "off";
+  "launch.localPairing": "on" | "off";
   "launch.identityNearby": "on" | "off";
 }
 

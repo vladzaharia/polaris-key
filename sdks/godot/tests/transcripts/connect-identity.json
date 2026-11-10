@@ -145,6 +145,7 @@
                     "lan": true,
                     "relay": false,
                     "interAccount": false,
+                    "localPairing": false,
                     "endpoints": {
                       "identity": "https://key.plrs.im/djdl/connect/identity",
                       "devices": "https://key.plrs.im/djdl/connect/devices",

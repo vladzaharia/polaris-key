@@ -12,6 +12,9 @@
 //   connect-links-disabled a contact ticket while the product's inter-account setting or the
 //                          `launch.connectLinks` gate is off: `403 connect_links_disabled`, and
 //                          discovery's `interAccount` says so (§15.9)
+//   connect-local-pairing  discovery's `localPairing` (CC-29.6; §15.9, §15.12): false while the
+//                          product's setting or `launch.localPairing` is off, true only with the
+//                          setting, the gate and the service all on
 //   connect-relay-quota    the refusals, in their order: the product turned the relay off
 //                          (`relay_disabled`), the deployment paused it (`relay_paused`, with
 //                          `Retry-After`), the product's month is spent (`relay_quota_exceeded`,
@@ -313,6 +316,61 @@ export const connectLinksDisabled: Scenario = {
       (world.env as unknown as Record<string, string>).LAUNCH_CONNECT_LINKS =
         "on";
       expect(await contactTicket(r, "Both on.", body)).toBe(200);
+      return r.transcript();
+    }),
+};
+
+const localPairingOn = (world: World): Promise<unknown> =>
+  world.db.run(
+    `INSERT OR REPLACE INTO product_settings (product, key, value_json, source, updated_at, updated_by)
+     VALUES (?, 'cloudConnect.localPairing', 'true', 'console', ?, 'transcript')`,
+    PRODUCT,
+    T0,
+  );
+
+export const connectLocalPairing: Scenario = {
+  id: "connect-local-pairing",
+  record: () =>
+    pinned("connect-local-pairing", async (pin) => {
+      const { world, token } = await relayWorld();
+      const r = new TranscriptRecorder({
+        id: "connect-local-pairing",
+        description:
+          "Pairing with a code, with no account, is gated (WIRE-CONTRACT-V5 §15.9, §15.12). Discovery reports localPairing false while the product's cloudConnect.localPairing setting is off (its default), and again while the operator's launch gate (launch.localPairing) is off. Only with the setting, the gate and the service all on does it say true. An SDK enforces the gate from this document, because the Worker never sees the local network.",
+        features: ["connect.local"],
+        requires: REQUIRES,
+        product: PRODUCT,
+        now: T0,
+        world,
+        pinned: pin,
+        initial: { deviceId: DEVICE, token, version: VERSION },
+      });
+      const env = world.env as unknown as Record<string, string>;
+      const discover = (note: string, want: boolean) =>
+        r.step(
+          { action: "discover", note },
+          async (s) => {
+            const d = await discovery(s, PRODUCT);
+            expect(d.status).toBe(200);
+            expect(
+              (
+                (await d.clone().json()) as {
+                  services: { connect: { localPairing: boolean } };
+                }
+              ).services.connect.localPairing,
+            ).toBe(want);
+          },
+          { result: "ok", localPairing: want },
+        );
+
+      env.LAUNCH_LOCAL_PAIRING = "on";
+      await discover("The setting is off: discovery says no.", false);
+      await localPairingOn(world);
+      await discover("The setting is on: discovery says yes.", true);
+      env.LAUNCH_LOCAL_PAIRING = "off";
+      await discover("The launch gate is off: discovery says no.", false);
+      env.LAUNCH_LOCAL_PAIRING = "on";
+      await discover("Both on: discovery says yes.", true);
       return r.transcript();
     }),
 };
@@ -780,6 +838,7 @@ export const CONNECT_SCENARIOS: Scenario[] = [
   connectRelayTicket,
   connectRelayTicketContact,
   connectLinksDisabled,
+  connectLocalPairing,
   connectRelayQuota,
   connectIdentity,
   connectIdentityRefusals,

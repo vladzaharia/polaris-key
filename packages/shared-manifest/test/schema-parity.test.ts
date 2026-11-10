@@ -216,7 +216,7 @@ function base(): Docs {
         ],
       },
       // CC-02.2: the connect block, every member declared.
-      connect: { relay: true, interAccount: false },
+      connect: { relay: true, interAccount: false, localPairing: true },
       provisioning: [
         {
           claim: "vpnAccess",
@@ -1681,6 +1681,13 @@ const MUTATIONS: Mutation[] = [
     file: "product",
     schema: "rejects",
     mutate: (d) => (p(d).connect.relay = "yes"),
+  },
+  {
+    // CC-29.6: localPairing is a boolean like the others.
+    code: "invalid_connect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).connect.localPairing = "yes"),
   },
   {
     // Declared while the service is off: none of it applies (a warning).
