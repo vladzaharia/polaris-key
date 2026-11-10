@@ -558,7 +558,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/src/portal/pages/SignInPage.tsx": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/admin/src/ui/Dialog.tsx": {
       "jscpd:duplicate": 1
@@ -570,9 +570,6 @@
       "jscpd:duplicate": 3
     },
     "packages/admin/src/ui/Section.tsx": {
-      "jscpd:duplicate": 1
-    },
-    "packages/admin/src/ui/auth/CodeEntry.tsx": {
       "jscpd:duplicate": 1
     },
     "packages/admin/src/ui/data-table/FilterBar.tsx": {
