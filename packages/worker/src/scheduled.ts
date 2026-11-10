@@ -175,6 +175,7 @@ export const REQUIRED_INDEXES: readonly string[] = [
   "idx_device_keys_agree",
   "idx_devices_license_status",
   "idx_devices_seat",
+  "idx_grants_addon",
   "idx_licenses_email_lower",
   "idx_licenses_enroll_hwid",
   "idx_licenses_origin",
