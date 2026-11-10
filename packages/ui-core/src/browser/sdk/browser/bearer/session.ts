@@ -1163,10 +1163,7 @@ export class BearerSession {
         } catch (e) {
           throw new PolarisError(ErrorCode.networkError, (e as Error).message);
         }
-        const body: unknown = await res
-          .text()
-          .then((t) => JSON.parse(t) as unknown)
-          .catch(() => null);
+        const body = await jsonBodyOf(res);
         if (res.status !== 200) throw accessTokenRefusal(res, body);
         try {
           return readAccessToken(body);
@@ -2653,6 +2650,14 @@ async function refusal(res: Response, fallback: string): Promise<PolarisError> {
   return new PolarisError(code, message, wire, undefined, {
     status: res.status,
   });
+}
+
+/** An answer's JSON body, or `null` when it is not JSON. */
+function jsonBodyOf(res: Response): Promise<unknown> {
+  return res
+    .text()
+    .then((t) => JSON.parse(t) as unknown)
+    .catch(() => null);
 }
 
 /** The device exchange's refusal (flat RFC 6749 body): the Worker's own code when the registry
