@@ -944,6 +944,15 @@ public actor CoreContext {
         discoveryObservers.with { $0.append(fn) }
     }
 
+    private var discoveryRequests = 0
+    private nonisolated let sequencedObservers = LockedValue<[@Sendable (DiscoveryResult, Int) async -> Void]>([])
+
+    /// The same, with the sequence number of the read: numbered when the request starts, so a state that follows
+    /// discovery (the local-pairing gate, §15.12) can ignore an older answer that arrives after a newer one.
+    public nonisolated func onDiscovery(sequenced fn: @escaping @Sendable (DiscoveryResult, Int) async -> Void) {
+        sequencedObservers.with { $0.append(fn) }
+    }
+
     /// Fetch `/.well-known/polaris.json` and install the product's real capability map.
     ///
     /// Explicit rather than automatic, because it is a NETWORK read and `sync()` must stay
@@ -952,6 +961,8 @@ public actor CoreContext {
     /// discovery is the authority when it is available.
     @discardableResult
     public func discover() async -> DiscoveryResult {
+        discoveryRequests += 1
+        let seq = discoveryRequests
         let result = await Discovery.fetch(
             endpoints: endpoints, transport: transport, headers: headers(),
             timeoutSeconds: requestTimeoutSeconds)
@@ -962,6 +973,8 @@ public actor CoreContext {
             presentationSource.accept(document.presentation)
             portalStore.accept(document.portal)
         }
+        // The sequenced observers run first and apply their answer before anything can suspend.
+        for fn in sequencedObservers.current { await fn(result, seq) }
         for fn in discoveryObservers.current { await fn(result) }
         return result
     }

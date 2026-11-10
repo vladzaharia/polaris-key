@@ -14,7 +14,7 @@ public let peerMaxVPChainBytes = 16_384
 /// Records in one MORE chain: a full 1 MiB message in the smallest records, plus one.
 public let peerMaxChainRecords = (peerMaxMessageBytes + peerMaxRecordBody - 1) / peerMaxRecordBody + 1
 
-public enum PeerRecordMode: String, Sendable, Equatable { case a, v, p, c }
+public enum PeerRecordMode: String, Sendable, Equatable { case a, v, p, c, q, l }
 
 public enum PeerCloseCode: String, Sendable, Equatable, CaseIterable {
     case peerRevoked = "peer_revoked"
@@ -38,6 +38,7 @@ public enum PeerRecordType {
     public static let vouchResult = 0x8011
     public static let confirm = 0x8012
     public static let contact = 0x0013
+    public static let localLink = 0x0014
     public static let sasCommit = 0x8014
     public static let sasNonce = 0x8015
     public static let sasReveal = 0x8016
@@ -54,25 +55,26 @@ struct PeerRecordRow {
 }
 
 let peerRecordTypes: [PeerRecordRow] = [
-    PeerRecordRow(from: 0x8001, to: 0x8001, modes: "avpc", bodyLen: nil),
+    PeerRecordRow(from: 0x8001, to: 0x8001, modes: "avpcql", bodyLen: nil),
     PeerRecordRow(from: 0x0002, to: 0x0002, modes: "a", bodyLen: nil),
     PeerRecordRow(from: 0x0003, to: 0x0003, modes: "a", bodyLen: nil),
-    PeerRecordRow(from: 0x0004, to: 0x0004, modes: "avpc", bodyLen: 8),
-    PeerRecordRow(from: 0x0005, to: 0x0005, modes: "avpc", bodyLen: 8),
+    PeerRecordRow(from: 0x0004, to: 0x0004, modes: "avpcql", bodyLen: 8),
+    PeerRecordRow(from: 0x0005, to: 0x0005, modes: "avpcql", bodyLen: 8),
     PeerRecordRow(from: 0x0006, to: 0x0006, modes: "a", bodyLen: nil),
     PeerRecordRow(from: 0x8010, to: 0x8010, modes: "v", bodyLen: nil),
     PeerRecordRow(from: 0x8011, to: 0x8011, modes: "v", bodyLen: nil),
-    PeerRecordRow(from: 0x8012, to: 0x8012, modes: "p", bodyLen: nil),
+    PeerRecordRow(from: 0x8012, to: 0x8012, modes: "pq", bodyLen: nil),
     PeerRecordRow(from: 0x0013, to: 0x0013, modes: "p", bodyLen: nil),
+    PeerRecordRow(from: 0x0014, to: 0x0014, modes: "q", bodyLen: nil),
     PeerRecordRow(from: 0x8014, to: 0x8014, modes: "vp", bodyLen: nil),
     PeerRecordRow(from: 0x8015, to: 0x8015, modes: "vp", bodyLen: nil),
     PeerRecordRow(from: 0x8016, to: 0x8016, modes: "vp", bodyLen: nil),
-    PeerRecordRow(from: 0x0020, to: 0x0025, modes: "ac", bodyLen: nil),
+    PeerRecordRow(from: 0x0020, to: 0x0025, modes: "acl", bodyLen: nil),
     PeerRecordRow(from: 0x0030, to: 0x003f, modes: "v", bodyLen: nil),
-    PeerRecordRow(from: 0x0100, to: 0x7fff, modes: "ac", bodyLen: nil),
-    PeerRecordRow(from: 0x8100, to: 0xfffd, modes: "ac", bodyLen: nil),
-    PeerRecordRow(from: 0x80fe, to: 0x80fe, modes: "avpc", bodyLen: 0),
-    PeerRecordRow(from: 0x80ff, to: 0x80ff, modes: "avpc", bodyLen: nil),
+    PeerRecordRow(from: 0x0100, to: 0x7fff, modes: "acl", bodyLen: nil),
+    PeerRecordRow(from: 0x8100, to: 0xfffd, modes: "acl", bodyLen: nil),
+    PeerRecordRow(from: 0x80fe, to: 0x80fe, modes: "avpcql", bodyLen: 0),
+    PeerRecordRow(from: 0x80ff, to: 0x80ff, modes: "avpcql", bodyLen: nil),
 ]
 
 public struct PeerRecord: Sendable, Equatable {

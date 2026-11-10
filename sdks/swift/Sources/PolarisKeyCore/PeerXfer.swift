@@ -346,7 +346,7 @@ public struct XferOut: Sendable, Equatable {
 }
 
 public struct XferMachineOptions: Sendable {
-    /// The session's mode: transfers run in `a` and `c` only.
+    /// The session's mode: transfers run in `a`, `c` and `l` only (§15.11, "Where it runs").
     public var mode: PeerNoiseMode
     /// The session's capabilities (the intersection of both payloads).
     public var caps: [String]
@@ -357,7 +357,7 @@ public struct XferMachineOptions: Sendable {
     public var free: (@Sendable () -> Int?)?
     /// No handler: every `OFFER` is declined.
     public var handler: (@Sendable (XferAsk) -> XferAnswer)?
-    /// The link's categories (mode c).
+    /// The link's categories (modes c and l).
     public var categories: [String]
     /// The remote static key: 32 raw bytes.
     public var peerKey: Data
@@ -697,7 +697,7 @@ public struct XferMachine {
 
     private mutating func onRecord(_ type: Int, _ body: Data, _ more: Bool) {
         // Step 1: the mode and the capability.
-        if (o.mode != .a && o.mode != .c) || !o.caps.contains(xferCap) {
+        if (o.mode != .a && o.mode != .c && o.mode != .l) || !o.caps.contains(xferCap) {
             out.close = .peerNotAllowed
             closed = true
             return
@@ -770,7 +770,9 @@ public struct XferMachine {
             return refuse(&self, .busy)
         }
         // Step 5: the category, before the person is asked.
-        if o.mode == .c, f.cat == nil || !o.categories.contains(f.cat!) { return refuse(&self, .category) }
+        if o.mode == .c || o.mode == .l, f.cat == nil || !o.categories.contains(f.cat!) {
+            return refuse(&self, .category)
+        }
         // Step 6: size and quota; a resume counts only the bytes still to come.
         if let limit = o.hostLimit, f.size > limit { return refuse(&self, .size) }
         if let free = o.free?() {

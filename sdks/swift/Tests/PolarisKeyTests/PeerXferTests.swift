@@ -1,4 +1,4 @@
-// @pkey-feature connect.transfer
+// @pkey-feature connect.transfer connect.local
 // CC-20.6: Direct Transfer in the core (WIRE-CONTRACT-V5 §15.11): every row of the `xfer` section of
 // `peer-matrix.json` (codecs, window, offer order, hash, ending, resume, name, limits). Mirrors client-core's
 // `peerXfer.test.ts` and the Node runner's `xferRun`. One side of a session is a machine over its steps.
@@ -284,6 +284,17 @@ final class PeerXferCorpusTests: XCTestCase {
     func testEndingRows() throws { try run("ending") }
     func testResumeRows() throws { try run("resume") }
     func testLimitRows() throws { try run("limits") }
+
+    /// `local.xfer` (CC-29.8; V5 §15.11, §15.12): Direct Transfer in mode `l`: allowed, with mode c's category rule.
+    func testModeLRows() throws {
+        let local = try CorpusLocator.load(JSONValue.self, "peer-matrix").objectValue!["local"]!.objectValue!
+        let rows = local["xfer"]!.arrayValue!.map { $0.objectValue! }
+        XCTAssertGreaterThan(rows.count, 0)
+        for row in rows {
+            XCTAssertEqual(row["ctx"]!.objectValue!["mode"]!.stringValue, "l", row["id"]!.stringValue!)
+            try runRow(row)
+        }
+    }
 
     private func run(_ section: String) throws {
         var count = 0

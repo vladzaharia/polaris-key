@@ -80,13 +80,20 @@ public struct PeerLinkHandlers: Sendable {
 public struct PeerChannelOptions: Sendable {
     public var role: PeerChannel.Role
     public var slug: String
-    public var staticKey: any PeerNoiseStaticKey
+    /// Nil only in mode l, which takes each link's own key from `locals`.
+    public var staticKey: (any PeerNoiseStaticKey)?
     public var account: PeerAccountContext?
     public var admission: HandshakeLimiter?
     public var caps: [String]
     public var hello: (label: String?, platform: String, app: String, maxMessage: Int?)
     public var mode: PeerNoiseMode
     public var contacts: [PeerContactLink]
+    /// Mode l, and a responder that also serves local links (§15.12).
+    public var locals: [PeerLocalLink]
+    /// Mode q only.
+    public var pair: PeerPairingOptions?
+    /// A responder that holds no account key: the source group of the connection (§15.10, "Admission").
+    public var admissionGroup: String?
     public var exchange: PeerContactOffer?
     public var now: (@Sendable () -> Int)?
     public var mono: (@Sendable () -> TimeInterval)?
@@ -97,10 +104,11 @@ public struct PeerChannelOptions: Sendable {
     public var random: (@Sendable (Int) -> Data)?
 
     public init(
-        role: PeerChannel.Role, slug: String, staticKey: any PeerNoiseStaticKey, account: PeerAccountContext? = nil,
+        role: PeerChannel.Role, slug: String, staticKey: (any PeerNoiseStaticKey)?, account: PeerAccountContext? = nil,
         admission: HandshakeLimiter? = nil, caps: [String] = [],
         hello: (label: String?, platform: String, app: String, maxMessage: Int?), mode: PeerNoiseMode = .a,
-        contacts: [PeerContactLink] = [], exchange: PeerContactOffer? = nil,
+        contacts: [PeerContactLink] = [], locals: [PeerLocalLink] = [], pair: PeerPairingOptions? = nil,
+        admissionGroup: String? = nil, exchange: PeerContactOffer? = nil,
         now: (@Sendable () -> Int)? = nil, mono: (@Sendable () -> TimeInterval)? = nil,
         rekeyMessages: Int = 1 << 20, rekeySeconds: TimeInterval = 3600, holdSas: Bool = false,
         random: (@Sendable (Int) -> Data)? = nil
@@ -114,6 +122,9 @@ public struct PeerChannelOptions: Sendable {
         self.hello = hello
         self.mode = mode
         self.contacts = contacts
+        self.locals = locals
+        self.pair = pair
+        self.admissionGroup = admissionGroup
         self.exchange = exchange
         self.now = now
         self.mono = mono
@@ -191,7 +202,8 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
         self.inbound = econt
         channel = try PeerChannel(
             role: o.role, slug: o.slug, staticKey: o.staticKey, account: o.account, admission: o.admission,
-            caps: o.caps, contacts: o.contacts, exchange: o.exchange, hello: o.hello,
+            caps: o.caps, contacts: o.contacts, locals: o.locals, pair: o.pair, admissionGroup: o.admissionGroup,
+            exchange: o.exchange, hello: o.hello,
             send: { d in
                 ocont.yield(d)
                 if bl.with({
@@ -394,7 +406,7 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
         }
         switch e {
         case .established(let est):
-            guard est.peerDeviceId != nil || est.contactIndex != nil else { return }
+            guard est.peerDeviceId != nil || est.contactIndex != nil || est.localIndex != nil else { return }
             deadline?.cancel()
             deadline = nil
             open = true
@@ -412,6 +424,9 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
             handlers.onRingWanted?()
         case .sas(let code, let display):
             handlers.onSas?(code, display)
+        case .guess, .localLink:
+            // Mode q's events go to a host that owns the session (`onSession`); here nothing reads them.
+            break
         case .closed(let reason, let byPeer):
             finish(
                 PeerLinkClosed(
