@@ -1563,7 +1563,7 @@ jobs:
   # floor); each engine is split over runners (the editor, the UI matrix, the release template), and
   # the editor and template legs run the `ci` selection as four parallel Godot processes, one per
   # vCPU, each with its own HOME (run_tests.sh PKEY_TEST_PARALLEL=1, the ci_p1..ci_p4 sets). The UI
-  # matrix is one job per presentation path (4.7.2: scrim and opaque) and, for 4.7.2 and 4.4.1, two
+  # matrix is one job per presentation path (4.7.2: scrim and opaque) and, for every engine, two
   # jobs per path, each running half of the 8 shards (ui_shards / ui_range in tools/ci-scope.json). The README's tested matrix names exactly these engines. run_tests.sh also exports the
   # harness preset headless with PKEY_BUILD_OUTLET=steam, PKEY_BUILD_CHANNEL=beta and
   # PKEY_BUILD_NUMBER=42 (the P1-11 build stamp): the export_stamps suite checks the stamps in the
