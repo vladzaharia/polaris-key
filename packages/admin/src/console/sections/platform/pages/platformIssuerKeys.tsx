@@ -86,7 +86,7 @@ function Ring({
             <span className="text-xs text-fg-muted">
               {k.state === "active" && k.dueAt !== null ? (
                 <>
-                  Replaced <Timestamp at={fromSeconds(k.dueAt)} format="date" />
+                  Rotates <Timestamp at={fromSeconds(k.dueAt)} format="date" />
                 </>
               ) : k.state === "next" && k.dueAt !== null ? (
                 <>

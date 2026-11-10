@@ -324,10 +324,10 @@ describe("Sign in with <Product> in the console", () => {
             .click();
           await page.getByRole("dialog").waitFor();
           const drawer = page.getByRole("dialog");
-          await drawer.getByLabel("Name", { exact: true }).fill("Forum");
-          await expect(drawer.getByLabel("Key", { exact: true })).toHaveValue(
-            "forum",
-          );
+          await drawer.getByRole("textbox", { name: /^Name\b/ }).fill("Forum");
+          expect(
+            await drawer.getByRole("textbox", { name: /^Key\b/ }).inputValue(),
+          ).toBe("forum");
           await drawer.getByRole("button", { name: "Register client" }).click();
           await page.getByText("Add at least one redirect address.").waitFor();
           await check(page, "register", theme, width, text200);
@@ -439,7 +439,19 @@ describe("Sign in with <Product> in the console", () => {
           .getByRole("button", { name: "Rotate now" })
           .first()
           .waitFor();
-        await check(page, "platform-issuer-keys", theme, width);
+        const keys = page.locator("#platform-issuer-keys");
+        await keys.scrollIntoViewIfNeeded();
+        if (SHOTS)
+          await keys.screenshot({
+            path: `${SHOTS}/platform-issuer-keys-${width}-${theme}.png`,
+          });
+        expect(await violations(page), "issuer keys CSP").toEqual([]);
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth - window.innerWidth,
+          ),
+          `issuer keys sideways scroll at ${width}`,
+        ).toBeLessThanOrEqual(1);
         await closeContext(page.context());
       }
     });
