@@ -150,6 +150,30 @@ export async function startPortal(): Promise<PortalHarness> {
     configFile: `${here}vite.config.ts`,
     preview: { port: 0, strictPort: false, host: "127.0.0.1" },
     logLevel: "silent",
+    // The Worker's policy rides on the shell's responses (`.html`, `/`, and the two paths it
+    // answers with the shell); the SPA fallback serves `/activate` and `/signin?request=`.
+    plugins: [
+      {
+        name: "pk-portal-shell",
+        configurePreviewServer(s) {
+          s.middlewares.use((req, res, next) => {
+            const path = (req.url ?? "").split("?")[0]!;
+            if (path === "/activate" || path === "/signin")
+              req.url = `/index.html${(req.url ?? "").slice(path.length)}`;
+            if (
+              path.endsWith(".html") ||
+              path === "/" ||
+              path === "/activate" ||
+              path === "/signin"
+            ) {
+              res.setHeader("content-security-policy", CSP);
+              res.setHeader("referrer-policy", REFERRER_POLICY);
+            }
+            next();
+          });
+        },
+      },
+    ],
   });
   const base = server.resolvedUrls!.local[0]!.replace(/\/$/, "");
   const browser: Browser = await chromium.launch();
@@ -216,11 +240,21 @@ export async function startPortal(): Promise<PortalHarness> {
     };
     const requests: string[] = [];
     const all: string[] = [];
-    await ctx.route("**/*", async (route) => {
-      const req = route.request();
+    // Every request, recorded without intercepting it (the static assets go from the preview
+    // server straight to the browser).
+    const record = (req: import("playwright").Request) =>
       all.push(
         `${req.method()} ${req.url()} referer=${req.headers()["referer"] ?? ""}`,
       );
+    // Only what the portal fixtures answer is routed: the API, the media proxy, the Worker's
+    // `/signin` redirect and `/logout`.
+    const answered = (u: URL) =>
+      u.pathname.startsWith("/api/") ||
+      u.pathname === "/logout" ||
+      u.pathname.startsWith("/media/") ||
+      (u.pathname === "/signin" && !u.searchParams.has("request"));
+    await ctx.route(answered, async (route) => {
+      const req = route.request();
       const url = new URL(req.url());
       if (url.pathname.startsWith("/api/") || url.pathname === "/logout") {
         requests.push(`${req.method()} ${url.pathname}${url.search}`);
@@ -261,23 +295,9 @@ export async function startPortal(): Promise<PortalHarness> {
         );
         return route.fulfill({ status: 200, headers, body: png });
       }
-      // The Worker serves the SPA shell for `/activate` and `/signin?request=` (router.ts, dispatch.ts); vite preview does not.
-      const res =
-        url.pathname === "/activate" || url.pathname === "/signin"
-          ? await route.fetch({ url: `${base}/index.html` })
-          : await route.fetch();
-      const headers = { ...res.headers() };
-      if (
-        url.pathname.endsWith(".html") ||
-        url.pathname === "/" ||
-        url.pathname === "/activate" ||
-        url.pathname === "/signin"
-      ) {
-        headers["content-security-policy"] = CSP;
-        headers["referrer-policy"] = REFERRER_POLICY;
-      }
-      return route.fulfill({ response: res, headers });
+      return route.fallback();
     });
+    ctx.on("request", record);
     const page = await ctx.newPage();
     await page.goto(`${base}${path}`);
     return {
@@ -594,13 +614,16 @@ function runAxe(page: Page, forcedColors: boolean): Promise<string[]> {
 export async function settle(page: Page): Promise<void> {
   await page.evaluate(async () => {
     await document.fonts.ready;
-    // A lazy image off screen never loads, so its decode() never settles: cap the wait.
-    const decoded = Promise.all(
-      [...document.images].map((i) =>
-        i.complete ? null : i.decode().catch(() => null),
-      ),
+    // A lazy image off screen never loads on its own: make it eager, then wait for its decode
+    // (which settles, ok or not, once the load does; no wall-clock cap to turn a slow decode under
+    // load into a baseline mismatch).
+    await Promise.all(
+      [...document.images].map((i) => {
+        if (i.complete) return null;
+        i.loading = "eager";
+        return i.decode().catch(() => null);
+      }),
     );
-    await Promise.race([decoded, new Promise((r) => setTimeout(r, 2000))]);
     // A page that rests at (or within a few px of) its bottom rests AT its bottom. A full-page
     // capture paints a fixed layer (a modal overlay, a bottom sheet) at the scroll offset, so an
     // offset that is 1-2 px short of the end (the click that opened the dialog scrolled to the
