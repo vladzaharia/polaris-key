@@ -81,20 +81,34 @@ async function productSetting(
  * The one reader of `cloudConnect.interAccount` and `launch.connectLinks`; the ticket route, the
  * upgrade and discovery all ask it.
  */
-export async function contactLinksOn(
-  ctx: Pick<
-    ServiceContext | DiscoveryContext,
-    "env" | "db" | "settings" | "product"
-  >,
+export function contactLinksOn(
+  ctx: GateContext,
+  now?: number,
+): Promise<boolean> {
+  return gatedSettingOn(
+    ctx,
+    "launch.connectLinks",
+    "cloudConnect.interAccount",
+    now,
+  );
+}
+
+type GateContext = Pick<
+  ServiceContext | DiscoveryContext,
+  "env" | "db" | "settings" | "product"
+>;
+
+/** The service is on, the operator's gate is on and the product's setting is true; anything unreadable is off. */
+async function gatedSettingOn(
+  ctx: GateContext,
+  gate: "launch.connectLinks" | "launch.localPairing",
+  setting: "cloudConnect.interAccount" | "cloudConnect.localPairing",
   now?: number,
 ): Promise<boolean> {
   if (!ctx.product.services.connect.enabled) return false;
-  if (!(await launchGateOn(ctx.env, ctx.db, "launch.connectLinks")))
-    return false;
+  if (!(await launchGateOn(ctx.env, ctx.db, gate))) return false;
   try {
-    return (
-      (await productSetting(ctx, "cloudConnect.interAccount", now)) === true
-    );
+    return (await productSetting(ctx, setting, now)) === true;
   } catch {
     return false;
   }
@@ -106,23 +120,16 @@ export async function contactLinksOn(
  * on. Fails closed like `contactLinksOn`. The one reader of both; discovery asks it. (The service is
  * only reached with `launch.connect` on, so that gate holds too.)
  */
-export async function localPairingOn(
-  ctx: Pick<
-    ServiceContext | DiscoveryContext,
-    "env" | "db" | "settings" | "product"
-  >,
+export function localPairingOn(
+  ctx: GateContext,
   now?: number,
 ): Promise<boolean> {
-  if (!ctx.product.services.connect.enabled) return false;
-  if (!(await launchGateOn(ctx.env, ctx.db, "launch.localPairing")))
-    return false;
-  try {
-    return (
-      (await productSetting(ctx, "cloudConnect.localPairing", now)) === true
-    );
-  } catch {
-    return false;
-  }
+  return gatedSettingOn(
+    ctx,
+    "launch.localPairing",
+    "cloudConnect.localPairing",
+    now,
+  );
 }
 
 /** The switch, the pause and the month, read fresh. Fails closed on an unreadable pause. */

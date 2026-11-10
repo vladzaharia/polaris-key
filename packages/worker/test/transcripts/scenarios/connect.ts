@@ -120,6 +120,40 @@ function recorder(
   });
 }
 
+/** The recorder options every relay and links transcript shares, but for its id, text and features. */
+const baseOptions = (pin: Pinned, world: World, token: string) => ({
+  requires: REQUIRES,
+  product: PRODUCT,
+  now: T0,
+  world,
+  pinned: pin,
+  initial: { deviceId: DEVICE, token, version: VERSION },
+});
+
+/**
+ * A `discover` step that reads one boolean member of `services.connect` (`interAccount` or
+ * `localPairing`) and expects it to be `want`.
+ */
+function discoverMember(
+  r: TranscriptRecorder,
+  member: "interAccount" | "localPairing",
+  note: string,
+  want: boolean,
+) {
+  return r.step(
+    { action: "discover", note },
+    async (s) => {
+      const d = await discovery(s, PRODUCT);
+      expect(d.status).toBe(200);
+      const body = (await d.clone().json()) as {
+        services: { connect: Record<string, boolean> };
+      };
+      expect(body.services.connect[member]).toBe(want);
+    },
+    { result: "ok", [member]: want },
+  );
+}
+
 /** One ticket request, with `expect` read off the answer. */
 async function ticket(
   r: TranscriptRecorder,
@@ -274,34 +308,15 @@ export const connectLinksDisabled: Scenario = {
     pinned("connect-links-disabled", async (pin) => {
       const { world, token } = await relayWorld();
       const r = new TranscriptRecorder({
+        ...baseOptions(pin, world, token),
         id: "connect-links-disabled",
         description:
           "Links between accounts are off (WIRE-CONTRACT-V5 §15.7, §15.9, §15.10). Discovery reports interAccount false and a contact ticket is 403 connect_links_disabled while the product's cloudConnect.interAccount setting is off (its default), and again while the operator's launch gate (launch.connectLinks) is off. Only with the setting, the gate and the service all on does discovery say true and the ticket issue. The account's own devices are unaffected.",
         features: ["connect.links"],
-        requires: REQUIRES,
-        product: PRODUCT,
-        now: T0,
-        world,
-        pinned: pin,
-        initial: { deviceId: DEVICE, token, version: VERSION },
       });
       const body = { room: "c", rid: CONTACT_RID } as const;
       const discover = (note: string, want: boolean) =>
-        r.step(
-          { action: "discover", note },
-          async (s) => {
-            const d = await discovery(s, PRODUCT);
-            expect(d.status).toBe(200);
-            expect(
-              (
-                (await d.clone().json()) as {
-                  services: { connect: { interAccount: boolean } };
-                }
-              ).services.connect.interAccount,
-            ).toBe(want);
-          },
-          { result: "ok", interAccount: want },
-        );
+        discoverMember(r, "interAccount", note, want);
 
       await discover("The setting is off: discovery says no.", false);
       expect(await contactTicket(r, "The setting is off.", body)).toBe(403);
@@ -334,34 +349,15 @@ export const connectLocalPairing: Scenario = {
     pinned("connect-local-pairing", async (pin) => {
       const { world, token } = await relayWorld();
       const r = new TranscriptRecorder({
+        ...baseOptions(pin, world, token),
         id: "connect-local-pairing",
         description:
           "Pairing with a code, with no account, is gated (WIRE-CONTRACT-V5 §15.9, §15.12). Discovery reports localPairing false while the product's cloudConnect.localPairing setting is off (its default), and again while the operator's launch gate (launch.localPairing) is off. Only with the setting, the gate and the service all on does it say true. An SDK enforces the gate from this document, because the Worker never sees the local network.",
         features: ["connect.local"],
-        requires: REQUIRES,
-        product: PRODUCT,
-        now: T0,
-        world,
-        pinned: pin,
-        initial: { deviceId: DEVICE, token, version: VERSION },
       });
       const env = world.env as unknown as Record<string, string>;
       const discover = (note: string, want: boolean) =>
-        r.step(
-          { action: "discover", note },
-          async (s) => {
-            const d = await discovery(s, PRODUCT);
-            expect(d.status).toBe(200);
-            expect(
-              (
-                (await d.clone().json()) as {
-                  services: { connect: { localPairing: boolean } };
-                }
-              ).services.connect.localPairing,
-            ).toBe(want);
-          },
-          { result: "ok", localPairing: want },
-        );
+        discoverMember(r, "localPairing", note, want);
 
       env.LAUNCH_LOCAL_PAIRING = "on";
       await discover("The setting is off: discovery says no.", false);
