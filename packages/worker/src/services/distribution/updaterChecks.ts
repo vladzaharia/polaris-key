@@ -28,6 +28,8 @@ export interface OutletChecks {
   checks: number;
   /** Devices that reverted an update or rolled a boot back. */
   failures: number;
+  /** The version with the most of those, when there are any. */
+  worstVersion: string | null;
 }
 
 export interface UpdateChecks {
@@ -57,7 +59,7 @@ export async function updateChecks(
   const sums = new Map<string, OutletChecks>(
     outlets.map((o) => [
       o.outletId,
-      { outlet: o.outletId, kind: o.kind, checks: 0, failures: 0 },
+      { outlet: o.outletId, kind: o.kind, checks: 0, failures: 0, worstVersion: null },
     ]),
   );
   if (!env.UPDATE_HEALTH)
@@ -65,6 +67,7 @@ export async function updateChecks(
   const catalog = hooks.releaseCatalog();
   if (!catalog) return { counting: false, outlets: [...sums.values()] };
 
+  const worst = new Map<string, number>();
   let readAny = false;
   let tried = 0;
   const apps = (await catalog.deliverables()).filter((d) => d.kind === "app");
@@ -105,7 +108,12 @@ export async function updateChecks(
           ))
             per[k as UpdateEvent] += v;
         row.checks += Math.max(...CHECKED.map((e) => per[e]));
-        row.failures += per.update_reverted + per.boot_rolled_back;
+        const lost = per.update_reverted + per.boot_rolled_back;
+        row.failures += lost;
+        if (lost > (worst.get(row.outlet) ?? 0)) {
+          worst.set(row.outlet, lost);
+          row.worstVersion = rel.version;
+        }
       }
     }
   }

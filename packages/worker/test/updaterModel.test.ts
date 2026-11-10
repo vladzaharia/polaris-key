@@ -12,55 +12,83 @@ const out = (kind: string, checks: number, failures = 0) => ({
   kind,
   checks,
   failures,
+  worstVersion: failures ? "4.2.2" : null,
+});
+const ctx = { godot: false, access: "public" };
+const on = (...outlets: ReturnType<typeof out>[]) => ({
+  counting: true,
+  outlets,
 });
 
 describe("the Updates read model (P2-11)", () => {
-  it("a Windows-only product sees no Sparkle", () => {
-    const v = updatersView([p("windows")], { counting: true, outlets: [] });
-    expect(v.platforms.map((x) => x.platform)).toEqual(["windows"]);
-    expect(v.platforms[0]!.updaters).not.toContain("sparkle");
-    expect(v.platforms[0]!.updaters[0]).toBe("winsparkle");
+  it("a Windows-only product sees no Sparkle, and no Godot updater unless it is a Godot game", () => {
+    const v = updatersView([p("windows")], on(out("direct", 0)), ctx);
+    expect(v.groups[0]!.platforms[0]!.updaters).toEqual([
+      "winsparkle",
+      "velopack",
+      "app-installer",
+    ]);
+    const g = updatersView([p("windows")], on(out("direct", 0)), {
+      ...ctx,
+      godot: true,
+    });
+    expect(g.groups[0]!.platforms[0]!.updaters).toContain("godot");
   });
 
-  it("Verified flips on the first reported outcome on a matching outlet", () => {
-    const none = updatersView([p("macos")], {
-      counting: true,
-      outlets: [out("direct", 0)],
-    });
-    const one = updatersView([p("macos")], {
-      counting: true,
-      outlets: [out("direct", 1)],
-    });
-    expect(none.platforms[0]!.state).toBe("not_seen");
-    expect(one.platforms[0]!.state).toBe("verified");
+  it("desktop platforms on one outlet verify together, as one group", () => {
+    const v = updatersView(
+      [p("macos"), p("windows")],
+      on(out("direct", 1)),
+      ctx,
+    );
+    expect(v.groups).toHaveLength(1);
+    expect(v.groups[0]!.state).toBe("verified");
+    expect(v.groups[0]!.platforms.map((x) => x.platform)).toEqual([
+      "macos",
+      "windows",
+    ]);
   });
 
-  it("an outlet of another platform's kind does not verify it", () => {
-    const v = updatersView([p("android")], {
-      counting: true,
-      outlets: [out("direct", 5)],
-    });
-    expect(v.platforms[0]!.state).toBe("not_seen");
+  it("not seen until an outcome; an outlet of another kind does not verify", () => {
+    expect(
+      updatersView([p("macos")], on(out("direct", 0)), ctx).groups[0]!.state,
+    ).toBe("not_seen");
+    expect(
+      updatersView([p("android")], on(out("direct", 5)), ctx).groups[0]!.state,
+    ).toBe("not_seen");
   });
 
-  it("failures are failing even when checks passed; no counters is unavailable", () => {
-    const f = updatersView([p("macos")], {
-      counting: true,
-      outlets: [out("direct", 3, 2)],
+  it("failing names the release; no counters is unavailable", () => {
+    const f = updatersView([p("macos")], on(out("direct", 3, 2)), ctx);
+    expect(f.groups[0]).toMatchObject({
+      state: "failing",
+      reverted: 2,
+      release: "4.2.2",
     });
-    expect(f.platforms[0]!.state).toBe("failing");
-    const u = updatersView([p("macos")], {
-      counting: false,
-      outlets: [out("direct", 3)],
-    });
-    expect(u.platforms[0]!.state).toBe("unavailable");
+    const u = updatersView(
+      [p("macos")],
+      { counting: false, outlets: [out("direct", 3)] },
+      ctx,
+    );
+    expect(u.groups[0]!.state).toBe("unavailable");
   });
 
-  it("a planned-only platform, and the web, have no card", () => {
-    const v = updatersView([p("linux", ["planned"] as never[]), p("web")], {
-      counting: true,
-      outlets: [],
-    });
-    expect(v.platforms).toEqual([]);
+  it("a store-only platform is updated by the store, never Sparkle", () => {
+    const v = updatersView(
+      [p("macos"), p("ios")],
+      on(out("app-store", 2)),
+      ctx,
+    );
+    expect(v.groups).toEqual([]);
+    expect(v.store).toEqual(["macos", "ios"]);
+  });
+
+  it("a planned-only platform, and the web, have no entry", () => {
+    const v = updatersView(
+      [p("linux", ["planned"] as never[]), p("web")],
+      on(),
+      ctx,
+    );
+    expect(v).toMatchObject({ groups: [], store: [] });
   });
 });

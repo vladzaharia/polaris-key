@@ -148,30 +148,31 @@ export interface ChannelRow {
   identity: ChannelIdentity | null;
 }
 
-/** One shipped platform of `GET …/distribution/updaters` (P2-11). */
+/** `GET …/distribution/updaters` (P2-11): shipped platforms grouped by what verifies together. */
 export type UpdaterId =
   | "sparkle"
   | "winsparkle"
   | "velopack"
   | "app-installer"
   | "zsync"
-  | "signed-feed"
   | "godot"
-  | "play"
-  | "store";
+  | "play";
 /** `unavailable`: the update-health counters could not be read; no data, never "not seen". */
-export type UpdaterState = "verified" | "failing" | "not_seen" | "unavailable";
-export interface UpdaterPlatform {
-  platform: string;
-  arches: string[];
-  updaters: UpdaterId[];
+export type UpdaterState = "not_seen" | "verified" | "failing" | "unavailable";
+export interface UpdaterGroup {
+  platforms: { platform: string; arches: string[]; updaters: UpdaterId[] }[];
+  release: string | null;
+  reverted: number;
+  reports: number;
   state: UpdaterState;
-  devices: { reported: number; reverted: number };
+  id: "direct" | "play";
 }
 export interface UpdatersView {
   product: string;
   now: number;
-  platforms: UpdaterPlatform[];
+  access: string | null;
+  groups: UpdaterGroup[];
+  store: string[];
 }
 
 export interface ChannelsView {

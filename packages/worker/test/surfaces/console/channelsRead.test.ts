@@ -520,24 +520,23 @@ describe("the updaters read (P2-11)", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.product).toBe(SLUG);
-    expect(body.platforms).toEqual([]);
+    expect(body.groups).toEqual([]);
   });
 
-  it("a platform a direct outlet names gets its updaters and is not seen until a device reports", async () => {
+  it("a platform a direct outlet names is one direct group, not seen until a device reports", async () => {
     await outlet("direct", "direct", { platforms: ["windows"] });
     const body = await (await readUpdaters()).json();
-    expect(body.platforms).toHaveLength(1);
-    const [win] = body.platforms;
-    expect(win.platform).toBe("windows");
-    expect(win.updaters).toEqual([
+    expect(body.groups).toHaveLength(1);
+    const [group] = body.groups;
+    expect(group.id).toBe("direct");
+    expect(group.platforms[0].platform).toBe("windows");
+    expect(group.platforms[0].updaters).toEqual([
       "winsparkle",
       "velopack",
       "app-installer",
-      "godot",
-      "signed-feed",
     ]);
     // No UPDATE_HEALTH binding in the test env, so there is no data, never "not seen".
-    expect(win.state).toBe("unavailable");
-    expect(win.devices.reported).toBe(0);
+    expect(group.state).toBe("unavailable");
+    expect(group.reports).toBe(0);
   });
 });

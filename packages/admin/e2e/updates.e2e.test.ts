@@ -28,37 +28,57 @@ const SIZES = {
 const mac = {
   platform: "macos",
   arches: ["arm64", "x86_64"],
-  updaters: ["sparkle", "velopack", "godot", "signed-feed"],
-  state: "verified",
-  devices: { reported: 64, reverted: 0 },
+  updaters: ["sparkle", "velopack"],
 };
 const win = {
   platform: "windows",
   arches: ["x86_64"],
-  updaters: ["winsparkle", "velopack", "app-installer", "godot", "signed-feed"],
-  state: "not_seen",
-  devices: { reported: 0, reverted: 0 },
+  updaters: ["winsparkle", "velopack", "app-installer"],
 };
-const view = (...platforms: unknown[]) => ({
+const direct = (over: Record<string, unknown> = {}) => ({
+  id: "direct",
+  state: "verified",
+  reports: 64,
+  reverted: 0,
+  release: null,
+  platforms: [mac, win],
+  ...over,
+});
+const play = (over: Record<string, unknown> = {}) => ({
+  id: "play",
+  state: "not_seen",
+  reports: 0,
+  reverted: 0,
+  release: null,
+  platforms: [{ platform: "android", arches: ["arm64"], updaters: ["play"] }],
+  ...over,
+});
+const view = (groups: unknown[], store: string[] = []) => ({
   product: "djdl",
   now: 1,
-  platforms,
+  access: "licensed",
+  groups,
+  store,
 });
 
 type Answer = { json: unknown; status?: number; delayMs?: number };
+// Only states the update-health data can produce: the direct group shares one fact across its platforms.
 const STATES: Record<string, Answer> = {
-  partial: { json: view(mac, win) },
-  verified: { json: view(mac) },
+  verified: { json: view([direct(), play()], ["ios"]) },
+  "not-seen": { json: view([direct({ state: "not_seen", reports: 0 })]) },
   failing: {
-    json: view(
-      { ...mac, state: "failing", devices: { reported: 5, reverted: 12 } },
-      win,
-    ),
+    json: view([
+      direct({ state: "failing", reverted: 12, release: "4.2.2" }),
+      play({ state: "verified", reports: 9 }),
+    ]),
   },
-  "no-data": { json: view({ ...mac, state: "unavailable" }) },
-  empty: { json: view() },
+  "no-data": {
+    json: view([direct({ state: "unavailable", reports: 0 })]),
+  },
+  "store-only": { json: view([], ["macos", "ios"]) },
+  empty: { json: view([]) },
   error: { json: { error: "internal" }, status: 500 },
-  loading: { json: view(mac, win), delayMs: 4000 },
+  loading: { json: view([direct()]), delayMs: 4000 },
 };
 
 let app: PreviewServer;
@@ -151,7 +171,7 @@ describe("Update → Updates in the built console", () => {
       for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[])
         for (const zoom of [false, true]) {
           // 200 % text is checked on the states that carry the most text.
-          if (zoom && !["partial", "failing", "error"].includes(state))
+          if (zoom && !["verified", "failing", "error"].includes(state))
             continue;
           const tag = `${state}-${scheme}-${size}${zoom ? "-200" : ""}`;
           it(tag, async () => {
@@ -172,8 +192,12 @@ describe("Update → Updates in the built console", () => {
                 .waitFor({ timeout: 15_000 });
             } else if (state === "empty") {
               await page.getByText("No platform shipped yet").waitFor();
+            } else if (state === "store-only") {
+              await page.getByText("Updated by the store").first().waitFor();
             } else {
-              await page.getByRole("region", { name: "macOS" }).waitFor();
+              await page
+                .getByRole("region", { name: /Direct downloads/ })
+                .waitFor();
             }
             await page.waitForTimeout(400);
             expect(await page.locator("h1").count()).toBe(1);
@@ -188,7 +212,7 @@ describe("Update → Updates in the built console", () => {
             // A POLICY violation is logged as a console error, so this covers it.
             expect(errors, "console errors and POLICY violations").toEqual([]);
             if (state === "failing")
-              await page.getByText("Updates reverted").first().waitFor();
+              await page.getByText("4.2.2 did not hold").first().waitFor();
             if (SHOT_DIR)
               await page.screenshot({
                 path: `${SHOT_DIR}/updates-${tag}.png`,

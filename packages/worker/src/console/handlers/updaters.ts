@@ -9,6 +9,7 @@ import { adminJson, err, notFound } from "../../core/console/respond.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { updateChecks } from "../../services/distribution/public.js";
+import { listSightings } from "../../core/integration/sightings.js";
 import { hostFacts } from "./channels.js";
 import type { AdminCtx } from "../routes.js";
 import { updatersView, type UpdatersView } from "../lib/updaterModel.js";
@@ -22,7 +23,9 @@ export async function updatersRead(
   const read = await hostFacts(env, db, slug, now);
   if (!read) return null;
   const checks = await updateChecks(env, slug, read.hooks, now);
-  return updatersView(read.facts.platforms, checks);
+  const godot = (await listSightings(db, slug)).some((s) => s.sdk === "godot");
+  const access = (await read.hooks.delivery()?.accessMode("app")) ?? null;
+  return updatersView(read.facts.platforms, checks, { godot, access });
 }
 
 export async function handleUpdaters(c: AdminCtx): Promise<Response> {

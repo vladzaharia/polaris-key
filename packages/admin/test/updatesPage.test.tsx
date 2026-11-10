@@ -1,6 +1,6 @@
 /**
- * Update → Updates (P2-11): one card per shipped platform with its updater setup and Verified
- * state; the loading, empty, error, partial and failing states.
+ * Update → Updates (P2-11): updaters grouped by what verifies together, with the Verified state;
+ * the loading, empty, error, no-data and failing states.
  */
 
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
@@ -9,7 +9,6 @@ import { configureAxe } from "vitest-axe";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiError, bootWith, P } from "./distributionFixture.js";
 import { resetConsole } from "./consoleHarness.js";
-import { partialLine } from "../src/console/sections/update/pages/UpdatesPage.js";
 import { renderUpdaterSetup } from "../src/console/sections/update/model/updaterSetup.js";
 
 const axe = configureAxe({
@@ -21,21 +20,28 @@ const KEY = P("/distribution/updaters");
 const mac = {
   platform: "macos",
   arches: ["arm64"],
-  updaters: ["sparkle", "velopack", "godot", "signed-feed"],
-  state: "verified",
-  devices: { reported: 64, reverted: 0 },
+  updaters: ["sparkle", "velopack"],
 };
 const win = {
   platform: "windows",
   arches: ["x86_64"],
-  updaters: ["winsparkle", "velopack", "app-installer", "godot", "signed-feed"],
-  state: "not_seen",
-  devices: { reported: 0, reverted: 0 },
+  updaters: ["winsparkle", "velopack", "app-installer"],
 };
-const view = (...platforms: unknown[]) => ({
+const direct = (over: Record<string, unknown> = {}) => ({
+  id: "direct",
+  state: "verified",
+  reports: 64,
+  reverted: 0,
+  release: null,
+  platforms: [mac, win],
+  ...over,
+});
+const view = (groups: unknown[], store: string[] = [], access = "public") => ({
   product: "djdl",
   now: 1,
-  platforms,
+  access,
+  groups,
+  store,
 });
 
 beforeEach(() => resetConsole());
@@ -45,74 +51,73 @@ afterEach(() => {
 });
 
 describe("Update → Updates", () => {
-  it("shows a card per shipped platform, Verified and Not seen yet, and the partial line", async () => {
-    bootWith(HASH, { [KEY]: view(mac, win) });
+  it("states Verified once for the direct group, with a Set up with choice per platform", async () => {
+    bootWith(HASH, { [KEY]: view([direct()]) });
     expect(
       await screen.findByRole("heading", { level: 1, name: "Updates" }),
     ).toBeTruthy();
-    const macCard = await screen.findByRole("region", { name: "macOS" });
-    expect(within(macCard).getByText("Verified")).toBeTruthy();
-    expect(
-      within(macCard).getByText("64 devices reported an update."),
-    ).toBeTruthy();
-    const winCard = screen.getByRole("region", { name: "Windows" });
-    expect(within(winCard).getByText("Not seen yet")).toBeTruthy();
-    expect(screen.getByText(/Verified on 1 of 2/)).toBeTruthy();
+    const card = await screen.findByRole("region", {
+      name: /Direct downloads: macOS, Windows/,
+    });
+    expect(within(card).getAllByText("Verified")).toHaveLength(1);
+    expect(within(card).getByText("64 update reports.")).toBeTruthy();
+    expect(within(card).getAllByRole("tab", { name: "Sparkle" })).toHaveLength(
+      1,
+    );
   });
 
-  it("a Windows-only product has no Sparkle", async () => {
-    bootWith(HASH, { [KEY]: view(win) });
-    const card = await screen.findByRole("region", { name: "Windows" });
-    expect(within(card).queryByRole("radio", { name: "Sparkle" })).toBeNull();
-    expect(
-      within(card).getByRole("radio", { name: "WinSparkle" }),
-    ).toBeTruthy();
-  });
-
-  it("choosing another updater changes the setup", async () => {
-    bootWith(HASH, { [KEY]: view(win) });
-    const card = await screen.findByRole("region", { name: "Windows" });
-    expect(within(card).getByText(/winsparkle\.xml/)).toBeTruthy();
+  it("a Windows-only product has no Sparkle, and choosing a tab changes the setup", async () => {
+    bootWith(HASH, { [KEY]: view([direct({ platforms: [win] })]) });
+    const card = await screen.findByRole("region", {
+      name: /Direct downloads: Windows/,
+    });
+    expect(within(card).queryByRole("tab", { name: "Sparkle" })).toBeNull();
+    expect(within(card).getByText(/win_sparkle_set_appcast_url/)).toBeTruthy();
     await userEvent.click(
-      within(card).getByRole("radio", { name: "App Installer" }),
+      within(card).getByRole("tab", { name: "App Installer" }),
     );
     await waitFor(() =>
       expect(within(card).getByText(/app\.appinstaller/)).toBeTruthy(),
     );
   });
 
-  it("a failing card stays with what to do, and links to update health", async () => {
+  it("a failing group names the release, links Rollouts and says when it clears", async () => {
     bootWith(HASH, {
-      [KEY]: view({
-        ...mac,
-        state: "failing",
-        devices: { reported: 5, reverted: 12 },
-      }),
+      [KEY]: view([
+        direct({ state: "failing", reverted: 12, release: "4.2.2" }),
+      ]),
     });
-    const card = await screen.findByRole("region", { name: "macOS" });
-    expect(within(card).getByText("Updates reverted")).toBeTruthy();
+    const card = await screen.findByRole("region", {
+      name: /Direct downloads/,
+    });
+    expect(within(card).getByText("12 reverted")).toBeTruthy();
+    expect(within(card).getByText("4.2.2 did not hold")).toBeTruthy();
     expect(
-      within(card).getByRole("link", { name: "Open update health" }),
+      within(card).getByRole("link", { name: "Open Rollouts" }),
     ).toBeTruthy();
-    expect(
-      within(card).getByText(
-        "12 devices reverted an update or rolled a boot back.",
-      ),
-    ).toBeTruthy();
+    expect(within(card).getByText(/under 30 days old/)).toBeTruthy();
   });
 
-  it("says so when the counters cannot be read, not 'not seen'", async () => {
+  it("says once, page-wide, when the counters cannot be read", async () => {
     bootWith(HASH, {
-      [KEY]: view({ ...mac, state: "unavailable" }),
+      [KEY]: view([direct({ state: "unavailable", reports: 0 })]),
     });
-    const card = await screen.findByRole("region", { name: "macOS" });
-    expect(within(card).getByText("No data")).toBeTruthy();
-    expect(within(card).queryByText("Not seen yet")).toBeNull();
+    expect(
+      await screen.findByText("Update reports could not be read"),
+    ).toBeTruthy();
+    expect(screen.getAllByText("No data")).toHaveLength(1);
   });
 
-  it("is empty before any platform ships", async () => {
-    bootWith(HASH, { [KEY]: view() });
+  it("lists store platforms once, without an updater", async () => {
+    bootWith(HASH, { [KEY]: view([], ["ios"]) });
+    expect(await screen.findByText("Updated by the store")).toBeTruthy();
+    expect(screen.queryByRole("tab")).toBeNull();
+  });
+
+  it("points an empty product at Releases", async () => {
+    bootWith(HASH, { [KEY]: view([]) });
     expect(await screen.findByText("No platform shipped yet")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open Releases" })).toBeTruthy();
   });
 
   it("offers Try again when the read fails", async () => {
@@ -123,35 +128,59 @@ describe("Update → Updates", () => {
   });
 
   it("has no axe violations", async () => {
-    bootWith(HASH, { [KEY]: view(mac, win) });
-    await screen.findByRole("region", { name: "macOS" });
+    bootWith(HASH, { [KEY]: view([direct()], ["ios"]) });
+    await screen.findByRole("region", { name: /Direct downloads/ });
     expect((await axe(document.body)).violations).toEqual([]);
   });
 });
 
-describe("renderUpdaterSetup / partialLine", () => {
+describe("renderUpdaterSetup", () => {
   const url = (p: string) => `https://k.example/djdl/${p}`;
-  it("builds the feed URLs for the track", () => {
-    expect(
+  const base = {
+    url,
+    channel: "stable",
+    access: "public",
+    keyShared: false,
+    godot: false,
+  };
+  it("sends the license token only under a non-public delivery", () => {
+    const code = (access: string) =>
       renderUpdaterSetup({
-        updater: "sparkle",
-        platform: "macos",
-        channel: "beta",
-        url,
-      }).endpoints[0]!.url,
-    ).toBe("https://k.example/djdl/update/beta/appcast.xml");
-    expect(
-      renderUpdaterSetup({
-        updater: "velopack",
-        platform: "macos",
-        channel: "stable",
-        url,
-      }).endpoints[0]!.url,
-    ).toContain("releases.osx.json");
+        ...base,
+        access,
+        updater: "winsparkle",
+        platform: "windows",
+      }).snippets[0]!.code;
+    expect(code("public")).not.toContain("Authorization");
+    expect(code("licensed")).toContain("Authorization");
   });
-  it("names the partial only when some are not Verified", () => {
-    expect(partialLine([mac] as never)).toBeNull();
-    expect(partialLine([mac, mac] as never)).toBeNull();
-    expect(partialLine([mac, win] as never)).toBe("Verified on 1 of 2");
+  it("puts the Godot key where each platform reads it", () => {
+    const at = (platform: string) =>
+      renderUpdaterSetup({ ...base, updater: "godot", platform });
+    expect(at("macos").snippets[0]!.label).toBe("macOS export preset");
+    expect(at("windows").snippets[0]!.code).toContain(
+      "update_eddsa_public_key",
+    );
+    expect(at("linux").snippets).toEqual([]);
+  });
+  it("links the .appinstaller file, not the protocol", () => {
+    const s = renderUpdaterSetup({
+      ...base,
+      updater: "app-installer",
+      platform: "windows",
+    });
+    expect(s.snippets[0]!.code).toBe(
+      "https://k.example/djdl/update/stable/app.appinstaller",
+    );
+  });
+  it("says the key is shared instead of repeating the steps", () => {
+    const s = renderUpdaterSetup({
+      ...base,
+      keyShared: true,
+      updater: "winsparkle",
+      platform: "windows",
+    });
+    expect(s.steps[0]).toContain("the same one");
+    expect(s.steps.join(" ")).not.toContain("generate_keys");
   });
 });

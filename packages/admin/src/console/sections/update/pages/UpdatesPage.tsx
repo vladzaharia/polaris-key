@@ -1,32 +1,35 @@
 /**
- * Update → Updates (P2-11): the updaters for the platforms the product ships, each with its
- * Verified state. One card per shipped platform; the updaters it can use sit in a segmented
- * choice, the first being the usual one. A platform nothing ships on has no card.
+ * Update → Updates (P2-11): the updaters for the platforms the product ships, grouped by what
+ * verifies together. An update-health event names an outlet but no platform, so Verified and the
+ * failing state belong to a group (direct downloads, Google Play), never to one platform of it.
+ * Platforms a store updates are listed once, without a self-updater.
  *
  * Verified is the Ship builds fact from the update-health counters (updaters send no
- * `X-PKey-SDK`, so no sighting exists): a device reported an update outcome on an outlet the
- * platform's updaters use. A failing card stays until a later outcome is clean; it is never a toast.
+ * `X-PKey-SDK`, so no sighting exists). The "Set up with" choice is a view, nothing is saved.
  */
 
 import * as React from "react";
-import { BookOpen } from "lucide-react";
-import type { UpdaterId, UpdaterPlatform } from "../../../../api.js";
+import { Tabs } from "radix-ui";
+import { CloudOff } from "lucide-react";
+import type { UpdaterGroup, UpdaterId, UpdatersView } from "../../../../api.js";
+import { cn } from "../../../../lib/cn.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { formatCount } from "../../../../lib/format.js";
+import { inlineCode } from "../../../../lib/inline.js";
+import { ACCESS_LABELS } from "../../../../lib/labels.js";
+import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { CodeBlock } from "../../../../ui/CodeBlock.js";
-import { CopyButton } from "../../../../ui/CopyButton.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { Section } from "../../../../ui/Section.js";
-import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
 import { Select } from "../../../../ui/Select.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
-import { Link } from "../../../router.js";
-import { r } from "../../../routes.js";
+import { Link, useSearchParam } from "../../../router.js";
+import { codecs, r } from "../../../routes.js";
 import { useUpdaters } from "../../distribution/data.js";
 import { publicUrl } from "../../distribution/model/format.js";
 import { useReleaseStore } from "../../release/data.js";
@@ -38,226 +41,416 @@ import {
 } from "../model/updaterSetup.js";
 
 const platformName = (p: string) => PLATFORM_LABEL[p] ?? p;
-
-/** "Verified on 1 of 2", or null while it says nothing a card does not. */
-export function partialLine(
-  platforms: readonly UpdaterPlatform[],
-): string | null {
-  if (platforms.length < 2) return null;
-  const known = platforms.filter((p) => p.state !== "unavailable");
-  if (known.length === 0) return null;
-  const ok = known.filter((p) => p.state === "verified").length;
-  return ok === known.length ? null : `Verified on ${ok} of ${known.length}`;
-}
+const TRACK = codecs.string("stable");
+const LINK =
+  "py-1 text-fg-strong underline underline-offset-4 hover:no-underline";
 
 export function UpdatesPage({ slug }: { slug: string }): React.ReactElement {
   const updaters = useUpdaters(slug);
   const store = useReleaseStore(slug);
   useLoadingAnnouncement("updaters", updaters.isPending);
   const channels = React.useMemo(() => channelNames(store.data), [store.data]);
-  const [channel, setChannel] = React.useState("stable");
-  const current = channels.includes(channel) ? channel : "stable";
-  const platforms = updaters.data?.platforms ?? [];
-  const names = platforms.map((p) => platformName(p.platform)).join(", ");
-  const partial = partialLine(platforms);
+  const [track, setTrack] = useSearchParam("track", TRACK);
+  const current = channels.includes(track) ? track : "stable";
+  const view = updaters.data;
+  const headingRef = React.useRef<HTMLDivElement>(null);
+  const retry = async () => {
+    await updaters.refetch();
+    headingRef.current?.querySelector("h1")?.focus();
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={headingRef}>
       <PageHeader
         title="Updates"
-        description={
-          updaters.data && platforms.length > 0
-            ? [`Updaters for ${names}.`, partial].filter(Boolean).join(" ")
-            : undefined
-        }
         refetching={updaters.isFetching && !updaters.isPending}
+        secondaryActions={[
+          {
+            label: "Guide",
+            onSelect: () =>
+              window.open(docsUrl("updates"), "_blank", "noreferrer"),
+            variant: "ghost",
+          },
+        ]}
       />
       {updaters.isPending ? (
-        <div
-          className="space-y-3"
-          aria-busy="true"
-          aria-label="Loading the updaters"
-        >
-          <Skeleton className="h-56 w-full" />
-          <Skeleton className="h-56 w-full" />
-        </div>
-      ) : updaters.isError || !updaters.data ? (
+        <LoadingCards />
+      ) : updaters.isError || !view ? (
         <ErrorState
           error={updaters.error}
-          onRetry={() => void updaters.refetch()}
+          onRetry={() => void retry()}
           context={{ thing: "Updaters" }}
         />
-      ) : platforms.length === 0 ? (
+      ) : view.groups.length === 0 && view.store.length === 0 ? (
         <EmptyState
           kind="first-run"
           title="No platform shipped yet"
-          description="An updater appears for each platform once a release has a build for it."
+          description="An updater appears here once a release has a build for a platform."
+          primaryAction={
+            <Button variant="outline" asChild>
+              <Link to={r.releases(slug)}>Open Releases</Link>
+            </Button>
+          }
           docs={docsUrl("updates")}
           headingLevel={2}
         />
       ) : (
-        <>
-          {channels.length > 1 ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <label
-                htmlFor="updates-track"
-                className="text-sm font-medium text-fg-muted"
-              >
-                Release track
-              </label>
-              <Select
-                id="updates-track"
-                value={current}
-                onChange={(v) => v && setChannel(v)}
-                options={channels.map((c) => ({ value: c, label: c }))}
-                className="w-48"
-              />
-            </div>
-          ) : null}
-          {platforms.map((p) => (
-            <PlatformCard
-              key={p.platform}
-              slug={slug}
-              platform={p}
-              channel={current}
-            />
-          ))}
-        </>
+        <Loaded
+          slug={slug}
+          view={view}
+          channels={channels}
+          track={current}
+          onTrack={setTrack}
+          onRetry={() => void retry()}
+        />
       )}
     </div>
   );
 }
 
-function StatePill({ p }: { p: UpdaterPlatform }): React.ReactElement {
-  switch (p.state) {
-    case "verified":
-      return <StatusPill tone="success">Verified</StatusPill>;
-    case "failing":
-      return <StatusPill tone="danger">Updates reverted</StatusPill>;
-    case "unavailable":
-      return <StatusPill tone="neutral">No data</StatusPill>;
-    default:
-      return <StatusPill tone="neutral">Not seen yet</StatusPill>;
-  }
-}
-
-function footOf(p: UpdaterPlatform): string {
-  const devices = (n: number) =>
-    `${formatCount(n)} ${n === 1 ? "device" : "devices"}`;
-  switch (p.state) {
-    case "verified":
-      return `${devices(p.devices.reported)} reported an update.`;
-    case "failing":
-      return `${devices(p.devices.reverted)} reverted an update or rolled a boot back.`;
-    case "unavailable":
-      return "The update counters could not be read.";
-    default:
-      return `No ${platformName(p.platform)} device has reported an update.`;
-  }
-}
-
-function PlatformCard({
+function Loaded({
   slug,
-  platform: p,
-  channel,
+  view,
+  channels,
+  track,
+  onTrack,
+  onRetry,
 }: {
   slug: string;
-  platform: UpdaterPlatform;
-  channel: string;
+  view: UpdatersView;
+  channels: string[];
+  track: string;
+  onTrack: (t: string) => void;
+  onRetry: () => void;
 }): React.ReactElement {
-  const [chosen, setChosen] = React.useState<UpdaterId>(p.updaters[0]!);
-  const updater = p.updaters.includes(chosen) ? chosen : p.updaters[0]!;
-  const setup = renderUpdaterSetup({
-    updater,
-    platform: p.platform,
-    channel,
-    url: (path) => publicUrl(slug, path),
-  });
-  const name = platformName(p.platform);
-  // A URL the snippet already carries (with its own copy button) is not listed twice.
-  const endpoints = setup.endpoints.filter(
-    (e) => !setup.snippet?.code.includes(e.url),
-  );
+  const noData = view.groups.some((g) => g.state === "unavailable");
   return (
-    <Section title={name} actions={<StatePill p={p} />}>
-      <div className="space-y-4">
-        {p.state === "failing" ? (
-          <Callout
-            tone="danger"
-            title="Devices reverted an update"
-            action={
-              <Link
-                to={r.health(slug)}
-                className="py-1 text-accent-fg underline-offset-4 hover:underline"
-              >
-                Open update health
-              </Link>
-            }
+    <>
+      {noData ? (
+        <Callout
+          tone="warning"
+          title="Update reports could not be read"
+          action={
+            <Button variant="outline" onClick={onRetry}>
+              Try again
+            </Button>
+          }
+        >
+          Verified shows again once they can.
+        </Callout>
+      ) : null}
+      {channels.length > 1 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <label
+            htmlFor="updates-track"
+            className="text-sm font-medium text-fg-muted"
           >
-            The release they moved to did not hold. Halt its rollout, then ship
-            a fixed release. This clears when later updates succeed.
-          </Callout>
-        ) : null}
-        {p.updaters.length > 1 ? (
-          <SegmentedControl
-            aria-label={`Updater for ${name}`}
-            wrap
-            value={updater}
-            onChange={(v) => setChosen(v)}
-            options={p.updaters.map((u) => ({
-              value: u,
-              label: UPDATER_LABEL[u],
-            }))}
+            Release track
+          </label>
+          <Select
+            id="updates-track"
+            value={track}
+            onChange={(v) => v && onTrack(v)}
+            options={channels.map((c) => ({ value: c, label: c }))}
+            className="w-auto min-w-48"
           />
-        ) : (
-          <p className="text-sm font-medium">{UPDATER_LABEL[updater]}</p>
-        )}
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ol className="list-decimal space-y-2 pl-5 text-sm">
-            {setup.steps.map((s) => (
-              <li key={s}>{s}</li>
-            ))}
-          </ol>
-          {setup.snippet ? (
-            <CodeBlock
-              code={setup.snippet.code}
-              language={setup.snippet.language}
-              filename={setup.snippet.filename}
-              wrap
-            />
-          ) : null}
         </div>
-        {endpoints.length > 0 ? (
-          <ul className="space-y-2" aria-label={`${name} feed URLs`}>
-            {endpoints.map((e) => (
-              <li
-                key={e.url}
-                className="flex flex-wrap items-center gap-2 sm:flex-nowrap"
-              >
-                <span className="w-full shrink-0 text-xs font-medium text-fg-muted sm:w-36">
-                  {e.label}
-                </span>
-                <code className="min-w-0 flex-1 break-all rounded-sm bg-surface-sunken px-2 py-1 font-mono text-xs">
-                  {e.url}
-                </code>
-                <CopyButton value={e.url} label={`Copy the ${e.label} URL`} />
+      ) : null}
+      {view.groups.map((g) => (
+        <GroupCard key={g.id} slug={slug} group={g} track={track} view={view} />
+      ))}
+      {view.store.length > 0 ? (
+        <Section title="Updated by the store">
+          <ul className="space-y-1 text-sm">
+            {view.store.map((p) => (
+              <li key={p}>
+                {platformName(p)}: the store offers the update; nothing to set
+                up.
               </li>
             ))}
           </ul>
-        ) : null}
-        <p className="flex items-center gap-2 border-t border-border pt-3 text-sm text-fg-muted">
-          <span>{footOf(p)}</span>
-          <a
-            className="ml-auto inline-flex items-center gap-1 py-1 text-accent-fg underline-offset-4 hover:underline"
-            href={docsUrl("updates")}
-            target="_blank"
-            rel="noreferrer"
+        </Section>
+      ) : null}
+      <RulesBand slug={slug} access={view.access} />
+    </>
+  );
+}
+
+function LoadingCards(): React.ReactElement {
+  return (
+    <div
+      className="space-y-3"
+      aria-busy="true"
+      aria-label="Loading the updaters"
+    >
+      {[0, 1].map((i) => (
+        <div key={i} className="rounded-xl border border-border">
+          <Skeleton className="h-14 w-full rounded-none" />
+          <div className="grid gap-4 p-4 lg:grid-cols-2">
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-28 w-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const GROUP_TITLE: Record<UpdaterGroup["id"], string> = {
+  direct: "Direct downloads",
+  play: "Google Play",
+};
+
+function StatePill({ g }: { g: UpdaterGroup }): React.ReactElement {
+  switch (g.state) {
+    case "verified":
+      return <StatusPill tone="success">Verified</StatusPill>;
+    case "failing":
+      return (
+        <StatusPill tone="danger">
+          {formatCount(g.reverted)} reverted
+        </StatusPill>
+      );
+    case "unavailable":
+      return (
+        <StatusPill tone="neutral" icon={CloudOff}>
+          No data
+        </StatusPill>
+      );
+    default:
+      return (
+        <StatusPill tone="neutral" className="border-dashed">
+          Not seen yet
+        </StatusPill>
+      );
+  }
+}
+
+function GroupCard({
+  slug,
+  group: g,
+  track,
+  view,
+}: {
+  slug: string;
+  group: UpdaterGroup;
+  track: string;
+  view: UpdatersView;
+}): React.ReactElement {
+  const names = g.platforms.map((p) => platformName(p.platform)).join(", ");
+  const title = `${GROUP_TITLE[g.id]}: ${names}`;
+  return (
+    <Section title={title} actions={<StatePill g={g} />}>
+      <div className="space-y-5">
+        {g.state === "failing" ? (
+          <Callout
+            tone="danger"
+            title={
+              g.release
+                ? `${g.release} did not hold`
+                : "Devices reverted an update"
+            }
+            action={
+              <Link to={r.rollouts(slug)} className={LINK}>
+                Open Rollouts
+              </Link>
+            }
           >
-            <BookOpen className="size-4" aria-hidden="true" />
-            Docs
-          </a>
-        </p>
+            Reverts and rollbacks after a failed start count while they are
+            under 30 days old, on the newest six releases. Halt the rollout and
+            ship a fixed release.{" "}
+            <Link to={r.health(slug)} className={LINK}>
+              Update health
+            </Link>
+          </Callout>
+        ) : null}
+        {g.state === "verified" ? (
+          <p className="text-sm text-fg-muted">
+            {formatCount(g.reports)} update{" "}
+            {g.reports === 1 ? "report" : "reports"}.
+          </p>
+        ) : null}
+        {g.platforms.map((p, i) => (
+          <PlatformSetup
+            key={p.platform}
+            slug={slug}
+            platform={p.platform}
+            updaters={p.updaters}
+            track={track}
+            access={view.access}
+            keyShared={i > 0}
+            godot={view.groups.some((x) =>
+              x.platforms.some((q) => q.updaters.includes("godot")),
+            )}
+            heading={g.platforms.length > 1}
+          />
+        ))}
       </div>
+    </Section>
+  );
+}
+
+function PlatformSetup({
+  slug,
+  platform,
+  updaters,
+  track,
+  access,
+  keyShared,
+  godot,
+  heading,
+}: {
+  slug: string;
+  platform: string;
+  updaters: UpdaterId[];
+  track: string;
+  access: string | null;
+  keyShared: boolean;
+  godot: boolean;
+  heading: boolean;
+}): React.ReactElement {
+  const [chosen, setChosen] = React.useState<UpdaterId>(updaters[0]!);
+  const name = platformName(platform);
+  const options = updaters.map((u) => ({ value: u, label: UPDATER_LABEL[u] }));
+  return (
+    <Tabs.Root
+      value={chosen}
+      onValueChange={(v) => setChosen(v as UpdaterId)}
+      className="space-y-3"
+    >
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {heading ? <h3 className="text-sm font-semibold">{name}</h3> : null}
+        {options.length > 1 ? (
+          <>
+            <Tabs.List
+              aria-label={`Set up ${name} with`}
+              className="hidden gap-4 border-b border-border sm:flex"
+            >
+              <span className="self-center pb-2 text-sm text-fg-muted">
+                Set up with
+              </span>
+              {options.map((o) => (
+                <Tabs.Trigger
+                  key={o.value}
+                  value={o.value}
+                  className={cn(
+                    "-mb-px border-b-[3px] border-transparent pb-2 pt-1 text-sm text-fg-muted",
+                    "data-[state=active]:border-accent data-[state=active]:font-medium data-[state=active]:text-fg-strong",
+                    "focus-visible:outline-2 focus-visible:outline-accent-fg",
+                  )}
+                >
+                  {o.label}
+                </Tabs.Trigger>
+              ))}
+            </Tabs.List>
+            <div className="w-full sm:hidden">
+              <Select
+                aria-label={`Set up ${name} with`}
+                value={chosen}
+                onChange={(v) => v && setChosen(v as UpdaterId)}
+                options={options}
+              />
+            </div>
+          </>
+        ) : null}
+      </div>
+      {options.map((o) => (
+        <Tabs.Content key={o.value} value={o.value} tabIndex={-1}>
+          <Setup
+            slug={slug}
+            platform={platform}
+            updater={o.value}
+            track={track}
+            access={access}
+            keyShared={keyShared}
+            godot={godot}
+          />
+        </Tabs.Content>
+      ))}
+    </Tabs.Root>
+  );
+}
+
+function Setup({
+  slug,
+  platform,
+  updater,
+  track,
+  access,
+  keyShared,
+  godot,
+}: {
+  slug: string;
+  platform: string;
+  updater: UpdaterId;
+  track: string;
+  access: string | null;
+  keyShared: boolean;
+  godot: boolean;
+}): React.ReactElement {
+  const setup = renderUpdaterSetup({
+    updater,
+    platform,
+    channel: track,
+    access,
+    keyShared,
+    godot,
+    url: (path) => publicUrl(slug, path),
+  });
+  return (
+    <div className="grid gap-6 [grid-template-columns:minmax(0,1fr)] lg:grid-cols-2">
+      <ol className="list-decimal space-y-2 pl-5 text-sm [overflow-wrap:anywhere]">
+        {setup.steps.map((s) => (
+          <li key={s}>{inlineCode(s)}</li>
+        ))}
+      </ol>
+      {setup.snippets.length > 0 ? (
+        <div className="min-w-0 space-y-3">
+          {setup.snippets.map((s) => (
+            <CodeBlock
+              key={s.label}
+              code={s.code}
+              language={s.language}
+              filename={s.label}
+              wrap
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function RulesBand({
+  slug,
+  access,
+}: {
+  slug: string;
+  access: string | null;
+}): React.ReactElement {
+  return (
+    <Section title="Update rules">
+      <ul className="space-y-2 text-sm">
+        <li>
+          Who can check for updates:{" "}
+          {access ? (ACCESS_LABELS[access] ?? access) : "not set"}.{" "}
+          <Link to={r.access(slug)} className={LINK}>
+            Change on Access
+          </Link>
+        </li>
+        <li>
+          Compatibility window and artifact policy:{" "}
+          <Link to={r.feed(slug)} className={LINK}>
+            Feed
+          </Link>
+        </li>
+        <li>
+          Verified covers every release track.{" "}
+          <Link to={r.channels(slug)} className={LINK}>
+            Release tracks
+          </Link>
+        </li>
+      </ul>
     </Section>
   );
 }
