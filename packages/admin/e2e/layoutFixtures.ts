@@ -421,6 +421,53 @@ const ROUTES: Record<string, unknown> = {
     floors: STORE.floors,
   },
   [`${P}/release/channels`]: CHANNELS,
+  // The Clients page: the issuer is on, one client of each kind, one of them with a long name.
+  [`${P}/identity/clients`]: {
+    issuer: {
+      enabled: true,
+      url: "https://key.plrs.im/djdl/identity",
+      discoveryUrl:
+        "https://key.plrs.im/djdl/identity/.well-known/openid-configuration",
+      jwksUrl: "https://key.plrs.im/djdl/identity/jwks",
+    },
+    limit: 20,
+    clients: [
+      ["cl_AAAAAAAAAAAAAAAAAAAAAA", "forum", "Forum", "web", "console", false],
+      [
+        "cl_BBBBBBBBBBBBBBBBBBBBBB",
+        "docs",
+        "Documentation site with a rather long name that must wrap",
+        "spa",
+        "manifest",
+        false,
+      ],
+      [
+        "cl_CCCCCCCCCCCCCCCCCCCCCC",
+        "partner-app",
+        "Partner companion",
+        "native",
+        "console",
+        true,
+      ],
+    ].map(([id, key, name, type, origin, partner], i) => ({
+      id,
+      key,
+      name,
+      developerName: partner ? "Example Partner Ltd" : null,
+      partner,
+      type,
+      origin,
+      status: i === 2 ? "disabled" : "active",
+      redirectUris: ["https://forum.example.com/auth/callback"],
+      postLogoutRedirectUris: ["https://forum.example.com/"],
+      scopes: ["openid", "profile", "email", "offline_access"],
+      claimsRequired: ["name"],
+      createdAt: NOW - 30 * DAY,
+      updatedAt: NOW - DAY,
+      people30d: 42 - i * 20,
+      people: 120 - i * 50,
+    })),
+  },
   [`${P}/config/catalog/versions`]: {
     versions: Array.from({ length: 8 }, (_, i) => ({
       version: 8 - i,
