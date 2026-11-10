@@ -39,6 +39,8 @@ export const GUARDS = {
     "rule 6 enforcer (table ownership); root AGENTS.md names its path",
   auditWriter:
     "rule 6 enforcer (single audit writer); root AGENTS.md names its path",
+  isolationGuard:
+    "keeps the shared-module-graph test run safe (vitest.isolation.ts); the layout of the worker suite",
   routeCoverage: "rule 10 enforcer; root AGENTS.md names its path",
   platformInventory:
     "generated-file freshness (platform inventory); AGENTS.md rule 3",
