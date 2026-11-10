@@ -7,6 +7,7 @@ from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
 from polaris_key.connect.links import CloudLinks
+from polaris_key.connect.local_links import LocalLinks
 from polaris_key.connect.nearby import CloudNearby
 from polaris_key.connect.transfer import IncomingOffer, Transfer
 from polaris_key.identity.client import IdentityClient
@@ -30,6 +31,7 @@ CLASSES = {
     "EntitlementsClient": EntitlementsClient,
     "CloudConnect": CloudConnect,
     "CloudLinks": CloudLinks,
+    "LocalLinks": LocalLinks,
     "CloudNearby": CloudNearby,
     "IncomingOffer": IncomingOffer,
     "Transfer": Transfer,
@@ -142,6 +144,15 @@ ATTRS = [
     ("cloudConnect.links.open", "CloudLinks", "open"),
     ("cloudConnect.links.onLink", "CloudLinks", "on_link"),
     ("cloudConnect.links.interAccount", "CloudLinks", "inter_account"),
+    ("cloudConnect.localLinks.pair", "LocalLinks", "pair"),
+    ("cloudConnect.localLinks.join", "LocalLinks", "join"),
+    ("cloudConnect.localLinks.list", "LocalLinks", "list"),
+    ("cloudConnect.localLinks.rename", "LocalLinks", "rename"),
+    ("cloudConnect.localLinks.remove", "LocalLinks", "remove"),
+    ("cloudConnect.localLinks.setReachable", "LocalLinks", "set_reachable"),
+    ("cloudConnect.localLinks.open", "LocalLinks", "open"),
+    ("cloudConnect.localLinks.onLink", "LocalLinks", "on_link"),
+    ("cloudConnect.localLinks.localPairing", "LocalLinks", "local_pairing"),
     ("cloudConnect.transfer.send", "Transfer", "send"),
     ("cloudConnect.transfer.onOffer", "Transfer", "on_offer"),
     ("cloudConnect.transfer.onResult", "Transfer", "on_result"),

@@ -198,6 +198,14 @@ class SocketLink:
         """Modes v and p: the person confirmed the code. Safe from any thread."""
         self._call(self.channel.confirm_sas)
 
+    def confirm_pairing(self) -> None:
+        """Mode q: the person agreed to pair. Safe from any thread."""
+        self._call(self.channel.confirm_pairing)
+
+    def decline_pairing(self) -> None:
+        """Mode q: the person declined. Safe from any thread."""
+        self._call(self.channel.decline_pairing)
+
     def close_nowait(self, code: str) -> None:
         """The loop-thread form of :meth:`close`, for a callback already on the loop."""
         self.channel.close(code)
@@ -325,8 +333,9 @@ class SocketLink:
                 self._on_event(e)
             return
         if isinstance(e, Established):
-            # Mode c (§15.10) has no device id: the contact that opened the session names the peer.
-            if e.peer_device_id is None and e.contact_index is None:
+            # Modes c and l (§15.10, §15.12) have no device id: the contact or link that opened the session
+            # names the peer.
+            if e.peer_device_id is None and e.contact_index is None and e.local_index is None:
                 return
             if e.peer_device_id is not None and self._expect_peer is not None and e.peer_device_id != self._expect_peer:
                 self.wrong_peer = True

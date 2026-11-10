@@ -24,6 +24,7 @@ Rules this module keeps:
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import math
 import os
@@ -66,6 +67,15 @@ from ..devices.client import DevicesClient
 from ..devices.keys import DEVICE_KEYS_FILE, DeviceKeyStorage, DeviceKeyStore, FileDeviceKeyStorage
 from .contacts import LiveContact, contact_id, drop_stale_rows, promote_row, secret_tag, store_row, trial_order_of
 from .errors import RELAY_PROTOCOL, LanError, RelayError
+from .local_state import (
+    LiveLocal,
+    LocalLinkRow,
+    LocalLinkStore,
+    LocalRef,
+    live_of_local,
+    local_storage,
+    local_tag,
+)
 from .state import (
     CONNECT_STATE_FILE,
     ConnectStateRecord,
@@ -285,8 +295,12 @@ class ConnectClient:
         device_keys: Optional[DeviceKeyPort] = None,
         allow_ephemeral_keys: bool = False,
         inter_account: Optional[Callable[[], bool]] = None,
+        local_pairing: Optional[Callable[[], bool]] = None,
     ) -> None:
         self._inter_account = inter_account
+        self._local_pairing = local_pairing
+        self._local: Optional[LocalLinkStore] = None
+        self._on_locals: List[Callable[[], None]] = []
         self._on_contacts: List[Callable[[], None]] = []
         self._on_leave: List[Callable[[List[bytes]], None]] = []
         self._ctx = ctx
@@ -634,6 +648,88 @@ class ConnectClient:
         product's setting, ``launch.connectLinks`` and the service are on. False before discovery."""
         f = self._inter_account
         return f is not None and f() is True
+
+    # ── Local links (account-free pairing, §15.12) ───────────────────────────────────────────
+
+    @property
+    def slug(self) -> str:
+        """The product slug."""
+        return self._ctx.product
+
+    def local_pairing(self) -> bool:
+        """The cached discovery answer ``services.connect.localPairing`` (§15.9, §15.12 "Gates"): true only
+        while the product's setting, ``launch.localPairing`` and the service are on. False before discovery."""
+        f = self._local_pairing
+        return f is not None and f() is True
+
+    def local_store(self) -> LocalLinkStore:
+        """The local links this device holds for the product (``pkey.connect.local.v1``). It needs no account
+        and no held identity: it is not account data."""
+        with self._lock:
+            if self._local is None:
+
+                def open_storage() -> DeviceKeyStorage:
+                    port = self._port
+                    persistence = "memory" if port is not None and port.persistence() == "memory" else "durable"
+                    return local_storage(self._ctx.dirs.state, persistence)
+
+                self._local = LocalLinkStore(self._ctx.product, open_storage)
+            return self._local
+
+    def local_source(self) -> Any:
+        """What local pairing reads of this client (§15.12)."""
+        from .local_pairing import LocalSource
+
+        return LocalSource(
+            slug=self._ctx.product,
+            now=self._ctx.now,
+            allowed=self.local_pairing,
+            store=self.local_store(),
+            notify=self.notify_locals,
+            on_change=self.on_locals_changed,
+        )
+
+    def live_locals(self) -> List[LiveLocal]:
+        """The local links in held order, decoded; ``[]`` while the gate is off or the record is unusable (a
+        corrupt file serves nothing and is never replaced). The caller wipes them."""
+        if not self.local_pairing():
+            return []
+        try:
+            return [live_of_local(r) for r in self.local_store().rows()]
+        except Exception:
+            return []
+
+    def touch_local(self, ref: LocalRef) -> None:
+        """A session opened under a local link: its last-seen time moves. At most one write an hour per link,
+        and the time is coarsened to the hour: the file does not become a log of when the peer was near
+        (§15.12)."""
+        hour = (int(self._ctx.now()) // 3600) * 3600
+
+        def fn(rows: List[LocalLinkRow]) -> Optional[List[LocalLinkRow]]:
+            if not any(
+                r.id == ref.id
+                and (r.last_seen is None or r.last_seen < hour)
+                and local_tag(b64url_decode(r.secret)) == ref.tag
+                for r in rows
+            ):
+                return None
+            return [dataclasses.replace(r, last_seen=hour) if r.id == ref.id else r for r in rows]
+
+        self.local_store().update(fn)
+
+    def on_locals_changed(self, fn: Callable[[], None]) -> Callable[[], None]:
+        """Called when the local links changed or the ``localPairing`` answer may have (on the caller's
+        thread, whichever it is)."""
+        self._on_locals.append(fn)
+        return lambda: self._on_locals.remove(fn) if fn in self._on_locals else None
+
+    def notify_locals(self) -> None:
+        """Tell the listeners the local links or the gate moved."""
+        for f in list(self._on_locals):
+            try:
+                f()
+            except Exception:
+                pass  # a host's listener cannot stop the others
 
     def contact_rows(self) -> List[ContactRow]:
         """The contact rows held for this device, pending ones that lapsed (24 h) dropped. Empty without a

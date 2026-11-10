@@ -17,6 +17,9 @@ from .cloud_connect import CloudConnect, CloudConnectStatus, CloudPeer
 from .contacts import ContactInfo, ContactRef
 from .errors import LanError, RelayError
 from .links import CloudLinks
+from .local_common import LocalCode, LocalPaired, LocalPairFailure
+from .local_links import LocalLinks
+from .local_state import LocalLinkInfo, LocalRef
 from .nearby import ApproveAnswerInput, CloudNearby, NearbyApproval, NearbyApproverHandle, NearbyDeps, NearbyRequest
 
 __all__ = [
@@ -33,6 +36,14 @@ __all__ = [
     "ContactRef",
     "DiscoveryKeys",
     "LanError",
+    "LocalCode",
+    "LocalLinkInfo",
+    "LocalLinks",
+    "LocalOffer",
+    "LocalPairFailure",
+    "LocalPairHandle",
+    "LocalPaired",
+    "LocalRef",
     "LinkOffer",
     "LinkPairHandle",
     "PAIR_WINDOW_SECONDS",
@@ -52,6 +63,7 @@ __all__ = [
 #: The pairing window imports asyncio and sockets: resolved on first use (PEP 562), so importing this package
 #: starts nothing and loads nothing it does not need.
 _PAIRING = ("LinkOffer", "LinkPairHandle", "PAIR_WINDOW_SECONDS", "PairFailure", "PairedLink")
+_LOCAL_PAIRING = ("LocalOffer", "LocalPairHandle")
 
 
 def __getattr__(name: str) -> object:
@@ -59,4 +71,8 @@ def __getattr__(name: str) -> object:
         from . import pairing
 
         return getattr(pairing, name)
+    if name in _LOCAL_PAIRING:
+        from . import local_pairing
+
+        return getattr(local_pairing, name)
     raise AttributeError("module %r has no attribute %r" % (__name__, name))

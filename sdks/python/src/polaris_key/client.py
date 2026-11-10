@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import logging
 import os
+import random
 import threading
 import weakref
 from dataclasses import dataclass
@@ -34,9 +35,9 @@ import httpx
 
 from .backend import BackendClient
 from .cloud_sync.api import CloudSyncApi, CloudSyncClient
-from .cloud_sync.saves import SavesApi
 from .cloud_sync.host import CloudSyncHost, CloudSyncHostDeps, CloudSyncHostOptions
 from .cloud_sync.merge import HostMergeMachine, MergeRegistry
+from .cloud_sync.saves import SavesApi
 from .commerce import CommerceClient
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
 from .connect import CloudConnect, ConnectClient, NearbyDeps
@@ -61,6 +62,7 @@ from .core.models import (
     DocProfile,
     LicenseDoc,
 )
+from .core.peer_local import LocalPairingGate
 from .core.portal import PortalStore
 from .core.store import Store, StoreStatus
 from .core.sync import SyncDeps, SyncResult
@@ -81,6 +83,7 @@ from .devices.client import (
 )
 from .devices.facts import ProbeDeclaration
 from .discovery import (
+    DiscoveryNotFound,
     DiscoveryOk,
     ServicesMap,
     discover_product,
@@ -110,6 +113,13 @@ __all__ = [
 
 #: How long a discovery answer of ``interAccount: true`` counts without a fresh read (24 h).
 INTER_ACCOUNT_TTL_SECONDS = 24 * 60 * 60
+
+
+def _daemon_timer(fn: Callable[[], None], seconds: float) -> "threading.Timer":
+    t = threading.Timer(seconds, fn)
+    t.daemon = True
+    t.start()
+    return t
 
 
 @dataclass(frozen=True)
@@ -339,10 +349,14 @@ class PolarisKeyClient:
         #: §13.11). Named ``keyring`` because ``sync()`` is the licence sync.
         self.keyring: KeyringClient = KeyringClient(self.core, self._tokens, device_keys=device_keys)
 
+        #: The cached discovery answer for pairing with a code (§15.12 "Gates"): no document is off.
+        self._local_gate = LocalPairingGate()
+        self._local_gate_lock = threading.Lock()
+
         #: Cloud Connect identity (WIRE-CONTRACT-V5 §15): the person's roster, this device's
         #: certificate and K_disc, verified against the effective product set. Without
         #: ``device_keys`` it uses the file key store in the state directory.
-        self.connect = ConnectClient(
+        self.connect: ConnectClient = ConnectClient(
             self.core,
             self._tokens,
             self.devices,
@@ -350,10 +364,12 @@ class PolarisKeyClient:
             device_keys=device_keys,
             allow_ephemeral_keys=allow_ephemeral_keys,
             inter_account=self._inter_account,
+            # WIRE-CONTRACT-V5 §15.12: local pairing follows the cached document, with no lapse.
+            local_pairing=lambda: self._local_gate.allowed,
         )
         #: Cloud Connect (WIRE-CONTRACT-V5 §15): LAN and relay behind one facade. Nothing starts until
         #: ``cloud_connect.start()``: no thread, no socket.
-        self.cloud_connect = CloudConnect(
+        self.cloud_connect: CloudConnect = CloudConnect(
             self.connect,
             lambda: self._discovery_doc,
             apply_trust=self._apply_peer_trust,
@@ -378,6 +394,9 @@ class PolarisKeyClient:
         # Kept partial transfers are this person's data: they go with the sign-out (after the sessions end).
         self.identity.on_before_sign_out(self.cloud_connect.transfer.purge)
         self.identity.on_before_sign_out(self.connect.leave)
+        # Local links are not account data: the LAN service comes back up without the account half when links
+        # are reachable (§15.12, "Forget and accounts").
+        self.identity.on_before_sign_out(self.cloud_connect._resume_local)
 
         #: The Cloud Sync host (WIRE-CONTRACT-V5 §13): the machine, its transport and the state file.
         #: Built here, started by the settings API; nothing is read or sent until then.
@@ -417,7 +436,7 @@ class PolarisKeyClient:
             merge=self._merge,
         )
         self._synced_subject: Optional[str] = None
-        self._saves_api = SavesApi(
+        self._saves_api: SavesApi = SavesApi(
             ctx=self.core,
             host=self.cloud_sync_host,
             keyring=self.keyring,
@@ -473,6 +492,17 @@ class PolarisKeyClient:
         #: ``None`` for a document that did not come from ``discover()`` (nothing stamps it).
         self._links_until: Optional[int] = None
         self._links_timer: Optional[threading.Timer] = None
+        self._local_read_seq = 0
+        self._local_read_applied = 0
+        self._local_retry: Any = None
+        self._local_retry_step = 0
+        #: The periodic read while the local-pairing gate is on (1 to 4 h apart).
+        self._local_reread: Any = None
+        self._local_reread_off = False
+        #: The wait before the next periodic read, in seconds: a number in [1 h, 4 h). Replaced in tests.
+        self._local_reread_s: Callable[[], float] = lambda: (1 + 3 * random.random()) * 3600
+        #: ``(fn, seconds)`` to a started timer with ``cancel()``. Replaced in tests.
+        self._local_timer: Callable[[Callable[[], None], float], Any] = _daemon_timer
         #: The product's presentation (discovery's ``core.presentation``, HA-13): the seam the UI
         #: kits read (``polaris_key.presentation.PresentationSource``). Icons and the last member
         #: live under ``<cache>/presentation`` when the host named a ``cache_dir`` or the store
@@ -558,6 +588,7 @@ class PolarisKeyClient:
     def _leave_connect(self) -> None:
         self._stop_cloud_connect()
         self.connect.leave()
+        self.cloud_connect._resume_local()
 
     def _forget_identity_and_ring(self) -> None:
         self.keyring.forget()
@@ -625,10 +656,13 @@ class PolarisKeyClient:
         """The sign-out hook: stop Cloud Connect, then the nearby adverts and requests (G18: after
         Connect, before the device leaves it). A host callback that holds the Connect thread cannot hold
         the sign-out past the bound: the transports are force-cancelled and sign-out goes on."""
+        # The local links outlive the account: what a later ``_resume_local`` starts with is kept.
+        keep = self.cloud_connect._resume_with
         try:
             self.cloud_connect.stop()
         except Exception:
             pass
+        self.cloud_connect._resume_with = keep
         try:
             self.cloud_connect.nearby.stop_all()
         except Exception:
@@ -636,6 +670,15 @@ class PolarisKeyClient:
 
     def close(self) -> None:
         """Stop Cloud Connect, the refresh thread and release the HTTP client. Safe to call twice."""
+        self._local_reread_off = True
+        for t in (self._local_retry, self._local_reread):
+            if t is not None:
+                t.cancel()
+        self._local_retry = self._local_reread = None
+        try:
+            self.cloud_connect.local_links.close_all()
+        except Exception:
+            pass
         try:
             self.cloud_connect.stop()
         except Exception:
@@ -702,12 +745,27 @@ class PolarisKeyClient:
         # a transportless client must not open a socket to the control plane, which is the
         # one thing `polaris_key.local` exists to make impossible.
         client = self.core.http()
+        # Reads apply in the order they began: a slow older answer never overwrites a newer one.
+        with self._local_gate_lock:
+            self._local_read_seq += 1
+            seq = self._local_read_seq
+        was_on = self._local_gate.allowed
         result = discover_product(
             base_url=self.core.base_url,
             product=self.product,
             client=client,
             timeout=self.core.timeout,
         )
+        # The local gate first: a throw in a store below must not leave a cleared gate "on".
+        self._read_local_gate(seq, result)
+        self._arm_local_reread()
+        # The local links follow the gate: turned on, the listener serves them and the adverts go up; turned
+        # off, the adverts are withdrawn (and ``local_links.close_all`` ended the sessions).
+        if was_on != self._local_gate.allowed:
+            self.connect.notify_locals()
+        # An error or an invalid body changes nothing, but a cached "on" is read again soon.
+        if not isinstance(result, (DiscoveryOk, DiscoveryNotFound)):
+            self._arm_local_retry()
         if isinstance(result, DiscoveryOk):
             self._discovery_doc = result.manifest
             self._links_until = self.core.now() + INTER_ACCOUNT_TTL_SECONDS
@@ -730,6 +788,59 @@ class PolarisKeyClient:
             self._links_until = 0
             self.connect.notify_contacts()
         return result
+
+    def _read_local_gate(self, seq: int, result: Any) -> None:
+        """Apply one discovery read to the local-pairing gate, in the order the reads began."""
+        with self._local_gate_lock:
+            if seq <= self._local_read_applied:
+                return
+            if isinstance(result, DiscoveryOk):
+                self._local_read_applied = seq
+                self._local_retry_step = 0
+                effects = self._local_gate.read_ok(result.manifest)
+            elif isinstance(result, DiscoveryNotFound):
+                self._local_read_applied = seq
+                effects = self._local_gate.read_not_found()
+            else:
+                return
+        # A read that cleared the cached answer: the windows and joins close, the open mode-l sessions end with
+        # ``peer_bye`` and the ``m=l`` adverts are withdrawn (§15.12 "Gates").
+        if effects:
+            self.cloud_connect.local_links.close_all()
+
+    def _arm_local_reread(self) -> None:
+        """While the gate is on, discovery is read again every 1 to 4 hours (random, so a fleet does not move
+        together): a withdrawal reaches an idle host in hours, not at the next start. Off clears it."""
+        if self._local_reread is not None:
+            self._local_reread.cancel()
+        self._local_reread = None
+        if not self._local_gate.allowed or self._local_reread_off:
+            return
+
+        def again() -> None:
+            self._local_reread = None
+            try:
+                self.discover()
+            except Exception:
+                self._arm_local_reread()
+
+        self._local_reread = self._local_timer(again, self._local_reread_s())
+
+    def _arm_local_retry(self) -> None:
+        """After a read that said nothing, read again in 5 min, then 10, then every 15, while the gate is on."""
+        if self._local_retry is not None or not self._local_gate.allowed or self._local_reread_off:
+            return
+        minutes = (5, 10, 15)[min(self._local_retry_step, 2)]
+        self._local_retry_step += 1
+
+        def again() -> None:
+            self._local_retry = None
+            try:
+                self.discover()
+            except Exception:
+                pass
+
+        self._local_retry = self._local_timer(again, minutes * 60.0)
 
     def _reread_links_gate(self) -> None:
         """Re-read discovery when the cached links answer lapses, so a lapse withdraws the adverts."""

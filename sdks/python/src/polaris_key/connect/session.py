@@ -31,6 +31,7 @@ from ..core.peer_link import LinkHandlers, LinkRefused, SocketLink
 from ..core.peer_session import Closed, Established, PeerHello
 from .contacts import ContactRef
 from .errors import LanError
+from .local_state import LocalRef
 
 __all__ = [
     "APP_DEFAULT_TYPE",
@@ -116,12 +117,16 @@ class ConnectSession:
         path: str = "lan",
         budget: Optional[QueueBudget] = None,
         contact: Optional[ContactRef] = None,
+        local: Optional[LocalRef] = None,
     ) -> None:
         self._link = link
         self.peer_device_id = peer_device_id
         #: The link a mode-``c`` session runs over (§15.10); ``None`` for the person's own devices. A
         #: contact session names no device: ``peer_device_id`` is empty.
         self.contact = contact
+        #: The local link a mode-``l`` session runs over (§15.12); ``None`` otherwise. Like a contact session,
+        #: a local one names no device: ``peer_device_id`` is empty.
+        self.local = local
         self.caps = tuple(caps)
         self.hello = hello
         self.role = role
@@ -139,7 +144,13 @@ class ConnectSession:
         self._on_close: List[Callable[[SessionClosed], None]] = []
 
     def __repr__(self) -> str:
-        who = "contact=%s" % self.contact.id if self.contact is not None else "peer=%s" % self.peer_device_id
+        who = (
+            "contact=%s" % self.contact.id
+            if self.contact is not None
+            else "local=%s" % self.local.id
+            if self.local is not None
+            else "peer=%s" % self.peer_device_id
+        )
         return "<ConnectSession %s path=%s role=%s>" % (who, self.path, self.role)
 
     def __reduce__(self) -> Any:
@@ -339,6 +350,7 @@ def session_handlers(
     budget: Optional[QueueBudget] = None,
     path: str = "lan",
     contacts: Optional[Sequence[ContactRef]] = None,
+    locals_: Optional[Sequence[LocalRef]] = None,
     xfer: Optional[Callable[[Any, ConnectSession, Established], None]] = None,
 ) -> LinkHandlers:
     """The link callbacks that make a :class:`ConnectSession`: it is built when the peer is admitted,
@@ -347,7 +359,8 @@ def session_handlers(
 
     def established(link: SocketLink, e: Established) -> ConnectSession:
         ref = contacts[e.contact_index] if contacts is not None and e.contact_index is not None else None
-        assert e.peer_device_id is not None or ref is not None
+        local = locals_[e.local_index] if locals_ is not None and e.local_index is not None else None
+        assert e.peer_device_id is not None or ref is not None or local is not None
         s = ConnectSession(
             link,
             e.peer_device_id or "",
@@ -358,6 +371,7 @@ def session_handlers(
             path=path,
             budget=budget,
             contact=ref,
+            local=local,
         )
         s.peer_static = e.remote_static
         box[0] = s

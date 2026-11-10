@@ -11,6 +11,9 @@ over the identity client, the LAN service, the relay and the sessions they open.
 - ``stop()``: close the sessions, the relay and the LAN service;
 - ``links``: inter-account links (CC-19): ``pair()``, ``list()``, ``remove()``, ``open()``, ``on_link()``;
   off unless discovery says ``interAccount``.
+- ``local_links``: local links (CC-29): ``pair()`` and ``join()`` with a code, ``list()``, ``rename()``,
+  ``remove()``, ``set_reachable()``, ``open()``, ``on_link()``; off unless discovery says ``localPairing``, and
+  needing no account.
 - ``transfer``: Direct Transfer between peers (CC-20): ``send()``, ``on_offer()``, ``on_result()``. ``start()``
   lists ``xfer/1`` in the capabilities unless the options say ``transfer=False``.
 - ``nearby``: approval of a device with no sign-in by a signed-in device nearby (mode ``v``, CC-15):
@@ -29,6 +32,10 @@ Rules this module keeps:
 - the relay stays off, with no socket and no ticket asked for, when the host turned it off (``relay=False``
   at start, or per call) and when discovery says so: ``services.connect.relay`` is false, or the ticket
   endpoint is null (G21). ``status().relay_reason`` says which;
+- with no account, ``start()`` brings up the LAN service for the local links alone when discovery says
+  ``localPairing`` (§15.5, "A host that holds only local links runs the listener with no account at all"); it
+  binds nothing until a link is held. A sign-out takes the account half away and, when links are reachable,
+  brings that service back up (§15.12, "Forget and accounts");
 - the account relay carries mode ``a`` only; modes ``v`` and ``p`` are not reachable through this API, and
   mode ``c`` runs over contact rooms (contact_relay.py) that only ``links`` opens;
 - an inbound session with no ``on_channel`` listener is closed (G9);
@@ -44,11 +51,14 @@ import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional
 
+from ..constants_generated import ErrorCode
 from ..core.b64url import b64url_encode
+from ..core.errors import PolarisError
 from ..core.peer_xfer import XFER_CAP
 from .client import ConnectClient, ConnectDevice
 from .errors import LanError, RelayError
 from .links import CloudLinks
+from .local_links import LocalLinks
 from .loop import connect_loop
 from .nearby import CloudNearby, NearbyDeps
 from .transfer import Transfer
@@ -160,6 +170,13 @@ class CloudConnect:
         connect.on_roster(self._readmit)
         self._contact_relay: Optional["ContactRelay"] = None
         self._links = CloudLinks(self, connect)
+        self._local_links = LocalLinks(self, connect)
+        #: The running LAN service has no account half (it serves local links alone).
+        self._local_only = False
+        #: What a sign-out starts the local-only service with; ``None`` when the host did not start Connect.
+        self._resume_with: Optional[Mapping[str, Any]] = None
+        #: The local-only service's watch on the link list (set while it runs).
+        self._un_local: Optional[Callable[[], None]] = None
         self._transfer = Transfer(state_dir, self._open_for_transfer, links=self._link_ids)
         leave = getattr(connect, "on_roster_leave", None)
         if leave is not None:
@@ -175,12 +192,22 @@ class CloudConnect:
             self._transfer.forget_peer(k)
 
     def _link_ids(self) -> List[str]:
-        return [c.id for c in self._links.list()]
+        return [c.id for c in self._links.list()] + [x.id for x in self._local_links.list()]
 
     def _open_for_transfer(self, peer: Any) -> "ConnectSession":
         if isinstance(peer, str):
             return self.open(peer)
+        if self._local_links.has(peer.id):
+            return self._local_links.open(peer.id)
         return self._links.open(peer.id)
+
+    @property
+    def local_links(self) -> LocalLinks:
+        """Local links (CC-29): pair with a code with no account (``pair``, ``join``), then ``list``,
+        ``rename``, ``remove``, ``set_reachable``, ``open`` and ``on_link``; off unless discovery says
+        ``localPairing``. It needs no sign-in; the later sessions (``open``, ``on_link``, the adverts) run while
+        ``start()`` does."""
+        return self._local_links
 
     @property
     def links(self) -> CloudLinks:
@@ -260,13 +287,22 @@ class CloudConnect:
         from .relay import RelayOptions, RelayService
 
         async with self._serial():
-            if self._running:
+            if self._running and not self._local_only:
                 return
+            # A local-only service gives way to the full one.
+            if self._running:
+                await self._stop_now()
             import asyncio
 
             loop = asyncio.get_running_loop()
-            ident = await loop.run_in_executor(None, self._connect.identity)
+            try:
+                ident = await loop.run_in_executor(None, self._connect.identity)
+            except Exception as e:
+                if not self._no_account(e, opts):
+                    raise
+                return await self._start_local_only(opts)
             self._self = ident.device_id
+            self._resume_with = opts
             await loop.run_in_executor(None, self._transfer.retry_forgotten)
             self._lan_attempt = float(opts.get("lan_attempt_seconds", LAN_ATTEMPT_SECONDS))
             self._lan_failed = None
@@ -321,11 +357,117 @@ class CloudConnect:
             else:
                 self._relay_reason = reason
             self._links.attach(self._lan, contact_relay, self._lan_attempt, relay_on)
+            if self._lan is not None:
+                self._local_links.attach(self._lan)
+            self._local_only = False
             self._running = True
+
+    def _no_account(self, e: BaseException, opts: Mapping[str, Any]) -> bool:
+        """A start that found no account (no token, or no sign-in): with ``localPairing`` cached on and the LAN
+        not turned off it serves local links alone; any other failure is the caller's."""
+        return (
+            isinstance(e, PolarisError)
+            and e.code in (ErrorCode.NO_TOKEN, ErrorCode.ACCOUNT_REQUIRED)
+            and opts.get("lan", True) is not False
+            and getattr(self._connect, "local_pairing", lambda: False)()
+        )
+
+    async def _start_local_only(self, opts: Mapping[str, Any]) -> None:
+        """The local-only service (§15.5, §15.12): no account half, the local links alone. A device that holds no
+        link binds no listener (nothing to find, nothing to scan): it waits, and the first link (``pair``,
+        ``join``) brings the listener up and the last one forgotten takes it down."""
+        self._self = ""
+        self._resume_with = opts
+        self._lan_failed = None
+        self._local_only = True
+        self._running = True
+        if self._un_local is None:
+            self._un_local = self._connect.on_locals_changed(self._local_changed)
+        try:
+            await self._sync_local_now()
+        except BaseException:
+            self._local_only = False
+            self._running = False
+            if self._un_local is not None:
+                self._un_local()
+                self._un_local = None
+            raise
+
+    def _count_links(self) -> int:
+        try:
+            return self._connect.local_store().count()
+        except Exception:
+            return 0
+
+    async def _sync_local_now(self) -> None:
+        """Bring the local-only listener to match whether a link is held."""
+        import asyncio
+
+        from .lan import LanOptions, LanService, lan_source
+
+        if not self._local_only:
+            return
+        loop = asyncio.get_running_loop()
+        held = await loop.run_in_executor(None, self._count_links)
+        if held == 0:
+            lan = self._lan
+            if lan is None:
+                return
+            # The last link is gone: the listener closes (the sessions of that link already ended).
+            self._lan = None
+            await self._local_links.detach()
+            try:
+                await lan.stop()
+            except Exception:
+                pass
+            return
+        if self._lan is not None:
+            return
+        opts = self._resume_with or {}
+        lan_opt = opts.get("lan", True)
+        xfer_on = opts.get("transfer", True) is not False
+        src = lan_source(self._connect, apply_trust=self._apply_trust, now=self._now)
+        try:
+            lo = (
+                lan_opt
+                if isinstance(lan_opt, LanOptions)
+                else LanOptions(**(lan_opt if isinstance(lan_opt, Mapping) else {}))
+            )
+            lo = dataclasses.replace(lo, caps=xfer_caps(lo.caps, xfer_on), xfer=self._xfer_hook(xfer_on))
+            lan = await LanService.start_local(src, lo)
+        except Exception as e:
+            self._lan_failed = e
+            raise
+        if not self._local_only or self._lan is not None:
+            lan.abort()
+            return
+        self._lan = lan
+        self._local_links.attach(lan)
+
+    def _local_changed(self) -> None:
+        """From any thread: a link was added or forgotten (or the gate moved) while only local links are
+        served."""
+        if not self._loop.running:
+            return
+        try:
+            self._loop.submit(self._sync_local())
+        except RuntimeError:
+            pass
+
+    async def _sync_local(self) -> None:
+        async with self._serial():
+            try:
+                await self._sync_local_now()
+            except Exception:
+                pass
 
     def stop(self) -> None:
         """Close the sessions, the relay socket and the LAN service. Safe to call more than once, and
         before ``start`` (it then does nothing, and starts no thread)."""
+        self._resume_with = None
+        self._stop_blocking()
+
+    def _stop_blocking(self) -> None:
         with self._lock:
             if not self._touched:
                 return
@@ -340,13 +482,53 @@ class CloudConnect:
             fut.cancel()
             self._force_stop()
 
+    def _resume_local(self) -> None:
+        """After a sign-out: local links are not account data, so when the host had started Connect, the gate is
+        on and a link is reachable, the LAN service comes back up without the account half (§15.12, "Forget and
+        accounts")."""
+        if self._resume_with is None or not getattr(self._connect, "local_pairing", lambda: False)():
+            return
+        if self._loop.in_loop():
+            return
+        try:
+            self._loop.submit(self._resume()).result(STOP_SECONDS)
+        except Exception:
+            pass
+
+    async def _resume(self) -> None:
+        import asyncio
+
+        async with self._serial():
+            opts = self._resume_with
+            if self._running or opts is None or not getattr(self._connect, "local_pairing", lambda: False)():
+                return
+            loop = asyncio.get_running_loop()
+
+            def reachable() -> bool:
+                try:
+                    return any(r.reachable for r in self._connect.local_store().rows())
+                except Exception:
+                    return False
+
+            if not await loop.run_in_executor(None, reachable):
+                return
+            try:
+                await self._start_local_only(opts)
+            except Exception:
+                pass
+
     def _force_stop(self) -> None:
         with self._lock:
             lan, relay, croom = self._lan, self._relay, self._contact_relay
             self._lan = self._relay = self._contact_relay = None
             self._running = False
+            self._local_only = False
             unsub, self._unsub = self._unsub, []
+            if self._un_local is not None:
+                unsub.append(self._un_local)
+                self._un_local = None
         self._links.detach_sync()
+        self._local_links.detach_sync()
         for u in unsub:
             try:
                 u()
@@ -364,27 +546,35 @@ class CloudConnect:
 
     async def _stop(self) -> None:
         async with self._serial():
-            if not self._running and self._lan is None and self._relay is None:
-                return
-            self._running = False
-            for u in self._unsub:
-                u()
-            self._unsub.clear()
-            lan, relay, croom = self._lan, self._relay, self._contact_relay
-            self._lan = self._relay = self._contact_relay = None
-            await self._links.detach()
-            for s in list(self._sessions):
+            await self._stop_now()
+
+    async def _stop_now(self) -> None:
+        if not self._running and self._lan is None and self._relay is None:
+            return
+        self._running = False
+        self._local_only = False
+        if self._un_local is not None:
+            self._un_local()
+            self._un_local = None
+        for u in self._unsub:
+            u()
+        self._unsub.clear()
+        lan, relay, croom = self._lan, self._relay, self._contact_relay
+        self._lan = self._relay = self._contact_relay = None
+        await self._links.detach()
+        await self._local_links.detach()
+        for s in list(self._sessions):
+            try:
+                s.close()
+            except Exception:
+                pass
+        self._sessions.clear()
+        for svc in (lan, relay, croom):
+            if svc is not None:
                 try:
-                    s.close()
+                    await svc.stop()
                 except Exception:
                     pass
-            self._sessions.clear()
-            for svc in (lan, relay, croom):
-                if svc is not None:
-                    try:
-                        await svc.stop()
-                    except Exception:
-                        pass
 
     def peers(self) -> List[CloudPeer]:
         """The person's other devices that can be reached now, with the paths each has."""
