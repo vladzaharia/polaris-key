@@ -47,6 +47,7 @@ import { handleDocs } from "./docs.js";
 import {
   customerApproveTarget,
   handlePortal,
+  silentSignInEntry,
 } from "./services/identity/index.js";
 import {
   withoutAccountCookies,
@@ -332,11 +333,17 @@ async function routeRequest(
         url.searchParams.has("request") &&
         !url.searchParams.has("bind") &&
         /(?:^|;\s*)__Host-pk_req=/.test(req.headers.get("cookie") ?? "")
-      )
+      ) {
+        // I-21.7 (§12.13.3 rule 3): a registered client's `prompt=none`, and a session of another
+        // account than the `id_token_hint`'s, are answered here, on the host that holds the Locker
+        // session, with a `303` to the registered redirect URI and no card.
+        const silent = await silentSignInEntry(req, env, db, now, SETTINGS);
+        if (silent) return silent;
         return handlePortal(req, env, db, "/", {
           hooksFor,
           settings: SETTINGS,
         });
+      }
       return handleSignInEntry(req);
     // I-15 (§12.12 rule 7): the hosted desktop ReturnStep after a loopback sign-in. The card shell,
     // for a well-formed handle; the SPA draws the variant from the state it saved before it

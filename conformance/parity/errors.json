@@ -325,21 +325,18 @@
       "code": "login_required",
       "kind": "wire",
       "service": "identity",
-      "plannedBy": "I-21.7",
       "description": "In the authorize redirect's `error` query to a registered client (OpenID Connect Core §3.1.2.6): `prompt=none` found no Polaris Locker session, or one older than `max_age`; or `id_token_hint` names an account other than the one signed in (WIRE-CONTRACT-V5 §12.13.3; I-21)."
     },
     {
       "code": "consent_required",
       "kind": "wire",
       "service": "identity",
-      "plannedBy": "I-21.7",
       "description": "In the authorize redirect's `error` query to a registered client: `prompt=none` found a Polaris Locker session but no client grant that covers what the request asks (WIRE-CONTRACT-V5 §12.13.3, §12.13.6; I-21)."
     },
     {
       "code": "interaction_required",
       "kind": "wire",
       "service": "identity",
-      "plannedBy": "I-21.7",
       "description": "In the authorize redirect's `error` query to a registered client: `prompt=none` found a session and a covering grant, but the sign-in still needs the person, such as accepting the product's terms (WIRE-CONTRACT-V5 §12.13.3; I-21)."
     },
     {
