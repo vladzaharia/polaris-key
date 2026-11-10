@@ -192,6 +192,11 @@ export const COVERED_PAGES: Covered[] = [
     prose: false,
   },
   {
+    path: "packages/docs/src/content/docs/features/sign-in/sign-in-with-product.md",
+    language: "ts",
+    prose: false,
+  },
+  {
     path: "packages/docs/src/content/docs/features/sign-in/native-redirect.md",
     language: "ts",
     prose: false,
