@@ -145,6 +145,31 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   },
   {
     method: "POST",
+    path: "/products/:slug/identity/clients",
+    why: "registers a client that can sign another site's people in with this product",
+  },
+  {
+    method: "DELETE",
+    path: "/products/:slug/identity/clients/:id",
+    why: "deletes a client with its secrets and the grants people gave it",
+  },
+  {
+    method: "POST",
+    path: "/products/:slug/identity/clients/:id/secrets",
+    why: "mints a client secret, a long-lived credential shown once",
+  },
+  {
+    method: "POST",
+    path: "/products/:slug/identity/clients/:id/enable",
+    why: "lets a disabled client sign people in again",
+  },
+  {
+    method: "POST",
+    path: "/platform/issuer-keys/:slug/rotate",
+    why: "drops every issuer key at once, so every token they signed stops verifying",
+  },
+  {
+    method: "POST",
     path: "/platform/connections",
     why: "adds a sign-in provider and seals its secret",
   },

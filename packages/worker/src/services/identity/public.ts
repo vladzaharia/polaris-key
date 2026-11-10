@@ -112,3 +112,11 @@ export {
   cliDeviceLoginLookup,
   type CliDeviceLoginView,
 } from "./portal/deviceLogin.js";
+// I-21.14: Platform → Issuer keys (the ring's states and the emergency rotation).
+export {
+  emergencyRotateIssuerKey,
+  listIssuerKeys,
+  productsWithIssuerKeys,
+  type IssuerKeyInfo,
+} from "./issuer/keys.js";
+export { readIssuerSetting } from "./issuer/served.js";
