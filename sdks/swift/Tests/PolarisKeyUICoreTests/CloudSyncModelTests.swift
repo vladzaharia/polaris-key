@@ -220,7 +220,7 @@ final class CloudSyncModelTests: XCTestCase {
         model.askStartOver()
         await waitArmed(model)
         let running = Task { await model.confirmStartOver() }
-        try? await Task.sleep(for: .milliseconds(30))
+        await waitUntil { model.minting }
         XCTAssertTrue(model.minting)
         var cancelled = 0
         model.onCancel = { cancelled += 1 }
@@ -304,4 +304,10 @@ private func waitArmed(_ model: UnlockSyncModel) async {
     for _ in 0..<300 where !model.startOverArmed {
         try? await Task.sleep(for: .milliseconds(10))
     }
+}
+
+/// Polls a condition instead of sleeping a fixed time: a slow runner delays a task, never the check.
+@MainActor
+private func waitUntil(_ ok: @MainActor () -> Bool) async {
+    for _ in 0..<300 where !ok() { try? await Task.sleep(for: .milliseconds(10)) }
 }

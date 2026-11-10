@@ -102,12 +102,45 @@ class KitView:
         for _ in range(3):
             if app is not None:
                 app.processEvents()
+        self._settle_images(app)
+        for _ in range(3):  # lay the loaded pixmaps out before the frame is drawn
+            if app is not None:
+                app.processEvents()
         # An image that loads while the first frame renders (the QR, the product's icon) paints in the
         # next one: grab that frame, not the one before it.
         self.view.grabWindow()
         if app is not None:
             app.processEvents()
         return self.view.grabWindow()
+
+    def _images_loading(self) -> bool:
+        """True while a shown QML ``Image`` (the QR, the icon, the badge) has a source and no pixels yet.
+        (Python cannot read an ``Image``'s ``status`` enum; ``paintedWidth`` is 0 until the pixmap is in.)"""
+        root = self.view.rootObject()
+        if root is None:  # the QML is still compiling (the first view of a process): nothing to judge yet
+            return True
+        stack = [root]
+        while stack:
+            item = stack.pop()
+            stack.extend(item.childItems())
+            if item.metaObject().className().startswith("QQuickImage") and item.isVisible():
+                source = item.property("source")
+                if source is not None and not source.isEmpty() and item.property("paintedWidth") <= 0:
+                    return True
+        return False
+
+    def _settle_images(self, app: Any) -> None:
+        """Pump the event loop until every shown image has its pixels, so a frame never depends on how
+        fast the machine decodes one (bounded: an image that never loads is drawn as it is)."""
+        if app is None:
+            return
+        clean = 0
+        for _ in range(300):
+            for _ in range(3):  # also lays a loaded pixmap out and applies what the bridge set
+                app.processEvents(qt.QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 10)
+            clean = 0 if self._images_loading() else clean + 1
+            if clean == 3:  # a source the bridge sets a moment late would otherwise be missed
+                return
 
     def close(self) -> None:
         self.view.close()

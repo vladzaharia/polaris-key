@@ -191,10 +191,11 @@ final class PreviewStateTests: XCTestCase {
     }
 
     func testReleaseDatesAreNeverRawISO() {
-        let day = KitFormat.day("2026-09-30")
+        // The locale is pinned: the machine's own (a Buddhist or Japanese calendar) words the year differently.
+        let day = KitFormat.day("2026-09-30", locale: Locale(identifier: "en_US"))
         XCTAssertNotEqual(day, "2026-09-30")
         XCTAssertTrue(day.contains("2026"))
-        XCTAssertEqual(KitFormat.day("soon"), "soon")
+        XCTAssertEqual(KitFormat.day("soon", locale: Locale(identifier: "en_US")), "soon")
     }
 
     func testTheSignInErrorNeverStartsMidSentence() {

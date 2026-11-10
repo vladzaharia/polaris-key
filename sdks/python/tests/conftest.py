@@ -48,3 +48,16 @@ def pytest_sessionstart(session: pytest.Session) -> None:
         return  # shown as a report header with the session header
     for line in _banner():
         reporter.write_line(line)
+
+
+@pytest.fixture(autouse=True)
+def _pinned_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """One time zone, and none of the terminal or colour variables a developer's shell sets, so a
+    test never depends on the machine it runs on. A test that wants one sets it itself."""
+    import time
+
+    monkeypatch.setenv("TZ", "UTC")
+    if hasattr(time, "tzset"):
+        time.tzset()
+    for name in ("COLUMNS", "LINES", "FORCE_COLOR", "NO_COLOR", "CLICOLOR", "CLICOLOR_FORCE", "TERMINAL_WIDTH"):
+        monkeypatch.delenv(name, raising=False)
