@@ -396,7 +396,7 @@ function Setup({
   });
   return (
     <div className="grid gap-6 [grid-template-columns:minmax(0,1fr)] lg:grid-cols-2">
-      <ol className="list-decimal space-y-2 pl-5 text-sm [overflow-wrap:anywhere]">
+      <ol className="list-decimal space-y-2 ps-5 text-sm [overflow-wrap:anywhere]">
         {setup.steps.map((s) => (
           <li key={s}>{inlineCode(s)}</li>
         ))}
