@@ -163,6 +163,7 @@ export type ProductPageId =
   | "health"
   | "credentials"
   // update
+  | "updaters"
   | "feed"
   // identity
   | "app-sign-in"
@@ -794,6 +795,16 @@ export const SECTIONS: NavSection[] = [
     glyph: Package,
     docs: "/docs/features/ship-builds/updates/",
     items: [
+      {
+        page: "updaters",
+        tile: "service",
+        label: "Updates",
+        keywords: "updaters sparkle winsparkle velopack verified",
+        path: "update/updates",
+        icon: Package,
+        docs: "/docs/features/ship-builds/updates/",
+        inNav: true,
+      },
       {
         page: "feed",
         tile: "service",

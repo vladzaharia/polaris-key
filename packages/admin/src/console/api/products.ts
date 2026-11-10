@@ -148,6 +148,36 @@ export interface ChannelRow {
   identity: ChannelIdentity | null;
 }
 
+/** One shipped platform of `GET …/distribution/updaters` (P2-11). */
+export type UpdaterId =
+  | "sparkle"
+  | "winsparkle"
+  | "velopack"
+  | "app-installer"
+  | "zsync"
+  | "signed-feed"
+  | "godot"
+  | "play"
+  | "store";
+/** `unavailable`: the update-health counters could not be read; no data, never "not seen". */
+export type UpdaterState = "verified" | "failing" | "not_seen" | "unavailable";
+export interface UpdaterPlatform {
+  platform: string;
+  arches: string[];
+  /** The updaters the platform can use; the first is the usual one. */
+  updaters: UpdaterId[];
+  state: UpdaterState;
+  /** Devices that reported an update outcome on an outlet the platform's updaters use. */
+  checks: number;
+  /** Devices that reverted an update or rolled a boot back. */
+  failures: number;
+}
+export interface UpdatersView {
+  product: string;
+  now: number;
+  platforms: UpdaterPlatform[];
+}
+
 export interface ChannelsView {
   product: string;
   now: number;
@@ -619,4 +649,7 @@ export const productsApi = {
   /** A-20.4: one product's channel read model (area `ship`). */
   channels: (slug: string) =>
     call<ChannelsView>(`${p(slug)}/distribution/channels`),
+  /** P2-11: the updaters of the shipped platforms, with Verified (area `ship`). */
+  updaters: (slug: string) =>
+    call<UpdatersView>(`${p(slug)}/distribution/updaters`),
 };

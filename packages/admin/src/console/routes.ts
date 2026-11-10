@@ -572,6 +572,7 @@ export const r = {
       id: eco,
       child: { ids: [name], tab },
     }),
+  updaters: (slug: string) => productPage(slug, "updaters"),
   feed: (slug: string) => productPage(slug, "feed"),
   appSignIn: (slug: string) => productPage(slug, "app-sign-in"),
   syncSetup: (slug: string) => productPage(slug, "sync-setup"),
