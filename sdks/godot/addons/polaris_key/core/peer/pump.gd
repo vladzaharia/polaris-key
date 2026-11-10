@@ -120,6 +120,9 @@ func offload(work: Callable) -> Variant:
 	if not uses_threads():
 		inline_run += 1
 		return work.call()
+	# A suspended coroutine does not keep a RefCounted `self` alive on every engine (4.5 and 4.6 let it
+	# go; the work then never resumes and `pending_total` never falls). This local does.
+	var keep_alive: PKeyPeerPump = self
 	pending_total += 1
 	while in_flight >= MAX_TASKS:
 		await _tree.process_frame
@@ -133,6 +136,7 @@ func offload(work: Callable) -> Variant:
 	in_flight -= 1
 	pending_total -= 1
 	tasks_run += 1
+	keep_alive = null
 	if box.is_empty():
 		return null
 	last_thread = box[0][1]

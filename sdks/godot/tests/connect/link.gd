@@ -207,6 +207,22 @@ func _threaded(t: PKeyTestContext) -> void:
 	lc.destroy()
 	made[1].destroy()
 
+	# A pump let go while a task runs still finishes the work and settles its count (on 4.5 and 4.6 a
+	# suspended coroutine does not keep a RefCounted self alive, so the runner's drain saw it pending).
+	if PKeyPeerPump.new(tree, true).uses_threads():
+		await _dropped_pump(tree)
+		var settled := await _wait_until(func() -> bool: return PKeyPeerPump.pending_total == 0, 600)
+		t.check("threaded: a pump let go mid-task settles the pending count", PKeyPeerPump.pending_total == 0, "%d after %d frames" % [PKeyPeerPump.pending_total, settled])
+
+
+## Starts one offload on a pump nothing else references, and lets the pump go.
+func _dropped_pump(tree: SceneTree) -> void:
+	var gone := PKeyPeerPump.new(tree, true)
+	gone.offload(func() -> Variant:
+		OS.delay_msec(100)
+		return 1)
+	gone = null
+
 
 func _rules(t: PKeyTestContext) -> void:
 	# More than 16 KiB in a handshake frame closes handshake_failed; the bound is on the link.
