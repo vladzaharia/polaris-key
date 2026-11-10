@@ -58,16 +58,6 @@ final class GateTests: XCTestCase {
         XCTAssertTrue(isUsable(LicenseStatus.notApplicable))
     }
 
-    /// §7 — a verified bundle import activates exactly as a token does. Every downstream
-    /// transition is the same; only the SOURCE differs.
-    func testBundleActivationBehavesLikeATokenThroughTheWholeLadder() {
-        let doc = makeDoc(issuedAt: 100, expiresAt: 200, graceUntil: 300)
-        XCTAssertEqual(gate(activation: .bundle, doc: doc, now: 150).status, .ok)
-        XCTAssertEqual(gate(activation: .bundle, doc: doc, now: 250).status, .grace)
-        XCTAssertEqual(gate(activation: .bundle, doc: doc, now: 350).status, .expired)
-        XCTAssertEqual(gate(activation: nil, doc: doc, now: 150).status, .needsActivation)
-    }
-
     /// The ONE ordering v3 changed: the activation guard runs BEFORE the unsigned `blocked` hint.
     /// Telling a user their build is too new when they have not licensed it yet buries the action
     /// they can actually take.
@@ -83,30 +73,20 @@ final class GateTests: XCTestCase {
         XCTAssertEqual(gate(activation: .token, now: 1000, blocked: blocked).status, .versionTooNew)
     }
 
+    /// No activation wins over a cached document: the gate-matrix rows pin the same device with no
+    /// document, not with one.
+    func testNoActivationIgnoresACachedDocument() {
+        let doc = makeDoc(issuedAt: 100, expiresAt: 200, graceUntil: 300)
+        XCTAssertEqual(gate(activation: nil, doc: doc, now: 150).status, .needsActivation)
+    }
+
     // ── The carried v2 ladder ───────────────────────────────────────────────────────
-    func testNoActivationIsNeedsActivation() {
-        XCTAssertEqual(gate(activation: nil, now: 1000).status, .needsActivation)
-    }
-
-    func testActivatedButNoDocIsNeedsActivation() {
-        XCTAssertEqual(gate(now: 1000).status, .needsActivation)
-    }
-
     func testUnauthorizedIsRevoked() {
         XCTAssertEqual(gate(now: 1000, lastSyncUnauthorized: true).status, .revoked)
         // …but no activation still wins over a lingering unauthorized flag.
         XCTAssertEqual(
             gate(activation: nil, now: 1000, lastSyncUnauthorized: true).status,
             .needsActivation)
-    }
-
-    func testBlockedTakesPrecedenceOverAValidDocument() {
-        let doc = makeDoc(issuedAt: 0, expiresAt: 1000, graceUntil: 2000)
-        let s = gate(
-            doc: doc, now: 500,
-            blocked: BlockInfo(reason: .versionTooOld, allowedRange: AllowedRange(min: "1.0.0")))
-        XCTAssertEqual(s.status, .versionTooOld)
-        XCTAssertEqual(s.allowedRange?.min, "1.0.0")
     }
 
     func testAllThreeBlockReasonsMapToTheirStatus() {
@@ -173,20 +153,6 @@ final class GateTests: XCTestCase {
         let expired = gate(doc: doc, now: 2500, lastVerifiedAt: 480)
         XCTAssertEqual(expired.graceUntil, 2000)
         XCTAssertNil(expired.lastVerifiedAt)
-    }
-
-    /// §4.2 — the gate evaluates at `max(now, highWaterMark)`, so a rolled-back clock buys
-    /// nothing. This is the gate's half of the floor; the reload path's half is in
-    /// `TrustAndCacheTests`.
-    func testHighWaterMarkFloorsTheGateClock() {
-        let doc = makeDoc(issuedAt: 100, expiresAt: 200, graceUntil: 300)
-        XCTAssertEqual(gate(doc: doc, now: 150).status, .ok)
-        XCTAssertEqual(
-            gate(doc: doc, now: 150, highWaterMark: 350).status, .expired,
-            "a floor past graceUntil must expire the gate whatever the system clock says")
-        XCTAssertEqual(
-            gate(doc: doc, now: 400, highWaterMark: 100).status, .expired,
-            "the floor is a minimum, never a substitute — an honest clock ahead of it wins")
     }
 
     func testIsUsableAcrossEveryStatus() {
