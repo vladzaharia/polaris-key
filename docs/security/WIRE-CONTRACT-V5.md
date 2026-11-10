@@ -2555,6 +2555,7 @@ The card shows the product, the client, "by <developer>" and the return host (IS
 3. **Other grants.** The token-exchange and restore grants are the own client's: a registered client that sends one gets `unauthorized_client`. `client_credentials` is `unsupported_grant_type` until U-16, and so is an unknown grant.
 4. **A `200`** (`IssuerTokenResponse`) carries exactly `access_token` (an `at+jwt`), `token_type: "Bearer"`, `expires_in: 600`, `scope` (the granted scope, space-delimited), `id_token`, and `refresh_token` only when `offline_access` is granted. It has no layer-1 member (`schemaVersion`, `device`, `license`, `subject`).
 5. **Errors** are flat (RFC 6749 §5.2), `{"error", "error_description"?}` (`IssuerTokenError`): `400 invalid_request`, `401 invalid_client`, `400 invalid_grant`, `400 unauthorized_client`, `400 unsupported_grant_type` and `400 invalid_scope`; and `429 rate_limited` with `Retry-After` (§12.13.11).
+6. **Budgets** (IS-12). The credential is verified first, and a correct one is never refused by a failure budget. A failed authentication is counted per `client_id` and network (10 a minute, then `429 rate_limited`); a high count per `client_id` alone is a signal and refuses nothing, so a stranger who knows a public `client_id` cannot lock the client out. A request is counted per `client_id` and network (60 a minute) after authentication. A `client_id` that does not match the id pattern is `401 invalid_client` and keys no budget (`revoke` too).
 
 #### 12.13.5 The tokens and the issuer key
 
@@ -2618,6 +2619,7 @@ ConsentStep for a client never shows the licence line or Cloud Sync. Its view is
 3. A spent token presented again is `invalid_grant` and revokes the whole family, with no grace period (audit `identity.refresh.reuse`).
 4. A token ends 30 days after its last use (`ISSUER_REFRESH_IDLE_SECONDS`), and its family 90 days after it opened (`ISSUER_REFRESH_MAX_SECONDS`).
 5. An account holds at most 10 live families per client (`MAX_REFRESH_FAMILIES`). An eleventh revokes the oldest.
+6. A refresh that narrows `scope` stores the narrower scope on the new token and its family: the client can never widen it back, and has to run `authorize` again to ask for more.
 
 **`revoke`** (RFC 7009). `POST <issuer>/revoke`, form-encoded, with `token`, an optional `token_type_hint` (`refresh_token` or `access_token`; any other value is ignored) and the client authentication of §12.13.2. It answers `200` with an empty body and `no-store` for:
 
@@ -2629,15 +2631,15 @@ A refresh token of another client of the product is `400 unauthorized_client` an
 
 **What ends access.** An access token already issued expires within 600 seconds on every path.
 
-| Path                                       | Effect                                                                                                 |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| Locker, Connected apps, **Disconnect**     | Deletes the client grant and revokes its families. `userinfo` refuses at once                          |
-| The console disables or deletes a client   | Revokes every family of the client. Deleting it also deletes its grants                                |
-| Identity or the issuer turned off          | Revokes every family of the product. Grants, clients and keys stay, so turning it on asks nobody again |
-| Account deletion, removal from the product | Deletes the account's grants and families for the product                                              |
-| Account merge (D21)                        | Revokes the absorbed account's families. Its grants move to the survivor where it holds none           |
-| Product deletion                           | Deletes every client, grant, family and key of the product                                             |
-| A spent refresh token presented again      | Revokes that family                                                                                    |
+| Path                                       | Effect                                                                                                                                             |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Locker, Connected apps, **Disconnect**     | Deletes the client grant and revokes the client's refresh families with the grant (I-21.15 must do both in one change). `userinfo` refuses at once |
+| The console disables or deletes a client   | Revokes every family of the client. Deleting it also deletes its grants                                                                            |
+| Identity or the issuer turned off          | Revokes every family of the product. Grants, clients and keys stay, so turning it on asks nobody again                                             |
+| Account deletion, removal from the product | Deletes the account's grants and families for the product                                                                                          |
+| Account merge (D21)                        | Revokes the absorbed account's families. Its grants move to the survivor where it holds none                                                       |
+| Product deletion                           | Deletes every client, grant, family and key of the product                                                                                         |
+| A spent refresh token presented again      | Revokes that family                                                                                                                                |
 
 A person reads "<Client> is signed out within 10 minutes", which is the access token's lifetime.
 

@@ -33,7 +33,7 @@ describe("a stolen code (IS-4)", () => {
     );
   });
 
-  it("a s.web client's code needs its secret: the thief gets 401 and burns nothing", async () => {
+  it("a web client's code needs its secret: the thief gets 401 and burns nothing", async () => {
     const code = await codeFor(s.web);
     expect((await token(grantForm(s.web, code))).status).toBe(401);
     expect(
@@ -122,47 +122,56 @@ describe("code injection (IS-4)", () => {
 });
 
 describe("secret guessing (IS-12)", () => {
-  const guess = (n: number) =>
+  const NET_A = { "cf-connecting-ip": "198.51.100.1" };
+  const NET_B = { "cf-connecting-ip": "203.0.113.9" };
+  const guess = (n: number, headers = NET_A) =>
     token(
       grantForm(s.web, "x".repeat(43), {
         client_secret:
           BAD_SECRET.slice(0, -1) + String.fromCharCode(65 + (n % 26)),
       }),
+      { headers },
     );
 
-  it("ten failures spend the client's budget: the eleventh is 429, even with the right secret", async () => {
+  it("ten failures spend one network's budget: its eleventh is 429, and a correct credential still passes from anywhere", async () => {
     for (let i = 0; i < 10; i++) expect((await guess(i)).status).toBe(401);
-    const locked = await token(
-      grantForm(s.web, await codeFor(s.web), { client_secret: s.secret }),
-    );
+    const locked = await guess(10);
     expect(locked.status).toBe(429);
     expect(await err(locked)).toBe("rate_limited");
+    // The client is not locked out: the right secret passes, from the sprayer's network or another.
+    for (const headers of [NET_A, NET_B])
+      expect(
+        (
+          await token(
+            grantForm(s.web, await codeFor(s.web), { client_secret: s.secret }),
+            { headers },
+          )
+        ).status,
+      ).toBe(200);
+    // Another network's wrong guess is a plain 401, not a share of the sprayer's budget.
+    expect((await guess(11, NET_B)).status).toBe(401);
   });
 
   it("another client is not locked by it", async () => {
-    for (let i = 0; i < 10; i++) await guess(i);
+    for (let i = 0; i < 11; i++) await guess(i);
     expect((await token(grantForm(s.spa, await codeFor(s.spa)))).status).toBe(
       200,
     );
   });
 
-  it("the request budget is per client and network", async () => {
-    const ok = async (n: number) => {
-      const res = await token({
-        grant_type: "bogus",
-        client_id: s.spa.clientId,
-      });
-      return n >= 0 ? res.status : 0;
-    };
+  it("a public client's request budget is per client and network: a second network is not starved", async () => {
+    const bogus = (headers: Record<string, string>) =>
+      token({ grant_type: "bogus", client_id: s.spa.clientId }, { headers });
     let last = 0;
-    for (let i = 0; i < 31; i++) last = await ok(i);
+    for (let i = 0; i < 61; i++) last = (await bogus(NET_A)).status;
     expect(last).toBe(429);
+    expect((await bogus(NET_B)).status).toBe(400);
     // The same network asking as another client is not spent.
     expect(
       (
         await token(
           { grant_type: "bogus", client_id: s.web.clientId },
-          { headers: basic(s.web.clientId, s.secret) },
+          { headers: { ...basic(s.web.clientId, s.secret), ...NET_A } },
         )
       ).status,
     ).toBe(400);

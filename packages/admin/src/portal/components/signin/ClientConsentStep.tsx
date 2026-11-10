@@ -231,7 +231,6 @@ export function SessionStep({
         name={person.displayName}
         email={person.email}
         picture={person.avatarUrl}
-        onNotYou={onPrimary}
       />
       <div className="space-y-2">
         <AuthTitle>{title}</AuthTitle>

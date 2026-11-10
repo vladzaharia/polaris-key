@@ -254,7 +254,7 @@ describe("a public client redeems its code", () => {
   });
 });
 
-describe("a s.web client authenticates before anything else", () => {
+describe("a web client authenticates before anything else", () => {
   it("accepts Basic and post, and a nonce-only code redeems without a verifier", async () => {
     const a = await token(
       grantForm(s.web, await codeFor(s.web), { client_id: s.web.clientId }),
@@ -267,7 +267,7 @@ describe("a s.web client authenticates before anything else", () => {
     expect((await token(f)).status).toBe(200);
   });
 
-  it("refuses both methods, neither, a wrong, revoked or short s.secret, and a header/body id mismatch", async () => {
+  it("refuses both methods, neither, a wrong, revoked or short secret, and a header/body id mismatch", async () => {
     const attempt = async (
       form: Form,
       headers: Record<string, string> = {},
@@ -344,7 +344,7 @@ describe("a s.web client authenticates before anything else", () => {
     }
   });
 
-  it("a code with a challenge needs its verifier, and a s.web client's PKCE code redeems with it", async () => {
+  it("a code with a challenge needs its verifier, and a web client's PKCE code redeems with it", async () => {
     const withPkce = await codeFor(s.web, {
       code_challenge: s.pair.challenge,
       code_challenge_method: "S256",
@@ -371,7 +371,7 @@ describe("a s.web client authenticates before anything else", () => {
 });
 
 describe("public clients and unknown clients", () => {
-  it("a public client sending a s.secret anywhere, or an unknown client, is invalid_client", async () => {
+  it("a public client sending a secret anywhere, or an unknown client, is invalid_client", async () => {
     const code = await codeFor(s.spa);
     expect(
       (await token(grantForm(s.spa, code, { client_secret: s.secret }))).status,
@@ -456,7 +456,7 @@ describe("grants and shapes", () => {
 
 describe("CORS (§12.13.4)", () => {
   const withOrigin = (origin: string) => ({ origin });
-  it("a s.spa client's answer is readable from its own redirect origin, never with credentials", async () => {
+  it("a spa client's answer is readable from its own redirect origin, never with credentials", async () => {
     const res = await token(grantForm(s.spa, await codeFor(s.spa)), {
       headers: withOrigin("https://spa.example.com"),
     });
@@ -472,7 +472,7 @@ describe("CORS (§12.13.4)", () => {
     expect(other.headers.get("x-pkey-client-cors")).toBeNull();
   });
 
-  it("another client's origin, a s.web client and a failed authentication get no allow-origin", async () => {
+  it("another client's origin, a web client and a failed authentication get no allow-origin", async () => {
     await mk("spa-two", "spa", ["https://two.example.com/cb"]);
     const cross = await token(grantForm(s.spa, await codeFor(s.spa)), {
       headers: withOrigin("https://two.example.com"),
@@ -492,7 +492,7 @@ describe("CORS (§12.13.4)", () => {
     expect(bad.headers.get("access-control-allow-origin")).toBeNull();
   });
 
-  it("a preflight allows a s.spa client's origin and no other", async () => {
+  it("a preflight allows a spa client's origin and no other", async () => {
     const pre = (origin: string) =>
       dispatchWith(
         new Request(`${BASE}/${SLUG}/identity/token`, {

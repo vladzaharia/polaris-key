@@ -333,6 +333,13 @@ describe("the card for a registered client", () => {
     expect(
       screen.queryByRole("button", { name: "Continue to Community" }),
     ).toBeNull();
+    // The primary does what "Not you?" would, so the row has no second way; and the wrong
+    // account's address is not carried to the sign-in field.
+    expect(screen.queryByText("Not you?")).toBeNull();
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Use another account" }));
+    expect(window.sessionStorage.getItem("pk-reauth-email")).toBeNull();
   });
 
   it("Continue posts the claims switched on and goes to the redirect", async () => {
@@ -403,6 +410,14 @@ describe("the card for a registered client", () => {
       screen.getByRole("button", { name: "Sign in as Mara" }),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Don't allow" })).toBeTruthy();
+    expect(screen.queryByText("Not you?")).toBeNull();
+    // The same person signing in again keeps their address for the sign-in field.
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Sign in as Mara" }));
+    expect(window.sessionStorage.getItem("pk-reauth-email")).toContain(
+      ACCOUNT.email,
+    );
   });
 
   it("a wait after too many tries says so without naming a device", async () => {

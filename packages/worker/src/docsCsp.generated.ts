@@ -25,7 +25,7 @@ export const DOCS_SCRIPT_HASHES: readonly string[] = [
   "'sha256-ucPfdYc9FPIvbmnn9ECv3eLKYLt8/heMPFQ+hNTn6jY='",
   "'sha256-wX2yOADeV+NMngflD5uYi3vl50SHC4sfM1EmylVjlX4='",
   "'sha256-xP4TLKzB6hcrCLQfQrTEg8qxfZ1b3HlE1OWO+7uZf1o='",
-  "'sha256-z4VjyWovx2fTEyUoNKdS88ccs91xT2kE0PZDHNV3o6M='"
+  "'sha256-z4VjyWovx2fTEyUoNKdS88ccs91xT2kE0PZDHNV3o6M='",
 ];
 
 /** CSP source expressions for every inline <style> the docs build emits. */
@@ -48,5 +48,5 @@ export const DOCS_STYLE_ATTR_HASHES: readonly string[] = [
   "'sha256-r2WEacw89sPmp/OD8a8qTrigv6kSvYZXLpAnutU3xjQ='",
   "'sha256-w17pcUJEW1+cTAGsODagqct7bYhrM0l1sRwqjJvu5WU='",
   "'sha256-wrvMNywJ/dvSTFeuRqdBZPkNpA9KJjNVehBzjKFXP5A='",
-  "'sha256-zo54ZOl/W/uxmwNBxK9trQ5kcwNwqUBM22szBupFuy0='"
+  "'sha256-zo54ZOl/W/uxmwNBxK9trQ5kcwNwqUBM22szBupFuy0='",
 ];

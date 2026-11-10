@@ -48,7 +48,7 @@ import {
   resolveSubject,
 } from "../../../core/accounts/accountSubjects.js";
 import { ErrorCode } from "../../../core/errors.js";
-import { rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import type { Db } from "../../../db/types.js";
 import { sha256B64url } from "../../../platform/hash.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
@@ -84,7 +84,7 @@ const CODE_RE = /^[A-Za-z0-9_-]{43}$/;
 const VERIFIER_RE = /^[A-Za-z0-9._~-]{43,128}$/;
 
 export async function handleIssuerToken(cx: IssuerTokenCx): Promise<Response> {
-  const { env, db, slug, now, form } = cx;
+  const { req, env, db, slug, now, form } = cx;
   const auth = await authenticate(cx);
   if (!auth.ok) return scopedCors(auth.response, null);
   const { client } = auth;
@@ -93,7 +93,10 @@ export async function handleIssuerToken(cx: IssuerTokenCx): Promise<Response> {
     !(await rateLimitOk(
       env,
       slug,
-      { ...CLIENT_TOKEN_RATE, id: client.clientId },
+      {
+        ...CLIENT_TOKEN_RATE,
+        id: `${client.clientId}:${clientNetwork(req)}`,
+      },
       now,
     ))
   )

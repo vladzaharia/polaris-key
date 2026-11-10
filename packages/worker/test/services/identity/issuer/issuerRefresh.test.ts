@@ -110,7 +110,7 @@ describe("refresh rotates", () => {
     expect((await claimsOf(next.access_token)).client_id).toBe(s.spa.clientId);
   });
 
-  it("a s.web client refreshes with its s.secret, and not without it", async () => {
+  it("a web client refreshes with its secret, and not without it", async () => {
     const first = await signIn(s.web);
     expect(
       (
@@ -285,6 +285,30 @@ describe("a live token is checked again before it is spent", () => {
   });
 });
 
+describe("two uses of one refresh token at once", () => {
+  it("leave no live refresh token: the loser revokes the family, the winner's new token included", async () => {
+    const first = await signIn();
+    const both = await Promise.all([
+      refresh(s.spa, first.refresh_token),
+      refresh(s.spa, first.refresh_token),
+    ]);
+    expect(both.filter((r) => r.status === 200).length).toBeLessThanOrEqual(1);
+    for (const res of both)
+      if (res.status === 200)
+        expect(
+          await err(
+            await refresh(
+              s.spa,
+              ((await res.clone().json()) as Tokens).refresh_token,
+            ),
+          ),
+        ).toBe("invalid_grant");
+    expect(await err(await refresh(s.spa, first.refresh_token))).toBe(
+      "invalid_grant",
+    );
+  });
+});
+
 describe("the code tombstone (RFC 6749 §4.1.2)", () => {
   it("a code presented again after redemption revokes the family it opened", async () => {
     const code = await codeFor(s.spa);
@@ -347,6 +371,15 @@ describe("revoke (RFC 7009)", () => {
       NOW,
     );
 
+  it("a client_id that is not a client id is refused before any budget is keyed on it", async () => {
+    const res = await revoke({
+      token: "x",
+      client_id: "not a client id " + "z".repeat(200),
+    });
+    expect(res.status).toBe(401);
+    expect(await err(res)).toBe("invalid_client");
+  });
+
   it("ends the family of the client's own refresh token with a bare 200", async () => {
     const t1 = await signIn();
     const next = (await (
@@ -364,7 +397,7 @@ describe("revoke (RFC 7009)", () => {
     );
   });
 
-  it("a s.web client authenticates, and an access, unknown or malformed token is a quiet 200", async () => {
+  it("a web client authenticates, and an access, unknown or malformed token is a quiet 200", async () => {
     const t1 = await signIn(s.web);
     expect(
       (await revoke({ token: t1.refresh_token, client_id: s.web.clientId }))
@@ -427,7 +460,7 @@ describe("revoke (RFC 7009)", () => {
     ).toBe(404);
   });
 
-  it("answers a s.spa client's own origin with CORS and no credentials", async () => {
+  it("answers a spa client's own origin with CORS and no credentials", async () => {
     const t1 = await signIn();
     const res = await revoke(
       { token: t1.refresh_token, client_id: s.spa.clientId },
@@ -465,7 +498,20 @@ describe("userinfo", () => {
     ).toBe("Ada Renamed");
   });
 
-  it("takes the token in a POST form, and answers a s.spa client's origin", async () => {
+  it("answers the entitlements only while the grant still has that line", async () => {
+    const t1 = await signIn();
+    await s.w.db.run(
+      "UPDATE identity_client_grants SET scopes_json = '[\"offline_access\"]'",
+    );
+    const body = (await (await info(bearer(t1.access_token))).json()) as Record<
+      string,
+      unknown
+    >;
+    expect(body.sub).toBe(s.w.subject);
+    expect("pkey:entitlements" in body).toBe(false);
+  });
+
+  it("takes the token in a POST form, and answers a spa client's origin", async () => {
     const t1 = await signIn();
     const res = await info({
       method: "POST",

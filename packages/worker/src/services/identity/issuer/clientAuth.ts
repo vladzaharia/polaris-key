@@ -8,11 +8,12 @@
  * secret in constant time whether or not the client exists (`verifyClientSecret`), so an unknown
  * client, a client with no secret and a wrong secret cost the same.
  *
- * Two budgets sit in front, both failing closed: a failed-authentication bucket per `client_id`
- * (10 failures a minute, peeked before any secret is checked and spent by each failure), and a
- * request bucket keyed on `client_id` AND the caller's network, so one network cannot spend another's.
+ * A failed attempt is counted per `client_id` and network (10 a minute, then 429); a correct credential
+ * is never refused by that count, so a stranger who knows the public `client_id` cannot lock the
+ * client out. A high per-`client_id` count (200 a minute) is kept as a signal and refuses nothing.
  */
 
+import { CLIENT_ID_PATTERN } from "@polaris-key/protocol/identity";
 import { CLIENT_CORS_HEADER } from "../../../core/cors.js";
 import { ErrorCode } from "../../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
@@ -27,6 +28,8 @@ import {
 } from "./clientsRepo.js";
 import { issuerServed } from "./served.js";
 
+const CLIENT_ID_RE = new RegExp(CLIENT_ID_PATTERN);
+
 export interface IssuerTokenCx {
   req: Request;
   env: Env;
@@ -36,19 +39,15 @@ export interface IssuerTokenCx {
   form: Map<string, string>;
 }
 
-/** Failed client authentications per `client_id`. */
+/** Failed client authentications per `client_id` and network: the budget that can refuse. */
 export const AUTH_FAIL_RATE = {
   bucket: "identityIssuerAuthFail",
   limit: 10,
   windowSec: 60,
 };
+/** Failed authentications per `client_id` from anywhere: a signal only, it never refuses. */
+export const AUTH_SIGNAL_RATE = { ...AUTH_FAIL_RATE, limit: 200 };
 /** Requests per `client_id` and network. */
-export const CLIENT_NET_RATE = {
-  bucket: "identityIssuerClientNet",
-  limit: 30,
-  windowSec: 60,
-};
-/** Requests per `client_id`, whatever the network. */
 export const CLIENT_TOKEN_RATE = {
   bucket: "identityIssuerToken",
   limit: 60,
@@ -118,52 +117,53 @@ export type Authed =
   | { ok: true; client: ClientRecord }
   | { ok: false; response: Response };
 
-/** Authenticate the client (§12.13.2). Every failure is the same `401 invalid_client`. */
+/**
+ * Authenticate the client (§12.13.2). The credential is verified FIRST and a correct one is never
+ * refused by a failure budget: only a request that fails is counted, per `client_id` and network, so
+ * a stranger spraying a public `client_id` can neither lock the client out nor spend its budget. A
+ * failure is `401 invalid_client`, or `429` once this network has used its failures.
+ */
 export async function authenticate(cx: IssuerTokenCx): Promise<Authed> {
   const { req, env, db, slug, now, form } = cx;
   const basic = basicOf(req);
   const attempted = basic !== null;
   const bodyId = form.get("client_id");
   const id = basic && basic !== "malformed" ? basic.id : bodyId;
-  const failed = async (): Promise<Authed> => {
-    // Each failure spends the client's budget; the next attempt is refused once it is gone.
-    if (id) await rateLimitOk(env, slug, { ...AUTH_FAIL_RATE, id }, now);
-    return { ok: false, response: invalidClient(attempted) };
-  };
-  if (id) {
-    if (!(await rateLimitOk(env, slug, { ...AUTH_FAIL_RATE, id }, now, true)))
-      return { ok: false, response: tooMany(AUTH_FAIL_RATE.windowSec) };
-    if (
-      !(await rateLimitOk(
+  const refuse = async (): Promise<Authed> => {
+    if (id !== undefined && CLIENT_ID_RE.test(id)) {
+      await rateLimitOk(env, slug, { ...AUTH_SIGNAL_RATE, id }, now);
+      const within = await rateLimitOk(
         env,
         slug,
-        { ...CLIENT_NET_RATE, id: `${id}:${clientNetwork(req)}` },
+        { ...AUTH_FAIL_RATE, id: `${id}:${clientNetwork(req)}` },
         now,
-      ))
-    )
-      return { ok: false, response: tooMany(CLIENT_NET_RATE.windowSec) };
-  }
-  if (basic === "malformed" || !id) return failed();
+      );
+      if (!within)
+        return { ok: false, response: tooMany(AUTH_FAIL_RATE.windowSec) };
+    }
+    return { ok: false, response: invalidClient(attempted) };
+  };
+  if (basic === "malformed" || !id || !CLIENT_ID_RE.test(id)) return refuse();
   // The header and the body must agree when both name a client.
-  if (basic && bodyId !== undefined && bodyId !== basic.id) return failed();
+  if (basic && bodyId !== undefined && bodyId !== basic.id) return refuse();
   const client = (await issuerServed(db, slug))
     ? await getActiveClient(db, slug, id)
     : null;
   const secret = basic ? basic.secret : form.get("client_secret");
   // Both methods at once is refused whatever they say.
-  if (basic && form.get("client_secret") !== undefined) return failed();
+  if (basic && form.get("client_secret") !== undefined) return refuse();
   if (client?.type === "web") {
     // Exactly one method, and a live secret. Verified even when absent, so an unknown client and
     // a wrong secret cost the same.
     const ok = await verifyClientSecret(env, db, slug, id, secret ?? "", now);
-    return secret !== undefined && ok ? { ok: true, client } : failed();
+    return secret !== undefined && ok ? { ok: true, client } : refuse();
   }
   // Unknown client: spend the same hash a real one would, then refuse.
   if (!client) {
     await verifyClientSecret(env, db, slug, id, secret ?? "", now);
-    return failed();
+    return refuse();
   }
   // A public client holds no secret: one sent anywhere is refused, so it cannot be mistaken for one.
-  if (secret !== undefined || attempted) return failed();
+  if (secret !== undefined || attempted) return refuse();
   return { ok: true, client };
 }

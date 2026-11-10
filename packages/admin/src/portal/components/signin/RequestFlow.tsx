@@ -172,9 +172,12 @@ export function RequestFlow({
 
   // The client asked for a fresh sign-in: end this session so the card signs the person in again.
   // The person chose this, so no "You were signed out" toast, and the sign-in starts from their address.
-  const signInAgain = async (): Promise<void> => {
+  // `sameAccount`: a fresh sign-in of the same person starts from their address; another account's
+  // field starts empty (the wrong account's address is not offered back).
+  const signInAgain = async (sameAccount: boolean): Promise<void> => {
     setBusy("continue");
-    stashReauthEmail(handle, consent.data?.person.email ?? null);
+    if (sameAccount)
+      stashReauthEmail(handle, consent.data?.person.email ?? null);
     signOutExpected();
     await notYou();
     setBusy(null);
@@ -402,7 +405,7 @@ export function RequestFlow({
         })}
         button={t("locker.issuer.wrongAccount.button")}
         busy={busy === "continue"}
-        onPrimary={() => void signInAgain()}
+        onPrimary={() => void signInAgain(false)}
         onDeny={() => void deny()}
       />
     );
@@ -420,7 +423,7 @@ export function RequestFlow({
           ),
         })}
         busy={busy === "continue"}
-        onPrimary={() => void signInAgain()}
+        onPrimary={() => void signInAgain(true)}
         onDeny={() => void deny()}
       />
     );

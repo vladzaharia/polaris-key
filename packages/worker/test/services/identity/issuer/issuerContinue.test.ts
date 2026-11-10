@@ -513,6 +513,46 @@ describe("a decision, once made, stays made (V5 §12.13.6)", () => {
     });
   });
 
+  it("a narrower request keeps the decisions it does not reach", async () => {
+    await decide({ scope: "openid profile email" }, ["name", "email"]);
+    // A request for the profile alone: nothing undecided, and the email decision is untouched.
+    await decide({ scope: "openid profile" });
+    const after = (await getClientGrant(
+      w.db,
+      SLUG,
+      accountId,
+      client.clientId,
+    ))!;
+    expect([...after.claimsGranted].sort()).toEqual(["email", "name"]);
+    expect(after.claimsDeclined).toEqual(["picture"]);
+    // A later request that reaches the email again does not ask about it.
+    const s = await start({ scope: "openid profile email" });
+    expect((await consentOf(s)).body.items).toEqual([]);
+  });
+
+  it("a claim that became required after it was declined is asked again", async () => {
+    await decide({ scope: "openid profile email" }, ["name"]);
+    await updateClient(
+      w.db,
+      SLUG,
+      client.clientId,
+      { claimsRequired: ["name", "email"] },
+      NOW,
+    );
+    const s = await start({ scope: "openid profile email" });
+    expect((await consentOf(s)).body.items).toEqual([
+      { kind: "profile", claims: ["email"], required: ["email"] },
+    ]);
+    expect((await cont(s, { consent: { claims: [] } })).status).toBe(400);
+    expect((await cont(s, { consent: { claims: ["email"] } })).status).toBe(
+      200,
+    );
+    expect(
+      (await getClientGrant(w.db, SLUG, accountId, client.clientId))!
+        .claimsGranted,
+    ).toEqual(["name", "email"]);
+  });
+
   it("prompt=consent lists everything again, each switch starting from the grant, and the person may change it", async () => {
     await decide({ scope: "openid profile email" }, ["name", "email"]);
     const s = await start({ scope: "openid profile email", prompt: "consent" });

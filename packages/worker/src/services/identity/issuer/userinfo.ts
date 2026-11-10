@@ -168,7 +168,9 @@ export async function handleUserinfo(
   const body: UserInfoResponse = {
     sub,
     ...profileClaims(env, req, row, granted),
-    ...(scopes.includes("pkey:entitlements")
+    // Only while the grant still has that line (a token outlives a narrowed grant).
+    ...(scopes.includes("pkey:entitlements") &&
+    grant.scopes.includes("pkey:entitlements")
       ? {
           "pkey:entitlements": await resolveSubjectEntitlements(
             db,

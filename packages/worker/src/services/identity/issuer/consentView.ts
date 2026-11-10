@@ -28,7 +28,7 @@ export function registeredConsentItems(
   reask: boolean,
 ): ConsentItem[] {
   const reached = claimsOfScopes(scope);
-  const claims = claimsToAsk(reached, grant, reask);
+  const claims = claimsToAsk(reached, grant, reask, client.claims.required);
   const asked = (line: string): boolean =>
     scope.includes(line) && (reask || !grant || !grant.scopes.includes(line));
   const items: ConsentItem[] = [];
@@ -60,19 +60,23 @@ export function registeredConsentView(input: {
   terms: AppConsentView["terms"] | null;
 }): AppConsentView {
   const { client, scope, grant } = input;
+  const items = registeredConsentItems(client, scope, grant, input.reask);
+  // What the client already gets and the card does not list again (a re-ask lists it with its switch).
+  const listed = items.flatMap((i) => (i.kind === "profile" ? i.claims : []));
+  const shared = grant
+    ? claimsForCode(grant, scope).filter((c) => !listed.includes(c))
+    : [];
   return {
     request: input.handle,
     person: input.person,
-    items: registeredConsentItems(client, scope, grant, input.reask),
+    items,
     scopeHash: input.scopeHash,
     firstTime: grant === null,
     changed:
       grant !== null && !grantCovers(grant, scope, client.claims.required),
     ...(input.reauth ? { reauth: true as const } : {}),
     ...(input.wrongAccount ? { wrongAccount: true as const } : {}),
-    ...(grant && claimsForCode(grant, scope).length > 0
-      ? { shared: claimsForCode(grant, scope) }
-      : {}),
+    ...(shared.length > 0 ? { shared } : {}),
     ...(input.terms ? { terms: input.terms } : {}),
   };
 }

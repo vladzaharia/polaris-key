@@ -83,7 +83,8 @@ export function PersonRow({
   name: string | null;
   email: string | null;
   picture: string | null;
-  onNotYou: () => void;
+  /** Absent where the step's own primary does the same (the account is replaced there). */
+  onNotYou?: () => void;
 }): React.ReactElement {
   return (
     <div
@@ -101,13 +102,15 @@ export function PersonRow({
           </p>
         ) : null}
       </div>
-      <button
-        type="button"
-        onClick={onNotYou}
-        className={cn(AUTH_LINK_CLASS, "shrink-0")}
-      >
-        {t("signin.notYou")}
-      </button>
+      {onNotYou ? (
+        <button
+          type="button"
+          onClick={onNotYou}
+          className={cn(AUTH_LINK_CLASS, "shrink-0")}
+        >
+          {t("signin.notYou")}
+        </button>
+      ) : null}
     </div>
   );
 }

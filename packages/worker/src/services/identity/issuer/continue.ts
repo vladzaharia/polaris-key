@@ -125,7 +125,12 @@ export async function continueRegistered(
   //    merged into the grant, every required claim granted.
   const reached = claimsOfScopes(authz.scope);
   const before = await getClientGrant(db, slug, accountId, client.clientId);
-  const asked = claimsToAsk(reached, before, reg.prompt.consent);
+  const asked = claimsToAsk(
+    reached,
+    before,
+    reg.prompt.consent,
+    client.claims.required,
+  );
   // An echo of a claim already granted is harmless; naming a declined one is not.
   const known = reached.filter(
     (c) => asked.includes(c) || before?.claimsGranted.includes(c),
@@ -169,8 +174,15 @@ export async function continueRegistered(
         accountId,
         clientId: client.clientId,
         product: slug,
-        claimsGranted: granted,
-        claimsDeclined: declined,
+        // Decisions about claims this request does not reach are kept, never erased or re-asked.
+        claimsGranted: [
+          ...(before?.claimsGranted ?? []).filter((c) => !reached.includes(c)),
+          ...granted,
+        ],
+        claimsDeclined: [
+          ...(before?.claimsDeclined ?? []).filter((c) => !reached.includes(c)),
+          ...declined,
+        ],
         scopes: [...new Set([...(before?.scopes ?? []), ...lines])],
         scopeHash: await consentScope(reached, lines),
       },
