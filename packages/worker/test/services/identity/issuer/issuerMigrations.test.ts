@@ -16,7 +16,7 @@ const FILES = readdirSync(DIR)
   .filter((f) => f.endsWith(".sql"))
   .sort();
 const MINE = FILES.filter((f) =>
-  /^016[0-3]_[a-d]_identity_(clients|issuer_keys|client_grants|refresh_tokens)\.sql$/.test(
+  /^016[2-5]_[a-d]_identity_(clients|issuer_keys|client_grants|refresh_tokens)\.sql$/.test(
     f,
   ),
 );

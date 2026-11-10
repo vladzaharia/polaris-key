@@ -40292,7 +40292,7 @@
     "headers": {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
-      "content-security-policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; style-src 'sha256-/<tok>='; font-src 'self'",
+      "content-security-policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; style-src 'sha-<hash>'; font-src 'self'",
       "x-content-type-options": "nosniff",
       "x-frame-options": "DENY",
       "referrer-policy": "no-referrer",
@@ -40300,7 +40300,7 @@
       "strict-transport-security": "max-age=31536000; includeSubDomains"
     },
     "cookies": [],
-    "body": "33778:76ac17700f7a8720"
+    "body": "html"
   },
   "cors GET /djdl/identity/choice/cancel": {
     "status": 405,

@@ -848,6 +848,7 @@ describe("rule 7: every entry's rbacArea", () => {
       "identity.oidc": "keys",
       "identity.oidc.syncTierOnSignIn": "keys",
       "identity.issuer.clients": "keys",
+      "identity.issuer.enabled": "keys",
       "identity.redirectPaths": "keys",
       "identity.exchange.oidc": "keys",
       "identity.exchange.firebase": "keys",

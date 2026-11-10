@@ -70,6 +70,10 @@ const OLD_CORS_SERVICE_PATHS = [
   // I-08: the token endpoint takes a form body from a listed page, never with credentials: the
   // code and the PKCE verifier are the only proof, and the answer is a device token the page holds.
   "identity/token",
+  // I-21: userinfo (bearer access token) and revoke (client credentials or a public client's token),
+  // called from a registered client's page; no ambient credential rides on either.
+  "identity/userinfo",
+  "identity/revoke",
   // I-08b: the pending sign-in grant's four routes, called by the same page that redeemed the code.
   // The grant in the body and the device id are the proof; no ambient credential exists to ride on.
   "identity/choice/licenses",
