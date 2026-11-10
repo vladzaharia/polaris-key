@@ -7,6 +7,10 @@ extends RefCounted
 ##
 ##   var digest = await PKeyPackJob.run(func(): return PKeyByteSource.sha256(src), "pack hash")
 
+## The jobs started and not yet collected, in the whole process. A host that quits (the test runner)
+## waits for it to reach zero: a worker task alive at exit crashes the teardown of some engine builds.
+static var pending := 0
+
 var _work: Callable
 var result: Variant = null
 
@@ -31,8 +35,10 @@ static func run(work: Callable, label := "PolarisKey pack") -> Variant:
 	if not threaded() or tree == null:
 		job._run()
 		return job.result
+	pending += 1
 	var id := WorkerThreadPool.add_task(job._run, false, label)
 	while not WorkerThreadPool.is_task_completed(id):
 		await tree.process_frame
 	WorkerThreadPool.wait_for_task_completion(id)
+	pending -= 1
 	return job.result
