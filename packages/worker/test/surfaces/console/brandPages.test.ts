@@ -724,8 +724,7 @@ describe("the console sign-in error cards", () => {
     expect(html).not.toContain("Try again");
   });
 
-  // Disabled as flaky (owner 2026-10-23): retry-after countdown flakes under load. Re-enable once the clock is frozen.
-  it.skip("the rate-limit card says when to retry and links nowhere", async () => {
+  it("the rate-limit card says when to retry and links nowhere", async () => {
     const e = makeEnv(new KvMock(), []);
     let res!: Response;
     // The limiter reads the callback's injected clock, so no run of 25 can straddle a real minute.

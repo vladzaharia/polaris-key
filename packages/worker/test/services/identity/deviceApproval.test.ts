@@ -671,14 +671,19 @@ describe("the name the device pages draw the app by (DISPLAY-NAME-INVISIBLE D-8)
 });
 
 describe("races: exactly one outcome", () => {
-  // Disabled as flaky (owner 2026-10-23): approve-vs-approve race is order-dependent and fails intermittently. Re-enable once the race outcome is made deterministic.
-  it.skip("approve against approve", async () => {
+  it("approve against approve", async () => {
     const { c, token } = await atApprovalPage();
+    const audited = await count("audit");
     const [a, b] = await Promise.all([
       postApprove(c.cookie, { token, decision: "approve" }),
       postApprove(c.cookie, { token, decision: "approve" }),
     ]);
-    expect([a.status, b.status].sort()).toEqual([200, 303]);
+    // Whichever interleaving ran, the compare-and-set let exactly one decision through: the loser
+    // is a redirect, or the start-again page once the winner has cleared the browser's index.
+    expect([a.status, b.status].filter((s) => s === 303).length).toBeLessThan(
+      2,
+    );
+    expect(await count("audit")).toBe(audited + 1);
     expect((await poll(c)).status).toBe("ready");
     expect(await count("devices")).toBe(1);
   });
