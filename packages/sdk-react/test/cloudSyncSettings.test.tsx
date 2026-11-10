@@ -635,6 +635,17 @@ describe("account_required (U-52)", () => {
     return { t, who };
   };
   const requests = (w: World) => w.tokens.length;
+  /** The tabs hear each other, then the writer is not blocked; both close. */
+  const writerSettles = async (
+    writer: Awaited<ReturnType<typeof tabPair>>["writer"],
+    follower: Awaited<ReturnType<typeof tabPair>>["follower"],
+  ) => {
+    await settle();
+    await settle();
+    expect(writer.api.status().state).not.toBe("blocked");
+    await writer.host.close();
+    await follower.host.close();
+  };
 
   it("keeps the record without the person's partition, root or open names, and relaunches blocked", async () => {
     const w = new World();
@@ -758,11 +769,7 @@ describe("account_required (U-52)", () => {
     await writer.api.accountRequired(null, SUBJECT);
     expect(writer.api.status().state).toBe("blocked");
     await follower.api.identity({ kind: "signedIn", subject: SUBJECT });
-    await settle();
-    await settle();
-    expect(writer.api.status().state).not.toBe("blocked");
-    await writer.host.close();
-    await follower.host.close();
+    await writerSettles(writer, follower);
   });
 
   it("a pin that could not be removed is saved, retried at start, and holds the sign-in", async () => {
@@ -899,12 +906,16 @@ describe("account_required (U-52)", () => {
     const { writer, follower } = await tabPair();
     await writer.api.identity({ kind: "signedIn", subject: OTHER });
     follower.host.accountRequired(null, SUBJECT);
-    await settle();
-    await settle();
-    expect(writer.api.status().state).not.toBe("blocked");
-    await writer.host.close();
-    await follower.host.close();
+    await writerSettles(writer, follower);
   });
+
+  /** A watched route answered by `answer`; `told` hears each `account_required` URL. */
+  const watched = (answer: () => Response, told: unknown[]) =>
+    watchingAccountRequired(
+      async (_p: string) => answer(),
+      (u) => told.push(u),
+      { origin: "https://k.test", subject: () => SUBJECT },
+    );
 
   /** `res` as if it had been fetched from `url` after `redirected` redirects. */
   const fetchedFrom = (res: Response, url: string, redirected = false) => {
@@ -953,12 +964,7 @@ describe("account_required (U-52)", () => {
 
     it("a watched route does not tell its owner", async () => {
       const told: unknown[] = [];
-      const send = watchingAccountRequired(
-        async (_p: string) => foreign(),
-        (u) => told.push(u),
-        { origin: "https://k.test", subject: () => SUBJECT },
-      );
-      const res = await send("devices/keyring");
+      const res = await watched(foreign, told)("devices/keyring");
       expect(res.status).toBe(403);
       expect(told).toEqual([]);
     });
@@ -1066,20 +1072,14 @@ describe("account_required (U-52)", () => {
 
     it("tells its owner before the answer is returned", async () => {
       const told: Array<string | null> = [];
-      const send = watchingAccountRequired(
-        async (_p: string) => refusal("https://k.test/in"),
-        (u) => told.push(u),
-        { origin: "https://k.test", subject: () => SUBJECT },
-      );
+      const send = watched(() => refusal("https://k.test/in"), told);
       const res = await send("devices/keyring");
       expect(res.status).toBe(403);
       expect(told).toEqual(["https://k.test/in"]);
-      const quiet = watchingAccountRequired(
-        async (_p: string) => new Response("{}", { status: 200 }),
-        (u) => told.push(u),
-        { origin: "https://k.test", subject: () => SUBJECT },
-      );
-      await quiet("devices/keyring");
+      await watched(
+        () => new Response("{}", { status: 200 }),
+        told,
+      )("devices/keyring");
       expect(told).toHaveLength(1);
     });
   });

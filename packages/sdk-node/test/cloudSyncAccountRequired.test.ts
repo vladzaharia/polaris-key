@@ -67,12 +67,38 @@ async function relaunched(w: World, subject: string) {
   return again;
 }
 
-/** The 403 a push earns once the account is gone; returns the client's offers. */
-async function refuse(client: PolarisKeyClient, w: World, url?: string) {
+/** A file transport whose every call is answered by `answer`. */
+function filesOver(
+  answer: () => Response,
+  over: Partial<ConstructorParameters<typeof NodeFileTransport>[0]> = {},
+) {
+  return new NodeFileTransport({
+    ctx: {
+      product: "djdl",
+      baseUrl: "https://k.test",
+      requestTimeoutMs: 15_000,
+      headers: (extra = {}) => extra,
+      plainFetcher: () => (async () => answer()) as typeof fetch,
+    },
+    token: () => TOKEN,
+    ...over,
+  });
+}
+const revisionsOf = (t: NodeFileTransport) =>
+  t.revisions({ collection: "saves", record: "slot-1" }, {});
+
+/** The sign-in offers `client` makes from now on. */
+function offersOf(client: PolarisKeyClient) {
   const offers: Array<string | null> = [];
   client.events.on("cloudSync", (e) => {
     if (e.type === "signInOffered") offers.push(e.signInUrl);
   });
+  return offers;
+}
+
+/** The 403 a push earns once the account is gone; returns the client's offers. */
+async function refuse(client: PolarisKeyClient, w: World, url?: string) {
+  const offers = offersOf(client);
   w.push = () => refusal(url);
   await client.config.set("theme", "dark");
   await api(client).flush();
@@ -278,23 +304,14 @@ describe("a late answer says nothing about the person signed in now", () => {
   it("a file route reports the person signed in when its call started", async () => {
     const told: Array<[string | null, string | null]> = [];
     let who: string | null = SUBJECT;
-    const transport = new NodeFileTransport({
-      ctx: {
-        product: "djdl",
-        baseUrl: "https://k.test",
-        requestTimeoutMs: 15_000,
-        headers: (extra = {}) => extra,
-        plainFetcher: () =>
-          (async () => {
-            who = OTHER;
-            return refusal("https://k.test/in");
-          }) as typeof fetch,
+    const transport = filesOver(
+      () => {
+        who = OTHER;
+        return refusal("https://k.test/in");
       },
-      token: () => TOKEN,
-      subject: () => who,
-      onAccountRequired: (u, s) => told.push([u, s]),
-    });
-    await transport.revisions({ collection: "saves", record: "slot-1" }, {});
+      { subject: () => who, onAccountRequired: (u, s) => told.push([u, s]) },
+    );
+    await revisionsOf(transport);
     expect(told).toEqual([["https://k.test/in", SUBJECT]]);
   });
 });
@@ -310,10 +327,7 @@ describe("account_required counts only from the Worker's own origin", () => {
   it("a /sync 403 that ended on another origin is an ordinary 403", async () => {
     const w = new World();
     const { client } = await signedIn(w);
-    const offers: Array<string | null> = [];
-    client.events.on("cloudSync", (e) => {
-      if (e.type === "signInOffered") offers.push(e.signInUrl);
-    });
+    const offers = offersOf(client);
     w.push = () =>
       fetchedFrom(refusal("https://k.test/signin"), "https://evil.test/ops");
     await client.config.set("theme", "dark");
@@ -357,26 +371,11 @@ describe("account_required counts only from the Worker's own origin", () => {
 
   it("a file 403 from another origin is not reported and answers forbidden", async () => {
     const told: unknown[] = [];
-    const transport = new NodeFileTransport({
-      ctx: {
-        product: "djdl",
-        baseUrl: "https://k.test",
-        requestTimeoutMs: 15_000,
-        headers: (extra = {}) => extra,
-        plainFetcher: () =>
-          (async () =>
-            fetchedFrom(
-              refusal("https://k.test/in"),
-              "https://evil.test/f",
-            )) as typeof fetch,
-      },
-      token: () => TOKEN,
-      onAccountRequired: (u) => told.push(u),
-    });
-    const r = await transport.revisions(
-      { collection: "saves", record: "slot-1" },
-      {},
+    const transport = filesOver(
+      () => fetchedFrom(refusal("https://k.test/in"), "https://evil.test/f"),
+      { onAccountRequired: (u) => told.push(u) },
     );
+    const r = await revisionsOf(transport);
     expect(r).toMatchObject({ ok: false, status: 403, code: "forbidden" });
     expect(told).toEqual([]);
   });
@@ -417,10 +416,7 @@ describe("a key-ring or file account_required reaches the machine", () => {
         ? refusal("https://k.test/signin")
         : base(input, init)) as typeof fetch;
     const { client } = await signedIn(w);
-    const offers: Array<string | null> = [];
-    client.events.on("cloudSync", (e) => {
-      if (e.type === "signInOffered") offers.push(e.signInUrl);
-    });
+    const offers = offersOf(client);
     await client.config.set("theme", "dark");
     ringRefused = true;
     await expect(client.keyring.read()).rejects.toMatchObject({
@@ -435,25 +431,10 @@ describe("a key-ring or file account_required reaches the machine", () => {
 
   it("a file route does: the transport tells its owner with the answer's URL", async () => {
     const told: Array<string | null> = [];
-    const body = JSON.stringify({
-      error: { code: "account_required", signInUrl: "https://k.test/in" },
-    });
-    const transport = new NodeFileTransport({
-      ctx: {
-        product: "djdl",
-        baseUrl: "https://k.test",
-        requestTimeoutMs: 15_000,
-        headers: (extra = {}) => extra,
-        plainFetcher: () =>
-          (async () => new Response(body, { status: 403 })) as typeof fetch,
-      },
-      token: () => TOKEN,
+    const transport = filesOver(() => refusal("https://k.test/in"), {
       onAccountRequired: (u) => told.push(u),
     });
-    const r = await transport.revisions(
-      { collection: "saves", record: "slot-1" },
-      {},
-    );
+    const r = await revisionsOf(transport);
     expect(r).toMatchObject({
       ok: false,
       status: 403,
@@ -464,22 +445,14 @@ describe("a key-ring or file account_required reaches the machine", () => {
 
   it("other refusals are not account_required", async () => {
     const told: Array<string | null> = [];
-    const transport = new NodeFileTransport({
-      ctx: {
-        product: "djdl",
-        baseUrl: "https://k.test",
-        requestTimeoutMs: 15_000,
-        headers: (extra = {}) => extra,
-        plainFetcher: () =>
-          (async () =>
-            new Response(JSON.stringify({ error: { code: "forbidden" } }), {
-              status: 403,
-            })) as typeof fetch,
-      },
-      token: () => TOKEN,
-      onAccountRequired: (u) => told.push(u),
-    });
-    await transport.revisions({ collection: "saves", record: "slot-1" }, {});
+    const transport = filesOver(
+      () =>
+        new Response(JSON.stringify({ error: { code: "forbidden" } }), {
+          status: 403,
+        }),
+      { onAccountRequired: (u) => told.push(u) },
+    );
+    await revisionsOf(transport);
     expect(told).toEqual([]);
   });
 });

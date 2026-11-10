@@ -4420,6 +4420,15 @@ function scenarios(): Scenario[] {
     { type: "signInOffered", signInUrl: SIGN_IN_URL },
   ];
   const BLOCKED = st("blocked", 0, "account_required");
+  /** A push refused with account_required, and the blocked state it leaves. */
+  const refusedAndBlocked = (): Obj[] => [
+    ...pushRefusedAccountRequired(),
+    assert({
+      events: SIGNED_OUT_OFFER(1, [changed([VOL], "remote")]),
+      journal: {},
+      status: BLOCKED,
+    }),
+  ];
 
   addV6({
     name: "account-required-discards-partition",
@@ -4428,12 +4437,7 @@ function scenarios(): Scenario[] {
     rules: ["account-required", "account-required-forgets", "relaunch"],
     init: init(),
     steps: [
-      ...pushRefusedAccountRequired(),
-      assert({
-        events: SIGNED_OUT_OFFER(1, [changed([VOL], "remote")]),
-        journal: {},
-        status: BLOCKED,
-      }),
+      ...refusedAndBlocked(),
       local("set", [VOL, 0.4]),
       advance(2000),
       assert({
@@ -4591,12 +4595,7 @@ function scenarios(): Scenario[] {
     rules: ["account-required", "account-required-forgets", "relaunch"],
     init: init(),
     steps: [
-      ...pushRefusedAccountRequired(),
-      assert({
-        events: SIGNED_OUT_OFFER(1, [changed([VOL], "remote")]),
-        journal: {},
-        status: BLOCKED,
-      }),
+      ...refusedAndBlocked(),
       { relaunch: {} },
       assert({ requests: [], journal: {}, status: BLOCKED }),
       local("flush"),

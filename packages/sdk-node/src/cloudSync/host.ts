@@ -761,8 +761,9 @@ export class CloudSyncHost {
 
   /** The pin is gone: stop retrying. */
   async settleForget(): Promise<void> {
-    if (!this.#forgetPending) return;
-    this.#forgetPending = false;
-    await this.#save();
+    if (this.#forgetPending) {
+      this.#forgetPending = false;
+      await this.#save();
+    }
   }
 }
