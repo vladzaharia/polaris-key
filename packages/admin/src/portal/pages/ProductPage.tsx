@@ -174,8 +174,9 @@ function ProductBody({
       ? section
       : null,
   );
-  // A section deep link not scrolled to yet: one whose card arrives with a later read (Sync
-  // Across Devices, Package access) is scrolled to when it does, unless the person has scrolled.
+  // A section deep link not scrolled to yet. Sync Across Devices arrives with a later read (the
+  // product view, then its summary), so a `sync` link is scrolled to when it does, unless the
+  // person has scrolled by then. Any other section is scrolled to on mount or not at all.
   const owed = React.useRef<ProductSection | null>(
     section && section !== sections[0] ? section : null,
   );
@@ -206,10 +207,14 @@ function ProductBody({
   }, [product.slug]);
 
   // A section deep link scrolls there once: at once when its card is on the page from the start,
-  // else as soon as it arrives.
+  // else (sync) as soon as it arrives.
   React.useEffect(() => {
     const s = owed.current;
-    if (!s || !sections.includes(s)) return;
+    if (!s) return;
+    if (!sections.includes(s)) {
+      if (s !== "sync") owed.current = null;
+      return;
+    }
     owed.current = null;
     held.current = s;
     setCurrent(s);
