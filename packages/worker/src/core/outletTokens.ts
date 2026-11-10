@@ -54,6 +54,7 @@ import {
   type PlatformCredentialId,
   type PlatformOpenPurpose,
 } from "./platformCredentials.js";
+import { registerReset } from "../platform/testReset.js";
 
 /** A fetch with the platform `fetch` shape, injectable for tests. */
 export type FetchImpl = (
@@ -222,6 +223,7 @@ const ASC_MEMO_MAX = 256;
  *  self-contained bearer token with no server-side state, so memory is the right cache: nothing
  *  persists it, and an isolate restart only costs one open and a sign. */
 const ascMemo = new Map<string, { token: string; exp: number }>();
+registerReset(() => ascMemo.clear());
 
 /**
  * The App Store Connect API token for the `asc-api-key` credential `credentialId`, reused from
@@ -272,6 +274,7 @@ export async function ascToken(
  *  App Store Connect, keeps a leaked token short-lived. */
 export const APP_STORE_SERVER_TOKEN_LIFETIME = 20 * 60;
 const appStoreMemo = new Map<string, { token: string; exp: number }>();
+registerReset(() => appStoreMemo.clear());
 
 /**
  * The App Store Server API bearer token for the `app-store-server-key` credential `credentialId`

@@ -47,6 +47,7 @@ import {
   X509Error,
   type X509Certificate,
 } from "./x509.js";
+import { registerReset } from "../../platform/testReset.js";
 
 /**
  * Apple App Attestation Root CA (P-384, valid 2020-03-18 to 2045-03-15), from
@@ -140,6 +141,9 @@ export function pemToDer(pem: string): Uint8Array {
 }
 
 let pinnedRootDer: Uint8Array | null = null;
+registerReset(() => {
+  pinnedRootDer = null;
+});
 
 /** The pinned Apple App Attestation Root CA, DER, decoded once per isolate. */
 export function appleAppAttestRootDer(): Uint8Array {

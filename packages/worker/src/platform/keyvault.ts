@@ -30,6 +30,7 @@ import {
 } from "./bytes.js";
 import { constantTimeEqualBytes } from "./compare.js";
 import { randomBytes } from "./random.js";
+import { registerReset } from "./testReset.js";
 
 /** A sealed value: AES-256-GCM under a versioned platform KEK. `aad` is not stored; callers
  *  provide it again on open so ciphertext is bound to product/kind/name metadata.
@@ -230,6 +231,9 @@ function resolveKeyring(env: Env): RawKeyring {
 /** Per-isolate memo, keyed by the literal secret material, so a secret change picked up by a
  *  fresh isolate needs no restart hook and a stale ring can never outlive its configuration. */
 let cachedRing: { fingerprint: string; ring: Keyring } | null = null;
+registerReset(() => {
+  cachedRing = null;
+});
 
 function importKek(
   keyBytes: Uint8Array,

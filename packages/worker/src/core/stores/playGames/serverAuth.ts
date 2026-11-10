@@ -41,6 +41,7 @@ import {
   outletCredentialPin,
   outletCredentialVersion,
 } from "../../outletCredentials.js";
+import { registerReset } from "../../../platform/testReset.js";
 
 /** The only hosts a Play Games call may reach. */
 export const PGS_HOSTS: readonly string[] = [
@@ -147,6 +148,7 @@ const secretCache = new Map<string, { secret: string; until: number }>();
 export function resetPgsSecretCache(): void {
   secretCache.clear();
 }
+registerReset(resetPgsSecretCache);
 
 async function clientSecret(
   env: Env,

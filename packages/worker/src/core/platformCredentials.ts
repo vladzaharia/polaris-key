@@ -68,6 +68,7 @@ import {
   PLATFORM_SYSTEM_ACTOR,
   type PlatformEventActor,
 } from "./ops/platformEvents.js";
+import { registerReset } from "../platform/testReset.js";
 
 // ── the registry ─────────────────────────────────────────────────────────────────────────────
 
@@ -270,6 +271,7 @@ const secretMemo = new Map<
   string,
   { ok: true; meta: OutletCredentialMeta; version: string } | { ok: false }
 >();
+registerReset(() => secretMemo.clear());
 
 async function secretState(
   env: Env,

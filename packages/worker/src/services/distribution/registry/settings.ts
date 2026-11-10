@@ -24,6 +24,7 @@ import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import { parseJsonObject } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
 import { accessModeOf, entitlementOf, isAccessMode } from "../access.js";
+import { registerReset } from "../../../platform/testReset.js";
 
 /** How long an isolate keeps a settings answer, in seconds. */
 export const REGISTRY_SETTINGS_TTL_SECONDS = 30;
@@ -164,6 +165,11 @@ interface Entry<T> {
 const settingsCache = new Map<string, Entry<RegistrySettings>>();
 const modeCache = new Map<string, Entry<ReleaseAccess>>();
 const gateCache = new Map<string, Entry<string | null>>();
+registerReset(() => {
+  settingsCache.clear();
+  modeCache.clear();
+  gateCache.clear();
+});
 
 function remember<T>(
   map: Map<string, Entry<T>>,

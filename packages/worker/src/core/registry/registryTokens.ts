@@ -91,6 +91,7 @@ import {
   type RegistryTokenBinding,
   type RegistryTokenPresentation,
 } from "./registryVocabulary.js";
+import { registerReset } from "../../platform/testReset.js";
 
 export * from "./registryVocabulary.js";
 
@@ -633,6 +634,7 @@ interface CacheEntry {
 
 const MAX_ENTRIES = 5_000;
 const resolutionCache = new Map<string, CacheEntry>();
+registerReset(() => resolutionCache.clear());
 
 function cached(
   key: string,

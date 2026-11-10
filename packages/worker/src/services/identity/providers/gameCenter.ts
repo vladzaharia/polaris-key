@@ -53,6 +53,7 @@ import {
   GAME_CENTER_INTERMEDIATES,
   GAME_CENTER_ROOTS,
 } from "./gameCenterAnchors.js";
+import { registerReset } from "../../../platform/testReset.js";
 
 /** The whole token, in characters. */
 export const GAME_CENTER_TOKEN_MAX_CHARS = 4096;
@@ -197,6 +198,7 @@ function signedData(t: ParsedToken): Uint8Array {
 
 const MEMO_LIMIT = 8;
 const memo = new Map<string, CachedCert>();
+registerReset(() => memo.clear());
 
 const defaultCache: GameCenterCertCache = {
   async get(url) {

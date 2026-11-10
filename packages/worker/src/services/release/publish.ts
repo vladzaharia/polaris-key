@@ -119,6 +119,7 @@ import {
   stmtInsertReleaseRecord,
   type RecordCheck,
 } from "./records.js";
+import { registerReset } from "../../platform/testReset.js";
 
 /** The token request carries one JWT. */
 const MAX_TOKEN_BODY_BYTES = 16 * 1024;
@@ -148,6 +149,9 @@ const TOKEN_RL_PER_PRODUCT = { limit: 120, windowSec: 60 };
 
 /** Test seam: the JWKS fetcher the token route uses (`null` = GitHub's). */
 let jwksFetcherOverride: JwksFetcher | null = null;
+registerReset(() => {
+  jwksFetcherOverride = null;
+});
 export function setPublishJwksFetcherForTests(f: JwksFetcher | null): void {
   jwksFetcherOverride = f;
 }
