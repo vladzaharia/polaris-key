@@ -207,6 +207,8 @@ public actor CloudSyncHost {
     private var lastFetchAt: Int?
     private var used = 0
     private var openKeys: [String] = []
+    /// The subject `account_required` took away (saved with the journal; see `CloudSyncFile.refused`).
+    private var refusedSubject: String?
     private var documentJSON = ""
     private var triedCatalogVersion: Int?
     private var rebuildWanted = false
@@ -501,6 +503,7 @@ public actor CloudSyncHost {
         started = true
         let saved = file.load()
         openKeys = saved.openKeys
+        refusedSubject = saved.refused
         mirror = Self.vetted(options.catalog)
         // N-1: a served catalog is never persisted; the mirror is authoritative and a fresh start asks
         // the Worker again when there is no mirror.
@@ -636,6 +639,7 @@ public actor CloudSyncHost {
         if purging > 0 { await withCheckedContinuation { purgeWaiters.append($0) } }
         guard let m = machine else { return .failed("not-started") }
         purged = false
+        if subject != refusedSubject { refusedSubject = nil }
         let result = try m.signIn(subject)
         person = subject
         return result
@@ -664,6 +668,37 @@ public actor CloudSyncHost {
 
     /// The person the machine is signed in as; nil while signed out or not started.
     public func machineSubject() -> String? { machine?.subject }
+
+    /// The subject `account_required` took away, or nil (see `CloudSyncFile.refused`).
+    var refused: String? { refusedSubject }
+
+    /// A sign-out forgets what was refused: the next sign-in is the person's to make.
+    func clearRefused() {
+        if refusedSubject == nil { return }
+        refusedSubject = nil
+        save()
+    }
+
+    /// `account_required` came from a route the machine does not drive (a key-ring call or a file transfer):
+    /// the machine takes the same transition as for a `/sync` 403 and its events go out at once. A request in
+    /// flight is abandoned; its answer is dropped in `receive`. Nothing happens before `start()`, with no person
+    /// signed in, or when already blocked this way.
+    func accountRequired(signInUrl: String?) {
+        guard isStarted, let m = machine else { return }
+        m.accountRequired(signInUrl: signInUrl)
+        emit(m)
+    }
+
+    /// The state after `account_required`, on this path only (sign-out and deactivation keep the full
+    /// `purge`): the machine is saved as it stands, so the status is still `blocked` after a relaunch and the
+    /// partition is already gone. `subject` is the one the Worker refused. No timer stays armed.
+    func saveBlocked(subject: String?) {
+        openKeys = []
+        refusedSubject = subject
+        timer?.cancel()
+        timer = nil
+        save()
+    }
 
     /// Offer the legacy local values to the machine (once per install; the caller keeps the marker).
     public func importLocal(_ values: [String: JSONValue]) -> CallResult {
@@ -757,9 +792,18 @@ public actor CloudSyncHost {
     }
 
     /// Hand the machine its answer, unless the machine it was for is gone or no longer waits.
-    private func receive(_ m: CloudSyncMachine, _ gen: Int, _ res: SyncResponse, _ opened: SyncOpenedBody? = nil) {
-        guard generation == gen, machine === m, m.awaitingAnswer else { return }
+    /// Whether the machine took it: a request it abandoned meanwhile (`accountRequired`, a sign-out) has no one
+    /// to take its answer, and nothing the answer carried reaches the journal.
+    private func deliver(_ m: CloudSyncMachine, _ gen: Int, _ res: SyncResponse, _ opened: SyncOpenedBody? = nil)
+        -> Bool
+    {
+        guard generation == gen, machine === m, m.awaitingAnswer else { return false }
         do { try m.receive(res, opened: opened) } catch { /* a host-made id is always valid */  }
+        return true
+    }
+
+    private func receive(_ m: CloudSyncMachine, _ gen: Int, _ res: SyncResponse, _ opened: SyncOpenedBody? = nil) {
+        _ = deliver(m, gen, res, opened)
     }
 
     /// One request: seal it (E2E), send it, open the answer, hand both to the machine.
@@ -818,8 +862,9 @@ public actor CloudSyncHost {
         }
         // A purge or rebuild since the request left: the old person's names go nowhere.
         guard generation == gen, machine === m else { return }
+        // An abandoned request's answer is dropped whole: no open names, no catalog fetch.
+        guard deliver(m, gen, .answer(status: 200, body: pulled.body), pulled.opened) else { return }
         noteOpenedKeys(pulled)
-        receive(m, gen, .answer(status: 200, body: pulled.body), pulled.opened)
         await maybeRefetch(pulled.body)
     }
 
@@ -930,7 +975,7 @@ public actor CloudSyncHost {
         guard !purged, let m = machine else { return }
         let snapshot = persisted ?? m.persist()
         // A failure to persist never fails the call that produced it.
-        try? file.save(CloudSyncFile(persisted: snapshot, catalog: nil, openKeys: openKeys))
+        try? file.save(CloudSyncFile(persisted: snapshot, catalog: nil, openKeys: openKeys, refused: refusedSubject))
     }
 
     // MARK: bounds: flush, purge, close (H-7, H-9)
@@ -993,6 +1038,7 @@ public actor CloudSyncHost {
         detach?()
         detach = nil
         feed = nil
+        refusedSubject = nil
         generation += 1
         var failure: (any Error)?
         do { try file.remove() } catch { failure = error }

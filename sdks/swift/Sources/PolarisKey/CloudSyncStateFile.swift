@@ -24,11 +24,18 @@ public struct CloudSyncFile: Sendable, Equatable {
     public var persisted: SyncMachineState?
     public var catalog: JSONValue?
     public var openKeys: [String]
+    /// The subject `account_required` took away: while the machine is blocked, the host does not sign that
+    /// same subject in again. Cleared by a sign-out, a different subject or a purge.
+    public var refused: String?
 
-    public init(persisted: SyncMachineState? = nil, catalog: JSONValue? = nil, openKeys: [String] = []) {
+    public init(
+        persisted: SyncMachineState? = nil, catalog: JSONValue? = nil, openKeys: [String] = [],
+        refused: String? = nil
+    ) {
         self.persisted = persisted
         self.catalog = catalog
         self.openKeys = openKeys
+        self.refused = refused
     }
 }
 
@@ -69,7 +76,7 @@ public final class CloudSyncStateFile: @unchecked Sendable {
         return CloudSyncFile(
             persisted: raw["persisted"].flatMap { SyncMachineState(fileJSON: $0) },
             catalog: nil,  // N-1: a served catalog is never read back
-            openKeys: Array(keys.suffix(cloudSyncOpenKeysMax)))
+            openKeys: Array(keys.suffix(cloudSyncOpenKeysMax)), refused: raw["refused"]?.stringValue)
     }
 
     public func save(_ file: CloudSyncFile) throws {
@@ -77,6 +84,7 @@ public final class CloudSyncStateFile: @unchecked Sendable {
             "v": .int(1), "product": .string(product), "openKeys": .array(file.openKeys.map { .string($0) }),
         ]
         o["persisted"] = file.persisted.map { $0.fileJSON } ?? .null
+        if let refused = file.refused { o["refused"] = .string(refused) }
         o["catalog"] = .null  // N-1: a served catalog is never persisted
         let data = try JSONEncoder().encode(JSONValue.object(o))
         try lock.withLock { try writeAtomic(data) }

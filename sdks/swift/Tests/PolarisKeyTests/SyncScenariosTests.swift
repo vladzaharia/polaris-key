@@ -395,6 +395,9 @@ final class CloudSyncScenarioAdapter: SyncScenarioMachine {
         case "delete": r = machine.delete(str(0), str(1))
         case "flush": r = machine.flush()
         case "refresh": r = machine.refresh()
+        case "accountRequired":
+            machine.accountRequired(signInUrl: a.first?.stringValue)
+            r = .ok
         default:
             XCTFail("unknown call \(name)")
             r = .failed("unknown")

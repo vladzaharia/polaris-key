@@ -138,6 +138,29 @@ final class CloudSyncFilesTests: XCTestCase {
         XCTAssertEqual(f.retryAfterSeconds, 3600)
     }
 
+    // @pkey-feature sync.files
+    func testAccountRequiredIsReportedWithItsSignInUrlAndStillRefused() async throws {
+        let stub = Stub()
+        let told = LockedValue<[String?]>([])
+        stub.answer = { _ in
+            PolarisResponse(
+                status: 403, body: json(#"{"error":{"code":"account_required","signInUrl":"/djdl/signin"}}"#))
+        }
+        let t = CloudSyncFileTransport(
+            product: "djdl", baseUrl: "https://key.plrs.im", transport: stub,
+            headers: { ["x-pkey-device": "d"] }, token: { "pkeyt_secret" },
+            onAccountRequired: { url in told.with { $0.append(url) } })
+        guard case .refused(let f) = try await t.finalize(target, request: .null) else {
+            return XCTFail("expected a refusal")
+        }
+        XCTAssertEqual(f.code, "account_required")
+        XCTAssertEqual(told.current, ["/djdl/signin"])
+        // Another 403 is not a removal.
+        stub.answer = { _ in PolarisResponse(status: 403, body: json(#"{"error":{"code":"quota_exceeded"}}"#)) }
+        _ = try await t.finalize(target, request: .null)
+        XCTAssertEqual(told.current.count, 1)
+    }
+
     func testFinalizeQuotaIsARefusalWithItsScope() async throws {
         let stub = Stub()
         stub.answer = { _ in
