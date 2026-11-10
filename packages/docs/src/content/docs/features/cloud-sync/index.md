@@ -2,7 +2,7 @@
 title: "Cloud Sync"
 description: "A signed-in person's settings, saves and records, synced across their devices: what works, how a product declares its data and the quota."
 type: "concept"
-lastReviewed: "2026-11-01"
+lastReviewed: "2026-11-10"
 sidebar:
   order: 1
 ---
@@ -150,6 +150,10 @@ Retired with no replacement period: `onAttach`, `cloudSync.saves` (use a collect
 ## Discovery
 
 `services.sync` in [discovery](/docs/reference/protocol/discovery/) is `{"enabled": false}` when off. When on, it lists the kinds of data served and `endpoints` for `pull`, `push` and `files`, each a URL or `null`. `settings` is true and `pull` and `push` are URLs. `collections` is true while the active catalog declares at least one collection. `saves` is true and `files` a URL while the operator's `launch.syncFiles` gate is on, else `saves` is false and `files` is `null`. `encryption` appears only while the operator's `launch.syncE2e` gate is on, and the `keyring` endpoint only when it is `e2e`. An SDK uses an endpoint only when discovery names it.
+
+## Export and removal
+
+A person downloads their Cloud Sync data in Polaris Locker as part of the product's export, a JSON file or a zip with every record and file, and "Remove my data" removes it with the rest of the product's data. See [Export and removal](/docs/features/cloud-sync/export-and-removal/).
 
 ## In the console
 

@@ -8115,8 +8115,8 @@
       "area": "PORTAL",
       "owners": ["PX-04", "PX-09", "PX-18", "PX-28a", "PX-28b", "PX-W6"],
       "built": "partial",
-      "evidence": "verified 2026-10-22: packages/admin/src/portal/pages/ProductPage.tsx + components/product/* (ProductHeader, SectionNav, GetItPanel, InstallSources, OtherBuilds, FileHash, LicenseCard, LicenseTerm, DevicesCard, WhatsNew, PackagesPointer, HelpCard); tests packages/admin/test/portalProduct.test.tsx, portalProductData.test.tsx",
-      "note": "2026-10-22: Built: header, section nav, Get it, License (PX-28a), Devices, What's new (Markdown), Packages pointer, Help (LX-product 2026-10-22). Open: Cloud Sync card (parked: no portal data source, PORTAL.md §7; PX-18), keeps-the-last-version lapse (LX-41 backend), per-platform Get it (PX-09)."
+      "evidence": "verified 2026-10-22: packages/admin/src/portal/pages/ProductPage.tsx + components/product/* (ProductHeader, SectionNav, GetItPanel, InstallSources, OtherBuilds, FileHash, LicenseCard, LicenseTerm, DevicesCard, WhatsNew, PackagesPointer, HelpCard); tests packages/admin/test/portalProduct.test.tsx, portalProductData.test.tsx; Sync Across Devices card 2026-11-10: packages/admin/src/portal/components/product/CloudSyncCard.tsx, tests packages/admin/test/portalCloudSync.test.tsx, e2e/portalCloudSync.e2e.test.ts, states product-sync, product-sync-empty, product-sync-paused, product-no-sync",
+      "note": "2026-10-22: Built: header, section nav, Get it, License (PX-28a), Devices, What's new (Markdown), Packages pointer, Help (LX-product 2026-10-22). Built 2026-11-10: the Sync Across Devices card (PX-18; reading, devices, paused, full, removing, Download synced data, the way to Your Data's removal), BUILT UX review fixed. Open: keeps-the-last-version lapse (LX-41 backend), per-platform Get it (PX-09)."
     },
     {
       "id": "doc:PORTAL#4.21",
@@ -8266,8 +8266,8 @@
         "PX-21"
       ],
       "built": "partial",
-      "evidence": "packages/admin/src/portal/components/ (PortalShell, AccountMenu, LoginCard, CardHeader, KeyField, SeatMeter, ProductArt, ... present)",
-      "note": "Many components built; UsualMethodHint, AccountUpgrade, AppConsent, AddMethodNudge, LinkAccounts, DeviceApproval, EmailGate, ProfileImport, CloudSyncCard absent."
+      "evidence": "packages/admin/src/portal/components/ (PortalShell, AccountMenu, LoginCard, CardHeader, KeyField, SeatMeter, ProductArt, CloudSyncCard, ... present)",
+      "note": "Many components built; UsualMethodHint, AccountUpgrade, AppConsent, AddMethodNudge, LinkAccounts, DeviceApproval, EmailGate, ProfileImport absent; CloudSyncCard built (PX-18, 2026-11-10)."
     },
     {
       "id": "doc:PORTAL#5.3",
@@ -8515,7 +8515,7 @@
       ],
       "built": "partial",
       "evidence": "graph.tsv: PX-09,12,14,15,18,21 todo; 08,10,11,13,16,17,20,22 done",
-      "note": "Phase B half built; UI for sign-in v2, passthrough, after-sign-in, email gate, Cloud Sync, Get it complete still todo."
+      "note": "Phase B half built; UI for sign-in v2, passthrough, after-sign-in, email gate, Get it complete still todo; Cloud Sync (PX-18) built 2026-11-10."
     },
     {
       "id": "doc:PORTAL#11.4",
