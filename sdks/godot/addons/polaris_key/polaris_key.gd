@@ -286,6 +286,10 @@ func _build_cloud_sync(opts: PKeyOptions) -> void:
 	if cloud_sync == null:
 		cloud_sync = load("res://addons/polaris_key/services/cloud_sync.gd").new()
 	cloud_sync.bind(core, self, config, keyring, opts, _emit_cloud_sync)
+	# A key-ring call that answers 403 account_required is Cloud Sync's signal too (U-52).
+	if keyring != null:
+		keyring.on_account_required = Callable(cloud_sync, "account_required_for")
+		keyring.subject_now = Callable(cloud_sync, "machine_subject")
 
 
 ## One cloudSync event for the stream: the machine's names, other keys snake_case.

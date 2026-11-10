@@ -79,6 +79,15 @@ class FakeCloud extends RefCounted:
 	var saves: Object = null
 	var reads := 0
 	var flushes := 0
+	## A relaunch: the machine reads `local` until Cloud Sync starts, then these (the saved, blocked one).
+	var after_attach: Array = []
+	var attaches := 0
+
+	func attach() -> void:
+		attaches += 1
+		if not after_attach.is_empty():
+			states = after_attach
+			after_attach = []
 
 	func status() -> PKeyResult:
 		reads += 1
@@ -113,6 +122,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _status(t)
 	await _kit_host(t)
 	await _kit_strip(t)
+	await _kit_signed_out(t)
 	await _kit_account(t)
 	await _destructive(t)
 	await _ux_round(t)
@@ -673,6 +683,48 @@ func _kit_strip(t: PKeyTestContext) -> void:
 	await strip.host.request_new_recovery_code()
 	await _frames()
 	t.check("strip: a failed New recovery code shows no screen and says so", _find(PKeyRecoveryCode) == null and strip.host.new_code_failed)
+	_free_strip(strip)
+	_free_node(sdk)
+
+
+## U-52: after `account_required` the strip SHOWS "You're signed out." and "Sign in to sync" (it is not hidden), after
+## the 403, after the next event and after a relaunch; a plain sign-out still says nothing once it is done.
+func _kit_signed_out(t: PKeyTestContext) -> void:
+	var blocked := {"state": "blocked", "pending": 0, "reason": "account_required"}
+	var sdk := _kit_sdk([{"state": "idle", "pending": 0}])
+	var strip := PKeyCloudSyncStatus.new()
+	strip.auto_sdk = false
+	_tree().root.add_child(strip)
+	await strip.follow(sdk)
+	await _frames()
+	t.check("signed-out strip: a synced device shows Synced", strip.state == "synced")
+	# Live: the 403's events arrive, then the machine reads blocked.
+	sdk.cloud_sync.states = [blocked]
+	sdk.event.emit("cloudSync", {"type": "signedOut", "reason": "accountRequired", "unsynced": 2})
+	sdk.event.emit("cloudSync", {"type": "signInOffered", "sign_in_url": null})
+	await _frames()
+	t.check("signed-out strip: live after account_required", strip.state == "error" and not strip.signed_in and strip.visible)
+	t.check("signed-out strip: the words are cloudSync.signedOut and cloudSync.signIn", \
+			(strip.find_child("Status", true, false) as Label).text == "You're signed out." \
+			and (_buttons(strip)["Action"] as Button).text == "Sign in to sync")
+	sdk.event.emit("cloudSync", {"type": "change", "keys": [], "origin": "remote"})
+	await _frames()
+	t.check("signed-out strip: a later event keeps it (blocked is the machine's state)", strip.state == "error" and not strip.signed_in)
+	var signs := [0]
+	strip.sign_in_requested.connect(func() -> void: signs[0] += 1)
+	(_buttons(strip)["Action"] as Button).pressed.emit()
+	t.check("signed-out strip: Sign in to sync is offered to the game", signs[0] == 1)
+	_free_strip(strip)
+	_free_node(sdk)
+	# A relaunch: the machine reads `local` until Cloud Sync starts; the kit starts it, and the row is there.
+	sdk = _kit_sdk([{"state": "local", "pending": 0}])
+	sdk.cloud_sync.after_attach = [blocked]
+	strip = PKeyCloudSyncStatus.new()
+	strip.auto_sdk = false
+	_tree().root.add_child(strip)
+	await strip.follow(sdk)
+	await _frames()
+	t.check("signed-out strip: after a relaunch the row is shown from the first read", sdk.cloud_sync.attaches >= 1 and strip.state == "error" and not strip.signed_in)
 	_free_strip(strip)
 	_free_node(sdk)
 

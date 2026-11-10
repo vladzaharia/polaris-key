@@ -19,7 +19,7 @@ extends RefCounted
 # `advance(ms)`, `set_network(state)`, `receive(res, opened)`, `set_root(has)`, `sign_in(subject)`,
 # `sign_out(discard)`, `take_requests()`, `take_events()`, `get_value(k)`, `setting_state(k)`,
 # `record(collection, id)`, `journal()`, `status()`, `encryption_since()`; and for sync-scenarios v5 (U-08) `delete(c, id)`,
-# `keep(request_id, choice)`, `conflicts()` and `cloud_empty()`; and for `fileRecordCases`
+# `keep(request_id, choice)`, `conflicts()` and `cloud_empty()`; for v6 (U-52) `account_required(sign_in_url)`; and for `fileRecordCases`
 # (the records binding of cloudSync.saves): `put_at(c, id, v, base)`, `remove_at(c, id, base)`,
 # `on_outcome(listener)` and `records(collection)`.
 
@@ -32,7 +32,7 @@ const SKIPPED := ["record-merge-fields"]
 
 const CORPUS := "res://tests/corpus/v2/sync-scenarios.json"
 const STEP_KINDS := ["local", "advance", "network", "respond", "signIn", "signOut", "relaunch", "root", "keep", "assert"]
-const CALLS := ["set", "clear", "put", "add", "remove", "flush", "refresh", "delete"]
+const CALLS := ["set", "clear", "put", "add", "remove", "flush", "refresh", "delete", "accountRequired"]
 const FILE_RECORD_CALLS := ["putAt", "removeAt"]
 const FILE_RECORD_ASSERTS := ["rows", "outcomes"]
 
@@ -167,6 +167,10 @@ func _call(m: Variant, name: String, args: Array) -> Dictionary:
 			return m.delete(args[0], args[1])
 		"flush":
 			return m.flush()
+		"accountRequired":
+			# Version 6 (U-52): the host saw account_required on a key-ring or file route.
+			m.account_required(args[0] if args.size() > 0 else null)
+			return Types.ok()
 	return m.refresh()
 
 

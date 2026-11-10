@@ -54,6 +54,11 @@ static var _shape_product := ""
 
 ## The HTTP status of the last answer that arrived (0: none). The transcript replay reads it.
 var last_status := 0
+## Told when a file route answers 403 `account_required`: `Callable(sign_in_url: Variant, subject: Variant)`,
+## `subject` being `subject_now`'s answer when the request started (U-52).
+var on_account_required: Callable = Callable()
+## The person the machine is signed in as now (`Callable() -> Variant`); read when a request starts.
+var subject_now: Callable = Callable()
 ## Seconds a bulk request may wait for its answer; negative: the usual (15 s plus one per 64 KiB). A test sets it.
 var bulk_timeout := -1.0
 
@@ -142,6 +147,7 @@ func cancel_transfer(transfer_id: String) -> void:
 ## `open_channel`.
 func close() -> void:
 	_closed = true
+	_tr.cancel_all()
 	for req in _pending.keys():
 		_pending[req]["wait"].settle({"cancelled": true})
 	if _channel != null:
@@ -336,6 +342,35 @@ static func _request_failure(r: PKeyResult) -> Dictionary:
 ## One request. `sent`: {json?, body?, sha256?, range?: [start, end), if_match?}. Returns `{res}` (the
 ## transport's detail: status, headers, body) or `{reply}` (a failure already in the engine's shape).
 func _exchange(method: String, path: String, sent: Dictionary = {}, expect_bytes := 0, via: Variant = null) -> Dictionary:
+	var who: Variant = subject_now.call() if subject_now.is_valid() else null
+	var out := await _exchange_once(method, path, sent, expect_bytes, via)
+	_note_account_required(out, _ctx.call()["url"].call(path), who)
+	return out
+
+
+## A 403 `account_required` on any file route is the same signal as on `/sync`: the host is told once,
+## with the sign-in URL the Worker named (the host vets it before the app sees it). Only an answer from the
+## Worker's own URL counts, with no redirect in between; anything else is an ordinary 403 (A-9).
+func _note_account_required(out: Dictionary, expected_url: String, who: Variant) -> void:
+	if not on_account_required.is_valid() or not out.has("res"):
+		return
+	var res: Dictionary = out["res"]
+	if res.get("status") != 403 or not (res.get("body") is PackedByteArray):
+		return
+	if res.has("url") and res["url"] != expected_url:
+		return
+	var raw: PackedByteArray = res["body"]
+	if raw.is_empty() or raw.size() > ERROR_MAX_BYTES:
+		return
+	var parsed := Types.load_json_bytes(raw)
+	if not parsed["ok"] or not (parsed["value"] is Dictionary):
+		return
+	var err: Variant = parsed["value"].get("error")
+	if err is Dictionary and err.get("code") == PKeyConstants.ErrorCode.ACCOUNT_REQUIRED:
+		on_account_required.call(err.get("signInUrl"), who)
+
+
+func _exchange_once(method: String, path: String, sent: Dictionary = {}, expect_bytes := 0, via: Variant = null) -> Dictionary:
 	var ctx: Dictionary = _ctx.call()
 	var prepared := _prepare(ctx, path, sent)
 	if prepared.has("reply"):
