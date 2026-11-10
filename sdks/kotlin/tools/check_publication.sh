@@ -56,7 +56,7 @@ done
 # im.plrs.key dependency, in the POM and in the module metadata, is polaris-key-platform-<same
 # flavour> at the same version (no :core, :license, :update, :packs or :sdk; never the other
 # flavour); Play Core arrives only through the platform POM (so does Credential Manager). And the Godot export plugin adds, for a
-# play export, exactly the Play Core and Credential Manager libraries the platform play POM names (android_export.gd's
+# play export, exactly the Play Core, Credential Manager and Block Store libraries the platform play POM names (android_export.gd's
 # PLAY_DEPENDENCIES), and for both flavours the androidx.work libraries (WORK_DEPENDENCIES, U-41.6b), so the lists
 # cannot drift apart again.
 GODOT_EXPORT="$ROOT/../godot/addons/polaris_key/native/android_export.gd"
@@ -89,7 +89,7 @@ if [ -d "$REPO/polaris-key-godot-play" ] || [ -d "$REPO/polaris-key-godot-direct
   done
   echo "── godot export plugin"
   play_pom="$REPO/polaris-key-platform-play/$VERSION/polaris-key-platform-play-$VERSION.pom"
-  want="$(sed '/<dependencies>/,$!d' "$play_pom" | tr -d ' \n' | grep -oE '<groupId>(com.google.android.play|androidx.credentials|com.google.android.libraries.identity.googleid)</groupId><artifactId>[^<]*</artifactId><version>[^<]*</version>' |
+  want="$(sed '/<dependencies>/,$!d' "$play_pom" | tr -d ' \n' | grep -oE '<groupId>(com.google.android.play|androidx.credentials|com.google.android.libraries.identity.googleid|com.google.android.gms)</groupId><artifactId>[^<]*</artifactId><version>[^<]*</version>' |
     sed 's|<groupId>\([^<]*\)</groupId><artifactId>\([^<]*\)</artifactId><version>\([^<]*\)</version>|\1:\2:\3|' | sort | tr '\n' ' ' | sed 's/ $//')"
   # PLAY_DEPENDENCIES spans several lines: from its `[` to the closing `]`.
   have="$(sed -n '/^const PLAY_DEPENDENCIES := \[/,/^\]/p' "$GODOT_EXPORT" | sed 's/^const PLAY_DEPENDENCIES := \[//' | tr ',' '\n' | tr -d ' \t"[]' | grep . | sort | tr '\n' ' ' | sed 's/ $//')"

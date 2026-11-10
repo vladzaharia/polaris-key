@@ -3,7 +3,7 @@
 //   {"op": "<name>", …}  →  a synchronous result, or {"ok":true,"req":N} now and, later, one
 //                           event {"ev":"<name>","req":N, …result} through the event sink.
 //
-// Synchronous: ping, capabilities, kc_get, kc_set, kc_delete, dk_seal, dk_open, dk_destroy, app_attest_supported,
+// Synchronous: ping, capabilities, kc_get, kc_set, kc_delete, bk_get, bk_set, bk_delete, dk_seal, dk_open, dk_destroy, app_attest_supported,
 // apple_remember, apple_forget (none of them
 // waits on anything). Asynchronous (each in its own detached task; the caller's thread never
 // blocks): distributor, app_transaction, products, purchase, entitlements, listen, finish,
@@ -245,6 +245,9 @@ public final class PlatformHost: Sendable {
         case "kc_get", "kc_set", "kc_delete":
             return keychain(op, q)
 
+        case "bk_get", "bk_set", "bk_delete":
+            return backupStore(op, q)
+
         case "dk_seal", "dk_open", "dk_destroy":
             return deviceKeySealer(op, q)
 
@@ -425,6 +428,61 @@ public final class PlatformHost: Sendable {
                 return sealer.open(blob: blob, context: context)
             default:
                 return sealer.destroy()
+            }
+        #else
+            return Self.unsupported("runtime", "The Keychain is not available here.")
+        #endif
+    }
+
+    /// The backed-up (synchronizable) Keychain items of silent restore and Cloud Sync (I-49):
+    /// `bk_get` {item, product, subject?, ringId?, accessGroup?} -> {value} (null when absent),
+    /// `bk_set` the same plus {value} (a JSON object of at most 4 KB, as text), `bk_delete`.
+    /// `item` is `restore` (product) or `sync` (product, subject, ringId). The store refuses every
+    /// other Keychain item. `unavailable` (no entitlement, no iCloud Keychain) is a plain answer,
+    /// never a crash; the value is never echoed in an error.
+    private func backupStore(_ op: String, _ q: PlatformObject) -> PlatformObject {
+        #if canImport(Security)
+            guard let backend = services.keychain else {
+                return Self.unsupported("runtime", "The Keychain is not available here.")
+            }
+            guard let product = q["product"]?.stringValue else { return ["ok": false, "error": "missing_product"] }
+            let item: PlatformBackupStore.Item
+            switch q["item"]?.stringValue {
+            case "restore": item = .restore(product: product)
+            case "sync":
+                guard let subject = q["subject"]?.stringValue, let ringId = q["ringId"]?.stringValue else {
+                    return ["ok": false, "error": "missing_subject_or_ring"]
+                }
+                item = .syncRoot(product: product, subject: subject, ringId: ringId)
+            default: return ["ok": false, "error": "invalid_item"]
+            }
+            let store = PlatformBackupStore(backend: backend, accessGroup: q["accessGroup"]?.stringValue)
+            do {
+                switch op {
+                case "bk_get":
+                    guard let data = try store.get(item) else { return ["ok": true, "value": .null] }
+                    guard let text = String(data: data, encoding: .utf8) else {
+                        return ["ok": false, "error": "not_utf8"]
+                    }
+                    return ["ok": true, "value": .string(text)]
+                case "bk_set":
+                    guard let value = q["value"]?.stringValue else { return ["ok": false, "error": "missing_value"] }
+                    try store.set(item, value: Data(value.utf8))
+                    return ["ok": true]
+                default:
+                    try store.delete(item)
+                    return ["ok": true]
+                }
+            } catch let failure as PlatformBackupStore.Failure {
+                switch failure {
+                case .invalidName: return ["ok": false, "error": "invalid_name"]
+                case .refusedService: return ["ok": false, "error": "refused_service"]
+                case .invalidValue: return ["ok": false, "error": "invalid_value"]
+                case .unavailable(let status): return ["ok": false, "error": "unavailable", "status": .int(Int(status))]
+                case .keychain(let status): return ["ok": false, "error": "keychain", "status": .int(Int(status))]
+                }
+            } catch {
+                return ["ok": false, "error": "keychain"]
             }
         #else
             return Self.unsupported("runtime", "The Keychain is not available here.")

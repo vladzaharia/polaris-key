@@ -46,9 +46,12 @@ var gc_result := {
 var app_attest_supported := true
 var attest_keys: Array[String] = []
 var attest_fail := ""
-var _key_serial := 0
 
 var keychain := {}
+## The backed-up items (bk_* ops), keyed "restore:<product>" / "sync:<product>:<subject>:<ring>". `backup_status` set
+## answers every bk_* call {ok:false, error:"unavailable", status} (no entitlement).
+var backup := {}
+var backup_status := 0
 ## The `keychain` argument of every kc_* call, in order ("" when absent): SP-27's macOS backend
 ## asks for the login keychain.
 var keychain_flavors: Array[String] = []
@@ -56,6 +59,7 @@ var calls: Array[Dictionary] = []
 var finished: Array[String] = []
 var _queue: Array[Dictionary] = []
 var _req := 0
+var _key_serial := 0
 
 
 func push_event(ev: Dictionary) -> void:
@@ -137,6 +141,19 @@ func cmd(json: String) -> String:
 				apple_user_id = str(q.get("userID", ""))
 			else:
 				apple_user_id = ""
+			return JSON.stringify({"ok": true})
+		"bk_get", "bk_set", "bk_delete":
+			if backup_status != 0:
+				return JSON.stringify({"ok": false, "error": "unavailable", "status": backup_status})
+			var bkey := "%s:%s" % [q.get("item"), q.get("product")]
+			if q.get("item") == "sync":
+				bkey += ":%s:%s" % [q.get("subject"), q.get("ringId")]
+			if op == "bk_get":
+				return JSON.stringify({"ok": true, "value": backup.get(bkey)})
+			if op == "bk_set":
+				backup[bkey] = q.get("value")
+			else:
+				backup.erase(bkey)
 			return JSON.stringify({"ok": true})
 		"kc_get":
 			keychain_flavors.append(str(q.get("keychain", "")))

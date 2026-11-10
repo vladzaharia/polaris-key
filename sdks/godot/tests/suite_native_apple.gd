@@ -29,6 +29,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _sign_in_with_apple(t)
 	await _game_center(t)
 	_keychain(t)
+	await _backup(t)
 	_binary(t)
 	_auth(t)
 	_export(t)
@@ -316,7 +317,8 @@ func _facade(t: PKeyTestContext) -> void:
 			await a.listen(), await a.watch_pack("foes-c3"), await a.unwatch_pack("foes-c3"),
 			await a.app_attest("h"), await a.app_attest_assert("k", "x"),
 		]
-		t.check("stubs: every awaited call (%d) is Unsupported (%s) with its feature" % [stub_calls.size(), why], stub_calls.all(func(r: PKeyResult): return not r.ok and r.code == &"unsupported" and r.detail.get("reason") == why) \
+		t.check("stubs: every awaited call (%d) is Unsupported (%s) with its feature" % [stub_calls.size(), why], stub_calls.all(func(r: PKeyResult): return not r.ok \
+				and r.code == &"unsupported" and r.detail.get("reason") == why) \
 				and stub_calls[0].detail["feature"] == PKeyConstants.Feature.OUTLET_DETECT and stub_calls[3].detail["feature"] == PKeyConstants.Feature.COMMERCE_RECEIPT \
 				and stub_calls[7].detail["feature"] == PKeyConstants.Feature.PACKS_TRANSPORT_APPLE and stub_calls[14].detail["feature"] == PKeyConstants.Feature.DEVICES_ATTEST)
 		a.free()
@@ -371,15 +373,18 @@ func _facade(t: PKeyTestContext) -> void:
 	t.check("facade: app_attest generates a key and answers the attestation", att.ok and att.detail.get("generated") == true and att.detail.get("keyId") is String \
 			and fake.calls.any(func(c): return c["op"] == "app_attest_attest" and c.get("requestHash") == "q8Jm3rJ0b1x2Vd4n6Q9sT0uW1yZ2aB3cD4eF5gH6iJ7" and not c.has("keyId")))
 	var again := await a.app_attest("h", att.detail.get("keyId", ""))
-	t.check("facade: app_attest with a key id sends it", again.ok and again.detail.get("generated") == false and fake.calls.filter(func(c): return c["op"] == "app_attest_attest").back().get("keyId") == att.detail.get("keyId"))
+	t.check("facade: app_attest with a key id sends it", again.ok and again.detail.get("generated") == false \
+			and fake.calls.filter(func(c): return c["op"] == "app_attest_attest").back().get("keyId") == att.detail.get("keyId"))
 	var asserted := await a.app_attest_assert(att.detail.get("keyId", ""), "{}")
 	t.check("facade: app_attest_assert answers the assertion", asserted.ok and asserted.detail.get("assertion") is String)
 	fake.attest_keys.clear()
 	var lost := await a.app_attest("h", att.detail.get("keyId", ""))
-	t.check("facade: a lost key is platform-error invalid_key with its id", not lost.ok and lost.code == PKeyErrors.PLATFORM_ERROR and lost.detail.get("error") == "invalid_key" and lost.detail.get("keyId") == att.detail.get("keyId"))
+	t.check("facade: a lost key is platform-error invalid_key with its id", not lost.ok and lost.code == PKeyErrors.PLATFORM_ERROR and lost.detail.get("error") == "invalid_key" \
+			and lost.detail.get("keyId") == att.detail.get("keyId"))
 	fake.app_attest_supported = false
 	var sim := await a.app_attest("h")
-	t.check("facade: where App Attest does not run it is Unsupported (runtime)", sim.code == &"unsupported" and sim.detail.get("reason") == "runtime" and a.app_attest_supported().detail.get("reason") == "runtime")
+	t.check("facade: where App Attest does not run it is Unsupported (runtime)", sim.code == &"unsupported" and sim.detail.get("reason") == "runtime" \
+			and a.app_attest_supported().detail.get("reason") == "runtime")
 	fake.app_attest_supported = true
 
 	fake.packs_reason = "version"
@@ -442,6 +447,48 @@ func _facade(t: PKeyTestContext) -> void:
 	PKeyApple.reset_launch()
 	la.free()
 	na.free()
+
+
+func _backup(t: PKeyTestContext) -> void:
+	var fake := PKeyFakeAppleNative.new()
+	var b := PKeyPlatformBackup.new(_apple("ios", fake))
+	t.check("backup: available on iOS with the plugin", b.is_available())
+	var absent := await b.read_restore("diceroll")
+	t.check("backup: an absent restore item reads as null", absent.ok and absent.detail["value"] == null)
+	var w := await b.write_restore("diceroll", "rk_abcdefghijklmnopqrstuv", "rs_secret")
+	t.check("backup: a write succeeds and carries no value back", w.ok and w.detail == null)
+	var sent: Dictionary = fake.calls.filter(func(c): return c["op"] == "bk_set")[0]
+	t.check("backup: the write names the item and product, no group by default", sent["item"] == "restore" and sent["product"] == "diceroll" and not sent.has("accessGroup") \
+			and not sent.has("subject"))
+	var got := await b.read_restore("diceroll")
+	var v: PKeyPlatformBackup.RestoreValue = got.detail["value"]
+	t.check("backup: the restore item round trips", got.ok and v != null and v.restore_id == "rk_abcdefghijklmnopqrstuv" and v.secret_bytes().get_string_from_utf8() == "rs_secret")
+	t.check("backup: the value never prints its secret", not str(v).contains("rs_secret") and str(v).contains("<redacted>"))
+	fake.backup["restore:diceroll"] = "{\"v\":2,\"restoreId\":\"a\",\"secret\":\"b\"}"
+	t.check("backup: a value of another version reads as null", (await b.read_restore("diceroll")).detail["value"] == null)
+	fake.backup["restore:diceroll"] = "not json"
+	t.check("backup: a corrupt value reads as null", (await b.read_restore("diceroll")).detail["value"] == null)
+	t.check("backup: delete removes the restore item only", (await b.write_sync_root("diceroll", "sub1", "ring1", {"v": 1, "k": "x"})).ok \
+			and (await b.delete_restore("diceroll")).ok and not fake.backup.has("restore:diceroll") and fake.backup.has("sync:diceroll:sub1:ring1"))
+	var root := await b.read_sync_root("diceroll", "sub1", "ring1")
+	t.check("backup: the sync root round trips as a Dictionary", root.ok and root.detail["value"] is Dictionary and int(root.detail["value"]["v"]) == 1 and root.detail["value"]["k"] == "x")
+	t.check("backup: an oversized sync root is refused before the plugin", not (await b.write_sync_root("diceroll", "sub1", "ring1", {"v": 1, "x": "a".repeat(PKeyPlatformBackup.MAX_VALUE_BYTES)})).ok)
+	var grouped := PKeyPlatformBackup.new(_apple("ios", fake), "TEAM.group.x")
+	await grouped.read_restore("diceroll")
+	t.check("backup: the access group is sent when set", fake.calls[-1].get("accessGroup") == "TEAM.group.x")
+	fake.backup_status = -34018
+	var gone := await b.read_restore("diceroll")
+	t.check("backup: no entitlement is Unsupported, not a failure", not gone.ok and gone.code == &"unsupported" and gone.detail["feature"] == PKeyConstants.Feature.IDENTITY_RESTORE \
+			and not str(gone.message).contains("rs_"))
+	var mac := PKeyPlatformBackup.new(_apple("macos", PKeyFakeAppleNative.new()))
+	t.check("backup: macOS with the dylib answers", (await mac.read_restore("diceroll")).ok)
+	var linux := PKeyPlatformBackup.new(_apple("linux"))
+	var lr := await linux.read_restore("diceroll")
+	t.check("backup: Linux is Unsupported (runtime)", not lr.ok and lr.code == &"unsupported" and lr.detail["reason"] == "runtime")
+	var missing := _apple("ios")
+	missing.native_class = "PolarisKeyAppleMissingForTests"
+	var nr := await PKeyPlatformBackup.new(missing).write_restore("diceroll", "rk_x", "rs_y")
+	t.check("backup: iOS without the extension is Unsupported (dependency)", not nr.ok and nr.detail["reason"] == "dependency")
 
 
 func _keychain(t: PKeyTestContext) -> void:
@@ -640,7 +687,8 @@ func _export(t: PKeyTestContext) -> void:
 	t.check("export: auto is on for app-store and testflight", E.enabled("auto", "app-store") and E.enabled("auto", "testflight"))
 	t.check("export: auto is off for the sideload outlets", not E.enabled("auto", "altstore") and not E.enabled("auto", "altstore-pal") and not E.enabled("auto", "direct"))
 	t.check("export: on and off override the outlet", E.enabled("on", "altstore") and not E.enabled("off", "app-store") and E.enabled("ON", "altstore"))
-	t.check("export: the mark names the App Group from the bundle id", E.plist_content(true, "gg.vlad.diceroll") == "<key>PKeyAppleBackgroundAssets</key>\n<true/>\n<key>PKeyAppleAppGroup</key>\n<string>group.gg.vlad.diceroll</string>\n")
+	t.check("export: the mark names the App Group from the bundle id", E.plist_content(true, \
+			"gg.vlad.diceroll") == "<key>PKeyAppleBackgroundAssets</key>\n<true/>\n<key>PKeyAppleAppGroup</key>\n<string>group.gg.vlad.diceroll</string>\n")
 	t.check("export: a sideload mark is false with no group", E.plist_content(false, "gg.vlad.diceroll") == "<key>PKeyAppleBackgroundAssets</key>\n<false/>\n")
 	t.check("export: on for a sideload outlet warns", E.mode_warning("on", "altstore") != "" and E.mode_warning("auto", "altstore") == "" and E.mode_warning("sometimes", "app-store") != "")
 	t.check("export: a preset below iOS 18.0 warns", E.min_ios_warning("17.0") != "" and E.min_ios_warning("18.0") == "" and E.min_ios_warning("26.4") == "" and E.min_ios_warning("") == "")

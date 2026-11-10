@@ -139,6 +139,12 @@ func _activate_done(t: PKeyTestContext) -> void:
 	t.check("done: with no Add action the card and the skip line are gone", not _shown(d, "Recommend") and not _shown(d, "Skip") and not _shown(d, "Add") and _shown(d, "Primary"))
 	_free(d)
 
+	d = await _sc.activate_done("ready")
+	d.no_add_action = true
+	await _settle()
+	t.check("done: with no Add action the card and the skip line are gone", not _shown(d, "Recommend") and not _shown(d, "Skip") and not _shown(d, "Add") and _shown(d, "Primary"))
+	_free(d)
+
 	d = await _sc.activate_done("ready, the device line unknown")
 	await _settle()
 	t.check("done: the device line is left out while a part is unknown", not _shown(d, "Device"))

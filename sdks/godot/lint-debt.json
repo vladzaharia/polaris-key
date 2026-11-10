@@ -713,8 +713,7 @@
       "gdlint:max-line-length": 3
     },
     "sdks/godot/tests/suite_native_apple.gd": {
-      "gdlint:function-variable-name": 1,
-      "gdlint:max-line-length": 5
+      "gdlint:function-variable-name": 1
     },
     "sdks/godot/tests/suite_packs.gd": {
       "gdlint:max-line-length": 1
@@ -789,7 +788,6 @@
       "gdlint:max-returns": 1
     },
     "sdks/godot/tests/support/fake_apple_native.gd": {
-      "gdlint:class-definitions-order": 4,
       "gdlint:max-line-length": 2,
       "gdlint:max-returns": 1
     },

@@ -39,6 +39,9 @@ var links: Array = []
 var link_requests: Array = []
 var signouts: Array = []
 var signout_requests: Array = []
+## Answers for `POST|DELETE …/identity/restore`: as `tokens`; empty answers 500. Every request: {method, path, body (parsed), headers}.
+var restores: Array = []
+var restore_requests: Array = []
 ## The options' device key port (null: the autoload builds its own).
 var device_keys: Object = null
 var sdk: Node = null
@@ -107,6 +110,13 @@ func _answer(req: Dictionary) -> Dictionary:
 			return {"status": 500}
 		var l = links[0] if links.size() == 1 else links.pop_front()
 		return l.call(req) if l is Callable else l
+	if path.ends_with("/identity/restore"):
+		var rp := PKeyJson.parse_bytes(req["body"])
+		restore_requests.append({"method": req["method"], "path": path, "body": rp["value"] if rp["ok"] else null, "headers": req["headers"]})
+		if restores.is_empty():
+			return {"status": 500}
+		var rs = restores[0] if restores.size() == 1 else restores.pop_front()
+		return rs.call(req) if rs is Callable else rs
 	if path.ends_with("/identity/signout"):
 		signout_requests.append({"path": path, "headers": req["headers"]})
 		if signouts.is_empty():

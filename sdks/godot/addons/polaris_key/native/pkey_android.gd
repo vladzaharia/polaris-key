@@ -252,6 +252,9 @@ func call_sync(q: Dictionary) -> Dictionary:
 	var json := JSON.new()
 	if raw is String and json.parse(raw) == OK and json.data is Dictionary:
 		return json.data
+	# A malformed reply to a bk_* op may carry the restore item: it is never kept.
+	if str(q.get("op", "")).begins_with("bk_"):
+		return {"ok": false, "error": "bad_reply"}
 	return {"ok": false, "error": "bad_reply", "raw": str(raw)}
 
 
@@ -376,6 +379,42 @@ func keystore_set(product: String, account: String, value: String) -> PKeyResult
 ## detail.existed.
 func keystore_delete(product: String, account: String) -> PKeyResult:
 	return _wrap(PKeyConstants.Feature.CORE_STORE, call_sync({"op": "ks_delete", "product": product, "account": account}), PKeyErrors.STORE_FAILED)
+
+
+## The OS backup of silent restore (I-49.14's `bk_*` ops; Block Store in the play flavour). `kind` is
+## "restore", `product` the slug; the value is text (base64 on the wire). A coroutine. backup_get answers
+## detail {value: String or null}; an unavailable store (a direct build, no Play services) is the typed
+## Unsupported result and a refused one a `store-failed` failure. Nothing here logs the value.
+func backup_get(kind: String, product: String) -> PKeyResult:
+	var r := await _backup_call({"op": "bk_get", "kind": kind, "product": product})
+	if not r.ok:
+		return r
+	var raw = r.detail.get("value") if r.detail is Dictionary else null
+	if r.detail is Dictionary and r.detail.get("found") == true and raw is String:
+		return PKeyResult.success({"value": Marshalls.base64_to_raw(raw).get_string_from_utf8()})
+	return PKeyResult.success({"value": null})
+
+
+func backup_set(kind: String, product: String, value: String) -> PKeyResult:
+	return await _backup_call({"op": "bk_set", "kind": kind, "product": product, "value": Marshalls.raw_to_base64(value.to_utf8_buffer())})
+
+
+func backup_delete(kind: String, product: String) -> PKeyResult:
+	return await _backup_call({"op": "bk_delete", "kind": kind, "product": product})
+
+
+func _backup_call(q: Dictionary) -> PKeyResult:
+	var gate := availability(PKeyConstants.Feature.IDENTITY_RESTORE)
+	if not gate.ok:
+		return gate
+	var r := await call_async(q)
+	if r.get("ok", false):
+		return PKeyResult.success(r)
+	if str(r.get("error", "")) == "unavailable":
+		var reason := str(r.get("reason", ""))
+		var why := PKeyConstants.UnsupportedReason.OUTLET if reason in ["outlet", "unsupported"] else PKeyConstants.UnsupportedReason.DEPENDENCY
+		return PKeyResult.unsupported(PKeyConstants.Feature.IDENTITY_RESTORE, why, "The OS backup is not available to this app (%s)." % reason)
+	return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The OS backup refused the request (%s)." % str(r.get("reason", r.get("error", "failed"))))
 
 
 ## The app's no-backup directory (`Context.noBackupFilesDir`: Auto Backup and device-to-device
@@ -686,4 +725,7 @@ func _wrap(feature: String, r: Dictionary, fail_code: StringName = PKeyErrors.PL
 		return PKeyResult.success(r)
 	if str(r.get("error", "")) == "timeout":
 		return PKeyResult.failure(PKeyErrors.TIMEOUT, "The Android platform plugin did not answer in time.", r)
-	return PKeyResult.failure(fail_code, "The Android platform plugin answered %s." % str(r.get("error", "an error")), r)
+	var detail := r.duplicate()
+	if detail.has("value"):
+		detail.erase("value")
+	return PKeyResult.failure(fail_code, "The Android platform plugin answered %s." % str(r.get("error", "an error")), detail)

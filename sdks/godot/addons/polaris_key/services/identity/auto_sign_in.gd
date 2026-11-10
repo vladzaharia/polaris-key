@@ -4,7 +4,8 @@ extends RefCounted
 ## The port of Swift `AutoSignIn.swift` and Kotlin `AutoSignIn.kt`.
 ##
 ##   rung 1  a stored token the device holds as a sign-in, and a licence: `signed_in`, no network
-##   rung 2  silent restore (I-49): skipped here
+##   rung 2  silent restore (I-49, PKeyIdentityRestore): the platform backup's restore item, redeemed with
+##           the `restore` grant; any refusal falls to rung 3
 ##   rung 3  each installed platform provider, silently, over a fresh Worker nonce, then `exchange`
 ##   rung 4  the provider's one account sheet (`prompt = "optional"` only), then `exchange`
 ##   rung 5+ are the app's: the regular sign-in form is `needs_sign_in` / `unavailable`
@@ -27,7 +28,9 @@ extends RefCounted
 ## `opts`: prompt ("never", the default, or "optional"), kinds (an Array of exchange kinds to try),
 ## providers (use these instead of the installed ones), license_choice ("app", the default, or "card"),
 ## device_name, explicit (true: the person pressed a sign-in button. The sign-out flag does not stop the
-## run, and it is lowered only when a token is stored: a dismissed sheet leaves it set).
+## run, and it is lowered only when a token is stored: a dismissed sheet leaves it set), restore (true, the
+## default: rung 2 and enrolment; false skips both and revokes this device's restore key and drops its item),
+## backup_access_group (the Keychain access group of the restore item, `TEAMID.group`; "" is the app's own).
 ##
 ## Providers (PKeyPlatformIdentityProvider) come from `identity.install_platform_provider()`. The
 ## ladder tries the kinds discovery publishes, that a provider is installed for and `opts.kinds` allows,
@@ -49,6 +52,9 @@ extends RefCounted
 ##    signs the device out through `sign_out()`. If the Worker cannot be reached the flag stays unset
 ##    and the check repeats at the next launch.
 ##  - Device keys are the device's identity, not account state: sign-out keeps them.
+##  - Silent restore: while the flag is set rung 2 does not run and nothing is enrolled. Sign-out revokes the
+##    key (`DELETE restore`, queued for the next launch when the Worker cannot be reached) and deletes the item.
+##    A queued delete is sent before any other call.
 ##
 ## Nothing here logs, prints or keeps a token, a grant or a link handle beyond the call.
 ## Not instantiated by a game: PKeyIdentity owns one.
@@ -77,11 +83,17 @@ func run(opts := {}) -> PKeyAutoSignInResult:
 	if core == null or not core.started:
 		return PKeyAutoSignInResult.unavailable(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
 	var installed := _installed(identity, opts)
+	var restore := identity.restore
+	restore.configure(opts)
+	# A DELETE queued by an earlier launch goes before any other call.
+	await restore.flush_pending()
+	if not restore.enabled:
+		await restore.opt_out()
 	await check_revoked(installed)
 	var generation := core.tokens.sign_out_generation
 	if opts.get("row") is String:
 		return await _row(core, installed, opts, generation)
-	var early = await _quiet_result(core, installed, opts.get("explicit") == true)
+	var early = await _quiet_result(core, installed, opts.get("explicit") == true, generation)
 	if early != null:
 		return early
 	var plan := await _plan(core, installed, opts, generation)
@@ -109,15 +121,20 @@ func _row(core: PKeyCore, installed: Array, opts: Dictionary, generation: int) -
 
 
 ## Rungs 1 and 2, and the cases with no platform identity: the answer, or null to go on. A coroutine.
-func _quiet_result(core: PKeyCore, installed: Array, explicit := false) -> Variant:
+func _quiet_result(core: PKeyCore, installed: Array, explicit := false, generation := 0) -> Variant:
 	# Rung 1: a token the device holds as a sign-in, with a licence.
 	if core.tokens.has_token() and core.tokens.origin() == PKeyTokenManager.ORIGIN_SIGN_IN and core.cache.license != null:
 		var doc = core.cache.license["doc"]
 		var lic: String = doc["licenseId"] if doc is Dictionary and doc.get("licenseId") is String else ""
+		await _identity().restore.daily_check()
 		return await _with_sync_key(PKeyAutoSignInResult.signed_in("stored", core.cache.subject, lic))
-	# Signed out on purpose: rungs 3 and 4 stay quiet.
+	# Signed out on purpose: rungs 2 to 4 stay quiet.
 	if core.cache.explicit_sign_out and not explicit:
 		return PKeyAutoSignInResult.needs_sign_in(PKeyAutoSignInResult.REASON_SIGNED_OUT)
+	# Rung 2: the restore item of the platform backup. It needs no platform provider.
+	var restored = await _identity().restore.rung(generation)
+	if restored != null:
+		return restored
 	# No platform identity here (Linux, Windows, or nothing installed): the regular form is next.
 	if installed.is_empty():
 		return PKeyAutoSignInResult.needs_sign_in(PKeyAutoSignInResult.REASON_NO_CREDENTIAL)
@@ -175,7 +192,7 @@ func check_revoked(providers := []) -> void:
 			if identity._core().tokens.has_token():
 				await identity.sign_out()
 			else:
-				await identity._mark_signed_out()
+				await identity._mark_signed_out(false)
 			return
 
 
@@ -183,7 +200,7 @@ func check_revoked(providers := []) -> void:
 func session_completed(grant: String) -> void:
 	var held = _held.get(grant)
 	_held.erase(grant)
-	if held is Dictionary and held["provider"].has_method("session_started"):
+	if held is Dictionary and held["provider"] != null and held["provider"].has_method("session_started"):
 		await held["provider"].session_started(held["info"])
 
 
@@ -236,6 +253,7 @@ func _outcome(r: PKeyExchangeResult, p: Object, info: Dictionary, ctx: Dictionar
 	match r.kind:
 		PKeyExchangeResult.KIND_SIGNED_IN:
 			await _started(p, info)
+			await _identity().restore.after_sign_in()
 			var done := PKeyAutoSignInResult.signed_in("platform", r.subject, r.license_id, kind)
 			return {"result": await _with_sync_key(done), "shown": shown}
 		PKeyExchangeResult.KIND_CONFIRM:
@@ -267,6 +285,11 @@ func _note_failure(ctx: Dictionary, failure: PKeyAutoSignInResult) -> void:
 
 func _hold(grant: String, p: Object, info: Dictionary) -> void:
 	_held[grant] = {"provider": p, "info": info}
+
+
+## A restore grant the Worker accepted but the person has not finished: no provider hears of it.
+func _hold_restore(grant: String) -> void:
+	_held[grant] = {"provider": null, "info": {}}
 
 
 ## The Worker accepted the token as a session: the provider keeps what its launch check needs.

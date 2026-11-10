@@ -195,7 +195,7 @@ func _fetch_nonce(ctx: Dictionary) -> PKeyExchangeResult:
 
 ## POST `url` (no bearer: the proof and the nonce are the credentials). A PKeyExchangeResult when the
 ## call ended; else {status, body, response}. `is_nonce`: a 404 or 4xx on the nonce route.
-func _send(url: String, content_type: String, body: PackedByteArray, is_nonce := false) -> Variant:
+func _send(url: String, content_type: String, body: PackedByteArray, is_nonce := false, retry_cap := 3600) -> Variant:
 	var core := _identity()._core()
 	var r := await core.transport.request("POST", url, core.headers({"Content-Type": content_type}), body)
 	if not r.ok:
@@ -207,7 +207,7 @@ func _send(url: String, content_type: String, body: PackedByteArray, is_nonce :=
 		return {"status": status, "body": answer, "response": r}
 	if status == 404:
 		return PKeyExchangeResult.unavailable(PKeyConstants.ErrorCode.NOT_FOUND, "The exchange route is not served for this product.")
-	return _refusal(status, r, answer)
+	return _refusal(status, r, answer, retry_cap)
 
 
 func _outcome(status: int, body: Variant, _response: PKeyResult, opts := {}) -> PKeyExchangeResult:
@@ -275,6 +275,9 @@ func _signed_in(answer: Dictionary, opts: Dictionary) -> PKeyExchangeResult:
 		var problem := PKeyLicense.unverified(core, synced, "the sign-in succeeded")
 		if not problem.is_empty():
 			return PKeyExchangeResult.failed(problem["code"], problem["message"])
+	if not (ladder is int):
+		# A sign-in the person started (the ladder enrols for its own rungs).
+		await identity.restore.after_sign_in()
 	return out
 
 
@@ -309,7 +312,7 @@ static func _card_url_ok(raw: String) -> bool:
 
 ## A 4xx/5xx as its result: the wire code (flat `{error: code}` or nested `{error: {code}}`) and
 ## only the members the answer carried. A 5xx is `server-error`. Nothing of the request is echoed.
-static func _refusal(status: int, r: PKeyResult, body: Variant) -> PKeyExchangeResult:
+static func _refusal(status: int, r: PKeyResult, body: Variant, retry_cap := 3600) -> PKeyExchangeResult:
 	var b: Dictionary = body if body is Dictionary else {}
 	var error = b.get("error")
 	var code = error.get("code") if error is Dictionary else error
@@ -322,11 +325,11 @@ static func _refusal(status: int, r: PKeyResult, body: Variant) -> PKeyExchangeR
 	var out := PKeyExchangeResult.refused(StringName(code if code is String and code != "" else "http_%d" % status), status)
 	var retry = b.get("retryAfter")
 	if PKeyClaims.is_number(retry) and not is_nan(float(retry)) and not is_inf(float(retry)) and float(retry) > 0.0:
-		out.retry_after_seconds = int(minf(ceilf(float(retry)), 3600.0))
+		out.retry_after_seconds = int(minf(ceilf(float(retry)), float(retry_cap)))
 	else:
 		var header = r.detail["headers"].get("retry-after") if r.detail["headers"] is Dictionary else null
 		if header is String and (header as String).strip_edges().is_valid_int() and int((header as String).strip_edges()) > 0:
-			out.retry_after_seconds = mini(int((header as String).strip_edges()), 3600)
+			out.retry_after_seconds = mini(int((header as String).strip_edges()), retry_cap)
 	var view = b.get("view")
 	if view is Dictionary and view.get("state") is String and view.get("choices") is Array:
 		out.view = view

@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature update.driver outlet.detect core.store packs.transport.play devices.attest identity.redirect.native
+# @pkey-feature update.driver outlet.detect core.store packs.transport.play devices.attest identity.redirect.native identity.restore
 # The Android platform plugin's GDScript side (P5-06), headless on every OS:
 #
 #   stubs     PKeyAndroid without the plugin: every call answers Unsupported, reason `runtime` off
@@ -60,6 +60,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _stubs(t)
 	await _outlet(t)
 	await _facade(t)
+	await _backup(t)
 	_launch(t)
 	_keystore(t)
 	_export(t)
@@ -268,6 +269,47 @@ func _facade(t: PKeyTestContext) -> void:
 	a.poll()
 	a.install_source()
 	t.check("facade: …and again after a resume", f.ops_called("install_source") == n + 1)
+
+
+## The restore item over the plugin's bk_* ops (I-49.14) through PKeyPlatformBackup: one entry per product
+## (value base64 on the wire), a missing entry reads null, a direct build or no Play services is Unsupported,
+## and the sync root is not stored here.
+func a_raw(f) -> Dictionary:
+	return _android("android", f).call_sync({"op": "bk_get", "kind": "restore", "product": "diceroll"})
+
+
+func _backup(t: PKeyTestContext) -> void:
+	var f := _fake("play")
+	var b := PKeyPlatformBackup.new(null, "", _android("android", f))
+	t.check("backup: Android answers through the plugin", b.is_available() and b.deletes_on_refusal())
+	var none := await b.read_restore("diceroll")
+	t.check("backup: an absent entry reads as null", none.ok and none.detail["value"] == null)
+	var w := await b.write_restore("diceroll", "rk_abcdefghijklmnopqrstuv", "rs_secret")
+	var sent: Dictionary = f.last_call("bk_set")
+	t.check("backup: the write names the kind and product, the value base64", w.ok and sent["kind"] == "restore" and sent["product"] == "diceroll" and not str(sent["value"]).contains("rs_secret"))
+	var got := await b.read_restore("diceroll")
+	var v: PKeyPlatformBackup.RestoreValue = got.detail["value"] if got.ok else null
+	t.check("backup: the item round trips", v != null and v.restore_id == "rk_abcdefghijklmnopqrstuv" and v.secret_bytes().get_string_from_utf8() == "rs_secret")
+	var gone := await b.delete_restore("diceroll")
+	t.check("backup: delete removes it", gone.ok and f.backup.is_empty())
+	var sync_root := await b.write_sync_root("diceroll", "s", "r", {"v": 1})
+	t.check("backup: the sync root is Unsupported on Android here", not sync_root.ok and sync_root.code == &"unsupported")
+	f.garbage_for = "bk_get"
+	f.garbage_text = "garbled rk_abcdefghijklmnopqrstuv rs_secret"
+	var garbled := await b.read_restore("diceroll")
+	t.check("backup: a malformed reply carries none of its text", not garbled.ok and not (str(garbled) + str(garbled.detail) + garbled.message).contains("rs_secret"))
+	var raw_reply := a_raw(f)
+	t.check("backup: …and the raw call keeps none for a bk op", not str(raw_reply).contains("rs_secret"))
+	f.garbage_for = ""
+	f.backup_error = "outlet"
+	var direct := await b.read_restore("diceroll")
+	t.check("backup: a direct build is Unsupported (outlet)", not direct.ok and direct.code == &"unsupported" and direct.detail["reason"] == "outlet")
+	f.backup_error = "no-play-services"
+	var no_play := await b.write_restore("diceroll", "rk_abcdefghijklmnopqrstuv", "rs_secret")
+	var quiet: bool = no_play.detail["reason"] == "dependency" and not str(no_play.message).contains("rs_")
+	t.check("backup: no Play services is Unsupported (dependency), the secret in no message", not no_play.ok and quiet)
+	var off := await PKeyPlatformBackup.new(null, "", _android("linux")).read_restore("diceroll")
+	t.check("backup: off Android with no Apple plugin is Unsupported", not off.ok and off.code == &"unsupported")
 
 
 func _launch(t: PKeyTestContext) -> void:

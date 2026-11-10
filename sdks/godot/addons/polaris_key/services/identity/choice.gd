@@ -146,6 +146,7 @@ func _complete(grant: String, choice: Variant, consent: Variant = null) -> PKeyC
 		r.key_entries = {"used": int(entries["used"]), "limit": int(entries["limit"])}
 	r.attachable = choice is Dictionary and choice.get("kind") == "keep"
 	await identity.ladder.session_completed(grant)
+	await identity.restore.after_sign_in()
 	if identity.redirect_acquisition_sync and identity.on_acquired.is_valid():
 		var synced: PKeySyncResult = await identity.on_acquired.call()
 		var problem := PKeyLicense.unverified(core, synced, "the sign-in succeeded")
