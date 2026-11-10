@@ -197,6 +197,20 @@ async function installProbe(page: Page): Promise<void> {
     if (w.__m) return;
     w.__m = { log: [], vt: [], runs: [] };
     const timings = new WeakMap<Element, Map<string, EffectTiming>>();
+    const cssTiming = (el: Element, name: string): EffectTiming | undefined => {
+      const cs = getComputedStyle(el);
+      const i = cs.animationName.split(", ").indexOf(name);
+      if (i < 0) return undefined;
+      const ms = (list: string): number => {
+        const parts = list.split(", ");
+        const v = parts[i % parts.length]!;
+        return v.endsWith("ms") ? parseFloat(v) : parseFloat(v) * 1000;
+      };
+      return {
+        duration: ms(cs.animationDuration),
+        delay: ms(cs.animationDelay),
+      };
+    };
     const record =
       (phase: AnimEvent["phase"]) =>
       (e: Event): void => {
@@ -208,8 +222,13 @@ async function installProbe(page: Page): Promise<void> {
           .find((a) => (a as CSSAnimation).animationName === ev.animationName);
         let byName = timings.get(el);
         if (!byName) timings.set(el, (byName = new Map()));
+        // A finished animation has left `getAnimations()` by the time its end event is handled,
+        // and so has one whose start event was held up past its own length on a stalled frame
+        // (the `[320, NaN]` of an old run): the computed longhands still name its timing.
         const timing =
-          anim?.effect?.getTiming() ?? byName.get(ev.animationName);
+          anim?.effect?.getTiming() ??
+          byName.get(ev.animationName) ??
+          cssTiming(el, ev.animationName);
         if (timing) byName.set(ev.animationName, timing);
         w.__m.log.push({
           phase,
@@ -258,20 +277,24 @@ async function installProbe(page: Page): Promise<void> {
         done: false,
       };
       w.__m.runs.push(run);
-      const seen = new Map<string, VtRecord["pseudo"][number]>();
+      // One record per animation object: every row shares one `match-element` pseudo selector,
+      // and an index in `getAnimations()` shifts as animations finish, so neither a selector nor
+      // an index names one. Sampled on every frame and once more when the transition is ready
+      // (every pseudo animation exists then), so a run of slow frames cannot miss one.
+      const seen = new Map<Animation, VtRecord["pseudo"][number]>();
       let polling = true;
       const poll = (): void => {
-        document.getAnimations().forEach((a, i) => {
+        for (const a of document.getAnimations()) {
           const pseudo = (a.effect as KeyframeEffect | null)?.pseudoElement;
-          if (!pseudo?.startsWith("::view-transition")) return;
+          if (!pseudo?.startsWith("::view-transition") || seen.has(a)) continue;
           const t = a.effect!.getTiming();
-          seen.set(`${i}:${pseudo}`, {
+          seen.set(a, {
             pseudo,
             name: (a as CSSAnimation).animationName ?? "",
             duration: Number(t.duration),
             delay: Number(t.delay ?? 0),
           });
-        });
+        }
         if (polling) requestAnimationFrame(poll);
       };
       requestAnimationFrame(poll);
@@ -281,6 +304,9 @@ async function installProbe(page: Page): Promise<void> {
         run.namedAfter = after.length;
         run.survivors = before.filter((el) => after.includes(el)).length;
       });
+      void (t as unknown as { ready: Promise<void> }).ready
+        .then(poll)
+        .catch(() => undefined);
       void t.finished
         .catch(() => undefined)
         .then(() => {
@@ -452,10 +478,7 @@ describe("motion on: the Licenses table under the Worker's CSP", () => {
     });
   }
 
-  // Disabled as flaky (owner 2026-10-23 rule): on CI run 40134389918 (c87a8e7ba) the pop-in's
-  // measured duration came back NaN ([320, NaN]) while 8741 sibling tests passed. Re-enable once
-  // the motion log reads a settled duration without a timeout raise.
-  it.skip("a new chip pops in; a removed one fades out, then leaves the DOM; the last one goes with its row", async () => {
+  it("a new chip pops in; a removed one fades out, then leaves the DOM; the last one goes with its row", async () => {
     const page = await openLicenses();
     const tk = await tokens(page);
     await openStatusMenu(page);

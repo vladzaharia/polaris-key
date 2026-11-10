@@ -103,6 +103,7 @@ async function open(o: OpenOptions = {}): Promise<Page> {
         : route.fulfill({ json: body });
     }
     if (o.holdChunkMs && /\/assets\/platform-[\w-]+\.js$/.test(url.pathname))
+      // brittle-ok: the hold is the fixture (the chunk is late on purpose), not a wait for a state
       await new Promise((r) => setTimeout(r, o.holdChunkMs));
     const res = await route.fetch();
     const headers = { ...res.headers() };
@@ -119,12 +120,29 @@ async function open(o: OpenOptions = {}): Promise<Page> {
     expect(
       await page.evaluate(() => document.documentElement.dataset.motion),
     ).toBe("reduce");
-  await page.waitForTimeout(300);
+  await settled(page);
   return page;
 }
 
 const violations = (page: Page): Promise<string[]> =>
   page.evaluate(() => (window as unknown as { __v: string[] }).__v);
+
+/**
+ * Wait until the shell is at rest: fonts are in and nothing but a loading indicator is animating.
+ * It waits on the page's own state, so a slow runner only makes it longer, never wrong.
+ */
+const settled = async (page: Page): Promise<void> => {
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every(
+        (a) =>
+          /spin/.test((a as CSSAnimation).animationName ?? "") ||
+          (a as CSSAnimation).animationName === "pk-shimmer",
+      ),
+  );
+};
 
 /** Running animations, aside from loading indicators that loop by design. */
 const running = (page: Page): Promise<string[]> =>
@@ -151,12 +169,12 @@ const animationsOn = (
 
 /**
  * Close the overlay matched by `selector` with Escape and record, the moment it flips to closed,
- * its animations; then whether it is still in the document after `waitMs`.
+ * its animations; then whether it is in the document once its exit has finished (it unmounts on
+ * `animationend`, so the wait is for the node to leave, not for a guessed span).
  */
 async function closeAndProbe(
   page: Page,
   selector: string,
-  waitMs: number,
 ): Promise<{
   animations: Array<{ name: string; duration: number }>;
   connectedAfter: boolean;
@@ -180,7 +198,10 @@ async function closeAndProbe(
     }).observe(el, { attributes: true, attributeFilter: ["data-state"] });
   }, selector);
   await page.keyboard.press("Escape");
-  await page.waitForTimeout(waitMs);
+  await page.waitForFunction(() => {
+    const x = (window as unknown as { __exit: { el: Element } | null }).__exit;
+    return x !== null && !x.el.isConnected;
+  });
   return page.evaluate(() => {
     const x = (
       window as unknown as {
@@ -212,23 +233,23 @@ async function openSheet(page: Page): Promise<void> {
 }
 
 describe("shell motion at 390 px (motion on)", () => {
-  // Disabled as flaky (owner 2026-10-23 rule): the unmount check saw two leftover nodes once on CI (run 40069710173 attempt 1) with no code change. Re-enable once the drawer exit is awaited deterministically.
-  it.skip("the nav drawer slides in from the inline start and out again, then unmounts", async () => {
+  it("the nav drawer slides in from the inline start and out again, then unmounts", async () => {
     const page = await open();
     await openDrawer(page);
     expect(await animationsOn(page, DRAWER)).toEqual([
       { name: "pk-nav-in", duration: 320 },
     ]);
     if (SHOTS) {
-      await page.waitForTimeout(60);
+      await page.waitForTimeout(60); // brittle-ok: a mid-slide frame for the review shots
       await page.screenshot({ path: `${SHOTS}/nav-drawer-mid.png` });
     }
-    await page.waitForTimeout(500);
+    await settled(page);
     expect(await running(page)).toEqual([]);
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/nav-drawer-open.png` });
-    const exit = await closeAndProbe(page, DRAWER, 500);
+    const exit = await closeAndProbe(page, DRAWER);
     expect(exit.animations).toEqual([{ name: "pk-nav-out", duration: 200 }]);
     expect(exit.connectedAfter).toBe(false);
+    await settled(page);
     expect(await running(page)).toEqual([]);
     expect(await violations(page)).toEqual([]);
     await closeContext(page.context());
@@ -241,15 +262,16 @@ describe("shell motion at 390 px (motion on)", () => {
       { name: "pk-sheet-in", duration: 320 },
     ]);
     if (SHOTS) {
-      await page.waitForTimeout(60);
+      await page.waitForTimeout(60); // brittle-ok: a mid-slide frame for the review shots
       await page.screenshot({ path: `${SHOTS}/sheet-mid.png` });
     }
-    await page.waitForTimeout(500);
+    await settled(page);
     expect(await running(page)).toEqual([]);
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/sheet-open.png` });
-    const exit = await closeAndProbe(page, SHEET, 500);
+    const exit = await closeAndProbe(page, SHEET);
     expect(exit.animations).toEqual([{ name: "pk-sheet-out", duration: 200 }]);
     expect(exit.connectedAfter).toBe(false);
+    await settled(page);
     expect(await running(page)).toEqual([]);
     expect(await violations(page)).toEqual([]);
     await closeContext(page.context());
@@ -267,7 +289,7 @@ describe("shell motion at 390 px (motion on)", () => {
     expect(await fallback.locator('[data-skeleton="form"]').count()).toBe(1);
     expect(await page.locator("#content svg.animate-pk-spin").count()).toBe(0);
     if (SHOTS) {
-      await page.waitForTimeout(250);
+      await page.waitForTimeout(250); // brittle-ok: a frame for the review shots
       await page.screenshot({ path: `${SHOTS}/route-skeleton.png` });
     }
     await page
@@ -310,6 +332,7 @@ describe("a hidden tab (MO-13.3, the guide's check; BRAND.md: nothing loops in J
     await page.evaluate(() => {
       (window as unknown as { __raf: number }).__raf = 0;
     });
+    // brittle-ok: a negative observation window; a hidden tab has to stay silent for a span
     await front.waitForTimeout(600);
     expect(
       await page.evaluate(() => (window as unknown as { __raf: number }).__raf),
