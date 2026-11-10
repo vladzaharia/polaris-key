@@ -870,8 +870,8 @@ paths:
         The device id arrives as the `X-PKey-Device` HEADER, not a body field, and unlike
         activation it must be exactly 32 base64url characters. The optional JSON body carries
         only a fingerprint. `registration_closed` is ONE body for four causes — policy is
-        `requires-license`; policy is `requires-identity` and no valid product session was
-        presented; policy is `requires-identity` on an identity-disabled product; the device
+        `requires-license`; policy is `requires-identity` (no caller is accepted: the cookie
+        session was removed); policy is `requires-identity` on an identity-disabled product; the device
         id is already bound to a real license — because telling them apart is the
         reconnaissance being refused. Re-registering the same id ROTATES the token (the old
         one dies at once) and preserves `firstSeen`. This route answers in the NESTED shape

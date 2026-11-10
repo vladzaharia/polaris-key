@@ -28,18 +28,16 @@
  *
  * Every refusal shares one body. A caller learns that it may not register, and nothing about
  * WHY — telling `requires-license` from `requires-identity`, or an unauthenticated
- * `requires-identity` caller from one whose session has expired, would let a prober map which
+ * `requires-identity` caller from any other, would let a prober map which
  * products run which services, which is the same reconnaissance `core/registry.ts` refuses for
  * disabled services.
  *
  * ── THE IDENTITY EXCHANGE ───────────────────────────────────────────────────────────────────
  *
- * `requires-identity` is the one policy whose answer Core cannot compute: "is there a product
- * login behind this request" is a question about a session shape only Identity defines. Core
- * therefore asks the REGISTRY, through `ServiceDescriptor.authorizeRegistration` — a narrow
- * predicate declared in `core/registry.ts` — rather than importing the service. This file
- * learns nothing about cookies, and Identity decides nothing about rate limits, device-id
- * shape, seat rebinding or what a refusal looks like.
+ * `requires-identity` asks the REGISTRY, through `ServiceDescriptor.authorizeRegistration` — a
+ * narrow predicate declared in `core/registry.ts`. Its only credential was the browser session
+ * cookie, which is removed (SP-40), so no service supplies the predicate and the policy refuses
+ * every caller: sign-in mints the device token. I-32b may drop this plumbing.
  */
 
 import type { Env } from "../platform/env.js";

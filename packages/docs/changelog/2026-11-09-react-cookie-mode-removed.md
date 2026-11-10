@@ -1,7 +1,7 @@
 ---
 title: "React cookie sessions are removed"
 date: "2026-11-09"
-version: "0.10.3"
+version: "0.10.5"
 type: "removed"
 services: ["identity"]
 sdks: ["react"]
@@ -22,7 +22,7 @@ replaces:
     new: "`POST /<product>/license/activate` for a key, the redirect or device-code sign-in for a person, and the device token's own sign-out"
     surface: "console"
   - old: "The return_to parameter of the browser flow's start route"
-    new: "The web redirect: `signIn.start({ channel: \"redirect\" })`"
+    new: 'The web redirect: `signIn.start({ channel: "redirect" })`'
     surface: "console"
   - old: "The setting `identity.browserSessionDays`"
     new: "Nothing: a browser page holds a device token, not a session"

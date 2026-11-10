@@ -1111,7 +1111,7 @@
         {
           "runtime": "web",
           "reason": "runtime",
-          "why": "Registration mints a bearer device token; the browser adapter is cookie-session based and holds none (packages/sdk-react/src/browser/browserAdapter.ts), and a browser has no hardware anchor."
+          "why": "Registration mints a bearer device token; a browser has no hardware anchor, and a page holds a device token only after signing in (packages/sdk-react/src/browser/browserAdapter.ts)."
         },
         {
           "runtime": "desktop-bridge",
@@ -1134,7 +1134,7 @@
         {
           "runtime": "web",
           "reason": "runtime",
-          "why": "List, rename and deauthorise call /<p>/devices, which authenticates only with a device bearer token; a browser holds a cookie session and no bearer, so the browser adapter refuses with device-management-unsupported (packages/sdk-react/src/browser/browserAdapter.ts)."
+          "why": "List, rename and deauthorise call /<p>/devices, which authenticates only with a device bearer token; a page without pinned keys holds no bearer, so the browser adapter refuses (packages/sdk-react/src/browser/browserAdapter.ts)."
         }
       ]
     },
@@ -1152,7 +1152,7 @@
         {
           "runtime": "web",
           "reason": "runtime",
-          "why": "POST /<p>/devices/report accepts only a device bearer token; a browser holds a cookie session and no bearer, and cannot read the OS or hardware facts the report carries."
+          "why": "POST /<p>/devices/report accepts only a device bearer token; a page without pinned keys holds no bearer, and cannot read the OS or hardware facts the report carries."
         }
       ]
     },
@@ -1170,7 +1170,7 @@
         {
           "runtime": "web",
           "reason": "runtime",
-          "why": "The events ride POST /<p>/devices/report, which accepts only a device bearer token; a browser cookie session holds none (as devices.report; SP-R02's bearer mode removes both)."
+          "why": "The events ride POST /<p>/devices/report, which accepts only a device bearer token; a page without pinned keys holds none (as devices.report; SP-R02's bearer mode removes both)."
         }
       ],
       "note": "Proven by telemetry-report-updates.json: a 17-event journal drains as 16 then 1 (updatesPending 1, then 0), recorded beside telemetry-report.json rather than extending it (plans/SP-00.md D3; SDK-PARITY-PASS §3.13)."
@@ -1644,7 +1644,7 @@
         {
           "runtime": "web",
           "reason": "runtime",
-          "why": "A browser has no platform backup item; it keeps its sign-in in the cookie session."
+          "why": "A browser has no platform backup item; it keeps its sign-in as a device token in IndexedDB."
         },
         {
           "runtime": "jvm",

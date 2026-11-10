@@ -822,11 +822,11 @@ A seat refusal carries a link to the customer portal, so an app can offer **Repl
 instead of a dead end. It is one optional member of an unsigned flat refusal body. No signed
 document, claim, header or error code changes, and `PROTOCOL_VERSION` stays 5.
 
-| Refusal (403)     | Routes                                                                                         | Link                                                                                |
-| ----------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `device_limit`    | `POST /<p>/license/activate`, `POST /<p>/license/enroll`, `POST /<p>/identity/session/license` | attached licence: `<portal>/#/p/<slug>/free-device?license=<id>[&for=<label>]`      |
-|                   |                                                                                                | floating licence: `<portal>/activate?product=<slug>&next=free-device[&for=<label>]` |
-| `key_entry_limit` | `POST /<p>/license/activate`, `POST /<p>/identity/session/license` (§12.2)                     | `<portal>/activate?product=<slug>`                                                  |
+| Refusal (403)     | Routes                                                   | Link                                                                                |
+| ----------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `device_limit`    | `POST /<p>/license/activate`, `POST /<p>/license/enroll` | attached licence: `<portal>/#/p/<slug>/free-device?license=<id>[&for=<label>]`      |
+|                   |                                                          | floating licence: `<portal>/activate?product=<slug>&next=free-device[&for=<label>]` |
+| `key_entry_limit` | `POST /<p>/license/activate` (§12.2)                     | `<portal>/activate?product=<slug>`                                                  |
 
 1. **Shape.** `manageUrl` is an absolute `https` URL of at most `MANAGE_URL_MAX_LENGTH` (2048)
    characters on the customer origin: `CUSTOMER_ORIGIN` when it is set to a usable origin, else `CONSOLE_ORIGIN`, else the request's own origin (§12.9). The body keeps
@@ -1165,7 +1165,7 @@ Amendment A1 (see the design spec) withdrew the interim `plrs` rebrand, so the v
 | Version schemes          | `semver`, `semver+build`, `4part`                                                                                                                                                                                                                                                | —                                                         |
 | Manifest dir             | `.pkey/` — the ONLY directory, no fallback                                                                                                                                                                                                                                       | `.polaris/`                                               |
 | Session domain tags      | `pkey.admin.v1\|`, `pkey.portal.v1\|`                                                                                                                                                                                                                                            | `plrs.admin.v1\|`, `plrs.portal.v1\|`                     |
-| Session cookies          | `__Host-pkey_admin`, `__Host-pkey_portal`, `pkey_<p>_session`                                                                                                                                                                                                                    | the `plrs_` spellings                                     |
+| Session cookies          | `__Host-pkey_admin`, `__Host-pkey_portal`                                                                                                                                                                                                                                        | the `plrs_` spellings                                     |
 | Keychain service (Swift) | `pkey:<product>`                                                                                                                                                                                                                                                                 | `plrs:<product>`                                          |
 | Config env prefix        | `PKEY_CONFIG_`                                                                                                                                                                                                                                                                   | `PLRS_CONFIG_`                                            |
 | Hash domains             | `pkey-hw`, `pkey-device:` (FROZEN at `fingerprintVersion` 1)                                                                                                                                                                                                                     | — (never changed; a rename orphans every enrolled digest) |
@@ -1394,20 +1394,18 @@ a new device and point the person at an account instead (PORTAL §4.6).
 
 1. **Surfaces.** A key entry happens on one of three surfaces, on a product with Identity on:
    - `app`: `POST /<p>/license/activate`;
-   - `browser`: `POST /<p>/identity/session/license`, and redeeming a key-return code at `token`
+   - `browser`: redeeming a key-return code at `token`
      (§12.4.2). For that code the device is the app's own, not `browser:<licenseId>`, and the
      entry is counted once, in the seat batch at `token`;
    - `portal`: `POST /api/claim/license-key`, once the licence's attach to the account commits.
 2. **Enrolled.** A device is enrolled on a licence when the `devices` row for
    `(product, device_id)` has that `license_id` and `status = 'authorized'`. A browser session's
    device is `browser:<licenseId>`, so the `browser` surface counts at most once per enrolment.
-   That id is derived from the licence, not presented by the caller, so on
-   `identity/session/license` enrolment spares an entry from counting but not from step 3: a
-   licence in an account is refused there even when `browser:<licenseId>` is enrolled.
+   That id is derived from the licence, not presented by the caller. (The cookie session that
+   minted it is removed, SP-40.)
 3. **Order on the two device routes.**
    1. The rate limit, the key and the licence, unchanged.
-   2. An enrolled device is answered as before: never refused (except by step 3 on
-      `identity/session/license`, rule 2), never counted.
+   2. An enrolled device is answered as before: never refused (except by step 3), never counted.
    3. When `identity.keyEntryRefusals` is on and the licence is usable and in an account
       (`licenses.account_id IS NOT NULL`): the flat
       `403 {"error":"license_owned","message":…,"signInUrl":…}`. `signInUrl` is the product's
@@ -1804,7 +1802,7 @@ licence, with no account and no subject. Nothing is signed and no signed documen
    after that check and before the seat claim is refused the same way: the seat claim and the
    key entry in its batch write nothing while the licence is in an account, so no seat is taken
    and no entry is counted. The guard is on the seat claim of `token` always and of
-   `license/activate` and `identity/session/license` while `identity.keyEntryRefusals` is on. It then binds the device
+   `license/activate` while `identity.keyEntryRefusals` is on. It then binds the device
    exactly as `license/activate` binds the same key and `X-PKey-Device`: `bound_by = 'key'`, one
    `browser` key entry (§12.2 rule 1), and the seat, fingerprint and hardware rules unchanged, so
    `device_limit`, `fingerprint_required`, `hardware_mismatch` and `key_entry_limit` come from

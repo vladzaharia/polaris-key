@@ -3,11 +3,8 @@
 /**
  * Identity's routes, as a table (`core/http/routes.ts`), over the path AFTER `/<product>/identity` (§R1):
  *
- *     /identity/session                     GET   the browser session's fused document
- *     /identity/session/license             POST  licence key → session cookie
  *     /identity/auth/start                  GET   begin PKCE, 302 to the IdP
  *     /identity/auth/callback               GET   exchange the code, mint/locate the licence
- *     /identity/auth/logout                 POST  drop the session + deauthorize its device
  *     /identity/auth/device                 GET   the RFC 8628 user-code page (entry form, or the
  *                                                 confirmation page for `?user_code=`)
  *                                           POST  look a typed code up, or confirm it (CSRF)
