@@ -152,6 +152,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 						await _phone_checks(t, tree, mx)
 		spent[u["kind"]] += Time.get_ticks_msec() - began
 	t.info("matrix timing: matrix %d ms, fresh %d ms, tail %d ms" % [spent["matrix"], spent["fresh"], spent["tail"]])
+	t.info("matrix frames: %s" % [MATRIX.frames])
 	mx.drop_locales()
 	PKeyUiView.safe_insets_override = null
 	PKeyUiView.mobile_override = null
@@ -226,8 +227,10 @@ static func _view_problems(tree: SceneTree, v: PKeyUiView, entry: Array, preset:
 	# (A 36 px host font on a 640 px wide canvas is the one tight case; see MATRIX.problems.)
 	if not ([entry[0], preset, s[0]] in MATRIX.TIGHT_CASES and s[1].x <= 640):
 		probs.append_array(_focus(v))
-	probs.append_array(await _save_conflict_top_problems(tree, v))
-	probs.append_array(await MATRIX.reach_problems(tree, v, entry[3], [entry[0], preset, s[0]] in MATRIX.TIGHT_CASES))
+	# The probes that move the focus and wait frames run where content can need its scroll (MATRIX.reach_probed).
+	if MATRIX.reach_probed(s, entry[0], preset):
+		probs.append_array(await _save_conflict_top_problems(tree, v))
+		probs.append_array(await MATRIX.reach_problems(tree, v, entry[3], [entry[0], preset, s[0]] in MATRIX.TIGHT_CASES))
 	return probs
 
 
@@ -250,6 +253,7 @@ static func _save_conflict_top_problems(tree: SceneTree, v: PKeyUiView) -> Packe
 			c.layout_content()
 		for i in 4:
 			await tree.process_frame
+			MATRIX.frames["save_conflict"] += 1
 		var top := sc.get_global_rect().position.y - 1.0
 		for n in (["Title", "Local"] if c.step == "choose" else ["Title", "Status"]):
 			var node := v.find_child(n, true, false) as Control
@@ -270,7 +274,9 @@ func _fresh_case(t: PKeyTestContext, tree: SceneTree, mx, sizes: Array, entry: A
 	for s in _row_sizes(sizes, entry, []):
 		var st: Dictionary = await mx.stage(tree, entry, s[1], s[2], s[3], preset, false, s[4])
 		# First, while nothing in the view has the focus yet: the checks after it move the focus.
-		var probs := await MATRIX.first_focus_problems(tree, st["view"], entry[3])
+		var probs := PackedStringArray()
+		if MATRIX.reach_probed(s, entry[0], preset):
+			probs = await MATRIX.first_focus_problems(tree, st["view"], entry[3])
 		probs.append_array(await _view_problems(tree, st["view"], entry, preset, s))
 		if not probs.is_empty():
 			failed.append("%s: %s" % [s[0], probs[0] + (" (+%d more)" % (probs.size() - 1) if probs.size() > 1 else "")])

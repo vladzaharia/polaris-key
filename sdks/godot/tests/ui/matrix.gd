@@ -44,6 +44,30 @@ static func applies(row: Array, screen: String) -> bool:
 	return row.size() < 6 or (row[5] as Array).has(screen)
 
 
+## The fewest frames the first-focus probe waits.
+const FOCUS_MIN_FRAMES := 3
+
+## The shorter side, in logical pixels, up to which a size is reach-sensitive (REACH_PROBED).
+const REACH_SHORT_SIDE := 720.0
+
+
+## Whether the probes that spend frames to move the focus (the first focus, the primary's reach through
+## its scroll fallback, a save conflict's title after a resize) run at size row `row` in `preset`. They
+## can only find something where content may not fit without scrolling: a phone or tablet (dp-sized
+## controls, a notch), a canvas whose shorter side is 720 logical pixels or less (640x360, 800x600,
+## 1280x720, a pixel-art or portrait stretch), a game's own 28 or 36 px type, and every TIGHT_CASES row.
+## The rows left out (1280x800, 1920x1080, 2560x1440, 3840x2160@2, 3440x1440, a 150 % laptop) show every
+## primary and user code unscrolled, which `problems()` holds at every size, and `_focus` checks every
+## focusable is on screen at every size; the layout, overflow, overlap and column probes run at every size.
+static func reach_probed(row: Array, screen: String, preset: String) -> bool:
+	if [screen, preset, row[0]] in TIGHT_CASES or preset in ["native28", "native36"]:
+		return true
+	if float(row[4]) > 0.0:
+		return true
+	var logical := Vector2(row[1]) / maxf(float(row[2]), 0.001)
+	return minf(logical.x, logical.y) <= REACH_SHORT_SIDE
+
+
 ## Screens a size is not yet held to, by size label: on a phone held sideways (844x390 pt) these
 ## gate cards need their scroll in the Polaris Key look (a long presented name, the German and
 ## Japanese device limit and version refusal). The card bleeding on a landscape phone is the fix.
@@ -570,6 +594,10 @@ const WIDE_SCREENS := ["gate", "gate.error", "gate.revoked", "gate.channel", "ac
 const MOBILE_BODY_DP := 16
 const MOBILE_CONTROL_DP := 48
 
+## Frames the probes waited, by kind (settle, first focus, reach): the matrix's cost is frames, and the
+## suite prints these so a change to a probe shows what it saved. Not a check.
+static var frames := {"settle": 0, "settles": 0, "first_focus": 0, "reach": 0, "save_conflict": 0}
+
 var _sc = SCENARIOS.new()
 var _translations := {}
 
@@ -744,10 +772,12 @@ func resize(tree: SceneTree, st: Dictionary, physical: Vector2i, scale: float, i
 ## is trimmed to its own height.
 static func settle(tree: SceneTree, st: Dictionary) -> void:
 	var v: PKeyUiView = st["view"]
+	frames["settles"] += 1
 	v.layout_content()
 	var last := ""
 	for i in 30:
 		await tree.process_frame
+		frames["settle"] += 1
 		if st["kind"] != "full" and not v.get("_covering"):
 			# A strip asks for its own height only.
 			v.offset_bottom = v.offset_top + v.get_combined_minimum_size().y
@@ -1069,8 +1099,19 @@ static func first_focus_problems(tree: SceneTree, view: PKeyUiView, kind: String
 	PKeyUiView.pointer_last = false
 	PKeyUiView._pointer_known = true
 	view.ensure_focus(true)
+	# At least FOCUS_MIN_FRAMES, at most 8, and until the focus owner has held the same rect for two
+	# frames running (the scroll follows the focus; a rect still moving is not settled).
+	var last := Rect2()
+	var still := 0
 	for i in 8:
 		await tree.process_frame
+		frames["first_focus"] += 1
+		var owner := view.get_viewport().gui_get_focus_owner()
+		var rect := owner.get_global_rect() if owner != null else Rect2()
+		still = still + 1 if owner != null and rect == last else 0
+		last = rect
+		if i + 1 >= FOCUS_MIN_FRAMES and still >= 2:
+			break
 	var f := view.get_viewport().gui_get_focus_owner()
 	if f == null or not (view == f or view.is_ancestor_of(f)):
 		return out
@@ -1112,6 +1153,7 @@ static func reach_problems(tree: SceneTree, view: PKeyUiView, kind: String, tigh
 		ctl.grab_focus()
 		for i in 4:
 			await tree.process_frame
+			frames["reach"] += 1
 		var r: Rect2 = ctl.get_global_rect()
 		# A tight settings row (a 36 px host font on a phone's width) is wider than the screen, so only
 		# its vertical reach is held.
