@@ -350,6 +350,12 @@ function renderPython(api: Api): string {
     } else if (r.id.startsWith("identity.nearby.")) {
       // M's side of nearby approval (I-47): `available` and `on_request` live on `identity.nearby`.
       attrs.push(`(${q(r.id)}, "NearbyNamespace", ${q(r.name)})`);
+    } else if (r.id.startsWith("identity.choice.")) {
+      // The licence choice (I-10a.17): the verbs live on `identity.choice` (`ChoiceClient`).
+      attrs.push(`(${q(r.id)}, "ChoiceClient", ${q(r.name)})`);
+    } else if (r.id === "identity.signIn.session.complete") {
+      // The redirect session (I-10a.17) finishes with the callback URL.
+      attrs.push(`(${q(r.id)}, "RedirectSession", ${q(r.name)})`);
     } else if (r.id.startsWith("identity.signIn.session.")) {
       attrs.push(
         `(${q(r.id)}, ${q(NEARBY_SESSION.has(leafOf(r.id)) ? "NearbySignInSession" : "SignInSession")}, ${q(r.name)})`,
@@ -387,10 +393,12 @@ from polaris_key.connect.cloud_connect import CloudConnect
 from polaris_key.connect.links import CloudLinks
 from polaris_key.connect.nearby import CloudNearby
 from polaris_key.connect.transfer import IncomingOffer, Transfer
+from polaris_key.identity.choice import ChoiceClient
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.auto_sign_in import NearbyNamespace
 from polaris_key.identity.native_redirect import push_request
 from polaris_key.identity.nearby_session import NearbySignInSession
+from polaris_key.identity.redirect import RedirectSession
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
 from polaris_key.license.entitlements import EntitlementsClient
@@ -400,6 +408,8 @@ CLASSES = {
     "ConfigClient": ConfigClient,
     "ConfigSetting": ConfigSetting,
     "IdentityClient": IdentityClient,
+    "ChoiceClient": ChoiceClient,
+    "RedirectSession": RedirectSession,
     "SignInNamespace": SignInNamespace,
     "SignInSession": SignInSession,
     "NearbyNamespace": NearbyNamespace,

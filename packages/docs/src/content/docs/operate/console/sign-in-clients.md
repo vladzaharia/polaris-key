@@ -6,6 +6,7 @@ services: ["identity"]
 lastReviewed: "2026-11-10"
 sidebar:
   order: 8
+next: false
 ---
 
 **Sign-in → Clients** (`#/p/<slug>/identity/clients`) is where a product turns on [Sign in with your product](/docs/features/sign-in/sign-in-with-product/) and registers the clients that use it. It needs the product's Identity service. Members who can change sign-in edit it; others read it.
