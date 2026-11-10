@@ -11,7 +11,7 @@ const VECTORS := "res://tests/corpus/v2/sync-vectors.json"
 
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	var j := JSON.new()
-	if not t.check("vectors parse", j.parse(FileAccess.get_file_as_string(VECTORS)) == OK and j.data is Dictionary, VECTORS):
+	if not t.check("vectors parse", j.parse(PKeyExportFixtures.lone_surrogates(FileAccess.get_file_as_string(VECTORS))) == OK and j.data is Dictionary, VECTORS):
 		return true
 	var d: Dictionary = j.data
 	_transfer_plan(t, d["transferPlanCases"])

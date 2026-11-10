@@ -1647,7 +1647,7 @@ static func capabilities() -> Dictionary:
 		"sync.e2e.recovery": {"status": "planned", "service": "sync", "na": []},
 		"sync.transfer.background": {"status": "implemented", "service": "sync", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"sync.e2e": {"status": "implemented", "service": "sync", "na": []},
-		"sync.export": {"status": "planned", "service": "sync", "na": []},
+		"sync.export": {"status": "implemented", "service": "sync", "na": []},
 		"connect.identity": {"status": "implemented", "service": "connect", "na": []},
 		"connect.noise": {"status": "implemented", "service": "connect", "na": []},
 		"connect.protocol": {"status": "implemented", "service": "connect", "na": []},
@@ -1751,4 +1751,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "4fb1e77ac506a43388186e1a32366f6c20e86f4974474d838eea3de5ed405bf3"
+const CAPABILITY_DIGEST := "22f90c138a240d153bc24aff982557f67a15f1a307eadee86ab5379db46300d4"

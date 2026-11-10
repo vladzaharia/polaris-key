@@ -22,6 +22,9 @@ extends RefCounted
 ##   PolarisKey.cloud_sync.transfers() the saves being written now (PKeyTransfer handles)
 ##                                     and, on the same stream, `transferProgress`, `transferDone` and
 ##                                     `transferFailed` (a cancelled write is `transferDone` with state "cancelled")
+##   PolarisKey.cloud_sync.export(destination, options)   a readable (decrypted) zip of the synced data at a path
+##                                     (U-51; a coroutine; PKeyCloudSyncExporter, core/sync/sync_export.gd), and
+##                                     `cancel_export()` to stop it
 ##   PolarisKey.config.set_value / clear / setting(k).sync()   routed through the machine while a
 ##                                     person is signed in
 ##
@@ -64,6 +67,7 @@ const TransferCodec := preload("res://addons/polaris_key/services/cloud_sync/tra
 const FilesTransport := preload("res://addons/polaris_key/services/cloud_sync/files_transport.gd")
 const SavesRecords := preload("res://addons/polaris_key/services/cloud_sync/saves_records.gd")
 const Journal := preload("res://addons/polaris_key/services/cloud_sync/journal.gd")
+const Exporter := preload("res://addons/polaris_key/services/cloud_sync/export_host.gd")
 
 ## The reasons the machine leaves a principal, each of which drops the key ring.
 const FORGETTING := ["signOut", "accountRequired", "subjectChanged"]
@@ -107,6 +111,8 @@ var _cache_for: Variant = null
 var _keep_subject: Variant = null
 ## The records handles handed out, by collection name (one per name, so its signals persist).
 var _collections := {}
+## The export in flight (one per client), built on first use.
+var _exporter: Exporter = null
 
 
 ## Build the host over this Core. `emit` is `func(data: Dictionary)`: one cloudSync event.
@@ -235,6 +241,51 @@ func flush() -> PKeyResult:
 	if host != null and host.is_started():
 		await host.flush()
 	return status()
+
+
+## A readable copy of the synced data (settings, records and files, decrypted) as a zip at `destination`, an
+## absolute path or one under `user://` (U-51; WIRE-CONTRACT-V5 13.12). The SDK never picks a place, never
+## uploads, shows no prompt and logs no value, id or path: the app already holds the data and decides when.
+## `options`: `include_revisions` (bool, default false: the live file of each record only) and `on_progress`
+## (a Callable taking `{done, total, waiting}`; `waiting` is true while a throttle is waited out).
+##
+## It sends what is waiting, pulls what the Worker holds, reads the files as `saves.read` does (so it spends the
+## hourly file allowance and may wait out a `Retry-After`, bounded), writes `<destination>.partial`, and renames
+## it over the destination: a failure or `cancel_export()` removes the partial and keeps the old file. A
+## coroutine; ok with `{path, bytes, entries, settings, records, files, skipped, unsynced}` (`skipped` lists what
+## could not be read or was cut short). A failure is `account_required`, `sync-locked`, `sync-encryption-pinned`,
+## `cancelled`, `sync-export-too-large` (nothing written) or `sync-export-failed` with `detail.reason`
+## `destination`, `network` or `busy` (one export runs at a time). The typed `product` N/A when the product does
+## not run the Sync service.
+func export(destination: String, options: Dictionary = {}) -> PKeyResult:
+	var refused: Variant = _core.require_service("sync", PKeyConstants.Feature.SYNC_EXPORT) if _core != null else PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
+	if refused != null:
+		return refused
+	if _exporter == null:
+		_exporter = Exporter.new({
+			"host": Callable(self, "_export_host"),
+			"attach": Callable(self, "attach"),
+			"flush": Callable(self, "flush"),
+			"subject": Callable(self, "_export_subject"),
+			"local_only": _core.local_only,
+		})
+	return await _exporter.run(destination, options)
+
+
+## The exporter's views of this API (Callables on `self` do not keep it alive; a lambda would).
+func _export_host() -> Node:
+	return host
+
+
+func _export_subject() -> String:
+	return _core.cache.subject if _core != null else ""
+
+
+## Stops the export in flight (nothing happens when none runs): it removes its partial, leaves the old
+## destination and answers `cancelled`.
+func cancel_export() -> void:
+	if _exporter != null:
+		_exporter.cancel()
 
 
 # ── The saves ─────────────────────────────────────────────────────────────────────────────────
@@ -486,6 +537,9 @@ func _allow_ring_holds() -> void:
 
 func close() -> void:
 	_closed = true
+	if _exporter != null:
+		_exporter.cancel()
+		_exporter = null
 	for handle: PKeyCollection in _collections.values():
 		handle.close()
 	_collections = {}

@@ -4563,9 +4563,7 @@
           "labels": ["to", "options"]
         },
         "kotlin": {},
-        "godot": {
-          "planned": "U-51"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4583,7 +4581,6 @@
           "reason": "React cancels with the AbortSignal passed as the signal option of useCloudSync().export"
         },
         "godot": {
-          "planned": "U-51",
           "sdkOnly": true,
           "spelling": "PKeyCloudSync.cancel_export",
           "reason": "GDScript has no cancellation token: the other SDKs cancel with an AbortSignal, a threading.Event or task cancellation"
