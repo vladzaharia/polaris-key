@@ -25,14 +25,17 @@
  *           The directory part adds the counters (the survivor row is made if absent), takes the
  *           larger quota, and the platform and tier of whichever side was active last.
  *   delete  the object (its alarm, then its storage), then the subject's row.
- *   export  the subject's directory counters and the object's full dump (live rows, tombstones,
- *           dormant platform rows, member cells, client bindings).
+ *   export  the subject's directory counters and a bounded section built from the object's pages
+ *           (`exportSection.ts`, U-12.4): the small tables and counters inline, records and file
+ *           metadata inline only while small. `exportEntries` adds the zip's bulk: every record,
+ *           file, revision and chunk. The full dump (`exportAll`) is the merge's alone.
  *   size    the directory's `bytes` (files and their revisions are inside it), what the person's data takes on the Users
  *           page (I-12); until the directory has the row (its first write has not been flushed),
  *           the object's own total.
  */
 
 import type { SubjectStore } from "../../core/accounts/subjectHooks.js";
+import { exportEntries, exportSection } from "./exportSection.js";
 import {
   absorbCloudSync,
   callCloudSync,
@@ -175,14 +178,16 @@ export const cloudSyncStore: SubjectStore = {
   },
 
   async export({ db, env }, { product, subject }) {
-    const settings = await exportCloudSync(env, { product, subject });
+    // Bounded (U-12.4): the small tables and counters inline, the bulk in the zip's entries.
+    const section = await exportSection({ db, env }, { product, subject });
     const r = await db.first<DirectoryRow>(
       "SELECT * FROM sync_directory WHERE product = ? AND subject = ?",
       product,
       subject,
     );
     return {
-      settings,
+      // The person has no object here: the same two keys, both empty.
+      ...(section ?? { settings: null }),
       directory: r
         ? {
             bytes: r.bytes,
@@ -200,6 +205,10 @@ export const cloudSyncStore: SubjectStore = {
           }
         : null,
     };
+  },
+
+  async exportEntries({ db, env }, { product, subject }) {
+    return exportEntries({ db, env }, { product, subject });
   },
 
   async size({ db, env }, { product, subject }) {

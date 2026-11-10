@@ -96,6 +96,15 @@ Applied from the brand and transition integration ([Brand transition decisions](
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
+
+   Corrections found (2026-11-09):
+   - `renderUpdaterSetup` did not exist; it is `renderUpdaterSetup` in `packages/admin/src/console/sections/update/model/updaterSetup.ts` (console copy, not shared-manifest).
+   - `pkey release keys init --sparkle` does not exist in the CLI; the page says to make the key with Sparkle's `generate_keys` and set `sparkleEd25519Pub` in `.pkey/release`. A CLI command is a follow-up.
+   - An update-health event names an outlet and a channel but no platform, so Verified is per outlet, not per platform: two desktop platforms on the one `direct` outlet verify together. Per-platform needs a `platform` field on the update event (report allowlist, OpenAPI, counter keys).
+   - The counters give no first-check time (hourly buckets) and no Sparkle signature failures; the failing state is reverted updates and boot rollbacks.
+   - The read is `GET /manage/api/products/{product}/distribution/updaters` (area `ship`, composed in `console/handlers/updaters.ts`), a console route: `routeCoverage` + OpenAPI, not a service `surface`.
+   - The nav item Updates (`update/updates`) is first in the Update section; `#/p/<slug>/updates` now lands on it. Feed keeps the settings and its Endpoints section.
+
 2. Implement the scope; run the green gate; hand off.
 
 ## UX coverage (2026-10-09)
@@ -106,12 +115,12 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Motion strip (MO-13 follow-up, 2026-10-26)
 
-MO-13 shipped without this surface. When it lands, add updater failure persistence: a frame strip (both themes and reduced) showing the failure stays and nothing loops after it, with `frameStrip` from `packages/admin/e2e/strips.ts` and an always-on assertion in the matching `*Motion.e2e.test.ts`; reduced motion is an instant swap. Plan: `_lead/plans/I-28-MO-13-slices.md` §8 M6.
+MO-13 shipped without this surface. When it lands, add updater failure persistence: a frame strip (both themes and reduced) showing the failure stays and nothing loops after it, with `frameStrip` from `packages/admin/e2e/strips.ts` and an always-on assertion in the matching `*Motion.e2e.test.ts`; reduced motion is an instant swap. Plan: the lead's review notes §8 M6.
 
 ## Acceptance criteria
 
-- [ ] A Windows-only product sees no Sparkle setup
-- [ ] Verified flips on the first update check from a shipped build
+- [x] A Windows-only product sees no Sparkle setup
+- [x] Verified flips on the first update check from a shipped build (per outlet, see Corrections)
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `releases/release-tracks`, `updates/*`, `packs/*`; `help/beta`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 

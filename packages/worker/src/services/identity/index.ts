@@ -35,14 +35,12 @@
 import { identityManifest } from "./ingest.js";
 import type {
   DiscoveryContext,
-  RegistrationAuthContext,
   ServiceContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
 import type { AdminSession } from "../../core/console/session.js";
 import { IDENTITY_ROUTES } from "./routes.js";
 import { handleIdentityAdmin } from "./admin.js";
-import { authorizeRegistration } from "./registration.js";
 import { IDENTITY_SETTINGS_SLICE } from "./settings.js";
 import type {
   ExchangeKind,
@@ -119,8 +117,6 @@ export const identityService: ServiceDescriptor = {
   discoverVisibility,
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleIdentityAdmin(ctx),
-  authorizeRegistration: (ctx: RegistrationAuthContext) =>
-    authorizeRegistration(ctx),
   /**
    * Licence deletion (`core/licensing/licenseDelete.ts`): the portal's links to the deleted licence go, so
    * no account's library keeps a card for a licence that no longer exists, and so do its I-12
@@ -238,11 +234,8 @@ export const identityService: ServiceDescriptor = {
         product,
       ),
       endpoints: {
-        session: `${base}/identity/session`,
-        sessionLicense: `${base}/identity/session/license`,
         authStart: `${base}/identity/auth/start`,
         authCallback: `${base}/identity/auth/callback`,
-        authLogout: `${base}/identity/auth/logout`,
         authDeviceStart: `${base}/identity/auth/device/start`,
         authDeviceEntry: `${base}/identity/auth/device`,
         authDeviceVerify: `${base}/identity/auth/device/verify`,
@@ -284,13 +277,11 @@ export const identityService: ServiceDescriptor = {
 //
 // Two symbols, for two callers that are not routes. `handlePortal` is the composition root's:
 // `index.ts` mounts the ROOT portal paths, which stay platform-level (see the header).
-// `createBrowserSession` is the credential the `requires-identity` registration policy is
-// defined in terms of, so the registration-matrix suite has to be able to mint one.
+// `customerApproveTarget` is the dispatcher's, for the customer host's device approval page.
 //
 // Everything else stays behind the descriptor. A service's surface is its routes; a growing
 // list of exports here is how the next module starts reaching around them.
 export { handlePortal } from "./portal/index.js";
-export { createBrowserSession } from "./browserSession.js";
 // The customer host's device approval page has no product in its URL: the dispatcher asks which
 // product the binder belongs to, then serves that product's approval handler on the customer host.
 export { customerApproveTarget } from "./productOidc/deviceApproval.js";

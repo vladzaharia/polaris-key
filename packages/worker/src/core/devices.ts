@@ -225,8 +225,8 @@ export const NO_LICENSE_ID = "";
  * key, a KV key, a signed `deviceId` claim and a CSV export is opaque and separator-free.
  *
  * `:` is outside the set, so a client can never claim a SERVER-MINTED id.
- * `browser:<licenceId>` (the browser session's device row) is minted only by `browserSession.ts`
- * and `licenseChoice.ts`; the validator is what keeps a key holder from naming it.
+ * `browser:<licenceId>` (the device row a browser sign-in is chosen onto) is minted only by
+ * `licenseChoice.ts`; the validator is what keeps a key holder from naming it.
  */
 export const CLIENT_DEVICE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 

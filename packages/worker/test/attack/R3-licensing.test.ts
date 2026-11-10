@@ -35,7 +35,6 @@ import { handleLicenseDocument } from "../../src/services/license/document.js";
 import { handleConfigDocument } from "../../src/services/config/document.js";
 import { handleDevices } from "../../src/core/devices.js";
 import { handleEnroll } from "../../src/services/license/enroll.js";
-import { handleBrowserSessionLicense } from "../../src/services/identity/browserSession.js";
 import { activateFromIdentity } from "../../src/services/identity/oidc.js";
 import {
   channelForVersion,
@@ -908,30 +907,13 @@ describe("R3-06 entitlement layer is unpruned and self-authoritative", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // R3-08 — unthrottled license-key oracle.
 // ─────────────────────────────────────────────────────────────────────────────
-describe("R3-08 POST /<product>/session/license rate limit", () => {
-  it("FIXED: the key oracle is now capped at the same 30/min budget as /activate", async () => {
+describe("R3-08 license-key oracle rate limit", () => {
+  it("FIXED: the key oracle is capped at 30/min per IP", async () => {
     const h = await harness();
 
-    // FIXED (R3-08). This endpoint takes an attacker-suppliable license key and reports
-    // whether it is valid — the same key→credential exchange `/activate` performs — but it
-    // had no limiter at all, so it was an unthrottled guessing oracle for the whole key
-    // space. It now shares `/activate`'s 30/min per-IP budget.
-    const sessionStatuses: number[] = [];
-    for (let i = 0; i < 120; i++) {
-      const res = await handleBrowserSessionLicense(
-        mkReq("POST", {}, { key: `pkey_djdl_guess${i}` }),
-        h.env,
-        h.db,
-        h.product,
-        NOW,
-      );
-      sessionStatuses.push(res.status);
-    }
-    // The first 30 guesses are answered (401 — wrong key); the remaining 90 are refused
-    // without the key ever being looked up.
-    expect(sessionStatuses.filter((s) => s === 401).length).toBe(30);
-    expect(sessionStatuses.filter((s) => s === 429).length).toBe(90);
-
+    // FIXED (R3-08). `/activate` takes an attacker-suppliable license key and reports whether
+    // it is valid, so it is limited to 30 guesses a minute per IP; the rest are refused
+    // without the key ever being looked up. (The browser session's own key route is gone.)
     const activateStatuses: number[] = [];
     for (let i = 0; i < 40; i++) {
       const res = await handleActivate(
@@ -943,6 +925,7 @@ describe("R3-08 POST /<product>/session/license rate limit", () => {
       );
       activateStatuses.push(res.status);
     }
+    expect(activateStatuses.filter((s) => s === 401).length).toBe(30);
     expect(activateStatuses.filter((s) => s === 429).length).toBe(10);
   });
 });

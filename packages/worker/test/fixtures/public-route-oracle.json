@@ -30782,7 +30782,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5489:7409df41d903276f"
+    "body": "5305:0f2c6d8f9da32d5c"
   },
   "core HEAD /djdl/.well-known/polaris.json": {
     "status": 405,
@@ -30889,7 +30889,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5489:7409df41d903276f"
+    "body": "5305:0f2c6d8f9da32d5c"
   },
   "core HEAD /djdl/.well-known/polaris.json/": {
     "status": 405,
@@ -30996,7 +30996,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5489:7409df41d903276f"
+    "body": "5305:0f2c6d8f9da32d5c"
   },
   "core HEAD /djdl/.well-known/polaris.json?x=1": {
     "status": 405,
@@ -40100,65 +40100,6 @@
     "cookies": [],
     "body": "33817:87e5d1c825876118"
   },
-  "cors GET /djdl/identity/auth/logout": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors GET+origin /djdl/identity/auth/logout": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors OPTIONS+origin+preflight /djdl/identity/auth/logout": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors GET+other /djdl/identity/auth/logout": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors OPTIONS+other+preflight /djdl/identity/auth/logout": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors OPTIONS /djdl/identity/auth/logout": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors POST+body+origin /djdl/identity/auth/logout": {
-    "status": 200,
-    "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
-    },
-    "cookies": [
-      "pkey_djdl_session; Path=/djdl; Max-Age=0; HttpOnly; Secure; SameSite=Lax"
-    ],
-    "body": "11:4062edaf750fb807"
-  },
   "cors GET /djdl/identity/auth/start": {
     "status": 404,
     "headers": {
@@ -41044,122 +40985,6 @@
     },
     "cookies": [],
     "body": "32:97af5772e08c551c"
-  },
-  "cors GET /djdl/identity/session": {
-    "status": 200,
-    "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
-    },
-    "cookies": [],
-    "body": "34:b8f130d559b677a9"
-  },
-  "cors GET+origin /djdl/identity/session": {
-    "status": 200,
-    "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
-    },
-    "cookies": [],
-    "body": "34:b8f130d559b677a9"
-  },
-  "cors OPTIONS+origin+preflight /djdl/identity/session": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors GET+other /djdl/identity/session": {
-    "status": 200,
-    "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
-    },
-    "cookies": [],
-    "body": "34:b8f130d559b677a9"
-  },
-  "cors OPTIONS+other+preflight /djdl/identity/session": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors OPTIONS /djdl/identity/session": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors POST+body+origin /djdl/identity/session": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors GET /djdl/identity/session/license": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors GET+origin /djdl/identity/session/license": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors OPTIONS+origin+preflight /djdl/identity/session/license": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors GET+other /djdl/identity/session/license": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors OPTIONS+other+preflight /djdl/identity/session/license": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors OPTIONS /djdl/identity/session/license": {
-    "status": 405,
-    "headers": {
-      "content-type": "text/plain;charset=UTF-8"
-    },
-    "cookies": [],
-    "body": "18:e3933184560739b7"
-  },
-  "cors POST+body+origin /djdl/identity/session/license": {
-    "status": 403,
-    "headers": {
-      "content-type": "application/json",
-      "cache-control": "no-store"
-    },
-    "cookies": [],
-    "body": "60:6fb46eb9abd1e1f3"
   },
   "cors GET /djdl/identity/signout": {
     "status": 405,
@@ -43902,7 +43727,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5489:7409df41d903276f"
+    "body": "5305:0f2c6d8f9da32d5c"
   },
   "cors GET+origin /djdl/.well-known/polaris.json": {
     "status": 200,
@@ -43914,7 +43739,7 @@
       "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
-    "body": "5489:7409df41d903276f"
+    "body": "5305:0f2c6d8f9da32d5c"
   },
   "cors OPTIONS+origin+preflight /djdl/.well-known/polaris.json": {
     "status": 204,
@@ -43936,7 +43761,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5489:7409df41d903276f"
+    "body": "5305:0f2c6d8f9da32d5c"
   },
   "cors OPTIONS+other+preflight /djdl/.well-known/polaris.json": {
     "status": 204,
@@ -43973,7 +43798,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5489:7409df41d903276f"
+    "body": "5305:0f2c6d8f9da32d5c"
   },
   "cors GET+origin /djdl/.well-known/polaris.json/": {
     "status": 200,
@@ -43985,7 +43810,7 @@
       "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
-    "body": "5489:7409df41d903276f"
+    "body": "5305:0f2c6d8f9da32d5c"
   },
   "cors OPTIONS+origin+preflight /djdl/.well-known/polaris.json/": {
     "status": 204,
@@ -44007,7 +43832,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5489:7409df41d903276f"
+    "body": "5305:0f2c6d8f9da32d5c"
   },
   "cors OPTIONS+other+preflight /djdl/.well-known/polaris.json/": {
     "status": 204,
@@ -44044,7 +43869,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5489:7409df41d903276f"
+    "body": "5305:0f2c6d8f9da32d5c"
   },
   "cors GET+origin /djdl/.well-known/polaris.json?x=1": {
     "status": 200,
@@ -44056,7 +43881,7 @@
       "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
-    "body": "5489:7409df41d903276f"
+    "body": "5305:0f2c6d8f9da32d5c"
   },
   "cors OPTIONS+origin+preflight /djdl/.well-known/polaris.json?x=1": {
     "status": 204,
@@ -44078,7 +43903,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5489:7409df41d903276f"
+    "body": "5305:0f2c6d8f9da32d5c"
   },
   "cors OPTIONS+other+preflight /djdl/.well-known/polaris.json?x=1": {
     "status": 204,

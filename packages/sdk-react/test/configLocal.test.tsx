@@ -24,6 +24,7 @@ import {
   makeConfig,
   makeDoc,
   makeFakeBridge,
+  fakeWorld,
   makeFakeFetch,
   NOW_SEC,
   okBridgeState,
@@ -69,8 +70,8 @@ function memoryStorage(): ConfigStorage & { data: Map<string, string> } {
 }
 
 async function settle(adapter: { snapshot(): { phase: string } }) {
-  for (let i = 0; i < 50 && adapter.snapshot().phase === "loading"; i++)
-    await new Promise((r) => setTimeout(r, 0));
+  for (let i = 0; i < 200 && adapter.snapshot().phase === "loading"; i++)
+    await new Promise((r) => setTimeout(r, 2));
 }
 
 function browser(
@@ -82,9 +83,9 @@ function browser(
   } = {},
 ) {
   return browserAdapter({
-    auth: "cookie",
     productSlug: "acme",
-    fetchImpl: opts.fetchImpl ?? makeFakeFetch(makeDoc(), { config: CONFIG }),
+    ...fakeWorld(makeDoc(), { config: CONFIG }),
+    ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
     now: () => NOW_SEC,
     configStorage: storage,
     ...(opts.baseUrl !== undefined ? { baseUrl: opts.baseUrl } : {}),

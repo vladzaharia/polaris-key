@@ -991,9 +991,9 @@ describe("state pages (T8)", () => {
       ],
       [
         "#/p/djdl/updates",
-        "This page moved to Update\u00a0→\u00a0Feed",
-        "Go to Feed",
-        "#/p/djdl/update/feed",
+        "This page moved to Update\u00a0→\u00a0Updates",
+        "Go to Updates",
+        "#/p/djdl/update/updates",
       ],
     ] as const) {
       boot(old, { services: ALL_ON });

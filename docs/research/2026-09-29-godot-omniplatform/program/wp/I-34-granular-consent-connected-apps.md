@@ -1,16 +1,16 @@
 # I-34 Granular consent and Connected apps
 
-| Field       | Value                                                                                                                                          |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (DX consolidation F: Identity)                                              |
-| Size        | 0.8–1.2 engineer-weeks                                                                                                                         |
-| Depends on  | [I-08b](I-08b-licence-choice-api.md), [I-11](I-11-portal-library.md), [I-35](I-35-one-identity-manifest-block-joint-lx-36.md)                  |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-14b](PX-14b-native-return-consent-toggles.md), [PX-31b](PX-31b-account-packages-connected-apps.md) |
-| Role        | `pkey-implementer`                                                                                                                             |
-| Plan mode   | no                                                                                                                                             |
-| Gates       | none beyond the green gate                                                                                                                     |
-| Human input | none                                                                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                      |
+| Field       | Value                                                                                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (DX consolidation F: Identity)                                                                              |
+| Size        | 0.8–1.2 engineer-weeks                                                                                                                                                         |
+| Depends on  | [I-08b](I-08b-licence-choice-api.md), [I-11](I-11-portal-library.md), [I-35](I-35-one-identity-manifest-block-joint-lx-36.md)                                                  |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-21](I-21-product-issuer.md), [PX-14b](PX-14b-native-return-consent-toggles.md), [PX-31b](PX-31b-account-packages-connected-apps.md) |
+| Role        | `pkey-implementer`                                                                                                                                                             |
+| Plan mode   | no                                                                                                                                                                             |
+| Gates       | none beyond the green gate                                                                                                                                                     |
+| Human input | none                                                                                                                                                                           |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                      |
 
 ## Consolidation 2026-10-07
 
@@ -21,6 +21,10 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 These approved plans change this package. Where they differ from the text below, they win.
 
 - [`plans/I-27.md`](../plans/I-27.md) §12: the §12.7.3 text; `scopeHash` unchanged.
+
+## Amendment (plan I-20, 2026-11-09)
+
+[`plans/I-20.md`](../plans/I-20.md) §3.5 and §8: Connected apps groups I-21's issuer clients by product ("Signed in with <Product>": the client, what it gets, last use, **Change what <Client> gets**) and gains **Disconnect**, which takes a `cl_` id. I-21.15 builds the lifecycle on this, so I-21 depends on this package.
 
 ## Goal
 

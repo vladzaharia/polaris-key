@@ -4821,7 +4821,7 @@
       "sdks": {
         "react": {
           "sdkOnly": true,
-          "reason": "React session mode; SP-40 removes \"cookie\" with its own removed row"
+          "reason": "React transport option: \"bearer\" (a device token verified in the page) or \"auto\", which is the same without throwing when the pins are missing; SP-40 removed \"cookie\""
         }
       },
       "layer": "client"
@@ -8460,6 +8460,15 @@
       }
     },
     {
+      "sdk": "react",
+      "from": "auth: \"cookie\"",
+      "note": "bearer mode: auth: \"bearer\" with trust.pinnedKeys, and sign in with signIn.start (the web redirect or the device code)",
+      "package": "SP-40",
+      "scan": {
+        "pattern": "\\bauth\\s*[:=]\\s*[\"']cookie[\"']"
+      }
+    },
+    {
       "sdk": "python",
       "from": "trust",
       "to": "options.pinnedKeys",
@@ -9116,12 +9125,6 @@
       "from": "identity.accept_sign_in",
       "to": "identity.signIn.session.wait",
       "package": "I-10a"
-    },
-    {
-      "sdk": "godot",
-      "from": "PKeySaves.resolve",
-      "to": "cloudSync.mergeRequest.keep",
-      "package": "U-08"
     }
   ]
 }

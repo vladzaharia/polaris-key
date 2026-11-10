@@ -321,7 +321,7 @@ export type AutoSignInUnavailable =
   | "device-keys"
   /** Discovery named a sign-in endpoint off the product's origin (or not https). */
   | "endpoint"
-  /** The transport has no ladder: the desktop renderer, a cookie page, the local adapter. */
+  /** The transport has no ladder: the desktop renderer, a page without pinned keys, the local adapter. */
   | "runtime"
   /** A refusal or failure the ladder could not turn into a result. */
   | "refused"

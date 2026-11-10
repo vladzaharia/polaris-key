@@ -4,6 +4,10 @@
 > since (the sections below describe the system as it is now, not as it was then).
 > This is the document the codebase was missing. When code and this document disagree, that is
 > a finding — open a PR to reconcile one or the other.
+>
+> Note (SP-40): the browser cookie session (`pkey_<product>_session`, its routes and the KV
+> record) is removed. Passages below that describe it are historical; a web page now holds a
+> device token and verifies documents in the page.
 
 ## 1. What this system is
 
@@ -6219,8 +6223,8 @@ directory holds operators only, which closes G5 (operator and customer in one di
   again before it shows the identity, activates or mints, because an account can be disabled
   while the flow waits, and answers the generic `error` (D8). A subject that holds no method (a
   floating licence only, an erased account, which leaves no link, or a custom-issuer product's
-  subject) signs in as before. A product browser session signed in before the disable ends too.
-  The OIDC return path records two things on the session's KV record (`browserSessionBinding`;
+  subject) signs in as before. (The product browser session that once ended here is removed, SP-40.)
+  The OIDC return path recorded two things on the session's KV record (`browserSessionBinding`;
   neither for a custom issuer): the platform subject itself (issuer and `sub`), and the account
   that holds its platform-IdP method at sign-in, if any. At every read, `loadBrowserSession` runs
   this same N9 check on the subject (`platformSubjectStanding`, so whichever account holds
@@ -6356,8 +6360,8 @@ CSRF header like every other portal mutation.
   until passkeys (S-16 I-14) a recent sign-in is the strongest presence check the portal has; an
   attacker who can complete a fresh sign-in (a mailbox compromise) can replace the key, which the
   notice to the licence email surfaces.
-  Browser sessions opened earlier with the old key (`browserSession.ts`) are not revoked
-  either; like device tokens they run to their own expiry, and the reissue notice is the signal.
+  Device tokens opened earlier with the old key are not revoked either; they run to their own
+  expiry, and the reissue notice is the signal.
 - **Device names are display text, held to plain text.** At most 64 characters, trimmed, with no
   control or format characters (no bidirectional overrides that make one name render as another);
   owner-only, rate limited in the product's shard, audited. They are rendered as text everywhere.
@@ -8913,6 +8917,35 @@ every `ct` is `encryption_mismatch` and discovery says nothing of E2E.
   compare values; the client decides the better one. A client that ignores the rule can write a
   worse value, which harms only that person's own data. Field policies are not anti-cheat.
 
+### Cloud Sync in the portal export (U-12.4)
+
+File bytes and records leave through `GET /api/products/{product}/export` (JSON and `?format=zip`),
+behind the portal's session, CSRF header, five-minute step-up, rate limit and audit row.
+
+- **One pair.** The export reads only the object named by the `(product, subject)` Identity resolved
+  for the account (`subjectStore.ts` through `do/client.ts`). The paged `exportPage` op answers rows
+  of that object, so another person's keys, records and chunks are not reachable by naming them. A
+  file is read through `fileResolve` and a chunk from the page's own row: the R2 key and SSE-C key
+  come from the object's rows, never from a request, and neither is in the JSON or in an entry name.
+- **Ciphertext stays ciphertext.** In end-to-end mode the zip carries the stored bytes, which the
+  Worker cannot open; in server mode it opens a file with the person's SSE-C key, as the file `GET`
+  does. Entry names are indexes (`files/<n>.bin`), never the blinded ids the data holds.
+- **Bounded.** A page is at most 500 rows or about 1 MiB and one R2 read is open at a time; the file
+  and chunk indexes (`files.json`, `chunks.json`, written compactly) are held whole, which the
+  caps keep to a few hundred KiB. The JSON holds records only up to 4 MiB and file metadata up to
+  2,000 rows, else it names the zip. A zip is refused with `413 export_too_large` before anything
+  is sent above 65,000 entries or above 8,000 subrequests (two a file, one a chunk), so a download
+  never runs out of subrequests halfway.
+- **Fails closed.** A page of an object that was erased or absorbed after the listing is a `410`, a
+  stored object that is missing, the wrong size or outside the person's own R2 prefix (`u/<product>/
+<subject>/`, or a subject folded into it) is not read, and each stops the stream, so a truncated
+  archive is never taken for a whole one.
+- **Residual.** The export is not a point-in-time snapshot: a record changed while it streams can
+  appear at two versions in its ndjson (take the last row per id), and `data.json` is read earlier.
+  Bytes are checked against the row's size, not its SHA-256. A file replaced, or a chunk collected,
+  between the listing and its read ends the download; the person starts it again. A chunk row under
+  an SSE-C key the object no longer holds is left out of the container.
+
 ### Cloud Sync delta files: T31 and T32 (U-37)
 
 A collection that declares `files.delta` stores a large file as a manifest over content-defined
@@ -10811,6 +10844,51 @@ names the account, so there is nothing for a caller to substitute.
   id, so a person who hands it to a developer gives them that id (a per-product file never carries
   it).
 
+### Per-product removal: fence, isolation, ledger (U-12.1, U-12.2)
+
+`DELETE /api/products/<product>/data` used to run the stores one after another, so the first
+failing store aborted the run and nothing resumed it, and cleared the device bindings only after
+the stores, so a device that was still signed in could recreate a key ring or a Cloud Sync object
+mid-removal. A D1 restore also brought the removed rows back with nothing to remove them again.
+The route keeps every gate above (session, CSRF, sign-in no older than five minutes, licences
+removable, rate limit, audit). The cascade, in order:
+
+- **Write-ahead ledger.** `subject-erasures/<product>/<subject>` is written to the `BLOBS` bucket,
+  create-only, before anything changes (`subjectErasureLedger.ts`). It holds the product slug, the
+  random pairwise subject and a time, never an account id. A write that fails answers `503
+erasure_ledger_unavailable` with nothing changed. The prefix is not `erasures/`: the account
+  replay reads every key there as an account id.
+- **Fence.** The bindings of the subject and its aliases are cleared before any store runs, so a
+  device gets `account_required` and cannot recreate a ring or a sync object.
+- **Isolated stores, keys before bytes.** Every registered store deletes in name order and a
+  failure does not stop the others: the key ring (`core.keyring`) goes before the Cloud Sync object
+  (`sync.cloudSync`). The console's per-subject delete is isolated the same way and its Cloud Sync
+  delete removes the ring first. Account erasure moves its device fence ahead of the store rounds.
+- **Commit closes the gap.** The commit batch itself clears any device binding and deletes any key
+  ring or wrap for the subject and its aliases, and writes the history row and `subject.deleted`
+  only while the subject row exists, so a sign-in or ring write that raced the stores leaves
+  nothing behind and two completions record once.
+- **Commit and resume.** If a store fails the answer is `200` with `pending: true`; the subject
+  row stays, the developer is not told and nothing is audited yet. A ledger entry beside a live
+  subject row means a removal is owed, and the person's repeat or the maintenance pass (U-12.2)
+  re-runs the fence, stores and commit, which only delete by key.
+- **After a restore (U-12.2).** The 15-minute tick and the nightly maintenance walk the ledger
+  (`replaySubjectErasures`, at most 25 subjects a pass, cursor in KV) and complete the removal for
+  every entry whose subject row a restore brought back, together with its restored overrides,
+  ring and directory rows. A D1 restore does not touch Durable Object storage, so the object stays
+  erased. Entries are swept after 35 days, past the 30-day windows of D1 Time Travel and Durable
+  Object point-in-time recovery; subjects are random and cannot be re-minted, so no permanent
+  tombstone is needed.
+- **Residuals.** Between a restore and the next tick, up to 15 minutes, the restored rows are
+  readable; the request-time fence of account erasure has no per-subject counterpart (decision
+  D4). While a removal stays `pending`, devices that sign in again are fenced on each tick and
+  the data they create is removed when the stores finally succeed; the nightly step reports any
+  removal still owed after 7 days (a count, never an account). A Durable Object point-in-time restore brings its data back and the tick does not look for
+  it: the operator runs the objects pass for the product (its cursor belongs to one product, and
+  the request is cleared only after a whole cycle without a failure) (runbook, "After a D1 or Cloud Sync
+  Durable Object restore"). A person who removes their data while a store stays down is told
+  `pending`, and the data of that store stays until the pass succeeds.
+
 ### Account erasure is scheduled, then resumable (SEC-WP-04: SEC-PRV-1, SEC-PRV-19)
 
 `DELETE /api/me` used to flip the account to `deleted` and then run the registered stores' hooks
@@ -11515,7 +11593,7 @@ license_owned` with `signInUrl` and nothing is counted. A licence that is not us
   just before the seat batch). The guard is on the seat claim of `token` always and of
   `license/activate` while `identity.keyEntryRefusals` is on; with it off, `license/activate`
   admits an owned licence outright, as before. The browser-session key entry
-  (`identity/session/license`) is guarded the same way while the switch is on. `token`
+  (`identity/session/license`, removed in SP-40) was guarded the same way. `token`
   carries no fingerprint, so a `strict` tier always answers `fingerprint_required` there (the code
   is spent), and other modes record the device unverified, as a sign-in at `token` does.
 - **The key stays in the body.** It is never in a URL, the redirect, the request or code record,

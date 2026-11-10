@@ -193,7 +193,7 @@ function adapterFor(
   over: Partial<ConstructorParameters<typeof BrowserAdapter>[0]> = {},
 ): BrowserAdapter {
   return new BrowserAdapter({
-    auth: "cookie",
+    auth: "bearer",
     productSlug: PRODUCT,
     baseUrl: BASE,
     fetchImpl: srv.fetchImpl,
@@ -255,7 +255,6 @@ describe("BrowserAdapter.decideUpdate() — options and step 1", () => {
     for (const over of [
       { update: undefined },
       { update: { pinnedReleaseKeys: {} } },
-      { trust: undefined },
     ]) {
       const a = adapterFor(srv, null, over);
       await expect(a.decideUpdate()).rejects.toMatchObject({
@@ -264,6 +263,10 @@ describe("BrowserAdapter.decideUpdate() — options and step 1", () => {
       expect(a.snapshot().error.update?.code).toBe("not-configured");
     }
     expect(srv.urls.some((u) => u.includes("/feed.jws"))).toBe(false);
+    // Without product pins nothing verifies: the explicit bearer page refuses at construction.
+    expect(() => adapterFor(srv, null, { trust: undefined })).toThrow(
+      /pinnedKeys/,
+    );
   });
 
   it("refuses with service-unavailable before dialling when discovery lacks the v4 endpoints", async () => {
@@ -296,7 +299,7 @@ describe("BrowserAdapter.decideUpdate() — options and step 1", () => {
 });
 
 describe("BrowserAdapter.decideUpdate() — update_offered (telemetry.updates, SP-14)", () => {
-  it("bearer mode journals update_offered once per offered release; a cookie page journals nothing", async () => {
+  it("journals update_offered once per offered release", async () => {
     const recorded = vi.spyOn(BearerSession.prototype, "recordUpdateEvent");
     try {
       const srv = server();
@@ -323,12 +326,6 @@ describe("BrowserAdapter.decideUpdate() — update_offered (telemetry.updates, S
         at: NOW,
       });
       bearer.dispose();
-
-      recorded.mockClear();
-      const cookie = adapterFor(srv, memoryStore({ deviceId: "dev_1" }));
-      await cookie.decideUpdate();
-      expect(recorded).not.toHaveBeenCalled();
-      cookie.dispose();
     } finally {
       recorded.mockRestore();
     }

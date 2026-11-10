@@ -50,7 +50,7 @@ function refKey32(v: unknown): Uint8Array | null {
 }
 
 /** Unsigned byte order of two equal-length byte strings: negative, zero or positive. */
-const byteCompare = (a: Uint8Array, b: Uint8Array): number => {
+export const byteCompare = (a: Uint8Array, b: Uint8Array): number => {
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i]! - b[i]!;
   return 0;
 };
@@ -79,6 +79,42 @@ export function refContactSecret(
 
 // ── The CONTACT body (§15.10) ────────────────────────────────────────────────
 
+/** A body as a strict-JSON object: at most `max` bytes of UTF-8 with no BOM, an object; else null. */
+export function refBodyObject(
+  bytes: Uint8Array,
+  max: number,
+): Record<string, Json> | null {
+  if (bytes.length > max) return null;
+  // Valid UTF-8 round-trips; a BOM is a first character U+FEFF and refuses.
+  const text = Buffer.from(bytes).toString("utf8");
+  if (Buffer.compare(Buffer.from(text, "utf8"), bytes) !== 0) return null;
+  if (text.charCodeAt(0) === 0xfeff) return null;
+  const parsed = refParseStrict(text);
+  if (!parsed.ok) return null;
+  const o = parsed.value;
+  return o === null || typeof o !== "object" || Array.isArray(o) ? null : o;
+}
+
+/** `cats`: at most `max` distinct strings of `^[a-z0-9-]{1,32}$`; null when the rule is broken. */
+export function refBodyCats(v: Json | undefined, max: number): string[] | null {
+  if (
+    !Array.isArray(v) ||
+    v.length > max ||
+    !v.every((c) => typeof c === "string" && CAT_RE.test(c)) ||
+    new Set(v as string[]).size !== v.length
+  )
+    return null;
+  return v as string[];
+}
+
+/** An optional `label`: undefined when absent or cleaned to nothing, the cleaned text, or null
+ *  when it is not a string. */
+export function refBodyLabel(v: Json | undefined): string | undefined | null {
+  if (v === undefined) return undefined;
+  if (typeof v !== "string") return null;
+  return refVouchLabel(v) ?? undefined;
+}
+
 export type ContactVerdict =
   | { ok: true; agreeKey: string; label?: string; cats: string[] }
   | { ok: false };
@@ -89,43 +125,20 @@ export function refContactBody(
   own?: string,
 ): ContactVerdict {
   const no: ContactVerdict = { ok: false };
-  if (bytes.length > REF_CONTACT_BODY_MAX) return no;
-  let text: string;
-  try {
-    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
-      bytes,
-    );
-  } catch {
-    return no;
-  }
-  if (text.startsWith("\ufeff")) return no;
-  const parsed = refParseStrict(text);
-  if (!parsed.ok) return no;
-  const o = parsed.value;
-  if (o === null || typeof o !== "object" || Array.isArray(o)) return no;
-  if (o.v !== 1) return no;
+  const o = refBodyObject(bytes, REF_CONTACT_BODY_MAX);
+  if (o === null || o.v !== 1) return no;
   const key = refKey32(o.agreeKey);
   if (key === null || refX25519LowOrder(key)) return no;
   if (own !== undefined && o.agreeKey === own) return no;
-  const cats = o.cats;
-  if (
-    !Array.isArray(cats) ||
-    cats.length > REF_MAX_CONTACT_CATS ||
-    !cats.every((c) => typeof c === "string" && CAT_RE.test(c)) ||
-    new Set(cats as string[]).size !== cats.length
-  )
-    return no;
-  let label: string | undefined;
-  if (o.label !== undefined) {
-    if (typeof o.label !== "string") return no;
-    const l = refVouchLabel(o.label);
-    if (l !== null) label = l;
-  }
+  const cats = refBodyCats(o.cats, REF_MAX_CONTACT_CATS);
+  if (cats === null) return no;
+  const label = refBodyLabel(o.label);
+  if (label === null) return no;
   return {
     ok: true,
     agreeKey: o.agreeKey as string,
     ...(label !== undefined ? { label } : {}),
-    cats: cats as string[],
+    cats,
   };
 }
 
@@ -465,26 +478,57 @@ export interface ListenerOut {
   close: "handshake_failed" | "peer_busy" | null;
 }
 
+/** The account's discKeys tried in order (only the first two); the hit, if any. */
+export function refTrialAccount(
+  account: (string | null)[] | null,
+  key: number | null,
+  tried: string[],
+): string | null {
+  for (let k = 0; account !== null && k < Math.min(2, account.length); k++) {
+    if (account[k] === null) continue;
+    tried.push(`a:${k}`);
+    if (key === k) return `a:${k}`;
+  }
+  return null;
+}
+
+/** `count` secrets of one kind tried in order, at most `cap`; the hit, if any. */
+export function refTrialList(
+  kind: string,
+  count: number,
+  cap: number,
+  opens: number | null,
+  tried: string[],
+): string | null {
+  for (let k = 0; k < Math.min(cap, count); k++) {
+    tried.push(`${kind}:${k}`);
+    if (opens === k) return `${kind}:${k}`;
+  }
+  return null;
+}
+
 export function refListener(i: ListenerIn): ListenerOut {
   const tried: string[] = [];
-  if (i.account !== null) {
-    for (let k = 0; k < Math.min(2, i.account.length); k++) {
-      if (i.account[k] === null) continue;
-      tried.push(`a:${k}`);
-      if (i.opens?.mode === "a" && i.opens.key === k)
-        return { tried, hit: `a:${k}`, slot: false, close: null };
-    }
-  }
+  const a = refTrialAccount(
+    i.account,
+    i.opens?.mode === "a" ? i.opens.key : null,
+    tried,
+  );
+  if (a !== null) return { tried, hit: a, slot: false, close: null };
   if (i.contacts.length === 0)
     return { tried, hit: null, slot: false, close: "handshake_failed" };
   if (i.limiter === "refuse")
     return { tried, hit: null, slot: false, close: "peer_busy" };
-  for (let k = 0; k < Math.min(REF_MAX_SECRETS, i.contacts.length); k++) {
-    tried.push(`c:${k}`);
-    if (i.opens?.mode === "c" && i.opens.contact === k)
-      return { tried, hit: `c:${k}`, slot: true, close: null };
-  }
-  return { tried, hit: null, slot: false, close: "handshake_failed" };
+  const c = refTrialList(
+    "c",
+    i.contacts.length,
+    REF_MAX_SECRETS,
+    i.opens?.mode === "c" ? i.opens.contact : null,
+    tried,
+  );
+  return c !== null
+    ? { tried, hit: c, slot: true, close: null }
+    : { tried, hit: null, slot: false, close: "handshake_failed" };
 }
 
 // ── The pin (§15.10) ─────────────────────────────────────────────────────────

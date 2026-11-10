@@ -117,6 +117,7 @@ export const NO_HOOKS: ServiceHooks = {
   outletCapabilities: async () => null,
   licenseProvenance: () => null,
   storeProducts: () => null,
+  cloudSyncSummary: () => null,
   discoverVisibility: async () => null,
   githubPrToken: () => null,
 };

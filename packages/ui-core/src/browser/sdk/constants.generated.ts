@@ -2320,7 +2320,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
   },
-  "identity.oidc": { status: "implemented", service: "identity", na: [] },
+  "identity.oidc": {
+    status: "implemented",
+    service: "identity",
+    na: [{ runtime: "web", reason: "runtime" }],
+  },
   "identity.devicecode": { status: "implemented", service: "identity", na: [] },
   "identity.devicelabel": {
     status: "implemented",
@@ -2578,4 +2582,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "9a3b255111249e2bbc480fc86025320ed7bacec5348376383d335741d2e23343";
+  "c2b69b5efbc484a4f2f67e51c581490f9b718832172444778745df8bdf170f7e";

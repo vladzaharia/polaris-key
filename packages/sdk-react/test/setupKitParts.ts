@@ -21,3 +21,6 @@ provideKitCopy("en", fullEn);
 // The built kit and the source modules keep separate tables: a test that draws a component through
 // the source (`kitComponent`, as the matrix does for NearbyApproval) needs its own copy.
 provideTable("en", fullEn);
+
+// A jsdom test loads signed documents: see the file.
+import "../../../tools/jsdom-ed25519.js";

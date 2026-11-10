@@ -3,7 +3,7 @@
 // `Access-Control-Allow-Credentials` (`packages/worker/src/core/cors.ts`), so a page that fetches a
 // CORS-covered route with `credentials: "include"` from another origin fails CORS outright. Every
 // such read here is bearer-only (or public) and fetches with `credentials: "omit"`; only the
-// first-party, cookie-bearing identity session routes (never CORS-covered) keep `include`.
+// first-party routes are gone with cookie mode, so no request carries `include`.
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -40,7 +40,7 @@ function recorder() {
 }
 
 describe("credential modes (P4-18 review)", () => {
-  it("keeps `include` only on the identity session routes", () => {
+  it("never sends `include`", () => {
     const hits: string[] = [];
     for (const f of files(src)) {
       const lines = readFileSync(f, "utf8").split("\n");
@@ -56,11 +56,7 @@ describe("credential modes (P4-18 review)", () => {
         );
       });
     }
-    expect(hits).toEqual([
-      "browser/browserAdapter.ts:identity",
-      "browser/browserAdapter.ts:identity",
-      "browser/browserAdapter.ts:identity",
-    ]);
+    expect(hits).toEqual([]);
   });
 
   it("reads the catalog and the changelog with no ambient credential", async () => {

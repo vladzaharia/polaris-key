@@ -69,6 +69,7 @@ const NO_HOOKS: ServiceHooks = {
   outletCapabilities: offAsync,
   licenseProvenance: off,
   storeProducts: off,
+  cloudSyncSummary: off,
   discoverVisibility: offAsync,
   githubPrToken: off,
 };

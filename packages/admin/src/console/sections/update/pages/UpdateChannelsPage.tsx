@@ -51,6 +51,7 @@ import { useReleaseStore } from "../../release/data.js";
 import { publicUrl } from "../../distribution/model/format.js";
 import {
   BASE_ENDPOINTS,
+  channelNames,
   endpointRows,
   shippedPlatforms,
   updaterNote,
@@ -503,13 +504,7 @@ export { endpointRows, shippedPlatforms, updaterNote };
 
 function EndpointsSection({ slug }: { slug: string }): React.ReactElement {
   const store = useReleaseStore(slug);
-  const channels = React.useMemo(() => {
-    const set = new Set<string>(["stable"]);
-    for (const c of store.data?.channels ?? []) set.add(c.channel);
-    return [...set].sort((a, b) =>
-      a === "stable" ? -1 : b === "stable" ? 1 : a.localeCompare(b),
-    );
-  }, [store.data]);
+  const channels = React.useMemo(() => channelNames(store.data), [store.data]);
   const platforms = React.useMemo(
     () => shippedPlatforms(store.data),
     [store.data],

@@ -5,9 +5,7 @@
  * with its methods, subjects and sessions, until the cron replay re-erases it. The erasure ledger
  * (R2) is what still says "erased". These gates read it before they grant anything:
  *
- *   - a product browser session (`loadBrowserSession`): a KV record, which a restore never touches;
  *   - the platform-IdP product sign-in (`platformSubjectStanding`: the callback and the device poll);
- *   - the browser-session mint (`createBrowserSession`, with an `accountId`);
  *   - the device wire (`POST /<p>/identity/attach`, `GET /<p>/identity/subject`).
  *
  * Every window test pins the same three things: REFUSED between the restore and the replay, STILL
@@ -48,7 +46,6 @@ import {
 } from "../../src/services/identity/oidc.js";
 import { LICENSE_CHOICE_BINDER_COOKIE } from "../../src/services/identity/licenseChoice.js";
 import {
-  EMAIL_ISSUER,
   getAccountRow,
   insertAccount,
   insertLink,
@@ -58,16 +55,8 @@ import {
   replayErasures,
 } from "../../src/services/identity/accounts/deletion.js";
 import type { AccountContext } from "../../src/services/identity/accounts/links.js";
-import {
-  createBrowserSession,
-  handleBrowserSession,
-} from "../../src/services/identity/browserSession.js";
 import { getOrCreateAccountByEmail } from "../../src/services/identity/portal/repo.js";
-import { handleRegister } from "../../src/core/register.js";
-import { SERVICES } from "../../src/mount.js";
 import { SERVICE_SLUGS, serializeServices } from "../../src/core/services.js";
-import { getDevice } from "../../src/core/devices/store.js";
-import { getLicense } from "../../src/core/licensing/store.js";
 import { setServices } from "../../src/core/products/store.js";
 import { platformSubjectStanding } from "../../src/services/identity/accounts/platformMigration.js";
 import type { Env } from "../../src/platform/env.js";
@@ -93,13 +82,8 @@ const AUD = "client-platform";
 const SLUG = "djdl";
 const REDIRECT = `${ORIGIN}/${SLUG}/identity/auth/callback`;
 const SUB = "pocket-user-1";
-const SUB_B = "pocket-user-2";
-const SUB_C = "pocket-user-3";
 const OTHER_SUB = "someone-else";
 const FUTURE = "2030-01-01";
-const DEVICE = "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH";
-const DEVICE_2 = "IIIIJJJJKKKKLLLLMMMMNNNNOOOOPPPP";
-const COOKIE = "pkey_djdl_session";
 const DEV_A = "I11DEVICEA0000000000000000000001";
 const DEV_B = "I11DEVICEB0000000000000000000002";
 
@@ -258,31 +242,6 @@ async function platformLinkedAccount(sub: string): Promise<string> {
   return a.id;
 }
 
-/** An account with an email method only (no platform subject). */
-async function emailAccount(email: string): Promise<string> {
-  const a = await insertAccount(
-    db,
-    { primaryEmail: email, primaryEmailVerified: true, displayName: null },
-    NOW,
-  );
-  await insertLink(
-    db,
-    a.id,
-    {
-      issuerKey: EMAIL_ISSUER,
-      tenantScope: "",
-      subject: email,
-      kind: "email",
-      email,
-      emailVerified: true,
-      displayName: null,
-      amr: null,
-    },
-    NOW,
-  );
-  return a.id;
-}
-
 const licenseOf = (sub = SUB) =>
   db.first<{ id: string; account_id: string | null }>(
     "SELECT id, account_id FROM licenses WHERE product = ? AND sub = ?",
@@ -291,11 +250,6 @@ const licenseOf = (sub = SUB) =>
   );
 
 const kv = (): KvMock => env.HOT as unknown as KvMock;
-
-const sessionKeys = () =>
-  kv()
-    .keys()
-    .filter((k) => k.startsWith(`p:${SLUG}:browser-session:`));
 
 /** Every browser session and device token the KV holds: what a refused sign-in must not mint. */
 const mintedKeys = () =>
@@ -324,254 +278,6 @@ async function snapshot() {
     audit: await count("SELECT COUNT(*) AS n FROM audit"),
   };
 }
-
-interface SessionAnswer {
-  authenticated: boolean;
-  doc: unknown;
-}
-const SIGNED_OUT: SessionAnswer = { authenticated: false, doc: null };
-
-/** Every device seat and its credential. */
-const seats = () =>
-  db.all<{
-    device_id: string;
-    license_id: string;
-    status: string;
-    token_hash: string | null;
-  }>(
-    "SELECT device_id, license_id, status, token_hash FROM devices WHERE product = ? ORDER BY device_id",
-    SLUG,
-  );
-
-async function setRequiresIdentity(): Promise<void> {
-  // Config and Identity on, License off: registration follows the services to requires-identity.
-  await setServices(
-    db,
-    SLUG,
-    serializeServices({
-      services: {
-        license: { enabled: false },
-        config: { enabled: true },
-        release: { enabled: false },
-        distribution: { enabled: false },
-        update: { enabled: false },
-        identity: { enabled: true },
-        sync: { enabled: false },
-        commerce: { enabled: false },
-        connect: { enabled: false },
-      },
-    }),
-    "manifest",
-    NOW,
-  );
-  product = (await loadProduct(env, db, SLUG))!;
-}
-
-// ── 1 + 2. a live product browser session ────────────────────────────────────────────────────
-
-describe("I-11 fence: a live product browser session", () => {
-  beforeEach(setRequiresIdentity);
-
-  /** The `return_to` browser flow: the callback answers with the product session cookie. */
-  async function browserSessionSignIn(sub = SUB): Promise<string> {
-    const returnTo = encodeURIComponent(`${ORIGIN}/${SLUG}/app`);
-    const start = await handleAuthStart(
-      new Request(
-        `${ORIGIN}/${SLUG}/identity/auth/start?return_to=${returnTo}`,
-      ) as unknown as Request,
-      env,
-      db,
-      product,
-    );
-    expect(start.status).toBe(302);
-    const binder = cookieOf(start, LICENSE_CHOICE_BINDER_COOKIE);
-    const authorize = new URL(start.headers.get("location")!);
-    installIdp({
-      sub,
-      groups: ["members"],
-      nonce: authorize.searchParams.get("nonce"),
-    });
-    const res = await handleAuthCallback(
-      new Request(
-        `${ORIGIN}/${SLUG}/identity/auth/callback?code=c&state=${authorize.searchParams.get("state")}`,
-        {
-          headers: binder
-            ? { cookie: `${LICENSE_CHOICE_BINDER_COOKIE}=${binder}` }
-            : {},
-        },
-      ) as unknown as Request,
-      env,
-      db,
-      product,
-      NOW,
-    );
-    expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe(`${ORIGIN}/${SLUG}/app`);
-    const value = cookieOf(res, COOKIE);
-    expect(value).toBeTruthy();
-    return `${COOKIE}=${value}`;
-  }
-
-  async function sessionRead(cookie: string, at = NOW + 10) {
-    const res = await handleBrowserSession(
-      new Request(`${ORIGIN}/${SLUG}/identity/session`, {
-        headers: { cookie },
-      }) as unknown as Request,
-      env,
-      db,
-      product,
-      at,
-    );
-    expect(res.status).toBe(200);
-    return (await res.json()) as SessionAnswer;
-  }
-
-  async function registerOn(cookie: string, device: string, at = NOW + 10) {
-    return handleRegister(
-      new Request(`${ORIGIN}/${SLUG}/devices/register`, {
-        method: "POST",
-        headers: { "x-pkey-device": device, cookie },
-      }) as unknown as Request,
-      env,
-      db,
-      product,
-      at,
-      SERVICES,
-    );
-  }
-
-  async function expectRegistrationClosed(res: Response): Promise<void> {
-    expect(res.status).toBe(403);
-    expect(await res.json()).toEqual({
-      error: { code: "registration_closed" },
-    });
-  }
-
-  it("erased then restored: signed out, registration refused, the record deleted; still so after the replay", async () => {
-    const account = await platformLinkedAccount(SUB);
-    await addPlatformLink(account, SUB_B);
-    await addPlatformLink(account, SUB_C);
-    await platformLinkedAccount(OTHER_SUB);
-    // Three sessions of the account, each through its own subject (a later sign-in through the
-    // same subject rotates the browser seat's token under an earlier one): the first is used for
-    // registration, the second is read, the third is first used only after the replay. The fourth
-    // is another account's.
-    const viaRegister = await browserSessionSignIn(SUB);
-    const viaRead = await browserSessionSignIn(SUB_B);
-    const afterReplay = await browserSessionSignIn(SUB_C);
-    const control = await browserSessionSignIn(OTHER_SUB);
-    expect(sessionKeys()).toHaveLength(4);
-    expect((await sessionRead(viaRead)).authenticated).toBe(true);
-    const seatsBefore = await seats();
-
-    await eraseAndRestore(ctx(), account);
-    const cold = await coldIsolate(bucket);
-    // The window: D1 says the account is active again, with its method, and KV kept the records.
-    expect((await getAccountRow(db, account))?.status).toBe("active");
-    expect(
-      await count(
-        "SELECT COUNT(*) AS n FROM account_links WHERE account_id = ?",
-        account,
-      ),
-    ).toBe(3);
-    expect(sessionKeys()).toHaveLength(4);
-
-    // Registration behind a product sign-in is refused exactly as for no session, and the session
-    // is ended by the refusal.
-    await expectRegistrationClosed(await registerOn(viaRegister, DEVICE));
-    expect(await getDevice(db, SLUG, DEVICE)).toBeNull();
-    expect(sessionKeys()).toHaveLength(3);
-    expect(await sessionRead(viaRead)).toEqual(SIGNED_OUT);
-    expect(sessionKeys()).toHaveLength(2);
-    // It was the ledger that said so: a HEAD of the account's record, from this isolate.
-    expect(cold.heads).toContain(erasureKey(account));
-    // The seats belong to the licence, not the account: all of them are as they were.
-    expect(await seats()).toEqual(seatsBefore);
-
-    // Positive control, same world: another account's session lives and registers.
-    expect((await sessionRead(control)).authenticated).toBe(true);
-    expect((await registerOn(control, DEVICE)).status).toBe(200);
-
-    // The cron replay re-erases the account for real.
-    expect(await replayErasures(ctx(NOW + 200))).toMatchObject({
-      scanned: 1,
-      reapplied: 1,
-      failures: [],
-    });
-    expect(await getAccountRow(db, account)).toBeNull();
-    await expectRegistrationClosed(
-      await registerOn(afterReplay, DEVICE_2, NOW + 300),
-    );
-    expect(await sessionRead(afterReplay, NOW + 300)).toEqual(SIGNED_OUT);
-    expect(await getDevice(db, SLUG, DEVICE_2)).toBeNull();
-    expect(sessionKeys()).toHaveLength(1);
-    expect((await sessionRead(control, NOW + 300)).authenticated).toBe(true);
-  });
-
-  it("the isolate that erased the account knows at once, without reading the ledger", async () => {
-    const account = await platformLinkedAccount(SUB);
-    const cookie = await browserSessionSignIn();
-    expect((await sessionRead(cookie)).authenticated).toBe(true);
-    await eraseAndRestore(ctx(), account);
-    // The ledger cannot even be read, and the verdict does not need it.
-    bucket.down = true;
-    expect(await sessionRead(cookie)).toEqual(SIGNED_OUT);
-    expect(sessionKeys()).toHaveLength(0);
-  });
-
-  it("an unreadable ledger reads signed out for that request and keeps the record; readable again, the same cookie works", async () => {
-    await platformLinkedAccount(SUB);
-    const cookie = await browserSessionSignIn();
-    expect((await sessionRead(cookie)).authenticated).toBe(true);
-    const seatsBefore = await seats();
-
-    // Past the 30 seconds "clear" was believed for, so the fence has to read.
-    const at = NOW + 100;
-    bucket.down = true;
-    const asked = bucket.heads.length;
-    expect(await sessionRead(cookie, at)).toEqual(SIGNED_OUT);
-    expect(bucket.heads.length).toBeGreaterThan(asked);
-    await expectRegistrationClosed(await registerOn(cookie, DEVICE, at));
-    expect(await getDevice(db, SLUG, DEVICE)).toBeNull();
-    // Nothing ended, nothing spent.
-    expect(sessionKeys()).toHaveLength(1);
-    expect(await seats()).toEqual(seatsBefore);
-
-    bucket.down = false;
-    expect((await sessionRead(cookie, at)).authenticated).toBe(true);
-    expect((await registerOn(cookie, DEVICE, at)).status).toBe(200);
-  });
-
-  it("an unbound BLOBS fails closed the same way, and the record survives", async () => {
-    await platformLinkedAccount(SUB);
-    const cookie = await browserSessionSignIn();
-    expect((await sessionRead(cookie)).authenticated).toBe(true);
-
-    const at = NOW + 100;
-    delete env.BLOBS;
-    expect(await sessionRead(cookie, at)).toEqual(SIGNED_OUT);
-    await expectRegistrationClosed(await registerOn(cookie, DEVICE, at));
-    expect(sessionKeys()).toHaveLength(1);
-
-    env.BLOBS = asR2(bucket);
-    expect((await sessionRead(cookie, at)).authenticated).toBe(true);
-  });
-
-  it("erased and restored on an unreadable ledger: signed out and kept (nothing known), ended once it reads", async () => {
-    const account = await platformLinkedAccount(SUB);
-    const cookie = await browserSessionSignIn();
-    await eraseAndRestore(ctx(), account);
-
-    const cold = await coldIsolate(bucket, { down: true });
-    expect(await sessionRead(cookie)).toEqual(SIGNED_OUT);
-    await expectRegistrationClosed(await registerOn(cookie, DEVICE));
-    expect(sessionKeys()).toHaveLength(1);
-
-    cold.down = false;
-    expect(await sessionRead(cookie)).toEqual(SIGNED_OUT);
-    expect(sessionKeys()).toHaveLength(0);
-  });
-});
 
 // ── 3. the platform-IdP product sign-in ──────────────────────────────────────────────────────
 
@@ -890,116 +596,6 @@ describe("I-11 fence: product sign-in through the platform IdP", () => {
     const ready = await poll();
     expect(ready.status).toBe("ready");
     expect(bucket.heads).toContain(erasureKey(account));
-  });
-});
-
-// ── 4. the browser-session mint ──────────────────────────────────────────────────────────────
-
-describe("I-11 fence: createBrowserSession", () => {
-  async function licenseFor(id: string) {
-    const existing = await getLicense(db, SLUG, id);
-    if (existing) return existing;
-    const { licenseId } = await seedLicenseWithKey(db, SLUG, { id });
-    return (await getLicense(db, SLUG, licenseId))!;
-  }
-
-  const mint = async (
-    id: string,
-    accountId: string | null | undefined,
-    at = NOW,
-  ) =>
-    createBrowserSession(
-      env,
-      db,
-      product,
-      await licenseFor(id),
-      at,
-      undefined,
-      accountId === undefined ? {} : { accountId },
-    );
-
-  const REFUSED = {
-    ok: false,
-    status: 403,
-    code: "forbidden",
-    message: "this account cannot sign in",
-  };
-  const UNAVAILABLE = {
-    ok: false,
-    status: 503,
-    code: "erasure_ledger_unavailable",
-    message: "try again",
-  };
-
-  async function expectNothingMinted(): Promise<void> {
-    expect(sessionKeys()).toHaveLength(0);
-    expect(await count("SELECT COUNT(*) AS n FROM devices")).toBe(0);
-  }
-
-  it("an erased then restored account is refused 403, mints no record and authorizes no device; the same after the replay", async () => {
-    const account = await emailAccount("ada@example.com");
-    const control = await emailAccount("bob@example.com");
-    await eraseAndRestore(ctx(), account);
-    const cold = await coldIsolate(bucket);
-    expect((await getAccountRow(db, account))?.status).toBe("active");
-
-    expect(await mint("lic-1", account)).toEqual(REFUSED);
-    expect(cold.heads).toContain(erasureKey(account));
-    await expectNothingMinted();
-
-    expect(await replayErasures(ctx(NOW + 200))).toMatchObject({
-      reapplied: 1,
-      failures: [],
-    });
-    expect(await getAccountRow(db, account)).toBeNull();
-    expect(await mint("lic-1", account, NOW + 300)).toEqual(REFUSED);
-    await expectNothingMinted();
-
-    // Positive control, same world: an account that is not on the ledger gets its session.
-    const ok = await mint("lic-2", control, NOW + 300);
-    expect(ok).toMatchObject({ ok: true, record: { accountId: control } });
-    expect(sessionKeys()).toHaveLength(1);
-    expect(await count("SELECT COUNT(*) AS n FROM devices")).toBe(1);
-  });
-
-  it("the isolate that erased the account refuses it without reading the ledger", async () => {
-    const account = await emailAccount("ada@example.com");
-    await eraseAndRestore(ctx(), account);
-    bucket.down = true;
-    expect(await mint("lic-1", account)).toEqual(REFUSED);
-    await expectNothingMinted();
-  });
-
-  it("an unreadable ledger is a 503 with nothing minted; readable again it mints", async () => {
-    const account = await emailAccount("ada@example.com");
-    bucket.down = true;
-    expect(await mint("lic-1", account)).toEqual(UNAVAILABLE);
-    expect(bucket.heads).toContain(erasureKey(account));
-    await expectNothingMinted();
-
-    bucket.down = false;
-    expect(await mint("lic-1", account)).toMatchObject({
-      ok: true,
-      record: { accountId: account },
-    });
-    expect(sessionKeys()).toHaveLength(1);
-  });
-
-  it("an unbound BLOBS is a 503 with nothing minted", async () => {
-    const account = await emailAccount("ada@example.com");
-    delete env.BLOBS;
-    expect(await mint("lic-1", account)).toEqual(UNAVAILABLE);
-    await expectNothingMinted();
-  });
-
-  it("a key session names no account, is never asked, and mints even with BLOBS unbound", async () => {
-    delete env.BLOBS;
-    expect(await mint("lic-1", undefined)).toMatchObject({ ok: true });
-    expect(await mint("lic-2", null)).toMatchObject({ ok: true });
-    expect(sessionKeys()).toHaveLength(2);
-    env.BLOBS = asR2(bucket);
-    expect(await mint("lic-3", undefined)).toMatchObject({ ok: true });
-    expect(bucket.heads).toEqual([]);
   });
 });
 

@@ -131,6 +131,7 @@ the table.
 | `package-feeds`               | `#/p/<slug>/distribution/feeds`              | Distribution → Packages (`#/p/<slug>/distribution/feeds`)                 | live             |
 | `health`                      | `#/p/<slug>/distribution/health`             | Distribution → Health (`#/p/<slug>/distribution/health`)                  | live             |
 | `credentials`                 | `#/p/<slug>/distribution/credentials`        | Distribution → Credentials (`#/p/<slug>/distribution/credentials`)        | live             |
+| `updaters`                    | `#/p/<slug>/update/updates`                  | Update → Updates (`#/p/<slug>/update/updates`)                            | live             |
 | `feed`                        | `#/p/<slug>/update/feed`                     | Update → Feed (`#/p/<slug>/update/feed`)                                  | live             |
 | `portal`                      | `#/p/<slug>/identity/portal`                 | Sign-in → App sign-in (`#/p/<slug>/identity/app-sign-in`)                 | moved (I-29)     |
 | `sign-in`                     | `#/p/<slug>/identity/sign-in`                | Sign-in → App sign-in (`#/p/<slug>/identity/app-sign-in`)                 | moved (I-29)     |
@@ -168,7 +169,7 @@ the table.
 | `tab:compatibility`           | `#/p/<slug>/compatibility`                   | Release → Compatibility (`#/p/<slug>/release/compatibility`)              | moved (P0-31)    |
 | `tab:distribution-matrix`     | `#/p/<slug>/distribution-matrix`             | Distribution → Matrix (`#/p/<slug>/distribution/matrix`)                  | moved (P0-31)    |
 | `tab:distribution-health`     | `#/p/<slug>/distribution-health`             | Distribution → Health (`#/p/<slug>/distribution/health`)                  | moved (P0-31)    |
-| `tab:updates`                 | `#/p/<slug>/updates`                         | Update → Feed (`#/p/<slug>/update/feed`)                                  | moved (P0-31)    |
+| `tab:updates`                 | `#/p/<slug>/updates`                         | Update → Updates (`#/p/<slug>/update/updates`)                            | moved (P2-11)    |
 
 <!-- route-ledger:end -->
 

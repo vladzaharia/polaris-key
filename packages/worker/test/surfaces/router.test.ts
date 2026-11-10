@@ -122,12 +122,9 @@ describe("matchRoute — service namespaces (every table slug)", () => {
     ["/djdl/update/appcast.xml", "update", ["appcast.xml"]],
     ["/djdl/update/version", "update", ["version"]],
     ["/djdl/update/beta/appcast.xml", "update", ["beta", "appcast.xml"]],
-    ["/djdl/identity/session", "identity", ["session"]],
-    ["/djdl/identity/session/license", "identity", ["session", "license"]],
     ["/djdl/identity/auth/start", "identity", ["auth", "start"]],
     ["/djdl/identity/auth/callback", "identity", ["auth", "callback"]],
     ["/djdl/identity/auth/choose", "identity", ["auth", "choose"]],
-    ["/djdl/identity/auth/logout", "identity", ["auth", "logout"]],
     [
       "/djdl/identity/auth/device/start",
       "identity",

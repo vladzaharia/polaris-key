@@ -1,54 +1,36 @@
 ---
 title: "Browser sessions"
-description: "The product session cookie, the fused session document and its build gate, key-to-session exchange, logout and keyless identity-required registration."
+description: "How a web page holds a sign-in: a device token in the page, verified documents, and sign-out. Cookie sessions are removed."
 type: "concept"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-11-09"
 sidebar:
   order: 5
 ---
 
-A browser session is Identity's cookie-bearing principal. A page signs in through the [OIDC flow](/docs/features/sign-in/oidc/) or by presenting a license key, and gets a cookie bound to a synthetic `browser:<licenseId>` device row. A browser tab is authorized the same way a native install is: through Core's device principal.
+A web page signs in the way a native app does. It holds a `pkeyt_` device token and sends it as a bearer on the routes your product lists under `web.origins`. The Worker sets no cookie for it, and a page reads none.
 
-## The cookie
+The cookie session this page used to describe is removed: its session, key and logout routes under `identity/` answer `404`. A page that sets the React SDK's auth option to the cookie value gets `invalid-options` naming bearer mode. See [Upgrade to 0.9](/docs/build/upgrade-to-0-9/) for the replacement of each name.
 
-The name is `pkey_<product>_session` (hyphens in the slug become underscores), with `Path=/<product>`, `HttpOnly`, `Secure`, `SameSite=Lax` and `Max-Age` of 30 days. It carries an opaque token. The record behind it lives in KV under a peppered hash, with a matching 30-day TTL, and holds the device's `pkeyt_` token, a CSRF value, the license id, the synthetic device id and a creation time.
+## What the page holds
 
-The device token is a live credential, so it is stored sealed (AES-GCM under the platform KEK) and bound to that one session. A KV dump yields ciphertext, and a sealed token copied into another session fails to open. A cookie whose record is missing, unparseable or unopenable is treated exactly like no cookie, so the browser signs in again.
+The React SDK and the elements keep the token in the page's IndexedDB, with a random device id and the verified documents. It needs `trust.pinnedKeys`: every license and config document is verified in the page before it is used, so a token alone grants nothing.
 
-## The fused session document
+Without the pins the page makes no request and reports `invalid-options` as its identity error.
 
-`GET /<product>/identity/session` returns one fused document with license claims, config and entitlements together, not the split signed pair the SDKs use. It is minted for a page, as plain JSON inside an authenticated response with no signature to carry. `secrets` is always an empty object: a browser session never receives secret material.
+## Signing in
 
-| Situation                                                                | Response                                                                                           |
-| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| No cookie, or its record is missing or corrupt                           | `200 { "authenticated": false, "doc": null }`                                                      |
-| Session valid, but the device token or license fails the usability check | The same as no session                                                                             |
-| Session valid, but no usable active catalog                              | `500 catalog_unavailable`. It fails closed, like the config document                               |
-| Session valid, but the build gate blocks this version or channel         | `200 { "authenticated": true, "doc": null, "blocked": { "reason", "allowedRange" }, "csrfToken" }` |
-| Session valid and nothing blocks it                                      | `200 { "authenticated": true, "doc": { … }, "csrfToken" }`                                         |
+`signIn.start({ channel: "redirect", redirectUri })` takes the person to Polaris Locker and back to your page with a code the SDK redeems for a token. `signIn.start({ channel: "device-code" })` shows a code to enter on another device. A license key goes through `license.activateWithKey`. See [Web redirect](/docs/features/sign-in/web-redirect/) and [Device flow](/docs/features/sign-in/device-flow/).
 
-A session that no longer authorizes anything looks the same as no session, so a client can't tell "never signed in" from "license expired". `expiresAt` is `issuedAt` plus 3600 and `graceUntil` is `issuedAt` plus the offline days, clamped to the license's expiry while `licensing.clampGraceToExpiry` is on.
+## Signing out
 
-The build gate here and on the license document route is one computation, so a browser tab and a native client are refused the same builds. Both read `X-PKey-Version` and `X-PKey-Channel`.
+`signOut()` releases the device on the server when the product runs Identity, forgets the key ring and wipes the token from the page. The next visit starts signed out until a person signs in again.
 
-## Key to session
+## Registration under Identity
 
-`POST /<product>/identity/session/license` exchanges a license key, in the body as `{ "key": "<license key>" }` or as a bearer header, for a session cookie. The key must be active, and its license runs through the same device-limit authorization as activation. A device-limit conflict answers `403 device_limit` with `limit` and `deviceCount`. Success is `201` with `Set-Cookie`, and on a product with Identity on the body carries `keyEntries`.
-
-This endpoint is an online oracle for guessing keys, so it is limited to 30 requests a minute per address, the same budget as activation.
-
-## Logout
-
-`POST /<product>/identity/auth/logout` requires the `X-CSRF-Token` header to equal the session's stored value, else `403 forbidden`. Logout is the one mutating session surface that checks CSRF, because its effect is visible without reading the response. It deauthorizes the `browser:<licenseId>` device, deletes its token record and the session record, and always clears the cookie, so a redundant logout ends signed out rather than erroring.
-
-## Identity-required registration
-
-When License is off and Identity is on, keyless registration is `requires-identity`. The browser session is the credential behind Core's `POST /<product>/devices/register`. Core asks Identity through the `authorizeRegistration` hook.
-
-The hook checks one step less than the session document does. It loads the session from the cookie and validates the device token by itself: is it a live device, not does it hold a usable license. That makes the path work for a Config-only or Release-only product with sign-in and no device limit. It needs no CSRF check, because it mints a new credential returned only in the response body, which a cross-site caller could never read.
+A product with Identity on and License off derives the `requires-identity` registration policy. `POST /<product>/devices/register` refuses every caller under it, because the session cookie was the only credential it accepted. The device token comes from signing in.
 
 ## Next steps
 
-- [Product sign-in provider](/docs/features/sign-in/oidc/): how a sign-in ends up with a cookie.
-- [Device flow](/docs/features/sign-in/device-flow/): the token-issuing counterpart.
-- [Activation](/docs/features/licensing/activation/): the device-limit authorization both share.
+- [Build a web app](/docs/build/web-apps/): which origins and routes a page may call.
+- [Device flow](/docs/features/sign-in/device-flow/): the token-issuing flow a page can show.
+- [Activation](/docs/features/licensing/activation/): the device-limit authorization a key shares.

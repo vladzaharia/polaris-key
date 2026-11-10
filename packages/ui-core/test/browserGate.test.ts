@@ -25,7 +25,7 @@ describe("parseGateConfig", () => {
       product: "acme",
       baseUrl: "https://key.plrs.im",
       version: "1.2.3",
-      auth: "cookie",
+      auth: "bearer",
       expectedServices: ["license", "config"],
       returnUrl: "https://app.example/",
     };
@@ -42,7 +42,7 @@ describe("parseGateConfig", () => {
     [{}, "config.product is required"],
     [
       { product: "a", auth: "magic" },
-      "config.auth must be cookie, bearer or auto",
+      "config.auth must be bearer or auto (cookie mode was removed)",
     ],
     [
       { product: "a", expectedServices: ["nope"] },

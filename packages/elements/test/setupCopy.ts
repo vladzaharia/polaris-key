@@ -4,3 +4,6 @@ import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 import { provideTable } from "../src/copy.js";
 
 provideTable("en", KIT_COPY_EN);
+
+// A jsdom test loads signed documents: see the file.
+import "../../../tools/jsdom-ed25519.js";

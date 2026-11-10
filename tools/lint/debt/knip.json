@@ -630,13 +630,10 @@
     },
     "tools/corpus/common.ts": {
       "knip:duplicates": 1,
-      "knip:exports": 28,
+      "knip:exports": 22,
       "knip:types": 1
     },
     "tools/corpus/config.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/contact.ts": {
       "knip:files": 1
     },
     "tools/corpus/content-fixture.ts": {
@@ -646,9 +643,6 @@
       "knip:files": 1
     },
     "tools/corpus/delegation.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/device-label.ts": {
       "knip:files": 1
     },
     "tools/corpus/deviceProof.ts": {
@@ -678,9 +672,6 @@
     "tools/corpus/license-user.ts": {
       "knip:files": 1
     },
-    "tools/corpus/noise.ts": {
-      "knip:files": 1
-    },
     "tools/corpus/nonwire.ts": {
       "knip:files": 1
     },
@@ -691,12 +682,6 @@
       "knip:files": 1
     },
     "tools/corpus/packs.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/peer.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/peerMatrix.ts": {
       "knip:files": 1
     },
     "tools/corpus/record.ts": {
@@ -711,19 +696,10 @@
     "tools/corpus/reference/config.ts": {
       "knip:exports": 1
     },
-    "tools/corpus/reference/contact.ts": {
-      "knip:files": 1
-    },
     "tools/corpus/reference/content.ts": {
       "knip:files": 1
     },
     "tools/corpus/reference/delegation.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/device-label.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/deviceProof.ts": {
       "knip:files": 1
     },
     "tools/corpus/reference/ed25519.ts": {
@@ -741,15 +717,6 @@
     "tools/corpus/reference/headers.ts": {
       "knip:files": 1
     },
-    "tools/corpus/reference/lanAddress.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/mdns.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/noise.ts": {
-      "knip:files": 1
-    },
     "tools/corpus/reference/outlet.ts": {
       "knip:files": 1
     },
@@ -760,12 +727,6 @@
       "knip:files": 1
     },
     "tools/corpus/reference/patterns.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/peer.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/reference/peerMatrix.ts": {
       "knip:files": 1
     },
     "tools/corpus/reference/record.ts": {
@@ -789,9 +750,6 @@
     "tools/corpus/reference/versions.ts": {
       "knip:files": 1
     },
-    "tools/corpus/reference/xfer.ts": {
-      "knip:files": 1
-    },
     "tools/corpus/release-records.ts": {
       "knip:files": 1
     },
@@ -811,9 +769,6 @@
       "knip:files": 1
     },
     "tools/corpus/update.ts": {
-      "knip:files": 1
-    },
-    "tools/corpus/xfer.ts": {
       "knip:files": 1
     },
     "tools/gen-content-corpus.ts": {

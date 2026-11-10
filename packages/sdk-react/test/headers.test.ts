@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 import { canonicalPlatform } from "@polaris-key/client-core";
 import { browserAdapter } from "../src/browser/browserAdapter.js";
 import { Platform, SdkId } from "../src/constants.generated.js";
-import { makeDoc, makeFakeFetch, NOW_SEC } from "./fixtures.js";
+import { fakeWorld, makeDoc, NOW_SEC } from "./fixtures.js";
 
 interface HeaderCase {
   id: string;
@@ -33,21 +33,27 @@ const corpus = JSON.parse(
 };
 
 async function capturedSessionHeaders(): Promise<Record<string, string>> {
-  const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
+  const world = fakeWorld(makeDoc());
+  const calls = vi.fn(world.fetchImpl);
   const adapter = browserAdapter({
-    auth: "cookie",
+    ...world,
+    fetchImpl: calls as unknown as typeof fetch,
     productSlug: "acme",
-    fetchImpl: fetchImpl as unknown as typeof fetch,
-    now: () => NOW_SEC,
     version: "1.4.2",
+    now: () => NOW_SEC,
   });
-  for (let i = 0; i < 50 && adapter.snapshot().phase === "loading"; i++)
-    await new Promise((r) => setTimeout(r, 0));
-  const call = fetchImpl.mock.calls.find((c) =>
-    String(c[0]).includes("/identity/session"),
+  for (let i = 0; i < 200 && adapter.snapshot().phase === "loading"; i++)
+    await new Promise((r) => setTimeout(r, 2));
+  const call = calls.mock.calls.find((c) =>
+    String(c[0]).includes("/license/document"),
   );
   adapter.dispose();
-  return (call?.[1] as RequestInit).headers as Record<string, string>;
+  const sent = new Headers((call?.[1] as RequestInit).headers);
+  return {
+    "X-PKey-Platform": sent.get("x-pkey-platform") ?? undefined,
+    "X-PKey-Arch": sent.get("x-pkey-arch") ?? undefined,
+    "X-PKey-SDK": sent.get("x-pkey-sdk") ?? undefined,
+  } as unknown as Record<string, string>;
 }
 
 describe("React's header values (headers.json)", () => {
@@ -56,10 +62,10 @@ describe("React's header values (headers.json)", () => {
     expect(corpus.platformCases.length).toBeGreaterThanOrEqual(31);
   });
 
-  it("the captured request carries web, no arch and react", async () => {
+  it("the captured request carries web, wasm32 and react", async () => {
     const headers = await capturedSessionHeaders();
     expect(headers["X-PKey-Platform"]).toBe("web");
-    expect(headers["X-PKey-Arch"]).toBeUndefined();
+    expect(headers["X-PKey-Arch"]).toBe("wasm32");
     expect(headers["X-PKey-SDK"]).toBe("react");
     expect(SdkId.react).toBe("react");
   });

@@ -23,7 +23,7 @@ Everything else is an opt-in service. The console groups the services into featu
 | Licensing      | `license`                           | Activation, licenses and keys, tiers, entitlements and device limits   |
 | Managed config | `config`                            | The config catalog, profiles, overrides and secret delivery            |
 | Ship builds    | `release`, `distribution`, `update` | Releases, where they reach devices, and the update feed                |
-| Sign-in        | `identity`                          | OIDC sign-in and browser sessions for the product                      |
+| Sign-in        | `identity`                          | OIDC sign-in for the product                                           |
 | Cloud Sync     | `sync`                              | A signed-in person's settings, saves and records across their devices  |
 | Commerce       | `commerce`                          | Storefronts, offers and store purchases that give licenses and add-ons |
 
@@ -74,10 +74,10 @@ Core derives the registration policy from the service set; no manifest or consol
 | Policy              | When it applies                        | Behavior                                                    |
 | ------------------- | -------------------------------------- | ----------------------------------------------------------- |
 | `requires-license`  | License is enabled                     | Activation and enrollment are the only ways to get a token. |
-| `requires-identity` | License is off and Identity is enabled | Registration requires a live product browser session.       |
+| `requires-identity` | License is off and Identity is enabled | Refused: sign-in mints the device token.                    |
 | `open`              | License and Identity are both off      | Any caller may register, rate-limited by edge IP.           |
 
-Every refusal is `403 registration_closed`, without revealing why. In the identity-required case, Core asks Identity whether the browser session is live. The result is exposed as `effectiveRegistration` and changes with the enabled services.
+Every refusal is `403 registration_closed`, without revealing why. The result is exposed as `effectiveRegistration` and changes with the enabled services.
 
 ## Next steps
 

@@ -1,9 +1,13 @@
+// @vitest-environment node
+//
+// jsdom's cross-realm typed arrays make WebCrypto's Ed25519 verify reject every signature, so a
+// page that verifies documents runs in the node environment.
+
 import { describe, expect, it, vi } from "vitest";
 import {
   browserAdapter,
   BrowserAdapter,
   InsecureBaseUrlError,
-  splitSessionDoc,
 } from "../src/browser/browserAdapter.js";
 import {
   PolarisError,
@@ -12,43 +16,24 @@ import {
 } from "../src/core/index.js";
 import { safeLink } from "../src/kit/links.js";
 import {
-  discoveryBody,
-  fuse,
-  makeConfig,
+  fakeWorld,
   makeDoc,
   makeFakeFetch,
   NOW_SEC,
   services,
 } from "./fixtures.js";
 
-// The browser adapter is a cookie-session transport. These tests drive it directly (no
-// React) with an injected fetch/navigate/clock so every path is deterministic and offline.
-// The routes are the §R1 identity homes; the response shapes are unchanged.
+// The browser adapter drives a device token over the CORS routes and verifies every document in
+// the page. These tests drive it directly (no React) with an injected fetch/clock so every path
+// is deterministic and offline; `fakeWorld` signs the documents with the pinned fixture key.
 
 /** Resolve once the adapter has left the initial `loading` phase. */
 async function ready(
   adapter: ReturnType<typeof browserAdapter>,
 ): Promise<void> {
-  for (let i = 0; i < 50 && adapter.snapshot().phase === "loading"; i++) {
-    await new Promise((r) => setTimeout(r, 0));
+  for (let i = 0; i < 200 && adapter.snapshot().phase === "loading"; i++) {
+    await new Promise((r) => setTimeout(r, 2));
   }
-}
-
-/** A fetch that answers discovery + one canned session body. */
-function fetchWith(
-  session: (url: string) => Response | null,
-  capabilities = services(),
-): typeof fetch {
-  return (async (input: RequestInfo | URL) => {
-    const url = String(input);
-    if (url.includes("/.well-known/polaris.json")) {
-      return new Response(discoveryBody(capabilities), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
-    }
-    return session(url) ?? new Response("nf", { status: 404 });
-  }) as unknown as typeof fetch;
 }
 
 const json = (body: unknown, status = 200): Response =>
@@ -58,11 +43,10 @@ const json = (body: unknown, status = 200): Response =>
   });
 
 describe("BrowserAdapter — construction + first load", () => {
-  it("loads the session and projects the documents to an ok snapshot", async () => {
+  it("loads the verified documents and projects an ok snapshot", async () => {
     const adapter = browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc()),
+      ...fakeWorld(makeDoc()),
       now: () => NOW_SEC,
     });
     await ready(adapter);
@@ -71,16 +55,14 @@ describe("BrowserAdapter — construction + first load", () => {
     expect(s.phase).toBe("ready");
     expect(s.status).toBe("ok");
     expect(s.config["theme.mode"]).toBe("dark");
-    // The cookie session stands in for the per-device token (§5).
     expect(s.activation).toBe("token");
     adapter.dispose();
   });
 
-  it("derives the clock floor from the session document (§4.2)", async () => {
+  it("derives the clock floor from the licence document (§4.2)", async () => {
     const adapter = browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc({ issuedAt: 1234 })),
+      ...fakeWorld(makeDoc({ issuedAt: 1234 })),
       now: () => NOW_SEC,
     });
     await ready(adapter);
@@ -88,11 +70,10 @@ describe("BrowserAdapter — construction + first load", () => {
     adapter.dispose();
   });
 
-  it("an unauthenticated session lands on needs-activation with a null activation", async () => {
+  it("a page without a token lands on needs-activation with a null activation", async () => {
     const adapter = browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(null),
+      ...fakeWorld(null),
       now: () => NOW_SEC,
     });
     await ready(adapter);
@@ -101,67 +82,64 @@ describe("BrowserAdapter — construction + first load", () => {
     adapter.dispose();
   });
 
-  it("scopes the session request under /<product>/identity (§R1)", async () => {
+  it("scopes the document requests under /<product> and sends the bearer", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
     const adapter = browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
+      ...fakeWorld(makeDoc()),
       fetchImpl: fetchImpl as unknown as typeof fetch,
       now: () => NOW_SEC,
     });
     await ready(adapter);
     const urls = fetchImpl.mock.calls.map((c) => String(c[0]));
-    expect(urls.some((u) => u.endsWith("/acme/identity/session"))).toBe(true);
+    expect(urls.some((u) => u.endsWith("/acme/license/document"))).toBe(true);
+    expect(urls.some((u) => u.endsWith("/acme/config/document"))).toBe(true);
+    expect(urls.some((u) => u.includes("/identity/session"))).toBe(false);
     adapter.dispose();
   });
 
   it("uses a custom baseUrl and strips trailing slashes", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
     const adapter = browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
       baseUrl: "https://example.test//",
+      ...fakeWorld(makeDoc()),
       fetchImpl: fetchImpl as unknown as typeof fetch,
       now: () => NOW_SEC,
     });
     await ready(adapter);
     const urls = fetchImpl.mock.calls.map((c) => String(c[0]));
-    expect(urls).toContain("https://example.test/acme/identity/session");
+    expect(urls).toContain("https://example.test/acme/license/document");
     adapter.dispose();
   });
 
   it("sends the X-PKey-* metadata headers, and none of the withdrawn X-Polaris-* ones", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
     const adapter = browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
+      ...fakeWorld(makeDoc()),
       fetchImpl: fetchImpl as unknown as typeof fetch,
       now: () => NOW_SEC,
       version: "1.4.2",
     });
     await ready(adapter);
     const call = fetchImpl.mock.calls.find((c) =>
-      String(c[0]).includes("/identity/session"),
+      String(c[0]).includes("/license/document"),
     );
-    const headers = (call?.[1] as RequestInit).headers as Record<
-      string,
-      string
-    >;
-    expect(headers["X-PKey-Platform"]).toBe("web");
-    expect(headers["X-PKey-Arch"]).toBeUndefined();
-    expect(headers["X-PKey-SDK"]).toBe("react");
-    expect(headers["X-PKey-Version"]).toBe("1.4.2");
-    expect(Object.keys(headers).some((k) => k.startsWith("X-Polaris-"))).toBe(
+    const headers = new Headers((call?.[1] as RequestInit).headers);
+    expect(headers.get("x-pkey-platform")).toBe("web");
+    expect(headers.get("x-pkey-sdk")).toBe("react");
+    expect(headers.get("x-pkey-version")).toBe("1.4.2");
+    expect([...headers.keys()].some((k) => k.startsWith("x-polaris-"))).toBe(
       false,
     );
     adapter.dispose();
   });
 
-  it("reports the current device from the verified session document", async () => {
+  it("reports the current device from the verified licence document", async () => {
     const adapter = browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc()),
+      ...fakeWorld(makeDoc()),
       now: () => NOW_SEC,
     });
     await ready(adapter);
@@ -171,341 +149,76 @@ describe("BrowserAdapter — construction + first load", () => {
       status: "ok",
       licenseId: "lic-1",
     });
-    // A cookie session holds no bearer token, so remote device management is unreachable.
-    await expect(adapter.listDevices()).rejects.toMatchObject({
-      code: "device-management-unsupported",
-    });
-    await expect(adapter.renameDevice("dev-1", "x")).rejects.toMatchObject({
-      code: "device-management-unsupported",
-    });
-    await expect(adapter.deauthorizeDevice("other")).rejects.toMatchObject({
-      code: "device-management-unsupported",
-    });
     adapter.dispose();
   });
 });
 
-describe("splitSessionDoc — the fused artifact becomes the v3 pair", () => {
-  it("routes entitlements to the license half and config to the config half (D-20)", () => {
-    const docs = splitSessionDoc(
-      fuse(makeDoc(), makeConfig()) as unknown as Parameters<
-        typeof splitSessionDoc
-      >[0],
-    );
-    expect(docs.license?.licenseId).toBe("lic-1");
-    expect(docs.license?.entitlements.polarisVpn?.value).toBe(true);
-    expect(docs.config["theme.mode"]?.value).toBe("dark");
-    // The claims envelope is shared, so the gate sees the same window either way.
-    expect(docs.license?.graceUntil).toBe(1000 + 30 * 86400);
-  });
-
-  it("a null document is an empty pair, not a throw", () => {
-    expect(splitSessionDoc(null)).toEqual({ license: null, config: {} });
-  });
-});
-
-// @pkey-feature identity.oidc
-describe("BrowserAdapter — signInWithOidc redirect", () => {
-  it("navigates to the identity auth entrypoint with a return_to and never returns a handle", async () => {
-    const navigate = vi.fn();
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      fetchImpl: makeFakeFetch(null),
-      navigate,
-      now: () => NOW_SEC,
-    });
-    await ready(adapter);
-    const handle = await adapter.signInWithOidc();
-    expect(handle).toBeUndefined();
-    expect(navigate).toHaveBeenCalledTimes(1);
-    const target = navigate.mock.calls[0]?.[0] as string;
-    expect(target).toContain("/acme/identity/auth/start?return_to=");
-    adapter.dispose();
-  });
-});
-
-// @pkey-feature license.activate
-describe("BrowserAdapter — submitKey", () => {
-  it("posts a license key to the identity session route and refreshes the session", async () => {
-    const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-      now: () => NOW_SEC,
-    });
-    await ready(adapter);
-    await adapter.submitKey("pkey_acme_test");
-    const call = fetchImpl.mock.calls.find((c) =>
-      String(c[0]).includes("/identity/session/license"),
-    );
-    expect(call).toBeTruthy();
-    const init = call?.[1] as RequestInit;
-    expect(init.method).toBe("POST");
-    expect(init.credentials).toBe("include");
-    expect(JSON.parse(String(init.body))).toEqual({ key: "pkey_acme_test" });
-    expect(adapter.snapshot().status).toBe("ok");
-    adapter.dispose();
-  });
-
-  it("surfaces rejected keys as sign-in-failed on the LICENSE slice", async () => {
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      fetchImpl: fetchWith((url) =>
-        url.includes("/identity/session/license")
-          ? json({ error: "unauthorized" }, 401)
-          : json({ authenticated: false, doc: null }),
-      ),
-      now: () => NOW_SEC,
-    });
-    await ready(adapter);
-    await expect(adapter.submitKey("bad")).rejects.toMatchObject({
-      code: "sign-in-failed",
-      wireCode: "unauthorized",
-      activation: { kind: "unauthorized", code: "unauthorized", status: 401 },
-      message: "That license key wasn't accepted. Check it and try again.",
-    });
-    expect(adapter.snapshot().error.license?.code).toBe("sign-in-failed");
-    // The identity slice is untouched — a bad key is not a broken sign-in service.
-    expect(adapter.snapshot().error.identity).toBeNull();
-    adapter.dispose();
-  });
-
-  it("humanizes a device-limit 403", async () => {
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      fetchImpl: fetchWith((url) =>
-        url.includes("/identity/session/license")
-          ? json(
-              { error: { code: "device_limit", limit: 3, deviceCount: 3 } },
-              403,
-            )
-          : json({ authenticated: false, doc: null }),
-      ),
-      now: () => NOW_SEC,
-    });
-    await ready(adapter);
-    await expect(adapter.submitKey("k")).rejects.toMatchObject({
-      wireCode: "device_limit",
-      activation: { kind: "deviceLimit", limit: 3, deviceCount: 3 },
-      message: expect.stringMatching(/already on all its devices/),
-    });
-    adapter.dispose();
-  });
-});
-
-// @pkey-feature license.activate
-describe("BrowserAdapter — an unknown 403 is never the device limit (SDK-PARITY-PASS §3.1)", () => {
-  it.each([
-    ["enroll_claimed", "enrollClaimed"],
-    ["license_disabled", "licenseDisabled"],
-    ["attestation_required", "attestationRequired"],
-    ["license_owned", "licenseOwned"],
-    ["key_entry_limit", "keyEntryLimit"],
-  ])("403 %s → %s, keeping the server's code", async (code, kind) => {
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      fetchImpl: fetchWith((url) =>
-        url.includes("/identity/session/license")
-          ? json({ error: { code } }, 403)
-          : json({ authenticated: false, doc: null }),
-      ),
-      now: () => NOW_SEC,
-    });
-    await ready(adapter);
-    const err = await adapter.submitKey("k").catch((e: unknown) => e);
-    expect(err).toMatchObject({ wireCode: code, activation: { kind, code } });
-    expect((err as Error).message).not.toMatch(/all its devices/);
-    adapter.dispose();
-  });
-});
-
-// @pkey-feature license.deactivate
-describe("BrowserAdapter — signOut", () => {
-  it("posts logout (echoing CSRF) and resets to needs-activation", async () => {
-    const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-      now: () => NOW_SEC,
-    });
-    await ready(adapter);
-    await adapter.signOut();
-    const s = adapter.snapshot();
-    expect(s.status).toBe("needs-activation");
-    expect(s.activation).toBeNull();
-    expect(s.profile).toBeNull();
-    expect(s.config).toEqual({});
-    const logoutCall = fetchImpl.mock.calls.find((c) =>
-      String(c[0]).includes("/identity/auth/logout"),
-    );
-    expect(logoutCall).toBeTruthy();
-    const init = logoutCall?.[1] as RequestInit;
-    expect(init.method).toBe("POST");
-    expect((init.headers as Record<string, string>)["x-csrf-token"]).toBe(
-      "csrf-1",
-    );
-    adapter.dispose();
-  });
-
-  it("treats a 401 logout as success (already signed out)", async () => {
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      fetchImpl: fetchWith((url) =>
-        url.includes("/identity/session")
-          ? json({
-              authenticated: true,
-              doc: fuse(makeDoc(), makeConfig()),
-              csrfToken: "c",
-            })
-          : new Response(null, { status: 401 }),
-      ),
-      now: () => NOW_SEC,
-    });
-    await ready(adapter);
-    await expect(adapter.signOut()).resolves.toEqual({ released: true });
-    expect(adapter.snapshot().status).toBe("needs-activation");
-    adapter.dispose();
-  });
-
-  it("surfaces a non-401 logout failure as sign-out-failed on the IDENTITY slice", async () => {
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      fetchImpl: fetchWith((url) =>
-        url.includes("/identity/session")
-          ? json({ authenticated: true, doc: fuse(makeDoc(), makeConfig()) })
-          : new Response("nope", { status: 500 }),
-      ),
-      now: () => NOW_SEC,
-    });
-    await ready(adapter);
-    await expect(adapter.signOut()).rejects.toMatchObject({
-      code: "sign-out-failed",
-    });
-    expect(adapter.snapshot().error.identity?.code).toBe("sign-out-failed");
-    expect(adapter.snapshot().error.license).toBeNull();
-    adapter.dispose();
-  });
-});
-
-// @pkey-feature core.sync
-describe("BrowserAdapter — 401 / refresh handling", () => {
-  it("a hard 401 after a live session ⇒ revoked", async () => {
-    let authed = true;
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      fetchImpl: fetchWith((url) => {
-        if (!url.includes("/identity/session")) return null;
-        return authed
-          ? json({
-              authenticated: true,
-              doc: fuse(makeDoc(), makeConfig()),
-              csrfToken: "c",
-            })
-          : new Response(null, { status: 401 });
+describe("BrowserAdapter — the auth option", () => {
+  it('refuses "cookie" with invalid-options naming the replacement', () => {
+    expect(() =>
+      browserAdapter({
+        productSlug: "acme",
+        auth: "cookie" as unknown as "bearer",
+        ...fakeWorld(null),
       }),
-      now: () => NOW_SEC,
-    });
-    await ready(adapter);
-    expect(adapter.snapshot().status).toBe("ok");
-    authed = false;
-    await adapter.refresh();
-    expect(adapter.snapshot().status).toBe("revoked");
-    adapter.dispose();
+    ).toThrow(
+      expect.objectContaining({
+        code: "invalid-options",
+        message: expect.stringMatching(/cookie.*removed.*bearer/),
+      }),
+    );
+    expect(() =>
+      browserAdapter({
+        productSlug: "acme",
+        auth: "magic" as unknown as "bearer",
+        ...fakeWorld(null),
+      }),
+    ).toThrow(expect.objectContaining({ code: "invalid-options" }));
   });
 
-  it("a 401 with no prior session stays needs-activation (not revoked)", async () => {
-    const fetchImpl = (async () =>
-      new Response(null, { status: 401 })) as unknown as typeof fetch;
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      fetchImpl,
-      now: () => NOW_SEC,
-    });
-    await ready(adapter);
-    await adapter.refresh();
-    expect(adapter.snapshot().status).toBe("needs-activation");
-    adapter.dispose();
-  });
-
-  it("a non-ok, non-401 session response surfaces a network error on first load", async () => {
-    const fetchImpl = (async () =>
-      new Response("boom", { status: 503 })) as unknown as typeof fetch;
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      fetchImpl,
-      now: () => NOW_SEC,
-    });
-    await ready(adapter);
-    expect(adapter.snapshot().error.identity?.code).toBe("network");
-    expect(adapter.snapshot().status).toBe("needs-activation");
-    adapter.dispose();
-  });
-
-  it("a thrown fetch on refresh rejects with refresh-failed and clears busy", async () => {
-    let first = true;
-    const fetchImpl = (async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.includes("/.well-known/polaris.json")) {
-        return new Response(discoveryBody(), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        });
-      }
-      if (first && url.includes("/identity/session")) {
-        first = false;
-        return json({
-          authenticated: true,
-          doc: fuse(makeDoc(), makeConfig()),
-        });
-      }
-      throw new Error("network down");
-    }) as unknown as typeof fetch;
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      fetchImpl,
-      now: () => NOW_SEC,
-    });
-    await ready(adapter);
-    await expect(adapter.refresh()).rejects.toMatchObject({
-      code: "refresh-failed",
-    });
-    expect(adapter.snapshot().busy.license).toBe(false);
-    expect(adapter.snapshot().busy.config).toBe(false);
-    adapter.dispose();
+  it("accepts bearer and auto", () => {
+    for (const auth of ["bearer", "auto"] as const) {
+      const adapter = browserAdapter({
+        productSlug: "acme",
+        auth,
+        ...fakeWorld(null),
+        autoStart: false,
+      });
+      expect(adapter.mode).toBe("browser");
+      adapter.dispose();
+    }
   });
 });
 
 // @pkey-feature update.check
 describe("BrowserAdapter — update checks", () => {
-  it("calls GET /<product>/update/version and compares the HOST version", async () => {
+  const updateWorld = (hostVersion: string, latest = "2.0.0") => {
     const seen: string[] = [];
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      version: "1.0.0",
-      fetchImpl: fetchWith(
-        (url) => {
-          seen.push(url);
-          if (url.includes("/update/version"))
-            return json({ version: "2.0.0", tag: "v2.0.0", url: "https://dl" });
-          return json({ authenticated: false, doc: null });
-        },
-        services("license", "config", "update"),
-      ),
-      now: () => NOW_SEC,
+    const inner = makeFakeFetch(null, {
+      capabilities: services("license", "config", "update"),
     });
+    const world = fakeWorld(null);
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      seen.push(url);
+      if (url.includes("/update/version"))
+        return json({ version: latest, tag: `v${latest}`, url: "https://dl" });
+      return inner(input, init);
+    }) as unknown as typeof fetch;
+    return {
+      seen,
+      adapter: browserAdapter({
+        productSlug: "acme",
+        version: hostVersion,
+        ...world,
+        fetchImpl,
+        now: () => NOW_SEC,
+      }),
+    };
+  };
+
+  it("calls GET /<product>/update/version and compares the HOST version", async () => {
+    const { adapter, seen } = updateWorld("1.0.0");
     await ready(adapter);
     await expect(adapter.checkUpdate({ channel: "beta" })).resolves.toEqual({
       version: "2.0.0",
@@ -520,19 +233,7 @@ describe("BrowserAdapter — update checks", () => {
   });
 
   it("reports no update when the host is already current", async () => {
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      version: "2.0.0",
-      fetchImpl: fetchWith(
-        (url) =>
-          url.includes("/update/version")
-            ? json({ version: "2.0.0", tag: "v2.0.0", url: "https://dl" })
-            : json({ authenticated: false, doc: null }),
-        services("license", "config", "update"),
-      ),
-      now: () => NOW_SEC,
-    });
+    const { adapter } = updateWorld("2.0.0");
     await ready(adapter);
     expect((await adapter.checkUpdate()).updateAvailable).toBe(false);
     adapter.dispose();
@@ -542,9 +243,8 @@ describe("BrowserAdapter — update checks", () => {
 describe("BrowserAdapter — config / secret / entitlement accessors", () => {
   it("getConfig reads the config document, getSecret refuses (config.secret web N/A), isEntitled reflects flags", async () => {
     const adapter = browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc()),
+      ...fakeWorld(makeDoc()),
       now: () => NOW_SEC,
     });
     await ready(adapter);
@@ -566,9 +266,8 @@ describe("BrowserAdapter — config / secret / entitlement accessors", () => {
 
   it("exposes mode + the BrowserAdapter class as the factory's product", () => {
     const adapter = browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(null),
+      ...fakeWorld(null),
       now: () => NOW_SEC,
     });
     expect(adapter).toBeInstanceOf(BrowserAdapter);
@@ -580,17 +279,16 @@ describe("BrowserAdapter — config / secret / entitlement accessors", () => {
 describe("BrowserAdapter — baseUrl scheme enforcement", () => {
   const build = (baseUrl: string): PolarisAdapter =>
     browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
       baseUrl,
-      fetchImpl: makeFakeFetch(null),
+      ...fakeWorld(null),
       now: () => NOW_SEC,
     });
 
   it("refuses a plaintext base URL at CONSTRUCTION, not on the first request", () => {
-    // The session cookie is `Secure` and bearer mode sends a device token, so a plaintext
-    // control plane is either a cleartext credential or no credential at all. Neither is worth
-    // discovering asynchronously: the same rule `@polaris-key/node` enforces.
+    // The device token rides every request, so a plaintext control plane is a cleartext
+    // credential. It is not worth discovering asynchronously: the same rule `@polaris-key/node`
+    // enforces.
     let caught: unknown;
     try {
       build("http://evil.example");
@@ -610,7 +308,7 @@ describe("BrowserAdapter — baseUrl scheme enforcement", () => {
       "http://key.plrs.im.evil.example",
       "http://localhost.evil.example",
       "ftp://key.plrs.im",
-      "javascript:fetch('/acme/identity/session')",
+      "javascript:fetch('/acme/license/document')",
       "data:text/html,<script>1</script>",
       "//key.plrs.im",
       "key.plrs.im",
@@ -638,21 +336,23 @@ describe("BrowserAdapter — baseUrl scheme enforcement", () => {
   it("still strips the trailing slash off an accepted loopback base", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
     const adapter = browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
       baseUrl: "http://localhost:8787//",
+      ...fakeWorld(makeDoc()),
       fetchImpl: fetchImpl as unknown as typeof fetch,
       now: () => NOW_SEC,
     });
     await ready(adapter);
     const urls = fetchImpl.mock.calls.map((c) => String(c[0]));
-    expect(urls).toContain("http://localhost:8787/acme/identity/session");
+    expect(urls).toContain(
+      "http://localhost:8787/acme/.well-known/polaris.json",
+    );
     adapter.dispose();
   });
 
   it("shares ONE https-or-loopback rule with the kit's link validator", () => {
-    // `isSecureTransportUrl` is the single predicate both surfaces call, so the base URL a
-    // session rides over and a link the kit opens cannot drift apart.
+    // `isSecureTransportUrl` is the single predicate both surfaces call, so the base URL the
+    // token rides over and a link the kit opens cannot drift apart.
     expect(isSecureTransportUrl("https://dl.example/app.dmg")).toBe(true);
     expect(isSecureTransportUrl("http://localhost:8787/app.dmg")).toBe(true);
     expect(isSecureTransportUrl("http://127.0.0.1/app.dmg")).toBe(true);
@@ -671,56 +371,5 @@ describe("BrowserAdapter — baseUrl scheme enforcement", () => {
     }
     // The kit additionally refuses userinfo, which a base URL never carries either.
     expect(safeLink("https://user:pw@dl.example/")).toBeNull();
-  });
-});
-
-describe("BrowserAdapter — the unsigned blocked hint in the session response", () => {
-  // The session JSON is deliberately not verified in cookie mode (see the trust-model note in
-  // the adapter), and the gate returns `blocked.reason` AS the status, so a response claiming
-  // `{"blocked":{"reason":"ok"}}` must not license the client.
-  const sessionWith = (blocked: unknown) =>
-    fetchWith((url) =>
-      url.endsWith("/identity/session")
-        ? json({ authenticated: true, doc: null, csrfToken: "c", blocked })
-        : null,
-    );
-  const open = async (blocked: unknown) => {
-    const adapter = browserAdapter({
-      auth: "cookie",
-      productSlug: "acme",
-      fetchImpl: sessionWith(blocked),
-      now: () => NOW_SEC,
-    });
-    await ready(adapter);
-    return adapter;
-  };
-
-  it("an out-of-vocabulary reason is dropped: the client is not licensed by it", async () => {
-    for (const reason of [
-      "ok",
-      "grace",
-      "not-applicable",
-      "definitely-fine",
-      7,
-      null,
-      {},
-    ]) {
-      const adapter = await open({ reason });
-      const s = adapter.snapshot();
-      expect(s.status, JSON.stringify(reason)).toBe("needs-activation");
-      expect(s.status).not.toBe("ok");
-      adapter.dispose();
-    }
-  });
-
-  it("an in-vocabulary reason still reaches the gate, allowed range included", async () => {
-    const adapter = await open({
-      reason: "channel-not-entitled",
-      allowedRange: { min: "1.0.0" },
-    });
-    const s = adapter.snapshot();
-    expect(s.status).toBe("channel-not-entitled");
-    expect(s.gate.allowedRange).toEqual({ min: "1.0.0" });
-    adapter.dispose();
   });
 });

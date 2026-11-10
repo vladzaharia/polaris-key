@@ -6,7 +6,7 @@
  * manifest, the device routes, License, Config, the downloads (Distribution's byte routes),
  * Update and the device-code flow. Every other origin gets no `Access-Control-*` header at all, and so does every surface
  * that is not on the covered list below — the console (`/manage/*`), the portal (`/`, `/api/*`,
- * …), the docs site, the GitHub webhook, and the cookie-bearing or navigation-only identity
+ * …), the docs site, the GitHub webhook, and the navigation-only identity
  * routes. Those share this origin with the admin cookie (THREAT-MODEL R1-09) and stay
  * first-party.
  *
@@ -94,9 +94,9 @@ export const CORS_MAX_AGE = "600";
  * operations and the router to one another, and `test/surfaces/publicRouteOracle.test.ts` pins each
  * route's CORS answer against the answers recorded before the flag existed.
  *
- * Deliberately NOT flagged (cookie-bearing or navigation-only; they stay first-party):
- * `identity/session`, `identity/session/license`, `identity/auth/start`,
- * `identity/authorize` (I-08, a navigation), `identity/auth/callback`, `identity/auth/logout`, `identity/auth/device`,
+ * Deliberately NOT flagged (navigation-only; they stay first-party):
+ * `identity/auth/start`,
+ * `identity/authorize` (I-08, a navigation), `identity/auth/callback`, `identity/auth/device`,
  * `identity/auth/device/verify`, `identity/auth/device/approve` (I-37), `identity/auth/choose` (I-26), `config/mint/{mintId}/auth`,
  * and the CI routes — Release's
  * policy routes (`release/channels/{channel}/{promote,pin,unpin}`,

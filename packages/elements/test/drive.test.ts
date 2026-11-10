@@ -10,14 +10,7 @@ import { createBrowserClient } from "@polaris-key/ui-core/browser";
 
 import { type PkElement, type PkGate } from "../src/index.js";
 import { gateScreen, GateBinding, parseHandles } from "../src/drive.js";
-import {
-  fakeFetch,
-  NOW,
-  PAGE,
-  typeKey,
-  world,
-  type World,
-} from "./driveWorld.js";
+import { PAGE, seamsOf, typeKey, world, type World } from "./driveWorld.js";
 import { floatingRow } from "./holdersFixtures.js";
 import { viewOf } from "@polaris-key/ui-core";
 
@@ -37,7 +30,6 @@ afterEach(() => {
 interface Mounted {
   gate: PkGate;
   w: World;
-  navigated: string[];
   errors: unknown[];
 }
 
@@ -51,7 +43,6 @@ async function mount(
     addIn?: "app" | "default";
   } = {},
 ): Promise<Mounted> {
-  const navigated: string[] = [];
   const errors: unknown[] = [];
   const gate = document.createElement("pk-gate") as PkGate;
   gate.innerHTML = `<main data-testid="app">APP</main>`;
@@ -59,9 +50,7 @@ async function mount(
     errors.push((e as CustomEvent).detail),
   );
   gate.seams = {
-    fetchImpl: fakeFetch(w),
-    navigate: (u) => navigated.push(u),
-    now: () => NOW,
+    ...(await seamsOf(w)),
     ...(over.addIn === "default" ? {} : { addIn: "app" as const }),
   };
   if (over.handles) gate.handles = over.handles;
@@ -72,7 +61,7 @@ async function mount(
   ) as PkGate["config"];
   document.body.replaceChildren(gate);
   await gate.updateComplete;
-  return { gate, w, navigated, errors };
+  return { gate, w, errors };
 }
 
 const settle = async (gate: PkElement, until: () => boolean) => {
@@ -111,20 +100,9 @@ describe("<pk-gate config>: status", () => {
 
   it("reads the config from the attribute's JSON", async () => {
     const w = world();
-    const navigated: string[] = [];
     const gate = document.createElement("pk-gate") as PkGate;
-    gate.seams = {
-      fetchImpl: fakeFetch(w),
-      navigate: (u) => navigated.push(u),
-    };
-    gate.setAttribute(
-      "config",
-      JSON.stringify({
-        product: "acme",
-        baseUrl: location.origin,
-        auth: "cookie",
-      }),
-    );
+    gate.seams = await seamsOf(w);
+    gate.setAttribute("config", JSON.stringify(PAGE));
     document.body.replaceChildren(gate);
     await gate.updateComplete;
     await settle(gate, () => control(gate, "welcome.signIn") !== null);
@@ -223,12 +201,12 @@ describe("<pk-gate config>: Welcome, Activate and the hosted sign-in", () => {
     expect(url).toContain("key=pkey_acme_KEY");
   });
 
-  it("hands the hosted sign-in to the page (browser presentation)", async () => {
-    const { gate, navigated } = await mount(world());
+  it("starts the device-code sign-in from Welcome", async () => {
+    const { gate, w } = await mount(world());
     await settle(gate, () => control(gate, "welcome.signIn") !== null);
     control(gate, "welcome.signIn")!.click();
-    await settle(gate, () => navigated.length > 0);
-    expect(navigated[0]).toContain("/acme/identity/auth/start");
+    await settle(gate, () => w.signIns === 1);
+    expect(w.signIns).toBe(1);
   });
 
   it("draws the host-dependent actions only when the host handles them", async () => {
@@ -304,11 +282,11 @@ describe("the gate's step-to-screen mapping (UK-42.8)", () => {
     expect(gateScreen(needs, "activate")).toBe("Activate");
   });
 
-  it("the binding hands the driver the config's baseUrl and a browser device kind", () => {
+  it("the binding hands the driver the config's baseUrl and a browser device kind", async () => {
     const b = new GateBinding(() => {});
     b.sync(
-      { product: "acme", baseUrl: "https://api.acme.test", auth: "cookie" },
-      { client: undefined, fetchImpl: fakeFetch(world()) },
+      { product: "acme", baseUrl: "https://api.acme.test" },
+      { client: undefined, ...(await seamsOf(world())) },
       "en",
     );
     const options = (
@@ -418,7 +396,10 @@ describe("<pk-gate config>: activation without an account (UK-42.8)", () => {
 describe("<pk-gate config>: grace and the blocking states", () => {
   it("shows the grace banner over the app while offline grace runs", async () => {
     const { gate } = await mount(
-      world({ doc: { expiresAt: 1500, graceUntil: 1500 + 5 * 86_400 } }),
+      world({
+        doc: { expiresAt: 1500, graceUntil: 1500 + 5 * 86_400 },
+        cached: true,
+      }),
     );
     await settle(gate, () => state(gate) === "grace");
     expect(state(gate)).toBe("grace");
@@ -429,7 +410,10 @@ describe("<pk-gate config>: grace and the blocking states", () => {
   });
 
   it("shows StatusScreen when the license ran out; Renew draws only when handled", async () => {
-    const expired = world({ doc: { expiresAt: 100, graceUntil: 200 } });
+    const expired = world({
+      doc: { expiresAt: 100, graceUntil: 200 },
+      cached: true,
+    });
     const bare = await mount(expired);
     await settle(bare.gate, () => state(bare.gate) === "blocked");
     expect(state(bare.gate)).toBe("blocked");

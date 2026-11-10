@@ -22,7 +22,9 @@ import {
   type ServiceAccent,
   type ServiceState,
 } from "../nav.js";
+import { useQuery } from "@tanstack/react-query";
 import { usePendingRecipes } from "../sections/config/model/pending.js";
+import { updatersQuery } from "../sections/distribution/data.js";
 import { Link } from "../router.js";
 import { globalPage, navHref, productPage } from "../routes.js";
 import {
@@ -177,6 +179,16 @@ export function Sidebar({
   const sections = slug ? visibleSections(services) : [];
   // Recipes awaiting approval ride the Catalog item, where their entries live.
   const pending = usePendingRecipes(slug ?? "").recipes.length;
+  // P2-11: updater groups whose devices reverted an update ride the Updates item, in danger.
+  const updaters = useQuery({
+    ...updatersQuery(slug ?? ""),
+    enabled:
+      Boolean(slug) &&
+      canOpen("updaters") &&
+      services?.update?.enabled === true,
+  });
+  const failingUpdaters =
+    updaters.data?.groups?.filter((g) => g.state === "failing").length ?? 0;
   // ST-29: what the member cannot open is absent, not disabled (ADMIN.md §5.10, hidden vs
   // disabled). A group with nothing left to show goes too.
   const links = platformLinks().filter((p) => canOpen(p.page));
@@ -278,7 +290,13 @@ export function Sidebar({
                   items={items.map((p) => ({
                     page: p,
                     to: navHref(slug, p),
-                    badge: p.page === "catalog" ? pending : 0,
+                    badge:
+                      p.page === "catalog"
+                        ? pending
+                        : p.page === "updaters"
+                          ? failingUpdaters
+                          : 0,
+                    danger: p.page === "updaters",
                   }))}
                   activePage={activePage}
                   active={keys.some((k) => k === activeSection)}
@@ -425,7 +443,7 @@ function SidebarGroup({
   accent: ServiceAccent;
   /** The section glyph, drawn for a collapsed section in the rail; Platform has none. */
   glyph?: NavSection["glyph"];
-  items: { page: NavPage; to: string; badge?: number }[];
+  items: { page: NavPage; to: string; badge?: number; danger?: boolean }[];
   activePage: PageId | null;
   active: boolean;
   open: boolean;
@@ -435,12 +453,13 @@ function SidebarGroup({
   onPrefetch?: () => void;
   contentId: string;
 }): React.ReactElement {
-  const items = links.map(({ page: p, to, badge }) => (
+  const items = links.map(({ page: p, to, badge, danger }) => (
     <li key={p.page}>
       <SidebarItem
         page={p}
         to={to}
         badge={badge}
+        danger={danger}
         active={isActivePage(activePage, p.page)}
         rail={rail}
         onNavigate={onNavigate}
@@ -578,12 +597,19 @@ function SidebarGroup({
   );
 }
 
+function badgeWords(n: number, danger: boolean): string {
+  if (danger)
+    return n === 1 ? "updater has failures" : "updaters have failures";
+  return n === 1 ? "recipe needs approval" : "recipes need approval";
+}
+
 export function SidebarItem({
   page,
   to,
   active,
   rail,
   badge,
+  danger = false,
   starCut = false,
   onNavigate,
   onPrefetch,
@@ -594,6 +620,8 @@ export function SidebarItem({
   rail: boolean;
   /** A count of things needing attention on this page: a warning mark and the number. */
   badge?: number;
+  /** The badge counts failures, not approvals: a danger mark and its own words. */
+  danger?: boolean;
   /** Draw the Star Cut (the Distribution glyph) in place of the page icon. */
   starCut?: boolean;
   onNavigate?: () => void;
@@ -601,7 +629,7 @@ export function SidebarItem({
 }): React.ReactElement {
   const Icon = page.icon;
   const railLabel = badge
-    ? `${page.label}, ${badge} ${badge === 1 ? "recipe needs" : "recipes need"} approval`
+    ? `${page.label}, ${badge} ${badgeWords(badge, danger)}`
     : page.label;
   const link = (
     <Link
@@ -640,19 +668,25 @@ export function SidebarItem({
         <span
           aria-hidden
           data-nav-dot=""
-          className="absolute end-2 top-1.5 size-2 rounded-full bg-warning"
+          className={cn(
+            "absolute end-2 top-1.5 size-2 rounded-full",
+            danger ? "bg-danger" : "bg-warning",
+          )}
         />
       ) : null}
       {rail ? null : (
         <span className={cn("truncate", RAIL_FADE)}>{page.label}</span>
       )}
       {badge && !rail ? (
-        <span className="ms-auto inline-flex items-center gap-1 text-xs text-warning">
+        <span
+          className={cn(
+            "ms-auto inline-flex items-center gap-1 text-xs",
+            danger ? "text-danger" : "text-warning",
+          )}
+        >
           <TriangleAlert aria-hidden className="size-3.5" />
           {badge}
-          <span className="sr-only">
-            {badge === 1 ? " recipe needs approval" : " recipes need approval"}
-          </span>
+          <span className="sr-only">{` ${badgeWords(badge, danger)}`}</span>
         </span>
       ) : null}
     </Link>

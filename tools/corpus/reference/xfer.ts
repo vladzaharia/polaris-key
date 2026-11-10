@@ -28,7 +28,7 @@ export const REF_XFER_MAX_PARTIALS = 8;
 export const REF_XFER_ENDED_IDS = 64;
 export const REF_XFER_CHUNK_HEAD = 24;
 
-export const REF_XFER_TYPES: Record<string, string> = {
+const REF_XFER_TYPES: Record<string, string> = {
   OFFER: "0020",
   ACCEPT: "0021",
   CHUNK: "0022",

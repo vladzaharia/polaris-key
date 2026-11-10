@@ -549,7 +549,7 @@ export function refVouchSigner(seed: Uint8Array): {
 
 /** What the `vouch` proof signs (§15.6.1 rule 5): purpose `vouch`, line 5 `<h>.<request>`,
  *  line 6 `-`. Null when a field would break the line format. */
-export const refVouchMessage = (
+const refVouchMessage = (
   slug: string,
   deviceId: string,
   hB64: string,

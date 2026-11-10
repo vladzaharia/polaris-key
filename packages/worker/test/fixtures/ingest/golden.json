@@ -865,7 +865,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -884,7 +885,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -903,7 +905,8 @@
           "rank": 0,
           "policy_offline_grace_days": 14,
           "implicit": 1,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         }
       ]
     },
@@ -1406,7 +1409,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -1425,7 +1429,8 @@
           "rank": 0,
           "policy_offline_grace_days": 14,
           "implicit": 1,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         }
       ]
     },
@@ -2280,7 +2285,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -2299,7 +2305,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -2318,7 +2325,8 @@
           "rank": 0,
           "policy_offline_grace_days": 14,
           "implicit": 1,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         }
       ]
     },
@@ -3535,7 +3543,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -3554,7 +3563,8 @@
           "rank": 0,
           "policy_offline_grace_days": 14,
           "implicit": 1,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -3573,7 +3583,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         }
       ]
     },
@@ -4541,7 +4552,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -4560,7 +4572,8 @@
           "rank": 0,
           "policy_offline_grace_days": 14,
           "implicit": 1,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -4579,7 +4592,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         }
       ]
     },
@@ -5475,7 +5489,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -5494,7 +5509,8 @@
           "rank": 0,
           "policy_offline_grace_days": 14,
           "implicit": 1,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         }
       ]
     },
@@ -6491,7 +6507,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -6510,7 +6527,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -6529,7 +6547,8 @@
           "rank": 0,
           "policy_offline_grace_days": 14,
           "implicit": 1,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         }
       ]
     },
@@ -7448,7 +7467,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -7467,7 +7487,8 @@
           "rank": 0,
           "policy_offline_grace_days": 14,
           "implicit": 1,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         }
       ]
     },
@@ -8366,7 +8387,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -8385,7 +8407,8 @@
           "rank": 0,
           "policy_offline_grace_days": 14,
           "implicit": 1,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         }
       ]
     },
@@ -9284,7 +9307,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -9303,7 +9327,8 @@
           "rank": 0,
           "policy_offline_grace_days": 14,
           "implicit": 1,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         }
       ]
     },
@@ -10000,7 +10025,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         },
         {
           "product": "acme",
@@ -10019,7 +10045,8 @@
           "rank": 0,
           "policy_offline_grace_days": 14,
           "implicit": 1,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         }
       ]
     },
@@ -10708,7 +10735,8 @@
           "rank": 0,
           "policy_offline_grace_days": null,
           "implicit": 0,
-          "on_expiry": null
+          "on_expiry": null,
+          "entitlements_json": null
         }
       ]
     },

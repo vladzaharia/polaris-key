@@ -21,6 +21,10 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 > Developer-backend API for ownerRead/server collections; none at launch. Revive with the first server-authoritative collection and I-21.
 
+## Amendment (plan I-20, 2026-11-09)
+
+[`plans/I-20.md`](../plans/I-20.md) §3.3 and §3.4: I-21 reserves the scope `pkey:sync` and answers `client_credentials` with `unsupported_grant_type`. This package adds `client_credentials` with `pkey:sync` on I-21's clients of `type: service`.
+
 ## Goal
 
 A developer's backend can read and write `ownerRead` and `server` collections addressed by pairwise subject, authenticated with layer 2 issuer client credentials carrying a `pkey:sync` scope.

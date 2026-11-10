@@ -1421,7 +1421,7 @@ nothing to bump and no per-SDK tag:
   the tests (`tools/sdk-version.mjs stamp`) and never commits it. A prerelease tag must be
   `-alpha.N`, `-beta.N` or `-rc.N` (PyPI has to spell it too); anything else fails the run.
 - **Never a red build:** a `main` publish first waits for the CI workflow's `CI OK` on that SHA
-  (`tools/require-ci-ok.sh`, the `ci-gate` job, up to 120 minutes) and publishes nothing, and runs
+  (`tools/require-ci-ok.sh`, a step of the `version` job, up to 120 minutes) and publishes nothing, and runs
   no drift check, if it is not `success`. The feed drift check still reads back what was published.
 - **To release:** tag a commit on `main` `vX.Y.Z` and push the tag. `deploy.yml` deploys the
   Worker, registers the platform packages (below), then publishes every SDK at `X.Y.Z`. The tag's
@@ -2059,7 +2059,7 @@ under _Entries_ in the change that closes the row. A row with no entry is open.
 
 - No compatibility window exists except break-glass, paths that installed native binaries call, and
   the two-release database contracts. There is none for an SDK, the CLI, the publish Action,
-  cookie mode or the Pocket ID env override: each goes in the release that
+  the Pocket ID env override: each goes in the release that
   replaces it, and a removed manifest field is a validator error that names its replacement.
 - A drop takes two steps. The first stops every read and write. The second drops the object, after
   a production check that nothing read or wrote it and **14 days** after the Worker that stopped
@@ -2120,6 +2120,7 @@ tracks:
 | `identity.seed-platform-connection`   | The lead | An apply report exists. Its seeded audience is recorded here as above.                                                                                                                                                     |
 | `distribution.listing-truth`          | The lead | A dry run reports no `missing` and no `refused` field, the apply is recorded here with its run id, and a fresh dry run reports 0 changes. After phase 2, prune `dist_listing_truth_moves`; down is only valid before then. |
 | `license.limits-materialise`          | The lead | A dry run after the apply reports changes 0 and docDiffs 0, and no license has a tier of NULL. Its run ids are recorded under Entries.                                                                                     |
+| `license.entitlement-buckets`         | The lead | A dry run after the apply reports changes 0 and docDiffs 0. Its run ids are recorded under Entries; the read switch waits for them.                                                                                        |
 | Resolver comparison                   | The lead | Zero blocking rows, every expected row acknowledged below by class and count, and no `workflow-channel` row's old answer newer than the latest `materialise-workflow-beta` run.                                            |
 | Resolver switch                       | The lead | The dry run after the switch shows zero blocking rows and nothing was rolled back. A later release then deletes the old resolver.                                                                                          |
 
@@ -2201,6 +2202,32 @@ switch deploys; otherwise repeat steps 1 to 5.
 **Roll back.** Run `down` on the apply before rolling the Worker back. It puts each column back to
 its recorded value only while the column still holds the value the job wrote, and removes the
 seeded Default tier once no license uses it. A later edit stays.
+
+### Entitlement buckets (`license.entitlement-buckets`)
+
+Copies each tier profile's entitlements to its tier and puts each license profile's entitlements
+under the license's own overrides, so no document changes. Run it after the Worker that carries it
+is live, before the release that reads entitlements from tiers. Run `license.limits-materialise`
+first, so every license has a tier. A dry run writes nothing.
+
+1. `pkey migrate dry-run license.entitlement-buckets`, then `pkey migrate report <run>`. Per product
+   it lists `tierWrites`, `licenceWrites`, `keys` and `docDiffs` (by reason), with up to 20 ids each.
+2. `docDiffs` above 0: stop. Send the report to the lead. Those rows are left as they are:
+   `grant-key` is a profile key that a store or OIDC grant also sets, `tier-bucket-differs` a tier
+   whose bucket already holds something else, `overrides-unreadable` a license whose overrides are
+   not JSON, `key-order` and `value` a document that would change. The owner decides each case.
+3. Apply from the console (Platform, Migrations), pinned to the run id. A killed apply resumes with
+   the same call.
+4. Dry-run again. It must show changes 0 and docDiffs 0. A row edited while the apply ran is skipped
+   and shows here as one change: apply that run.
+5. Record both run ids under Entries.
+
+Freeze edits to profiles, tiers and license overrides from step 1 until the read switch deploys;
+otherwise repeat steps 1 to 5. Profiles are never changed by the job.
+
+**Roll back.** Run `down` on the apply before rolling the Worker back. It puts each tier bucket and
+each license's overrides back to the value recorded before the first apply, only while the column
+still holds what the job last wrote. A later edit stays.
 
 ### Provisioned secrets (`core.provisioned-secrets-to-account`)
 
@@ -2468,6 +2495,36 @@ last_error FROM account_erasures WHERE account_id = '<id>'` shows a resumed eras
 product sessions while R2 is degraded or `BLOBS` is unbound is the fence failing closed, not an
 account problem: restore R2 or the binding and signed-in clients carry on. An unreadable ledger
 clears no portal cookie and ends no product browser session; it only refuses until it can be read.
+
+## After a D1 or Cloud Sync Durable Object restore
+
+"Remove my data from <Product>" writes a second ledger beside the account one: one object per
+removed subject in the `BLOBS` bucket, key `subject-erasures/<product>/<pairwise subject>`, holding
+the product slug, the subject and a time (no account id). It is written create-only before the
+removal changes anything; if the write fails the removal answers `503 erasure_ledger_unavailable`
+and nothing is removed. Do not delete one by hand and never put a lifecycle rule on
+`subject-erasures/`: the maintenance pass deletes an entry 35 days after the removal, once its
+subject row is gone, which is past the 30-day windows of D1 Time Travel and Durable Object
+point-in-time recovery.
+
+**After a D1 restore.** The restored database brings back the subject row, the managed overrides,
+the key ring, the Cloud Sync directory row and the device bindings. A D1 restore does not touch
+Durable Object storage, so the Cloud Sync object stays erased. The pass completes the removal
+again; nothing else is needed. It runs on the same ticks as the account replay (every 15 minutes
+and nightly, right after it, step `subjectErasureLedger`), reads the ledger in pages of 1,000 keys
+(at most 5 pages a pass), completes at most 25 subjects a pass and continues from a KV cursor that
+expires on its own. Until the next tick, up to 15 minutes, the restored rows are readable. The
+step's count is the removals completed plus the entries swept; a failing store fails the step and
+names `<product>/<pairwise subject>` and the store, never an account. The two passes never see
+each other's entries (`erasures/` against `subject-erasures/`).
+
+**After a Cloud Sync Durable Object restore.** A point-in-time restore of the object brings its
+data back, and D1 may already have forgotten the subject, so the normal pass does not look at it.
+Ask for the objects pass of the product: set the KV key `p:_platform:subject-erasure-ledger:objects`
+in the `HOT` namespace to the product slug (`wrangler kv key put`). The next tick runs the stores'
+deletes for every ledger subject of that product, 25 a tick, and deletes the key when it has walked
+the whole ledger of the product without a failure. Check `platform_job_runs` for
+`subjectErasureLedger` rows after the restore time.
 
 ## Release-file mirroring
 

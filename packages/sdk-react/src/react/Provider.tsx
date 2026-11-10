@@ -55,17 +55,16 @@ export interface PolarisKeyConfig {
   /** Poll for managed-config changes on this interval (seconds). Off by default. */
   refreshIntervalSeconds?: number;
   /** Browser-page authentication strategy; ignored in desktop mode and with an injected adapter. */
-  auth?: "cookie" | "bearer" | "auto";
-  /** Pinned trust keys for bearer mode. */
+  auth?: "bearer" | "auto";
+  /** Pinned trust keys: every document is verified in the page. */
   trust?: { pinnedKeys: TrustSet };
-  /** Bearer mode's token/document store. */
+  /** The device token and document store. */
   store?: BrowserAdapterOptions["store"];
   /** `usePolarisFetch()`: the origins besides the page's own that may receive the licence
    *  document. Exact, HTTPS only except loopback; a bad one throws `invalid-options`. */
   backend?: { origins?: readonly string[] };
   /** Test seams forwarded to the constructed adapter. */
   fetchImpl?: typeof fetch;
-  navigate?: (url: string) => void;
   now?: () => number;
 }
 
@@ -135,7 +134,6 @@ export function PolarisKeyProvider(
     trust,
     store,
     fetchImpl,
-    navigate,
     now,
     backend,
   } = config;
@@ -163,7 +161,7 @@ export function PolarisKeyProvider(
 
   // Inline literals must not rebuild the adapter either: a rebuilt adapter is a new load (a new
   // discovery fetch, a dropped session). The local overrides compare by value; the test seams
-  // (`fetchImpl`, `navigate`, `now`) are called through a ref, so a new closure each render is
+  // (`fetchImpl`, `now`) are called through a ref, so a new closure each render is
   // the same adapter calling the latest one.
   const overridesKey = localOverrides ? JSON.stringify(localOverrides) : "";
   const overrides = useMemo<Record<string, JSONValue> | undefined>(
@@ -173,8 +171,8 @@ export function PolarisKeyProvider(
         : (JSON.parse(overridesKey) as Record<string, JSONValue>),
     [overridesKey],
   );
-  const seams = useRef({ fetchImpl, navigate, now });
-  seams.current = { fetchImpl, navigate, now };
+  const seams = useRef({ fetchImpl, now });
+  seams.current = { fetchImpl, now };
   const stableFetch = useMemo<typeof fetch | undefined>(
     () =>
       fetchImpl
@@ -183,11 +181,6 @@ export function PolarisKeyProvider(
     // Present or absent; which closure it is does not matter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [fetchImpl === undefined],
-  );
-  const stableNavigate = useMemo<((url: string) => void) | undefined>(
-    () => (navigate ? (url) => seams.current.navigate?.(url) : undefined),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [navigate === undefined],
   );
   const stableNow = useMemo<(() => number) | undefined>(
     () => (now ? () => (seams.current.now ?? now)() : undefined),
@@ -212,7 +205,6 @@ export function PolarisKeyProvider(
       productSlug,
       baseUrl,
       fetchImpl: stableFetch,
-      navigate: stableNavigate,
       now: stableNow,
       localOverrides: overrides,
       version,
@@ -230,7 +222,6 @@ export function PolarisKeyProvider(
     productSlug,
     baseUrl,
     stableFetch,
-    stableNavigate,
     stableNow,
     overrides,
     version,

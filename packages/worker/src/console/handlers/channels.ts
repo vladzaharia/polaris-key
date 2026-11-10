@@ -59,13 +59,11 @@ export interface ChannelsReadOptions {
   identity?: { commerce: boolean };
 }
 
-export async function channelsRead(
-  env: Env,
-  db: Db,
-  slug: string,
-  now: number,
-  opts: ChannelsReadOptions = {},
-): Promise<ChannelsView | null> {
+/**
+ * The product's host hooks, live builds and platform facts, each read once: what the channels
+ * read and the updaters read (`handlers/updaters.ts`) both start from. `null` for no such product.
+ */
+export async function hostFacts(env: Env, db: Db, slug: string, now: number) {
   const product = await loadProductPublic(db, slug);
   if (!product) return null;
   const hooks = serviceContext("host", SERVICES, product.services, {
@@ -74,7 +72,6 @@ export async function channelsRead(
     product,
     now,
   }).hooks;
-  // Each fact is read once and handed to the delivery facet (the summary rides every product view).
   const builds = await liveBuilds(hooks);
   const facts = await productPlatforms({
     db,
@@ -83,6 +80,19 @@ export async function channelsRead(
     now,
     builds,
   });
+  return { product, hooks, builds, facts };
+}
+
+export async function channelsRead(
+  env: Env,
+  db: Db,
+  slug: string,
+  now: number,
+  opts: ChannelsReadOptions = {},
+): Promise<ChannelsView | null> {
+  const read = await hostFacts(env, db, slug, now);
+  if (!read) return null;
+  const { product, hooks, builds, facts } = read;
   const facets = await channelFacts(env, db, slug, hooks, now, {
     facts,
     builds,

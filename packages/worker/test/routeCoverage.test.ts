@@ -131,6 +131,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // I-11: one product's export, and "Remove my data from this product".
     ["/api/products/{product}/export", ["get"]],
     ["/api/products/{product}/data", ["delete"]],
+    // U-12.5: Cloud Sync's usage, state and device activity for the signed-in account.
+    ["/api/products/{product}/sync", ["get"]],
     // I-11: "Get a support code" on the product page.
     ["/api/products/{product}/support-code", ["post"]],
     // PX-W10 (G24, G25): Discover's offers and "Add to library".
@@ -282,6 +284,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products/{product}/integration", ["get"]],
     // A-20.4: the channel read model (delivery and commerce facets per channel).
     ["/manage/api/products/{product}/distribution/channels", ["get"]],
+    // P2-11: the Updates page's read (updaters per shipped platform, Verified).
+    ["/manage/api/products/{product}/distribution/updaters", ["get"]],
     // A-32.3: the CI readiness read (the checks a `v*` tag needs).
     ["/manage/api/products/{product}/release/ci-readiness", ["get"]],
     // A-32.6: create the `release` environment and the `v*` tag ruleset.
@@ -813,16 +817,12 @@ describe("image host (HA-02, rule 10)", () => {
 });
 
 /**
- * The product routes that must NEVER answer CORS (P0-05): they set or read the per-product
- * browser-session cookie, or they are top-level navigations to the IdP or an HTML page. They stay
+ * The product routes that must NEVER answer CORS (P0-05): they are top-level navigations to the IdP or an HTML page. They stay
  * first-party. Everything else in the three tables above is covered.
  */
 const CORS_EXCLUDED = new Set([
-  "/{product}/identity/session",
-  "/{product}/identity/session/license",
   "/{product}/identity/auth/start",
   "/{product}/identity/auth/callback",
-  "/{product}/identity/auth/logout",
   "/{product}/identity/auth/device",
   "/{product}/identity/auth/device/verify",
   "/{product}/identity/auth/device/approve",

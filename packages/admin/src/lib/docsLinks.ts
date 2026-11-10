@@ -59,6 +59,7 @@ export const DOCS_LINKS = {
   platformSecrets: "/docs/operate/platform/deploy/",
   // Inline explainer callouts
   manifestNote: "/docs/build/manifest/",
+  updates: "/docs/features/ship-builds/updates/",
   updateAccessNote: "/docs/features/ship-builds/updates/eligibility/",
   identityOidcNote: "/docs/features/sign-in/oidc/",
   // P0-47: where auto-issue is set (the manifest's `autoIssue`), named from Identity → Sign-in,

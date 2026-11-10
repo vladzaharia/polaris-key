@@ -20,6 +20,7 @@ import {
   readOutletSignals,
 } from "../src/index.js";
 import { WEB_OUTLET_STAMP } from "../src/browser/browserAdapter.js";
+import { FIXTURE_TRUST } from "./fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const matrix = JSON.parse(
@@ -120,7 +121,8 @@ describe("BrowserAdapter — the detected outlet is the default", () => {
     update: ConstructorParameters<typeof BrowserAdapter>[0]["update"],
   ): BrowserAdapter =>
     new BrowserAdapter({
-      auth: "cookie",
+      trust: FIXTURE_TRUST,
+      auth: "bearer",
       productSlug: "djdl",
       fetchImpl: (async () =>
         new Response(null, { status: 404 })) as unknown as typeof fetch,

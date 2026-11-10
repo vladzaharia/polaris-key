@@ -5,7 +5,7 @@
 | Phase       | CC: Cloud Connect: device keys, peer certificates, LAN discovery, encrypted channels, the relay and inter-account links (plans/CC-01-cloud-connect.md) |
 | Size        | 0.7–0.9 engineer-weeks                                                                                                                                 |
 | Depends on  | [CC-15](CC-15-nearby-mode-v.md)                                                                                                                        |
-| Unblocks    | none                                                                                                                                                   |
+| Unblocks    | [CC-29](CC-29-local-links.md), [CC-29b](CC-29b-local-links-android-godot.md)                                                                           |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                   |
 | Plan mode   | yes: needs its own plan before code                                                                                                                    |
 | Gates       | plan-mode, all-sdks, corpus, security-review                                                                                                           |

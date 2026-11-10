@@ -270,18 +270,15 @@ describe("export", () => {
         { product: P, subject: "a" },
       )
     )[CLOUD_SYNC_STORE] as any;
-    expect(out.settings).toMatchObject({ product: P, subject: "a" });
-    const byKey = Object.fromEntries(
-      out.settings.settings.map((r: any) => [r.key, r]),
-    );
+    const byKey = Object.fromEntries(out.settings.map((r: any) => [r.key, r]));
     expect(Object.keys(byKey).sort()).toEqual(["keys", "old", "res", "theme"]);
     expect(byKey.old.deleted).toBe(true);
     expect(byKey.keys.members).toEqual([
       ["jump", expect.objectContaining({ value: "space", removed: false })],
     ]);
     expect(byKey.res).toMatchObject({ scope: "platform", family: "desktop" });
-    expect(out.settings.clients).toEqual([
-      { clientId: C1, deviceId: "d1", lastMutationId: expect.any(Number) },
+    expect(out.clients).toEqual([
+      { clientId: C1, deviceId: "d1", lastSeen: expect.any(Number) },
     ]);
     expect(out.directory).toMatchObject({
       bytes: 100,

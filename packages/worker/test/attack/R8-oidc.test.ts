@@ -1647,9 +1647,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
 
   it("FIXED: the product flow is bound to the browser that started it; another browser's callback is refused and does not burn the flow", async () => {
     const startRes = await handleAuthStart(
-      req(
-        `${ORIGIN}/djdl/auth/start?return_to=${encodeURIComponent(`${ORIGIN}/djdl/app`)}`,
-      ),
+      req(`${ORIGIN}/djdl/auth/start`),
       ctx.env,
       ctx.db,
       ctx.product,
@@ -1695,46 +1693,29 @@ describe("R8-03 login CSRF / flow-fixation", () => {
       ctx.product,
       NOW,
     );
-    expect(real.status).toBe(302);
-    expect(real.headers.get("set-cookie")).toContain("pkey_djdl_session=");
-    expect(real.headers.get("location")).toBe(`${ORIGIN}/djdl/app`);
+    expect(real.status).toBe(200);
+    expect(real.headers.get("set-cookie") ?? "").not.toContain("_session=");
   });
 
-  it("ATTACK: safeReturnTo lets the PRODUCT flow land on /manage paths that the portal twin explicitly forbids", async () => {
-    const res = await handleAuthStart(
-      req(
-        `${ORIGIN}/djdl/auth/start?return_to=${encodeURIComponent(`${ORIGIN}/manage/products/djdl`)}`,
-      ),
-      ctx.env,
-      ctx.db,
-      ctx.product,
-    );
-    // INVERTED: the product flow refuses the console exactly as the portal twin does. The
-    // product copy of the validator checked the origin and nothing else, so a product sign-in
-    // could be aimed at the admin console's landing page.
-    expect(res.status).toBe(400);
-    expect(await res.text()).toContain("return_to not allowed");
-    expect(res.headers.get("location")).toBeNull();
-
-    // Control: an ordinary same-origin target is still accepted and round-trips, query and
-    // fragment intact (the React SDK sends `window.location.href`).
-    const target = `${ORIGIN}/djdl/app?tab=settings#/downloads`;
-    const good = await handleAuthStart(
-      req(`${ORIGIN}/djdl/auth/start?return_to=${encodeURIComponent(target)}`),
-      ctx.env,
-      ctx.db,
-      ctx.product,
-    );
-    expect(good.status).toBe(302);
-    const state = new URL(good.headers.get("location")!).searchParams.get(
-      "state",
-    )!;
-    const flow = JSON.parse(
-      (await artefacts(ctx.env).get(await flowKey(ctx.env, "djdl", state)))!,
-    ) as {
-      returnTo: string;
-    };
-    expect(flow.returnTo).toBe(target);
+  it("FIXED: the product flow takes no return_to, so it cannot be aimed at /manage or anywhere else", async () => {
+    // `return_to` was the cookie-session page's way back, and it let a product sign-in be aimed
+    // at the admin console's landing page. The session is gone (SP-40), so the parameter is too.
+    for (const target of [
+      `${ORIGIN}/manage/products/djdl`,
+      `${ORIGIN}/djdl/app?tab=settings#/downloads`,
+    ]) {
+      const res = await handleAuthStart(
+        req(
+          `${ORIGIN}/djdl/auth/start?return_to=${encodeURIComponent(target)}`,
+        ),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+      );
+      expect(res.status).toBe(400);
+      expect(await res.text()).toContain("return_to is no longer supported");
+      expect(res.headers.get("location")).toBeNull();
+    }
   });
 
   it("FIXED: the ADMIN flow (/manage/callback) is bound to the browser that started it", async () => {

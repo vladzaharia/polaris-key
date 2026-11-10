@@ -327,23 +327,6 @@ describe("key entry step 3: license_owned (§12.2)", () => {
       "unauthorized",
     );
   });
-
-  it("refuses the browser key session the same way", async () => {
-    const { key, licenseId } = await owned();
-    const res = await call(
-      "POST",
-      `/${SLUG}/identity/session/license`,
-      {},
-      { key },
-    );
-    expect(res.status).toBe(403);
-    expect(await res.json()).toMatchObject({
-      error: "license_owned",
-      signInUrl: `${BASE}/signin?product=${SLUG}`,
-    });
-    expect(res.headers.get("set-cookie")).toBeNull();
-    expect(await countKeyEntries(db, SLUG, licenseId)).toBe(0);
-  });
 });
 
 // ── §12.3 attach ─────────────────────────────────────────────────────────────────────────

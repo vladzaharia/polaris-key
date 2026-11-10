@@ -199,7 +199,7 @@ describe("section roots redirect to the section's first page", () => {
       "#/p/djdl/release/releases",
     );
     expect(parseLocation("#/p/djdl/update").redirect).toBe(
-      "#/p/djdl/update/feed",
+      "#/p/djdl/update/updates",
     );
   });
 
@@ -245,7 +245,7 @@ describe("section roots redirect to the section's first page", () => {
       ["#/p/djdl/compatibility", "#/p/djdl/release/compatibility"],
       ["#/p/djdl/distribution-matrix", "#/p/djdl/distribution/matrix"],
       ["#/p/djdl/distribution-health", "#/p/djdl/distribution/health"],
-      ["#/p/djdl/updates", "#/p/djdl/update/feed"],
+      ["#/p/djdl/updates", "#/p/djdl/update/updates"],
       ["#/p/a%20b/licenses/lic%2F1", "#/p/a%20b/license/licenses/lic%2F1"],
     ];
     for (const [old, now] of OLD) {
@@ -552,6 +552,7 @@ describe("the nav model (nav.ts)", () => {
       "access",
       "health",
       "credentials",
+      "updaters",
       "feed",
       "app-sign-in",
       "sync-setup",

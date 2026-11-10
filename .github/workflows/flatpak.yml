@@ -8,7 +8,8 @@ name: Flatpak (Compose desktop sample)
 
 on:
   push:
-    branches: [main]
+    # next: promote fast-forwards main with the workflow token, and that push starts no workflows.
+    branches: [main, next]
     paths:
       - ".github/workflows/flatpak.yml"
       - "examples/ui/compose-desktop/**"

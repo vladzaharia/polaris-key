@@ -47,7 +47,6 @@ export interface FlowRecord {
   verifier: string;
   nonce: string;
   redirectUri: string;
-  returnTo?: string;
   /** The device that started a device-code flow. `pollAuthFlow` mints only for this device.
    *  The callback deliberately does NOT use it to claim or migrate the license that device is
    *  on: the flow is confirmed with the public user code (P1-06 security fix). */

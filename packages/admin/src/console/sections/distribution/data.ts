@@ -23,6 +23,7 @@ import {
   type RolloutsResponse,
   type UpdateHealthResponse,
   type UpdateSettings,
+  type UpdatersView,
 } from "../../../api.js";
 import { qk } from "../../data/queries.js";
 import { deliveryAccessQuery } from "../release/data.js";
@@ -121,6 +122,16 @@ export function useChannels(
   enabled = true,
 ): UseQueryResult<ChannelsView> {
   return useQuery({ ...channelsQuery(slug), enabled });
+}
+
+export const updatersQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.updaters(slug),
+    queryFn: () => api.updaters(slug),
+  });
+
+export function useUpdaters(slug: string): UseQueryResult<UpdatersView> {
+  return useQuery(updatersQuery(slug));
 }
 
 export const rolloutsQuery = (slug: string) =>

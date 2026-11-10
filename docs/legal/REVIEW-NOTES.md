@@ -109,8 +109,8 @@ Listed roughly by importance.
     `account_product_subject_aliases`, `license_relinks` (includes the operator's name and a
     free-text reason), `store_operations`, and expired `email_suppressions` rows (hashed). None
     holds an email address, but the relink reason is free text.
-14. **The KV browser-session record holds the device bearer token, sealed**
-    (`W/services/identity/browserSession.ts`). It used to hold the raw token, the one exception to
+14. **Removed (SP-40): the KV browser-session record held the device bearer token, sealed**
+    (`W/services/identity/browserSession.ts`, deleted). It used to hold the raw token, the one exception to
     "credentials are stored hashed"; it is now encrypted under the platform key and bound to that
     one session, so a KV dump yields ciphertext. A session opened before that change can no longer
     be used and the browser signs in again. 30-day TTL. Not mentioned in the drafts.

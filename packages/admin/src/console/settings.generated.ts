@@ -2491,25 +2491,6 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     deprecated: null,
   },
   {
-    key: "identity.browserSessionDays",
-    aliases: [],
-    scope: "product",
-    entity: null,
-    service: "identity",
-    area: "identity.signIn",
-    rbacArea: "signin",
-    label: "Browser session length",
-    description:
-      "How long a product sign-in in the browser lasts. A product may shorten it, never lengthen it past the platform's 30 days.",
-    keywords: ["session", "sign out", "cookie"],
-    docs: "/docs/features/sign-in/sessions/",
-    ownership: "operator",
-    critical: false,
-    secret: false,
-    pending: "ST-15",
-    deprecated: null,
-  },
-  {
     key: "identity.displayNameApproved",
     aliases: [],
     scope: "product",
@@ -2780,6 +2761,12 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     reason:
       "Customer data: how a Polaris Locker account came to hold a license, not Polaris behaviour.",
     shows: "License → Licenses",
+  },
+  {
+    thing: "Entitlement row owner (add-ons and license entitlements)",
+    reason:
+      "Records whether a row came from the manifest or the console, so a resync leaves a console row alone: a fact about where the row came from, not a value an operator sets.",
+    shows: "License → Tiers",
   },
   {
     thing: "Console role binding provenance (ST-31)",

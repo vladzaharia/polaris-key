@@ -3,11 +3,8 @@
 /**
  * Identity's routes, as a table (`core/http/routes.ts`), over the path AFTER `/<product>/identity` (§R1):
  *
- *     /identity/session                     GET   the browser session's fused document
- *     /identity/session/license             POST  licence key → session cookie
  *     /identity/auth/start                  GET   begin PKCE, 302 to the IdP
  *     /identity/auth/callback               GET   exchange the code, mint/locate the licence
- *     /identity/auth/logout                 POST  drop the session + deauthorize its device
  *     /identity/auth/device                 GET   the RFC 8628 user-code page (entry form, or the
  *                                                 confirmation page for `?user_code=`)
  *                                           POST  look a typed code up, or confirm it (CSRF)
@@ -72,11 +69,6 @@ import {
   handleAuthStart,
 } from "./oidc.js";
 import {
-  handleBrowserLogout,
-  handleBrowserSession,
-  handleBrowserSessionLicense,
-} from "./browserSession.js";
-import {
   handleIdentityAttach,
   handleIdentitySignOut,
   handleIdentitySubject,
@@ -123,20 +115,6 @@ const choiceRow = (action: "licenses" | "devices" | "complete" | "cancel") => ({
 });
 
 export const IDENTITY_ROUTES = serviceRoutes("identity", [
-  {
-    path: "session",
-    methods: ["GET"],
-    auth: { kind: "session" },
-    handler: ({ req, env, db, product, now, settings }) =>
-      handleBrowserSession(req, env, db, product, now, settings),
-  },
-  {
-    path: "session/license",
-    methods: ["POST"],
-    auth: { kind: "handler" },
-    handler: ({ req, env, db, product, now, settings }) =>
-      handleBrowserSessionLicense(req, env, db, product, now, settings),
-  },
   // I-08 (WIRE-CONTRACT-V4 §12.4, §12.5): the app passthrough. `authorize` is a navigation that
   // starts the platform sign-in; `token` redeems the code (PKCE) from a form body and answers
   // CORS without credentials. Both handlers keep their own method guard and rate limits.
@@ -285,13 +263,6 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     auth: { kind: "code" },
     handler: ({ req, env, db, product, now }) =>
       handleAuthCallback(req, env, db, product, now),
-  },
-  {
-    path: "auth/logout",
-    methods: ["POST"],
-    auth: { kind: "session" },
-    handler: ({ req, env, db, product, now }) =>
-      handleBrowserLogout(req, env, db, product, now),
   },
   {
     path: "auth/device",

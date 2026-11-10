@@ -183,6 +183,7 @@ import {
   handleProductExport,
 } from "./dataRoutes.js";
 import { handleProductSupportCode } from "./supportCode.js";
+import { handleProductSync } from "./syncSummary.js";
 import { handleProfileApi } from "./profile.js";
 import { accountMayOpenConsole } from "../consoleAccount.js";
 import { consoleOrigin } from "../../../core/hosts.js";
@@ -2693,6 +2694,23 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
         c.env,
         c.db,
         s.session,
+        m.params.product!,
+        c.now,
+        c.hooksFor,
+      ),
+  },
+  // U-12.5: Cloud Sync's usage, state and device activity (`syncSummary.ts`).
+  {
+    path: "products/:product/sync",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: (c, m, s) =>
+      handleProductSync(
+        c.env,
+        c.db,
+        s.session,
+        c.req,
         m.params.product!,
         c.now,
         c.hooksFor,

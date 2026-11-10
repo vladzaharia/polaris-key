@@ -34,7 +34,7 @@ import {
   emptyBridgeState,
   makeDoc,
   makeFakeBridge,
-  makeFakeFetch,
+  fakeWorld,
   services,
 } from "./fixtures.js";
 
@@ -542,9 +542,9 @@ describe("the browser adapter's boot() runs the guard", () => {
 
   function page(s: ReturnType<typeof storage>, version: string) {
     return new BrowserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc(), {
+      ...fakeWorld(makeDoc(), {
         capabilities: services("license", "config"),
       }),
       now: () => NOW_SEC,
@@ -591,9 +591,9 @@ describe("the browser adapter's boot() runs the guard", () => {
     };
     vi.stubGlobal("navigator", { serviceWorker: container });
     const a = new BrowserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc(), {
+      ...fakeWorld(makeDoc(), {
         capabilities: services("license", "config"),
       }),
       now: () => NOW_SEC,
@@ -615,9 +615,9 @@ describe("the browser adapter's boot() runs the guard", () => {
 
   it("a page with no version has no build to count: markBootAttempt says so, boot() skips the stage", async () => {
     const a = new BrowserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc(), {
+      ...fakeWorld(makeDoc(), {
         capabilities: services("license", "config"),
       }),
       now: () => NOW_SEC,

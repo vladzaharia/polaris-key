@@ -82,6 +82,19 @@ Update through Core's descriptor hooks, never by import, and only while Distribu
   the Sparkle version floor, and the trust anchor Polaris Key deliberately never
   reimplements.
 
+## The Updates page
+
+Ship builds → **Updates** in the console groups the platforms a product ships by what verifies
+together: Polaris Locker downloads (macOS, Windows, Linux), Google Play, and the platforms a store
+updates, which need no setup. Each platform has a **Set up with** choice (a view, nothing is
+saved) of the updaters it can use, with steps and snippets for the chosen release track.
+
+A group is **Verified** once a device has reported an update outcome on its outlets, read from
+[update health](/docs/features/ship-builds/channels/update-health/): Sparkle and the other feed
+readers send no `X-PKey-SDK` header. An event names an outlet and a channel but no platform, so
+the state is per group. A group reads **Not seen yet** before the first report and **No data**
+while the counters cannot be read. Reverted updates count for 30 days on the newest six releases.
+
 ## For readers new to Sparkle
 
 [Sparkle](https://sparkle-project.org/) is the de facto standard auto-update framework for

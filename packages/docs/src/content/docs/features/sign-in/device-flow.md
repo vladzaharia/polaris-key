@@ -126,5 +126,5 @@ See [Node](/docs/build/sdks/node/your-own-ui/#sign-in-and-who-signed-in), [Pytho
 ## Next steps
 
 - [Product sign-in provider](/docs/features/sign-in/oidc/): the shared PKCE and mint step.
-- [Browser sessions](/docs/features/sign-in/sessions/): the cookie-issuing counterpart.
+- [Browser sessions](/docs/features/sign-in/sessions/): the web page counterpart.
 - [Add sign-in to your app](/docs/features/sign-in/add-sign-in/).

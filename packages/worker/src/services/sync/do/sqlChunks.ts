@@ -99,6 +99,38 @@ export class ChunkTables {
       .map(toChunk);
   }
 
+  /** One collection's referenced chunks after `afterId`, in chunk id order, at most `limit`. */
+  referenced(
+    collection: string,
+    afterId: string,
+    limit: number,
+  ): StoredChunk[] {
+    return this.q
+      .all<ChunkDbRow>(
+        `SELECT ${CHUNK_COLUMNS} FROM chunks
+          WHERE collection = ? AND refs > 0 AND chunk_id > ?
+          ORDER BY chunk_id LIMIT ?`,
+        collection,
+        afterId,
+        limit,
+      )
+      .map(toChunk);
+  }
+
+  /** Per collection: how many referenced chunks and their stored bytes. */
+  referencedTotals(): { collection: string; count: number; bytes: number }[] {
+    return this.q
+      .all<{ collection: string; n: number; b: number | null }>(
+        `SELECT collection, COUNT(*) AS n, SUM(stored_bytes) AS b FROM chunks
+          WHERE refs > 0 GROUP BY collection ORDER BY collection`,
+      )
+      .map((r) => ({
+        collection: r.collection,
+        count: Number(r.n),
+        bytes: Number(r.b ?? 0),
+      }));
+  }
+
   collectable(limit: number): StoredChunk[] {
     return this.q
       .all<ChunkDbRow>(

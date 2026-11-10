@@ -153,8 +153,8 @@
     },
     "identity.oidc": {
       "status": "planned",
-      "wp": "I-15",
-      "note": "Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4). The interim is identity.signIn.start with channel device-code: device code opened in the system browser (session.reopen()) and polled at /identity/auth/device/poll like any device-code sign-in (SDK parity pass §3.12); the old /identity/auth/poll is retired and the Worker no longer serves it."
+      "unowned": true,
+      "note": "Superseded by identity.redirect.native (I-15 shipped the native redirect token route and I-15b the SDK flow); nothing is left to build under this row, which the registry can retire."
     },
     "identity.devicecode": {
       "status": "implemented"
@@ -559,8 +559,8 @@
     },
     "connect.local": {
       "status": "planned",
-      "unowned": true,
-      "note": "CC-29.7 and CC-29.8 build it (WIRE-CONTRACT-V5 §15.12): client.cloudConnect.localLinks over a LAN service that runs with no account, and the pkey.connect.local.v1 store. The program registry has no CC-29 row yet; this names wp CC-29 once it does."
+      "wp": "CC-29",
+      "note": "CC-29.7 and CC-29.8 build it (WIRE-CONTRACT-V5 §15.12): client.cloudConnect.localLinks over a LAN service that runs with no account, and the pkey.connect.local.v1 store."
     },
     "connect.app": {
       "status": "implemented",

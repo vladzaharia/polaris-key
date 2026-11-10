@@ -46,10 +46,6 @@ import {
   handleToken,
 } from "../../src/services/license/activation.js";
 import { handleLicenseDocument } from "../../src/services/license/document.js";
-import {
-  createBrowserSession,
-  handleBrowserSessionLicense,
-} from "../../src/services/identity/browserSession.js";
 import { getOrCreateAccountByEmail } from "../../src/services/identity/portal/repo.js";
 import {
   PORTAL_COOKIE,
@@ -516,125 +512,6 @@ describe("installs are unaffected", () => {
   });
 });
 
-describe("browser entries (POST /<p>/identity/session/license)", () => {
-  function session(key: string, now = NOW): Promise<Response> {
-    return handleBrowserSessionLicense(
-      new Request(`https://key.plrs.im/${SLUG}/identity/session/license`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key }),
-      }) as unknown as Request,
-      env,
-      db,
-      productRef!,
-      now,
-    );
-  }
-  let productRef: Product | null = null;
-
-  it("answers 201 {ok, keyEntries}, counts once per enrolment, and refuses at the limit", async () => {
-    productRef = await setIdentity(true);
-    const { key, licenseId } = await seedLicenseWithKey(db, SLUG, SEATS(5));
-    const first = await session(key);
-    expect(first.status).toBe(201);
-    expect(await first.json()).toEqual({
-      ok: true,
-      keyEntries: { used: 1, limit: 10 },
-    });
-    // The browser device is `browser:<licenseId>`: a second session is an enrolled re-entry.
-    const again = await session(key, NOW + 60);
-    expect(await again.json()).toEqual({
-      ok: true,
-      keyEntries: { used: 1, limit: 10 },
-    });
-    expect(await rows(licenseId)).toEqual([
-      { surface: "browser", device_id: `browser:${licenseId}` },
-    ]);
-
-    // Sign out (it deauthorizes the browser device), then the limit is 1.
-    await db.run(
-      "UPDATE devices SET status = 'deauthorized', seat_no = NULL WHERE product = ? AND device_id = ?",
-      SLUG,
-      `browser:${licenseId}`,
-    );
-    await setLimit(1);
-    await setRefusals(true);
-    const refused = await session(key, NOW + 120);
-    expect(refused.status).toBe(403);
-    expect(await refused.json()).toMatchObject({
-      error: "key_entry_limit",
-      keyEntries: { used: 1, limit: 1 },
-      manageUrl: `https://key.plrs.im/activate?product=${SLUG}`,
-    });
-    expect(await countKeyEntries(db, SLUG, licenseId)).toBe(1);
-  });
-
-  /** The sign-in return's call: enrols `browser:<licenseId>`, then the licence joins an account. */
-  async function enrolledThenOwned(): Promise<{
-    key: string;
-    licenseId: string;
-  }> {
-    const { key, licenseId } = await seedLicenseWithKey(db, SLUG, SEATS(5));
-    const license = (await getLicense(db, SLUG, licenseId))!;
-    const minted = await createBrowserSession(
-      env,
-      db,
-      productRef!,
-      license,
-      NOW,
-    );
-    if (!minted.ok) throw new Error(`session mint failed: ${minted.code}`);
-    await db.run(
-      "UPDATE licenses SET account_id = 'acct_x' WHERE product = ? AND id = ?",
-      SLUG,
-      licenseId,
-    );
-    return { key, licenseId };
-  }
-  const deviceRow = (licenseId: string) =>
-    db.first(
-      "SELECT token_hash, seat_no, bound_by, subject FROM devices WHERE product = ? AND device_id = ?",
-      SLUG,
-      `browser:${licenseId}`,
-    );
-
-  it("refuses a licence in an account with license_owned while refusals are on, even when its browser device is enrolled", async () => {
-    productRef = await setIdentity(true);
-    await setRefusals(true);
-    const { key, licenseId } = await enrolledThenOwned();
-    const before = await deviceRow(licenseId);
-    expect(before).not.toBeNull();
-    const entries = await countKeyEntries(db, SLUG, licenseId);
-
-    const res = await session(key, NOW + 60);
-    expect(res.status).toBe(403);
-    expect(await res.json()).toMatchObject({
-      error: "license_owned",
-      signInUrl: expect.any(String),
-    });
-    expect(res.headers.get("set-cookie")).toBeNull();
-    expect(await deviceRow(licenseId)).toEqual(before);
-    expect(await countKeyEntries(db, SLUG, licenseId)).toBe(entries);
-    expect(
-      await db.all(
-        "SELECT reason FROM license_refusals WHERE product = ? AND license_id = ?",
-        SLUG,
-        licenseId,
-      ),
-    ).toEqual([{ reason: "license_owned" }]);
-  });
-
-  it("with refusals off, an enrolled browser device on a licence in an account is admitted and not counted", async () => {
-    productRef = await setIdentity(true);
-    await setRefusals(false);
-    const { key, licenseId } = await enrolledThenOwned();
-    const entries = await countKeyEntries(db, SLUG, licenseId);
-    const res = await session(key, NOW + 60);
-    expect(res.status).toBe(201);
-    expect(await countKeyEntries(db, SLUG, licenseId)).toBe(entries);
-  });
-});
-
 // ── The portal ──────────────────────────────────────────────────────────────────────────────
 
 interface Session {
@@ -982,58 +859,5 @@ describe("an owned licence at the seat claim (CORE-SEAT-GUARD, §12.4.2 item 5)"
         SLUG,
       ),
     ).toEqual({ license_id: a.licenseId, label: "Ada laptop", seat_no: 1 });
-  });
-});
-
-describe("an owned licence at the browser key entry's seat claim (CORE-SEAT-GUARD)", () => {
-  async function raced(refusals: boolean) {
-    const product = await setIdentity(true);
-    const { key, licenseId } = await seedLicenseWithKey(db, SLUG, SEATS(5));
-    await setRefusals(refusals);
-    const race = claimRace(db, licenseId);
-    const res = await handleBrowserSessionLicense(
-      new Request(`https://key.plrs.im/${SLUG}/identity/session/license`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key }),
-      }) as unknown as Request,
-      env,
-      race.db,
-      product,
-      NOW,
-    );
-    expect(race.fired()).toBe(1);
-    return { res, licenseId };
-  }
-  const seats = (licenseId: string) =>
-    db.all(
-      "SELECT device_id FROM devices WHERE product = ? AND license_id = ?",
-      SLUG,
-      licenseId,
-    );
-
-  it("refusals on: 403 license_owned with signInUrl, no session, no seat, no counted entry", async () => {
-    const { res, licenseId } = await raced(true);
-    expect(res.status).toBe(403);
-    expect(res.headers.get("set-cookie")).toBeNull();
-    const body = (await res.json()) as { error: string; signInUrl?: string };
-    expect(body.error).toBe("license_owned");
-    expect(body.signInUrl).toBeTruthy();
-    expect(await seats(licenseId)).toEqual([]);
-    expect(await countKeyEntries(db, SLUG, licenseId)).toBe(0);
-    expect(
-      await db.all(
-        "SELECT reason FROM license_refusals WHERE product = ? AND license_id = ?",
-        SLUG,
-        licenseId,
-      ),
-    ).toEqual([{ reason: "license_owned" }]);
-  });
-
-  it("refusals off: unchanged, the session opens and the entry is counted", async () => {
-    const { res, licenseId } = await raced(false);
-    expect(res.status).toBe(201);
-    expect(await seats(licenseId)).toHaveLength(1);
-    expect(await countKeyEntries(db, SLUG, licenseId)).toBe(1);
   });
 });

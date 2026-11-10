@@ -594,9 +594,6 @@ export const IDENTITY_RESTORE: SettingDef = setting({
   since: "I-49.6",
 });
 
-/** `browserSession.ts`'s 30-day browser session: a product may only shorten it (rule 3). */
-const BROWSER_SESSION_DAYS = 30;
-
 export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
   namespaces: ["identity", "portal"],
   entries: [
@@ -673,32 +670,6 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       readers: ["services/identity/oidc.ts"],
       storage: { kind: "rich", adapter: "provisioning_config" },
       since: "ST-19b",
-    }),
-    setting({
-      key: "identity.browserSessionDays",
-      scope: "product",
-      service: "identity",
-      area: "identity.signIn",
-      label: "Browser session length",
-      description:
-        "How long a product sign-in in the browser lasts. A product may shorten it, never lengthen it past the platform's 30 days.",
-      keywords: ["session", "sign out", "cookie"],
-      docs: "/docs/features/sign-in/sessions/",
-      value: {
-        kind: "integer",
-        unit: "days",
-        min: 1,
-        max: BROWSER_SESSION_DAYS,
-      },
-      defaultValue: BROWSER_SESSION_DAYS,
-      merge: "policy",
-      policyBound: "max",
-      widensWhen: "higher",
-      ownership: "operator",
-      confirm: { up: "L1", down: "L0" },
-      visibleWhen: VISIBLE,
-      storage: { kind: "scalar" },
-      pending: { wp: "ST-15" },
     }),
     // PX-W13 (plans/PX-W13.md §8 Q4, as amended): the operator's approval of one product whose
     // display name uses a reserved term (a third party's "Steam Deck Companion"). Operator-only

@@ -23,6 +23,7 @@ import {
 } from "./sdk/core/index.js";
 import { SERVICE_SLUGS, type ServiceSlug } from "./sdk/core/services.js";
 import type { TrustSet } from "./sdk/browser/offline.js";
+import type { BrowserStore } from "./sdk/browser/bearer/store.js";
 import {
   AddToAccountModel,
   type AddToAccountDriver,
@@ -51,7 +52,7 @@ export interface GateConfig {
   /** The app's own version: reported with the device, and what the update prompt says you have. */
   version?: string;
   /** Browser-page authentication strategy. */
-  auth?: "cookie" | "bearer" | "auto";
+  auth?: "bearer" | "auto";
   /** Pinned trust keys for bearer mode. */
   trust?: { pinnedKeys: TrustSet };
   /** The services the app expects until discovery answers. */
@@ -63,11 +64,12 @@ export interface GateConfig {
 /** Test seams for the client. */
 export interface BrowserClientSeams {
   fetchImpl?: typeof fetch;
-  navigate?: (url: string) => void;
   now?: () => number;
+  /** Where the page keeps its device token (a test holds one). */
+  store?: BrowserStore;
 }
 
-const AUTH = new Set(["cookie", "bearer", "auto"]);
+const AUTH = new Set(["bearer", "auto"]);
 
 /** The config as an object: a JSON string (the attribute) or an object, checked. Throws a
  *  `PolarisError("invalid-options")` that names the first thing wrong. */
@@ -97,7 +99,7 @@ export function parseGateConfig(raw: unknown): GateConfig {
   if (auth !== undefined && !AUTH.has(auth))
     throw new PolarisError(
       "invalid-options",
-      "config.auth must be cookie, bearer or auto",
+      "config.auth must be bearer or auto (cookie mode was removed)",
     );
   const services = o.expectedServices;
   if (services !== undefined) {
@@ -153,8 +155,8 @@ export function createBrowserClient(
         }
       : {}),
     ...(seams.fetchImpl ? { fetchImpl: seams.fetchImpl } : {}),
-    ...(seams.navigate ? { navigate: seams.navigate } : {}),
     ...(seams.now ? { now: seams.now } : {}),
+    ...(seams.store ? { store: seams.store } : {}),
     autoStart: false,
   });
 }
@@ -833,7 +835,7 @@ export class GateDriver {
   /** "Sign in to that account" on a license-owned refusal: sign in in this page, and when the
    *  sign-in has a license choice due, complete it with the key that was entered (D17): the license
    *  joins the account and no list is shown. The key is held in memory for this call only. Where the
-   *  page cannot run the sign-in itself (a cookie page), the gate's own sign-in runs as before. */
+   *  page cannot run the sign-in itself, the gate's own sign-in runs as before. */
   private ownedSignIn(): void {
     const key = this.key.trim();
     // One sign-in at a time: a second press while one is live does nothing.
@@ -886,8 +888,7 @@ export class GateDriver {
   private signIn(): void {
     void Promise.resolve(this.adapter.signInWithOidc())
       .then((started) => {
-        // The cookie page navigates away and never gets here; a bearer page or a desktop host
-        // that reports a code hands back what to show.
+        // A page or desktop host that reports a code hands back what to show.
         if (
           started &&
           (started.userCode || safeLink(started.verificationUrl))

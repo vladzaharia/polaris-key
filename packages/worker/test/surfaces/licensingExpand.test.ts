@@ -55,8 +55,23 @@ const FILES = readdirSync(DIR)
   .filter((f) => f.endsWith(".sql"))
   .sort();
 const LX08 = FILES.filter((f) => f.startsWith("0105_"));
-const BEFORE = FILES.filter((f) => !f.startsWith("0105_"));
 const sql = (f: string) => readFileSync(join(DIR, f), "utf8");
+// The database as it stands before the LX-08 files: every other migration except one that builds
+// on a table or index of those files (a later `ALTER TABLE grants` has nothing to alter yet).
+const LX08_TABLES = [
+  ...new Set(
+    LX08.flatMap((f) =>
+      [...sql(f).matchAll(/CREATE TABLE (?:IF NOT EXISTS )?(\w+)/gi)].map(
+        (m) => m[1]!,
+      ),
+    ),
+  ),
+];
+const BEFORE = FILES.filter(
+  (f) =>
+    !f.startsWith("0105_") &&
+    !(f > "0105_" && LX08_TABLES.some((t) => sql(f).includes(t))),
+);
 const DOWN = readFileSync(
   join(HERE, "..", "scripts", "rollback", "0105_licensing.down.sql"),
   "utf8",

@@ -4,8 +4,8 @@
 //
 // Desktop reaches the host's Node client through `invoke("devices", "report")`; the request it
 // makes there is the telemetry-report transcript, replayed by the Node runner. A browser holds a
-// cookie session and no device bearer, so its `report()` throws `report-unsupported` — the web
-// `runtime` N/A the parity registry allows — rather than skipping the call silently.
+// page without pinned keys holds no device bearer, so its `report()` refuses with `invalid-options`
+// rather than skipping the call silently.
 
 import { describe, expect, it } from "vitest";
 import { browserAdapter } from "../src/browser/browserAdapter.js";
@@ -46,11 +46,10 @@ describe("report()", () => {
     adapter.dispose();
   });
 
-  it("browser: the typed N/A, not a silent no-op", async () => {
+  it("browser without pinned keys: the typed refusal, not a silent no-op", async () => {
     let requests = 0;
     const inner = makeFakeFetch(null);
     const adapter = browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
       fetchImpl: (async (input: RequestInfo | URL, init?: RequestInit) => {
         if (String(input).includes("/devices/report")) requests += 1;
@@ -60,7 +59,7 @@ describe("report()", () => {
       offlineStore: null,
     });
     await expect(adapter.report()).rejects.toMatchObject({
-      code: "report-unsupported",
+      code: "invalid-options",
     });
     expect(requests).toBe(0);
   });

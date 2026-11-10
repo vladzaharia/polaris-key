@@ -133,7 +133,7 @@ describe("BrowserAdapter default durable state", () => {
 
   /** A control plane whose discovery names `label` as the product's presentation and which
    *  registers a device keylessly, issuing `pkeyt_<label>`: each host's state is recognisable
-   *  wherever it lands. A session is never established. */
+   *  wherever it lands.  */
   function controlPlane(label: string): typeof fetch {
     const json = (body: unknown) =>
       new Response(JSON.stringify(body), {
@@ -160,18 +160,13 @@ describe("BrowserAdapter default durable state", () => {
   }
 
   /** A page: no `offlineStore`, `store` or `presentationCache`, so the adapter builds them. */
-  function page(
-    auth: "cookie" | "bearer",
-    fetchImpl: typeof fetch,
-    baseUrl?: string,
-  ): PolarisAdapter {
+  function page(fetchImpl: typeof fetch, baseUrl?: string): PolarisAdapter {
     return browserAdapter({
-      auth,
       productSlug: PRODUCT,
       fetchImpl,
       configStorage: null,
       ...(baseUrl !== undefined ? { baseUrl } : {}),
-      ...(auth === "bearer" ? { trust: { pinnedKeys } } : {}),
+      trust: { pinnedKeys },
     });
   }
 
@@ -208,32 +203,10 @@ describe("BrowserAdapter default durable state", () => {
   }
 
   it.each(hosts)(
-    "%s: a cookie page keeps its device id and presentation in that host's databases",
-    async (_page, baseUrl, db) => {
-      const factory = pageIndexedDb();
-      const adapter = page("cookie", controlPlane("page"), baseUrl);
-      await loaded(adapter);
-      const deviceId = await adapter.offlineDeviceId();
-
-      expect(deviceId).toMatch(/^[\w-]{32}$/);
-      expect(await databaseNames(factory)).toEqual(
-        [db.offline, db.presentation].sort(),
-      );
-      expect(await raw(factory, db.offline, "offline", PRODUCT)).toEqual({
-        deviceId,
-      });
-      expect(
-        await raw(factory, db.presentation, "members", PRODUCT),
-      ).toMatchObject({ product: PRODUCT, presentation: { name: "page" } });
-      adapter.dispose();
-    },
-  );
-
-  it.each(hosts)(
     "%s: a bearer page keeps its token, device id and presentation in that host's databases",
     async (_page, baseUrl, db) => {
       const factory = pageIndexedDb();
-      const adapter = page("bearer", controlPlane("page"), baseUrl);
+      const adapter = page(controlPlane("page"), baseUrl);
       await loaded(adapter);
       const deviceId = await adapter.offlineDeviceId();
 
@@ -256,8 +229,8 @@ describe("BrowserAdapter default durable state", () => {
 
   it("a production page and a local Worker page of one product share no token, device or presentation", async () => {
     const factory = pageIndexedDb();
-    const production = page("bearer", controlPlane("production"));
-    const local = page("bearer", controlPlane("local"), LOCAL);
+    const production = page(controlPlane("production"));
+    const local = page(controlPlane("local"), LOCAL);
     await Promise.all([loaded(production), loaded(local)]);
 
     expect(await databaseNames(factory)).toEqual([
@@ -288,7 +261,6 @@ describe("BrowserAdapter default durable state", () => {
     ] as const) {
       const presented = new Set<string>();
       const reloaded = page(
-        "bearer",
         (async (_input: RequestInfo | URL, init?: RequestInit) => {
           const bearer = new Headers(init?.headers).get("authorization");
           if (bearer !== null) presented.add(bearer);

@@ -1,7 +1,7 @@
 // One-call boot (SDK parity pass §3.4, feature `ui.boot`; drives `ui.stages`): the React side of
 // client-core's boot stage machine, end to end, as `@polaris-key/node`'s `client.boot()` drives
 // it (packages/sdk-node/src/boot.ts). The transport is a `BootDriver`, so the browser adapter
-// (cookie or bearer), the transcript replayer and the stage-matrix test all run this one loop:
+// (browser or desktop), the transcript replayer and the stage-matrix test all run this one loop:
 //
 //   shell    discovery, when it has not answered yet; then, on a fresh install (no token) of a
 //            product whose `core.registration` is `open`, the keyless registration, so the sync
