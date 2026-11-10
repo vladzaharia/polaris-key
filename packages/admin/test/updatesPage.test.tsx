@@ -187,7 +187,7 @@ describe("renderUpdaterSetup", () => {
       updater: "winsparkle",
       platform: "windows",
     });
-    expect(s.steps[0]).toContain("the same one");
+    expect(s.steps[0]).toContain("the Sparkle key from macOS");
     expect(s.steps.join(" ")).not.toContain("generate_keys");
   });
 });

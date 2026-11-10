@@ -64,14 +64,13 @@ export function UpdatesPage({ slug }: { slug: string }): React.ReactElement {
       <PageHeader
         title="Updates"
         refetching={updaters.isFetching && !updaters.isPending}
-        secondaryActions={[
-          {
-            label: "Guide",
-            onSelect: () =>
-              window.open(docsUrl("updates"), "_blank", "noreferrer"),
-            variant: "ghost",
-          },
-        ]}
+        primaryAction={
+          <Button variant="ghost" asChild>
+            <a href={docsUrl("updates")} target="_blank" rel="noopener">
+              Guide
+            </a>
+          </Button>
+        }
       />
       {updaters.isPending ? (
         <LoadingCards />

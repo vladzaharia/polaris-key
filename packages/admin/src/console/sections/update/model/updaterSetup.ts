@@ -66,7 +66,7 @@ export const KEY_STEPS = [
   "Make a signing key with `generate_keys` from Sparkle. Keep the private half in CI.",
   "Set the public half as `sparkleEd25519Pub` in `.pkey/release`.",
 ];
-const KEY_SHARED = "Signing key: the same one as above.";
+const KEY_SHARED = "Signing key: the Sparkle key from macOS.";
 
 export function renderUpdaterSetup(i: UpdaterSetupInput): UpdaterSetup {
   const feed = (name: string) => i.url(`update/${i.channel}/${name}`);
@@ -188,7 +188,7 @@ export function renderUpdaterSetup(i: UpdaterSetupInput): UpdaterSetup {
         snippets.push({
           label: "GDScript",
           language: "text",
-          code: `await PolarisKey.update.install(check)`,
+          code: `install(await PolarisKey.update.decide())`,
         });
       return {
         steps: [
