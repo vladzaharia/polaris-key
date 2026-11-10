@@ -3966,13 +3966,9 @@
           "spelling": "usePolarisAuth().accessToken",
           "shape": "hook"
         },
-        "python": {
-          "planned": "I-21b",
-          "reason": "the Python port is I-21b.2"
-        },
+        "python": {},
         "swift": {
-          "planned": "I-21b",
-          "reason": "the Swift port is I-21b.2"
+          "labels": ["refresh"]
         },
         "kotlin": {
           "planned": "I-21b",
