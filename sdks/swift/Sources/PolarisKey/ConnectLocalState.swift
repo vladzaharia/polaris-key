@@ -141,18 +141,25 @@ actor LocalLinkStore {
     enum Added: Equatable {
         case stored(id: String)
         case full
+        /// `allowed` said no inside the store call: the gate cleared, so nothing was written.
+        case off
     }
 
     /// Add a link, unless the device already holds `maxLocalLinks`. Reachable by default; with the live-advert
     /// limit already reached the new link is stored off and the list says so (§15.12, "Reachable by default").
+    ///
+    /// `allowed` is read inside the store's update, under its one actor: a pairing that was already storing when the
+    /// gate cleared writes nothing (`.off`).
     func add(
-        ownKey: Data, ownPublic: Data, peerKey: Data, secret: Data, label: String?, cats: [String], now: Int
+        ownKey: Data, ownPublic: Data, peerKey: Data, secret: Data, label: String?, cats: [String], now: Int,
+        allowed: (@Sendable () -> Bool)? = nil
     ) throws -> Added {
         let id = PeerLocal.linkId(peerKey: peerKey)
         let (ownB, pubB, peerB, secB) = (
             Base64URL.encode(ownKey), Base64URL.encode(ownPublic), Base64URL.encode(peerKey), Base64URL.encode(secret)
         )
         return try update { rows -> (next: [LocalLinkRow]?, result: Added) in
+            if let allowed, !allowed() { return (nil, .off) }
             if rows.count >= maxLocalLinks { return (nil, .full) }
             let others = rows.filter { $0.id != id }
             let reachable = others.filter(\.reachable).count < maxLiveLocalAdverts

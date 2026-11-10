@@ -30,6 +30,13 @@ import PolarisKeyLicense
 import PolarisKeyPlatform
 import PolarisKeyRelease
 
+#if canImport(UIKit)
+    import UIKit
+#endif
+#if canImport(AppKit) && !targetEnvironment(macCatalyst)
+    import AppKit
+#endif
+
 #if canImport(FoundationNetworking)
     import FoundationNetworking
 #endif
@@ -600,6 +607,7 @@ public actor PolarisKeyClient {
             localGateRetries = 0
             return
         }
+        installLocalGateForegroundHook()
         let delay: TimeInterval
         switch result {
         case .ok, .notFound:
@@ -613,12 +621,72 @@ public actor PolarisKeyClient {
         scheduleLocalGateReread(delay)
     }
 
+    // The re-read wait is a deadline on a wall clock, checked every `localGateCheck` seconds, so a machine that
+    // slept through it reads at the first check after it wakes (a plain sleep may not count the time asleep). The
+    // clock and the sleep are seams for tests.
+    var localGateClock: @Sendable () -> Date = { Date() }
+    var localGateSleep: @Sendable (TimeInterval) async -> Void = { seconds in
+        try? await Task.sleep(nanoseconds: UInt64(max(0, seconds) * 1_000_000_000))
+    }
+    var localGateCheck: TimeInterval = 60
+    private var localGateForeground: [(NotificationCenter, NSObjectProtocol)] = []
+
+    /// Replace the clock and the sleep the gate's re-read waits use (tests).
+    func setLocalGateTime(
+        clock: @escaping @Sendable () -> Date, sleep: @escaping @Sendable (TimeInterval) async -> Void,
+        check: TimeInterval = 60
+    ) {
+        localGateClock = clock
+        localGateSleep = sleep
+        localGateCheck = check
+    }
+
     private func scheduleLocalGateReread(_ seconds: TimeInterval) {
+        let clock = localGateClock
+        let sleep = localGateSleep
+        let check = localGateCheck
+        let due = clock().addingTimeInterval(seconds)
         localGateReread = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            while !Task.isCancelled {
+                let left = due.timeIntervalSince(clock())
+                if left <= 0 { break }
+                await sleep(min(left, check))
+            }
             guard !Task.isCancelled, let self else { return }
             await self.discover()
         }
+    }
+
+    /// The notifications that bring the app to the front, where the platform has them.
+    static var foregroundNames: [Notification.Name] {
+        var out: [Notification.Name] = []
+        #if canImport(UIKit)
+            out.append(UIApplication.willEnterForegroundNotification)
+        #endif
+        #if canImport(AppKit) && !targetEnvironment(macCatalyst)
+            out.append(NSApplication.didBecomeActiveNotification)
+        #endif
+        return out
+    }
+
+    /// Read the gate again when the app returns to the front while the gate is on: the time asleep is not counted by
+    /// the timers, so a gate turned off meanwhile would otherwise stay on until the next one fires. Installed once the
+    /// gate is first seen on; removed by `close()`.
+    func installLocalGateForegroundHook(
+        center: NotificationCenter = .default, names: [Notification.Name]? = nil
+    ) {
+        guard !localGateForeground.contains(where: { $0.0 === center }) else { return }
+        for name in names ?? Self.foregroundNames {
+            let token = center.addObserver(forName: name, object: nil, queue: nil) { [weak self] _ in
+                Task { await self?.rereadLocalGateNow() }
+            }
+            localGateForeground.append((center, token))
+        }
+    }
+
+    func rereadLocalGateNow() async {
+        guard connect.localPairing() else { return }
+        await discover()
     }
 
     /// Read discovery again when the cached links answer lapses, so a lapse withdraws the adverts.
@@ -997,6 +1065,8 @@ public actor PolarisKeyClient {
         linksReread = nil
         localGateReread?.cancel()
         localGateReread = nil
+        for (center, token) in localGateForeground { center.removeObserver(token) }
+        localGateForeground = []
         refreshTask?.cancel()
         refreshTask = nil
         // Bounded like the sign-out step: a hanging advert withdrawal cannot keep a closed client's sockets.

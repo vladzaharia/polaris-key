@@ -531,9 +531,18 @@ final class PeerLocalTests: XCTestCase {
                 maxPerMinute: c["admissionSharedPerMinute"]!.intValue!, maxPending: c["admissionWaiting"]!.intValue!,
                 groupMax: c["admissionGroupPerMinute"]!.intValue!, mono: { clock.now })
             var holds: [Int: @Sendable () -> Void] = [:]
+            var verdicts: [Int: (hit: @Sendable () -> (@Sendable () -> Void), miss: @Sendable () -> Void)] = [:]
             var got: [Row] = []
-            for (i, e) in r["events"]!.arrayValue!.map({ $0.objectValue! }).enumerated() {
+            let events = r["events"]!.arrayValue!.map { $0.objectValue! }
+            for (i, e) in events.enumerated() {
                 clock.now = e["t"]!.doubleValue!
+                if let at = e["settle"]?.intValue {
+                    let v = verdicts.removeValue(forKey: at)!
+                    let opens = events[at]["opens"]!.boolValue!
+                    if opens { holds[at] = v.hit() } else { v.miss() }
+                    got.append(["result": .string("settled"), "hit": .bool(opens)])
+                    continue
+                }
                 if let rel = e["release"]?.intValue {
                     holds[rel]?()
                     holds[rel] = nil
@@ -543,6 +552,11 @@ final class PeerLocalTests: XCTestCase {
                 switch lim.beginLocal(group: str(e, "group")) {
                 case .refused(let by): got.append(["result": .string("refused"), "by": .string(by.rawValue)])
                 case .admitted(let hit, let miss):
+                    if e["later"]?.boolValue == true {
+                        verdicts[i] = (hit, miss)
+                        got.append(["result": .string("tried")])
+                        continue
+                    }
                     let opens = e["opens"]!.boolValue!
                     if opens { holds[i] = hit() } else { miss() }
                     got.append(["result": .string("tried"), "hit": .bool(opens)])

@@ -603,7 +603,7 @@ import PolarisKeyPlatform
         ) async {
             let added = try? await src.store.add(
                 ownKey: a.linkKey, ownPublic: ownKey, peerKey: peerKey, secret: secret, label: label, cats: cats,
-                now: src.now())
+                now: src.now(), allowed: src.allowed)
             switch added {
             case .stored(let id)?:
                 a.linked = true
@@ -611,7 +611,7 @@ import PolarisKeyPlatform
                 src.notify()
                 o.onLinked?(LocalPaired(id: id, label: label, categories: cats))
             case .full?: a.failure = .full
-            case nil: a.failure = .closed
+            case .off?, nil: a.failure = .closed
             }
         }
 
@@ -837,14 +837,13 @@ import PolarisKeyPlatform
         private func dial(_ instance: String, _ endpoint: BonjourEndpoint) async -> DialEnd {
             let t = mono()
             if let np = nameplate {
-                // Spent when the dial is made, so joins that overlap cannot multiply the dials.
-                if !budget.check(np, t).allowed {
+                // Checked and spent in one step when the dial is made, so joins that overlap cannot multiply the dials.
+                if !budget.takeIfAllowed(np, t) {
                     budgetSpent = true
                     plan.ended(.beforeC2)
                     browseOver = true
                     return .noTransport
                 }
-                budget.spend(np, t, dials: 1)
             }
             guard let sid = PeerLocal.sid(ofInstance: instance) else {
                 plan.ended(.beforeC2)
@@ -968,10 +967,11 @@ import PolarisKeyPlatform
                     let notify = src.notify
                     let now = src.now()
                     let key = a.linkKey
+                    let allowed = src.allowed
                     storing = Task {
                         let added = try? await store.add(
                             ownKey: key, ownPublic: ownKey, peerKey: peerKey, secret: secret, label: label, cats: cats,
-                            now: now)
+                            now: now, allowed: allowed)
                         switch added {
                         case .stored(let id)?:
                             a.linked = true
@@ -980,7 +980,7 @@ import PolarisKeyPlatform
                         case .full?:
                             a.failure = .full
                             return nil
-                        case nil:
+                        case .off?, nil:
                             a.failure = .closed
                             return nil
                         }
@@ -1020,6 +1020,11 @@ import PolarisKeyPlatform
         func spend(_ nameplate: String, _ t: Double, dials: Int) {
             budget.with { $0.spend(nameplate, t, dials: dials) }
         }
+        /// Check and spend one dial under one lock: two joiners cannot both take the last one.
+        func takeIfAllowed(_ nameplate: String, _ t: Double) -> Bool {
+            budget.with { $0.takeIfAllowed(nameplate, t) }
+        }
+        var keyCount: Int { budget.with { $0.keyCount } }
 
         private static let all = LockedValue<[String: LocalDialBudgets]>([:])
         static func of(_ slug: String) -> LocalDialBudgets {
