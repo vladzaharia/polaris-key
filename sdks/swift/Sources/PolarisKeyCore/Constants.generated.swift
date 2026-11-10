@@ -1649,6 +1649,90 @@ public let MERGE_EVENT_VALUES: [String] = [
     "conflictClosed",
 ]
 
+/// Why the code a showing device shows now is the code (`LocalCode.reason`, WIRE-CONTRACT-V5 §15.12), in kebab-case in every SDK: `opened` (the first code of a window), `wrong-code` (a counted failed guess), `declined` (the other person declined), `timeout` (a deadline ran out), `closed` (any other end without a link). Display only; no decision depends on it.
+public enum LocalCodeReason {
+    public static let opened = "opened"
+    public static let wrongCode = "wrong-code"
+    public static let declined = "declined"
+    public static let timeout = "timeout"
+    public static let closed = "closed"
+}
+
+/// Every `LocalCodeReason` value, in source order.
+public let LOCAL_CODE_REASON_VALUES: [String] = [
+    "opened",
+    "wrong-code",
+    "declined",
+    "timeout",
+    "closed",
+]
+
+/// Why a pairing window ended (`onEnd`, WIRE-CONTRACT-V5 §15.12): `expired` (300 s ran out), `too-many-tries` (the fifth failed guess), `stored` (a link was made), `person` (the host closed it), `off` (the local-pairing gate went off). Display only.
+public enum LocalWindowEnd {
+    public static let expired = "expired"
+    public static let tooManyTries = "too-many-tries"
+    public static let stored = "stored"
+    public static let person = "person"
+    public static let off = "off"
+}
+
+/// Every `LocalWindowEnd` value, in source order.
+public let LOCAL_WINDOW_END_VALUES: [String] = [
+    "expired",
+    "too-many-tries",
+    "stored",
+    "person",
+    "off",
+]
+
+/// Why a pairing that reached consent ended without a link (`onFailed`, and the `reason` of a joiner's `peer-closed`, WIRE-CONTRACT-V5 §15.12): `declined`, `timeout`, `full` (the cap), `too-many-tries` (the fifth failed guess), `closed` (any other end), `cancelled` (the host cancelled).
+public enum LocalPairFailure {
+    public static let declined = "declined"
+    public static let timeout = "timeout"
+    public static let full = "full"
+    public static let tooManyTries = "too-many-tries"
+    public static let closed = "closed"
+    public static let cancelled = "cancelled"
+}
+
+/// Every `LocalPairFailure` value, in source order.
+public let LOCAL_PAIR_FAILURE_VALUES: [String] = [
+    "declined",
+    "timeout",
+    "full",
+    "too-many-tries",
+    "closed",
+    "cancelled",
+]
+
+/// The `reason` of `pairing-code-failed` on a joining device (WIRE-CONTRACT-V5 §15.12): `invalid` (the code or QR did not parse), `other-app` (a QR for another app), `spent` (the dial budget for the nameplate is used), `wrong` (an attempt failed after the other device's first reply). The first that applies wins, in that order, with `spent` at the start before `wrong`; a budget stop in the middle of a join is `spent`.
+public enum PairingCodeFailedReason {
+    public static let invalid = "invalid"
+    public static let otherApp = "other-app"
+    public static let spent = "spent"
+    public static let wrong = "wrong"
+}
+
+/// Every `PairingCodeFailedReason` value, in source order.
+public let PAIRING_CODE_FAILED_REASON_VALUES: [String] = [
+    "invalid",
+    "other-app",
+    "spent",
+    "wrong",
+]
+
+/// The `cap` of `local-links-full` (WIRE-CONTRACT-V5 §15.12): `stored` (the 32 links a device keeps per product) or `reachable` (the 8 links it advertises).
+public enum LocalLinksCap {
+    public static let stored = "stored"
+    public static let reachable = "reachable"
+}
+
+/// Every `LocalLinksCap` value, in source order.
+public let LOCAL_LINKS_CAP_VALUES: [String] = [
+    "stored",
+    "reachable",
+]
+
 /// The `X-PKey-*` request header names (wire contract v3 §5).
 public enum HeaderName {
     public static let arch = "X-PKey-Arch"

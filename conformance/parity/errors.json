@@ -1015,7 +1015,7 @@
       "code": "peer-closed",
       "kind": "client",
       "service": "connect",
-      "description": "The session with a nearby device ended before the exchange finished. A host tells the person and may start again."
+      "description": "The session with a nearby device ended before the exchange finished. A host tells the person and may start again. From a joining device, `reason` says why (WIRE-CONTRACT-V5 \u00a715.12): `declined` (the other person said no), `timeout`, `cancelled` (the host cancelled) or `closed`."
     },
     {
       "code": "transfer-cancelled",
@@ -1039,7 +1039,7 @@
       "code": "pairing-code-failed",
       "kind": "client",
       "service": "connect",
-      "description": "The pairing code or QR did not pair: on the joining device the code was malformed, the QR was for another app or malformed, or the code did not open the other device's pairing window; on the showing device the fifth wrong code closed the window (WIRE-CONTRACT-V5 \u00a715.12). Nothing was stored; the person checks the code, or shows a new one."
+      "description": "The pairing code or QR did not pair: on the joining device the code was malformed, the QR was for another app or malformed, or the code did not open the other device's pairing window; on the showing device the fifth wrong code closed the window (WIRE-CONTRACT-V5 \u00a715.12). Nothing was stored; the person checks the code, or shows a new one. On a joining device `reason` is `invalid`, `other-app`, `spent` (the two dials for that nameplate in 300 seconds are used) or `wrong`; the first that applies wins, in that order."
     },
     {
       "code": "pairing-not-found",
@@ -1051,7 +1051,7 @@
       "code": "local-links-full",
       "kind": "client",
       "service": "connect",
-      "description": "This device already holds the most local links it may keep for the product (32), so it opens no pairing window and joins none (WIRE-CONTRACT-V5 \u00a715.12). It also answers a request to make a ninth link reachable when 8 already are (the limit of live adverts). The person forgets a link, or turns one off, first."
+      "description": "This device already holds the most local links it may keep for the product (32), so it opens no pairing window and joins none (WIRE-CONTRACT-V5 \u00a715.12). It also answers a request to make a ninth link reachable when 8 already are (the limit of live adverts). The person forgets a link, or turns one off, first. `cap` says which limit: `stored` (32) or `reachable` (8)."
     },
     {
       "code": "peer_revoked",

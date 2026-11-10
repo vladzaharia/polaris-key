@@ -699,11 +699,11 @@
     },
     "pairing-code-failed": {
       "title": "No se pudo vincular",
-      "message": "Ese código no funcionó. Revísalo e inténtalo de nuevo."
+      "message": "Ese código no funcionó. Introduce el código que muestra ahora el otro dispositivo."
     },
     "pairing-not-found": {
       "title": "Dispositivo no encontrado",
-      "message": "No se encuentra el otro dispositivo. Comprueba que ambos estén en la misma red."
+      "message": "No se encuentra el otro dispositivo. Revisa el código y comprueba que ambos estén en la misma red."
     },
     "local-links-full": {
       "title": "Sin espacio para vincular",

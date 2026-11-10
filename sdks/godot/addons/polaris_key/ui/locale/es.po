@@ -8019,20 +8019,20 @@ msgstr "La vinculación con un código está desactivada en esta app."
 msgid "core.codes.pairing-code-failed.title"
 msgstr "No se pudo vincular"
 
-#. That code didn't work. Check it and try again.
+#. That code didn't work. Enter the code the other device shows now.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-code-failed.message"
-msgstr "Ese código no funcionó. Revísalo e inténtalo de nuevo."
+msgstr "Ese código no funcionó. Introduce el código que muestra ahora el otro dispositivo."
 
 #. Device not found
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-not-found.title"
 msgstr "Dispositivo no encontrado"
 
-#. Can't find the other device. Check you're both on the same network.
+#. Can't find the other device. Check the code, and that you're both on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-not-found.message"
-msgstr "No se encuentra el otro dispositivo. Comprueba que ambos estén en la misma red."
+msgstr "No se encuentra el otro dispositivo. Revisa el código y comprueba que ambos estén en la misma red."
 
 #. No room to pair
 #. Core copy (conformance/parity/copy.en.json, codes).

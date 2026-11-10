@@ -3054,11 +3054,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pairing_code_failed_title">Koppeln fehlgeschlagen</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pairing_code_failed_message">Dieser Code hat nicht funktioniert. Prüfen Sie ihn und versuchen Sie es erneut.</string>
+    <string name="core_codes_pairing_code_failed_message">Dieser Code hat nicht funktioniert. Geben Sie den Code ein, den das andere Gerät jetzt anzeigt.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pairing_not_found_title">Gerät nicht gefunden</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pairing_not_found_message">Das andere Gerät wurde nicht gefunden. Prüfen Sie, ob beide Geräte im selben Netzwerk sind.</string>
+    <string name="core_codes_pairing_not_found_message">Das andere Gerät wurde nicht gefunden. Prüfen Sie den Code und ob beide Geräte im selben Netzwerk sind.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_local_links_full_title">Kein Platz zum Koppeln</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

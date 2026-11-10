@@ -361,7 +361,8 @@ no account, by a code or a QR, and then reach each other on that network.
 - **Stored by Polaris Key.** No record of any link. The only server state is the product's switch.
 - **Kept on each device.** Per link: a key made for that link alone (never the device's own keys),
   the link's secret, the other device's key, its label (renamable on this device), the approved data
-  categories, and when the link was made and last seen. The key and the secret are in the platform's
+  categories, the other device's operating system (macOS, iOS, Android, Windows, Linux or web) as it
+  announced it, only to show an icon, and when the link was made and last seen. The key and the secret are in the platform's
   secret store. Forgetting a link deletes all of it; sign-out, license deactivation and account
   deletion leave it.
 - **Exchanged.** A label, the categories and the per-link keys, only after the code is proven. No

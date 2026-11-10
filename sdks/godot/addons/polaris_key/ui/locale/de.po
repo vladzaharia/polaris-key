@@ -8006,20 +8006,20 @@ msgstr "Das Koppeln mit einem Code ist für diese App deaktiviert."
 msgid "core.codes.pairing-code-failed.title"
 msgstr "Koppeln fehlgeschlagen"
 
-#. That code didn't work. Check it and try again.
+#. That code didn't work. Enter the code the other device shows now.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-code-failed.message"
-msgstr "Dieser Code hat nicht funktioniert. Prüfen Sie ihn und versuchen Sie es erneut."
+msgstr "Dieser Code hat nicht funktioniert. Geben Sie den Code ein, den das andere Gerät jetzt anzeigt."
 
 #. Device not found
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-not-found.title"
 msgstr "Gerät nicht gefunden"
 
-#. Can't find the other device. Check you're both on the same network.
+#. Can't find the other device. Check the code, and that you're both on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-not-found.message"
-msgstr "Das andere Gerät wurde nicht gefunden. Prüfen Sie, ob beide Geräte im selben Netzwerk sind."
+msgstr "Das andere Gerät wurde nicht gefunden. Prüfen Sie den Code und ob beide Geräte im selben Netzwerk sind."
 
 #. No room to pair
 #. Core copy (conformance/parity/copy.en.json, codes).

@@ -3054,11 +3054,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pairing_code_failed_title">Couldn't pair</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pairing_code_failed_message">That code didn't work. Check it and try again.</string>
+    <string name="core_codes_pairing_code_failed_message">That code didn't work. Enter the code the other device shows now.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pairing_not_found_title">Device not found</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pairing_not_found_message">Can't find the other device. Check you're both on the same network.</string>
+    <string name="core_codes_pairing_not_found_message">Can't find the other device. Check the code, and that you're both on the same network.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_local_links_full_title">No room to pair</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

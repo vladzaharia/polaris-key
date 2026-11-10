@@ -8006,20 +8006,20 @@ msgstr "Pairing with a code is off for this app."
 msgid "core.codes.pairing-code-failed.title"
 msgstr "Couldn't pair"
 
-#. That code didn't work. Check it and try again.
+#. That code didn't work. Enter the code the other device shows now.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-code-failed.message"
-msgstr "That code didn't work. Check it and try again."
+msgstr "That code didn't work. Enter the code the other device shows now."
 
 #. Device not found
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-not-found.title"
 msgstr "Device not found"
 
-#. Can't find the other device. Check you're both on the same network.
+#. Can't find the other device. Check the code, and that you're both on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-not-found.message"
-msgstr "Can't find the other device. Check you're both on the same network."
+msgstr "Can't find the other device. Check the code, and that you're both on the same network."
 
 #. No room to pair
 #. Core copy (conformance/parity/copy.en.json, codes).

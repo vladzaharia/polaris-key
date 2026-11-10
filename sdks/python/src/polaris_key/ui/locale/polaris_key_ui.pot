@@ -8010,7 +8010,7 @@ msgstr ""
 msgid "core.codes.pairing-code-failed.title"
 msgstr ""
 
-#. That code didn't work. Check it and try again.
+#. That code didn't work. Enter the code the other device shows now.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-code-failed.message"
 msgstr ""
@@ -8020,7 +8020,7 @@ msgstr ""
 msgid "core.codes.pairing-not-found.title"
 msgstr ""
 
-#. Can't find the other device. Check you're both on the same network.
+#. Can't find the other device. Check the code, and that you're both on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-not-found.message"
 msgstr ""

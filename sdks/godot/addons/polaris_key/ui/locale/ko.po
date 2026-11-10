@@ -7993,20 +7993,20 @@ msgstr "이 앱에서는 코드로 페어링하기가 꺼져 있습니다."
 msgid "core.codes.pairing-code-failed.title"
 msgstr "페어링하지 못함"
 
-#. That code didn't work. Check it and try again.
+#. That code didn't work. Enter the code the other device shows now.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-code-failed.message"
-msgstr "코드가 맞지 않습니다. 확인한 후 다시 시도하세요."
+msgstr "코드가 맞지 않습니다. 상대 기기에 지금 표시된 코드를 입력하세요."
 
 #. Device not found
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-not-found.title"
 msgstr "기기를 찾을 수 없음"
 
-#. Can't find the other device. Check you're both on the same network.
+#. Can't find the other device. Check the code, and that you're both on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-not-found.message"
-msgstr "상대 기기를 찾을 수 없습니다. 두 기기가 같은 네트워크에 있는지 확인하세요."
+msgstr "상대 기기를 찾을 수 없습니다. 코드를 확인하고, 두 기기가 같은 네트워크에 있는지도 확인하세요."
 
 #. No room to pair
 #. Core copy (conformance/parity/copy.en.json, codes).

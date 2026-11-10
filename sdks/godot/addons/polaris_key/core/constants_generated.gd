@@ -1104,6 +1104,68 @@ class MergeEvent:
 const MERGE_EVENT_VALUES := ["conflictOpened", "conflictClosed"]
 
 
+## Why the code a showing device shows now is the code (`LocalCode.reason`, WIRE-CONTRACT-V5 §15.12), in kebab-case in every SDK: `opened` (the first code of a window), `wrong-code` (a counted failed guess), `declined` (the other person declined), `timeout` (a deadline ran out), `closed` (any other end without a link). Display only; no decision depends on it.
+class LocalCodeReason:
+	const OPENED := "opened"
+	const WRONG_CODE := "wrong-code"
+	const DECLINED := "declined"
+	const TIMEOUT := "timeout"
+	const CLOSED := "closed"
+
+
+## Every `LocalCodeReason` value, in source order.
+const LOCAL_CODE_REASON_VALUES := ["opened", "wrong-code", "declined", "timeout", "closed"]
+
+
+## Why a pairing window ended (`onEnd`, WIRE-CONTRACT-V5 §15.12): `expired` (300 s ran out), `too-many-tries` (the fifth failed guess), `stored` (a link was made), `person` (the host closed it), `off` (the local-pairing gate went off). Display only.
+class LocalWindowEnd:
+	const EXPIRED := "expired"
+	const TOO_MANY_TRIES := "too-many-tries"
+	const STORED := "stored"
+	const PERSON := "person"
+	const OFF := "off"
+
+
+## Every `LocalWindowEnd` value, in source order.
+const LOCAL_WINDOW_END_VALUES := ["expired", "too-many-tries", "stored", "person", "off"]
+
+
+## Why a pairing that reached consent ended without a link (`onFailed`, and the `reason` of a joiner's `peer-closed`, WIRE-CONTRACT-V5 §15.12): `declined`, `timeout`, `full` (the cap), `too-many-tries` (the fifth failed guess), `closed` (any other end), `cancelled` (the host cancelled).
+class LocalPairFailure:
+	const DECLINED := "declined"
+	const TIMEOUT := "timeout"
+	const FULL := "full"
+	const TOO_MANY_TRIES := "too-many-tries"
+	const CLOSED := "closed"
+	const CANCELLED := "cancelled"
+
+
+## Every `LocalPairFailure` value, in source order.
+const LOCAL_PAIR_FAILURE_VALUES := ["declined", "timeout", "full", "too-many-tries", "closed", "cancelled"]
+
+
+## The `reason` of `pairing-code-failed` on a joining device (WIRE-CONTRACT-V5 §15.12): `invalid` (the code or QR did not parse), `other-app` (a QR for another app), `spent` (the dial budget for the nameplate is used), `wrong` (an attempt failed after the other device's first reply). The first that applies wins, in that order, with `spent` at the start before `wrong`; a budget stop in the middle of a join is `spent`.
+class PairingCodeFailedReason:
+	const INVALID := "invalid"
+	const OTHER_APP := "other-app"
+	const SPENT := "spent"
+	const WRONG := "wrong"
+
+
+## Every `PairingCodeFailedReason` value, in source order.
+const PAIRING_CODE_FAILED_REASON_VALUES := ["invalid", "other-app", "spent", "wrong"]
+
+
+## The `cap` of `local-links-full` (WIRE-CONTRACT-V5 §15.12): `stored` (the 32 links a device keeps per product) or `reachable` (the 8 links it advertises).
+class LocalLinksCap:
+	const STORED := "stored"
+	const REACHABLE := "reachable"
+
+
+## Every `LocalLinksCap` value, in source order.
+const LOCAL_LINKS_CAP_VALUES := ["stored", "reachable"]
+
+
 ## The `X-PKey-*` request header names (wire contract v3 §5).
 class HeaderName:
 	const ARCH := "X-PKey-Arch"

@@ -1689,6 +1689,90 @@ public val MERGE_EVENT_VALUES: List<String> = listOf(
     "conflictClosed",
 )
 
+/** Why the code a showing device shows now is the code (`LocalCode.reason`, WIRE-CONTRACT-V5 §15.12), in kebab-case in every SDK: `opened` (the first code of a window), `wrong-code` (a counted failed guess), `declined` (the other person declined), `timeout` (a deadline ran out), `closed` (any other end without a link). Display only; no decision depends on it. */
+public object LocalCodeReason {
+    public const val opened: String = "opened"
+    public const val wrongCode: String = "wrong-code"
+    public const val declined: String = "declined"
+    public const val timeout: String = "timeout"
+    public const val closed: String = "closed"
+}
+
+/** Every `LocalCodeReason` value, in source order. */
+public val LOCAL_CODE_REASON_VALUES: List<String> = listOf(
+    "opened",
+    "wrong-code",
+    "declined",
+    "timeout",
+    "closed",
+)
+
+/** Why a pairing window ended (`onEnd`, WIRE-CONTRACT-V5 §15.12): `expired` (300 s ran out), `too-many-tries` (the fifth failed guess), `stored` (a link was made), `person` (the host closed it), `off` (the local-pairing gate went off). Display only. */
+public object LocalWindowEnd {
+    public const val expired: String = "expired"
+    public const val tooManyTries: String = "too-many-tries"
+    public const val stored: String = "stored"
+    public const val person: String = "person"
+    public const val off: String = "off"
+}
+
+/** Every `LocalWindowEnd` value, in source order. */
+public val LOCAL_WINDOW_END_VALUES: List<String> = listOf(
+    "expired",
+    "too-many-tries",
+    "stored",
+    "person",
+    "off",
+)
+
+/** Why a pairing that reached consent ended without a link (`onFailed`, and the `reason` of a joiner's `peer-closed`, WIRE-CONTRACT-V5 §15.12): `declined`, `timeout`, `full` (the cap), `too-many-tries` (the fifth failed guess), `closed` (any other end), `cancelled` (the host cancelled). */
+public object LocalPairFailure {
+    public const val declined: String = "declined"
+    public const val timeout: String = "timeout"
+    public const val full: String = "full"
+    public const val tooManyTries: String = "too-many-tries"
+    public const val closed: String = "closed"
+    public const val cancelled: String = "cancelled"
+}
+
+/** Every `LocalPairFailure` value, in source order. */
+public val LOCAL_PAIR_FAILURE_VALUES: List<String> = listOf(
+    "declined",
+    "timeout",
+    "full",
+    "too-many-tries",
+    "closed",
+    "cancelled",
+)
+
+/** The `reason` of `pairing-code-failed` on a joining device (WIRE-CONTRACT-V5 §15.12): `invalid` (the code or QR did not parse), `other-app` (a QR for another app), `spent` (the dial budget for the nameplate is used), `wrong` (an attempt failed after the other device's first reply). The first that applies wins, in that order, with `spent` at the start before `wrong`; a budget stop in the middle of a join is `spent`. */
+public object PairingCodeFailedReason {
+    public const val invalid: String = "invalid"
+    public const val otherApp: String = "other-app"
+    public const val spent: String = "spent"
+    public const val wrong: String = "wrong"
+}
+
+/** Every `PairingCodeFailedReason` value, in source order. */
+public val PAIRING_CODE_FAILED_REASON_VALUES: List<String> = listOf(
+    "invalid",
+    "other-app",
+    "spent",
+    "wrong",
+)
+
+/** The `cap` of `local-links-full` (WIRE-CONTRACT-V5 §15.12): `stored` (the 32 links a device keeps per product) or `reachable` (the 8 links it advertises). */
+public object LocalLinksCap {
+    public const val stored: String = "stored"
+    public const val reachable: String = "reachable"
+}
+
+/** Every `LocalLinksCap` value, in source order. */
+public val LOCAL_LINKS_CAP_VALUES: List<String> = listOf(
+    "stored",
+    "reachable",
+)
+
 /** The `X-PKey-*` request header names (wire contract v3 §5). */
 public object HeaderName {
     public const val arch: String = "X-PKey-Arch"

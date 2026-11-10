@@ -699,11 +699,11 @@
     },
     "pairing-code-failed": {
       "title": "配对失败",
-      "message": "该代码无效。请检查后重试。"
+      "message": "该代码无效。请输入另一台设备现在显示的代码。"
     },
     "pairing-not-found": {
       "title": "未找到设备",
-      "message": "找不到另一台设备。请确认两台设备在同一网络中。"
+      "message": "找不到另一台设备。请检查代码，并确认两台设备在同一网络中。"
     },
     "local-links-full": {
       "title": "无法再配对",

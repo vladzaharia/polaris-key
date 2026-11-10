@@ -3067,11 +3067,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pairing_code_failed_title">Associazione non riuscita</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pairing_code_failed_message">Quel codice non ha funzionato. Controllalo e riprova.</string>
+    <string name="core_codes_pairing_code_failed_message">Quel codice non ha funzionato. Inserisci il codice che mostra ora l'altro dispositivo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pairing_not_found_title">Dispositivo non trovato</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pairing_not_found_message">Impossibile trovare l'altro dispositivo. Controlla che siano entrambi sulla stessa rete.</string>
+    <string name="core_codes_pairing_not_found_message">Impossibile trovare l'altro dispositivo. Controlla il codice e che siano entrambi sulla stessa rete.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_local_links_full_title">Nessuno spazio per associare</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
