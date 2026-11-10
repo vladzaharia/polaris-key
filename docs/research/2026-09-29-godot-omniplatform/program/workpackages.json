@@ -2367,7 +2367,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/feeds-updates-packs.md"
       ],
       "brief": "wp/P2-11-updates-page-updaters-shipped-platforms.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P2-12",
@@ -4261,7 +4261,7 @@
         "plans/CC-01.md §4, §6 (no exchange here; critical path of automatic sign-in, R-18)"
       ],
       "brief": "wp/I-10a-sdk-identity-node-react-python.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "I-04"
     },
     {
@@ -4295,7 +4295,7 @@
         "plans/CC-01.md §4, §6 (no exchange here; critical path of automatic sign-in, R-18)"
       ],
       "brief": "wp/I-10b-sdk-identity-swift-kotlin-godot.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "I-04"
     },
     {
@@ -5724,7 +5724,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-20-sdk-settings-react.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "U-01"
     },
     {
@@ -9206,7 +9206,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/PX-18-cloud-sync-section.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "PX-19",
@@ -19357,7 +19357,7 @@
       "optional": false,
       "refs": ["plans/CC-01.md §2 R-5", "plans/CC-01-cloud-connect.md §3"],
       "brief": "wp/CC-26-device-key-stores.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "I-42",
@@ -19677,7 +19677,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5", "plans/CC-01.md §4"],
       "brief": "wp/U-39-e2e-client-swift-kotlin.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "U-40",
