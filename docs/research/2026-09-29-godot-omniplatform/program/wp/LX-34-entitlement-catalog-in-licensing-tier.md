@@ -68,7 +68,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - `tiers` had no `entitlements_json` and no tier entitlement field existed; the manifest tier spelling is `policyFingerprint`, not `fingerprintMode`.
 - The platform registry exists: `RESERVED_ENTITLEMENT_KEYS` in `shared-manifest/src/reservedNames.ts` (it also lists `pkey.cloudConnect.relayBytes`).
 - The console copy-debt ledger (`packages/admin/test/copy.debt.json`) is already empty.
-- The slices follow `_lead/plans/LX-34-LX-36-LX-41-slices.md`. LX-34.2 (migrations `0160_a`, `0160_b`, provisional) ships `tiers.entitlements_json`, `license_entitlements` and the ledger `entitlement_bucket_backfill`. LX-34.7 and LX-34.8 are the pure planner `core/licensing/entitlementBuckets.ts` and the job `license.entitlement-buckets`.
+- The slices follow the LX-34–LX-41 slice plan. LX-34.2 (migrations `0160_a`, `0160_b`, provisional) ships `tiers.entitlements_json`, `license_entitlements` and the ledger `entitlement_bucket_backfill`. LX-34.7 and LX-34.8 are the pure planner `core/licensing/entitlementBuckets.ts` and the job `license.entitlement-buckets`.
 
 ## UX coverage (2026-10-09)
 

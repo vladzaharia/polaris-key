@@ -695,9 +695,7 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": [
-        "Split from P0-25 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
-      ],
+      "refs": ["Split from P0-25 (triage 2026-10-22)"],
       "brief": "wp/P0-25b-portal-public-route-tables.md",
       "status": "done"
     },
@@ -7327,9 +7325,7 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": [
-        "Split from F-33 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
-      ],
+      "refs": ["Split from F-33 (triage 2026-10-22)"],
       "brief": "wp/F-33b-service-tokens-list-filtering.md",
       "status": "done"
     },
@@ -7917,9 +7913,7 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": [
-        "Split from A-19 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
-      ],
+      "refs": ["Split from A-19 (triage 2026-10-22)"],
       "brief": "wp/A-19b-channel-labels-literal-lint.md",
       "status": "done"
     },
@@ -10167,9 +10161,7 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": [
-        "Split from ST-30 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
-      ],
+      "refs": ["Split from ST-30 (triage 2026-10-22)"],
       "brief": "wp/ST-30c-passkey-step-up-break-glass.md",
       "status": "todo"
     },
@@ -12494,9 +12486,7 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": [
-        "Split from SP-52 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
-      ],
+      "refs": ["Split from SP-52 (triage 2026-10-22)"],
       "brief": "wp/SP-52b-ios-app-footprint.md",
       "status": "todo"
     },
@@ -12806,9 +12796,7 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": [
-        "Split from SP-65 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
-      ],
+      "refs": ["Split from SP-65 (triage 2026-10-22)"],
       "brief": "wp/SP-65b-e2e-react-native-require-sign-in.md",
       "status": "todo"
     },
@@ -13432,9 +13420,7 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": [
-        "Split from UK-04 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
-      ],
+      "refs": ["Split from UK-04 (triage 2026-10-22)"],
       "brief": "wp/UK-04b-elements-cdn-module.md",
       "status": "done"
     },
@@ -13587,9 +13573,7 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": [
-        "Split from UK-09 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
-      ],
+      "refs": ["Split from UK-09 (triage 2026-10-22)"],
       "brief": "wp/UK-09b-compose-android-sample-and-expressive.md",
       "status": "done"
     },
@@ -13664,9 +13648,7 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": [
-        "Split from UK-11 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
-      ],
+      "refs": ["Split from UK-11 (triage 2026-10-22)"],
       "brief": "wp/UK-11b-godot-game-look-scenes-baselines.md",
       "status": "done"
     },
@@ -13710,9 +13692,7 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": [
-        "Split from UK-12 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
-      ],
+      "refs": ["Split from UK-12 (triage 2026-10-22)"],
       "brief": "wp/UK-12b-qt-scrim-mica-tabs.md",
       "status": "todo"
     },
