@@ -20,7 +20,7 @@
 // @pkey-feature connect.relay connect.links
 // @pkey-feature sync.settings
 // @pkey-feature sync.files sync.files.delta sync.saves sync.records
-// @pkey-feature identity.nearby identity.redirect.native
+// @pkey-feature identity.nearby identity.redirect.native identity.accesstoken
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented is listed as skipped rather than failing,
@@ -1443,6 +1443,16 @@ async function act(
             (client as unknown as { discoveryDoc: unknown }).discoveryDoc,
           ),
         );
+      // identity.accesstoken (I-21b): whether the identity fragment names the device exchange.
+      if (session.transcript.features.includes("identity.accesstoken"))
+        out.accessToken =
+          (
+            client as unknown as {
+              discoveryDoc: {
+                services?: { identity?: { accessToken?: unknown } };
+              } | null;
+            }
+          ).discoveryDoc?.services?.identity?.accessToken === true;
       // core.presentation (HA-13): the member the client exposes after this discovery.
       out.presentation = client.presentation() as JsonValue;
       // ui.cli.portal (DISC-01): the core.portal member the client holds after this discovery.
@@ -1714,6 +1724,30 @@ async function act(
         },
       );
       break;
+    case "accessToken": {
+      // identity.accesstoken (I-21b, WIRE-CONTRACT-V5 §12.13.10). The recording asks again inside
+      // the 600 second window, so every step bypasses the held token (`refresh`); the reuse rule
+      // itself is pinned by the client-core and SDK tests.
+      out.accessTokenHeld = false;
+      try {
+        const got = await client.identity.accessToken({ refresh: true });
+        out.result = "ok";
+        out.accessTokenHeld = got.accessToken !== "";
+        out.tokenType = got.tokenType;
+        out.expiresIn = got.expiresIn;
+      } catch (e) {
+        if (!(e instanceof PolarisError)) throw e;
+        if (e.code === "service-unavailable") out.result = "unavailable";
+        else {
+          out.result = "refused";
+          if (e.status !== undefined) out.status = e.status;
+          out.code = e.code;
+          if (e.retryAfterSeconds !== undefined)
+            out.retryAfter = e.retryAfterSeconds;
+        }
+      }
+      break;
+    }
     case "nearbyStart":
     case "nearbyPoll":
     case "nearbyApprove": {

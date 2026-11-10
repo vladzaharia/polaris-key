@@ -14,6 +14,7 @@
 // bridge protocol v3's optional `importBundle` (P1b-07): the host's Node client verifies and
 // writes the cache, and the renderer re-reads the state it left.
 
+import type { AccessToken } from "@polaris-key/client-core";
 import {
   configSource,
   currentDeviceFromState,
@@ -606,6 +607,28 @@ export class DesktopAdapter implements PolarisAdapter {
         busy: noBusy(),
         error: noErrors(),
       });
+    return r;
+  }
+
+  async accessToken(opts: { refresh?: boolean } = {}): Promise<AccessToken> {
+    const r = await this.account<AccessToken>(
+      Feature.identityAccesstoken,
+      "accessToken",
+      { refresh: opts.refresh === true },
+    );
+    if (
+      r === null ||
+      typeof r !== "object" ||
+      typeof r.accessToken !== "string" ||
+      r.accessToken === ""
+    )
+      throw this.fail(
+        "identity",
+        new PolarisError(
+          "bad_response",
+          "the host answered the access token call without a token.",
+        ),
+      );
     return r;
   }
 

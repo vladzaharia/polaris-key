@@ -47,6 +47,18 @@ export function accountEndpointsOf(
   ]);
 }
 
+/** The identity token endpoint, only while discovery says the device exchange is served
+ *  (`identity.accessToken: true`, WIRE-CONTRACT-V5 §12.13.10), else `null`. */
+export function accessTokenEndpointOf(
+  discovery: Record<string, unknown> | null | undefined,
+): string | null {
+  const identity = (
+    discovery?.services as Record<string, { accessToken?: unknown }> | undefined
+  )?.identity;
+  if (identity?.accessToken !== true) return null;
+  return identityEndpointsOf(discovery, ["token"])?.token ?? null;
+}
+
 /** The typed refusal of an account verb the product's discovery does not offer. */
 export function accountUnavailable(
   feature: string,
@@ -64,6 +76,7 @@ export function accountUnavailable(
 export const AccountFeature = {
   account: Feature.identityAccount,
   attach: Feature.identityAttach,
+  accessToken: Feature.identityAccesstoken,
 } as const;
 
 /** Open the portal page in a new tab. Only an https link (or loopback http) opens. */

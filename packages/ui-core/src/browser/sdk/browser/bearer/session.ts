@@ -41,11 +41,15 @@ import {
   mergeTrust,
   normalizeDeviceLabel,
   buildDeviceKeysRequest,
+  AccessTokenCache,
+  accessTokenRequest,
+  readAccessToken,
   trustSignerOrder,
   usablePins,
   verifyConfigDoc,
   verifyLicenseDoc,
   verifyTrustManifest,
+  type AccessToken,
   type BlockedState,
   type CacheRecordV3,
   type DeviceKeyPort,
@@ -353,6 +357,10 @@ export interface BearerSessionOptions {
    *  `attach`, `accountPortal`. A call whose endpoint is absent answers unavailable and builds no
    *  URL; the default answers none. */
   identityEndpoints?: () => IdentityAccountEndpoints | null;
+  /** The identity token endpoint, only while discovery carries `identity.accessToken: true`
+   *  (the device exchange is served, §12.13.10). Absent or null: `accessToken()` is unavailable
+   *  and sends nothing. */
+  accessTokenEndpoint?: () => string | null;
   /** The redirect endpoints and issuer discovery named (`identity.endpoints.authorize`, `token`,
    *  `identity.issuer`). A redirect sign-in with none is `sign-in-unavailable`; the default
    *  answers none. */
@@ -454,6 +462,8 @@ export class BearerSession {
   /** The §5 single re-acquire's per-pass budget. */
   private reacquireInFlight: Promise<boolean> | null = null;
   private reacquireAttempted = false;
+  /** The device exchange's token (identity.accesstoken): memory only, dropped with the session. */
+  private readonly accessTokens = new AccessTokenCache(() => this.opts.now());
   private readonly mints = new Map<
     string,
     { deviceToken: string; value: MintedToken }
@@ -946,6 +956,7 @@ export class BearerSession {
     this.tokenSource = null;
     this.provenanceValue = null;
     this.mints.clear();
+    this.accessTokens.clear();
     await this.opts.store.clearToken().catch(() => undefined);
     const carried: Partial<CacheRecordV3> = {};
     if (this.record?.feeds) carried.feeds = this.record.feeds;
@@ -1054,6 +1065,7 @@ export class BearerSession {
     if (b.released) await this.wipeLocal();
     else {
       this.subjectValue = null;
+      this.accessTokens.clear();
       // The device keeps its token but is no longer the person's sign-in.
       this.provenanceValue = "key";
       try {
@@ -1109,6 +1121,69 @@ export class BearerSession {
       subject: this.subjectValue,
       attached: b.attached === "claimed" ? "claimed" : null,
     };
+  }
+
+  /**
+   * The device exchange (identity.accesstoken, WIRE-CONTRACT-V5 §12.13.10): this device's token for
+   * a 600 second access token for the app's own backend. It proves the device holds a sign-in and
+   * is NOT a licence check. Memory only, reused until 60 seconds before it expires, one request
+   * at a time, dropped when the session forgets its token or the person signs out. The caller has
+   * already checked discovery names the endpoint (`accessTokenEndpoint`).
+   */
+  async accessToken(opts: { refresh?: boolean } = {}): Promise<AccessToken> {
+    await this.init();
+    const url = this.opts.accessTokenEndpoint?.() ?? null;
+    if (url === null || !this.ownOrigin(url))
+      throw new UnsupportedError(
+        {
+          supported: false,
+          feature: Feature.identityAccesstoken,
+          reason: "product",
+          detail:
+            "this product's discovery names no access token exchange on its own origin",
+        },
+        ErrorCode.serviceUnavailable,
+      );
+    return this.accessTokens
+      .get(async () => {
+        const req = accessTokenRequest({
+          tokenEndpoint: url,
+          clientId: this.opts.product,
+          deviceToken: this.requireToken(),
+        });
+        let res: Response;
+        try {
+          // No Authorization header: the device token is the subject token in the form.
+          res = await this.sendTo(req.url, {
+            method: "POST",
+            redirect: "error",
+            headers: this.headers({ "content-type": req.contentType }),
+            body: req.body,
+          });
+        } catch (e) {
+          throw new PolarisError(ErrorCode.networkError, (e as Error).message);
+        }
+        const body: unknown = await res
+          .text()
+          .then((t) => JSON.parse(t) as unknown)
+          .catch(() => null);
+        if (res.status !== 200) throw accessTokenRefusal(res, body);
+        try {
+          return readAccessToken(body);
+        } catch (e) {
+          throw new PolarisError(
+            ErrorCode.badResponse,
+            (e as Error).message,
+            "bad_response",
+          );
+        }
+      }, opts)
+      .catch((e: unknown) => {
+        // The one refusal for a device that holds no sign-in: nothing held is good any more.
+        if (e instanceof PolarisError && e.code === ErrorCode.invalidGrant)
+          this.accessTokens.clear();
+        throw e;
+      });
   }
 
   // ── The licence choice (identity.choice, WIRE-CONTRACT-V4 §12.5.1) ─────────────────────────
@@ -2578,6 +2653,54 @@ async function refusal(res: Response, fallback: string): Promise<PolarisError> {
   return new PolarisError(code, message, wire, undefined, {
     status: res.status,
   });
+}
+
+/** The device exchange's refusal (flat RFC 6749 body): the Worker's own code when the registry
+ *  has it (`invalid_grant`, `invalid_request`, `rate_limited`), `server-error` for a 5xx. A 429's
+ *  wait is the `Retry-After` header, else the body's `retryAfter`. */
+function accessTokenRefusal(res: Response, body: unknown): PolarisError {
+  const b =
+    body !== null && typeof body === "object"
+      ? (body as {
+          error?: unknown;
+          error_description?: unknown;
+          retryAfter?: unknown;
+        })
+      : {};
+  const wire =
+    typeof b.error === "string"
+      ? b.error
+      : typeof (b.error as { code?: unknown } | undefined)?.code === "string"
+        ? (b.error as { code: string }).code
+        : `http_${res.status}`;
+  const header = res.headers.get("retry-after");
+  const wait =
+    header !== null && /^\d+$/.test(header)
+      ? Number(header)
+      : typeof b.retryAfter === "number" && b.retryAfter > 0
+        ? Math.ceil(b.retryAfter)
+        : undefined;
+  const known = (ERROR_CODE_VALUES as readonly string[]).includes(wire);
+  const code: PolarisErrorCode =
+    res.status >= 500
+      ? ErrorCode.serverError
+      : known
+        ? (wire as PolarisErrorCode)
+        : "http-error";
+  return new PolarisError(
+    code,
+    typeof b.error_description === "string"
+      ? b.error_description
+      : `the access token exchange was refused (${wire}).`,
+    wire,
+    undefined,
+    {
+      status: res.status,
+      ...(wait !== undefined && res.status === 429
+        ? { retryAfterSeconds: wait }
+        : {}),
+    },
+  );
 }
 
 function randomId(): string {

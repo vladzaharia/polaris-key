@@ -104,6 +104,8 @@ it("identity.attachLicense", () =>
   expect("attach" in IdentityClient.prototype).toBe(true));
 it("identity.openAccount", () =>
   expect("openAccount" in IdentityClient.prototype).toBe(true));
+it("identity.accessToken", () =>
+  expect("accessToken" in IdentityClient.prototype).toBe(true));
 it("client.discover", () =>
   expect("discover" in PolarisKeyClient.prototype).toBe(true));
 it("client.init", () =>

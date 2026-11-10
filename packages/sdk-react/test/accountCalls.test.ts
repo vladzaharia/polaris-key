@@ -1,6 +1,6 @@
 // @vitest-environment node
 //
-// @pkey-feature identity.keyentry identity.account identity.attach license.activate
+// @pkey-feature identity.keyentry identity.account identity.attach license.activate identity.accesstoken
 //
 // I-10a.9: the activation outcomes and the account calls through the ADAPTERS (the transcript
 // replayer drives the bearer engine; this is what the adapter adds): `activateWithKey` resolves
@@ -40,9 +40,13 @@ interface Server {
   key: Awaited<ReturnType<typeof newTestKey>>;
   setActivate(r: { status: number; body: unknown }): void;
   setSignout(released: boolean): void;
+  /** What the token route answers (identity.accesstoken). */
+  exchange: { status: number; reply: () => unknown };
 }
 
-async function server(opts: { account?: boolean } = {}): Promise<Server> {
+async function server(
+  opts: { account?: boolean; accessToken?: boolean } = {},
+): Promise<Server> {
   const account = opts.account ?? true;
   const key = await newTestKey("pkey-test-account");
   const { license, config } = await signedDocs(key, {
@@ -60,6 +64,16 @@ async function server(opts: { account?: boolean } = {}): Promise<Server> {
     } as unknown,
   };
   let released = true;
+  const exchange = {
+    status: 200,
+    reply: (): unknown => ({
+      access_token: "aaa.bbb.ccc",
+      issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+      token_type: "Bearer",
+      expires_in: 600,
+      scope: "",
+    }),
+  };
   const origin = "https://key.plrs.im/acme";
   const disc = {
     version: 2,
@@ -79,9 +93,11 @@ async function server(opts: { account?: boolean } = {}): Promise<Server> {
       },
       identity: {
         enabled: true,
+        ...(opts.accessToken ? { accessToken: true } : {}),
         endpoints: {
           session: `${origin}/identity/session`,
           authStart: `${origin}/identity/auth/start`,
+          ...(opts.accessToken ? { token: `${origin}/identity/token` } : {}),
           ...(account
             ? {
                 subject: `${origin}/identity/subject`,
@@ -120,6 +136,8 @@ async function server(opts: { account?: boolean } = {}): Promise<Server> {
         return new Response(config, { status: 200 });
       case "/acme/devices/report":
         return json({ ok: true });
+      case "/acme/identity/token":
+        return json(exchange.reply(), exchange.status);
       case "/acme/identity/subject":
         return json({ subject: "ps_abc" });
       case "/acme/identity/signout":
@@ -145,17 +163,20 @@ async function server(opts: { account?: boolean } = {}): Promise<Server> {
     setSignout: (r) => {
       released = r;
     },
+    exchange,
   };
 }
 
 async function bearer(
   s: Server,
   store?: (factory: IDBFactory) => ReturnType<typeof indexedDbStore>,
+  now: () => number = BEARER.now,
 ) {
   const factory = new IDBFactory();
   await indexedDbOfflineStore(factory)!.write("acme", { deviceId: DEVICE });
   const adapter = browserAdapter({
     ...BEARER,
+    now,
     trust: { pinnedKeys: { [s.key.kid]: s.key.raw } },
     fetchImpl: s.fetchImpl,
     store:
@@ -415,6 +436,94 @@ describe("bearer: the account calls", () => {
   });
 });
 
+describe("bearer: accessToken() (identity.accesstoken)", () => {
+  const exchanges = (s: Server) =>
+    s.seen.filter((r) => r.path === "/acme/identity/token");
+
+  it("trades the device token, reuses it until 60 s before expiry, and asks again on refresh", async () => {
+    const s = await server({ accessToken: true });
+    let clock = NOW;
+    const adapter = await bearer(s, undefined, () => clock);
+    await adapter.activateWithKey("pkey_good");
+    const got = await adapter.accessToken();
+    expect(got).toEqual({
+      accessToken: "aaa.bbb.ccc",
+      tokenType: "Bearer",
+      expiresIn: 600,
+      expiresAt: NOW + 600,
+    });
+    const form = new URLSearchParams(exchanges(s)[0]!.body ?? "");
+    expect(form.get("subject_token")).toBe("pkeyt_one");
+    expect(form.get("client_id")).toBe("acme");
+    clock = NOW + 539;
+    expect((await adapter.accessToken()).expiresIn).toBe(61);
+    expect(exchanges(s)).toHaveLength(1);
+    clock = NOW + 540;
+    await adapter.accessToken();
+    expect(exchanges(s)).toHaveLength(2);
+    await adapter.accessToken({ refresh: true });
+    expect(exchanges(s)).toHaveLength(3);
+  });
+
+  it("is dropped at sign-out", async () => {
+    const s = await server({ accessToken: true });
+    const adapter = await bearer(s);
+    await adapter.activateWithKey("pkey_good");
+    await adapter.accessToken();
+    s.setSignout(false);
+    await adapter.signOut();
+    await adapter.accessToken();
+    expect(exchanges(s)).toHaveLength(2);
+  });
+
+  it("is the typed service-unavailable, with no exchange, when discovery names no accessToken", async () => {
+    const s = await server();
+    const adapter = await bearer(s);
+    await adapter.activateWithKey("pkey_good");
+    await expect(adapter.accessToken()).rejects.toMatchObject({
+      code: "service-unavailable",
+      feature: Feature.identityAccesstoken,
+      reason: "product",
+    });
+    expect(exchanges(s)).toHaveLength(0);
+  });
+
+  it("raises the Worker's refusals under its own codes, with the wait on a 429", async () => {
+    const s = await server({ accessToken: true });
+    const adapter = await bearer(s);
+    await adapter.activateWithKey("pkey_good");
+    s.exchange.status = 400;
+    s.exchange.reply = () => ({ error: "invalid_grant" });
+    await expect(adapter.accessToken()).rejects.toMatchObject({
+      code: "invalid_grant",
+      status: 400,
+    });
+    s.exchange.status = 429;
+    s.exchange.reply = () => ({ error: "rate_limited", retryAfter: 60 });
+    await expect(adapter.accessToken()).rejects.toMatchObject({
+      code: "rate_limited",
+      status: 429,
+      retryAfterSeconds: 60,
+    });
+    s.exchange.status = 200;
+    s.exchange.reply = () => ({ access_token: "nope" });
+    await expect(adapter.accessToken()).rejects.toMatchObject({
+      code: "bad_response",
+    });
+  });
+
+  it("a page without pinned keys refuses it", async () => {
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      offlineStore: null,
+      autoStart: false,
+    });
+    await expect(adapter.accessToken()).rejects.toMatchObject({
+      code: "invalid-options",
+    });
+  });
+});
+
 describe("desktop: over the bridge, no new verb", () => {
   function desktop(overrides: Record<string, unknown> = {}) {
     const calls: unknown[][] = [];
@@ -496,6 +605,33 @@ describe("desktop: over the bridge, no new verb", () => {
       ["identity", "attach", { confirm: true }],
       ["identity", "openAccount", undefined],
     ]);
+  });
+
+  it("accessToken goes through invoke('identity', 'accessToken') and checks the answer", async () => {
+    const token = {
+      accessToken: "aaa.bbb.ccc",
+      tokenType: "Bearer",
+      expiresIn: 600,
+      expiresAt: NOW + 600,
+    };
+    const ok = desktop({
+      invoke: async (...a: unknown[]) => (ok.calls.push(a), token),
+    });
+    expect(await ok.adapter.accessToken({ refresh: true })).toEqual(token);
+    expect(ok.calls).toEqual([["identity", "accessToken", { refresh: true }]]);
+    const empty = desktop({ invoke: async () => null });
+    await expect(empty.adapter.accessToken()).rejects.toMatchObject({
+      code: "bad_response",
+    });
+    const denied = desktop({
+      invoke: async () => {
+        throw Object.assign(new Error("no"), { code: "invoke-not-allowed" });
+      },
+    });
+    await expect(denied.adapter.accessToken()).rejects.toMatchObject({
+      code: "unsupported",
+      feature: Feature.identityAccesstoken,
+    });
   });
 
   it("a host that does not allowlist them, or speaks v3, answers the typed version N/A", async () => {

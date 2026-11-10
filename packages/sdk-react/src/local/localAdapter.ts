@@ -21,6 +21,7 @@
 // `supports()` says the same in the table's vocabulary: a feature that needs the network is
 // `runtime`-unsupported here, whatever the web or desktop row says.
 
+import type { AccessToken } from "@polaris-key/client-core";
 import { channelForVersion } from "@polaris-key/client-core";
 import type {
   CapabilityContext,
@@ -312,6 +313,10 @@ export class LocalAdapter implements PolarisAdapter {
 
   async attach(_opts: { confirm: boolean }): Promise<AttachResult> {
     throw dial("Adding a licence to an account");
+  }
+
+  async accessToken(_opts?: { refresh?: boolean }): Promise<AccessToken> {
+    throw dial("An access token");
   }
 
   async openAccount(): Promise<void> {
