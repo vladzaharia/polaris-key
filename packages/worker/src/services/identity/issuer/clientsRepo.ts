@@ -237,14 +237,21 @@ export async function updateClient(
   if (sets.length === 0)
     return (await getClient(db, product, clientId)) !== null;
   set("updated_at", now);
-  return (
-    (await db.runChanges(
-      `UPDATE identity_clients SET ${sets.join(", ")} WHERE product = ? AND client_id = ?`,
-      ...params,
-      product,
-      clientId,
-    )) === 1
-  );
+  const stmts: DbStatement[] = [
+    {
+      sql: `UPDATE identity_clients SET ${sets.join(", ")} WHERE product = ? AND client_id = ?`,
+      params: [...params, product, clientId],
+    },
+  ];
+  // Only a web client holds a secret: leaving `web` revokes the live ones in the same batch, so an
+  // edit back to `web` cannot bring them back.
+  if (patch.type !== undefined && patch.type !== "web")
+    stmts.push({
+      sql: `UPDATE identity_client_secrets SET revoked_at = ?
+            WHERE product = ? AND client_id = ? AND revoked_at IS NULL`,
+      params: [now, product, clientId],
+    });
+  return (await batchCounts(db, stmts))[0] === 1;
 }
 
 /**

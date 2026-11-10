@@ -32,6 +32,7 @@ import type { ServiceContext } from "../../../core/registry.js";
 import type { AdminSession } from "../../../core/console/session.js";
 import { adminJson, err, readBody } from "../../../core/console/respond.js";
 import { audit, auditStatementFor } from "../../../core/audit.js";
+import { requireStepUp } from "../../../core/console/stepUp.js";
 import { displayCheckOptions } from "../../../core/accounts/reservedDisplayNames.js";
 import {
   addClientSecret,
@@ -252,6 +253,19 @@ async function record(ctx: Ctx, client: ClientRecord): Promise<Response> {
   });
 }
 
+const gains = (before: readonly string[], after: readonly string[]) =>
+  after.some((v) => !before.includes(v));
+
+function widens(client: ClientRecord, next: NewClient): boolean {
+  return (
+    next.type !== client.type ||
+    gains(client.redirectUris, next.redirectUris) ||
+    gains(client.postLogoutRedirectUris, next.postLogoutRedirectUris) ||
+    gains(client.scopes, next.scopes) ||
+    gains(client.claims.required, next.claimsRequired)
+  );
+}
+
 async function edit(ctx: Ctx, client: ClientRecord): Promise<Response> {
   const { db, product, session, now } = ctx;
   if (client.origin === "manifest")
@@ -287,6 +301,12 @@ async function edit(ctx: Ctx, client: ClientRecord): Promise<Response> {
   const refused = await refusal(ctx, merged);
   if (refused) return refused;
   const next = newClientOf(product.slug, merged);
+  // Widening is what a stolen session would do first: a type change, an address, a scope or a
+  // required claim the client did not hold. Names and narrowing stay free.
+  if (widens(client, next)) {
+    const stale = requireStepUp(session, now);
+    if (stale) return stale;
+  }
   if (next.name !== client.name) patch.name = next.name;
   if (next.developerName !== client.developerName)
     patch.developerName = next.developerName;

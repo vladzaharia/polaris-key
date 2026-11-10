@@ -207,6 +207,56 @@ describe("registered clients in the console", () => {
     expect(rekey.status).toBe(422);
   });
 
+  it("a widening edit needs a fresh step-up; a name change or a narrowing does not", async () => {
+    const { call, create, json, plain } = await setup();
+    const id = (
+      await create({
+        redirectUris: [
+          "https://forum.example.com/cb",
+          "https://b.example.com/cb",
+        ],
+      })
+    ).body.client.id as string;
+    const stale = (body: unknown) =>
+      call("PATCH", `${BASE}/${id}`, { body, as: plain });
+    for (const body of [
+      {
+        redirectUris: [
+          "https://forum.example.com/cb",
+          "https://c.example.com/cb",
+        ],
+      },
+      { postLogoutRedirectUris: ["https://forum.example.com/bye"] },
+      { type: "spa" },
+      { scopes: ["openid", "profile", "email"] },
+      { claimsRequired: ["name", "picture"] },
+    ]) {
+      const res = await stale(body);
+      expect(res.status).toBe(403);
+      expect((await json(res)).error.code).toBe("step_up_required");
+    }
+    expect((await stale({ name: "Forum" })).status).toBe(200);
+    expect(
+      (await stale({ redirectUris: ["https://forum.example.com/cb"] })).status,
+    ).toBe(200);
+    // Nothing the refused edits asked for was stored.
+    const after = (await json(await call("GET", `${BASE}/${id}`))).client;
+    expect(after.type).toBe("web");
+    expect(after.redirectUris).toEqual(["https://forum.example.com/cb"]);
+    expect(after.postLogoutRedirectUris).toEqual([]);
+  });
+
+  it("a client that leaves web loses its live secrets for good", async () => {
+    const { call, create, json } = await setup();
+    const id = (await create()).body.client.id as string;
+    await call("POST", `${BASE}/${id}/secrets`);
+    await call("PATCH", `${BASE}/${id}`, { body: { type: "spa" } });
+    await call("PATCH", `${BASE}/${id}`, { body: { type: "web" } });
+    expect((await json(await call("GET", `${BASE}/${id}`))).secrets).toEqual(
+      [],
+    );
+  });
+
   it("a manifest client is read-only here, but can be disabled", async () => {
     const { call, w, fresh, json } = await setup();
     await ingestIdentity(w.db, SLUG, {
