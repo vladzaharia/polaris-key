@@ -86,7 +86,7 @@ const planProductOf = (p: ProductRow): PlanProduct => ({
   compat: { min: p.compat_min, max: p.compat_max },
 });
 
-async function licencePage(
+export async function licencePage(
   db: Db,
   product: string,
   after: string,
@@ -97,6 +97,27 @@ async function licencePage(
     after,
     LIMITS_PAGE,
   );
+}
+
+/** Runs `visit` on each page of the product's licences, in id order. */
+export async function eachLicencePage(
+  db: Db,
+  product: string,
+  visit: (page: LicenseRow[]) => Promise<void>,
+): Promise<void> {
+  for (let after = ""; ; ) {
+    const page = await licencePage(db, product, after);
+    if (page.length === 0) return;
+    after = page[page.length - 1]!.id;
+    await visit(page);
+  }
+}
+
+/** The License-enabled products: the units of the License jobs. */
+export async function licenseEnabledSlugs(db: Db): Promise<string[]> {
+  return (await listProducts(db))
+    .filter((r) => serviceStateOf(r).services.license.enabled)
+    .map((r) => r.slug);
 }
 
 /** A licence's merged `deviceLimit` entitlement, for the whole page, from layers read once. */
@@ -136,7 +157,7 @@ async function planPage(
   });
 }
 
-async function licenseEnabledProduct(
+export async function licenseEnabledProduct(
   db: Db,
   slug: string,
 ): Promise<ProductRow | null> {
@@ -144,7 +165,7 @@ async function licenseEnabledProduct(
   return row && serviceStateOf(row).services.license.enabled ? row : null;
 }
 
-const cap = (ids: string[], id: string): void => {
+export const cap = (ids: string[], id: string): void => {
   if (ids.length < LIMITS_ID_CAP) ids.push(id);
 };
 
@@ -152,10 +173,7 @@ export const limitsMaterialiseJob: MigrationJob = {
   id: "license.limits-materialise",
   summary:
     "Give every licence a tier and copy the limits its documents derive from elsewhere onto it (LX-33)",
-  units: async ({ db }) =>
-    (await listProducts(db))
-      .filter((r) => serviceStateOf(r).services.license.enabled)
-      .map((r) => r.slug),
+  units: ({ db }) => licenseEnabledSlugs(db),
 
   async plan({ db, now }, slug) {
     const product = await licenseEnabledProduct(db, slug);
@@ -177,10 +195,7 @@ export const limitsMaterialiseJob: MigrationJob = {
     let writeLicences = 0;
     let dangling = 0;
     let docDiffs = 0;
-    for (let after = ""; ; ) {
-      const page = await licencePage(db, slug, after);
-      if (page.length === 0) break;
-      after = page[page.length - 1]!.id;
+    await eachLicencePage(db, slug, async (page) => {
       licences += page.length;
       const plan = await planPage(db, slug, product, tiers, page, now);
       writeLicences += plan.writes.length;
@@ -194,7 +209,7 @@ export const limitsMaterialiseJob: MigrationJob = {
         for (const r of d.reasons)
           docDiffReasons[r] = (docDiffReasons[r] ?? 0) + 1;
       }
-    }
+    });
     return {
       changes: writeLicences + (head.seed ? 1 : 0),
       detail: {
@@ -325,7 +340,10 @@ function seedStatements(
   return stmts;
 }
 
-async function batchCounts(db: Db, stmts: DbStatement[]): Promise<number[]> {
+export async function batchCounts(
+  db: Db,
+  stmts: DbStatement[],
+): Promise<number[]> {
   if (stmts.length === 0) return [];
   if (db.batchChanges) return db.batchChanges(stmts);
   await db.batch(stmts);
@@ -361,12 +379,9 @@ export async function applyLimitsUnit(
   }
 
   // 2. The licences, a page at a time, a batch at a time.
-  for (let after = ""; ; ) {
-    const page = await licencePage(db, slug, after);
-    if (page.length === 0) break;
-    after = page[page.length - 1]!.id;
+  await eachLicencePage(db, slug, async (page) => {
     const plan = await planPage(db, slug, product, tiers, page, now);
-    if (plan.writes.length === 0) continue;
+    if (plan.writes.length === 0) return;
     await hooks.afterPlan?.();
     for (let i = 0; i < plan.writes.length; i += LIMITS_BATCH) {
       const stmts: DbStatement[] = [];
@@ -408,13 +423,13 @@ export async function applyLimitsUnit(
       const counts = await batchCounts(db, stmts);
       for (const at of updateAt) changed += counts[at] ?? 0;
     }
-  }
+  });
   return changed;
 }
 
 // ── down ─────────────────────────────────────────────────────────────────────────────────────
 
-interface LedgerRow {
+export interface LedgerRow {
   subject_kind: "license" | "tier";
   subject_id: string;
   field: string;
@@ -426,7 +441,7 @@ const isColumn = (f: string): f is Column =>
   (COLUMNS as readonly string[]).includes(f);
 const isTierColumn = (f: string): f is TierColumn =>
   (TIER_COLUMNS as readonly string[]).includes(f);
-const parseValue = (j: string | null): DbParam =>
+export const parseValue = (j: string | null): DbParam =>
   j === null ? null : (JSON.parse(j) as DbParam);
 
 /**

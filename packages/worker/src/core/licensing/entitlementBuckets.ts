@@ -55,7 +55,7 @@ export interface BucketPlanInput {
 }
 
 export type BucketDiffReason =
-  /** A key a licence profile sets is also set by a store or OIDC grant (D34-7). */
+  /** A key a licence profile sets is also set by a store or OIDC grant (D34-7): not moved. */
   | "grant-key"
   /** The same entries, but a grant's keys change their order. */
   | "key-order"
@@ -221,8 +221,18 @@ export function planEntitlementBuckets(input: BucketPlanInput): BucketPlan {
 
     const reasons: BucketDiffReason[] = [];
     let keys: string[] = [];
+    // D34-7: a key a store or OIDC grant also sets is never moved, even where today's merge comes
+    // out the same: under the overrides the moved entry would shadow the grant's later values.
+    const grantKeys = new Set([
+      ...l.storeGrants.map((g) => g.flag),
+      ...l.oidcGrants.map((g) => g.key),
+    ]);
+    const shared = movedKeys.filter((k) => grantKeys.has(k));
     if (unreadable) reasons.push("overrides-unreadable");
-    else {
+    else if (shared.length > 0) {
+      reasons.push("grant-key");
+      keys = shared;
+    } else {
       const newEntitlements = mergePayloads(
         input.catalogDefault,
         row.tier_id ? (tierLayer.get(row.tier_id) ?? null) : null,
@@ -230,27 +240,16 @@ export function planEntitlementBuckets(input: BucketPlanInput): BucketPlan {
         overrides,
         oidcGrantLayerOf(l.oidcGrants, overrides),
       ).entitlements;
-      if (
-        !sameContent(oldEntitlements, newEntitlements) ||
-        !sameOrder(oldEntitlements, newEntitlements)
-      ) {
-        const grantKeys = new Set([
-          ...l.storeGrants.map((g) => g.flag),
-          ...l.oidcGrants.map((g) => g.key),
-        ]);
-        const shared = movedKeys.filter((k) => grantKeys.has(k));
-        if (shared.length > 0) {
-          reasons.push("grant-key");
-          keys = shared;
-        } else if (sameContent(oldEntitlements, newEntitlements)) {
+      if (sameContent(oldEntitlements, newEntitlements)) {
+        if (!sameOrder(oldEntitlements, newEntitlements)) {
           reasons.push("key-order");
           keys = movedKeys;
-        } else {
-          reasons.push("value");
-          keys = Object.keys(newEntitlements).filter(
-            (k) => !sameValue(newEntitlements[k], oldEntitlements[k]),
-          );
         }
+      } else {
+        reasons.push("value");
+        keys = Object.keys(newEntitlements).filter(
+          (k) => !sameValue(newEntitlements[k], oldEntitlements[k]),
+        );
       }
     }
     if (reasons.length > 0)
