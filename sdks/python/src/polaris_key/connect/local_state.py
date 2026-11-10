@@ -370,13 +370,19 @@ class LocalLinkStore:
         cats: Sequence[str],
         now: int,
         label: Optional[str] = None,
+        allowed: Optional[Callable[[], bool]] = None,
     ) -> Tuple[bool, str]:
-        """Add a link, unless the device already holds ``MAX_LOCAL_LINKS``. The cap is judged under the lock,
-        so two pairings that finish together cannot both pass it. ``(stored, id)``."""
+        """Add a link, unless the device already holds ``MAX_LOCAL_LINKS`` or ``allowed()`` says no. Both are
+        judged under the lock, so two pairings that finish together cannot both pass the cap and a gate that
+        cleared while this ran stores nothing. ``(stored, id)``."""
         lid = local_link_id(peer_key)
         full = [False]
+        off = [False]
 
         def fn(rows: List[LocalLinkRow]) -> Optional[List[LocalLinkRow]]:
+            if allowed is not None and not allowed():
+                off[0] = True
+                return None
             if len(rows) >= MAX_LOCAL_LINKS:
                 full[0] = True
                 return None
@@ -399,5 +405,5 @@ class LocalLinkStore:
             ]
 
         self.update(fn)
-        return (not full[0]), lid
+        return (not full[0] and not off[0]), lid
 

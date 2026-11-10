@@ -447,6 +447,27 @@ def test_the_store_is_one_file_0600_with_the_links_in_held_order_and_a_damaged_f
     assert w.a.connect.live_locals() == []
 
 
+def test_a_pairing_already_storing_when_the_gate_clears_writes_nothing(world: World) -> None:
+    import asyncio
+    from dataclasses import replace
+
+    from polaris_key.connect.local_pairing import _Attempt, store_link
+    from polaris_key.core.peer_session import LocalLinkMade
+
+    w = world
+    store = w.a.connect.local_store()
+    on = [True]
+    src = replace(w.a.connect.local_source(), allowed=lambda: on[0], store=store)
+    a = _Attempt()
+    a.link_key = bytearray(32)
+    # The gate is judged inside the store call: it clears between the pairing's last check and the write.
+    on[0] = False
+    made = LocalLinkMade(secret=bytes([4]) * 32, own_key=bytes([2]) * 32, peer_key=bytes([9]) * 32, cats=())
+    assert asyncio.run(store_link(src, a, made)) is None
+    assert a.failure == "closed"
+    assert store.count() == 0
+
+
 def test_a_record_with_two_rows_of_one_id_is_unusable_and_never_replaced(world: World) -> None:
     w = world
     s = show(w, w.a, ["notes"])

@@ -260,6 +260,16 @@ async def store_link(src: LocalSource, a: _Attempt, e: LocalLinkMade) -> Optiona
     what the store raises."""
     loop = asyncio.get_running_loop()
     own_key = bytes(a.link_key)
+    blocked = [False]
+
+    def gate() -> bool:
+        # Read again inside the store call, under the store's lock: a pairing already storing when the gate clears
+        # writes nothing.
+        ok = src.allowed()
+        if not ok:
+            blocked[0] = True
+        return ok
+
     stored, lid = await loop.run_in_executor(
         None,
         lambda: src.store.add(
@@ -270,10 +280,11 @@ async def store_link(src: LocalSource, a: _Attempt, e: LocalLinkMade) -> Optiona
             cats=e.cats,
             now=src.now(),
             label=e.label,
+            allowed=gate,
         ),
     )
     if not stored:
-        a.failure = "full"
+        a.failure = "closed" if blocked[0] else "full"
         return None
     a.linked = True
     # The listener starts (a device that held no link) and the new link is advertised.

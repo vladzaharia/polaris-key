@@ -691,6 +691,8 @@ class LanService:
         live = list(self._locals) if role == "responder" and self._locals_on() else []
         refs = [ref_of(c) for c in served]
         lrefs = [ref_of_local(x) for x in live]
+        # The list is read and the secrets copied in one synchronous step on the loop, and ``wipe_locals`` runs only on
+        # the loop (``drop_local``, ``_load_locals``, ``stop``): no wipe can fall between the two.
         locals_copy = [LocalLink(bytearray(x.secret), bytearray(x.own_key), bytes(x.peer_key)) for x in live]
         trial = bool(served) or bool(live)
 
@@ -1058,7 +1060,8 @@ class LanService:
             if self._stopped or not self._locals_on() or still is None:
                 raise LanError("closed", "That link is no longer available.")
             # The key and secret are copied before the dial: a reload during it wipes the held ones, and a copy
-            # made after would hold zeros and fail the handshake.
+            # made after would hold zeros and fail the handshake. The read above and this copy are one synchronous
+            # step on the loop, which is the only place ``wipe_locals`` runs, so the copy is never of wiped bytes.
             own = LocalLink(bytearray(still.secret), bytearray(still.own_key), bytes(still.peer_key))
             try:
                 reader, writer, host = await self._dial(left, seen[2])
