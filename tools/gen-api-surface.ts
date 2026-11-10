@@ -551,6 +551,9 @@ function renderSwift(api: Api): string {
       lines.push(
         `_ = \\${r.name === "events" ? "PolarisKeyClient" : (SWIFT_TYPE[r.ns] ?? "PolarisKeyClient")}.${r.name}  // ${r.id}`,
       );
+    } else if (r.id === "identity.choice") {
+      // A property returning the choice namespace (I-10b); its verbs are the rows below.
+      lines.push(`_ = \\IdentityClient.choice  // ${r.id}`);
     } else if (r.id.startsWith("cloudConnect.links.")) {
       // Inter-account links (CC-19): the verbs live on `cloudConnect.links` (`CloudLinks`).
       lines.push(`_ = CloudLinks.${ref}  // ${r.id}`);
