@@ -53,6 +53,7 @@ func apiSurface() async {
     _ = LinkNamespace.decline  // identity.link.decline
     _ = IdentityClient.attach  // identity.attachLicense
     _ = IdentityClient.openAccount  // identity.openAccount
+    _ = IdentityClient.accessToken(refresh:)  // identity.accessToken
     _ = \PolarisKeyClient.events  // events
     _ = CloudSyncClient.status  // cloudSync.status
     _ = CloudSyncClient.flush  // cloudSync.flush

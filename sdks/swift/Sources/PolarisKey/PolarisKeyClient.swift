@@ -898,6 +898,7 @@ public actor PolarisKeyClient {
     /// Release this device's seat and wipe every local credential, then emit what changed
     /// (`license`, and `entitlement` for every entitlement it held).
     public func deactivate() async throws {
+        await identity.clearAccessToken()
         try await PolarisKeyClient.deactivate(license: license, publisher: publisher)
     }
 

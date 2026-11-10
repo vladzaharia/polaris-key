@@ -236,6 +236,8 @@ public final class IdentityClient: Sendable {
     let signOutHook = LockedValue<(@Sendable () async throws -> Void)?>(nil)
     /// The subject held from the last `subject()` or `attach`.
     let subjectValue = LockedValue<String?>(nil)
+    /// The held access token (`identity.accessToken()`), in memory only.
+    let accessTokens = AccessTokenCache()
     /// `onBeforeSignOut` hooks, in registration order.
     let beforeSignOut = LockedValue<[SignOutHook]>([])
     /// Where the facade hears of a sign-in, a sign-out and a changed subject (`installIdentityEvents`).

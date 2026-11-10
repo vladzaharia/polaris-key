@@ -44,11 +44,15 @@ public struct PolarisError: Error, Sendable, Equatable {
     public let userMessage: String?
     /// The HTTP status of the Worker's refusal, when the error is one; nil otherwise.
     public let status: Int?
+    /// The wait a rate-limit answer named (its `Retry-After` header, else the body's `retryAfter`),
+    /// in whole seconds; nil when it named none.
+    public let retryAfterSeconds: Int?
 
     public init(
         code: String, message: String, detail: String? = nil, unsupported: Unsupported? = nil,
-        userMessage: String? = nil, status: Int? = nil
+        userMessage: String? = nil, status: Int? = nil, retryAfterSeconds: Int? = nil
     ) {
+        self.retryAfterSeconds = retryAfterSeconds
         self.status = status
         self.code = code
         self.message = message

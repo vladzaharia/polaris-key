@@ -182,6 +182,10 @@ public struct IdentityDiscovery: Sendable, Equatable {
     /// sign-in. The routes are `nearbyStart`, `nearbyPoll` and `nearbyApprove` in `endpoints`.
     public let nearby: Bool
 
+    /// The product's own access token exchange (`identity.accessToken()`, WIRE-CONTRACT-V5 §12.13.10) is
+    /// served: its sign-in issuer is on. The exchange is `POST` to the `token` endpoint.
+    public let accessToken: Bool
+
     /// The native redirect classes the product accepts through the pushed `request` (§12.6,
     /// §12.12), or nil while `request` is not served.
     public let nativeRedirect: NativeRedirectDiscovery?
@@ -192,8 +196,10 @@ public struct IdentityDiscovery: Sendable, Equatable {
         restore: Bool = false,
         deviceChoice: Bool = false,
         nearby: Bool = false,
+        accessToken: Bool = false,
         nativeRedirect: NativeRedirectDiscovery? = nil
     ) {
+        self.accessToken = accessToken
         self.nativeRedirect = nativeRedirect
         self.deviceChoice = deviceChoice
         self.nearby = nearby
@@ -215,6 +221,7 @@ public struct IdentityDiscovery: Sendable, Equatable {
             restore: fragment.extras["restore"]?.boolValue == true,
             deviceChoice: fragment.extras["deviceChoice"]?.boolValue == true,
             nearby: fragment.extras["nearby"]?.boolValue == true,
+            accessToken: fragment.extras["accessToken"]?.boolValue == true,
             nativeRedirect: NativeRedirectDiscovery(fragment.extras["nativeRedirect"]))
     }
 
