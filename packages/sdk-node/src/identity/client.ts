@@ -345,7 +345,9 @@ export class IdentityClient {
    * product's discovery names no access token (its issuer is off), `no-token` with no device
    * token, and the Worker's own refusal otherwise: `invalid_grant` when the device holds no
    * sign-in, `invalid_request` when the issuer was turned off since discovery, `rate_limited`
-   * (`retryAfterSeconds`; ten a minute per device). `{refresh: true}` skips the held token, for an
+   * (`retryAfterSeconds`; ten a minute per device; until that wait has passed the call fails
+   * the same way without a request). The held token belongs to the device token it was asked
+   * with: a replaced token or another sign-in asks again. `{refresh: true}` skips the held token, for an
    * app whose backend refused it.
    */
   accessToken(opts: { refresh?: boolean } = {}): Promise<AccessToken> {

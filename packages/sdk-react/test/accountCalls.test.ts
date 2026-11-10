@@ -41,7 +41,12 @@ interface Server {
   setActivate(r: { status: number; body: unknown }): void;
   setSignout(released: boolean): void;
   /** What the token route answers (identity.accesstoken). */
-  exchange: { status: number; reply: () => unknown };
+  exchange: {
+    status: number;
+    reply: (form: URLSearchParams) => unknown;
+    /** When set, the token route waits for it before answering. */
+    gate: Promise<void> | null;
+  };
 }
 
 async function server(
@@ -64,8 +69,9 @@ async function server(
     } as unknown,
   };
   let released = true;
-  const exchange = {
+  const exchange: Server["exchange"] = {
     status: 200,
+    gate: null,
     reply: (): unknown => ({
       access_token: "aaa.bbb.ccc",
       issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
@@ -136,8 +142,11 @@ async function server(
         return new Response(config, { status: 200 });
       case "/acme/devices/report":
         return json({ ok: true });
-      case "/acme/identity/token":
-        return json(exchange.reply(), exchange.status);
+      case "/acme/identity/token": {
+        const form = new URLSearchParams(String(init.body ?? ""));
+        if (exchange.gate) await exchange.gate;
+        return json(exchange.reply(form), exchange.status);
+      }
       case "/acme/identity/subject":
         return json({ subject: "ps_abc" });
       case "/acme/identity/signout":
@@ -476,6 +485,52 @@ describe("bearer: accessToken() (identity.accesstoken)", () => {
     expect(exchanges(s)).toHaveLength(2);
   });
 
+  const bySubject = (s: Server) => {
+    s.exchange.reply = (form) => ({
+      access_token: `${form.get("subject_token")}.b.c`,
+      issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+      token_type: "Bearer",
+      expires_in: 600,
+      scope: "",
+    });
+  };
+  const activateAs = (s: Server, token: string) =>
+    s.setActivate({
+      status: 200,
+      body: { token, schemaVersion: 1, keyEntries: { used: 1, limit: 2 } },
+    });
+
+  it("asks again for a replaced device token (a key activation is no sign-in, so no stale token)", async () => {
+    const s = await server({ accessToken: true });
+    bySubject(s);
+    const adapter = await bearer(s);
+    await adapter.activateWithKey("pkey_good");
+    expect((await adapter.accessToken()).accessToken).toBe("pkeyt_one.b.c");
+    activateAs(s, "pkeyt_two");
+    await adapter.activateWithKey("pkey_good");
+    expect((await adapter.accessToken()).accessToken).toBe("pkeyt_two.b.c");
+    expect(exchanges(s)).toHaveLength(2);
+  });
+
+  it("does not hand an exchange begun under the old token to a caller with the new one", async () => {
+    const s = await server({ accessToken: true });
+    bySubject(s);
+    const adapter = await bearer(s);
+    await adapter.activateWithKey("pkey_good");
+    let release: () => void = () => undefined;
+    s.exchange.gate = new Promise<void>((r) => (release = r));
+    const old = adapter.accessToken();
+    await vi.waitFor(() => expect(exchanges(s)).toHaveLength(1));
+    activateAs(s, "pkeyt_two");
+    await adapter.activateWithKey("pkey_good");
+    s.exchange.gate = null;
+    expect((await adapter.accessToken()).accessToken).toBe("pkeyt_two.b.c");
+    release();
+    expect((await old).accessToken).toBe("pkeyt_one.b.c");
+    expect((await adapter.accessToken()).accessToken).toBe("pkeyt_two.b.c");
+    expect(exchanges(s)).toHaveLength(2);
+  });
+
   it("is the typed service-unavailable, with no exchange, when discovery names no accessToken", async () => {
     const s = await server();
     const adapter = await bearer(s);
@@ -490,7 +545,8 @@ describe("bearer: accessToken() (identity.accesstoken)", () => {
 
   it("raises the Worker's refusals under its own codes, with the wait on a 429", async () => {
     const s = await server({ accessToken: true });
-    const adapter = await bearer(s);
+    let clock = NOW;
+    const adapter = await bearer(s, undefined, () => clock);
     await adapter.activateWithKey("pkey_good");
     s.exchange.status = 400;
     s.exchange.reply = () => ({ error: "invalid_grant" });
@@ -505,6 +561,16 @@ describe("bearer: accessToken() (identity.accesstoken)", () => {
       status: 429,
       retryAfterSeconds: 60,
     });
+    // Within the wait nothing is sent, `refresh` included.
+    clock = NOW + 20;
+    const before = exchanges(s).length;
+    for (const opts of [{}, { refresh: true }])
+      await expect(adapter.accessToken(opts)).rejects.toMatchObject({
+        code: "rate_limited",
+        retryAfterSeconds: 40,
+      });
+    expect(exchanges(s)).toHaveLength(before);
+    clock = NOW + 60;
     s.exchange.status = 200;
     s.exchange.reply = () => ({ access_token: "nope" });
     await expect(adapter.accessToken()).rejects.toMatchObject({

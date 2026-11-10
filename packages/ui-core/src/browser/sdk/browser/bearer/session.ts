@@ -463,7 +463,17 @@ export class BearerSession {
   private reacquireInFlight: Promise<boolean> | null = null;
   private reacquireAttempted = false;
   /** The device exchange's token (identity.accesstoken): memory only, dropped with the session. */
-  private readonly accessTokens = new AccessTokenCache(() => this.opts.now());
+  private readonly accessTokens = new AccessTokenCache(
+    () => this.opts.now(),
+    (retryAfterSeconds) =>
+      new PolarisError(
+        ErrorCode.rateLimited,
+        "the access token exchange is rate limited; wait before asking again.",
+        "rate_limited",
+        undefined,
+        { status: 429, retryAfterSeconds },
+      ),
+  );
   private readonly mints = new Map<
     string,
     { deviceToken: string; value: MintedToken }
@@ -1144,12 +1154,15 @@ export class BearerSession {
         },
         ErrorCode.serviceUnavailable,
       );
-    return this.accessTokens
-      .get(async () => {
+    // Bound to this device token: another sign-in or a replaced token asks again.
+    const deviceToken = this.requireToken();
+    return this.accessTokens.get(
+      deviceToken,
+      async () => {
         const req = accessTokenRequest({
           tokenEndpoint: url,
           clientId: this.opts.product,
-          deviceToken: this.requireToken(),
+          deviceToken,
         });
         let res: Response;
         try {
@@ -1174,13 +1187,9 @@ export class BearerSession {
             "bad_response",
           );
         }
-      }, opts)
-      .catch((e: unknown) => {
-        // The one refusal for a device that holds no sign-in: nothing held is good any more.
-        if (e instanceof PolarisError && e.code === ErrorCode.invalidGrant)
-          this.accessTokens.clear();
-        throw e;
-      });
+      },
+      opts,
+    );
   }
 
   // ── The licence choice (identity.choice, WIRE-CONTRACT-V4 §12.5.1) ─────────────────────────

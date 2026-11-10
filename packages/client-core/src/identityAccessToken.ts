@@ -4,8 +4,9 @@
 //
 //   1. `accessTokenRequest`  the form of `POST <identity token endpoint>`.
 //   2. `readAccessToken`     the `200` answer, read for exactly what §12.13.10 rule 3 fixes.
-//   3. `AccessTokenCache`    memory only, one request at a time, reused until `expires_in − 60`
-//                            seconds have passed, dropped on sign-out.
+//   3. `AccessTokenCache`    memory only, bound to the device token, one request at a time,
+//                            reused until `expires_in − 60` seconds have passed, a 429's wait
+//                            honoured, dropped on sign-out.
 //
 // WHAT THE TOKEN IS: proof that this device holds a sign-in, for the developer's backend
 // (`sub` is the device's pairwise subject, `client_id` the product slug). It is NOT a licence
@@ -29,6 +30,9 @@ import { formBody, TOKEN_CONTENT_TYPE } from "./identityRedirect.js";
 
 /** §12.13.10 rule 4: a cached token is reused until this many seconds before it expires. */
 export const ACCESS_TOKEN_REUSE_MARGIN_SECONDS = 60;
+
+/** The longest `access_token` accepted (8 KiB): a larger one is `bad_response`. */
+export const ACCESS_TOKEN_MAX_LENGTH = 8192;
 
 /** What `identity.accessToken()` answers. */
 export interface AccessToken {
@@ -112,6 +116,7 @@ export function readAccessToken(body: unknown): AccessTokenGrant {
   const token = b.access_token;
   if (
     typeof token !== "string" ||
+    token.length > ACCESS_TOKEN_MAX_LENGTH ||
     !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token) ||
     b.issued_token_type !== ACCESS_TOKEN_TYPE ||
     b.token_type !== "Bearer" ||
@@ -127,21 +132,39 @@ export function readAccessToken(body: unknown): AccessTokenGrant {
 }
 
 /**
- * The one in-memory access token of a client. `get` returns the held token while more than
- * {@link ACCESS_TOKEN_REUSE_MARGIN_SECONDS} seconds remain and otherwise runs `exchange` once:
- * callers that arrive while it runs share its answer. `refresh: true` skips the held token (an
- * app whose backend refused it asks for a new one); it still joins an exchange in flight. A refused or failed exchange is not
- * cached (the next call asks again, and the Worker's own limit applies). `clear` drops the
- * token and detaches any exchange in flight, so its answer is not kept after a sign-out.
+ * The one in-memory access token of a client, bound to the device token it was asked with (the
+ * `key`: a replaced token, another account's sign-in or a re-activation is a different key, so
+ * nobody is handed a token that belongs to another sign-in). `get` returns the held token while
+ * it is for this key and more than {@link ACCESS_TOKEN_REUSE_MARGIN_SECONDS} seconds remain,
+ * and otherwise runs `exchange` once: callers with the same key that arrive while it runs share
+ * its answer, a caller with another key starts its own. `refresh: true` skips the held token
+ * (an app whose backend refused it asks for a new one); it still joins an exchange in flight.
+ * A refused or failed exchange is not cached, except that a `rate_limited` answer carrying
+ * `retryAfterSeconds` is remembered: until that wait has passed `get` fails fast with
+ * `rate_limited`, sending nothing, `refresh` included. `clear` drops all of it and detaches any
+ * exchange in flight, so its answer is not kept after a sign-out.
  */
 export class AccessTokenCache {
-  #held: AccessToken | null = null;
-  #pending: Promise<AccessToken> | null = null;
-  #generation = 0;
+  #held: { key: string; token: AccessToken } | null = null;
+  #pending: { key: string; run: Promise<AccessToken> } | null = null;
+  #limited: { key: string; until: number } | null = null;
 
-  constructor(private readonly now: () => number) {}
+  /** `limited` builds the error of a fail-fast, for an SDK with its own error class; by default
+   *  a client-core `PolarisError`. */
+  constructor(
+    private readonly now: () => number,
+    private readonly limited: (retryAfterSeconds: number) => Error = (
+      retryAfterSeconds,
+    ) =>
+      new PolarisError(
+        "rate_limited",
+        "the access token exchange is rate limited; wait before asking again.",
+        { retryAfterSeconds },
+      ),
+  ) {}
 
   async get(
+    key: string,
     exchange: () => Promise<AccessTokenGrant>,
     opts: { refresh?: boolean } = {},
   ): Promise<AccessToken> {
@@ -150,13 +173,38 @@ export class AccessTokenCache {
     if (
       opts.refresh !== true &&
       held !== null &&
-      held.expiresAt - ACCESS_TOKEN_REUSE_MARGIN_SECONDS > t
+      held.key === key &&
+      held.token.expiresAt - ACCESS_TOKEN_REUSE_MARGIN_SECONDS > t
     )
-      return { ...held, expiresIn: held.expiresAt - t };
-    if (this.#pending !== null) return this.#pending;
-    const generation = this.#generation;
-    const run: Promise<AccessToken> = (async () => {
-      const grant = await exchange();
+      return { ...held.token, expiresIn: held.token.expiresAt - t };
+    if (this.#pending !== null && this.#pending.key === key)
+      return this.#pending.run;
+    const wait = this.#limited;
+    if (wait !== null && wait.key === key) {
+      if (wait.until > t) throw this.limited(wait.until - t);
+      this.#limited = null;
+    }
+    // Assigned below, before anything in the body can run past its first await.
+    let run!: Promise<AccessToken>;
+    run = (async () => {
+      let grant: AccessTokenGrant;
+      try {
+        grant = await exchange();
+      } catch (e) {
+        // Structural: an SDK with its own error class (the browser's) raises the same shape.
+        const { code, retryAfterSeconds: wait } = (e ?? {}) as {
+          code?: unknown;
+          retryAfterSeconds?: unknown;
+        };
+        if (
+          this.#pending?.run === run &&
+          code === "rate_limited" &&
+          typeof wait === "number" &&
+          wait > 0
+        )
+          this.#limited = { key, until: this.now() + wait };
+        throw e;
+      }
       const at = this.now();
       const token: AccessToken = {
         accessToken: grant.accessToken,
@@ -164,22 +212,23 @@ export class AccessTokenCache {
         expiresIn: grant.expiresIn,
         expiresAt: at + grant.expiresIn,
       };
-      // A `clear()` while the exchange ran means the answer is not this client's to keep.
-      if (this.#generation === generation) this.#held = token;
+      // Kept only while this is still the client's exchange: a `clear()` or a caller with
+      // another key took it over.
+      if (this.#pending?.run === run) this.#held = { key, token };
       return token;
     })();
-    this.#pending = run;
+    this.#pending = { key, run };
     try {
       return await run;
     } finally {
-      if (this.#pending === run) this.#pending = null;
+      if (this.#pending?.run === run) this.#pending = null;
     }
   }
 
-  /** Drop the token and any exchange in flight (sign-out, deactivation). */
+  /** Drop the token, the rate-limit wait and any exchange in flight (sign-out, deactivation). */
   clear(): void {
-    this.#generation++;
     this.#held = null;
     this.#pending = null;
+    this.#limited = null;
   }
 }

@@ -72,6 +72,7 @@ describe("readAccessToken", () => {
     ["not a compact JWS", { ...answer, access_token: "abc" }],
     ["wrong issued type", { ...answer, issued_token_type: "x" }],
     ["wrong token type", { ...answer, token_type: "MAC" }],
+    ["over 8 KiB", { ...answer, access_token: `a.b.${"c".repeat(8192)}` }],
     ["zero lifetime", { ...answer, expires_in: 0 }],
     ["fractional lifetime", { ...answer, expires_in: 1.5 }],
     ["not an object", "nope"],
@@ -84,6 +85,7 @@ describe("readAccessToken", () => {
 
 describe("AccessTokenCache", () => {
   const grant = { accessToken: JWT, expiresIn: 600 };
+  const KEY = "pkeyt_a";
 
   it("reuses a token until the margin before expiry, then asks again", async () => {
     let t = 1000;
@@ -93,15 +95,15 @@ describe("AccessTokenCache", () => {
       calls++;
       return grant;
     };
-    const first = await c.get(ask);
+    const first = await c.get(KEY, ask);
     expect(first).toMatchObject({ expiresIn: 600, expiresAt: 1600 });
     t = 1000 + 600 - ACCESS_TOKEN_REUSE_MARGIN_SECONDS - 1;
-    const again = await c.get(ask);
+    const again = await c.get(KEY, ask);
     expect(again.accessToken).toBe(JWT);
     expect(again.expiresIn).toBe(ACCESS_TOKEN_REUSE_MARGIN_SECONDS + 1);
     expect(calls).toBe(1);
     t = 1000 + 600 - ACCESS_TOKEN_REUSE_MARGIN_SECONDS;
-    await c.get(ask);
+    await c.get(KEY, ask);
     expect(calls).toBe(2);
   });
 
@@ -115,7 +117,11 @@ describe("AccessTokenCache", () => {
       await gate;
       return grant;
     };
-    const all = Promise.all([c.get(ask), c.get(ask), c.get(ask)]);
+    const all = Promise.all([
+      c.get(KEY, ask),
+      c.get(KEY, ask),
+      c.get(KEY, ask),
+    ]);
     release();
     const got = await all;
     expect(calls).toBe(1);
@@ -125,12 +131,12 @@ describe("AccessTokenCache", () => {
   it("does not keep a failure", async () => {
     const c = new AccessTokenCache(() => 0);
     await expect(
-      c.get(async () => {
+      c.get(KEY, async () => {
         throw new PolarisError("rate_limited", "slow down");
       }),
     ).rejects.toThrow("slow down");
     let calls = 0;
-    await c.get(async () => {
+    await c.get(KEY, async () => {
       calls++;
       return grant;
     });
@@ -139,12 +145,12 @@ describe("AccessTokenCache", () => {
 
   it("clear drops the token and an exchange still in flight", async () => {
     const c = new AccessTokenCache(() => 0);
-    await c.get(async () => grant);
+    await c.get(KEY, async () => grant);
     c.clear();
     let calls = 0;
     let release: () => void = () => undefined;
     const gate = new Promise<void>((r) => (release = r));
-    const slow = c.get(async () => {
+    const slow = c.get(KEY, async () => {
       calls++;
       await gate;
       return grant;
@@ -153,10 +159,87 @@ describe("AccessTokenCache", () => {
     release();
     await slow;
     // The answer that landed after the clear was not kept.
-    await c.get(async () => {
+    await c.get(KEY, async () => {
       calls++;
       return grant;
     });
     expect(calls).toBe(2);
+  });
+
+  it("is bound to the device token: another key is a miss", async () => {
+    const c = new AccessTokenCache(() => 0);
+    const seen: string[] = [];
+    const ask = (name: string) => async () => {
+      seen.push(name);
+      return { accessToken: `${name}.b.c`, expiresIn: 600 };
+    };
+    expect((await c.get("pkeyt_a", ask("a"))).accessToken).toBe("a.b.c");
+    expect((await c.get("pkeyt_a", ask("x"))).accessToken).toBe("a.b.c");
+    // A replaced token, or another account's sign-in, gets its own exchange.
+    expect((await c.get("pkeyt_b", ask("b"))).accessToken).toBe("b.b.c");
+    expect(seen).toEqual(["a", "b"]);
+  });
+
+  it("does not hand an exchange in flight to a caller with another key", async () => {
+    const c = new AccessTokenCache(() => 0);
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((r) => (release = r));
+    const old = c.get("pkeyt_a", async () => {
+      await gate;
+      return { accessToken: "a.b.c", expiresIn: 600 };
+    });
+    const fresh = await c.get("pkeyt_b", async () => ({
+      accessToken: "b.b.c",
+      expiresIn: 600,
+    }));
+    expect(fresh.accessToken).toBe("b.b.c");
+    release();
+    expect((await old).accessToken).toBe("a.b.c");
+    // The late answer for the old key did not displace the new caller's token.
+    let calls = 0;
+    const again = await c.get("pkeyt_b", async () => {
+      calls++;
+      return grant;
+    });
+    expect(again.accessToken).toBe("b.b.c");
+    expect(calls).toBe(0);
+  });
+
+  it("remembers a 429's wait and fails fast until it passes, refresh included", async () => {
+    let t = 100;
+    const c = new AccessTokenCache(() => t);
+    let calls = 0;
+    const limited = async (): Promise<typeof grant> => {
+      calls++;
+      throw new PolarisError("rate_limited", "slow down", {
+        retryAfterSeconds: 60,
+      });
+    };
+    await expect(c.get(KEY, limited)).rejects.toThrow("slow down");
+    t = 130;
+    const err = await c
+      .get(KEY, limited, { refresh: true })
+      .catch((e: unknown) => e);
+    expect(err).toMatchObject({ code: "rate_limited", retryAfterSeconds: 30 });
+    expect(calls).toBe(1);
+    // Another device token is not under this wait.
+    await c.get("pkeyt_b", async () => grant);
+    t = 160;
+    await c.get(KEY, async () => {
+      calls++;
+      return grant;
+    });
+    expect(calls).toBe(2);
+  });
+
+  it("clear forgets a rate-limit wait", async () => {
+    const c = new AccessTokenCache(() => 0);
+    await c
+      .get(KEY, async () => {
+        throw new PolarisError("rate_limited", "x", { retryAfterSeconds: 60 });
+      })
+      .catch(() => undefined);
+    c.clear();
+    await expect(c.get(KEY, async () => grant)).resolves.toBeDefined();
   });
 });

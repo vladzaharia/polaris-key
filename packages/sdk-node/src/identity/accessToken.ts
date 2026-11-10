@@ -9,7 +9,8 @@
 // Discovery gates it: only a product whose identity fragment carries `accessToken: true` (its
 // issuer is served) is asked; otherwise the call is the typed `service-unavailable` N/A with no
 // request. The token lives in memory only, is reused until 60 seconds before it expires, is
-// asked for once at a time and is dropped at sign-out. The SDK never verifies it.
+// asked for once at a time and is dropped at sign-out, and is bound to the device token it was asked with. A 429's wait is
+// honoured without a request. The SDK never verifies it.
 
 import {
   AccessTokenCache,
@@ -21,7 +22,7 @@ import {
 } from "@polaris-key/client-core";
 import { ErrorCode, Feature } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
-import { classifyResponse, errorFrom } from "../core/http.js";
+import { classifyResponse, errorFrom, transportError } from "../core/http.js";
 import type { TokenManager } from "../core/token.js";
 import {
   identityFragmentFrom,
@@ -66,29 +67,46 @@ export class AccessTokens {
         },
         ErrorCode.serviceUnavailable,
       );
-    return this.#cache
-      .get(async () => {
-        // Read at the time of the call: a device that signed out meanwhile has none.
-        const deviceToken = tokens.current;
-        if (deviceToken === null)
-          throw new PolarisError(
-            ErrorCode.noToken,
-            "Sign in before asking for an access token.",
-          );
+    // The cache is bound to this token: another sign-in or a replaced token is a different key.
+    const deviceToken = tokens.current;
+    if (deviceToken === null)
+      throw new PolarisError(
+        ErrorCode.noToken,
+        "Sign in before asking for an access token.",
+      );
+    // The device token travels in the body: only to the client's own origin, and never redirected.
+    if (!sameOrigin(endpoint, ctx.baseUrl))
+      throw new UnsupportedError(
+        {
+          supported: false,
+          feature: Feature.identityAccesstoken,
+          reason: "product",
+          detail:
+            "this product's discovery names an access token exchange outside its own origin",
+        },
+        ErrorCode.serviceUnavailable,
+      );
+    return this.#cache.get(
+      deviceToken,
+      async () => {
         const req = accessTokenRequest({
           tokenEndpoint: endpoint,
           clientId: ctx.product,
           deviceToken,
         });
-        const res = await ctx.request(
-          req.url,
-          {
+        // The bare transport: the redirect policy would follow a same-origin 307 with the body.
+        let res: Response;
+        try {
+          res = await ctx.plainFetcher()(req.url, {
             method: "POST",
+            redirect: "error",
             headers: ctx.headers({ "content-type": req.contentType }),
             body: req.body,
-          },
-          "access token",
-        );
+            signal: ctx.deadline(),
+          });
+        } catch (e) {
+          throw transportError(e, "access token");
+        }
         if (res.status !== 200) {
           const c = await classifyResponse(res);
           // The 429's wait is in the body when no `Retry-After` header came with it.
@@ -110,12 +128,16 @@ export class AccessTokens {
           body = null;
         }
         return readAccessToken(body);
-      }, opts)
-      .catch((e: unknown) => {
-        // The Worker's one refusal for a device that holds no sign-in: nothing held is good any more.
-        if (e instanceof PolarisError && e.code === ErrorCode.invalidGrant)
-          this.#cache.clear();
-        throw e;
-      });
+      },
+      opts,
+    );
+  }
+}
+
+function sameOrigin(url: string, base: string): boolean {
+  try {
+    return new URL(url).origin === new URL(base).origin;
+  } catch {
+    return false;
   }
 }
