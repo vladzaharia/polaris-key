@@ -3,6 +3,7 @@
 // out of the initial load of a page that never opens the ring.
 import type { BearerSession } from "../bearer/session.js";
 import type { BrowserAdapterOptions } from "../browserAdapter.js";
+import { watchingAccountRequired } from "../cloudSync/accountRequired.js";
 import { RingEngine } from "./engine.js";
 import { indexedDbRootVault } from "./rootVault.js";
 
@@ -14,13 +15,21 @@ export function createRingEngine(a: {
       NonNullable<BrowserAdapterOptions["keyring"]>["deviceKeys"]
     >;
   };
+  /** A ring route answered `account_required`: Cloud Sync is told, with the answer's `signInUrl`. */
+  onAccountRequired?: (signInUrl: string | null) => void;
 }): RingEngine {
   const { product, bearer: b, options: o } = a;
   const keys = o.deviceKeys;
   return new RingEngine({
     product,
     deviceId: () => b.deviceId,
-    transport: { request: (path, init) => b.ringRequest(path, init) },
+    transport: {
+      request: watchingAccountRequired(
+        (path: string, init: { method: string; body?: string }) =>
+          b.ringRequest(path, init),
+        a.onAccountRequired,
+      ),
+    },
     keys,
     ensureKeysRegistered: async () => {
       await b.registerKeys(keys);

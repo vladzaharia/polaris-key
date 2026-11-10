@@ -166,6 +166,9 @@ export interface BrowserSyncHostDeps {
   };
 }
 
+/** The machine's answer to `receive` when it abandoned the request meanwhile (client-core). */
+const NO_REQUEST_IN_FLIGHT = "respond: no request is in flight";
+
 /** How often the real-clock timer wakes the machine while it holds work (ms). */
 export const TICK_MS = 250;
 /** The most exchanges one pump makes, whatever the machine keeps asking for. */
@@ -293,6 +296,8 @@ export class BrowserCloudSyncHost {
   #offPage: Array<() => void> = [];
   readonly #principal = new Set<() => void>();
   #bound: string | null = null;
+  /** The subject `account_required` took away (saved with the record; see `SyncStateRecord`). */
+  #refused: string | null = null;
   readonly #statusListeners = new Set<() => void>();
 
   /** The open MergeRequests of this page: the machine's and the saves layer's (plans/U-08.md). It
@@ -484,6 +489,7 @@ export class BrowserCloudSyncHost {
   #adopt(rec: SyncStateRecord): void {
     this.#rev = rec.rev;
     this.#openKeys = new Set(rec.openKeys);
+    this.#refused = rec.refused;
     this.#mirror = vetted(this.#opts.catalog);
     this.#served = vetted(rec.catalog);
     this.#build(rec.persisted);
@@ -696,6 +702,26 @@ export class BrowserCloudSyncHost {
     if (this.#used > 0) await this.#save();
   }
 
+  /**
+   * Hand an answer to the machine. A request the machine abandoned meanwhile (`accountRequired()`
+   * from a key-ring or file route, a sign-out) has no one to take its answer: it is dropped, and
+   * nothing it carried reaches the journal. Returns whether the machine took it.
+   */
+  #deliver(
+    m: CloudSyncMachine,
+    res: SyncResponse,
+    opened?: OpenedBody,
+  ): boolean {
+    try {
+      m.receive(res, opened);
+      return true;
+    } catch (e) {
+      if (e instanceof Error && e.message === NO_REQUEST_IN_FLIGHT)
+        return false;
+      throw e;
+    }
+  }
+
   /** One request: seal it (E2E), send it, open the answer, hand both to the machine. */
   async #exchange(req: SyncRequest): Promise<void> {
     const m = this.machine;
@@ -703,8 +729,10 @@ export class BrowserCloudSyncHost {
     const codec: HostCodec | null = this.#deps.ring.codec();
     const e2e = m.encryptionMode() === "e2e";
     // S3: a locked ring sends nothing, a pull included.
-    if (e2e && (codec === null || codec.locked))
-      return m.receive({ error: "transport" });
+    if (e2e && (codec === null || codec.locked)) {
+      this.#deliver(m, { error: "transport" });
+      return;
+    }
 
     let wire: SyncRequest = req;
     let mutations: ReadonlyArray<WireMutation> | undefined;
@@ -726,15 +754,20 @@ export class BrowserCloudSyncHost {
           m.refuseMutations(
             await unsealableMutations(req.body, codec!, this.#routes),
           );
-          return m.receive({ error: "transport" });
+          {
+            this.#deliver(m, { error: "transport" });
+            return;
+          }
         }
       }
     }
 
     // Queued for one person: if the token is another person's now, nothing is sent.
     const now = this.#deps.subject?.() ?? null;
-    if (bound !== null && now !== null && now !== bound)
-      return m.receive({ error: "transport" });
+    if (bound !== null && now !== null && now !== bound) {
+      this.#deliver(m, { error: "transport" });
+      return;
+    }
     const res = await sendSync(
       this.#deps.product,
       this.#deps.request,
@@ -743,9 +776,14 @@ export class BrowserCloudSyncHost {
     );
     if (!e2e || !("status" in res) || res.status !== 200 || !isObj(res.body)) {
       // Server mode, an error answer, or no answer: the machine reads it as it is.
-      if (e2e && "status" in res && res.status === 200)
-        return m.receive({ error: "transport" });
-      return m.receive(res);
+      if (e2e && "status" in res && res.status === 200) {
+        this.#deliver(m, { error: "transport" });
+        return;
+      }
+      {
+        this.#deliver(m, res);
+        return;
+      }
     }
     let opened;
     try {
@@ -759,11 +797,15 @@ export class BrowserCloudSyncHost {
       });
     } catch {
       // Locked since the request left: the answer is dropped and the cursor stays.
-      return m.receive({ error: "transport" });
+      {
+        this.#deliver(m, { error: "transport" });
+        return;
+      }
     }
-    this.#noteOpenedKeys(opened.body, opened.opened);
     const answer: SyncResponse = { status: 200, body: opened.body };
-    m.receive(answer, opened.opened);
+    // An abandoned request's answer is dropped whole: no open names, no catalog fetch.
+    if (!this.#deliver(m, answer, opened.opened)) return;
+    this.#noteOpenedKeys(opened.body, opened.opened);
     await this.#maybeRefetch(opened.body);
   }
 
@@ -857,7 +899,14 @@ export class BrowserCloudSyncHost {
     if (
       events.some((e) => e.type === "signedOut" && FORGETTING.has(e.reason))
     ) {
-      this.#forgetting = this.#forgetting.then(() => this.#forgetAll());
+      // `account_required` keeps the machine as it stands; every other leave purges it.
+      const blocked = events.some(
+        (e) => e.type === "signedOut" && e.reason === "accountRequired",
+      );
+      const was = this.#bound;
+      this.#forgetting = this.#forgetting.then(() =>
+        this.#forgetAll(blocked ? { subject: was } : null),
+      );
     }
     this.#fan(events);
   }
@@ -880,8 +929,11 @@ export class BrowserCloudSyncHost {
   }
 
   /** Drop the ring (the root first), then the record. Each is tried whatever the other did; a
-   *  failure is logged and never thrown. */
-  async #forgetAll(): Promise<void> {
+   *  failure is logged and never thrown. With `blocked` (after `account_required`) the record is
+   *  not deleted: the machine is saved as it stands. */
+  async #forgetAll(
+    blocked: { subject: string | null } | null = null,
+  ): Promise<void> {
     // The root leaves first (a save codec stops with it: `sync-locked`), then the save transfers
     // (running writes, journal, chunk cache); the pin and the record go with the rest.
     await Promise.resolve(this.#deps.ring.lock?.()).catch(() => {
@@ -894,7 +946,9 @@ export class BrowserCloudSyncHost {
       // The root is already gone (`forget` locks first); only the pin failed to go.
       this.#deps.log?.("cloud sync: the key ring pin could not be removed");
     });
-    const data = this.purge().catch(() => {
+    const data = (
+      blocked === null ? this.purge() : this.#saveBlocked(blocked.subject)
+    ).catch(() => {
       this.#deps.log?.("cloud sync: the synced data could not be deleted");
     });
     await Promise.all([ring, data]);
@@ -915,6 +969,10 @@ export class BrowserCloudSyncHost {
         return;
       case "ack":
         this.#outbox.delete(m.id);
+        return;
+      case "accountRequired":
+        // A follower's route saw it; only the writer's machine can take it.
+        if (this.isWriter) this.accountRequired(m.signInUrl);
         return;
       case "principal":
         for (const fn of this.#principal) {
@@ -1034,6 +1092,7 @@ export class BrowserCloudSyncHost {
           persisted: journal,
           catalog: this.#served,
           openKeys: [...this.#openKeys],
+          refused: this.#refused,
         };
         if (this.#purged) return;
         await this.#deps.store.put(JSON.stringify(rec));
@@ -1081,9 +1140,55 @@ export class BrowserCloudSyncHost {
     void this.flush(SYNC_SIGNOUT_FLUSH_MS);
   }
 
-  /** A principal signed in: the record is saved again. */
+  /** A principal signed in: the record is saved again, and what `account_required` refused is not
+   *  refused any more. */
   resume(): void {
     this.#purged = false;
+    this.#refused = null;
+  }
+
+  /** The subject `account_required` took away, or null (see `SyncStateRecord.refused`). */
+  get refused(): string | null {
+    return this.#refused;
+  }
+
+  /** A sign-out forgets what was refused: the next sign-in is the person's to make. */
+  async clearRefused(): Promise<void> {
+    if (this.#refused === null) return;
+    this.#refused = null;
+    await this.#save();
+  }
+
+  /**
+   * `account_required` came from a route the machine does not drive (a key-ring call or a file
+   * transfer): the writer's machine takes the same transition as for a `/sync` 403 and its events
+   * go out at once; a follower tab hands it to the writer. A request in flight is abandoned; its
+   * answer is dropped in `#deliver`. A no-op before `start()`, with no person signed in, or when
+   * already blocked this way.
+   */
+  accountRequired(signInUrl: string | null): void {
+    if (!this.started) return;
+    if (!this.isWriter) {
+      this.#deps.channel.post({ t: "accountRequired", signInUrl });
+      return;
+    }
+    this.machine.accountRequired(signInUrl);
+    this.#emit();
+  }
+
+  /**
+   * The record after `account_required`, on this path only (sign-out and deactivation keep the full
+   * `purge`): the machine is saved as it stands, so the status is still `blocked` after a relaunch,
+   * and what the person's snapshot held is already gone with the partition. `subject` is the one
+   * the Worker refused. The other tabs ask the session who it is again.
+   */
+  async #saveBlocked(subject: string | null): Promise<void> {
+    this.#openKeys = new Set();
+    this.#refused = subject;
+    this.#clearTimer();
+    await this.#save();
+    this.#deps.channel.post({ t: "principal" });
+    this.#noteStatus();
   }
 
   /** Offer the legacy local values to the machine (the machine runs it once per install). */
@@ -1101,6 +1206,7 @@ export class BrowserCloudSyncHost {
   async purge(): Promise<void> {
     this.#purged = true;
     this.#openKeys = new Set();
+    this.#refused = null;
     this.#outbox.clear();
     this.#queued = [];
     this.#clearTimer();

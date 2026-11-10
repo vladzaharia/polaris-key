@@ -27,6 +27,10 @@ import type {
 } from "../src/browser/cloudSync/writer.js";
 import { safeSignInUrl } from "../src/browser/cloudSync/api.js";
 import { sendSync } from "../src/browser/cloudSync/transport.js";
+import {
+  accountRequiredUrl,
+  watchingAccountRequired,
+} from "../src/browser/cloudSync/accountRequired.js";
 import { lazyCloudSync, unsupportedCloudSync } from "../src/core/cloudSync.js";
 import {
   LocalConfigEngine,
@@ -273,7 +277,9 @@ describe("the identity wiring", () => {
     await t.config.set("theme", "dark");
     await t.api.flush();
     expect(t.ring.forget).toHaveBeenCalled();
-    expect(await b.store.get()).toBeNull();
+    // The record stays, blocked and without the person's data (the `account_required` describe).
+    expect(t.api.status().state).toBe("blocked");
+    expect(await b.store.get()).not.toBeNull();
     const kinds = t.events.map((e) => e.type);
     expect(kinds.indexOf("signedOut")).toBeLessThan(
       kinds.indexOf("signInOffered"),
@@ -582,5 +588,239 @@ describe("useSetting and useCloudSync", () => {
     const { result } = renderHook(() => useCloudSync(), { wrapper });
     expect(result.current.unsupported).toMatchObject({ reason: "runtime" });
     expect(result.current.status).toEqual({ state: "local", pending: 0 });
+  });
+});
+
+describe("account_required (U-52)", () => {
+  const refusal = (signInUrl?: string) =>
+    new Response(
+      JSON.stringify({
+        error: {
+          code: "account_required",
+          ...(signInUrl !== undefined ? { signInUrl } : {}),
+        },
+      }),
+      { status: 403 },
+    );
+  const refused = async (w: World, b: Browser, url?: string) => {
+    const who = { current: SUBJECT as string | null | undefined };
+    const t = await tab(w, b, who);
+    await t.api.attach();
+    w.push = () => refusal(url);
+    await t.config.set("theme", "dark");
+    await t.api.flush();
+    return { t, who };
+  };
+  const requests = (w: World) => w.tokens.length;
+
+  it("keeps the record without the person's partition, root or open names, and relaunches blocked", async () => {
+    const w = new World();
+    const b = new Browser();
+    const { t } = await refused(w, b);
+    expect(t.api.status()).toMatchObject({
+      state: "blocked",
+      reason: "account_required",
+    });
+    const raw = await b.store.get();
+    expect(raw).not.toBeNull();
+    const saved = JSON.parse(raw!);
+    expect(saved.persisted.blocked).toBe("account_required");
+    expect(saved.persisted.subject).toBeNull();
+    expect(saved.openKeys).toEqual([]);
+    expect(Object.keys(saved.persisted.partitions)).not.toContain(SUBJECT);
+    expect(JSON.stringify(saved)).not.toContain('"dark"');
+    expect(saved.refused).toBe(SUBJECT);
+    await t.host.close();
+
+    // A relaunch: the session still names the refused subject, and nothing is sent.
+    const before = requests(w);
+    const again = await tab(w, b, { current: SUBJECT });
+    await again.api.attach();
+    await again.api.flush();
+    expect(again.api.status().state).toBe("blocked");
+    expect(requests(w)).toBe(before);
+    // An edit made while blocked is the device's own and goes nowhere.
+    await again.config.set("theme", "light");
+    await again.api.flush();
+    expect(requests(w)).toBe(before);
+    expect(again.config.setting("theme").get("none")).toBe("light");
+    await again.host.close();
+  });
+
+  it("a different subject lifts it, and a sign-out forgets the refusal", async () => {
+    const w = new World();
+    const b = new Browser();
+    const { t } = await refused(w, b);
+    await t.host.close();
+
+    const other = await tab(w, b, { current: OTHER });
+    await other.api.attach();
+    expect(other.api.status().state).not.toBe("blocked");
+    await other.host.close();
+
+    // The refusal survived that tab's sign-in of another person? No: sign-in cleared it. Start again.
+    const w2 = new World();
+    const b2 = new Browser();
+    const first = await refused(w2, b2);
+    await first.t.host.close();
+    const who = { current: SUBJECT as string | null | undefined };
+    const again = await tab(w2, b2, who);
+    await again.api.attach();
+    expect(again.api.status().state).toBe("blocked");
+    await again.api.identity({ kind: "signedOut" });
+    const before = requests(w2);
+    await again.api.identity({ kind: "signedIn", subject: SUBJECT });
+    expect(requests(w2)).toBeGreaterThan(before);
+    expect(again.api.status().state).not.toBe("blocked");
+    await again.host.close();
+  });
+
+  it("a key-ring or file route reaches the machine through accountRequired()", async () => {
+    const w = new World();
+    const t = await tab(w, new Browser(), { current: SUBJECT });
+    await t.api.attach();
+    await t.config.set("theme", "dark");
+    await t.api.accountRequired("https://k.test/in");
+    expect(t.api.status().state).toBe("blocked");
+    expect(t.ring.forget).toHaveBeenCalled();
+    expect(t.events.find((e) => e.type === "signInOffered")).toEqual({
+      type: "signInOffered",
+      signInUrl: "https://k.test/in",
+    });
+    // Idempotent: a second answer changes nothing and offers nothing more.
+    const offers = t.events.filter((e) => e.type === "signInOffered").length;
+    await t.api.accountRequired("https://k.test/in");
+    expect(t.events.filter((e) => e.type === "signInOffered").length).toBe(
+      offers,
+    );
+    await t.host.close();
+  });
+
+  it("with no person signed in it does nothing", async () => {
+    const t = await tab(new World(), new Browser(), { current: null });
+    await t.api.attach();
+    await t.api.accountRequired(null);
+    expect(t.api.status().state).toBe("local");
+    expect(t.events).toEqual([]);
+    await t.host.close();
+  });
+
+  it("a follower tab hands the answer to the writer", async () => {
+    const w = new World();
+    const b = new Browser();
+    const who = { current: SUBJECT as string | null | undefined };
+    const writer = await tab(w, b, who);
+    await writer.api.attach();
+    const follower = await tab(w, b, who);
+    await follower.api.attach();
+    await follower.api.accountRequired(null);
+    await settle();
+    await settle();
+    expect(writer.api.status().state).toBe("blocked");
+    await writer.host.close();
+    await follower.host.close();
+  });
+
+  const hostile: Array<[string | undefined, string | null]> = [
+    ["https://k.test/signin", "https://k.test/signin"],
+    ["/signin?x=1", "https://k.test/signin?x=1"],
+    [undefined, null],
+    ["https://evil.test/signin", null],
+    ["http://k.test/signin", null],
+    ["https://k.test.evil.test/signin", null],
+    ["https://k.test@evil.test/signin", null],
+    ["//evil.test/signin", null],
+    ["javascript:alert(1)", null],
+    ["https://k.test/sign\nin", null],
+  ];
+  for (const [given, offered] of hostile)
+    it(`the offered URL ${JSON.stringify(given)} reaches the app as ${JSON.stringify(offered)}`, async () => {
+      const t = await tab(new World(), new Browser(), { current: SUBJECT });
+      await t.api.attach();
+      await t.api.accountRequired(given ?? null);
+      expect(t.events.find((e) => e.type === "signInOffered")).toEqual({
+        type: "signInOffered",
+        signInUrl: offered,
+      });
+      await t.host.close();
+    });
+
+  it("a request in flight when it arrives has its answer dropped", async () => {
+    const w = new World();
+    const request = w.request;
+    let release: (() => void) | null = null;
+    let hold = false;
+    w.request = async (path, init) => {
+      if (hold && path.startsWith("sync/ops")) {
+        await new Promise<void>((r) => (release = r));
+      }
+      return request(path, init);
+    };
+    const t = await tab(w, new Browser(), { current: SUBJECT });
+    await t.api.attach();
+    hold = true;
+    await t.config.set("theme", "dark");
+    const flushing = t.api.flush();
+    await waitFor(() => expect(release).not.toBeNull());
+    await t.api.accountRequired(null);
+    expect(t.api.status().state).toBe("blocked");
+    release!();
+    await expect(flushing).resolves.toMatchObject({ state: "blocked" });
+    // The answer changed nothing: the person's value is gone with the partition, the device's stays.
+    expect(t.api.status().state).toBe("blocked");
+    await t.host.close();
+  });
+
+  describe("reading the answer off a ring or file route", () => {
+    it("takes the code and URL from either error shape, and leaves the body readable", async () => {
+      const nested = refusal("https://k.test/in");
+      expect(await accountRequiredUrl(nested)).toBe("https://k.test/in");
+      expect(await nested.json()).toMatchObject({
+        error: { code: "account_required" },
+      });
+      expect(await accountRequiredUrl(refusal())).toBeNull();
+      expect(
+        await accountRequiredUrl(
+          new Response(
+            JSON.stringify({ error: "account_required", signInUrl: "/in" }),
+            { status: 403 },
+          ),
+        ),
+      ).toBe("/in");
+    });
+
+    it("ignores every other answer", async () => {
+      const other = (status: number, code: string) =>
+        new Response(JSON.stringify({ error: { code } }), { status });
+      expect(await accountRequiredUrl(other(403, "forbidden"))).toBeUndefined();
+      expect(
+        await accountRequiredUrl(other(401, "account_required")),
+      ).toBeUndefined();
+      expect(
+        await accountRequiredUrl(new Response("nope", { status: 403 })),
+      ).toBeUndefined();
+      expect(
+        await accountRequiredUrl(
+          new Response("x".repeat(20_000), { status: 403 }),
+        ),
+      ).toBeUndefined();
+    });
+
+    it("tells its owner before the answer is returned", async () => {
+      const told: Array<string | null> = [];
+      const send = watchingAccountRequired(
+        async (_p: string) => refusal("https://k.test/in"),
+        (u) => told.push(u),
+      );
+      const res = await send("devices/keyring");
+      expect(res.status).toBe(403);
+      expect(told).toEqual(["https://k.test/in"]);
+      const quiet = watchingAccountRequired(
+        async (_p: string) => new Response("{}", { status: 200 }),
+        (u) => told.push(u),
+      );
+      await quiet("devices/keyring");
+      expect(told).toHaveLength(1);
+    });
   });
 });
