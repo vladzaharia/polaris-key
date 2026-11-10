@@ -109,6 +109,7 @@ Each removal, with its fix and the release that made it, is in the [developer ch
 
 | SDK | Removed | Use instead | Since |
 | --- | --- | --- | --- |
+| godot | `PKeySaves.resolve` | `cloudSync.mergeRequest.keep`, from the merge request a conflict hands you | 0.10.4 |
 | swift | `PolarisLoginView`, `PolarisGateModel` | `PolarisKeyGate` (or `.polarisKey(client)`, which now draws it) | 0.9.18 |
 | swift | `PolarisSignIn`, `PolarisOfflineActivation` | The kit's sign-in and offline screens, inside `PolarisKeyGate` | 0.9.18 |
 | swift | `GateOptions` | `KitGateOptions` (`keyEntry`, `offlineActivation`); `returnURL`, `renewURL` and `blockedAction` have no counterpart | 0.9.18 |
@@ -215,7 +216,6 @@ Each removal, with its fix and the release that made it, is in the [developer ch
 | python | `identity.poll_sign_in` | `identity.signIn.session.wait` | 0.9 |
 | python | `identity.wait_for_sign_in` | `identity.signIn.session.wait` | 0.9 |
 | python | `identity.accept_sign_in` | `identity.signIn.session.wait` | 0.9 |
-| godot | `PKeySaves.resolve` | `cloudSync.mergeRequest.keep` | 0.9 |
 
 <!-- /GENERATED:upgrade-sdk -->
 <!-- prettier-ignore-end -->
