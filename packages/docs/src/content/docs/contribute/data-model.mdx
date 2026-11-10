@@ -229,7 +229,7 @@ this page or fails the freshness gate.
 | `portal_audit` | 0008_portal.sql | `id`, `account_id`, `at`, `action`, `product`, `target_kind`, `target_id`, `summary` |
 | `identity_restore_keys` | 0152_identity_restore_keys.sql | `id`, `product`, `device_id`, `subject`, `secret_hash`, `created_at`, `checked_at` |
 | `identity_restore_origins` | 0152_identity_restore_keys.sql | `product`, `device_id`, `subject`, `created_at` |
-| `identity_clients` | 0160_a_identity_clients.sql | `client_id`, `product`, `key`, `origin`, `name`, `developer_name`, `type`, `redirect_uris_json`, `post_logout_redirect_uris_json`, `scopes_json`, `claims_required_json`, `icon_url`, `status`, `created_at`, `updated_at` |
+| `identity_clients` | 0160_a_identity_clients.sql | `client_id`, `product`, `key`, `origin`, `name`, `developer_name`, `type`, `redirect_uris_json`, `post_logout_redirect_uris_json`, `scopes_json`, `claims_required_json`, `icon_url`, `status`, `disabled_by`, `created_at`, `updated_at` |
 | `identity_client_secrets` | 0160_a_identity_clients.sql | `id`, `client_id`, `product`, `secret_hash`, `last4`, `created_at`, `last_used_at`, `revoked_at` |
 | `identity_issuer_keys` | 0161_b_identity_issuer_keys.sql | `product`, `kid`, `state`, `sealed`, `n`, `e`, `created_at`, `published_at`, `activated_at`, `retired_at` |
 | `identity_client_grants` | 0162_c_identity_client_grants.sql | `account_id`, `client_id`, `product`, `claims_granted_json`, `claims_declined_json`, `scopes_json`, `scope_hash`, `granted_at`, `changed_at`, `last_used_at` |

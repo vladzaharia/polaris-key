@@ -54,6 +54,7 @@ import type { Db, DbStatement } from "../../../db/types.js";
 import { batchCounts } from "../../../db/batch.js";
 import type { Env } from "../../../platform/env.js";
 import { open, seal } from "../../../platform/keyvault.js";
+import { issuerServed } from "./served.js";
 import {
   SYSTEM_ACTORS,
   actorColumns,
@@ -225,6 +226,10 @@ export async function signIssuerJwt(
   claims: JWTPayload,
   now: number,
 ): Promise<string> {
+  // A key ring is made only for a live product whose issuer is on: a token request for any other
+  // product never creates one.
+  if (!(await issuerServed(db, product)))
+    throw new Error("the issuer is not served for this product");
   const kid = await ensureIssuerKeys(env, db, product, now);
   const row = await db.first<{ sealed: string }>(
     `SELECT sealed FROM identity_issuer_keys WHERE product = ? AND kid = ? AND state = 'active'`,

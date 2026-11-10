@@ -49,6 +49,12 @@
  *     `identity:` row settings while Identity is on, so the manifest-row DELETE and the audit
  *     statement of 1, 3, 4, 5, 6a, 8 and 9 name one more key. Only those statements changed (the
  *     end states and results are identical: the fixture declares no `claimByKey`).
+ *   - I-21.4: the manifest's `identity.clients` are upserted (and a dropped client disabled, its
+ *     refresh families revoked) by two statements every identity ingest now carries, and
+ *     `identity.issuer.enabled` joined the row settings. Entries 1-6a, 8, 9-*, 10a and 11a/b were
+ *     re-captured for exactly that: the two statements (and their empty tables in the end
+ *     state), and one more key in the manifest-row DELETE and audit statements. No result,
+ *     round-trip count or other table moved.
  *   - ST-17 (S-18 §4.5 item 4): an apply records the plan it applied in `product_sync_state.plan_json`,
  *     in its own batch (`INSERT INTO product_sync_state … ON CONFLICT … SET plan_json`). Every
  *     apply scenario (3-6, 8-9, 10a, 11a/b) gained that one write and its end-state row. The plan

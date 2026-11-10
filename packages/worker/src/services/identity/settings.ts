@@ -21,10 +21,9 @@
  *   identity.redirectPaths        `identity.redirectPaths`: critical; read by I-08's redirect.
  *   identity.nativeRedirect.*     `loopback`, `schemes`, `claimedPaths` (I-15): the native redirect classes.
  *
- * The row-backed ones (`IDENTITY_ROW_SETTINGS`) are written by the descriptor's
- * `manifestIngestAlways` on every link and resync (`core/rowSettings.ts`, omit-clears); claimByKey
- * is row-backed too since ST-14 and joins them while Identity is on (`identityManifestIngest`). A
- * console claim is never overwritten. `identity.native` and `identity.requireTerms` are never registered.
+ * The row-backed ones (`IDENTITY_ROW_SETTINGS`; claimByKey joins them while Identity is on) are
+ * written on every link and resync (`core/rowSettings.ts`, omit-clears); a console claim stays.
+ * `identity.issuer.enabled` (I-21.4) lives in `issuer/setting.ts`. `identity.native` is never registered.
  */
 
 import {
@@ -45,9 +44,9 @@ import {
   type ParsedManifest,
 } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../db/types.js";
-import { manifestRowSettingStatements } from "../../core/rowSettings.js";
-
+import { IDENTITY_ISSUER } from "./issuer/setting.js";
 import {
+  manifestRowSettingStatements,
   readRowSettings,
   type RowSettingProduct,
 } from "../../core/rowSettings.js";
@@ -70,11 +69,10 @@ import type {
 const VISIBLE = { service: "identity", offBehaviour: "hide" } as const;
 
 /**
- * S-19 §7.5 (LX-06, plans/LX-01.md §3.2): kept beside the other S-19 settings (License's
- * `licensing.*`) in the same row store, but in Identity's namespace under `identity.oidc`,
- * because its manifest home is the `oidc:` block. Row-backed: there is no `oidc_config` column.
- * It names `oidc`, so the registry's rule 2 makes it security-widening: `upgradeOnly` lets an
- * identity provider's groups raise a license's tier.
+ * S-19 §7.5 (LX-06, plans/LX-01.md §3.2): row-backed beside License's `licensing.*` (there is no
+ * `oidc_config` column), in Identity's namespace under `identity.oidc` because its manifest home is
+ * the `oidc:` block. It names `oidc`, so the registry's rule 2 makes it security-widening:
+ * `upgradeOnly` lets an identity provider's groups raise a license's tier.
  */
 const SYNC_TIER_ON_SIGN_IN: SettingDef = setting({
   key: "identity.oidc.syncTierOnSignIn",
@@ -615,6 +613,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
     PS_PLAY_SERVER,
     NEARBY,
     IDENTITY_RESTORE,
+    IDENTITY_ISSUER,
     NR_LOOPBACK,
     NR_SCHEMES,
     NR_CLAIMED,
@@ -747,6 +746,7 @@ export const IDENTITY_ROW_SETTINGS: readonly SettingDef[] = [
   PS_PLAY_SERVER,
   NEARBY,
   IDENTITY_RESTORE,
+  IDENTITY_ISSUER,
   NR_LOOPBACK,
   NR_SCHEMES,
   NR_CLAIMED,

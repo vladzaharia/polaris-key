@@ -2,7 +2,7 @@
 -- families. Provisional number; the lead assigns the real one at merge.
 --
 --   token_hash         HMAC(KEY_HASH_PEPPER, token), hex: the token (`pkeyo_` + 43 characters) is
---                      never stored. The key.
+--                      never stored. With `product`, the key (R11-05: product first).
 --   family_id          the family a code redemption opens; every rotation joins it.
 --   product, client_id, account_id, scope, claims_json, auth_time   what the family was issued for.
 --   family_started_at  when the family opened; it ends 90 days later however it is used.
@@ -15,7 +15,7 @@
 -- A subject store (`identity.refreshTokens`, registered by I-21.15). Owned by identity. No foreign
 -- keys. Expand-only. Rollback: scripts/rollback/0163_d_identity_refresh_tokens.down.sql.
 CREATE TABLE IF NOT EXISTS identity_refresh_tokens (
-  token_hash        TEXT NOT NULL PRIMARY KEY,
+  token_hash        TEXT NOT NULL,
   family_id         TEXT NOT NULL,
   product           TEXT NOT NULL,
   client_id         TEXT NOT NULL,
@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS identity_refresh_tokens (
   last_used_at      INTEGER NOT NULL,
   spent_at          INTEGER,
   replaced_by       TEXT,
-  revoked_at        INTEGER
+  revoked_at        INTEGER,
+  PRIMARY KEY (product, token_hash)
 );
 CREATE INDEX IF NOT EXISTS identity_refresh_tokens_family
   ON identity_refresh_tokens (family_id);
@@ -36,5 +37,3 @@ CREATE INDEX IF NOT EXISTS identity_refresh_tokens_owner
   ON identity_refresh_tokens (account_id, client_id);
 CREATE INDEX IF NOT EXISTS identity_refresh_tokens_client
   ON identity_refresh_tokens (client_id);
-CREATE INDEX IF NOT EXISTS identity_refresh_tokens_product
-  ON identity_refresh_tokens (product);

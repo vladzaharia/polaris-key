@@ -95,7 +95,7 @@ export async function putClientGrant(
        (account_id, client_id, product, claims_granted_json, claims_declined_json, scopes_json,
         scope_hash, granted_at, changed_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT (account_id, client_id) DO UPDATE SET
+     ON CONFLICT (product, account_id, client_id) DO UPDATE SET
        claims_granted_json = excluded.claims_granted_json,
        claims_declined_json = excluded.claims_declined_json,
        scopes_json = excluded.scopes_json,

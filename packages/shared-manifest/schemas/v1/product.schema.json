@@ -921,6 +921,104 @@
         "restore": {
           "description": "Whether the app may sign a person in again on a new device from a restore key in their platform backup (identity.restore). Default true; set false to opt out.",
           "type": "boolean"
+        },
+        "issuer": {
+          "type": "object",
+          "description": "Sign in with <Product> (identity.issuer.*; WIRE-CONTRACT-V5 section 12.13): the product as an OpenID provider for its registered clients. Off unless enabled is true.",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Whether the product serves its OpenID provider routes (identity.issuer.enabled). Default false; needs the identity service on.",
+              "type": "boolean"
+            }
+          }
+        },
+        "clients": {
+          "type": "array",
+          "description": "The registered clients of the issuer (identity.clients), at most 20; needs identity.issuer.enabled true (issuer_clients_without_issuer). Secrets are never declared here: the console generates them. A client dropped from the list is disabled, never deleted.",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/identityClient" }
+        }
+      }
+    },
+    "identityClient": {
+      "type": "object",
+      "description": "One registered client of the issuer (identity.clients[]; WIRE-CONTRACT-V5 section 12.13.2).",
+      "additionalProperties": false,
+      "required": ["key", "name", "type", "redirectUris", "scopes"],
+      "properties": {
+        "key": {
+          "description": "The client's stable name within the product, unique (duplicate_client_key). The Worker mints its cl_ id once.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,31}$"
+        },
+        "name": {
+          "description": "The name the sign-in card shows, 1 to 64 characters, held to the display-name rules.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "developerName": {
+          "description": "The client developer's name; absent means the product's developer. Another name makes a partner client, and the card says so.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "type": {
+          "description": "web (confidential, holds a secret), spa (public, in a browser) or native (public, an installed app).",
+          "enum": ["web", "spa", "native"]
+        },
+        "redirectUris": {
+          "description": "1 to 10 unique URIs: https with no fragment or userinfo; for native clients also a loopback http://127.0.0.1 or http://[::1] URI with a path and no port, or a reverse-DNS private-use scheme other than im.plrs. and locker.polaris.. Matched exactly. Loopback and private-use URIs on a web or spa client are a validator error (invalid_client_redirect).",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 2048,
+            "pattern": "^(?:https://[^\\s/?#@*]+(?:/[^\\s#*]*)?(?:\\?[^\\s#*]*)?|http://(?:127\\.0\\.0\\.1|\\[::1\\])/[^\\s#*]*|(?!im\\.plrs\\.)(?!locker\\.polaris\\.)(?=[^:]*\\.)[a-z][a-z0-9+.-]{0,63}:/[^\\s#*]*)$"
+          }
+        },
+        "postLogoutRedirectUris": {
+          "description": "0 to 10 unique URIs under the same classes as redirectUris.",
+          "type": "array",
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 2048,
+            "pattern": "^(?:https://[^\\s/?#@*]+(?:/[^\\s#*]*)?(?:\\?[^\\s#*]*)?|http://(?:127\\.0\\.0\\.1|\\[::1\\])/[^\\s#*]*|(?!im\\.plrs\\.)(?!locker\\.polaris\\.)(?=[^:]*\\.)[a-z][a-z0-9+.-]{0,63}:/[^\\s#*]*)$"
+          }
+        },
+        "scopes": {
+          "description": "The scopes the client may be granted: openid and any of profile, email, offline_access and pkey:entitlements.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "contains": { "const": "openid" },
+          "items": {
+            "enum": [
+              "openid",
+              "profile",
+              "email",
+              "offline_access",
+              "pkey:entitlements"
+            ]
+          }
+        },
+        "claims": {
+          "type": "object",
+          "description": "Claims the person cannot switch off on the consent step; the scopes must deliver them (client_claim_not_requested).",
+          "additionalProperties": false,
+          "required": ["required"],
+          "properties": {
+            "required": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "enum": ["name", "picture", "email"] }
+            }
+          }
         }
       }
     },

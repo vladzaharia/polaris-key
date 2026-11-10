@@ -19,6 +19,8 @@ import type {
 import { reservedAudienceIn } from "./platformSignIn.js";
 import { valueHeldByOtherProduct } from "../../core/settings/unique.js";
 import { identityManifestIngest } from "./settings.js";
+import { MAX_ISSUER_CLIENTS } from "@polaris-key/protocol/identity";
+import { mintClientId } from "./issuer/clientsRepo.js";
 
 /** A stored `oidc_config` row's columns (`stmtInsertOidcConfig`'s, after the product). */
 interface OidcColumns {
@@ -188,12 +190,88 @@ async function prepare(ctx: IngestContext): Promise<ManifestContribution> {
       statements.push(stmtInsertProvisioning({ product: slug, ...h }));
   }
 
+  if (ctx.scope !== "system") statements.push(...issuerClientStatements(ctx));
+
   const rows = identityHookStatements(ctx);
   if (rows.length > 0) {
     statements.push(...rows);
     updated.push("identity");
   }
   return { statements, audits, updated };
+}
+
+/**
+ * The manifest's registered clients (I-21.4; V5 §12.13.2), upserted by `(product, key)`: the
+ * manifest owns what it declares, so an upsert rewrites the declared members and marks the row
+ * `manifest`. The id is minted on first sight and kept. A manifest client the file no longer names is
+ * disabled (never deleted) and its refresh families revoked; a client an operator disabled stays
+ * disabled whatever the file says. Console-origin clients the manifest never names are untouched
+ * (`origin = 'manifest'` guards the disable). Written whatever the toggles say: the rows are inert
+ * until the issuer is served. The cap of 20 is inside the insert, as in `createClient`.
+ */
+export function issuerClientStatements(
+  ctx: Pick<IngestContext, "manifest" | "slug" | "now">,
+): DbStatement[] {
+  const { slug, now } = ctx;
+  const clients = ctx.manifest.identity?.clients ?? [];
+  const out: DbStatement[] = clients.map((c) => ({
+    sql: `INSERT INTO identity_clients
+            (client_id, product, key, origin, name, developer_name, type, redirect_uris_json,
+             post_logout_redirect_uris_json, scopes_json, claims_required_json, icon_url, status,
+             created_at, updated_at)
+          SELECT ?, ?, ?, 'manifest', ?, ?, ?, ?, ?, ?, ?, NULL, 'active', ?, ?
+          WHERE (SELECT COUNT(*) FROM identity_clients WHERE product = ?) < ?
+             OR EXISTS (SELECT 1 FROM identity_clients WHERE product = ? AND key = ?)
+          ON CONFLICT (product, key) DO UPDATE SET
+            origin = 'manifest',
+            name = excluded.name,
+            developer_name = excluded.developer_name,
+            type = excluded.type,
+            redirect_uris_json = excluded.redirect_uris_json,
+            post_logout_redirect_uris_json = excluded.post_logout_redirect_uris_json,
+            scopes_json = excluded.scopes_json,
+            claims_required_json = excluded.claims_required_json,
+            status = CASE WHEN identity_clients.disabled_by = 'manifest'
+                          THEN 'active' ELSE identity_clients.status END,
+            disabled_by = CASE WHEN identity_clients.disabled_by = 'manifest'
+                               THEN NULL ELSE identity_clients.disabled_by END,
+            updated_at = excluded.updated_at`,
+    params: [
+      mintClientId(),
+      slug,
+      c.key,
+      c.name,
+      c.developerName ?? null,
+      c.type,
+      JSON.stringify(c.redirectUris),
+      JSON.stringify(c.postLogoutRedirectUris),
+      JSON.stringify(c.scopes),
+      JSON.stringify(c.claimsRequired),
+      now,
+      now,
+      slug,
+      MAX_ISSUER_CLIENTS,
+      slug,
+      c.key,
+    ],
+  }));
+  const keep = clients.map(() => "?").join(", ");
+  out.push(
+    {
+      sql: `UPDATE identity_clients SET status = 'disabled', disabled_by = 'manifest', updated_at = ?
+             WHERE product = ? AND origin = 'manifest' AND status = 'active'
+               ${clients.length > 0 ? `AND key NOT IN (${keep})` : ""}`,
+      params: [now, slug, ...clients.map((c) => c.key)],
+    },
+    {
+      sql: `UPDATE identity_refresh_tokens SET revoked_at = ?
+             WHERE product = ? AND revoked_at IS NULL
+               AND client_id IN (SELECT client_id FROM identity_clients
+                                  WHERE product = ? AND status = 'disabled')`,
+      params: [now, slug, slug],
+    },
+  );
+  return out;
 }
 
 function oidcStatement(ctx: IngestContext): DbStatement | null {

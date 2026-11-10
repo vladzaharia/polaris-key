@@ -10,6 +10,7 @@ import {
   type Sealed,
 } from "../../../src/platform/keyvault.js";
 import { makeTestDb } from "../../helpers.js";
+import { enableIssuer } from "../../services/identity/issuer/issuerHelpers.js";
 import {
   ensureIssuerKeys,
   issuerJwks,
@@ -644,6 +645,7 @@ describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
   it("re-seals an issuer signing key, and the product still signs afterwards", async () => {
     const { db, kv } = await seedSealedRows();
     const old = kekAdminEnv(kv, { PLATFORM_KEK: KEK_OLD });
+    await enableIssuer(db, "djdl");
     const kid = await ensureIssuerKeys(old, db, "djdl", NOW);
     const jwksBefore = await issuerJwks(db, "djdl");
     const both = { default: KEK_OLD, k2: KEK_NEW };

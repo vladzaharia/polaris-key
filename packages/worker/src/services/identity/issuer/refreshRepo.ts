@@ -231,8 +231,8 @@ export async function rotateRefreshToken(
   const counts = await batchCounts(db, [
     {
       sql: `UPDATE identity_refresh_tokens SET spent_at = ?, replaced_by = ?
-            WHERE token_hash = ? AND spent_at IS NULL AND revoked_at IS NULL`,
-      params: [now, next, row.tokenHash],
+            WHERE product = ? AND token_hash = ? AND spent_at IS NULL AND revoked_at IS NULL`,
+      params: [now, next, row.product, row.tokenHash],
     },
     {
       sql: `INSERT INTO identity_refresh_tokens
@@ -241,8 +241,8 @@ export async function rotateRefreshToken(
             SELECT ?, family_id, product, client_id, account_id, ?, claims_json, auth_time,
                    family_started_at, ?, ?
               FROM identity_refresh_tokens
-             WHERE token_hash = ? AND spent_at = ? AND replaced_by = ?`,
-      params: [next, scope, now, now, row.tokenHash, now, next],
+             WHERE product = ? AND token_hash = ? AND spent_at = ? AND replaced_by = ?`,
+      params: [next, scope, now, now, row.product, row.tokenHash, now, next],
     },
   ]);
   if (counts[0] !== 1 || counts[1] !== 1) return reuse();

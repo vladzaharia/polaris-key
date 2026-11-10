@@ -260,8 +260,15 @@ export async function setClientStatus(
 ): Promise<boolean> {
   const stmts: DbStatement[] = [
     {
-      sql: `UPDATE identity_clients SET status = ?, updated_at = ? WHERE product = ? AND client_id = ?`,
-      params: [status, now, product, clientId],
+      sql: `UPDATE identity_clients SET status = ?, disabled_by = ?, updated_at = ?
+            WHERE product = ? AND client_id = ?`,
+      params: [
+        status,
+        status === "disabled" ? "operator" : null,
+        now,
+        product,
+        clientId,
+      ],
     },
   ];
   if (status === "disabled")
@@ -431,8 +438,9 @@ export async function verifyClientSecret(
     if (constantTimeEqual(r.secret_hash, presented)) matched = r.id;
   if (matched === null) return false;
   await db.run(
-    `UPDATE identity_client_secrets SET last_used_at = ? WHERE id = ?`,
+    `UPDATE identity_client_secrets SET last_used_at = ? WHERE product = ? AND id = ?`,
     now,
+    product,
     matched,
   );
   return true;

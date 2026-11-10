@@ -29,6 +29,7 @@ import type { MaintenanceRecorder } from "../../../../src/core/contributions.js"
 import { makeEnv, seedProduct, NOW } from "../../../seed.js";
 import { KvMock } from "../../../kvMock.js";
 import { makeTestDb } from "../../../helpers.js";
+import { enableIssuer } from "./issuerHelpers.js";
 
 const P = "acme";
 const SU = { sub: "su", name: null, email: null };
@@ -41,6 +42,7 @@ beforeEach(async () => {
   env = makeEnv(new KvMock(), []);
   await seedProduct(db, P);
   await seedProduct(db, "other");
+  await enableIssuer(db, P, "other");
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -151,6 +153,7 @@ describe("signing", () => {
     expect(payload.sub).toBe("ps_1");
     // Another product's set does not verify it.
     await seedProduct(db, "z");
+    await enableIssuer(db, "z");
     await ensureIssuerKeys(env, db, "z", NOW);
     await expect(
       jwtVerify(jwt, createLocalJWKSet(await issuerJwks(db, "z")), {
@@ -158,6 +161,18 @@ describe("signing", () => {
         currentDate: new Date(NOW * 1000),
       }),
     ).rejects.toThrow();
+  });
+
+  it("makes no key for a product whose issuer is off, or one that is deleted", async () => {
+    await seedProduct(db, "off");
+    await expect(
+      signIssuerJwt(env, db, "off", "JWT", { sub: "s" }, NOW),
+    ).rejects.toThrow(/not served/);
+    await db.run("UPDATE products SET status = 'deleted' WHERE slug = ?", P);
+    await expect(
+      signIssuerJwt(env, db, P, "JWT", { sub: "s" }, NOW),
+    ).rejects.toThrow(/not served/);
+    expect(await db.first("SELECT 1 FROM identity_issuer_keys")).toBeNull();
   });
 
   it("makes the first key on demand", async () => {
@@ -318,18 +333,19 @@ describe("rotation", () => {
 });
 
 describe("rotation without env", () => {
-  it("records a failed step instead of skipping silently", async () => {
-    const failed: string[] = [];
+  it("records a skipped step instead of omitting it silently", async () => {
+    const steps: string[] = [];
     const rec = {
-      step: async () => undefined,
+      step: async (name: string) => void steps.push(name),
       drain: async () => undefined,
-      fail: (name: string) => failed.push(name),
+      fail: () => undefined,
     } as unknown as MaintenanceRecorder;
     await identityMaintenance.product!(
       { db, product: P, now: NOW, cutoff: 0 },
       rec,
     );
-    expect(failed).toEqual([`issuerKeys:${P}`]);
+    expect(steps).toContain(`issuerKeys:${P}:skipped`);
+    expect(steps).not.toContain(`issuerKeys:${P}`);
   });
 });
 

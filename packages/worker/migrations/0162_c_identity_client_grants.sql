@@ -1,7 +1,7 @@
 -- I-21.2 (plans/I-20.md §3.5, V5 §12.13.3): a client grant, the person's decision for one
 -- registered client. Provisional number; the lead assigns the real one at merge.
 --
---   (account_id, client_id)  the key; `product` is the client's, kept for the product-wide sweeps.
+--   (product, account_id, client_id)  the key (R11-05: product first).
 --   claims_granted_json      the optional claims the person granted (`name`, `picture`, `email`).
 --   claims_declined_json     the optional claims the person declined; a declined claim is not asked again.
 --   scopes_json              the `pkey:*` and `offline_access` scopes the grant holds.
@@ -23,9 +23,7 @@ CREATE TABLE IF NOT EXISTS identity_client_grants (
   granted_at           INTEGER NOT NULL,
   changed_at           INTEGER NOT NULL,
   last_used_at         INTEGER,
-  PRIMARY KEY (account_id, client_id)
+  PRIMARY KEY (product, account_id, client_id)
 );
 CREATE INDEX IF NOT EXISTS identity_client_grants_client
   ON identity_client_grants (client_id);
-CREATE INDEX IF NOT EXISTS identity_client_grants_product
-  ON identity_client_grants (product, account_id);

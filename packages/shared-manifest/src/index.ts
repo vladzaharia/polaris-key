@@ -7,6 +7,13 @@ import {
 } from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
 import {
+  ISSUER_SCOPES,
+  MAX_CLIENT_REDIRECT_URIS,
+  MAX_ISSUER_CLIENTS,
+  type IssuerClaim,
+  type IssuerScope,
+} from "@polaris-key/protocol/identity";
+import {
   DEFAULT_RESERVED_DISPLAY_NAMES_MODE,
   checkDisplayName,
   type ReservedDisplayNamesMode,
@@ -428,7 +435,35 @@ export interface ManifestIdentity {
   nearby?: boolean;
   /** Silent restore (I-49; V5 §12.11.8): a developer opt-out, on when absent. */
   restore?: boolean;
+  /**
+   * Sign in with <Product> (I-21.4; V5 §12.13): the product as an OpenID provider. `enabled` is the
+   * claimable `identity.issuer.enabled` setting, off when absent.
+   */
+  issuer?: { enabled?: boolean };
+  /** The registered clients of the issuer (V5 §12.13.2), at most {@link MAX_ISSUER_CLIENTS}. */
+  clients?: ManifestIdentityClient[];
 }
+
+/** One `identity.clients` entry as the validator accepts it (V5 §12.13.2). No secret, ever. */
+export interface ManifestIdentityClient {
+  key: string;
+  name: string;
+  developerName?: string;
+  type: "web" | "spa" | "native";
+  redirectUris: string[];
+  postLogoutRedirectUris: string[];
+  scopes: IssuerScope[];
+  claimsRequired: IssuerClaim[];
+}
+
+/** `identity.clients[].key`: the stable name of a client within the product (V5 §12.13.2). */
+export const CLIENT_KEY_RE = /^[a-z][a-z0-9-]{1,31}$/;
+/** `identity.clients[].name` and `developerName`: at most this many characters. */
+export const CLIENT_NAME_MAX_LENGTH = 64;
+/** The client types of V5 §12.13.2. */
+export const CLIENT_TYPES = ["web", "spa", "native"] as const;
+/** A registered redirect URI is at most this long. */
+export const CLIENT_REDIRECT_MAX_LENGTH = 2048;
 
 /**
  * The `connect:` block (CC-02.2; plans/CC-01-cloud-connect.md §2.9): Cloud Connect's two developer
@@ -3027,6 +3062,66 @@ function validateDocuments(
         "reserved_display_name",
         "listing.developerName uses a reserved platform or store name; the sign-in card leaves the developer out instead. This becomes an error once the platform enforces reserved display names.",
       );
+
+    // I-21.4: a registered client's name and developer name are shown on the sign-in card, so they
+    // are held to the same rules (V5 §12.13.2).
+    const clientList = isRecord(productRoot.identity)
+      ? productRoot.identity.clients
+      : undefined;
+    if (Array.isArray(clientList))
+      clientList.forEach((c, i) => {
+        if (!isRecord(c)) return;
+        const cName = verdict(c.name);
+        if (cName === "invalid")
+          add(
+            errors,
+            "product",
+            `/identity/clients/${i}/name`,
+            "invalid_display_text",
+            "A client name must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace.",
+          );
+        else if (cName === "reserved" && mode === "error")
+          add(
+            errors,
+            "product",
+            `/identity/clients/${i}/name`,
+            "reserved_display_name",
+            "A client name uses a reserved platform or store name; a client may not present itself as one. Rename it, or ask the platform operator to approve it.",
+          );
+        else if (cName === "reserved")
+          add(
+            warnings,
+            "product",
+            `/identity/clients/${i}/name`,
+            "reserved_display_name",
+            "A client name uses a reserved platform or store name; the sign-in card shows the client key instead. This becomes an error once the platform enforces reserved display names.",
+          );
+        const cDev = verdict(c.developerName);
+        if (cDev === "invalid")
+          add(
+            errors,
+            "product",
+            `/identity/clients/${i}/developerName`,
+            "invalid_display_text",
+            "A client developerName must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace.",
+          );
+        else if (cDev === "reserved" && mode === "error")
+          add(
+            errors,
+            "product",
+            `/identity/clients/${i}/developerName`,
+            "reserved_display_name",
+            "A client developerName uses a reserved platform or store name; a developer may not present itself as one. Rename it, or ask the platform operator to approve it.",
+          );
+        else if (cDev === "reserved")
+          add(
+            warnings,
+            "product",
+            `/identity/clients/${i}/developerName`,
+            "reserved_display_name",
+            "A client developerName uses a reserved platform or store name; the sign-in card leaves the developer out instead. This becomes an error once the platform enforces reserved display names.",
+          );
+      });
 
     // A per-outlet listing is merged over the document's for store pages only, so it is held to
     // the text rule but not judged as the app's name.
@@ -6591,7 +6686,7 @@ function isHttpsUrl(v: unknown): v is string {
 
 /**
  * I-09 (plans/I-27.md §3, plans/I-04.md §3): the `identity:` block of `.pkey/product`. I-09 allows
- * `keyEntry {limit, claimByKey}`, `terms {version, url?}` and `redirectPaths`; I-42.1 adds `platformSignIn` and `nearby`; I-49.6 adds `restore`.
+ * `keyEntry {limit, claimByKey}`, `terms {version, url?}` and `redirectPaths`; I-42.1 adds `platformSignIn` and `nearby`; I-49.6 adds `restore`; I-21.4 adds `issuer` and `clients`.
  * Each `add` is written out with literal arguments so the generated validation-codes page lists
  * it.
  */
@@ -6609,7 +6704,7 @@ function validateIdentityBlock(
       "product",
       "/identity",
       "invalid_identity",
-      "identity must be an object with keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby and restore.",
+      "identity must be an object with keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby, restore, issuer and clients.",
     );
     return;
   }
@@ -6620,7 +6715,7 @@ function validateIdentityBlock(
         "product",
         `/identity/${key}`,
         "invalid_identity",
-        "identity takes only keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby and restore.",
+        "identity takes only keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby, restore, issuer and clients.",
       );
     }
   }
@@ -6777,7 +6872,265 @@ function validateIdentityBlock(
   }
   if (identity.platformSignIn !== undefined)
     validatePlatformSignIn(identity.platformSignIn, errors);
+  validateIssuer(identity, errors);
 }
+
+/** The loopback class of a registered redirect URI (RFC 8252 §7.3): no port, a path. */
+const CLIENT_LOOPBACK_RE = /^http:\/\/(?:127\.0\.0\.1|\[::1\])\/[^\s#*]*$/;
+/** The private-use-scheme class (RFC 8252 §7.1): `<reverse-DNS scheme>:/<path>`. */
+const CLIENT_PRIVATE_SCHEME_RE = /^([a-z][a-z0-9+.-]*):\/[^\s#*]*$/;
+
+/**
+ * Why is this registered redirect or post-logout URI unacceptable for a client of `type`
+ * (V5 §12.13.2)? `null` when it is of an allowed class.
+ */
+function clientRedirectProblem(v: unknown, type: unknown): string | null {
+  if (typeof v !== "string" || v === "") return "must be a string";
+  if (v.length > CLIENT_REDIRECT_MAX_LENGTH)
+    return `must be at most ${CLIENT_REDIRECT_MAX_LENGTH} characters`;
+  if (/\s/.test(v) || v.includes("#") || v.includes("*"))
+    return "must not contain whitespace, a fragment or *";
+  if (v.startsWith("https://")) {
+    try {
+      const url = new URL(v);
+      if (url.host === "" || url.username !== "" || url.password !== "")
+        return "must have a host and no user information";
+      return null;
+    } catch {
+      return "is not a valid https URL";
+    }
+  }
+  if (type !== "native")
+    return "must be an https URI (loopback and private-use schemes are for native clients)";
+  if (CLIENT_LOOPBACK_RE.test(v)) return null;
+  const scheme = CLIENT_PRIVATE_SCHEME_RE.exec(v)?.[1];
+  if (scheme !== undefined && NATIVE_REDIRECT_SCHEME_RE.test(scheme))
+    return null;
+  return "must be https, a loopback http://127.0.0.1 or http://[::1] URI with a path and no port, or a reverse-DNS private-use scheme other than im.plrs. and locker.polaris.";
+}
+
+/** The claims each scope delivers (V5 §12.13.6) among the three a client may require. */
+function scopeDeliversClaim(scopes: readonly string[], claim: string): boolean {
+  return scopes.includes(claim === "email" ? "email" : "profile");
+}
+
+/**
+ * `identity.issuer` and `identity.clients` (I-21.4; V5 §12.13.2; plans/I-20.md §5). Each `add` is
+ * written out with literal arguments so the generated validation-codes page lists it.
+ */
+function validateIssuer(
+  identity: Record<string, unknown>,
+  errors: ValidationMessage[],
+): void {
+  const issuer = identity.issuer;
+  if (issuer !== undefined) {
+    if (
+      !isRecord(issuer) ||
+      Object.keys(issuer).some((k) => k !== "enabled") ||
+      (issuer.enabled !== undefined && typeof issuer.enabled !== "boolean")
+    )
+      add(
+        errors,
+        "product",
+        "/identity/issuer",
+        "invalid_identity_issuer",
+        "identity.issuer must be an object with enabled: true or false.",
+      );
+  }
+  const clients = identity.clients;
+  if (clients === undefined) return;
+  if (!Array.isArray(clients)) {
+    add(
+      errors,
+      "product",
+      "/identity/clients",
+      "invalid_identity_clients",
+      "identity.clients must be a list of clients.",
+    );
+    return;
+  }
+  if (!isRecord(issuer) || issuer.enabled !== true)
+    add(
+      errors,
+      "product",
+      "/identity/clients",
+      "issuer_clients_without_issuer",
+      "identity.clients needs identity.issuer.enabled: true.",
+    );
+  if (clients.length > MAX_ISSUER_CLIENTS)
+    add(
+      errors,
+      "product",
+      "/identity/clients",
+      "too_many_clients",
+      `A product has at most ${MAX_ISSUER_CLIENTS} clients.`,
+    );
+  const seen = new Set<string>();
+  clients.forEach((c, i) => {
+    const at = `/identity/clients/${i}`;
+    if (!isRecord(c)) {
+      add(
+        errors,
+        "product",
+        at,
+        "invalid_identity_clients",
+        "Each client must be an object.",
+      );
+      return;
+    }
+    for (const member of Object.keys(c)) {
+      if (!CLIENT_MEMBERS.includes(member))
+        add(
+          errors,
+          "product",
+          `${at}/${member}`,
+          "invalid_identity_clients",
+          "A client takes only key, name, developerName, type, redirectUris, postLogoutRedirectUris, scopes and claims.",
+        );
+    }
+    if (typeof c.key !== "string" || !CLIENT_KEY_RE.test(c.key))
+      add(
+        errors,
+        "product",
+        `${at}/key`,
+        "invalid_client_key",
+        "A client key is 2 to 32 characters: a lower-case letter, then lower-case letters, digits or hyphens.",
+      );
+    else if (seen.has(c.key))
+      add(
+        errors,
+        "product",
+        `${at}/key`,
+        "duplicate_client_key",
+        "A client key must be unique within the product.",
+      );
+    else seen.add(c.key);
+    if (
+      typeof c.name !== "string" ||
+      c.name.length < 1 ||
+      c.name.length > CLIENT_NAME_MAX_LENGTH
+    )
+      add(
+        errors,
+        "product",
+        `${at}/name`,
+        "invalid_identity_clients",
+        "A client needs a name of 1 to 64 characters.",
+      );
+    if (
+      c.developerName !== undefined &&
+      (typeof c.developerName !== "string" ||
+        c.developerName.length < 1 ||
+        c.developerName.length > CLIENT_NAME_MAX_LENGTH)
+    )
+      add(
+        errors,
+        "product",
+        `${at}/developerName`,
+        "invalid_identity_clients",
+        "developerName is 1 to 64 characters, or absent for the product's developer.",
+      );
+    if (!CLIENT_TYPES.some((t) => t === c.type))
+      add(
+        errors,
+        "product",
+        `${at}/type`,
+        "invalid_client_type",
+        "A client's type is web, spa or native.",
+      );
+    for (const field of ["redirectUris", "postLogoutRedirectUris"] as const) {
+      const list = c[field];
+      if (list === undefined && field === "postLogoutRedirectUris") continue;
+      if (
+        !Array.isArray(list) ||
+        list.length > MAX_CLIENT_REDIRECT_URIS ||
+        (field === "redirectUris" && list.length < 1)
+      ) {
+        add(
+          errors,
+          "product",
+          `${at}/${field}`,
+          "invalid_client_redirect",
+          `${field} is a list of ${field === "redirectUris" ? "1" : "0"} to ${MAX_CLIENT_REDIRECT_URIS} URIs.`,
+        );
+        continue;
+      }
+      list.forEach((uri, j) => {
+        const problem = clientRedirectProblem(uri, c.type);
+        if (problem !== null)
+          add(
+            errors,
+            "product",
+            `${at}/${field}/${j}`,
+            "invalid_client_redirect",
+            `${field}[${j}] ${problem}.`,
+          );
+      });
+      if (new Set(list).size !== list.length)
+        add(
+          errors,
+          "product",
+          `${at}/${field}`,
+          "invalid_client_redirect",
+          `${field} must not repeat a URI.`,
+        );
+    }
+    const scopes = c.scopes;
+    const scopesOk =
+      Array.isArray(scopes) &&
+      scopes.every((x) => ISSUER_SCOPES.some((k) => k === x)) &&
+      scopes.includes("openid") &&
+      new Set(scopes).size === scopes.length;
+    if (!scopesOk)
+      add(
+        errors,
+        "product",
+        `${at}/scopes`,
+        "client_scope_unknown",
+        "scopes is a list of openid, profile, email, offline_access and pkey:entitlements, each once, and holds openid.",
+      );
+    const claims = c.claims;
+    if (claims !== undefined) {
+      const required = isRecord(claims) ? claims.required : undefined;
+      if (
+        !isRecord(claims) ||
+        Object.keys(claims).some((k) => k !== "required") ||
+        !Array.isArray(required) ||
+        !required.every((x) => ["name", "picture", "email"].includes(String(x)))
+      )
+        add(
+          errors,
+          "product",
+          `${at}/claims`,
+          "invalid_identity_clients",
+          "claims is an object with required: a list of name, picture and email.",
+        );
+      else if (
+        scopesOk &&
+        required.some((x) => !scopeDeliversClaim(scopes as string[], String(x)))
+      )
+        add(
+          errors,
+          "product",
+          `${at}/claims/required`,
+          "client_claim_not_requested",
+          "claims.required may name only claims the scopes deliver: name and picture need profile, email needs email.",
+        );
+    }
+  });
+}
+
+/** The members of one `identity.clients` entry. */
+const CLIENT_MEMBERS: readonly string[] = [
+  "key",
+  "name",
+  "developerName",
+  "type",
+  "redirectUris",
+  "postLogoutRedirectUris",
+  "scopes",
+  "claims",
+];
 
 /**
  * `identity.nativeRedirect` (I-15; plans/I-15.md §3): loopback on or off, the registered URL
@@ -7291,6 +7644,8 @@ const IDENTITY_MEMBERS: readonly string[] = [
   "platformSignIn",
   "nearby",
   "restore",
+  "issuer",
+  "clients",
 ];
 
 /** The `identity:` block's declared settings, validated above; `undefined` when none. */
@@ -7333,9 +7688,54 @@ function normalizeIdentityBlock(raw: unknown): ManifestIdentity | undefined {
   }
   if (typeof raw.nearby === "boolean") out.nearby = raw.nearby;
   if (typeof raw.restore === "boolean") out.restore = raw.restore;
+  if (isRecord(raw.issuer) && typeof raw.issuer.enabled === "boolean")
+    out.issuer = { enabled: raw.issuer.enabled };
+  const clients = normalizeClients(raw.clients);
+  if (clients) out.clients = clients;
   const psi = normalizePlatformSignIn(raw.platformSignIn);
   if (psi) out.platformSignIn = psi;
   return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** The `identity.clients` entries that pass the validator's per-client rules; `undefined` when none. */
+function normalizeClients(raw: unknown): ManifestIdentityClient[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: ManifestIdentityClient[] = [];
+  for (const c of raw.slice(0, MAX_ISSUER_CLIENTS)) {
+    if (!isRecord(c)) continue;
+    const type = CLIENT_TYPES.find((t) => t === c.type);
+    if (
+      typeof c.key !== "string" ||
+      !CLIENT_KEY_RE.test(c.key) ||
+      typeof c.name !== "string" ||
+      type === undefined ||
+      !Array.isArray(c.redirectUris) ||
+      !Array.isArray(c.scopes)
+    )
+      continue;
+    const required = isRecord(c.claims) ? c.claims.required : undefined;
+    out.push({
+      key: c.key,
+      name: c.name,
+      ...(typeof c.developerName === "string"
+        ? { developerName: c.developerName }
+        : {}),
+      type,
+      redirectUris: c.redirectUris.filter(isString),
+      postLogoutRedirectUris: Array.isArray(c.postLogoutRedirectUris)
+        ? c.postLogoutRedirectUris.filter(isString)
+        : [],
+      scopes: c.scopes.filter((x): x is IssuerScope =>
+        ISSUER_SCOPES.some((k) => k === x),
+      ),
+      claimsRequired: Array.isArray(required)
+        ? required.filter((x): x is IssuerClaim =>
+            ["name", "picture", "email"].includes(String(x)),
+          )
+        : [],
+    });
+  }
+  return out.length > 0 ? out : undefined;
 }
 
 /** The valid members of `identity.platformSignIn`, in declaration order; `undefined` when none. */
