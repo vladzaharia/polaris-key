@@ -2763,6 +2763,12 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     shows: "License → Licenses",
   },
   {
+    thing: "Entitlement row owner (add-ons and license entitlements)",
+    reason:
+      "Records whether a row came from the manifest or the console, so a resync leaves a console row alone: a fact about where the row came from, not a value an operator sets.",
+    shows: "License → Tiers",
+  },
+  {
     thing: "Console role binding provenance (ST-31)",
     reason:
       "Records how a binding came to exist (an operator gave it, an invite, or the creator of a product): a fact about who has access, not Polaris behaviour.",
