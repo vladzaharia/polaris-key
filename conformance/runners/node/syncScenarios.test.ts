@@ -154,6 +154,10 @@ function call(m: CloudSyncMachine, name: string, args: Json[]): CallResult {
       return m.flush();
     case "refresh":
       return m.refresh();
+    case "accountRequired":
+      // Version 6: the host saw `account_required` on a key-ring or file route.
+      m.accountRequired(args[0] as string | null);
+      return { ok: true };
     default:
       throw new Error(`unknown call ${name}`);
   }
@@ -161,7 +165,7 @@ function call(m: CloudSyncMachine, name: string, args: Json[]): CallResult {
 
 describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client state machine)`, () => {
   it(`runs on Node ${process.version}`, () => {
-    expect(corpus.syncScenariosVersion).toBe(5);
+    expect(corpus.syncScenariosVersion).toBe(6);
     expect(corpus.constants).toEqual({
       debounceMs: SYNC_DEBOUNCE_MS,
       signOutFlushMs: SYNC_SIGNOUT_FLUSH_MS,

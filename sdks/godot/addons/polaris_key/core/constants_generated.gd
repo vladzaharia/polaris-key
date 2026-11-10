@@ -1155,7 +1155,7 @@ const OUTLET_MATRIX_VERSION := 1
 const PLAN_MATRIX_VERSION := 2
 
 ## `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
-const SYNC_SCENARIOS_VERSION := 5
+const SYNC_SCENARIOS_VERSION := 6
 
 ## `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
 const DEVICE_LABEL_VERSION := 2
