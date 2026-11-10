@@ -6,41 +6,44 @@
   "order": 30,
   "packages": ["CC-29K"],
   "uxRows": [],
-  "summary": "The app's product turned local pairing off (or the gate is off): paired devices are kept but can't connect, with Rename and Forget still there and Pair with a Code hidden; a code being shown closes at the next refresh; a code being entered is refused before anything is sent.",
+  "summary": "The app's product turned local pairing off (or the gate is off): paired devices are kept but can't connect, with Rename and Forget still there and Pair with a Code hidden; a code being shown closes at the next refresh; a code being entered is refused before anything is sent. One wording, the core 'Pairing unavailable', in all three.",
   "compare": [
-    "1: the list keeps every paired device with when it was last seen, drops the Can connect switches and 'Not reachable now' (nothing can connect), and leads with one neutral notice 'Pairing with a code is off' / 'Paired devices can't connect while it's off.' The ⋯ menu keeps Rename and Forget, so people can still delete what this device holds. Done is the only button; Pair with a Code is hidden.",
-    "With pairing off and nothing paired, the host shows no entry and no list at all (the kit renders nothing); in a browser or a desktop-bridge page the same, because there is no local network there.",
-    "2: a code on screen when a discovery refresh turns it off closes: 'Couldn't pair' / 'Pairing with a code is off for this app.' (the core local-pairing-off message) and Close. The QR and the code are gone.",
-    "3: on the device entering a code, Pair answers with the core copy 'Pairing unavailable' / 'Pairing with a code is off for this app.' in a neutral notice above the buttons (a refusal, never the danger colour), and Pair is disabled. Nothing is looked for or sent.",
+    "1: the list keeps every paired device with when it was last seen, drops the Can connect switches, and leads with one neutral notice 'Pairing unavailable' / 'Pairing with a code is off for this app. Paired devices can't connect.' ⋯ keeps Rename and Forget, so people can still delete what this device holds (list, rename, remove and setReachable are never gated, R15). Done is the only button; Pair with a Code is hidden.",
+    "The host shows a 'Paired devices' entry while at least one link is held, and nothing when none is; in a browser or a desktop-bridge page nothing at all, because there is no local network there (R11 tells the host when the gate flips).",
+    "2: a code on screen when a discovery refresh turns it off closes (R5): 'Pairing unavailable' / 'Pairing with a code is off for this app.' (the core local-pairing-off copy) and Close. The QR and the code are gone.",
+    "3: on the device entering a code, Pair answers with the same core copy in a neutral notice above the buttons (a refusal, never the danger colour), and Pair is aria-disabled. Nothing is looked for or sent.",
     "Offline keeps the last answer: with no internet but a cached 'on', pairing and paired devices keep working on the local network.",
     "Four sizes: the three windows in a row at wide; at desktop and tablet the list spans two rows beside 2 and 3; stacked on phone.",
     "Accent, type and radii match sdk.react-activate: Polaris look by default, DJDL's coral accent, no Polaris Key or Polaris Locker words or marks anywhere (there is no account in this flow).",
-    "Words are the copyKeys below, verbatim; no 'CPace', 'nameplate', 'mode', 'link secret' or 'local link' reaches a person."
+    "Words are the copyKeys below, verbatim ('revised' marks a key this round added or changed; 'was' is the old value); no 'CPace', 'nameplate', 'mode', 'link secret' or 'local link' reaches a person."
   ],
   "copyKeys": [
-    {
-      "key": "pairedDevices.offTitle",
-      "value": "Pairing with a code is off",
-      "role": "label",
-      "note": "PairedDevices when the cached discovery says localPairing is not true."
-    },
-    {
-      "key": "pairedDevices.offBody",
-      "value": "Paired devices can’t connect while it’s off.",
-      "role": "body"
-    },
-    {
-      "key": "linkPairing.failedTitle",
-      "value": "Couldn’t pair",
-      "role": "title",
-      "existing": true
-    },
     {
       "key": "core.codes.local-pairing-off",
       "value": "Pairing unavailable · Pairing with a code is off for this app.",
       "role": "body",
       "existing": true,
-      "note": "Existing core copy (title · message)."
+      "note": "Existing core copy (title · message); the title in all three states."
+    },
+    {
+      "key": "pairedDevices.offBody",
+      "value": "Pairing with a code is off for this app. Paired devices can’t connect.",
+      "role": "body",
+      "revised": "changed",
+      "was": "Paired devices can’t connect while it’s off.",
+      "note": "PairedDevices when the cached discovery says localPairing is not true; under the core title."
+    },
+    {
+      "key": "devices.rename",
+      "value": "Rename",
+      "role": "menu",
+      "existing": true
+    },
+    {
+      "key": "pairedDevices.forget",
+      "value": "Forget",
+      "role": "button",
+      "note": "See sdk.react-paired-devices."
     },
     {
       "key": "common.close",
@@ -55,13 +58,62 @@
       "existing": true
     }
   ],
+  "removedCopyKeys": [
+    {
+      "key": "pairedDevices.offTitle",
+      "was": "Pairing with a code is off",
+      "why": "One wording for one cause: the core title 'Pairing unavailable'."
+    }
+  ],
+  "sdkNeeds": [
+    {
+      "id": "R5",
+      "need": "Shower: an off reason when a gate-clearing read closes the window (today it just closes).",
+      "states": ["2"]
+    },
+    {
+      "id": "R11",
+      "need": "List: the gate's value and its changes (through R10 or an event of its own), to hide the entry, drop the switches and close show or enter.",
+      "states": ["1", "2"]
+    },
+    {
+      "id": "R15",
+      "need": "Every SDK keeps list, rename, remove and setReachable ungated: stated in V5 §15.12 and pinned by a local.gate corpus row (Node already behaves so).",
+      "states": ["1"]
+    }
+  ],
   "platforms": {
     "react": "Electron over Node: show, enter and manage; no scanning. In a browser or a desktop-bridge page there is no local network (connect-unavailable), so the kit renders nothing and the host shows no entry.",
-    "swiftui": "iOS and iPadOS: show, enter, scan (AVFoundation, the kit's own viewfinder, sdk.react-pair-enter 8–8c) and manage; the app declares NSCameraUsageDescription and the Local Network keys. macOS: show, enter and manage, no scanning.",
-    "compose": "Android: show, enter, scan and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so 8 and 8c are iOS only; a build without Play services types the code. Desktop: show, enter and manage.",
+    "swiftui": "iOS and iPadOS: scan first, then show, enter and manage (sdk.swiftui-pair-scan: AVFoundation, the kit's own viewfinder); the app declares NSCameraUsageDescription and the Local Network keys. macOS: show, enter and manage, no scanning, as the React boards.",
+    "compose": "Android: scan first, then show, enter and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so sdk.swiftui-pair-scan 2, 3 and 3c are iOS only; a build without Play services has no Scan a code and types the code. Desktop: show, enter and manage.",
     "godot": "Show (QR from ui/qr/), enter and manage; no scanning. Two panes by its own two_pane_fits() rule.",
     "python": "API only (no kit yet)."
   },
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": 1,
+    "reviewer": "pkey-ux-reviewer (mockup mode)",
+    "date": "2026-11-10",
+    "verdict": "Pass (good), with three wording fixes taken in the fix round.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "One cause had three wordings: 'Pairing with a code is off', 'Couldn't pair' and 'Pairing unavailable'.",
+        "resolution": "The core title 'Pairing unavailable' in all three; the list body is 'Pairing with a code is off for this app. Paired devices can't connect.'",
+        "ref": "pair-off"
+      },
+      {
+        "severity": "minor",
+        "issue": "Whether the list stays with the gate off.",
+        "resolution": "It stays with Rename and Forget (they touch no network); the switches and Pair with a Code are hidden. V5 §15.12's Gates text should state list, rename, remove and setReachable as never gated, pinned by a local.gate row (R15).",
+        "ref": "Q7"
+      },
+      {
+        "severity": "minor",
+        "issue": "Where the host's entry shows.",
+        "resolution": "A 'Paired devices' entry while at least one link is held; nothing when none is.",
+        "ref": "pair-off"
+      }
+    ]
+  }
 }

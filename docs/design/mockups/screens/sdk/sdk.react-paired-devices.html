@@ -26,43 +26,88 @@
   [data-screen="sdk.react-paired-devices"] .frame-grid.windows {
     grid-auto-flow: row dense;
   }
-  /* The pairing code: a field as tall as the code it holds, digits spaced like the shown code. */
-  [data-screen="sdk.react-paired-devices"] .kit-input.pair-code {
-    min-height: 56px;
-    font-size: 24px;
-    line-height: 32px;
-    letter-spacing: 0.08em;
-  }
-  /* A device name is words, not a key: the kit's body face. */
-  [data-screen="sdk.react-paired-devices"] .kit-input.name {
-    font-family: var(--pk-kit-type-body-family);
-  }
   /* The primary in an inline panel keeps the product's fill (the panel only quiets its secondaries). */
   [data-screen="sdk.react-paired-devices"] .kit-confirm .kit-btn.primary {
     background: var(--kit-accent);
   }
-  /* A switch in the kit is checked in the product's accent, not the page's. */
+  /* A quiet link inside a notice: its own line under the words. */
+  [data-screen="sdk.react-paired-devices"] .kit-state > span > .kit-link {
+    display: flex;
+    width: fit-content;
+  }
+  /* A paired device's row: the name over when it was last seen (one line each), then its menu; the
+     Can connect switch sits before the menu only when more than 8 are paired or one is off. */
+  [data-screen="sdk.react-paired-devices"] .kit-device.pr {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  [data-screen="sdk.react-paired-devices"] .pr-text > :is(b, small) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  [data-screen="sdk.react-paired-devices"] .pr-end > .kit-btn {
+    width: 40px;
+  }
+  /* The switch: a 44 x 24 target around the 36 x 20 track. */
+  [data-screen="sdk.react-paired-devices"] .pr-switch {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 24px;
+  }
+  /* Quiet switches: on is a tint with the knob in the product's colour, so a list of them never
+     outweighs the one primary. Off is the kit's sunken track. */
   [data-screen="sdk.react-paired-devices"] .kit-host .switch.on {
-    border-color: var(--kit-accent);
-    background: var(--kit-accent);
+    border-color: color-mix(in oklab, var(--kit-accent) 55%, transparent);
+    background: var(--kit-accent-subtle);
   }
   [data-screen="sdk.react-paired-devices"] .kit-host .switch.on::after {
-    background: var(--kit-accent-on);
+    background: var(--kit-accent);
   }
-  /* A paired device's row: name over last seen · Can connect · its menu. The middle column is fixed
-     so the column label above the switches lines up with them. */
-  [data-screen="sdk.react-paired-devices"] .kit-device.pr {
-    grid-template-columns: minmax(0, 1fr) 88px 40px;
-  }
-  [data-screen="sdk.react-paired-devices"] .kit-device.pr > .switch {
-    justify-self: center;
-  }
+  /* The column label, its end on the switches' end. */
   [data-screen="sdk.react-paired-devices"] .kit-device.pr-head {
     min-height: 0;
     font: var(--pk-kit-type-footnote-weight) var(--pk-kit-type-footnote-size) /
       var(--pk-kit-type-footnote-line-height) var(--pk-kit-type-footnote-family);
     color: var(--pk-text-subtle);
-    text-align: center;
+  }
+  [data-screen="sdk.react-paired-devices"] .pr-head .pr-col {
+    white-space: nowrap;
+  }
+  [data-screen="sdk.react-paired-devices"] .pr-head .pr-menu {
+    width: 40px;
+  }
+  /* Under 480px of window the label goes; the switch keeps its accessible name. */
+  [data-screen="sdk.react-paired-devices"] .kit-host {
+    container-name: pk-window;
+  }
+  @container pk-window (max-width: 479px) {
+    [data-screen="sdk.react-paired-devices"] .kit-device.pr-head {
+      display: none;
+    }
+  }
+  /* A row being renamed or forgotten: the field or the question, then its buttons, in the row. */
+  [data-screen="sdk.react-paired-devices"] .kit-device.pr.editing {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* The code field: the shown code's face and size, so the two devices read alike. */
+  [data-screen="sdk.react-paired-devices"] .kit-input.pair-code {
+    min-height: 72px;
+    font: var(--pk-kit-type-code-weight) var(--pk-kit-type-code-size) /
+      var(--pk-kit-type-code-line-height) var(--pk-kit-type-code-family);
+    letter-spacing: var(--pk-kit-type-code-tracking);
+    font-variant-numeric: tabular-nums;
+  }
+  [data-screen="sdk.react-paired-devices"] .kit-input .caret {
+    display: inline-block;
+    width: 2px;
+    height: 36px;
+    vertical-align: -6px;
+    background: var(--pk-text-strong);
+  }
+  /* A device name is words, not a key: the kit's body face. */
+  [data-screen="sdk.react-paired-devices"] .kit-input.name {
+    font-family: var(--pk-kit-type-body-family);
   }
 </style>
 
@@ -100,94 +145,69 @@
                 <p class="kit-lede">They connect only on the same network.</p>
               </div>
               <div class="kit-devices">
-                <div class="kit-device pr pr-head" aria-hidden="true">
-                  <span></span><span>Can connect</span><span></span>
-                </div>
                 <div
                   class="kit-device-list"
                   role="list"
                   aria-label="Paired devices"
                 >
                   <div class="kit-device pr" role="listitem">
-                    <span
+                    <span class="pr-text"
                       ><b>Theo’s laptop</b><small>Last seen today</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Theo’s laptop connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Theo’s laptop"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Theo’s laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span
-                      ><b>Booth laptop</b><small>Last seen Oct 28</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Booth laptop connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Booth laptop"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    <span class="pr-text"
+                      ><b>Booth laptop</b
+                      ><small>Last seen yesterday</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Booth laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span
+                    <span class="pr-text"
                       ><b>Mara’s MacBook Air</b
-                      ><small>Not reachable now · last seen Oct 6</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Mara’s MacBook Air connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Mara’s MacBook Air"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                      ><small>Last seen 3 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Mara’s MacBook Air"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span><b>Lena’s PC</b><small>Last seen Oct 19</small></span
-                    ><span
-                      class="switch"
-                      role="switch"
-                      aria-checked="false"
-                      aria-label="Let Lena’s PC connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Lena’s PC"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    <span class="pr-text"
+                      ><b>Lena’s PC</b
+                      ><small>Last seen 12 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Lena’s PC"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span
+                    <span class="pr-text"
                       ><b>Riverside booth</b
-                      ><small>Last seen Sep 30</small></span
-                    ><span
-                      class="switch"
-                      role="switch"
-                      aria-checked="false"
-                      aria-label="Let Riverside booth connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Riverside booth"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                      ><small>Last seen 24 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Riverside booth"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                 </div>
               </div>
@@ -224,7 +244,11 @@
               </div>
               <div class="kit-devices">
                 <div class="kit-device pr pr-head" aria-hidden="true">
-                  <span></span><span>Can connect</span><span></span>
+                  <span></span
+                  ><span class="pr-end row gap-2"
+                    ><span class="pr-col">Can connect</span
+                    ><span class="pr-menu"></span
+                  ></span>
                 </div>
                 <div
                   class="kit-device-list"
@@ -232,106 +256,109 @@
                   aria-label="Paired devices"
                 >
                   <div class="kit-device pr" role="listitem">
-                    <span
+                    <span class="pr-text"
                       ><b>Theo’s laptop</b><small>Last seen today</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Theo’s laptop connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Theo’s laptop"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="true"
+                        aria-label="Let Theo’s laptop connect to this device"
+                        ><span class="switch on"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Theo’s laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span
-                      ><b>Booth laptop</b><small>Last seen Oct 28</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Booth laptop connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Booth laptop"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    <span class="pr-text"
+                      ><b>Booth laptop</b
+                      ><small>Last seen yesterday</small></span
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="true"
+                        aria-label="Let Booth laptop connect to this device"
+                        ><span class="switch on"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Booth laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span
+                    <span class="pr-text"
                       ><b>Mara’s MacBook Air</b
-                      ><small>Not reachable now · last seen Oct 6</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Mara’s MacBook Air connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Mara’s MacBook Air"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                      ><small>Last seen 3 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="true"
+                        aria-label="Let Mara’s MacBook Air connect to this device"
+                        ><span class="switch on"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Mara’s MacBook Air"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span><b>Lena’s PC</b><small>Last seen Oct 19</small></span
-                    ><span
-                      class="switch"
-                      role="switch"
-                      aria-checked="false"
-                      aria-label="Let Lena’s PC connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Lena’s PC"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    <span class="pr-text"
+                      ><b>Lena’s PC</b
+                      ><small>Last seen 12 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="false"
+                        aria-label="Let Lena’s PC connect to this device"
+                        ><span class="switch"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Lena’s PC"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
-                  <div class="kit-device pr on" role="listitem">
-                    <span
+                  <div class="kit-device pr" role="listitem">
+                    <span class="pr-text"
                       ><b>Riverside booth</b
-                      ><small>Last seen Sep 30</small></span
-                    ><span
-                      class="switch"
-                      role="switch"
-                      aria-checked="false"
-                      aria-label="Let Riverside booth connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Riverside booth"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                      ><small>Last seen 24 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="true"
+                        aria-label="Let Riverside booth connect to this device"
+                        ><span class="switch on"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Riverside booth"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                 </div>
               </div>
-              <div class="kit-confirm">
-                <div class="kit-field">
-                  <label class="kit-label">Device name</label>
-                  <div class="kit-input name focus">
-                    <span>Riverside Club booth</span>
-                  </div>
-                  <span class="kit-hint">Shown on this device only.</span>
-                </div>
+              <div class="kit-end">
                 <div class="kit-actions">
-                  <button class="kit-btn primary">Save</button
-                  ><button class="kit-btn">Cancel</button>
+                  <button class="kit-btn primary">
+                    <i class="ic ic-plus"></i>Pair with a Code</button
+                  ><button class="kit-btn">Done</button>
                 </div>
               </div>
             </div>
           </div>
         </div>
         <figcaption>
-          <strong>2 · Rename.</strong> Never sent to the other device.
+          <strong>2 · One turned off.</strong> Can connect shows once one is off
+          or more than 8 are paired.
         </figcaption>
       </figure>
       <figure class="board-item d3">
@@ -352,120 +379,296 @@
                 <p class="kit-lede">They connect only on the same network.</p>
               </div>
               <div class="kit-devices">
-                <div class="kit-device pr pr-head" aria-hidden="true">
-                  <span></span><span>Can connect</span><span></span>
-                </div>
                 <div
                   class="kit-device-list"
                   role="list"
                   aria-label="Paired devices"
                 >
                   <div class="kit-device pr" role="listitem">
-                    <span
+                    <span class="pr-text"
                       ><b>Theo’s laptop</b><small>Last seen today</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Theo’s laptop connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Theo’s laptop"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Theo’s laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span
-                      ><b>Booth laptop</b><small>Last seen Oct 28</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Booth laptop connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Booth laptop"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    <span class="pr-text"
+                      ><b>Booth laptop</b
+                      ><small>Last seen yesterday</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Booth laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span
+                    <span class="pr-text"
                       ><b>Mara’s MacBook Air</b
-                      ><small>Not reachable now · last seen Oct 6</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Mara’s MacBook Air connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Mara’s MacBook Air"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                      ><small>Last seen 3 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Mara’s MacBook Air"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span><b>Lena’s PC</b><small>Last seen Oct 19</small></span
-                    ><span
-                      class="switch"
-                      role="switch"
-                      aria-checked="false"
-                      aria-label="Let Lena’s PC connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Lena’s PC"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    <span class="pr-text"
+                      ><b>Lena’s PC</b
+                      ><small>Last seen 12 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Lena’s PC"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
-                  <div class="kit-device pr on" role="listitem">
-                    <span
-                      ><b>Riverside booth</b
-                      ><small>Last seen Sep 30</small></span
-                    ><span
-                      class="switch"
-                      role="switch"
-                      aria-checked="false"
-                      aria-label="Let Riverside booth connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Riverside booth"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                  <div class="kit-device pr editing on" role="listitem">
+                    <div class="kit-field">
+                      <label class="kit-label">Device name</label>
+                      <div class="kit-input name focus">
+                        <span>Riverside Club booth</span>
+                      </div>
+                      <span class="kit-hint">Shown on this device only.</span>
+                    </div>
+                    <div class="kit-actions">
+                      <button class="kit-btn primary">Save</button
+                      ><button class="kit-btn">Cancel</button>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div
-                class="kit-confirm"
-                role="alertdialog"
-                aria-labelledby="pk-forget"
-              >
-                <div class="kit-confirm-text">
-                  <b id="pk-forget">Forget Riverside booth?</b
-                  ><span>To connect again, pair with a new code.</span>
-                </div>
+              <div class="kit-end">
                 <div class="kit-actions">
-                  <button class="kit-btn danger">Forget</button
-                  ><button class="kit-btn">Cancel</button>
+                  <button class="kit-btn primary">
+                    <i class="ic ic-plus"></i>Pair with a Code</button
+                  ><button class="kit-btn">Done</button>
                 </div>
               </div>
             </div>
           </div>
         </div>
         <figcaption>
-          <strong>3 · Forget.</strong> The other device then can’t reach this
-          one.
+          <strong>3 · Rename.</strong> In the row; never sent to the other
+          device.
+        </figcaption>
+      </figure>
+      <figure class="board-item d3b">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="logo lg" data-product="djdl"></span>
+                <h2 class="kit-title">Paired devices</h2>
+                <p class="kit-lede">They connect only on the same network.</p>
+              </div>
+              <div class="kit-devices">
+                <div
+                  class="kit-device-list"
+                  role="list"
+                  aria-label="Paired devices"
+                >
+                  <div class="kit-device pr" role="listitem">
+                    <span class="pr-text"
+                      ><b>Theo’s laptop</b><small>Last seen today</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Theo’s laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span class="pr-text"
+                      ><b>Booth laptop</b
+                      ><small>Last seen yesterday</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Booth laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span class="pr-text"
+                      ><b>Mara’s MacBook Air</b
+                      ><small>Last seen 3 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Mara’s MacBook Air"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span class="pr-text"
+                      ><b>Lena’s PC</b
+                      ><small>Last seen 12 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Lena’s PC"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
+                  </div>
+                  <div class="kit-device pr editing on" role="listitem">
+                    <div class="kit-field">
+                      <label class="kit-label">Device name</label>
+                      <div class="kit-input name bad focus" aria-invalid="true">
+                        <span
+                          >Riverside Club booth 2, Pioneer CDJ-3000 rig,
+                          back-of-house rack B1</span
+                        >
+                      </div>
+                      <span class="kit-error" role="alert"
+                        ><i class="ic ic-circle-x"></i
+                        ><span>Use 64 characters or fewer.</span></span
+                      >
+                    </div>
+                    <div class="kit-actions">
+                      <button class="kit-btn primary">Save</button
+                      ><button class="kit-btn">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="kit-end">
+                <div class="kit-actions">
+                  <button class="kit-btn primary">
+                    <i class="ic ic-plus"></i>Pair with a Code</button
+                  ><button class="kit-btn">Done</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>3b · Name refused.</strong> Longer than 64 characters, or
+          nothing left once cleaned.
         </figcaption>
       </figure>
       <figure class="board-item d4">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="logo lg" data-product="djdl"></span>
+                <h2 class="kit-title">Paired devices</h2>
+                <p class="kit-lede">They connect only on the same network.</p>
+              </div>
+              <div class="kit-devices">
+                <div
+                  class="kit-device-list"
+                  role="list"
+                  aria-label="Paired devices"
+                >
+                  <div class="kit-device pr" role="listitem">
+                    <span class="pr-text"
+                      ><b>Theo’s laptop</b><small>Last seen today</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Theo’s laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span class="pr-text"
+                      ><b>Booth laptop</b
+                      ><small>Last seen yesterday</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Booth laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span class="pr-text"
+                      ><b>Mara’s MacBook Air</b
+                      ><small>Last seen 3 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Mara’s MacBook Air"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span class="pr-text"
+                      ><b>Lena’s PC</b
+                      ><small>Last seen 12 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Lena’s PC"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
+                  </div>
+                  <div class="kit-device pr editing on" role="listitem">
+                    <div
+                      class="kit-confirm-text"
+                      role="group"
+                      aria-label="Forget Riverside booth"
+                    >
+                      <b>Forget Riverside booth?</b
+                      ><span>To connect again, pair with a new code.</span>
+                    </div>
+                    <div class="kit-actions">
+                      <button class="kit-btn danger">Forget</button
+                      ><button class="kit-btn">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="kit-end">
+                <div class="kit-actions">
+                  <button class="kit-btn primary">
+                    <i class="ic ic-plus"></i>Pair with a Code</button
+                  ><button class="kit-btn">Done</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>4 · Forget.</strong> Then focus moves to the next row, or the
+          title.
+        </figcaption>
+      </figure>
+      <figure class="board-item d5">
         <div class="window win">
           <div class="window-bar">
             <span class="window-title"
@@ -491,7 +694,11 @@
               </div>
               <div class="kit-devices">
                 <div class="kit-device pr pr-head" aria-hidden="true">
-                  <span></span><span>Can connect</span><span></span>
+                  <span></span
+                  ><span class="pr-end row gap-2"
+                    ><span class="pr-col">Can connect</span
+                    ><span class="pr-menu"></span
+                  ></span>
                 </div>
                 <div
                   class="kit-device-list"
@@ -499,104 +706,113 @@
                   aria-label="Paired devices"
                 >
                   <div class="kit-device pr" role="listitem">
-                    <span
+                    <span class="pr-text"
                       ><b>Theo’s laptop</b><small>Last seen today</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Theo’s laptop connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Theo’s laptop"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="true"
+                        aria-label="Let Theo’s laptop connect to this device"
+                        ><span class="switch on"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Theo’s laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span
-                      ><b>Booth laptop</b><small>Last seen Oct 28</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Booth laptop connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Booth laptop"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    <span class="pr-text"
+                      ><b>Booth laptop</b
+                      ><small>Last seen yesterday</small></span
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="true"
+                        aria-label="Let Booth laptop connect to this device"
+                        ><span class="switch on"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Booth laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span
+                    <span class="pr-text"
                       ><b>Mara’s MacBook Air</b
-                      ><small>Not reachable now · last seen Oct 6</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Mara’s MacBook Air connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Mara’s MacBook Air"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                      ><small>Last seen 3 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="true"
+                        aria-label="Let Mara’s MacBook Air connect to this device"
+                        ><span class="switch on"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Mara’s MacBook Air"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span
+                    <span class="pr-text"
                       ><b>Studio Mac mini</b
-                      ><small>Last seen Oct 27</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Studio Mac mini connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Studio Mac mini"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                      ><small>Last seen 4 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="true"
+                        aria-label="Let Studio Mac mini connect to this device"
+                        ><span class="switch on"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Studio Mac mini"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span><b>Lena’s PC</b><small>Last seen Oct 19</small></span
-                    ><span
-                      class="switch disabled"
-                      role="switch"
-                      aria-checked="false"
-                      aria-disabled="true"
-                      aria-label="Let Lena’s PC connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Lena’s PC"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    <span class="pr-text"
+                      ><b>Lena’s PC</b
+                      ><small>Last seen 12 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="false"
+                        aria-disabled="true"
+                        aria-label="Let Lena’s PC connect to this device"
+                        ><span class="switch disabled"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Lena’s PC"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span
+                    <span class="pr-text"
                       ><b>Riverside booth</b
-                      ><small>Last seen Sep 30</small></span
-                    ><span
-                      class="switch disabled"
-                      role="switch"
-                      aria-checked="false"
-                      aria-disabled="true"
-                      aria-label="Let Riverside booth connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Riverside booth"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                      ><small>Last seen 24 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="false"
+                        aria-disabled="true"
+                        aria-label="Let Riverside booth connect to this device"
+                        ><span class="switch disabled"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Riverside booth"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                 </div>
               </div>
@@ -611,11 +827,11 @@
           </div>
         </div>
         <figcaption>
-          <strong>4 · 8 can connect.</strong> The off switches wait; the list
-          scrolls.
+          <strong>5 · 8 can connect.</strong> 10 paired; the off switches wait.
+          The list scrolls.
         </figcaption>
       </figure>
-      <figure class="board-item d5">
+      <figure class="board-item d6">
         <div class="window win">
           <div class="window-bar">
             <span class="window-title"
@@ -641,7 +857,11 @@
               </div>
               <div class="kit-devices">
                 <div class="kit-device pr pr-head" aria-hidden="true">
-                  <span></span><span>Can connect</span><span></span>
+                  <span></span
+                  ><span class="pr-end row gap-2"
+                    ><span class="pr-col">Can connect</span
+                    ><span class="pr-menu"></span
+                  ></span>
                 </div>
                 <div
                   class="kit-device-list"
@@ -649,68 +869,75 @@
                   aria-label="Paired devices"
                 >
                   <div class="kit-device pr" role="listitem">
-                    <span
+                    <span class="pr-text"
                       ><b>Theo’s laptop</b><small>Last seen today</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Theo’s laptop connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Theo’s laptop"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="true"
+                        aria-label="Let Theo’s laptop connect to this device"
+                        ><span class="switch on"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Theo’s laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span
-                      ><b>Booth laptop</b><small>Last seen Oct 28</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Booth laptop connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Booth laptop"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    <span class="pr-text"
+                      ><b>Booth laptop</b
+                      ><small>Last seen yesterday</small></span
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="true"
+                        aria-label="Let Booth laptop connect to this device"
+                        ><span class="switch on"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Booth laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span
+                    <span class="pr-text"
                       ><b>Mara’s MacBook Air</b
-                      ><small>Not reachable now · last seen Oct 6</small></span
-                    ><span
-                      class="switch on"
-                      role="switch"
-                      aria-checked="true"
-                      aria-label="Let Mara’s MacBook Air connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Mara’s MacBook Air"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                      ><small>Last seen 3 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="true"
+                        aria-label="Let Mara’s MacBook Air connect to this device"
+                        ><span class="switch on"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Mara’s MacBook Air"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                   <div class="kit-device pr" role="listitem">
-                    <span><b>Lena’s PC</b><small>Last seen Oct 19</small></span
-                    ><span
-                      class="switch"
-                      role="switch"
-                      aria-checked="false"
-                      aria-label="Let Lena’s PC connect to this device"
-                    ></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Lena’s PC"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    <span class="pr-text"
+                      ><b>Lena’s PC</b
+                      ><small>Last seen 12 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><span
+                        class="pr-switch"
+                        role="switch"
+                        aria-checked="true"
+                        aria-label="Let Lena’s PC connect to this device"
+                        ><span class="switch on"></span></span
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Lena’s PC"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                 </div>
               </div>
@@ -718,7 +945,6 @@
                 <div class="kit-actions">
                   <button
                     class="kit-btn primary kit-locked"
-                    disabled
                     aria-disabled="true"
                   >
                     <i class="ic ic-plus"></i>Pair with a Code</button
@@ -729,11 +955,11 @@
           </div>
         </div>
         <figcaption>
-          <strong>5 · 32 paired.</strong> The most one device keeps; the list
+          <strong>6 · 32 paired.</strong> The most one device keeps; the list
           scrolls.
         </figcaption>
       </figure>
-      <figure class="board-item d6">
+      <figure class="board-item d7">
         <div class="window win">
           <div class="window-bar">
             <span class="window-title"
@@ -760,19 +986,63 @@
             </div>
           </div>
         </div>
-        <figcaption><strong>6 · None yet.</strong></figcaption>
+        <figcaption><strong>7 · None yet.</strong></figcaption>
       </figure>
-      <figure class="board-item d7 span-all">
+      <figure class="board-item d8">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="logo lg" data-product="djdl"></span>
+                <h2 class="kit-title">Paired devices</h2>
+                <p class="kit-lede">They connect only on the same network.</p>
+              </div>
+              <div class="kit-state" role="alert">
+                <i class="ic ic-circle-x"></i
+                ><span>Couldn’t load your paired devices.</span
+                ><button class="kit-btn sm">Try again</button>
+              </div>
+              <div class="kit-end">
+                <div class="kit-actions">
+                  <button class="kit-btn">Done</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>8 · Couldn’t load.</strong> This device’s record can’t be
+          read.
+        </figcaption>
+      </figure>
+      <figure class="board-item d9 span-all">
         <section class="card">
           <div class="card-head"><h3>When the app connects</h3></div>
           <div class="card-answers">
             <div class="card-answer">
+              <span class="card-answer-label">Not found</span>
+              <div class="kit-state" role="status">
+                <i class="ic ic-wifi-off"></i
+                ><span
+                  ><b>Can’t find Theo’s laptop</b>Check it’s on and on the same
+                  network.</span
+                >
+              </div>
+            </div>
+            <div class="card-answer">
               <span class="card-answer-label">Busy</span>
               <div class="kit-state" role="status">
                 <i class="ic ic-hourglass"></i
-                ><span
-                  ><b>Theo’s laptop is busy</b>Try again in 4 seconds.</span
-                >
+                ><span><b>Theo’s laptop is busy</b></span
+                ><button class="kit-btn sm">Try again</button>
               </div>
             </div>
             <div class="card-answer">
@@ -788,7 +1058,7 @@
           </div>
         </section>
         <figcaption>
-          <strong>7 · When the app connects.</strong> What a connection to a
+          <strong>9 · When the app connects.</strong> What a connection to a
           paired device can answer.
         </figcaption>
       </figure>

@@ -26,32 +26,88 @@
   [data-screen="sdk.react-pair-off"] .frame-grid.windows {
     grid-auto-flow: row dense;
   }
-  /* The pairing code: a field as tall as the code it holds, digits spaced like the shown code. */
-  [data-screen="sdk.react-pair-off"] .kit-input.pair-code {
-    min-height: 56px;
-    font-size: 24px;
-    line-height: 32px;
-    letter-spacing: 0.08em;
-  }
-  /* A device name is words, not a key: the kit's body face. */
-  [data-screen="sdk.react-pair-off"] .kit-input.name {
-    font-family: var(--pk-kit-type-body-family);
-  }
   /* The primary in an inline panel keeps the product's fill (the panel only quiets its secondaries). */
   [data-screen="sdk.react-pair-off"] .kit-confirm .kit-btn.primary {
     background: var(--kit-accent);
   }
-  /* A switch in the kit is checked in the product's accent, not the page's. */
+  /* A quiet link inside a notice: its own line under the words. */
+  [data-screen="sdk.react-pair-off"] .kit-state > span > .kit-link {
+    display: flex;
+    width: fit-content;
+  }
+  /* A paired device's row: the name over when it was last seen (one line each), then its menu; the
+     Can connect switch sits before the menu only when more than 8 are paired or one is off. */
+  [data-screen="sdk.react-pair-off"] .kit-device.pr {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  [data-screen="sdk.react-pair-off"] .pr-text > :is(b, small) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  [data-screen="sdk.react-pair-off"] .pr-end > .kit-btn {
+    width: 40px;
+  }
+  /* The switch: a 44 x 24 target around the 36 x 20 track. */
+  [data-screen="sdk.react-pair-off"] .pr-switch {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 24px;
+  }
+  /* Quiet switches: on is a tint with the knob in the product's colour, so a list of them never
+     outweighs the one primary. Off is the kit's sunken track. */
   [data-screen="sdk.react-pair-off"] .kit-host .switch.on {
-    border-color: var(--kit-accent);
-    background: var(--kit-accent);
+    border-color: color-mix(in oklab, var(--kit-accent) 55%, transparent);
+    background: var(--kit-accent-subtle);
   }
   [data-screen="sdk.react-pair-off"] .kit-host .switch.on::after {
-    background: var(--kit-accent-on);
+    background: var(--kit-accent);
   }
-  /* With pairing off a row is its name over last seen, then its menu. */
-  [data-screen="sdk.react-pair-off"] .kit-device.pr {
-    grid-template-columns: minmax(0, 1fr) 40px;
+  /* The column label, its end on the switches' end. */
+  [data-screen="sdk.react-pair-off"] .kit-device.pr-head {
+    min-height: 0;
+    font: var(--pk-kit-type-footnote-weight) var(--pk-kit-type-footnote-size) /
+      var(--pk-kit-type-footnote-line-height) var(--pk-kit-type-footnote-family);
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="sdk.react-pair-off"] .pr-head .pr-col {
+    white-space: nowrap;
+  }
+  [data-screen="sdk.react-pair-off"] .pr-head .pr-menu {
+    width: 40px;
+  }
+  /* Under 480px of window the label goes; the switch keeps its accessible name. */
+  [data-screen="sdk.react-pair-off"] .kit-host {
+    container-name: pk-window;
+  }
+  @container pk-window (max-width: 479px) {
+    [data-screen="sdk.react-pair-off"] .kit-device.pr-head {
+      display: none;
+    }
+  }
+  /* A row being renamed or forgotten: the field or the question, then its buttons, in the row. */
+  [data-screen="sdk.react-pair-off"] .kit-device.pr.editing {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* The code field: the shown code's face and size, so the two devices read alike. */
+  [data-screen="sdk.react-pair-off"] .kit-input.pair-code {
+    min-height: 72px;
+    font: var(--pk-kit-type-code-weight) var(--pk-kit-type-code-size) /
+      var(--pk-kit-type-code-line-height) var(--pk-kit-type-code-family);
+    letter-spacing: var(--pk-kit-type-code-tracking);
+    font-variant-numeric: tabular-nums;
+  }
+  [data-screen="sdk.react-pair-off"] .kit-input .caret {
+    display: inline-block;
+    width: 2px;
+    height: 36px;
+    vertical-align: -6px;
+    background: var(--pk-text-strong);
+  }
+  /* A device name is words, not a key: the kit's body face. */
+  [data-screen="sdk.react-pair-off"] .kit-input.name {
+    font-family: var(--pk-kit-type-body-family);
   }
   /* Desktop and tablet: the list beside the two short windows stacked. */
   @container screen (max-width: 1599px) {
@@ -101,8 +157,8 @@
               <div class="kit-state" role="status">
                 <i class="ic ic-ban"></i
                 ><span
-                  ><b>Pairing with a code is off</b>Paired devices can’t connect
-                  while it’s off.</span
+                  ><b>Pairing unavailable</b>Pairing with a code is off for this
+                  app. Paired devices can’t connect.</span
                 >
               </div>
               <div class="kit-devices">
@@ -111,56 +167,64 @@
                   role="list"
                   aria-label="Paired devices"
                 >
-                  <div class="kit-device pr no-switch" role="listitem">
-                    <span
+                  <div class="kit-device pr" role="listitem">
+                    <span class="pr-text"
                       ><b>Theo’s laptop</b><small>Last seen today</small></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Theo’s laptop"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Theo’s laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
-                  <div class="kit-device pr no-switch" role="listitem">
-                    <span
-                      ><b>Booth laptop</b><small>Last seen Oct 28</small></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Booth laptop"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                  <div class="kit-device pr" role="listitem">
+                    <span class="pr-text"
+                      ><b>Booth laptop</b
+                      ><small>Last seen yesterday</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Booth laptop"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
-                  <div class="kit-device pr no-switch" role="listitem">
-                    <span
+                  <div class="kit-device pr" role="listitem">
+                    <span class="pr-text"
                       ><b>Mara’s MacBook Air</b
-                      ><small>Last seen Oct 6</small></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Mara’s MacBook Air"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                      ><small>Last seen 3 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Mara’s MacBook Air"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
-                  <div class="kit-device pr no-switch" role="listitem">
-                    <span><b>Lena’s PC</b><small>Last seen Oct 19</small></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Lena’s PC"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                  <div class="kit-device pr" role="listitem">
+                    <span class="pr-text"
+                      ><b>Lena’s PC</b
+                      ><small>Last seen 12 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Lena’s PC"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
-                  <div class="kit-device pr no-switch" role="listitem">
-                    <span
+                  <div class="kit-device pr" role="listitem">
+                    <span class="pr-text"
                       ><b>Riverside booth</b
-                      ><small>Last seen Sep 30</small></span
-                    ><button
-                      class="kit-btn ghost sm"
-                      aria-label="Options for Riverside booth"
-                    >
-                      <i class="ic ic-ellipsis"></i>
-                    </button>
+                      ><small>Last seen 24 days ago</small></span
+                    ><span class="pr-end row gap-2"
+                      ><button
+                        class="kit-btn ghost sm"
+                        aria-label="Options for Riverside booth"
+                      >
+                        <i class="ic ic-ellipsis"></i></button
+                    ></span>
                   </div>
                 </div>
               </div>
@@ -191,7 +255,7 @@
             <div class="kit-form">
               <div class="kit-head">
                 <span class="logo lg" data-product="djdl"></span>
-                <h2 class="kit-title">Couldn’t pair</h2>
+                <h2 class="kit-title">Pairing unavailable</h2>
                 <p class="kit-lede">Pairing with a code is off for this app.</p>
               </div>
               <div class="kit-end">
@@ -250,7 +314,6 @@
                 <div class="kit-actions">
                   <button
                     class="kit-btn primary kit-locked"
-                    disabled
                     aria-disabled="true"
                   >
                     Pair</button

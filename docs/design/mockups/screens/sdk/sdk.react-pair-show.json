@@ -6,28 +6,31 @@
   "order": 26,
   "packages": ["CC-29K"],
   "uxRows": [],
-  "summary": "The device that shows the code (the shower), in DJDL's Electron window on Windows: the Pair with a Code entry with Show a code and Enter a code, the 8-digit code with its QR and the time left (beside each other in a wide window, stacked in a narrow one) while it waits for the other device, the new code after a wrong one with the tries left, the window closed after the fifth wrong code, and the other answers (time ran out, no room, network blocked).",
+  "summary": "The device that shows the code, in DJDL's Electron window on Windows: the Pair with a Code entry (and No room, said there), the 8-digit code as the largest thing on screen with its time left beside the QR, a 720 x 420 short window, the changed code after a wrong one with a quiet Show a new code, the being-blocked cue, Too many tries with its 30-second cooldown and the second-time warning, Time ran out, and the other answers (network blocked with Open Settings, pairing off).",
   "compare": [
-    "1: the entry is two equal block buttons, Show a code and Enter a code, neither a primary; the lede 'Both devices need to be on the same network.' is the one sentence. The footnote 'If asked, let DJDL find devices on your network.' shows only until the system has asked once (L-11: macOS 15+ Local Network, Windows Defender Firewall on the shower's first listen), never at launch.",
-    "2 and 2b: the code reads as two groups of four, '4812 3456', in the kit's mono code face, never wrapping and with no Copy (a code only works on the same network, so it is read, not sent). The QR is at least 184px, dark modules on a light tile in both themes, and encodes PKP1:<SLUG>:<INSTANCE>:<SECRET> (upper case, about 53 characters, version 4 at level M).",
-    "Code and QR sit side by side when the form is 640px or wider (.kit-split) and stack, code first, below that. Reading and focus order is the same in both: title, lede, code, time, QR, waiting, Cancel.",
-    "The time ring and 'Expires in 4:51' count down the window's 5 minutes from when it opened; a new code does not restart them. The countdown is announced at most once a minute (aria-live polite on the waiting row, not on the timer).",
-    "'Waiting for the other device…' is the accent-tinted row with the breathing dot, never a spinner, as the sign-in hand-off.",
-    "3: after each wrong code the code and the QR change together, the first two digits stay (4812 3456 → 4812 7069), and a neutral notice (not the danger colour) says 'Wrong code entered' / 'Use the new code. 4 tries left.' The notice stays until the next code change or the end. A wrong code entered when nobody near you typed one is the person's signal that someone else is guessing.",
-    "4: the fifth wrong code closes the window: no code or QR remains on screen, the title is 'Couldn't pair', the body 'Too many tries.', and the primary 'Show a new code' opens a new window (a new code, a new first two digits).",
-    "5: Time ran out ('The code expired.' with Show a new code), No room (the core local-links-full copy with a Paired devices link, answered before anything is advertised) and Network blocked (the core nearby-permission-denied copy) each take the code's place in the same window; none is a toast or a dialog.",
-    "Only one other device at a time: while one is entering the code, a second gets nothing (it sees 'Can't find the other device' on its side); this screen does not change.",
-    "Cancel or closing the window withdraws the code at once; nothing is stored.",
-    "Four sizes: wide puts 1 beside the two-column 2, then 2b, 3 and 4; desktop and tablet fill two columns (1 beside 2b, 2 across both); phone stacks every window with the QR under the code. No window scrolls sideways.",
+    "1: two equal block buttons, Show a code (QR glyph) and Enter a code (keyboard glyph), neither a primary; 'Both devices need to be on the same network.' is the one sentence. The footnote 'If asked, allow DJDL to find devices on your network.' shows only until the system has asked once (L-11: macOS 15+ Local Network, Windows Defender Firewall on the first listen), never at launch.",
+    "1b: with 32 paired devices the No room notice (core local-links-full, a Paired devices link under its words) is answered on this screen, before Show or Enter; both buttons are aria-disabled, nothing is advertised.",
+    "2: the title and lede span the top. The code is the kit's code face (--pk-kit-type-code-*: 40/48, weight 500, 0.12em, tabular), centred in its tile, larger than the title; it reads as two groups of four ('4812 3456'), never wraps and has no Copy. 'Expires in 4:51' sits centred under it with a 20px ring (2px stroke, UI-KITS 4.4). The QR (at least 184px, dark modules on a light tile in both themes, PKP1:<SLUG>:<INSTANCE>:<SECRET>) is beside the code, the two centred on each other; the waiting row, Cancel and 'Enter a code instead' sit under the code column only.",
+    "Two panes from 600px of window (UI-KITS 4.3, LocalPairing); one column below that (3, 4): title, lede, code, time, QR, notice, waiting, Cancel, Enter a code instead. Reading and focus order are that order in both layouts.",
+    "2b: a window under 480 tall (720 x 420: a 768px laptop with a title bar, a Steam Deck, a TV) drops the kit's logo (the window shows its own), keeps code and QR side by side with the QR beside the whole start pane, insets the form by 24 (.kit-form.short) and never scrolls. TV and consoles always use two panes.",
+    "The ring and 'Expires in' count the window's 5 minutes from when it opened (LocalCode.expiresAt, R1); a changed code does not restart them. The time is announced at most once a minute (aria-live polite on the waiting row, not on the timer). 'Waiting for the other device…' is the accent-tinted row with the breathing dot, never a spinner.",
+    "3: after a wrong code the code and QR change together; the first two digits stay and the other six change ('4812 3456' → '4873 0691'), lit for about a second. The notice 'Wrong code entered' / 'The code changed.' sits under the time row, so the code never moves, with no count of tries (only the joiner, whose limit binds, shows one). Its quiet 'Show a new code' closes this window and opens a new one with new first two digits and a fresh 5 minutes (R3, R16). The live region says 'Wrong code entered. New code 4873 0691.' so a screen-reader user can read it out.",
+    "4: when attempts keep being refused as busy or limited and none completes (R4), a neutral notice under the time row: 'Pairing is being blocked' / 'Something on this network keeps interrupting. Try another network.' The code stays usable.",
+    "5: the fifth wrong code closes the window: no code or QR remains, 'Couldn't pair' / 'Too many tries.', and the primary reads 'Show a new code in 0:24', aria-disabled, counting down a 30-second cooldown, then 'Show a new code'. 5b: the second Too many tries in a row adds the alert 'Too many tries again' / 'Someone nearby may be guessing codes.' with the same cooldown. ui-core's LocalPairingModel owns the cooldown and the warning (from R2).",
+    "5c: Time ran out has 5's treatment, title and primary, and no cooldown: 'Couldn't pair' / 'The code expired.' with Show a new code ready at once. The cooldown follows only Too many tries, never a code the person asked for.",
+    "6: network blocked (core nearby-permission-denied) offers Open Settings where the platform can deep-link to it (Windows ms-settings:privacy, the macOS Privacy & Security pane) and only the words elsewhere; pairing off is the core 'Pairing unavailable' (sdk.react-pair-off 2). Each takes the code's place in the same window; none is a toast or a dialog.",
+    "Only one other device at a time: while one is entering the code, a second gets 'Can't find the other device'; this screen does not change.",
+    "Keyboard: Escape is Cancel. Cancel or closing the window withdraws the code at once, stores nothing, and returns to 1. 'Enter a code instead' withdraws the code and opens the enter screen (sdk.react-pair-enter 1), so two people who both pressed Show a code are never stuck.",
+    "Four sizes: wide and desktop put 1 over 1b beside 2 over 2b, then 3, 4 and 5 over 5b, then 5c beside the answers card; tablet two columns; phone stacks every window with the QR under the code (2b is not drawn on a phone). No window scrolls sideways.",
     "Accent, type and radii match sdk.react-activate: Polaris look by default, DJDL's coral accent, no Polaris Key or Polaris Locker words or marks anywhere (there is no account in this flow).",
-    "Words are the copyKeys below, verbatim; no 'CPace', 'nameplate', 'mode', 'link secret' or 'local link' reaches a person."
+    "Words are the copyKeys below, verbatim ('revised' marks a key this round added or changed; 'was' is the old value); no 'CPace', 'nameplate', 'mode', 'link secret' or 'local link' reaches a person."
   ],
   "copyKeys": [
     {
       "key": "localPairing.title",
       "value": "Pair with a Code",
       "role": "title",
-      "note": "LocalPairing: the feature's name (LOCKER-FEATURE-NAMES), Title Case; also the entry button label in the host and in PairedDevices. Add to TITLE_CASE_KEYS."
+      "note": "LocalPairing: the feature's name (LOCKER-FEATURE-NAMES), Title Case; also the entry button in the host and in PairedDevices. Add to TITLE_CASE_KEYS."
     },
     {
       "key": "localPairing.chooseBody",
@@ -45,24 +48,35 @@
       "key": "localPairing.enter",
       "value": "Enter a code",
       "role": "button",
-      "note": "LocalPairing choose: this device types the code."
-    },
-    {
-      "key": "localPairing.scan",
-      "value": "Scan a code",
-      "role": "button",
-      "note": "LocalPairing choose, iOS, iPadOS and Android only."
+      "note": "LocalPairing choose: this device types the code. Keyboard glyph."
     },
     {
       "key": "localPairing.prePrompt",
-      "value": "If asked, let {app} find devices on your network.",
+      "value": "If asked, allow {app} to find devices on your network.",
       "role": "hint",
+      "revised": "changed",
+      "was": "If asked, let {app} find devices on your network.",
       "note": "L-11: shown until the OS has asked once (macOS Local Network, Windows Firewall, Android nearby devices). Arguments: {app} = the app's name."
     },
     {
-      "key": "localPairing.showBody",
-      "value": "Enter or scan this code on the other device.",
+      "key": "core.codes.local-links-full",
+      "value": "No room to pair · This device has no room for another pairing. Forget a paired device first.",
       "role": "body",
+      "existing": true,
+      "note": "Existing core copy (title · message), now on choose (1b)."
+    },
+    {
+      "key": "localPairing.pairedDevices",
+      "value": "Paired devices",
+      "role": "button",
+      "note": "The link under No room; the same words as pairedDevices.title."
+    },
+    {
+      "key": "localPairing.showBody",
+      "value": "Scan or enter this code on the other device.",
+      "role": "body",
+      "revised": "changed",
+      "was": "Enter or scan this code on the other device.",
       "note": "LocalPairing show."
     },
     {
@@ -76,56 +90,128 @@
       "key": "a11y.qrPairing",
       "value": "QR code with the pairing code",
       "role": "a11y",
-      "note": "New: the shown QR."
+      "note": "The shown QR."
     },
     {
       "key": "localPairing.expires",
       "value": "Expires in {time}",
       "role": "label",
-      "note": "Beside the time ring. Arguments: {time} = m:ss left of the 5-minute window."
+      "note": "Beside the ring. Arguments: {time} = m:ss left of the window's 5 minutes (R1 expiresAt)."
     },
     {
       "key": "localPairing.waitingDevice",
       "value": "Waiting for the other device…",
       "role": "label",
-      "note": "The breathing row while the window is open and nobody has entered the code."
+      "note": "The breathing row while the window is open."
+    },
+    {
+      "key": "localPairing.toEnter",
+      "value": "Enter a code instead",
+      "role": "button",
+      "revised": "new",
+      "note": "Quiet link on the show screen: withdraws this code and opens the enter screen."
     },
     {
       "key": "localPairing.rotatedTitle",
       "value": "Wrong code entered",
       "role": "label",
-      "note": "Shower, after a failed guess: the code changed."
+      "note": "Shower, after a failed guess (R1 reason wrong-code)."
     },
     {
       "key": "localPairing.rotatedBody",
-      "value": "Use the new code. {tries, plural, one {# try left} other {# tries left}}",
+      "value": "The code changed.",
       "role": "body",
-      "note": "Arguments: {tries} = failed guesses left before the window closes (of 5)."
+      "revised": "changed",
+      "was": "Use the new code. {tries, plural, one {# try left} other {# tries left}}",
+      "note": "No count: only the joiner shows tries left."
+    },
+    {
+      "key": "a11y.newCode",
+      "value": "New code {code}",
+      "role": "a11y",
+      "revised": "new",
+      "note": "Live announcement after a change, after rotatedTitle. Arguments: {code} = the new code, two groups of four."
+    },
+    {
+      "key": "localPairing.showNew",
+      "value": "Show a new code",
+      "role": "button",
+      "note": "In the rotated notice from the first wrong code, and the primary once the window closed: a new window, new first two digits (R3)."
+    },
+    {
+      "key": "localPairing.showNewIn",
+      "value": "Show a new code in {time}",
+      "role": "button",
+      "revised": "new",
+      "note": "The aria-disabled primary during the 30-second cooldown after Too many tries. Arguments: {time} = m:ss."
+    },
+    {
+      "key": "localPairing.blockedTitle",
+      "value": "Pairing is being blocked",
+      "role": "label",
+      "revised": "new",
+      "note": "LP1 F7 (R4)."
+    },
+    {
+      "key": "localPairing.blockedBody",
+      "value": "Something on this network keeps interrupting. Try another network.",
+      "role": "body",
+      "revised": "new",
+      "note": "LP1 F7."
     },
     {
       "key": "linkPairing.failedTitle",
       "value": "Couldn’t pair",
       "role": "title",
       "existing": true,
-      "note": "Reused for every failed state (the plan asks for a Title Case failedTitle; see open questions)."
+      "note": "Reused for the closed window; sentence case (a statement). Remove failedTitle from the plan's Title Case list."
     },
     {
       "key": "localPairing.failedTooMany",
       "value": "Too many tries.",
       "role": "body",
-      "note": "Shower: the fifth wrong code closed the window."
+      "note": "The fifth wrong code closed the window."
+    },
+    {
+      "key": "localPairing.tooManyAgainTitle",
+      "value": "Too many tries again",
+      "role": "label",
+      "revised": "new",
+      "note": "LP1 F9: the second Too many tries in a row (R2)."
+    },
+    {
+      "key": "localPairing.tooManyAgainBody",
+      "value": "Someone nearby may be guessing codes.",
+      "role": "body",
+      "revised": "new",
+      "note": "LP1 F9."
     },
     {
       "key": "localPairing.failedExpired",
       "value": "The code expired.",
       "role": "body",
-      "note": "Shower: the 5 minutes ran out."
+      "note": "The 5 minutes ran out; no cooldown."
     },
     {
-      "key": "localPairing.showNew",
-      "value": "Show a new code",
+      "key": "core.codes.nearby-permission-denied",
+      "value": "Local network blocked · This app can't reach devices on your local network. Allow it in system settings.",
+      "role": "body",
+      "existing": true,
+      "note": "Existing core copy (title · message)."
+    },
+    {
+      "key": "localPairing.openSettings",
+      "value": "Open Settings",
       "role": "button",
-      "note": "Opens a new window: a new code and new first two digits."
+      "revised": "new",
+      "note": "Where the platform can deep-link (Windows ms-settings:, the macOS Privacy & Security pane, iOS and Android app settings). Settings is the app's name."
+    },
+    {
+      "key": "core.codes.local-pairing-off",
+      "value": "Pairing unavailable · Pairing with a code is off for this app.",
+      "role": "body",
+      "existing": true,
+      "note": "Existing core copy (title · message)."
     },
     {
       "key": "common.cancel",
@@ -138,35 +224,150 @@
       "value": "Close",
       "role": "button",
       "existing": true
+    }
+  ],
+  "sdkNeeds": [
+    {
+      "id": "R1",
+      "need": "Shower: each onCode carries a reason (opened, wrong-code, declined, timeout, closed) and LocalCode.expiresAt, so every kit's ring agrees and a decline is not shown as a wrong code.",
+      "states": ["2", "3", "5c"]
     },
     {
-      "key": "core.codes.local-links-full",
-      "value": "No room to pair · This device has no room for another pairing. Forget a paired device first.",
-      "role": "body",
-      "existing": true,
-      "note": "Existing core copy (title · message)."
+      "id": "R2",
+      "need": "Shower: failures, the window's failed guesses so far, for the cooldown and the second-time warning (never shown as tries left).",
+      "states": ["5", "5b"]
     },
     {
-      "key": "core.codes.nearby-permission-denied",
-      "value": "Local network blocked · This app can't reach devices on your local network. Allow it in system settings.",
-      "role": "body",
-      "existing": true,
-      "note": "Existing core copy (title · message)."
+      "id": "R3",
+      "need": "Shower: handle.renew(), or a documented stop() then pair(), opening a new window whose first two digits differ from the previous window's.",
+      "states": ["3", "5", "5b", "5c"]
     },
     {
-      "key": "localPairing.pairedDevices",
-      "value": "Paired devices",
-      "role": "button",
-      "note": "The link from No room to the PairedDevices screen; the same words as pairedDevices.title."
+      "id": "R16",
+      "need": "Shower: a new window never repeats the previous window's first two digits (part of R3).",
+      "states": ["3", "5", "5c"]
+    },
+    {
+      "id": "R4",
+      "need": "Shower: a being-blocked signal (LP1 F7), a counter or event for C1s refused as busy or limited while no attempt completes.",
+      "states": ["4"]
+    },
+    {
+      "id": "R5",
+      "need": "Shower: an off reason when a gate-clearing read closes the window (today it just closes).",
+      "states": ["6"]
     }
   ],
   "platforms": {
     "react": "Electron over Node: show, enter and manage; no scanning. In a browser or a desktop-bridge page there is no local network (connect-unavailable), so the kit renders nothing and the host shows no entry.",
-    "swiftui": "iOS and iPadOS: show, enter, scan (AVFoundation, the kit's own viewfinder, sdk.react-pair-enter 8–8c) and manage; the app declares NSCameraUsageDescription and the Local Network keys. macOS: show, enter and manage, no scanning.",
-    "compose": "Android: show, enter, scan and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so 8 and 8c are iOS only; a build without Play services types the code. Desktop: show, enter and manage.",
+    "swiftui": "iOS and iPadOS: scan first, then show, enter and manage (sdk.swiftui-pair-scan: AVFoundation, the kit's own viewfinder); the app declares NSCameraUsageDescription and the Local Network keys. macOS: show, enter and manage, no scanning, as the React boards.",
+    "compose": "Android: scan first, then show, enter and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so sdk.swiftui-pair-scan 2, 3 and 3c are iOS only; a build without Play services has no Scan a code and types the code. Desktop: show, enter and manage.",
     "godot": "Show (QR from ui/qr/), enter and manage; no scanning. Two panes by its own two_pane_fits() rule.",
     "python": "API only (no kit yet)."
   },
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": 1,
+    "reviewer": "pkey-ux-reviewer (mockup mode)",
+    "date": "2026-11-10",
+    "verdict": "Fix (mediocre): the code was not the hero, the two devices disagreed about the tries left, and the shower had no way to make a code the joiner could still use. Fixed in the one fix round, every recommendation taken.",
+    "findings": [
+      {
+        "severity": "blocking",
+        "issue": "After Too many tries the drawn recovery could not be completed: the joiner's countdown could never land inside the old window, and the shower's person had to press Cancel then Show a code with nothing telling them to.",
+        "resolution": "From the first wrong code the notice carries a quiet Show a new code (3): it closes the window and opens a new one with new first two digits and a fresh 5 minutes (R3, R16). The 30-second cooldown applies only after the window closes on Too many tries (5, 5b), never after a code the person asked for (5c).",
+        "ref": "B2"
+      },
+      {
+        "severity": "major",
+        "issue": "The shower said 'Use the new code. 4 tries left.' while the joiner said '1 try left' at the same moment.",
+        "resolution": "No count on the shower: 'Wrong code entered' / 'The code changed.' with the Show a new code link. Only the joiner shows tries left. The rotated code is never called 'the new code'.",
+        "ref": "M1"
+      },
+      {
+        "severity": "major",
+        "issue": "The LP1 F9 cooldown and second-time warning, and the F7 'pairing is being blocked' cue, were missing.",
+        "resolution": "5: 'Show a new code in 0:24', aria-disabled through a 30-second cooldown. 5b: 'Too many tries again' / 'Someone nearby may be guessing codes.' 4: 'Pairing is being blocked' / 'Something on this network keeps interrupting. Try another network.' ui-core owns the cooldown and the warning (R2); the blocked cue needs R4.",
+        "ref": "M5"
+      },
+      {
+        "severity": "major",
+        "issue": "The title (34/600) outranked the code (28/600); the QR floated with dead space under it; the Waiting band spanned both panes; no short window was drawn; the split rule was width-only and differed from LinkPairing's.",
+        "resolution": "The code is the kit's code token (40/48, 500, 0.12em, tabular), centred. Title and lede on top across both panes; code over its time beside the QR, centred on each other; waiting, Cancel and the link under the code column only. Two panes from 600px of window, recorded as a LocalPairing row in UI-KITS 4.3. 2b draws 720 x 420: the window's own logo, code and QR side by side, no scroll (.kit-form.short).",
+        "ref": "M6"
+      },
+      {
+        "severity": "major",
+        "issue": "If both people press Show a code, both see codes and neither has a field.",
+        "resolution": "'Enter a code instead' on the show screen withdraws this code and opens the field; sdk.react-pair-enter has 'Show a code instead'.",
+        "ref": "M7"
+      },
+      {
+        "severity": "major",
+        "issue": "On a device that can scan, scanning should lead (M11); the lede put typing first.",
+        "resolution": "The lede is 'Scan or enter this code on the other device.' The phone frames moved to sdk.swiftui-pair-scan.",
+        "ref": "M11"
+      },
+      {
+        "severity": "minor",
+        "issue": "Rotations kept four digits ('4812 7069') while the caption said two.",
+        "resolution": "'4812 3456' → '4873 0691': the first two stay, the other six change, lit for a moment.",
+        "ref": "m1"
+      },
+      {
+        "severity": "minor",
+        "issue": "Too many tries (title and primary) and Time ran out (notice and link) were one state in two treatments.",
+        "resolution": "Both are 'Couldn't pair' with a lede and the Show a new code primary (5, 5c); only Too many tries has the cooldown.",
+        "ref": "m2"
+      },
+      {
+        "severity": "minor",
+        "issue": "No room was answered only after Show or Enter, though the cap of 32 is known before.",
+        "resolution": "1b: the No room notice on Pair with a Code with a Paired devices link; Show a code and Enter a code are aria-disabled.",
+        "ref": "m3"
+      },
+      {
+        "severity": "minor",
+        "issue": "Network blocked had no action.",
+        "resolution": "Open Settings where the platform can deep-link (Windows ms-settings:, the macOS Privacy pane); the words alone elsewhere.",
+        "ref": "m4"
+      },
+      {
+        "severity": "minor",
+        "issue": "The countdown was a filled pie.",
+        "resolution": "A 20px ring with a 2px stroke and tabular figures (UI-KITS 4.4).",
+        "ref": "m6"
+      },
+      {
+        "severity": "minor",
+        "issue": "The L-11 footnote said 'let'.",
+        "resolution": "'If asked, allow DJDL to find devices on your network.', as the shipped copy says.",
+        "ref": "m9"
+      },
+      {
+        "severity": "minor",
+        "issue": "The rotated notice above the code pushed the code down while someone read it.",
+        "resolution": "The notice sits under the time row; the changed digits light briefly; the live region announces the new code (a11y.newCode).",
+        "ref": "m11"
+      },
+      {
+        "severity": "minor",
+        "issue": "grid-3x3 for Enter a code read as apps.",
+        "resolution": "A keyboard glyph (added to the mockup kit's icons).",
+        "ref": "m13"
+      },
+      {
+        "severity": "minor",
+        "issue": "Escape and Cancel's landing were unspecified.",
+        "resolution": "Escape is Cancel, which withdraws the code and returns to Pair with a Code.",
+        "ref": "m15"
+      },
+      {
+        "severity": "minor",
+        "issue": "One off state had three wordings.",
+        "resolution": "'Pairing unavailable' (the core title) in 6, as on sdk.react-pair-off.",
+        "ref": "pair-off"
+      }
+    ]
+  }
 }

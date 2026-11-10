@@ -6,19 +6,21 @@
   "order": 27,
   "packages": ["CC-29K"],
   "uxRows": [],
-  "summary": "The device that enters the code (the joiner): the 8-digit code field with what each of you shares (agreeing by pressing Pair), Pairing… while it looks for the other device, a wrong code with the tries left, too many tries with its wait, can't find the other device, and other answers; then the iPhone frames of the SwiftUI kit with the scan entry, the viewfinder, a QR for another app and the camera turned off.",
+  "summary": "The device that enters the code: the 8-digit field in the shown code's face with what each of you shares (pressing Pair agrees), Pairing… with an enabled Cancel, a wrong code that keeps the first two digits and waits for a different code, Too many tries that asks for a new code with the field still open, the same first two digits refused, can't find the other device, and the other answers. The phone frames moved to sdk.swiftui-pair-scan.",
   "compare": [
-    "1: one 56px field labelled 'Code', digits only (numeric keypad on touch), grouped as typed ('4812 3456'); spaces and hyphens in a paste are dropped. Pair stays disabled until all 8 digits are in, and Enter submits. The shared categories are listed before Pair, so pressing Pair is this person's consent (V5 §15.12: the joiner may consent at code entry); there is no second 'Pair with …?' on this device.",
-    "2: 'Pairing…' with the spinner in the primary; the field, the categories and Back are locked. It looks for the other device for at most 15 seconds and dials at most two; it never retries a code by itself.",
-    "3: a wrong code tints and borders the field (never the product accent) with 'That code didn't work. Enter the new code from the other device.' because the other device has already changed its code; '1 try left' is a quiet hint under it. The typed digits stay, selected, so the next keystroke replaces them.",
-    "4: after two wrong codes with the same first two digits in 5 minutes the field and Pair lock, and a neutral notice says 'Too many tries' / 'Try again in 4:51, or cancel on the other device and show a new code.' The countdown ticks; a new code with other first two digits (the other device's Cancel, then Show a code) works at once.",
-    "5: 'Can't find the other device' / 'Check you're both on the same network.' after 15 seconds with nothing found, or when every attempt ended before the code was checked (an app older than v0.11 on the other device looks the same). Pair tries again and spends no try when nothing was found.",
-    "6: 'A code is 8 digits.' for a paste that isn't one (nothing is sent), 'This code is for another app.' for a scanned QR of another product, and the core No room copy (answered before anything is looked for).",
-    "7–8c (iPhone, SwiftUI kit, Diceroll's facts): the enter screen adds 'Scan the code instead'; the scan screen is the camera view with the viewfinder's corners, 'Enter the code instead' and Cancel, and pairs as soon as a code reads (no shutter). A QR of another app shows the error under the view and scanning goes on. Before iOS's own camera prompt the kit says once 'Next, allow Diceroll to use the camera.'; with the camera off, the view says 'Camera access is off' / 'Allow it in Settings, or enter the code.' Android's Play build opens Google's scanner instead of 8 to 8c.",
-    "Focus: the field on arrival; after an error, the field with its digits selected; the error and the notices are announced (role alert for errors, status for the wait).",
-    "Four sizes: three windows a row at wide, two at desktop and tablet, one on phone; the phones four a row at wide, three at desktop, two at tablet, one on phone.",
+    "1: one field labelled 'Code' in the shown code's face and size (the kit's code token, 72px tall), digits only, grouped as typed ('4812 3456'); spaces and hyphens in a paste are dropped. Pair is enabled; with fewer than 8 digits it answers 'A code is 8 digits.' under the field and sends nothing. Enter submits. The shared categories come before Pair, so pressing Pair is this person's consent (V5 §15.12); there is no second 'Pair with …?' here. 'Show a code instead' (a quiet link) opens sdk.react-pair-show 2 for two people who both chose Enter.",
+    "Focus on arrival: the field on a fine pointer; the heading on a coarse pointer (UI-KITS focus rule), so a touch screen's keyboard does not cover the categories.",
+    "2: Pair keeps its label with the 16px ring and keeps focus (aria-disabled, never disabled); the field and the categories lock; Back becomes Cancel and stays enabled, and Escape does the same (R8). It looks for the other device for at most 15 seconds and dials at most two; it never retries a code by itself.",
+    "3: a wrong code tints and borders the field (never the product accent) with 'That code didn't work. Enter the code the other device shows now.' and the quiet hint '1 try left' (R6 reason wrong, R7). The first two digits stay (an answer proves them right), the other six clear, the caret sits after '48'. Pair is aria-disabled until the field holds 8 digits that differ from the code that failed; ui-core's LocalPairingModel owns this stale-code guard, so every kit gets it.",
+    "4: after two failed dials for the same first two digits in 5 minutes, a neutral notice 'Too many tries' / 'Ask for a new code on the other device.' with no countdown; the field is cleared and stays editable, and Pair is enabled as soon as the first two digits differ from the spent ones (R7). The budget itself is untouched.",
+    "4b: typing the spent first two digits again answers under the field 'Ask for a new code. This one can't be tried again yet.' (R6 reason spent; nothing is sent) and Pair stays aria-disabled. The other device's Show a new code always starts with other first two digits (R16).",
+    "5: 'Can't find the other device' / 'Check the code, and that you're both on the same network.' after 15 seconds with nothing found, or when every attempt ended before the code was checked (a mistyped first two digits, a code no longer on screen, or an app older than v0.11 look the same). Pair tries again and spends no try.",
+    "6: Not a code ('A code is 8 digits.', nothing sent), network blocked (core nearby-permission-denied, Open Settings where the platform can deep-link), pairing off (core 'Pairing unavailable', sdk.react-pair-off 3). No room is answered on Pair with a Code (sdk.react-pair-show 1b) before this screen opens.",
+    "Errors are announced (role alert) and focus stays in the field; notices are role status. Escape is Back, or Cancel while busy.",
+    "Type: five sizes, code 40, title, body 15, label 14, meta 13; the 12px category pills are the kit's (raising them to 13 is a kit-wide decision, flagged to the kit owner). Weights 400, 500, 600.",
+    "Four sizes: three windows a row at wide and desktop, two at tablet, one on phone; the answers card spans the board.",
     "Accent, type and radii match sdk.react-activate: Polaris look by default, DJDL's coral accent, no Polaris Key or Polaris Locker words or marks anywhere (there is no account in this flow).",
-    "Words are the copyKeys below, verbatim; no 'CPace', 'nameplate', 'mode', 'link secret' or 'local link' reaches a person."
+    "Words are the copyKeys below, verbatim ('revised' marks a key this round added or changed; 'was' is the old value); no 'CPace', 'nameplate', 'mode', 'link secret' or 'local link' reaches a person."
   ],
   "copyKeys": [
     {
@@ -43,57 +45,76 @@
       "key": "localPairing.codePlaceholder",
       "value": "0000 0000",
       "role": "hint",
-      "note": "Placeholder; also tells the length and the grouping."
+      "note": "Placeholder of an empty field; tells the length and the grouping."
     },
     {
       "key": "linkPairing.shares",
       "value": "Each of you shares",
       "role": "label",
       "existing": true,
-      "note": "Reused: heading over the app's categories, before Pair."
+      "note": "Heading over the app's categories, before Pair."
     },
     {
       "key": "linkPairing.sharesNone",
       "value": "Nothing is shared yet.",
       "role": "body",
       "existing": true,
-      "note": "Reused when the app declares no categories."
+      "note": "When the app declares no categories."
     },
     {
       "key": "localPairing.pair",
       "value": "Pair",
       "role": "button",
-      "note": "The joiner's submit and consent; also the shower's confirm button."
+      "note": "The joiner's submit and consent; keeps this label while busy. Also the shower's confirm button."
     },
     {
-      "key": "localPairing.pairing",
-      "value": "Pairing…",
+      "key": "a11y.busy",
+      "value": "In progress",
+      "role": "a11y",
+      "existing": true,
+      "note": "Announced with the busy ring on Pair."
+    },
+    {
+      "key": "localPairing.toShow",
+      "value": "Show a code instead",
       "role": "button",
-      "note": "Busy label while it looks for the other device and the code is checked."
+      "revised": "new",
+      "note": "Quiet link: opens the show screen."
     },
     {
       "key": "localPairing.wrongCode",
-      "value": "That code didn’t work. Enter the new code from the other device.",
+      "value": "That code didn’t work. Enter the code the other device shows now.",
       "role": "body",
-      "note": "Joiner: pairing-code-failed after the code was checked (the shower has rotated). Replaces the core copy's 'Check it and try again', which is wrong here."
+      "revised": "changed",
+      "was": "That code didn’t work. Enter the new code from the other device.",
+      "note": "R6 reason wrong. True for a changed code, a typo, a spent budget and another app's QR."
     },
     {
       "key": "localPairing.triesLeft",
       "value": "{tries, plural, one {# try left} other {# tries left}}",
       "role": "hint",
-      "note": "Joiner: dials left for these first two digits in the 5-minute budget (2). Needs the SDK to expose it (open question)."
+      "note": "Dials left for these first two digits (R7)."
     },
     {
       "key": "localPairing.cooldownTitle",
       "value": "Too many tries",
       "role": "label",
-      "note": "Joiner: the dial budget for these first two digits is spent."
+      "note": "No dial left for these first two digits."
     },
     {
       "key": "localPairing.cooldownBody",
-      "value": "Try again in {time}, or cancel on the other device and show a new code.",
+      "value": "Ask for a new code on the other device.",
       "role": "body",
-      "note": "Arguments: {time} = m:ss until the budget frees."
+      "revised": "changed",
+      "was": "Try again in {time}, or cancel on the other device and show a new code.",
+      "note": "No countdown: the budget frees only after the other device's window has closed."
+    },
+    {
+      "key": "localPairing.spentCode",
+      "value": "Ask for a new code. This one can’t be tried again yet.",
+      "role": "body",
+      "revised": "new",
+      "note": "Under the field when the typed first two digits are spent (R6 reason spent); nothing is sent."
     },
     {
       "key": "localPairing.notFoundTitle",
@@ -103,63 +124,38 @@
     },
     {
       "key": "localPairing.notFoundBody",
-      "value": "Check you’re both on the same network.",
+      "value": "Check the code, and that you’re both on the same network.",
       "role": "body",
-      "note": "pairing-not-found. The core message says both sentences as one; the kit splits them into title and body."
+      "revised": "changed",
+      "was": "Check you’re both on the same network.",
+      "note": "pairing-not-found; names the most common cause first."
     },
     {
       "key": "localPairing.notACode",
       "value": "A code is 8 digits.",
       "role": "body",
-      "note": "A paste that is not 8 digits after spaces and hyphens are removed; nothing is sent."
+      "note": "Pair with fewer than 8 digits, or a paste that is not 8 digits once spaces and hyphens are removed; nothing is sent."
     },
     {
-      "key": "localPairing.otherApp",
-      "value": "This code is for another app.",
+      "key": "core.codes.nearby-permission-denied",
+      "value": "Local network blocked · This app can't reach devices on your local network. Allow it in system settings.",
       "role": "body",
-      "note": "A QR whose slug is not this app's (V5 §15.12 'other-app')."
+      "existing": true,
+      "note": "Existing core copy."
     },
     {
-      "key": "localPairing.scanInstead",
-      "value": "Scan the code instead",
+      "key": "localPairing.openSettings",
+      "value": "Open Settings",
       "role": "button",
-      "note": "Link on the enter screen; iOS, iPadOS and Android only."
+      "revised": "new",
+      "note": "See sdk.react-pair-show."
     },
     {
-      "key": "localPairing.scanBody",
-      "value": "Point at the code on the other device.",
+      "key": "core.codes.local-pairing-off",
+      "value": "Pairing unavailable · Pairing with a code is off for this app.",
       "role": "body",
-      "note": "The scan screen's lede."
-    },
-    {
-      "key": "localPairing.enterInstead",
-      "value": "Enter the code instead",
-      "role": "button",
-      "note": "Link on the scan screen."
-    },
-    {
-      "key": "localPairing.cameraPrePrompt",
-      "value": "Next, allow {app} to use the camera.",
-      "role": "hint",
-      "note": "Once, before the OS camera prompt (iOS). Arguments: {app}. The plan's draft was 'Scan the code with your camera'."
-    },
-    {
-      "key": "localPairing.cameraOffTitle",
-      "value": "Camera access is off",
-      "role": "label",
-      "note": "iOS: camera permission denied."
-    },
-    {
-      "key": "localPairing.cameraOffBody",
-      "value": "Allow it in Settings, or enter the code.",
-      "role": "body",
-      "note": "iOS: camera permission denied."
-    },
-    {
-      "key": "a11y.cameraView",
-      "value": "Camera view",
-      "role": "a11y",
-      "note": "The viewfinder."
+      "existing": true,
+      "note": "Existing core copy."
     },
     {
       "key": "common.back",
@@ -171,16 +167,142 @@
       "key": "common.cancel",
       "value": "Cancel",
       "role": "button",
-      "existing": true
+      "existing": true,
+      "note": "Replaces Back while Pairing…."
+    }
+  ],
+  "removedCopyKeys": [
+    {
+      "key": "localPairing.pairing",
+      "was": "Pairing…",
+      "why": "A busy button keeps its label (UI-KITS 4.3); a11y.busy is announced instead."
+    },
+    {
+      "key": "localPairing.otherApp",
+      "why": "Moved with the scan frames to sdk.swiftui-pair-scan."
+    },
+    {
+      "key": "localPairing.scanInstead, localPairing.scanBody, localPairing.enterInstead, localPairing.cameraPrePrompt, localPairing.cameraOffTitle, localPairing.cameraOffBody, a11y.cameraView",
+      "why": "Moved to sdk.swiftui-pair-scan."
+    }
+  ],
+  "coreCopyChanges": [
+    {
+      "code": "pairing-code-failed",
+      "message": "That code didn't work. Enter the code the other device shows now.",
+      "owner": "CC-29.0",
+      "note": "conformance/parity/copy.en.json, then pnpm gen constants and the locale files; copy, not wire."
+    },
+    {
+      "code": "pairing-not-found",
+      "message": "Can't find the other device. Check the code, and that you're both on the same network.",
+      "owner": "CC-29.0",
+      "note": "As above."
+    }
+  ],
+  "sdkNeeds": [
+    {
+      "id": "R6",
+      "need": "Joiner: pairing-code-failed carries a reason detail: wrong (the other device answered and changed its code), spent (this code's first two digits have no dial left; nothing was sent), invalid, or other-app.",
+      "states": ["3", "4b"]
+    },
+    {
+      "id": "R7",
+      "need": "Joiner: dialsLeft(code) returns { left: 0 | 1 | 2, freesAt } from the process-wide budget, so the kit shows the tries left and enables Pair for other first two digits without a round trip.",
+      "states": ["3", "4", "4b"]
+    },
+    {
+      "id": "R8",
+      "need": "Joiner: a public cancel, join({ signal }) with an AbortSignal, or a handle.",
+      "states": ["2"]
     }
   ],
   "platforms": {
     "react": "Electron over Node: show, enter and manage; no scanning. In a browser or a desktop-bridge page there is no local network (connect-unavailable), so the kit renders nothing and the host shows no entry.",
-    "swiftui": "iOS and iPadOS: show, enter, scan (AVFoundation, the kit's own viewfinder, sdk.react-pair-enter 8–8c) and manage; the app declares NSCameraUsageDescription and the Local Network keys. macOS: show, enter and manage, no scanning.",
-    "compose": "Android: show, enter, scan and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so 8 and 8c are iOS only; a build without Play services types the code. Desktop: show, enter and manage.",
+    "swiftui": "iOS and iPadOS: scan first, then show, enter and manage (sdk.swiftui-pair-scan: AVFoundation, the kit's own viewfinder); the app declares NSCameraUsageDescription and the Local Network keys. macOS: show, enter and manage, no scanning, as the React boards.",
+    "compose": "Android: scan first, then show, enter and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so sdk.swiftui-pair-scan 2, 3 and 3c are iOS only; a build without Play services has no Scan a code and types the code. Desktop: show, enter and manage.",
     "godot": "Show (QR from ui/qr/), enter and manage; no scanning. Two panes by its own two_pane_fits() rule.",
     "python": "API only (no kit yet)."
   },
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": 1,
+    "reviewer": "pkey-ux-reviewer (mockup mode)",
+    "date": "2026-11-10",
+    "verdict": "Fix (mediocre): after a wrong code Pair stayed live on a code that could no longer work, and after Too many tries the screen offered a wait that could never succeed and locked the field the escape needed. Fixed in the one fix round, every recommendation taken.",
+    "findings": [
+      {
+        "severity": "blocking",
+        "issue": "Wrong code: the failed code stayed in the field, selected, with Pair enabled, so one more Enter spent the last dial on a code certain to fail.",
+        "resolution": "The first two digits stay, the other six clear, the caret after '48'. Pair is aria-disabled until 8 digits that differ from the failed code (a ui-core stale-code guard). Copy 'That code didn't work. Enter the code the other device shows now.' with '1 try left'.",
+        "ref": "B1"
+      },
+      {
+        "severity": "blocking",
+        "issue": "Too many tries: 'Try again in 4:51' could never succeed, and the field and Pair were locked, so the new code could not be typed.",
+        "resolution": "No countdown: 'Too many tries' / 'Ask for a new code on the other device.' The field is cleared and editable; Pair turns on once the first two digits differ from the spent ones. Typing the spent ones again: 'Ask for a new code. This one can't be tried again yet.' (4b).",
+        "ref": "B2"
+      },
+      {
+        "severity": "major",
+        "issue": "Pairing… locked Back and disabled Pair for up to 45 seconds and dropped focus.",
+        "resolution": "Back becomes an enabled Cancel (Escape too, R8); Pair keeps its label with the 16px ring and keeps focus (aria-disabled).",
+        "ref": "M3"
+      },
+      {
+        "severity": "major",
+        "issue": "'Can't find the other device' blamed only the network.",
+        "resolution": "'Check the code, and that you're both on the same network.' The core pairing-not-found message should match (coreCopyChanges, CC-29.0).",
+        "ref": "M4"
+      },
+      {
+        "severity": "major",
+        "issue": "Two people who both chose Enter a code were stuck.",
+        "resolution": "'Show a code instead' on this screen; 'Enter a code instead' on the show screen.",
+        "ref": "M7"
+      },
+      {
+        "severity": "major",
+        "issue": "The phone frames made typing primary and scanning the fallback, with 22px link targets.",
+        "resolution": "Moved to sdk.swiftui-pair-scan: Scan a code first, typing as the fallback, 44pt links.",
+        "ref": "M11"
+      },
+      {
+        "severity": "minor",
+        "issue": "Six type sizes, three within 2px.",
+        "resolution": "The field takes the shown code's size (40/48). The 12px pills are the kit's; raising them to 13 is flagged to the kit owner.",
+        "ref": "m5"
+      },
+      {
+        "severity": "minor",
+        "issue": "'Pair' changed to 'Pairing…'.",
+        "resolution": "A busy button keeps its label.",
+        "ref": "m6"
+      },
+      {
+        "severity": "minor",
+        "issue": "Focus and Escape were unspecified.",
+        "resolution": "Field focus on a fine pointer, the heading on a coarse one; Escape is Back, or Cancel while busy.",
+        "ref": "m15"
+      },
+      {
+        "severity": "minor",
+        "issue": "A disabled Pair at 7 digits gave no reason.",
+        "resolution": "Pair stays enabled and answers 'A code is 8 digits.' (the stale-code guard of 3 is the one aria-disabled case).",
+        "ref": "m16"
+      },
+      {
+        "severity": "minor",
+        "issue": "Network blocked had no action.",
+        "resolution": "Open Settings where the platform can deep-link.",
+        "ref": "m4"
+      },
+      {
+        "severity": "minor",
+        "issue": "Core copy said 'Check it and try again' after a changed code.",
+        "resolution": "Recorded as coreCopyChanges for CC-29.0 (copy.en.json, then pnpm gen constants and the locale files); this package changes the kit's keys only.",
+        "ref": "Q3"
+      }
+    ]
+  }
 }

@@ -17243,6 +17243,18 @@
       "evidence": "board drawn for CC-29K (account-free local pairing); CC-29K.1 builds the React kit, K.2 SwiftUI and Compose, K.3 scanning, K.4 Godot (not built yet)"
     },
     {
+      "id": "sdk.swiftui-pair-scan",
+      "kind": "screen",
+      "title": "SwiftUI kit: Pair with a Code on iPhone",
+      "source": "docs/design/mockups/screens/sdk/sdk.swiftui-pair-scan",
+      "area": "sdk",
+      "surface": "kit",
+      "owners": ["CC-29K"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "board drawn for CC-29K (account-free local pairing): the iPhone frames, scan first; CC-29K.2 builds SwiftUI and Compose, K.3 scanning (not built yet)"
+    },
+    {
       "id": "docs.guide-lanes",
       "kind": "screen",
       "title": "Add licensing to your app",
