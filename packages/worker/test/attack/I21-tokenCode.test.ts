@@ -133,9 +133,9 @@ describe("secret guessing (IS-12)", () => {
       { headers },
     );
 
-  it("ten failures spend one network's budget: its eleventh is 429, and a correct credential still passes from anywhere", async () => {
-    for (let i = 0; i < 10; i++) expect((await guess(i)).status).toBe(401);
-    const locked = await guess(10);
+  it("twenty failures spend one network's budget: its twenty-first is 429, and a correct credential still passes from anywhere", async () => {
+    for (let i = 0; i < 20; i++) expect((await guess(i)).status).toBe(401);
+    const locked = await guess(20);
     expect(locked.status).toBe(429);
     expect(await err(locked)).toBe("rate_limited");
     // The client is not locked out: the right secret passes, from the sprayer's network or another.
@@ -149,21 +149,21 @@ describe("secret guessing (IS-12)", () => {
         ).status,
       ).toBe(200);
     // Another network's wrong guess is a plain 401, not a share of the sprayer's budget.
-    expect((await guess(11, NET_B)).status).toBe(401);
+    expect((await guess(21, NET_B)).status).toBe(401);
   });
 
   it("another client is not locked by it", async () => {
-    for (let i = 0; i < 11; i++) await guess(i);
+    for (let i = 0; i < 21; i++) await guess(i);
     expect((await token(grantForm(s.spa, await codeFor(s.spa)))).status).toBe(
       200,
     );
   });
 
-  it("a public client's request budget is per client and network: a second network is not starved", async () => {
+  it("a public client's request budget is 30 a minute per client and network: a second network is not starved", async () => {
     const bogus = (headers: Record<string, string>) =>
       token({ grant_type: "bogus", client_id: s.spa.clientId }, { headers });
     let last = 0;
-    for (let i = 0; i < 61; i++) last = (await bogus(NET_A)).status;
+    for (let i = 0; i < 31; i++) last = (await bogus(NET_A)).status;
     expect(last).toBe(429);
     expect((await bogus(NET_B)).status).toBe(400);
     // The same network asking as another client is not spent.

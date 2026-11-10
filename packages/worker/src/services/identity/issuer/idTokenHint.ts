@@ -10,7 +10,12 @@
  * with a hint another client was issued.
  */
 
-import { compactVerify, createLocalJWKSet, decodeProtectedHeader } from "jose";
+import {
+  compactVerify,
+  createLocalJWKSet,
+  decodeJwt,
+  decodeProtectedHeader,
+} from "jose";
 import { ISSUER_TOKEN_ALG, ID_TOKEN_TYP } from "@polaris-key/protocol/identity";
 import type { Db } from "../../../db/types.js";
 import { issuerJwks } from "./keys.js";
@@ -43,6 +48,23 @@ export async function verifyIdTokenHint(
     return typeof claims.sub === "string" && claims.sub !== ""
       ? claims.sub
       : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The audience an `id_token_hint` names, read WITHOUT verifying it, so `end-session` can find the
+ * client the hint is meant for when the request names none (RP-Initiated Logout 1.0 §2). It
+ * chooses nothing but which client's id the verification above is then bound to: the hint is only
+ * ever trusted through {@link verifyIdTokenHint}, which pins `alg`, the key set, `iss` and this
+ * `aud`. `null` for anything that is not a JWT with one string `aud`.
+ */
+export function hintAudience(hint: string): string | null {
+  if (hint.length === 0 || hint.length > ID_TOKEN_HINT_MAX_LENGTH) return null;
+  try {
+    const aud = decodeJwt(hint).aud;
+    return typeof aud === "string" ? aud : null;
   } catch {
     return null;
   }

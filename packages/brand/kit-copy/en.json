@@ -2943,6 +2943,116 @@
       "role": "body",
       "note": "Lede of the sign-in step for a registered client's request. Arguments: {product} = the product's name (never translated)."
     },
+    "locker.signout.title": {
+      "value": "Sign out of Polaris Locker too?",
+      "role": "title",
+      "note": "Title of the sign-out page a relying party's end-session request opens (Sign in with <Product>, I-21.12)."
+    },
+    "locker.signout.body": {
+      "value": "Polaris Locker can still sign you in to apps in this browser.",
+      "role": "body",
+      "note": "Body of the sign-out page's question. No arguments."
+    },
+    "locker.signout.confirm": {
+      "value": "Sign out",
+      "role": "button",
+      "note": "Primary button of the sign-out page: ends this browser's Polaris Locker session and no other."
+    },
+    "locker.signout.stay": {
+      "value": "Stay signed in",
+      "role": "button",
+      "note": "Second button of the sign-out page: ends nothing."
+    },
+    "locker.signout.none.title": {
+      "value": "You're not signed in to Polaris Locker",
+      "role": "title",
+      "note": "Title of the sign-out page when this browser has no Polaris Locker session."
+    },
+    "locker.signout.back": {
+      "value": "Back to {app}",
+      "role": "button",
+      "note": "Button that returns to the client (the sign-out page with no session). Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.signout.open": {
+      "value": "Open Polaris Locker",
+      "role": "button",
+      "note": "Button of a sign-out page that has no client to return to."
+    },
+    "locker.signout.done.title": {
+      "value": "You're signed out of Polaris Locker",
+      "role": "title",
+      "note": "Title after Sign out, when the request has no return to the client."
+    },
+    "locker.signout.done.again": {
+      "value": "Sign in again",
+      "role": "button",
+      "note": "Button after Sign out, with no return: the Polaris Locker sign-in."
+    },
+    "locker.signout.stayed.title": {
+      "value": "You're still signed in to Polaris Locker",
+      "role": "title",
+      "note": "Title after Stay signed in, when the request has no return to the client."
+    },
+    "locker.signout.titleNoApp": {
+      "value": "Sign out of Polaris Locker?",
+      "role": "title",
+      "note": "Title of the sign-out page when the request named no client."
+    },
+    "locker.signout.header": {
+      "value": "{app} signed you out",
+      "role": "title",
+      "note": "Headline of the sign-out page's header when a registered client asked. Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.signout.headerProduct": {
+      "value": "{app}",
+      "role": "title",
+      "note": "Headline of the sign-out page's header when the request named no client: the product's name alone. Arguments: {app} = the product's name (never translated)."
+    },
+    "locker.signout.returning": {
+      "value": "Returning you to {app}",
+      "role": "title",
+      "note": "Title of the sign-out page while it returns to the client at once (no session here to end). Arguments: {app} = the client's name (never translated)."
+    },
+    "locker.signout.opening": {
+      "value": "Opening Polaris Locker",
+      "role": "title",
+      "note": "Title of the sign-out page's loading step."
+    },
+    "locker.signout.expired.title": {
+      "value": "This page has expired",
+      "role": "title",
+      "note": "Title of the sign-out page when its request has been used or has expired."
+    },
+    "locker.signout.expired.in": {
+      "value": "You're still signed in to Polaris Locker.",
+      "role": "body",
+      "note": "Body of the expired sign-out page when this browser still has a Polaris Locker session."
+    },
+    "locker.signout.expired.out": {
+      "value": "You're not signed in to Polaris Locker.",
+      "role": "body",
+      "note": "Body of the expired sign-out page when this browser has no Polaris Locker session."
+    },
+    "locker.signout.expired.signOut": {
+      "value": "Sign out of Polaris Locker",
+      "role": "button",
+      "note": "Button of the expired sign-out page: ends this browser's Polaris Locker session."
+    },
+    "locker.signout.returnFailed": {
+      "value": "Couldn't return you to {app}.",
+      "role": "body",
+      "note": "Callout of the sign-out page when it could not send the person back to the client; the button beside it is Back to the client. Arguments: {app} = the client's name, or the product's when none (never translated)."
+    },
+    "signin.unreachable.network": {
+      "value": "Check your connection.",
+      "role": "body",
+      "note": "Body of a request card that could not be reached because the network failed; a Try again button follows."
+    },
+    "signin.unreachable.wait": {
+      "value": "Wait a moment.",
+      "role": "body",
+      "note": "Body of a request card refused for too many attempts; a Try again button follows."
+    },
     "signin.key.skip": {
       "value": "Continue without an account",
       "role": "button",

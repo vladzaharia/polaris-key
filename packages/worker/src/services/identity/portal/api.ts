@@ -128,6 +128,7 @@ import {
   signInReplaceView,
   signInRequestView,
 } from "../passthrough/routes.js";
+import { endSessionView, handleEndSessionAnswer } from "../issuer/signout.js";
 import {
   handleSignInCancel,
   handleSignInContinue,
@@ -2040,6 +2041,39 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
       return view.status === 200 ? portalJson(view.body) : notFound();
     },
   },
+  // I-21.12 (§12.13.9): Polaris Locker's "Sign out of Polaris Locker too?" for an end-session
+  // handle. The binder cookie, not a session: the person may have none on this host. The handlers
+  // own the same-origin, CSRF and budget checks (`issuer/signout.ts`).
+  {
+    path: "signout/requests/:request",
+    auth: "none",
+    handler: async (c, m) =>
+      c.req.method !== "GET"
+        ? err(405, "method_not_allowed")
+        : endSessionView(
+            c.env,
+            c.db,
+            c.req,
+            m.params.request!,
+            c.now,
+            c.hooksFor,
+          ),
+  },
+  ...(["confirm", "cancel"] as const).map(
+    (action): PortalApiRoute => ({
+      path: `signout/requests/:request/${action}`,
+      auth: "none",
+      handler: (c, m) =>
+        handleEndSessionAnswer(
+          c.req,
+          c.env,
+          c.db,
+          m.params.request!,
+          action,
+          c.now,
+        ),
+    }),
+  ),
   // I-07: the login card's pre-authentication routes (email code and link, the email gate).
   // `signin/requests/*` is PX-W13's: the request view above, and its app-consent, licence and
   // continue views below, which need the session. `signin/requests` itself and anything deeper

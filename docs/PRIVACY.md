@@ -399,6 +399,41 @@ developer can switch it off per product, and the platform keeps it off until lau
   key of that account for the product. The operator can purge a product's keys.
 - **Export.** The account export lists the dates of each key and never the hash.
 
+### Sign in with <Product> — what an app you sign in to gets
+
+A developer can let websites and apps that are not the product's own offer "Sign in with
+<Product>". You sign in at Polaris Locker, which shows the app, who made it and where it sends you
+back, and you decide what it gets.
+
+- **What an app gets.** The product's pairwise identifier for you (the same one the product's own
+  apps see, and never your account id) and the time you signed in. With your say-so only: your
+  screen name, your picture's address, your primary email address and whether Polaris Key
+  verified it, and which features of the product you have. Never your sign-in methods, other
+  products, birth date, license keys or license state. A profile item you share is the same for
+  every app you share it with, so two apps can tell it is you.
+- **Your choices.** Each optional item has its own switch, and the first sign-in to each app always
+  asks. What you decline is in no token and is not returned later. Connected apps in Polaris
+  Locker lists every app you signed in to and what it gets, and lets you change that or
+  disconnect.
+- **Stored by the Worker.** Per account and app: the app's grant (what you allowed, the time you
+  allowed it and the time it was last used), kept until you disconnect or delete the account or
+  your data for the product; and, when an app asks to keep you signed in, a refresh token held only
+  as an HMAC, ended after 30 days without use or 90 days at most and purged 30 days after it ends.
+  Tokens the app holds expire in 10 minutes; Disconnect makes the app's next read of your profile
+  fail at once.
+- **Signing out.** An app can send you to Polaris Locker to sign out. Polaris Locker asks first, and
+  ends only the session in that browser. The audit trail keeps that the session ended and which app
+  asked, with no token or address.
+- **Your own app's access token.** A product's own app can trade its device token for a 10-minute
+  access token its developer's server can check. It names your pairwise identifier and nothing
+  else, and no audit row is written for it.
+- **The developer's trail.** The product's developer sees, per app, how many people signed in over
+  30 days and the sign-in history by pairwise identifier. They do not see what an app did with what
+  you shared.
+- **Export and deletion.** The account export and the per-product export list your grants; deleting
+  your account, removing the product's data or removing the product deletes them and the refresh
+  tokens.
+
 ### Not collected
 
 OS username, browsing or file activity, a list of installed applications, and any raw

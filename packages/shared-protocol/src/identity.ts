@@ -1504,7 +1504,7 @@ export interface EndSessionParams {
 export interface EndSessionView {
   /** {@link END_SESSION_HANDLE_PATTERN}. */
   request: string;
-  product: { appName: string; iconUrl: string | null };
+  product: { slug: string; appName: string; iconUrl: string | null };
   /** The client named, or null when none was. */
   client: {
     name: string;
@@ -1512,7 +1512,9 @@ export interface EndSessionView {
     iconUrl: string | null;
     nameVerified: boolean;
   } | null;
-  /** The return's host, or null with no return. */
+  /** The request carries a return to the relying party (the client is active and a registered return matched). */
+  returns: boolean;
+  /** The return's host: null with no return, and for a return to an app on this device (loopback or private-use). */
   returnHost: string | null;
   /** A Polaris Locker session exists on this host. */
   signedIn: boolean;

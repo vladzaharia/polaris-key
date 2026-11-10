@@ -1276,6 +1276,10 @@
     </plurals>
     <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_noEntries">Cette clé n’a plus de saisies disponibles dans %1$s. Ajoutez-la à votre compte et %1$s vous connectera à la place.</string>
+    <!-- Body of a request card that could not be reached because the network failed; a Try again button follows. -->
+    <string name="signin_unreachable_network">Vérifiez votre connexion.</string>
+    <!-- Body of a request card refused for too many attempts; a Try again button follows. -->
+    <string name="signin_unreachable_wait">Patientez un instant.</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">Continuer sans compte</string>
     <string name="signin_key_skip__macos">Continuer sans compte</string>

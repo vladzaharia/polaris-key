@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 121 | 16 | 5 | 1 |
-| React | `web`, `desktop-bridge` | 116 | 26 | 1 | 0 |
-| Python | `python` | 111 | 16 | 15 | 1 |
-| Swift | `macos`, `ios` | 126 | 10 | 5 | 2 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 129 | 9 | 4 | 1 |
-| Kotlin | `android`, `jvm` | 127 | 9 | 5 | 2 |
+| Node | `node` | 121 | 16 | 6 | 1 |
+| React | `web`, `desktop-bridge` | 116 | 26 | 2 | 0 |
+| Python | `python` | 111 | 16 | 16 | 1 |
+| Swift | `macos`, `ios` | 126 | 10 | 6 | 2 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 129 | 9 | 5 | 1 |
+| Kotlin | `android`, `jvm` | 127 | 9 | 6 | 2 |
 
 ## Core
 
@@ -132,6 +132,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `identity.pgs` | Platform sign-in: a Play Games server auth code for a device token (the exchange) | transcripts | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (macos: runtime); N/A (ios: runtime); N/A (web: runtime) | ✓; N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm: runtime |
 | `identity.autosignin` | Automatic sign-in: the ladder that signs a device in without a click | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.restore` | Silent restore: a new device of the same person signs in from the platform backup | transcripts | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓ | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (web: runtime) | ✓; N/A (jvm: runtime) | node, python, web, jvm, windows, linux, desktop-bridge: runtime |
+| `identity.accesstoken` | Access token: a signed-in device trades its device token for a short-lived token its developer's backend can verify | transcripts | planned (I-21b) | planned (I-21b) | planned (I-21b) | planned (I-21b) | planned (I-21b) | planned (I-21b) | — |
 | `identity.link` | The link offer: attach a platform identity to the account after a fresh sign-in | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | ✓ | ✓; N/A (linux: runtime); N/A (windows: runtime) | ✓; N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 | `identity.nearby` | Nearby approval: a signed-in device approves a device that cannot sign itself in | transcripts + `peer-matrix.json` `vouch` | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | ✓ | web: runtime |
 

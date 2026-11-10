@@ -51,6 +51,8 @@ export const IDENTITY_NAVIGATION_ENTRIES: readonly string[] = [
   "auth/start",
   "auth/device",
   "auth/device/verify",
+  // I-21.12 (§12.13.9): RP-initiated logout; a GET navigation or a form POST.
+  "end-session",
 ];
 
 /** Does the product's stored enablement set have Identity on? An unknown product is `false`. */
@@ -116,7 +118,7 @@ function browserHeaders(req: Request): boolean {
 }
 
 /** The entries that also take a form `POST` navigation (OIDC Core §3.1.2.1; V5 §12.8 rule 3). */
-const FORM_POST_ENTRIES: readonly string[] = ["authorize"];
+const FORM_POST_ENTRIES: readonly string[] = ["authorize", "end-session"];
 
 /**
  * The friendly refusal for a person who reached an app-sign-in entry of an Identity-off product:

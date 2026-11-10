@@ -204,6 +204,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/identity/choice/complete` | identity | Finish the sign-in with the person's choice |
 | POST | `/{product}/identity/choice/devices` | identity | The devices using a full licence (Replace) |
 | POST | `/{product}/identity/choice/licenses` | identity | A fresh licence choice for the pending sign-in |
+| GET | `/{product}/identity/end-session` | identity | RP-initiated logout (OpenID Connect RP-Initiated Logout 1.0) |
+| POST | `/{product}/identity/end-session` | identity | RP-initiated logout (form navigation) |
 | GET | `/{product}/identity/jwks` | identity | The product's issuer key set (Sign in with this product) |
 | GET | `/{product}/identity/link` | identity | What the app may offer to link (I-43.2) |
 | POST | `/{product}/identity/link` | identity | Add a Google or Apple identity to the signed-in account (I-43.2) |
@@ -321,6 +323,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/media/avatar/{asset}` | portal | An account picture, re-encoded and served same-origin |
 | GET | `/signin/return` | portal | The hosted desktop ReturnStep (I-15) |
 | GET | `/signin` | portal | Sign-in entry (redirect) |
+| GET | `/signout` | portal | Sign out of Polaris Locker too? (I-21.12) |
 | GET | `/tv` | portal | Device-code entry page, TV variant (HTML) |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |

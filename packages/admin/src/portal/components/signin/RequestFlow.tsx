@@ -51,6 +51,7 @@ import {
   PersonRow,
   PRIMARY_CLASS,
   RequestGone,
+  pendingOrMissing,
   Unreachable,
 } from "./requestParts.js";
 import { qk } from "../../queries.js";
@@ -145,9 +146,10 @@ export function RequestFlow({
   const notYou = async (): Promise<void> => {
     try {
       await mutate("signOutHere");
-    } catch {
+    } catch (err) {
       // The session was not ended (the table only runs after a confirmed write), so the families
       // stay; the session check says what is true.
+      setError(portalErrorCopy(err, { account: true }).line);
       await qc.invalidateQueries({ queryKey: qk.me() });
     }
   };
@@ -310,24 +312,8 @@ export function RequestFlow({
 
   let body: React.ReactNode;
   let key: string;
-  if (req.isPending) {
-    key = "loading";
-    body = (
-      <div
-        className="flex min-h-40 items-center justify-center"
-        aria-busy="true"
-      >
-        <Spinner />
-      </div>
-    );
-  } else if (req.error || !view) {
-    key = "gone";
-    body =
-      req.error instanceof HttpError && req.error.status !== 404 ? (
-        <Unreachable error={req.error} onRetry={() => void req.refetch()} />
-      ) : (
-        <RequestGone />
-      );
+  if (req.isPending || req.error || !view) {
+    ({ key, body } = pendingOrMissing(req));
   } else if (
     (cardChooses && licenses.isPending) ||
     (current?.kind === "consent" && consent.isPending)
@@ -502,6 +488,7 @@ export function RequestFlow({
         onNotYou={() => void notYou()}
         keyHref={keyHrefFor(lic.getLicense, handle)}
         notice={notice}
+        refusal={error}
         initialId={
           chosen?.kind === "license"
             ? chosen.row.id

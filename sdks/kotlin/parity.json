@@ -254,6 +254,7 @@
       "except": [{ "runtime": "jvm", "reason": "runtime" }],
       "note": "Rung 2 of autoSignIn on Android over Block Store (I-49.11): redeem, enrol after a sign-in and daily, sign-out deletion with a retry queue, AutoSignInOptions.restore and AndroidOptions.restore; the six restore transcripts are replayed (I-49.12). JVM desktop has no backup item."
     },
+    "identity.accesstoken": { "status": "planned", "wp": "I-21b" },
     "identity.link": {
       "status": "implemented",
       "except": [{ "runtime": "jvm", "reason": "runtime" }],

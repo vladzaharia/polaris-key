@@ -551,6 +551,8 @@
   "signin.key.entries": "키 등록 {limit}회 중 {left}회 남음 · 이번이 {n}번째 등록이에요",
   "signin.key.entriesLeftShort": "{left, plural, other {키 등록 #회 남음}}",
   "signin.key.noEntries": "이 키는 {product}에서 남은 등록 횟수가 없어요. 계정에 추가하면 {product}에서 로그인으로 사용할 수 있어요.",
+  "signin.unreachable.network": "연결을 확인하세요.",
+  "signin.unreachable.wait": "잠시만 기다려 주세요.",
   "signin.key.skip": "계정 없이 계속",
   "signin.key.ownedSignIn": "그 계정으로 로그인",
   "signin.key.signIn": "로그인",

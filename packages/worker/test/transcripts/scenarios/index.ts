@@ -84,6 +84,7 @@ import { LINK_SCENARIOS } from "./link.js";
 import { RESTORE_SCENARIOS } from "./restore.js";
 import { GAME_SCENARIOS } from "./gameExchange.js";
 import { NEARBY_SCENARIOS } from "./nearby.js";
+import { ACCESS_TOKEN_SCENARIOS } from "./accessToken.js";
 
 export const SCENARIOS: Scenario[] = [
   discoveryCapabilities,
@@ -149,4 +150,5 @@ export const SCENARIOS: Scenario[] = [
   ...HOLDERS_SCENARIOS,
   ...RESTORE_SCENARIOS,
   ...NEARBY_SCENARIOS,
+  ...ACCESS_TOKEN_SCENARIOS,
 ];

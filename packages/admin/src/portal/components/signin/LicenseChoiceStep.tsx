@@ -51,6 +51,7 @@ export function LicenseChoiceStep({
   onReplace,
   onCancel,
   notice,
+  refusal = null,
 }: {
   view: LicenseChoiceView;
   product: string;
@@ -71,6 +72,8 @@ export function LicenseChoiceStep({
   onCancel: () => void;
   /** A race or a gone seat, said above the list. */
   notice?: string | null;
+  /** A refusal (a failed "Not you?"): the card's callout. */
+  refusal?: string | null;
 }): React.ReactElement {
   const state = classifyChoice(view);
   const rows = view.choices.map((r) =>
@@ -184,6 +187,11 @@ export function LicenseChoiceStep({
             : t("signin.choice.lede", { product, device: deviceName })}
         </p>
       </div>
+      {refusal ? (
+        <p role="alert" className="text-sm/5 text-danger">
+          {refusal}
+        </p>
+      ) : null}
       {notice ? (
         <p role="status" className="text-sm/5 text-fg">
           {notice}

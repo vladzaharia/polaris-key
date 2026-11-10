@@ -1258,6 +1258,10 @@
     </plurals>
     <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_noEntries">이 키는 %1$s에서 남은 등록 횟수가 없어요. 계정에 추가하면 %1$s에서 로그인으로 사용할 수 있어요.</string>
+    <!-- Body of a request card that could not be reached because the network failed; a Try again button follows. -->
+    <string name="signin_unreachable_network">연결을 확인하세요.</string>
+    <!-- Body of a request card refused for too many attempts; a Try again button follows. -->
+    <string name="signin_unreachable_wait">잠시만 기다려 주세요.</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">계정 없이 계속</string>
     <string name="signin_key_skip__macos">계정 없이 계속</string>

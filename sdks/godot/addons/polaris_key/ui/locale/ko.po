@@ -3415,6 +3415,16 @@ msgstr[0] "키 등록 {left}회 남음"
 msgid "signin.key.noEntries"
 msgstr "이 키는 {product}에서 남은 등록 횟수가 없어요. 계정에 추가하면 {product}에서 로그인으로 사용할 수 있어요."
 
+#. Check your connection.
+#. Body of a request card that could not be reached because the network failed; a Try again button follows.
+msgid "signin.unreachable.network"
+msgstr "연결을 확인하세요."
+
+#. Wait a moment.
+#. Body of a request card refused for too many attempts; a Try again button follows.
+msgid "signin.unreachable.wait"
+msgstr "잠시만 기다려 주세요."
+
 #. Continue without an account
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"

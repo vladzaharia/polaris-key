@@ -39,18 +39,27 @@ export interface IssuerTokenCx {
   form: Map<string, string>;
 }
 
-/** Failed client authentications per `client_id` and network: the budget that can refuse. */
+/** Failed client authentications per `client_id` and network: the budget that can refuse (§12.13.11). */
 export const AUTH_FAIL_RATE = {
   bucket: "identityIssuerAuthFail",
-  limit: 10,
+  limit: 20,
   windowSec: 60,
 };
 /** Failed authentications per `client_id` from anywhere: a signal only, it never refuses. */
 export const AUTH_SIGNAL_RATE = { ...AUTH_FAIL_RATE, limit: 200 };
-/** Requests per `client_id` and network. */
-export const CLIENT_TOKEN_RATE = {
+/**
+ * Requests to `token` (§12.13.11): a public client, whose caller is a person's device or browser,
+ * 30 a minute per `client_id` and network; a confidential client, whose caller is the developer's
+ * server, 600 a minute per `client_id` from anywhere. Both fail closed.
+ */
+export const PUBLIC_TOKEN_RATE = {
   bucket: "identityIssuerToken",
-  limit: 60,
+  limit: 30,
+  windowSec: 60,
+};
+export const CONFIDENTIAL_TOKEN_RATE = {
+  bucket: "identityIssuerTokenConfidential",
+  limit: 600,
   windowSec: 60,
 };
 

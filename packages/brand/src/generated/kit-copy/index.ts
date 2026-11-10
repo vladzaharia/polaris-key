@@ -565,6 +565,8 @@ export type KitCopyKey =
   | "signin.key.entries"
   | "signin.key.entriesLeftShort"
   | "signin.key.noEntries"
+  | "signin.unreachable.network"
+  | "signin.unreachable.wait"
   | "signin.key.skip"
   | "signin.key.ownedSignIn"
   | "signin.key.signIn"

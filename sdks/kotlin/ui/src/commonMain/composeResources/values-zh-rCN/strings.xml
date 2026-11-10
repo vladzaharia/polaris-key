@@ -1258,6 +1258,10 @@
     </plurals>
     <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_noEntries">此密钥在%1$s中已没有剩余的输入次数。将它添加到你的账户后，%1$s会改为让你登录。</string>
+    <!-- Body of a request card that could not be reached because the network failed; a Try again button follows. -->
+    <string name="signin_unreachable_network">请检查网络连接。</string>
+    <!-- Body of a request card refused for too many attempts; a Try again button follows. -->
+    <string name="signin_unreachable_wait">请稍候。</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">不使用账户继续</string>
     <string name="signin_key_skip__macos">不使用账户继续</string>

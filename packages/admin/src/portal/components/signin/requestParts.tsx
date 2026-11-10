@@ -2,7 +2,9 @@ import * as React from "react";
 import { RadioGroup } from "radix-ui";
 import { RefreshCw } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
+import { Spinner } from "../../../ui/Spinner.js";
 import { AuthNotice, AuthTitle } from "../../../ui/auth/index.js";
+import { HttpError } from "../../api.js";
 import { portalErrorCopy } from "../../errors.js";
 import { cn } from "../../../lib/cn.js";
 import { t } from "../../../lib/copy.js";
@@ -45,7 +47,55 @@ export function RequestGone({
   );
 }
 
-/** The request could not be reached: the error's own copy and a retry. */
+/** The request is still loading: a centred spinner the card's height holds while it waits. */
+export function RequestLoading(): React.ReactElement {
+  return (
+    <div className="flex min-h-40 items-center justify-center" aria-busy="true">
+      <Spinner />
+    </div>
+  );
+}
+
+/**
+ * A request that did not load: gone (a 404, or no data), or unreachable with a retry (any other
+ * failure). Every card that reads one request by its handle answers the same way.
+ */
+export function RequestMissing({
+  error,
+  onRetry,
+}: {
+  error: unknown;
+  onRetry: () => void;
+}): React.ReactElement {
+  return error instanceof HttpError && error.status !== 404 ? (
+    <Unreachable error={error} onRetry={onRetry} />
+  ) : (
+    <RequestGone />
+  );
+}
+
+/**
+ * What a card that reads one request by its handle draws while it has no view: the loading body
+ * while the request is pending, the missing body once it failed (or answered nothing).
+ */
+export function pendingOrMissing(req: {
+  isPending: boolean;
+  error: unknown;
+  refetch: () => unknown;
+}): { key: "loading" | "gone"; body: React.ReactElement } {
+  if (req.isPending) return { key: "loading", body: <RequestLoading /> };
+  return {
+    key: "gone",
+    body: (
+      <RequestMissing error={req.error} onRetry={() => void req.refetch()} />
+    ),
+  };
+}
+
+/**
+ * The request could not be reached: the error's title and, where a retry can help, what to do
+ * before it (the button says "Try again" once); a refusal a retry cannot fix keeps its own sentence.
+ */
 export function Unreachable({
   error,
   onRetry,
@@ -54,11 +104,19 @@ export function Unreachable({
   onRetry: () => void;
 }): React.ReactElement {
   const copy = portalErrorCopy(error, { account: true });
+  const status = error instanceof HttpError ? error.status : null;
+  const description = !copy.retry
+    ? copy.description
+    : status === 0
+      ? t("signin.unreachable.network")
+      : status === 429
+        ? t("signin.unreachable.wait")
+        : null;
   return (
     <>
       <div className="space-y-2">
         <AuthTitle>{copy.title}</AuthTitle>
-        <p className="text-fg-muted">{copy.description}</p>
+        {description ? <p className="text-fg-muted">{description}</p> : null}
       </div>
       <Button
         variant="neutral"

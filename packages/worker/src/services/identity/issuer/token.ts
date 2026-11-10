@@ -62,7 +62,8 @@ import { oauth } from "../passthrough/oauthHttp.js";
 import {
   authenticate,
   clientCorsOrigins,
-  CLIENT_TOKEN_RATE,
+  CONFIDENTIAL_TOKEN_RATE,
+  PUBLIC_TOKEN_RATE,
   scopedCors,
   type IssuerTokenCx,
 } from "./clientAuth.js";
@@ -89,21 +90,16 @@ export async function handleIssuerToken(cx: IssuerTokenCx): Promise<Response> {
   if (!auth.ok) return scopedCors(auth.response, null);
   const { client } = auth;
   const out = (res: Response): Response => scopedCors(res, client);
-  if (
-    !(await rateLimitOk(
-      env,
-      slug,
-      {
-        ...CLIENT_TOKEN_RATE,
-        id: `${client.clientId}:${clientNetwork(req)}`,
-      },
-      now,
-    ))
-  )
+  const budget =
+    client.type === "web"
+      ? { ...CONFIDENTIAL_TOKEN_RATE, id: client.clientId }
+      : {
+          ...PUBLIC_TOKEN_RATE,
+          id: `${client.clientId}:${clientNetwork(req)}`,
+        };
+  if (!(await rateLimitOk(env, slug, budget, now)))
     return out(
-      oauth(429, "rate_limited", undefined, {
-        retryAfter: CLIENT_TOKEN_RATE.windowSec,
-      }),
+      oauth(429, "rate_limited", undefined, { retryAfter: budget.windowSec }),
     );
 
   const grant = form.get("grant_type");

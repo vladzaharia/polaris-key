@@ -148,6 +148,18 @@ export const PORTAL_MUTATIONS = {
     invalidates: () => [],
     why: "The app card ends in a redirect back to the app.",
   },
+  signoutConfirm: {
+    label: "Sign out of Polaris Locker from an app's sign-out request",
+    invalidates: () => [],
+    // Awaited: the page waits for the session to say what is true.
+    settle: () => [exact(qk.me())],
+    why: "The page ends in a redirect back to the app, or says the session ended.",
+  },
+  signoutCancel: {
+    label: "Stay signed in after an app's sign-out request",
+    invalidates: () => [],
+    why: "Nothing changes in this session; the page ends in a redirect back to the app.",
+  },
   signOutHere: {
     label: 'Sign this browser out ("Not you?")',
     invalidates: () => [],

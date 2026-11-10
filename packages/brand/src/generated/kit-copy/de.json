@@ -551,6 +551,8 @@
   "signin.key.entries": "Noch {left} von {limit} Schlüsseleingaben · Dies wird Eingabe {n}",
   "signin.key.entriesLeftShort": "{left, plural, one {Noch # Schlüsseleingabe} other {Noch # Schlüsseleingaben}}",
   "signin.key.noEntries": "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an.",
+  "signin.unreachable.network": "Prüfe deine Verbindung.",
+  "signin.unreachable.wait": "Warte einen Moment.",
   "signin.key.skip": "Ohne Konto fortfahren",
   "signin.key.ownedSignIn": "Bei diesem Konto anmelden",
   "signin.key.signIn": "Anmelden",

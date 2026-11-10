@@ -1,5 +1,7 @@
 import type {
   AppConsentView,
+  EndSessionRedirect,
+  EndSessionView,
   LicenseChoiceView,
   ReplaceView,
   SignInContinueRequest,
@@ -37,6 +39,24 @@ export const requestApi = {
   /** Cancel: `access_denied` goes back to the app. */
   signinCancel: (handle: string) =>
     call<SignInRedirect>(`/api/signin/requests/${enc(handle)}/cancel`, {
+      method: "POST",
+      body: "{}",
+    }),
+
+  /** I-21.12: the end-session request the sign-out page shows (works without a session: the binder cookie). */
+  signoutRequest: (handle: string) =>
+    call<EndSessionView>(`/api/signout/requests/${enc(handle)}`),
+
+  /** Sign out: ends this browser's Polaris Locker session, answers where to go. */
+  signoutConfirm: (handle: string) =>
+    call<EndSessionRedirect>(`/api/signout/requests/${enc(handle)}/confirm`, {
+      method: "POST",
+      body: "{}",
+    }),
+
+  /** Stay signed in: ends nothing, answers where to go. */
+  signoutCancel: (handle: string) =>
+    call<EndSessionRedirect>(`/api/signout/requests/${enc(handle)}/cancel`, {
       method: "POST",
       body: "{}",
     }),

@@ -51,6 +51,8 @@ export const qk = {
   signinDevices: (h: string, license: string) =>
     ["portal", "signinDevices", h, license] as const,
   signinConsent: (h: string) => ["portal", "signinConsent", h] as const,
+  // I-21.12: the sign-out page's request, under its handle.
+  signoutRequest: (h: string) => ["portal", "signoutRequest", h] as const,
 };
 
 /** Every portal query (the whole cache of this app). */
@@ -279,6 +281,15 @@ export const pq = {
       queryFn: () => portalApi.signinRequest(handle!),
       enabled: handle !== null,
       staleTime: 60_000,
+    }),
+
+  /** The end-session request (works before sign-in: the binder cookie, not a session). */
+  signoutRequest: (handle: string) =>
+    queryOptions({
+      queryKey: qk.signoutRequest(handle),
+      queryFn: () => portalApi.signoutRequest(handle),
+      staleTime: 0,
+      retry: false,
     }),
 
   signinLicenses: (handle: string, enabled: boolean) =>

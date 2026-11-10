@@ -133,7 +133,7 @@ async function registeredDevice(w: World): Promise<string> {
 }
 
 /** Setup: the client's device holds a token and is signed in as Ada. */
-async function signedInDevice(w: World, ada: Ada): Promise<string> {
+export async function signedInDevice(w: World, ada: Ada): Promise<string> {
   const token = await registeredDevice(w);
   expect(
     await setDeviceSubject(w.env, w.db, PRODUCT, DEVICE, ada.subject),
