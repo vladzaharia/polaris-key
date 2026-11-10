@@ -31,7 +31,7 @@ import { ErrorCode } from "../../../core/errors.js";
 import { appSecurityHeaders } from "../../../core/securityHeaders.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
-import { removeProductData } from "../accounts/deletion.js";
+import { removeProductData } from "../accounts/productRemoval.js";
 import { ErasureLedgerError } from "../accounts/erasureLedger.js";
 import {
   err,

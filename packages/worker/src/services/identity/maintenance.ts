@@ -25,6 +25,11 @@ import {
   stuckErasures,
   sweepErasures,
 } from "./accounts/deletion.js";
+import {
+  finishObjectsPass,
+  pendingObjectsPass,
+} from "./accounts/subjectErasureLedger.js";
+import { replaySubjectRemovals } from "./accounts/productRemoval.js";
 import { sweepAccountDeletions } from "./accounts/lifecycle.js";
 import { sweepRestoreKeys } from "./restore/store.js";
 import { customerOrigin } from "../../core/hosts.js";
@@ -62,6 +67,43 @@ async function erasureLedgerReplay(
           (r.failures.length > 10 ? ", …" : ""),
       );
     return r.tombstoned + r.reapplied + r.mirrored;
+  });
+}
+
+/**
+ * U-12.2: one bounded pass of the per-product removal ledger (`accounts/subjectErasureLedger.ts`):
+ * removals a failing store left owed, or a D1 restore brought back, are completed; entries past
+ * 35 days whose subject is gone are swept. An operator's objects request for one product (after a
+ * Durable Object restore) runs after it and is spent when its ledger has been walked to the end
+ * without a failure. Failures name the product and the opaque pairwise subject, never an account.
+ */
+async function subjectErasureReplay(
+  { db, now }: PlatformMaintenanceContext,
+  env: Env,
+  rec: MaintenanceRecorder,
+): Promise<void> {
+  await rec.step("subjectErasureLedger", async () => {
+    const ctx = { db, env, now, origin: await originOf(env, db) };
+    const r = await replaySubjectRemovals(ctx);
+    const failures = [...r.failures];
+    let repaired = r.completed;
+    const product = await pendingObjectsPass(env);
+    if (product !== null) {
+      const o = await replaySubjectRemovals(ctx, { objects: true, product });
+      failures.push(...o.failures);
+      repaired += o.objects;
+      if (!o.more && o.failures.length === 0) await finishObjectsPass(env);
+    }
+    if (failures.length > 0)
+      throw new Error(
+        `${failures.length} product removal repair(s) failed: ` +
+          failures
+            .slice(0, 10)
+            .map((f) => `${f.product}/${f.subject} (${f.step}: ${f.message})`)
+            .join(", ") +
+          (failures.length > 10 ? ", …" : ""),
+      );
+    return repaired + r.swept;
   });
 }
 
@@ -152,7 +194,10 @@ export const identityMaintenance: MaintenanceContribution = {
     await rec.drain("portalAudit:_platform", (limit) =>
       prunePortalAudit(db, null, ctx.cutoff, limit),
     );
-    if (env) await erasureLedgerReplay(ctx, env, rec);
+    if (env) {
+      await erasureLedgerReplay(ctx, env, rec);
+      await subjectErasureReplay(ctx, env, rec);
+    }
     // I-11: due requests enter the resumable erasure state machine, then incomplete erasures
     // retry under their own back-off. Both runs are bounded and fault-isolated.
     if (env) {
@@ -183,6 +228,7 @@ export const identityMaintenance: MaintenanceContribution = {
     if (!env) return;
     // The replay first: a restored account is closed before the sweeps below look at it.
     await erasureLedgerReplay(ctx, env, rec);
+    await subjectErasureReplay(ctx, env, rec);
     await accountDeletionSweep(ctx, env, rec);
     await erasureSweep(ctx, env, rec, false);
   },

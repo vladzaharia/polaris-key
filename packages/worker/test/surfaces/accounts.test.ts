@@ -57,10 +57,8 @@ import {
   detachLicense,
   reassignLicense,
 } from "../../src/services/identity/accounts/claim.js";
-import {
-  deleteAccount,
-  removeProductData,
-} from "../../src/services/identity/accounts/deletion.js";
+import { deleteAccount } from "../../src/services/identity/accounts/deletion.js";
+import { removeProductData } from "../../src/services/identity/accounts/productRemoval.js";
 import {
   ACCOUNT_DELETION_GRACE_SECONDS,
   accountDeletionSchedule,
