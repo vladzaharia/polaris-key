@@ -235,6 +235,26 @@ const smallParts = (s: FakeServer) => {
   s.singleMax = MIB;
 };
 
+// Rewrites every successful finalize answer.
+const rewriteFinalize = (
+  s: FakeServer,
+  change: (f: FinalizeResponse) => FinalizeResponse,
+) => {
+  const orig = s.finalize;
+  s.finalize = async (t, r) => {
+    const reply = await orig(t, r);
+    return reply.ok ? ok(change(reply.value)) : reply;
+  };
+};
+
+// The process dies on part 3 and after (an unrecoverable throw).
+const killFromPart3 = (s: FakeServer) => {
+  s.hook = (kind, n) => {
+    if (kind === "putPart" && (n ?? 0) >= 3) throw new Error("killed");
+    return undefined;
+  };
+};
+
 describe("TransferEngine upload", () => {
   it.each([
     ["size", (f: FinalizeResponse) => ({ ...f, size: f.size + 1 })],
@@ -247,11 +267,7 @@ describe("TransferEngine upload", () => {
       for (const data of [small, parts5]) {
         const s = new FakeServer();
         smallParts(s);
-        const orig = s.finalize;
-        s.finalize = async (t, r) => {
-          const reply = await orig(t, r);
-          return reply.ok ? ok(change(reply.value)) : reply;
-        };
+        rewriteFinalize(s, change);
         const { e } = engine(s, memoryJournal());
         await expect(e.upload(await request(data))).rejects.toMatchObject({
           reason: "file-invalid",
@@ -265,12 +281,8 @@ describe("TransferEngine upload", () => {
     for (const data of [small, parts5]) {
       const s = new FakeServer();
       smallParts(s);
-      const orig = s.finalize;
       // The answer names the very version the caller based its write on.
-      s.finalize = async (t, r) => {
-        const reply = await orig(t, r);
-        return reply.ok ? ok({ ...reply.value, version: 3 }) : reply;
-      };
+      rewriteFinalize(s, (f) => ({ ...f, version: 3 }));
       const { e } = engine(s, memoryJournal());
       await expect(
         e.upload(await request(data, { baseVersion: 3 })),
@@ -336,10 +348,7 @@ describe("TransferEngine upload", () => {
     smallParts(s);
     const j = memoryJournal();
     // First run: parts 1 and 2 land, then the process dies on part 3 (an unrecoverable throw).
-    s.hook = (kind, n) => {
-      if (kind === "putPart" && (n ?? 0) >= 3) throw new Error("killed");
-      return undefined;
-    };
+    killFromPart3(s);
     const first = engine(s, j, { maxAttempts: 1 });
     await expect(first.e.upload(await request(parts5))).rejects.toMatchObject({
       reason: "retries-exhausted",
@@ -408,10 +417,7 @@ describe("TransferEngine upload", () => {
     const s = new FakeServer();
     smallParts(s);
     const j = memoryJournal();
-    s.hook = (kind, n) => {
-      if (kind === "putPart" && (n ?? 0) >= 3) throw new Error("killed");
-      return undefined;
-    };
+    killFromPart3(s);
     await expect(
       engine(s, j, { maxAttempts: 1 }).e.upload(await request(parts5)),
     ).rejects.toBeInstanceOf(TransferError);
