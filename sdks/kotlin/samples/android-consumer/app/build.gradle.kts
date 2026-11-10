@@ -49,6 +49,12 @@ android {
     }
 
     buildTypes {
+        // The emulator runs x86_64 only: a debug (and so its test) APK without the other ABIs' natives is a
+        // smaller install, which the API 24 emulator's data partition took on both attempts of one run (QA Q6).
+        // Release keeps every ABI: the lean/packs native-library checks read the release outputs.
+        debug {
+            ndk { abiFilters += "x86_64" }
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
