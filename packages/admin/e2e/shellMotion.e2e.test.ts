@@ -123,8 +123,9 @@ async function open(o: OpenOptions = {}): Promise<Page> {
   return page;
 }
 
-// brittle-ok: the chunk is held late on purpose; the delay is the fixture, not a wait for a state
+// The chunk is held late on purpose; the delay is the fixture, not a wait for a state.
 const hold = (ms: number): Promise<unknown> =>
+  // brittle-ok: the delay is the fixture
   new Promise((r) => setTimeout(r, ms));
 
 const violations = (page: Page): Promise<string[]> =>
