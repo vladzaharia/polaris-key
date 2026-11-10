@@ -27,6 +27,8 @@ import {
 } from "./accounts/deletion.js";
 import { sweepAccountDeletions } from "./accounts/lifecycle.js";
 import { sweepRestoreKeys } from "./restore/store.js";
+import { rotateIssuerKeys } from "./issuer/keys.js";
+import { purgeRefreshTokens } from "./issuer/refreshRepo.js";
 import { customerOrigin } from "../../core/hosts.js";
 import type { Db } from "../../db/types.js";
 
@@ -123,7 +125,7 @@ async function erasureSweep(
 }
 
 export const identityMaintenance: MaintenanceContribution = {
-  async product({ db, product, now, cutoff }, rec) {
+  async product({ db, env, product, now, cutoff }, rec) {
     await rec.drain(`portalAudit:${product}`, (limit) =>
       prunePortalAudit(db, product, cutoff, limit),
     );
@@ -142,6 +144,16 @@ export const identityMaintenance: MaintenanceContribution = {
     // the feature is off, and this removes them.
     await rec.drain(`restoreKeys:${product}`, (limit) =>
       sweepRestoreKeys(db, product, now, limit),
+    );
+    // I-21.3: the issuer key ring's timetable (publish, activate, retire, drop). Never gated:
+    // a ring keeps its schedule while the issuer is off, and a product with no ring does nothing.
+    if (env)
+      await rec.step(`issuerKeys:${product}`, () =>
+        rotateIssuerKeys(env, db, product, now),
+      );
+    // I-21.2: refresh rows 30 days after their family ended.
+    await rec.drain(`issuerRefresh:${product}`, (limit) =>
+      purgeRefreshTokens(db, product, now, limit),
     );
   },
 

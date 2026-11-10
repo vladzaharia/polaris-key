@@ -68,6 +68,9 @@ const dec = new TextDecoder();
  * either ciphertext would open in the other's slot. The separation was lexical (a prefix nobody
  * enforced) where it needed to be structural. A `managed-secret` carries a bare catalog key as
  * its `id`, which no `product-secret` id can collide with whatever it is called. A
+ * `issuer-signing-key` (I-21.3, V5 §12.13.5) is a product's RSA issuer private key, held in
+ * `identity_issuer_keys.sealed`, bound to the product and the key's RFC 7638 `kid`; it signs only that
+ * product's issuer tokens, and no other kind opens it. A
  * `browser-session` is the device bearer a product browser session keeps in KV, bound to that one
  * session by the session-token hash as its `id`.
  */
@@ -82,7 +85,8 @@ export interface SealContext {
     | "platform-credential"
     | "signin-provider-secret"
     | "identity-connection"
-    | "notify-destination";
+    | "notify-destination"
+    | "issuer-signing-key";
   id: string;
 }
 
