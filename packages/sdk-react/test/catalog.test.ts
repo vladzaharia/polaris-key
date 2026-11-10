@@ -16,6 +16,7 @@ import {
   NOW_SEC,
   okBridgeState,
   services,
+  FIXTURE_TRUST,
 } from "./fixtures.js";
 
 const CATALOG = {
@@ -58,7 +59,8 @@ const json = (body: unknown, status = 200) =>
 
 function browser(fetchImpl: typeof fetch, enabled = true) {
   return browserAdapter({
-    auth: "cookie",
+    trust: FIXTURE_TRUST,
+    auth: "bearer",
     productSlug: "acme",
     fetchImpl,
     now: () => NOW_SEC,

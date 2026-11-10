@@ -6,7 +6,7 @@
 // telemetry-report-updates replay (transcripts.test.ts, which records its journal through the
 // same `BearerSession.recordUpdateEvent`) does not see — the entry's defaults and validation
 // (Node's `UpdateJournal`, field for field), the browser adapter's bearer journal and its typed
-// refusal on a cookie page, and the desktop renderer forwarding to the host's journal over
+// refusal on a page without pinned keys, and the desktop renderer forwarding to the host's journal over
 // bridge v4 (refused typed on an older host).
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -28,6 +28,7 @@ import {
   makeFakeBridge,
   newTestKey,
   type TestKey,
+  FIXTURE_TRUST,
 } from "./fixtures.js";
 
 const NOW = 1_700_000_000;
@@ -303,9 +304,8 @@ describe("BearerSession's in-page journal", () => {
 });
 
 describe("BrowserAdapter.recordUpdateEvent", () => {
-  it("a cookie page answers telemetry.updates runtime-unsupported and refuses the call typed", async () => {
+  it("a page without pinned keys answers telemetry.updates runtime-unsupported and refuses the call typed", async () => {
     const adapter = new BrowserAdapter({
-      auth: "cookie",
       productSlug: "acme",
       offlineStore: null,
       autoStart: false,
@@ -318,11 +318,7 @@ describe("BrowserAdapter.recordUpdateEvent", () => {
     const err = await adapter
       .recordUpdateEvent(UpdateEvent.updateOffered, { release: "1.0.0" })
       .catch((e) => e);
-    expect(err).toBeInstanceOf(UnsupportedError);
-    expect(err).toMatchObject({
-      feature: Feature.telemetryUpdates,
-      reason: "runtime",
-    });
+    expect(err).toMatchObject({ code: "invalid-options" });
     adapter.dispose();
   });
 

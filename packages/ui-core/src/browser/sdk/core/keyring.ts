@@ -1,6 +1,6 @@
 // The Cloud Sync key ring as the React adapters expose it (sync.keyring, U-38.2; WIRE-CONTRACT-V5
-// §13.10, §13.11). One client per adapter: the browser's bearer engine implements it, and a cookie
-// page, the desktop bridge and the local adapter answer the typed unsupported one below.
+// §13.10, §13.11). One client per adapter: the browser's bearer engine implements it, and a page
+// without pinned keys, the desktop bridge and the local adapter answer the typed unsupported one below.
 //
 // A browser unlocks only with the recovery code (plan-cloud-sync Q8). The root `R` is held in the
 // engine as a non-extractable key and, for a short session after it was made or recovered, as

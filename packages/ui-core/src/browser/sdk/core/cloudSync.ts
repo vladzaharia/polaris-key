@@ -1,6 +1,6 @@
 // Cloud Sync as the React adapters expose it (sync.settings, U-20.2). One client per adapter: the
 // browser's bearer mode runs the host (`browser/cloudSync/host.ts`), loaded on the first call that
-// needs it so a page that never syncs pays only for this file. A cookie page, the desktop bridge
+// needs it so a page that never syncs pays only for this file. A page without pinned keys, the desktop bridge
 // (until bridge v4 carries the verbs, D-6) and the local adapter answer the typed unsupported one
 // below; `unsupported` says which.
 //

@@ -55,7 +55,7 @@
           "note": "On desktop the host process's store holds the token."
         }
       ],
-      "note": "SP-R02: bearer mode's indexedDbStore (src/browser/bearer/store.ts) implements client-core's Store: the token in its own object store, the random device id and the cache in the offline record; status() reports backend indexeddb, degraded not-persistent unless navigator.storage.persisted(). The cookie session holds no credential, so a cookie page's supports() answers it runtime-unsupported. Device binding to a hardware anchor is a typed N/A in a browser: the device id is a random value in IndexedDB and there is no platform anchor to re-derive it from; on desktop the host's Node SDK binds it."
+      "note": "SP-R02: bearer mode's indexedDbStore (src/browser/bearer/store.ts) implements client-core's Store: the token in its own object store, the random device id and the cache in the offline record; status() reports backend indexeddb, degraded not-persistent unless navigator.storage.persisted(). A page without trust.pinnedKeys holds no credential, so its supports() answers it runtime-unsupported. Device binding to a hardware anchor is a typed N/A in a browser: the device id is a random value in IndexedDB and there is no platform anchor to re-derive it from; on desktop the host's Node SDK binds it."
     },
     "core.copy": {
       "status": "implemented",
@@ -63,7 +63,7 @@
     },
     "core.backend": {
       "status": "implemented",
-      "note": "A cookie-session page holds no signed licence document (the Worker answers it plain JSON), so its supports() says runtime, with the reason in detail; bearer mode serves it. usePolarisFetch() over adapter.backendHeaders(): same origin by default (HTTPS or loopback) plus config.backend.origins; the freshness pre-sync, one retry on license_stale/license_invalid, typed not_entitled/sign_in_required; redirects refused unless asked for. Desktop: the host's client.backend.headers() through bridge v4 invoke core.backendHeaders. test/backend.test.ts replays backend-matrix.json's client rows."
+      "note": "A page without trust.pinnedKeys holds no signed licence document, so its supports() says runtime, with the reason in detail. usePolarisFetch() over adapter.backendHeaders(): same origin by default (HTTPS or loopback) plus config.backend.origins; the freshness pre-sync, one retry on license_stale/license_invalid, typed not_entitled/sign_in_required; redirects refused unless asked for. Desktop: the host's client.backend.headers() through bridge v4 invoke core.backendHeaders. test/backend.test.ts replays backend-matrix.json's client rows."
     },
     "core.devicekeys": {
       "status": "planned",
@@ -115,7 +115,7 @@
     },
     "license.refusals": {
       "status": "implemented",
-      "note": "src/core/activation.ts classifyActivation maps every refusal by its body code (never a collapsed 403); bearer mode's activate/enroll return it and activate-refusals replays through BearerSession. The cookie session and the desktop bridge classify through the same table."
+      "note": "src/core/activation.ts classifyActivation maps every refusal by its body code (never a collapsed 403); bearer mode's activate/enroll return it and activate-refusals replays through BearerSession. The desktop bridge classifies through the same table."
     },
     "config.resolve": {
       "status": "implemented"
@@ -146,7 +146,7 @@
     },
     "config.sync": {
       "status": "implemented",
-      "note": "U-20: adapter.config.setting(key).sync() and useSetting(key).sync over the browser Cloud Sync host (src/browser/cloudSync); test/cloudSyncSettings.test.tsx. A cookie page, the local adapter and the desktop bridge answer the typed N/A (the host serves no Cloud Sync verb on bridge v4, D-6)."
+      "note": "U-20: adapter.config.setting(key).sync() and useSetting(key).sync over the browser Cloud Sync host (src/browser/cloudSync); test/cloudSyncSettings.test.tsx. A page without pinned keys, the local adapter and the desktop bridge answer the typed N/A (the host serves no Cloud Sync verb on bridge v4, D-6)."
     },
     "devices.fingerprint": {
       "status": "na",
@@ -173,15 +173,15 @@
     },
     "devices.manage": {
       "status": "implemented",
-      "note": "Desktop through the bridge's invoke(\"devices\", …). Web in bearer mode (SP-R02): GET /<p>/devices, PATCH and DELETE /<p>/devices/:id with the device token. A cookie-session page cannot (the routes take a device bearer) and refuses with device-management-unsupported carrying the runtime reason."
+      "note": "Desktop through the bridge's invoke(\"devices\", …). Web in bearer mode (SP-R02): GET /<p>/devices, PATCH and DELETE /<p>/devices/:id with the device token. A page without trust.pinnedKeys holds no device bearer and refuses with invalid-options."
     },
     "devices.report": {
       "status": "implemented",
-      "note": "Desktop through invoke(\"devices\", \"report\"). Web in bearer mode (SP-R02): POST /<p>/devices/report after every sync and on report(), with the browser facts (os family, cores, memory bucket, locale, time zone), caps, outlet and the update-health journal (src/browser/bearer/facts.ts); telemetry-report replays through it. A cookie-session page throws report-unsupported."
+      "note": "Desktop through invoke(\"devices\", \"report\"). Web in bearer mode (SP-R02): POST /<p>/devices/report after every sync and on report(), with the browser facts (os family, cores, memory bucket, locale, time zone), caps, outlet and the update-health journal (src/browser/bearer/facts.ts); telemetry-report replays through it. A page without trust.pinnedKeys refuses with invalid-options."
     },
     "telemetry.updates": {
       "status": "implemented",
-      "note": "adapter.recordUpdateEvent(event, input) journals a P6-03 event with Node's defaults and validation (src/core/updateEvents.ts). Web in bearer mode (SP-R02): BearerSession's in-page journal, drained at most 16 per POST /<p>/devices/report and dropped only on a 200; decideUpdate() journals update_offered once per offered release; telemetry-report-updates replays through recorded events. A cookie-session page refuses typed (runtime). Desktop: forwarded to the host's journal over bridge v4 (invoke(\"update\", \"journal\")), a typed version N/A on an older host (SP-14)."
+      "note": "adapter.recordUpdateEvent(event, input) journals a P6-03 event with Node's defaults and validation (src/core/updateEvents.ts). Web in bearer mode (SP-R02): BearerSession's in-page journal, drained at most 16 per POST /<p>/devices/report and dropped only on a 200; decideUpdate() journals update_offered once per offered release; telemetry-report-updates replays through recorded events. A page without trust.pinnedKeys refuses typed. Desktop: forwarded to the host's journal over bridge v4 (invoke(\"update\", \"journal\")), a typed version N/A on an older host (SP-14)."
     },
     "devices.attest": {
       "status": "na",
@@ -190,11 +190,18 @@
       "note": "P6-02: neither a browser nor a desktop renderer has App Attest or Play Integrity; those devices stay at the basic trust level."
     },
     "identity.oidc": {
-      "status": "implemented"
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "note": "SP-40: cookie-session sign-in is removed. A web page signs in through signIn.start with the redirect (identity.redirect.web) or the device code (identity.devicecode)."
+        }
+      ]
     },
     "identity.devicecode": {
       "status": "implemented",
-      "note": "Desktop through the bridge (beginSignIn/pollSignIn, v4 adds the expiry, interval and identity). Web in bearer mode (SP-R02): POST /<p>/identity/auth/device/{start,poll} through adapter.beginSignIn(); devicecode-happy and devicecode-expired replay through it. A cookie-session page signs in by the OIDC redirect (identity.oidc)."
+      "note": "Desktop through the bridge (beginSignIn/pollSignIn, v4 adds the expiry, interval and identity). Web in bearer mode (SP-R02): POST /<p>/identity/auth/device/{start,poll} through adapter.beginSignIn(); devicecode-happy and devicecode-expired replay through it."
     },
     "identity.devicelabel": {
       "status": "implemented",
@@ -212,19 +219,19 @@
     },
     "identity.attach": {
       "status": "implemented",
-      "note": "I-10a.9: bearer mode over the identity fragment discovery names (subject, signout, attach); the desktop bridge through invoke(\"identity\", …) on a v4 host (typed version N/A otherwise). A cookie page refuses with the runtime reason."
+      "note": "I-10a.9: bearer mode over the identity fragment discovery names (subject, signout, attach); the desktop bridge through invoke(\"identity\", …) on a v4 host (typed version N/A otherwise). A page without trust.pinnedKeys refuses with invalid-options."
     },
     "identity.account": {
       "status": "implemented",
-      "note": "I-10a.9: bearer mode over the identity fragment discovery names (subject, signout, attach); the desktop bridge through invoke(\"identity\", …) on a v4 host (typed version N/A otherwise). A cookie page refuses with the runtime reason."
+      "note": "I-10a.9: bearer mode over the identity fragment discovery names (subject, signout, attach); the desktop bridge through invoke(\"identity\", …) on a v4 host (typed version N/A otherwise). A page without trust.pinnedKeys refuses with invalid-options."
     },
     "identity.redirect.web": {
       "status": "implemented",
-      "note": "I-10a.10: bearer mode. signIn.start({channel: \"redirect\", redirectUri}) builds the PKCE authorize URL with client-core and keeps the verifier and state in sessionStorage keyed by state; signIn.complete(callbackUrl) (or the session's) checks state and iss and redeems the code at the token endpoint. The desktop renderer signs in by device code only: its redirect is a typed unsupported (runtime) since the bridge has no verb to redeem a code in the host. Cookie mode is SP-40."
+      "note": "I-10a.10: bearer mode. signIn.start({channel: \"redirect\", redirectUri}) builds the PKCE authorize URL with client-core and keeps the verifier and state in sessionStorage keyed by state; signIn.complete(callbackUrl) (or the session's) checks state and iss and redeems the code at the token endpoint. The desktop renderer signs in by device code only: its redirect is a typed unsupported (runtime) since the bridge has no verb to redeem a code in the host. Cookie mode is removed (SP-40)."
     },
     "identity.choice": {
       "status": "implemented",
-      "note": "I-10a.11: bearer mode: usePolarisAuth().choice.{licenses, devices, complete, cancel} over the choice endpoints discovery names, a refusal being a result; useLicenseChoice(grant) is the hook. On the desktop, bridge v6 (UK-42.22.7) runs the same four calls over invoke(identity, choice.*) with an opaque ref the host bound to the window, the Worker's grant staying in the host; a host below v6 answers the typed unsupported (version). A cookie page refuses the typed unsupported."
+      "note": "I-10a.11: bearer mode: usePolarisAuth().choice.{licenses, devices, complete, cancel} over the choice endpoints discovery names, a refusal being a result; useLicenseChoice(grant) is the hook. On the desktop, bridge v6 (UK-42.22.7) runs the same four calls over invoke(identity, choice.*) with an opaque ref the host bound to the window, the Worker's grant staying in the host; a host below v6 answers the typed unsupported (version). A page without trust.pinnedKeys refuses with invalid-options."
     },
     "identity.devicecode.choice": {
       "status": "implemented",
@@ -576,7 +583,7 @@
     },
     "sync.settings": {
       "status": "implemented",
-      "note": "U-20.3: config.set routed through the browser Cloud Sync machine while a person is signed in, setting(key).sync(), the onConfigChange origin, the one-time import, the pre-sign-out flush, the sign-in offer; useSetting and useCloudSync. The 17 cloudsync-* transcripts replay through it (test/transcripts.test.ts); test/cloudSyncSettings.test.tsx and cloudSyncHost.test.ts. A cookie page, the local adapter and the desktop bridge answer the typed N/A (the host serves no Cloud Sync verb on bridge v4, D-6)."
+      "note": "U-20.3: config.set routed through the browser Cloud Sync machine while a person is signed in, setting(key).sync(), the onConfigChange origin, the one-time import, the pre-sign-out flush, the sign-in offer; useSetting and useCloudSync. The 17 cloudsync-* transcripts replay through it (test/transcripts.test.ts); test/cloudSyncSettings.test.tsx and cloudSyncHost.test.ts. A page without pinned keys, the local adapter and the desktop bridge answer the typed N/A (the host serves no Cloud Sync verb on bridge v4, D-6)."
     },
     "sync.conflict": {
       "status": "planned",
@@ -584,19 +591,19 @@
     },
     "sync.saves": {
       "status": "implemented",
-      "note": "SAVES.R (U-22.7): useSaves() and useTransfers() over adapter.cloudSync.saves, the browser host's SavesApi (loaded on the first call, lazySaves). It binds client-core's SavesClient to the machine's records, putAt, removeAt and onOutcome (MachineRecords, as Node and Python) and to createBrowserFiles; every engine entry runs under the Web Lock, so two tabs never drive one journal. The keyring's file codec goes through withRoot and refuses with sync-locked on every method and stream piece once the ring locks. Sign-out and forget: lock the ring, purge the saves (running writes, journal, chunk cache; the files layer is closed so a running transfer cannot recreate the database), then drop the pin. cancel() settles the waiting write as cancelled; the wait for the metadata write has no timeout. Only the writer tab owns a live machine: write, resolve and delete from another tab reject with sync-not-writer; list, read and revisions work in every tab. cloudsync-files-single replays in test/transcripts.test.ts; test/cloudSyncSaves.test.ts drives write, read, conflict, resolve, delete, cancel, the locked codec and the purge order. A cookie page, the local adapter and the desktop bridge answer the typed N/A."
+      "note": "SAVES.R (U-22.7): useSaves() and useTransfers() over adapter.cloudSync.saves, the browser host's SavesApi (loaded on the first call, lazySaves). It binds client-core's SavesClient to the machine's records, putAt, removeAt and onOutcome (MachineRecords, as Node and Python) and to createBrowserFiles; every engine entry runs under the Web Lock, so two tabs never drive one journal. The keyring's file codec goes through withRoot and refuses with sync-locked on every method and stream piece once the ring locks. Sign-out and forget: lock the ring, purge the saves (running writes, journal, chunk cache; the files layer is closed so a running transfer cannot recreate the database), then drop the pin. cancel() settles the waiting write as cancelled; the wait for the metadata write has no timeout. Only the writer tab owns a live machine: write, resolve and delete from another tab reject with sync-not-writer; list, read and revisions work in every tab. cloudsync-files-single replays in test/transcripts.test.ts; test/cloudSyncSaves.test.ts drives write, read, conflict, resolve, delete, cancel, the locked codec and the purge order. A page without pinned keys, the local adapter and the desktop bridge answer the typed N/A."
     },
     "sync.keyring": {
       "status": "implemented",
-      "note": "U-38.2: the browser bearer engine's key ring (RingEngine, ui-core browser/ring) on client-core's sync crypto and WebCrypto. The seven keyring-* transcripts replay through it (test/transcripts.test.ts); test/keyring.test.ts pins create, unwrap of this device's wrap, wrap to another device, recover and set the recovery code, reset and adopt, the lock and the codec keys. The root is a non-extractable HKDF key in IndexedDB; its bytes live in memory for 300 s after a create or recovery. A browser unlocks only with the recovery code (Q8). A browser whose device keys are memory-only (WebKit) cannot create or reset a ring (the Worker needs registered keys): it unlocks with the code and keeps the root in memory, so every load asks for the code again. A cookie page, the local adapter and the desktop bridge answer the typed N/A (runtime, runtime, version): the host serves no ring verb yet."
+      "note": "U-38.2: the browser bearer engine's key ring (RingEngine, ui-core browser/ring) on client-core's sync crypto and WebCrypto. The seven keyring-* transcripts replay through it (test/transcripts.test.ts); test/keyring.test.ts pins create, unwrap of this device's wrap, wrap to another device, recover and set the recovery code, reset and adopt, the lock and the codec keys. The root is a non-extractable HKDF key in IndexedDB; its bytes live in memory for 300 s after a create or recovery. A browser unlocks only with the recovery code (Q8). A browser whose device keys are memory-only (WebKit) cannot create or reset a ring (the Worker needs registered keys): it unlocks with the code and keeps the root in memory, so every load asks for the code again. A page without pinned keys, the local adapter and the desktop bridge answer the typed N/A (runtime, runtime, version): the host serves no ring verb yet."
     },
     "sync.records": {
       "status": "implemented",
-      "note": "U-46 (C26.3R): adapter.cloudSync.collection(name) and useCollection(name) over client-core's SyncCollection and the browser host's machine (src/browser/cloudSync/collection.ts). The catalog's collections (exact names and prefix.* patterns) reach the machine; the hook loads the handle, re-renders on its change events and exposes ids, get(id) and the handle's verbs (put with ifVersion, update, add, remove, delete, on); a refusal is returned and nothing is sent. The machine is read at each call, and a rebuild keeps the watched collections and outcome taps. Only the writer tab writes: another tab's write verb throws sync-not-writer. A cookie page, the local adapter and the desktop bridge answer the typed N/A (feature sync.records). test/cloudSyncCollection.test.tsx; the seven cloudsync-records-* transcripts replay in test/transcripts.test.ts."
+      "note": "U-46 (C26.3R): adapter.cloudSync.collection(name) and useCollection(name) over client-core's SyncCollection and the browser host's machine (src/browser/cloudSync/collection.ts). The catalog's collections (exact names and prefix.* patterns) reach the machine; the hook loads the handle, re-renders on its change events and exposes ids, get(id) and the handle's verbs (put with ifVersion, update, add, remove, delete, on); a refusal is returned and nothing is sent. The machine is read at each call, and a rebuild keeps the watched collections and outcome taps. Only the writer tab writes: another tab's write verb throws sync-not-writer. A page without pinned keys, the local adapter and the desktop bridge answer the typed N/A (feature sync.records). test/cloudSyncCollection.test.tsx; the seven cloudsync-records-* transcripts replay in test/transcripts.test.ts."
     },
     "sync.files": {
       "status": "implemented",
-      "note": "U-22.6: the file layer of the browser host, not yet the saves API (sync.saves waits on U-22.5's machine change). BrowserFileTransport (the closed route list, no redirect, Content-Digest, bounded bodies), the IndexedDB journal and LRU chunk cache in pkey-sync-<p>-files (deleted with the person), client-core's TransferEngine over them with Retry-After waited out up to 3600 s, one writer by the Web Lock pkey-sync-files:<db> (createBrowserFiles, loaded on demand). The cloudsync-files-* transcripts replay through the transport (test/transcripts.test.ts); test/cloudSyncFiles.browser.test.ts drives the engine, the journal and the lock. cloudsync-files-single is also tagged sync.saves and replays with it. A cookie page, the local adapter and the desktop bridge hold no files (the typed N/A comes with the saves API)."
+      "note": "U-22.6: the file layer of the browser host, not yet the saves API (sync.saves waits on U-22.5's machine change). BrowserFileTransport (the closed route list, no redirect, Content-Digest, bounded bodies), the IndexedDB journal and LRU chunk cache in pkey-sync-<p>-files (deleted with the person), client-core's TransferEngine over them with Retry-After waited out up to 3600 s, one writer by the Web Lock pkey-sync-files:<db> (createBrowserFiles, loaded on demand). The cloudsync-files-* transcripts replay through the transport (test/transcripts.test.ts); test/cloudSyncFiles.browser.test.ts drives the engine, the journal and the lock. cloudsync-files-single is also tagged sync.saves and replays with it. A page without pinned keys, the local adapter and the desktop bridge hold no files (the typed N/A comes with the saves API)."
     },
     "sync.files.delta": {
       "status": "implemented",
@@ -617,7 +624,7 @@
     },
     "connect.identity": {
       "status": "implemented",
-      "note": "CC-09.1: adapter.connect (ui-core browser/connect, bearer mode): identity({refresh}), current(), listDevices(), discoveryKeys() and leave(), over the page's DeviceKeyPort (IndexedDB, non-extractable) and client-core peer/cert. The roster, certificate and K_disc are one pkey.connect.v1 record in the page's IndexedDB (memory with memory-only keys, which need allowEphemeralKeys); K_disc is non-enumerable and in no error. The previous K_disc goes 24 h after first seen, on roster loss or re-key and on leave; a 3.5-day short-circuit, which refresh bypasses; one call at a time; an unreadable record is an error that leave clears. Sign-out and deactivation call leave() and fail closed; a cookie page answers the typed runtime N/A. The connect-identity* transcripts replay in test/transcripts.test.ts; test/connectIdentity.test.ts pins the rest."
+      "note": "CC-09.1: adapter.connect (ui-core browser/connect, bearer mode): identity({refresh}), current(), listDevices(), discoveryKeys() and leave(), over the page's DeviceKeyPort (IndexedDB, non-extractable) and client-core peer/cert. The roster, certificate and K_disc are one pkey.connect.v1 record in the page's IndexedDB (memory with memory-only keys, which need allowEphemeralKeys); K_disc is non-enumerable and in no error. The previous K_disc goes 24 h after first seen, on roster loss or re-key and on leave; a 3.5-day short-circuit, which refresh bypasses; one call at a time; an unreadable record is an error that leave clears. Sign-out and deactivation call leave() and fail closed; a page without pinned keys answers the typed runtime N/A. The connect-identity* transcripts replay in test/transcripts.test.ts; test/connectIdentity.test.ts pins the rest."
     },
     "connect.noise": {
       "status": "implemented",
@@ -649,7 +656,7 @@
     },
     "connect.app": {
       "status": "implemented",
-      "note": "adapter.cloudConnect / useCloudConnect() (CC-09.2): start, stop, peers, refreshPeers, devices, open, onChannel, onNotice, status and onChange, with the relay as the only path (a page cannot discover devices on a LAN: connect.lan is the typed runtime N/A). A cookie page and the local adapter answer the typed runtime N/A, the desktop renderer the version N/A (its host runs the Node SDK). Sign-out and deactivation stop it before leaving the roster."
+      "note": "adapter.cloudConnect / useCloudConnect() (CC-09.2): start, stop, peers, refreshPeers, devices, open, onChannel, onNotice, status and onChange, with the relay as the only path (a page cannot discover devices on a LAN: connect.lan is the typed runtime N/A). A page without pinned keys and the local adapter answer the typed runtime N/A, the desktop renderer the version N/A (its host runs the Node SDK). Sign-out and deactivation stop it before leaving the roster."
     },
     "server.license": {
       "status": "na",

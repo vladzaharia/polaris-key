@@ -5,7 +5,7 @@
 //
 // Bearer mode through the browser ADAPTER (SDK-PARITY-PASS §3.17, SP-R02): what the transcript
 // replayer cannot see because it drives the engine directly — the `auth` option, the typed
-// refusals a cookie page gives for a bearer-only verb, the IndexedDB store surviving a reload by
+// refusals a page without pinned keys gives for a bearer-only verb, the IndexedDB store surviving a reload by
 // RE-VERIFYING what it holds, and the gate the adapter projects. Node environment, because
 // jsdom's cross-realm typed arrays make WebCrypto's Ed25519 verify reject every signature.
 
@@ -14,7 +14,6 @@ import { IDBFactory } from "fake-indexeddb";
 import {
   BrowserAdapter,
   browserAdapter,
-  resolveAuthMode,
 } from "../src/browser/browserAdapter.js";
 import { indexedDbStore } from "../src/browser/bearer/store.js";
 import { indexedDbOfflineStore } from "../src/browser/offline.js";
@@ -169,54 +168,11 @@ async function seededFactory(): Promise<IDBFactory> {
   return factory;
 }
 
-describe("auth: which transport a page uses", () => {
-  it("resolves auto to bearer on another origin and cookie on the Worker's own", () => {
-    expect(resolveAuthMode("auto", BASE, "https://play.acme.example")).toBe(
-      "bearer",
-    );
-    expect(resolveAuthMode("auto", BASE, BASE)).toBe("cookie");
-    expect(resolveAuthMode("bearer", BASE, BASE)).toBe("bearer");
-    expect(resolveAuthMode("cookie", BASE, "https://play.acme.example")).toBe(
-      "cookie",
-    );
-  });
-
-  it("defaults to auto (owner decision Q1): first-party is cookie, cross-origin is bearer", () => {
-    expect(resolveAuthMode(undefined, BASE, BASE)).toBe("cookie");
-    expect(resolveAuthMode(undefined, BASE, "https://play.acme.example")).toBe(
-      "bearer",
-    );
-    // An opaque origin (a sandboxed frame, a file: page) is never the Worker's own.
-    expect(resolveAuthMode(undefined, BASE, "null")).toBe("bearer");
-    // No page at all (a server render, this Node environment): cookie, and nothing loads.
-    expect(resolveAuthMode(undefined, BASE)).toBe("cookie");
-  });
-
-  it("a Tauri page is bearer, by its origin or by Tauri's globals", () => {
-    expect(resolveAuthMode(undefined, BASE, "tauri://localhost")).toBe(
-      "bearer",
-    );
-    expect(resolveAuthMode(undefined, BASE, "http://tauri.localhost")).toBe(
-      "bearer",
-    );
-    const g = globalThis as Record<string, unknown>;
-    for (const name of ["__TAURI_INTERNALS__", "__TAURI__"]) {
-      g[name] = {};
-      try {
-        // Even a page that claims the Worker's own origin is not first-party inside Tauri.
-        expect(resolveAuthMode(undefined, BASE, BASE)).toBe("bearer");
-      } finally {
-        delete g[name];
-      }
-    }
-    expect(resolveAuthMode(undefined, BASE, BASE)).toBe("cookie");
-  });
-
-  it("auto resolving to bearer without pinned keys never throws: it reports invalid-options in state and makes no request", async () => {
+describe("auth: a page without pinned keys", () => {
+  it("auto without pinned keys never throws: it reports invalid-options in state and makes no request", async () => {
     const calls: string[] = [];
     const adapter = browserAdapter({
       productSlug: "acme",
-      pageOrigin: "https://play.acme.example",
       offlineStore: null,
       fetchImpl: (async (input: RequestInfo | URL) => {
         calls.push(String(input));
@@ -249,9 +205,8 @@ describe("auth: which transport a page uses", () => {
     ).toThrow(/trust\.pinnedKeys/);
   });
 
-  it("a cookie page answers the bearer-only features runtime-unsupported, and refuses them typed", async () => {
+  it("a page without pinned keys answers the bearer-only features runtime-unsupported, and refuses them typed", async () => {
     const adapter = browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
       offlineStore: null,
       autoStart: false,
@@ -267,11 +222,10 @@ describe("auth: which transport a page uses", () => {
     });
     expect(adapter.caps()).not.toContain(Feature.devicesManage);
     await expect(adapter.listDevices()).rejects.toMatchObject({
-      code: "device-management-unsupported",
-      reason: "runtime",
+      code: "invalid-options",
     });
     await expect(adapter.mintToken("x")).rejects.toMatchObject({
-      code: "unsupported",
+      code: "invalid-options",
     });
     expect(await adapter.storeStatus()).toBeNull();
   });
@@ -435,7 +389,7 @@ describe("bearer mode: activate, sync, devices, reload", () => {
 });
 
 describe("bearer mode: Cloud Sync (U-20.2)", () => {
-  it("signing out deletes the synced data record with the ring, and a cookie page answers the typed N/A", async () => {
+  it("signing out deletes the synced data record with the ring, and a page without pinned keys answers the typed N/A", async () => {
     const s = await server();
     const factory = await seededFactory();
     const g = globalThis as { indexedDB?: IDBFactory };
@@ -463,14 +417,14 @@ describe("bearer mode: Cloud Sync (U-20.2)", () => {
     } finally {
       g.indexedDB = prior;
     }
-    const cookie = browserAdapter({
+    const unpinned = browserAdapter({
       productSlug: "acme",
       baseUrl: BASE,
       fetchImpl: (async () =>
         new Response("{}", { status: 404 })) as typeof fetch,
       autoStart: false,
     });
-    expect(cookie.cloudSync.unsupported).toMatchObject({
+    expect(unpinned.cloudSync.unsupported).toMatchObject({
       feature: Feature.syncSettings,
       reason: "runtime",
     });
@@ -664,9 +618,8 @@ describe("client.backend: backendHeaders (SP-58)", () => {
     adapter.dispose();
   });
 
-  it("a cookie page holds no signed document: runtime N/A, and a typed refusal", async () => {
+  it("a page without pinned keys holds no signed document: runtime N/A, and a typed refusal", async () => {
     const adapter = browserAdapter({
-      auth: "cookie",
       productSlug: "acme",
       offlineStore: null,
       autoStart: false,
@@ -677,8 +630,7 @@ describe("client.backend: backendHeaders (SP-58)", () => {
     });
     expect(adapter.caps()).not.toContain(Feature.coreBackend);
     await expect(adapter.backendHeaders()).rejects.toMatchObject({
-      code: "unsupported",
-      reason: "runtime",
+      code: "invalid-options",
     });
   });
 });

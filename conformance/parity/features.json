@@ -1253,7 +1253,13 @@
           "kind": "transcript"
         }
       ],
-      "allowedNa": []
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A page signs in with the web redirect (identity.redirect.web) or the device code (identity.devicecode) and holds a device token; the cookie sign-in that this row described is removed."
+        }
+      ]
     },
     {
       "id": "identity.devicecode",

@@ -6,8 +6,7 @@
 // replayer drives exactly the code the browser adapter calls. The adapter adds the D-21 refusal
 // (`service-disabled` when the product does not run Release) and the busy/error bookkeeping.
 //
-// A browser holds a cookie session, not a device bearer, so it never authenticates a release
-// read: under the `entitled` access mode the Worker refuses it 401, and that refusal surfaces as
+// A browser release read carries no credential: under the `entitled` access mode the Worker refuses it 401, and that refusal surfaces as
 // `release-refused` carrying the body's own code — never as a generic failure to retry.
 
 import { ErrorCode } from "../constants.generated.js";

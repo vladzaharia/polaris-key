@@ -33,9 +33,10 @@ import { PolarisError } from "../src/core/types.js";
 import {
   discoveryBody,
   makeDoc,
-  makeFakeFetch,
+  fakeWorld,
   NOW_SEC,
   services,
+  FIXTURE_TRUST,
 } from "./fixtures.js";
 
 async function ready(adapter: {
@@ -164,9 +165,9 @@ describe("parseDiscovery — document-level guards", () => {
 describe("BrowserAdapter capability resolution (D-21)", () => {
   it("discovery success installs the honest map", async () => {
     const adapter = browserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc(), {
+      ...fakeWorld(makeDoc(), {
         capabilities: services("license", "config", "update"),
       }),
       now: () => NOW_SEC,
@@ -190,7 +191,8 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
       });
     }) as unknown as typeof fetch;
     const adapter = browserAdapter({
-      auth: "cookie",
+      trust: FIXTURE_TRUST,
+      auth: "bearer",
       productSlug: "acme",
       fetchImpl,
       now: () => NOW_SEC,
@@ -224,7 +226,8 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
       });
     }) as unknown as typeof fetch;
     const adapter = browserAdapter({
-      auth: "cookie",
+      trust: FIXTURE_TRUST,
+      auth: "bearer",
       productSlug: "acme",
       fetchImpl,
       now: () => NOW_SEC,
@@ -241,7 +244,8 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
     const fetchImpl = (async () =>
       new Response("nope", { status: 500 })) as unknown as typeof fetch;
     const adapter = browserAdapter({
-      auth: "cookie",
+      trust: FIXTURE_TRUST,
+      auth: "bearer",
       productSlug: "acme",
       fetchImpl,
       now: () => NOW_SEC,
@@ -253,17 +257,18 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
 
   it("refuses the disabled services' operations instead of calling them", async () => {
     const adapter = browserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(null, {
+      ...fakeWorld(null, {
         capabilities: services("license", "config"),
       }),
       now: () => NOW_SEC,
     }) as BrowserAdapter;
     await ready(adapter);
-    // Identity is off ⇒ no OIDC entrypoint to navigate to.
+    // Identity is off ⇒ no sign-in to start.
     await expect(adapter.signInWithOidc()).rejects.toMatchObject({
-      code: "service-disabled",
+      name: "UnsupportedError",
+      reason: "product",
     });
     // Update is off ⇒ no version feed to poll.
     await expect(adapter.checkUpdate()).rejects.toMatchObject({
@@ -288,7 +293,8 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
       });
     }) as unknown as typeof fetch;
     const adapter = browserAdapter({
-      auth: "cookie",
+      trust: FIXTURE_TRUST,
+      auth: "bearer",
       productSlug: "acme",
       baseUrl: "https://example.test",
       fetchImpl,

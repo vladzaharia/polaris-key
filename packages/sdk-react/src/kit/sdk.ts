@@ -395,8 +395,7 @@ export function useSdkGate(
     void Promise.resolve()
       .then(() => adapter.signInWithOidc())
       .then((started) => {
-        // The cookie page navigates away and never gets here; a bearer page or a desktop host
-        // that reports a code hands back what to show.
+        // A page or desktop host that reports a code hands back what to show.
         if (
           started &&
           (started.userCode || safeLink(started.verificationUrl))

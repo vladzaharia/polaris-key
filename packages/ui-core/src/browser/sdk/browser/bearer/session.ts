@@ -1,6 +1,5 @@
-// Bearer mode's engine (SDK-PARITY-PASS §3.17): the device-token client a browser page runs when
-// it cannot use the Worker's first-party cookie session — a page on its own origin, a Tauri
-// webview, a TV or kiosk browser. Every route it calls is CORS-covered for the product's
+// The browser transport's engine (SDK-PARITY-PASS §3.17): the device-token client a browser page
+// runs — a page on its own origin, a Tauri webview, a TV or kiosk browser. Every route it calls is CORS-covered for the product's
 // `web.origins` (`build/web-cors.md`); none sets or reads a cookie.
 //
 // It is `@polaris-key/node`'s Core loop, ported route for route and rule for rule, because the

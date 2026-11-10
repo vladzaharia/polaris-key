@@ -30,7 +30,7 @@ import {
   treePack,
   type TreePack,
 } from "./packFixtures.js";
-import { makeDoc, makeFakeFetch, NOW_SEC, services } from "./fixtures.js";
+import { fakeWorld, makeDoc, NOW_SEC, services } from "./fixtures.js";
 
 const BASE = "https://k.test";
 const zstd: ZstdPort = {
@@ -211,9 +211,9 @@ describe("v3 pack types in @polaris-key/react (web)", () => {
 
   it("answers supports() per type: godot.zip and audio.bank are web N/As", async () => {
     const a = browserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(makeDoc(), {
+      ...fakeWorld(makeDoc(), {
         capabilities: services("release", "distribution", "update"),
       }),
       now: () => NOW_SEC,

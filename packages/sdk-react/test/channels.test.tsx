@@ -25,9 +25,10 @@ import type { PolarisAdapter } from "../src/core/index.js";
 import {
   makeDoc,
   makeFakeBridge,
-  makeFakeFetch,
+  fakeWorld,
   NOW_SEC,
   okBridgeState,
+  FIXTURE_TRUST,
 } from "./fixtures.js";
 
 afterEach(cleanup);
@@ -51,7 +52,11 @@ describe("PolarisKeyProvider config boundary", () => {
   });
 
   it.each([
-    ["browser", (o: object) => browserAdapter({ productSlug: "acme", ...o })],
+    [
+      "browser",
+      (o: object) =>
+        browserAdapter({ trust: FIXTURE_TRUST, productSlug: "acme", ...o }),
+    ],
     [
       "desktop",
       (o: object) =>
@@ -105,8 +110,8 @@ function docWith(channels: unknown) {
 }
 
 async function settled(adapter: PolarisAdapter): Promise<void> {
-  for (let i = 0; i < 50 && adapter.snapshot().phase === "loading"; i++)
-    await new Promise((r) => setTimeout(r, 0));
+  for (let i = 0; i < 200 && adapter.snapshot().phase === "loading"; i++)
+    await new Promise((r) => setTimeout(r, 2));
 }
 
 describe("entitledChannels() over the shared fixtures", () => {
@@ -117,9 +122,9 @@ describe("entitledChannels() over the shared fixtures", () => {
         now: () => NOW_SEC,
       });
       const browser = browserAdapter({
-        auth: "cookie",
+        auth: "bearer",
         productSlug: "acme",
-        fetchImpl: makeFakeFetch(docWith(value)),
+        ...fakeWorld(docWith(value)),
         now: () => NOW_SEC,
         offlineStore: null,
       });
@@ -134,9 +139,9 @@ describe("entitledChannels() over the shared fixtures", () => {
 
   it("with no licence document, the floor: stable", async () => {
     const browser = browserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "acme",
-      fetchImpl: makeFakeFetch(null),
+      ...fakeWorld(null),
       now: () => NOW_SEC,
       offlineStore: null,
     });

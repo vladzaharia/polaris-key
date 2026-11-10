@@ -1,3 +1,8 @@
+// @pkey-feature identity.oidc
+//
+// The desktop adapter over a fake bridge. The web cookie sign-in is removed (identity.oidc is N/A
+// on web); the desktop bridge signs in with the host's device-code flow, tested below.
+
 import { describe, expect, it, vi } from "vitest";
 import {
   desktopAdapter,

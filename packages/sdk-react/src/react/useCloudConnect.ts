@@ -14,7 +14,7 @@ import type {
 import { useCtx } from "./hooks.js";
 
 export interface UseCloudConnect {
-  /** Why Connect is unavailable here (a cookie page, the desktop renderer), or null. */
+  /** Why Connect is unavailable here (a page without pinned keys, the desktop renderer), or null. */
   unsupported: Unsupported | null;
   status: CloudConnectStatus;
   /** The person's other devices online in the relay room now. */

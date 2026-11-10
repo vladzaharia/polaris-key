@@ -14,10 +14,12 @@ import { BearerSession } from "../src/browser/bearer/session.js";
 import { browserAdapter } from "../src/browser/browserAdapter.js";
 import {
   makeDoc,
+  fakeWorld,
   makeFakeFetch,
   newTestKey,
   services,
   signCompact,
+  FIXTURE_TRUST,
 } from "./fixtures.js";
 
 const NOW = 1_700_000_000;
@@ -182,7 +184,8 @@ describe("unsigned discovery turns the gate on, never off", () => {
 
   it("a build expecting the default services stays gated when discovery says licence is off", async () => {
     const a = browserAdapter({
-      auth: "cookie",
+      trust: FIXTURE_TRUST,
+      auth: "bearer",
       productSlug: "acme",
       fetchImpl: disabled(),
       now: () => NOW,
@@ -196,7 +199,8 @@ describe("unsigned discovery turns the gate on, never off", () => {
 
   it("a config-only build (expectedServices without licence) is not gated", async () => {
     const a = browserAdapter({
-      auth: "cookie",
+      trust: FIXTURE_TRUST,
+      auth: "bearer",
       productSlug: "acme",
       expectedServices: ["config"],
       fetchImpl: disabled(),
@@ -210,10 +214,10 @@ describe("unsigned discovery turns the gate on, never off", () => {
 
   it("discovery switching the licence on gates a config-only build", async () => {
     const a = browserAdapter({
-      auth: "cookie",
+      auth: "bearer",
       productSlug: "acme",
       expectedServices: ["config"],
-      fetchImpl: makeFakeFetch(null, {
+      ...fakeWorld(null, {
         capabilities: services("license", "config"),
       }),
       now: () => NOW,

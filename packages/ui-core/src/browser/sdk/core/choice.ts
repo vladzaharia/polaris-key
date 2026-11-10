@@ -8,7 +8,7 @@
 //
 // A refusal the Worker answers is a RESULT (`{kind: "refused", code, ...}`), never a throw; a
 // network failure or a 5xx throws. The grant is the credential: no device bearer goes with it,
-// and it never appears in an error message. Bearer mode only; a cookie page and the desktop
+// and it never appears in an error message. Bearer mode only; a page without pinned keys and the desktop
 // renderer (which never gets a grant) answer the typed `UnsupportedError`.
 
 import { identityEndpointsOf } from "./account.js";

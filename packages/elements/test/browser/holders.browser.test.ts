@@ -12,7 +12,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { commands, page } from "vitest/browser";
 
 import { type PkElement, type PkGate, type PkSignIn } from "../../src/index.js";
-import { fakeFetch, NOW, PAGE, typeKey, world } from "../driveWorld.js";
+import { PAGE, seamsOf, typeKey, world } from "../driveWorld.js";
 import { fakeHolders, floatingRow, KEY } from "../holdersFixtures.js";
 import {
   axeViolations,
@@ -121,9 +121,7 @@ async function gateToDone(scheme: "dark" | "light") {
   gate.colorScheme = scheme;
   gate.innerHTML = `<main data-testid="app"><p>The app</p></main>`;
   gate.seams = {
-    fetchImpl: fakeFetch(w),
-    navigate: () => {},
-    now: () => NOW,
+    ...(await seamsOf(w)),
     // The in-page Add is off on the web by default; these paths drive the form.
     addIn: "app",
   };
