@@ -227,6 +227,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # turbo's `...[js-base]` needs the merge base: full history, no blobs (as in `changes`).
+          fetch-depth: 0
+          filter: blob:none
       - uses: ./.github/actions/setup-js
       # With a js base (a push to next where only packages/ changed since the js jobs were last
       # green) the suite runs when turbo's `...[base]` selection holds the package; else always.
@@ -249,6 +253,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # turbo's `...[js-base]` needs the merge base: full history, no blobs (as in `changes`).
+          fetch-depth: 0
+          filter: blob:none
       - uses: ./.github/actions/setup-js
       - id: affected
         run: node tools/ci-js-affected.mjs @polaris-key/admin --github-output
@@ -267,6 +275,10 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # turbo's `...[js-base]` needs the merge base: full history, no blobs (as in `changes`).
+          fetch-depth: 0
+          filter: blob:none
       - uses: ./.github/actions/setup-js
       # The docs snippet lane (packages/docs/test/snippets) compiles every Python code block on a
       # covered docs page against the SDK with mypy, so it needs the SDK's own venv (with the Qt kit).

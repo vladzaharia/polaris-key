@@ -130,3 +130,31 @@ describe("test steps report their cost (tools/ci-measure.sh)", () => {
       expect(step.if ?? "", `${job}/${step.name}`).not.toContain("Windows");
   });
 });
+
+describe("jobs that diff against the js base", () => {
+  // turbo's `--filter=...[sha]` needs the merge base; the default depth-1 checkout makes it fail
+  // with "bad object". Any job reading `js-base` checks out full history (blobless).
+  const raw = readFileSync(
+    new URL("../.github/workflows/ci.yml", import.meta.url),
+    "utf8",
+  );
+  const users = Object.entries(
+    (parse(raw) as { jobs: Record<string, { steps: Step[] }> }).jobs,
+  ).filter(
+    ([name, j]) =>
+      name !== "changes" && JSON.stringify(j).includes("outputs.js-base"),
+  );
+
+  it("finds the jobs that read js-base", () => {
+    expect(users.map(([n]) => n)).toEqual(
+      expect.arrayContaining(["js-worker", "js-admin", "js-rest"]),
+    );
+  });
+
+  it.each(users)("%s checks out with full history", (_name, job) => {
+    const co = job.steps.find((s) => s.uses?.startsWith("actions/checkout@"));
+    const w = (co as { with?: Record<string, unknown> } | undefined)?.with;
+    expect(w?.["fetch-depth"]).toBe(0);
+    expect(w?.filter).toBe("blob:none");
+  });
+});
