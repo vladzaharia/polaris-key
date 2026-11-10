@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    # `next` is the lead's integration branch: it runs CI narrowed to the lanes touched since its
-    # newest green ancestor (tools/ci-scope.mjs), on the full matrices, and every lane when there is
-    # none; promote.yml fast-forwards main to the SHA that went green there. main runs the full CI,
+    # `next` is the lead's integration branch: it runs CI narrowed, per lane, to the files touched
+    # since that lane's newest green ancestor (tools/ci-scope.mjs), on the full matrices, and a lane
+    # runs whenever it has none; promote.yml fast-forwards main to the SHA that went green there. main runs the full CI,
     # and releases are tagged from main.
     branches: [main, next]
   pull_request:
@@ -26,23 +26,32 @@ permissions:
 # once, by the `changes` job from tools/ci-scope.json (the same map `pnpm gate` reads
 # through tools/ci-scope.mjs): a lane runs when a changed path is one of its `paths` or a `shared` input;
 # the four `js*` jobs always run. A pull request runs the floor and the latest of each matrix. A push
-# to `next` runs the lanes touched since its newest green ancestor (a commit whose CI run succeeded,
-# within the last 30), on the full matrices: its CI OK means every lane touched since that commit
-# passed here and the rest passed on it. `main`, a tag, a manual run, and any run whose changed files
-# or green ancestor cannot be found run every lane and the full matrix. A skipped lane counts as
-# passed in `ci-ok` only when the run narrowed (`changes.outputs.full` is "false"); on a full run a
-# skipped job fails it. A failed or cancelled one never counts.
+# to `next` tracks green per lane: for each lane, the base is the newest ancestor of HEAD (the whole
+# ancestry, not a window) on which every job of the lane concluded success in this workflow's push
+# run (job conclusions, so a lane that passed inside a failed or cancelled run counts), or was
+# skipped by a successful `changes` job because it was green at its own base. A lane runs when a file
+# changed since ITS base is one of its paths or a shared input, or when it has no base, on the full
+# matrices. `CI OK` on such a run means: every lane touched since its own base passed here, and every
+# other lane was green at its base. `main`, a tag, a manual run, and any run whose ancestry, API or
+# diff cannot be read run every lane and the full matrix. A skipped lane counts as passed in `ci-ok`
+# only when the run narrowed (`changes.outputs.full` is "false"), which is sound only because a lane
+# is skipped only when it was green at its base; on a full run a skipped job fails it. A failed or
+# cancelled one never counts. tools/ci-scope.json `jobs` maps every job below to its lane
+# (tools/ci-scope.test.ts fails when a job is unmapped), so add a job there too.
 jobs:
   changes:
     name: Changes (which lanes run)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Read-only: the green-ancestor lookup lists this workflow's runs (a push to `next`).
+    # Read-only: the per-lane green lookup lists this workflow's runs and their jobs (a push to `next`).
     permissions:
       contents: read
       actions: read
     outputs:
       full: ${{ steps.scope.outputs.full }}
+      # The js group's green base when only packages/ changed since it, else empty: the test jobs
+      # then run turbo for the affected packages only (tools/ci-js-affected.mjs).
+      js-base: ${{ steps.scope.outputs.js-base }}
       # One per lane and matrix of tools/ci-scope.json (tools/ci-scope.test.ts checks the list).
       workerd: ${{ steps.scope.outputs.workerd }}
       node-floor: ${{ steps.scope.outputs.node-floor }}
@@ -185,11 +194,19 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-js
-      - run: pnpm build
+      # With a js base (a push to next where only packages/ changed since the js jobs were last
+      # green) the suite runs when turbo's `...[base]` selection holds the package; else always.
+      - id: affected
+        run: node tools/ci-js-affected.mjs @polaris-key/worker --github-output
+        env:
+          JS_BASE: ${{ needs.changes.outputs.js-base }}
+      - if: steps.affected.outputs.affected == 'true'
+        run: pnpm build
       # The Worker suite alone (638 files, D1 through better-sqlite3), the adapter conformance suites
       # included: test/storefront/, test/services/distribution/ascWriteGate.test.ts,
       # test/surfaces/feedAdapters.test.ts.
-      - run: pnpm exec turbo run test --filter=@polaris-key/worker
+      - if: steps.affected.outputs.affected == 'true'
+        run: pnpm exec turbo run test --filter=@polaris-key/worker
 
   js-admin:
     name: JS/TS tests (admin)
@@ -199,9 +216,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-js
-      - run: pnpm build
+      - id: affected
+        run: node tools/ci-js-affected.mjs @polaris-key/admin --github-output
+        env:
+          JS_BASE: ${{ needs.changes.outputs.js-base }}
+      - if: steps.affected.outputs.affected == 'true'
+        run: pnpm build
       # The admin SPA's jsdom suites (unit and axe) in their own job: the longest single-package tail.
-      - run: pnpm exec turbo run test --filter=@polaris-key/admin
+      - if: steps.affected.outputs.affected == 'true'
+        run: pnpm exec turbo run test --filter=@polaris-key/admin
 
   js-rest:
     name: JS/TS tests (other packages, conformance runners)
@@ -241,11 +264,16 @@ jobs:
       # below, each on the toolchain it needs; this job runs the TypeScript and Python lanes.
       # Every package except the Worker, the admin SPA and conformance-browser (its own job: it needs
       # a Playwright browser): the three filters of the three jobs partition the old `pnpm test`.
+      # With a js base (see js-worker) only the packages `...[base]` selects, and their dependents,
+      # run: turbo's `--filter=...[sha]` includes them and the three `!` filters take the other
+      # jobs' packages out. Without a base the three `!` filters alone select everything else.
       - run: >-
-          pnpm exec turbo run test --filter=!@polaris-key/worker --filter=!@polaris-key/admin
+          pnpm exec turbo run test ${JS_BASE:+"--filter=...[$JS_BASE]"}
+          --filter=!@polaris-key/worker --filter=!@polaris-key/admin
           --filter=!@polaris-key/conformance-browser
         env:
           PKEY_DOCS_SKIP_LANES: swift,kotlin,gdscript
+          JS_BASE: ${{ needs.changes.outputs.js-base }}
       - name: Stop pkey dev (React live lane)
         if: always()
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang react --job-status "${{ job.status }}"
@@ -1816,8 +1844,9 @@ jobs:
     steps:
       - env:
           NEEDS: ${{ toJSON(needs) }}
-          # "false" when the run narrowed its lanes (a pull request, or a push to next with a green
-          # ancestor): only then is a skipped lane passed. A full run needs every job to succeed.
+          # "false" when the run narrowed its lanes (a pull request, or a push to next where a lane
+          # has a green base): only then is a skipped lane passed, because it was green at its own
+          # base. A full run needs every job to succeed.
           FULL: ${{ needs.changes.outputs.full }}
         run: |
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'

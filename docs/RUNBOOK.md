@@ -2642,13 +2642,14 @@ red one blocks nothing.
   Swift SDK and Apple plugin (three macOS jobs: `apple`, `apple-hosted`,
   `apple-plugin`, one lane because they read the same paths), the Swift floor, Kotlin, Android, Godot) run when a
   changed path is one of the lane's `paths` in `tools/ci-scope.json`, or one of its `shared` inputs
-  (the contract, the shared packages, `tools/`, `.github/`, the lockfile). A lane's `paths` list
+  (the contract, the shared packages, `ci.yml` and its actions, the scope map, the lockfile). A lane's `paths` list
   what its job reads, not only its own tree: the Python lane names the Python samples under
   `examples/` and the two cross-SDK fixtures its tests open (`sdks/godot/tests/qr/fixtures.json`,
   `docs/design/ui-kits/terminal-parity.json`), and a rename counts at its old path and its new one.
   The `changes` job decides this through `tools/ci-scope.mjs`. `pnpm gate` (`tools/gate.mjs`) asks the
   same script, so a local run picks the same lanes as CI for the same files.
-  A new lane or matrix is one entry in that file and one job in `ci.yml`
+  A push to `next` measures each lane against its own newest green ancestor (job conclusions, whole
+  ancestry; contribute/setup docs). A new lane or matrix is one entry in that file, its `jobs` row and one job in `ci.yml`
   (`tools/ci-scope.test.ts` fails when the two disagree).
 - A pull request runs the floor and the latest of each matrix (Python 3.9 and 3.14 on Linux, Godot
   4.7.2 and 4.4.1, Kotlin desktop on Linux, emulator API 24 and 36); `main` pushes run every lane

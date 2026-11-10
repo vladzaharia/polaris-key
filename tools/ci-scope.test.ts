@@ -23,14 +23,19 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
+import { affected, EXTRA_INPUTS, packagesOf } from "./ci-js-affected.mjs";
 import {
   changedFiles,
   ciOutputs,
-  findGreenAncestor,
-  greenAncestorOf,
+  globMatch,
+  greenBasesOf,
+  groupOfJob,
+  laneBases,
   loadScope,
   matrixFor,
   selectLanes,
+  trackedGroups,
+  type CiJob,
 } from "./ci-scope.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -509,12 +514,12 @@ describe("ci.yml reads the scope", () => {
     expect(concurrency["cancel-in-progress"]).toBe(true);
   });
 
-  it("runs the full CI on a push to next that has no green ancestor, like main", () => {
-    // ci.yml hands the scope the event name and the ref; no ancestor means no files.
+  it("runs the full CI on a push to next that has no green base, like main", () => {
+    // ci.yml hands the scope the event name and the ref; no base means no per-lane diff.
     const lanes = ciOutputs(scope, {
       event: "push",
       ref: "refs/heads/next",
-      files: null,
+      push: null,
     });
     for (const lane of Object.keys(scope.lanes))
       expect(lanes[lane], lane).toBe("true");
@@ -547,45 +552,260 @@ describe("ci.yml reads the scope", () => {
   });
 });
 
-describe("a push to next narrows to the files since its green ancestor", () => {
-  const next = "refs/heads/next";
-  const swiftFile = "sdks/swift/Sources/PolarisKeyCore/Client.swift";
+/** The job display names a ci.yml job can take (a matrix name is rendered from its matrix). */
+function renderedNames(id: string, job: Job & { name?: string }): string[] {
+  const name = job.name ?? id;
+  if (name !== "${{ matrix.name }}")
+    return [name.replace(/\$\{\{[^}]*\}\}/g, "x")];
+  if (id === "godot") {
+    const m = scope.matrices.godot!.main as { include: { name: string }[] };
+    return m.include.map((i) => i.name);
+  }
+  const m = job.strategy?.matrix as { include: { name: string }[] };
+  return m.include.map((i) => i.name);
+}
 
-  it("narrows the lanes and keeps the FULL matrices when a green ancestor is found", () => {
+describe("the lane to jobs map", () => {
+  it("maps every ci.yml job to exactly one lane, `js` or `always`", () => {
+    for (const [id, job] of Object.entries(ci.jobs))
+      for (const name of renderedNames(id, job)) {
+        const hits = Object.entries(scope.jobs)
+          .filter(([, globs]) => globs.some((g) => globMatch(g, name)))
+          .map(([g]) => g);
+        expect(hits, `${id}: ${name}`).toHaveLength(1);
+      }
+  });
+
+  it("matches a glob against the whole name, `*` being any run of characters", () => {
+    expect(globMatch("Python SDK (*", "Python SDK (3.9, ubuntu-24.04)")).toBe(
+      true,
+    );
+    expect(globMatch("CI OK", "CI OK (old)")).toBe(false);
+    expect(globMatch("Godot SDK (*", "my Godot SDK (4.7.2)")).toBe(false);
+    expect(globMatch("a.b", "axb")).toBe(false);
+  });
+
+  it("names a group for every lane and no group that is not a lane, `js` or `always`", () => {
+    expect(Object.keys(scope.jobs).sort()).toEqual(
+      [...Object.keys(scope.lanes), "js", "always"].sort(),
+    );
+  });
+
+  it("gives a lane jobs exactly when ci.yml gates a job on it", () => {
+    for (const lane of Object.keys(scope.lanes)) {
+      const gated = Object.values(ci.jobs).some((j) =>
+        JSON.stringify(j).includes(`needs.changes.outputs.${lane} ==`),
+      );
+      const owned = scope.jobs[lane]!.length > 0;
+      // The docs lane also gates a step of `js`; its own job is help-search.
+      expect(owned, lane).toBe(gated && !NIGHTLY_LANES.includes(lane));
+    }
+  });
+
+  it("tracks the lanes that have jobs, and `js`", () => {
+    expect(trackedGroups(scope)).toContain("js");
+    expect(trackedGroups(scope)).not.toContain("always");
+    for (const l of NIGHTLY_LANES)
+      expect(trackedGroups(scope)).not.toContain(l);
+  });
+});
+
+/** One concrete job per group, with a conclusion; `changes` succeeds unless said otherwise. */
+const jobsFor = (
+  conclusions: Record<string, string>,
+  fallback = "success",
+  changes = "success",
+): CiJob[] => [
+  { name: "Changes (which lanes run)", conclusion: changes },
+  { name: "CI OK", conclusion: "failure" },
+  ...trackedGroups(scope).flatMap((g) =>
+    scope.jobs[g]!.map((glob) => ({
+      name: glob.replace("*", "x"),
+      conclusion: conclusions[g] ?? fallback,
+    })),
+  ),
+];
+
+const history = (runs: Record<string, CiJob[]>) => (sha: string) =>
+  runs[sha] ?? null;
+
+describe("a lane's green base", () => {
+  it("is the newest ancestor on which every job of the lane succeeded, per lane", () => {
+    // A is green; B failed in python only; the fix C is the commit being built.
+    const runs = {
+      A: jobsFor({}),
+      B: jobsFor({ python: "failure" }),
+    };
+    const bases = laneBases(scope, ["B", "A"], history(runs));
+    expect(bases.python).toBe("A");
+    expect(bases.kotlin).toBe("B");
+    expect(bases.js).toBe("B");
+    expect(bases.godot).toBe("B");
+  });
+
+  it("counts a lane that passed in a cancelled run", () => {
+    const runs = {
+      A: jobsFor({}),
+      D: jobsFor({ godot: "cancelled", android: "cancelled" }),
+    };
+    const bases = laneBases(scope, ["D", "A"], history(runs));
+    expect(bases.kotlin).toBe("D");
+    expect(bases.godot).toBe("A");
+    expect(bases.android).toBe("A");
+  });
+
+  it("needs every job of the lane: one red or unfinished job in a lane makes it not green", () => {
+    const [first, second] = scope.jobs.kotlin!;
+    const run = jobsFor({}).map((j) =>
+      globMatch(second!, j.name) ? { ...j, conclusion: "failure" } : j,
+    );
+    expect(first).toBeDefined();
+    expect(laneBases(scope, ["B"], history({ B: run })).kotlin).toBeNull();
+    const pending = run.map((j) =>
+      j.conclusion === "failure" ? { ...j, conclusion: "" } : j,
+    );
+    expect(laneBases(scope, ["B"], history({ B: pending })).kotlin).toBeNull();
+  });
+
+  it("counts a lane the run skipped, when changes succeeded: it was green at its own base", () => {
+    const narrowed = jobsFor({ python: "skipped", swift: "skipped" });
+    const bases = laneBases(scope, ["B"], history({ B: narrowed }));
+    expect(bases.python).toBe("B");
+    expect(bases.swift).toBe("B");
+    // A skip with a failed changes job (an outage) is not green, nor is a skipped js.
+    const outage = jobsFor({}, "skipped", "failure");
+    expect(
+      Object.values(laneBases(scope, ["B"], history({ B: outage }))),
+    ).toEqual(trackedGroups(scope).map(() => null));
+    expect(
+      laneBases(scope, ["B"], history({ B: jobsFor({ js: "skipped" }) })).js,
+    ).toBeNull();
+  });
+
+  it("finds none when no ancestor has a run, or the runs hold no job of the lane", () => {
+    const none = laneBases(scope, ["B", "A"], () => null);
+    expect(Object.values(none).every((b) => b === null)).toBe(true);
+    const empty = laneBases(scope, ["B"], history({ B: [] }));
+    expect(Object.values(empty).every((b) => b === null)).toBe(true);
+  });
+
+  it("walks the ancestry, not a window: a base 500 commits back is found", () => {
+    const commits = Array.from({ length: 600 }, (_, i) => `c${i}`);
+    const seen: string[] = [];
+    const bases = laneBases(scope, commits, (sha) => {
+      seen.push(sha);
+      return sha === "c500" ? jobsFor({}) : null;
+    });
+    expect(bases.python).toBe("c500");
+    // Once every lane has a base the walk stops.
+    expect(seen.at(-1)).toBe("c500");
+  });
+
+  it("reads each run's jobs lazily: stops at the commit that settles every lane", () => {
+    const calls: string[] = [];
+    laneBases(scope, ["a", "b", "c"], (sha) => {
+      calls.push(sha);
+      return jobsFor({});
+    });
+    expect(calls).toEqual(["a"]);
+  });
+});
+
+describe("a push to next narrows each lane to the files since its own base", () => {
+  const next = "refs/heads/next";
+  const pyFile = "sdks/python/src/polaris_key/a.py";
+  const swiftFile = "sdks/swift/Sources/PolarisKeyCore/Client.swift";
+  const allBases = (sha: string | null) =>
+    Object.fromEntries(trackedGroups(scope).map((g) => [g, sha]));
+  const allFiles = (files: string[] | null) =>
+    Object.fromEntries(trackedGroups(scope).map((g) => [g, files]));
+
+  it("runs only the lanes the files since each base touch, on the FULL matrices", () => {
+    // The python fix after a python-only red: python's base is old and sees the Python change
+    // alongside the fix; every other lane's base is the previous commit.
     const out = ciOutputs(scope, {
       event: "push",
       ref: next,
-      files: ["sdks/python/src/polaris_key/a.py"],
+      push: {
+        bases: { ...allBases("B"), python: "A" },
+        files: {
+          ...allFiles([pyFile]),
+          python: [pyFile, "sdks/python/pyproject.toml"],
+        },
+      },
     });
     expect(out.python).toBe("true");
+    expect(out["e2e-backend"]).toBe("true");
     expect(out.swift).toBe("false");
+    expect(out.kotlin).toBe("false");
+    expect(out.godot).toBe("false");
     expect(out.full).toBe("false");
-    // Not the pull-request floor and latest: the lanes that run take every leg.
     for (const name of Object.keys(scope.matrices))
       expect(JSON.parse(String(out[`${name}-matrix`]))).toEqual(
         matrixFor(scope, name, false),
       );
-    expect(JSON.parse(out["python-matrix"]!).include).toHaveLength(3);
   });
 
-  it("runs every lane when a shared path changed since the ancestor", () => {
+  it("runs a lane that has no base (mixed), and skips one that is green and untouched", () => {
     const out = ciOutputs(scope, {
       event: "push",
       ref: next,
-      files: [swiftFile, "tools/ci-scope.mjs"],
+      push: {
+        bases: { ...allBases("B"), godot: null },
+        files: { ...allFiles([pyFile]), godot: null },
+      },
+    });
+    expect(out.godot).toBe("true");
+    expect(out.python).toBe("true");
+    expect(out.swift).toBe("false");
+    expect(out.full).toBe("false");
+  });
+
+  it("runs every lane on the full matrices when no lane has a base", () => {
+    const out = ciOutputs(scope, {
+      event: "push",
+      ref: next,
+      push: { bases: allBases(null), files: allFiles(null) },
     });
     for (const lane of Object.keys(scope.lanes))
       expect(out[lane], lane).toBe("true");
+    expect(out.full).toBe("true");
+    expect(out["js-base"]).toBe("");
     expectFullMatrices(out);
   });
 
+  it("runs every lane when a shared path changed since its base", () => {
+    const out = ciOutputs(scope, {
+      event: "push",
+      ref: next,
+      push: {
+        bases: allBases("B"),
+        files: allFiles([swiftFile, "conformance/corpus/v2/cases.json"]),
+      },
+    });
+    for (const lane of Object.keys(scope.lanes))
+      expect(out[lane], lane).toBe("true");
+    expect(out.full).toBe("false");
+    expectFullMatrices(out);
+  });
+
+  it("runs every lane when the diff cannot be read", () => {
+    const out = ciOutputs(scope, {
+      event: "push",
+      ref: next,
+      push: { bases: allBases("B"), files: allFiles(null) },
+    });
+    for (const lane of Object.keys(scope.lanes))
+      expect(out[lane], lane).toBe("true");
+  });
+
   it.each(["refs/heads/main", "refs/tags/v1.2.3", ""])(
-    "runs the full CI on a push to %s, whatever the diff",
+    "runs the full CI on a push to %s, whatever the bases",
     (ref) => {
       const out = ciOutputs(scope, {
         event: "push",
         ref,
-        files: ["README.md"],
+        push: { bases: allBases("B"), files: allFiles(["README.md"]) },
       });
       for (const lane of Object.keys(scope.lanes))
         expect(out[lane], lane).toBe("true");
@@ -594,42 +814,80 @@ describe("a push to next narrows to the files since its green ancestor", () => {
     },
   );
 
-  it("takes the newest commit whose CI run succeeded, within the lookback", () => {
-    const commits = ["c1", "c2", "c3", "c4"];
-    expect(findGreenAncestor(commits, ["c4", "c2", "zzz"])).toBe("c2");
-    expect(findGreenAncestor(commits, ["other"])).toBeNull();
-    expect(findGreenAncestor([], ["c1"])).toBeNull();
+  it("hands turbo the js base only when every file since it is under packages/", () => {
+    const js = (files: string[]) =>
+      ciOutputs(scope, {
+        event: "push",
+        ref: next,
+        push: { bases: allBases("B"), files: allFiles(files) },
+      })["js-base"];
+    expect(js(["packages/worker/src/a.ts", "packages/docs/x.md"])).toBe("B");
+    expect(js(["packages/worker/src/a.ts", "sdks/python/a.py"])).toBe("");
+    expect(js(["packages/worker/src/a.ts", "pnpm-lock.yaml"])).toBe("");
+    expect(js(["conformance/node/a.ts"])).toBe("");
+    // A pull request never narrows the JS tests.
+    expect(
+      ciOutputs(scope, { event: "pull_request", files: ["packages/a/b.ts"] })[
+        "js-base"
+      ],
+    ).toBe("");
   });
 
-  it("looks up the ancestor with git and the API, HEAD excluded, 30 commits back", () => {
+  it("reads the bases through git and the API, HEAD excluded, newest runs only", () => {
     const calls: string[][] = [];
-    const found = greenAncestorOf({
+    const bases = greenBasesOf({
+      scope,
       repo: "o/r",
       run: (cmd: string, args: string[]) => {
         calls.push([cmd, ...args]);
-        if (cmd === "git") return "head\nc1\nc2\nc3\n";
-        return "c3\nold\n";
+        if (cmd === "git") return "head\nc1\nc2\n";
+        if (args.some((a) => a.includes("/jobs?")))
+          return jobsFor({})
+            .map((j) => `${j.name}\t${j.conclusion}`)
+            .join("\n");
+        return "c1\t77\nc2\t76\nc1\t5\n";
       },
     });
-    expect(found).toBe("c3");
-    expect(calls[0]).toEqual(["git", "rev-list", "-n", "31", "HEAD"]);
+    expect(bases!.python).toBe("c1");
+    expect(calls[0]).toEqual(["git", "rev-list", "-n", "1001", "HEAD"]);
     expect(calls[1]![2]).toContain(
-      "repos/o/r/actions/workflows/ci.yml/runs?branch=next&event=push&status=success",
+      "repos/o/r/actions/workflows/ci.yml/runs?branch=next&event=push&per_page=100",
     );
+    // The newest run of a SHA wins; its jobs are the latest attempt.
+    expect(calls[2]![3]).toContain("repos/o/r/actions/runs/77/jobs?");
+    expect(calls[2]![3]).toContain("filter=latest");
+    expect(calls).toHaveLength(3);
   });
 
-  it("finds none when no run is green, the API fails, or git fails", () => {
-    const none = (cmd: string) => (cmd === "git" ? "head\nc1\n" : "x\n");
-    expect(greenAncestorOf({ repo: "o/r", run: none })).toBeNull();
+  it("answers null when the API or git fails, so the caller runs everything", () => {
     const boom = (cmd: string) => {
       if (cmd === "gh") throw new Error("403");
       return "head\nc1\n";
     };
-    expect(greenAncestorOf({ repo: "o/r", run: boom })).toBeNull();
+    expect(greenBasesOf({ scope, repo: "o/r", run: boom })).toBeNull();
+    const jobsBoom = (cmd: string, args: string[]) => {
+      if (cmd === "git") return "head\nc1\n";
+      if (args.some((a) => a.includes("/jobs?"))) throw new Error("502");
+      return "c1\t9\n";
+    };
+    expect(greenBasesOf({ scope, repo: "o/r", run: jobsBoom })).toBeNull();
     const noGit = () => {
       throw new Error("not a repo");
     };
-    expect(greenAncestorOf({ repo: "o/r", run: noGit })).toBeNull();
+    expect(greenBasesOf({ scope, repo: "o/r", run: noGit })).toBeNull();
+    expect(
+      greenBasesOf({
+        scope,
+        repo: "o/r",
+        run: (c: string) => (c === "git" ? "head\n" : ""),
+      }),
+    ).toBeNull();
+  });
+
+  it("finds all-null bases when the ancestry has no run, which the outputs treat as a full run", () => {
+    const run = (cmd: string) => (cmd === "git" ? "head\nc1\n" : "");
+    const bases = greenBasesOf({ scope, repo: "o/r", run });
+    expect(Object.values(bases!).every((b) => b === null)).toBe(true);
   });
 
   it("the command runs everything on a push to next when no repository is named", () => {
@@ -646,7 +904,166 @@ describe("a push to next narrows to the files since its green ancestor", () => {
     expect(run.status, run.stderr).toBe(0);
     const out = outputsOf(run.stdout);
     expect(out.full).toBe("true");
+    expect(out["js-base"]).toBe("");
     expectFullMatrices(out);
+  });
+});
+
+describe("shared is narrowed to what every lane verifies", () => {
+  it("selects only the always-on js jobs for a lint-ledger-only commit", () => {
+    for (const f of [
+      "tools/lint/debt/jscpd.json",
+      "tools/lint/debt/knip.json",
+      "tools/lint/debt/size.json",
+    ])
+      expect(on([f]), f).toEqual([]);
+  });
+
+  it("keeps a generator or a tool script from turning every lane on", () => {
+    expect(on(["tools/sign-corpus.ts"])).toEqual([]);
+    expect(on(["tools/gate.mjs"])).toEqual([]);
+    expect(on(["tools/lint-staged.mjs"])).toEqual([]);
+  });
+
+  it("still turns every lane on for the scope, the registry, the workflow and its actions", () => {
+    for (const f of [
+      "tools/ci-scope.json",
+      "tools/ci-scope.mjs",
+      "tools/generators.ts",
+      "tools/gen.ts",
+      ".github/workflows/ci.yml",
+      ".github/actions/setup-js/action.yml",
+      "conformance/corpus/v2/cases.json",
+      "packages/shared-protocol/src/core.ts",
+      "pnpm-lock.yaml",
+    ])
+      expect(on([f]), f).toHaveLength(Object.keys(scope.lanes).length);
+  });
+
+  it("leaves another workflow, which ci.yml does not run, out", () => {
+    expect(on([".github/workflows/publish-sdks.yml"])).toEqual([]);
+    expect(on([".github/dependabot.yml"])).toEqual([]);
+  });
+
+  it("still runs the lanes that read the lint tree, but not for its debt ledgers", () => {
+    expect(on(["tools/lint/lint-debt.mjs"])).toEqual(
+      expect.arrayContaining(["python", "e2e-backend"]),
+    );
+    expect(on(["tools/lint/adapters/python.mjs"])).toContain("python");
+    expect(on(["tools/lint/debt/knip.json"])).not.toContain("python");
+  });
+
+  it("replays history: the command reports each commit's lanes and how many are full", () => {
+    const r = repo({ "README.md": "# r\n" });
+    r.write("tools/lint/debt/jscpd.json", "{}\n");
+    r.git("add", "-A");
+    r.git("commit", "-q", "-m", "ledger");
+    r.write("sdks/python/src/a.py", "x = 1\n");
+    r.git("add", "-A");
+    r.git("commit", "-q", "-m", "py");
+    r.write("tools/ci-scope.json", "{}\n");
+    r.git("add", "-A");
+    r.git("commit", "-q", "-m", "scope");
+    const out = cli(r.dir, "replay", "--count", "3");
+    expect(out.status, out.stderr).toBe(0);
+    const lines = out.stdout.trim().split("\n");
+    expect(lines[0]).toContain("every lane");
+    expect(lines[1]).toMatch(/python/);
+    expect(lines[1]).not.toContain("every lane");
+    expect(lines[2]).toContain("js only");
+    expect(lines[3]).toBe("1 of 3 commit(s) turn every lane on");
+  });
+});
+
+describe("the JS test jobs narrow with the js base", () => {
+  const text = (id: string) => JSON.stringify(ci.jobs[id]);
+
+  it("hands the js base from the changes job to the three test jobs", () => {
+    expect(ci.jobs.changes!.outputs).toHaveProperty("js-base");
+    for (const id of ["js-worker", "js-admin", "js-rest"])
+      expect(text(id), id).toContain("needs.changes.outputs.js-base");
+  });
+
+  it("builds and tests the Worker and the admin only when turbo says they are affected", () => {
+    for (const [id, pkg] of [
+      ["js-worker", "@polaris-key/worker"],
+      ["js-admin", "@polaris-key/admin"],
+    ] as const) {
+      const steps = ci.jobs[id]!.steps!;
+      const check = steps.find((st) => st.run?.includes("ci-js-affected"))!;
+      expect(check.run, id).toContain(pkg);
+      const after = steps.slice(steps.indexOf(check) + 1);
+      for (const st of after.filter((x) => x.run?.startsWith("pnpm")))
+        expect(st.if, `${id}: ${st.run}`).toBe(
+          "steps.affected.outputs.affected == 'true'",
+        );
+    }
+  });
+
+  it("filters js-rest to the changed packages, keeping its three exclusions", () => {
+    const step = ci.jobs["js-rest"]!.steps!.find((st) =>
+      st.run?.includes("turbo run test"),
+    )!;
+    expect(step.run).toContain('${JS_BASE:+"--filter=...[$JS_BASE]"}');
+    for (const p of ["worker", "admin", "conformance-browser"])
+      expect(step.run).toContain(`--filter=!@polaris-key/${p}`);
+  });
+
+  it("runs a package when there is no base, or turbo cannot say", () => {
+    const boom = () => {
+      throw new Error("turbo failed");
+    };
+    expect(affected("@polaris-key/worker", "")).toBe(true);
+    expect(affected("@polaris-key/worker", undefined)).toBe(true);
+    expect(affected("@polaris-key/worker", "abc", boom)).toBe(true);
+    expect(affected("@polaris-key/worker", "abc", () => "not json")).toBe(true);
+  });
+
+  it("selects the Worker when docs, admin or elements changed: its tests read their files", () => {
+    const only = (pkg: string) => () => `{"tasks":[{"package":"${pkg}"}]}`;
+    for (const pkg of ["docs", "admin", "elements"])
+      expect(
+        affected("@polaris-key/worker", "abc", only(`@polaris-key/${pkg}`)),
+        pkg,
+      ).toBe(true);
+    expect(
+      affected("@polaris-key/worker", "abc", only("@polaris-key/node")),
+    ).toBe(false);
+    // Only the Worker has undeclared inputs; the admin SPA's own tests do not read the docs build.
+    expect(
+      affected("@polaris-key/admin", "abc", only("@polaris-key/docs")),
+    ).toBe(false);
+    expect(Object.keys(EXTRA_INPUTS)).toEqual(["@polaris-key/worker"]);
+  });
+
+  it("lists every sibling package the Worker's tests open by relative path", () => {
+    const tests = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+        e.isDirectory() ? tests(join(dir, e.name)) : [join(dir, e.name)],
+      );
+    const sibling =
+      /["']\.\.["'], ["']\.\.["'], ["'](docs|admin|elements|cli|ui-core|sdk-[a-z]+|server|ui-qa)["']/;
+    const found = new Set<string>();
+    for (const f of tests(join(ROOT, "packages", "worker", "test")))
+      if (/\.(ts|tsx)$/.test(f))
+        for (const m of readFileSync(f, "utf8").matchAll(
+          new RegExp(sibling, "g"),
+        ))
+          found.add(`@polaris-key/${m[1]}`);
+    for (const pkg of found)
+      expect(EXTRA_INPUTS["@polaris-key/worker"], pkg).toContain(pkg);
+  });
+
+  it("selects by turbo's `...[base]` task list", () => {
+    const calls: string[][] = [];
+    const run = (args: string[]) => {
+      calls.push(args);
+      return 'warn\n{"tasks":[{"package":"@polaris-key/react"},{"package":"@polaris-key/node"}]}';
+    };
+    expect(affected("@polaris-key/react", "abc", run)).toBe(true);
+    expect(affected("@polaris-key/worker", "abc", run)).toBe(false);
+    expect(calls[0]).toContain("--filter=...[abc]");
+    expect(packagesOf('{"tasks":[]}').size).toBe(0);
   });
 });
 
