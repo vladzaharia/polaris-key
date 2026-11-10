@@ -36,7 +36,7 @@ import {
 } from "../../../core/accounts/accountSubjects.js";
 import { associateLicenseHolder } from "../../../core/licensing/licenseHolders.js";
 import {
-  runSubjectDelete,
+  runSubjectDeleteIsolated,
   runSubjectExport,
   subjectDataSize,
 } from "../../../core/accounts/subjectHooks.js";
@@ -637,23 +637,28 @@ export async function exportProductUser(
 
 /**
  * Delete the subject's account × product data for this product: every registered store's
- * `delete` (managed config overrides, Cloud Sync). The subject, its licences and the account are
- * untouched: a developer can never delete the account (S-16 §5.2). Answers the stores it ran.
+ * `delete` (managed config overrides, the key ring, Cloud Sync), fault-isolated and in name order
+ * so the key ring goes before the Cloud Sync bytes. The subject, its licences and the account are
+ * untouched: a developer can never delete the account (S-16 §5.2). Answers the stores it ran and
+ * the ones that failed (the delete is idempotent, so the developer repeats it).
  */
 export async function deleteProductUserData(
   ctx: AccountContext,
   product: string,
   subject: string,
-): Promise<{ stores: string[] }> {
+): Promise<{ stores: string[]; failed: string[] }> {
   const ran = await subjectDataSize(
     { db: ctx.db, env: ctx.env, now: ctx.now },
     { product, subject },
   );
-  await runSubjectDelete(
+  const failed = await runSubjectDeleteIsolated(
     { db: ctx.db, env: ctx.env, now: ctx.now },
     { product, subject },
   );
-  return { stores: ran.stores.map((s) => s.name) };
+  return {
+    stores: ran.stores.map((s) => s.name),
+    failed: failed.map((f) => f.store),
+  };
 }
 
 /** Detach one of the subject's licences of this product: it becomes floating. */

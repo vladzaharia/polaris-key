@@ -29,7 +29,7 @@ import {
 } from "../../src/core/accounts/accountSubjects.js";
 import { signIn } from "../../src/services/identity/accounts/signIn.js";
 import { attachLicense } from "../../src/services/identity/accounts/claim.js";
-import { removeProductData } from "../../src/services/identity/accounts/deletion.js";
+import { removeProductData } from "../../src/services/identity/accounts/productRemoval.js";
 import { consoleTestSession } from "../consoleSessionHelper.js";
 import { TEST_ROOT as here } from "../paths.js";
 

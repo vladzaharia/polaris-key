@@ -11,7 +11,7 @@ import RunbookSection from "../../../../../components/docs/RunbookSection.astro"
 
 **Role required:** Platform admin with Cloudflare access.
 
-**Impact:** A D1 restore is in place and destructive. The blob collector deletes objects that nothing references. Erasures replay after a restore.
+**Impact:** A D1 restore is in place and destructive. The blob collector deletes objects that nothing references. Erasures and per-product removals replay after a restore.
 
 Use this when you restore D1, stop or tune a storage job, or check why a file is not mirrored.
 
@@ -22,13 +22,18 @@ Use this when you restore D1, stop or tune a storage job, or check why a file is
   heading="Account erasure ledger and D1 restore"
 />
 
+<RunbookSection
+  file="RUNBOOK"
+  heading="After a D1 or Cloud Sync Durable Object restore"
+/>
+
 <RunbookSection file="RUNBOOK" heading="Release-file mirroring" />
 
 <RunbookSection file="RUNBOOK" heading="Lazy deltas" />
 
 ## Verify
 
-- After a D1 restore, check the `erasureLedger` rows in `platform_job_runs` that started after the restore time. Expect a count above 0 on the first tick that re-erases accounts, then 0.
+- After a D1 restore, check the `erasureLedger` and `subjectErasureLedger` rows in `platform_job_runs` that started after the restore time. Expect a count above 0 on the first tick that re-erases accounts or completes removals, then 0.
 - Blob collector: read the product's dry run (`/manage/api/products/<slug>/blob-gc`, GET) before trusting it, then `blob_gc_log` after a night.
 - Mirroring: `release_mirrors` shows `ready`, or the reason code of a failed file. A failed file keeps serving from GitHub.
 

@@ -90,7 +90,9 @@ export interface Env {
    * `staging/` (CI uploads, expired after a day), and `erasures/` (I-11: the account-erasure
    * ledger, `core/accounts/erasureFence.ts` and `services/identity/accounts/erasureLedger.ts`, one
    * id-only object per erased account, never aged out and never deleted by code, so a D1 restore
-   * cannot lose it). OPTIONAL for the byte routes: an unbound store means "no blob store" and every
+   * cannot lose it), and `subject-erasures/` (U-12.1: the per-product removal ledger,
+   * `services/identity/accounts/subjectErasureLedger.ts`, one object per removed pairwise subject, deleted
+   * by the maintenance pass 35 days on). OPTIONAL for the byte routes: an unbound store means "no blob store" and every
    * byte route answers not-found. An environment that serves ACCOUNTS needs it all the same: an
    * account erasure refuses to start without it (it cannot be recorded on the ledger), and every
    * request that acts as an account fails closed without it, because the erasure fence cannot be

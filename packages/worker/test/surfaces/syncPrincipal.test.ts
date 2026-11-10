@@ -56,8 +56,8 @@ import {
 import {
   deleteAccount,
   disableAccount,
-  removeProductData,
 } from "../../src/services/identity/accounts/deletion.js";
+import { removeProductData } from "../../src/services/identity/accounts/productRemoval.js";
 
 const SLUG = "djdl";
 

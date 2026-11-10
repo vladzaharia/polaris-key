@@ -1,16 +1,12 @@
 /**
- * Account deletion, per-product removal and disable (I-05; S-16 §5.1 and §5.5, D25, D27).
+ * Account deletion and disable (I-05; S-16 §5.1 and §5.5, D25, D27). Per-product removal is
+ * `productRemoval.ts`.
  *
- * Deletion and per-product removal call every registered store's `delete` (Cloud Sync, Config)
- * BEFORE the subject row goes, so each store can still resolve what it holds; then the device
- * binding is cleared and the developer hears `subject.deleted`, carrying the licence ids, through
- * the pull feed. Licences are the developer's commercial records: deletion DETACHES them (they
+ * Deletion calls every registered store's `delete` (Cloud Sync, Config) BEFORE the subject row
+ * goes, so each store can still resolve what it holds; the device bindings are cleared first, and
+ * the developer hears `subject.deleted`, carrying the licence ids, through the pull feed. Licences are the developer's commercial records: deletion DETACHES them (they
  * become floating) and leaves developer-set buyer columns to the developer (D27; the DPA wording
  * is pending a legal review, I-19).
- *
- * Per-product removal is NOT unlinkability while a licence of that product stays attached (D25):
- * the next contact mints a fresh subject that resolves to the same licence. `alsoDetachLicenses`
- * is the "also remove the licence from my Library" choice the removal screen offers.
  */
 
 import { deleteAccountAvatars } from "../card/avatars.js";
@@ -32,12 +28,10 @@ import {
 import {
   clearDeviceSubjects,
   onLicenseOwnershipEnded,
-  runSubjectDelete,
   runSubjectDeleteIsolated,
 } from "../../../core/accounts/subjectHooks.js";
 import { portalAudit } from "../portal/repo.js";
 import { stmtScrubAccountAudit } from "./accountAudit.js";
-import { detachLicense } from "./claim.js";
 import {
   recordErasure,
   replayErasureLedger,
@@ -49,106 +43,6 @@ import { getAccountRow, stmtClearConsoleStrength } from "./repo.js";
 import { stmtDeleteTermsAcceptances } from "./terms.js";
 import { stmtDeleteAccountMerges } from "./mergeUndo.js";
 import { stmtDeleteInvitesOfVerifiedAddresses } from "../../../core/rbac/bindings.js";
-
-/** Statements that end one (account, product) subject: its aliases, then the row itself. */
-function stmtsEndSubject(
-  accountId: string,
-  product: string,
-  subject: string,
-): DbStatement[] {
-  return [
-    // I-41: the readable support code goes with the subject (and with any subject it absorbed).
-    {
-      sql: `DELETE FROM support_codes WHERE product = ?
-              AND (subject = ? OR subject IN (SELECT alias FROM account_product_subject_aliases
-                                               WHERE product = ? AND subject = ?))`,
-      params: [product, subject, product, subject],
-    },
-    {
-      sql: "DELETE FROM account_product_subject_aliases WHERE product = ? AND subject = ?",
-      params: [product, subject],
-    },
-    {
-      sql: "DELETE FROM account_product_subjects WHERE account_id = ? AND product = ?",
-      params: [accountId, product],
-    },
-  ];
-}
-
-/**
- * "Remove my data from <Product>": end the account's pairwise subject for one product. Registered
- * stores delete first, devices signed in with it lose the binding, and the developer gets
- * `subject.deleted`. With `alsoDetachLicenses` the product's licences leave the Library too.
- */
-export async function removeProductData(
-  ctx: AccountContext,
-  args: { accountId: string; product: string; alsoDetachLicenses: boolean },
-): Promise<{ ok: boolean; detached: string[] }> {
-  const { db, env, now } = ctx;
-  const row = await db.first<{ subject: string }>(
-    "SELECT subject FROM account_product_subjects WHERE account_id = ? AND product = ?",
-    args.accountId,
-    args.product,
-  );
-  const licenses = (
-    await accountLicenses(db, args.accountId, args.product)
-  ).map((l) => l.id);
-  const detached: string[] = [];
-  if (args.alsoDetachLicenses) {
-    for (const licenseId of licenses) {
-      // The owner's own detach (LX-26 block, ended links, token revocation, `account.license.detach`
-      // in the account's history): without the block an email-assigned licence would be re-attached
-      // by the very next portal request.
-      if (
-        (
-          await detachLicense(ctx, {
-            accountId: args.accountId,
-            product: args.product,
-            licenseId,
-          })
-        ).ok
-      ) {
-        detached.push(licenseId);
-      }
-    }
-  }
-  if (!row) return { ok: detached.length > 0, detached };
-  await runSubjectDelete(
-    { db, env, now },
-    { product: args.product, subject: row.subject },
-  );
-  await clearDeviceSubjects(
-    db,
-    env,
-    { kind: "subject", product: args.product, subject: row.subject },
-    "product_removed",
-  );
-  await db.batch([
-    stmtSubjectEvent(
-      {
-        type: "subject.deleted",
-        product: args.product,
-        subject: row.subject,
-        licenseIds: licenses,
-        detached: args.alsoDetachLicenses,
-      },
-      now,
-    ),
-    ...stmtsEndSubject(args.accountId, args.product, row.subject),
-  ]);
-  await portalAudit(db, {
-    accountId: args.accountId,
-    action: "account.product.remove",
-    product: args.product,
-    targetKind: "product",
-    targetId: args.product,
-    summary: args.alsoDetachLicenses
-      ? "Removed product data and its licenses from the library"
-      : "Removed product data",
-    now,
-  });
-  return { ok: true, detached };
-}
 
 /** How long one erasure attempt owns the account before another may take over (seconds). */
 export const ERASURE_LEASE_SECONDS = 10 * 60;
@@ -349,11 +243,26 @@ async function runErasure(
       "SELECT product, subject FROM account_product_subjects WHERE account_id = ? ORDER BY product",
       accountId,
     );
+  // FENCE first: no device stays bound while a store is being emptied, so none can recreate a
+  // key ring or a Cloud Sync object behind the deletes. A fence that fails ends the attempt before
+  // any store runs; the retry sweeper repeats it.
+  await attempt("devices", async () => {
+    await clearDeviceSubjects(
+      db,
+      env,
+      { kind: "account", accountId },
+      "account_deleted",
+    );
+  });
   const licenses = await accountLicenses(db, accountId);
   let subjects = await readSubjects();
   // The stores run first, per subject; a subject minted while this runs gets its own round,
   // then the final batch deletes every subject row of the account regardless.
-  for (let round = 0; round < ERASURE_SUBJECT_ROUNDS; round++) {
+  for (
+    let round = 0;
+    round < ERASURE_SUBJECT_ROUNDS && failures.length === 0;
+    round++
+  ) {
     const fresh = subjects.filter(
       (s) => !done.has(`${s.product}\0${s.subject}`),
     );
@@ -369,14 +278,6 @@ async function runErasure(
     if (failures.length > 0) break;
     subjects = await readSubjects();
   }
-  await attempt("devices", async () => {
-    await clearDeviceSubjects(
-      db,
-      env,
-      { kind: "account", accountId },
-      "account_deleted",
-    );
-  });
   for (const l of licenses) {
     await attempt("licenses", async () => {
       await onLicenseOwnershipEnded(db, env, {

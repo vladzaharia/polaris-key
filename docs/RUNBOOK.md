@@ -2469,6 +2469,36 @@ product sessions while R2 is degraded or `BLOBS` is unbound is the fence failing
 account problem: restore R2 or the binding and signed-in clients carry on. An unreadable ledger
 clears no portal cookie and ends no product browser session; it only refuses until it can be read.
 
+## After a D1 or Cloud Sync Durable Object restore
+
+"Remove my data from <Product>" writes a second ledger beside the account one: one object per
+removed subject in the `BLOBS` bucket, key `subject-erasures/<product>/<pairwise subject>`, holding
+the product slug, the subject and a time (no account id). It is written create-only before the
+removal changes anything; if the write fails the removal answers `503 erasure_ledger_unavailable`
+and nothing is removed. Do not delete one by hand and never put a lifecycle rule on
+`subject-erasures/`: the maintenance pass deletes an entry 35 days after the removal, once its
+subject row is gone, which is past the 30-day windows of D1 Time Travel and Durable Object
+point-in-time recovery.
+
+**After a D1 restore.** The restored database brings back the subject row, the managed overrides,
+the key ring, the Cloud Sync directory row and the device bindings. A D1 restore does not touch
+Durable Object storage, so the Cloud Sync object stays erased. The pass completes the removal
+again; nothing else is needed. It runs on the same ticks as the account replay (every 15 minutes
+and nightly, right after it, step `subjectErasureLedger`), reads the ledger in pages of 1,000 keys
+(at most 5 pages a pass), completes at most 25 subjects a pass and continues from a KV cursor that
+expires on its own. Until the next tick, up to 15 minutes, the restored rows are readable. The
+step's count is the removals completed plus the entries swept; a failing store fails the step and
+names `<product>/<pairwise subject>` and the store, never an account. The two passes never see
+each other's entries (`erasures/` against `subject-erasures/`).
+
+**After a Cloud Sync Durable Object restore.** A point-in-time restore of the object brings its
+data back, and D1 may already have forgotten the subject, so the normal pass does not look at it.
+Ask for the objects pass of the product: set the KV key `p:_platform:subject-erasure-ledger:objects`
+in the `HOT` namespace to the product slug (`wrangler kv key put`). The next tick runs the stores'
+deletes for every ledger subject of that product, 25 a tick, and deletes the key when it has walked
+the whole ledger of the product without a failure. Check `platform_job_runs` for
+`subjectErasureLedger` rows after the restore time.
+
 ## Release-file mirroring
 
 Polaris Key keeps its own copy of every app-release file whose bytes live only on GitHub or at an

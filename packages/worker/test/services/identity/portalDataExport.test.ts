@@ -1343,6 +1343,83 @@ describe("DELETE /api/products/<product>/data", () => {
     ).toEqual({ subject: bobSubject.djdl });
   });
 
+  it("answers pending while a store fails, keeps the subject, and a repeat completes it", async () => {
+    const w = await world();
+    const { ada, adaSubject } = await seed(w);
+    let down = true;
+    registerSubjectStore("test.zdown", {
+      merge: async () => {},
+      delete: async () => {
+        if (down) throw new Error("store down");
+      },
+    });
+    try {
+      const res = await removeData(w, ada, "djdl");
+      expect(res.status).toBe(200);
+      expect(await body(res)).toEqual({
+        ok: true,
+        product: "djdl",
+        removed: true,
+        pending: true,
+        detachedLicenses: [],
+      });
+      // The stores before it ran; the subject stays so the removal is owed.
+      expect(store.deleted).toEqual([`djdl:${adaSubject.djdl}`]);
+      expect(
+        await w.db.first(
+          "SELECT 1 FROM account_product_subjects WHERE account_id = ? AND product = 'djdl'",
+          ada.accountId,
+        ),
+      ).not.toBeNull();
+      expect(
+        await w.db.all(
+          "SELECT 1 FROM subject_events WHERE type = 'subject.deleted'",
+        ),
+      ).toHaveLength(0);
+      down = false;
+      const done = await removeData(w, ada, "djdl");
+      expect(await body(done)).toEqual({
+        ok: true,
+        product: "djdl",
+        removed: true,
+        detachedLicenses: [],
+      });
+      expect(
+        await w.db.all(
+          "SELECT 1 FROM subject_events WHERE type = 'subject.deleted'",
+        ),
+      ).toHaveLength(1);
+    } finally {
+      unregisterSubjectStore("test.zdown");
+    }
+  });
+
+  it("is 503 and removes nothing when the removal cannot be recorded", async () => {
+    const w = await world();
+    const { ada, adaSubject } = await seed(w);
+    // Reads (the erasure fence) work; only the ledger write fails.
+    w.env.BLOBS!.put = (async () => {
+      throw new Error("r2 down");
+    }) as R2Bucket["put"];
+    const res = await removeData(w, ada, "djdl", "?alsoRemoveLicense=1");
+    expect(res.status).toBe(503);
+    expect(await body(res)).toMatchObject({
+      error: "erasure_ledger_unavailable",
+    });
+    expect(store.deleted).toEqual([]);
+    expect(
+      await w.db.first(
+        "SELECT account_id FROM licenses WHERE id = 'lic_djdl_1'",
+      ),
+    ).toEqual({ account_id: ada.accountId });
+    expect(
+      await w.db.first(
+        "SELECT 1 FROM devices WHERE subject = ?",
+        adaSubject.djdl,
+      ),
+    ).not.toBeNull();
+  });
+
   it("then exports no data for the product, and repeating it is harmless", async () => {
     const w = await world();
     const { ada } = await seed(w);
