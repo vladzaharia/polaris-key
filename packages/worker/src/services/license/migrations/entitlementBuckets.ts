@@ -19,6 +19,9 @@
  *   down    restores from `entitlement_bucket_backfill`, a column only while it still holds the
  *           value the job last wrote.
  *
+ * Compare-and-set guards only the column it writes. A store grant added on a moved key between the
+ * plan and the write is not seen by the write; the next dry run reports it as `grant-key`.
+ *
  * The ledger keeps the FIRST "before" for a (subject, field) and the LAST "after", so a re-run
  * never loses the original and `down` still matches. A ledger row is written in the same batch as
  * the write it records, and only if the row now holds the written value.

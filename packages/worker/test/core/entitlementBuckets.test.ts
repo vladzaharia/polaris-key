@@ -334,6 +334,26 @@ describe("planEntitlementBuckets: cases", () => {
     ).toEqual([{ tierId: "pro", before: old, after: JSON.stringify(e) }]);
   });
 
+  it("proves a reordered stored tier bucket as stored: no write, a key-order report", () => {
+    const e = { a: entry(1), b: entry(2) };
+    const p = base({
+      tiers: [
+        {
+          id: "pro",
+          profile_id: "p",
+          entitlements_json: JSON.stringify({ b: e.b, a: e.a }),
+        },
+      ],
+      profiles: new Map([["p", prof(e)]]),
+      licences: [lic({ tier_id: "pro" })],
+    });
+    expect(p.tierWrites).toEqual([]);
+    expect(p.licenceWrites).toEqual([]);
+    expect(p.docDiffs).toMatchObject([
+      { subjectKind: "license", reasons: ["key-order"] },
+    ]);
+  });
+
   it("puts a licence profile's keys under the overrides' own entries", () => {
     const p = base({
       profiles: new Map([

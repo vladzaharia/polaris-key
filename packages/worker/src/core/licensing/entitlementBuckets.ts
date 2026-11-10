@@ -146,15 +146,17 @@ export function planEntitlementBuckets(input: BucketPlanInput): BucketPlan {
     const bucket = entitlementsOf(input.profiles.get(t.profile_id));
     if (Object.keys(bucket).length === 0) continue;
     const existing = t.entitlements_json ?? null;
-    if (existing === null || sameContent(parseBucket(existing), bucket)) {
+    if (existing === null) {
       tierLayer.set(t.id, wrap(bucket));
-      if (existing === null)
-        plan.tierWrites.push({
-          tierId: t.id,
-          before: null,
-          after: JSON.stringify(bucket),
-        });
-    } else if (input.ownedTierBuckets?.get(t.id) === existing) {
+      plan.tierWrites.push({
+        tierId: t.id,
+        before: null,
+        after: JSON.stringify(bucket),
+      });
+    } else if (
+      input.ownedTierBuckets?.get(t.id) === existing &&
+      !sameContent(parseBucket(existing), bucket)
+    ) {
       tierLayer.set(t.id, wrap(bucket));
       plan.tierWrites.push({
         tierId: t.id,
@@ -162,13 +164,16 @@ export function planEntitlementBuckets(input: BucketPlanInput): BucketPlan {
         after: JSON.stringify(bucket),
       });
     } else {
-      tierLayer.set(t.id, wrap(parseBucket(existing)));
-      plan.docDiffs.push({
-        subjectKind: "tier",
-        subjectId: t.id,
-        reasons: ["tier-bucket-differs"],
-        keys: Object.keys(bucket),
-      });
+      // A stored bucket is read in its stored order, so the proof uses it as it is.
+      const stored = parseBucket(existing);
+      tierLayer.set(t.id, wrap(stored));
+      if (!sameContent(stored, bucket))
+        plan.docDiffs.push({
+          subjectKind: "tier",
+          subjectId: t.id,
+          reasons: ["tier-bucket-differs"],
+          keys: Object.keys(bucket),
+        });
     }
   }
 
