@@ -38,6 +38,7 @@ tools/
   feed-closure.mjs         checks every published version pins only versions the feed lists
   feed-drift.mjs           checks every published package shows the lockstep version on its feed
   maven-publication-check.mjs  checks the local Gradle repo holds the POM each maven deliverable needs
+  lint-staged.mjs          the pre-commit hook's lint of the staged files (prettier and each SDK's lint.sh check --files)
   check-feed-download.sh   publish-package.yml's guard that a downloaded artifact is whole
   mockups/                 build, check and screenshot scripts for docs/design/mockups
   fixtures/                recorded input for tests (an npm feed listing)

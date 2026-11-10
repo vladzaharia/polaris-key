@@ -3,12 +3,16 @@
  * The one lint-debt ledger mechanism (P0-46.1). Plain Node ESM, no dependencies, so any CI lane
  * can run it before an install.
  *
- *   node tools/lint/lint-debt.mjs check|record --tool <id> --ledger <path> [--input <file>]
+ *   node tools/lint/lint-debt.mjs check|record --tool <id> --ledger <path> [--input <file>] [--only <list>]
  *
  * A tool's adapter (`adapters/<id>.mjs`) turns the tool's raw output into findings. The ledger
  * holds today's findings per file and rule and only shrinks: a count above the ledger fails, and
  * so does an entry the tool no longer reports. Exit 0 ok, 1 debt drift, 2 usage/adapter error.
  * Contract and ledger format: tools/lint/README.md.
+ *
+ * `--only <list>` (check only) names the repo-relative files a partial run linted, one per line:
+ * findings and ledger rows are both cut to those files, so a pre-commit run over the staged files
+ * is held to the same ledger as the whole-tree run, and a file it did not lint is not "cleared".
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -212,7 +216,14 @@ function parseArgs(argv) {
     const k = rest[i];
     const v = rest[i + 1];
     if (
-      !["--tool", "--ledger", "--input", "--root", "--generated"].includes(k) ||
+      ![
+        "--tool",
+        "--ledger",
+        "--input",
+        "--root",
+        "--generated",
+        "--only",
+      ].includes(k) ||
       v === undefined
     )
       throw new LintDebtError(`unknown or incomplete option "${k}"`);
@@ -238,7 +249,7 @@ export async function run(argv, stdin = () => readFileSync(0, "utf8")) {
     const text = o.input ? readFileSync(o.input, "utf8") : stdin();
     const findings = findingsOf(o.tool, adapter, text, root, generated);
     const ledgerPath = resolve(o.ledger);
-    const ledger = readLedger(ledgerPath);
+    let ledger = readLedger(ledgerPath);
     if (o.mode === "record") {
       writeFileSync(
         ledgerPath,
@@ -248,6 +259,23 @@ export async function run(argv, stdin = () => readFileSync(0, "utf8")) {
         `recorded ${findings.length} ${o.tool} finding(s) in ${o.ledger}`,
       );
       return { code: 0, out };
+    }
+    if (o.only !== undefined) {
+      const only = new Set(
+        readFileSync(o.only, "utf8").split("\n").filter(Boolean),
+      );
+      const keep = (f) => only.has(f);
+      findings.splice(
+        0,
+        findings.length,
+        ...findings.filter((f) => keep(f.file)),
+      );
+      ledger = {
+        ...ledger,
+        debt: Object.fromEntries(
+          Object.entries(ledger.debt).filter(([f]) => keep(f)),
+        ),
+      };
     }
     const { added, cleared } = diff(o.tool, findings, ledger);
     for (const a of added)
