@@ -292,13 +292,31 @@ class PolarisSaveConflictStateTest {
 
     @Test
     fun aClosedRequestClosesTheScreenAndASlotsFullReopenDisablesKeepBoth() = runTest {
-        val closed = PolarisSaveConflictState.of(mine, theirs, listOf("local", "remote", "both"), null, PolarisSaveResolver.of { MergeOutcome.Refused("sync-merge-closed", reopened = false) }, backgroundScope)
+        val closed = PolarisSaveConflictState.of(
+            mine,
+            theirs,
+            listOf("local", "remote", "both"),
+            null,
+            PolarisSaveResolver.of {
+                MergeOutcome.Refused("sync-merge-closed", reopened = false)
+            },
+            backgroundScope,
+        )
         closed.keep(PolarisSaveKeep.Local)
         runCurrent()
         assertEquals(PolarisSaveConflictUi.Cancelled, closed.ui.value)
         assertNull(closed.kitScreen())
         val choices = mutableListOf("local", "remote", "both")
-        val full = PolarisSaveConflictState.of(mine, theirs, choices, null, PolarisSaveResolver.of { MergeOutcome.Refused("slots-full", reopened = true) }, backgroundScope)
+        val full = PolarisSaveConflictState.of(
+            mine,
+            theirs,
+            choices,
+            null,
+            PolarisSaveResolver.of {
+                MergeOutcome.Refused("slots-full", reopened = true)
+            },
+            backgroundScope,
+        )
         full.keep(PolarisSaveKeep.Both)
         runCurrent()
         assertEquals(PolarisSaveConflictUi.Choose, full.ui.value)

@@ -11,6 +11,8 @@
 //  - `kept` follows only a resolver that returned, and names the choice that was made;
 //  - a keep that meets a newer copy (a refusal `conflict` with the request reopened) goes back to the choices on
 //    the request's current sides, says so, and applies nothing: Try again must never run on a reopened request.
+@file:Suppress("TooGenericExceptionCaught")
+
 package im.plrs.key.ui
 
 import im.plrs.key.core.MergeChoice
@@ -46,8 +48,8 @@ public fun interface PolarisSaveResolver {
 
     public companion object {
         /**
-         * The resolver of a saves [MergeRequest] (plans/U-08.md section 6): a choice is one `keep`, and a refusal throws so
-         * the screen says both saves are unchanged. The host holds the bytes, so nothing is asked of it here.
+         * The resolver of a saves [MergeRequest] (plans/U-08.md section 6): a choice is one `keep`, and a refusal throws
+         * so the screen says both saves are unchanged. The host holds the bytes, so nothing is asked of it here.
          */
         public fun of(request: MergeRequest): PolarisSaveResolver = of { request.keep(it) }
 
@@ -64,16 +66,14 @@ public fun interface PolarisSaveResolver {
     }
 }
 
-/** A choice a request refused: its [code] (`conflict`, `slots-full`, `sync-merge-closed`, a failure code) and whether it is open again. */
+/**
+ * A choice a request refused: its [code] (`conflict`, `slots-full`, `sync-merge-closed`, a failure code) and
+ * whether it is open again.
+ */
 public class PolarisSaveRefused(public val code: String, public val reopened: Boolean) : IllegalStateException(code)
 
 /** What a request holds right now: both copies, the choices it accepts, and which copy is newer. */
-public data class PolarisSaveSides(
-    val local: MergeSide,
-    val remote: MergeSide?,
-    val choices: List<String>,
-    val newer: String?,
-)
+public data class PolarisSaveSides(val local: MergeSide, val remote: MergeSide?, val choices: List<String>, val newer: String?)
 
 /** Where the conflict is. */
 public sealed interface PolarisSaveConflictUi {
@@ -112,12 +112,7 @@ public class PolarisSaveConflictState private constructor(
     private val fixedSides: Boolean = false,
 ) {
     /** The two copies as the screen draws them: read again on every step, so a bound request's moves show. */
-    private class Sides(
-        val local: PolarisSaveVersion,
-        val remote: PolarisSaveVersion?,
-        val bothAvailable: Boolean,
-        val newer: PolarisSaveNewer?,
-    )
+    private class Sides(val local: PolarisSaveVersion, val remote: PolarisSaveVersion?, val bothAvailable: Boolean, val newer: PolarisSaveNewer?)
 
     public constructor(
         local: PolarisSaveVersion,
@@ -137,7 +132,10 @@ public class PolarisSaveConflictState private constructor(
     private var job: Job? = null
     private val running: Boolean get() = job?.isActive == true
 
-    /** Apply [keep]. Ignored while a choice runs, after one was kept, and for Keep both without a free slot or a copy. */
+    /**
+     * Apply [keep]. Ignored while a choice runs, after one was kept, and for Keep both without a free slot or a
+     * copy.
+     */
     public fun keep(keep: PolarisSaveKeep) {
         if (_ui.value != PolarisSaveConflictUi.Choose || running) return
         val sides = read()
@@ -184,16 +182,20 @@ public class PolarisSaveConflictState private constructor(
                 _ui.value = when {
                     // The request ended meanwhile: nothing is left to choose, and Try again could never succeed.
                     refused?.code == CLOSED -> PolarisSaveConflictUi.Cancelled
+
                     // The sides were fixed at build time, so the choices could only return on copies the person
                     // has seen replaced: close instead, and the host opens the screen again on the reopened request.
                     fixedSides && refused != null && refused.reopened && refused.code == "conflict" ->
                         PolarisSaveConflictUi.Cancelled
+
                     // The other copy moved while the keep ran (or Keep both lost its slot): nothing was applied.
                     // Back to the choices, read again from the request.
-                    refused != null && refused.reopened && (refused.code == "conflict" || refused.code == SLOTS_FULL) -> {
+                    refused != null && refused.reopened &&
+                        (refused.code == "conflict" || refused.code == SLOTS_FULL) -> {
                         reopened = refused.code == "conflict"
                         PolarisSaveConflictUi.Choose
                     }
+
                     // The screen says both saves are unchanged; the cause is not shown.
                     else -> PolarisSaveConflictUi.Failed(keep)
                 }
@@ -207,30 +209,29 @@ public class PolarisSaveConflictState private constructor(
         if (step == PolarisSaveConflictUi.Cancelled || step == PolarisSaveConflictUi.Done) return null
         val sides = read()
         val body = buildMap<String, JsonElement> {
-            put(
-                "step",
-                JsonPrimitive(
-                    when (step) {
-                        is PolarisSaveConflictUi.Keeping -> "keeping"
-                        is PolarisSaveConflictUi.Kept -> "kept"
-                        is PolarisSaveConflictUi.Failed -> "failed"
-                        else -> "choose"
-                    },
-                ),
-            )
+            put("step", JsonPrimitive(stepName(step)))
             put("local", version(sides.local))
             put("remote", sides.remote?.let(::version) ?: JsonNull)
             put("bothAvailable", JsonPrimitive(sides.bothAvailable))
             sides.newer?.let { put("newer", JsonPrimitive(it.id)) }
             if (reopened && step == PolarisSaveConflictUi.Choose) put("reopened", JsonPrimitive(true))
-            when (step) {
-                is PolarisSaveConflictUi.Keeping -> put("keep", JsonPrimitive(step.keep.id))
-                is PolarisSaveConflictUi.Kept -> put("keep", JsonPrimitive(step.keep.id))
-                is PolarisSaveConflictUi.Failed -> put("keep", JsonPrimitive(step.keep.id))
-                else -> Unit
-            }
+            keptId(step)?.let { put("keep", JsonPrimitive(it)) }
         }
         return KitStates.resolve(KitComponent.saveConflict, KitInputs.of(base + ("saveConflict" to JsonObject(body))))
+    }
+
+    private fun stepName(step: PolarisSaveConflictUi): String = when (step) {
+        is PolarisSaveConflictUi.Keeping -> "keeping"
+        is PolarisSaveConflictUi.Kept -> "kept"
+        is PolarisSaveConflictUi.Failed -> "failed"
+        else -> "choose"
+    }
+
+    private fun keptId(step: PolarisSaveConflictUi): String? = when (step) {
+        is PolarisSaveConflictUi.Keeping -> step.keep.id
+        is PolarisSaveConflictUi.Kept -> step.keep.id
+        is PolarisSaveConflictUi.Failed -> step.keep.id
+        else -> null
     }
 
     private fun version(v: PolarisSaveVersion): JsonObject = JsonObject(
@@ -243,14 +244,22 @@ public class PolarisSaveConflictState private constructor(
     public companion object {
         /**
          * The state holder of a saves [MergeRequest]: the copies, `newer` and the free-slot flag come from the request,
-         * and a choice is its `keep`. [describe] names a copy for the screen; by default a copy shows [PolarisWhen.worded] of its `savedAt`, and the other copy also names its device.
+         * and a choice is its `keep`. [describe] names a copy for the screen; by default a copy shows
+         * [PolarisWhen.worded] of its `savedAt`, and the other copy also names its device.
          */
         public fun of(
             request: MergeRequest,
             scope: CoroutineScope,
             describe: ((MergeSide, other: Boolean) -> PolarisSaveVersion)? = null,
         ): PolarisSaveConflictState = of(
-            { PolarisSaveSides(request.local ?: MergeSide(JsonNull, null), request.remote, request.choices, request.newer) },
+            {
+                PolarisSaveSides(
+                    request.local ?: MergeSide(JsonNull, null),
+                    request.remote,
+                    request.choices,
+                    request.newer,
+                )
+            },
             PolarisSaveResolver.of(request),
             scope,
             describe,
@@ -286,14 +295,12 @@ public class PolarisSaveConflictState private constructor(
             resolver: PolarisSaveResolver,
             scope: CoroutineScope,
             describe: ((MergeSide, other: Boolean) -> PolarisSaveVersion)? = null,
-        ): PolarisSaveConflictState {
-            return PolarisSaveConflictState(
-                { sides(local, remote, choices, newer, describe) },
-                resolver,
-                scope,
-                fixedSides = true,
-            )
-        }
+        ): PolarisSaveConflictState = PolarisSaveConflictState(
+            { sides(local, remote, choices, newer, describe) },
+            resolver,
+            scope,
+            fixedSides = true,
+        )
 
         private fun sides(
             local: MergeSide,
