@@ -71,6 +71,7 @@ jobs:
       godot: ${{ steps.scope.outputs.godot }}
       e2e-backend: ${{ steps.scope.outputs.e2e-backend }}
       docs: ${{ steps.scope.outputs.docs }}
+      docs-snippets: ${{ steps.scope.outputs.docs-snippets }}
       python-matrix: ${{ steps.scope.outputs.python-matrix }}
       kotlin-desktop-matrix: ${{ steps.scope.outputs.kotlin-desktop-matrix }}
       kotlin-emulator-matrix: ${{ steps.scope.outputs.kotlin-emulator-matrix }}
@@ -862,9 +863,9 @@ jobs:
   swift-floor:
     name: Swift SDK floor (macos-15, Xcode 16.4)
     needs: changes
-    if: needs.changes.outputs.swift-floor == 'true'
+    if: needs.changes.outputs.swift-floor == 'true' || needs.changes.outputs.docs-snippets == 'true'
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
@@ -873,18 +874,34 @@ jobs:
       - name: Xcode 16.4, Swift below 6.3
         run: sdks/swift/tools/select-xcode-16.sh
       - name: swift build (macOS host)
+        if: needs.changes.outputs.swift-floor == 'true'
         run: swift build --package-path sdks/swift
-      - name: iOS build (packs, update, platform)
+      # One invocation builds every library (the package scheme); the platform and its C surface
+      # then rebuild with warnings as errors (the libzstd importer warnings fail PolarisKeyPacks
+      # under SWIFT_TREAT_WARNINGS_AS_ERRORS, so the package scheme runs without it).
+      - name: iOS build (every library, platform strict)
+        if: needs.changes.outputs.swift-floor == 'true'
         working-directory: sdks/swift
         run: |
-          for scheme in PolarisKeyPacks PolarisKeyUpdate; do
-            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
-              CODE_SIGNING_ALLOWED=NO -quiet build
-          done
+          xcodebuild -scheme PolarisKey-Package -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO -quiet build
           for scheme in PolarisKeyPlatform PolarisKeyPlatformC; do
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
           done
+      # SP-45b: the Swift half of the docs snippet lane, on the macOS runner Swift 6 needs (it ran in
+      # its own job, docs-snippets-swift). The package builds above only when its lane ran.
+      - if: needs.changes.outputs.docs-snippets == 'true'
+        uses: ./.github/actions/setup-js
+      - if: needs.changes.outputs.docs-snippets == 'true'
+        run: pnpm build
+      - name: Swift docs snippets (lane)
+        if: needs.changes.outputs.docs-snippets == 'true'
+        working-directory: packages/docs
+        env:
+          PKEY_DOCS_LANES: swift
+          PKEY_DOCS_SKIP_LANES: kotlin,gdscript
+        run: pnpm exec vitest run test/snippets/snippets.test.ts -t "swift lane"
 
   # The Swift SDK and the Apple platform plugin on macos-26, as four jobs (P0-43 put them on one
   # job; it grew past its 45 minutes, measured 2026-10-12: pkey dev build 5.5 min, swift test
@@ -967,13 +984,21 @@ jobs:
             ~/Library/Caches/org.swift.swiftpm
             ~/Library/org.swift.swiftpm
           key: swiftpm-${{ runner.os }}-xcode26.6-${{ hashFiles('sdks/swift/Package.resolved', 'sdks/swift/Package.swift') }}
-      # The libraries build strictly (the tests carry warnings of their own: code after a skip's
-      # throw, a deprecated Sparkle initialiser). Then the tests are built once and run in parallel
-      # without a second compile. Neither build writes the index store, which only an IDE reads.
-      - name: swift build + test (warnings as errors, parallel)
+      # One compile: the libraries and the tests build together (`--build-tests`), so `swift test
+      # --skip-build` reuses every product. The libraries stay strict without -warnings-as-errors,
+      # which would change the flags and recompile everything, and would also fail on the tests'
+      # own warnings (code after a skip's throw, a deprecated Sparkle initialiser): any Swift
+      # warning under sdks/swift/Sources fails the step instead. Neither build writes the index
+      # store, which only an IDE reads.
+      - name: swift build (one compile, library warnings fail)
         run: |
-          swift build --package-path sdks/swift --disable-index-store -Xswiftc -warnings-as-errors
-          swift build --package-path sdks/swift --build-tests --disable-index-store
+          swift build --package-path sdks/swift --build-tests --disable-index-store 2>&1 | tee "$RUNNER_TEMP/swift-build.log"
+          if grep -E '/sdks/swift/Sources/.*\.swift:[0-9]+:[0-9]+: warning:' "$RUNNER_TEMP/swift-build.log"; then
+            echo "::error::a library source warns (see above); the libraries build warning-free"
+            exit 1
+          fi
+      - name: swift test (parallel, no rebuild)
+        run: |
           swift test --package-path sdks/swift --skip-build --parallel --skip PkeyDevLiveTests
           # The live suite shares one pkey dev server, so it runs serially.
           swift test --package-path sdks/swift --skip-build --filter PkeyDevLiveTests
@@ -986,16 +1011,15 @@ jobs:
         run: sdks/swift/tools/check-registry-archive.sh
       - name: Swift resolve boundary
         run: sdks/swift/tools/check-resolve-clones.sh
+      # One invocation of the package scheme builds every library per destination (it lists the
+      # same targets as the schemes it replaces, plus UICore and the Game Center pair). The P5-05
+      # targets then rebuild with warnings as errors (the libzstd importer warnings make
+      # PolarisKeyPacks fail under SWIFT_TREAT_WARNINGS_AS_ERRORS, so the package scheme is plain).
       - name: iOS build of every library
         working-directory: sdks/swift
-        # Every library builds for iOS; the P5-05 targets with warnings as errors (the libzstd
-        # importer warnings make PolarisKeyPacks fail under SWIFT_TREAT_WARNINGS_AS_ERRORS).
         run: |
-          for scheme in PolarisKeyCore PolarisKeyLicense PolarisKeyConfig PolarisKeyRelease PolarisKeyIdentity \
-            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKeyUpdateUI PolarisKey; do
-            xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
-              CODE_SIGNING_ALLOWED=NO -quiet build
-          done
+          xcodebuild -scheme PolarisKey-Package -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO -quiet build
           for scheme in PolarisKeyPlatform PolarisKeyPlatformC; do
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
@@ -1005,20 +1029,18 @@ jobs:
         # SP-S16: Catalyst takes the iOS branches (identifierForVendor, no Sparkle: the Sparkle
         # product is conditioned on .macOS and every Sparkle file is #if os(macOS)).
         run: |
-          for scheme in PolarisKeyCore PolarisKeyLicense PolarisKeyConfig PolarisKeyRelease PolarisKeyIdentity \
-            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKeyUpdateUI PolarisKey PolarisKeyPlatform; do
-            xcodebuild -scheme "$scheme" -destination 'generic/platform=macOS,variant=Mac Catalyst' \
-              CODE_SIGNING_ALLOWED=NO -quiet build
-          done
+          xcodebuild -scheme PolarisKey-Package -destination 'generic/platform=macOS,variant=Mac Catalyst' \
+            CODE_SIGNING_ALLOWED=NO -quiet build
       - name: macOS build of the update and UI libraries
         working-directory: sdks/swift
         # UK-08.6: PolarisKeyUpdateUI is macOS only (the SwiftUI Sparkle user driver); it and the
-        # libraries it sits on build for the Mac with warnings as errors.
+        # libraries it sits on (Update, UI) build for the Mac with warnings as errors, and the package
+        # scheme builds the rest.
         run: |
-          for scheme in PolarisKeyUpdate PolarisKeyUI PolarisKeyUpdateUI; do
-            xcodebuild -scheme "$scheme" -destination 'generic/platform=macOS' \
-              CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
-          done
+          xcodebuild -scheme PolarisKey-Package -destination 'generic/platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO -quiet build
+          xcodebuild -scheme PolarisKeyUpdateUI -destination 'generic/platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
       # A failed lint does not skip the tests above it; the job still fails (tools/ciSteps.test.ts).
       - name: Fail the job when lint failed
         if: ${{ !cancelled() && steps.lint.outcome == 'failure' }}
@@ -1145,6 +1167,8 @@ jobs:
   # exports. PKEY_DOCS_LANES makes a lane that cannot run a failure instead of a skip.
   docs-snippets:
     name: Docs snippets (Kotlin, Godot)
+    needs: changes
+    if: needs.changes.outputs.docs-snippets == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1181,28 +1205,6 @@ jobs:
           PKEY_DOCS_LANES: kotlin,gdscript
           PKEY_DOCS_SKIP_LANES: swift
         run: GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2/godot" pnpm exec vitest run test/snippets/snippets.test.ts -t "kotlin lane|gdscript lane|Godot class names"
-
-  # SP-45b: the Swift half of the docs snippet lane, on the macOS runner Swift 6 needs.
-  docs-snippets-swift:
-    name: Docs snippets (Swift)
-    runs-on: macos-15
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - run: swift --version
-      - name: Swift lane
-        working-directory: packages/docs
-        env:
-          PKEY_DOCS_LANES: swift
-          PKEY_DOCS_SKIP_LANES: kotlin,gdscript
-        run: pnpm exec vitest run test/snippets/snippets.test.ts -t "swift lane"
 
   kotlin:
     name: Kotlin SDK (JVM modules + conformance runner)
@@ -1837,7 +1839,6 @@ jobs:
         godot,
         e2e-backend,
         docs-snippets,
-        docs-snippets-swift,
       ]
     runs-on: ubuntu-latest
     timeout-minutes: 10

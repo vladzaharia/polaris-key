@@ -21,6 +21,9 @@
     "docs": {
       "paths": ["packages/docs/", "docs/", "packages/worker/src/"]
     },
+    "docs-snippets": {
+      "paths": ["packages/docs/", "sdks/swift/", "sdks/kotlin/", "sdks/godot/"]
+    },
     "workerd": {
       "paths": [
         "packages/worker/",

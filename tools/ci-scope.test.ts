@@ -163,6 +163,7 @@ const outputsOf = (stdout: string) =>
 describe("lane selection", () => {
   it("runs the Swift lanes, and nothing else, for a Swift source change", () => {
     expect(on(["sdks/swift/Sources/PolarisKeyCore/Client.swift"])).toEqual([
+      "docs-snippets",
       "swift",
       "swift-floor",
       "swift-linux",
@@ -182,6 +183,7 @@ describe("lane selection", () => {
 
   it("runs the kit lint lane for a kit's UI sources", () => {
     expect(on(["sdks/kotlin/ui/src/androidMain/kotlin/A.kt"])).toEqual([
+      "docs-snippets",
       "ui-kits",
       "compose-desktop",
       "kotlin",
@@ -1099,7 +1101,11 @@ describe("ci.yml keeps the Swift SDK building on its oldest toolchain", () => {
   it("is a macos-15 job on its own lane, and CI OK waits for it", () => {
     expect(floor).toBeDefined();
     expect(floor["runs-on"]).toBe("macos-15");
-    expect(floor.if).toBe("needs.changes.outputs.swift-floor == 'true'");
+    // The Swift docs snippets ride this job (macOS slot diet), on their own lane.
+    expect(floor.if).toBe(
+      "needs.changes.outputs.swift-floor == 'true' || needs.changes.outputs.docs-snippets == 'true'",
+    );
+    expect(ci.jobs["docs-snippets-swift"]).toBeUndefined();
     expect([floor.needs ?? []].flat()).toContain("changes");
     expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).toContain("swift-floor");
   });
@@ -1118,26 +1124,47 @@ describe("ci.yml keeps the Swift SDK building on its oldest toolchain", () => {
     expect(apple["runs-on"]).toBe("macos-26");
   });
 
-  it("builds the package for macOS and, for iOS, packs, update, the platform and its C surface", () => {
+  it("builds the package for macOS and, for iOS, every library, then the platform and its C surface strictly", () => {
     expect(runs).toContain("swift build --package-path sdks/swift");
     expect(runs.join("\n")).not.toMatch(/swift test/);
     const ios = runs
       .find((r) => r.includes("generic/platform=iOS"))!
       .replace(/\\\n\s*/g, " ");
-    // Which schemes each `for` loop builds, with and without warnings as errors.
-    const plain: string[] = [];
-    const strict: string[] = [];
-    for (const [, schemes, body] of ios.matchAll(
-      /for scheme in ([^;]+); do([\s\S]*?)done/g,
-    ))
-      (body!.includes("SWIFT_TREAT_WARNINGS_AS_ERRORS=YES")
-        ? strict
-        : plain
-      ).push(...schemes!.trim().split(/\s+/));
-    expect(plain.sort()).toEqual(["PolarisKeyPacks", "PolarisKeyUpdate"]);
-    expect(strict.sort()).toEqual([
+    // One plain invocation of the package scheme, then the strict loop.
+    expect(ios).toMatch(/xcodebuild -scheme PolarisKey-Package /);
+    const loop = /for scheme in ([^;]+); do([\s\S]*?)done/.exec(ios)!;
+    expect(loop[2]).toContain("SWIFT_TREAT_WARNINGS_AS_ERRORS=YES");
+    expect(loop[1]!.trim().split(/\s+/).sort()).toEqual([
       "PolarisKeyPlatform",
       "PolarisKeyPlatformC",
+    ]);
+  });
+
+  it("runs the Swift docs snippets here, gated on the docs-snippets lane", () => {
+    const lane = (floor.steps ?? []).find((s) =>
+      (s.run ?? "").includes('-t "swift lane"'),
+    )!;
+    expect(lane.if).toBe("needs.changes.outputs.docs-snippets == 'true'");
+    expect(ci.jobs["docs-snippets"]!.if).toBe(
+      "needs.changes.outputs.docs-snippets == 'true'",
+    );
+  });
+
+  it("keeps a full run to five macOS jobs", () => {
+    const mac = Object.entries(ci.jobs).filter(([, j]) =>
+      String(j["runs-on"] ?? "").startsWith("macos-"),
+    );
+    // The three matrix legs (Python 3.12, Kotlin desktop, Godot smoke) are not counted here: their
+    // fate is the macOS-leg decision, not this fold.
+    expect(
+      mac.map(([id]) => id),
+      "the single-leg macOS jobs",
+    ).toEqual([
+      "browser-webkit",
+      "swift-floor",
+      "apple",
+      "apple-hosted",
+      "apple-plugin",
     ]);
   });
 
