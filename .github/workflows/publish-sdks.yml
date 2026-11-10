@@ -56,42 +56,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Never publish a red build: a run on a branch (a push or a dispatch on main) waits for the CI
-  # workflow's "CI OK" on this exact SHA (tools/require-ci-ok.sh, up to 120 minutes) and refuses
-  # on any other conclusion. A tag run skips it: deploy.yml's verify job proved the same thing
-  # before it called this workflow. A refusal skips every job below (nothing is published and the
-  # drift check does not wait for a feed that was never written).
-  ci-gate:
-    name: CI OK gate (main)
+  version:
+    name: Lockstep version
     runs-on: ubuntu-latest
     timeout-minutes: 130
-    if: github.repository == 'vladzaharia/polaris-key' && startsWith(github.ref, 'refs/heads/')
+    if: github.repository == 'vladzaharia/polaris-key'
+    # The CI OK wait is a step here, not a job upstream: a skipped job anywhere in a `needs`
+    # chain skips every dependent that has no status-check `if`, and a tag run skips the wait.
     permissions:
       contents: read
       checks: read
       actions: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Require CI OK on this commit
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
-        run: tools/require-ci-ok.sh
-
-  version:
-    name: Lockstep version
-    needs: ci-gate
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: ${{ !cancelled() && github.repository == 'vladzaharia/polaris-key' && (needs.ci-gate.result == 'success' || needs.ci-gate.result == 'skipped') }}
     outputs:
-      # CI OK is proven on this SHA: deploy.yml's verify passed `tested`, or ci-gate above just
+      # CI OK is proven on this SHA: deploy.yml's verify passed `tested`, or the step below just
       # waited for CI OK (a promote dispatch or a main push). The SDK suites CI already ran are
       # skipped on either proof; with neither (never today) they run as the safety net.
-      tested: ${{ inputs.tested || needs.ci-gate.result == 'success' }}
+      tested: ${{ inputs.tested || steps.ci.outcome == 'success' }}
       kind: ${{ steps.v.outputs.kind }}
       version: ${{ steps.v.outputs.version }}
       pep440: ${{ steps.v.outputs.pep440 }}
@@ -104,6 +84,18 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
+      # Never publish a red build: a run on a branch (a push or a dispatch on main) waits for the
+      # CI workflow's "CI OK" on this exact SHA (tools/require-ci-ok.sh, up to 120 minutes) and
+      # refuses on any other conclusion; a refusal fails this job and skips every job below it.
+      # A tag run skips the step: deploy.yml's verify job proved the same before it called this.
+      - id: ci
+        name: Require CI OK on this commit (main)
+        if: ${{ startsWith(github.ref, 'refs/heads/') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: tools/require-ci-ok.sh
       - id: v
         name: Derive the version from git
         run: node tools/sdk-version.mjs derive --github-output
@@ -482,6 +474,8 @@ jobs:
   swift:
     name: Swift registry
     needs: [version, swift-sign]
+    # Explicit: swift-test (two jobs up) is skipped when `tested`, which would skip this job.
+    if: ${{ !cancelled() && needs.version.result == 'success' && needs.swift-sign.result == 'success' }}
     permissions:
       contents: read
       id-token: write
@@ -906,7 +900,9 @@ jobs:
         image,
         drift,
       ]
-    if: needs.version.outputs.channel == 'stable' && startsWith(github.ref, 'refs/tags/v')
+    # Explicit status check: swift-test and godot-test are skipped when `tested`, which would
+    # skip this job through its `needs` chain. Same condition as before: every job passed.
+    if: ${{ !cancelled() && needs.version.outputs.channel == 'stable' && startsWith(github.ref, 'refs/tags/v') && needs.version.result == 'success' && needs.drift.result == 'success' && needs.python.result == 'success' && needs.swift.result == 'success' && needs.maven.result == 'success' && needs.godot.result == 'success' && needs.image.result == 'success' && needs.npm-tier-0.result == 'success' && needs.npm-tier-1.result == 'success' && needs.npm-tier-2.result == 'success' && needs.npm-tier-3.result == 'success' && needs.npm-tier-4.result == 'success' && needs.npm-tier-5.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: package-registry

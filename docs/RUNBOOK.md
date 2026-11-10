@@ -1421,7 +1421,7 @@ nothing to bump and no per-SDK tag:
   the tests (`tools/sdk-version.mjs stamp`) and never commits it. A prerelease tag must be
   `-alpha.N`, `-beta.N` or `-rc.N` (PyPI has to spell it too); anything else fails the run.
 - **Never a red build:** a `main` publish first waits for the CI workflow's `CI OK` on that SHA
-  (`tools/require-ci-ok.sh`, the `ci-gate` job, up to 120 minutes) and publishes nothing, and runs
+  (`tools/require-ci-ok.sh`, a step of the `version` job, up to 120 minutes) and publishes nothing, and runs
   no drift check, if it is not `success`. The feed drift check still reads back what was published.
 - **To release:** tag a commit on `main` `vX.Y.Z` and push the tag. `deploy.yml` deploys the
   Worker, registers the platform packages (below), then publishes every SDK at `X.Y.Z`. The tag's
