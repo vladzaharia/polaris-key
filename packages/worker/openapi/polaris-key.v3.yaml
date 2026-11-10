@@ -19946,6 +19946,36 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/distribution/updaters:
+    get:
+      operationId: getAdminProductUpdaters
+      tags: [admin]
+      summary: The updaters a product's shipped platforms can use, with Verified state
+      description: >
+        P2-11. One row per shipped platform (a build, a declared file or a named outlet; a planned
+        platform has none) that has an updater: the updater ids it can use, the first being the usual
+        one, and its state. `verified` once a device has reported an update outcome (offered,
+        downloaded, applied or confirmed) on an outlet that platform's updaters use, `failing` while a
+        device reported a reverted update or a boot rollback, `not_seen` otherwise, `unavailable`
+        when the update-health counters could not be read (no data, not zero). Counts are distinct
+        devices over the counters' 30-day retention on the app's newest releases; an event names an
+        outlet and a channel but no platform, so a fact is per outlet. Read-only; area `ship`; admin
+        session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The updaters read.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminProductUpdaters" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   /manage/api/products/{product}/assets/settings/{key}:
     patch:
       operationId: setAdminAssetSetting
@@ -26728,6 +26758,41 @@ components:
         channels:
           type: array
           items: { $ref: "#/components/schemas/AdminChannel" }
+    AdminProductUpdaters:
+      type: object
+      required: [product, now, platforms]
+      properties:
+        product: { type: string }
+        now: { type: integer, description: Epoch seconds. }
+        platforms:
+          type: array
+          items:
+            type: object
+            required: [platform, arches, updaters, state, checks, failures]
+            properties:
+              platform: { type: string }
+              arches: { type: array, items: { type: string } }
+              updaters:
+                type: array
+                items:
+                  type: string
+                  enum:
+                    [
+                      sparkle,
+                      winsparkle,
+                      velopack,
+                      app-installer,
+                      zsync,
+                      signed-feed,
+                      godot,
+                      play,
+                      store,
+                    ]
+              state:
+                type: string
+                enum: [verified, failing, not_seen, unavailable]
+              checks: { type: integer, minimum: 0 }
+              failures: { type: integer, minimum: 0 }
     AdminChannel:
       type: object
       required:
