@@ -12,8 +12,7 @@ extends RefCounted
 const VECTORS := "res://tests/corpus/v2/sync-vectors.json"
 ## The two exportCases rows of the JS slice, until the corpus mirror carries them (a row the mirror has wins).
 const EXTRA_EXPORT_ROWS := "res://tests/fixtures/export_extra_rows.json"
-## What stands in for a lone surrogate escape while the file is parsed (a String cannot hold one).
-const LONE_SURROGATE := "\uE000"
+const LONE_SURROGATE := PKeyExportFixtures.LONE_SURROGATE
 
 ## Implemented sections.
 const RUN := ["hkdfCases", "blindCases", "canonicalJsonCases", "recoveryCodeCases", "envelopeCases", "hpkeAnchor", "wrapCases", "adoptCases",
@@ -31,7 +30,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	# 4.4's parser drops a U+0000 escape (newer engines read it as U+FFFD); spell it as U+FFFD
 	# so every engine hands _name_of the same text.
 	var nul_escape := RegEx.create_from_string("(?<!\\\\)((?:\\\\\\\\)*)\\\\u0000")
-	var text := _lone_surrogates(nul_escape.sub(FileAccess.get_file_as_string(VECTORS), "$1\\uFFFD", true))
+	var text := PKeyExportFixtures.lone_surrogates(nul_escape.sub(FileAccess.get_file_as_string(VECTORS), "$1\\uFFFD", true))
 	if not t.check("vectors parse", j.parse(text) == OK and j.data is Dictionary, VECTORS):
 		return true
 	var d: Dictionary = j.data
@@ -66,20 +65,6 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_wrong_aad_lane(t)
 	await _export_cases(t, d["exportCases"])
 	return true
-
-
-## The text with every lone surrogate escape (one not part of a pair) spelled as `LONE_SURROGATE`: the engine's
-## parser refuses the file otherwise, and a `String` cannot hold the code point.
-static func _lone_surrogates(text: String) -> String:
-	var re := RegEx.create_from_string("(?<!\\\\)((?:\\\\\\\\)*)(?:(\\\\u[dD][89abAB][0-9a-fA-F]{2}\\\\u[dD][c-fC-F][0-9a-fA-F]{2})|\\\\u[dD][89a-fA-F][0-9a-fA-F]{2})")
-	var out := ""
-	var at := 0
-	for m in re.search_all(text):
-		out += text.substr(at, m.get_start() - at)
-		var pair := m.get_string(2)
-		out += m.get_string(1) + (pair if pair != "" else LONE_SURROGATE)
-		at = m.get_end()
-	return out + text.substr(at)
 
 
 ## `v` with every string that held a lone surrogate (now `LONE_SURROGATE`) replaced by NaN. A String cannot hold

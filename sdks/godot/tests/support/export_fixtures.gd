@@ -7,6 +7,8 @@ extends RefCounted
 
 const TransferCodec := preload("res://addons/polaris_key/services/cloud_sync/transfer_codec.gd")
 const PIECE := 300007
+## What stands in for a lone surrogate escape while the corpus is parsed (a String cannot hold one).
+const LONE_SURROGATE := "\uE000"
 
 
 ## A host codec over a root: the ring codec's surface (`locked`, `open`, `open_any`, `blind`) and the codec port's `open_pull`.
@@ -121,6 +123,20 @@ class CollectSink:
 		for p in parts:
 			out.append_array(p)
 		return out
+
+
+## The text with every lone surrogate escape (one not part of a pair) spelled as `LONE_SURROGATE`: the engine's
+## parser refuses the file otherwise, and a `String` cannot hold the code point.
+static func lone_surrogates(text: String) -> String:
+	var re := RegEx.create_from_string("(?<!\\\\)((?:\\\\\\\\)*)(?:(\\\\u[dD][89abAB][0-9a-fA-F]{2}\\\\u[dD][c-fC-F][0-9a-fA-F]{2})|\\\\u[dD][89a-fA-F][0-9a-fA-F]{2})")
+	var out := ""
+	var at := 0
+	for m in re.search_all(text):
+		out += text.substr(at, m.get_start() - at)
+		var pair := m.get_string(2)
+		out += m.get_string(1) + (pair if pair != "" else LONE_SURROGATE)
+		at = m.get_end()
+	return out + text.substr(at)
 
 
 static func whole_key(collection: String, record: String, version: Variant) -> String:
