@@ -387,22 +387,6 @@ export const REQUEST_STATES: ShippedState[] = [
       await h1(p, "Choose a license for this device");
       await p.getByRole("button", { name: "Use this license" }).click();
       await h1(p, "Continue to Diceroll as Mara?");
-      // On a phone the step returns by itself after three seconds (a 1 s interval), which would
-      // navigate away mid-check on a slow runner. Hold that one interval back, as the harness
-      // does for the toast auto-dismiss: the product's duration is untouched, the step stays put.
-      await p.evaluate(() => {
-        const real = window.setInterval.bind(window);
-        window.setInterval = ((
-          fn: TimerHandler,
-          ms?: number,
-          ...a: unknown[]
-        ) =>
-          real(
-            fn,
-            ms === 1000 ? 2147483647 : ms,
-            ...a,
-          )) as typeof window.setInterval;
-      });
       await p.getByRole("button", { name: "Continue to Diceroll" }).click();
       await h1(p, "You're signed in to Diceroll");
     },

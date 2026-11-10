@@ -1321,7 +1321,13 @@ export function since(epochSeconds: number, locale: string): string {
   return rtf.format(-Math.round(d / 365), "year");
 }
 
-const warnedRows = new Set<string>();
+/** Which rows were warned of. One set for every copy of the kit in the page (the built package
+ *  and a bundler's own copy would otherwise each warn), found under a registered symbol so a
+ *  test that shares its module graph between files can forget it (`test/setupKitParts.ts`). */
+const WARNED_ROWS = Symbol.for("polaris-key.kit.warnedRows");
+const warnedRows: Set<string> = ((globalThis as Record<symbol, unknown>)[
+  WARNED_ROWS
+] ??= new Set<string>()) as Set<string>;
 
 /** True when the string has every argument it names; else warns once and says no (the elements
  *  do the same), so a missing fact is never drawn as "{name}". */

@@ -80,19 +80,27 @@ describe("usePolarisFetch", () => {
   it("a bad backend origin is invalid-options at the provider", () => {
     const adapter = adapterWithHeaders();
     const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(() =>
-      render(
-        <PolarisKeyProvider
-          config={{
-            productSlug: "acme",
-            adapter,
-            backend: { origins: ["http://api.test"] },
-          }}
-        >
-          {null}
-        </PolarisKeyProvider>,
-      ),
-    ).toThrow(/backend\.origins/);
-    quiet.mockRestore();
+    // React rethrows a render error as an `error` event on the window: the throw below is the
+    // assertion, so say the event is handled and jsdom does not print it as uncaught.
+    const handled = (e: ErrorEvent): void => e.preventDefault();
+    window.addEventListener("error", handled);
+    try {
+      expect(() =>
+        render(
+          <PolarisKeyProvider
+            config={{
+              productSlug: "acme",
+              adapter,
+              backend: { origins: ["http://api.test"] },
+            }}
+          >
+            {null}
+          </PolarisKeyProvider>,
+        ),
+      ).toThrow(/backend\.origins/);
+    } finally {
+      window.removeEventListener("error", handled);
+      quiet.mockRestore();
+    }
   });
 });
