@@ -5,13 +5,13 @@
  * (tools/gate.mjs) both ask this script, so a lane runs for the same files in CI and in the local gate.
  *
  *   node tools/ci-scope.mjs ci [--event <name>] [--base <rev>] [--head <rev>] [--github-output]
- *       print (or append to $GITHUB_OUTPUT) `<lane>=true|false` for every lane, `full`, and
- *       `<matrix>-matrix=<json>` for every matrix. The event defaults to $GITHUB_EVENT_NAME. Two
+ *       print (or append to $GITHUB_OUTPUT) `<lane>=true|false` for every lane, `full`, `js-base`
+ *       and `<matrix>-matrix=<json>` for every matrix. The event defaults to $GITHUB_EVENT_NAME. Two
  *       runs narrow: a pull_request (to the files changed against its base, on the floor and latest
- *       of each matrix) and a push to `next` (to the files changed since its newest green ancestor,
- *       see findGreenAncestor, on the FULL matrices). Every other event (a push to main, a tag, a
- *       manual run) runs every lane and the full matrices, and so does a narrowing run whose changed
- *       files cannot be read (no green ancestor within the lookback, an unreadable diff or API).
+ *       of each matrix) and a push to `next` (per lane: to the files changed since THAT lane's newest
+ *       green ancestor, see laneBases, on the FULL matrices). Every other event (a push to main, a
+ *       tag, a manual run) runs every lane and the full matrices, and so does a push to `next` whose
+ *       ancestry, API or diff cannot be read, and a lane that has no green ancestor.
  *   node tools/ci-scope.mjs touches <lane> [--base <rev>] [--worktree]
  *       exit 0 when the lane runs for the changes since the merge base with <rev> (default main),
  *       exit 1 when it can be skipped; --worktree adds uncommitted changes (the gate's view). When
@@ -52,51 +52,146 @@ export function matrixFor(scope, name, narrow) {
   return narrow ? m.pr : m.main;
 }
 
-/** The integration branch whose pushes narrow to the files changed since a green ancestor. */
+/** The integration branch whose pushes narrow, per lane, to the files changed since its green base. */
 export const NEXT_REF = "refs/heads/next";
-/** How many commits before HEAD a green ancestor is looked for on `next`. */
-export const ANCESTOR_LOOKBACK = 30;
+/** How many commits of HEAD's ancestry are walked for a lane's green base (a bound, not a window). */
+export const ANCESTRY_LIMIT = 1000;
+/** How many of the newest push runs on `next` are read for their job conclusions. */
+export const RUN_LIMIT = 100;
+
+/** `*` is the only wildcard: any run of characters (a matrix name's rendered part). */
+export function globMatch(glob, name) {
+  const re = glob
+    .split("*")
+    .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&"))
+    .join(".*");
+  return new RegExp(`^${re}$`).test(name);
+}
+
+/** The `jobs` group (a lane, `js`, or `always`) a ci.yml job display name belongs to, or null. */
+export function groupOfJob(scope, name) {
+  for (const [group, globs] of Object.entries(scope.jobs))
+    if (globs.some((g) => globMatch(g, name))) return group;
+  return null;
+}
+
+/** The groups whose green base is tracked: every lane that has jobs in ci.yml, and `js`. */
+export function trackedGroups(scope) {
+  return Object.entries(scope.jobs)
+    .filter(([g, globs]) => g !== "always" && globs.length > 0)
+    .map(([g]) => g);
+}
 
 /**
- * The `changes` job's outputs: lane flags, `full`, and one JSON matrix per matrix. `files` is the
- * change set the run narrows to, or null when it is unknown. A pull request with known files
- * narrows to their lanes and the pull-request matrices. A push to `next` (`ref` is refs/heads/next)
- * with known files, that is, with a green ancestor found, narrows to their lanes on the FULL
- * matrices. A push to main, a tag, a manual run and any run whose changes could not be read run
- * every lane and the full matrices. `full` is "false" exactly when lanes are narrowed, which is
- * when `ci-ok` may count a skipped lane as passed.
+ * Which groups were green in one CI run, from its jobs (`{ name, conclusion }`). A group is green
+ * when it has jobs and each concluded success, or, for a lane (not `js`, which always runs), when
+ * each was skipped and the `changes` job succeeded: the lane was left out because nothing it reads
+ * changed since a base on which it was green, so it is green here too. Anything else (a failure, a
+ * cancellation, a job that never finished, a group the run has no job for) is not green.
  */
-export function ciOutputs(scope, { event, ref, files }) {
-  const pr = event === "pull_request" && files !== null;
-  const next = event === "push" && ref === NEXT_REF && files !== null;
-  const narrow = pr || next;
-  const lanes = selectLanes(scope, narrow ? files : null);
-  const out = Object.fromEntries(
-    Object.entries(lanes).map(([l, on]) => [l, String(on)]),
+export function greenGroups(scope, jobs) {
+  const changesOk = jobs.some(
+    (j) =>
+      groupOfJob(scope, j.name) === "always" &&
+      /^Changes\b/.test(j.name) &&
+      j.conclusion === "success",
   );
-  out.full = String(!narrow);
+  const out = {};
+  for (const g of trackedGroups(scope)) {
+    const mine = jobs.filter((j) => groupOfJob(scope, j.name) === g);
+    out[g] =
+      mine.length > 0 &&
+      (mine.every((j) => j.conclusion === "success") ||
+        (g !== "js" &&
+          changesOk &&
+          mine.every((j) => j.conclusion === "skipped")));
+  }
+  return out;
+}
+
+/**
+ * Each tracked group's base: the newest of `commits` (newest first, HEAD excluded) on which the
+ * group was green (greenGroups). `jobsOf(sha)` returns that commit's CI run's jobs, or null when it
+ * has no run; it is called lazily and the walk stops once every group has a base. A group with no
+ * green commit gets null, and then always runs.
+ */
+export function laneBases(scope, commits, jobsOf) {
+  const groups = trackedGroups(scope);
+  const bases = Object.fromEntries(groups.map((g) => [g, null]));
+  let open = groups.length;
+  for (const sha of commits) {
+    if (open === 0) break;
+    const jobs = jobsOf(sha);
+    if (!jobs) continue;
+    const green = greenGroups(scope, jobs);
+    for (const g of groups)
+      if (bases[g] === null && green[g]) {
+        bases[g] = sha;
+        open -= 1;
+      }
+  }
+  return bases;
+}
+
+/** The base a lane is measured against: its own group's, or the js group's for a lane with no ci.yml job. */
+const baseGroup = (scope, lane) =>
+  (scope.jobs[lane] ?? []).length > 0 ? lane : "js";
+
+/**
+ * The `changes` job's outputs: lane flags, `full`, `js-base` and one JSON matrix per matrix.
+ * A pull request with known `files` narrows to their lanes and the pull-request matrices; its
+ * `js-base` is empty. A push to `next` (`ref` is refs/heads/next) with `push` (`{ bases, files }`:
+ * each tracked group's green base and the files changed since it, null when unknown) narrows each
+ * lane to the files changed since its own base, on the FULL matrices; a lane without a base, or
+ * whose diff is unknown, runs. `js-base` is the js group's base when every file changed since it is
+ * under `packages/`, else empty. A push to main, a tag, a manual run and a push to `next` with no
+ * `push` or no base at all run every lane and the full matrices. `full` is "false" exactly when
+ * lanes are narrowed, which is when `ci-ok` may count a skipped lane as passed.
+ */
+export function ciOutputs(scope, { event, ref, files, push }) {
+  const lanes = Object.keys(scope.lanes);
+  const pr = event === "pull_request" && files !== null && files !== undefined;
+  const next =
+    event === "push" &&
+    ref === NEXT_REF &&
+    !!push &&
+    Object.values(push.bases).some(Boolean);
+  const on = pr
+    ? selectLanes(scope, files)
+    : next
+      ? Object.fromEntries(
+          lanes.map((l) => {
+            const g = baseGroup(scope, l);
+            const f = push.files[g];
+            return [l, !push.bases[g] || !f ? true : selectLanes(scope, f)[l]];
+          }),
+        )
+      : selectLanes(scope, null);
+  const out = Object.fromEntries(
+    Object.entries(on).map(([l, v]) => [l, String(v)]),
+  );
+  out.full = String(!(pr || next));
+  const jsFiles = next ? push.files.js : null;
+  out["js-base"] =
+    next &&
+    push.bases.js &&
+    jsFiles &&
+    jsFiles.every((f) => f.startsWith("packages/"))
+      ? push.bases.js
+      : "";
   for (const name of Object.keys(scope.matrices))
     out[`${name}-matrix`] = JSON.stringify(matrixFor(scope, name, pr));
   return out;
 }
 
 /**
- * The newest of `commits` (newest first, HEAD excluded) whose CI run concluded success. `greenShas`
- * is the set of head SHAs of the CI workflow's successful push runs on `next`; a workflow run is
- * successful only when its `CI OK` job is, so membership is the "CI OK success" test. Null when
- * none is green.
+ * Every tracked group's green base for `head`, from the GitHub API through `gh` (token: `actions:
+ * read`): the ancestry from `git rev-list`, the newest RUN_LIMIT push runs of the CI workflow on
+ * `next`, and each consulted run's job conclusions (a lane that passed inside a failed or
+ * cancelled run counts). Null when git or the API cannot say; the caller then runs everything.
  */
-export function findGreenAncestor(commits, greenShas) {
-  const green = new Set(greenShas);
-  return commits.find((c) => green.has(c)) ?? null;
-}
-
-/**
- * The newest ancestor of `head` (within ANCESTOR_LOOKBACK commits) on which the CI workflow's push
- * run on `next` succeeded, found with the GitHub API through `gh` (token: `actions: read`). Null
- * when there is none, or when git or the API cannot say; the caller then runs everything.
- */
-export function greenAncestorOf({
+export function greenBasesOf({
+  scope,
   repo,
   head = "HEAD",
   cwd = process.cwd(),
@@ -111,22 +206,44 @@ export function greenAncestorOf({
     const commits = run("git", [
       "rev-list",
       "-n",
-      String(ANCESTOR_LOOKBACK + 1),
+      String(ANCESTRY_LIMIT + 1),
       head,
     ])
       .split("\n")
       .filter(Boolean)
       .slice(1);
     if (commits.length === 0) return null;
-    const runs = run("gh", [
+    const runIds = new Map();
+    const listed = run("gh", [
       "api",
-      `repos/${repo}/actions/workflows/ci.yml/runs?branch=next&event=push&status=success&per_page=100`,
+      `repos/${repo}/actions/workflows/ci.yml/runs?branch=next&event=push&per_page=${RUN_LIMIT}`,
       "--jq",
-      '.workflow_runs[] | select(.path == ".github/workflows/ci.yml" and .conclusion == "success") | .head_sha',
+      '.workflow_runs[] | select(.path == ".github/workflows/ci.yml") | [.head_sha, (.id | tostring)] | @tsv',
     ])
       .split("\n")
       .filter(Boolean);
-    return findGreenAncestor(commits, runs);
+    for (const line of listed) {
+      const [sha, id] = line.split("\t");
+      if (sha && id && !runIds.has(sha)) runIds.set(sha, id);
+    }
+    const jobsOf = (sha) => {
+      const id = runIds.get(sha);
+      if (!id) return null;
+      return run("gh", [
+        "api",
+        "--paginate",
+        `repos/${repo}/actions/runs/${id}/jobs?per_page=100&filter=latest`,
+        "--jq",
+        '.jobs[] | [.name, (.conclusion // "")] | @tsv',
+      ])
+        .split("\n")
+        .filter(Boolean)
+        .map((l) => {
+          const i = l.lastIndexOf("\t");
+          return { name: l.slice(0, i), conclusion: l.slice(i + 1) };
+        });
+    };
+    return laneBases(scope, commits, jobsOf);
   } catch {
     return null;
   }
@@ -178,17 +295,34 @@ function main(argv) {
     const ref = arg(rest, "--ref") ?? process.env.GITHUB_REF ?? "";
     const head = arg(rest, "--head") ?? "HEAD";
     let files = null;
+    let push = null;
     let note = "";
     if (event === "pull_request" && base) files = changedFiles({ base, head });
     else if (event === "push" && ref === NEXT_REF) {
       const repo = arg(rest, "--repo") ?? process.env.GITHUB_REPOSITORY;
-      const ancestor = repo ? greenAncestorOf({ repo, head }) : null;
-      if (ancestor) files = changedFiles({ base: ancestor, head });
-      note = ancestor
-        ? ` since green ${ancestor.slice(0, 12)}`
-        : " (no green ancestor)";
+      const bases = repo ? greenBasesOf({ scope, repo, head }) : null;
+      if (bases) {
+        const diffs = new Map();
+        const filesOf = (sha) => {
+          if (!diffs.has(sha))
+            diffs.set(sha, changedFiles({ base: sha, head }));
+          return diffs.get(sha);
+        };
+        push = {
+          bases,
+          files: Object.fromEntries(
+            Object.entries(bases).map(([g, sha]) => [
+              g,
+              sha ? filesOf(sha) : null,
+            ]),
+          ),
+        };
+        note = ` bases ${Object.entries(bases)
+          .map(([g, sha]) => `${g}@${sha ? sha.slice(0, 8) : "none"}`)
+          .join(" ")}`;
+      } else note = " (green bases unreadable)";
     }
-    const out = ciOutputs(scope, { event, ref, files });
+    const out = ciOutputs(scope, { event, ref, files, push });
     const lines = Object.entries(out).map(([k, v]) => `${k}=${v}`);
     if (rest.includes("--github-output")) {
       const file = process.env.GITHUB_OUTPUT;
@@ -196,7 +330,7 @@ function main(argv) {
       appendFileSync(file, `${lines.join("\n")}\n`);
     }
     process.stdout.write(
-      `${event || "(no event)"}: ${files === null ? "every lane" : `${files.length} changed file(s)`}${note}\n${lines.join("\n")}\n`,
+      `${event || "(no event)"}: ${out.full === "true" ? "every lane" : files ? `${files.length} changed file(s)` : "per-lane diffs"}${note}\n${lines.join("\n")}\n`,
     );
     return 0;
   }

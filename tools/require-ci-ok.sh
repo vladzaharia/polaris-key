@@ -3,8 +3,9 @@
 #
 # Used by deploy.yml (verify) and publish-sdks.yml (the main-channel gate), so a tag is deployed
 # and a build is published only when CI already passed on that SHA. A push run on next may be
-# narrowed to the lanes touched since its newest green ancestor (tools/ci-scope.mjs): its CI OK
-# means those lanes passed on it and the rest on that ancestor, so success here is still proof. Fails CLOSED: any
+# narrowed, per lane, to the files touched since that lane's newest green ancestor
+# (tools/ci-scope.mjs): its CI OK means the touched lanes passed on it and the rest were green at
+# their ancestor, so success here is still proof. Fails CLOSED: any
 # conclusion but success, no CI OK check run from the CI workflow, and any API error is a refusal.
 #
 # What counts as "the CI workflow": a run of .github/workflows/ci.yml (found through that

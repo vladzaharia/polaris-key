@@ -67,25 +67,38 @@ the 4.4.1 editor (the floor).
 
 ## Which lanes CI runs
 
-`tools/ci-scope.json` is the one map of lanes to paths; the `changes` job of `ci.yml` and
-`pnpm gate` both read it through `tools/ci-scope.mjs`. A change under a `shared` path (the
-contract, the shared packages, `tools/`, `.github/`) runs every lane.
+`tools/ci-scope.json` is the one map of lanes to paths and to the `ci.yml` jobs each lane owns
+(`jobs`); the `changes` job of `ci.yml` and `pnpm gate` both read it through
+`tools/ci-scope.mjs`. A change under a `shared` path (the contract, the shared packages,
+`ci.yml` and its actions, the scope map and the generator registry) runs every lane. A generator
+or a lint ledger on its own is not shared: its outputs land in the lanes' directories, and the
+always-on `js` jobs check the drift.
 
-| Run                             | Lanes                                                        | Matrices                 |
-| ------------------------------- | ------------------------------------------------------------ | ------------------------ |
-| pull request                    | the lanes the changed files touch                            | the floor and the latest |
-| push to `next`                  | the lanes touched since the newest green ancestor, see below | full                     |
-| push to `main`, tag, manual run | every lane                                                   | full                     |
+| Run                             | Lanes                                                     | Matrices                 |
+| ------------------------------- | --------------------------------------------------------- | ------------------------ |
+| pull request                    | the lanes the changed files touch                         | the floor and the latest |
+| push to `next`                  | each lane: the files changed since its own green ancestor | full                     |
+| push to `main`, tag, manual run | every lane                                                | full                     |
 
-A push to `next` looks back up to 30 commits for the newest ancestor whose CI workflow run
-succeeded, and diffs against it. With no green ancestor in that range, or when the diff or the
-GitHub API cannot be read, every lane runs. The static checks (`js`) and `CI OK` always run.
+A push to `next` tracks green per lane. For each lane it walks HEAD's ancestry, newest first,
+over the CI workflow's push runs on `next`, and takes the newest commit on which every job of the
+lane concluded success (job conclusions, so a lane that passed inside a failed or cancelled run
+counts). That commit is the lane's base. The lane runs when a file changed since _its_ base is
+one of its paths or a `shared` input, and always when it has no base. A fix push after a red
+Python job therefore runs Python again and skips the lanes that were already green. When the
+ancestry, the diff or the GitHub API cannot be read, every lane runs. The static checks (`js`)
+and `CI OK` always run.
 
-A narrowed run's `CI OK` means: every lane touched since the last green ancestor passed on this
-run, and the rest passed on that ancestor. `CI OK` counts a skipped lane as passed only on a
-narrowed run; on a full run a skipped job fails it. `deploy.yml`, `publish-sdks.yml` and
-`promote.yml` rely on `CI OK` (`tools/require-ci-ok.sh`), and a narrowed `CI OK` on `next` is
-the same proof.
+The `js-worker`, `js-admin` and `js-rest` test jobs also narrow: when every file changed since
+the `js` base is under `packages/`, they run turbo for the changed packages and their dependents
+only (`tools/ci-js-affected.mjs`); any other change, such as a root file, `sdks/` or
+`conformance/`, runs everything.
+
+A narrowed run's `CI OK` means: every lane touched since its own base passed on this run, and
+every other lane was green at its base. `CI OK` counts a skipped lane as passed only on a
+narrowed run, which is sound because a lane is skipped only when it was green at its base; on a
+full run a skipped job fails it. `deploy.yml`, `publish-sdks.yml` and `promote.yml` rely on
+`CI OK` (`tools/require-ci-ok.sh`), and a narrowed `CI OK` on `next` is the same proof.
 
 ## Pre-commit hooks
 
