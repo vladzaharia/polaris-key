@@ -1678,7 +1678,9 @@
         "SP-65b",
         "UK-09b",
         "UK-11b",
-        "UK-12b"
+        "UK-12b",
+        "U-08b",
+        "I-21b"
       ],
       "planMode": false,
       "gates": ["docs-links"],
@@ -4465,7 +4467,7 @@
         "plans/CC-01.md §4, §6"
       ],
       "brief": "wp/I-15-native-redirect.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -4642,7 +4644,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [1.9, 2.6],
-      "deps": ["I-20"],
+      "deps": ["I-20", "I-34"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -4651,7 +4653,10 @@
         "rule-9",
         "rule-10",
         "threat-model",
-        "docs-links"
+        "docs-links",
+        "ux-coverage",
+        "transcripts",
+        "privacy-review"
       ],
       "humanInputs": [
         "a staging deploy for the OIDF Basic OP and Config OP conformance runs"
@@ -4663,9 +4668,31 @@
         "notes/S-16 §5.2 (Sign in with <Product>)",
         "notes/S-16 §5.4 item 10",
         "notes/S-16 §8 I-21",
-        "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
+        "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)",
+        "plans/I-20.md (approved 2026-11-09): scope §3-§10, slices §11, acceptance §14"
       ],
       "brief": "wp/I-21-product-issuer.md",
+      "status": "in-progress",
+      "planRef": "I-20"
+    },
+    {
+      "id": "I-21b",
+      "title": "`identity.accessToken()`: the device-token exchange in client-core and the six SDKs",
+      "phase": "I",
+      "stage": "layer-2",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["I-21", "I-20"],
+      "planMode": true,
+      "gates": ["plan-mode", "all-sdks", "parity", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/I-20.md §7 (I-21b), §4 (parity row identity.accessToken), §11 (I-21b.1-3)"
+      ],
+      "brief": "wp/I-21b-identity-access-token.md",
       "status": "todo",
       "planRef": "I-20"
     },
@@ -5155,7 +5182,8 @@
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track F",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
         "consolidation alias IX-09",
-        "docs/research/2026-10-07-dx-consolidation/audits/identity.md"
+        "docs/research/2026-10-07-dx-consolidation/audits/identity.md",
+        "plans/I-20.md §3.5, §8 (Connected apps groups issuer clients; Disconnect takes a cl_ id)"
       ],
       "brief": "wp/I-34-granular-consent-connected-apps.md",
       "status": "todo"
@@ -5661,7 +5689,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-06-sdk-settings-node-python.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "U-01"
     },
     {
@@ -5800,7 +5828,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-12-privacy-settings-portal.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "U-11a",
@@ -5883,8 +5911,56 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-08-merge-prompt.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "U-01"
+    },
+    {
+      "id": "U-08b",
+      "title": "Cloud Sync parked copies after an account merge (additive, unsigned; V5 §13)",
+      "phase": "U",
+      "stage": "U2 merge and saves",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.5, 0.7],
+      "deps": ["U-08", "U-09"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "drift-gate",
+        "all-sdks",
+        "rule-10",
+        "threat-model",
+        "ui-snapshots",
+        "security-review"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/U-08.md §8, §11 (U-08b.0-D/UX), D1, D8, D11"],
+      "brief": "wp/U-08b-merge-parked-copies.md",
+      "status": "todo",
+      "planRef": "U-08"
+    },
+    {
+      "id": "U-08c",
+      "title": "Cloud Sync: rows of an adopted E2E ring after an account merge",
+      "phase": "U",
+      "stage": "U2 merge and saves",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.3],
+      "deps": ["U-38", "U-08b", "U-08"],
+      "planMode": true,
+      "gates": ["plan-mode", "drift-gate", "all-sdks"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/U-08.md §8 and D11 (E2E adopted-ring rows deferred to U-08c, after U-38)"
+      ],
+      "brief": "wp/U-08c-merge-adopted-ring-rows.md",
+      "status": "todo",
+      "planRef": "U-08"
     },
     {
       "id": "U-10",
@@ -6235,7 +6311,8 @@
         "notes/S-17 §6 U-16",
         "notes/S-17 §7.3 decision 12",
         "DX consolidation 2026-10-07: parked (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)",
-        "plans/CC-01-cloud-sync.md §5 (serves server-mode products only)"
+        "plans/CC-01-cloud-sync.md §5 (serves server-mode products only)",
+        "plans/I-20.md §3.3, §3.4 (client_credentials with pkey:sync on I-21 clients of type service)"
       ],
       "brief": "wp/U-16-developer-backend-api.md",
       "status": "todo",
@@ -9135,7 +9212,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/PX-18-cloud-sync-section.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "PX-19",
@@ -12128,7 +12205,7 @@
         "consolidation tags: owner-decision-7"
       ],
       "brief": "wp/SP-40-retire-react-cookie-mode-browser.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "SP-41",
@@ -12786,14 +12863,15 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [0.5, 0.8],
-      "deps": ["I-21", "SP-55", "SP-56", "SP-57"],
+      "deps": ["I-21", "I-21b", "SP-55", "SP-56", "SP-57"],
       "planMode": false,
       "gates": ["all-sdks", "drift-gate"],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": true,
       "refs": [
-        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-68)"
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-68)",
+        "plans/I-20.md §3.4, §4 (issuerTokenCases, backendMatrixVersion 2)"
       ],
       "brief": "wp/SP-68-requiresignin-accepts-i21-tokens.md",
       "status": "todo"
@@ -16550,7 +16628,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/licensing-core.md"
       ],
       "brief": "wp/LX-34-entitlement-catalog-in-licensing-tier.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "LX-35",
@@ -16574,7 +16652,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/entitlements-subscriptions.md"
       ],
       "brief": "wp/LX-35-add-on-definitions-grantaddon.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "LX-36",
@@ -16601,7 +16679,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/licensing-core.md"
       ],
       "brief": "wp/LX-36-access-policy-license-access-absorbs-ps.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "LX-38",
@@ -16703,7 +16781,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/entitlements-subscriptions.md"
       ],
       "brief": "wp/LX-41-durations-subscriptions-core-trials.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "LX-41b",
@@ -19442,7 +19520,7 @@
       "optional": false,
       "refs": ["plans/CC-01-auto-sign-in.md §5, R-11", "plans/CC-01.md §4"],
       "brief": "wp/I-49-silent-restore.md",
-      "status": "in-review",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -19786,6 +19864,144 @@
       "status": "done"
     },
     {
+      "id": "CC-23L",
+      "title": "Plan: account-free local pairing (local links)",
+      "phase": "CC",
+      "stage": "v0.11",
+      "lane": "docs",
+      "role": "pkey-wire-planner",
+      "estimateWeeks": [0.1, 0.2],
+      "deps": [],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "human-approval",
+        "threat-model",
+        "protocol-version"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Owner decision 2026-11-03: account-free local pairing goes into 0.11 as a new mode that extends the optional CC-23",
+        "WIRE-CONTRACT-V5 §15.4-§15.11"
+      ],
+      "brief": "wp/CC-23L-local-links-plan.md",
+      "status": "done"
+    },
+    {
+      "id": "CC-29",
+      "title": "Local links: V5 §15.12, corpus, client-core, product switch, Node, Python, Swift, Kotlin (slices CC-29.0-CC-29.14)",
+      "phase": "CC",
+      "stage": "v0.11",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.4, 0.5],
+      "deps": ["CC-23L", "CC-19", "CC-20"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "protocol-version",
+        "corpus",
+        "corpus-runner",
+        "corpus:mirror",
+        "drift-gate",
+        "all-sdks",
+        "rule-9",
+        "threat-model",
+        "security-review"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "CC-23L plan §6-§10 (the lead's copy; not in the repository)",
+        "WIRE-CONTRACT-V5 §15.12"
+      ],
+      "brief": "wp/CC-29-local-links.md",
+      "status": "in-progress",
+      "planRef": "CC-23L"
+    },
+    {
+      "id": "CC-29b",
+      "title": "Local links on Android and Godot",
+      "phase": "CC",
+      "stage": "v0.11",
+      "lane": "sdk",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.15, 0.2],
+      "deps": ["CC-29", "CC-19", "CC-20", "CC-23L"],
+      "planMode": true,
+      "gates": ["plan-mode", "drift-gate", "all-sdks"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "CC-23L plan §10 (CC-29b.A, CC-29b.G1-G4)",
+        "plans/GODOT-CONNECT-2.md: CC-19b.G and CC-20b.G also unblock CC-29b"
+      ],
+      "brief": "wp/CC-29b-local-links-android-godot.md",
+      "status": "todo",
+      "planRef": "CC-23L"
+    },
+    {
+      "id": "CC-29K",
+      "title": "Pair with a Code kit screens and QR scanning",
+      "phase": "CC",
+      "stage": "v0.11",
+      "lane": "ui",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.15, 0.15],
+      "deps": ["CC-29", "CC-29b", "CC-23L"],
+      "planMode": false,
+      "gates": ["pkey-ux-reviewer", "ui-snapshots", "modernity-lint"],
+      "humanInputs": ["an iPhone and an Android Play device"],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["CC-23L plan §10 (CC-29K.1-K.4)"],
+      "brief": "wp/CC-29K-local-links-kit-screens.md",
+      "status": "todo"
+    },
+    {
+      "id": "CC-29D",
+      "title": "Local links docs and Help",
+      "phase": "CC",
+      "stage": "v0.11",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.05, 0.05],
+      "deps": ["CC-29", "CC-23L"],
+      "planMode": false,
+      "gates": ["docs-links", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["CC-23L plan §10 (CC-29D)"],
+      "brief": "wp/CC-29D-local-links-docs.md",
+      "status": "todo"
+    },
+    {
+      "id": "CC-29S",
+      "title": "Local links security sign-off (LP1-LP3) and cryptographer part P5",
+      "phase": "CC",
+      "stage": "v0.11",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.15, 0.2],
+      "deps": ["CC-29", "CC-29b", "CC-23L"],
+      "planMode": false,
+      "gates": ["threat-model", "security-review"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "CC-23L plan §8, §10 (CC-29S)",
+        "plans/CC-18-U-44-U-45-signoff.md (launch.localPairing gate column, part P5)"
+      ],
+      "brief": "wp/CC-29S-local-links-signoff.md",
+      "status": "todo"
+    },
+    {
       "id": "I-51",
       "title": "Invisible blanks in device labels and peer display names (DEVICE-LABEL-STRIP)",
       "phase": "I",
@@ -19936,6 +20152,45 @@
       ],
       "brief": "wp/U-49-u-22-ux2.md",
       "status": "done"
+    },
+    {
+      "id": "U-51",
+      "title": "`cloudSync.export()` on the device: a person gets readable E2E data back",
+      "phase": "U",
+      "stage": "U4 later",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["U-38", "U-39", "U-40"],
+      "planMode": true,
+      "gates": ["plan-mode", "drift-gate", "all-sdks"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/U-12-PX-18.md §3 follow-up (a)",
+        "CC-01 §4.3; conformance/parity/api.json lacks the row"
+      ],
+      "brief": "wp/U-51-cloud-sync-export-device.md",
+      "status": "todo"
+    },
+    {
+      "id": "U-52",
+      "title": "SDKs stop syncing after a per-product removal (account_required scenario row)",
+      "phase": "U",
+      "stage": "U4 later",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.3],
+      "deps": ["U-12"],
+      "planMode": false,
+      "gates": ["drift-gate", "all-sdks"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/U-12-PX-18.md §3 follow-up (b)"],
+      "brief": "wp/U-52-sdk-stop-after-removal.md",
+      "status": "todo"
     },
     {
       "id": "U-50",

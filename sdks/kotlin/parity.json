@@ -174,8 +174,8 @@
     },
     "identity.oidc": {
       "status": "planned",
-      "wp": "I-15",
-      "note": "The redirect sign-in (IdentityRedirect, the sign-in session), exchange, license choice and account calls are in :identity; a host-supplied closure still drives the browser."
+      "unowned": true,
+      "note": "Superseded by identity.redirect.native (I-15 shipped the native redirect token route and I-15b the SDK flow); nothing is left to build under this row, which the registry can retire."
     },
     "identity.devicecode": {
       "status": "implemented"
@@ -630,8 +630,8 @@
     },
     "connect.local": {
       "status": "planned",
-      "unowned": true,
-      "note": "CC-29.13 and CC-29.14 build it on the JVM (WIRE-CONTRACT-V5 section 15.12): :core peer/CPace.kt and peer/Local.kt, and :sdk ConnectLocalLinks.kt; Android follows in CC-29b.A. The program registry has no CC-29 row yet; this names wp CC-29 once it does."
+      "wp": "CC-29",
+      "note": "CC-29.13 and CC-29.14 build it on the JVM (WIRE-CONTRACT-V5 section 15.12): :core peer/CPace.kt and peer/Local.kt, and :sdk ConnectLocalLinks.kt; Android follows in CC-29b.A."
     },
     "connect.app": {
       "status": "implemented",

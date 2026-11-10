@@ -4,8 +4,8 @@
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-2)                                                                                                                                                             |
 | Size        | 1.9–2.6 engineer-weeks                                                                                                                                                                                                                   |
-| Depends on  | [I-20](I-20-layer-2-plan.md)                                                                                                                                                                                                             |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-16](U-16-developer-backend-api.md), [SP-68](SP-68-requiresignin-accepts-i21-tokens.md)                                                                                                        |
+| Depends on  | [I-20](I-20-layer-2-plan.md), [I-34](I-34-granular-consent-connected-apps.md)                                                                                                                                                            |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-21b](I-21b-identity-access-token.md), [U-16](U-16-developer-backend-api.md), [SP-68](SP-68-requiresignin-accepts-i21-tokens.md)                                                               |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                    |
 | Plan mode   | yes: executes the approved [`plans/I-20.md`](../plans/I-20.md) (no separate plan)                                                                                                                                                        |
 | Gates       | plan mode; D1 migration; `TABLE_OWNERS`; rule 9 (validator rule, mutation table, JSON schema); rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `check:links`; OIDF Basic OP and Config OP conformance against staging; R-series audit |
@@ -44,6 +44,10 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 These approved plans change this package. Where they differ from the text below, they win.
 
 - [`plans/I-27.md`](../plans/I-27.md) §12: the same endpoints; `openid`; clients extend `ClientRecord`; the §12.8 sentence.
+
+## Plan 2026-11-09
+
+Approved [`plans/I-20.md`](../plans/I-20.md) (every ★ option taken); it wins over the text below where they differ. Scope is §3 to §10, the slices are I-21.1-I-21.19 (§11), and acceptance adds RP-Initiated Logout OP and §14's tests. I-21 also depends on [I-34](I-34-granular-consent-connected-apps.md), for I-21.15 (Connected apps and Disconnect); gates add `ux-coverage`, transcripts and the privacy review. The SDK half (`identity.accessToken()`) is the new package I-21b.
 
 ## Goal
 

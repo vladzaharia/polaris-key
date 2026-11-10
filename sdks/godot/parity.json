@@ -172,8 +172,8 @@
     },
     "identity.oidc": {
       "status": "planned",
-      "wp": "I-15",
-      "note": "Native Godot has no completion path for the OIDC redirect: it waits on the native redirect token route (I-15). The old /identity/auth/poll route is retired (the Worker no longer serves it) and was never a substitute. Until then P1-07's device-code sign-in is the path, and identity.sign_in.start({browser = true}) opens it in the system browser."
+      "unowned": true,
+      "note": "Superseded by identity.redirect.native (I-15 shipped the native redirect token route and I-15b the SDK flow); nothing is left to build under this row, which the registry can retire."
     },
     "identity.devicecode": {
       "status": "implemented",
@@ -782,14 +782,14 @@
     },
     "connect.local": {
       "status": "planned",
-      "unowned": true,
+      "wp": "CC-29b",
       "except": [
         {
           "runtime": "web",
           "reason": "runtime"
         }
       ],
-      "note": "CC-29b.G1 to CC-29b.G4 build it after CC-19b and CC-20b (WIRE-CONTRACT-V5 section 15.12); web has no LAN. The program registry has no CC-29b row yet; this names wp CC-29b once it does."
+      "note": "CC-29b.G1 to CC-29b.G4 build it after CC-19b and CC-20b (WIRE-CONTRACT-V5 section 15.12); web has no LAN."
     },
     "connect.app": {
       "status": "implemented",

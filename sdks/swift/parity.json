@@ -147,8 +147,8 @@
     },
     "identity.oidc": {
       "status": "planned",
-      "wp": "I-15",
-      "note": "Native browser sign-in (loopback, scheme, claimed HTTPS) waits on I-15; the host-supplied https redirect is identity.redirect.web. The device-code route is client.identity.signIn.start(SignInOptions(browser:)), which opens the device-code verification URL in ASWebAuthenticationSession; session.wait() polls /identity/auth/device/poll (identity.devicecode; the old /identity/auth/poll is retired and the Worker no longer serves it)."
+      "unowned": true,
+      "note": "Superseded by identity.redirect.native (I-15 shipped the native redirect token route and I-15b the SDK flow); nothing is left to build under this row, which the registry can retire."
     },
     "identity.devicecode": {
       "status": "implemented"
@@ -557,8 +557,8 @@
     },
     "connect.local": {
       "status": "planned",
-      "unowned": true,
-      "note": "CC-29.11 and CC-29.12 build it (WIRE-CONTRACT-V5 section 15.12): PeerCPace.swift and PeerLocal.swift in PolarisKeyCore, and ConnectLocalLinks.swift; scanning on iOS and iPadOS is CC-29K.3. The program registry has no CC-29 row yet; this names wp CC-29 once it does."
+      "wp": "CC-29",
+      "note": "CC-29.11 and CC-29.12 build it (WIRE-CONTRACT-V5 section 15.12): PeerCPace.swift and PeerLocal.swift in PolarisKeyCore, and ConnectLocalLinks.swift; scanning on iOS and iPadOS is CC-29K.3."
     },
     "connect.app": {
       "status": "implemented",
