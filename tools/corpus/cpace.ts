@@ -58,7 +58,7 @@ const ANCHORS_PATH = join(
   "cpace-anchors.json",
 );
 
-function canonicalJson(v: unknown): string {
+export function canonicalJson(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(canonicalJson).join(",")}]`;
   if (v !== null && typeof v === "object")
     return `{${Object.keys(v)
@@ -279,7 +279,6 @@ interface GenIn {
 
 const QR_SECRET = hex(mat("qr secret").slice(0, 16));
 const QR_SECRET_2 = hex(mat("qr secret 2").slice(0, 16));
-export const CPACE_QR_SECRET_2 = QR_SECRET_2;
 
 function buildGenerators(): unknown[] {
   const rows: GenIn[] = [
@@ -432,7 +431,6 @@ export function cpaceAttempt(
 }
 
 export const CPACE_CODE_PASSWORD = "123456";
-export const CPACE_QR_SECRET = QR_SECRET;
 
 interface AttemptIn {
   id: string;

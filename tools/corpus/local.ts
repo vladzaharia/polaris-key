@@ -504,6 +504,24 @@ interface BodyIn {
   pad?: { prefix: string; fill: string; count: number; suffix: string };
 }
 
+/** The bytes of a text, hex or padded row. */
+function rowBytes(r: BodyIn): Uint8Array {
+  if (r.hex !== undefined) return hexBytes(r.hex);
+  const p = r.pad;
+  return utf8(
+    p ? [p.prefix, p.fill.repeat(p.count), p.suffix].join("") : r.text!,
+  );
+}
+
+/** The row's input as the file spells it: `<key>` the text, `<key>Hex` raw bytes, `<key>Pad`. */
+function rowEcho(r: BodyIn, key: "body" | "payload"): Record<string, unknown> {
+  return {
+    ...(r.hex !== undefined ? { [`${key}Hex`]: r.hex } : {}),
+    ...(r.text !== undefined ? { [key]: r.text } : {}),
+    ...(r.pad !== undefined ? { [`${key}Pad`]: r.pad } : {}),
+  };
+}
+
 function buildBody(): unknown[] {
   const body = (o: Record<string, unknown>): string => JSON.stringify(o);
   const ok = (extra: Record<string, unknown> = {}): string =>
@@ -518,72 +536,73 @@ function buildBody(): unknown[] {
     "x1",
     "2024",
   ];
+  const E = (id: string, extra: Record<string, unknown> = {}): BodyIn => ({
+    id,
+    text: ok(extra),
+  });
+  const T = (id: string, text: string): BodyIn => ({ id, text });
   const rows: BodyIn[] = [
-    { id: "minimal", text: ok() },
-    { id: "label", text: ok({ label: "Anna" }) },
-    { id: "label-cleaned", text: ok({ label: "  Anna\u200b  Phone " }) },
-    { id: "label-nothing-left", text: ok({ label: "\u200b\u200b" }) },
-    { id: "label-empty", text: ok({ label: "" }) },
-    { id: "cats", text: ok({ cats: ["photos", "docs"] }) },
-    { id: "cats-8", text: ok({ cats: cats8 }) },
-    { id: "cat-32-characters", text: ok({ cats: ["a".repeat(32)] }) },
-    { id: "cat-1-character", text: ok({ cats: ["a"] }) },
-    { id: "member-order-free", text: `{"cats":["docs"],"v":1,"label":"Bo"}` },
-    { id: "unknown-member-ignored", text: ok({ x: { k: [1, null] } }) },
+    E("minimal"),
+    E("label", { label: "Anna" }),
+    E("label-cleaned", { label: "  Anna\u200b  Phone " }),
+    E("label-nothing-left", { label: "\u200b\u200b" }),
+    E("label-empty", { label: "" }),
+    E("cats", { cats: ["photos", "docs"] }),
+    E("cats-8", { cats: cats8 }),
+    E("cat-32-characters", { cats: ["a".repeat(32)] }),
+    E("cat-1-character", { cats: ["a"] }),
+    T("member-order-free", `{"cats":["docs"],"v":1,"label":"Bo"}`),
+    E("unknown-member-ignored", { x: { k: [1, null] } }),
     // A key is never part of the body; one that is there is an unknown member.
-    { id: "agree-key-member-ignored", text: ok({ agreeKey: "x".repeat(43) }) },
-    { id: "cats-9", text: ok({ cats: [...cats8, "extra"] }) },
-    { id: "cat-33-characters", text: ok({ cats: ["a".repeat(33)] }) },
-    { id: "cat-empty", text: ok({ cats: [""] }) },
-    { id: "cat-upper-case", text: ok({ cats: ["Photos"] }) },
-    { id: "cat-underscore", text: ok({ cats: ["my_docs"] }) },
-    { id: "cat-space", text: ok({ cats: ["my docs"] }) },
-    { id: "cat-non-ascii", text: ok({ cats: ["caf\u00e9"] }) },
-    { id: "cat-not-string", text: ok({ cats: [1] }) },
-    { id: "cat-repeated", text: ok({ cats: ["docs", "docs"] }) },
-    { id: "cats-missing", text: body({ v: 1 }) },
-    { id: "cats-not-array", text: ok({ cats: "docs" }) },
-    { id: "cats-null", text: ok({ cats: null }) },
-    { id: "v-missing", text: body({ cats: [] }) },
-    { id: "v-2", text: ok({ v: 2 }) },
-    { id: "v-string", text: ok({ v: "1" }) },
-    { id: "label-number", text: ok({ label: 7 }) },
-    { id: "label-null", text: ok({ label: null }) },
-    { id: "duplicate-member", text: `{"v":1,"cats":[],"v":1}` },
-    { id: "trailing-comma", text: `{"v":1,"cats":[],}` },
-    { id: "not-an-object", text: "[1]" },
-    { id: "empty", text: "" },
-    { id: "trailing-garbage", text: `${ok()} x` },
+    E("agree-key-member-ignored", { agreeKey: "x".repeat(43) }),
+    E("cats-9", { cats: [...cats8, "extra"] }),
+    E("cat-33-characters", { cats: ["a".repeat(33)] }),
+    E("cat-empty", { cats: [""] }),
+    E("cat-upper-case", { cats: ["Photos"] }),
+    E("cat-underscore", { cats: ["my_docs"] }),
+    E("cat-space", { cats: ["my docs"] }),
+    E("cat-non-ascii", { cats: ["caf\u00e9"] }),
+    E("cat-not-string", { cats: [1] }),
+    E("cat-repeated", { cats: ["docs", "docs"] }),
+    T("cats-missing", body({ v: 1 })),
+    E("cats-not-array", { cats: "docs" }),
+    E("cats-null", { cats: null }),
+    T("v-missing", body({ cats: [] })),
+    E("v-2", { v: 2 }),
+    E("v-string", { v: "1" }),
+    E("label-number", { label: 7 }),
+    E("label-null", { label: null }),
+    T("duplicate-member", `{"v":1,"cats":[],"v":1}`),
+    T("trailing-comma", `{"v":1,"cats":[],}`),
+    T("not-an-object", "[1]"),
+    T("empty", ""),
+    T("trailing-garbage", `${ok()} x`),
     { id: "bom", hex: "efbbbf" + hex(utf8(ok())) },
     {
       id: "invalid-utf8",
       hex: hex(utf8(`{"v":1,"cats":[],"x":"`)) + "ff" + hex(utf8('"}')),
     },
   ];
-  const overhead = ok({ x: "" }).length;
-  const padRow = (id: string, count: number): BodyIn => ({
+  // A body of exactly `total` bytes: the minimal body with one long string member.
+  const sized = (id: string, total: number): BodyIn => ({
     id,
-    pad: { prefix: ok({ x: "" }).slice(0, -2), fill: "a", count, suffix: '"}' },
+    pad: {
+      prefix: ok({ x: "" }).slice(0, -2),
+      fill: "a",
+      count: total - ok({ x: "" }).length,
+      suffix: '"}',
+    },
   });
   rows.push(
-    padRow("size-4096", REF_LOCAL_BODY_MAX - overhead),
-    padRow("size-4097", REF_LOCAL_BODY_MAX - overhead + 1),
+    sized("size-4096", REF_LOCAL_BODY_MAX),
+    sized("size-4097", REF_LOCAL_BODY_MAX + 1),
   );
   return rows.map((r) => {
-    const bytes =
-      r.hex !== undefined
-        ? hexBytes(r.hex)
-        : utf8(
-            r.pad !== undefined
-              ? r.pad.prefix + r.pad.fill.repeat(r.pad.count) + r.pad.suffix
-              : r.text!,
-          );
+    const bytes = rowBytes(r);
     const v = refLinkBody(bytes);
     return {
       id: r.id,
-      ...(r.hex !== undefined ? { bodyHex: r.hex } : {}),
-      ...(r.text !== undefined ? { body: r.text } : {}),
-      ...(r.pad !== undefined ? { bodyPad: r.pad } : {}),
+      ...rowEcho(r, "body"),
       length: bytes.length,
       want: v.ok
         ? {
@@ -811,14 +830,13 @@ function buildHandshakePayloads(): unknown {
     },
   ];
   const payloads = rows.map((r) => {
-    const bytes = r.hex !== undefined ? hexBytes(r.hex) : utf8(r.text!);
+    const bytes = rowBytes(r);
     const v = refLocalPayload(r.message, bytes);
     return {
       id: r.id,
       mode: r.mode,
       message: r.message,
-      ...(r.hex !== undefined ? { payloadHex: r.hex } : {}),
-      ...(r.text !== undefined ? { payload: r.text } : {}),
+      ...rowEcho(r, "payload"),
       length: bytes.length,
       want: v.ok
         ? { ok: true, ...(r.message === 1 ? {} : { caps: v.caps }) }
@@ -1037,21 +1055,22 @@ function buildPin(): unknown[] {
     ["l-another-held-links-key", "responder", [K1, K2], 0, K2],
     ["l-own-key-is-not-the-peers", "initiator", [K1], 0, OWN],
   ];
-  const rows = l.map(([id, role, held, matched, remote]) => {
-    const v = refLocalPin("l", held[matched]!, remote);
-    return {
-      id,
-      mode: "l",
-      role,
-      held: held.map(hex),
-      matched,
-      remoteStatic: hex(remote),
-      // The initiator checks after message 2, the responder after message 3; before the transport
-      // exists nothing is sent.
-      checkedAfter: role === "initiator" ? 2 : 3,
-      want: v.ok ? { ok: true } : { ok: false, close: v.close, sends: v.sends },
-    };
-  });
+  // The initiator checks after message 2, the responder after message 3; before the transport
+  // exists nothing is sent.
+  const verdict = (v: ReturnType<typeof refLocalPin>) =>
+    v.ok ? { ok: true } : { ok: false, close: v.close, sends: v.sends };
+  const after = (role: "initiator" | "responder"): number =>
+    role === "initiator" ? 2 : 3;
+  const rows = l.map(([id, role, held, matched, remote]) => ({
+    id,
+    mode: "l",
+    role,
+    held: held.map(hex),
+    matched,
+    remoteStatic: hex(remote),
+    checkedAfter: after(role),
+    want: verdict(refLocalPin("l", held[matched]!, remote)),
+  }));
   // Mode q: a remote static key equal to this side's own link key ends the handshake silently.
   const q: [string, "initiator" | "responder", Uint8Array][] = [
     ["q-initiator-remote-is-own-key", "initiator", OWN],
@@ -1062,20 +1081,15 @@ function buildPin(): unknown[] {
   ];
   return [
     ...rows,
-    ...q.map(([id, role, remote]) => {
-      const v = refLocalPin("q", new Uint8Array(0), remote, OWN);
-      return {
-        id,
-        mode: "q",
-        role,
-        own: hex(OWN),
-        remoteStatic: hex(remote),
-        checkedAfter: role === "initiator" ? 2 : 3,
-        want: v.ok
-          ? { ok: true }
-          : { ok: false, close: v.close, sends: v.sends },
-      };
-    }),
+    ...q.map(([id, role, remote]) => ({
+      id,
+      mode: "q",
+      role,
+      own: hex(OWN),
+      remoteStatic: hex(remote),
+      checkedAfter: after(role),
+      want: verdict(refLocalPin("q", new Uint8Array(0), remote, OWN)),
+    })),
   ];
 }
 
@@ -1920,7 +1934,7 @@ export function buildLocal(): unknown {
     if (REF_X25519_LOW_ORDER_HEX[k]!.length !== 64)
       throw new Error("local: low-order reference");
   return {
-    note: "Account-free local pairing (15.12, 15.4, 15.5). `codes`: `nameplate` (a byte stream drawn one byte at a time: 200 or more is drawn again, then mod 100; a nameplate in `inUse` is drawn again unless all 100 are in use; `want.consumed` is the bytes read and a null nameplate means the stream ran out), `password` (4 bytes a draw as a u32be, drawn again at 4294000000 or more, then mod 10^6, written with leading zeros), `display` (two groups of four digits, one space) and `parse` (a typed code: ASCII spaces and hyphens removed, then exactly 8 ASCII digits; nothing else, another script's digits included). `qr`: `make` (PKP1:SLUG:INSTANCE:SECRET in upper case, the instance's 16 base32 characters and the secret's 26 with the two unused low bits zero) and `parse` (fold ASCII case, four fields split at ':', then ok, other-app when the slug is well formed but not `own`, or invalid; the secret's last character must keep its low two bits zero). `adverts`: `pairing` (the m=q instance p1- + the 16 base32 characters of the window's 10 bytes), `names` (the m=l instance p1- + the first 16 characters of the lower-case base32 of HMAC-SHA256(secret, 'pkey-peer/1 ldisc' || 0x00 || u64be(epoch) || the advertiser's own link key)) and `browse` (which held link, in held order and among the first 32, an instance belongs to in the current or previous epoch; each link lists its `secret` and the peer's link key `peerKey`, the key the peer advertises with). `txt`: `parser` txt is parseTxt (m = a, v, p or q; for q `h` is 16 lower-case hex characters and `n` exactly two ASCII digits; n is read for q only; c and l are unknown modes there), `parser` local is parseLocalTxt (v=1 and m=l; no h and no n are read); an entry splits at its first '='; one without '=' or with an empty key is ignored; a repeated key refuses. `body`: a LOCAL_LINK body, strict JSON of at most 4 KiB, v = 1, an optional label cleaned as a HELLO label (nothing left means none), cats an array of at most 8 distinct strings of ^[a-z0-9-]{1,32}$; unknown members are ignored. `secrets`: HKDF-SHA256(salt = h, ikm = ISK (64 bytes), info = 'pkey-peer/1 local' || 0x00 || lo || hi), 32 bytes, lo and hi the two link public keys by unsigned byte order (the row real-pairing-inputs uses the mode-q handshake of noise-vectors.json `cpace.handshakes`). `handshakePayloads`: the payloads of modes q and l and the capability negotiation. `exchange`: one side's pairing events in order (own-confirm, own-decline, peer-confirm, peer-link with the body text, timeout-confirm: the 120 s from the first byte ran out, timeout-exchange: the 30 s after both CONFIRMs ran out), with `held` the local links the device holds and `cats` this side's approved categories; `want` has one entry per step: what that step makes this side send (CONFIRM, LOCAL_LINK, the second once this side's CONFIRM is sent and the peer's read), the code it closes with, and the link it stores (`label`, and `cats` the entries both sides listed in byte order, then peer_bye); after a close nothing more happens; a decline before this side's CONFIRM closes peer_bye. `pin`: mode l checks the remote static key against the peer link key of the link whose secret opened the session (after message 2 for the initiator, after message 3 for the responder): a mismatch is peer_revoked and nothing is sent; mode q ends the handshake silently when the remote static key is this side's own link key. `trialOrder`: the shared listener's trial of message 1: account discKeys (null = none; two tried), then contact secrets (72 tried), then local-link secrets (32 tried), at most 104 secrets after the account keys; `opens` names the key whose tag verifies; `limiter` is what the contact limiter says to a contact or local-link trial; `want.tried` lists a:<i>, c:<i> and l:<i> in order, `hit` the key that decided, `slot` whether the connection holds a limiter slot until message 3 (a contact or local-link hit), `close` the silent end (peer_busy when the limiter refused before any secret was tried, handshake_failed otherwise). `window`: the pairing window's machine over events with a monotonic time t in seconds (open, c1 with `valid`, msg1 with `opens`, abandon, session-end with `stored`, tick, close); `want` has one entry per event: `result` (opened, already-open, closed, busy, limited, refused, attempt, transport, failed, too-many-tries), `open`, `holder` (attempt from a valid C1 until its message 1 or 30 s; session from a message 1 that opens until it ends), `failures`, `rotations` (the password and QR secret rotate after every failed guess below the fifth and after a session that ends without a link while the window is open), `closed` (expired at 300 s, too-many-tries, stored, person) and `host`; a window admits at most 5 C1s in any 60 s, counted when it admits them. `join`: the joiner: `input` is what the reader said (a code's nameplate, a QR's instance or invalid), `adverts` the m=q adverts seen in first-seen order (`h` current, previous or other, `n` the nameplate), `dials` how each dial ends (transport, before-c2, after-c2); `want` has the instances kept (matching h and the nameplate or the instance, at most 8, once each), those dialled (at most 2, in order), whether anything was browsed, and the result: transport, pairing-code-failed (an invalid input, or no transport and an attempt failed after C2) or pairing-not-found. `gate`: the cached discovery answer (`start` on, off or none) over reads (ok with the discovery body, not-found, error) and calls; services.connect.localPairing is true only as the boolean true; an ok read replaces the answer, a not-found clears it, an error changes nothing; a read that leaves a cached true behind has the effects close-windows, withdraw-adverts and end-sessions; a call that opens, joins, advertises, browses, dials or answers needs on and otherwise answers local-pairing-off, and list, rename, remove and set-reachable are never gated. `records`: the mode rules of 15.6 for q and l (and the new rows in the other modes): a known type in a mode that does not allow it closes peer_not_allowed, an unknown type with the critical bit closes peer_unknown_critical and any other is ignored; `needs` is the capability the session must hold. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
+    note: "Account-free local pairing (15.12, 15.4, 15.5). `codes`: `nameplate` (a byte stream drawn one byte at a time: 200 or more is drawn again, then mod 100; a nameplate in `inUse` is drawn again unless all 100 are in use; `want.consumed` is the bytes read and a null nameplate means the stream ran out), `password` (4 bytes a draw as a u32be, drawn again at 4294000000 or more, then mod 10^6, written with leading zeros), `display` (two groups of four digits, one space) and `parse` (a typed code: ASCII spaces and hyphens removed, then exactly 8 ASCII digits; nothing else, another script's digits included). `qr`: `make` (PKP1:SLUG:INSTANCE:SECRET in upper case, the instance's 16 base32 characters and the secret's 26 with the two unused low bits zero) and `parse` (fold ASCII case, four fields split at ':', then ok, other-app when the slug is well formed but not `own`, or invalid; the secret's last character must keep its low two bits zero). `adverts`: `pairing` (the m=q instance p1- + the 16 base32 characters of the window's 10 bytes), `names` (the m=l instance p1- + the first 16 characters of the lower-case base32 of HMAC-SHA256(secret, 'pkey-peer/1 ldisc' || 0x00 || u64be(epoch) || the advertiser's own link key)) and `browse` (which held link, in held order and among the first 32, an instance belongs to in the current or previous epoch; each link lists its `secret` and the peer's link key `peerKey`, the key the peer advertises with). `txt`: `parser` txt is parseTxt (m = a, v, p or q; for q `h` is 16 lower-case hex characters and `n` exactly two ASCII digits; n is read for q only; c and l are unknown modes there), `parser` local is parseLocalTxt (v=1 and m=l; no h and no n are read); an entry splits at its first '='; one without '=' or with an empty key is ignored; a repeated key refuses. `body`: a LOCAL_LINK body, strict JSON of at most 4 KiB, v = 1, an optional label cleaned as a HELLO label (nothing left means none), cats an array of at most 8 distinct strings of ^[a-z0-9-]{1,32}$; unknown members are ignored. `secrets`: HKDF-SHA256(salt = h, ikm = ISK (64 bytes), info = 'pkey-peer/1 local' || 0x00 || lo || hi), 32 bytes, lo and hi the two link public keys by unsigned byte order (the row real-pairing-inputs uses the mode-q handshake of noise-vectors.json `cpace.handshakes`). `handshakePayloads`: the payloads of modes q and l and the capability negotiation. `exchange`: one side's pairing events in order (own-confirm, own-decline, peer-confirm, peer-link with the body text, timeout-confirm: the 120 s from the first byte ran out, timeout-exchange: the 30 s after both CONFIRMs ran out), with `held` the local links the device holds and `cats` this side's approved categories; `want` has one entry per step: what that step makes this side send (CONFIRM, LOCAL_LINK, the second once this side's CONFIRM is sent and the peer's read), the code it closes with, and the link it stores (`label`, and `cats` the entries both sides listed in byte order, then peer_bye); after a close nothing more happens, so a side that stored the first valid LOCAL_LINK (and closed peer_bye) never answers a second one (row link-twice-is-quiet-after-the-first); a decline before this side's CONFIRM closes peer_bye. `pin`: mode l checks the remote static key against the peer link key of the link whose secret opened the session (after message 2 for the initiator, after message 3 for the responder): a mismatch is peer_revoked and nothing is sent; mode q ends the handshake silently when the remote static key is this side's own link key. `trialOrder`: the shared listener's trial of message 1: account discKeys (null = none; two tried), then contact secrets (72 tried), then local-link secrets (32 tried), at most 104 secrets after the account keys; `opens` names the key whose tag verifies; `limiter` is what the contact limiter says to a contact or local-link trial; `want.tried` lists a:<i>, c:<i> and l:<i> in order, `hit` the key that decided, `slot` whether the connection holds a limiter slot until message 3 (a contact or local-link hit), `close` the silent end (peer_busy when the limiter refused before any secret was tried, handshake_failed otherwise). `window`: the pairing window's machine over events with a monotonic time t in seconds (open, c1 with `valid`, msg1 with `opens`, abandon, session-end with `stored`, tick, close); `want` has one entry per event: `result` (opened, already-open, closed, busy, limited, refused, attempt, transport, failed, too-many-tries), `open`, `holder` (attempt from a valid C1 until its message 1 or 30 s; session from a message 1 that opens until it ends), `failures`, `rotations` (the password and QR secret rotate after every failed guess below the fifth and after a session that ends without a link while the window is open), `closed` (expired at 300 s, too-many-tries, stored, person) and `host`; a window admits at most 5 C1s in any 60 s, counted when it admits them. `join`: the joiner: `input` is what the reader said (a code's nameplate, a QR's instance or invalid), `adverts` the m=q adverts seen in first-seen order (`h` current, previous or other, `n` the nameplate), `dials` how each dial ends (transport, before-c2, after-c2); `want` has the instances kept (matching h and the nameplate or the instance, at most 8, once each), those dialled (at most 2, in order), whether anything was browsed, and the result: transport, pairing-code-failed (an invalid input, or no transport and an attempt failed after C2) or pairing-not-found. `gate`: the cached discovery answer (`start` on, off or none) over reads (ok with the discovery body, not-found, error) and calls; services.connect.localPairing is true only as the boolean true; an ok read replaces the answer, a not-found clears it, an error changes nothing; a read that leaves a cached true behind has the effects close-windows, withdraw-adverts and end-sessions; a call that opens, joins, advertises, browses, dials or answers needs on and otherwise answers local-pairing-off, and list, rename, remove and set-reachable are never gated. `records`: the mode rules of 15.6 for q and l (and the new rows in the other modes): a known type in a mode that does not allow it closes peer_not_allowed, an unknown type with the critical bit closes peer_unknown_critical and any other is ignored; `needs` is the capability the session must hold. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
     constants: {
       pairSeconds: REF_LOCAL_PAIR_SECONDS,
       codeDigits: REF_LOCAL_CODE_DIGITS,

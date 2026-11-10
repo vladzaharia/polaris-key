@@ -28,6 +28,7 @@ import { refPrologue as prologue } from "./reference/peerMatrix.js";
 import {
   CPACE_CODE_PASSWORD,
   buildCpace,
+  canonicalJson,
   cpaceAttempt,
   cpaceAttemptRow,
 } from "./cpace.js";
@@ -54,19 +55,6 @@ const ANCHORS_PATH = join(
   "inputs",
   "noise-anchors.json",
 );
-
-function canonicalJson(v: unknown): string {
-  if (Array.isArray(v)) return `[${v.map(canonicalJson).join(",")}]`;
-  if (v !== null && typeof v === "object")
-    return `{${Object.keys(v)
-      .sort()
-      .map(
-        (k) =>
-          `${JSON.stringify(k)}:${canonicalJson((v as Record<string, unknown>)[k])}`,
-      )
-      .join(",")}}`;
-  return JSON.stringify(v);
-}
 
 function check(label: string, got: string, want: string): void {
   if (got !== want)
@@ -545,16 +533,7 @@ function buildLocalFailures(fail: FailFn): void {
 
 function buildFailures(local = false): unknown[] {
   const rows: unknown[] = [];
-  const fail = (
-    id: string,
-    mode: AnyMode,
-    description: string,
-    mutate: Partial<ReturnType<typeof baseHandshake>> & {
-      responder?: { prologue?: Uint8Array; psk?: Uint8Array };
-      initEphemeralPublic?: Uint8Array;
-    },
-    want: { failedAt: number; reason: "dh_zero" | "decrypt" },
-  ) => {
+  const fail: FailFn = (id, mode, description, mutate, want) => {
     const h = { ...baseHandshake(mode), ...mutate, transport: [] };
     const out = refNoiseRun(h);
     if (out.ok || out.failedAt !== want.failedAt || out.reason !== want.reason)

@@ -7,9 +7,16 @@
 // JSON parser, the label cleaning and the hash helpers are the other references'), so it shares
 // nothing with client-core. `peer-matrix.json` `local` is recomputed through it.
 
-import { refParseStrict } from "./config.js";
+import {
+  byteCompare,
+  refBodyCats,
+  refBodyLabel,
+  refBodyObject,
+  refContactCategories,
+  refTrialAccount,
+  refTrialList,
+} from "./contact.js";
 import { bytesHex, hmac, refHkdf } from "./noise.js";
-import { refX25519LowOrder } from "./peer.js";
 import {
   cat,
   refAdvertEpoch,
@@ -18,7 +25,6 @@ import {
   refHandshakePayload,
   refInstanceShape,
   refParseTxt,
-  refVouchLabel,
   utf8,
 } from "./peerMatrix.js";
 
@@ -35,19 +41,12 @@ export const REF_MAX_LINK_SECRETS =
   REF_MAX_CONTACT_SECRETS + REF_MAX_LOCAL_LINKS;
 export const REF_LOCAL_BODY_MAX = 4096;
 export const REF_LOCAL_MAX_CATS = 8;
-const CAT_RE = /^[a-z0-9-]{1,32}$/;
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 const u64be = (n: number): Uint8Array => {
   const b = new Uint8Array(8);
   new DataView(b.buffer).setBigUint64(0, BigInt(n));
   return b;
-};
-
-/** Unsigned byte order of two equal-length byte strings: negative, zero or positive. */
-const byteCompare = (a: Uint8Array, b: Uint8Array): number => {
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i]! - b[i]!;
-  return 0;
 };
 
 // ── The code (§15.12, "The code") ────────────────────────────────────────────
@@ -187,11 +186,10 @@ function refKv(
 ): Map<string, string> | { ok: false; reason: "duplicate" } {
   const kv = new Map<string, string>();
   for (const e of entries) {
-    const at = e.indexOf("=");
-    if (at < 1) continue;
-    const k = e.slice(0, at);
-    if (kv.has(k)) return { ok: false, reason: "duplicate" };
-    kv.set(k, e.slice(at + 1));
+    const m = /^([^=]+)=([^]*)$/.exec(e);
+    if (m === null) continue;
+    if (kv.has(m[1]!)) return { ok: false, reason: "duplicate" };
+    kv.set(m[1]!, m[2]!);
   }
   return kv;
 }
@@ -267,48 +265,16 @@ export type LinkBodyVerdict =
  *  a `HELLO` label, `cats` an array of at most 8 distinct strings of `^[a-z0-9-]{1,32}$`. Unknown
  *  members are ignored. */
 export function refLinkBody(bytes: Uint8Array): LinkBodyVerdict {
-  const no: LinkBodyVerdict = { ok: false };
-  if (bytes.length > REF_LOCAL_BODY_MAX) return no;
-  let text: string;
-  try {
-    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
-      bytes,
-    );
-  } catch {
-    return no;
-  }
-  if (text.startsWith("\ufeff")) return no;
-  const parsed = refParseStrict(text);
-  if (!parsed.ok) return no;
-  const o = parsed.value;
-  if (o === null || typeof o !== "object" || Array.isArray(o)) return no;
-  if (o.v !== 1) return no;
-  const cats = o.cats;
-  if (
-    !Array.isArray(cats) ||
-    cats.length > REF_LOCAL_MAX_CATS ||
-    !cats.every((c) => typeof c === "string" && CAT_RE.test(c)) ||
-    new Set(cats as string[]).size !== cats.length
-  )
-    return no;
-  let label: string | undefined;
-  if (o.label !== undefined) {
-    if (typeof o.label !== "string") return no;
-    const l = refVouchLabel(o.label);
-    if (l !== null) label = l;
-  }
-  return {
-    ok: true,
-    ...(label !== undefined ? { label } : {}),
-    cats: cats as string[],
-  };
+  const o = refBodyObject(bytes, REF_LOCAL_BODY_MAX);
+  if (o === null || o.v !== 1) return { ok: false };
+  const cats = refBodyCats(o.cats, REF_LOCAL_MAX_CATS);
+  const label = refBodyLabel(o.label);
+  if (cats === null || label === null) return { ok: false };
+  return { ok: true, ...(label !== undefined ? { label } : {}), cats };
 }
 
 /** A link's categories: the entries both sides listed, once each, in byte order. */
-export const refLinkCategories = (
-  a: readonly string[],
-  b: readonly string[],
-): string[] => [...new Set(a.filter((c) => b.includes(c)))].sort();
+const refLinkCategories = refContactCategories;
 
 // ── The link secret (§15.12) ─────────────────────────────────────────────────
 
@@ -330,10 +296,6 @@ export function refLinkSecret(
     32,
   );
 }
-
-/** A remote static key that is a low-order point refuses before the transport (§15.12). */
-export const refLinkKeyOk = (key: Uint8Array): boolean =>
-  key.length === 32 && !refX25519LowOrder(key);
 
 // ── Handshake payloads (§15.5, §15.12) ───────────────────────────────────────
 
@@ -390,90 +352,50 @@ export function refLocalExchange(
   held: number,
   cats: readonly string[],
 ): ExchangeStepResult[] {
-  let ownConfirmed = false;
-  let peerConfirmed = false;
-  let linkSent = false;
-  let peerLink = false;
-  let dead = false;
-  const out: ExchangeStepResult[] = [];
-  for (const e of events) {
+  const st = { own: false, peer: false, sent: false, got: false, over: false };
+  return events.map((e): ExchangeStepResult => {
     const r: ExchangeStepResult = { sends: [] };
-    const bad = (): void => {
-      r.close = "peer_bad_frame";
-      dead = true;
+    if (st.over) return r;
+    const end = (code: NonNullable<ExchangeStepResult["close"]>): void => {
+      r.close = code;
+      st.over = true;
     };
-    const maybeLink = (): void => {
-      if (ownConfirmed && peerConfirmed && !linkSent) {
-        linkSent = true;
+    const link = (): void => {
+      if (st.own && st.peer && !st.sent) {
+        st.sent = true;
         r.sends.push("LOCAL_LINK");
       }
     };
-    if (dead) {
-      out.push(r);
-      continue;
-    }
-    switch (e.event) {
-      case "own-confirm":
-        // The person confirms once; a second confirmation is not an event of the wire.
-        if (!ownConfirmed) {
-          ownConfirmed = true;
-          r.sends.push("CONFIRM");
-          maybeLink();
-        }
-        break;
-      case "own-decline":
-        if (!ownConfirmed) {
-          r.close = "peer_bye";
-          dead = true;
-        }
-        break;
-      case "peer-confirm":
-        if (peerConfirmed) bad();
-        else {
-          peerConfirmed = true;
-          maybeLink();
-        }
-        break;
-      case "peer-link": {
-        if (!ownConfirmed || !peerConfirmed || peerLink) {
-          bad();
-          break;
-        }
-        const v = refLinkBody(e.body);
-        if (!v.ok) {
-          bad();
-          break;
-        }
-        if (held >= REF_MAX_LOCAL_LINKS) {
-          r.close = "peer_not_allowed";
-          dead = true;
-          break;
-        }
-        peerLink = true;
+    if (e.event === "own-confirm" && !st.own) {
+      // The person confirms once; a second confirmation is not an event of the wire.
+      st.own = true;
+      r.sends.push("CONFIRM");
+      link();
+    } else if (e.event === "own-decline" && !st.own) end("peer_bye");
+    else if (e.event === "peer-confirm") {
+      if (st.peer) end("peer_bad_frame");
+      else {
+        st.peer = true;
+        link();
+      }
+    } else if (e.event === "peer-link") {
+      const v = refLinkBody(e.body);
+      if (!st.own || !st.peer || st.got || !v.ok) end("peer_bad_frame");
+      else if (held >= REF_MAX_LOCAL_LINKS) end("peer_not_allowed");
+      else {
+        st.got = true;
         r.stored = {
           ...(v.label !== undefined ? { label: v.label } : {}),
           cats: refLinkCategories(cats, v.cats),
         };
-        r.close = "peer_bye";
-        dead = true;
-        break;
+        end("peer_bye");
       }
-      case "timeout-confirm":
-        if (!(ownConfirmed && peerConfirmed)) {
-          r.close = "peer_timeout";
-          dead = true;
-        }
-        break;
-      case "timeout-exchange":
-        if (ownConfirmed && peerConfirmed && !peerLink) {
-          r.close = "peer_timeout";
-          dead = true;
-        }
-        break;
-    }
-    out.push(r);
-  }
-  return out;
+    } else if (e.event === "timeout-confirm" && !(st.own && st.peer))
+      end("peer_timeout");
+    else if (e.event === "timeout-exchange" && st.own && st.peer && !st.got)
+      end("peer_timeout");
+    return r;
+  });
 }
 
 // ── The pin (§15.12, "Mode l" and "Link keys") ───────────────────────────────
@@ -531,33 +453,35 @@ export interface TrialOut {
 
 export function refLocalTrial(i: TrialIn): TrialOut {
   const tried: string[] = [];
-  if (i.account !== null) {
-    for (let k = 0; k < Math.min(2, i.account.length); k++) {
-      if (i.account[k] === null) continue;
-      tried.push(`a:${k}`);
-      if (i.opens?.mode === "a" && i.opens.key === k)
-        return { tried, hit: `a:${k}`, slot: false, close: null };
-    }
-  }
-  if (i.contacts.length === 0 && i.locals.length === 0)
+  const opens = i.opens;
+  const a = refTrialAccount(
+    i.account,
+    opens?.mode === "a" ? opens.key : null,
+    tried,
+  );
+  if (a !== null) return { tried, hit: a, slot: false, close: null };
+  if (i.contacts.length + i.locals.length === 0)
     return { tried, hit: null, slot: false, close: "handshake_failed" };
   if (i.limiter === "refuse")
     return { tried, hit: null, slot: false, close: "peer_busy" };
-  for (
-    let k = 0;
-    k < Math.min(REF_MAX_CONTACT_SECRETS, i.contacts.length);
-    k++
-  ) {
-    tried.push(`c:${k}`);
-    if (i.opens?.mode === "c" && i.opens.contact === k)
-      return { tried, hit: `c:${k}`, slot: true, close: null };
-  }
-  for (let k = 0; k < Math.min(REF_MAX_LOCAL_LINKS, i.locals.length); k++) {
-    tried.push(`l:${k}`);
-    if (i.opens?.mode === "l" && i.opens.link === k)
-      return { tried, hit: `l:${k}`, slot: true, close: null };
-  }
-  return { tried, hit: null, slot: false, close: "handshake_failed" };
+  const hit =
+    refTrialList(
+      "c",
+      i.contacts.length,
+      REF_MAX_CONTACT_SECRETS,
+      opens?.mode === "c" ? opens.contact : null,
+      tried,
+    ) ??
+    refTrialList(
+      "l",
+      i.locals.length,
+      REF_MAX_LOCAL_LINKS,
+      opens?.mode === "l" ? opens.link : null,
+      tried,
+    );
+  return hit !== null
+    ? { tried, hit, slot: true, close: null }
+    : { tried, hit: null, slot: false, close: "handshake_failed" };
 }
 
 // ── The pairing window (§15.12, "The pairing window") ────────────────────────
