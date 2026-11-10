@@ -3,6 +3,8 @@
 // packages/sdk-react/parity.json; the browser adapter evaluates it as runtime `web`, the desktop
 // adapter as `desktop-bridge`, and both follow their current capability map for `product`.
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { browserAdapter } from "../src/browser/browserAdapter.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
@@ -124,9 +126,16 @@ describe("supports() — the browser adapter (runtime web)", () => {
   it("a planned feature or an unknown id is version", async () => {
     const a = browser();
     await ready(a);
-    expect(a.supports(Feature.syncE2eRecovery)).toMatchObject({
-      reason: "version",
-    });
+    // Whatever the SDK's own parity.json still lists as planned, so the test follows the registry.
+    const parity = JSON.parse(
+      readFileSync(join(process.cwd(), "parity.json"), "utf8"),
+    ) as { features: Record<string, { status: string }> };
+    const planned = Object.entries(parity.features)
+      .filter(([, f]) => f.status === "planned")
+      .map(([id]) => id);
+    for (const id of planned) {
+      expect(a.supports(id)).toMatchObject({ reason: "version" });
+    }
     expect(a.supports("future.feature")).toMatchObject({ reason: "version" });
     a.dispose();
   });
