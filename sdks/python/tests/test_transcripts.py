@@ -69,7 +69,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature update.feed release.record update.decide
 # @pkey-feature packs.apply.chunk commerce.receipt
 # @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
-# @pkey-feature license.manage connect.links
+# @pkey-feature license.manage connect.links connect.local
 # @pkey-feature identity.keyentry identity.account identity.attach identity.toggle identity.accesstoken
 # @pkey-feature core.presentation ui.cli.portal
 # @pkey-feature identity.keyreturn
@@ -485,6 +485,8 @@ def _act(
         )
         # connect.links (CC-19): the cached services.connect.interAccount the SDK gates links on.
         out["interAccount"] = client.cloud_connect.links.inter_account()
+        # connect.local (CC-29): the cached services.connect.localPairing the SDK gates local pairing on.
+        out["localPairing"] = client.cloud_connect.local_links.local_pairing()
     elif action == "sync":
         r = client.sync(force=args.get("force") is True)
         out["applied"] = r.applied

@@ -121,7 +121,16 @@ def test_the_type_table_matches_the_corpus() -> None:
         (int(t["from"], 16), int(t["to"], 16), t["name"], t["modes"], t.get("bodyLen"))
         for t in M["records"]["types"]
     ]
-    assert [tuple(r) for r in RECORD_TYPES] == rows
+    # This table is the one the corpus held before local links (modes a, v, p and c); the rows and modes
+    # that local links added (modes q and l, LOCAL_LINK) are the `local.records` rows, run in
+    # test_peer_local_conformance.py.
+    base = "avpc"
+    mine = [
+        (r.start, r.end, r.name, "".join(c for c in r.modes if c in base), r.body_len)
+        for r in RECORD_TYPES
+        if any(c in base for c in r.modes)
+    ]
+    assert mine == rows
 
 
 @pytest.mark.parametrize("s", M["records"]["sessions"], ids=[s["id"] for s in M["records"]["sessions"]])

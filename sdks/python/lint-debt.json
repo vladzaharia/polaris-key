@@ -56,9 +56,6 @@
       "ruff:E501": 5,
       "ruff:F841": 1
     },
-    "sdks/python/src/polaris_key/client.py": {
-      "ruff:I001": 1
-    },
     "sdks/python/src/polaris_key/config/client.py": {
       "mypy:index": 2,
       "mypy:operator": 1

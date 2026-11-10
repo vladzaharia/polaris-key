@@ -27,6 +27,8 @@ LAN_CODE: Dict[str, str] = {
     "too_large": ErrorCode.INVALID_ARGUMENT,
     "bad_type": ErrorCode.INVALID_ARGUMENT,
     "not_picked": ErrorCode.INVALID_ARGUMENT,
+    #: A dial to a local link is held off for a moment after one that failed (§15.12).
+    "busy": ErrorCode.PEER_BUSY,
     "bad_input": ErrorCode.INVALID_ARGUMENT,
 }
 

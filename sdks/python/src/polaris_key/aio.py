@@ -413,6 +413,19 @@ class _AsyncCloudNearby(_AsyncFacet):
         return GuardedCoroutine(run(), "cloud_connect.nearby.on_request")
 
 
+class _AsyncLocalLinks(_AsyncFacet):
+    """``cloud_connect.local_links`` on the async client: ``pair``, ``join``, ``list``, ``rename``, ``remove``,
+    ``set_reachable`` and ``open`` are coroutines run on a worker thread. ``on_link`` and ``local_pairing``
+    return at once; the callbacks (and the pairing offers' ``confirm`` and ``decline``, which block) are the
+    Connect thread's."""
+
+    def on_link(self, fn: Callable[..., Any]) -> Callable[[], None]:
+        return self._target.on_link(fn)  # type: ignore[no-any-return]
+
+    def local_pairing(self) -> bool:
+        return self._target.local_pairing()  # type: ignore[no-any-return]
+
+
 class _AsyncCloudConnect(_AsyncFacet):
     """``cloud_connect`` on the async client: the blocking calls (``start``, ``stop``, ``open``, ``peers``,
     ``refresh_peers``, ``devices``) are coroutines run on a worker thread. The registrations and
@@ -426,6 +439,10 @@ class _AsyncCloudConnect(_AsyncFacet):
     @property
     def links(self) -> _AsyncLinks:
         return _AsyncLinks(self._target.links)
+
+    @property
+    def local_links(self) -> _AsyncLocalLinks:
+        return _AsyncLocalLinks(self._target.local_links)
 
     def on_channel(self, fn: Callable[..., Any]) -> Callable[[], None]:
         return self._target.on_channel(fn)  # type: ignore[no-any-return]

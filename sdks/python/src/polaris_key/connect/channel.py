@@ -35,6 +35,7 @@ __all__ = [
     "REFRESH_GAP_SECONDS",
     "channel_base",
     "contact_channel",
+    "local_channel",
     "peer_account",
 ]
 
@@ -130,6 +131,32 @@ def contact_channel(
         "static_key": src.static_key,
         "caps": list(caps),
         "hello": {"label": label, "platform": sys.platform, "app": src.slug},
+    }
+    if now is not None:
+        o["now"] = now
+    if rekey_messages is not None:
+        o["rekey_messages"] = rekey_messages
+    if rekey_seconds is not None:
+        o["rekey_seconds"] = rekey_seconds
+    return o
+
+
+def local_channel(
+    slug: str,
+    *,
+    caps: Sequence[str] = ("app/1",),
+    label: Optional[str] = None,
+    now: Optional[Callable[[], int]] = None,
+    rekey_messages: Optional[int] = None,
+    rekey_seconds: Optional[float] = None,
+) -> Dict[str, Any]:
+    """What a mode-``l`` ``PeerSession`` needs (§15.12): no account, no certificate, no device key. Each link's
+    own key rides in ``local_links``, so the session has no static key of its own."""
+    o: Dict[str, Any] = {
+        "mode": "l",
+        "slug": slug,
+        "caps": list(caps),
+        "hello": {"label": label, "platform": sys.platform, "app": slug},
     }
     if now is not None:
         o["now"] = now
