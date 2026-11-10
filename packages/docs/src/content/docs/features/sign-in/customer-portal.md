@@ -101,4 +101,4 @@ Locker's styles need cascade layers, `@property` and `color-mix()`: Safari 16.4 
 
 - [Locker API](/docs/reference/portal-api/): every route and its gates.
 - [Product sign-in provider](/docs/features/sign-in/oidc/): the provider a platform product shares with Locker.
-- [Browser sessions](/docs/features/sign-in/sessions/): the product-scoped cookie this one is not.
+- [Browser sessions](/docs/features/sign-in/sessions/): how a web page holds a sign-in, which is not this cookie.

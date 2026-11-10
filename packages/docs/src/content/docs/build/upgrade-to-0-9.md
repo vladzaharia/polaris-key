@@ -90,6 +90,9 @@ Each removal, with its fix and the release that made it, is in the [developer ch
 
 | Removed | Use instead | Since |
 | --- | --- | --- |
+| The routes `/<product>/identity/session`, `/<product>/identity/session/license` and `/<product>/identity/auth/logout`, the `pkey_<product>_session` cookie, and their entries in the identity discovery endpoints | `POST /<product>/license/activate` for a key, the redirect or device-code sign-in for a person, and the device token's own sign-out | 0.10.3 |
+| The return_to parameter of the browser flow's start route | The web redirect: `signIn.start({ channel: "redirect" })` | 0.10.3 |
+| The setting `identity.browserSessionDays` | Nothing: a browser page holds a device token, not a session | 0.10.3 |
 | The seven `/manage/api/platform/override-migration` routes (read, prerequisites, notice, dry-run, run, report) | Nothing: there is no run to read. | 0.9.0 |
 | `pnpm --filter @polaris-key/worker override-migration:dry-run` | Nothing. | 0.9.0 |
 | The job `core.licence-override-migration` | `core.provisioned-secrets-to-account` moves provisioned secrets to the owner's account row (see the migration ledger). | 0.9.0 |
@@ -109,6 +112,9 @@ Each removal, with its fix and the release that made it, is in the [developer ch
 
 | SDK | Removed | Use instead | Since |
 | --- | --- | --- | --- |
+| react | `auth: "cookie"` | Bearer mode: `auth: "bearer"` (or the default `"auto"`) with `trust.pinnedKeys`; sign in with `signIn.start({ channel: "redirect" })` or the device code | 0.10.3 |
+| react | `navigate`, a provider test seam, and `pageOrigin`, a browser adapter option | Nothing: a redirect sign-in navigates the page itself | 0.10.3 |
+| react | `splitSessionDoc` | Nothing: the page verifies the signed license and config documents itself | 0.10.3 |
 | swift | `PolarisLoginView`, `PolarisGateModel` | `PolarisKeyGate` (or `.polarisKey(client)`, which now draws it) | 0.9.18 |
 | swift | `PolarisSignIn`, `PolarisOfflineActivation` | The kit's sign-in and offline screens, inside `PolarisKeyGate` | 0.9.18 |
 | swift | `GateOptions` | `KitGateOptions` (`keyEntry`, `offlineActivation`); `returnURL`, `renewURL` and `blockedAction` have no counterpart | 0.9.18 |
@@ -180,12 +186,11 @@ Each removal, with its fix and the release that made it, is in the [developer ch
 | kotlin | `config.configSource` | `config.getConfigSource` | 0.9 |
 | kotlin | `config.secret` | `config.getSecret` | 0.9 |
 | kotlin | `license.activate` | `license.activateWithKey` | 0.9 |
-| kotlin | `client.licenseChanges` | `undefined` | 0.9 |
-| swift | `PolarisLoginView` | `undefined` | 0.9 |
-| swift | `PolarisGateModel` | `undefined` | 0.9 |
-| swift | `PolarisSignIn` | `undefined` | 0.9 |
-| swift | `PolarisOfflineActivation` | `undefined` | 0.9 |
-| swift | `GateOptions` | `undefined` | 0.9 |
+| kotlin | `client.licenseChanges` | collect `events` filtered to `PolarisEvent.License`, or `licenseState` | 0.9 |
+| swift | `PolarisLoginView` | PolarisKeyGate | 0.9 |
+| swift | `PolarisGateModel` | PolarisKeyGate | 0.9 |
+| swift | `PolarisSignIn` | the kit's sign-in screens (PolarisKeyGate) | 0.9 |
+| swift | `PolarisOfflineActivation` | the kit's offline screens (PolarisKeyGate) | 0.9 |
 | node | `identity.signInWithBrowser` | `identity.signIn.start` | 0.9 |
 | node | `identity.beginSignIn` | `identity.signIn.start` | 0.9 |
 | node | `identity.pollSignIn` | `identity.signIn.session.wait` | 0.9 |

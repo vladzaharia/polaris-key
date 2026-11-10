@@ -109,14 +109,10 @@ device routes, License, Config (document, schema, mint token), Release (changelo
 Distribution (`install.sh`, downloads, builds, files, blobs), Update (appcasts, version) and the
 device-code flow. The permanent aliases are covered like the routes they point to.
 
-These stay first-party and never answer CORS. They set or read the per-product browser-session
-cookie, or they are top-level navigations:
+These stay first-party and never answer CORS. They are top-level navigations:
 
-- `/{product}/identity/session`
-- `/{product}/identity/session/license`
 - `/{product}/identity/auth/start`
 - `/{product}/identity/auth/callback`
-- `/{product}/identity/auth/logout`
 - `/{product}/identity/auth/device`
 - `/{product}/identity/auth/device/verify`
 - `/{product}/identity/auth/device/approve`

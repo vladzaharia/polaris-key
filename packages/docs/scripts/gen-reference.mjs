@@ -1453,13 +1453,17 @@ export function upgradeRows(surface, entries) {
         rows.push({ sdk: r.sdk, old: r.old, new: r.new, since: e.version });
   if (surface === "sdk") {
     const api = JSON.parse(read("conformance", "parity", "api.json"));
-    for (const r of api.removed)
+    for (const r of api.removed) {
+      const old = `\`${r.from}\``;
+      // An entry's `replaces` row for the same name says it with its own words.
+      if (rows.some((x) => x.sdk === r.sdk && x.old === old)) continue;
       rows.push({
         sdk: r.sdk,
-        old: `\`${r.from}\``,
-        new: `\`${r.to}\``,
+        old,
+        new: r.to ? `\`${r.to}\`` : (r.note ?? ""),
         since: "0.9",
       });
+    }
   }
   return rows;
 }

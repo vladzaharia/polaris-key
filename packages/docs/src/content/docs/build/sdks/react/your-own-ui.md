@@ -396,13 +396,13 @@ every device and the code loses their synced settings.
 
 ### Where it runs
 
-- **Browser sign-in only.** Cloud Sync in a browser needs the redirect sign-in. A cookie-only page
-  and the desktop bridge answer `unsupported` and keep every setting `local`, as does a product
-  without the Sync service.
-- **Bearer, on your origins.** The page sends the redirect token as a bearer header and never the
-  session cookie. The Worker answers Cloud Sync for a page on the product's `web.origins` only,
-  without credentialed CORS, and the token works for one device of one product. A cookie-only
-  request is `401`. Serve the page from an origin the product lists.
+- **Browser sign-in only.** Cloud Sync in a browser needs a signed-in page with `trust.pinnedKeys`.
+  A page without them and the desktop bridge answer `unsupported` and keep every setting `local`,
+  as does a product without the Sync service.
+- **Bearer, on your origins.** The page sends its token as a bearer header and never a cookie.
+  The Worker answers Cloud Sync for a page on the product's `web.origins` only, without
+  credentialed CORS, and the token works for one device of one product. Serve the page from an
+  origin the product lists.
 - **Strict CSP.** The key ring's root is a non-extractable key in the browser's vault, so a script
   cannot copy it out, but a script that runs on your page can still ask the page to decrypt. Keep a
   strict `Content-Security-Policy`: no `unsafe-inline` or `unsafe-eval` in `script-src`, and
@@ -517,7 +517,6 @@ const adapter = browserAdapter({
   productSlug: "acme",
   baseUrl: "https://key.plrs.im",
   auth: "bearer",
-  pageOrigin: "https://app.example.com",
   trust: {
     pinnedKeys: { "acme-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI" },
   },

@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 import { canonicalPlatform } from "@polaris-key/client-core";
 import { browserAdapter } from "../src/browser/browserAdapter.js";
 import { Platform, SdkId } from "../src/constants.generated.js";
-import { fakeWorld, makeDoc, makeFakeFetch, NOW_SEC } from "./fixtures.js";
+import { fakeWorld, makeDoc, NOW_SEC } from "./fixtures.js";
 
 interface HeaderCase {
   id: string;
@@ -33,25 +33,26 @@ const corpus = JSON.parse(
 };
 
 async function capturedSessionHeaders(): Promise<Record<string, string>> {
-  const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
+  const world = fakeWorld(makeDoc());
+  const calls = vi.fn(world.fetchImpl);
   const adapter = browserAdapter({
+    ...world,
+    fetchImpl: calls as unknown as typeof fetch,
     productSlug: "acme",
-    ...fakeWorld(makeDoc()),
-    fetchImpl: fetchImpl as unknown as typeof fetch,
-    now: () => NOW_SEC,
     version: "1.4.2",
+    now: () => NOW_SEC,
   });
   for (let i = 0; i < 200 && adapter.snapshot().phase === "loading"; i++)
     await new Promise((r) => setTimeout(r, 2));
-  const call = fetchImpl.mock.calls.find((c) =>
+  const call = calls.mock.calls.find((c) =>
     String(c[0]).includes("/license/document"),
   );
   adapter.dispose();
-  const h = new Headers((call?.[1] as RequestInit).headers);
+  const sent = new Headers((call?.[1] as RequestInit).headers);
   return {
-    "X-PKey-Platform": h.get("x-pkey-platform") ?? undefined,
-    "X-PKey-Arch": h.get("x-pkey-arch") ?? undefined,
-    "X-PKey-SDK": h.get("x-pkey-sdk") ?? undefined,
+    "X-PKey-Platform": sent.get("x-pkey-platform") ?? undefined,
+    "X-PKey-Arch": sent.get("x-pkey-arch") ?? undefined,
+    "X-PKey-SDK": sent.get("x-pkey-sdk") ?? undefined,
   } as unknown as Record<string, string>;
 }
 

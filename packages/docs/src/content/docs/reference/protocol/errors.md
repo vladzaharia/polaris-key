@@ -129,7 +129,6 @@ Over-limit is a `429`. On `POST /<p>/devices/register` it is the nested
 | `token`                 | `POST /<p>/license/token`            | 30 / 60 s per IP                          | closed    |
 | `enroll`                | `POST /<p>/license/enroll`           | policy `rateLimitPerHour` / 3600 s per IP | closed    |
 | `mint`                  | `/<p>/config/mint/<id>/token`        | 60 / 60 s per IP                          | closed    |
-| `browserSessionLicense` | `POST /<p>/identity/session/license` | 30 / 60 s per IP                          | closed    |
 | `release`               | Release metadata surfaces            | 30 / 60 s per IP                          | open      |
 | `releaseArtifact`       | Artifact downloads                   | 60 / 120 s per IP                         | open      |
 | `releaseUpstream`       | GitHub API calls, **per product**    | 4000 / 3600 s per product                 | open      |

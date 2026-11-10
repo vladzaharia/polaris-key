@@ -60,7 +60,7 @@ separately:
 | Effective policy    | When it applies                        | `POST /<p>/devices/register` behavior                               |
 | ------------------- | -------------------------------------- | ------------------------------------------------------------------- |
 | `requires-license`  | License is enabled                     | Refuse permanently. Activation and enrollment are the mint paths.   |
-| `requires-identity` | License is off and Identity is enabled | Requires a live product browser session.                            |
+| `requires-identity` | License is off and Identity is enabled | Refused: sign-in mints the device token.                           |
 | `open`              | License and Identity are both off      | Mint for any caller. Rate-limited by edge IP; fingerprint optional. |
 
 The ordering follows how much the product knows about the caller: a licensed product already has a
