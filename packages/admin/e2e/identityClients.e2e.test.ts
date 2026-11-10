@@ -495,6 +495,18 @@ describe("Sign in with <Product> in the console", () => {
       await page.goto(`${app.url}/manage.html${hash}`);
     };
 
+    /** The client record of the forum, with one secret, answering `handler` first. */
+    const openForum = (hash: string, handler: Handler) =>
+      open(
+        "light",
+        hash,
+        base({
+          [`${P}/identity/clients`]: page_([FORUM]),
+          [`${P}/identity/clients/${FORUM.id}`]: record(FORUM, [SECRETS[0]]),
+        }),
+        { handler },
+      );
+
     it("turning the provider on from the first run makes Register ready without a reload", async () => {
       let on = false;
       const page = await open(
@@ -571,20 +583,11 @@ describe("Sign in with <Product> in the console", () => {
 
     it("an edit that adds an address asks for a sign-in and keeps the entry", async () => {
       const hash = `${LIST_HASH}/${FORUM.id}`;
-      const page = await open(
-        "light",
-        hash,
-        base({
-          [`${P}/identity/clients`]: page_([FORUM]),
-          [`${P}/identity/clients/${FORUM.id}`]: record(FORUM, [SECRETS[0]]),
-        }),
-        {
-          handler: (url, method) =>
-            method === "PATCH" &&
-            url.pathname === `${P}/identity/clients/${FORUM.id}`
-              ? STEP_UP()
-              : undefined,
-        },
+      const page = await openForum(hash, (url, method) =>
+        method === "PATCH" &&
+        url.pathname === `${P}/identity/clients/${FORUM.id}`
+          ? STEP_UP()
+          : undefined,
       );
       await page.getByRole("button", { name: "Edit" }).first().click();
       const drawer = page.getByRole("dialog");
@@ -611,21 +614,12 @@ describe("Sign in with <Product> in the console", () => {
 
     it("Generate secret and Delete reopen after the sign-in", async () => {
       const hash = `${LIST_HASH}/${FORUM.id}`;
-      const page = await open(
-        "light",
-        hash,
-        base({
-          [`${P}/identity/clients`]: page_([FORUM]),
-          [`${P}/identity/clients/${FORUM.id}`]: record(FORUM, [SECRETS[0]]),
-        }),
-        {
-          handler: (url, method) =>
-            (method === "POST" && url.pathname.endsWith("/secrets")) ||
-            (method === "DELETE" &&
-              url.pathname === `${P}/identity/clients/${FORUM.id}`)
-              ? STEP_UP()
-              : undefined,
-        },
+      const page = await openForum(hash, (url, method) =>
+        (method === "POST" && url.pathname.endsWith("/secrets")) ||
+        (method === "DELETE" &&
+          url.pathname === `${P}/identity/clients/${FORUM.id}`)
+          ? STEP_UP()
+          : undefined,
       );
       await page
         .getByRole("button", { name: "Generate secret" })

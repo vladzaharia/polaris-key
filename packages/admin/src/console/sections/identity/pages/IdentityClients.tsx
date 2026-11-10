@@ -18,9 +18,9 @@ import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { Section } from "../../../../ui/Section.js";
-import { Textarea } from "../../../../ui/Textarea.js";
 import { toast } from "../../../../ui/toast.js";
 import { blocker, NEEDS_REASON } from "../../../../ui/confirmReasons.js";
+import { ReasonField } from "../../../../ui/ReasonField.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
@@ -165,21 +165,7 @@ function TurnOnDialog({
         toast.success(`Sign in with ${name} is on`);
       }}
     >
-      <div className="space-y-1 text-sm">
-        <label className="block space-y-1">
-          <span className="font-medium text-fg-strong">Reason</span>
-          <Textarea
-            value={reason}
-            onValueChange={setReason}
-            maxLength={500}
-            rows={2}
-            placeholder="Why this changes"
-          />
-        </label>
-        <p className="text-xs text-fg-muted">
-          Required. Kept in the activity log.
-        </p>
-      </div>
+      <ReasonField value={reason} onValueChange={setReason} />
     </ConfirmDialog>
   );
 }
