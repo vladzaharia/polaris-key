@@ -552,3 +552,34 @@ def test_the_shared_listener_with_an_account_and_a_sign_out_that_keeps_the_link_
     a2.cloud_connect.stop()
     a2.identity._before_sign_out.run()
     assert a2.cloud_connect.status().running is False
+
+
+# -- admission for a listener with no account key -------------------------------------------------------
+
+
+def test_junk_from_one_source_group_spends_its_budget_before_any_secret_is_tried(world: World) -> None:
+    import socket
+
+    from polaris_key.core.peer_frame import encode_frame
+
+    w = world
+    ida, idb = linked(w)
+    w.a.cloud_connect.start(opts(w))
+    w.b.cloud_connect.start(opts(w))
+    lan = w.a.cloud_connect._lan
+    assert lan is not None
+    # The link works first: B has seen A, and a session opens (a trial that opens refunds its group's count).
+    open_when_seen(w.b, idb).close()
+    # One message 1 that opens nothing, a few times, from this host: the group's budget is two a minute.
+    for _ in range(2):
+        with socket.create_connection(("127.0.0.1", lan.port), timeout=5) as sk:
+            sk.sendall(encode_frame(bytes(range(48))))
+            sk.settimeout(5)
+            try:
+                sk.recv(1)  # the listener closes without a word
+            except OSError:
+                pass
+    # The group has spent its two: a real dial from the same source meets a silent refusal, whatever it holds.
+    with pytest.raises(LanError) as e:
+        w.b.cloud_connect.local_links.open(idb)
+    assert e.value.reason in ("handshake_failed", "connect_failed")
