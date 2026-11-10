@@ -11,15 +11,14 @@ import {
   jwtVerify,
 } from "jose";
 import { dispatchWith } from "../../../../src/dispatch.js";
-import { SETTINGS } from "../../../../src/mount.js";
 import {
   addClientSecret,
   revokeClientSecret,
+  updateClient,
   type ClientRecord,
 } from "../../../../src/services/identity/issuer/clientsRepo.js";
 import { deleteClient } from "../../../../src/services/identity/issuer/clientsRepo.js";
 import { issuerJwks } from "../../../../src/services/identity/issuer/keys.js";
-import { handleSignInContinue } from "../../../../src/services/identity/passthrough/continue.js";
 import { resolveSubjectEntitlements } from "../../../../src/core/licensing/subjectEntitlements.js";
 import {
   getOrCreateAccountByEmail,
@@ -28,6 +27,7 @@ import {
 import { subjectFor } from "../../../../src/core/accounts/accountSubjects.js";
 import { NOW, seedLicenseWithKey, seedProduct } from "../../../seed.js";
 import { BASE, SLUG, type World } from "../../connect/connectFixture.js";
+import { issuerFlow } from "./issuerFlow.js";
 import { issuerWorld, mkClient } from "./issuerWorld.js";
 
 const ISSUER = `${BASE}/${SLUG}/identity`;
@@ -56,86 +56,12 @@ beforeEach(async () => {
     .secret;
 });
 
-/** A code for `client` through authorize and Continue, the way a person gets one. */
-async function codeFor(
-  client: ClientRecord,
-  extra: Record<string, string> = {},
-  consent: string[] = ["name", "email"],
-): Promise<string> {
-  const redirect = client.redirectUris[0]!;
-  const p = new URLSearchParams({
-    response_type: "code",
-    client_id: client.clientId,
-    redirect_uri: redirect,
-    scope: "openid profile email offline_access pkey:entitlements",
-    state: "s",
-    ...(client.type === "web"
-      ? { nonce: "n-1" }
-      : { code_challenge: pair.challenge, code_challenge_method: "S256" }),
-    ...extra,
-  });
-  const auth = await dispatchWith(
-    new Request(`${BASE}/${SLUG}/identity/authorize?${p}`),
-    w.env,
-    w.db,
-    NOW,
-  );
-  expect(auth.status).toBe(303);
-  const handle = /request=(rq_[A-Za-z0-9_-]{22})/.exec(
-    auth.headers.get("location")!,
-  )![1]!;
-  const cookie = auth.headers.get("set-cookie")!.split(";")[0]!;
-  const res = await handleSignInContinue(
-    new Request(`${BASE}/api/x`, {
-      method: "POST",
-      headers: { cookie, "content-type": "application/json" },
-      body: JSON.stringify({ consent: { claims: consent } }),
-    }),
-    w.env,
-    w.db,
-    { accountId },
-    handle,
-    NOW,
-    SETTINGS,
-    NOW,
-  );
-  expect(res.status).toBe(200);
-  return new URL(
-    ((await res.json()) as { redirect: string }).redirect,
-  ).searchParams.get("code")!;
-}
-
+const { codeFor, token, basic, grantForm, err } = issuerFlow(() => ({
+  w,
+  accountId,
+  pair,
+}));
 type Form = Record<string, string>;
-const token = (
-  form: Form,
-  init: { headers?: Record<string, string>; at?: number } = {},
-) =>
-  dispatchWith(
-    new Request(`${BASE}/${SLUG}/identity/token`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        ...init.headers,
-      },
-      body: new URLSearchParams(form).toString(),
-    }),
-    w.env,
-    w.db,
-    init.at ?? NOW,
-  );
-const basic = (id: string, sec: string) => ({
-  authorization: `Basic ${Buffer.from(`${encodeURIComponent(id)}:${encodeURIComponent(sec)}`).toString("base64")}`,
-});
-const grantForm = (c: ClientRecord, code: string, over: Form = {}): Form => ({
-  grant_type: "authorization_code",
-  client_id: c.clientId,
-  code,
-  redirect_uri: c.redirectUris[0]!,
-  ...(c.type === "web" ? {} : { code_verifier: pair.verifier }),
-  ...over,
-});
-const err = async (res: Response) =>
-  ((await res.json()) as { error: string }).error;
 
 describe("a public client redeems its code", () => {
   it("answers exactly the §12.13.4 members, signed RS256 under the product's key, no-store", async () => {
@@ -252,14 +178,6 @@ describe("a public client redeems its code", () => {
         (c) => grantForm(spa, c, { code_verifier: "B".repeat(43) }),
       ],
       [
-        "no verifier",
-        (c) => {
-          const f = grantForm(spa, c);
-          delete f.code_verifier;
-          return f;
-        },
-      ],
-      [
         "wrong redirect",
         (c) => grantForm(spa, c, { redirect_uri: SPA_CB + "/" }),
       ],
@@ -279,6 +197,14 @@ describe("a public client redeems its code", () => {
     expect(await err(await token(grantForm(spa, code)))).toBe("invalid_grant");
   });
 
+  it("a public client's code is refused without a verifier before the store, so nothing is spent", async () => {
+    const code = await codeFor(spa);
+    const f = grantForm(spa, code);
+    delete f.code_verifier;
+    expect(await err(await token(f))).toBe("invalid_grant");
+    expect((await token(grantForm(spa, code))).status).toBe(200);
+  });
+
   it("the fixed no-challenge string is never accepted as a verifier, and a malformed one spends nothing", async () => {
     const code = await codeFor(spa);
     const res = await token(
@@ -287,6 +213,28 @@ describe("a public client redeems its code", () => {
     expect(res.status).toBe(400);
     expect(await err(res)).toBe("invalid_grant");
     expect((await token(grantForm(spa, code))).status).toBe(200);
+  });
+
+  it("a redirect or scope removed from the client after Continue voids the code", async () => {
+    const code = await codeFor(spa);
+    await updateClient(
+      w.db,
+      SLUG,
+      spa.clientId,
+      { redirectUris: ["https://moved.example.com/cb"] },
+      NOW,
+    );
+    expect(await err(await token(grantForm(spa, code)))).toBe("invalid_grant");
+    await updateClient(
+      w.db,
+      SLUG,
+      spa.clientId,
+      { redirectUris: [SPA_CB] },
+      NOW,
+    );
+    const c2 = await codeFor(spa);
+    await updateClient(w.db, SLUG, spa.clientId, { scopes: ["openid"] }, NOW);
+    expect(await err(await token(grantForm(spa, c2)))).toBe("invalid_grant");
   });
 
   it("a missing redirect_uri or code is invalid_request and spends nothing", async () => {
@@ -452,7 +400,7 @@ describe("public clients and unknown clients", () => {
 });
 
 describe("grants and shapes", () => {
-  it("token exchange and restore are unauthorized_client; refresh and client_credentials are not served yet", async () => {
+  it("token exchange and restore are unauthorized_client; client_credentials and unknown grants are unsupported", async () => {
     for (const grant of [
       "urn:ietf:params:oauth:grant-type:token-exchange",
       "urn:polaris-key:grant-type:restore",
@@ -461,12 +409,7 @@ describe("grants and shapes", () => {
       expect(res.status, grant).toBe(400);
       expect(await err(res)).toBe("unauthorized_client");
     }
-    for (const grant of [
-      "client_credentials",
-      "refresh_token",
-      "password",
-      "bogus",
-    ]) {
+    for (const grant of ["client_credentials", "password", "bogus"]) {
       const res = await token({ grant_type: grant, client_id: spa.clientId });
       expect(await err(res), grant).toBe("unsupported_grant_type");
     }

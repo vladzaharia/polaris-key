@@ -45,6 +45,10 @@ export interface RefreshGrantFields {
   scope: string;
   claims: string[];
   authTime: number;
+  /** The redirect URI the family was issued for (re-checked at each use). */
+  redirectUri?: string | null;
+  /** HMAC of the authorization code that opened the family (see {@link hashAuthCode}). */
+  codeHash?: string | null;
 }
 
 export interface RefreshRow extends RefreshGrantFields {
@@ -56,6 +60,7 @@ export interface RefreshRow extends RefreshGrantFields {
   spentAt: number | null;
   replacedBy: string | null;
   revokedAt: number | null;
+  redirectUri: string | null;
 }
 
 interface Row {
@@ -73,6 +78,7 @@ interface Row {
   spent_at: number | null;
   replaced_by: string | null;
   revoked_at: number | null;
+  redirect_uri: string | null;
 }
 
 const toRow = (r: Row): RefreshRow => ({
@@ -90,6 +96,7 @@ const toRow = (r: Row): RefreshRow => ({
   spentAt: r.spent_at,
   replacedBy: r.replaced_by,
   revokedAt: r.revoked_at,
+  redirectUri: r.redirect_uri,
 });
 
 /** Has the token (or its family) run out by idle time or by the absolute cap? */
@@ -110,8 +117,8 @@ function insertStatement(
   return {
     sql: `INSERT INTO identity_refresh_tokens
             (token_hash, family_id, product, client_id, account_id, scope, claims_json, auth_time,
-             family_started_at, created_at, last_used_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             family_started_at, created_at, last_used_at, code_hash, redirect_uri)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       h,
       family,
@@ -124,6 +131,8 @@ function insertStatement(
       familyStartedAt,
       now,
       now,
+      f.codeHash ?? null,
+      f.redirectUri ?? null,
     ],
   };
 }
@@ -237,9 +246,9 @@ export async function rotateRefreshToken(
     {
       sql: `INSERT INTO identity_refresh_tokens
               (token_hash, family_id, product, client_id, account_id, scope, claims_json,
-               auth_time, family_started_at, created_at, last_used_at)
+               auth_time, family_started_at, created_at, last_used_at, redirect_uri)
             SELECT ?, family_id, product, client_id, account_id, ?, claims_json, auth_time,
-                   family_started_at, ?, ?
+                   family_started_at, ?, ?, redirect_uri
               FROM identity_refresh_tokens
              WHERE product = ? AND token_hash = ? AND spent_at = ? AND replaced_by = ?`,
       params: [next, scope, now, now, row.product, row.tokenHash, now, next],
@@ -324,4 +333,33 @@ export function purgeRefreshTokens(
     cutoff,
     limit,
   );
+}
+
+/** The hash a family keeps of the code that opened it. Domain-separated from every other hash. */
+export const hashAuthCode = (env: Env, code: string): Promise<string> => {
+  if (!env.KEY_HASH_PEPPER)
+    throw new Error("KEY_HASH_PEPPER is not configured");
+  return hashKey("authcode:" + code, env.KEY_HASH_PEPPER);
+};
+
+/**
+ * The family a code opened, for this client: a code presented AFTER its redemption finds it, and
+ * the caller revokes the family (RFC 6749 §4.1.2; IS-4). `null` when no family of this client was
+ * opened by that code (a code never redeemed, or one that asked for no refresh token).
+ */
+export async function familyOfCode(
+  env: Env,
+  db: Db,
+  product: string,
+  clientId: string,
+  code: string,
+): Promise<string | null> {
+  const r = await db.first<{ family_id: string }>(
+    `SELECT family_id FROM identity_refresh_tokens
+      WHERE product = ? AND client_id = ? AND code_hash = ?`,
+    product,
+    clientId,
+    await hashAuthCode(env, code),
+  );
+  return r?.family_id ?? null;
 }

@@ -476,7 +476,7 @@ async function dispatchProduct(
     const extra =
       route.kind === "service" &&
       (route as { slug?: string }).slug === "identity" &&
-      rest?.join("/") === "token"
+      ["token", "userinfo", "revoke"].includes(rest?.join("/") ?? "")
         ? await issuerPreflightOrigins(db, product.slug)
         : [];
     return corsPreflight(

@@ -349,7 +349,6 @@
       "code": "invalid_token",
       "kind": "wire",
       "service": "identity",
-      "plannedBy": "I-21.11",
       "description": "401 from /<p>/identity/userinfo with `WWW-Authenticate: Bearer error=\"invalid_token\"` (RFC 6750 §3.1): the access token is malformed, expired, not this product's, not an `at+jwt` or without `openid`, or its client grant, client, account or the issuer is gone (WIRE-CONTRACT-V5 §12.13.8; I-21)."
     },
     {

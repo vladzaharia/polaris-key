@@ -9014,6 +9014,125 @@ paths:
                   backchannel_logout_supported: { type: boolean }
         "404": { $ref: "#/components/responses/NotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+  /{product}/identity/userinfo:
+    get:
+      operationId: identityUserinfo
+      tags: [identity]
+      summary: The signed-in person's granted claims (Sign in with this product)
+      description: >
+        I-21.11 (WIRE-CONTRACT-V5 §12.13.8). The claims the person granted, read live. The caller
+        holds an `at+jwt` access token, in `Authorization: Bearer` or (on `POST`) an `access_token`
+        form member, never both. The token is verified against this product's key set alone:
+        `alg` RS256, `typ` `at+jwt`, `iss` and `aud` this issuer, `exp` not passed, `openid` in its
+        scope. The client must be active and the person's client grant must still exist and cover
+        the scope, so Disconnect makes the next call fail. Every refusal is one
+        `401 WWW-Authenticate: Bearer error="invalid_token"`. A call without a token is a bare
+        `401 WWW-Authenticate: Bearer`. Served only while Identity is on and
+        `identity.issuer.enabled` is true; otherwise the registry's `404`. Always `no-store`.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: "`sub` and each granted claim; absent, never null, when empty."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sub]
+                properties:
+                  sub: { type: string }
+                  name: { type: string }
+                  picture: { type: string }
+                  email: { type: string }
+                  email_verified: { type: boolean }
+                  "pkey:entitlements": { type: array, items: { type: string } }
+        "401":
+          description: "`invalid_token`, or no token."
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: 120 calls a minute per client network. Fails closed.
+    post:
+      operationId: identityUserinfoPost
+      tags: [identity]
+      summary: The signed-in person's granted claims, token in the form body
+      description: >
+        The same answer as the `GET`, with the access token as an `access_token` member of an
+        `application/x-www-form-urlencoded` body when no `Authorization` header carries it.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                access_token: { type: string }
+      responses:
+        "200":
+          description: As the `GET`.
+        "401":
+          description: "`invalid_token`, or no token."
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: 120 calls a minute per client network. Fails closed.
+    options:
+      operationId: preflightIdentityUserinfo
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`, or on an origin one of
+        its `spa` clients' redirect URIs is on. Answered before service dispatch, so the result
+        never depends on whether the service behind this path is enabled. See `CorsPreflight`. No
+        credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/revoke:
+    post:
+      operationId: identityRevoke
+      tags: [identity]
+      summary: Revoke a refresh token (RFC 7009)
+      description: >
+        I-21.11 (WIRE-CONTRACT-V5 §12.13.7). A registered client ends one of its own refresh tokens
+        and the whole family, with the client authentication of `token`. `200`, empty body, for a
+        refresh token of this client, for an access token (which is not revoked: it ends within 600
+        seconds) and for a token that is unknown or malformed. A refresh token of another client is
+        `400 unauthorized_client` and revokes nothing. Served only while the issuer is on.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+                token_type_hint:
+                  { type: string, enum: [refresh_token, access_token] }
+                client_id: { type: string }
+                client_secret: { type: string }
+      responses:
+        "200": { description: Empty body. Never cached. }
+        "400":
+          description: "`invalid_request` or `unauthorized_client` (flat)."
+        "401":
+          description: "`invalid_client` (flat)."
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: Per client and per network budgets. Fails closed.
+    options:
+      operationId: preflightIdentityRevoke
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`, or on an origin one of
+        its `spa` clients' redirect URIs is on. Answered before service dispatch, so the result
+        never depends on whether the service behind this path is enabled. See `CorsPreflight`. No
+        credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/identity/jwks:
     get:
       operationId: identityIssuerJwks

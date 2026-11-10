@@ -214,11 +214,14 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/identity/request` | identity | Push a native app's authorize request (RFC 9126; I-15) |
 | POST | `/{product}/identity/restore` | identity | Enrol or check this device's silent-restore key (I-49.5) |
 | DELETE | `/{product}/identity/restore` | identity | Revoke this device's silent-restore key (I-49.5) |
+| POST | `/{product}/identity/revoke` | identity | Revoke a refresh token (RFC 7009) |
 | POST | `/{product}/identity/session/license` | identity | Mint a browser session from a license key |
 | GET | `/{product}/identity/session` | identity | The browser session's fused document |
 | POST | `/{product}/identity/signout` | identity | Sign the device out of its account |
 | GET | `/{product}/identity/subject` | identity | The pairwise subject signed in on the device |
 | POST | `/{product}/identity/token` | identity | Redeem an authorization code, or exchange a platform ID token, for a device token (OAuth-shaped token) |
+| GET | `/{product}/identity/userinfo` | identity | The signed-in person's granted claims (Sign in with this product) |
+| POST | `/{product}/identity/userinfo` | identity | The signed-in person's granted claims, token in the form body |
 | GET | `https://img.plrs.im/{product}/a/{sha256}/{w}.webp` | img | A width variant of a hosted image (image host only) |
 | HEAD | `https://img.plrs.im/{product}/a/{sha256}/{w}.webp` | img | A width variant of a hosted image, headers only (image host only) |
 | GET | `https://img.plrs.im/{product}/a/{sha256}` | img | A hosted image, content-addressed (image host only) |

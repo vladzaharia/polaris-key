@@ -233,4 +233,4 @@ this page or fails the freshness gate.
 | `identity_client_secrets` | 0160_a_identity_clients.sql | `id`, `client_id`, `product`, `secret_hash`, `last4`, `created_at`, `last_used_at`, `revoked_at` |
 | `identity_issuer_keys` | 0161_b_identity_issuer_keys.sql | `product`, `kid`, `state`, `sealed`, `n`, `e`, `created_at`, `published_at`, `activated_at`, `retired_at` |
 | `identity_client_grants` | 0162_c_identity_client_grants.sql | `account_id`, `client_id`, `product`, `claims_granted_json`, `claims_declined_json`, `scopes_json`, `scope_hash`, `granted_at`, `changed_at`, `last_used_at` |
-| `identity_refresh_tokens` | 0163_d_identity_refresh_tokens.sql | `token_hash`, `family_id`, `product`, `client_id`, `account_id`, `scope`, `claims_json`, `auth_time`, `family_started_at`, `created_at`, `last_used_at`, `spent_at`, `replaced_by`, `revoked_at` |
+| `identity_refresh_tokens` | 0163_d_identity_refresh_tokens.sql | `token_hash`, `family_id`, `product`, `client_id`, `account_id`, `scope`, `claims_json`, `auth_time`, `family_started_at`, `created_at`, `last_used_at`, `spent_at`, `replaced_by`, `revoked_at`, `code_hash`, `redirect_uri` |

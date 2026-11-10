@@ -64,7 +64,8 @@ import {
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { oauth, readForm, withNoStore } from "./oauthHttp.js";
 import { CLIENT_ID_PATTERN } from "@polaris-key/protocol/identity";
-import { handleIssuerToken, namedClientId } from "../issuer/token.js";
+import { namedClientId } from "../issuer/clientAuth.js";
+import { handleIssuerToken } from "../issuer/token.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import {
   accountForSubject,
@@ -138,6 +139,19 @@ export async function handleToken(ctx: {
 }): Promise<Response> {
   const { req, env, db, product, now, settings } = ctx;
   if (req.method !== "POST") return methodNotAllowed();
+  const form = await readForm(req);
+  if (!form)
+    return oauth(
+      400,
+      ErrorCode.InvalidRequest,
+      "A form-encoded body is required.",
+    );
+  // I-21.9 (§12.13.4): a request that names a registered client, in the header or the body, is
+  // the issuer's, with its own budgets (per client and network, `clientAuth.ts`); the own client's
+  // shared network budget below never sees it, so one client cannot spend another's.
+  const named = namedClientId(req, form);
+  if (named !== null && CLIENT_ID_RE.test(named))
+    return handleIssuerToken({ req, env, db, slug: product.slug, now, form });
   if (
     !(await rateLimitOk(
       env,
@@ -149,19 +163,6 @@ export async function handleToken(ctx: {
     return oauth(429, "rate_limited", undefined, {
       retryAfter: TOKEN_RATE.windowSec,
     });
-
-  const form = await readForm(req);
-  if (!form)
-    return oauth(
-      400,
-      ErrorCode.InvalidRequest,
-      "A form-encoded body is required.",
-    );
-  // I-21.9 (§12.13.4): a request that names a registered client, in the header or the body, is
-  // the issuer's; the own client's grants below never see it.
-  const named = namedClientId(req, form);
-  if (named !== null && CLIENT_ID_RE.test(named))
-    return handleIssuerToken({ req, env, db, slug: product.slug, now, form });
   const grant = form.get("grant_type");
   if (!grant)
     return oauth(400, ErrorCode.InvalidRequest, "grant_type is required.");

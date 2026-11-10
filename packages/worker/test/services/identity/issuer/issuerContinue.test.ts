@@ -9,6 +9,7 @@ import { dispatchWith } from "../../../../src/dispatch.js";
 import { SETTINGS } from "../../../../src/mount.js";
 import {
   setClientStatus,
+  updateClient,
   type ClientRecord,
 } from "../../../../src/services/identity/issuer/clientsRepo.js";
 import {
@@ -400,6 +401,36 @@ describe("Continue", () => {
     });
     const v2 = (await consentOf(s2, NOW)) as { body: { changed: boolean } };
     expect(v2.body.changed).toBe(true);
+  });
+});
+
+describe("Continue re-checks what the request was registered for", () => {
+  it("a redirect URI or scope the developer removed since authorize is the same 404", async () => {
+    const a = await start();
+    await updateClient(
+      w.db,
+      SLUG,
+      client.clientId,
+      { redirectUris: ["https://moved.example.com/cb"] },
+      NOW,
+    );
+    expect((await cont(a)).status).toBe(404);
+    await updateClient(
+      w.db,
+      SLUG,
+      client.clientId,
+      { redirectUris: [CB] },
+      NOW,
+    );
+    const b = await start();
+    await updateClient(
+      w.db,
+      SLUG,
+      client.clientId,
+      { scopes: ["openid", "profile"] },
+      NOW,
+    );
+    expect((await cont(b)).status).toBe(404);
   });
 });
 

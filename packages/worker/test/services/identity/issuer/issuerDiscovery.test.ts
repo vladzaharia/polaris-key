@@ -77,13 +77,12 @@ describe("openid-configuration", () => {
       authorization_response_iss_parameter_supported: true,
       request_parameter_supported: false,
     });
-    // Not served yet: discovery does not name them.
-    for (const k of [
-      "userinfo_endpoint",
-      "revocation_endpoint",
-      "end_session_endpoint",
-    ])
-      expect(meta, k).not.toHaveProperty(k);
+    expect(meta).toMatchObject({
+      userinfo_endpoint: `${ISSUER}/userinfo`,
+      revocation_endpoint: `${ISSUER}/revoke`,
+    });
+    // Not served yet: discovery does not name it.
+    expect(meta).not.toHaveProperty("end_session_endpoint");
   });
 
   it("takes GET only, and creates no key", async () => {

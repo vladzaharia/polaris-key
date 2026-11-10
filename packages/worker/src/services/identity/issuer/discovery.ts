@@ -36,8 +36,8 @@ export const JWKS_MAX_AGE_SECONDS = 60;
  * (§12.13), so a later slice flips its flag here when it adds the route.
  */
 const SERVED_ENDPOINTS = {
-  userinfo_endpoint: false,
-  revocation_endpoint: false,
+  userinfo_endpoint: true,
+  revocation_endpoint: true,
   end_session_endpoint: false,
 } as const;
 

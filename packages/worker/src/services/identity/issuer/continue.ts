@@ -50,6 +50,7 @@ import { claimsFromConsent, claimsOfScopes, lineScopes } from "./coverage.js";
 import { clientGrantStatement } from "./grantsRepo.js";
 import { needsFreshSignIn, requestCreatedAt } from "./reauth.js";
 import { withQuery } from "./redirect.js";
+import { stillRegistered } from "./registration.js";
 import { issuerServed } from "./served.js";
 
 const refuse = (status: number, error: string): Response =>
@@ -96,6 +97,9 @@ export async function continueRegistered(
     : null;
   if (!client) return refuse(404, ErrorCode.NotFound);
   if (body.choice !== undefined) return refuse(400, ErrorCode.BadRequest);
+  // The developer may have edited the client since `authorize`: the redirect and scope must still hold.
+  if (!stillRegistered(client, authz.redirectUri, authz.scope))
+    return refuse(404, ErrorCode.NotFound);
 
   // 3. The hinted account is the one signing in.
   if (reg.hintSub !== null) {

@@ -95,6 +95,8 @@ import { handleLink } from "./passthrough/link.js";
 import { readCiJson } from "../../core/ciScope.js";
 import { handleChoice } from "./passthrough/choiceRoutes.js";
 import { handleRestoreKey } from "./restore/route.js";
+import { handleRevoke } from "./issuer/revoke.js";
+import { handleUserinfo } from "./issuer/userinfo.js";
 import {
   handleIssuerJwks,
   handleOpenIdConfiguration,
@@ -177,6 +179,25 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     methods: ["GET"],
     auth: { kind: "none" },
     handler: ({ req, db, product }) => handleIssuerJwks(req, db, product.slug),
+  },
+  // I-21.11 (§12.13.7, §12.13.8): `userinfo` and `revoke`. Both answer the registry's 404 while the
+  // issuer is off. CORS is the registered client's own (a spa client's redirect origins), set by the
+  // handler and applied by the dispatcher.
+  {
+    path: "userinfo",
+    cors: true,
+    methods: ["GET", "POST"],
+    auth: { kind: "handler" },
+    handler: ({ req, env, db, product, now }) =>
+      handleUserinfo(req, env, db, product.slug, now),
+  },
+  {
+    path: "revoke",
+    cors: true,
+    methods: ["POST"],
+    auth: { kind: "handler" },
+    handler: ({ req, env, db, product, now }) =>
+      handleRevoke(req, env, db, product.slug, now),
   },
   {
     path: "token",

@@ -11,6 +11,9 @@
 --   spent_at           set when it was rotated; a spent token presented again revokes the family.
 --   replaced_by        the token_hash that replaced it.
 --   revoked_at         set on every row of a revoked family.
+--   code_hash          on a family's first row: HMAC of the authorization code that opened it, so a code
+--                      presented again after redemption revokes the family (RFC 6749 §4.1.2).
+--   redirect_uri       the registered redirect URI the family was issued for; each use re-checks it.
 --
 -- A subject store (`identity.refreshTokens`, registered by I-21.15). Owned by identity. No foreign
 -- keys. Expand-only. Rollback: scripts/rollback/0163_d_identity_refresh_tokens.down.sql.
@@ -29,8 +32,12 @@ CREATE TABLE IF NOT EXISTS identity_refresh_tokens (
   spent_at          INTEGER,
   replaced_by       TEXT,
   revoked_at        INTEGER,
+  code_hash         TEXT,
+  redirect_uri      TEXT,
   PRIMARY KEY (product, token_hash)
 );
+CREATE INDEX IF NOT EXISTS identity_refresh_tokens_code
+  ON identity_refresh_tokens (product, code_hash);
 CREATE INDEX IF NOT EXISTS identity_refresh_tokens_family
   ON identity_refresh_tokens (family_id);
 CREATE INDEX IF NOT EXISTS identity_refresh_tokens_owner
