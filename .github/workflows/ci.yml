@@ -1567,8 +1567,41 @@ jobs:
           ./gradlew --no-daemon publishAllPublicationsToLocalRepository
           ./gradlew --no-daemon -p samples/android-consumer assembleLeanDebug assembleLeanDebugAndroidTest \
             assemblePacksDebug assemblePacksDebugAndroidTest
-      # The emulator now and then fails to boot ("could not connect to TCP port 5554") and passes on
-      # a rerun, so the step runs once more when it fails. A real test failure fails both.
+      # The AVD snapshot (the emulator action's documented cache): the first run per API level boots once
+      # and saves it, later runs start from it. Only next saves (a cache entry per API level would
+      # otherwise be written by every branch); everything else restores read-only.
+      - name: AVD cache
+        id: avd-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ runner.os }}-api${{ matrix.api-level }}-v1
+      - name: Create the AVD snapshot
+        id: avd
+        if: steps.avd-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/next'
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.api-level == 24 && 'default' || 'google_apis' }}
+          arch: x86_64
+          force-avd-creation: false
+          disable-animations: false
+          emulator-options: -no-window -noaudio -no-boot-anim -gpu swiftshader_indirect
+          script: echo "Generated the AVD snapshot for the cache."
+      - name: Save the AVD cache
+        if: steps.avd.outcome == 'success'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ runner.os }}-api${{ matrix.api-level }}-v1
+      # One more attempt only for an emulator or adb failure ("could not connect to TCP port 5554",
+      # INSTALL_FAILED, a device that went offline): tools/ci-emulator-run.sh keeps each attempt's output
+      # and tools/ci-emulator-retry.mjs reads it. A test that ran and failed fails the job at once.
       - name: Instrumented tests (lean and packs)
         id: emulator
         continue-on-error: true
@@ -1577,21 +1610,32 @@ jobs:
           api-level: ${{ matrix.api-level }}
           target: ${{ matrix.api-level == 24 && 'default' || 'google_apis' }}
           arch: x86_64
+          force-avd-creation: false
           disable-animations: true
-          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
-          working-directory: sdks/kotlin
-          script: ./gradlew --no-daemon -p samples/android-consumer connectedLeanDebugAndroidTest connectedPacksDebugAndroidTest
-      - name: Instrumented tests (lean and packs), second attempt
+          emulator-options: -no-window -no-snapshot-save -noaudio -no-boot-anim -gpu swiftshader_indirect
+          script: bash tools/ci-emulator-run.sh ${{ runner.temp }}/emulator-attempt-1.log
+      - name: Was the failure the emulator's
+        id: classify
         if: steps.emulator.outcome == 'failure'
+        run: node tools/ci-emulator-retry.mjs "$RUNNER_TEMP/emulator-attempt-1.log" --github-output
+      - name: Instrumented tests (lean and packs), second attempt
+        id: emulator2
+        if: steps.classify.outputs.retry == 'true'
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: ${{ matrix.api-level }}
           target: ${{ matrix.api-level == 24 && 'default' || 'google_apis' }}
           arch: x86_64
+          force-avd-creation: false
           disable-animations: true
-          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
-          working-directory: sdks/kotlin
-          script: ./gradlew --no-daemon -p samples/android-consumer connectedLeanDebugAndroidTest connectedPacksDebugAndroidTest
+          emulator-options: -no-window -no-snapshot-save -noaudio -no-boot-anim -gpu swiftshader_indirect
+          script: bash tools/ci-emulator-run.sh ${{ runner.temp }}/emulator-attempt-2.log
+      - name: Fail the job when the instrumented tests failed
+        if: ${{ !cancelled() && steps.emulator.outcome == 'failure' && steps.emulator2.outcome != 'success' }}
+        run: |
+          echo "::error::the instrumented tests failed"
+          exit 1
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -1652,6 +1696,8 @@ jobs:
       # engine. tools/godotCiSplit.test.ts holds it to exactly one leg of each matrix.
       - name: GDScript lint (gdlint)
         if: runner.os == 'Linux' && matrix.godot == '4.7.2' && matrix.part == 'editor'
+        id: lint
+        continue-on-error: true
         run: sdks/godot/tools/lint.sh check
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -1696,8 +1742,6 @@ jobs:
           export PKEY_TEST_TIMEOUT=900
           if [ -n "${{ matrix.template }}" ]; then export GODOT_TEMPLATE="$D/linux_release.x86_64"; fi
           if [ -n "${{ matrix.suites }}" ]; then export PKEY_TEST_SUITES="${{ matrix.suites }}"; fi
-        id: lint
-        continue-on-error: true
           # The UI matrix legs say which presentation path (scrim 0, opaque page 1, or the engine's
           # own) and which of the path's shards they run (tools/ci-scope.json): the newest engine
           # covers both paths, each path in two jobs.
@@ -1715,6 +1759,12 @@ jobs:
       - name: Stop pkey dev (Godot live lane)
         if: always() && runner.os == 'Linux' && matrix.part != 'matrix'
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang godot --job-status "${{ job.status }}"
+      # A failed lint does not skip the tests above it; the job still fails (tools/ciSteps.test.ts).
+      - name: Fail the job when lint failed
+        if: ${{ !cancelled() && steps.lint.outcome == 'failure' }}
+        run: |
+          echo "::error::gdlint lint failed; the steps above still ran"
+          exit 1
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -1759,12 +1809,6 @@ jobs:
         godot,
         e2e-backend,
         docs-snippets,
-      # A failed lint does not skip the tests above it; the job still fails (tools/ciSteps.test.ts).
-      - name: Fail the job when lint failed
-        if: ${{ !cancelled() && steps.lint.outcome == 'failure' }}
-        run: |
-          echo "::error::gdlint lint failed; the steps above still ran"
-          exit 1
         docs-snippets-swift,
       ]
     runs-on: ubuntu-latest
