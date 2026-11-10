@@ -53,6 +53,7 @@ __all__ = [
     "parse_contact_txt",
     "promote_contact",
     "store_contact",
+    "valid_cats",
 ]
 
 #: Contacts one device holds for one product.
@@ -119,6 +120,10 @@ def _valid_cats(cats: Sequence[Any]) -> bool:
         and all(isinstance(c, str) and _CAT.match(c) is not None for c in cats)
         and len(set(cats)) == len(cats)
     )
+
+
+#: At most 8 distinct categories, each ``^[a-z0-9-]{1,32}$`` (shared with the local-link body, §15.12).
+valid_cats = _valid_cats
 
 
 def _clean_label(raw: str) -> Optional[str]:
