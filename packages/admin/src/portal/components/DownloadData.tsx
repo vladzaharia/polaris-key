@@ -4,7 +4,10 @@ import { AlertCircle, Download, FileDown } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { toast } from "../../ui/toast.js";
 import { YOUR_DATA_COPY } from "../copy/yourData.js";
+import { HttpError } from "../api.js";
 import { isStepUpRequired, portalErrorCopy } from "../errors.js";
+import type { Presentation } from "../model/library.js";
+import { LINK_CLASS } from "../linkClass.js";
 import { StepUpInline } from "./account/StepUpInline.js";
 import { DataRow } from "./DataRow.js";
 
@@ -85,6 +88,8 @@ export function DownloadData({
 export function useDataDownload(
   download: DataDownload,
   account = false,
+  /** Words a refusal itself (the too-large zip's next step); `null` keeps the usual line. */
+  describe?: (err: unknown) => React.ReactNode | null,
 ): {
   start: () => void;
   button: React.RefObject<HTMLButtonElement | null>;
@@ -137,10 +142,55 @@ export function useDataDownload(
       {failure ? (
         <p role="alert" className="flex gap-2 text-sm text-danger">
           <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
-          <span>{failure.line}</span>
+          <span>{describe?.(download.error) ?? failure.line}</span>
         </p>
       ) : null}
     </>
   );
   return { start, button, below, open: askFirst || failure !== null };
+}
+
+/** `413 export_too_large`: the zip would hold more than one download can (U-12.3). */
+export function isExportTooLarge(err: unknown): boolean {
+  return err instanceof HttpError && err.code === "export_too_large";
+}
+
+/**
+ * The too-large zip's words (PX-18): it is too large to download at once, and, when the product
+ * names a support contact, "Ask <developer> for a copy." linked to it. Trying again would get the
+ * same answer, so there is no Try again.
+ */
+export function ExportTooLarge({
+  presentation,
+}: {
+  presentation: Pick<Presentation, "developer" | "supportUrl" | "supportEmail">;
+}): React.ReactElement {
+  const { developer, supportUrl, supportEmail } = presentation;
+  const href =
+    supportUrl && /^https:\/\//.test(supportUrl)
+      ? supportUrl
+      : supportEmail
+        ? `mailto:${supportEmail}`
+        : null;
+  return (
+    <>
+      {t("locker.sync.tooLarge")}
+      {href ? (
+        <>
+          {" "}
+          <a
+            href={href}
+            {...(href.startsWith("https:")
+              ? { target: "_blank", rel: "noreferrer" }
+              : {})}
+            className={LINK_CLASS}
+          >
+            {t("locker.sync.askCopy", {
+              developer: developer ?? t("license.developerFallback"),
+            })}
+          </a>
+        </>
+      ) : null}
+    </>
+  );
 }

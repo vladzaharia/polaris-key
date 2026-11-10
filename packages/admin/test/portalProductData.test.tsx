@@ -223,7 +223,9 @@ describe("Download my data from a product (I-11)", () => {
       }),
     );
     await waitFor(() => expect(files.saved).toHaveLength(1));
-    expect(files.saved[0]!.filename).toBe("polaris-key-mossgarden-data.json");
+    expect(files.saved[0]!.filename).toBe(
+      "polaris-locker-mossgarden-data.json",
+    );
     expect(JSON.parse(await files.saved[0]!.text())).toEqual(
       fileOf("mossgarden"),
     );
@@ -253,7 +255,7 @@ describe("Download my data from a product (I-11)", () => {
       }),
     );
     await waitFor(() => expect(files.saved).toHaveLength(1));
-    expect(files.saved[0]!.filename).toBe("polaris-key-ember-data.json");
+    expect(files.saved[0]!.filename).toBe("polaris-locker-ember-data.json");
     expect(fetchedRequests().filter((r) => /export/.test(r))).toEqual([
       "GET /api/products/ember/export",
     ]);
@@ -322,6 +324,8 @@ describe("Remove my data from a product (I-11)", () => {
         .map((li) => li.textContent),
     ).toEqual([
       "Polaris Locker deletes your settings, synced data, and activity for Mossgarden. This can't be undone.",
+      // With sync on, the devices stop syncing (PX-18).
+      "Your devices stop syncing Mossgarden.",
       "Little Fern is told, so they can delete their own copy.",
       "Your license stays in your library. While it does, Little Fern can still connect you to your old records through it.",
     ]);
@@ -813,7 +817,7 @@ describe("an open product's page (I-11)", () => {
       }),
     );
     await waitFor(() => expect(files.saved).toHaveLength(1));
-    expect(files.saved[0]!.filename).toBe("polaris-key-driftwood-data.json");
+    expect(files.saved[0]!.filename).toBe("polaris-locker-driftwood-data.json");
     expect(fetchedRequests().filter((r) => /export|DELETE/.test(r))).toEqual([
       "GET /api/products/driftwood/export",
     ]);
@@ -945,6 +949,8 @@ describe("A stale sign-in and the support code (I-11)", () => {
       within(dialog).getByRole("button", { name: "Download my data first" }),
     );
     await waitFor(() => expect(files.saved).toHaveLength(1));
+    // With sync on it is the zip, which keeps every synced file too (PX-18).
+    expect(files.saved[0]!.filename).toBe("polaris-locker-mossgarden-data.zip");
     // The download left the dialog open, and still nothing was removed.
     expect(screen.getByRole("alertdialog")).toBeTruthy();
     expect(removals).toEqual([]);

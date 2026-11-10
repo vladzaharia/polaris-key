@@ -502,51 +502,61 @@ describe("Sync Across Devices (PX-18)", () => {
   const MB = 1024 ** 2;
   const GB = 1024 ** 3;
 
+  /** The reading as the card shows it, with the no-break space as a plain one. */
+  const plain = (text: string | null) => text?.replace(/\u00a0/g, " ") ?? null;
+
   it("reads the use against the limit, with the tone warning from 80 % and danger at the limit", () => {
     const at = (bytes: number, limit = GB, tierLabel = "Pro") =>
       syncStorage({ usage: { bytes }, quota: { bytes: limit, tierLabel } });
-    expect(at(142 * MB)).toEqual({
-      text: "142 MB of 1 GB",
-      meter: { value: 142 * MB, max: GB, tone: "accent" },
-      tier: "Pro",
-    });
+    const ok = at(142 * MB);
+    expect(plain(ok.text)).toBe("142 MB of 1 GB");
+    expect([plain(ok.used), plain(ok.limit)]).toEqual(["142 MB", "1 GB"]);
+    expect(ok.meter).toEqual({ value: 142 * MB, max: GB, tone: "accent" });
+    // The tier explains the limit only near or at it: the License card already names it.
+    expect(ok.tierNote).toBeNull();
     expect(at(0.8 * GB).meter?.tone).toBe("warning");
+    expect(plain(at(0.8 * GB).tierNote)).toBe("Your Pro tier includes 1 GB.");
     expect(at(GB).meter?.tone).toBe("danger");
     // Over the limit: the reading says so, the meter stays full.
-    expect(at(1.2 * GB).text).toBe("1.2 GB of 1 GB");
-    expect(at(0).text).toBe("0 B of 1 GB");
+    expect(plain(at(1.2 * GB).text)).toBe("1.2 GB of 1 GB");
+    expect(plain(at(0).text)).toBe("0 B of 1 GB");
   });
 
-  it("counts in 1,024s, so a tier's limit reads as its round number", () => {
+  it("counts in 1,024s, so a tier's limit reads as its round number, and never wraps a unit", () => {
     const text = (bytes: number, limit: number) =>
       syncStorage({
         usage: { bytes },
         quota: { bytes: limit, tierLabel: null },
       }).text;
-    expect(text(5_000, 256 * MB)).toBe("4.9 KB of 256 MB");
-    expect(text(999, 2 * GB)).toBe("999 B of 2 GB");
-    expect(text(10.4 * MB, 64 * MB)).toBe("10 MB of 64 MB");
+    expect(plain(text(5_000, 256 * MB))).toBe("4.9 KB of 256 MB");
+    expect(plain(text(999, 2 * GB))).toBe("999 B of 2 GB");
+    expect(plain(text(10.4 * MB, 64 * MB))).toBe("10 MB of 64 MB");
+    expect(text(10.4 * MB, 64 * MB)).toBe("10\u00a0MB of 64\u00a0MB");
   });
 
   it("drops the tier when none set the limit, and the meter when the limit is zero", () => {
     expect(
       syncStorage({
-        usage: { bytes: 5_000 },
-        quota: { bytes: 256 * MB, tierLabel: null },
-      }).tier,
+        usage: { bytes: GB },
+        quota: { bytes: GB, tierLabel: null },
+      }).tierNote,
     ).toBeNull();
     expect(
       syncStorage({
-        usage: { bytes: 5_000 },
-        quota: { bytes: 1, tierLabel: "  " },
-      }).tier,
+        usage: { bytes: GB },
+        quota: { bytes: GB, tierLabel: "  " },
+      }).tierNote,
     ).toBeNull();
-    expect(
-      syncStorage({
-        usage: { bytes: 42 * MB },
-        quota: { bytes: 0, tierLabel: "Free" },
-      }),
-    ).toEqual({ text: "42 MB stored", meter: null, tier: "Free" });
+    const none = syncStorage({
+      usage: { bytes: 42 * MB },
+      quota: { bytes: 0, tierLabel: "Free" },
+    });
+    expect([plain(none.text), none.meter, none.limit, none.tierNote]).toEqual([
+      "42 MB stored",
+      null,
+      null,
+      null,
+    ]);
   });
 
   it("lists the devices that synced most recently first; one the Worker doesn't name has no label", () => {

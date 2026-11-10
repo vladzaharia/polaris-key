@@ -1957,7 +1957,7 @@ export const SHIPPED: ShippedState[] = [
     }),
     ready: async (p) => {
       await h1(p, "Tidewater Studio");
-      await p.getByText("Nothing synced yet.", { exact: false }).waitFor();
+      await p.getByText("Nothing synced.", { exact: false }).waitFor();
     },
   },
   {
@@ -1972,7 +1972,7 @@ export const SHIPPED: ShippedState[] = [
     }),
     ready: async (p) => {
       await h1(p, "Tidewater Studio");
-      await p.getByText("Sync paused", { exact: true }).waitFor();
+      await p.getByText(/^Sync paused since /).waitFor();
     },
   },
   {

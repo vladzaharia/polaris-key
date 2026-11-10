@@ -24,7 +24,11 @@ import { ProductIdentityCard } from "../components/product/ProductIdentityCard.j
 import { ProductDataCard } from "../components/product/ProductDataCard.js";
 import { RemoveLicenseDialog } from "../components/product/RemoveLicenseDialog.js";
 import { toast } from "../../ui/toast.js";
-import { consumeHeadingFocus, focusSectionHeading } from "../focus.js";
+import {
+  consumeHeadingFocus,
+  focusSectionHeading,
+  pendingSectionFocus,
+} from "../focus.js";
 import { useLibrary } from "../library.js";
 import { quickAction, type LicensedProduct } from "../model/library.js";
 import {
@@ -197,9 +201,21 @@ function ProductBody({
   };
 
   // After adding this product, focus its heading (§9.4): once the dialog has left (through its
-  // exit) and handed focus back to its opener, and without scrolling away from a deep link.
+  // exit) and handed focus back to its opener, and without scrolling away from a deep link. A
+  // jump that names a section (⌘K) focuses that section's heading instead, once it has scrolled
+  // there (below).
+  const focusOwed = React.useRef<ProductSection | null>(null);
   React.useEffect(() => {
-    if (consumeHeadingFocus(product.slug))
+    const slug = product.slug;
+    const s = pendingSectionFocus(slug) as ProductSection | null;
+    if (s && s === owed.current) {
+      // The request stays pending until the section is there, so the router leaves focus alone.
+      focusOwed.current = s;
+      return () => {
+        if (focusOwed.current) consumeHeadingFocus(slug);
+      };
+    }
+    if (consumeHeadingFocus(slug))
       void focusRoute({
         root: document.querySelector("main") ?? undefined,
         deadline: ROUTE_FOCUS_DEADLINE_MS,
@@ -221,6 +237,11 @@ function ProductBody({
     document
       .getElementById(`section-${s}`)
       ?.scrollIntoView?.({ block: "start" });
+    if (focusOwed.current === s) {
+      focusOwed.current = null;
+      consumeHeadingFocus(product.slug);
+      focusPageHeading(() => document.getElementById(`section-${s}-h`));
+    }
   }, [sections.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // `#/p/<slug>/sync` for a product without sync, once that is known (the product view says it is
@@ -237,6 +258,12 @@ function ProductBody({
     )
       return;
     if (owed.current === "sync") owed.current = null;
+    // A ⌘K jump to the section that is not here lands on the page's heading instead.
+    if (focusOwed.current === "sync") {
+      focusOwed.current = null;
+      consumeHeadingFocus(product.slug);
+      focusPageHeading();
+    }
     const query = route.params.toString();
     replaceRoute(`${href.product(product.slug)}${query ? `?${query}` : ""}`);
   }, [syncKnownOff, product.slug]);
@@ -457,19 +484,20 @@ function ProductBody({
               {identityOn ? (
                 <ProductIdentityCard productName={product.name} />
               ) : null}
+              {/* Sync Across Devices (PX-18) ends the licence's stack: the facts about devices
+                  together, in the side column from 1024 px, and on a phone in the nav's order. */}
+              {has("sync") ? (
+                <CloudSyncCard
+                  product={product}
+                  summary={sync.data}
+                  loading={sync.isPending}
+                  error={sync.error}
+                  onRetry={() => void sync.refetch()}
+                />
+              ) : null}
             </div>
           ) : null}
           <div className={cn(group, "split:col-start-1 split:row-start-2")}>
-            {has("sync") ? (
-              <CloudSyncCard
-                product={product}
-                summary={sync.data}
-                loading={sync.isPending}
-                error={sync.error}
-                onRetry={() => void sync.refetch()}
-                onLeftLibrary={() => navigate(href.library())}
-              />
-            ) : null}
             {has("new") ? <WhatsNew product={product} /> : null}
             {has("package") ? (
               <PackagesPointer

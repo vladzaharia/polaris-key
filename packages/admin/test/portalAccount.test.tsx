@@ -285,7 +285,7 @@ describe("Your data: Download my data (I-11)", () => {
     const { data, button } = await open();
     await userEvent.click(button);
     await waitFor(() => expect(files.saved).toHaveLength(1));
-    expect(files.saved[0]!.filename).toBe("polaris-key-account-data.json");
+    expect(files.saved[0]!.filename).toBe("polaris-locker-account-data.json");
     expect(JSON.parse(await files.saved[0]!.text())).toEqual(ACCOUNT_FILE);
     // Only the account's route: no product's export, no deletion.
     expect(fetchedRequests().filter((r) => /export|DELETE/.test(r))).toEqual([

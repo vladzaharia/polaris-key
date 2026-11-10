@@ -60,8 +60,11 @@ export interface PortalCloudSync {
   encryption: "e2e" | "server";
   /** Nothing is stored yet. */
   empty: boolean;
-  /** `paused`: the operator has put syncing on hold; `full`: the person is at their limit. */
-  state: "active" | "paused" | "full";
+  /**
+   * `paused`: the operator has put syncing on hold; `full`: the person is at their limit;
+   * `removing`: they removed their data from the product and the last part is still finishing.
+   */
+  state: "active" | "paused" | "full" | "removing";
   /** Epoch seconds the hold began; only with `paused`. */
   pausedSince: number | null;
   usage: { bytes: number };
@@ -291,7 +294,7 @@ export const productApi = {
   exportProductData: (product: string) =>
     download(
       `/api/products/${enc(product)}/export`,
-      `polaris-key-${product}-data.json`,
+      `polaris-locker-${product}-data.json`,
     ),
 
   /**
@@ -323,7 +326,7 @@ export const productApi = {
     ),
 
   exportAccountData: () =>
-    download("/api/me/export", "polaris-key-account-data.json"),
+    download("/api/me/export", "polaris-locker-account-data.json"),
 
   downloads: (product: string) =>
     call<PortalDownloads>(`/api/products/${enc(product)}/downloads`),

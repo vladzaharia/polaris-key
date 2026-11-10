@@ -99,13 +99,19 @@ export function presentSections(
 
 /** The sync card's storage line. */
 export interface SyncStorage {
-  /** "142 MB of 1 GB"; "142 MB stored" with a zero limit. */
+  /** The used size and the limit, as written ("142 MB", "1 GB"); `limit` is `null` with none. */
+  used: string;
+  limit: string | null;
+  /** The whole reading, the meter's value text: "142 MB of 1 GB", or "142 MB stored". */
   text: string;
   /** The meter's numbers and tone (warning from 80 %, danger at the limit); `null` with a zero
    *  limit, where the reading stands alone. */
   meter: { value: number; max: number; tone: MeterTone } | null;
-  /** The tier that set the limit ("Limit set by your Pro tier"); `null` when none did. */
-  tier: string | null;
+  /**
+   * "Your Pro tier includes 1 GB." at 80 % of the limit or more, where it explains the limit; `null`
+   * below that (the License card already names the tier) or when no tier set the limit.
+   */
+  tierNote: string | null;
 }
 
 const SYNC_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
@@ -113,7 +119,8 @@ const SYNC_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
 /**
  * A synced size: counted in 1,024s, as the limits are set (the 256 MB default, a 1 GB tier), so a
  * limit reads as the round number its tier gives, and named the way people know the units.
- * Whole numbers from 10, else one decimal without a bare ".0" ("1 GB", "1.2 GB", "142 MB").
+ * Whole numbers from 10, else one decimal without a bare ".0" ("1 GB", "1.2 GB", "142 MB"). The
+ * unit is kept to its number with a no-break space, so "1 GB" never wraps apart.
  */
 function syncSize(bytes: number): string {
   let n = Math.max(0, bytes);
@@ -123,29 +130,36 @@ function syncSize(bytes: number): string {
     i++;
   }
   const v = n >= 10 || i === 0 ? Math.round(n) : Math.round(n * 10) / 10;
-  return `${v} ${SYNC_UNITS[i]}`;
+  return `${v}\u00a0${SYNC_UNITS[i]}`;
 }
 
 /** How much of the person's limit their synced data uses, in words and as a meter. */
 export function syncStorage(
   s: Pick<PortalCloudSync, "usage" | "quota">,
 ): SyncStorage {
-  const used = s.usage.bytes;
-  const limit = s.quota.bytes;
-  const tier = s.quota.tierLabel?.trim() || null;
-  if (!(limit > 0))
+  const usedBytes = s.usage.bytes;
+  const limitBytes = s.quota.bytes;
+  const used = syncSize(usedBytes);
+  if (!(limitBytes > 0))
     return {
-      text: t("locker.sync.stored", { used: syncSize(used) }),
+      used,
+      limit: null,
+      text: t("locker.sync.stored", { used }),
       meter: null,
-      tier,
+      tierNote: null,
     };
+  const limit = syncSize(limitBytes);
+  const tone = storageTone(usedBytes, limitBytes);
+  const tier = s.quota.tierLabel?.trim() || null;
   return {
-    text: t("locker.sync.used", {
-      used: syncSize(used),
-      limit: syncSize(limit),
-    }),
-    meter: { value: used, max: limit, tone: storageTone(used, limit) },
-    tier,
+    used,
+    limit,
+    text: t("locker.sync.used", { used, limit }),
+    meter: { value: usedBytes, max: limitBytes, tone },
+    tierNote:
+      tier && tone !== "accent"
+        ? t("locker.sync.tierLimit", { tier, limit })
+        : null,
   };
 }
 

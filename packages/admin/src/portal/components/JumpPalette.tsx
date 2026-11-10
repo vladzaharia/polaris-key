@@ -128,7 +128,8 @@ export function JumpPalette({
         .filter((p): p is LibraryProduct => Boolean(p));
 
   /*
-   * Focus lands on the product's `h1` (FLOWS.md P-14, PORTAL.md §9.4), not on `body`: the
+   * Focus lands on the product's `h1` (FLOWS.md P-14, PORTAL.md §9.4), or on the heading of the
+   * section an action names, never on `body`: the
    * product page takes the request once its heading exists. Already on that product, the page
    * does not mount again, so the heading is focused here, after the palette has closed, without
    * scrolling away from the section a "Manage devices" jump scrolls to.
@@ -142,10 +143,17 @@ export function JumpPalette({
     pushRecent(p.slug);
     jumped.current = true;
     const here = onProduct(p.slug);
-    if (!here) requestHeadingFocus(p.slug);
+    if (!here) requestHeadingFocus(p.slug, section);
     onOpenChange(false);
     navigate(href.product(p.slug, section));
-    if (here) focusPageHeading();
+    // A jump to a section lands focus on its heading, where the view is (the page's own section
+    // jumps do the same); a jump to the product, on its `h1`.
+    if (here)
+      focusPageHeading(
+        section
+          ? () => document.getElementById(`section-${section}-h`)
+          : undefined,
+      );
   };
 
   const item =

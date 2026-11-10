@@ -9,14 +9,15 @@ import {
   startPortal,
   type PortalHarness,
 } from "./portalHarness.js";
-import { syncOn } from "./portalFixtures.js";
+import { SYNC_SUMMARY, syncOn } from "./portalFixtures.js";
 
 /**
  * The product page's Sync Across Devices card (PX-18) in real Chromium under the Worker's CSP:
  * Download synced data saves the zip (a blob URL and `<a download>`, which the CSP must allow),
- * Remove my data from the card answers a removal that finishes in the background, and the card
- * reflows at 320 and 360 px, with 200 % text too. Each step has zero CSP violations. The card's
- * states and their baselines are in `portalStates.ts` (`product-sync*`).
+ * the card's "Remove it in Your Data" leads to Your Data's removal, which here answers a removal
+ * that finishes in the background (the card then shows it removing), and the card reflows at 320
+ * and 360 px, with 200 % text too. Each step has zero CSP violations. The card's states and their
+ * baselines are in `portalStates.ts` (`product-sync*`).
  */
 
 const PATH = "/#/p/tidewater";
@@ -64,26 +65,43 @@ describe("Sync Across Devices card (PX-18)", () => {
     }
   });
 
-  it("Remove my data from the card: a removal that finishes in the background says so, focus on the card", async () => {
+  it("removal from the card's link: one that finishes in the background shows the card removing", async () => {
+    let removed = false;
+    const on = syncOn("three", "tidewater");
     const o = await portal.open("three", PATH, {
       routes: {
-        ...syncOn("three", "tidewater"),
-        "DELETE /api/products/tidewater/data": {
-          body: {
-            ok: true,
-            product: "tidewater",
-            removed: true,
-            pending: true,
-            detachedLicenses: [],
-          },
+        ...on,
+        // The Worker's summary reads `removing` while the ledger holds the owed removal.
+        "GET /api/products/tidewater/sync": () => ({
+          body: removed ? { ...SYNC_SUMMARY, state: "removing" } : SYNC_SUMMARY,
+        }),
+        "DELETE /api/products/tidewater/data": () => {
+          removed = true;
+          return {
+            body: {
+              ok: true,
+              product: "tidewater",
+              removed: true,
+              pending: true,
+              detachedLicenses: [],
+            },
+          };
         },
       },
     });
     try {
       await h1(o.page, "Tidewater Studio");
       await card(o.page)
-        .getByRole("button", { name: "Remove my data from Tidewater Studio" })
+        .getByRole("link", { name: "Remove it in Your Data" })
         .click();
+      const remove = o.page.getByRole("button", {
+        name: "Remove my data from Tidewater Studio",
+      });
+      // Focus is on Your Data's Remove, the page's one way to remove the data.
+      await o.page.waitForFunction(
+        () => document.activeElement?.hasAttribute("data-remove-data") === true,
+      );
+      await remove.click();
       const dialog = o.page.getByRole("alertdialog", {
         name: "Remove your data from Tidewater Studio?",
       });
@@ -99,9 +117,9 @@ describe("Sync Across Devices card (PX-18)", () => {
       await o.page
         .getByText("It finishes shortly. There's nothing else to do.")
         .waitFor();
-      await o.page.waitForFunction(
-        () => document.activeElement?.id === "section-sync-h",
-      );
+      await card(o.page)
+        .getByText("Removing your data. It finishes shortly.")
+        .waitFor();
       expect(o.requests).toContain("DELETE /api/products/tidewater/data");
       expect(await o.violations()).toEqual([]);
     } finally {
@@ -136,13 +154,13 @@ describe("Sync Across Devices card (PX-18)", () => {
         // The card's own width holds inside the window: a long device label wraps.
         const box = await card(o.page).boundingBox();
         expect(box!.x + box!.width).toBeLessThanOrEqual(width);
-        // On a phone the actions are full-width 44 px targets (the customer-surface floor).
+        // On a phone the action is a full-width 44 px target (the customer-surface floor).
         const heights = await card(o.page)
-          .getByRole("button")
+          .getByRole("button", { name: "Download synced data" })
           .evaluateAll((els) =>
             els.map((el) => el.getBoundingClientRect().height),
           );
-        expect(heights.length).toBe(2);
+        expect(heights.length).toBe(1);
         for (const h of heights) expect(h).toBeGreaterThanOrEqual(44);
         expect(await smallTargets(o.page)).toEqual([]);
         expect(await h1Count(o.page)).toBe(1);

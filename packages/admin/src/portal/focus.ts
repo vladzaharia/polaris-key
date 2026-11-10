@@ -5,15 +5,32 @@
  * pending request to the product page.
  */
 let pending: string | null = null;
+/** The section a jump into the page names (⌘K's "Manage devices", "See synced data"), if any. */
+let pendingSection: string | null = null;
 
-export function requestHeadingFocus(slug: string): void {
+/**
+ * `section`: the jump lands on that section, so focus goes to its heading (`section-<id>-h`)
+ * rather than the page's `h1`, and the next Tab starts where the person is looking.
+ */
+export function requestHeadingFocus(slug: string, section?: string): void {
   pending = slug;
+  pendingSection = section ?? null;
 }
 
 export function consumeHeadingFocus(slug: string): boolean {
   if (pending !== slug) return false;
   pending = null;
+  pendingSection = null;
   return true;
+}
+
+/**
+ * The section a pending request for `slug` names, read without consuming it: the request stays
+ * pending (so the router leaves focus to the page) until the page has scrolled there and calls
+ * {@link consumeHeadingFocus}.
+ */
+export function pendingSectionFocus(slug: string): string | null {
+  return pending === slug ? pendingSection : null;
 }
 
 /** The product whose page will take focus itself, if any (read without consuming it). */

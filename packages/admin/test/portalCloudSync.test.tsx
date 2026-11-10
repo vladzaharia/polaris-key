@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { PortalCloudSync } from "../src/portal/api.js";
-import { formatDayTime } from "../src/portal/date.js";
+import { formatDay, formatDayTime } from "../src/portal/date.js";
 import {
   captureDownloads,
   confirmItsYou,
@@ -14,6 +14,7 @@ import {
   DAY,
   detail,
   fetchedRequests,
+  libraryFor,
   license,
   mockFetch,
   type MockRoute,
@@ -69,6 +70,9 @@ function routes(
 }
 
 beforeEach(() => {
+  // One clock for the page and the fixtures: the relative times read the same on every run.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(NOW_S * 1000);
   window.localStorage.clear();
   window.history.replaceState(null, "", "/#/p/mossgarden");
 });
@@ -76,8 +80,13 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
   cleanup();
 });
+
+/** Text with its no-break spaces as plain ones ("142 MB": a unit never wraps from its number). */
+const plain = (text: string | null | undefined): string =>
+  (text ?? "").replace(/\u00a0/g, " ");
 
 /** The product page is on screen (its `h1`). */
 const page = (): Promise<HTMLElement> =>
@@ -100,16 +109,22 @@ async function syncCard(): Promise<HTMLElement> {
 }
 
 describe("Sync Across Devices on the product page (PX-18.1)", () => {
-  it("shows use against the limit, the tier, each device's last sync and who can read it", async () => {
+  it("leads with the reading, then each device's last sync and who can read the download", async () => {
     mockFetch(routes(true, summary()));
     renderPortal();
     await page();
     const card = await syncCard();
     expect(card.id).toBe("section-sync");
     const meter = await within(card).findByRole("meter", { name: "Storage" });
-    expect(meter.getAttribute("aria-valuetext")).toBe("142 MB of 1 GB");
-    expect(within(card).getByText("Limit set by your Pro tier")).toBeTruthy();
-    // Devices, most recent first, each with a relative time and its date and time as the title.
+    expect(plain(meter.getAttribute("aria-valuetext"))).toBe("142 MB of 1 GB");
+    // The reading leads, the used size strong, as the Devices card reads its count.
+    const used = within(card).getByText(/^142.MB$/);
+    expect(plain(used.parentElement?.textContent)).toBe("142 MB of 1 GB");
+    expect(used.className).toMatch(/font-semibold/);
+    // The tier explains the limit only near it; the License card already names it.
+    expect(card.textContent).not.toMatch(/tier/);
+    // Devices, most recent first, each with a relative time; the date and time are its title and
+    // a screen reader's too.
     const list = within(card).getByRole("list");
     const rows = within(list).getAllByRole("listitem");
     expect(rows.map((r) => r.querySelector("bdi")?.textContent)).toEqual([
@@ -117,13 +132,24 @@ describe("Sync Across Devices on the product page (PX-18.1)", () => {
       "Studio PC",
     ]);
     const times = rows.map((r) => r.querySelector("time")!);
-    expect(times[0]!.textContent).toMatch(/min/);
+    expect(times[0]!.firstChild?.textContent).toBe("3 min. ago");
     expect(times[0]!.getAttribute("title")).toBe(formatDayTime(NOW_S - 180));
-    expect(times[1]!.textContent).toMatch(/day/);
+    expect(times[0]!.querySelector(".sr-only")?.textContent).toBe(
+      `, ${formatDayTime(NOW_S - 180)}`,
+    );
+    expect(times[1]!.firstChild?.textContent).toBe("3 days ago");
     expect(within(card).getByText("Last synced").tagName).toBe("H3");
     expect(
-      within(card).getByText("Only your devices can read your synced data."),
+      within(card).getByText(
+        "Only your devices can read your synced data, including this download.",
+      ),
     ).toBeTruthy();
+    // One action here; removal has one home, Your Data.
+    expect(
+      within(card)
+        .getAllByRole("button")
+        .map((b) => b.textContent),
+    ).toEqual(["Download synced data"]);
     // No "Up to date": the Worker's time is a push or a pull, at most an hour stale.
     expect(card.textContent).not.toMatch(/up to date/i);
     // The nav lists it in the page's order, between Devices and Your Data.
@@ -138,7 +164,7 @@ describe("Sync Across Devices on the product page (PX-18.1)", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
-  it("a device the Worker doesn't name (no label, or signed out) reads as Another device", async () => {
+  it("a device the Worker doesn't name (no label, or signed out) reads as Unnamed device, quietly", async () => {
     mockFetch(
       routes(
         true,
@@ -156,11 +182,48 @@ describe("Sync Across Devices on the product page (PX-18.1)", () => {
     const rows = within(await within(card).findByRole("list")).getAllByRole(
       "listitem",
     );
-    expect(rows.map((r) => r.querySelector("bdi")?.textContent)).toEqual([
-      "Another device",
+    const names = rows.map((r) => r.querySelector("bdi")!);
+    expect(names.map((b) => b.textContent)).toEqual([
+      "Unnamed device",
       "Studio PC",
     ]);
-    expect(card.textContent).not.toMatch(/Unnamed device/);
+    expect(names[0]!.className).toMatch(/text-fg-muted/);
+    expect(names[1]!.className).toMatch(/font-medium/);
+  });
+
+  it("lists the five most recent devices until Show all", async () => {
+    const devices = Array.from({ length: 7 }, (_, i) => ({
+      label: `Device ${i + 1}`,
+      lastSyncAt: NOW_S - (i + 1) * 3600,
+    }));
+    mockFetch(routes(true, summary({ devices })));
+    renderPortal();
+    await page();
+    const card = await syncCard();
+    const rows = () =>
+      within(within(card).getByRole("list")).getAllByRole("listitem");
+    await within(card).findByRole("list");
+    expect(rows()).toHaveLength(5);
+    const more = within(card).getByRole("button", { name: "Show all 7" });
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    await userEvent.click(more);
+    expect(rows()).toHaveLength(7);
+    expect(
+      within(card)
+        .getByRole("button", { name: "Show fewer" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
+  });
+
+  it("near the limit the tier says what it includes", async () => {
+    mockFetch(routes(true, summary({ usage: { bytes: 0.86 * 1024 ** 3 } })));
+    renderPortal();
+    await page();
+    const card = await syncCard();
+    await within(card).findByRole("meter", { name: "Storage" });
+    expect(
+      plain(within(card).getByText(/^Your Pro tier includes/).textContent),
+    ).toBe("Your Pro tier includes 1 GB.");
   });
 
   it("says nothing about who can read it when the server holds the data readable", async () => {
@@ -178,14 +241,16 @@ describe("Sync Across Devices on the product page (PX-18.1)", () => {
     renderPortal();
     await page();
     const card = await syncCard();
-    expect(card.querySelector(".pk-skeleton")).not.toBeNull();
+    // In the card's shape, and busy for assistive technology.
+    expect(card.querySelectorAll(".pk-skeleton").length).toBeGreaterThan(3);
+    expect(card.querySelector('[aria-busy="true"]')).not.toBeNull();
     expect(within(card).queryByRole("meter")).toBeNull();
     answer(summary());
     await within(card).findByRole("meter", { name: "Storage" });
     expect(card.querySelector(".pk-skeleton")).toBeNull();
   });
 
-  it("empty: says nothing is synced yet and how it starts, with no meter or device list", async () => {
+  it("empty: says nothing is synced and how it starts, with no meter, list or action", async () => {
     mockFetch(
       routes(true, summary({ empty: true, usage: { bytes: 0 }, devices: [] })),
     );
@@ -193,47 +258,85 @@ describe("Sync Across Devices on the product page (PX-18.1)", () => {
     await page();
     const card = await syncCard();
     await within(card).findByText(
-      "Nothing synced yet. Sign in to Mossgarden on a device to start.",
+      "Nothing synced. Sign in to Mossgarden on a device to start.",
     );
     expect(within(card).queryByRole("meter")).toBeNull();
     expect(within(card).queryByRole("list")).toBeNull();
+    expect(within(card).queryByRole("button")).toBeNull();
+    expect(within(card).queryByRole("link")).toBeNull();
     // Nothing is stored, so there is nothing yet to say who can read.
     expect(card.textContent).not.toMatch(/Only your devices/);
     expect(await axeViolations()).toEqual([]);
   });
 
-  it("paused: says so in words beside the numbers", async () => {
-    mockFetch(
-      routes(true, summary({ state: "paused", pausedSince: NOW_S - DAY })),
-    );
+  it("paused: since when, in the portal's words, beside the numbers", async () => {
+    const since = NOW_S - DAY;
+    mockFetch(routes(true, summary({ state: "paused", pausedSince: since })));
     renderPortal();
     await page();
     const card = await syncCard();
-    await within(card).findByText("Sync paused");
+    const sameYear =
+      new Date(since * 1000).getUTCFullYear() ===
+      new Date(NOW_S * 1000).getUTCFullYear();
+    await within(card).findByText(
+      `Sync paused since ${formatDay(since, !sameYear)}`,
+    );
     expect(
       within(card).getByText(
-        "Syncing is paused for a moment. Your changes are kept and will sync later.",
+        "Your changes stay on your devices and sync when it resumes.",
       ),
     ).toBeTruthy();
     expect(within(card).getByRole("meter", { name: "Storage" })).toBeTruthy();
     expect(await axeViolations()).toEqual([]);
   });
 
-  it("full: the meter is at the limit and the card says what happens to new changes", async () => {
+  it("paused with nothing synced: the callout alone", async () => {
+    mockFetch(
+      routes(
+        true,
+        summary({
+          state: "paused",
+          pausedSince: NOW_S - DAY,
+          empty: true,
+          usage: { bytes: 0 },
+          devices: [],
+        }),
+      ),
+    );
+    renderPortal();
+    await page();
+    const card = await syncCard();
+    await within(card).findByText(/^Sync paused since/);
+    expect(card.textContent).not.toMatch(/Nothing synced/);
+  });
+
+  it("removing: one line while the removal finishes, nothing else", async () => {
+    mockFetch(routes(true, summary({ state: "removing" })));
+    renderPortal();
+    await page();
+    const card = await syncCard();
+    await within(card).findByText("Removing your data. It finishes shortly.");
+    expect(within(card).queryByRole("meter")).toBeNull();
+    expect(within(card).queryByRole("list")).toBeNull();
+    expect(within(card).queryByRole("button")).toBeNull();
+  });
+
+  it("full: one tone, what happens to new changes, how to make room, and what the tier includes", async () => {
     mockFetch(
       routes(true, summary({ state: "full", usage: { bytes: 1024 ** 3 } })),
     );
     renderPortal();
     await page();
     const card = await syncCard();
-    await within(card).findByText("Storage full");
-    expect(
-      within(card).getByText(
-        "New changes stay on your devices until there's room.",
-      ),
-    ).toBeTruthy();
+    const title = await within(card).findByText("Storage full");
+    const callout = title.closest("[data-tone]")!;
+    expect(plain(callout.textContent)).toBe(
+      "Storage full" +
+        "New changes stay on your devices. Delete something in Mossgarden to make room. Your Pro tier includes 1 GB.",
+    );
+    expect(callout.getAttribute("data-tone")).toBe("danger");
     const meter = within(card).getByRole("meter", { name: "Storage" });
-    expect(meter.getAttribute("aria-valuetext")).toBe("1 GB of 1 GB");
+    expect(plain(meter.getAttribute("aria-valuetext"))).toBe("1 GB of 1 GB");
     expect(meter.querySelector(".fill-danger")).not.toBeNull();
     expect(await axeViolations()).toEqual([]);
   });
@@ -369,6 +472,34 @@ describe("the jump palette's sync action (PX-18.1, D10)", () => {
     await waitFor(() =>
       expect(window.location.hash).toBe("#/p/mossgarden/sync"),
     );
+    // Focus follows the view to the section's heading, not the page's h1.
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("section-sync-h"),
+    );
+  });
+
+  it("from another product's page the jump lands focus on the section's heading too", async () => {
+    mockFetch(
+      signedIn(EIGHT, {
+        "/api/products/mossgarden": view("mossgarden", true),
+        "/api/products/mossgarden/sync": summary(),
+      }),
+    );
+    renderPortal();
+    await page();
+    await syncCard();
+    // To Nightfall, then back to Mossgarden's sync from there.
+    await palette("night");
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("heading", { level: 1, name: "Nightfall" });
+    const dialog = await palette("moss");
+    await userEvent.click(
+      within(dialog).getByText("See synced data for Mossgarden"),
+    );
+    await page();
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("section-sync-h"),
+    );
   });
 
   it("never offers it for a product with sync off, or one whose page this tab hasn't read", async () => {
@@ -404,7 +535,7 @@ describe("the jump palette's sync action (PX-18.1, D10)", () => {
   });
 });
 
-describe("Download synced data and Remove my data from the card (PX-18.2)", () => {
+describe("Download synced data, and the way to removal (PX-18.2)", () => {
   const STEP_UP = { status: 401, body: { error: "step_up_required" } };
   const ZIP = "/api/products/mossgarden/export?format=zip";
   let files: DownloadCapture;
@@ -435,12 +566,16 @@ describe("Download synced data and Remove my data from the card (PX-18.2)", () =
     fetchedRequests().filter((r) => r === "GET /api/products/mossgarden/sync")
       .length;
 
+  /** "Remove it in Your Data", then Your Data's Remove, typed and confirmed. */
   async function removeFromCard(card: HTMLElement): Promise<HTMLElement> {
     await userEvent.click(
-      within(card).getByRole("button", {
-        name: "Remove my data from Mossgarden",
-      }),
+      within(card).getByRole("link", { name: "Remove it in Your Data" }),
     );
+    const remove = screen.getByRole("button", {
+      name: "Remove my data from Mossgarden",
+    });
+    expect(document.activeElement).toBe(remove);
+    await userEvent.click(remove);
     const dialog = await screen.findByRole("alertdialog", {
       name: "Remove your data from Mossgarden?",
     });
@@ -510,7 +645,7 @@ describe("Download synced data and Remove my data from the card (PX-18.2)", () =
     [
       413,
       "export_too_large",
-      /^Too much synced data\. It doesn't fit in one download\.$/,
+      /^Your synced data is too large to download at once\.$/,
     ],
   ] as const)
     it(`a refused download (${error}) says why under the buttons`, async () => {
@@ -529,7 +664,39 @@ describe("Download synced data and Remove my data from the card (PX-18.2)", () =
       expect(files.saved).toHaveLength(0);
     });
 
-  it("Remove my data opens Your data's dialog; the card reads its sync data again and takes focus", async () => {
+  it("too large with a support contact: it says so and links the developer for a copy", async () => {
+    const supported = license({
+      product: "mossgarden",
+      productBranding: {
+        developerName: "Little Fern",
+        supportUrl: "https://littlefern.example/help",
+      },
+    });
+    mockFetch({
+      ...worker(undefined, {
+        status: 413,
+        body: { error: "export_too_large" },
+      }),
+      "/api/library": libraryFor([supported]),
+    });
+    renderPortal();
+    await page();
+    const card = await syncCard();
+    await userEvent.click(
+      await within(card).findByRole("button", { name: "Download synced data" }),
+    );
+    const alert = await within(card).findByRole("alert");
+    expect(alert.textContent).toBe(
+      "Your synced data is too large to download at once. Ask Little Fern for a copy.",
+    );
+    expect(
+      within(alert)
+        .getByRole("link", { name: "Ask Little Fern for a copy." })
+        .getAttribute("href"),
+    ).toBe("https://littlefern.example/help");
+  });
+
+  it("removal has one home: the card's link moves focus to Your Data's Remove, and the card reads again after", async () => {
     mockFetch(worker());
     renderPortal();
     await page();
@@ -542,22 +709,26 @@ describe("Download synced data and Remove my data from the card (PX-18.2)", () =
     ).toBeTruthy();
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     await waitFor(() => expect(syncReads()).toBe(before + 1));
-    await waitFor(() =>
-      expect(document.activeElement?.id).toBe("section-sync-h"),
-    );
     expect(window.location.hash).toBe("#/p/mossgarden");
   });
 
-  it("a removal that finishes in the background says so, and that there is nothing to do", async () => {
-    mockFetch(
-      worker({
-        ok: true,
-        product: "mossgarden",
-        removed: true,
-        pending: true,
-        detachedLicenses: [],
+  it("a removal that finishes in the background says so, and the card shows it removing", async () => {
+    let removed = false;
+    mockFetch({
+      ...worker(() => {
+        removed = true;
+        return {
+          ok: true,
+          product: "mossgarden",
+          removed: true,
+          pending: true,
+          detachedLicenses: [],
+        };
       }),
-    );
+      // The Worker's summary reads `removing` while the ledger holds the owed removal.
+      "/api/products/mossgarden/sync": () =>
+        summary(removed ? { state: "removing" } : {}),
+    });
     renderPortal();
     await page();
     const card = await syncCard();
@@ -572,6 +743,8 @@ describe("Download synced data and Remove my data from the card (PX-18.2)", () =
     expect(
       screen.queryByText("Your data was removed from Mossgarden"),
     ).toBeNull();
+    await within(card).findByText("Removing your data. It finishes shortly.");
+    expect(within(card).queryByRole("meter")).toBeNull();
   });
 
   it("a removal that could not be recorded changed nothing: the dialog says so and stays", async () => {
@@ -593,19 +766,24 @@ describe("Download synced data and Remove my data from the card (PX-18.2)", () =
     expect(syncReads()).toBe(before);
   });
 
-  it("offers neither action while nothing is synced", async () => {
+  it("with sync off, Download my data first in the removal dialog saves the JSON file", async () => {
     mockFetch({
-      ...worker(),
-      "/api/products/mossgarden/sync": summary({
-        empty: true,
-        usage: { bytes: 0 },
-        devices: [],
-      }),
+      ...routes(false),
+      "/api/products/mossgarden/export": { schema: "pkey-product-export/1" },
     });
     renderPortal();
     await page();
-    const card = await syncCard();
-    await within(card).findByText(/Nothing synced yet/);
-    expect(within(card).queryByRole("button")).toBeNull();
+    await screen.findByText("Activated");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove my data from Mossgarden" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(within(dialog).getByText("Download my data first"));
+    // Without sync there are no synced files to keep: the JSON file, under Polaris Locker's name.
+    await waitFor(() =>
+      expect(files.saved.map((f) => f.filename)).toEqual([
+        "polaris-locker-mossgarden-data.json",
+      ]),
+    );
   });
 });

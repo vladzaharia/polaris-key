@@ -16,11 +16,13 @@ import {
 } from "../../copy/yourData.js";
 import {
   useExportProductData,
+  useExportSyncedData,
   useProduct,
   useRemoveProductData,
 } from "../../data.js";
 import { isStepUpRequired, portalErrorCopy } from "../../errors.js";
 import { StepUpInline } from "../account/StepUpInline.js";
+import { ExportTooLarge, isExportTooLarge } from "../DownloadData.js";
 import type { LibraryProduct } from "../../model/library.js";
 
 /**
@@ -50,15 +52,12 @@ export function RemoveProductDataDialog({
   onOpenChange,
   product,
   onLeftLibrary,
-  onRemoved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   product: LibraryProduct;
   /** The licenses went with the data: the product has left the library, so the page should too. */
   onLeftLibrary?: () => void;
-  /** The data went and the product stays: where focus goes when the opener may be gone. */
-  onRemoved?: () => void;
 }): React.ReactElement {
   const { name } = product;
   const licenses = product.licenses.length;
@@ -76,7 +75,11 @@ export function RemoveProductDataDialog({
   // What the retry after a step-up prompt met: shown in the dialog like any other refusal.
   const [retryError, setRetryError] = React.useState<unknown>(null);
   const services = useProduct(product.slug, { enabled: open }).data?.services;
-  const exportData = useExportProductData(product.slug);
+  // "Download my data first" keeps everything that is about to go: with sync on that is the zip,
+  // which holds the JSON's document and every synced record and file besides.
+  const exportJson = useExportProductData(product.slug);
+  const exportZip = useExportSyncedData(product.slug);
+  const exportData = services?.sync ? exportZip : exportJson;
   const offered =
     licenses > 0 && !refused && product.licenses.every((l) => l.removable);
   const also = offered && alsoRemove;
@@ -87,7 +90,8 @@ export function RemoveProductDataDialog({
       setAskFirst(false);
       setAskDownload(false);
       setRetryError(null);
-      exportData.reset();
+      exportJson.reset();
+      exportZip.reset();
     }
   }, [open]);
 
@@ -113,7 +117,6 @@ export function RemoveProductDataDialog({
     else toast.success(t("locker.productData.removed", { product: name }));
     onOpenChange(false);
     if (alsoRemoveLicense) onLeftLibrary?.();
-    else onRemoved?.();
   };
 
   return (
@@ -180,6 +183,7 @@ export function RemoveProductDataDialog({
         download={exportData}
         ask={askDownload}
         setAsk={setAskDownload}
+        presentation={product.presentation}
       />
       {offered ? (
         <Checkbox
@@ -213,10 +217,12 @@ function DownloadFirst({
   download,
   ask,
   setAsk,
+  presentation,
 }: {
   download: ReturnType<typeof useExportProductData>;
   ask: boolean;
   setAsk: (ask: boolean) => void;
+  presentation: LibraryProduct["presentation"];
 }): React.ReactElement {
   const start = (): void => {
     if (download.isPending) return;
@@ -257,7 +263,11 @@ function DownloadFirst({
       ) : null}
       {failure ? (
         <p role="alert" className="text-sm text-danger">
-          {failure.line}
+          {isExportTooLarge(download.error) ? (
+            <ExportTooLarge presentation={presentation} />
+          ) : (
+            failure.line
+          )}
         </p>
       ) : null}
     </div>

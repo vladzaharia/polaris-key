@@ -25,6 +25,11 @@ export interface MeterProps {
   tone?: MeterTone;
   /** The reading in the caller's own units ("18.4 GiB of 50 GiB"); replaces the `format` text. */
   text?: string;
+  /**
+   * The bar alone: the caller shows the reading as its own text beside it (the Locker's usage rows,
+   * "**142 MB** of 1 GB"), and `label` and the reading stay the meter's accessible name and value.
+   */
+  bar?: boolean;
   className?: string;
 }
 
@@ -76,11 +81,48 @@ export function Meter({
   format = "count",
   tone = "accent",
   text: textOverride,
+  bar = false,
   className,
 }: MeterProps): React.ReactElement {
   const ratio = max > 0 ? Math.min(Math.max(value / max, 0), 1) : 0;
   const text = textOverride ?? meterText(value, max, format);
   const labelId = React.useId();
+  /* Forced colours: the track is an outlined Canvas bar, the fill is Highlight. */
+  const track = (
+    <svg
+      aria-hidden
+      width="100%"
+      height="6"
+      className="block forced-color-adjust-none"
+    >
+      <rect
+        width="100%"
+        height="6"
+        rx="3"
+        className="fill-border forced-colors:fill-[Canvas] forced-colors:stroke-[CanvasText]"
+      />
+      <FillRect
+        ratio={ratio}
+        height={6}
+        rx={3}
+        className={cn(FILL[tone], "forced-colors:fill-[Highlight]")}
+      />
+    </svg>
+  );
+  if (bar)
+    return (
+      <div
+        role="meter"
+        aria-label={label}
+        aria-valuenow={value}
+        aria-valuemin={0}
+        aria-valuemax={max}
+        aria-valuetext={text}
+        className={cn("min-w-24", className)}
+      >
+        {track}
+      </div>
+    );
   return (
     <div
       role="meter"
@@ -100,26 +142,7 @@ export function Meter({
         </span>
         <span className="tabular-nums text-fg">{text}</span>
       </div>
-      {/* Forced colours: the track is an outlined Canvas bar, the fill is Highlight. */}
-      <svg
-        aria-hidden
-        width="100%"
-        height="6"
-        className="block forced-color-adjust-none"
-      >
-        <rect
-          width="100%"
-          height="6"
-          rx="3"
-          className="fill-border forced-colors:fill-[Canvas] forced-colors:stroke-[CanvasText]"
-        />
-        <FillRect
-          ratio={ratio}
-          height={6}
-          rx={3}
-          className={cn(FILL[tone], "forced-colors:fill-[Highlight]")}
-        />
-      </svg>
+      {track}
     </div>
   );
 }

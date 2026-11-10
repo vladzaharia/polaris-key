@@ -8902,9 +8902,9 @@
       "note": "Sync Across Devices card on a product page (PX-18): the reading when the person's limit is zero (no meter). Arguments: {used} = a size already formatted (“142 MB”)."
     },
     "locker.sync.tierLimit": {
-      "value": "Limit set by your {tier} tier",
+      "value": "Your {tier} tier includes {limit}.",
       "role": "hint",
-      "note": "Sync Across Devices card on a product page (PX-18): under the meter: the tier the limit comes from. Arguments: {tier} = the tier's name (“Pro”)."
+      "note": "Sync Across Devices card on a product page (PX-18): near or at the limit: what the person's tier allows. Arguments: {tier} = the tier's name (“Pro”); {limit} = a size already formatted (“1 GB”)."
     },
     "locker.sync.lastSynced": {
       "value": "Last synced",
@@ -8912,44 +8912,59 @@
       "note": "Sync Across Devices card on a product page (PX-18): the heading of the list of devices, each with when it last synced."
     },
     "locker.sync.empty": {
-      "value": "Nothing synced yet. Sign in to {product} on a device to start.",
+      "value": "Nothing synced. Sign in to {product} on a device to start.",
       "role": "body",
-      "note": "Sync Across Devices card on a product page (PX-18): nothing is stored yet. Arguments: {product} = the app's name."
+      "note": "Sync Across Devices card on a product page (PX-18): nothing is stored. Arguments: {product} = the app's name."
+    },
+    "locker.sync.paused": {
+      "value": "Sync paused since {date}",
+      "role": "title",
+      "note": "Sync Across Devices card on a product page (PX-18): the operator has put syncing on hold. Arguments: {date} = a date already formatted (“Sep 30”)."
+    },
+    "locker.sync.pausedBody": {
+      "value": "Your changes stay on your devices and sync when it resumes.",
+      "role": "body",
+      "note": "Sync Across Devices card on a product page (PX-18): under the paused title."
+    },
+    "locker.sync.removing": {
+      "value": "Removing your data. It finishes shortly.",
+      "role": "body",
+      "note": "Sync Across Devices card on a product page (PX-18): the person removed their data from the app and the last part is still finishing on its own."
     },
     "locker.sync.fullBody": {
-      "value": "New changes stay on your devices until there's room.",
+      "value": "New changes stay on your devices. Delete something in {product} to make room.",
       "role": "body",
-      "note": "Sync Across Devices card on a product page (PX-18): under the full title."
+      "note": "Sync Across Devices card on a product page (PX-18): under the Storage full title. Arguments: {product} = the app's name."
     },
     "locker.sync.private": {
-      "value": "Only your devices can read your synced data.",
+      "value": "Only your devices can read your synced data, including this download.",
       "role": "body",
-      "note": "Sync Across Devices card on a product page (PX-18): shown when the data is end-to-end encrypted."
+      "note": "Sync Across Devices card on a product page (PX-18): next to Download synced data when the data is end-to-end encrypted: the download holds it as stored, readable only on the person's devices."
     },
     "locker.sync.loadFailed": {
       "value": "Couldn't load your synced data.",
       "role": "body",
       "note": "Sync Across Devices card on a product page (PX-18): the card failed to load; the Try again button is separate."
     },
-    "locker.sync.otherDevice": {
-      "value": "Another device",
-      "role": "label",
-      "note": "Sync Across Devices card on a product page (PX-18): a device in the Last synced list with no name, or no longer signed in to this account."
-    },
     "locker.sync.download": {
       "value": "Download synced data",
       "role": "button",
       "note": "Sync Across Devices card on a product page (PX-18): downloads a zip of the app's data with every synced file."
     },
-    "locker.error.exportTooLarge.title": {
-      "value": "Too much synced data",
-      "role": "title",
-      "note": "Download synced data refused: the app's synced data is more than one download file can hold."
-    },
-    "locker.error.exportTooLarge.body": {
-      "value": "It doesn't fit in one download.",
+    "locker.sync.tooLarge": {
+      "value": "Your synced data is too large to download at once.",
       "role": "body",
-      "note": "Download synced data refused, after its title: the data is more than one download file can hold."
+      "note": "Sync Across Devices card on a product page (PX-18): Download synced data refused: the data is more than one download can hold."
+    },
+    "locker.sync.askCopy": {
+      "value": "Ask {developer} for a copy.",
+      "role": "label",
+      "note": "Sync Across Devices card on a product page (PX-18): after the too-large refusal, a link to the developer's support. Arguments: {developer} = the developer's name."
+    },
+    "locker.sync.removeIn": {
+      "value": "Remove it in Your Data",
+      "role": "label",
+      "note": "Sync Across Devices card on a product page (PX-18): a quiet link to the Your Data card's Remove my data, the page's one way to remove the data."
     },
     "locker.library.justAdded": {
       "value": "Added just now",
@@ -9065,6 +9080,11 @@
       "value": "{developer} is told, so they can delete their own copy.",
       "role": "body",
       "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.syncStops": {
+      "value": "Your devices stop syncing {product}.",
+      "role": "body",
+      "note": "Remove my data, with sync on: what happens to the person's devices. Arguments: {product} = the app's name."
     },
     "yourData.remove.entryStays": {
       "value": "{product} stays in your library.",
