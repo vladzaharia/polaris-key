@@ -28027,7 +28027,7 @@
     ]
   },
   "local": {
-    "note": "Account-free local pairing (15.12, 15.4, 15.5). `codes`: `nameplate` (a byte stream drawn one byte at a time: 200 or more is drawn again, then mod 100; a nameplate in `inUse` is drawn again unless all 100 are in use; `want.consumed` is the bytes read and a null nameplate means the stream ran out), `password` (4 bytes a draw as a u32be, drawn again at 4294000000 or more, then mod 10^6, written with leading zeros), `display` (two groups of four digits, one space) and `parse` (a typed code: ASCII spaces and hyphens removed, then exactly 8 ASCII digits; nothing else, another script's digits included). `qr`: `make` (PKP1:SLUG:INSTANCE:SECRET in upper case, the instance's 16 base32 characters and the secret's 26 with the two unused low bits zero) and `parse` (fold ASCII case, four fields split at ':', then ok, other-app when the slug is well formed but not `own`, or invalid; the secret's last character must keep its low two bits zero). `adverts`: `pairing` (the m=q instance p1- + the 16 base32 characters of the window's 10 bytes), `names` (the m=l instance p1- + the first 16 characters of the lower-case base32 of HMAC-SHA256(secret, 'pkey-peer/1 ldisc' || 0x00 || u64be(epoch) || the advertiser's own link key)) and `browse` (which held link, in held order and among the first 32, an instance belongs to in the current or previous epoch; each link lists its `secret` and the peer's link key `peerKey`, the key the peer advertises with). `txt`: `parser` txt is parseTxt (m = a, v, p or q; for q `h` is 16 lower-case hex characters and `n` exactly two ASCII digits; n is read for q only; c and l are unknown modes there), `parser` local is parseLocalTxt (v=1 and m=l; no h and no n are read); an entry splits at its first '='; one without '=' or with an empty key is ignored; a repeated key refuses. `body`: a LOCAL_LINK body, strict JSON of at most 4 KiB, v = 1, an optional label cleaned as a HELLO label (nothing left means none), cats an array of at most 8 distinct strings of ^[a-z0-9-]{1,32}$; unknown members are ignored. `secrets`: HKDF-SHA256(salt = h, ikm = ISK (64 bytes), info = 'pkey-peer/1 local' || 0x00 || lo || hi), 32 bytes, lo and hi the two link public keys by unsigned byte order (the row real-pairing-inputs uses the mode-q handshake of noise-vectors.json `cpace.handshakes`). `handshakePayloads`: the payloads of modes q and l and the capability negotiation. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
+    "note": "Account-free local pairing (15.12, 15.4, 15.5). `codes`: `nameplate` (a byte stream drawn one byte at a time: 200 or more is drawn again, then mod 100; a nameplate in `inUse` is drawn again unless all 100 are in use; `want.consumed` is the bytes read and a null nameplate means the stream ran out), `password` (4 bytes a draw as a u32be, drawn again at 4294000000 or more, then mod 10^6, written with leading zeros), `display` (two groups of four digits, one space) and `parse` (a typed code: ASCII spaces and hyphens removed, then exactly 8 ASCII digits; nothing else, another script's digits included). `qr`: `make` (PKP1:SLUG:INSTANCE:SECRET in upper case, the instance's 16 base32 characters and the secret's 26 with the two unused low bits zero) and `parse` (fold ASCII case, four fields split at ':', then ok, other-app when the slug is well formed but not `own`, or invalid; the secret's last character must keep its low two bits zero). `adverts`: `pairing` (the m=q instance p1- + the 16 base32 characters of the window's 10 bytes), `names` (the m=l instance p1- + the first 16 characters of the lower-case base32 of HMAC-SHA256(secret, 'pkey-peer/1 ldisc' || 0x00 || u64be(epoch) || the advertiser's own link key)) and `browse` (which held link, in held order and among the first 32, an instance belongs to in the current or previous epoch; each link lists its `secret` and the peer's link key `peerKey`, the key the peer advertises with). `txt`: `parser` txt is parseTxt (m = a, v, p or q; for q `h` is 16 lower-case hex characters and `n` exactly two ASCII digits; n is read for q only; c and l are unknown modes there), `parser` local is parseLocalTxt (v=1 and m=l; no h and no n are read); an entry splits at its first '='; one without '=' or with an empty key is ignored; a repeated key refuses. `body`: a LOCAL_LINK body, strict JSON of at most 4 KiB, v = 1, an optional label cleaned as a HELLO label (nothing left means none), cats an array of at most 8 distinct strings of ^[a-z0-9-]{1,32}$; unknown members are ignored. `secrets`: HKDF-SHA256(salt = h, ikm = ISK (64 bytes), info = 'pkey-peer/1 local' || 0x00 || lo || hi), 32 bytes, lo and hi the two link public keys by unsigned byte order (the row real-pairing-inputs uses the mode-q handshake of noise-vectors.json `cpace.handshakes`). `handshakePayloads`: the payloads of modes q and l and the capability negotiation. `exchange`: one side's pairing events in order (own-confirm, own-decline, peer-confirm, peer-link with the body text, timeout-confirm: the 120 s from the first byte ran out, timeout-exchange: the 30 s after both CONFIRMs ran out), with `held` the local links the device holds and `cats` this side's approved categories; `want` has one entry per step: what that step makes this side send (CONFIRM, LOCAL_LINK, the second once this side's CONFIRM is sent and the peer's read), the code it closes with, and the link it stores (`label`, and `cats` the entries both sides listed in byte order, then peer_bye); after a close nothing more happens; a decline before this side's CONFIRM closes peer_bye. `pin`: mode l checks the remote static key against the peer link key of the link whose secret opened the session (after message 2 for the initiator, after message 3 for the responder): a mismatch is peer_revoked and nothing is sent; mode q ends the handshake silently when the remote static key is this side's own link key. `trialOrder`: the shared listener's trial of message 1: account discKeys (null = none; two tried), then contact secrets (72 tried), then local-link secrets (32 tried), at most 104 secrets after the account keys; `opens` names the key whose tag verifies; `limiter` is what the contact limiter says to a contact or local-link trial; `want.tried` lists a:<i>, c:<i> and l:<i> in order, `hit` the key that decided, `slot` whether the connection holds a limiter slot until message 3 (a contact or local-link hit), `close` the silent end (peer_busy when the limiter refused before any secret was tried, handshake_failed otherwise). `window`: the pairing window's machine over events with a monotonic time t in seconds (open, c1 with `valid`, msg1 with `opens`, abandon, session-end with `stored`, tick, close); `want` has one entry per event: `result` (opened, already-open, closed, busy, limited, refused, attempt, transport, failed, too-many-tries), `open`, `holder` (attempt from a valid C1 until its message 1 or 30 s; session from a message 1 that opens until it ends), `failures`, `rotations` (the password and QR secret rotate after every failed guess below the fifth and after a session that ends without a link while the window is open), `closed` (expired at 300 s, too-many-tries, stored, person) and `host`; a window admits at most 5 C1s in any 60 s, counted when it admits them. `join`: the joiner: `input` is what the reader said (a code's nameplate, a QR's instance or invalid), `adverts` the m=q adverts seen in first-seen order (`h` current, previous or other, `n` the nameplate), `dials` how each dial ends (transport, before-c2, after-c2); `want` has the instances kept (matching h and the nameplate or the instance, at most 8, once each), those dialled (at most 2, in order), whether anything was browsed, and the result: transport, pairing-code-failed (an invalid input, or no transport and an attempt failed after C2) or pairing-not-found. `gate`: the cached discovery answer (`start` on, off or none) over reads (ok with the discovery body, not-found, error) and calls; services.connect.localPairing is true only as the boolean true; an ok read replaces the answer, a not-found clears it, an error changes nothing; a read that leaves a cached true behind has the effects close-windows, withdraw-adverts and end-sessions; a call that opens, joins, advertises, browses, dials or answers needs on and otherwise answers local-pairing-off, and list, rename, remove and set-reachable are never gated. `records`: the mode rules of 15.6 for q and l (and the new rows in the other modes): a known type in a mode that does not allow it closes peer_not_allowed, an unknown type with the critical bit closes peer_unknown_critical and any other is ignored; `needs` is the capability the session must hold. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
     "constants": {
       "pairSeconds": 300,
       "codeDigits": 8,
@@ -30599,6 +30599,5837 @@
           "want": { "caps": ["app/1"] }
         }
       ]
-    }
+    },
+    "exchange": [
+      {
+        "id": "own-confirms-first",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          {
+            "sends": [],
+            "stored": { "label": "Anna", "cats": ["docs", "music"] },
+            "close": "peer_bye"
+          }
+        ]
+      },
+      {
+        "id": "peer-confirms-first",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "peer-confirm" },
+          { "event": "own-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": [] },
+          { "sends": ["CONFIRM", "LOCAL_LINK"] },
+          {
+            "sends": [],
+            "stored": { "label": "Anna", "cats": ["docs", "music"] },
+            "close": "peer_bye"
+          }
+        ]
+      },
+      {
+        "id": "link-is-sent-by-the-later-confirm",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [{ "event": "peer-confirm" }, { "event": "own-confirm" }],
+        "want": [{ "sends": [] }, { "sends": ["CONFIRM", "LOCAL_LINK"] }]
+      },
+      {
+        "id": "link-then-more-events-is-quiet",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          },
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          { "event": "timeout-confirm" },
+          { "event": "timeout-exchange" }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          {
+            "sends": [],
+            "stored": { "label": "Anna", "cats": ["docs", "music"] },
+            "close": "peer_bye"
+          },
+          { "sends": [] },
+          { "sends": [] },
+          { "sends": [] },
+          { "sends": [] }
+        ]
+      },
+      {
+        "id": "stores-the-categories-both-listed",
+        "held": 0,
+        "cats": ["music", "photos", "docs"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          {
+            "sends": [],
+            "stored": { "label": "Anna", "cats": ["docs", "music"] },
+            "close": "peer_bye"
+          }
+        ]
+      },
+      {
+        "id": "no-category-in-common",
+        "held": 0,
+        "cats": ["photos"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          {
+            "sends": [],
+            "stored": { "label": "Anna", "cats": [] },
+            "close": "peer_bye"
+          }
+        ]
+      },
+      {
+        "id": "no-categories-here",
+        "held": 0,
+        "cats": [],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          {
+            "sends": [],
+            "stored": { "label": "Anna", "cats": [] },
+            "close": "peer_bye"
+          }
+        ]
+      },
+      {
+        "id": "label-is-optional",
+        "held": 0,
+        "cats": ["docs"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          { "event": "peer-link", "body": "{\"v\":1,\"cats\":[\"docs\"]}" }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          { "sends": [], "stored": { "cats": ["docs"] }, "close": "peer_bye" }
+        ]
+      },
+      {
+        "id": "label-cleaned",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"  Bo\u200b  Phone \",\"cats\":[]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          {
+            "sends": [],
+            "stored": { "label": "Bo Phone", "cats": [] },
+            "close": "peer_bye"
+          }
+        ]
+      },
+      {
+        "id": "link-before-any-confirm",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [{ "sends": [], "close": "peer_bad_frame" }]
+      },
+      {
+        "id": "link-before-peer-confirm",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": [], "close": "peer_bad_frame" }
+        ]
+      },
+      {
+        "id": "link-before-own-confirm",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [{ "sends": [] }, { "sends": [], "close": "peer_bad_frame" }]
+      },
+      {
+        "id": "peer-confirm-twice",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [{ "event": "peer-confirm" }, { "event": "peer-confirm" }],
+        "want": [{ "sends": [] }, { "sends": [], "close": "peer_bad_frame" }]
+      },
+      {
+        "id": "peer-confirm-twice-after-own",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          { "event": "peer-confirm" }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          { "sends": [], "close": "peer_bad_frame" }
+        ]
+      },
+      {
+        "id": "link-twice-is-quiet-after-the-first",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          {
+            "sends": [],
+            "stored": { "label": "Anna", "cats": ["docs", "music"] },
+            "close": "peer_bye"
+          },
+          { "sends": [] }
+        ]
+      },
+      {
+        "id": "body-invalid",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          { "event": "peer-link", "body": "{}" }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          { "sends": [], "close": "peer_bad_frame" }
+        ]
+      },
+      {
+        "id": "body-bad-category",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"Docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          { "sends": [], "close": "peer_bad_frame" }
+        ]
+      },
+      {
+        "id": "body-too-many-categories",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"cats\":[\"c0\",\"c1\",\"c2\",\"c3\",\"c4\",\"c5\",\"c6\",\"c7\",\"c8\"]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          { "sends": [], "close": "peer_bad_frame" }
+        ]
+      },
+      {
+        "id": "body-carries-a-key-is-ignored",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"cats\":[],\"agreeKey\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          { "sends": [], "stored": { "cats": [] }, "close": "peer_bye" }
+        ]
+      },
+      {
+        "id": "decline-before-own-confirm",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [{ "event": "own-decline" }],
+        "want": [{ "sends": [], "close": "peer_bye" }]
+      },
+      {
+        "id": "decline-after-peer-confirm",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [{ "event": "peer-confirm" }, { "event": "own-decline" }],
+        "want": [{ "sends": [] }, { "sends": [], "close": "peer_bye" }]
+      },
+      {
+        "id": "decline-then-peer-events-is-quiet",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-decline" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": [], "close": "peer_bye" },
+          { "sends": [] },
+          { "sends": [] }
+        ]
+      },
+      {
+        "id": "decline-after-own-confirm-is-not-an-event",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "own-decline" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": [] },
+          { "sends": ["LOCAL_LINK"] },
+          {
+            "sends": [],
+            "stored": { "label": "Anna", "cats": ["docs", "music"] },
+            "close": "peer_bye"
+          }
+        ]
+      },
+      {
+        "id": "confirm-timeout-before-any-confirm",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [{ "event": "timeout-confirm" }],
+        "want": [{ "sends": [], "close": "peer_timeout" }]
+      },
+      {
+        "id": "confirm-timeout-after-own-confirm",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [{ "event": "own-confirm" }, { "event": "timeout-confirm" }],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": [], "close": "peer_timeout" }
+        ]
+      },
+      {
+        "id": "confirm-timeout-after-peer-confirm",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [{ "event": "peer-confirm" }, { "event": "timeout-confirm" }],
+        "want": [{ "sends": [] }, { "sends": [], "close": "peer_timeout" }]
+      },
+      {
+        "id": "confirm-timeout-after-both-is-quiet",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          { "event": "timeout-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          { "sends": [] },
+          {
+            "sends": [],
+            "stored": { "label": "Anna", "cats": ["docs", "music"] },
+            "close": "peer_bye"
+          }
+        ]
+      },
+      {
+        "id": "exchange-timeout-before-both-is-quiet",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [{ "event": "own-confirm" }, { "event": "timeout-exchange" }],
+        "want": [{ "sends": ["CONFIRM"] }, { "sends": [] }]
+      },
+      {
+        "id": "exchange-timeout-after-both",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          { "event": "timeout-exchange" }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          { "sends": [], "close": "peer_timeout" }
+        ]
+      },
+      {
+        "id": "exchange-timeout-after-the-link-is-quiet",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          },
+          { "event": "timeout-exchange" }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          {
+            "sends": [],
+            "stored": { "label": "Anna", "cats": ["docs", "music"] },
+            "close": "peer_bye"
+          },
+          { "sends": [] }
+        ]
+      },
+      {
+        "id": "after-close-nothing-happens",
+        "held": 0,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "peer-confirm" },
+          { "event": "peer-confirm" },
+          { "event": "own-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": [] },
+          { "sends": [], "close": "peer_bad_frame" },
+          { "sends": [] },
+          { "sends": [] }
+        ]
+      },
+      {
+        "id": "at-31-is-stored",
+        "held": 31,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          {
+            "sends": [],
+            "stored": { "label": "Anna", "cats": ["docs", "music"] },
+            "close": "peer_bye"
+          }
+        ]
+      },
+      {
+        "id": "at-32-is-refused",
+        "held": 32,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          { "sends": [], "close": "peer_not_allowed" }
+        ]
+      },
+      {
+        "id": "at-33-is-refused",
+        "held": 33,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          { "sends": [], "close": "peer_not_allowed" }
+        ]
+      },
+      {
+        "id": "invalid-body-at-32-is-a-bad-frame",
+        "held": 32,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          { "event": "peer-confirm" },
+          { "event": "peer-link", "body": "{}" }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": ["LOCAL_LINK"] },
+          { "sends": [], "close": "peer_bad_frame" }
+        ]
+      },
+      {
+        "id": "full-and-early-link-is-a-bad-frame",
+        "held": 32,
+        "cats": ["docs", "music"],
+        "steps": [
+          { "event": "own-confirm" },
+          {
+            "event": "peer-link",
+            "body": "{\"v\":1,\"label\":\"Anna\",\"cats\":[\"docs\",\"music\"]}"
+          }
+        ],
+        "want": [
+          { "sends": ["CONFIRM"] },
+          { "sends": [], "close": "peer_bad_frame" }
+        ]
+      }
+    ],
+    "pin": [
+      {
+        "id": "l-initiator-key-matches",
+        "mode": "l",
+        "role": "initiator",
+        "held": [
+          "7f5264072344e8d0fe482bdcaeec8c6e53607d45e3cfdd4745ca9c7afdfda376"
+        ],
+        "matched": 0,
+        "remoteStatic": "7f5264072344e8d0fe482bdcaeec8c6e53607d45e3cfdd4745ca9c7afdfda376",
+        "checkedAfter": 2,
+        "want": { "ok": true }
+      },
+      {
+        "id": "l-responder-key-matches",
+        "mode": "l",
+        "role": "responder",
+        "held": [
+          "7f5264072344e8d0fe482bdcaeec8c6e53607d45e3cfdd4745ca9c7afdfda376",
+          "46853206dc51f3571d21bfc0c86ab842730a99615fc122515495c96dd3c1f82e"
+        ],
+        "matched": 1,
+        "remoteStatic": "46853206dc51f3571d21bfc0c86ab842730a99615fc122515495c96dd3c1f82e",
+        "checkedAfter": 3,
+        "want": { "ok": true }
+      },
+      {
+        "id": "l-initiator-key-differs",
+        "mode": "l",
+        "role": "initiator",
+        "held": [
+          "7f5264072344e8d0fe482bdcaeec8c6e53607d45e3cfdd4745ca9c7afdfda376"
+        ],
+        "matched": 0,
+        "remoteStatic": "46853206dc51f3571d21bfc0c86ab842730a99615fc122515495c96dd3c1f82e",
+        "checkedAfter": 2,
+        "want": { "ok": false, "close": "peer_revoked", "sends": 0 }
+      },
+      {
+        "id": "l-responder-key-differs",
+        "mode": "l",
+        "role": "responder",
+        "held": [
+          "7f5264072344e8d0fe482bdcaeec8c6e53607d45e3cfdd4745ca9c7afdfda376"
+        ],
+        "matched": 0,
+        "remoteStatic": "46853206dc51f3571d21bfc0c86ab842730a99615fc122515495c96dd3c1f82e",
+        "checkedAfter": 3,
+        "want": { "ok": false, "close": "peer_revoked", "sends": 0 }
+      },
+      {
+        "id": "l-one-bit-differs",
+        "mode": "l",
+        "role": "responder",
+        "held": [
+          "7f5264072344e8d0fe482bdcaeec8c6e53607d45e3cfdd4745ca9c7afdfda376"
+        ],
+        "matched": 0,
+        "remoteStatic": "7f5264072344e8d0fe482bdcaeec8c6e53607d45e3cfdd4745ca9c7afdfda377",
+        "checkedAfter": 3,
+        "want": { "ok": false, "close": "peer_revoked", "sends": 0 }
+      },
+      {
+        "id": "l-top-bit-differs",
+        "mode": "l",
+        "role": "initiator",
+        "held": [
+          "7f5264072344e8d0fe482bdcaeec8c6e53607d45e3cfdd4745ca9c7afdfda376"
+        ],
+        "matched": 0,
+        "remoteStatic": "7f5264072344e8d0fe482bdcaeec8c6e53607d45e3cfdd4745ca9c7afdfda3f6",
+        "checkedAfter": 2,
+        "want": { "ok": false, "close": "peer_revoked", "sends": 0 }
+      },
+      {
+        "id": "l-another-held-links-key",
+        "mode": "l",
+        "role": "responder",
+        "held": [
+          "7f5264072344e8d0fe482bdcaeec8c6e53607d45e3cfdd4745ca9c7afdfda376",
+          "46853206dc51f3571d21bfc0c86ab842730a99615fc122515495c96dd3c1f82e"
+        ],
+        "matched": 0,
+        "remoteStatic": "46853206dc51f3571d21bfc0c86ab842730a99615fc122515495c96dd3c1f82e",
+        "checkedAfter": 3,
+        "want": { "ok": false, "close": "peer_revoked", "sends": 0 }
+      },
+      {
+        "id": "l-own-key-is-not-the-peers",
+        "mode": "l",
+        "role": "initiator",
+        "held": [
+          "7f5264072344e8d0fe482bdcaeec8c6e53607d45e3cfdd4745ca9c7afdfda376"
+        ],
+        "matched": 0,
+        "remoteStatic": "388bfdaa87ba8af17919de74cc65b1541a854882ebc38cab7a2f91dbd44cd618",
+        "checkedAfter": 2,
+        "want": { "ok": false, "close": "peer_revoked", "sends": 0 }
+      },
+      {
+        "id": "q-initiator-remote-is-own-key",
+        "mode": "q",
+        "role": "initiator",
+        "own": "388bfdaa87ba8af17919de74cc65b1541a854882ebc38cab7a2f91dbd44cd618",
+        "remoteStatic": "388bfdaa87ba8af17919de74cc65b1541a854882ebc38cab7a2f91dbd44cd618",
+        "checkedAfter": 2,
+        "want": { "ok": false, "close": "silent", "sends": 0 }
+      },
+      {
+        "id": "q-responder-remote-is-own-key",
+        "mode": "q",
+        "role": "responder",
+        "own": "388bfdaa87ba8af17919de74cc65b1541a854882ebc38cab7a2f91dbd44cd618",
+        "remoteStatic": "388bfdaa87ba8af17919de74cc65b1541a854882ebc38cab7a2f91dbd44cd618",
+        "checkedAfter": 3,
+        "want": { "ok": false, "close": "silent", "sends": 0 }
+      },
+      {
+        "id": "q-initiator-remote-is-another-key",
+        "mode": "q",
+        "role": "initiator",
+        "own": "388bfdaa87ba8af17919de74cc65b1541a854882ebc38cab7a2f91dbd44cd618",
+        "remoteStatic": "7f5264072344e8d0fe482bdcaeec8c6e53607d45e3cfdd4745ca9c7afdfda376",
+        "checkedAfter": 2,
+        "want": { "ok": true }
+      },
+      {
+        "id": "q-responder-remote-is-another-key",
+        "mode": "q",
+        "role": "responder",
+        "own": "388bfdaa87ba8af17919de74cc65b1541a854882ebc38cab7a2f91dbd44cd618",
+        "remoteStatic": "46853206dc51f3571d21bfc0c86ab842730a99615fc122515495c96dd3c1f82e",
+        "checkedAfter": 3,
+        "want": { "ok": true }
+      },
+      {
+        "id": "q-one-bit-differs",
+        "mode": "q",
+        "role": "responder",
+        "own": "388bfdaa87ba8af17919de74cc65b1541a854882ebc38cab7a2f91dbd44cd618",
+        "remoteStatic": "388bfdaa87ba8af17919de74cc65b1541a854882ebc38cab7a2f91dbd44cd619",
+        "checkedAfter": 3,
+        "want": { "ok": true }
+      }
+    ],
+    "trialOrder": [
+      {
+        "id": "account-key-first",
+        "account": ["k", "k"],
+        "contacts": ["c", "c", "c"],
+        "locals": ["l", "l", "l"],
+        "opens": { "mode": "a", "key": 0 },
+        "limiter": "admit",
+        "want": { "tried": ["a:0"], "hit": "a:0", "slot": false, "close": null }
+      },
+      {
+        "id": "previous-account-key",
+        "account": ["k", "k"],
+        "contacts": ["c"],
+        "locals": ["l"],
+        "opens": { "mode": "a", "key": 1 },
+        "limiter": "admit",
+        "want": {
+          "tried": ["a:0", "a:1"],
+          "hit": "a:1",
+          "slot": false,
+          "close": null
+        }
+      },
+      {
+        "id": "absent-account-key-is-skipped",
+        "account": [null, "k"],
+        "contacts": [],
+        "locals": ["l", "l"],
+        "opens": { "mode": "a", "key": 1 },
+        "limiter": "admit",
+        "want": { "tried": ["a:1"], "hit": "a:1", "slot": false, "close": null }
+      },
+      {
+        "id": "contact-before-local-links",
+        "account": ["k", "k"],
+        "contacts": ["c", "c", "c"],
+        "locals": ["l", "l", "l"],
+        "opens": { "mode": "c", "contact": 2 },
+        "limiter": "admit",
+        "want": {
+          "tried": ["a:0", "a:1", "c:0", "c:1", "c:2"],
+          "hit": "c:2",
+          "slot": true,
+          "close": null
+        }
+      },
+      {
+        "id": "local-link-after-contacts",
+        "account": ["k", "k"],
+        "contacts": ["c", "c", "c"],
+        "locals": ["l", "l", "l"],
+        "opens": { "mode": "l", "link": 0 },
+        "limiter": "admit",
+        "want": {
+          "tried": ["a:0", "a:1", "c:0", "c:1", "c:2", "l:0"],
+          "hit": "l:0",
+          "slot": true,
+          "close": null
+        }
+      },
+      {
+        "id": "local-link-after-account-keys-only",
+        "account": ["k", "k"],
+        "contacts": [],
+        "locals": ["l", "l", "l"],
+        "opens": { "mode": "l", "link": 2 },
+        "limiter": "admit",
+        "want": {
+          "tried": ["a:0", "a:1", "l:0", "l:1", "l:2"],
+          "hit": "l:2",
+          "slot": true,
+          "close": null
+        }
+      },
+      {
+        "id": "local-only-host",
+        "account": null,
+        "contacts": [],
+        "locals": ["l", "l", "l"],
+        "opens": { "mode": "l", "link": 1 },
+        "limiter": "admit",
+        "want": {
+          "tried": ["l:0", "l:1"],
+          "hit": "l:1",
+          "slot": true,
+          "close": null
+        }
+      },
+      {
+        "id": "contacts-and-locals-no-account",
+        "account": null,
+        "contacts": ["c", "c"],
+        "locals": ["l", "l"],
+        "opens": { "mode": "l", "link": 1 },
+        "limiter": "admit",
+        "want": {
+          "tried": ["c:0", "c:1", "l:0", "l:1"],
+          "hit": "l:1",
+          "slot": true,
+          "close": null
+        }
+      },
+      {
+        "id": "first-local-link",
+        "account": null,
+        "contacts": [],
+        "locals": ["l", "l", "l", "l", "l"],
+        "opens": { "mode": "l", "link": 0 },
+        "limiter": "admit",
+        "want": { "tried": ["l:0"], "hit": "l:0", "slot": true, "close": null }
+      },
+      {
+        "id": "last-of-32-is-tried",
+        "account": null,
+        "contacts": [],
+        "locals": [
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l"
+        ],
+        "opens": { "mode": "l", "link": 31 },
+        "limiter": "admit",
+        "want": {
+          "tried": [
+            "l:0",
+            "l:1",
+            "l:2",
+            "l:3",
+            "l:4",
+            "l:5",
+            "l:6",
+            "l:7",
+            "l:8",
+            "l:9",
+            "l:10",
+            "l:11",
+            "l:12",
+            "l:13",
+            "l:14",
+            "l:15",
+            "l:16",
+            "l:17",
+            "l:18",
+            "l:19",
+            "l:20",
+            "l:21",
+            "l:22",
+            "l:23",
+            "l:24",
+            "l:25",
+            "l:26",
+            "l:27",
+            "l:28",
+            "l:29",
+            "l:30",
+            "l:31"
+          ],
+          "hit": "l:31",
+          "slot": true,
+          "close": null
+        }
+      },
+      {
+        "id": "33rd-local-link-is-not-tried",
+        "account": null,
+        "contacts": [],
+        "locals": [
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l"
+        ],
+        "opens": { "mode": "l", "link": 32 },
+        "limiter": "admit",
+        "want": {
+          "tried": [
+            "l:0",
+            "l:1",
+            "l:2",
+            "l:3",
+            "l:4",
+            "l:5",
+            "l:6",
+            "l:7",
+            "l:8",
+            "l:9",
+            "l:10",
+            "l:11",
+            "l:12",
+            "l:13",
+            "l:14",
+            "l:15",
+            "l:16",
+            "l:17",
+            "l:18",
+            "l:19",
+            "l:20",
+            "l:21",
+            "l:22",
+            "l:23",
+            "l:24",
+            "l:25",
+            "l:26",
+            "l:27",
+            "l:28",
+            "l:29",
+            "l:30",
+            "l:31"
+          ],
+          "hit": null,
+          "slot": false,
+          "close": "handshake_failed"
+        }
+      },
+      {
+        "id": "last-of-72-contacts-is-tried",
+        "account": null,
+        "contacts": [
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c"
+        ],
+        "locals": ["l", "l"],
+        "opens": { "mode": "c", "contact": 71 },
+        "limiter": "admit",
+        "want": {
+          "tried": [
+            "c:0",
+            "c:1",
+            "c:2",
+            "c:3",
+            "c:4",
+            "c:5",
+            "c:6",
+            "c:7",
+            "c:8",
+            "c:9",
+            "c:10",
+            "c:11",
+            "c:12",
+            "c:13",
+            "c:14",
+            "c:15",
+            "c:16",
+            "c:17",
+            "c:18",
+            "c:19",
+            "c:20",
+            "c:21",
+            "c:22",
+            "c:23",
+            "c:24",
+            "c:25",
+            "c:26",
+            "c:27",
+            "c:28",
+            "c:29",
+            "c:30",
+            "c:31",
+            "c:32",
+            "c:33",
+            "c:34",
+            "c:35",
+            "c:36",
+            "c:37",
+            "c:38",
+            "c:39",
+            "c:40",
+            "c:41",
+            "c:42",
+            "c:43",
+            "c:44",
+            "c:45",
+            "c:46",
+            "c:47",
+            "c:48",
+            "c:49",
+            "c:50",
+            "c:51",
+            "c:52",
+            "c:53",
+            "c:54",
+            "c:55",
+            "c:56",
+            "c:57",
+            "c:58",
+            "c:59",
+            "c:60",
+            "c:61",
+            "c:62",
+            "c:63",
+            "c:64",
+            "c:65",
+            "c:66",
+            "c:67",
+            "c:68",
+            "c:69",
+            "c:70",
+            "c:71"
+          ],
+          "hit": "c:71",
+          "slot": true,
+          "close": null
+        }
+      },
+      {
+        "id": "73rd-contact-is-not-tried",
+        "account": null,
+        "contacts": [
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c"
+        ],
+        "locals": ["l", "l"],
+        "opens": { "mode": "c", "contact": 72 },
+        "limiter": "admit",
+        "want": {
+          "tried": [
+            "c:0",
+            "c:1",
+            "c:2",
+            "c:3",
+            "c:4",
+            "c:5",
+            "c:6",
+            "c:7",
+            "c:8",
+            "c:9",
+            "c:10",
+            "c:11",
+            "c:12",
+            "c:13",
+            "c:14",
+            "c:15",
+            "c:16",
+            "c:17",
+            "c:18",
+            "c:19",
+            "c:20",
+            "c:21",
+            "c:22",
+            "c:23",
+            "c:24",
+            "c:25",
+            "c:26",
+            "c:27",
+            "c:28",
+            "c:29",
+            "c:30",
+            "c:31",
+            "c:32",
+            "c:33",
+            "c:34",
+            "c:35",
+            "c:36",
+            "c:37",
+            "c:38",
+            "c:39",
+            "c:40",
+            "c:41",
+            "c:42",
+            "c:43",
+            "c:44",
+            "c:45",
+            "c:46",
+            "c:47",
+            "c:48",
+            "c:49",
+            "c:50",
+            "c:51",
+            "c:52",
+            "c:53",
+            "c:54",
+            "c:55",
+            "c:56",
+            "c:57",
+            "c:58",
+            "c:59",
+            "c:60",
+            "c:61",
+            "c:62",
+            "c:63",
+            "c:64",
+            "c:65",
+            "c:66",
+            "c:67",
+            "c:68",
+            "c:69",
+            "c:70",
+            "c:71",
+            "l:0",
+            "l:1"
+          ],
+          "hit": null,
+          "slot": false,
+          "close": "handshake_failed"
+        }
+      },
+      {
+        "id": "the-104th-secret-is-tried",
+        "account": null,
+        "contacts": [
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c"
+        ],
+        "locals": [
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l"
+        ],
+        "opens": { "mode": "l", "link": 31 },
+        "limiter": "admit",
+        "want": {
+          "tried": [
+            "c:0",
+            "c:1",
+            "c:2",
+            "c:3",
+            "c:4",
+            "c:5",
+            "c:6",
+            "c:7",
+            "c:8",
+            "c:9",
+            "c:10",
+            "c:11",
+            "c:12",
+            "c:13",
+            "c:14",
+            "c:15",
+            "c:16",
+            "c:17",
+            "c:18",
+            "c:19",
+            "c:20",
+            "c:21",
+            "c:22",
+            "c:23",
+            "c:24",
+            "c:25",
+            "c:26",
+            "c:27",
+            "c:28",
+            "c:29",
+            "c:30",
+            "c:31",
+            "c:32",
+            "c:33",
+            "c:34",
+            "c:35",
+            "c:36",
+            "c:37",
+            "c:38",
+            "c:39",
+            "c:40",
+            "c:41",
+            "c:42",
+            "c:43",
+            "c:44",
+            "c:45",
+            "c:46",
+            "c:47",
+            "c:48",
+            "c:49",
+            "c:50",
+            "c:51",
+            "c:52",
+            "c:53",
+            "c:54",
+            "c:55",
+            "c:56",
+            "c:57",
+            "c:58",
+            "c:59",
+            "c:60",
+            "c:61",
+            "c:62",
+            "c:63",
+            "c:64",
+            "c:65",
+            "c:66",
+            "c:67",
+            "c:68",
+            "c:69",
+            "c:70",
+            "c:71",
+            "l:0",
+            "l:1",
+            "l:2",
+            "l:3",
+            "l:4",
+            "l:5",
+            "l:6",
+            "l:7",
+            "l:8",
+            "l:9",
+            "l:10",
+            "l:11",
+            "l:12",
+            "l:13",
+            "l:14",
+            "l:15",
+            "l:16",
+            "l:17",
+            "l:18",
+            "l:19",
+            "l:20",
+            "l:21",
+            "l:22",
+            "l:23",
+            "l:24",
+            "l:25",
+            "l:26",
+            "l:27",
+            "l:28",
+            "l:29",
+            "l:30",
+            "l:31"
+          ],
+          "hit": "l:31",
+          "slot": true,
+          "close": null
+        }
+      },
+      {
+        "id": "nothing-opens-it-tries-all-104",
+        "account": ["k", "k"],
+        "contacts": [
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c"
+        ],
+        "locals": [
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l"
+        ],
+        "opens": null,
+        "limiter": "admit",
+        "want": {
+          "tried": [
+            "a:0",
+            "a:1",
+            "c:0",
+            "c:1",
+            "c:2",
+            "c:3",
+            "c:4",
+            "c:5",
+            "c:6",
+            "c:7",
+            "c:8",
+            "c:9",
+            "c:10",
+            "c:11",
+            "c:12",
+            "c:13",
+            "c:14",
+            "c:15",
+            "c:16",
+            "c:17",
+            "c:18",
+            "c:19",
+            "c:20",
+            "c:21",
+            "c:22",
+            "c:23",
+            "c:24",
+            "c:25",
+            "c:26",
+            "c:27",
+            "c:28",
+            "c:29",
+            "c:30",
+            "c:31",
+            "c:32",
+            "c:33",
+            "c:34",
+            "c:35",
+            "c:36",
+            "c:37",
+            "c:38",
+            "c:39",
+            "c:40",
+            "c:41",
+            "c:42",
+            "c:43",
+            "c:44",
+            "c:45",
+            "c:46",
+            "c:47",
+            "c:48",
+            "c:49",
+            "c:50",
+            "c:51",
+            "c:52",
+            "c:53",
+            "c:54",
+            "c:55",
+            "c:56",
+            "c:57",
+            "c:58",
+            "c:59",
+            "c:60",
+            "c:61",
+            "c:62",
+            "c:63",
+            "c:64",
+            "c:65",
+            "c:66",
+            "c:67",
+            "c:68",
+            "c:69",
+            "c:70",
+            "c:71",
+            "l:0",
+            "l:1",
+            "l:2",
+            "l:3",
+            "l:4",
+            "l:5",
+            "l:6",
+            "l:7",
+            "l:8",
+            "l:9",
+            "l:10",
+            "l:11",
+            "l:12",
+            "l:13",
+            "l:14",
+            "l:15",
+            "l:16",
+            "l:17",
+            "l:18",
+            "l:19",
+            "l:20",
+            "l:21",
+            "l:22",
+            "l:23",
+            "l:24",
+            "l:25",
+            "l:26",
+            "l:27",
+            "l:28",
+            "l:29",
+            "l:30",
+            "l:31"
+          ],
+          "hit": null,
+          "slot": false,
+          "close": "handshake_failed"
+        }
+      },
+      {
+        "id": "nothing-opens-it-more-than-104",
+        "account": ["k", "k"],
+        "contacts": [
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c",
+          "c"
+        ],
+        "locals": [
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l",
+          "l"
+        ],
+        "opens": null,
+        "limiter": "admit",
+        "want": {
+          "tried": [
+            "a:0",
+            "a:1",
+            "c:0",
+            "c:1",
+            "c:2",
+            "c:3",
+            "c:4",
+            "c:5",
+            "c:6",
+            "c:7",
+            "c:8",
+            "c:9",
+            "c:10",
+            "c:11",
+            "c:12",
+            "c:13",
+            "c:14",
+            "c:15",
+            "c:16",
+            "c:17",
+            "c:18",
+            "c:19",
+            "c:20",
+            "c:21",
+            "c:22",
+            "c:23",
+            "c:24",
+            "c:25",
+            "c:26",
+            "c:27",
+            "c:28",
+            "c:29",
+            "c:30",
+            "c:31",
+            "c:32",
+            "c:33",
+            "c:34",
+            "c:35",
+            "c:36",
+            "c:37",
+            "c:38",
+            "c:39",
+            "c:40",
+            "c:41",
+            "c:42",
+            "c:43",
+            "c:44",
+            "c:45",
+            "c:46",
+            "c:47",
+            "c:48",
+            "c:49",
+            "c:50",
+            "c:51",
+            "c:52",
+            "c:53",
+            "c:54",
+            "c:55",
+            "c:56",
+            "c:57",
+            "c:58",
+            "c:59",
+            "c:60",
+            "c:61",
+            "c:62",
+            "c:63",
+            "c:64",
+            "c:65",
+            "c:66",
+            "c:67",
+            "c:68",
+            "c:69",
+            "c:70",
+            "c:71",
+            "l:0",
+            "l:1",
+            "l:2",
+            "l:3",
+            "l:4",
+            "l:5",
+            "l:6",
+            "l:7",
+            "l:8",
+            "l:9",
+            "l:10",
+            "l:11",
+            "l:12",
+            "l:13",
+            "l:14",
+            "l:15",
+            "l:16",
+            "l:17",
+            "l:18",
+            "l:19",
+            "l:20",
+            "l:21",
+            "l:22",
+            "l:23",
+            "l:24",
+            "l:25",
+            "l:26",
+            "l:27",
+            "l:28",
+            "l:29",
+            "l:30",
+            "l:31"
+          ],
+          "hit": null,
+          "slot": false,
+          "close": "handshake_failed"
+        }
+      },
+      {
+        "id": "nothing-opens-it-account-only",
+        "account": ["k", "k"],
+        "contacts": [],
+        "locals": [],
+        "opens": null,
+        "limiter": "admit",
+        "want": {
+          "tried": ["a:0", "a:1"],
+          "hit": null,
+          "slot": false,
+          "close": "handshake_failed"
+        }
+      },
+      {
+        "id": "nothing-opens-it-no-secrets-no-account",
+        "account": null,
+        "contacts": [],
+        "locals": [],
+        "opens": null,
+        "limiter": "admit",
+        "want": {
+          "tried": [],
+          "hit": null,
+          "slot": false,
+          "close": "handshake_failed"
+        }
+      },
+      {
+        "id": "limiter-refuses-before-any-secret",
+        "account": ["k", "k"],
+        "contacts": ["c", "c"],
+        "locals": ["l", "l"],
+        "opens": { "mode": "c", "contact": 0 },
+        "limiter": "refuse",
+        "want": {
+          "tried": ["a:0", "a:1"],
+          "hit": null,
+          "slot": false,
+          "close": "peer_busy"
+        }
+      },
+      {
+        "id": "limiter-covers-local-links",
+        "account": null,
+        "contacts": [],
+        "locals": ["l", "l"],
+        "opens": { "mode": "l", "link": 0 },
+        "limiter": "refuse",
+        "want": {
+          "tried": [],
+          "hit": null,
+          "slot": false,
+          "close": "peer_busy"
+        }
+      },
+      {
+        "id": "limiter-does-not-touch-an-account-peer",
+        "account": ["k", "k"],
+        "contacts": ["c", "c"],
+        "locals": ["l", "l"],
+        "opens": { "mode": "a", "key": 0 },
+        "limiter": "refuse",
+        "want": { "tried": ["a:0"], "hit": "a:0", "slot": false, "close": null }
+      },
+      {
+        "id": "limiter-after-failed-account-keys",
+        "account": ["k", "k"],
+        "contacts": [],
+        "locals": ["l"],
+        "opens": { "mode": "l", "link": 0 },
+        "limiter": "refuse",
+        "want": {
+          "tried": ["a:0", "a:1"],
+          "hit": null,
+          "slot": false,
+          "close": "peer_busy"
+        }
+      },
+      {
+        "id": "no-secrets-skips-the-limiter",
+        "account": ["k", "k"],
+        "contacts": [],
+        "locals": [],
+        "opens": null,
+        "limiter": "refuse",
+        "want": {
+          "tried": ["a:0", "a:1"],
+          "hit": null,
+          "slot": false,
+          "close": "handshake_failed"
+        }
+      }
+    ],
+    "window": [
+      {
+        "id": "opens",
+        "steps": [{ "event": "open", "t": 0 }],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "second-open-while-open",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "open", "t": 10 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "already-open",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "c1-before-open",
+        "steps": [{ "event": "c1", "t": 0, "valid": true }],
+        "want": [
+          {
+            "result": "closed",
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "good-attempt-reaches-the-transport",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "good-attempt-then-link-stored-closes-the-window",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": true },
+          { "event": "session-end", "t": 20, "stored": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "stored"
+          }
+        ]
+      },
+      {
+        "id": "session-ends-without-a-link-rotates-and-reopens",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": true },
+          { "event": "session-end", "t": 20, "stored": false },
+          { "event": "c1", "t": 21, "valid": true },
+          { "event": "msg1", "t": 22, "opens": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 1,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "session-ends-without-a-link-counts-no-failure",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": true },
+          { "event": "session-end", "t": 20, "stored": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 1,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "wrong-code-is-one-failure-and-rotates",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "two-failures",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": false },
+          { "event": "c1", "t": 5, "valid": true },
+          { "event": "msg1", "t": 6, "opens": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "four-failures-keep-the-window-open",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": false },
+          { "event": "c1", "t": 15, "valid": true },
+          { "event": "msg1", "t": 16, "opens": false },
+          { "event": "c1", "t": 30, "valid": true },
+          { "event": "msg1", "t": 31, "opens": false },
+          { "event": "c1", "t": 45, "valid": true },
+          { "event": "msg1", "t": 46, "opens": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 4,
+            "rotations": 4,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "fifth-failure-closes-the-window",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": false },
+          { "event": "c1", "t": 15, "valid": true },
+          { "event": "msg1", "t": 16, "opens": false },
+          { "event": "c1", "t": 30, "valid": true },
+          { "event": "msg1", "t": 31, "opens": false },
+          { "event": "c1", "t": 45, "valid": true },
+          { "event": "msg1", "t": 46, "opens": false },
+          { "event": "c1", "t": 61, "valid": true },
+          { "event": "msg1", "t": 62, "opens": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 4,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 4,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "result": "too-many-tries",
+            "open": false,
+            "holder": null,
+            "failures": 5,
+            "rotations": 4,
+            "closed": "too-many-tries",
+            "host": "pairing-code-failed"
+          }
+        ]
+      },
+      {
+        "id": "c1-after-too-many-tries",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": false },
+          { "event": "c1", "t": 15, "valid": true },
+          { "event": "msg1", "t": 16, "opens": false },
+          { "event": "c1", "t": 30, "valid": true },
+          { "event": "msg1", "t": 31, "opens": false },
+          { "event": "c1", "t": 45, "valid": true },
+          { "event": "msg1", "t": 46, "opens": false },
+          { "event": "c1", "t": 61, "valid": true },
+          { "event": "msg1", "t": 62, "opens": false },
+          { "event": "c1", "t": 70, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 4,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 4,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "result": "too-many-tries",
+            "open": false,
+            "holder": null,
+            "failures": 5,
+            "rotations": 4,
+            "closed": "too-many-tries",
+            "host": "pairing-code-failed"
+          },
+          {
+            "result": "closed",
+            "open": false,
+            "holder": null,
+            "failures": 5,
+            "rotations": 4,
+            "closed": "too-many-tries"
+          }
+        ]
+      },
+      {
+        "id": "a-new-window-after-too-many-tries-starts-clean",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": false },
+          { "event": "c1", "t": 15, "valid": true },
+          { "event": "msg1", "t": 16, "opens": false },
+          { "event": "c1", "t": 30, "valid": true },
+          { "event": "msg1", "t": 31, "opens": false },
+          { "event": "c1", "t": 45, "valid": true },
+          { "event": "msg1", "t": 46, "opens": false },
+          { "event": "c1", "t": 61, "valid": true },
+          { "event": "msg1", "t": 62, "opens": false },
+          { "event": "open", "t": 100 },
+          { "event": "c1", "t": 101, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 2,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 3,
+            "rotations": 3,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 4,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 4,
+            "rotations": 4,
+            "closed": null
+          },
+          {
+            "result": "too-many-tries",
+            "open": false,
+            "holder": null,
+            "failures": 5,
+            "rotations": 4,
+            "closed": "too-many-tries",
+            "host": "pairing-code-failed"
+          },
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "good-attempt-between-failures-does-not-reset-them",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": false },
+          { "event": "c1", "t": 15, "valid": true },
+          { "event": "msg1", "t": 16, "opens": true },
+          { "event": "session-end", "t": 30, "stored": false },
+          { "event": "c1", "t": 40, "valid": true },
+          { "event": "msg1", "t": 41, "opens": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 2,
+            "rotations": 3,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "invalid-c1-counts-nothing-and-rotates-nothing",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "invalid-c1-does-not-hold-the-window",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": false },
+          { "event": "c1", "t": 2, "valid": true },
+          { "event": "msg1", "t": 3, "opens": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "second-c1-while-an-attempt-holds-is-busy",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "c1", "t": 2, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "busy",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "invalid-c1-while-an-attempt-holds-is-busy",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "c1", "t": 2, "valid": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "busy",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "second-c1-while-a-session-holds-is-busy",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": true },
+          { "event": "c1", "t": 3, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "busy",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "busy-c1-does-not-count-against-the-limiter",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "c1", "t": 2, "valid": true },
+          { "event": "c1", "t": 3, "valid": true },
+          { "event": "c1", "t": 4, "valid": true },
+          { "event": "c1", "t": 5, "valid": true },
+          { "event": "c1", "t": 6, "valid": true },
+          { "event": "abandon", "t": 7 },
+          { "event": "c1", "t": 8, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "busy",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "busy",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "busy",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "busy",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "busy",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "attempt-abandoned-before-message-1-counts-nothing",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "abandon", "t": 5 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "abandoned-attempt-frees-the-window",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "abandon", "t": 5 },
+          { "event": "c1", "t": 6, "valid": true },
+          { "event": "msg1", "t": 7, "opens": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "attempt-times-out-after-30-s",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "tick", "t": 31 },
+          { "event": "c1", "t": 32, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "attempt-still-holds-at-29-s",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "tick", "t": 30 },
+          { "event": "c1", "t": 31, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "late-message-1-after-the-deadline-is-ignored",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 40, "opens": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "message-1-without-an-attempt-is-ignored",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "msg1", "t": 1, "opens": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "five-c1-a-minute-are-admitted",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": false },
+          { "event": "c1", "t": 2, "valid": false },
+          { "event": "c1", "t": 3, "valid": false },
+          { "event": "c1", "t": 4, "valid": false },
+          { "event": "c1", "t": 5, "valid": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "sixth-c1-in-a-minute-is-limited",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": false },
+          { "event": "c1", "t": 2, "valid": false },
+          { "event": "c1", "t": 3, "valid": false },
+          { "event": "c1", "t": 4, "valid": false },
+          { "event": "c1", "t": 5, "valid": false },
+          { "event": "c1", "t": 6, "valid": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "limited",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "limiter-counts-from-the-first-admitted",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": false },
+          { "event": "c1", "t": 2, "valid": false },
+          { "event": "c1", "t": 3, "valid": false },
+          { "event": "c1", "t": 4, "valid": false },
+          { "event": "c1", "t": 5, "valid": false },
+          { "event": "c1", "t": 60, "valid": false },
+          { "event": "c1", "t": 61, "valid": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "limited",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "limiter-frees-after-60-s",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": false },
+          { "event": "c1", "t": 2, "valid": false },
+          { "event": "c1", "t": 3, "valid": false },
+          { "event": "c1", "t": 4, "valid": false },
+          { "event": "c1", "t": 5, "valid": false },
+          { "event": "c1", "t": 61, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "limited-c1-does-not-extend-the-limiter",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": false },
+          { "event": "c1", "t": 2, "valid": false },
+          { "event": "c1", "t": 3, "valid": false },
+          { "event": "c1", "t": 4, "valid": false },
+          { "event": "c1", "t": 5, "valid": false },
+          { "event": "c1", "t": 30, "valid": false },
+          { "event": "c1", "t": 61, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "refused",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "limited",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "window-expires-at-300-s",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "tick", "t": 299 },
+          { "event": "tick", "t": 300 },
+          { "event": "c1", "t": 301, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "expired"
+          },
+          {
+            "result": "closed",
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "expired"
+          }
+        ]
+      },
+      {
+        "id": "window-open-at-299-s",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 299, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "c1-at-300-s-is-closed",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 300, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "closed",
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "expired"
+          }
+        ]
+      },
+      {
+        "id": "expiry-closes-a-connection-that-has-not-reached-the-transport",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 299, "valid": true },
+          { "event": "tick", "t": 300 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "expired"
+          }
+        ]
+      },
+      {
+        "id": "a-session-runs-on-past-the-expiry",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 290, "valid": true },
+          { "event": "msg1", "t": 291, "opens": true },
+          { "event": "tick", "t": 310 },
+          { "event": "session-end", "t": 320, "stored": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": "expired"
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "expired"
+          }
+        ]
+      },
+      {
+        "id": "session-past-the-expiry-stores-a-link",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 290, "valid": true },
+          { "event": "msg1", "t": 291, "opens": true },
+          { "event": "tick", "t": 310 },
+          { "event": "session-end", "t": 320, "stored": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": "expired"
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "stored"
+          }
+        ]
+      },
+      {
+        "id": "open-while-a-session-holds-after-expiry",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 290, "valid": true },
+          { "event": "msg1", "t": 291, "opens": true },
+          { "event": "tick", "t": 310 },
+          { "event": "open", "t": 311 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": "expired"
+          },
+          {
+            "result": "already-open",
+            "open": false,
+            "holder": "session",
+            "failures": 0,
+            "rotations": 0,
+            "closed": "expired"
+          }
+        ]
+      },
+      {
+        "id": "open-after-expiry",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "tick", "t": 301 },
+          { "event": "open", "t": 302 },
+          { "event": "c1", "t": 303, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "expired"
+          },
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "failure-after-expiry-is-not-counted",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 298, "valid": true },
+          { "event": "tick", "t": 301 },
+          { "event": "msg1", "t": 302, "opens": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "expired"
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "expired"
+          }
+        ]
+      },
+      {
+        "id": "person-closes-the-window",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "close", "t": 10 },
+          { "event": "c1", "t": 11, "valid": true }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "person"
+          },
+          {
+            "result": "closed",
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "person"
+          }
+        ]
+      },
+      {
+        "id": "person-closes-with-an-attempt-running",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "close", "t": 5 },
+          { "event": "msg1", "t": 6, "opens": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "person"
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "person"
+          }
+        ]
+      },
+      {
+        "id": "close-twice",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "close", "t": 10 },
+          { "event": "close", "t": 11 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "person"
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": "person"
+          }
+        ]
+      },
+      {
+        "id": "reopen-after-close-resets-the-count",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": false },
+          { "event": "close", "t": 10 },
+          { "event": "open", "t": 11 }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": false,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": "person"
+          },
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          }
+        ]
+      },
+      {
+        "id": "rotation-after-every-failure-and-every-declined-session",
+        "steps": [
+          { "event": "open", "t": 0 },
+          { "event": "c1", "t": 1, "valid": true },
+          { "event": "msg1", "t": 2, "opens": false },
+          { "event": "c1", "t": 15, "valid": true },
+          { "event": "msg1", "t": 16, "opens": true },
+          { "event": "session-end", "t": 30, "stored": false },
+          { "event": "c1", "t": 40, "valid": true },
+          { "event": "msg1", "t": 41, "opens": false }
+        ],
+        "want": [
+          {
+            "result": "opened",
+            "open": true,
+            "holder": null,
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 0,
+            "rotations": 0,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "result": "transport",
+            "open": true,
+            "holder": "session",
+            "failures": 1,
+            "rotations": 1,
+            "closed": null
+          },
+          {
+            "open": true,
+            "holder": null,
+            "failures": 1,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "attempt",
+            "open": true,
+            "holder": "attempt",
+            "failures": 1,
+            "rotations": 2,
+            "closed": null
+          },
+          {
+            "result": "failed",
+            "open": true,
+            "holder": null,
+            "failures": 2,
+            "rotations": 3,
+            "closed": null
+          }
+        ]
+      }
+    ],
+    "join": [
+      {
+        "id": "code-matches-one-advert",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" }
+        ],
+        "dials": ["transport"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-4nwcx6nuhrqt3f3j"],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j"],
+          "result": "transport"
+        }
+      },
+      {
+        "id": "code-no-advert",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [],
+        "dials": [],
+        "want": {
+          "browsed": true,
+          "kept": [],
+          "dialled": [],
+          "result": "pairing-not-found"
+        }
+      },
+      {
+        "id": "code-other-nameplate",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "49" }
+        ],
+        "dials": [],
+        "want": {
+          "browsed": true,
+          "kept": [],
+          "dialled": [],
+          "result": "pairing-not-found"
+        }
+      },
+      {
+        "id": "code-other-product",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "other", "n": "48" }
+        ],
+        "dials": [],
+        "want": {
+          "browsed": true,
+          "kept": [],
+          "dialled": [],
+          "result": "pairing-not-found"
+        }
+      },
+      {
+        "id": "code-previous-epoch-tag",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "previous", "n": "48" }
+        ],
+        "dials": ["transport"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-4nwcx6nuhrqt3f3j"],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j"],
+          "result": "transport"
+        }
+      },
+      {
+        "id": "code-first-seen-is-dialled-first",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" },
+          { "instance": "p1-atw24rhn5l34lkjs", "h": "current", "n": "48" }
+        ],
+        "dials": ["before-c2", "transport"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "result": "transport"
+        }
+      },
+      {
+        "id": "code-first-reaches-the-transport",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" },
+          { "instance": "p1-atw24rhn5l34lkjs", "h": "current", "n": "48" }
+        ],
+        "dials": ["transport"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j"],
+          "result": "transport"
+        }
+      },
+      {
+        "id": "code-two-fail-before-c2-is-not-found",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" },
+          { "instance": "p1-atw24rhn5l34lkjs", "h": "current", "n": "48" }
+        ],
+        "dials": ["before-c2", "before-c2"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "result": "pairing-not-found"
+        }
+      },
+      {
+        "id": "code-first-fails-after-c2-then-second-fails-before",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" },
+          { "instance": "p1-atw24rhn5l34lkjs", "h": "current", "n": "48" }
+        ],
+        "dials": ["after-c2", "before-c2"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "result": "pairing-code-failed"
+        }
+      },
+      {
+        "id": "code-first-fails-before-then-second-after-c2",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" },
+          { "instance": "p1-atw24rhn5l34lkjs", "h": "current", "n": "48" }
+        ],
+        "dials": ["before-c2", "after-c2"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "result": "pairing-code-failed"
+        }
+      },
+      {
+        "id": "code-wrong-code-on-both",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" },
+          { "instance": "p1-atw24rhn5l34lkjs", "h": "current", "n": "48" }
+        ],
+        "dials": ["after-c2", "after-c2"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "result": "pairing-code-failed"
+        }
+      },
+      {
+        "id": "code-third-match-is-never-dialled",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" },
+          { "instance": "p1-atw24rhn5l34lkjs", "h": "current", "n": "48" },
+          { "instance": "p1-naxhlngzucjyhczm", "h": "current", "n": "48" }
+        ],
+        "dials": ["before-c2", "before-c2", "transport"],
+        "want": {
+          "browsed": true,
+          "kept": [
+            "p1-4nwcx6nuhrqt3f3j",
+            "p1-atw24rhn5l34lkjs",
+            "p1-naxhlngzucjyhczm"
+          ],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "result": "pairing-not-found"
+        }
+      },
+      {
+        "id": "code-one-failure-after-c2",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" }
+        ],
+        "dials": ["after-c2"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-4nwcx6nuhrqt3f3j"],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j"],
+          "result": "pairing-code-failed"
+        }
+      },
+      {
+        "id": "code-one-failure-before-c2",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" }
+        ],
+        "dials": ["before-c2"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-4nwcx6nuhrqt3f3j"],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j"],
+          "result": "pairing-not-found"
+        }
+      },
+      {
+        "id": "code-skips-non-matching-adverts",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-kcw2pur63x4sxbxj", "h": "current", "n": "11" },
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" },
+          { "instance": "p1-44tvpctmgagetimy", "h": "other", "n": "48" },
+          { "instance": "p1-atw24rhn5l34lkjs", "h": "current", "n": "48" }
+        ],
+        "dials": ["before-c2", "transport"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "result": "transport"
+        }
+      },
+      {
+        "id": "code-repeated-instance-is-kept-once",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" },
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" },
+          { "instance": "p1-atw24rhn5l34lkjs", "h": "current", "n": "48" }
+        ],
+        "dials": ["before-c2", "transport"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j", "p1-atw24rhn5l34lkjs"],
+          "result": "transport"
+        }
+      },
+      {
+        "id": "code-keeps-at-most-8",
+        "input": { "kind": "code", "nameplate": "48" },
+        "adverts": [
+          { "instance": "p1-2qwwbkzdz5wazbzs", "h": "current", "n": "48" },
+          { "instance": "p1-46s2i7n7yflsamhc", "h": "current", "n": "48" },
+          { "instance": "p1-e6ipou2nw7uqufyi", "h": "current", "n": "48" },
+          { "instance": "p1-bpeanymxodrgouo2", "h": "current", "n": "48" },
+          { "instance": "p1-2aod5ttywezxxwmw", "h": "current", "n": "48" },
+          { "instance": "p1-bokppurrvsmwhbsy", "h": "current", "n": "48" },
+          { "instance": "p1-mcbhegoowvzfahde", "h": "current", "n": "48" },
+          { "instance": "p1-mdkjdmghaydxie67", "h": "current", "n": "48" },
+          { "instance": "p1-qqensr2igsazysro", "h": "current", "n": "48" },
+          { "instance": "p1-qlmqz5sxojl2ptqe", "h": "current", "n": "48" }
+        ],
+        "dials": ["before-c2", "before-c2"],
+        "want": {
+          "browsed": true,
+          "kept": [
+            "p1-2qwwbkzdz5wazbzs",
+            "p1-46s2i7n7yflsamhc",
+            "p1-e6ipou2nw7uqufyi",
+            "p1-bpeanymxodrgouo2",
+            "p1-2aod5ttywezxxwmw",
+            "p1-bokppurrvsmwhbsy",
+            "p1-mcbhegoowvzfahde",
+            "p1-mdkjdmghaydxie67"
+          ],
+          "dialled": ["p1-2qwwbkzdz5wazbzs", "p1-46s2i7n7yflsamhc"],
+          "result": "pairing-not-found"
+        }
+      },
+      {
+        "id": "qr-matches-its-instance",
+        "input": { "kind": "qr", "instance": "p1-4nwcx6nuhrqt3f3j" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" },
+          { "instance": "p1-atw24rhn5l34lkjs", "h": "current", "n": "48" }
+        ],
+        "dials": ["transport"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-4nwcx6nuhrqt3f3j"],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j"],
+          "result": "transport"
+        }
+      },
+      {
+        "id": "qr-ignores-the-nameplate",
+        "input": { "kind": "qr", "instance": "p1-atw24rhn5l34lkjs" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" },
+          { "instance": "p1-atw24rhn5l34lkjs", "h": "current", "n": "99" }
+        ],
+        "dials": ["transport"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-atw24rhn5l34lkjs"],
+          "dialled": ["p1-atw24rhn5l34lkjs"],
+          "result": "transport"
+        }
+      },
+      {
+        "id": "qr-no-such-instance",
+        "input": { "kind": "qr", "instance": "p1-ptlc5hgo4hznoopi" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" },
+          { "instance": "p1-atw24rhn5l34lkjs", "h": "current", "n": "48" }
+        ],
+        "dials": [],
+        "want": {
+          "browsed": true,
+          "kept": [],
+          "dialled": [],
+          "result": "pairing-not-found"
+        }
+      },
+      {
+        "id": "qr-other-product-tag",
+        "input": { "kind": "qr", "instance": "p1-4nwcx6nuhrqt3f3j" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "other", "n": "48" }
+        ],
+        "dials": [],
+        "want": {
+          "browsed": true,
+          "kept": [],
+          "dialled": [],
+          "result": "pairing-not-found"
+        }
+      },
+      {
+        "id": "qr-wrong-secret-fails-after-c2",
+        "input": { "kind": "qr", "instance": "p1-4nwcx6nuhrqt3f3j" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" }
+        ],
+        "dials": ["after-c2"],
+        "want": {
+          "browsed": true,
+          "kept": ["p1-4nwcx6nuhrqt3f3j"],
+          "dialled": ["p1-4nwcx6nuhrqt3f3j"],
+          "result": "pairing-code-failed"
+        }
+      },
+      {
+        "id": "code-did-not-parse",
+        "input": { "kind": "invalid" },
+        "adverts": [
+          { "instance": "p1-4nwcx6nuhrqt3f3j", "h": "current", "n": "48" }
+        ],
+        "dials": [],
+        "want": {
+          "browsed": false,
+          "kept": [],
+          "dialled": [],
+          "result": "pairing-code-failed"
+        }
+      },
+      {
+        "id": "qr-was-not-ok",
+        "input": { "kind": "invalid" },
+        "adverts": [],
+        "dials": [],
+        "want": {
+          "browsed": false,
+          "kept": [],
+          "dialled": [],
+          "result": "pairing-code-failed"
+        }
+      }
+    ],
+    "gate": [
+      {
+        "id": "no-cached-document-is-off",
+        "start": "none",
+        "steps": [
+          { "call": "pair" },
+          { "call": "join" },
+          { "call": "advertise-q" },
+          { "call": "advertise-l" },
+          { "call": "browse-q" },
+          { "call": "browse-l" },
+          { "call": "dial-l" },
+          { "call": "answer-l" }
+        ],
+        "want": [
+          { "cached": "none", "call": "local-pairing-off" },
+          { "cached": "none", "call": "local-pairing-off" },
+          { "cached": "none", "call": "local-pairing-off" },
+          { "cached": "none", "call": "local-pairing-off" },
+          { "cached": "none", "call": "local-pairing-off" },
+          { "cached": "none", "call": "local-pairing-off" },
+          { "cached": "none", "call": "local-pairing-off" },
+          { "cached": "none", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "cached-off-refuses",
+        "start": "off",
+        "steps": [
+          { "call": "pair" },
+          { "call": "join" },
+          { "call": "advertise-q" },
+          { "call": "advertise-l" },
+          { "call": "browse-q" },
+          { "call": "browse-l" },
+          { "call": "dial-l" },
+          { "call": "answer-l" }
+        ],
+        "want": [
+          { "cached": "off", "call": "local-pairing-off" },
+          { "cached": "off", "call": "local-pairing-off" },
+          { "cached": "off", "call": "local-pairing-off" },
+          { "cached": "off", "call": "local-pairing-off" },
+          { "cached": "off", "call": "local-pairing-off" },
+          { "cached": "off", "call": "local-pairing-off" },
+          { "cached": "off", "call": "local-pairing-off" },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "cached-on-allows",
+        "start": "on",
+        "steps": [
+          { "call": "pair" },
+          { "call": "join" },
+          { "call": "advertise-q" },
+          { "call": "advertise-l" },
+          { "call": "browse-q" },
+          { "call": "browse-l" },
+          { "call": "dial-l" },
+          { "call": "answer-l" }
+        ],
+        "want": [
+          { "cached": "on", "call": "ok" },
+          { "cached": "on", "call": "ok" },
+          { "cached": "on", "call": "ok" },
+          { "cached": "on", "call": "ok" },
+          { "cached": "on", "call": "ok" },
+          { "cached": "on", "call": "ok" },
+          { "cached": "on", "call": "ok" },
+          { "cached": "on", "call": "ok" }
+        ]
+      },
+      {
+        "id": "managing-links-is-never-gated-when-off",
+        "start": "off",
+        "steps": [
+          { "call": "list" },
+          { "call": "rename" },
+          { "call": "remove" },
+          { "call": "set-reachable" }
+        ],
+        "want": [
+          { "cached": "off", "call": "ok" },
+          { "cached": "off", "call": "ok" },
+          { "cached": "off", "call": "ok" },
+          { "cached": "off", "call": "ok" }
+        ]
+      },
+      {
+        "id": "managing-links-is-never-gated-with-no-document",
+        "start": "none",
+        "steps": [
+          { "call": "list" },
+          { "call": "rename" },
+          { "call": "remove" },
+          { "call": "set-reachable" }
+        ],
+        "want": [
+          { "cached": "none", "call": "ok" },
+          { "cached": "none", "call": "ok" },
+          { "cached": "none", "call": "ok" },
+          { "cached": "none", "call": "ok" }
+        ]
+      },
+      {
+        "id": "read-true-turns-it-on",
+        "start": "none",
+        "steps": [
+          {
+            "read": "ok",
+            "body": {
+              "services": {
+                "connect": {
+                  "enabled": true,
+                  "lan": true,
+                  "relay": false,
+                  "interAccount": false,
+                  "localPairing": true,
+                  "endpoints": {
+                    "identity": null,
+                    "devices": null,
+                    "ticket": null
+                  }
+                }
+              }
+            }
+          },
+          { "call": "pair" }
+        ],
+        "want": [{ "cached": "on" }, { "cached": "on", "call": "ok" }]
+      },
+      {
+        "id": "read-false-keeps-it-off",
+        "start": "none",
+        "steps": [
+          {
+            "read": "ok",
+            "body": {
+              "services": {
+                "connect": {
+                  "enabled": true,
+                  "lan": true,
+                  "relay": false,
+                  "interAccount": false,
+                  "localPairing": false,
+                  "endpoints": {
+                    "identity": null,
+                    "devices": null,
+                    "ticket": null
+                  }
+                }
+              }
+            }
+          },
+          { "call": "pair" }
+        ],
+        "want": [
+          { "cached": "off" },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "member-absent-reads-as-false",
+        "start": "none",
+        "steps": [
+          {
+            "read": "ok",
+            "body": {
+              "services": {
+                "connect": {
+                  "enabled": true,
+                  "lan": true,
+                  "relay": false,
+                  "interAccount": false,
+                  "endpoints": {
+                    "identity": null,
+                    "devices": null,
+                    "ticket": null
+                  }
+                }
+              }
+            }
+          },
+          { "call": "pair" }
+        ],
+        "want": [
+          { "cached": "off" },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "connect-disabled-reads-as-false",
+        "start": "on",
+        "steps": [
+          {
+            "read": "ok",
+            "body": { "services": { "connect": { "enabled": false } } }
+          },
+          { "call": "pair" }
+        ],
+        "want": [
+          {
+            "cached": "off",
+            "effects": ["close-windows", "withdraw-adverts", "end-sessions"]
+          },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "services-missing-reads-as-false",
+        "start": "on",
+        "steps": [{ "read": "ok", "body": {} }, { "call": "pair" }],
+        "want": [
+          {
+            "cached": "off",
+            "effects": ["close-windows", "withdraw-adverts", "end-sessions"]
+          },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "connect-missing-reads-as-false",
+        "start": "on",
+        "steps": [
+          { "read": "ok", "body": { "services": {} } },
+          { "call": "join" }
+        ],
+        "want": [
+          {
+            "cached": "off",
+            "effects": ["close-windows", "withdraw-adverts", "end-sessions"]
+          },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "body-not-an-object-reads-as-false",
+        "start": "on",
+        "steps": [{ "read": "ok", "body": "on" }, { "call": "pair" }],
+        "want": [
+          {
+            "cached": "off",
+            "effects": ["close-windows", "withdraw-adverts", "end-sessions"]
+          },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "body-null-reads-as-false",
+        "start": "on",
+        "steps": [{ "read": "ok", "body": null }, { "call": "pair" }],
+        "want": [
+          {
+            "cached": "off",
+            "effects": ["close-windows", "withdraw-adverts", "end-sessions"]
+          },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "string-true-is-not-true",
+        "start": "none",
+        "steps": [
+          {
+            "read": "ok",
+            "body": {
+              "services": {
+                "connect": { "enabled": true, "localPairing": "true" }
+              }
+            }
+          },
+          { "call": "pair" }
+        ],
+        "want": [
+          { "cached": "off" },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "number-one-is-not-true",
+        "start": "none",
+        "steps": [
+          {
+            "read": "ok",
+            "body": {
+              "services": { "connect": { "enabled": true, "localPairing": 1 } }
+            }
+          },
+          { "call": "pair" }
+        ],
+        "want": [
+          { "cached": "off" },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "read-false-withdraws",
+        "start": "on",
+        "steps": [
+          { "call": "pair" },
+          {
+            "read": "ok",
+            "body": {
+              "services": {
+                "connect": {
+                  "enabled": true,
+                  "lan": true,
+                  "relay": false,
+                  "interAccount": false,
+                  "localPairing": false,
+                  "endpoints": {
+                    "identity": null,
+                    "devices": null,
+                    "ticket": null
+                  }
+                }
+              }
+            }
+          },
+          { "call": "pair" }
+        ],
+        "want": [
+          { "cached": "on", "call": "ok" },
+          {
+            "cached": "off",
+            "effects": ["close-windows", "withdraw-adverts", "end-sessions"]
+          },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "read-false-when-already-off-has-no-effect",
+        "start": "off",
+        "steps": [
+          {
+            "read": "ok",
+            "body": {
+              "services": {
+                "connect": {
+                  "enabled": true,
+                  "lan": true,
+                  "relay": false,
+                  "interAccount": false,
+                  "localPairing": false,
+                  "endpoints": {
+                    "identity": null,
+                    "devices": null,
+                    "ticket": null
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "want": [{ "cached": "off" }]
+      },
+      {
+        "id": "read-true-when-already-on-has-no-effect",
+        "start": "on",
+        "steps": [
+          {
+            "read": "ok",
+            "body": {
+              "services": {
+                "connect": {
+                  "enabled": true,
+                  "lan": true,
+                  "relay": false,
+                  "interAccount": false,
+                  "localPairing": true,
+                  "endpoints": {
+                    "identity": null,
+                    "devices": null,
+                    "ticket": null
+                  }
+                }
+              }
+            }
+          },
+          { "call": "dial-l" }
+        ],
+        "want": [{ "cached": "on" }, { "cached": "on", "call": "ok" }]
+      },
+      {
+        "id": "not-found-clears-a-cached-true",
+        "start": "on",
+        "steps": [{ "read": "not-found" }, { "call": "advertise-l" }],
+        "want": [
+          {
+            "cached": "none",
+            "effects": ["close-windows", "withdraw-adverts", "end-sessions"]
+          },
+          { "cached": "none", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "not-found-when-off-has-no-effect",
+        "start": "off",
+        "steps": [{ "read": "not-found" }],
+        "want": [{ "cached": "none" }]
+      },
+      {
+        "id": "not-found-with-none-has-no-effect",
+        "start": "none",
+        "steps": [{ "read": "not-found" }],
+        "want": [{ "cached": "none" }]
+      },
+      {
+        "id": "error-keeps-a-cached-true",
+        "start": "on",
+        "steps": [{ "read": "error" }, { "call": "pair" }],
+        "want": [{ "cached": "on" }, { "cached": "on", "call": "ok" }]
+      },
+      {
+        "id": "error-keeps-a-cached-false",
+        "start": "off",
+        "steps": [{ "read": "error" }, { "call": "pair" }],
+        "want": [
+          { "cached": "off" },
+          { "cached": "off", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "error-keeps-no-document",
+        "start": "none",
+        "steps": [{ "read": "error" }, { "call": "pair" }],
+        "want": [
+          { "cached": "none" },
+          { "cached": "none", "call": "local-pairing-off" }
+        ]
+      },
+      {
+        "id": "offline-keeps-working-over-several-errors",
+        "start": "on",
+        "steps": [
+          { "read": "error" },
+          { "read": "error" },
+          { "read": "error" },
+          { "call": "answer-l" },
+          { "call": "browse-l" }
+        ],
+        "want": [
+          { "cached": "on" },
+          { "cached": "on" },
+          { "cached": "on" },
+          { "cached": "on", "call": "ok" },
+          { "cached": "on", "call": "ok" }
+        ]
+      },
+      {
+        "id": "off-then-on-again",
+        "start": "on",
+        "steps": [
+          {
+            "read": "ok",
+            "body": {
+              "services": {
+                "connect": {
+                  "enabled": true,
+                  "lan": true,
+                  "relay": false,
+                  "interAccount": false,
+                  "localPairing": false,
+                  "endpoints": {
+                    "identity": null,
+                    "devices": null,
+                    "ticket": null
+                  }
+                }
+              }
+            }
+          },
+          {
+            "read": "ok",
+            "body": {
+              "services": {
+                "connect": {
+                  "enabled": true,
+                  "lan": true,
+                  "relay": false,
+                  "interAccount": false,
+                  "localPairing": true,
+                  "endpoints": {
+                    "identity": null,
+                    "devices": null,
+                    "ticket": null
+                  }
+                }
+              }
+            }
+          },
+          { "call": "pair" }
+        ],
+        "want": [
+          {
+            "cached": "off",
+            "effects": ["close-windows", "withdraw-adverts", "end-sessions"]
+          },
+          { "cached": "on" },
+          { "cached": "on", "call": "ok" }
+        ]
+      },
+      {
+        "id": "on-off-not-found-on",
+        "start": "none",
+        "steps": [
+          {
+            "read": "ok",
+            "body": {
+              "services": {
+                "connect": {
+                  "enabled": true,
+                  "lan": true,
+                  "relay": false,
+                  "interAccount": false,
+                  "localPairing": true,
+                  "endpoints": {
+                    "identity": null,
+                    "devices": null,
+                    "ticket": null
+                  }
+                }
+              }
+            }
+          },
+          {
+            "read": "ok",
+            "body": {
+              "services": {
+                "connect": {
+                  "enabled": true,
+                  "lan": true,
+                  "relay": false,
+                  "interAccount": false,
+                  "localPairing": false,
+                  "endpoints": {
+                    "identity": null,
+                    "devices": null,
+                    "ticket": null
+                  }
+                }
+              }
+            }
+          },
+          { "read": "not-found" },
+          {
+            "read": "ok",
+            "body": {
+              "services": {
+                "connect": {
+                  "enabled": true,
+                  "lan": true,
+                  "relay": false,
+                  "interAccount": false,
+                  "localPairing": true,
+                  "endpoints": {
+                    "identity": null,
+                    "devices": null,
+                    "ticket": null
+                  }
+                }
+              }
+            }
+          },
+          { "call": "join" }
+        ],
+        "want": [
+          { "cached": "on" },
+          {
+            "cached": "off",
+            "effects": ["close-windows", "withdraw-adverts", "end-sessions"]
+          },
+          { "cached": "none" },
+          { "cached": "on" },
+          { "cached": "on", "call": "ok" }
+        ]
+      }
+    ],
+    "records": [
+      {
+        "id": "q-hello-8001",
+        "mode": "q",
+        "type": "8001",
+        "want": { "allowed": true, "name": "HELLO" }
+      },
+      {
+        "id": "q-ring-0002",
+        "mode": "q",
+        "type": "0002",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-trust-0003",
+        "mode": "q",
+        "type": "0003",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-ping-0004",
+        "mode": "q",
+        "type": "0004",
+        "want": { "allowed": true, "name": "PING" }
+      },
+      {
+        "id": "q-pong-0005",
+        "mode": "q",
+        "type": "0005",
+        "want": { "allowed": true, "name": "PONG" }
+      },
+      {
+        "id": "q-candidates-0006",
+        "mode": "q",
+        "type": "0006",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-vouch_req-8010",
+        "mode": "q",
+        "type": "8010",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-vouch_result-8011",
+        "mode": "q",
+        "type": "8011",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-confirm-8012",
+        "mode": "q",
+        "type": "8012",
+        "want": { "allowed": true, "name": "CONFIRM" }
+      },
+      {
+        "id": "q-contact-0013",
+        "mode": "q",
+        "type": "0013",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-local_link-0014",
+        "mode": "q",
+        "type": "0014",
+        "want": { "allowed": true, "name": "LOCAL_LINK", "needs": "local/1" }
+      },
+      {
+        "id": "q-sas_commit-8014",
+        "mode": "q",
+        "type": "8014",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-sas_nonce-8015",
+        "mode": "q",
+        "type": "8015",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-sas_reveal-8016",
+        "mode": "q",
+        "type": "8016",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-xfer-0020",
+        "mode": "q",
+        "type": "0020",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-xfer-0025",
+        "mode": "q",
+        "type": "0025",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-sync-0030",
+        "mode": "q",
+        "type": "0030",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-sync-003f",
+        "mode": "q",
+        "type": "003f",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-app-0100",
+        "mode": "q",
+        "type": "0100",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-app-7fff",
+        "mode": "q",
+        "type": "7fff",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-app_critical-8100",
+        "mode": "q",
+        "type": "8100",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-app_critical-fffd",
+        "mode": "q",
+        "type": "fffd",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-rekey-80fe",
+        "mode": "q",
+        "type": "80fe",
+        "want": { "allowed": true, "name": "REKEY" }
+      },
+      {
+        "id": "q-close-80ff",
+        "mode": "q",
+        "type": "80ff",
+        "want": { "allowed": true, "name": "CLOSE" }
+      },
+      {
+        "id": "q-unknown-non-critical-0007",
+        "mode": "q",
+        "type": "0007",
+        "want": { "ignored": true }
+      },
+      {
+        "id": "q-unknown-non-critical-00ff",
+        "mode": "q",
+        "type": "00ff",
+        "want": { "ignored": true }
+      },
+      {
+        "id": "q-unknown-critical-8020",
+        "mode": "q",
+        "type": "8020",
+        "want": { "allowed": false, "close": "peer_unknown_critical" }
+      },
+      {
+        "id": "q-unknown-critical-80fd",
+        "mode": "q",
+        "type": "80fd",
+        "want": { "allowed": false, "close": "peer_unknown_critical" }
+      },
+      {
+        "id": "q-reserved-fffe",
+        "mode": "q",
+        "type": "fffe",
+        "want": { "allowed": false, "close": "peer_unknown_critical" }
+      },
+      {
+        "id": "q-reserved-ffff",
+        "mode": "q",
+        "type": "ffff",
+        "want": { "allowed": false, "close": "peer_unknown_critical" }
+      },
+      {
+        "id": "q-app-0101",
+        "mode": "q",
+        "type": "0101",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-app-critical-8101",
+        "mode": "q",
+        "type": "8101",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "q-xfer-0023",
+        "mode": "q",
+        "type": "0023",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "l-hello-8001",
+        "mode": "l",
+        "type": "8001",
+        "want": { "allowed": true, "name": "HELLO" }
+      },
+      {
+        "id": "l-ring-0002",
+        "mode": "l",
+        "type": "0002",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "l-trust-0003",
+        "mode": "l",
+        "type": "0003",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "l-ping-0004",
+        "mode": "l",
+        "type": "0004",
+        "want": { "allowed": true, "name": "PING" }
+      },
+      {
+        "id": "l-pong-0005",
+        "mode": "l",
+        "type": "0005",
+        "want": { "allowed": true, "name": "PONG" }
+      },
+      {
+        "id": "l-candidates-0006",
+        "mode": "l",
+        "type": "0006",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "l-vouch_req-8010",
+        "mode": "l",
+        "type": "8010",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "l-vouch_result-8011",
+        "mode": "l",
+        "type": "8011",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "l-confirm-8012",
+        "mode": "l",
+        "type": "8012",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "l-contact-0013",
+        "mode": "l",
+        "type": "0013",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "l-local_link-0014",
+        "mode": "l",
+        "type": "0014",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "l-sas_commit-8014",
+        "mode": "l",
+        "type": "8014",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "l-sas_nonce-8015",
+        "mode": "l",
+        "type": "8015",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "l-sas_reveal-8016",
+        "mode": "l",
+        "type": "8016",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "l-xfer-0020",
+        "mode": "l",
+        "type": "0020",
+        "want": { "allowed": true, "name": "XFER", "needs": "xfer/1" }
+      },
+      {
+        "id": "l-xfer-0025",
+        "mode": "l",
+        "type": "0025",
+        "want": { "allowed": true, "name": "XFER", "needs": "xfer/1" }
+      },
+      {
+        "id": "l-sync-0030",
+        "mode": "l",
+        "type": "0030",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "l-sync-003f",
+        "mode": "l",
+        "type": "003f",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "l-app-0100",
+        "mode": "l",
+        "type": "0100",
+        "want": { "allowed": true, "name": "APP", "needs": "app/1" }
+      },
+      {
+        "id": "l-app-7fff",
+        "mode": "l",
+        "type": "7fff",
+        "want": { "allowed": true, "name": "APP", "needs": "app/1" }
+      },
+      {
+        "id": "l-app_critical-8100",
+        "mode": "l",
+        "type": "8100",
+        "want": { "allowed": true, "name": "APP_CRITICAL", "needs": "app/1" }
+      },
+      {
+        "id": "l-app_critical-fffd",
+        "mode": "l",
+        "type": "fffd",
+        "want": { "allowed": true, "name": "APP_CRITICAL", "needs": "app/1" }
+      },
+      {
+        "id": "l-rekey-80fe",
+        "mode": "l",
+        "type": "80fe",
+        "want": { "allowed": true, "name": "REKEY" }
+      },
+      {
+        "id": "l-close-80ff",
+        "mode": "l",
+        "type": "80ff",
+        "want": { "allowed": true, "name": "CLOSE" }
+      },
+      {
+        "id": "l-unknown-non-critical-0007",
+        "mode": "l",
+        "type": "0007",
+        "want": { "ignored": true }
+      },
+      {
+        "id": "l-unknown-non-critical-00ff",
+        "mode": "l",
+        "type": "00ff",
+        "want": { "ignored": true }
+      },
+      {
+        "id": "l-unknown-critical-8020",
+        "mode": "l",
+        "type": "8020",
+        "want": { "allowed": false, "close": "peer_unknown_critical" }
+      },
+      {
+        "id": "l-unknown-critical-80fd",
+        "mode": "l",
+        "type": "80fd",
+        "want": { "allowed": false, "close": "peer_unknown_critical" }
+      },
+      {
+        "id": "l-reserved-fffe",
+        "mode": "l",
+        "type": "fffe",
+        "want": { "allowed": false, "close": "peer_unknown_critical" }
+      },
+      {
+        "id": "l-reserved-ffff",
+        "mode": "l",
+        "type": "ffff",
+        "want": { "allowed": false, "close": "peer_unknown_critical" }
+      },
+      {
+        "id": "l-app-0101",
+        "mode": "l",
+        "type": "0101",
+        "want": { "allowed": true, "name": "APP", "needs": "app/1" }
+      },
+      {
+        "id": "l-app-critical-8101",
+        "mode": "l",
+        "type": "8101",
+        "want": { "allowed": true, "name": "APP_CRITICAL", "needs": "app/1" }
+      },
+      {
+        "id": "l-xfer-0023",
+        "mode": "l",
+        "type": "0023",
+        "want": { "allowed": true, "name": "XFER", "needs": "xfer/1" }
+      },
+      {
+        "id": "a-confirm-8012",
+        "mode": "a",
+        "type": "8012",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "a-local-link-0014",
+        "mode": "a",
+        "type": "0014",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "a-xfer-0020",
+        "mode": "a",
+        "type": "0020",
+        "want": { "allowed": true, "name": "XFER", "needs": "xfer/1" }
+      },
+      {
+        "id": "v-confirm-8012",
+        "mode": "v",
+        "type": "8012",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "v-local-link-0014",
+        "mode": "v",
+        "type": "0014",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "v-xfer-0020",
+        "mode": "v",
+        "type": "0020",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "p-confirm-8012",
+        "mode": "p",
+        "type": "8012",
+        "want": { "allowed": true, "name": "CONFIRM" }
+      },
+      {
+        "id": "p-local-link-0014",
+        "mode": "p",
+        "type": "0014",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "p-xfer-0020",
+        "mode": "p",
+        "type": "0020",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "c-confirm-8012",
+        "mode": "c",
+        "type": "8012",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "c-local-link-0014",
+        "mode": "c",
+        "type": "0014",
+        "want": { "allowed": false, "close": "peer_not_allowed" }
+      },
+      {
+        "id": "c-xfer-0020",
+        "mode": "c",
+        "type": "0020",
+        "want": { "allowed": true, "name": "XFER", "needs": "xfer/1" }
+      }
+    ]
   }
 }

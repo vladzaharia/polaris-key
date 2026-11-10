@@ -1131,6 +1131,13 @@ function localPending(m: PeerMatrix): void {
           "body",
           "secrets",
           "handshakePayloads",
+          "exchange",
+          "pin",
+          "trialOrder",
+          "window",
+          "join",
+          "gate",
+          "records",
         ]),
       );
     });
