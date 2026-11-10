@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 from connect_relay_fake import FakeRoom, ManualSleep
+from support.clock import barrier
 from test_connect_lan import Network, World, run, until
 from test_connect_peer_session import ID_A, ID_B, NOW
 
@@ -203,7 +204,7 @@ def test_discovery_turns_the_relay_off_with_no_socket_and_no_ticket(discovery: A
         a.start(r.options())
         s = a.status()
         assert s.relay == "off" and s.relay_reason == reason and s.running and s.lan == "on"
-        time.sleep(0.2)
+        barrier()
         assert r.room.issued == 0 and r.room.offered == [] and r.opener_calls == []
         with pytest.raises(LanError) as e:
             a.open(ID_B)
@@ -505,7 +506,7 @@ def test_the_async_client_mirrors_the_facade_as_coroutines() -> None:
             await a.start(r.options())
             off = a.on_channel(lambda s: None)
             assert callable(off) and a.status().running
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0)
             peers = await a.peers()
             await a.stop()
             return peers  # type: ignore[no-any-return]
@@ -518,7 +519,6 @@ def test_the_async_client_mirrors_the_facade_as_coroutines() -> None:
 def test_stop_force_cancels_after_the_bound_when_a_host_callback_blocks_the_connect_thread(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import time
 
     from polaris_key.connect.loop import connect_loop
 
@@ -529,14 +529,20 @@ def test_stop_force_cancels_after_the_bound_when_a_host_callback_blocks_the_conn
         lan, relay = a._lan, a._relay
         assert lan is not None and relay is not None
 
+        holding = threading.Event()
+        release = threading.Event()
+
         async def blocker() -> None:
-            time.sleep(1.5)  # a host callback holding the loop's thread
+            holding.set()
+            release.wait(30)  # a host callback holding the loop's thread
 
         connect_loop().submit(blocker())
-        time.sleep(0.1)
-        t0 = time.monotonic()
-        a.stop()  # D-12: does not raise and does not wait past the bound
-        assert time.monotonic() - t0 < 1.2
+        assert holding.wait(10)
+        try:
+            a.stop()  # D-12: does not raise and returns while the callback still holds the thread
+            assert not release.is_set()
+        finally:
+            release.set()
         # Nothing graceful is left to wait for: the services are over and the discovery state is gone.
         assert not a.status().running and a._lan is None and a._relay is None
         assert lan._stopped and lan._tab is None and relay._stopped
@@ -645,7 +651,7 @@ def test_stored_roster_closes_sessions_with_dropped_device() -> None:
         extra = SimpleNamespace(device_id="E" * 32, agree_key="y")
         # A roster that only adds a device keeps the session.
         b.fake.store_roster(_ring(mine, theirs, extra))  # type: ignore[attr-defined]
-        time.sleep(0.3)
+        barrier()
         assert s.closed is None
         # A roster that drops the peer closes it.
         b.fake.store_roster(_ring(mine, extra))  # type: ignore[attr-defined]

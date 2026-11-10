@@ -258,7 +258,8 @@ final class BonjourBrowseTests: XCTestCase {
             let b = BonjourBrowse(configurationCheck: { nil })
             let l = Log()
             try start(b, l)
-            Thread.sleep(forTimeInterval: 2)
+            // Wait for the first result (a peer or an error), bounded at 2 s, not for a fixed time.
+            for _ in 0..<200 where l.up.isEmpty && l.err.isEmpty { Thread.sleep(forTimeInterval: 0.01) }
             b.stop()
             XCTAssertTrue(l.err.isEmpty, "\(l.err)")
         }

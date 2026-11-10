@@ -69,7 +69,6 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -226,8 +225,7 @@ class LiveDevTest : ConformanceSuite() {
         val listener = launch(start = CoroutineStart.UNDISPATCHED) {
             event.complete(client.events.filterIsInstance<PolarisEvent.Config>().first { it.change.key == CONFIG_KEY && it.change.value == next })
         }
-        // Signed documents carry whole-second timestamps: one issued in the same second is not newer.
-        delay(1_100)
+        // The dev server waits out the second of the last sync before it signs a changed config.
         val answer = live.server.control(
             "config",
             buildJsonObject {

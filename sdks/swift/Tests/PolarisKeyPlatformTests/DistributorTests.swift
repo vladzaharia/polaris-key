@@ -92,9 +92,12 @@ final class DistributorTests: XCTestCase {
     func testDeadlineReturnsTheValueWhenItWins() async throws {
         let v = try await withPlatformDeadline(1) { 42 }
         XCTAssertEqual(v, 42)
+        // A body that finishes only when released, so the deadline is what ends the call.
+        let gate = AsyncStream<Void>.makeStream()
+        defer { gate.continuation.finish() }
         do {
             _ = try await withPlatformDeadline(0.05) { () async throws -> Int in
-                try await Task.sleep(nanoseconds: 2_000_000_000)
+                for await _ in gate.stream {}
                 return 1
             }
             XCTFail("expected a timeout")

@@ -10,6 +10,7 @@ import socket
 from typing import Any, Callable, Dict, List, Optional
 
 import pytest
+from support.clock import until
 
 from polaris_key.connect.loop import connect_loop
 from polaris_key.core.peer_mdns import MAX_ADDRS, MdnsAdvert, MdnsFound, MdnsUnavailableError, MulticastDnsAdapter
@@ -179,15 +180,14 @@ def test_each_socket_answers_a_query_for_the_host_at_most_once_a_second_and_a_go
 
 
 def test_browse_asks_for_a_and_aaaa_of_a_host_with_no_address_on_every_socket() -> None:
-    import threading
-
     rig = Rig()
     b = Browser(rig)
     for s in (rig.v4[0], rig.v6["en0"], rig.v6["en1"]):
         assert [(q.name, q.type) for q in s.sent[0].questions] == [(PEER_SERVICE, "PTR")]
     b.push("en0", full()[:3], "fe80::7")  # the instance, but no address yet
-    threading.Event().wait(1.4)  # the second ask is after a second
     want = {(HOST, "A"), (HOST, "AAAA"), (FQDN, "SRV"), (FQDN, "TXT")}
+    # The second ask is due a second after the first.
+    until(lambda: all(len(s.sent) >= 2 for s in (rig.v4[0], rig.v6["en0"], rig.v6["en1"])))
     for s in (rig.v4[0], rig.v6["en0"], rig.v6["en1"]):
         assert want <= {(q.name, q.type) for q in s.sent[-1].questions}
     run(b.handle.stop())

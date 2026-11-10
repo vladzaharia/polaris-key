@@ -64,6 +64,7 @@ class ConnectRelaySessionTest {
             maxPendingPerPeer: Int = 4,
             rekey: Int? = null,
             outboxBytes: Long = OUTBOX_MAX_BYTES,
+            handshakeSeconds: Double = 30.0,
         ): RelayService {
             val ps = world.peerSource(dev)
             val src = LanSource(load = {
@@ -76,6 +77,7 @@ class ConnectRelaySessionTest {
                 RelayOptions(
                     opener = room::opener, sleep = ManualSleep(), random = { 0.5 }, pingSeconds = ping, maxSessions = maxSessions,
                     maxPendingPerPeer = maxPendingPerPeer, rekeyMessages = rekey, pacer = pacer, outboxBytes = outboxBytes,
+                    handshakeSeconds = handshakeSeconds,
                 ),
             )
             services += svc
@@ -156,8 +158,8 @@ class ConnectRelaySessionTest {
     fun theStampedFromMustBeTheDeviceTheCertificateProves() = runBlocking {
         val n = Net(members = setOf("x"), opts = { it })
         n.room.memberSet += listOf(n.world.idA, n.world.idB, n.world.idC)
-        val sa = n.service(n.world.a)
-        val sb = n.service(n.world.b)
+        val sa = n.service(n.world.a, handshakeSeconds = 0.2)
+        val sb = n.service(n.world.b, handshakeSeconds = 0.2)
         val got = n.inbound(sa)
         // The room stamps B's messages as C, a roster device: A's certificate check names B, not C.
         n.room.stampAs[n.world.idB] = n.world.idC

@@ -477,6 +477,11 @@ class ConnectRelayTest {
                 received?.add(bytes)
                 webSocket.send(bytes)
             }
+
+            // Finish the closing handshake, or the server's shutdown waits out its 5 s grace.
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                webSocket.close(1000, null)
+            }
         }
         val res = MockResponse().withWebSocketUpgrade(listener)
         protocol?.let { res.addHeader("Sec-WebSocket-Protocol", it) }
@@ -576,6 +581,10 @@ class ConnectRelayTest {
         val listener = object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 webSocket.send(ByteString.of(*ByteArray(RELAY_MAX_MESSAGE + 1)))
+            }
+
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                webSocket.close(1000, null)
             }
         }
         big.enqueue(MockResponse().addHeader("Sec-WebSocket-Protocol", "pkey-relay.1").withWebSocketUpgrade(listener))
