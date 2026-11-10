@@ -498,7 +498,7 @@
     }
   },
   "jobs": {
-    "always": ["Changes (*", "CI OK", "Docs snippets (*"],
+    "always": ["Changes (*", "CI OK"],
     "js": [
       "JS/TS static (*",
       "JS/TS tests (Worker)",
@@ -514,6 +514,7 @@
       "Console motion smoke (*"
     ],
     "docs": ["Help search (*"],
+    "docs-snippets": ["Docs snippets (*"],
     "ui-kits": ["UI kits (*"],
     "react-kit": ["React kit (*"],
     "ui-recipes": ["UI recipes (*"],
