@@ -78,6 +78,8 @@ export class Joiner {
     reject: (e: Error) => void;
   };
   #qrInvalidDetail: string | null = null;
+  /** A code whose dials are spent answers with the hint to wait or ask for a new code. */
+  #budgetSpent = false;
 
   constructor(
     private readonly src: LocalSource,
@@ -134,6 +136,7 @@ export class Joiner {
       this.#nameplate !== null &&
       !this.budget.check(this.#nameplate, this.#env.mono()).allowed
     ) {
+      this.#budgetSpent = true;
       this.#finish(this.#failed("pairing-code-failed"));
       return done;
     }
@@ -181,7 +184,10 @@ export class Joiner {
         ? ErrorCode.pairingCodeFailed
         : ErrorCode.pairingNotFound,
       code === "pairing-code-failed"
-        ? (this.#qrInvalidDetail ?? "That code did not work.")
+        ? (this.#qrInvalidDetail ??
+            (this.#budgetSpent
+              ? "That code did not work. Wait a few minutes, or ask the other device for a new code."
+              : "That code did not work."))
         : "The other device was not found on this network.",
     );
   }
@@ -236,6 +242,7 @@ export class Joiner {
     if (this.#nameplate !== null) {
       // Spent when the dial is made, so joins that overlap cannot multiply the dials.
       if (!this.budget.check(this.#nameplate, t).allowed) {
+        this.#budgetSpent = true;
         this.#plan.ended("before-c2");
         this.#browseOver = true;
         return;

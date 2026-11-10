@@ -189,6 +189,13 @@ export class Shower implements LocalPairHandle {
       code: await cpaceGenerator(cpacePrsCode(password), this.#ci, this.#sid),
       qr: await cpaceGenerator(cpacePrsQr(secret), this.#ci, this.#sid),
     };
+    // Stopped while the generators were made: nothing new is kept.
+    if (this.#stopped) {
+      secret.fill(0);
+      gens.code.fill(0);
+      gens.qr.fill(0);
+      return;
+    }
     this.#qrSecret?.fill(0);
     this.#gens?.code.fill(0);
     this.#gens?.qr.fill(0);

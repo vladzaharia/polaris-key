@@ -17,7 +17,13 @@ import type {
   LocalPairHandle,
   LocalPaired,
 } from "../../src/connect/index.js";
-import { LOCAL_STATE_FILE } from "../../src/connect/localState.js";
+import { resetLocalBudgets } from "../../src/connect/localLinks.js";
+import {
+  LOCAL_STATE_FILE,
+  LocalLinkStore,
+  localStorage,
+} from "../../src/connect/localState.js";
+import { tmpDir } from "../lanFixtures.js";
 import {
   MemoryMdnsNetwork,
   MultiWorker,
@@ -35,6 +41,7 @@ let handles: LocalPairHandle[] = [];
 
 /** Only `Date` is frozen: the sockets and the pairing's own clocks run for real. */
 function freezeDate(): void {
+  resetLocalBudgets();
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(T0 * 1000);
 }
@@ -114,6 +121,30 @@ const dial = (
     ...how,
     ...extra,
   });
+
+/** Add the `i`th made-up link to a store. */
+const addLink = (st: LocalLinkStore, i: number) =>
+  st.add({
+    ownKey: new Uint8Array(32).fill(1),
+    ownPublic: new Uint8Array(32).fill(2),
+    peerKey: Uint8Array.from({ length: 32 }, (_, j) => (j === 0 ? i : 9)),
+    secret: new Uint8Array(32).fill(4),
+    cats: [],
+    now: T0,
+  });
+
+/** Two wrong-password joins against a shower, each after the code it rotated to. */
+async function spendDials(w: World, s: Shower, bad: string, extra = {}) {
+  for (let i = 0; i < 2; i++) {
+    await until(() => s.codes.length === i + 1);
+    await expect(
+      dial(w.b, w.net, { code: bad }, [], ["notes"], {
+        browseSeconds: 0.05,
+        ...extra,
+      }),
+    ).rejects.toMatchObject({ code: "pairing-code-failed" });
+  }
+}
 
 /** One pairing to the end: the joiner dials, both people agree, both sides store the link. */
 async function pairUp(
@@ -263,15 +294,7 @@ describe("pairing with a code, with no account", () => {
         },
       };
     };
-    for (let i = 0; i < 2; i++) {
-      await until(() => s.codes.length === i + 1);
-      await expect(
-        dial(w.b, w.net, { code: bad }, [], ["notes"], {
-          mdns: counting(),
-          browseSeconds: 0.05,
-        }),
-      ).rejects.toMatchObject({ code: "pairing-code-failed" });
-    }
+    await spendDials(w, s, bad, { mdns: counting() });
     expect(browses).toBe(2);
     // Two dials spent on this nameplate in 300 s: the third join answers at once.
     await expect(
@@ -385,15 +408,7 @@ describe("the gate and the cap", () => {
   it("a device that holds 32 links answers local-links-full before anything is advertised", async () => {
     const w = await world();
     const store = w.a.connect.localStore();
-    for (let i = 0; i < 32; i++)
-      await store.add({
-        ownKey: new Uint8Array(32).fill(1),
-        ownPublic: new Uint8Array(32).fill(2),
-        peerKey: Uint8Array.from({ length: 32 }, (_, j) => (j === 0 ? i : 9)),
-        secret: new Uint8Array(32).fill(4),
-        cats: [],
-        now: T0,
-      });
+    for (let i = 0; i < 32; i++) await addLink(store, i);
     await expect(
       w.a.cloudConnect.localLinks.pair({
         categories: [],
@@ -443,5 +458,92 @@ describe("the store", () => {
     expect(rec.schema).toBe("pkey.connect.local.v1");
     expect(rec.product).toBe(PRODUCT);
     expect(rec.links).toHaveLength(1);
+  });
+});
+
+describe("the review fixes", () => {
+  const links = (c: PolarisKeyClient) => c.cloudConnect.localLinks;
+
+  it("a read that said nothing is tried again, and a later off closes the window", async () => {
+    const w = await world();
+    const s = await show(w.a, w.net, ["notes"]);
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    vi.setSystemTime(T0 * 1000);
+    w.worker.discoveryStatus = 503;
+    await w.a.discover();
+    // "An error changes nothing": still on.
+    expect(links(w.a).localPairing()).toBe(true);
+    w.worker.discoveryStatus = 200;
+    w.worker.localPairing = false;
+    await vi.advanceTimersByTimeAsync(5 * 60_000 + 10);
+    vi.useRealTimers();
+    freezeDate();
+    await until(() => !links(w.a).localPairing() && !s.handle.open);
+  });
+
+  it("the gate is applied even when a store of the read throws", async () => {
+    const w = await world();
+    w.worker.localPairing = false;
+    (
+      w.a as unknown as { presentationStore: { accept: () => Promise<void> } }
+    ).presentationStore.accept = async () => {
+      throw new Error("store");
+    };
+    await w.a.discover().catch(() => undefined);
+    expect(links(w.a).localPairing()).toBe(false);
+  });
+
+  it("two concurrent pair() calls open one window; a gate-off during the start closes it", async () => {
+    const w = await world();
+    const open = () =>
+      links(w.a).pair({
+        categories: [],
+        mdns: w.net.adapter(),
+        ...LOOP,
+        onCode: () => undefined,
+        onConfirm: () => undefined,
+      });
+    const both = await Promise.allSettled([open(), open()]);
+    expect(both.map((r) => r.status).sort()).toEqual(["fulfilled", "rejected"]);
+    const ok = both.find(
+      (r) => r.status === "fulfilled",
+    ) as PromiseFulfilledResult<LocalPairHandle>;
+    handles.push(ok.value);
+    expect(
+      [...w.net.adverts.values()].filter((a) => a.txt.includes("m=q")),
+    ).toHaveLength(1);
+    await ok.value.stop();
+
+    const starting = open();
+    starting.catch(() => undefined);
+    await links(w.a).closeAll();
+    await expect(starting).rejects.toMatchObject({ code: "local-pairing-off" });
+    expect(
+      [...w.net.adverts.values()].filter((a) => a.txt.includes("m=q")),
+    ).toEqual([]);
+  });
+
+  it("the dial budget is shared by every client of a product, and says what to do", async () => {
+    const w = await world();
+    const s = await show(w.a, w.net, ["notes"]);
+    const bad = wrongPassword(s.codes[0]!.code);
+    await spendDials(w, s, bad);
+    // Another client of the same product meets the spent budget.
+    await expect(dial(w.a, w.net, { code: bad })).rejects.toMatchObject({
+      code: "pairing-code-failed",
+      message: expect.stringContaining("Wait"),
+    });
+  });
+
+  it("two stores on one directory cannot pass the cap together", async () => {
+    const dir = tmpDir(dirs);
+    const mk = () =>
+      new LocalLinkStore(PRODUCT, async () => localStorage(dir, "durable"));
+    const [x, y] = [mk(), mk()];
+    const res = await Promise.all(
+      Array.from({ length: 40 }, (_, i) => addLink(i % 2 === 0 ? x : y, i)),
+    );
+    expect(res.filter((r) => r.stored)).toHaveLength(32);
+    expect(await mk().count()).toBe(32);
   });
 });

@@ -229,22 +229,37 @@ export class LocalLinkStore {
     fn: (rows: LocalLinkRow[]) => LocalLinkRow[] | null,
   ): Promise<LocalLinkRow[]> {
     return this.#serial(async () => {
-      const base = await this.#load();
-      const next = fn(base);
-      if (next === null) return base;
-      const rec: LocalStateRecord = {
-        schema: LOCAL_STATE_SCHEMA,
-        product: this.product,
-        links: next,
-      };
+      // Read, judge and write inside the file lock, so a second process on this directory cannot
+      // pass the cap or overwrite a link between the read and the write.
+      let result: LocalLinkRow[] = [];
       try {
         await (
           await this.#store()
-        ).update(() => Buffer.from(JSON.stringify(rec), "utf8"));
+        ).update((current) => {
+          let base: LocalLinkRow[] = [];
+          if (current !== null) {
+            const rows = parseLocalState(current, this.product);
+            if (rows === null)
+              throw new PolarisError(
+                ErrorCode.storeFailed,
+                "The local links record is unreadable.",
+              );
+            base = rows;
+          }
+          const next = fn(base);
+          result = next ?? base;
+          if (next === null) return null;
+          const rec: LocalStateRecord = {
+            schema: LOCAL_STATE_SCHEMA,
+            product: this.product,
+            links: next,
+          };
+          return Buffer.from(JSON.stringify(rec), "utf8");
+        });
       } catch (e) {
         throw this.#error(e);
       }
-      return next;
+      return result;
     });
   }
 

@@ -43,14 +43,34 @@ export type {
   LocalSource,
 } from "./localCommon.js";
 
+/**
+ * The joiner's dial budgets, one per product for the whole process: an app that makes a new client
+ * per screen or per retry meets the same budget, so retries cannot multiply a fake advert's guesses.
+ * In memory only (a restart resets it, as §15.12 allows).
+ */
+const BUDGETS = new Map<string, DialBudget>();
+const budgetOf = (slug: string): DialBudget => {
+  let b = BUDGETS.get(slug);
+  if (b === undefined) BUDGETS.set(slug, (b = new DialBudget()));
+  return b;
+};
+
+/** Forget every dial budget. For tests. @internal */
+export const resetLocalBudgets = (): void => BUDGETS.clear();
+
 export class LocalLinks {
   readonly #src: LocalSource;
-  readonly #budget = new DialBudget();
+  readonly #budget: DialBudget;
   #shower: Shower | null = null;
+  /** The window that is being opened: the slot is taken before the first await. */
+  #starting: Promise<Shower> | null = null;
+  /** Bumped by `closeAll`: a window that began opening before it must not outlive it. */
+  #epoch = 0;
   readonly #joins = new Set<{ cancel(): void }>();
 
   constructor(src: LocalSource) {
     this.#src = src;
+    this.#budget = budgetOf(src.slug);
     printAs(this, () => ({ links: "LocalLinks" }));
   }
 
@@ -86,15 +106,29 @@ export class LocalLinks {
       (typeof o.seconds !== "number" || !(o.seconds > 0))
     )
       throw new LanError("bad_input", "seconds must be above 0.");
-    if (this.#shower?.open === true)
+    if (this.#shower?.open === true || this.#starting !== null)
       throw new LanError("bad_input", "A pairing window is already open.");
-    if ((await this.#src.store.count()) >= MAX_LOCAL_LINKS) throw full();
-    let mine: Shower | undefined;
-    mine = await Shower.start(this.#src, o, () => {
-      if (this.#shower === mine) this.#shower = null;
-    });
-    this.#shower = mine;
-    return mine;
+    const epoch = this.#epoch;
+    const start = (async (): Promise<Shower> => {
+      if ((await this.#src.store.count()) >= MAX_LOCAL_LINKS) throw full();
+      let mine: Shower | undefined;
+      mine = await Shower.start(this.#src, o, () => {
+        if (this.#shower === mine) this.#shower = null;
+      });
+      this.#shower = mine;
+      // The gate was cleared while the window was opening: it closes before anyone sees a code.
+      if (epoch !== this.#epoch || !this.#src.allowed()) {
+        await mine.stop().catch(() => undefined);
+        throw off("Pairing with a code was turned off (pair).");
+      }
+      return mine;
+    })();
+    this.#starting = start;
+    try {
+      return await start;
+    } finally {
+      if (this.#starting === start) this.#starting = null;
+    }
   }
 
   /**
@@ -115,11 +149,21 @@ export class LocalLinks {
       (typeof o.browseSeconds !== "number" || !(o.browseSeconds > 0))
     )
       throw new LanError("bad_input", "browseSeconds must be above 0.");
-    if ((await this.#src.store.count()) >= MAX_LOCAL_LINKS) throw full();
-    const j = new Joiner(this.#src, this.#budget, o);
-    const handle = { cancel: () => j.cancel() };
+    // Registered before the first await, so a gate-clearing read can cancel it.
+    let cancelled = false;
+    let j: Joiner | null = null;
+    const handle = {
+      cancel: () => {
+        cancelled = true;
+        j?.cancel();
+      },
+    };
     this.#joins.add(handle);
     try {
+      if ((await this.#src.store.count()) >= MAX_LOCAL_LINKS) throw full();
+      if (cancelled || !this.#src.allowed())
+        throw off("Pairing with a code was turned off (join).");
+      j = new Joiner(this.#src, this.#budget, o);
       return await j.run();
     } finally {
       this.#joins.delete(handle);
@@ -128,7 +172,10 @@ export class LocalLinks {
 
   /** The gate was cleared by a discovery read: close the window and every join (§15.12 "Gates"). @internal */
   async closeAll(): Promise<void> {
+    this.#epoch++;
     for (const j of [...this.#joins]) j.cancel();
     await this.#shower?.stop().catch(() => undefined);
+    // A window still opening is stopped by its own start, which sees the new epoch.
+    await this.#starting?.catch(() => undefined);
   }
 }
