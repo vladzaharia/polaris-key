@@ -4968,7 +4968,7 @@
       "jscpd:duplicate": 1
     },
     "tools/sync-scenarios.ts": {
-      "jscpd:duplicate": 32
+      "jscpd:duplicate": 30
     },
     "tools/ui-matrix.ts": {
       "jscpd:duplicate": 20

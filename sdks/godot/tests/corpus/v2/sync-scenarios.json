@@ -20258,6 +20258,7 @@
           }
         },
         { "network": { "state": "offline" } },
+        { "advance": { "ms": 1000 } },
         { "network": { "state": "online" } },
         {
           "assert": {
@@ -20266,7 +20267,8 @@
                 "method": "GET",
                 "path": "/demo/sync?cursor=10&clientId=c_000000000000000client1"
               }
-            ]
+            ],
+            "status": { "state": "syncing", "pending": 0, "conflicts": 1 }
           }
         },
         {

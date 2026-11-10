@@ -946,6 +946,41 @@ function started(cursor: number, changes: Obj[] = [], clientId = C1): Obj[] {
   ];
 }
 
+/** A pull, a set of the volume and its push, which the Worker answers with `403 account_required`. */
+function pushRefusedAccountRequired(): Obj[] {
+  return [
+    ...started(2, [change(VOL, 0.5, 2, hlc(T0 - 1000))]),
+    local("set", [VOL, 0.6]),
+    advance(2000),
+    assert({
+      requests: [pushReq(C1, 2, [set(1, VOL, 0.6, hlc(T0))])],
+      events: [changed([VOL], "remote"), changed([VOL], "local")],
+    }),
+    respond(ACCOUNT_REQUIRED, 403),
+  ];
+}
+
+/** After the 403 above and a blocked-time edit of 0.4: the sign-in sends only that edit, as
+ *  mutationId 1 under the second clientId, and the cloud takes it. */
+function signInSendsBlockedEdit(): Obj[] {
+  return [
+    signIn(ALICE),
+    assert({
+      requests: [pushReq(C2, 0, [set(1, VOL, 0.4, hlc(T0 + 2000))])],
+      status: st("syncing", 1),
+    }),
+    respond(
+      pushBody({
+        serverNow: T0 + 4000,
+        cursor: 3,
+        lastMutationId: 1,
+        results: [ok(1, 3)],
+        changes: [change(VOL, 0.4, 3, hlc(T0 + 2000))],
+      }),
+    ),
+  ];
+}
+
 interface Scenario {
   name: string;
   description: string;
@@ -1747,14 +1782,7 @@ function scenarios(): Scenario[] {
     rules: ["account-required", "account-required-forgets", "principal-change"],
     init: init(),
     steps: [
-      ...started(2, [change(VOL, 0.5, 2, hlc(T0 - 1000))]),
-      local("set", [VOL, 0.6]),
-      advance(2000),
-      assert({
-        requests: [pushReq(C1, 2, [set(1, VOL, 0.6, hlc(T0))])],
-        events: [changed([VOL], "remote"), changed([VOL], "local")],
-      }),
-      respond(ACCOUNT_REQUIRED, 403),
+      ...pushRefusedAccountRequired(),
       assert({
         events: [
           signedOut("accountRequired", 1),
@@ -1773,20 +1801,7 @@ function scenarios(): Scenario[] {
         values: { [VOL]: val(0.4, "device") },
         licence: LICENCE,
       }),
-      signIn(ALICE),
-      assert({
-        requests: [pushReq(C2, 0, [set(1, VOL, 0.4, hlc(T0 + 2000))])],
-        status: st("syncing", 1),
-      }),
-      respond(
-        pushBody({
-          serverNow: T0 + 4000,
-          cursor: 3,
-          lastMutationId: 1,
-          results: [ok(1, 3)],
-          changes: [change(VOL, 0.4, 3, hlc(T0 + 2000))],
-        }),
-      ),
+      ...signInSendsBlockedEdit(),
       assert({ values: { [VOL]: val(0.4, "cloud") }, status: st("idle", 0) }),
     ],
   });
@@ -4409,14 +4424,7 @@ function scenarios(): Scenario[] {
     rules: ["account-required", "account-required-forgets", "relaunch"],
     init: init(),
     steps: [
-      ...started(2, [change(VOL, 0.5, 2, hlc(T0 - 1000))]),
-      local("set", [VOL, 0.6]),
-      advance(2000),
-      assert({
-        requests: [pushReq(C1, 2, [set(1, VOL, 0.6, hlc(T0))])],
-        events: [changed([VOL], "remote"), changed([VOL], "local")],
-      }),
-      respond(ACCOUNT_REQUIRED, 403),
+      ...pushRefusedAccountRequired(),
       assert({
         events: SIGNED_OUT_OFFER(1, [changed([VOL], "remote")]),
         journal: {},
@@ -4449,20 +4457,7 @@ function scenarios(): Scenario[] {
         licence: LICENCE,
         status: BLOCKED,
       }),
-      signIn(ALICE),
-      assert({
-        requests: [pushReq(C2, 0, [set(1, VOL, 0.4, hlc(T0 + 2000))])],
-        status: st("syncing", 1),
-      }),
-      respond(
-        pushBody({
-          serverNow: T0 + 4000,
-          cursor: 3,
-          lastMutationId: 1,
-          results: [ok(1, 3)],
-          changes: [change(VOL, 0.4, 3, hlc(T0 + 2000))],
-        }),
-      ),
+      ...signInSendsBlockedEdit(),
       assert({
         values: { [VOL]: val(0.4, "cloud") },
         journal: { [ALICE]: partition(C2, 2, 3, []) },
@@ -4571,8 +4566,9 @@ function scenarios(): Scenario[] {
       ...opened(),
       assert(openAsserts),
       network("offline"),
+      advance(1000),
       network("online"),
-      assert({ requests: [pullReq(10, C1)] }),
+      assert({ requests: [pullReq(10, C1)], status: stc("syncing", 0, 1) }),
       respond(ACCOUNT_REQUIRED, 403),
       assert({
         requests: [],
