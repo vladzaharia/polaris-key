@@ -55,6 +55,17 @@ const session = (c: PolarisKeyClient, subject: string | null) =>
   );
 const tmpdir_ = () => mkdtempSync(join(tmpdir(), "pkey-carequired-"));
 
+/** A refused client closed and opened again on its state, the session naming `subject`; no ring. */
+async function relaunched(w: World, subject: string) {
+  const { client, stateDir } = await signedIn(w);
+  await refuse(client, w);
+  await session(client, subject);
+  client.close();
+  const again = await open(w, stateDir, { catalog: CATALOG(1) }, false);
+  await again.cloudSync.flush();
+  return again;
+}
+
 /** The 403 a push earns once the account is gone; returns the client's offers. */
 async function refuse(client: PolarisKeyClient, w: World, url?: string) {
   const offers: Array<string | null> = [];
@@ -102,26 +113,14 @@ describe("the blocked machine survives a relaunch", () => {
   });
 
   it("a different subject lifts it", async () => {
-    const w = new World();
-    const { client, stateDir } = await signedIn(w);
-    await refuse(client, w);
-    await session(client, OTHER);
-    client.close();
-    const again = await open(w, stateDir, { catalog: CATALOG(1) }, false);
-    await again.cloudSync.flush();
+    const again = await relaunched(new World(), OTHER);
     // Signed in as the new subject; with no ring on this launch the machine is locked, not blocked.
     expect(again.cloudSync.status().state).toBe("locked");
     again.close();
   });
 
   it("a sign-out forgets the refusal: the same subject back is the person's to make", async () => {
-    const w = new World();
-    const { client, stateDir } = await signedIn(w);
-    await refuse(client, w);
-    await session(client, SUBJECT);
-    client.close();
-    const again = await open(w, stateDir, { catalog: CATALOG(1) }, false);
-    await again.cloudSync.flush();
+    const again = await relaunched(new World(), SUBJECT);
     expect(again.cloudSync.status().state).toBe("blocked");
     again.events.safeEmit("identity", { kind: "signedOut", released: false });
     await api(again).flush();

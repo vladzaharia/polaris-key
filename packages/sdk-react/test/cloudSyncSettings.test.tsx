@@ -592,6 +592,16 @@ describe("useSetting and useCloudSync", () => {
 });
 
 describe("account_required (U-52)", () => {
+  /** A writer tab and a follower tab of one browser, both signed in. */
+  const tabPair = async () => {
+    const w = new World();
+    const b = new Browser();
+    const who = { current: SUBJECT as string | null | undefined };
+    const writer = await tab(w, b, who);
+    const follower = await tab(w, b, who);
+    await Promise.all([writer.api.attach(), follower.api.attach()]);
+    return { writer, follower };
+  };
   const refusal = (signInUrl?: string) =>
     new Response(
       JSON.stringify({
@@ -706,13 +716,7 @@ describe("account_required (U-52)", () => {
   });
 
   it("a follower tab hands the answer to the writer", async () => {
-    const w = new World();
-    const b = new Browser();
-    const who = { current: SUBJECT as string | null | undefined };
-    const writer = await tab(w, b, who);
-    await writer.api.attach();
-    const follower = await tab(w, b, who);
-    await follower.api.attach();
+    const { writer, follower } = await tabPair();
     await follower.api.accountRequired(null);
     await settle();
     await settle();

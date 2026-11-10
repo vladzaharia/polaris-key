@@ -199,10 +199,7 @@ export class BrowserCloudSyncApi {
     const subject = await this.#d.subject().catch(() => undefined);
     if (subject === undefined) return;
     if (subject !== null) await this.#signIn(subject);
-    else {
-      await this.#d.host.clearRefused();
-      if (this.#subject !== null) await this.#leave();
-    }
+    else await this.#leave();
   }
 
   #recheck(): Promise<void> {
@@ -254,11 +251,8 @@ export class BrowserCloudSyncApi {
       await this.attach();
       const { host } = this.#d;
       if (!host.started) return;
-      if (note.kind === "signedOut") {
-        await host.clearRefused();
-        await this.#leave();
-      } else if (note.subject !== this.#subject)
-        await this.#signIn(note.subject);
+      if (note.kind === "signedOut") await this.#leave();
+      else if (note.subject !== this.#subject) await this.#signIn(note.subject);
       host.notePrincipal();
     });
     this.#work = run.catch(() => undefined);
@@ -275,7 +269,6 @@ export class BrowserCloudSyncApi {
   async beforeSignOut(): Promise<void> {
     const { host } = this.#d;
     await this.#work;
-    if (host.started) await host.clearRefused();
     if (!host.started || this.#subject === null) return;
     this.#forgot = false;
     try {
@@ -301,6 +294,8 @@ export class BrowserCloudSyncApi {
    *  without a flush, and without a moment in which the old values read as the new person's. */
   async #leave(): Promise<void> {
     const { host } = this.#d;
+    // Signed out (or never signed in): what `account_required` refused is not refused any more.
+    await host.clearRefused();
     if (this.#subject === null) return;
     this.#subject = null;
     this.#d.config.noteSyncChange(null, "remote");

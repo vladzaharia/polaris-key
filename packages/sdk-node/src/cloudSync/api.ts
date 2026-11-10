@@ -43,7 +43,7 @@ import type { CoreContext } from "../core/context.js";
 import type { IdentityEvent } from "../identity/signIn.js";
 import type { KeyringClient } from "../keyring/client.js";
 import type { CloudSyncHost } from "./host.js";
-import { safeSignInUrl } from "./signInUrl.js";
+import { safeSignInUrl } from "@polaris-key/ui-core/browser/sdk/core/signInUrl.js";
 
 /** The reasons the machine leaves a principal, each of which drops the key ring. */
 const FORGETTING = new Set(["signOut", "accountRequired", "subjectChanged"]);
@@ -178,10 +178,7 @@ export class CloudSyncApi {
     this.#subject = host.machine.persist().subject;
     const subject = await this.#d.subject().catch(() => null);
     if (subject !== null) await this.#signIn(subject);
-    else {
-      await host.clearRefused();
-      if (this.#subject !== null) await this.#leave();
-    }
+    else await this.#leave();
   }
 
   async #signIn(subject: string): Promise<void> {
@@ -215,10 +212,7 @@ export class CloudSyncApi {
     const { host } = this.#d;
     if (!host.started) return;
     const subject = e.kind === "signedOut" ? null : e.subject;
-    if (subject === null) {
-      await host.clearRefused();
-      return this.#leave();
-    }
+    if (subject === null) return this.#leave();
     if (subject !== this.#subject) await this.#signIn(subject);
   }
 
@@ -237,7 +231,6 @@ export class CloudSyncApi {
   async beforeSignOut(): Promise<void> {
     const { host } = this.#d;
     await this.#work;
-    if (host.started) await host.clearRefused();
     if (!host.started || this.#subject === null) return;
     this.#forgot = false;
     try {
@@ -255,6 +248,8 @@ export class CloudSyncApi {
   /** The device was deactivated or the identity forgotten: leave the principal without a flush. */
   async #leave(): Promise<void> {
     const { host } = this.#d;
+    // Signed out (or never signed in): what `account_required` refused is not refused any more.
+    await host.clearRefused();
     if (this.#subject === null) return;
     host.machine.signOut();
     await host.touch();
