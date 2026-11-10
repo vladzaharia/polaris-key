@@ -31,6 +31,13 @@ const PRODUCT_KEYED = [
   // I-49.4: the silent-restore keys and the devices that signed in by restore.
   "identity_restore_keys",
   "identity_restore_origins",
+  // I-21: the issuer's clients, secrets, key ring (sealed private keys), grants and refresh
+  // tokens. Deleted in this one batch, so a re-created slug starts with none.
+  "identity_clients",
+  "identity_client_secrets",
+  "identity_issuer_keys",
+  "identity_client_grants",
+  "identity_refresh_tokens",
 ] as const;
 
 /**

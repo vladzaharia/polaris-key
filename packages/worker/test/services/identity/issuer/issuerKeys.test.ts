@@ -23,6 +23,7 @@ import {
   rotateIssuerKeys,
   signIssuerJwt,
 } from "../../../../src/services/identity/issuer/keys.js";
+import { identityProductDeletion } from "../../../../src/services/identity/productDeletion.js";
 import { identityMaintenance } from "../../../../src/services/identity/maintenance.js";
 import type { MaintenanceRecorder } from "../../../../src/core/contributions.js";
 import { makeEnv, seedProduct, NOW } from "../../../seed.js";
@@ -313,6 +314,66 @@ describe("rotation", () => {
     );
     expect(seen).toContain(`issuerKeys:${P}`);
     expect(await states()).toEqual(["active", "next"]);
+  });
+});
+
+describe("rotation without env", () => {
+  it("records a failed step instead of skipping silently", async () => {
+    const failed: string[] = [];
+    const rec = {
+      step: async () => undefined,
+      drain: async () => undefined,
+      fail: (name: string) => failed.push(name),
+    } as unknown as MaintenanceRecorder;
+    await identityMaintenance.product!(
+      { db, product: P, now: NOW, cutoff: 0 },
+      rec,
+    );
+    expect(failed).toEqual([`issuerKeys:${P}`]);
+  });
+});
+
+describe("product deletion", () => {
+  it("leaves a re-created slug with no keys, clients, secrets, grants or tokens", async () => {
+    await ensureIssuerKeys(env, db, P, NOW);
+    for (const [t, cols, vals] of [
+      [
+        "identity_clients",
+        "client_id, product, key, name, type, redirect_uris_json, scopes_json, created_at, updated_at",
+        "'cl_a', 'acme', 'k', 'n', 'web', '[]', '[]', 1, 1",
+      ],
+      [
+        "identity_client_secrets",
+        "id, client_id, product, secret_hash, last4, created_at",
+        "'cs_a', 'cl_a', 'acme', 'h', 'abcd', 1",
+      ],
+      [
+        "identity_client_grants",
+        "account_id, client_id, product, scope_hash, granted_at, changed_at",
+        "'a', 'cl_a', 'acme', 'h', 1, 1",
+      ],
+      [
+        "identity_refresh_tokens",
+        "token_hash, family_id, product, client_id, account_id, scope, auth_time, family_started_at, created_at, last_used_at",
+        "'t', 'f', 'acme', 'cl_a', 'a', 'openid', 1, 1, 1, 1",
+      ],
+    ] as const)
+      await db.run(`INSERT INTO ${t} (${cols}) VALUES (${vals})`);
+    await ensureIssuerKeys(env, db, "other", NOW);
+    await db.batch(identityProductDeletion(P, NOW));
+    for (const t of [
+      "identity_clients",
+      "identity_client_secrets",
+      "identity_issuer_keys",
+      "identity_client_grants",
+      "identity_refresh_tokens",
+    ])
+      expect(
+        await db.first(`SELECT 1 FROM ${t} WHERE product = ?`, P),
+        t,
+      ).toBeNull();
+    // Another product's ring is untouched.
+    expect((await issuerJwks(db, "other")).keys).toHaveLength(1);
   });
 });
 

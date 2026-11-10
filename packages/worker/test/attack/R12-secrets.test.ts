@@ -1960,3 +1960,31 @@ describe("R12 refuted hypotheses", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────────
+// I-21.3: an issuer signing key is sealed in its own custody domain.
+// ───────────────────────────────────────────────────────────────────────────────
+describe("issuer-signing-key AAD is disjoint from every other custody domain", () => {
+  it("opens only as issuer-signing-key for its product and kid", async () => {
+    const env = makeEnv(new KvMock(), ["acme"]);
+    const slot = {
+      product: "acme",
+      kind: "issuer-signing-key",
+      id: "kid1",
+    } as const;
+    const blob = await seal(env, "PRIVATE", slot);
+    expect(await open(env, blob, slot)).toBe("PRIVATE");
+    for (const other of [
+      { ...slot, product: "djdl" },
+      { ...slot, id: "kid2" },
+      { ...slot, kind: "signing-key" },
+      { ...slot, kind: "product-secret" },
+      { ...slot, kind: "managed-secret" },
+      { ...slot, kind: "outlet-credential" },
+    ] as const)
+      await expect(open(env, blob, other)).rejects.toThrow();
+    // …and a product key's blob does not open as an issuer key.
+    const signing = await seal(env, "ED", { ...slot, kind: "signing-key" });
+    await expect(open(env, signing, slot)).rejects.toThrow();
+  });
+});

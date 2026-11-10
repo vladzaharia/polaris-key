@@ -218,6 +218,40 @@ const grant = (clientId: string, accountId = "acc_1") => ({
   scopeHash: "h1",
 });
 
+describe("hardening", () => {
+  it("hashers fail closed without KEY_HASH_PEPPER", async () => {
+    const c = await mk("web-app");
+    delete (env as unknown as Record<string, unknown>).KEY_HASH_PEPPER;
+    await expect(addClientSecret(env, db, P, c.clientId, NOW)).rejects.toThrow(
+      /KEY_HASH_PEPPER/,
+    );
+    await expect(
+      issueRefreshFamily(env, db, fields(c.clientId), NOW),
+    ).rejects.toThrow(/KEY_HASH_PEPPER/);
+    expect(await db.first("SELECT 1 FROM identity_client_secrets")).toBeNull();
+    expect(await db.first("SELECT 1 FROM identity_refresh_tokens")).toBeNull();
+  });
+
+  it("an invalid type or origin is invalid, not the cap", async () => {
+    const bad = { ...base("x"), type: "server" } as unknown as NewClient;
+    expect(await createClient(db, bad, NOW)).toEqual({
+      ok: false,
+      reason: "invalid",
+    });
+    const bad2 = { ...base("y"), origin: "api" } as unknown as NewClient;
+    expect(await createClient(db, bad2, NOW)).toEqual({
+      ok: false,
+      reason: "invalid",
+    });
+  });
+
+  it("a disabled client gets no new secret", async () => {
+    const c = await mk("web-app");
+    await setClientStatus(db, P, c.clientId, "disabled", NOW);
+    expect(await addClientSecret(env, db, P, c.clientId, NOW)).toBeNull();
+  });
+});
+
 describe("grants", () => {
   it("keeps granted_at across a change, and Disconnect deletes the grant and the families", async () => {
     const c = await mk("web-app");

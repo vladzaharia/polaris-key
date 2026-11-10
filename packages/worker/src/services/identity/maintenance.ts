@@ -147,9 +147,15 @@ export const identityMaintenance: MaintenanceContribution = {
     );
     // I-21.3: the issuer key ring's timetable (publish, activate, retire, drop). Never gated:
     // a ring keeps its schedule while the issuer is off, and a product with no ring does nothing.
+    // Without `env` the step cannot seal a key: that is a recorded failure, never a silent skip.
     if (env)
       await rec.step(`issuerKeys:${product}`, () =>
         rotateIssuerKeys(env, db, product, now),
+      );
+    else
+      rec.fail(
+        `issuerKeys:${product}`,
+        new Error("no env: issuer key rotation did not run"),
       );
     // I-21.2: refresh rows 30 days after their family ended.
     await rec.drain(`issuerRefresh:${product}`, (limit) =>

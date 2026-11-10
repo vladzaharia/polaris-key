@@ -3,6 +3,9 @@
  * keyed `(account_id, client_id)` in `identity_client_grants`. Identity's table. Whether a grant
  * COVERS a request is I-21.8's rule (`scopeHash`); this file stores and reads the decision, and
  * ends it on Disconnect together with the client's refresh families for that account.
+ *
+ * `putClientGrant` does not check the client: I-21.8 looks it up with
+ * `getActiveClient(product, …)` first.
  */
 
 import type { IssuerClaim } from "@polaris-key/protocol/identity";

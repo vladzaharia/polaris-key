@@ -28,6 +28,10 @@
  *   call, so an emergency rotation takes effect on the next sign in every isolate.
  * - Every transition is one conditional batch, so a lost race changes 0 rows and a ring never
  *   holds two active keys, or none after its first.
+ * - An emergency rotation does NOT revoke refresh families: a refresh token is an opaque peppered
+ *   value kept server side, never signed by this key, so a key compromise is not an account
+ *   compromise. Access and id tokens the dropped keys signed stop verifying at once.
+ * - The route that serves `issuerJwks` must send a short `Cache-Control` (I-21.5).
  * - The signer pins `alg` to RS256 and sets `kid` and `typ` itself.
  */
 

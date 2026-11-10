@@ -50,5 +50,7 @@ CREATE TABLE IF NOT EXISTS identity_client_secrets (
 );
 CREATE INDEX IF NOT EXISTS identity_client_secrets_client
   ON identity_client_secrets (client_id, revoked_at);
+CREATE INDEX IF NOT EXISTS identity_client_secrets_product
+  ON identity_client_secrets (product);
 CREATE INDEX IF NOT EXISTS identity_client_secrets_hash
   ON identity_client_secrets (secret_hash);

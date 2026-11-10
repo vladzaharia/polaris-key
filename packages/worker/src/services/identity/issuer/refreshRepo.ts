@@ -31,8 +31,12 @@ export const REFRESH_PURGE_SECONDS = 30 * 86_400;
 
 export const mintRefreshToken = (): string => `pkeyo_${randomToken(32)}`;
 
-export const hashRefreshToken = (env: Env, token: string): Promise<string> =>
-  hashKey(HASH_DOMAIN + token, env.KEY_HASH_PEPPER);
+/** Fails closed: without the pepper a hash would be unkeyed and guessable from a leaked row. */
+export const hashRefreshToken = (env: Env, token: string): Promise<string> => {
+  if (!env.KEY_HASH_PEPPER)
+    throw new Error("KEY_HASH_PEPPER is not configured");
+  return hashKey(HASH_DOMAIN + token, env.KEY_HASH_PEPPER);
+};
 
 export interface RefreshGrantFields {
   product: string;

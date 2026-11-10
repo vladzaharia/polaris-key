@@ -96,7 +96,7 @@ export const mintClientId = (): string => `cl_${randomToken(16)}`;
 
 export type CreateClientResult =
   | { ok: true; client: ClientRecord }
-  | { ok: false; reason: "limit" | "key_exists" };
+  | { ok: false; reason: "limit" | "key_exists" | "invalid" };
 
 /** Create a client with a fresh id. Fails closed on the product's cap and on a duplicate key. */
 export async function createClient(
@@ -104,6 +104,12 @@ export async function createClient(
   input: NewClient,
   now: number,
 ): Promise<CreateClientResult> {
+  // Checked here so a CHECK failure is never reported as the product's cap.
+  if (
+    !["web", "spa", "native"].includes(input.type) ||
+    !["console", "manifest"].includes(input.origin)
+  )
+    return { ok: false, reason: "invalid" };
   const clientId = mintClientId();
   const changed = await db.runChanges(
     `INSERT OR IGNORE INTO identity_clients
@@ -310,12 +316,16 @@ export interface ClientSecretInfo {
 /** Domain separation: a client-secret hash is never the hash of another credential. */
 const SECRET_DOMAIN = "client-secret:";
 
-export const hashClientSecret = (env: Env, secret: string): Promise<string> =>
-  hashKey(SECRET_DOMAIN + secret, env.KEY_HASH_PEPPER);
+/** Fails closed: without the pepper a hash would be unkeyed and guessable from a leaked row. */
+export const hashClientSecret = (env: Env, secret: string): Promise<string> => {
+  if (!env.KEY_HASH_PEPPER)
+    throw new Error("KEY_HASH_PEPPER is not configured");
+  return hashKey(SECRET_DOMAIN + secret, env.KEY_HASH_PEPPER);
+};
 
 /**
  * Mint a secret for a live `web` client of the product. The plaintext is in the return value and
- * nowhere else. `null` when the client is unknown, disabled-or-not public, or already holds 2 live
+ * nowhere else. `null` when the client is unknown, disabled, not `web`, or already holds 2 live
  * secrets (the limit is part of the insert).
  */
 export async function addClientSecret(
@@ -331,7 +341,8 @@ export async function addClientSecret(
   const changed = await db.runChanges(
     `INSERT INTO identity_client_secrets (id, client_id, product, secret_hash, last4, created_at)
      SELECT ?, ?, ?, ?, ?, ?
-     WHERE EXISTS (SELECT 1 FROM identity_clients WHERE product = ? AND client_id = ? AND type = 'web')
+     WHERE EXISTS (SELECT 1 FROM identity_clients
+                    WHERE product = ? AND client_id = ? AND type = 'web' AND status = 'active')
        AND (SELECT COUNT(*) FROM identity_client_secrets
             WHERE client_id = ? AND revoked_at IS NULL) < ?`,
     id,
