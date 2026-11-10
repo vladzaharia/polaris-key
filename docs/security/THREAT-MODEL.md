@@ -8913,6 +8913,27 @@ every `ct` is `encryption_mismatch` and discovery says nothing of E2E.
   compare values; the client decides the better one. A client that ignores the rule can write a
   worse value, which harms only that person's own data. Field policies are not anti-cheat.
 
+### Cloud Sync in the portal export (U-12.4)
+
+File bytes and records leave through `GET /api/products/{product}/export` (JSON and `?format=zip`),
+behind the portal's session, CSRF header, five-minute step-up, rate limit and audit row.
+
+- **One pair.** The export reads only the object named by the `(product, subject)` Identity resolved
+  for the account (`subjectStore.ts` through `do/client.ts`). The paged `exportPage` op answers rows
+  of that object, so another person's keys, records and chunks are not reachable by naming them. A
+  file is read through `fileResolve` and a chunk from the page's own row: the R2 key and SSE-C key
+  come from the object's rows, never from a request, and neither is in the JSON or in an entry name.
+- **Ciphertext stays ciphertext.** In end-to-end mode the zip carries the stored bytes, which the
+  Worker cannot open; in server mode it opens a file with the person's SSE-C key, as the file `GET`
+  does. Entry names are indexes (`files/<n>.bin`), never the blinded ids the data holds.
+- **Bounded.** A page is at most 500 rows or about 1 MiB; one R2 read is open at a time. The JSON
+  holds records only up to 4 MiB and file metadata up to 2,000 rows, else it names the zip. A zip over
+  65,000 entries (or 250,000 chunk rows) is `413 export_too_large`; a stored object that is missing
+  or the wrong size stops the stream, so a truncated archive is never taken for a whole one.
+- **Residual.** A file replaced, or a chunk collected, between the listing and its read ends the
+  download; the person starts it again. A chunk row under an SSE-C key the object no longer holds is
+  left out of the container.
+
 ### Cloud Sync delta files: T31 and T32 (U-37)
 
 A collection that declares `files.delta` stores a large file as a manifest over content-defined

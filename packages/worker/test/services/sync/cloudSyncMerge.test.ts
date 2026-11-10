@@ -917,6 +917,8 @@ describe("absorb: isolation", () => {
     ).toEqual([
       "services/sync/admin/subject.ts",
       "services/sync/admin/values.ts",
+      // U-12.4: the portal export's bounded pages (`exportPage`, never the merge's `exportAll`).
+      "services/sync/exportSection.ts",
       "services/sync/handlers/common.ts",
       "services/sync/handlers/fileChunks.ts",
       "services/sync/handlers/fileFinalize.ts",

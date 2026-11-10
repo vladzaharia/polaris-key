@@ -371,6 +371,26 @@ export class SqlStore implements SyncStore {
     ).map((r) => ({ deviceId: r.device_id, lastSeen: Number(r.seen) }));
   }
 
+  /** Every client binding with its device and the epoch second it was last here (the export). */
+  clientsSeen(): Array<{
+    clientId: string;
+    deviceId: string;
+    lastSeen: number;
+  }> {
+    if (!this.hasSchema()) return [];
+    return this.all<{
+      client_id: string;
+      device_id: string;
+      last_seen: number;
+    }>(
+      `SELECT client_id, device_id, last_seen FROM clients ORDER BY client_id`,
+    ).map((r) => ({
+      clientId: r.client_id,
+      deviceId: r.device_id,
+      lastSeen: Number(r.last_seen),
+    }));
+  }
+
   clientCount(): number {
     if (!this.hasSchema()) return 0;
     return Number(
@@ -653,6 +673,55 @@ export class SqlStore implements SyncStore {
   }
 
   // ---- files (U-10; the rows are `sqlFiles.ts`'s) --------------------------------------------
+
+  // ---- the export's pages (U-12.4; `exportPages.ts`) -----------------------------------------
+
+  recordCollections(): string[] {
+    return this.hasSchema() ? this.recordTables.collectionNames() : [];
+  }
+
+  recordsPageIn(
+    collection: string,
+    after: number,
+    limit: number,
+  ): StoredRecord[] {
+    return this.hasSchema()
+      ? this.recordTables.pageIn(collection, after, limit)
+      : [];
+  }
+
+  parkedPage(offset: number, limit: number): ParkedRecord[] {
+    return this.hasSchema() ? this.recordTables.parkedPage(offset, limit) : [];
+  }
+
+  exportableFiles(
+    after: readonly [string, string, number] | undefined,
+    limit: number,
+  ): StoredFile[] {
+    return this.hasSchema() ? this.fileTables.exportable(after, limit) : [];
+  }
+
+  exportableFileCount(): number {
+    return this.hasSchema() ? this.fileTables.exportableCount() : 0;
+  }
+
+  referencedChunks(
+    collection: string,
+    afterId: string,
+    limit: number,
+  ): StoredChunk[] {
+    return this.hasSchema()
+      ? this.chunkTables.referenced(collection, afterId, limit)
+      : [];
+  }
+
+  referencedChunkTotals(): {
+    collection: string;
+    count: number;
+    bytes: number;
+  }[] {
+    return this.hasSchema() ? this.chunkTables.referencedTotals() : [];
+  }
 
   getFile(
     collection: string,

@@ -224,8 +224,7 @@ describe("sync.cloudSync subject store", () => {
       product: "acme",
       subject: "a",
     })) as any;
-    expect(dump.settings.subject).toBe("a");
-    expect(dump.settings.settings.map((r: any) => r.key)).toEqual(["theme"]);
+    expect(dump.settings.map((r: any) => r.key)).toEqual(["theme"]);
     await lastNs.instance("acme:a").storage.setAlarm(Date.now() + 1000);
     await runSubjectDelete(ctx, { product: "acme", subject: "a" });
     // Only the erasure marker's cleanup alarm is left.
@@ -239,7 +238,7 @@ describe("sync.cloudSync subject store", () => {
       product: "acme",
       subject: "b",
     })) as any;
-    expect(other.settings.settings).toHaveLength(1);
+    expect(other.settings).toHaveLength(1);
   });
 
   it("names the object by product and subject only, and the object refuses another pair", async () => {
