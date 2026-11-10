@@ -82,7 +82,7 @@ always-on `js` jobs check the drift.
 
 A push to `next` tracks green per lane. For each lane it walks HEAD's ancestry, newest first,
 over the CI workflow's push runs on `next`, and takes the newest commit on which every job of the
-lane concluded success (job conclusions, so a lane that passed inside a failed or cancelled run
+lane concluded success (job conclusions, so a lane that passed inside a failed or canceled run
 counts). That commit is the lane's base. The lane runs when a file changed since _its_ base is
 one of its paths or a `shared` input, and always when it has no base. A fix push after a red
 Python job therefore runs Python again and skips the lanes that were already green. When the
