@@ -1364,17 +1364,36 @@ jobs:
           echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends gnome-keyring dbus-x11
+      # Only the classes that touch the OS (the keyring, capabilities, the install driver, the desktop
+      # module) and the three that read the OS's files (CacheTest, DeviceKeysTest,
+      # DegradedStoreWarningTest). The rest of :core/:update/:sdk is platform-independent and runs in the
+      # `kotlin` job; running it here too failed on its timing tests (QA Q4). tools/kotlin-desktop-classes.test.ts
+      # checks that every class named below exists. The keyring class runs last and uncached: a cache hit
+      # would skip the one test this job exists for, and the check below reads its report.
       - name: JVM desktop suites (Linux, Secret Service)
         if: runner.os == 'Linux'
         working-directory: sdks/kotlin
         run: >-
           dbus-run-session -- bash -c 'printf pkey | gnome-keyring-daemon --unlock --components=secrets >/dev/null;
-          ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test :update:test :sdk:test :desktop:test'
+          ./gradlew --no-daemon -Ppkey.jvmOnly=true
+          :core:test --tests "im.plrs.key.core.CapabilitiesTest" --tests "im.plrs.key.core.CacheTest"
+          --tests "im.plrs.key.core.DeviceKeysTest" --tests "im.plrs.key.core.DegradedStoreWarningTest"
+          :update:test --tests "im.plrs.key.update.DesktopInstallDriverTest" --tests "im.plrs.key.update.DirUpdateSlotsTest"
+          --tests "im.plrs.key.update.BootGuardTest"
+          :desktop:test &&
+          ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test --tests "im.plrs.key.core.KeyringStoreTest"'
       - name: JVM desktop suites (macOS, login Keychain)
         if: runner.os == 'macOS'
         working-directory: sdks/kotlin
         run: >-
-          "$GITHUB_WORKSPACE/tools/ci-measure.sh" "kotlin desktop tests (macOS)" ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test :update:test :sdk:test :desktop:test
+          "$GITHUB_WORKSPACE/tools/ci-measure.sh" "kotlin desktop tests (macOS)" bash -c
+          './gradlew --no-daemon -Ppkey.jvmOnly=true
+          :core:test --tests "im.plrs.key.core.CapabilitiesTest" --tests "im.plrs.key.core.CacheTest"
+          --tests "im.plrs.key.core.DeviceKeysTest" --tests "im.plrs.key.core.DegradedStoreWarningTest"
+          :update:test --tests "im.plrs.key.update.DesktopInstallDriverTest" --tests "im.plrs.key.update.DirUpdateSlotsTest"
+          --tests "im.plrs.key.update.BootGuardTest"
+          :desktop:test &&
+          ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test --tests "im.plrs.key.core.KeyringStoreTest"'
       - name: JVM desktop suites (Windows, Credential Manager)
         if: runner.os == 'Windows'
         working-directory: sdks/kotlin
@@ -1678,6 +1697,7 @@ jobs:
           target: ${{ matrix.api-level == 24 && 'default' || 'google_apis' }}
           arch: x86_64
           force-avd-creation: false
+          disk-size: 2048M
           disable-animations: true
           emulator-options: -no-window -no-snapshot-save -noaudio -no-boot-anim -gpu swiftshader_indirect
           script: bash tools/ci-emulator-run.sh ${{ runner.temp }}/emulator-attempt-1.log
@@ -1695,6 +1715,7 @@ jobs:
           target: ${{ matrix.api-level == 24 && 'default' || 'google_apis' }}
           arch: x86_64
           force-avd-creation: false
+          disk-size: 2048M
           disable-animations: true
           emulator-options: -no-window -no-snapshot-save -noaudio -no-boot-anim -gpu swiftshader_indirect
           script: bash tools/ci-emulator-run.sh ${{ runner.temp }}/emulator-attempt-2.log
