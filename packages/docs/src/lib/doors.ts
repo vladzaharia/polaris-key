@@ -434,6 +434,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "features/sign-in/index",
           "features/sign-in/add-sign-in",
           "features/sign-in/oidc",
+          "features/sign-in/sign-in-with-product",
           "features/sign-in/web-redirect",
           "features/sign-in/native-redirect",
           "features/sign-in/device-flow",
@@ -539,6 +540,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "operate/console/keys-and-secrets",
           "operate/console/activity",
           "operate/console/help-a-customer",
+          "operate/console/sign-in-clients",
         ),
       },
       {
