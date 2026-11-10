@@ -337,8 +337,8 @@ describe("ui-matrix.json cli: stdin", () => {
       if (r.expect.read === "key") {
         expect(ran.got).toBe("key");
         expect(ran.code).toBe(EXIT.ok);
-        // The line was read without waiting for the writer to close.
-        expect(ran.wallMs).toBeLessThan(10_000);
+        // The line was read without waiting for the writer to close: the writer stays open, so
+        // a process that waited would have been killed (asserted above), not ended by itself.
       } else {
         expect(ran.got).toBe("none");
         expect(ran.code).toBe(r.expect.exit);

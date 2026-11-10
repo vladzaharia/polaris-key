@@ -329,8 +329,20 @@ describe("the blob route and package files (SEC-DST-1)", () => {
        INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
        SELECT '${SLUG}', 'blobs/sha256/' || printf('%064x', i), 'artifact', 'r' || i || '/a' || i, 1 FROM n`,
     );
-    const t = Date.now();
-    expect(await reconcilePackageFileRefs(w.db)).toBe(N);
-    expect(Date.now() - t).toBeLessThan(3000);
+    // A work bound, not a stopwatch: the pass is two set statements whatever the row count
+    // (the plan check above keeps each one a single uncorrelated scan), never one per ref.
+    let statements = 0;
+    const counted = new Proxy(w.db, {
+      get(target, prop, receiver) {
+        const v = Reflect.get(target, prop, receiver);
+        if (typeof v !== "function") return v;
+        return (...args: unknown[]) => {
+          statements++;
+          return v.apply(target, args);
+        };
+      },
+    });
+    expect(await reconcilePackageFileRefs(counted)).toBe(N);
+    expect(statements).toBe(2);
   });
 });
