@@ -35,6 +35,10 @@ Synced data is usually encrypted on your devices, so Polaris Locker can't read i
 - If the developer has paused syncing, your changes stay on the device and send once it resumes.
 - If you are over your storage, new changes that add data are refused. Clearing or deleting data always works. Nothing is deleted for you.
 
+## If you removed the app's data
+
+If you removed an app's data in Polaris Locker, your other devices show **You're signed out** at their next sync. Choose **Sign in to sync**: they start fresh, and changes you hadn't synced yet are gone.
+
 ## Your synced data in Polaris Locker
 
 Open the app at [polaris.locker](https://polaris.locker): **Sync Across Devices** shows your storage and each device's last sync. To download or remove it, see [Synced data](/docs/help/manage-your-data/#synced-data).
