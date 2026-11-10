@@ -4252,6 +4252,21 @@ function buildExportCases(): unknown[] {
     }),
   });
 
+  // server-version-unsafe: a served version past 2^53 - 1 is not one every reader holds exactly.
+  rows.push({
+    id: "server-version-unsafe",
+    description:
+      "Server mode: a record served with a version of 2^60, an integer a JSON reader rounds and a 64-bit one keeps (Python), is dropped and listed code invalid in both modes; a record at version 2^53 - 1 and a plain one are written.",
+    input: xInput({
+      encryption: "server",
+      changes: [
+        sRecord("notes", "ok", 1, { title: "fine" }),
+        sRecord("notes", "big", 2 ** 60, { title: "too big" }),
+        sRecord("notes", "edge", Number.MAX_SAFE_INTEGER, { title: "edge" }),
+      ],
+    }),
+  });
+
   // proto-keys: names that are special in some object models are ordinary members.
   rows.push({
     id: "proto-keys",

@@ -250,9 +250,15 @@ function canon(v: unknown, max: number): string {
   emit(v, 0);
   return out.join("");
 }
-/** True when a row's id and value have a canonical spelling. */
+/** True when a row's id, value and version have a canonical spelling. */
 const writable = (r: OpenedRow): boolean =>
-  serialisable(r.id) && serialisable(r.hasValue ? r.value : null);
+  serialisable(r.id) &&
+  serialisable(r.hasValue ? r.value : null) &&
+  safeVersion(r.version);
+/** A served version is a count a reader of any language holds exactly: an integer past 2^53 - 1 is
+ *  not one (a JSON reader rounds it), so its row is not written. */
+const safeVersion = (v: unknown): boolean =>
+  !(typeof v === "number" && Number.isInteger(v) && !Number.isSafeInteger(v));
 const lineOf = (v: unknown): string => canon(v, 0) + "\n";
 const serialisable = (v: unknown): boolean => {
   try {

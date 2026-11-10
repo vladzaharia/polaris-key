@@ -8217,6 +8217,73 @@
       }
     },
     {
+      "id": "server-version-unsafe",
+      "description": "Server mode: a record served with a version of 2^60, an integer a JSON reader rounds and a 64-bit one keeps (Python), is dropped and listed code invalid in both modes; a record at version 2^53 - 1 and a plain one are written.",
+      "product": "demo",
+      "exportedAt": 1767225600000,
+      "encryption": "server",
+      "includeRevisions": false,
+      "unsynced": 0,
+      "changes": [
+        {
+          "record": ["notes", "ok"],
+          "value": { "title": "fine" },
+          "version": 1
+        },
+        {
+          "record": ["notes", "big"],
+          "value": { "title": "too big" },
+          "version": 1152921504606847000
+        },
+        {
+          "record": ["notes", "edge"],
+          "value": { "title": "edge" },
+          "version": 9007199254740991
+        }
+      ],
+      "files": [],
+      "expect": {
+        "entries": [
+          {
+            "name": "README.txt",
+            "size": 1053,
+            "sha256Hex": "b033f2cc173e07580bb45d11ea4268f71fb885e21bc3d4ffd041c333705fa66a",
+            "utf8": "This is a readable copy of data an app synced with Polaris Locker.\n\nThe app made it on this device. It is NOT encrypted: anyone who can open\nthis file can read everything in it. Keep it where you keep your other\nprivate files, and delete it when you no longer need it. The time it was\nmade is \"exportedAt\" in data.json, in milliseconds since 1970-01-01 UTC.\n\nPolaris Locker's own export of this data, from its website, uses the same\nlayout and holds the data as the app stored it: encrypted when the app\nencrypts it.\n\ndata.json                              what this holds, and what could not be read\nstores/sync.cloudSync/settings.json    the synced settings\nstores/sync.cloudSync/records/         the synced records, one file a collection\nstores/sync.cloudSync/index.json       which file holds which collection\nstores/sync.cloudSync/files/           the synced files\nstores/sync.cloudSync/files.json       which file belongs to which record\n\nA file marked \"partial\" in data.json is incomplete or did not match what\nthe app stored. Do not rely on it.\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/settings.json",
+            "size": 3,
+            "sha256Hex": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+            "utf8": "{}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/0.ndjson",
+            "size": 115,
+            "sha256Hex": "79320a202de701a75dce3860d852ed9fa9f487046ddd4b0ef7ae63005e383acd",
+            "utf8": "{\"id\":\"edge\",\"value\":{\"title\":\"edge\"},\"version\":9007199254740991}\n{\"id\":\"ok\",\"value\":{\"title\":\"fine\"},\"version\":1}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/files.json",
+            "size": 3,
+            "sha256Hex": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "utf8": "[]\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/index.json",
+            "size": 96,
+            "sha256Hex": "c50bc1c2f22d448c8b46fa9a86c52947e2d82e915a99b5018367621717d1ff06",
+            "utf8": "{\"records\":[{\"collection\":\"notes\",\"count\":2,\"entry\":\"stores/sync.cloudSync/records/0.ndjson\"}]}\n"
+          },
+          {
+            "name": "data.json",
+            "size": 243,
+            "sha256Hex": "7e658978a4bf0133fa03875627909202cbe3cdd77e03c933c2465b7a4fb78a6d",
+            "utf8": "{\"counts\":{\"files\":0,\"records\":2,\"settings\":0},\"encryption\":\"server\",\"exportedAt\":1767225600000,\"product\":\"demo\",\"schema\":\"pkey-sync-export/1\",\"skipped\":[{\"code\":\"invalid\",\"collection\":\"notes\",\"kind\":\"record\"}],\"source\":\"device\",\"unsynced\":0}\n"
+          }
+        ]
+      }
+    },
+    {
       "id": "proto-keys",
       "description": "Server mode: settings, a merge setting's member, record ids, field names, a union element and a collection named __proto__ or constructor are ordinary names: each is written as an own member or string, in byte order, none dropped.",
       "product": "demo",

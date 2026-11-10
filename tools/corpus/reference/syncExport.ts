@@ -477,7 +477,11 @@ export function refExport(inp: RefExportInput): RefExportResult {
       if (
         r === "invalid" ||
         !serialisable(r.id) ||
-        !serialisable(r.hasValue ? r.value : null)
+        !serialisable(r.hasValue ? r.value : null) ||
+        // An integer past 2^53 - 1 is not a count every reader holds exactly (a JSON reader rounds it).
+        (typeof r.version === "number" &&
+          Number.isInteger(r.version) &&
+          !Number.isSafeInteger(r.version))
       ) {
         recordSkips.push({ kind: "record", code: "invalid", collection });
         continue;

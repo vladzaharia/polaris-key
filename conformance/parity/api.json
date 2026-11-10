@@ -4580,10 +4580,12 @@
       "feature": "sync.export",
       "sdks": {
         "node": {
-          "reason": "cancels with the AbortSignal of cloudSync.export's options"
+          "sdkOnly": true,
+          "reason": "Node cancels with the AbortSignal passed as the signal option of cloudSync.export"
         },
         "react": {
-          "reason": "cancels with the AbortSignal of useCloudSync().export's options"
+          "sdkOnly": true,
+          "reason": "React cancels with the AbortSignal passed as the signal option of useCloudSync().export"
         },
         "godot": {
           "planned": "U-51",
