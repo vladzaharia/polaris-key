@@ -914,13 +914,21 @@ jobs:
             ~/Library/Caches/org.swift.swiftpm
             ~/Library/org.swift.swiftpm
           key: swiftpm-${{ runner.os }}-xcode26.6-${{ hashFiles('sdks/swift/Package.resolved', 'sdks/swift/Package.swift') }}
-      # The libraries build strictly (the tests carry warnings of their own: code after a skip's
-      # throw, a deprecated Sparkle initialiser). Then the tests are built once and run in parallel
-      # without a second compile. Neither build writes the index store, which only an IDE reads.
-      - name: swift build + test (warnings as errors, parallel)
+      # One compile: the libraries and the tests build together (`--build-tests`), so `swift test
+      # --skip-build` reuses every product. The libraries stay strict without -warnings-as-errors,
+      # which would change the flags and recompile everything, and would also fail on the tests'
+      # own warnings (code after a skip's throw, a deprecated Sparkle initialiser): any Swift
+      # warning under sdks/swift/Sources fails the step instead. Neither build writes the index
+      # store, which only an IDE reads.
+      - name: swift build (one compile, library warnings fail)
         run: |
-          swift build --package-path sdks/swift --disable-index-store -Xswiftc -warnings-as-errors
-          swift build --package-path sdks/swift --build-tests --disable-index-store
+          swift build --package-path sdks/swift --build-tests --disable-index-store 2>&1 | tee "$RUNNER_TEMP/swift-build.log"
+          if grep -E '/sdks/swift/Sources/.*\.swift:[0-9]+:[0-9]+: warning:' "$RUNNER_TEMP/swift-build.log"; then
+            echo "::error::a library source warns (see above); the libraries build warning-free"
+            exit 1
+          fi
+      - name: swift test (parallel, no rebuild)
+        run: |
           swift test --package-path sdks/swift --skip-build --parallel --skip PkeyDevLiveTests
           # The live suite shares one pkey dev server, so it runs serially.
           swift test --package-path sdks/swift --skip-build --filter PkeyDevLiveTests
