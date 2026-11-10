@@ -1090,7 +1090,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       - name: Android SDK packages
@@ -1153,7 +1153,7 @@ jobs:
           java-version: "17"
       # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
       # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       - name: Lint (ktlint and detekt against the lint-debt ledger)
@@ -1236,7 +1236,7 @@ jobs:
           java-version: "17"
       # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
       # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       - name: Secret Service (gnome-keyring) for the headless session
@@ -1322,7 +1322,7 @@ jobs:
           java-version: "17"
       # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
       # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       # Per-kit modernity lint (UI-KITS.md §7.3, UK-15): the compose source rules of
@@ -1425,7 +1425,7 @@ jobs:
           java-version: "17"
       # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
       # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.toolchain != 'documented' }}
       - name: Android SDK packages
@@ -1444,7 +1444,7 @@ jobs:
         run: ./gradlew --no-daemon -p samples/android-consumer assembleDebug assembleRelease assembleLeanDebugAndroidTest
       - name: Gradle 9.7.1 for the latest toolchain
         if: matrix.toolchain == 'latest'
-        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           gradle-version: "9.7.1"
           cache-disabled: true
@@ -1489,7 +1489,7 @@ jobs:
           java-version: "17"
       # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
       # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.api-level != 36 }}
       - name: KVM for the emulator
