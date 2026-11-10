@@ -100,8 +100,11 @@ public enum PeerAdvert {
             kv[k] = String(e[e.index(after: at)...])
         }
         guard kv["v"] == "1" else { return .refused(.version) }
-        // `m=c` is judged by `PeerContacts.parseTxt` and by no other path (§15.4): here it is unknown.
-        guard let m = kv["m"], let mode = PeerNoiseMode(rawValue: m), mode != .c else { return .refused(.mode) }
+        // `m=c` is judged by `PeerContacts.parseTxt`, `m=q` by `PeerLocal.parsePairingTxt` and `m=l` by
+        // `PeerLocal.parseLocalTxt`, and by no other path (§15.4, §15.12): here they are unknown.
+        guard let m = kv["m"], let mode = PeerNoiseMode(rawValue: m),
+            [.a, .v, .p].contains(mode)
+        else { return .refused(.mode) }
         if mode == .a { return .ok(mode: mode, h: nil) }
         guard let h = kv["h"], h.unicodeScalars.count == 16,
             h.unicodeScalars.allSatisfy({
