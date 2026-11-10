@@ -35,6 +35,16 @@ const FILL: Record<MeterTone, string> = {
   danger: "fill-danger",
 };
 
+/**
+ * A storage meter's tone, shared by the console's Cloud Sync data tab and Polaris Locker's sync
+ * card: warn from 80 % of the limit, and at the limit. A zero limit with anything stored is full.
+ */
+export function storageTone(used: number, limit: number): MeterTone {
+  if (limit <= 0) return used > 0 ? "danger" : "accent";
+  const ratio = used / limit;
+  return ratio >= 1 ? "danger" : ratio >= 0.8 ? "warning" : "accent";
+}
+
 export function meterText(
   value: number,
   max: number,

@@ -8861,6 +8861,11 @@
       "role": "label",
       "note": "Jump palette (P0-36)."
     },
+    "locker.jump.sync": {
+      "value": "See synced data for {product}",
+      "role": "label",
+      "note": "Jump palette (P0-36): the action that opens a product page's Sync Across Devices card. Arguments: {product} = the app's name."
+    },
     "locker.jump.recent": {
       "value": "Recent",
       "role": "label",
@@ -8870,6 +8875,51 @@
       "value": "{count, plural, one {# product} other {# products}}",
       "role": "a11y",
       "note": "Jump palette (P0-36)."
+    },
+    "locker.sync.storage": {
+      "value": "Storage",
+      "role": "label",
+      "note": "Sync Across Devices card on a product page (PX-18): the meter's label for how much of the person's limit their synced data uses."
+    },
+    "locker.sync.used": {
+      "value": "{used} of {limit}",
+      "role": "label",
+      "note": "Sync Across Devices card on a product page (PX-18): the meter's reading. Arguments: {used} and {limit} are sizes already formatted (“142 MB”, “1 GB”)."
+    },
+    "locker.sync.stored": {
+      "value": "{used} stored",
+      "role": "label",
+      "note": "Sync Across Devices card on a product page (PX-18): the reading when the person's limit is zero (no meter). Arguments: {used} = a size already formatted (“142 MB”)."
+    },
+    "locker.sync.tierLimit": {
+      "value": "Limit set by your {tier} tier",
+      "role": "hint",
+      "note": "Sync Across Devices card on a product page (PX-18): under the meter: the tier the limit comes from. Arguments: {tier} = the tier's name (“Pro”)."
+    },
+    "locker.sync.lastSynced": {
+      "value": "Last synced",
+      "role": "label",
+      "note": "Sync Across Devices card on a product page (PX-18): the heading of the list of devices, each with when it last synced."
+    },
+    "locker.sync.empty": {
+      "value": "Nothing synced yet. Sign in to {product} on a device to start.",
+      "role": "body",
+      "note": "Sync Across Devices card on a product page (PX-18): nothing is stored yet. Arguments: {product} = the app's name."
+    },
+    "locker.sync.fullBody": {
+      "value": "New changes stay on your devices until there's room.",
+      "role": "body",
+      "note": "Sync Across Devices card on a product page (PX-18): under the full title."
+    },
+    "locker.sync.private": {
+      "value": "Only your devices can read your synced data.",
+      "role": "body",
+      "note": "Sync Across Devices card on a product page (PX-18): shown when the data is end-to-end encrypted."
+    },
+    "locker.sync.loadFailed": {
+      "value": "Couldn't load your synced data.",
+      "role": "body",
+      "note": "Sync Across Devices card on a product page (PX-18): the card failed to load; the Try again button is separate."
     },
     "locker.library.justAdded": {
       "value": "Added just now",

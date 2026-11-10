@@ -31,6 +31,7 @@ import {
   type PortalRelease,
   type PortalSession,
   type PortalAccountDevice,
+  type PortalCloudSync,
   type PortalStorefrontProduct,
 } from "./api.js";
 import { browser } from "./browser.js";
@@ -269,6 +270,19 @@ export function useProduct(
   opts: { enabled?: boolean } = {},
 ): UseQueryResult<PortalProduct> {
   return useQuery(pq.product(product, opts.enabled ?? true));
+}
+
+/**
+ * The product's Sync Across Devices card (U-12.5, `GET /api/products/<p>/sync`): usage against the
+ * limit, whether syncing is on hold, and when each device last synced. Asked only while `enabled`
+ * (the product view says sync is on); `null` when the Worker answers 404 (sync went off meanwhile,
+ * or an older Worker), and the section then leaves the page.
+ */
+export function useProductSync(
+  product: string,
+  enabled: boolean,
+): UseQueryResult<PortalCloudSync | null> {
+  return useQuery(pq.productSync(product, enabled));
 }
 
 /**

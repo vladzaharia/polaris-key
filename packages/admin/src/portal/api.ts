@@ -71,6 +71,7 @@ export {
 export type {
   PortalProductDevice,
   PortalProduct,
+  PortalCloudSync,
   PortalFileReason,
   PortalDownloadFile,
   PortalRecommendation,

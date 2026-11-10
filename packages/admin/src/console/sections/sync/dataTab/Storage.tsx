@@ -2,18 +2,11 @@
 
 import * as React from "react";
 import type { SubjectData } from "./index.js";
-import { Meter, type MeterTone } from "../../../../ui/charts/Meter.js";
+import { Meter, storageTone } from "../../../../ui/charts/Meter.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { SettingsSection } from "../../../templates/Settings.js";
 import { formatStorage } from "../pages/usageParts.js";
-
-/** Warn from 80 % of the limit, and at the limit. */
-export function storageTone(used: number, limit: number): MeterTone {
-  if (limit <= 0) return used > 0 ? "danger" : "accent";
-  const ratio = used / limit;
-  return ratio >= 1 ? "danger" : ratio >= 0.8 ? "warning" : "accent";
-}
 
 export function Storage({
   slug,

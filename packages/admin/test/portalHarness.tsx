@@ -418,6 +418,46 @@ export function downloadsView(
   };
 }
 
+/** A minimal `GET /api/products/<p>`: the per-licence seat limits the product page reads. */
+export function productView(
+  product: string,
+  licenses: {
+    id: string;
+    deviceLimit: number;
+    purchase?: { source: string; store: string | null } | null;
+  }[],
+) {
+  return {
+    product,
+    name: product,
+    developerName: null,
+    tintColor: null,
+    website: null,
+    iconUrl: null,
+    headerUrl: null,
+    support: null,
+    services: { license: true },
+    status: "active",
+    addedAt: NOW_S - 30 * DAY,
+    licenses: licenses.map((l) => ({
+      id: l.id,
+      tier: null,
+      status: "active",
+      licenseStatus: "active",
+      activatedAt: NOW_S - 30 * DAY,
+      expiresAt: null,
+      maxOfflineDays: null,
+      deviceLimit: l.deviceLimit,
+      activeSeatCount: 1,
+      deviceCount: 1,
+      dormantCount: 0,
+      entitlements: [],
+      devices: [],
+      ...(l.purchase !== undefined ? { purchase: l.purchase } : {}),
+    })),
+  };
+}
+
 export const CAPS_ALL: PortalCapabilities = {
   auth: { oidc: true, magic: true },
   modules: { licensing: true, claim: true, releases: true },

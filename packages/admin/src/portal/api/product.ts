@@ -48,6 +48,29 @@ export interface PortalProduct extends PortalPresentation {
   >;
 }
 
+// ── Sync Across Devices (U-12.5, PX-18) ──────────────────────────────────────────────────────
+
+/**
+ * `GET /api/products/<p>/sync`: what the product's sync holds for this account, as sizes and
+ * times only (never a value, a collection or a file name), and a device as its label (read
+ * server-side, never its id). `404` when the product has sync off or is not this account's.
+ */
+export interface PortalCloudSync {
+  /** `e2e`: only the person's devices can read the data; `server`: the server can. */
+  encryption: "e2e" | "server";
+  /** Nothing is stored yet. */
+  empty: boolean;
+  /** `paused`: the operator has put syncing on hold; `full`: the person is at their limit. */
+  state: "active" | "paused" | "full";
+  /** Epoch seconds the hold began; only with `paused`. */
+  pausedSince: number | null;
+  usage: { bytes: number };
+  /** The limit in force; `tierLabel` names the tier that set it, if one did. */
+  quota: { bytes: number; tierLabel: string | null };
+  /** Each device's label and when it last pushed or pulled (epoch seconds, up to an hour stale). */
+  devices: Array<{ label: string; lastSyncAt: number }>;
+}
+
 // ── Downloads and store links (PX-W2; G2, G4) ──────────────────────────────────────────────
 
 /** Why a file can't be downloaded by this account (the Worker's codes, never copy). */
@@ -255,6 +278,9 @@ export interface PortalMintTokenInput {
 export const productApi = {
   product: (product: string) =>
     call<PortalProduct>(`/api/products/${enc(product)}`),
+
+  productSync: (product: string) =>
+    call<PortalCloudSync>(`/api/products/${enc(product)}/sync`),
 
   createSupportCode: (product: string) =>
     call<{ supportCode: string }>(

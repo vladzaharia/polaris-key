@@ -1,22 +1,37 @@
 import * as React from "react";
 import { Command } from "cmdk";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { Clock, KeyRound, MonitorSmartphone, Search } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Clock,
+  KeyRound,
+  MonitorSmartphone,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 import { LiveRegion } from "../../ui/LiveRegion.js";
 import { Kbd } from "../../ui/Kbd.js";
 import { cn } from "../../lib/cn.js";
 import type { LibraryProduct } from "../model/library.js";
 import { requestHeadingFocus } from "../focus.js";
 import { matches } from "../model/libraryView.js";
-import { focusPageHeading, href, navigate, resolveHash } from "../router.js";
+import type { PortalCloudSync, PortalProduct } from "../api.js";
+import { qk } from "../queries.js";
+import {
+  focusPageHeading,
+  href,
+  navigate,
+  resolveHash,
+  type ProductSection,
+} from "../router.js";
 import { ProductIcon } from "./ProductIcon.js";
 import { t } from "../../lib/copy.js";
 
 /**
  * Jump to a product (§4.27), from 8 products: ⌘K / Ctrl K, the header trigger or the phone
- * search icon. Products, Actions scoped to the top match ("Manage devices for …", "Activate a
- * license"; "Cloud Sync for …" joins with G26), and Recent. A 640 px dialog near the top;
- * full-screen on phones.
+ * search icon. Products, Actions scoped to the top match ("Manage devices for …", "See synced
+ * data for …", "Activate a license"), and Recent. A 640 px dialog near the top; full-screen on
+ * phones.
  */
 const RECENT_KEY = "pk-portal-recent";
 
@@ -48,6 +63,22 @@ function onProduct(slug: string): boolean {
   return route.kind === "product" && route.product === slug;
 }
 
+/**
+ * Whether the product's page has its Sync Across Devices section, as far as this tab already
+ * knows (PX-18 D10): its product view is cached with sync on, and its summary has not answered
+ * 404. The palette never asks the Worker; a product not opened yet offers no sync action.
+ */
+function hasSyncSection(
+  qc: ReturnType<typeof useQueryClient>,
+  slug: string,
+): boolean {
+  const view = qc.getQueryData<PortalProduct>(qk.product(slug));
+  return (
+    view?.services.sync === true &&
+    qc.getQueryData<PortalCloudSync | null>(qk.productSync(slug)) !== null
+  );
+}
+
 export function JumpPalette({
   open,
   onOpenChange,
@@ -59,6 +90,7 @@ export function JumpPalette({
   products: readonly LibraryProduct[];
   onActivate: () => void;
 }): React.ReactElement {
+  const qc = useQueryClient();
   const [query, setQuery] = React.useState("");
   // At the 320 px floor the full placeholder is cut off; it reads "Jump to…" there.
   const [narrow, setNarrow] = React.useState(false);
@@ -106,7 +138,7 @@ export function JumpPalette({
    * View Transition while a dialog is on screen (one would lift the page above the scrim), and
    * the results never animate while typing: filtering only re-renders the list.
    */
-  const go = (p: LibraryProduct, section?: "devices"): void => {
+  const go = (p: LibraryProduct, section?: ProductSection): void => {
     pushRecent(p.slug);
     jumped.current = true;
     const here = onProduct(p.slug);
@@ -224,6 +256,16 @@ export function JumpPalette({
                       className="size-4 text-fg-muted"
                     />
                     {t("locker.jump.devices", { product: top.name })}
+                  </Command.Item>
+                ) : null}
+                {top && top.kind !== "entry" && hasSyncSection(qc, top.slug) ? (
+                  <Command.Item
+                    value={`sync:${top.slug}`}
+                    onSelect={() => go(top, "sync")}
+                    className={item}
+                  >
+                    <RefreshCw aria-hidden className="size-4 text-fg-muted" />
+                    {t("locker.jump.sync", { product: top.name })}
                   </Command.Item>
                 ) : null}
                 <Command.Item

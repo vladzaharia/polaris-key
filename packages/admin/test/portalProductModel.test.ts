@@ -5,12 +5,16 @@ import {
   deviceSeats,
   elsewhereFor,
   getItFromDownloads,
+  presentSections,
   recommendedLabel,
   resolveDevice,
   seatsFor,
   settleAction,
+  syncDevices,
+  syncStorage,
   withSeats,
 } from "../src/portal/model/product.js";
+import { buildLibrary } from "../src/portal/model/library.js";
 import { resolveHash } from "../src/portal/router.js";
 import { breakPoints } from "../src/portal/components/product/InstallSources.js";
 import {
@@ -20,6 +24,7 @@ import {
   downloadsView,
   installSource,
   license,
+  libraryItem,
   NOW_S,
   DAY,
   storeLink,
@@ -468,5 +473,77 @@ describe("a long URL or command wraps at its seams (P0-48)", () => {
     expect(breakPoints("brew install --cask deadbeef")).toEqual([
       "brew install --cask deadbeef",
     ]);
+  });
+});
+
+describe("Sync Across Devices (PX-18)", () => {
+  const moss = license({ product: "mossgarden" });
+  const [product] = buildLibrary([libraryItem(moss)], [moss], [], NOW_S);
+
+  it("is a section only when the page says sync is on, between Devices and What's new", () => {
+    expect(presentSections(product!, false)).not.toContain("sync");
+    expect(
+      presentSections(product!, false, { cloudSync: false }),
+    ).not.toContain("sync");
+    expect(presentSections(product!, false, { cloudSync: true })).toEqual([
+      "license",
+      "devices",
+      "sync",
+      "data",
+    ]);
+    expect(
+      presentSections(product!, false, {
+        cloudSync: true,
+        packageAccess: true,
+      }),
+    ).toEqual(["license", "devices", "sync", "package", "data"]);
+  });
+
+  it("reads the use against the limit, with the tone warning from 80 % and danger at the limit", () => {
+    const at = (bytes: number, limit = 1_000_000_000, tierLabel = "Pro") =>
+      syncStorage({ usage: { bytes }, quota: { bytes: limit, tierLabel } });
+    expect(at(142_000_000)).toEqual({
+      text: "142 MB of 1 GB",
+      meter: { value: 142_000_000, max: 1_000_000_000, tone: "accent" },
+      tier: "Pro",
+    });
+    expect(at(800_000_000).meter?.tone).toBe("warning");
+    expect(at(1_000_000_000).meter?.tone).toBe("danger");
+    // Over the limit: the reading says so, the meter stays full.
+    expect(at(1_200_000_000).text).toBe("1.2 GB of 1 GB");
+    expect(at(0).text).toBe("0 B of 1 GB");
+  });
+
+  it("drops the tier when none set the limit, and the meter when the limit is zero", () => {
+    expect(
+      syncStorage({
+        usage: { bytes: 5_000 },
+        quota: { bytes: 268_435_456, tierLabel: null },
+      }),
+    ).toMatchObject({ text: "5 KB of 268 MB", tier: null });
+    expect(
+      syncStorage({
+        usage: { bytes: 5_000 },
+        quota: { bytes: 1, tierLabel: "  " },
+      }).tier,
+    ).toBeNull();
+    expect(
+      syncStorage({
+        usage: { bytes: 42_000_000 },
+        quota: { bytes: 0, tierLabel: "Free" },
+      }),
+    ).toEqual({ text: "42 MB stored", meter: null, tier: "Free" });
+  });
+
+  it("lists the devices that synced most recently first", () => {
+    expect(
+      syncDevices({
+        devices: [
+          { label: "Studio PC", lastSyncAt: NOW_S - 3 * DAY },
+          { label: "Mara's MacBook Pro", lastSyncAt: NOW_S - 180 },
+          { label: "Unnamed device", lastSyncAt: NOW_S - DAY },
+        ],
+      }).map((d) => d.label),
+    ).toEqual(["Mara's MacBook Pro", "Unnamed device", "Studio PC"]);
   });
 });
