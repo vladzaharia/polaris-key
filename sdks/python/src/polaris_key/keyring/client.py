@@ -38,7 +38,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Union, cast
 from urllib.parse import quote
 
-from ..cloud_sync.sign_in_url import sign_in_url_of
+from ..cloud_sync.sign_in_url import from_worker_origin, sign_in_url_of
 from ..constants_generated import ErrorCode
 from ..core import sync_crypto as sc
 from ..core.b64url import b64url_decode, b64url_encode
@@ -432,8 +432,11 @@ class KeyringClient:
         self.codec = SyncCodec(self)
         state_dir = ctx.local_state_dir()
         #: Told when a ring route answers ``account_required`` (the client wires Cloud Sync here), with
-        #: the answer's ``signInUrl`` unvetted. The call still raises its own error.
-        self.on_account_required: Optional[Callable[[Optional[str]], None]] = None
+        #: the answer's ``signInUrl`` unvetted and the person signed in when the call started. The call
+        #: still raises its own error. Only an answer from the Worker's own origin counts.
+        self.on_account_required: Optional[Callable[[Optional[str], Optional[str]], None]] = None
+        #: Who is signed in now (Cloud Sync's person), read when a call starts.
+        self.account_subject: Optional[Callable[[], Optional[str]]] = None
         self._pin_file = JsonStateFile(os.path.join(state_dir, "keyring-pin.json") if state_dir else None, lambda: {})
 
     def __repr__(self) -> str:
@@ -874,15 +877,20 @@ class KeyringClient:
         if body is not None:
             headers["content-type"] = "application/json"
             kwargs["content"] = json.dumps(body, separators=(",", ":")).encode("utf-8")
+        for_subject = self.account_subject() if self.account_subject is not None else None
         res = self._ctx.request(method, self._ctx.url(path), headers=headers, **kwargs)
         if not (200 <= res.status_code < 300):
             err = refusal_error(res, "key ring")
-            # The Worker took the account away (V5 §11.5): Cloud Sync learns it from this route too.
-            if res.status_code == 403 and err.code == ErrorCode.ACCOUNT_REQUIRED and self.on_account_required:
-                try:
-                    self.on_account_required(sign_in_url_of(_json(res)))
-                except Exception:  # noqa: BLE001 - never throws into the route that saw it
-                    pass
+            if res.status_code == 403 and err.code == ErrorCode.ACCOUNT_REQUIRED:
+                if not from_worker_origin(res, self._ctx.base_url):
+                    # Only the Worker's own answer counts; from anywhere else it is an ordinary 403.
+                    err = PolarisError(ErrorCode.FORBIDDEN, "key ring was refused with status 403.", status=403)
+                elif self.on_account_required:
+                    # The Worker took the account away (V5 §11.5): Cloud Sync learns it from this route too.
+                    try:
+                        self.on_account_required(sign_in_url_of(_json(res)), for_subject)
+                    except Exception:  # noqa: BLE001 - never throws into the route that saw it
+                        pass
             raise err
         return res
 

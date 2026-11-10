@@ -19,7 +19,11 @@ flushes (bounded) and signs it out. Rules kept here (plans/U-sync-clients-slices
       rebuilding it empty, and the subject the Worker refused is not signed in again until a sign-out or
       a different subject. A key-ring or file ``account_required`` calls :meth:`CloudSyncApi.account_required`,
       so a device with no ``/sync`` traffic learns it too. The offered ``signInUrl`` is vetted (https on
-      the Worker's origin, else ``None``).
+      the Worker's origin, else ``None``). A sign-in the person completes in this run lifts the refusal; the
+      cached subject replayed at launch does not. A key-ring or file ``account_required`` counts only for the
+      person signed in when the call started, and only from the Worker's own origin. If the pin cannot be
+      removed it is retried at start and before any sign-in, and the sign-in waits for it
+      (``forgetPending`` is saved with the blocked journal).
 * S7  No event, log line or error here carries a value or the root; events name keys only.
 
 Licence state is never read or written from this module.
@@ -136,6 +140,7 @@ class CloudSyncApi:
         self._keyring = keyring
         # A key-ring route's ``account_required`` reaches the machine like a ``/sync`` one does.
         keyring.on_account_required = self.account_required
+        keyring.account_subject = lambda: self._subject_value
         self._config = config
         #: The persisted subject of the signed-in account, or ``None``.
         self._stored_subject = subject
@@ -294,6 +299,8 @@ class CloudSyncApi:
         if not self._listening:
             self._listening = True
             host.on_events(self._on_events)
+        # A pin left behind by an earlier run goes now, before anything signs in.
+        self._retry_forget()
         self._config.use_sync(self._port)
         # A journal saved while signed in still names its subject.
         with host.locked() as m:
@@ -309,12 +316,18 @@ class CloudSyncApi:
             if self._subject is not None:
                 self._leave()
 
-    def _sign_in(self, subject: str) -> None:
+    def _sign_in(self, subject: str, fresh: bool = False) -> None:
+        """``fresh``: the person completed this sign-in during this run (an identity event), not the
+        cached subject read at launch."""
         host = self._host
         if not host.started:
             return
-        # The Worker took this subject's account away: only a sign-out or another subject lifts it.
-        if subject == host.refused:
+        # The Worker took this subject's account away: a sign-out, another subject or a sign-in the
+        # person completes now lifts it; the subject replayed from the cache at launch does not.
+        if subject == host.refused and not fresh:
+            return
+        # The earlier key ring is not gone yet: nothing signs in until it is.
+        if not self._retry_forget():
             return
         # Another person: the first one leaves (unsent edits dropped, then forgotten) before this one
         # starts. The device credential is already the new person's, so nothing is sent for the old one.
@@ -339,7 +352,7 @@ class CloudSyncApi:
             self._host.clear_refused()
             return self._leave()
         if target != self._subject:
-            self._sign_in(target)
+            self._sign_in(target, change == "signed_in")
 
     # ── Leaving ──────────────────────────────────────────────────────────────────────────────
 
@@ -384,14 +397,18 @@ class CloudSyncApi:
         host.touch()
         self._join_chain()
 
-    def account_required(self, sign_in_url: Optional[str]) -> None:
+    def account_required(self, sign_in_url: Optional[str], for_subject: Optional[str] = None) -> None:
         """A key-ring or file route answered ``account_required`` (V5 §11.5): the machine takes the same
-        transition as for a ``/sync`` 403. Runs on its own thread, so the route that saw it never waits
-        on a pump; never raises into it."""
+        transition as for a ``/sync`` 403. ``for_subject`` is who was signed in when the call started; the
+        answer is ignored if the machine's person is another by now. Runs on its own thread, so the route
+        that saw it never waits on a pump; never raises into it."""
 
         def run() -> None:
             try:
                 self._attach()
+                # A late answer for a person who has gone says nothing about the one signed in now.
+                if for_subject != self._subject:
+                    return
                 self._host.account_required(sign_in_url)
             except Exception:  # noqa: BLE001
                 pass
@@ -487,38 +504,66 @@ class CloudSyncApi:
         except Exception:  # noqa: BLE001
             self._log("cloud sync: the key ring could not be locked")
 
-    def _forget_pin(self) -> None:
+    def _forget_pin(self) -> bool:
+        """Remove the key ring's pin; false (logged, never raised) when it stays."""
         try:
             self._keyring.forget()
+            return True
         except Exception:  # noqa: BLE001
             # The root is already gone (``forget`` locks first); only the pin file failed to go.
             self._log("cloud sync: the key ring pin could not be removed")
+            return False
+
+    def _retry_forget(self) -> bool:
+        """Try again to remove a pin an earlier blocked state left; true when none is left."""
+        host = self._host
+        if not host.forget_pending:
+            return True
+        self._forget_ring()
+        if not self._forget_pin():
+            return False
+        try:
+            host.settle_forget()
+        except Exception:  # noqa: BLE001
+            pass
+        return True
 
     def _purge(self, blocked: Optional[Tuple[Optional[str]]] = None) -> None:
         """The save transfers, the pin, then the synced data. With ``blocked`` (after
-        ``account_required``) the data is not purged: the machine is saved as it stands."""
+        ``account_required``) the data is not purged: the machine is saved as it stands, with the pin
+        still to be removed until it is."""
         self._tl.purging = True
         if self._purge_saves is not None:
             try:
                 self._purge_saves()
             except Exception:  # noqa: BLE001
                 self._log("cloud sync: the save transfers could not be deleted")
-        # The save transfers are gone before the ring is forgotten.
-        self._forget_pin()
         try:
-            if blocked is None:
-                self._host.purge()
-            else:
-                self._host.save_blocked(blocked[0])
-        except Exception:  # noqa: BLE001
-            self._log("cloud sync: the synced data could not be deleted")
-            # The app hears of it too (no values, no path): it may warn the person.
+            if blocked is not None:
+                # The state says the pin is pending before it is tried, so a crash cannot lose that.
+                try:
+                    self._host.save_blocked(blocked[0], True)
+                except Exception:  # noqa: BLE001
+                    self._data_failed()
+            # The save transfers are gone before the ring is forgotten.
+            removed = self._forget_pin()
             try:
-                self._emit({"type": "purgeFailed"})
+                if blocked is None:
+                    self._host.purge()
+                elif removed:
+                    self._host.settle_forget()
             except Exception:  # noqa: BLE001
-                pass
+                self._data_failed()
         finally:
             self._tl.purging = False
+
+    def _data_failed(self) -> None:
+        self._log("cloud sync: the synced data could not be deleted")
+        # The app hears of it too (no values, no path): it may warn the person.
+        try:
+            self._emit({"type": "purgeFailed"})
+        except Exception:  # noqa: BLE001
+            pass
 
     def _forget(self) -> None:
         """Drop the ring (the root first), then the synced data on disk and in memory. Each step is

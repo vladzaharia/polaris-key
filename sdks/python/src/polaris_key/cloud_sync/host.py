@@ -214,6 +214,8 @@ class CloudSyncHost:
         self._bound: Optional[str] = None
         #: The subject ``account_required`` took away (saved with the journal; see ``CloudSyncFile``).
         self._refused: Optional[str] = None
+        #: The key ring's pin is still to be removed (saved with the blocked journal).
+        self._forget_pending = False
         #: What the key ring last said about the root; applied to the machine at the next pump.
         self._root_pending: Optional[bool] = None
         self._building = False
@@ -329,6 +331,7 @@ class CloudSyncHost:
             saved = self._file.load()
             self._open_keys = {k: None for k in saved["openKeys"]}
             self._refused = saved["refused"]
+            self._forget_pending = saved["forgetPending"]
             self._mirror = _vetted(self._opts.catalog)
             self._served = _vetted(saved["catalog"])
             self._build(saved["persisted"])
@@ -706,9 +709,13 @@ class CloudSyncHost:
     def _save(self, persisted: Optional[Obj] = None) -> None:
         """Persist the journal. Committing the debounced edits is what ``persist()`` does by contract.
         The file never holds the root."""
+        self._save_checked(persisted)
+
+    def _save_checked(self, persisted: Optional[Obj] = None) -> bool:
+        """:meth:`_save`, saying whether the file was written (true too when nothing is to be written)."""
         with self._save_lock:
             if self._purged or self._machine is None:
-                return
+                return True
             with self._lock:
                 snapshot = persisted if persisted is not None else self.machine.persist()
             file: CloudSyncFile = {
@@ -718,11 +725,13 @@ class CloudSyncHost:
                 "catalog": self._served,
                 "openKeys": list(self._open_keys),
                 "refused": self._refused,
+                "forgetPending": self._forget_pending,
             }
             try:
                 self._file.save(file)
             except Exception:  # noqa: BLE001 - failing to persist never fails the call that produced it
-                pass
+                return False
+            return True
 
     # ── the timer ────────────────────────────────────────────────────────────────────────────
 
@@ -799,14 +808,34 @@ class CloudSyncHost:
             self.machine.account_required(sign_in_url)
         self.touch()
 
-    def save_blocked(self, subject: Optional[str]) -> None:
+    def save_blocked(self, subject: Optional[str], forget_pending: bool = False) -> None:
         """The state after ``account_required``, on this path only (sign-out and deactivation keep the
         full :meth:`purge`): the machine is saved as it stands, so the status is still ``blocked`` after
         a relaunch; what the person's snapshot held is already gone with the partition. ``subject`` is
-        the one the Worker refused. No timer stays armed."""
+        the one the Worker refused; ``forget_pending`` says the key ring's pin is still to be removed. No
+        timer stays armed. If the file cannot be written the old one (which holds the person's snapshot in
+        the clear) is removed, nothing is saved again until a sign-in, and what was refused is held in
+        memory for this run; raises only if the file could not be removed."""
         self._open_keys = {}
         self._refused = subject
+        self._forget_pending = forget_pending
         self._cancel_timer()
+        if self._save_checked():
+            return
+        with self._save_lock:
+            self._purged = True
+            self._file.remove()
+
+    @property
+    def forget_pending(self) -> bool:
+        """Whether the key ring's pin still has to be removed (see ``CloudSyncFile``)."""
+        return self._forget_pending
+
+    def settle_forget(self) -> None:
+        """The pin is gone: stop retrying."""
+        if not self._forget_pending:
+            return
+        self._forget_pending = False
         self._save()
 
     def purge(self) -> None:
@@ -821,6 +850,7 @@ class CloudSyncHost:
             self._remove_quietly()
         self._open_keys = {}
         self._refused = None
+        self._forget_pending = False
         self._cancel_timer()
         try:
             if self.started:

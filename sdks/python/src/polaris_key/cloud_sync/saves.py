@@ -1140,7 +1140,7 @@ class SavesApi:
         self._emit = emit
         self._records = MachineRecords(host, keyring.codec, lambda: host.machine.encryption_mode() == "e2e")
         self._journal = FileJournal(ctx.dirs.state)
-        self._transport = FileRoutes(ctx, lambda: tokens.current, self._account_required)
+        self._transport = FileRoutes(ctx, lambda: tokens.current, self._account_required, subject)
         self._engine = TransferEngine(
             self._transport, self._journal, max_retry_after_seconds=SAVES_MAX_RETRY_AFTER_SECONDS
         )
@@ -1217,10 +1217,13 @@ class SavesApi:
         with self._lock:
             return list(self._active.values())
 
-    def _account_required(self, sign_in_url: Optional[str]) -> None:
+    def _account_required(self, sign_in_url: Optional[str], for_subject: Optional[str]) -> None:
         """A file route answered ``account_required`` (V5 §11.5): the machine takes the same transition as
-        for a ``/sync`` 403 (its ``signedOut`` event makes the Cloud Sync API forget). On its own thread, so
-        the transfer that saw it never waits on a pump."""
+        for a ``/sync`` 403 (its ``signedOut`` event makes the Cloud Sync API forget), unless the person
+        signed in now is not the one the call started for. On its own thread, so the transfer that saw it
+        never waits on a pump."""
+        if for_subject != self._subject():
+            return
         threading.Thread(
             target=lambda: self._host.account_required(sign_in_url), name="polaris-sync-account", daemon=True
         ).start()

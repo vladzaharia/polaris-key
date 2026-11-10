@@ -125,6 +125,7 @@ class CloudSyncStateFile:
             "catalog": None,
             "openKeys": [],
             "refused": None,
+            "forgetPending": False,
         }
         raw = _read_json(self.path)
         if not isinstance(raw, dict) or raw.get("v") != 1 or raw.get("product") != self._product:
@@ -146,6 +147,7 @@ class CloudSyncStateFile:
             "catalog": raw.get("catalog") if is_catalog_shape(raw.get("catalog")) else None,
             "openKeys": open_keys[-OPEN_KEYS_MAX:],
             "refused": raw["refused"] if isinstance(raw.get("refused"), str) else None,
+            "forgetPending": raw.get("forgetPending") is True,
         }
 
     def save(self, file: CloudSyncFile) -> None:
