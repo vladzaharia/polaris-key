@@ -28,7 +28,8 @@
         "PKEY_DEV_APPROVE",
         "PKEY_DOCS_SKIP_LANES",
         "PKEY_DOCS_LANES",
-        "PKEY_DOCS_PYTHON"
+        "PKEY_DOCS_PYTHON",
+        "PKEY_TEST_SHUFFLE"
       ]
     },
     "lint": {},

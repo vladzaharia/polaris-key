@@ -13,5 +13,11 @@ export default defineConfig({
     setupFiles: ["test/setup/oidcClient.ts"],
     testTimeout: 20_000,
     hookTimeout: 60_000,
+    // The nightly full run shuffles the order of the test files (PKEY_TEST_SHUFFLE=1, set by a
+    // dispatch of ci.yml with its `shuffle` input), so a file that depends on another's side
+    // effects fails there rather than by chance on a push. Every other run keeps the fixed order.
+    sequence: {
+      shuffle: { files: process.env.PKEY_TEST_SHUFFLE === "1", tests: false },
+    },
   },
 });

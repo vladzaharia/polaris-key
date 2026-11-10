@@ -498,7 +498,7 @@
     }
   },
   "jobs": {
-    "always": ["Changes (*", "CI OK"],
+    "always": ["Changes (*", "Full run (*", "CI OK"],
     "js": [
       "JS/TS static (*",
       "JS/TS tests (Worker)",

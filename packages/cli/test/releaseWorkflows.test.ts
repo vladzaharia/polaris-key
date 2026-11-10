@@ -1291,7 +1291,12 @@ describe("workflow hardening", () => {
       // for 120 minutes at most, never forever.
       expect(script).toContain("actions/workflows/$CI_WORKFLOW/runs");
       expect(script).toContain('CI_WORKFLOW="${CI_WORKFLOW:-ci.yml}"');
-      expect(script).toContain('.path == $ENV.CI_PATH and .event == "push"');
+      expect(script).toContain(
+        '.path == $ENV.CI_PATH and (.event == "push" or .event == "workflow_dispatch")',
+      );
+      // A tag needs a full run (every lane on the full matrices) on the exact SHA, not a narrowed push.
+      expect(gate.env).toMatchObject({ REQUIRE_FULL: "1" });
+      expect(script).toContain('[ -n "$REQUIRE_FULL" ]');
       expect(script).toContain(".name == $ENV.CHECK_NAME");
       expect(script).toContain('(.app.slug // "") == "github-actions"');
       expect(script).toContain('CHECK_NAME="${CHECK_NAME:-CI OK}"');

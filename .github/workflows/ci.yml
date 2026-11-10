@@ -3,19 +3,37 @@ name: CI
 on:
   push:
     # `next` is the lead's integration branch: it runs CI narrowed, per lane, to the files touched
-    # since that lane's newest green ancestor (tools/ci-scope.mjs), on the full matrices, and a lane
-    # runs whenever it has none; promote.yml fast-forwards main to the SHA that went green there. main runs the full CI,
-    # and releases are tagged from main.
+    # since that lane's newest green ancestor (tools/ci-scope.mjs), on the pull-request matrices
+    # (the floor and the latest of each), and a lane runs whenever it has none; promote.yml
+    # fast-forwards main to the SHA that went green there. main runs the full CI, and releases are
+    # tagged from main.
     branches: [main, next]
   pull_request:
+  # The full run (every lane, the full matrices): the nightly (nightly-advisory.yml dispatches it on
+  # next's HEAD), on demand, and before a `v*` tag, which deploy.yml accepts only after a full run
+  # is green on its exact SHA: `gh workflow run ci.yml --ref main`.
+  workflow_dispatch:
+    inputs:
+      shuffle:
+        description: "Run the Worker suite's files in a random order (the nightly sets it)"
+        type: boolean
+        default: false
 
 # A newer push to the same branch, or a newer push to the same pull request, supersedes the run in
 # flight: the lanes run for an hour, and a result for a commit that is no longer the tip is noise.
 # A cancelled run concludes "cancelled", and nothing treats that as green: a tag on a superseded
 # commit is refused by deploy.yml until CI OK is green on that exact SHA.
+# A dispatched run has its own group, so a push does not cancel the nightly or the pre-tag run.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event_name == 'workflow_dispatch' && 'dispatch-' || '' }}${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
+# The nightly and the pre-tag run read the whole tree: scoped suites run in full (PKEY_TEST_SCOPE).
+# Only a dispatch sets them; the Worker's file shuffle (packages/worker/vitest.config.ts) also needs
+# the `shuffle` input.
+env:
+  PKEY_TEST_SCOPE: ${{ github.event_name == 'workflow_dispatch' && 'all' || '' }}
+  PKEY_TEST_SHUFFLE: ${{ github.event_name == 'workflow_dispatch' && inputs.shuffle && '1' || '' }}
 
 # Least privilege. Without this block the workflow inherits the repository default, which is
 # configurable per-org and may be read-write. CI only ever needs to read the checkout.
@@ -26,14 +44,14 @@ permissions:
 # once, by the `changes` job from tools/ci-scope.json (the same map `pnpm gate` reads
 # through tools/ci-scope.mjs): a lane runs when a changed path is one of its `paths` or a `shared` input;
 # the four `js*` jobs always run. A pull request runs the floor and the latest of each matrix. A push
-# to `next` tracks green per lane: for each lane, the base is the newest ancestor of HEAD (the whole
+# to `next` (also on those matrices) tracks green per lane: for each lane, the base is the newest ancestor of HEAD (the whole
 # ancestry, not a window) on which every job of the lane concluded success in this workflow's push
 # run (job conclusions, so a lane that passed inside a failed or cancelled run counts), or was
 # skipped by a successful `changes` job because it was green at its own base. A lane runs when a file
-# changed since ITS base is one of its paths or a shared input, or when it has no base, on the full
-# matrices. `CI OK` on such a run means: every lane touched since its own base passed here, and every
-# other lane was green at its base. `main`, a tag, a manual run, and any run whose ancestry, API or
-# diff cannot be read run every lane and the full matrix. A skipped lane counts as passed in `ci-ok`
+# changed since ITS base is one of its paths or a shared input, or when it has no base. `CI OK` on such a run means: every lane touched since its own base passed here, and every
+# other lane was green at its base. `main`, a tag, a dispatch, and any run whose ancestry, API or
+# diff cannot be read run every lane (the first three on the full matrices; the `Full run` job below
+# marks them, and a tag is deployed only after one is green on its SHA). A skipped lane counts as passed in `ci-ok`
 # only when the run narrowed (`changes.outputs.full` is "false"), which is sound only because a lane
 # is skipped only when it was green at its base; on a full run a skipped job fails it. A failed or
 # cancelled one never counts. tools/ci-scope.json `jobs` maps every job below to its lane
@@ -49,6 +67,8 @@ jobs:
       actions: read
     outputs:
       full: ${{ steps.scope.outputs.full }}
+      # "true" only for a push to main, a tag and a dispatch: every lane on the full matrices.
+      full-run: ${{ steps.scope.outputs.full-run }}
       # The js group's green base when only packages/ changed since it, else empty: the test jobs
       # then run turbo for the affected packages only (tools/ci-js-affected.mjs).
       js-base: ${{ steps.scope.outputs.js-base }}
@@ -93,6 +113,17 @@ jobs:
         # tools/ci-scope.mjs has no dependencies: plain Node, no install (it calls `gh` for a push to
         # next). Outside a pull request BASE_REF is empty; a push to a branch but next runs every lane.
         run: node tools/ci-scope.mjs ci --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" --base "origin/$BASE_REF" --github-output
+
+  # The mark of a full run, read by tools/require-ci-ok.sh (the name is its FULL_JOB). It is not in
+  # ci-ok's needs: a narrowed run skips it, and a skipped job there would fail a full-lane run.
+  full-run:
+    name: Full run (every lane, full matrices)
+    needs: changes
+    if: ${{ needs.changes.outputs.full-run == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo "Every lane ran on the full matrices for $GITHUB_SHA." >> "$GITHUB_STEP_SUMMARY"
 
   # The old single `js` job is four parallel jobs (CS-2): `js` (static checks, below) and the three
   # test jobs `js-worker`, `js-admin`, `js-rest`. Together they run exactly the packages the old

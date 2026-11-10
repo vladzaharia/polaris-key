@@ -11,6 +11,11 @@ name: Nightly advisory
 #   swiftui-mac        the SwiftUI kit's macOS renders (macos-26 and macos-15)
 #   compose-desktop    the Compose desktop kit on the three desktop OSes
 #   apple-footprint    the iOS app footprint report (report only)
+#   full-ci            dispatches ci.yml on next's HEAD with the full matrices (a push to next runs
+#                      the floor and the latest of each matrix only: Godot 4.5.2 and 4.6.3, the
+#                      Windows and macOS desktop legs, Python on macOS and the emulator's API 34 run
+#                      here), with every scoped suite in full (PKEY_TEST_SCOPE=all) and the Worker's
+#                      test files shuffled
 #
 # Every lane runs on main with no path filter: the schedule always runs against the default
 # branch, a manual run against the ref chosen.
@@ -28,6 +33,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The full CI run on next's HEAD, nightly and on demand. A dispatched ci.yml runs every lane on the
+  # full matrices (its own result, not this job's: this one only starts it and reports the run).
+  # The run is also the one a tag could use if it is on the same SHA, but the lead dispatches the
+  # pre-tag run on main (docs/RUNBOOK.md). Needs `actions: write` for the dispatch.
+  full-ci:
+    name: Full CI on next
+    # Advisory like the others: the dispatched run carries its own result.
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Dispatch ci.yml on next, shuffled
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh workflow run ci.yml --ref next -f shuffle=true
+          echo "Dispatched the full CI on next. Runs: https://github.com/$GH_REPO/actions/workflows/ci.yml" >> "$GITHUB_STEP_SUMMARY"
+
   # The Swift SDK on Linux (FoundationNetworking). The Apple jobs cannot exercise the Linux
   # redirect path: Foundation there has no per-request redirect hook, so Transport and BackendClient
   # go through `DelegatedExchange`. This builds the package in the official Swift image and runs the

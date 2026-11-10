@@ -108,10 +108,30 @@ Only semver-like `v*` tags deploy production. Pushes to `main` run CI but do not
 **The lead flow: push to `next`, `main` follows when green, tag from `main`.**
 
 ```sh
-git push origin <sha>:refs/heads/next   # the full CI runs on next, like on main
+git push origin <sha>:refs/heads/next   # CI runs on next, narrowed per lane, on the floor and latest of each matrix
 # CI completes with success -> promote.yml fast-forwards main to that SHA (nothing to do)
+gh workflow run ci.yml --ref main       # the full run on that SHA: every lane, every matrix (see below)
+# wait for its CI OK to be green on the SHA, then:
 git fetch origin main && git tag v0.1.0 origin/main && git push origin v0.1.0
 ```
+
+**Before a tag: a full CI run on the exact SHA.** A push to `next` runs only the floor and the
+latest of each matrix (Godot 4.5.2 and 4.6.3, the Windows and macOS desktop legs, Python on macOS
+and emulator API 34 are left out), and `promote.yml`'s fast-forward starts no run on `main`. The
+full matrices run nightly on `next`'s HEAD (`nightly-advisory.yml`, job `full-ci`) and on demand.
+`deploy.yml` refuses a tag until a run of `ci.yml` that checked every lane on the full matrices (its
+`Full run (every lane, full matrices)` job succeeded: a push to `main`, or a dispatch) has a green
+`CI OK` on the tagged SHA. A run from a push to `next` or a pull request never counts. Dispatch it
+on the commit you will tag, after `main` has moved there:
+
+```sh
+gh workflow run ci.yml --ref main
+gh run list --workflow ci.yml --branch main --event workflow_dispatch --limit 1   # watch it
+```
+
+A dispatch on a branch runs that branch's tip, so `--ref main` is the SHA `git tag v… origin/main`
+tags. Tagging before it is green is not an error to fix by hand: the deploy waits up to 120 minutes
+and refuses if no full run exists.
 
 `promote.yml` moves `main` only by fast-forward and only when `main` is already an ancestor of the
 tested SHA; if `main` holds a commit `next` lacks (a hotfix pushed straight to `main`) the run fails
@@ -123,8 +143,8 @@ ran on that exact SHA (through `next`), and `deploy.yml` accepts that run as the
 runs CI and publishes the prerelease as before.
 
 `deploy.yml`'s `verify` job does not rebuild or retest. It waits (up to 120 minutes) for the CI
-workflow's `CI OK` check run on the tagged SHA and refuses on anything but `success`, on no such
-check run, and on an API error. A newer push to the same branch cancels the CI run in flight, so tag
+workflow's `CI OK` check run on the tagged SHA, from a full run (above), and refuses on anything but
+`success`, on no such check run, on no full run, and on an API error. A newer push to the same branch cancels the CI run in flight, so tag
 the SHA whose `CI OK` is green; a tag on a superseded SHA is refused. Production is protected by the
 environment-scoped token, the `v*` deployment tag policy, the admin-only `v*` tag ruleset and this
 gate; the `production` environment has no required reviewer (DEPLOYMENT.md §7).

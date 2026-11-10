@@ -46,8 +46,10 @@ interface CheckRow {
 interface Fixture {
   runs: RunRow[];
   checks: CheckRow[];
+  /** Each run's jobs, for REQUIRE_FULL (a conclusion of null is a job still running). */
+  jobs?: Record<number, { name: string; conclusion: string | null }[]>;
   /** Fail the named API call (exit 1 with an error body on stdout, as gh does). */
-  fail?: "runs" | "checks";
+  fail?: "runs" | "checks" | "jobs";
 }
 
 /** Run the gate against a fixture; `then` replaces the fixture after the first polls. */
@@ -73,6 +75,8 @@ function gate(fx: Fixture, env: Record<string, string> = {}) {
     });
   writeFileSync(join(dir, "fixture.json"), body(fx));
   writeFileSync(join(dir, "fail"), fx.fail ?? "");
+  for (const [id, jobs] of Object.entries(fx.jobs ?? {}))
+    writeFileSync(join(dir, `jobs-${id}.json`), JSON.stringify({ jobs }));
   writeFileSync(
     join(dir, "gh"),
     `#!/bin/bash
@@ -83,10 +87,13 @@ echo "$url" >> "$STUB_DIR/calls"
 case "$url" in
   *actions/workflows/*) kind=runs ;;
   *check-runs*) kind=checks ;;
+  *actions/runs/*/jobs*) kind=jobs ;;
   *) echo "unexpected url $url" >&2; exit 2 ;;
 esac
 if [ "$(cat "$STUB_DIR/fail")" = "$kind" ]; then echo '{"message":"Bad credentials"}'; exit 1; fi
-jq -r "$prog" "$STUB_DIR/fixture.json"
+file="$STUB_DIR/fixture.json"
+if [ "$kind" = jobs ]; then id=$(echo "$url" | sed -E 's#.*actions/runs/([0-9]+)/.*#\\1#'); file="$STUB_DIR/jobs-$id.json"; [ -f "$file" ] || echo '{"jobs":[]}' > "$file"; fi
+jq -r "$prog" "$file"
 `,
   );
   chmodSync(join(dir, "gh"), 0o755);
@@ -146,10 +153,10 @@ describe("tools/require-ci-ok.sh", () => {
     expect(r.out).toContain("without a 'CI OK' check run");
   });
 
-  it("refuses when ci.yml has no push run on the SHA, after the grace polls", () => {
+  it("refuses when ci.yml has no push or dispatch run on the SHA, after the grace polls", () => {
     const r = gate({ runs: [], checks: [] });
     expect(r.status).toBe(1);
-    expect(r.out).toContain("no push run");
+    expect(r.out).toContain("no push or dispatch run");
     expect(r.out).toContain("No CI run registered");
   });
 
@@ -185,7 +192,7 @@ describe("tools/require-ci-ok.sh", () => {
       ],
     });
     expect(r.status).toBe(1);
-    expect(r.out).toContain("no push run");
+    expect(r.out).toContain("no push or dispatch run");
   });
 
   it("the newest CI OK decides: a later failure beats an earlier success", () => {
@@ -235,9 +242,128 @@ describe("tools/require-ci-ok.sh", () => {
     },
   );
 
+  it("accepts a dispatched run of ci.yml", () => {
+    const r = gate({
+      runs: [{ id: 1, status: "completed", event: "workflow_dispatch" }],
+      checks: [ci()],
+    });
+    expect(r.status, r.out).toBe(0);
+  });
+
   it("waits up to 120 minutes by default", () => {
     const text = readFileSync(SCRIPT, "utf8");
     expect(text).toContain('MAX_ATTEMPTS="${MAX_ATTEMPTS:-240}"');
     expect(text).toContain('INTERVAL="${INTERVAL:-30}"');
+  });
+});
+
+describe("tools/require-ci-ok.sh with REQUIRE_FULL (a tag)", () => {
+  const FULL = "Full run (every lane, full matrices)";
+  const full = { REQUIRE_FULL: "1" };
+
+  it("passes on a CI OK from a run whose Full run job succeeded", () => {
+    const r = gate(
+      {
+        runs: [{ id: 1, status: "completed", event: "workflow_dispatch" }],
+        checks: [ci()],
+        jobs: { 1: [{ name: FULL, conclusion: "success" }] },
+      },
+      full,
+    );
+    expect(r.status, r.out).toBe(0);
+    expect(r.calls).toContain("actions/runs/1/jobs");
+  });
+
+  it("refuses a narrowed push run, whose Full run job was skipped, and says how to dispatch one", () => {
+    const r = gate(
+      {
+        runs: [{ id: 1, status: "completed" }],
+        checks: [ci()],
+        jobs: { 1: [{ name: FULL, conclusion: "skipped" }] },
+      },
+      full,
+    );
+    expect(r.status).toBe(1);
+    expect(r.out).toContain("gh workflow run ci.yml --ref main");
+    expect(r.out).not.toContain("concluded success");
+  });
+
+  it("refuses a run that has no Full run job at all", () => {
+    const r = gate(
+      { runs: [{ id: 1, status: "completed" }], checks: [ci()], jobs: {} },
+      full,
+    );
+    expect(r.status).toBe(1);
+  });
+
+  it("passes the same narrowed run when a full one is not required", () => {
+    const r = gate({
+      runs: [{ id: 1, status: "completed" }],
+      checks: [ci()],
+      jobs: { 1: [{ name: FULL, conclusion: "skipped" }] },
+    });
+    expect(r.status, r.out).toBe(0);
+    expect(r.calls).not.toContain("/jobs");
+  });
+
+  it("takes the full run's CI OK even when a newer narrowed run on the SHA failed", () => {
+    const r = gate(
+      {
+        runs: [
+          { id: 1, status: "completed", event: "workflow_dispatch" },
+          { id: 2, status: "completed" },
+        ],
+        checks: [
+          ci({ id: 100, run: 1 }),
+          ci({ id: 200, run: 2, conclusion: "failure" }),
+        ],
+        jobs: {
+          1: [{ name: FULL, conclusion: "success" }],
+          2: [{ name: FULL, conclusion: "skipped" }],
+        },
+      },
+      full,
+    );
+    expect(r.status, r.out).toBe(0);
+  });
+
+  it("does not take a green CI OK from an open narrowed run as proof", () => {
+    const r = gate(
+      {
+        runs: [{ id: 1, status: "in_progress" }],
+        checks: [ci({ run: 1 })],
+        jobs: { 1: [{ name: FULL, conclusion: "skipped" }] },
+      },
+      full,
+    );
+    expect(r.status).toBe(1);
+    expect(r.out).not.toContain("concluded success");
+  });
+
+  it("waits while a full run has not reached its Full run job", () => {
+    const r = gate(
+      {
+        runs: [{ id: 1, status: "in_progress", event: "workflow_dispatch" }],
+        checks: [],
+        jobs: { 1: [{ name: FULL, conclusion: null }] },
+      },
+      full,
+    );
+    expect(r.status).toBe(1);
+    expect(r.out).toContain("has not reached its Full run job");
+  });
+
+  it("fails closed on an API error reading the jobs", () => {
+    const r = gate(
+      {
+        runs: [{ id: 1, status: "completed" }],
+        checks: [ci()],
+        jobs: { 1: [{ name: FULL, conclusion: "success" }] },
+        fail: "jobs",
+      },
+      full,
+    );
+    expect(r.status).toBe(1);
+    expect(r.out).toContain("could not read the jobs");
   });
 });

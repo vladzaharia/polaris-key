@@ -5,13 +5,14 @@
  * (tools/gate.mjs) both ask this script, so a lane runs for the same files in CI and in the local gate.
  *
  *   node tools/ci-scope.mjs ci [--event <name>] [--base <rev>] [--head <rev>] [--github-output]
- *       print (or append to $GITHUB_OUTPUT) `<lane>=true|false` for every lane, `full`, `js-base`
- *       and `<matrix>-matrix=<json>` for every matrix. The event defaults to $GITHUB_EVENT_NAME. Two
- *       runs narrow: a pull_request (to the files changed against its base, on the floor and latest
- *       of each matrix) and a push to `next` (per lane: to the files changed since THAT lane's newest
- *       green ancestor, see laneBases, on the FULL matrices). Every other event (a push to main, a
- *       tag, a manual run) runs every lane and the full matrices, and so does a push to `next` whose
- *       ancestry, API or diff cannot be read, and a lane that has no green ancestor.
+ *       print (or append to $GITHUB_OUTPUT) `<lane>=true|false` for every lane, `full`, `full-run`,
+ *       `js-base` and `<matrix>-matrix=<json>` for every matrix. The event defaults to
+ *       $GITHUB_EVENT_NAME. Two runs narrow: a pull_request (to the files changed against its base)
+ *       and a push to `next` (per lane: to the files changed since THAT lane's newest green
+ *       ancestor, see laneBases); both run the floor and latest of each matrix. Every other event
+ *       (a push to main, a tag, a dispatch) runs every lane and the full matrices, and so does a
+ *       push to `next` whose ancestry, API or diff cannot be read, or a lane with no green ancestor
+ *       (the lanes, not the matrices).
  *   node tools/ci-scope.mjs replay [--count <n>] [--head <rev>]
  *       for each of the last <n> (default 70) commits reachable from <rev> (default HEAD), print
  *       how many lanes the change since its first parent turns on (a measurement of the scope
@@ -150,16 +151,16 @@ const baseGroup = (scope, lane) =>
  * whose diff is unknown, runs. `js-base` is the js group's base when every file changed since it is
  * under `packages/`, else empty. A push to main, a tag, a manual run and a push to `next` with no
  * `push` or no base at all run every lane and the full matrices. `full` is "false" exactly when
- * lanes are narrowed, which is when `ci-ok` may count a skipped lane as passed.
+ * lanes are narrowed, which is when `ci-ok` may count a skipped lane as passed. Every push to
+ * `next` takes the pull-request matrices (the floor and the latest of each); the full matrices run
+ * on main, on a tag and on a dispatch (the nightly, and the run before a tag). `full-run` is "true"
+ * only for those.
  */
 export function ciOutputs(scope, { event, ref, files, push }) {
   const lanes = Object.keys(scope.lanes);
   const pr = event === "pull_request" && files !== null && files !== undefined;
-  const next =
-    event === "push" &&
-    ref === NEXT_REF &&
-    !!push &&
-    Object.values(push.bases).some(Boolean);
+  const nextPush = event === "push" && ref === NEXT_REF;
+  const next = nextPush && !!push && Object.values(push.bases).some(Boolean);
   const on = pr
     ? selectLanes(scope, files)
     : next
@@ -175,6 +176,10 @@ export function ciOutputs(scope, { event, ref, files, push }) {
     Object.entries(on).map(([l, v]) => [l, String(v)]),
   );
   out.full = String(!(pr || next));
+  // A full RUN is one that checks every lane on the full matrices: a push to main, a tag or a
+  // dispatch. A push to `next` never is, even when no lane has a base (every lane runs then, on the
+  // pull-request matrices), so `require-ci-ok.sh` can tell the run a tag needs from a push.
+  out["full-run"] = String(!(pr || nextPush));
   const jsFiles = next ? push.files.js : null;
   out["js-base"] =
     next &&
@@ -184,7 +189,9 @@ export function ciOutputs(scope, { event, ref, files, push }) {
       ? push.bases.js
       : "";
   for (const name of Object.keys(scope.matrices))
-    out[`${name}-matrix`] = JSON.stringify(matrixFor(scope, name, pr));
+    out[`${name}-matrix`] = JSON.stringify(
+      matrixFor(scope, name, pr || nextPush),
+    );
   return out;
 }
 
