@@ -23,7 +23,7 @@ v0.11 scope (owner 2026-11-03). CC-29.0 is merged on `next` (V5 §15.12, the fou
 ## Read first
 
 - `AGENTS.md` (always).
-- The CC-23L plan §6-§10 (the lead's copy)
+- The CC-23L plan §6-§10 (`plans/CC-23L.md`)
 - `docs/security/WIRE-CONTRACT-V5.md` §15.12
 
 ## Acceptance criteria

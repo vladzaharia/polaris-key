@@ -19915,7 +19915,7 @@
       "repo": "polaris-key",
       "optional": false,
       "refs": [
-        "CC-23L plan §6-§10 (the lead's copy; not in the repository)",
+        "CC-23L plan §6-§10 (plans/CC-23L.md)",
         "WIRE-CONTRACT-V5 §15.12"
       ],
       "brief": "wp/CC-29-local-links.md",
