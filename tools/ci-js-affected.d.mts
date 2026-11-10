@@ -5,3 +5,4 @@ export declare function affected(
   base: string | undefined,
   run?: (args: string[]) => string,
 ): boolean;
+export declare const EXTRA_INPUTS: Record<string, string[]>;

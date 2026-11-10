@@ -91,7 +91,8 @@ and `CI OK` always run.
 
 The `js-worker`, `js-admin` and `js-rest` test jobs also narrow: when every file changed since
 the `js` base is under `packages/`, they run turbo for the changed packages and their dependents
-only (`tools/ci-js-affected.mjs`); any other change, such as a root file, `sdks/` or
+only (`tools/ci-js-affected.mjs`), plus the Worker whenever `docs`, `admin` or `elements`
+changed, because its tests read their files; any other change, such as a root file, `sdks/` or
 `conformance/`, runs everything.
 
 A narrowed run's `CI OK` means: every lane touched since its own base passed on this run, and

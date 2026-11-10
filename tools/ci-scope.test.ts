@@ -23,7 +23,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
-import { affected, packagesOf } from "./ci-js-affected.mjs";
+import { affected, EXTRA_INPUTS, packagesOf } from "./ci-js-affected.mjs";
 import {
   changedFiles,
   ciOutputs,
@@ -1019,13 +1019,48 @@ describe("the JS test jobs narrow with the js base", () => {
     expect(affected("@polaris-key/worker", "abc", () => "not json")).toBe(true);
   });
 
+  it("selects the Worker when docs, admin or elements changed: its tests read their files", () => {
+    const only = (pkg: string) => () => `{"tasks":[{"package":"${pkg}"}]}`;
+    for (const pkg of ["docs", "admin", "elements"])
+      expect(
+        affected("@polaris-key/worker", "abc", only(`@polaris-key/${pkg}`)),
+        pkg,
+      ).toBe(true);
+    expect(
+      affected("@polaris-key/worker", "abc", only("@polaris-key/node")),
+    ).toBe(false);
+    // Only the Worker has undeclared inputs; the admin SPA's own tests do not read the docs build.
+    expect(
+      affected("@polaris-key/admin", "abc", only("@polaris-key/docs")),
+    ).toBe(false);
+    expect(Object.keys(EXTRA_INPUTS)).toEqual(["@polaris-key/worker"]);
+  });
+
+  it("lists every sibling package the Worker's tests open by relative path", () => {
+    const tests = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+        e.isDirectory() ? tests(join(dir, e.name)) : [join(dir, e.name)],
+      );
+    const sibling =
+      /["']\.\.["'], ["']\.\.["'], ["'](docs|admin|elements|cli|ui-core|sdk-[a-z]+|server|ui-qa)["']/;
+    const found = new Set<string>();
+    for (const f of tests(join(ROOT, "packages", "worker", "test")))
+      if (/\.(ts|tsx)$/.test(f))
+        for (const m of readFileSync(f, "utf8").matchAll(
+          new RegExp(sibling, "g"),
+        ))
+          found.add(`@polaris-key/${m[1]}`);
+    for (const pkg of found)
+      expect(EXTRA_INPUTS["@polaris-key/worker"], pkg).toContain(pkg);
+  });
+
   it("selects by turbo's `...[base]` task list", () => {
     const calls: string[][] = [];
     const run = (args: string[]) => {
       calls.push(args);
-      return 'warn\n{"tasks":[{"package":"@polaris-key/docs"},{"package":"@polaris-key/node"}]}';
+      return 'warn\n{"tasks":[{"package":"@polaris-key/react"},{"package":"@polaris-key/node"}]}';
     };
-    expect(affected("@polaris-key/docs", "abc", run)).toBe(true);
+    expect(affected("@polaris-key/react", "abc", run)).toBe(true);
     expect(affected("@polaris-key/worker", "abc", run)).toBe(false);
     expect(calls[0]).toContain("--filter=...[abc]");
     expect(packagesOf('{"tasks":[]}').size).toBe(0);

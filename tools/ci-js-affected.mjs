@@ -21,6 +21,22 @@ export function packagesOf(dryRunText) {
   return new Set((json.tasks ?? []).map((t) => t.package));
 }
 
+/**
+ * Packages a package's tests read from disk without depending on them in the workspace graph, so
+ * turbo's `...[base]` cannot see the edge: the Worker's tests read packages/docs/dist (the slug
+ * manifest, the built site's CSP hashes, the search index), packages/admin/dist and
+ * packages/admin/src (the help-link tables, the SPA shells' CSP hashes) and packages/elements. A
+ * change to one of them selects the Worker. (Other reads leave packages/: products/, sdks/,
+ * conformance/, which js-base never narrows.)
+ */
+export const EXTRA_INPUTS = {
+  "@polaris-key/worker": [
+    "@polaris-key/docs",
+    "@polaris-key/admin",
+    "@polaris-key/elements",
+  ],
+};
+
 /** True when `pkg` is selected by `...[base]`, or when there is no base or turbo cannot say. */
 export function affected(
   pkg,
@@ -34,9 +50,10 @@ export function affected(
 ) {
   if (!base) return true;
   try {
-    return packagesOf(
+    const selected = packagesOf(
       run(["run", "test", "--dry=json", `--filter=...[${base}]`]),
-    ).has(pkg);
+    );
+    return [pkg, ...(EXTRA_INPUTS[pkg] ?? [])].some((p) => selected.has(p));
   } catch {
     return true;
   }
