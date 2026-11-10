@@ -661,9 +661,7 @@ public struct ReleaseNotesView: View {
 
         /// A bar with no value: the total is unknown, or the step has no count. No percentage.
         private func indeterminate(_ style: KitResolvedStyle) -> some View {
-            ProgressView()
-                .progressViewStyle(.linear)
-                .tint(style.palette.accentSolid)
+            IndeterminateBar()
                 .accessibilityLabel(Text(strings.string("common.updateProgressLabel")))
         }
 

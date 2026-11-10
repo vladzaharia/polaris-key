@@ -630,6 +630,57 @@ public struct ProgressBar: View {
     }
 }
 
+/// A bar with no value (the total is unknown): on iOS an accent capsule about 30 % of the track
+/// that slides across it every 1.2 s. Reduce Motion holds it at 40 % and pulses it softly; a
+/// frozen render (`polarisKeyNow` set) holds it still. The Mac keeps the system bar. It is not an
+/// element unless the caller labels it: the label above it carries the state.
+public struct IndeterminateBar: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.polarisKeyNow) private var frozenNow
+    @State private var phase = false
+
+    public init() {}
+
+    static let share: CGFloat = 0.3
+    static let heldShare: CGFloat = 0.4
+    static let period: Double = 1.2
+
+    public var body: some View {
+        kitStyle { style in
+            #if os(macOS)
+                ProgressView().progressViewStyle(.linear).tint(style.palette.accentSolid)
+            #else
+                GeometryReader { geo in
+                    let width = geo.size.width
+                    let held = reduceMotion || frozenNow != nil
+                    let segment = width * (held ? Self.heldShare : Self.share)
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(style.palette.accentSolid.opacity(0.18))
+                        Capsule().fill(style.palette.accentSolid)
+                            .frame(width: segment)
+                            .offset(
+                                x: held ? 0 : (phase ? width : -segment)
+                            )
+                            .opacity(reduceMotion && frozenNow == nil && phase ? 0.55 : 1)
+                    }
+                    .clipShape(Capsule())
+                }
+                .frame(height: 4)
+                .onAppear {
+                    guard frozenNow == nil else { return }
+                    if reduceMotion {
+                        withAnimation(.easeInOut(duration: Self.period).repeatForever()) { phase = true }
+                    } else {
+                        withAnimation(.linear(duration: Self.period).repeatForever(autoreverses: false)) {
+                            phase = true
+                        }
+                    }
+                }
+            #endif
+        }
+    }
+}
+
 /// The wait indicator (DL7, rule 4): nothing for the first 250 ms, then the platform's
 /// `ProgressView` with a muted label. It holds still under Reduce Motion.
 public struct LoadingIndicator: View {

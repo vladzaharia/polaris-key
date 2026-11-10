@@ -43,6 +43,13 @@ enum SaveShortWindow {
     }
 }
 
+private struct TitleCap: ViewModifier {
+    let capped: Bool
+    func body(content: Content) -> some View {
+        if capped { content.dynamicTypeSize(...DynamicTypeSize.accessibility3) } else { content }
+    }
+}
+
 private struct SaveWindowKey: PreferenceKey {
     static let defaultValue: CGSize = .zero
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
@@ -99,7 +106,7 @@ public struct SaveConflictView: View {
                         header: !(short && accessibility),
                         dockActions: state != .choose && !short
                     ) {
-                        heading(screen, state)
+                        heading(screen, state, capped: short && accessibility)
                     } content: {
                         content(screen, state)
                     } actions: {
@@ -147,9 +154,11 @@ public struct SaveConflictView: View {
         }
     }
 
-    private func heading(_ screen: KitScreen<SaveConflictState>, _ state: SaveConflictState)
-        -> some View
-    {
+    /// `capped`: in a short window the title stops at `.accessibility3`, so the reason under it
+    /// is not pushed past the fold at the largest size (the page scrolls, the title stays whole).
+    private func heading(
+        _ screen: KitScreen<SaveConflictState>, _ state: SaveConflictState, capped: Bool = false
+    ) -> some View {
         kitStyle { style in
             VStack(alignment: .leading, spacing: style.space(.sm)) {
                 if state == .kept {
@@ -164,6 +173,7 @@ public struct SaveConflictView: View {
                 )
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityFocused($focus, equals: .heading)
+                .modifier(TitleCap(capped: capped))
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -171,7 +181,7 @@ public struct SaveConflictView: View {
 
     /// D-8, a short landscape window: the heading and the two cards in one pane, the choices, the
     /// slots-full reason and Cancel in the other; both start at the top, nothing is docked, and
-    /// each pane scrolls on its own if it must. The decorative pane gives way (DL3).
+    /// the two scroll together under one scroll-edge band. The decorative pane gives way (DL3).
     private func twoPaneBody(
         _ screen: KitScreen<SaveConflictState>, _ state: SaveConflictState, _ window: CGSize
     ) -> some View {
@@ -179,8 +189,10 @@ public struct SaveConflictView: View {
             ZStack {
                 style.palette.page.ignoresSafeArea()
                 if style.ambient && !style.isNative { KitAmbient().ignoresSafeArea() }
-                HStack(alignment: .top, spacing: SaveShortWindow.gutter) {
-                    ScrollView {
+                // One scroll view over both panes, so the system draws a single scroll-edge band
+                // under the title bar; shadows of the choices are not clipped at the pane edge.
+                ScrollView {
+                    HStack(alignment: .top, spacing: SaveShortWindow.gutter) {
                         VStack(alignment: .leading, spacing: style.space(.md)) {
                             ProductHeader()
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -188,19 +200,14 @@ public struct SaveConflictView: View {
                             content(screen, state)
                                 .background(frameReader("cards"))
                         }
-                        .padding(.top, style.space(.md))
-                        .padding(.bottom, style.space(.md))
-                    }
-                    .scrollBounceBehavior(.basedOnSize)
-                    ScrollView {
                         actions(screen, state)
                             .background(frameReader("choices"))
-                            .padding(.top, style.space(.md))
-                            .padding(.bottom, style.space(.md))
                     }
-                    .scrollBounceBehavior(.basedOnSize)
+                    .padding(.horizontal, style.space(.lg))
+                    .padding(.vertical, style.space(.md))
                 }
-                .padding(.horizontal, style.space(.lg))
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollClipDisabled()
             }
             .coordinateSpace(name: "pane")
             .onPreferenceChange(SaveFramesKey.self) { frameProbe?($0) }

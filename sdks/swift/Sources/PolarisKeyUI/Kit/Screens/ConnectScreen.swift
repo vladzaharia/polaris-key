@@ -1,5 +1,7 @@
 // @pkey-feature connect.links connect.transfer
-// LinkPairing and TransferOffer (CC-19.10; the reference is the React kit after its built UX review,
+// LinkPairing and TransferOffer (CC-19.10; both are presented in a sheet (Mac: `.sheet`, iPhone:
+// `.sheet` or `.fullScreenCover`), never inline in a page: the views assume a presentation that
+// closes them, and keep drawing their last state while it does; the reference is the React kit after its built UX review,
 // packages/sdk-react/src/kit/connect.tsx, and ui-core's models/connect.ts). Every line is a catalog
 // key the state machine names (States/ConnectFamily.swift). Rules kept:
 //   - the code is what both people compare: drawn as served, spelled out for VoiceOver, and kept on
@@ -94,7 +96,7 @@ public struct LinkPairingView: View {
     let categoryLabels: [String: String]
     @Environment(\.polarisKeyStrings) private var strings
     @AccessibilityFocusState private var focus: ConnectFocus?
-    @ScaledMetric(relativeTo: .title) private var codeSize: CGFloat = 32
+    @State private var last: KitScreen<LinkPairingState>?
 
     public init(model: LinkPairingModel, categoryLabels: [String: String] = [:]) {
         self.model = model
@@ -102,7 +104,9 @@ public struct LinkPairingView: View {
     }
 
     public var body: some View {
-        let screen = model.screen
+        // While the sheet closes the model's screen is already empty: keep drawing the last state.
+        let live = model.screen
+        let screen = live.state != nil ? live : (last ?? live)
         if let state = screen.state {
             KitScreenScaffold(header: true, dockActions: false) {
                 heading(screen, state)
@@ -110,6 +114,9 @@ public struct LinkPairingView: View {
                 content(screen, state)
             } actions: {
                 actions(screen, state)
+            }
+            .onChange(of: live.stateName, initial: true) { _, _ in
+                if live.state != nil { last = live }
             }
             .onAppear { focus = .heading }
             .onChange(of: screen.stateName) { _, _ in
@@ -129,6 +136,7 @@ public struct LinkPairingView: View {
         if state == .linked || state == .failed || state == .unavailable {
             Button("") { Task { await model.finish() } }
                 .keyboardShortcut(.cancelAction)
+                .focusable(false)
                 .opacity(0).frame(width: 0, height: 0)
                 .accessibilityHidden(true)
         }
@@ -225,11 +233,16 @@ public struct LinkPairingView: View {
             VStack(alignment: .leading, spacing: style.space(.sm)) {
                 if let code = model.link?.code {
                     Text(code)
-                        .font(style.codeFont(size: codeSize))
-                        .tracking(codeSize * 0.08)
+                        .font(style.codeFont(size: CodeDisplay.size))
+                        .tracking(CodeDisplay.size * CodeDisplay.tracking)
                         .foregroundStyle(style.palette.textStrong)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.5)
+                        .minimumScaleFactor(0.6)
+                        .accessibilityLabel(
+                            Text(
+                                strings.string(
+                                    "a11y.linkCode",
+                                    ["code": .text(code.map(String.init).joined(separator: " "))])))
                         .padding(.horizontal, style.space(.md))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, style.space(.md))
@@ -237,12 +250,6 @@ public struct LinkPairingView: View {
                             RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
                                 .fill(style.palette.sunken)
                         )
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(
-                            Text(
-                                strings.string(
-                                    "a11y.linkCode",
-                                    ["code": .text(code.map(String.init).joined(separator: " "))])))
                 }
                 if let reported = screen.line("linkPairing.reported")
                     ?? screen.line("linkPairing.reportedUnnamed")
@@ -268,12 +275,14 @@ public struct LinkPairingView: View {
                                 .foregroundStyle(style.palette.textStrong)
                                 .padding(.horizontal, style.space(.sm))
                                 .padding(.vertical, style.space(.xxs))
+                                .frame(minHeight: 32)
                                 .background(Capsule().fill(style.palette.textStrong.opacity(0.09)))
                                 .environment(\.layoutDirection, .leftToRight)
                         }
                     }
                 }
-                .accessibilityElement(children: .contain)
+                // One stop: the heading and the categories read together.
+                .accessibilityElement(children: .combine)
             } else if let none = screen.line("linkPairing.sharesNone") {
                 KitText(none, .body)
             }
@@ -321,11 +330,13 @@ public struct TransferOfferView: View {
     let model: TransferOfferModel
     @Environment(\.polarisKeyStrings) private var strings
     @AccessibilityFocusState private var focus: ConnectFocus?
+    @State private var last: KitScreen<TransferOfferState>?
 
     public init(model: TransferOfferModel) { self.model = model }
 
     public var body: some View {
-        let screen = model.screen
+        let live = model.screen
+        let screen = live.state != nil ? live : (last ?? live)
         if let state = screen.state {
             KitScreenScaffold(header: true, dockActions: false) {
                 heading(screen, state)
@@ -333,6 +344,9 @@ public struct TransferOfferView: View {
                 content(screen, state)
             } actions: {
                 actions(state)
+            }
+            .onChange(of: live.stateName, initial: true) { _, _ in
+                if live.state != nil { last = live }
             }
             .onAppear { focus = .heading }
             .onChange(of: screen.stateName) { _, _ in
@@ -359,6 +373,7 @@ public struct TransferOfferView: View {
         if state == .done || state == .failed {
             Button("") { model.close() }
                 .keyboardShortcut(.cancelAction)
+                .focusable(false)
                 .opacity(0).frame(width: 0, height: 0)
                 .accessibilityHidden(true)
         }
@@ -394,9 +409,7 @@ public struct TransferOfferView: View {
                 case .receiving:
                     // What was accepted stays on screen, with a bar that moves until bytes are counted.
                     offerRow(style)
-                    ProgressView()
-                        .progressViewStyle(.linear)
-                        .tint(style.palette.accentSolid)
+                    IndeterminateBar()
                         // The title ("Receiving holiday.zip") says it, once; the 4 pt bar is not a target.
                         .accessibilityHidden(true)
                 case .done:
@@ -411,17 +424,21 @@ public struct TransferOfferView: View {
     /// The name the contact chose, clamped to three lines with the middle elided, then size and type.
     private func offerRow(_ style: KitResolvedStyle) -> AnyView {
         let offer = model.offer
-        let facts = [offer.size.map { KitFormat.bytes($0) } ?? "", offer.type ?? ""]
+        // A nameless offer shows its type once, as the lead line, not again among the facts.
+        let nameless = offer.name.isEmpty && !(offer.type ?? "").isEmpty
+        let lead = nameless ? (offer.type ?? "") : offer.name
+        let facts = [offer.size.map { KitFormat.bytes($0) } ?? "", nameless ? "" : (offer.type ?? "")]
             .filter { !$0.isEmpty }
-        guard !offer.name.isEmpty || !facts.isEmpty else { return AnyView(EmptyView()) }
+        guard !lead.isEmpty || !facts.isEmpty else { return AnyView(EmptyView()) }
         return AnyView(
             VStack(alignment: .leading, spacing: style.space(.xxs)) {
-                if !offer.name.isEmpty {
-                    Text(verbatim: offer.name)
+                if !lead.isEmpty {
+                    Text(verbatim: lead)
                         .font(style.font(.body))
                         .foregroundStyle(style.palette.textStrong)
                         .lineLimit(3)
                         .truncationMode(.middle)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if !facts.isEmpty {
                     Text(verbatim: facts.joined(separator: " · "))

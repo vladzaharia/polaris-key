@@ -67,16 +67,25 @@ public struct SignInView: View {
             .animation(style.morph, value: screen.stateName)
             .onChange(of: screen.stateName) { _, _ in headingFocused = true }
             .onAppear { headingFocused = true }
-            #if os(macOS)
-                // Escape on a link step closes it with no decline (never No thanks, never Join accounts).
-                .onExitCommand {
-                    if model.linkStepActive && !model.linkWorking {
-                        model.finishLink()
-                        onClose?()
-                    }
-                }
-            #endif
+            // Escape on a link step closes it with no decline (never No thanks, never Join
+            // accounts): a hidden zero-size button, because onExitCommand needs focus.
+            .background(escapeLeavesLink)
         }
+    }
+
+    @ViewBuilder private var escapeLeavesLink: some View {
+        #if os(macOS)
+            if model.linkStepActive && !model.linkWorking {
+                Button("") {
+                    model.finishLink()
+                    onClose?()
+                }
+                .keyboardShortcut(.cancelAction)
+                .focusable(false)
+                .opacity(0).frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+            }
+        #endif
     }
 
     /// The product's name, for lines that name it outside the state's own copy.
@@ -124,7 +133,7 @@ public struct SignInView: View {
     @ViewBuilder private func heading(_ screen: KitScreen<SignInState>) -> some View {
         kitStyle { style in
             HStack(alignment: .center, spacing: style.space(.xs)) {
-                if screen.state == .done {
+                if screen.state == .done || screen.state == .linkDone {
                     Image(systemName: "checkmark.circle.fill")
                         .font(style.font(.title))
                         .foregroundStyle(style.palette.success)

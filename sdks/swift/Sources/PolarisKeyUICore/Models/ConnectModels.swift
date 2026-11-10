@@ -100,6 +100,8 @@ public struct LinkPairingDriver: Sendable {
     }
 #endif
 
+/// The pairing window's model. Draw it with `LinkPairingView`, presented in a sheet; `onClose` is
+/// where the host dismisses that sheet.
 @MainActor
 @Observable
 public final class LinkPairingModel {
@@ -383,7 +385,8 @@ public final class TransferOfferModel {
 
 #if canImport(Network)
     /// Binds the SDK's offer handler (`client.cloudConnect.transfer.onOffer`) to one `TransferOfferModel`
-    /// at a time: the host draws `current` with `TransferOfferView`. Every offer is asked (D-8); offers that
+    /// at a time: the host draws `current` with `TransferOfferView`, presented in a sheet (the view
+    /// keeps its last state on screen while the sheet closes). Every offer is asked (D-8); offers that
     /// arrive while one is on screen wait their turn. Without `start()` the SDK declines every offer.
     @MainActor
     @Observable
