@@ -81,6 +81,7 @@ ATTRS = [
     ("identity.useLicenseChoice", "IdentityClient", "choice"),
     ("identity.attachLicense", "IdentityClient", "attach"),
     ("identity.openAccount", "IdentityClient", "open_account"),
+    ("identity.accessToken", "IdentityClient", "access_token"),
     ("client.discover", "PolarisKeyClient", "discover"),
     ("client.init", "PolarisKeyClient", "init"),
     ("client.portal", "PolarisKeyClient", "portal"),

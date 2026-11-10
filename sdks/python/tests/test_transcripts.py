@@ -70,7 +70,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature packs.apply.chunk commerce.receipt
 # @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
 # @pkey-feature license.manage connect.links
-# @pkey-feature identity.keyentry identity.account identity.attach identity.toggle
+# @pkey-feature identity.keyentry identity.account identity.attach identity.toggle identity.accesstoken
 # @pkey-feature core.presentation ui.cli.portal
 # @pkey-feature identity.keyreturn
 # @pkey-feature identity.redirect.web identity.choice identity.signin.hints identity.devicecode.choice
@@ -479,6 +479,7 @@ def _act(
         # identity.nearby (I-40): the member and the three endpoints the last discovery names.
         frag = identity_fragment_from(client.discovery())
         out["nearby"] = True if frag is not None and frag.get("nearby") is True else None
+        out["accessToken"] = frag is not None and frag.get("accessToken") is True
         out["nearbyEndpoints"] = frag is not None and all(
             n in frag["endpoints"] for n in ("nearbyStart", "nearbyApprove", "nearbyPoll")
         )
@@ -589,6 +590,23 @@ def _act(
             out["code"] = refused.code
     elif action == "subject":
         out["subject"] = client.identity.subject()
+    elif action == "accessToken":
+        # `refresh=True` on every step: the recording asks again inside the 600 s window and
+        # expects a request each time, which the reuse rule would swallow (unit tests pin the rule).
+        out["accessTokenHeld"] = False
+        try:
+            at = client.identity.access_token(refresh=True)
+            out["result"] = "ok"
+            out["accessTokenHeld"] = bool(at.access_token)
+            out["tokenType"] = at.token_type
+            out["expiresIn"] = at.expires_in
+        except UnsupportedError:
+            out["result"] = "unavailable"
+        except PolarisError as e:
+            out["result"] = "refused"
+            out["status"] = e.status
+            out["code"] = e.code
+            out["retryAfter"] = e.retry_after_seconds
     elif action == "signOut":
         out["released"] = client.identity.sign_out().released
     elif action == "attach":
@@ -959,7 +977,7 @@ def _cloud_sync_step(
     if isinstance(body_in.get("more"), bool):
         out["more"] = body_in["more"]
     out["empty"] = body_in.get("empty") is True
-    changes = body_in.get("changes") if isinstance(body_in.get("changes"), list) else []
+    changes: List[Any] = body_in.get("changes") or []
     out["settings"] = sorted(
         c["setting"] for c in changes if isinstance(c, dict) and isinstance(c.get("setting"), str)
     )
@@ -985,7 +1003,7 @@ def _cloud_sync_step(
         if isinstance(body_in.get("lastMutationId"), int):
             out["lastMutationId"] = body_in["lastMutationId"]
             session["syncNextId"] = body_in["lastMutationId"] + 1
-        results = body_in.get("results") if isinstance(body_in.get("results"), list) else []
+        results: List[Any] = body_in.get("results") or []
         out["results"] = [_result_label(r) if isinstance(r, dict) else "?" for r in results]
     return out
 

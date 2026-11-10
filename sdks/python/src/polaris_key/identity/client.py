@@ -29,6 +29,7 @@ from typing import Any, Callable, Dict, Optional
 
 from ..constants_generated import ErrorCode, Feature, UnsupportedReason
 from ..core.caps import Unsupported, UnsupportedError
+from .access_token import AccessToken, AccessTokens
 from .account import (
     Account,
     AttachResult,
@@ -66,6 +67,7 @@ __all__ = [
     "AutoSignInResult",
     "AutoSignInSignedIn",
     "AutoSignInUnavailable",
+    "AccessToken",
     "ChoiceClient",
     "NearbyNamespace",
     "IdentityClient",
@@ -142,6 +144,7 @@ class IdentityClient:
         self._native_lock = threading.Lock()
         self._choice = ChoiceClient(self._deps)
         self._discover = discover or (lambda: None)
+        self._access_tokens = AccessTokens(ctx, tokens, self._discover)
         self._license_id = license_id or (lambda: None)
         self._nearby = NearbyNamespace(ctx, self._discover, nearby_runtime, self._start_nearby_approver)
         self._nearby_signer = nearby_signer
@@ -311,8 +314,26 @@ class IdentityClient:
         """Forget the stored identity and subject (the facade calls it on every deactivation).
         The token and the licence are not touched."""
         self._identity = None
+        self._access_tokens.clear()
         self._account.forget_subject()
         self._on_forget()
+
+    def access_token(self, refresh: bool = False) -> AccessToken:
+        """An access token (``at+jwt``, 600 seconds) for the app's own backend, from this device's own
+        sign-in (RFC 8693 device exchange). ``.access_token`` goes in ``Authorization: Bearer ...``.
+
+        It proves that this device holds a sign-in. It is NOT a licence check: it carries no tier and no
+        entitlement, and a signed-in device has one whether or not its licence is valid. A backend that
+        sells a licensed feature also checks the licence (the server drop-ins).
+
+        Only when discovery names ``accessToken`` (the product's sign-in issuer is served); otherwise
+        this raises the typed ``service-unavailable`` before any request. A device with no sign-in is
+        ``no-token`` (nothing sent). The token is held in memory only (never stored, never logged),
+        reused until 60 seconds before it expires, asked for once at a time and dropped at sign-out;
+        ``refresh=True`` asks again (an app whose backend refused it). A refusal keeps its wire code
+        (``invalid_grant``: not signed in; ``rate_limited`` with ``retry_after_seconds``) and is not
+        cached. The SDK never verifies the token: the backend does, against the issuer's key set."""
+        return self._access_tokens.get(refresh)
 
     def on_before_sign_out(self, hook: Callable[[], Any]) -> Callable[[], None]:
         """Register a function ``sign_out()`` calls first (Cloud Sync's flush registers one);

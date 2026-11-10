@@ -116,7 +116,8 @@ def identity_fragment_from(manifest: Optional[Dict[str, Any]]) -> Optional[Dict[
     """The Identity fragment of a discovery document (WIRE-CONTRACT-V4 §12.6), or ``None``
     while Identity is off or absent. Endpoints are kept only when they are non-empty strings: a
     client uses an endpoint the document names and never builds one. ``account``,
-    ``nearby``, ``keyEntryLimit`` and ``issuer`` are read the same way (anything malformed is dropped)."""
+    ``nearby``, ``accessToken``, ``keyEntryLimit`` and ``issuer`` are read the same way
+    (anything malformed is dropped)."""
     services = manifest.get("services") if isinstance(manifest, dict) else None
     raw = services.get("identity") if isinstance(services, dict) else None
     if not isinstance(raw, dict) or raw.get("enabled") is not True:
@@ -137,6 +138,8 @@ def identity_fragment_from(manifest: Optional[Dict[str, Any]]) -> Optional[Dict[
         out["account"] = True
     if raw.get("nearby") is True:
         out["nearby"] = True
+    if raw.get("accessToken") is True:
+        out["accessToken"] = True
     limit = raw.get("keyEntryLimit")
     if isinstance(limit, int) and not isinstance(limit, bool) and limit >= 1:
         out["keyEntryLimit"] = limit
