@@ -228,6 +228,13 @@ export interface PeerSessionOptions {
    */
   admission?: HandshakeLimiter;
   /**
+   * A responder that holds no account key (a local-links-only listener): the source group of the
+   * connection (the accept gate's own key). With it, the trial is admitted by the group's budget
+   * first and only a failed trial spends the shared one (§15.10, "Admission"). Without it, or
+   * with an account key tried, the shared limiter admits as before.
+   */
+  admissionGroup?: string;
+  /**
    * Mode v, initiator only: stop after HELLO and send no SAS record until the host calls
    * `startSas()`. The host dials several approvers and starts the one the person chose (N9).
    */
@@ -848,8 +855,18 @@ export class PeerSession {
         this.hs === null &&
         (this.o.contacts !== undefined || this.o.locals !== undefined)
       ) {
-        this.release = this.o.admission!.begin();
-        if (this.release === null) throw new SessionFail("peer_busy");
+        // No account key held and a group known: the group's budget, then the shared limiter
+        // that only a failed trial spends (§15.10, "Admission"). Otherwise the shared limiter
+        // counts the attempt as it begins.
+        let attempt: LocalAdmission | null = null;
+        if (accountTried === 0 && this.o.admissionGroup !== undefined) {
+          const a = this.o.admission!.beginLocal(this.o.admissionGroup);
+          if (!a.ok) throw new SessionFail("peer_busy");
+          attempt = a;
+        } else {
+          this.release = this.o.admission!.begin();
+          if (this.release === null) throw new SessionFail("peer_busy");
+        }
         let tried = 0;
         const plan = listenerTrialOrder(
           null,
@@ -872,6 +889,7 @@ export class PeerSession {
             else this.localIdx = t.index;
             this.mode = t.kind === "c" ? "c" : "l";
             this.asm = new RecordAssembler(this.mode);
+            if (attempt !== null) this.release = attempt.hit();
             break;
           } catch {
             tried++;
@@ -879,6 +897,7 @@ export class PeerSession {
         }
         // A miss costs the same whatever the host holds: dummy trials make up the difference.
         if (this.hs === null) {
+          attempt?.miss();
           for (let n = trialPadding(tried + accountTried); n > 0; n--) {
             try {
               // On the default ports, so a host's own ports count only the real trials.
@@ -1380,6 +1399,14 @@ export class PeerSession {
   }
 }
 
+/** Message 1s a minute one source group may send a listener that holds no account key (§15.10). */
+export const LOCAL_GROUP_PER_MINUTE = 2;
+
+/** What `HandshakeLimiter.beginLocal` answers. */
+export type LocalAdmission =
+  | { ok: false; by: "group" | "shared" }
+  | { ok: true; hit: () => () => void; miss: () => void };
+
 /**
  * The approver's admission: at most `max` handshakes a minute per advert (default 5) and at most
  * `maxPending` sessions waiting on a code (default 4). A monotonic clock. An attempt counts only
@@ -1388,11 +1415,59 @@ export class PeerSession {
 export class HandshakeLimiter {
   private stamps: number[] = [];
   private pending = 0;
+  /** Per source group, the message 1s of the last minute (`beginLocal`). */
+  private groups = new Map<string, number[]>();
   constructor(
     private readonly max = 5,
     private readonly maxPending = 4,
     private readonly now: () => number = () => performance.now() / 1000,
+    private readonly groupMax = LOCAL_GROUP_PER_MINUTE,
   ) {}
+  /**
+   * The admission of a listener that holds no account key (§15.10, "Admission"): the group's
+   * budget (`groupMax` a minute, counted as the message 1 arrives) comes first, then the shared
+   * limit, which counts only failed trials (and the sessions waiting on message 3). A refusal
+   * costs no trial. `hit()` refunds the group's count and takes a waiting slot; `miss()` spends
+   * the shared budget.
+   */
+  beginLocal(group: string): LocalAdmission {
+    const t = this.now();
+    this.stamps = this.stamps.filter((s) => t - s < 60);
+    for (const [g, v] of this.groups) {
+      const live = v.filter((s) => t - s < 60);
+      if (live.length === 0) this.groups.delete(g);
+      else this.groups.set(g, live);
+    }
+    const mine = this.groups.get(group) ?? [];
+    if (mine.length >= this.groupMax) return { ok: false, by: "group" };
+    if (this.stamps.length >= this.max || this.pending >= this.maxPending)
+      return { ok: false, by: "shared" };
+    mine.push(t);
+    this.groups.set(group, mine);
+    let settled = false;
+    return {
+      ok: true,
+      hit: (): (() => void) => {
+        if (settled) return () => undefined;
+        settled = true;
+        const i = mine.lastIndexOf(t);
+        if (i >= 0) mine.splice(i, 1);
+        this.pending++;
+        let done = false;
+        return (): void => {
+          if (!done) {
+            done = true;
+            this.pending--;
+          }
+        };
+      },
+      miss: (): void => {
+        if (settled) return;
+        settled = true;
+        this.stamps.push(this.now());
+      },
+    };
+  }
   /** A release function when one more session may start now; null when refused. */
   begin(): (() => void) | null {
     const t = this.now();

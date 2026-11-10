@@ -10,6 +10,8 @@ import {
   JoinPlan,
   LocalPairingGate,
   LocalExchange,
+  HandshakeLimiter,
+  LOCAL_GROUP_PER_MINUTE,
   MAX_LINK_SECRETS,
   MAX_LIVE_LOCAL_ADVERTS,
   MAX_LOCAL_LINKS,
@@ -221,6 +223,27 @@ export interface LocalSection {
     checkedAfter: number;
     want: { ok: boolean; close?: string; sends?: number };
   }[];
+  /** A listener with no account key (§15.10, "Admission"). */
+  admission: {
+    id: string;
+    events: (
+      | { t: number; group: string; opens: boolean }
+      | {
+          t: number;
+          release: number;
+        }
+    )[];
+    want: {
+      result: "tried" | "refused" | "released";
+      hit?: boolean;
+      by?: "group" | "shared";
+      group?: number;
+      failed: number;
+      waiting: number;
+    }[];
+  }[];
+  /** Direct Transfer rows of mode `l`, run as the `xfer` section's. */
+  xfer: unknown[];
   trialOrder: {
     id: string;
     account: (string | null)[] | null;
@@ -288,7 +311,53 @@ function bodyBytes(r: LocalSection["body"][number]): Uint8Array {
   return utf8(r.body!);
 }
 
-export function registerLocalSuites(l: LocalSection): void {
+export function registerLocalSuites(
+  l: LocalSection,
+  runXfer: (row: unknown) => void,
+): void {
+  describe("peer-matrix local: admission", () => {
+    it("the group's budget, then the shared limiter that only a failed trial spends", () => {
+      expect(l.constants.admissionGroupPerMinute).toBe(LOCAL_GROUP_PER_MINUTE);
+      for (const r of l.admission) {
+        const clock = { t: 0 };
+        const lim = new HandshakeLimiter(
+          l.constants.admissionSharedPerMinute,
+          l.constants.admissionWaiting,
+          () => clock.t,
+          l.constants.admissionGroupPerMinute,
+        );
+        const holds = new Map<number, () => void>();
+        const got = r.events.map((e, i) => {
+          clock.t = e.t;
+          if ("release" in e) {
+            holds.get(e.release)?.();
+            holds.delete(e.release);
+            return { result: "released" };
+          }
+          const a = lim.beginLocal(e.group);
+          if (!a.ok) return { result: "refused", by: a.by };
+          if (e.opens) holds.set(i, a.hit());
+          else a.miss();
+          return { result: "tried", hit: e.opens };
+        });
+        // The state columns are the corpus's own bookkeeping; the limiter's answers are the rows'.
+        expect(got, r.id).toEqual(
+          r.want.map((w) => {
+            const { group, failed, waiting, ...rest } = w; // eslint-disable-line @typescript-eslint/no-unused-vars
+            return rest;
+          }),
+        );
+      }
+    });
+  });
+
+  describe("peer-matrix local: xfer", () => {
+    it("Direct Transfer in mode l: allowed, and mode c's category rule", () => {
+      expect(l.xfer.length).toBeGreaterThan(0);
+      for (const row of l.xfer) runXfer(row);
+    });
+  });
+
   describe("peer-matrix local: constants", () => {
     it("match client-core", () => {
       expect(l.constants.pairSeconds).toBe(LOCAL_PAIR_SECONDS);

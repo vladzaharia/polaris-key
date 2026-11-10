@@ -920,6 +920,81 @@ export function refLocalGate(
   return out;
 }
 
+// ── Admission of a listener with no account key (§15.10, "Admission") ───────
+
+export const REF_ADMISSION_GROUP_PER_MINUTE = 2;
+export const REF_ADMISSION_SHARED_PER_MINUTE = 5;
+export const REF_ADMISSION_WAITING = 4;
+export const REF_ADMISSION_WINDOW_SECONDS = 60;
+
+export type AdmissionEvent =
+  | { t: number; group: string; opens: boolean }
+  | { t: number; release: number };
+
+export interface AdmissionStep {
+  result: "tried" | "refused" | "released";
+  /** `tried`: the trial opened, so the connection holds a waiting slot until message 3. */
+  hit?: boolean;
+  /** `refused`: which limit closed the connection, the group's (first) or the shared one. */
+  by?: "group" | "shared";
+  /** The state after the step: this group's message 1s counted, the failed trials counted in the
+   *  last minute, and the connections waiting on message 3. */
+  group?: number;
+  failed: number;
+  waiting: number;
+}
+
+/** A listener that holds no account key: the group's budget, then the shared limiter that only a
+ *  failed trial spends. Times are monotonic seconds, in order. */
+export function refLocalAdmission(
+  events: readonly AdmissionEvent[],
+): AdmissionStep[] {
+  const groups = new Map<string, number[]>();
+  let failed: number[] = [];
+  let waiting = 0;
+  const holds = new Set<number>();
+  const out: AdmissionStep[] = [];
+  events.forEach((e, i) => {
+    const live = (v: number[]): number[] =>
+      v.filter((x) => e.t - x < REF_ADMISSION_WINDOW_SECONDS);
+    failed = live(failed);
+    for (const [g, v] of groups) groups.set(g, live(v));
+    if ("release" in e) {
+      const was = holds.delete(e.release);
+      if (was) waiting--;
+      out.push({ result: "released", failed: failed.length, waiting });
+      return;
+    }
+    const mine = groups.get(e.group) ?? [];
+    groups.set(e.group, mine);
+    let step: AdmissionStep | Omit<AdmissionStep, "failed" | "waiting">;
+    if (mine.length >= REF_ADMISSION_GROUP_PER_MINUTE)
+      step = { result: "refused", by: "group" };
+    else if (
+      failed.length >= REF_ADMISSION_SHARED_PER_MINUTE ||
+      waiting >= REF_ADMISSION_WAITING
+    )
+      step = { result: "refused", by: "shared" };
+    else if (e.opens) {
+      // The count is refunded, and a waiting slot is taken.
+      waiting++;
+      holds.add(i);
+      step = { result: "tried", hit: true };
+    } else {
+      mine.push(e.t);
+      failed.push(e.t);
+      step = { result: "tried", hit: false };
+    }
+    out.push({
+      ...step,
+      group: mine.length,
+      failed: failed.length,
+      waiting,
+    });
+  });
+  return out;
+}
+
 // ── Records (§15.6, §15.12) ──────────────────────────────────────────────────
 
 export type RecordMode = "a" | "v" | "p" | "c" | "q" | "l";

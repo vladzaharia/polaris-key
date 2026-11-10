@@ -1850,6 +1850,61 @@ function buildName(): unknown {
 
 // ── the section ──────────────────────────────────────────────────────────────
 
+/**
+ * Direct Transfer in mode `l` (§15.11, §15.12): the same machine, with mode `l` allowed and the
+ * category rule of mode `c` applying. They sit in `peer-matrix.json` `local.xfer`, not in `xfer`,
+ * so that a runner without mode `l` skips them (feature connect.local).
+ */
+export function buildLocalXfer(): unknown[] {
+  const A = T("l1");
+  const O = { id: A, size: 100, chunk: 10 };
+  const O10 = { id: A, size: 10, chunk: 4 };
+  const rows: Row[] = [
+    mrow(
+      "mode-l-category-allowed-asks",
+      { mode: "l", cats: ["docs"], handler: "ask" },
+      [rxOffer(0, { ...O, cat: "docs" })],
+    ),
+    mrow(
+      "mode-l-category-not-allowed-refused-before-consent",
+      { mode: "l", cats: ["docs"], handler: "ask" },
+      [rxOffer(0, { ...O, cat: "photos" })],
+    ),
+    mrow(
+      "mode-l-no-category-refused-before-consent",
+      { mode: "l", cats: ["docs"], handler: "ask" },
+      [rxOffer(0, O)],
+    ),
+    mrow(
+      "mode-l-no-links-categories-refuses-everything",
+      { mode: "l", cats: [], handler: "ask" },
+      [rxOffer(0, { ...O, cat: "docs" })],
+    ),
+    mrow(
+      "mode-l-category-before-size",
+      { mode: "l", cats: ["docs"], hostLimit: 10 },
+      [rxOffer(0, { ...O, cat: "photos" })],
+    ),
+    mrow("mode-l-delivers", { mode: "l", cats: ["docs"] }, [
+      rxOffer(0, { ...O10, cat: "docs" }),
+      { at: 1, rx: "CHUNK", id: A, offset: 0, length: 4 },
+      { at: 2, rx: "CHUNK", id: A, offset: 4, length: 4 },
+      { at: 3, rx: "CHUNK", id: A, offset: 8, length: 2 },
+      { at: 4, rx: "DONE", id: A, sha256: SHA(10) },
+    ]),
+    mrow("mode-l-sends-with-its-category", { mode: "l", cats: ["docs"] }, [
+      hostOffer(0, A, 40, 1, { cat: "docs" }),
+      { at: 1, rx: "ACCEPT", id: A, offset: 0 },
+    ]),
+  ];
+  return rows.map((r) => ({
+    id: r.id,
+    ctx: r.ctx,
+    steps: r.steps,
+    want: r.want,
+  }));
+}
+
 export function buildXfer(): unknown {
   return {
     note:

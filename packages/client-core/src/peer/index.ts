@@ -256,6 +256,8 @@ export {
 } from "./contact.js";
 export {
   HandshakeLimiter,
+  LOCAL_GROUP_PER_MINUTE,
+  type LocalAdmission,
   PeerSession as PeerChannel,
   type ContactLink,
   type ContactOffer,

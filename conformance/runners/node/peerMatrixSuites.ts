@@ -1117,7 +1117,7 @@ function xferRun(row: any): void {
  * `local` (connect.localLinks): the account-free local-pairing rows, in `localSuites.ts`.
  */
 function local(m: PeerMatrix): void {
-  registerLocalSuites((m as unknown as { local: LocalSection }).local);
+  registerLocalSuites((m as unknown as { local: LocalSection }).local, xferRun);
 }
 
 /** Keys of the matrix that are not sections. */
