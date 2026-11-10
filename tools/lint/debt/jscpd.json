@@ -4851,7 +4851,7 @@
       "jscpd:duplicate": 4
     },
     "tools/corpus/reference/contact.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 4
     },
     "tools/corpus/reference/ed25519.ts": {
       "jscpd:duplicate": 1

@@ -26,6 +26,14 @@ import {
 } from "./reference/noise.js";
 import { refPrologue as prologue } from "./reference/peerMatrix.js";
 import {
+  CPACE_CODE_PASSWORD,
+  buildCpace,
+  canonicalJson,
+  cpaceAttempt,
+  cpaceAttemptRow,
+} from "./cpace.js";
+import { refLinkSecret } from "./reference/local.js";
+import {
   REF_X25519_LOW_ORDER_HEX,
   refX25519LowOrder,
 } from "./reference/peer.js";
@@ -47,19 +55,6 @@ const ANCHORS_PATH = join(
   "inputs",
   "noise-anchors.json",
 );
-
-function canonicalJson(v: unknown): string {
-  if (Array.isArray(v)) return `[${v.map(canonicalJson).join(",")}]`;
-  if (v !== null && typeof v === "object")
-    return `{${Object.keys(v)
-      .sort()
-      .map(
-        (k) =>
-          `${JSON.stringify(k)}:${canonicalJson((v as Record<string, unknown>)[k])}`,
-      )
-      .join(",")}}`;
-  return JSON.stringify(v);
-}
 
 function check(label: string, got: string, want: string): void {
   if (got !== want)
@@ -248,8 +243,17 @@ const MODES = {
   c: { protocol: "Noise_XXpsk0_25519_AESGCM_SHA256", psk: true },
 } as const;
 type Mode = keyof typeof MODES;
+// The local-link modes (§15.12): XXpsk0 under a PSK from CPace (q) or the link secret (l). Their
+// rows live in the `cpace` section, so the runners that read `handshakes` and `failures` as the
+// four modes keep reading them.
+const LOCAL_MODES = {
+  q: { protocol: "Noise_XXpsk0_25519_AESGCM_SHA256", psk: true },
+  l: { protocol: "Noise_XXpsk0_25519_AESGCM_SHA256", psk: true },
+} as const;
+type LocalMode = keyof typeof LOCAL_MODES;
+type AnyMode = Mode | LocalMode;
 
-const PAYLOADS: Record<Mode, string[]> = {
+const PAYLOADS: Record<AnyMode, string[]> = {
   a: [
     '{"v":1}',
     '{"v":1,"cert":"AAAA.BBBB.CCCC","ring":7,"caps":["ring/1","trust/1","app/1"]}',
@@ -258,6 +262,12 @@ const PAYLOADS: Record<Mode, string[]> = {
   v: ['{"v":1}', '{"v":1,"caps":["vouch/1"]}', '{"v":1,"caps":["vouch/1"]}'],
   p: ['{"v":1}', '{"v":1,"caps":["app/1"]}', '{"v":1,"caps":["app/1"]}'],
   c: ['{"v":1}', '{"v":1,"caps":["app/1"]}', '{"v":1,"caps":["app/1"]}'],
+  q: ['{"v":1}', '{"v":1,"caps":["local/1"]}', '{"v":1,"caps":["local/1"]}'],
+  l: [
+    '{"v":1}',
+    '{"v":1,"caps":["app/1","xfer/1"]}',
+    '{"v":1,"caps":["app/1","xfer/1"]}',
+  ],
 };
 
 /** A record (§15.6): u16be type, u8 flags, body. */
@@ -276,7 +286,7 @@ const PING = (n: number) =>
 const PONG = (n: number) =>
   record(0x0005, Uint8Array.of(0, 0, 0, 0, 0, 0, 0, n));
 
-function transport(mode: Mode) {
+function transport(mode: AnyMode) {
   const t: { from: "i" | "r"; payload: Uint8Array; rekeyAfter?: boolean }[] = [
     { from: "i", payload: HELLO("initiator") },
     { from: "r", payload: HELLO("responder") },
@@ -299,35 +309,62 @@ function transport(mode: Mode) {
   return t;
 }
 
-function baseHandshake(mode: Mode) {
-  const m = MODES[mode];
+/** The mode-q handshake's inputs: the code attempt of `cpace.ts` and the link keys. */
+const Q_ATTEMPT = () => cpaceAttempt("code", CPACE_CODE_PASSWORD);
+
+function baseHandshake(mode: AnyMode) {
+  const m = mode === "q" || mode === "l" ? LOCAL_MODES[mode] : MODES[mode];
   // Mode a: HKDF of the discovery key. Mode c: the contact secret itself (32 bytes of test
-  // material; its derivation is peer-matrix.json `contact.secrets`).
-  const psk = !m.psk
-    ? undefined
-    : mode === "c"
-      ? key("c contact secret")
-      : refHkdf(
-          new Uint8Array(0),
-          key("k_disc"),
-          cat(utf8("pkey-peer/1 psk"), Uint8Array.of(0), utf8(SLUG)),
-          32,
-        );
+  // material; its derivation is peer-matrix.json `contact.secrets`). Mode q: the CPace PSK
+  // (`cpace.attempts`). Mode l: the link secret of the mode-q handshake (`peer-matrix.json`
+  // `local.secrets`, row real-pairing-inputs).
+  let psk: Uint8Array | undefined;
+  if (!m.psk) psk = undefined;
+  else if (mode === "c") psk = key("c contact secret");
+  else if (mode === "q") psk = Q_ATTEMPT().psk;
+  else if (mode === "l") psk = localLinkSecret();
+  else
+    psk = refHkdf(
+      new Uint8Array(0),
+      key("k_disc"),
+      cat(utf8("pkey-peer/1 psk"), Uint8Array.of(0), utf8(SLUG)),
+      32,
+    );
+  // A link's static keys are the keys it was paired with: mode l reuses mode q's.
+  const staticOf = mode === "l" ? "q" : mode;
   return {
     protocol: m.protocol,
     prologue: prologue(SLUG, mode),
     ...(psk ? { psk } : {}),
-    initStatic: key(`${mode} initiator static`),
+    initStatic: key(`${staticOf} initiator static`),
     initEphemeral: key(`${mode} initiator ephemeral`),
-    respStatic: key(`${mode} responder static`),
+    respStatic: key(`${staticOf} responder static`),
     respEphemeral: key(`${mode} responder ephemeral`),
     payloads: PAYLOADS[mode].map(utf8),
     transport: transport(mode),
   };
 }
 
-function buildHandshakes(): unknown[] {
-  return (Object.keys(MODES) as Mode[]).map((mode) => {
+/** The mode-q handshake's hash, and the link secret (§15.12) both sides derive from it. */
+function qHandshakeHash(): Uint8Array {
+  const out = refNoiseRun(baseHandshake("q"));
+  if (!out.ok) throw new Error(`noise handshake q: ${out.reason}`);
+  return out.handshakeHash;
+}
+function localLinkSecret(): Uint8Array {
+  const q = baseHandshake("q");
+  return refLinkSecret(
+    qHandshakeHash(),
+    Q_ATTEMPT().isk,
+    refX25519Public(q.initStatic),
+    refX25519Public(q.respStatic),
+  );
+}
+
+function buildHandshakes(
+  modes: AnyMode[] = Object.keys(MODES) as Mode[],
+): unknown[] {
+  return modes.map((mode) => {
     const h = baseHandshake(mode);
     const out = refNoiseRun(h);
     if (!out.ok) throw new Error(`noise handshake ${mode}: ${out.reason}`);
@@ -347,6 +384,19 @@ function buildHandshakes(): unknown[] {
       respEphemeral: hex(h.respEphemeral),
       respEphemeralPublic: hex(refX25519Public(h.respEphemeral)),
       handshakeHash: hex(out.handshakeHash),
+      ...(mode === "q"
+        ? {
+            // The CPace attempt behind the PSK: cpace.attempts row `code`.
+            attempt: "code",
+            isk: hex(Q_ATTEMPT().isk),
+          }
+        : {}),
+      ...(mode === "l"
+        ? {
+            // The link secret: peer-matrix.json local.secrets row real-pairing-inputs.
+            secretFrom: "q",
+          }
+        : {}),
       // Messages alternate as `from` says. The first three are the handshake; the rest are
       // transport records (empty associated data). After `rekeyAfter` the sender rekeys its
       // sending key and the receiver its receiving key.
@@ -362,18 +412,128 @@ function buildHandshakes(): unknown[] {
   });
 }
 
-function buildFailures(): unknown[] {
+type FailFn = (
+  id: string,
+  mode: AnyMode,
+  description: string,
+  mutate: Partial<ReturnType<typeof baseHandshake>> & {
+    responder?: { prologue?: Uint8Array; psk?: Uint8Array };
+    initEphemeralPublic?: Uint8Array;
+  },
+  want: { failedAt: number; reason: "dh_zero" | "decrypt" },
+) => void;
+
+/** Mode-q and mode-l refusals that happen inside Noise (§15.12). The CPace-stage refusals (a bad
+ *  C1 or C2, a low-order or non-canonical share, an all-zero K) are `cpace.frames` and `.abort`;
+ *  the pin is `peer-matrix.json` `local.pin`. */
+function buildLocalFailures(fail: FailFn): void {
+  const wrongCode = cpaceAttemptRow("code-wrong-password");
+  const wrongQr = cpaceAttemptRow("qr-wrong-secret");
+  const otherSlug = cpaceAttemptRow("code-other-slug");
+  const right = Q_ATTEMPT();
+  fail(
+    "q-wrong-code",
+    "q",
+    "The joiner typed another password than the shower holds: its ISK and PSK differ, so message 1's payload fails its tag.",
+    { psk: wrongCode.pskJ, responder: { psk: wrongCode.pskS } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
+    "q-wrong-qr-secret",
+    "q",
+    "The joiner scanned another QR secret than the shower holds: the PSKs differ.",
+    { psk: wrongQr.pskJ, responder: { psk: wrongQr.pskS } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
+    "q-wrong-slug",
+    "q",
+    "The responder's prologue names another product.",
+    { responder: { prologue: prologue("other", "q") } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
+    "q-wrong-slug-psk",
+    "q",
+    "The responder derived its PSK for another slug (the HKDF info differs).",
+    { responder: { psk: otherSlug.pskS } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
+    "q-wrong-mode-l",
+    "q",
+    "The responder's prologue says mode l: the same PSK shape, another mode byte.",
+    { responder: { prologue: prologue(SLUG, "l") } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
+    "q-wrong-mode-p",
+    "q",
+    "The responder's prologue says mode p.",
+    { responder: { prologue: prologue(SLUG, "p") } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
+    "q-low-order-ephemeral-zero",
+    "q",
+    "The joiner's ephemeral key is the low-order point 0: the responder's DH is all zeros and it aborts.",
+    { initEphemeralPublic: hexBytes(REF_X25519_LOW_ORDER_HEX[0]) },
+    { failedAt: 1, reason: "dh_zero" },
+  );
+  fail(
+    "l-wrong-secret",
+    "l",
+    "The responder holds another link's secret: message 1's payload fails its tag.",
+    { responder: { psk: key("other link secret") } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
+    "l-contact-secret",
+    "l",
+    "The responder tries a mode-c contact secret under the mode-l prologue.",
+    { responder: { psk: key("c contact secret") } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
+    "l-cpace-psk",
+    "l",
+    "The responder tries the pairing's PSK (the CPace output) as a link secret.",
+    { responder: { psk: right.psk } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
+    "l-wrong-slug",
+    "l",
+    "The responder's prologue names another product.",
+    { responder: { prologue: prologue("other", "l") } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
+    "l-wrong-mode-c",
+    "l",
+    "The responder's prologue says mode c.",
+    { responder: { prologue: prologue(SLUG, "c") } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
+    "l-wrong-mode-q",
+    "l",
+    "The responder's prologue says mode q.",
+    { responder: { prologue: prologue(SLUG, "q") } },
+    { failedAt: 0, reason: "decrypt" },
+  );
+  fail(
+    "l-low-order-ephemeral-zero",
+    "l",
+    "The initiator's ephemeral key is the low-order point 0: the responder's DH is all zeros and it aborts.",
+    { initEphemeralPublic: hexBytes(REF_X25519_LOW_ORDER_HEX[0]) },
+    { failedAt: 1, reason: "dh_zero" },
+  );
+}
+
+function buildFailures(local = false): unknown[] {
   const rows: unknown[] = [];
-  const fail = (
-    id: string,
-    mode: Mode,
-    description: string,
-    mutate: Partial<ReturnType<typeof baseHandshake>> & {
-      responder?: { prologue?: Uint8Array; psk?: Uint8Array };
-      initEphemeralPublic?: Uint8Array;
-    },
-    want: { failedAt: number; reason: "dh_zero" | "decrypt" },
-  ) => {
+  const fail: FailFn = (id, mode, description, mutate, want) => {
     const h = { ...baseHandshake(mode), ...mutate, transport: [] };
     const out = refNoiseRun(h);
     if (out.ok || out.failedAt !== want.failedAt || out.reason !== want.reason)
@@ -407,93 +567,96 @@ function buildFailures(): unknown[] {
       reason: want.reason,
     });
   };
-  fail(
-    "a-wrong-psk",
-    "a",
-    "The responder holds another PSK (a stale discKey): message 1's payload fails its tag.",
-    { responder: { psk: key("other psk") } },
-    { failedAt: 0, reason: "decrypt" },
-  );
-  fail(
-    "a-wrong-slug",
-    "a",
-    "The responder's prologue names another product.",
-    { responder: { prologue: prologue("other", "a") } },
-    { failedAt: 0, reason: "decrypt" },
-  );
-  fail(
-    "c-wrong-psk",
-    "c",
-    "The responder holds another contact's secret: message 1's payload fails its tag.",
-    { responder: { psk: key("other contact secret") } },
-    { failedAt: 0, reason: "decrypt" },
-  );
-  fail(
-    "c-wrong-slug",
-    "c",
-    "The responder's prologue names another product.",
-    { responder: { prologue: prologue("other", "c") } },
-    { failedAt: 0, reason: "decrypt" },
-  );
-  fail(
-    "c-wrong-mode",
-    "c",
-    "The responder's prologue says mode a: the same PSK shape, another mode byte.",
-    { responder: { prologue: prologue(SLUG, "a") } },
-    { failedAt: 0, reason: "decrypt" },
-  );
-  fail(
-    "v-wrong-slug",
-    "v",
-    "The responder's prologue names another product: the initiator cannot read message 2.",
-    { responder: { prologue: prologue("other", "v") } },
-    { failedAt: 1, reason: "decrypt" },
-  );
-  fail(
-    "v-wrong-mode",
-    "v",
-    "The responder's prologue says mode p.",
-    { responder: { prologue: prologue(SLUG, "p") } },
-    { failedAt: 1, reason: "decrypt" },
-  );
-  fail(
-    "p-wrong-mode",
-    "p",
-    "The responder's prologue says mode v.",
-    { responder: { prologue: prologue(SLUG, "v") } },
-    { failedAt: 1, reason: "decrypt" },
-  );
-  fail(
-    "a-wrong-version",
-    "a",
-    "The responder's prologue names another protocol version.",
-    {
-      responder: {
-        prologue: cat(
-          utf8("pkey-peer/2"),
-          Uint8Array.of(0),
-          utf8(SLUG),
-          Uint8Array.of(0),
-          utf8("a"),
-          Uint8Array.of(0),
-        ),
+  if (!local) {
+    fail(
+      "a-wrong-psk",
+      "a",
+      "The responder holds another PSK (a stale discKey): message 1's payload fails its tag.",
+      { responder: { psk: key("other psk") } },
+      { failedAt: 0, reason: "decrypt" },
+    );
+    fail(
+      "a-wrong-slug",
+      "a",
+      "The responder's prologue names another product.",
+      { responder: { prologue: prologue("other", "a") } },
+      { failedAt: 0, reason: "decrypt" },
+    );
+    fail(
+      "c-wrong-psk",
+      "c",
+      "The responder holds another contact's secret: message 1's payload fails its tag.",
+      { responder: { psk: key("other contact secret") } },
+      { failedAt: 0, reason: "decrypt" },
+    );
+    fail(
+      "c-wrong-slug",
+      "c",
+      "The responder's prologue names another product.",
+      { responder: { prologue: prologue("other", "c") } },
+      { failedAt: 0, reason: "decrypt" },
+    );
+    fail(
+      "c-wrong-mode",
+      "c",
+      "The responder's prologue says mode a: the same PSK shape, another mode byte.",
+      { responder: { prologue: prologue(SLUG, "a") } },
+      { failedAt: 0, reason: "decrypt" },
+    );
+    fail(
+      "v-wrong-slug",
+      "v",
+      "The responder's prologue names another product: the initiator cannot read message 2.",
+      { responder: { prologue: prologue("other", "v") } },
+      { failedAt: 1, reason: "decrypt" },
+    );
+    fail(
+      "v-wrong-mode",
+      "v",
+      "The responder's prologue says mode p.",
+      { responder: { prologue: prologue(SLUG, "p") } },
+      { failedAt: 1, reason: "decrypt" },
+    );
+    fail(
+      "p-wrong-mode",
+      "p",
+      "The responder's prologue says mode v.",
+      { responder: { prologue: prologue(SLUG, "v") } },
+      { failedAt: 1, reason: "decrypt" },
+    );
+    fail(
+      "a-wrong-version",
+      "a",
+      "The responder's prologue names another protocol version.",
+      {
+        responder: {
+          prologue: cat(
+            utf8("pkey-peer/2"),
+            Uint8Array.of(0),
+            utf8(SLUG),
+            Uint8Array.of(0),
+            utf8("a"),
+            Uint8Array.of(0),
+          ),
+        },
       },
-    },
-    { failedAt: 0, reason: "decrypt" },
-  );
-  // A low-order remote ephemeral: the responder's ee is all zeros and it aborts (§15.5).
-  const modes: Mode[] = ["a", "v", "p", "c"];
-  for (const mode of modes)
-    REF_X25519_LOW_ORDER_HEX.forEach((h, k) => {
-      if (mode !== "v" && k !== 0) return;
-      fail(
-        `${mode}-low-order-ephemeral-${LOW_ORDER_NAMES[k]}`,
-        mode,
-        `The initiator's ephemeral key is the low-order point ${LOW_ORDER_NAMES[k]}: the responder's DH is all zeros and it aborts.`,
-        { initEphemeralPublic: hexBytes(h) },
-        { failedAt: 1, reason: "dh_zero" },
-      );
-    });
+      { failedAt: 0, reason: "decrypt" },
+    );
+    // A low-order remote ephemeral: the responder's ee is all zeros and it aborts (§15.5).
+    const modes: Mode[] = ["a", "v", "p", "c"];
+    for (const mode of modes)
+      REF_X25519_LOW_ORDER_HEX.forEach((h, k) => {
+        if (mode !== "v" && k !== 0) return;
+        fail(
+          `${mode}-low-order-ephemeral-${LOW_ORDER_NAMES[k]}`,
+          mode,
+          `The initiator's ephemeral key is the low-order point ${LOW_ORDER_NAMES[k]}: the responder's DH is all zeros and it aborts.`,
+          { initEphemeralPublic: hexBytes(h) },
+          { failedAt: 1, reason: "dh_zero" },
+        );
+      });
+  }
+  if (local) buildLocalFailures(fail);
   return rows;
 }
 
@@ -532,12 +695,17 @@ export function buildNoiseVectors(): unknown {
   return {
     noiseVectorsVersion: 1,
     description:
-      "pkey-peer/1 Noise known answers (WIRE-CONTRACT-V5 sections 15.5, 15.6, 15.9; plans/CC-01-cloud-connect.md 2.5). All fields are lower-case hex. `x25519` holds RFC 7748 section 5.2 and 6.1; `lowOrder` the seven low-order points of 15.2 step 4 in both top-bit spellings, with the all-zero DH output a handshake must refuse; `aesGcm` the GCM specification's AES-256 cases (96-bit nonce); `handshakes` the four modes (a, v, p and the contact mode c) with fixed ephemerals and statics, the handshake hash, the three handshake messages and the transport records that follow, with rekey (Noise section 4.2: k = ENCRYPT(k, 2^64 - 1, empty, 32 zero bytes)[0..32], counter unchanged); `failures` the refusals; `anchors` external Noise_XX_25519_AESGCM_SHA256 and Noise_NNpsk0_25519_AESGCM_SHA256 vectors. The AESGCM nonce is four zero bytes then the 64-bit big-endian counter. The prologue is the ASCII 'pkey-peer/1', 0x00, the slug, 0x00, the mode, 0x00. The mode-a PSK is HKDF-SHA256 (salt empty, ikm a 32-byte discovery key, info 'pkey-peer/1 psk', 0x00, slug); the mode-c PSK is the contact secret (peer-matrix.json `contact`); the vector lists the PSK itself. Every key here is test material derived from a label. Append-only: a new row keeps noiseVectorsVersion; a changed row or rule bumps it.",
+      "pkey-peer/1 Noise known answers (WIRE-CONTRACT-V5 sections 15.5, 15.6, 15.9; plans/CC-01-cloud-connect.md 2.5). All fields are lower-case hex. `x25519` holds RFC 7748 section 5.2 and 6.1; `lowOrder` the seven low-order points of 15.2 step 4 in both top-bit spellings, with the all-zero DH output a handshake must refuse; `aesGcm` the GCM specification's AES-256 cases (96-bit nonce); `handshakes` the four modes (a, v, p and the contact mode c) with fixed ephemerals and statics, the handshake hash, the three handshake messages and the transport records that follow, with rekey (Noise section 4.2: k = ENCRYPT(k, 2^64 - 1, empty, 32 zero bytes)[0..32], counter unchanged); `failures` the refusals; `anchors` external Noise_XX_25519_AESGCM_SHA256 and Noise_NNpsk0_25519_AESGCM_SHA256 vectors; `cpace` the CPace known answers for account-free local pairing (15.12; see its own note). The AESGCM nonce is four zero bytes then the 64-bit big-endian counter. The prologue is the ASCII 'pkey-peer/1', 0x00, the slug, 0x00, the mode, 0x00. The mode-a PSK is HKDF-SHA256 (salt empty, ikm a 32-byte discovery key, info 'pkey-peer/1 psk', 0x00, slug); the mode-c PSK is the contact secret (peer-matrix.json `contact`); the vector lists the PSK itself. Every key here is test material derived from a label. Append-only: a new row keeps noiseVectorsVersion; a changed row or rule bumps it.",
     x25519: buildX25519(),
     lowOrder: buildLowOrder(),
     aesGcm: buildAesGcm(),
     handshakes: buildHandshakes(),
     failures: buildFailures(),
     anchors: buildAnchors(),
+    cpace: {
+      ...(buildCpace() as object),
+      handshakes: buildHandshakes(["q", "l"]),
+      failures: buildFailures(true),
+    },
   };
 }
