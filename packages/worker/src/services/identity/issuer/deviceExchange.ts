@@ -40,7 +40,6 @@ import {
 } from "@polaris-key/protocol/identity";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 import { ErrorCode } from "../../../core/errors.js";
-import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   isValidClientDeviceId,
   validateDeviceToken,
@@ -51,7 +50,7 @@ import type { Env } from "../../../platform/env.js";
 import { randomToken } from "../../../platform/random.js";
 import { deviceHolder } from "../attach.js";
 import { oauth } from "../passthrough/oauthHttp.js";
-import { TOKEN_DEVICE_RATE } from "../passthrough/token.js";
+import { deviceBudgetOk, deviceBudgetRefused } from "../passthrough/token.js";
 import { signIssuerJwt } from "./keys.js";
 import { issuerServed } from "./served.js";
 
@@ -92,16 +91,8 @@ export async function handleDeviceExchange(cx: {
   const deviceId = req.headers.get(HEADER_DEVICE);
   if (!deviceId || !isValidClientDeviceId(deviceId))
     return oauth(400, ErrorCode.InvalidRequest, "X-PKey-Device is required.");
-  const withinBudget = await rateLimitOk(
-    env,
-    product.slug,
-    { ...TOKEN_DEVICE_RATE, id: `${deviceId}:${clientNetwork(req)}` },
-    now,
-  );
-  if (!withinBudget)
-    return oauth(429, "rate_limited", undefined, {
-      retryAfter: TOKEN_DEVICE_RATE.windowSec,
-    });
+  if (!(await deviceBudgetOk(env, product.slug, deviceId, req, now)))
+    return deviceBudgetRefused();
 
   const valid = await validateDeviceToken(env, db, product, subjectToken, now, {
     deviceId,

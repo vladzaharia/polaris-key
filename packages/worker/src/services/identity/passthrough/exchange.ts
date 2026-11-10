@@ -51,7 +51,6 @@ import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { ErrorCode, errorResponse } from "../../../core/errors.js";
 import { appendAudit } from "../../../core/audit.js";
-import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { isValidClientDeviceId } from "../../../core/devices.js";
 import {
   deviceKeysHeldElsewhere,
@@ -85,7 +84,12 @@ import {
   signKeyThumbprint,
   type ExchangeNonceRecord,
 } from "./nonce.js";
-import { bindAndAnswer, oauth, TOKEN_DEVICE_RATE } from "./token.js";
+import {
+  bindAndAnswer,
+  deviceBudgetOk,
+  deviceBudgetRefused,
+  oauth,
+} from "./token.js";
 import {
   consentedScope,
   consentView,
@@ -164,17 +168,8 @@ export async function handleExchange(
     [subjectToken, nonce, deviceKey, proof].some((v) => v.length > FIELD_MAX)
   )
     return oauth(400, ErrorCode.InvalidRequest);
-  if (
-    !(await rateLimitOk(
-      env,
-      product.slug,
-      { ...TOKEN_DEVICE_RATE, id: `${deviceId}:${clientNetwork(req)}` },
-      now,
-    ))
-  )
-    return oauth(429, "rate_limited", undefined, {
-      retryAfter: TOKEN_DEVICE_RATE.windowSec,
-    });
+  if (!(await deviceBudgetOk(env, product.slug, deviceId, req, now)))
+    return deviceBudgetRefused();
 
   // The proof first: it needs no state, so a caller without the key cannot spend a nonce.
   if (

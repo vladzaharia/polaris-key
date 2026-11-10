@@ -50,6 +50,15 @@ afterEach(() => {
   window.history.replaceState(null, "", "/");
 });
 
+async function press(name: string): Promise<void> {
+  await userEvent.setup().click(await screen.findByRole("button", { name }));
+}
+
+/** The page's h1, once it shows. */
+async function heading(name: string): Promise<HTMLElement> {
+  return screen.findByRole("heading", { level: 1, name });
+}
+
 function open(view: EndSessionView = VIEW, signedOut = false) {
   mockFetch({
     ...(signedOut ? { "/api/me": { status: 401 } } : signedIn()),
@@ -67,12 +76,7 @@ function open(view: EndSessionView = VIEW, signedOut = false) {
 describe("the sign-out page", () => {
   it("asks, shows the account, names the client and where it returns, and offers the two answers", async () => {
     open();
-    expect(
-      await screen.findByRole("heading", {
-        level: 1,
-        name: "Sign out of Polaris Locker too?",
-      }),
-    ).toBeTruthy();
+    expect(await heading("Sign out of Polaris Locker too?")).toBeTruthy();
     // The header is the sign-in card's: the client signed the person out; the developer; the return.
     expect(screen.getByText("Community")).toBeTruthy();
     expect(document.body.textContent).toContain("Community signed you out");
@@ -98,9 +102,7 @@ describe("the sign-out page", () => {
 
   it("Sign out posts the answer and goes to the registered return with its state", async () => {
     open();
-    await userEvent
-      .setup()
-      .click(await screen.findByRole("button", { name: "Sign out" }));
+    await press("Sign out");
     await vi.waitFor(() =>
       expect(went).toEqual(["https://community.example.com/bye?state=s1"]),
     );
@@ -110,9 +112,7 @@ describe("the sign-out page", () => {
 
   it("Stay signed in ends nothing and goes back the same way", async () => {
     open();
-    await userEvent
-      .setup()
-      .click(await screen.findByRole("button", { name: "Stay signed in" }));
+    await press("Stay signed in");
     await vi.waitFor(() => expect(went).toHaveLength(1));
     expect(fetchedRequests()).toContain(`POST ${REQUEST}/cancel`);
     expect(fetchedRequests()).not.toContain(`POST ${REQUEST}/confirm`);
@@ -120,12 +120,7 @@ describe("the sign-out page", () => {
 
   it("with no client the question has no 'too', and with no return Sign out says so and offers sign-in again", async () => {
     open({ ...VIEW, client: null, returns: false, returnHost: null });
-    expect(
-      await screen.findByRole("heading", {
-        level: 1,
-        name: "Sign out of Polaris Locker?",
-      }),
-    ).toBeTruthy();
+    expect(await heading("Sign out of Polaris Locker?")).toBeTruthy();
     // No client: the header names the product alone, and does not claim it signed anyone out.
     expect(screen.getByText("Forum App")).toBeTruthy();
     expect(document.body.textContent).not.toContain("signed you out");
@@ -137,12 +132,7 @@ describe("the sign-out page", () => {
     await userEvent
       .setup()
       .click(screen.getByRole("button", { name: "Sign out" }));
-    expect(
-      await screen.findByRole("heading", {
-        level: 1,
-        name: "You're signed out of Polaris Locker",
-      }),
-    ).toBeTruthy();
+    expect(await heading("You're signed out of Polaris Locker")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Sign in again" })).toBeTruthy();
     expect(went).toEqual([]);
   });
@@ -154,14 +144,9 @@ describe("the sign-out page", () => {
       [`POST ${REQUEST}/cancel`]: { redirect: null },
     });
     renderPortal();
-    await userEvent
-      .setup()
-      .click(await screen.findByRole("button", { name: "Stay signed in" }));
+    await press("Stay signed in");
     expect(
-      await screen.findByRole("heading", {
-        level: 1,
-        name: "You're still signed in to Polaris Locker",
-      }),
+      await heading("You're still signed in to Polaris Locker"),
     ).toBeTruthy();
     expect(document.body.textContent).not.toContain("Nothing changed");
     expect(
@@ -187,10 +172,7 @@ describe("the sign-out page", () => {
   it("with no session and no return it says so, with a way into Polaris Locker", async () => {
     open({ ...VIEW, signedIn: false, returns: false, returnHost: null }, true);
     expect(
-      await screen.findByRole("heading", {
-        level: 1,
-        name: "You're not signed in to Polaris Locker",
-      }),
+      await heading("You're not signed in to Polaris Locker"),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
     expect(
@@ -219,12 +201,7 @@ describe("the sign-out page", () => {
       [REQUEST]: { status: 404, body: { error: "not_found" } },
     });
     renderPortal();
-    expect(
-      await screen.findByRole("heading", {
-        level: 1,
-        name: "This page has expired",
-      }),
-    ).toBeTruthy();
+    expect(await heading("This page has expired")).toBeTruthy();
     expect(
       screen.getByText("You're still signed in to Polaris Locker."),
     ).toBeTruthy();
@@ -295,15 +272,8 @@ describe("the sign-out page", () => {
       },
     });
     renderPortal();
-    await userEvent
-      .setup()
-      .click(await screen.findByRole("button", { name: "Sign out" }));
-    expect(
-      await screen.findByRole("heading", {
-        level: 1,
-        name: "This page has expired",
-      }),
-    ).toBeTruthy();
+    await press("Sign out");
+    expect(await heading("This page has expired")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Stay signed in" })).toBeNull();
     expect(went).toEqual([]);
     // Nothing ended: the next genuine sign-out still earns its toast.
@@ -317,9 +287,7 @@ describe("the sign-out page", () => {
       [`POST ${REQUEST}/confirm`]: { status: 500, body: { error: "boom" } },
     });
     renderPortal();
-    await userEvent
-      .setup()
-      .click(await screen.findByRole("button", { name: "Sign out" }));
+    await press("Sign out");
     const alert = await screen.findByRole("alert");
     expect(alert.querySelector("svg")).not.toBeNull();
     expect(screen.getByRole("button", { name: "Stay signed in" })).toBeTruthy();
@@ -345,9 +313,7 @@ describe("the sign-out page", () => {
       },
     });
     renderPortal();
-    await userEvent
-      .setup()
-      .click(await screen.findByRole("button", { name: "Sign out" }));
+    await press("Sign out");
     await vi.waitFor(() =>
       expect(went).toEqual(["https://community.example.com/bye?state=s1"]),
     );
@@ -365,15 +331,8 @@ describe("the sign-out page", () => {
       },
     });
     renderPortal();
-    await userEvent
-      .setup()
-      .click(await screen.findByRole("button", { name: "Sign out" }));
-    expect(
-      await screen.findByRole("heading", {
-        level: 1,
-        name: "This page has expired",
-      }),
-    ).toBeTruthy();
+    await press("Sign out");
+    expect(await heading("This page has expired")).toBeTruthy();
     expect(went).toEqual([]);
   });
 
@@ -404,9 +363,7 @@ describe("the sign-out page", () => {
       [`POST ${REQUEST}/cancel`]: { redirect: "javascript:alert(1)" },
     });
     renderPortal();
-    await userEvent
-      .setup()
-      .click(await screen.findByRole("button", { name: "Stay signed in" }));
+    await press("Stay signed in");
     expect(await screen.findByRole("alert")).toBeTruthy();
     expect(went).toEqual([]);
   });

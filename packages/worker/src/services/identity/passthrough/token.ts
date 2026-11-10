@@ -125,6 +125,26 @@ export const TOKEN_DEVICE_RATE = {
   windowSec: 60,
 };
 
+/** The per-device budget of a grant: 10 a minute per device id and client network, failing closed. */
+export const deviceBudgetOk = (
+  env: Env,
+  slug: string,
+  deviceId: string,
+  req: Request,
+  now: number,
+): Promise<boolean> =>
+  rateLimitOk(
+    env,
+    slug,
+    { ...TOKEN_DEVICE_RATE, id: `${deviceId}:${clientNetwork(req)}` },
+    now,
+  );
+
+export const deviceBudgetRefused = (): Response =>
+  oauth(429, "rate_limited", undefined, {
+    retryAfter: TOKEN_DEVICE_RATE.windowSec,
+  });
+
 const CODE_RE = /^[A-Za-z0-9_-]{43}$/;
 /** RFC 7636 §4.1. */
 const VERIFIER_RE = /^[A-Za-z0-9._~-]{43,128}$/;
@@ -209,17 +229,8 @@ export async function handleToken(ctx: {
   // A malformed code or verifier cannot be a real one: refused without touching the store.
   if (!CODE_RE.test(code) || !VERIFIER_RE.test(verifier))
     return oauth(400, ErrorCode.InvalidGrant);
-  if (
-    !(await rateLimitOk(
-      env,
-      product.slug,
-      { ...TOKEN_DEVICE_RATE, id: `${deviceId}:${clientNetwork(req)}` },
-      now,
-    ))
-  )
-    return oauth(429, "rate_limited", undefined, {
-      retryAfter: TOKEN_DEVICE_RATE.windowSec,
-    });
+  if (!(await deviceBudgetOk(env, product.slug, deviceId, req, now)))
+    return deviceBudgetRefused();
 
   // Redeem: the challenge derived from the verifier is the proof. Match or mismatch, the code ends.
   const record = await redeemAuthorizationCode(
