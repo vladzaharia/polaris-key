@@ -25,6 +25,7 @@ import {
   sha256,
 } from "./reference/noise.js";
 import { refPrologue as prologue } from "./reference/peerMatrix.js";
+import { buildCpace } from "./cpace.js";
 import {
   REF_X25519_LOW_ORDER_HEX,
   refX25519LowOrder,
@@ -532,12 +533,13 @@ export function buildNoiseVectors(): unknown {
   return {
     noiseVectorsVersion: 1,
     description:
-      "pkey-peer/1 Noise known answers (WIRE-CONTRACT-V5 sections 15.5, 15.6, 15.9; plans/CC-01-cloud-connect.md 2.5). All fields are lower-case hex. `x25519` holds RFC 7748 section 5.2 and 6.1; `lowOrder` the seven low-order points of 15.2 step 4 in both top-bit spellings, with the all-zero DH output a handshake must refuse; `aesGcm` the GCM specification's AES-256 cases (96-bit nonce); `handshakes` the four modes (a, v, p and the contact mode c) with fixed ephemerals and statics, the handshake hash, the three handshake messages and the transport records that follow, with rekey (Noise section 4.2: k = ENCRYPT(k, 2^64 - 1, empty, 32 zero bytes)[0..32], counter unchanged); `failures` the refusals; `anchors` external Noise_XX_25519_AESGCM_SHA256 and Noise_NNpsk0_25519_AESGCM_SHA256 vectors. The AESGCM nonce is four zero bytes then the 64-bit big-endian counter. The prologue is the ASCII 'pkey-peer/1', 0x00, the slug, 0x00, the mode, 0x00. The mode-a PSK is HKDF-SHA256 (salt empty, ikm a 32-byte discovery key, info 'pkey-peer/1 psk', 0x00, slug); the mode-c PSK is the contact secret (peer-matrix.json `contact`); the vector lists the PSK itself. Every key here is test material derived from a label. Append-only: a new row keeps noiseVectorsVersion; a changed row or rule bumps it.",
+      "pkey-peer/1 Noise known answers (WIRE-CONTRACT-V5 sections 15.5, 15.6, 15.9; plans/CC-01-cloud-connect.md 2.5). All fields are lower-case hex. `x25519` holds RFC 7748 section 5.2 and 6.1; `lowOrder` the seven low-order points of 15.2 step 4 in both top-bit spellings, with the all-zero DH output a handshake must refuse; `aesGcm` the GCM specification's AES-256 cases (96-bit nonce); `handshakes` the four modes (a, v, p and the contact mode c) with fixed ephemerals and statics, the handshake hash, the three handshake messages and the transport records that follow, with rekey (Noise section 4.2: k = ENCRYPT(k, 2^64 - 1, empty, 32 zero bytes)[0..32], counter unchanged); `failures` the refusals; `anchors` external Noise_XX_25519_AESGCM_SHA256 and Noise_NNpsk0_25519_AESGCM_SHA256 vectors; `cpace` the CPace known answers for account-free local pairing (15.12; see its own note). The AESGCM nonce is four zero bytes then the 64-bit big-endian counter. The prologue is the ASCII 'pkey-peer/1', 0x00, the slug, 0x00, the mode, 0x00. The mode-a PSK is HKDF-SHA256 (salt empty, ikm a 32-byte discovery key, info 'pkey-peer/1 psk', 0x00, slug); the mode-c PSK is the contact secret (peer-matrix.json `contact`); the vector lists the PSK itself. Every key here is test material derived from a label. Append-only: a new row keeps noiseVectorsVersion; a changed row or rule bumps it.",
     x25519: buildX25519(),
     lowOrder: buildLowOrder(),
     aesGcm: buildAesGcm(),
     handshakes: buildHandshakes(),
     failures: buildFailures(),
     anchors: buildAnchors(),
+    cpace: buildCpace(),
   };
 }
