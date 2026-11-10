@@ -75,22 +75,21 @@ export function RequestMissing({
 }
 
 /**
- * What a card that reads one request by its handle draws before the request has data: the loading
- * body while it is pending, the missing body when it failed, and `null` once there is a view.
+ * What a card that reads one request by its handle draws while it has no view: the loading body
+ * while the request is pending, the missing body once it failed (or answered nothing).
  */
-export function pendingOrMissing(
-  req: { isPending: boolean; error: unknown; refetch: () => unknown },
-  hasView: boolean,
-): { key: "loading" | "gone"; body: React.ReactElement } | null {
+export function pendingOrMissing(req: {
+  isPending: boolean;
+  error: unknown;
+  refetch: () => unknown;
+}): { key: "loading" | "gone"; body: React.ReactElement } {
   if (req.isPending) return { key: "loading", body: <RequestLoading /> };
-  if (req.error || !hasView)
-    return {
-      key: "gone",
-      body: (
-        <RequestMissing error={req.error} onRetry={() => void req.refetch()} />
-      ),
-    };
-  return null;
+  return {
+    key: "gone",
+    body: (
+      <RequestMissing error={req.error} onRetry={() => void req.refetch()} />
+    ),
+  };
 }
 
 /** The request could not be reached: the error's own copy and a retry. */

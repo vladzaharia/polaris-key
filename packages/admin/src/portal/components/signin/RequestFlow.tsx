@@ -311,9 +311,8 @@ export function RequestFlow({
 
   let body: React.ReactNode;
   let key: string;
-  const early = pendingOrMissing(req, view !== undefined);
-  if (early) {
-    ({ key, body } = early);
+  if (req.isPending || req.error || !view) {
+    ({ key, body } = pendingOrMissing(req));
   } else if (
     (cardChooses && licenses.isPending) ||
     (current?.kind === "consent" && consent.isPending)

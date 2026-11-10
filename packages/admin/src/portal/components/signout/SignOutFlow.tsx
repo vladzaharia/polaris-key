@@ -101,9 +101,8 @@ export function SignOutFlow({
 
   let key: string;
   let body: React.ReactNode;
-  const early = pendingOrMissing(req, view !== undefined);
-  if (early) {
-    ({ key, body } = early);
+  if (req.isPending || req.error || !view) {
+    ({ key, body } = pendingOrMissing(req));
   } else if (phase === "done" || phase === "stayed") {
     key = phase;
     body = (
