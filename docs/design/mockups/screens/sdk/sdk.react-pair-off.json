@@ -1,0 +1,67 @@
+{
+  "id": "sdk.react-pair-off",
+  "title": "React kit: Pair with a Code turned off",
+  "area": "sdk",
+  "surface": "kit",
+  "order": 30,
+  "packages": ["CC-29K"],
+  "uxRows": [],
+  "summary": "The app's product turned local pairing off (or the gate is off): paired devices are kept but can't connect, with Rename and Forget still there and Pair with a Code hidden; a code being shown closes at the next refresh; a code being entered is refused before anything is sent.",
+  "compare": [
+    "1: the list keeps every paired device with when it was last seen, drops the Can connect switches and 'Not reachable now' (nothing can connect), and leads with one neutral notice 'Pairing with a code is off' / 'Paired devices can't connect while it's off.' The ⋯ menu keeps Rename and Forget, so people can still delete what this device holds. Done is the only button; Pair with a Code is hidden.",
+    "With pairing off and nothing paired, the host shows no entry and no list at all (the kit renders nothing); in a browser or a desktop-bridge page the same, because there is no local network there.",
+    "2: a code on screen when a discovery refresh turns it off closes: 'Couldn't pair' / 'Pairing with a code is off for this app.' (the core local-pairing-off message) and Close. The QR and the code are gone.",
+    "3: on the device entering a code, Pair answers with the core copy 'Pairing unavailable' / 'Pairing with a code is off for this app.' in a neutral notice above the buttons (a refusal, never the danger colour), and Pair is disabled. Nothing is looked for or sent.",
+    "Offline keeps the last answer: with no internet but a cached 'on', pairing and paired devices keep working on the local network.",
+    "Four sizes: the three windows in a row at wide; at desktop and tablet the list spans two rows beside 2 and 3; stacked on phone.",
+    "Accent, type and radii match sdk.react-activate: Polaris look by default, DJDL's coral accent, no Polaris Key or Polaris Locker words or marks anywhere (there is no account in this flow).",
+    "Words are the copyKeys below, verbatim; no 'CPace', 'nameplate', 'mode', 'link secret' or 'local link' reaches a person."
+  ],
+  "copyKeys": [
+    {
+      "key": "pairedDevices.offTitle",
+      "value": "Pairing with a code is off",
+      "role": "label",
+      "note": "PairedDevices when the cached discovery says localPairing is not true."
+    },
+    {
+      "key": "pairedDevices.offBody",
+      "value": "Paired devices can’t connect while it’s off.",
+      "role": "body"
+    },
+    {
+      "key": "linkPairing.failedTitle",
+      "value": "Couldn’t pair",
+      "role": "title",
+      "existing": true
+    },
+    {
+      "key": "core.codes.local-pairing-off",
+      "value": "Pairing unavailable · Pairing with a code is off for this app.",
+      "role": "body",
+      "existing": true,
+      "note": "Existing core copy (title · message)."
+    },
+    {
+      "key": "common.close",
+      "value": "Close",
+      "role": "button",
+      "existing": true
+    },
+    {
+      "key": "common.done",
+      "value": "Done",
+      "role": "button",
+      "existing": true
+    }
+  ],
+  "platforms": {
+    "react": "Electron over Node: show, enter and manage; no scanning. In a browser or a desktop-bridge page there is no local network (connect-unavailable), so the kit renders nothing and the host shows no entry.",
+    "swiftui": "iOS and iPadOS: show, enter, scan (AVFoundation, the kit's own viewfinder, sdk.react-pair-enter 8–8c) and manage; the app declares NSCameraUsageDescription and the Local Network keys. macOS: show, enter and manage, no scanning.",
+    "compose": "Android: show, enter, scan and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so 8 and 8c are iOS only; a build without Play services types the code. Desktop: show, enter and manage.",
+    "godot": "Show (QR from ui/qr/), enter and manage; no scanning. Two panes by its own two_pane_fits() rule.",
+    "python": "API only (no kit yet)."
+  },
+  "status": "mockup",
+  "designReview": null
+}

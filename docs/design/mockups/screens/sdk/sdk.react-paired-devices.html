@@ -1,0 +1,797 @@
+<style>
+  /* sdk.react-paired-devices: DJDL's accent, from its icon (coral between the brand's orange and rose), as sdk.react-activate. */
+  [data-screen="sdk.react-paired-devices"] {
+    --kit-accent: color-mix(
+      in oklab,
+      var(--pk-service-update) 45%,
+      var(--pk-brand-rose)
+    );
+    --kit-accent-on: var(--pk-text-on-accent);
+    --kit-accent-subtle: color-mix(
+      in oklab,
+      var(--kit-accent) 13%,
+      var(--pk-surface-raised)
+    );
+  }
+  /* Light: the same coral one step deeper, so its label and its links read at 4.5:1 on white. */
+  [data-theme="light"] [data-screen="sdk.react-paired-devices"] {
+    --kit-accent: color-mix(
+      in oklab,
+      color-mix(in oklab, var(--pk-service-update) 45%, var(--pk-brand-rose))
+        78%,
+      var(--pk-brand-text)
+    );
+  }
+  /* Frames backfill a hole a two-column frame leaves (desktop and tablet). */
+  [data-screen="sdk.react-paired-devices"] .frame-grid.windows {
+    grid-auto-flow: row dense;
+  }
+  /* The pairing code: a field as tall as the code it holds, digits spaced like the shown code. */
+  [data-screen="sdk.react-paired-devices"] .kit-input.pair-code {
+    min-height: 56px;
+    font-size: 24px;
+    line-height: 32px;
+    letter-spacing: 0.08em;
+  }
+  /* A device name is words, not a key: the kit's body face. */
+  [data-screen="sdk.react-paired-devices"] .kit-input.name {
+    font-family: var(--pk-kit-type-body-family);
+  }
+  /* The primary in an inline panel keeps the product's fill (the panel only quiets its secondaries). */
+  [data-screen="sdk.react-paired-devices"] .kit-confirm .kit-btn.primary {
+    background: var(--kit-accent);
+  }
+  /* A switch in the kit is checked in the product's accent, not the page's. */
+  [data-screen="sdk.react-paired-devices"] .kit-host .switch.on {
+    border-color: var(--kit-accent);
+    background: var(--kit-accent);
+  }
+  [data-screen="sdk.react-paired-devices"] .kit-host .switch.on::after {
+    background: var(--kit-accent-on);
+  }
+  /* A paired device's row: name over last seen · Can connect · its menu. The middle column is fixed
+     so the column label above the switches lines up with them. */
+  [data-screen="sdk.react-paired-devices"] .kit-device.pr {
+    grid-template-columns: minmax(0, 1fr) 88px 40px;
+  }
+  [data-screen="sdk.react-paired-devices"] .kit-device.pr > .switch {
+    justify-self: center;
+  }
+  [data-screen="sdk.react-paired-devices"] .kit-device.pr-head {
+    min-height: 0;
+    font: var(--pk-kit-type-footnote-weight) var(--pk-kit-type-footnote-size) /
+      var(--pk-kit-type-footnote-line-height) var(--pk-kit-type-footnote-family);
+    color: var(--pk-text-subtle);
+    text-align: center;
+  }
+</style>
+
+<div class="board" data-service="core">
+  <div class="board-page">
+    <header class="board-head rhythm">
+      <h1>DJDL’s paired devices in the React kit</h1>
+      <div class="callout info one-line">
+        <i class="ic ic-info"></i>
+        <div class="grow">
+          <div class="callout-text">
+            <strong>Kit preview:</strong> React kit with DJDL’s facts (Pair with
+            a Code on; it shares Crates and Cue points).
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="frame-grid windows top cap-strip">
+      <figure class="board-item d1">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="logo lg" data-product="djdl"></span>
+                <h2 class="kit-title">Paired devices</h2>
+                <p class="kit-lede">They connect only on the same network.</p>
+              </div>
+              <div class="kit-devices">
+                <div class="kit-device pr pr-head" aria-hidden="true">
+                  <span></span><span>Can connect</span><span></span>
+                </div>
+                <div
+                  class="kit-device-list"
+                  role="list"
+                  aria-label="Paired devices"
+                >
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Theo’s laptop</b><small>Last seen today</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Theo’s laptop connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Theo’s laptop"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Booth laptop</b><small>Last seen Oct 28</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Booth laptop connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Booth laptop"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Mara’s MacBook Air</b
+                      ><small>Not reachable now · last seen Oct 6</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Mara’s MacBook Air connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Mara’s MacBook Air"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span><b>Lena’s PC</b><small>Last seen Oct 19</small></span
+                    ><span
+                      class="switch"
+                      role="switch"
+                      aria-checked="false"
+                      aria-label="Let Lena’s PC connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Lena’s PC"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Riverside booth</b
+                      ><small>Last seen Sep 30</small></span
+                    ><span
+                      class="switch"
+                      role="switch"
+                      aria-checked="false"
+                      aria-label="Let Riverside booth connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Riverside booth"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="kit-end">
+                <div class="kit-actions">
+                  <button class="kit-btn primary">
+                    <i class="ic ic-plus"></i>Pair with a Code</button
+                  ><button class="kit-btn">Done</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>1 · Paired devices.</strong> ⋯ holds Rename and Forget.
+        </figcaption>
+      </figure>
+      <figure class="board-item d2">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="logo lg" data-product="djdl"></span>
+                <h2 class="kit-title">Paired devices</h2>
+                <p class="kit-lede">They connect only on the same network.</p>
+              </div>
+              <div class="kit-devices">
+                <div class="kit-device pr pr-head" aria-hidden="true">
+                  <span></span><span>Can connect</span><span></span>
+                </div>
+                <div
+                  class="kit-device-list"
+                  role="list"
+                  aria-label="Paired devices"
+                >
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Theo’s laptop</b><small>Last seen today</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Theo’s laptop connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Theo’s laptop"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Booth laptop</b><small>Last seen Oct 28</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Booth laptop connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Booth laptop"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Mara’s MacBook Air</b
+                      ><small>Not reachable now · last seen Oct 6</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Mara’s MacBook Air connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Mara’s MacBook Air"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span><b>Lena’s PC</b><small>Last seen Oct 19</small></span
+                    ><span
+                      class="switch"
+                      role="switch"
+                      aria-checked="false"
+                      aria-label="Let Lena’s PC connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Lena’s PC"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr on" role="listitem">
+                    <span
+                      ><b>Riverside booth</b
+                      ><small>Last seen Sep 30</small></span
+                    ><span
+                      class="switch"
+                      role="switch"
+                      aria-checked="false"
+                      aria-label="Let Riverside booth connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Riverside booth"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="kit-confirm">
+                <div class="kit-field">
+                  <label class="kit-label">Device name</label>
+                  <div class="kit-input name focus">
+                    <span>Riverside Club booth</span>
+                  </div>
+                  <span class="kit-hint">Shown on this device only.</span>
+                </div>
+                <div class="kit-actions">
+                  <button class="kit-btn primary">Save</button
+                  ><button class="kit-btn">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>2 · Rename.</strong> Never sent to the other device.
+        </figcaption>
+      </figure>
+      <figure class="board-item d3">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="logo lg" data-product="djdl"></span>
+                <h2 class="kit-title">Paired devices</h2>
+                <p class="kit-lede">They connect only on the same network.</p>
+              </div>
+              <div class="kit-devices">
+                <div class="kit-device pr pr-head" aria-hidden="true">
+                  <span></span><span>Can connect</span><span></span>
+                </div>
+                <div
+                  class="kit-device-list"
+                  role="list"
+                  aria-label="Paired devices"
+                >
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Theo’s laptop</b><small>Last seen today</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Theo’s laptop connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Theo’s laptop"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Booth laptop</b><small>Last seen Oct 28</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Booth laptop connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Booth laptop"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Mara’s MacBook Air</b
+                      ><small>Not reachable now · last seen Oct 6</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Mara’s MacBook Air connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Mara’s MacBook Air"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span><b>Lena’s PC</b><small>Last seen Oct 19</small></span
+                    ><span
+                      class="switch"
+                      role="switch"
+                      aria-checked="false"
+                      aria-label="Let Lena’s PC connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Lena’s PC"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr on" role="listitem">
+                    <span
+                      ><b>Riverside booth</b
+                      ><small>Last seen Sep 30</small></span
+                    ><span
+                      class="switch"
+                      role="switch"
+                      aria-checked="false"
+                      aria-label="Let Riverside booth connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Riverside booth"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="kit-confirm"
+                role="alertdialog"
+                aria-labelledby="pk-forget"
+              >
+                <div class="kit-confirm-text">
+                  <b id="pk-forget">Forget Riverside booth?</b
+                  ><span>To connect again, pair with a new code.</span>
+                </div>
+                <div class="kit-actions">
+                  <button class="kit-btn danger">Forget</button
+                  ><button class="kit-btn">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>3 · Forget.</strong> The other device then can’t reach this
+          one.
+        </figcaption>
+      </figure>
+      <figure class="board-item d4">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="logo lg" data-product="djdl"></span>
+                <h2 class="kit-title">Paired devices</h2>
+                <p class="kit-lede">They connect only on the same network.</p>
+              </div>
+              <div class="kit-state" role="status">
+                <i class="ic ic-info"></i
+                ><span
+                  ><b>Up to 8 can connect</b>Turn one off to let another
+                  connect.</span
+                >
+              </div>
+              <div class="kit-devices">
+                <div class="kit-device pr pr-head" aria-hidden="true">
+                  <span></span><span>Can connect</span><span></span>
+                </div>
+                <div
+                  class="kit-device-list"
+                  role="list"
+                  aria-label="Paired devices"
+                >
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Theo’s laptop</b><small>Last seen today</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Theo’s laptop connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Theo’s laptop"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Booth laptop</b><small>Last seen Oct 28</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Booth laptop connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Booth laptop"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Mara’s MacBook Air</b
+                      ><small>Not reachable now · last seen Oct 6</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Mara’s MacBook Air connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Mara’s MacBook Air"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Studio Mac mini</b
+                      ><small>Last seen Oct 27</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Studio Mac mini connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Studio Mac mini"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span><b>Lena’s PC</b><small>Last seen Oct 19</small></span
+                    ><span
+                      class="switch disabled"
+                      role="switch"
+                      aria-checked="false"
+                      aria-disabled="true"
+                      aria-label="Let Lena’s PC connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Lena’s PC"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Riverside booth</b
+                      ><small>Last seen Sep 30</small></span
+                    ><span
+                      class="switch disabled"
+                      role="switch"
+                      aria-checked="false"
+                      aria-disabled="true"
+                      aria-label="Let Riverside booth connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Riverside booth"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="kit-end">
+                <div class="kit-actions">
+                  <button class="kit-btn primary">
+                    <i class="ic ic-plus"></i>Pair with a Code</button
+                  ><button class="kit-btn">Done</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>4 · 8 can connect.</strong> The off switches wait; the list
+          scrolls.
+        </figcaption>
+      </figure>
+      <figure class="board-item d5">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="logo lg" data-product="djdl"></span>
+                <h2 class="kit-title">Paired devices</h2>
+                <p class="kit-lede">They connect only on the same network.</p>
+              </div>
+              <div class="kit-state" role="status">
+                <i class="ic ic-circle-minus"></i
+                ><span
+                  ><b>No room to pair</b>Forget a paired device to pair
+                  another.</span
+                >
+              </div>
+              <div class="kit-devices">
+                <div class="kit-device pr pr-head" aria-hidden="true">
+                  <span></span><span>Can connect</span><span></span>
+                </div>
+                <div
+                  class="kit-device-list"
+                  role="list"
+                  aria-label="Paired devices"
+                >
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Theo’s laptop</b><small>Last seen today</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Theo’s laptop connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Theo’s laptop"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Booth laptop</b><small>Last seen Oct 28</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Booth laptop connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Booth laptop"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span
+                      ><b>Mara’s MacBook Air</b
+                      ><small>Not reachable now · last seen Oct 6</small></span
+                    ><span
+                      class="switch on"
+                      role="switch"
+                      aria-checked="true"
+                      aria-label="Let Mara’s MacBook Air connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Mara’s MacBook Air"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr" role="listitem">
+                    <span><b>Lena’s PC</b><small>Last seen Oct 19</small></span
+                    ><span
+                      class="switch"
+                      role="switch"
+                      aria-checked="false"
+                      aria-label="Let Lena’s PC connect to this device"
+                    ></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Lena’s PC"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="kit-end">
+                <div class="kit-actions">
+                  <button
+                    class="kit-btn primary kit-locked"
+                    disabled
+                    aria-disabled="true"
+                  >
+                    <i class="ic ic-plus"></i>Pair with a Code</button
+                  ><button class="kit-btn">Done</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>5 · 32 paired.</strong> The most one device keeps; the list
+          scrolls.
+        </figcaption>
+      </figure>
+      <figure class="board-item d6">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="logo lg" data-product="djdl"></span>
+                <h2 class="kit-title">Paired devices</h2>
+                <p class="kit-lede">No paired devices yet.</p>
+              </div>
+              <div class="kit-end">
+                <div class="kit-actions">
+                  <button class="kit-btn primary">
+                    <i class="ic ic-plus"></i>Pair with a Code</button
+                  ><button class="kit-btn">Done</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>6 · None yet.</strong></figcaption>
+      </figure>
+      <figure class="board-item d7 span-all">
+        <section class="card">
+          <div class="card-head"><h3>When the app connects</h3></div>
+          <div class="card-answers">
+            <div class="card-answer">
+              <span class="card-answer-label">Busy</span>
+              <div class="kit-state" role="status">
+                <i class="ic ic-hourglass"></i
+                ><span
+                  ><b>Theo’s laptop is busy</b>Try again in 4 seconds.</span
+                >
+              </div>
+            </div>
+            <div class="card-answer">
+              <span class="card-answer-label">Forgotten</span>
+              <div class="kit-state" role="status">
+                <i class="ic ic-circle-minus"></i
+                ><span
+                  ><b>Not paired</b>That device is no longer paired with this
+                  one.</span
+                >
+              </div>
+            </div>
+          </div>
+        </section>
+        <figcaption>
+          <strong>7 · When the app connects.</strong> What a connection to a
+          paired device can answer.
+        </figcaption>
+      </figure>
+    </div>
+  </div>
+</div>

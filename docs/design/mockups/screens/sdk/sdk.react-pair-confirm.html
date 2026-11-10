@@ -1,0 +1,274 @@
+<style>
+  /* sdk.react-pair-confirm: DJDL's accent, from its icon (coral between the brand's orange and rose), as sdk.react-activate. */
+  [data-screen="sdk.react-pair-confirm"] {
+    --kit-accent: color-mix(
+      in oklab,
+      var(--pk-service-update) 45%,
+      var(--pk-brand-rose)
+    );
+    --kit-accent-on: var(--pk-text-on-accent);
+    --kit-accent-subtle: color-mix(
+      in oklab,
+      var(--kit-accent) 13%,
+      var(--pk-surface-raised)
+    );
+  }
+  /* Light: the same coral one step deeper, so its label and its links read at 4.5:1 on white. */
+  [data-theme="light"] [data-screen="sdk.react-pair-confirm"] {
+    --kit-accent: color-mix(
+      in oklab,
+      color-mix(in oklab, var(--pk-service-update) 45%, var(--pk-brand-rose))
+        78%,
+      var(--pk-brand-text)
+    );
+  }
+  /* Frames backfill a hole a two-column frame leaves (desktop and tablet). */
+  [data-screen="sdk.react-pair-confirm"] .frame-grid.windows {
+    grid-auto-flow: row dense;
+  }
+  /* The pairing code: a field as tall as the code it holds, digits spaced like the shown code. */
+  [data-screen="sdk.react-pair-confirm"] .kit-input.pair-code {
+    min-height: 56px;
+    font-size: 24px;
+    line-height: 32px;
+    letter-spacing: 0.08em;
+  }
+  /* A device name is words, not a key: the kit's body face. */
+  [data-screen="sdk.react-pair-confirm"] .kit-input.name {
+    font-family: var(--pk-kit-type-body-family);
+  }
+  /* The primary in an inline panel keeps the product's fill (the panel only quiets its secondaries). */
+  [data-screen="sdk.react-pair-confirm"] .kit-confirm .kit-btn.primary {
+    background: var(--kit-accent);
+  }
+  /* A switch in the kit is checked in the product's accent, not the page's. */
+  [data-screen="sdk.react-pair-confirm"] .kit-host .switch.on {
+    border-color: var(--kit-accent);
+    background: var(--kit-accent);
+  }
+  [data-screen="sdk.react-pair-confirm"] .kit-host .switch.on::after {
+    background: var(--kit-accent-on);
+  }
+</style>
+
+<div class="board" data-service="core">
+  <div class="board-page">
+    <header class="board-head rhythm">
+      <h1>DJDL confirms a pairing in the React kit</h1>
+      <div class="callout info one-line">
+        <i class="ic ic-info"></i>
+        <div class="grow">
+          <div class="callout-text">
+            <strong>Kit preview:</strong> React kit with DJDL’s facts (Pair with
+            a Code on; it shares Crates and Cue points).
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="frame-grid windows top cap-strip">
+      <figure class="board-item c1">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="logo lg" data-product="djdl"></span>
+                <h2 class="kit-title">Pair with LAPTOP-7QH3RX?</h2>
+                <p class="kit-lede">It entered your code.</p>
+              </div>
+              <div class="kit-stack">
+                <span class="kit-label">Each of you shares</span>
+                <div
+                  class="kit-line"
+                  role="list"
+                  aria-label="Each of you shares"
+                >
+                  <span class="kit-pill" role="listitem">Crates</span
+                  ><span class="kit-pill" role="listitem">Cue points</span>
+                </div>
+              </div>
+              <div class="kit-end">
+                <div class="kit-actions">
+                  <button class="kit-btn primary">Pair</button
+                  ><button class="kit-btn">Not now</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>1 · Pair with LAPTOP-7QH3RX?</strong> On the device that
+          showed the code.
+        </figcaption>
+      </figure>
+      <figure class="board-item c2">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="logo lg" data-product="djdl"></span>
+                <h2 class="kit-title">Waiting for them to confirm</h2>
+                <p class="kit-lede">Pairing with Studio PC.</p>
+              </div>
+              <div class="kit-stack">
+                <span class="kit-label">Each of you shares</span>
+                <div
+                  class="kit-line"
+                  role="list"
+                  aria-label="Each of you shares"
+                >
+                  <span class="kit-pill" role="listitem">Crates</span
+                  ><span class="kit-pill" role="listitem">Cue points</span>
+                </div>
+              </div>
+              <div class="kit-end">
+                <div class="kit-actions">
+                  <button class="kit-btn">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>2 · Waiting.</strong> On the device that entered the code:
+          Pair was its yes.
+        </figcaption>
+      </figure>
+      <figure class="board-item c3">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="kit-done"><i class="ic ic-check"></i></span>
+                <h2 class="kit-title">Paired</h2>
+                <p class="kit-lede">
+                  You can now connect on the same network without a code.
+                </p>
+              </div>
+              <div class="kit-field">
+                <label class="kit-label">Name</label>
+                <div class="kit-input name"><span>Theo’s laptop</span></div>
+                <span class="kit-hint">Shown on this device only.</span>
+              </div>
+              <div class="kit-end">
+                <div class="kit-actions">
+                  <button class="kit-btn primary">Done</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>3 · Paired.</strong> The name starts as the one the device
+          sent.
+        </figcaption>
+      </figure>
+      <figure class="board-item c4">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="kit-done"><i class="ic ic-check"></i></span>
+                <h2 class="kit-title">Paired</h2>
+                <p class="kit-lede">
+                  You can now connect on the same network without a code.
+                </p>
+              </div>
+              <div class="kit-state" role="status">
+                <i class="ic ic-info"></i
+                ><span
+                  ><b>Theo’s laptop can’t connect yet</b>Up to 8 paired devices
+                  can connect. Turn one off in Paired devices.</span
+                >
+              </div>
+              <div class="kit-field">
+                <label class="kit-label">Name</label>
+                <div class="kit-input name"><span>Theo’s laptop</span></div>
+                <span class="kit-hint">Shown on this device only.</span>
+              </div>
+              <div class="kit-end">
+                <div class="kit-actions">
+                  <button class="kit-btn primary">Done</button
+                  ><button class="kit-btn">Paired devices</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>4 · Paired while 8 can connect.</strong> Stored with Can
+          connect off.
+        </figcaption>
+      </figure>
+      <figure class="board-item c5 span-2">
+        <section class="card">
+          <div class="card-head"><h3>Couldn’t pair</h3></div>
+          <div class="card-answers">
+            <div class="card-answer">
+              <span class="card-answer-label">Not now</span
+              ><span class="kit-line"
+                >Someone said no. Nothing was paired.</span
+              >
+            </div>
+            <div class="card-answer">
+              <span class="card-answer-label">Time ran out</span
+              ><span class="kit-line"
+                >Time ran out before you both confirmed. Nothing was
+                paired.</span
+              >
+            </div>
+            <div class="card-answer">
+              <span class="card-answer-label">No room</span
+              ><span class="kit-line"
+                >One of you has no room for another pairing. Forget one, then
+                try again.</span
+              >
+            </div>
+            <div class="card-answer">
+              <span class="card-answer-label">Connection closed</span
+              ><span class="kit-line"
+                >The connection closed. Nothing was paired.</span
+              >
+            </div>
+          </div>
+        </section>
+        <figcaption>
+          <strong>5 · Couldn’t pair.</strong> One message under the title, then
+          Try again and Close.
+        </figcaption>
+      </figure>
+    </div>
+  </div>
+</div>

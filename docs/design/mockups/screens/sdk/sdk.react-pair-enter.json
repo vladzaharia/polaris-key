@@ -1,0 +1,186 @@
+{
+  "id": "sdk.react-pair-enter",
+  "title": "React kit: Pair with a Code, enter a code",
+  "area": "sdk",
+  "surface": "kit",
+  "order": 27,
+  "packages": ["CC-29K"],
+  "uxRows": [],
+  "summary": "The device that enters the code (the joiner): the 8-digit code field with what each of you shares (agreeing by pressing Pair), Pairing… while it looks for the other device, a wrong code with the tries left, too many tries with its wait, can't find the other device, and other answers; then the iPhone frames of the SwiftUI kit with the scan entry, the viewfinder, a QR for another app and the camera turned off.",
+  "compare": [
+    "1: one 56px field labelled 'Code', digits only (numeric keypad on touch), grouped as typed ('4812 3456'); spaces and hyphens in a paste are dropped. Pair stays disabled until all 8 digits are in, and Enter submits. The shared categories are listed before Pair, so pressing Pair is this person's consent (V5 §15.12: the joiner may consent at code entry); there is no second 'Pair with …?' on this device.",
+    "2: 'Pairing…' with the spinner in the primary; the field, the categories and Back are locked. It looks for the other device for at most 15 seconds and dials at most two; it never retries a code by itself.",
+    "3: a wrong code tints and borders the field (never the product accent) with 'That code didn't work. Enter the new code from the other device.' because the other device has already changed its code; '1 try left' is a quiet hint under it. The typed digits stay, selected, so the next keystroke replaces them.",
+    "4: after two wrong codes with the same first two digits in 5 minutes the field and Pair lock, and a neutral notice says 'Too many tries' / 'Try again in 4:51, or cancel on the other device and show a new code.' The countdown ticks; a new code with other first two digits (the other device's Cancel, then Show a code) works at once.",
+    "5: 'Can't find the other device' / 'Check you're both on the same network.' after 15 seconds with nothing found, or when every attempt ended before the code was checked (an app older than v0.11 on the other device looks the same). Pair tries again and spends no try when nothing was found.",
+    "6: 'A code is 8 digits.' for a paste that isn't one (nothing is sent), 'This code is for another app.' for a scanned QR of another product, and the core No room copy (answered before anything is looked for).",
+    "7–8c (iPhone, SwiftUI kit, Diceroll's facts): the enter screen adds 'Scan the code instead'; the scan screen is the camera view with the viewfinder's corners, 'Enter the code instead' and Cancel, and pairs as soon as a code reads (no shutter). A QR of another app shows the error under the view and scanning goes on. Before iOS's own camera prompt the kit says once 'Next, allow Diceroll to use the camera.'; with the camera off, the view says 'Camera access is off' / 'Allow it in Settings, or enter the code.' Android's Play build opens Google's scanner instead of 8 to 8c.",
+    "Focus: the field on arrival; after an error, the field with its digits selected; the error and the notices are announced (role alert for errors, status for the wait).",
+    "Four sizes: three windows a row at wide, two at desktop and tablet, one on phone; the phones four a row at wide, three at desktop, two at tablet, one on phone.",
+    "Accent, type and radii match sdk.react-activate: Polaris look by default, DJDL's coral accent, no Polaris Key or Polaris Locker words or marks anywhere (there is no account in this flow).",
+    "Words are the copyKeys below, verbatim; no 'CPace', 'nameplate', 'mode', 'link secret' or 'local link' reaches a person."
+  ],
+  "copyKeys": [
+    {
+      "key": "localPairing.title",
+      "value": "Pair with a Code",
+      "role": "title",
+      "note": "See sdk.react-pair-show."
+    },
+    {
+      "key": "localPairing.enterBody",
+      "value": "Enter the code from the other device.",
+      "role": "body",
+      "note": "LocalPairing enter."
+    },
+    {
+      "key": "localPairing.codeLabel",
+      "value": "Code",
+      "role": "label",
+      "note": "The field's label."
+    },
+    {
+      "key": "localPairing.codePlaceholder",
+      "value": "0000 0000",
+      "role": "hint",
+      "note": "Placeholder; also tells the length and the grouping."
+    },
+    {
+      "key": "linkPairing.shares",
+      "value": "Each of you shares",
+      "role": "label",
+      "existing": true,
+      "note": "Reused: heading over the app's categories, before Pair."
+    },
+    {
+      "key": "linkPairing.sharesNone",
+      "value": "Nothing is shared yet.",
+      "role": "body",
+      "existing": true,
+      "note": "Reused when the app declares no categories."
+    },
+    {
+      "key": "localPairing.pair",
+      "value": "Pair",
+      "role": "button",
+      "note": "The joiner's submit and consent; also the shower's confirm button."
+    },
+    {
+      "key": "localPairing.pairing",
+      "value": "Pairing…",
+      "role": "button",
+      "note": "Busy label while it looks for the other device and the code is checked."
+    },
+    {
+      "key": "localPairing.wrongCode",
+      "value": "That code didn’t work. Enter the new code from the other device.",
+      "role": "body",
+      "note": "Joiner: pairing-code-failed after the code was checked (the shower has rotated). Replaces the core copy's 'Check it and try again', which is wrong here."
+    },
+    {
+      "key": "localPairing.triesLeft",
+      "value": "{tries, plural, one {# try left} other {# tries left}}",
+      "role": "hint",
+      "note": "Joiner: dials left for these first two digits in the 5-minute budget (2). Needs the SDK to expose it (open question)."
+    },
+    {
+      "key": "localPairing.cooldownTitle",
+      "value": "Too many tries",
+      "role": "label",
+      "note": "Joiner: the dial budget for these first two digits is spent."
+    },
+    {
+      "key": "localPairing.cooldownBody",
+      "value": "Try again in {time}, or cancel on the other device and show a new code.",
+      "role": "body",
+      "note": "Arguments: {time} = m:ss until the budget frees."
+    },
+    {
+      "key": "localPairing.notFoundTitle",
+      "value": "Can’t find the other device",
+      "role": "label",
+      "note": "pairing-not-found."
+    },
+    {
+      "key": "localPairing.notFoundBody",
+      "value": "Check you’re both on the same network.",
+      "role": "body",
+      "note": "pairing-not-found. The core message says both sentences as one; the kit splits them into title and body."
+    },
+    {
+      "key": "localPairing.notACode",
+      "value": "A code is 8 digits.",
+      "role": "body",
+      "note": "A paste that is not 8 digits after spaces and hyphens are removed; nothing is sent."
+    },
+    {
+      "key": "localPairing.otherApp",
+      "value": "This code is for another app.",
+      "role": "body",
+      "note": "A QR whose slug is not this app's (V5 §15.12 'other-app')."
+    },
+    {
+      "key": "localPairing.scanInstead",
+      "value": "Scan the code instead",
+      "role": "button",
+      "note": "Link on the enter screen; iOS, iPadOS and Android only."
+    },
+    {
+      "key": "localPairing.scanBody",
+      "value": "Point at the code on the other device.",
+      "role": "body",
+      "note": "The scan screen's lede."
+    },
+    {
+      "key": "localPairing.enterInstead",
+      "value": "Enter the code instead",
+      "role": "button",
+      "note": "Link on the scan screen."
+    },
+    {
+      "key": "localPairing.cameraPrePrompt",
+      "value": "Next, allow {app} to use the camera.",
+      "role": "hint",
+      "note": "Once, before the OS camera prompt (iOS). Arguments: {app}. The plan's draft was 'Scan the code with your camera'."
+    },
+    {
+      "key": "localPairing.cameraOffTitle",
+      "value": "Camera access is off",
+      "role": "label",
+      "note": "iOS: camera permission denied."
+    },
+    {
+      "key": "localPairing.cameraOffBody",
+      "value": "Allow it in Settings, or enter the code.",
+      "role": "body",
+      "note": "iOS: camera permission denied."
+    },
+    {
+      "key": "a11y.cameraView",
+      "value": "Camera view",
+      "role": "a11y",
+      "note": "The viewfinder."
+    },
+    {
+      "key": "common.back",
+      "value": "Back",
+      "role": "button",
+      "existing": true
+    },
+    {
+      "key": "common.cancel",
+      "value": "Cancel",
+      "role": "button",
+      "existing": true
+    }
+  ],
+  "platforms": {
+    "react": "Electron over Node: show, enter and manage; no scanning. In a browser or a desktop-bridge page there is no local network (connect-unavailable), so the kit renders nothing and the host shows no entry.",
+    "swiftui": "iOS and iPadOS: show, enter, scan (AVFoundation, the kit's own viewfinder, sdk.react-pair-enter 8–8c) and manage; the app declares NSCameraUsageDescription and the Local Network keys. macOS: show, enter and manage, no scanning.",
+    "compose": "Android: show, enter, scan and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so 8 and 8c are iOS only; a build without Play services types the code. Desktop: show, enter and manage.",
+    "godot": "Show (QR from ui/qr/), enter and manage; no scanning. Two panes by its own two_pane_fits() rule.",
+    "python": "API only (no kit yet)."
+  },
+  "status": "mockup",
+  "designReview": null
+}

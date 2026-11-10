@@ -1,0 +1,159 @@
+{
+  "id": "sdk.react-pair-confirm",
+  "title": "React kit: Pair with a Code, confirm and paired",
+  "area": "sdk",
+  "surface": "kit",
+  "order": 28,
+  "packages": ["CC-29K"],
+  "uxRows": [],
+  "summary": "After the code is proven: the shower's 'Pair with LAPTOP-7QH3RX?' with what each of you shares, the joiner's 'Waiting for them to confirm', Paired with the name this device keeps for the other one, Paired while 8 devices can already connect, and the four ways it can end without pairing.",
+  "compare": [
+    "1: the prompt appears only after the other device proved the code, so 'It entered your code.' is true; the title is the name the other device sent (cleaned; often a hostname such as LAPTOP-7QH3RX), and 'Pair with this device?' when it sent none. The categories come before the buttons. 'Not now' has first focus with the 250 ms guard (as LinkPairing), so Enter on arrival never pairs; Pair is the primary.",
+    "2: the device that entered the code waits with 'Waiting for them to confirm' (the existing linkPairing.waiting) and 'Pairing with Studio PC.'; Cancel ends it for both. 120 seconds to confirm, then 'Time ran out…'.",
+    "3: Paired shows the success check in the logo's place, 'Paired' (Title Case, the done state's name) and 'You can now connect on the same network without a code.' The Name field starts with the name the device sent; editing it renames the device on this device only ('Shown on this device only.'), and Done saves it. The other device sees Paired with its own name field for this one.",
+    "4: when 8 paired devices can already connect, the new one is stored with Can connect off and a neutral notice says so ('Theo's laptop can't connect yet' / 'Up to 8 paired devices can connect. Turn one off in Paired devices.'), with a Paired devices button beside Done.",
+    "5: Couldn't pair takes the window with one body: someone said Not now, time ran out, one of the devices has no room (32 paired), or the connection closed; each says 'Nothing was paired.' where true, then Try again (a new code on the shower, the field on the joiner) and Close.",
+    "Four sizes: three windows a row at wide with the Couldn't pair card across two columns beside 4; two a row at desktop and tablet with the card across both; stacked on phone.",
+    "Accent, type and radii match sdk.react-activate: Polaris look by default, DJDL's coral accent, no Polaris Key or Polaris Locker words or marks anywhere (there is no account in this flow).",
+    "Words are the copyKeys below, verbatim; no 'CPace', 'nameplate', 'mode', 'link secret' or 'local link' reaches a person."
+  ],
+  "copyKeys": [
+    {
+      "key": "localPairing.confirmTitle",
+      "value": "Pair with {device}?",
+      "role": "title",
+      "note": "Shower, after the code is proven. Arguments: {device} = the label the other device sent (cleaned, not verified)."
+    },
+    {
+      "key": "localPairing.confirmUnnamed",
+      "value": "Pair with this device?",
+      "role": "title",
+      "note": "When the other device sent no label."
+    },
+    {
+      "key": "localPairing.confirmBody",
+      "value": "It entered your code.",
+      "role": "body",
+      "note": "Why the prompt is there."
+    },
+    {
+      "key": "linkPairing.shares",
+      "value": "Each of you shares",
+      "role": "label",
+      "existing": true
+    },
+    {
+      "key": "localPairing.pair",
+      "value": "Pair",
+      "role": "button",
+      "note": "See sdk.react-pair-enter."
+    },
+    {
+      "key": "common.notNow",
+      "value": "Not now",
+      "role": "button",
+      "existing": true,
+      "note": "Declines; nothing is stored and the code changes."
+    },
+    {
+      "key": "linkPairing.waiting",
+      "value": "Waiting for them to confirm",
+      "role": "title",
+      "existing": true,
+      "note": "Reused (the plan names it)."
+    },
+    {
+      "key": "localPairing.waitingWith",
+      "value": "Pairing with {device}.",
+      "role": "body",
+      "note": "Joiner. Arguments: {device} = the shower's label."
+    },
+    {
+      "key": "localPairing.pairedTitle",
+      "value": "Paired",
+      "role": "title",
+      "note": "The done state's name (LOCKER-FEATURE-NAMES); same value as linkPairing.linkedTitle. Add to TITLE_CASE_KEYS."
+    },
+    {
+      "key": "localPairing.pairedBody",
+      "value": "You can now connect on the same network without a code.",
+      "role": "body",
+      "note": "linkPairing.linkedBody plus where."
+    },
+    {
+      "key": "localPairing.nameLabel",
+      "value": "Name",
+      "role": "label",
+      "note": "Paired: this device's name for the other one."
+    },
+    {
+      "key": "localPairing.nameHint",
+      "value": "Shown on this device only.",
+      "role": "hint",
+      "note": "Rename is never sent."
+    },
+    {
+      "key": "localPairing.cantConnectTitle",
+      "value": "{device} can’t connect yet",
+      "role": "label",
+      "note": "Stored with reachable false because 8 already are (LP3-D2). Arguments: {device}."
+    },
+    {
+      "key": "localPairing.cantConnectBody",
+      "value": "Up to {max} paired devices can connect. Turn one off in Paired devices.",
+      "role": "body",
+      "note": "Arguments: {max} = 8."
+    },
+    {
+      "key": "common.done",
+      "value": "Done",
+      "role": "button",
+      "existing": true
+    },
+    {
+      "key": "linkPairing.failedTitle",
+      "value": "Couldn’t pair",
+      "role": "title",
+      "existing": true
+    },
+    {
+      "key": "linkPairing.failedDeclined",
+      "value": "Someone said no. Nothing was paired.",
+      "role": "body",
+      "existing": true
+    },
+    {
+      "key": "linkPairing.failedTimeout",
+      "value": "Time ran out before you both confirmed. Nothing was paired.",
+      "role": "body",
+      "existing": true
+    },
+    {
+      "key": "localPairing.failedFull",
+      "value": "One of you has no room for another pairing. Forget one, then try again.",
+      "role": "body",
+      "note": "As linkPairing.failedFull, with this flow's verb (Forget, not Remove)."
+    },
+    {
+      "key": "linkPairing.failedClosed",
+      "value": "The connection closed. Nothing was paired.",
+      "role": "body",
+      "existing": true
+    },
+    {
+      "key": "common.tryAgain",
+      "value": "Try again",
+      "role": "button",
+      "existing": true
+    }
+  ],
+  "platforms": {
+    "react": "Electron over Node: show, enter and manage; no scanning. In a browser or a desktop-bridge page there is no local network (connect-unavailable), so the kit renders nothing and the host shows no entry.",
+    "swiftui": "iOS and iPadOS: show, enter, scan (AVFoundation, the kit's own viewfinder, sdk.react-pair-enter 8–8c) and manage; the app declares NSCameraUsageDescription and the Local Network keys. macOS: show, enter and manage, no scanning.",
+    "compose": "Android: show, enter, scan and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so 8 and 8c are iOS only; a build without Play services types the code. Desktop: show, enter and manage.",
+    "godot": "Show (QR from ui/qr/), enter and manage; no scanning. Two panes by its own two_pane_fits() rule.",
+    "python": "API only (no kit yet)."
+  },
+  "status": "mockup",
+  "designReview": null
+}

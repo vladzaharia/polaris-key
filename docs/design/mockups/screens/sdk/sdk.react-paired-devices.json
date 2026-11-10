@@ -1,0 +1,175 @@
+{
+  "id": "sdk.react-paired-devices",
+  "title": "React kit: paired devices",
+  "area": "sdk",
+  "surface": "kit",
+  "order": 29,
+  "packages": ["CC-29K"],
+  "uxRows": [],
+  "summary": "The devices this one is paired with (PairedDevicesModel): each name over when it was last seen or 'Not reachable now', a Can connect switch and a menu with Rename and Forget; renaming inline, forgetting with an inline confirm, the 8-can-connect and 32-paired caps, no devices yet, and what a connection the app makes can answer (busy, no longer paired).",
+  "compare": [
+    "1: 'They connect only on the same network.' is said once, in the lede, not on every row. Each row is the name (the rename, or the label the device sent), then 'Last seen today' / 'Last seen Oct 28' (hour-coarse, as stored), or 'Not reachable now · last seen Oct 6' after a connection to it failed (it is away, off, or forgot this device). No platform icon: the record keeps no platform (see open questions).",
+    "The Can connect switch is the link's reachable flag: on, the other device can find and connect to this one. It is on for a new pairing (LP3-D2), its accessible name is 'Let {device} connect to this device', and the column label sits once above the switches.",
+    "⋯ opens Rename and Forget. 2: Rename edits under the list (the row is marked), 'Device name' with 'Shown on this device only.', Save and Cancel; nothing is sent. 3: Forget confirms inline: 'Forget Riverside booth?' / 'To connect again, pair with a new code.' with a danger Forget and Cancel. Forgetting deletes it here only; the other device then shows it as Not reachable now.",
+    "4: with 8 switches on, every off switch is disabled and one neutral notice says 'Up to 8 can connect' / 'Turn one off to let another connect.'; turning one off enables the rest at once.",
+    "5: with 32 paired devices, 'No room to pair' / 'Forget a paired device to pair another.' and Pair with a Code is disabled; the list scrolls inside the window.",
+    "6: no paired devices: 'No paired devices yet.' and Pair with a Code.",
+    "7: what the app's own connection to a paired device can answer, shown where the app connects: busy ('Theo's laptop is busy' / 'Try again in 4 seconds.', the SDK's single-flight cooldown with backoff after a busy answer) and no longer paired (the core link-unknown copy).",
+    "Pair with a Code (plus glyph) is the one primary; Done closes. Sign-out and account changes never touch this list.",
+    "Four sizes: three windows a row at wide, two at desktop and tablet, one on phone; rows keep name, switch and menu on one line down to 390px, the meta line wraps under the name.",
+    "Accent, type and radii match sdk.react-activate: Polaris look by default, DJDL's coral accent, no Polaris Key or Polaris Locker words or marks anywhere (there is no account in this flow).",
+    "Words are the copyKeys below, verbatim; no 'CPace', 'nameplate', 'mode', 'link secret' or 'local link' reaches a person."
+  ],
+  "copyKeys": [
+    {
+      "key": "pairedDevices.title",
+      "value": "Paired devices",
+      "role": "title",
+      "note": "PairedDevices (new namespace; add it to KEY_NAMESPACES). Sentence case; see open questions."
+    },
+    {
+      "key": "pairedDevices.lede",
+      "value": "They connect only on the same network.",
+      "role": "body",
+      "note": "Said once for the list."
+    },
+    {
+      "key": "pairedDevices.canConnect",
+      "value": "Can connect",
+      "role": "label",
+      "note": "Column label over the switches."
+    },
+    {
+      "key": "a11y.letConnect",
+      "value": "Let {device} connect to this device",
+      "role": "a11y",
+      "note": "Each switch."
+    },
+    {
+      "key": "pairedDevices.lastSeen",
+      "value": "Last seen {when}",
+      "role": "hint",
+      "note": "Arguments: {when} = today, yesterday or a date (stored hour-coarse)."
+    },
+    {
+      "key": "pairedDevices.notReachable",
+      "value": "Not reachable now · last seen {when}",
+      "role": "hint",
+      "note": "After a connection to it failed."
+    },
+    {
+      "key": "a11y.deviceOptions",
+      "value": "Options for {device}",
+      "role": "a11y",
+      "note": "The ⋯ menu."
+    },
+    {
+      "key": "devices.rename",
+      "value": "Rename",
+      "role": "menu",
+      "existing": true
+    },
+    {
+      "key": "devices.renameLabel",
+      "value": "Device name",
+      "role": "label",
+      "existing": true
+    },
+    {
+      "key": "localPairing.nameHint",
+      "value": "Shown on this device only.",
+      "role": "hint"
+    },
+    {
+      "key": "common.save",
+      "value": "Save",
+      "role": "button",
+      "existing": true
+    },
+    {
+      "key": "pairedDevices.forget",
+      "value": "Forget",
+      "role": "button",
+      "note": "Menu item and the confirm's danger button."
+    },
+    {
+      "key": "pairedDevices.forgetConfirm",
+      "value": "Forget {device}?",
+      "role": "title"
+    },
+    {
+      "key": "pairedDevices.forgetBody",
+      "value": "To connect again, pair with a new code.",
+      "role": "body",
+      "note": "The one consequence line."
+    },
+    {
+      "key": "pairedDevices.reachableFullTitle",
+      "value": "Up to {max} can connect",
+      "role": "label",
+      "note": "Arguments: {max} = 8 (MAX_LIVE_LOCAL_ADVERTS)."
+    },
+    {
+      "key": "pairedDevices.reachableFullBody",
+      "value": "Turn one off to let another connect.",
+      "role": "body"
+    },
+    {
+      "key": "core.codes.local-links-full.title",
+      "value": "No room to pair",
+      "role": "label",
+      "existing": true
+    },
+    {
+      "key": "pairedDevices.fullBody",
+      "value": "Forget a paired device to pair another.",
+      "role": "body",
+      "note": "32 paired (MAX_LOCAL_LINKS)."
+    },
+    {
+      "key": "pairedDevices.empty",
+      "value": "No paired devices yet.",
+      "role": "body"
+    },
+    {
+      "key": "localPairing.title",
+      "value": "Pair with a Code",
+      "role": "button",
+      "note": "The entry button."
+    },
+    {
+      "key": "common.done",
+      "value": "Done",
+      "role": "button",
+      "existing": true
+    },
+    {
+      "key": "pairedDevices.busyTitle",
+      "value": "{device} is busy",
+      "role": "label",
+      "note": "The app's connection met a busy answer."
+    },
+    {
+      "key": "pairedDevices.busyBody",
+      "value": "Try again in {seconds, plural, one {# second} other {# seconds}}.",
+      "role": "body",
+      "note": "The SDK's cooldown (3–5 s, backing off)."
+    },
+    {
+      "key": "core.codes.link-unknown",
+      "value": "Not paired · That device is no longer paired with this one.",
+      "role": "body",
+      "existing": true,
+      "note": "Existing core copy."
+    }
+  ],
+  "platforms": {
+    "react": "Electron over Node: show, enter and manage; no scanning. In a browser or a desktop-bridge page there is no local network (connect-unavailable), so the kit renders nothing and the host shows no entry.",
+    "swiftui": "iOS and iPadOS: show, enter, scan (AVFoundation, the kit's own viewfinder, sdk.react-pair-enter 8–8c) and manage; the app declares NSCameraUsageDescription and the Local Network keys. macOS: show, enter and manage, no scanning.",
+    "compose": "Android: show, enter, scan and manage. The Play flavour opens Google's code scanner (its own UI, no camera permission), so 8 and 8c are iOS only; a build without Play services types the code. Desktop: show, enter and manage.",
+    "godot": "Show (QR from ui/qr/), enter and manage; no scanning. Two panes by its own two_pane_fits() rule.",
+    "python": "API only (no kit yet)."
+  },
+  "status": "mockup",
+  "designReview": null
+}

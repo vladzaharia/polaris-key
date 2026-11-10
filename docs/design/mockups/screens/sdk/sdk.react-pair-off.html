@@ -1,0 +1,270 @@
+<style>
+  /* sdk.react-pair-off: DJDL's accent, from its icon (coral between the brand's orange and rose), as sdk.react-activate. */
+  [data-screen="sdk.react-pair-off"] {
+    --kit-accent: color-mix(
+      in oklab,
+      var(--pk-service-update) 45%,
+      var(--pk-brand-rose)
+    );
+    --kit-accent-on: var(--pk-text-on-accent);
+    --kit-accent-subtle: color-mix(
+      in oklab,
+      var(--kit-accent) 13%,
+      var(--pk-surface-raised)
+    );
+  }
+  /* Light: the same coral one step deeper, so its label and its links read at 4.5:1 on white. */
+  [data-theme="light"] [data-screen="sdk.react-pair-off"] {
+    --kit-accent: color-mix(
+      in oklab,
+      color-mix(in oklab, var(--pk-service-update) 45%, var(--pk-brand-rose))
+        78%,
+      var(--pk-brand-text)
+    );
+  }
+  /* Frames backfill a hole a two-column frame leaves (desktop and tablet). */
+  [data-screen="sdk.react-pair-off"] .frame-grid.windows {
+    grid-auto-flow: row dense;
+  }
+  /* The pairing code: a field as tall as the code it holds, digits spaced like the shown code. */
+  [data-screen="sdk.react-pair-off"] .kit-input.pair-code {
+    min-height: 56px;
+    font-size: 24px;
+    line-height: 32px;
+    letter-spacing: 0.08em;
+  }
+  /* A device name is words, not a key: the kit's body face. */
+  [data-screen="sdk.react-pair-off"] .kit-input.name {
+    font-family: var(--pk-kit-type-body-family);
+  }
+  /* The primary in an inline panel keeps the product's fill (the panel only quiets its secondaries). */
+  [data-screen="sdk.react-pair-off"] .kit-confirm .kit-btn.primary {
+    background: var(--kit-accent);
+  }
+  /* A switch in the kit is checked in the product's accent, not the page's. */
+  [data-screen="sdk.react-pair-off"] .kit-host .switch.on {
+    border-color: var(--kit-accent);
+    background: var(--kit-accent);
+  }
+  [data-screen="sdk.react-pair-off"] .kit-host .switch.on::after {
+    background: var(--kit-accent-on);
+  }
+  /* With pairing off a row is its name over last seen, then its menu. */
+  [data-screen="sdk.react-pair-off"] .kit-device.pr {
+    grid-template-columns: minmax(0, 1fr) 40px;
+  }
+  /* Desktop and tablet: the list beside the two short windows stacked. */
+  @container screen (max-width: 1599px) {
+    [data-screen="sdk.react-pair-off"] .frame-grid.windows > .o1 {
+      grid-row: span 2;
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="sdk.react-pair-off"] .frame-grid.windows > .o1 {
+      grid-row: auto;
+    }
+  }
+</style>
+
+<div class="board" data-service="core">
+  <div class="board-page">
+    <header class="board-head rhythm">
+      <h1>DJDL with Pair with a Code turned off, in the React kit</h1>
+      <div class="callout info one-line">
+        <i class="ic ic-info"></i>
+        <div class="grow">
+          <div class="callout-text">
+            <strong>Kit preview:</strong> React kit with DJDL’s facts; DJDL
+            turned Pair with a Code off after people paired.
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="frame-grid windows top cap-strip">
+      <figure class="board-item o1">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="logo lg" data-product="djdl"></span>
+                <h2 class="kit-title">Paired devices</h2>
+              </div>
+              <div class="kit-state" role="status">
+                <i class="ic ic-ban"></i
+                ><span
+                  ><b>Pairing with a code is off</b>Paired devices can’t connect
+                  while it’s off.</span
+                >
+              </div>
+              <div class="kit-devices">
+                <div
+                  class="kit-device-list"
+                  role="list"
+                  aria-label="Paired devices"
+                >
+                  <div class="kit-device pr no-switch" role="listitem">
+                    <span
+                      ><b>Theo’s laptop</b><small>Last seen today</small></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Theo’s laptop"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr no-switch" role="listitem">
+                    <span
+                      ><b>Booth laptop</b><small>Last seen Oct 28</small></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Booth laptop"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr no-switch" role="listitem">
+                    <span
+                      ><b>Mara’s MacBook Air</b
+                      ><small>Last seen Oct 6</small></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Mara’s MacBook Air"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr no-switch" role="listitem">
+                    <span><b>Lena’s PC</b><small>Last seen Oct 19</small></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Lena’s PC"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                  <div class="kit-device pr no-switch" role="listitem">
+                    <span
+                      ><b>Riverside booth</b
+                      ><small>Last seen Sep 30</small></span
+                    ><button
+                      class="kit-btn ghost sm"
+                      aria-label="Options for Riverside booth"
+                    >
+                      <i class="ic ic-ellipsis"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="kit-end">
+                <div class="kit-actions">
+                  <button class="kit-btn primary">Done</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>1 · Paired devices.</strong> Rename and Forget still work;
+          Pair with a Code is hidden.
+        </figcaption>
+      </figure>
+      <figure class="board-item o2">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="logo lg" data-product="djdl"></span>
+                <h2 class="kit-title">Couldn’t pair</h2>
+                <p class="kit-lede">Pairing with a code is off for this app.</p>
+              </div>
+              <div class="kit-end">
+                <div class="kit-actions">
+                  <button class="kit-btn primary">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>2 · Turned off while showing a code.</strong> At the next
+          refresh, the code closes.
+        </figcaption>
+      </figure>
+      <figure class="board-item o3">
+        <div class="window win">
+          <div class="window-bar">
+            <span class="window-title"
+              ><span class="logo xs" data-product="djdl"></span>DJDL</span
+            ><span class="window-controls"
+              ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+              ><i class="ic ic-x"></i
+            ></span>
+          </div>
+          <div class="window-body kit-host plain">
+            <div class="kit-form">
+              <div class="kit-head">
+                <span class="logo lg" data-product="djdl"></span>
+                <h2 class="kit-title">Pair with a Code</h2>
+                <p class="kit-lede">Enter the code from the other device.</p>
+              </div>
+              <div class="kit-field">
+                <label class="kit-label">Code</label>
+                <div class="kit-input pair-code"><span>4812 3456</span></div>
+              </div>
+              <div class="kit-stack">
+                <span class="kit-label">Each of you shares</span>
+                <div
+                  class="kit-line"
+                  role="list"
+                  aria-label="Each of you shares"
+                >
+                  <span class="kit-pill" role="listitem">Crates</span
+                  ><span class="kit-pill" role="listitem">Cue points</span>
+                </div>
+              </div>
+              <div class="kit-state" role="alert">
+                <i class="ic ic-ban"></i
+                ><span
+                  ><b>Pairing unavailable</b>Pairing with a code is off for this
+                  app.</span
+                >
+              </div>
+              <div class="kit-end">
+                <div class="kit-actions">
+                  <button
+                    class="kit-btn primary kit-locked"
+                    disabled
+                    aria-disabled="true"
+                  >
+                    Pair</button
+                  ><button class="kit-btn">Back</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <strong>3 · Turned off while entering a code.</strong> Nothing is
+          sent.
+        </figcaption>
+      </figure>
+    </div>
+  </div>
+</div>
