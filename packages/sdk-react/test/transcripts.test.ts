@@ -1906,6 +1906,9 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       // are the host's; the Node and Python runners replay the connect-links-* and
       // connect-relay-ticket-contact transcripts.
       "connect.links",
+      // connect.local is N/A (runtime) for the same reason: a browser has no sockets and local
+      // links never use the relay; the Node runner replays connect-local-pairing.
+      "connect.local",
     ];
     const expected = TRANSCRIPTS.filter(
       (t) =>
