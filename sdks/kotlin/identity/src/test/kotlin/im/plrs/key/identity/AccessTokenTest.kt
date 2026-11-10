@@ -47,6 +47,7 @@ class AccessTokenTest {
 
     private class World(val core: CoreContext, val client: IdentityClient, val transport: ScriptedTransport, val store: InMemoryStore) {
         @Volatile var now = 1_000L
+
         @Volatile var clockFails = false
         val exchanges = AtomicInteger()
         suspend fun posts(): List<PolarisRequest> = transport.requests().filter { it.path == "/djdl/identity/token" }
@@ -275,11 +276,16 @@ class AccessTokenTest {
 
     @Test
     fun aClockThatThrowsWhileSettlingFailsTheCallerInsteadOfHangingIt() = runBlocking {
-        val w = world(exchange = { world, _ -> if (world.exchanges.get() == 0) world.clockFails = true; respond(200, grant()) })
+        val w = world(
+            exchange = { world, _ ->
+                world.clockFails = world.exchanges.get() == 0
+                respond(200, grant())
+            },
+        )
         val failure = withTimeout(5_000) { runCatching { w.client.accessToken() }.exceptionOrNull() }
         assertNotNull(failure)
         w.clockFails = false
-        w.client.accessToken()  // nothing was cached and nothing is stuck in flight: it asks again
+        w.client.accessToken() // nothing was cached and nothing is stuck in flight: it asks again
         assertEquals(2, w.posts().size)
     }
 
