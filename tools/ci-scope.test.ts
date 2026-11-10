@@ -23,6 +23,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
+import { affected, packagesOf } from "./ci-js-affected.mjs";
 import {
   changedFiles,
   ciOutputs,
@@ -905,6 +906,63 @@ describe("a push to next narrows each lane to the files since its own base", () 
     expect(out.full).toBe("true");
     expect(out["js-base"]).toBe("");
     expectFullMatrices(out);
+  });
+});
+
+describe("the JS test jobs narrow with the js base", () => {
+  const text = (id: string) => JSON.stringify(ci.jobs[id]);
+
+  it("hands the js base from the changes job to the three test jobs", () => {
+    expect(ci.jobs.changes!.outputs).toHaveProperty("js-base");
+    for (const id of ["js-worker", "js-admin", "js-rest"])
+      expect(text(id), id).toContain("needs.changes.outputs.js-base");
+  });
+
+  it("builds and tests the Worker and the admin only when turbo says they are affected", () => {
+    for (const [id, pkg] of [
+      ["js-worker", "@polaris-key/worker"],
+      ["js-admin", "@polaris-key/admin"],
+    ] as const) {
+      const steps = ci.jobs[id]!.steps!;
+      const check = steps.find((st) => st.run?.includes("ci-js-affected"))!;
+      expect(check.run, id).toContain(pkg);
+      const after = steps.slice(steps.indexOf(check) + 1);
+      for (const st of after.filter((x) => x.run?.startsWith("pnpm")))
+        expect(st.if, `${id}: ${st.run}`).toBe(
+          "steps.affected.outputs.affected == 'true'",
+        );
+    }
+  });
+
+  it("filters js-rest to the changed packages, keeping its three exclusions", () => {
+    const step = ci.jobs["js-rest"]!.steps!.find((st) =>
+      st.run?.includes("turbo run test"),
+    )!;
+    expect(step.run).toContain('${JS_BASE:+"--filter=...[$JS_BASE]"}');
+    for (const p of ["worker", "admin", "conformance-browser"])
+      expect(step.run).toContain(`--filter=!@polaris-key/${p}`);
+  });
+
+  it("runs a package when there is no base, or turbo cannot say", () => {
+    const boom = () => {
+      throw new Error("turbo failed");
+    };
+    expect(affected("@polaris-key/worker", "")).toBe(true);
+    expect(affected("@polaris-key/worker", undefined)).toBe(true);
+    expect(affected("@polaris-key/worker", "abc", boom)).toBe(true);
+    expect(affected("@polaris-key/worker", "abc", () => "not json")).toBe(true);
+  });
+
+  it("selects by turbo's `...[base]` task list", () => {
+    const calls: string[][] = [];
+    const run = (args: string[]) => {
+      calls.push(args);
+      return 'warn\n{"tasks":[{"package":"@polaris-key/docs"},{"package":"@polaris-key/node"}]}';
+    };
+    expect(affected("@polaris-key/docs", "abc", run)).toBe(true);
+    expect(affected("@polaris-key/worker", "abc", run)).toBe(false);
+    expect(calls[0]).toContain("--filter=...[abc]");
+    expect(packagesOf('{"tasks":[]}').size).toBe(0);
   });
 });
 
