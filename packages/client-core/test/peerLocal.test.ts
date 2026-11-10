@@ -5,6 +5,9 @@ import { describe, expect, it } from "vitest";
 import {
   LocalPairingGate,
   DialBudget,
+  JoinPlan,
+  NameplateMemory,
+  dialsLeft,
   PairingWindow,
   displayCode,
   drawNameplate,
@@ -107,5 +110,74 @@ describe("the gate", () => {
     expect(g.allowed).toBe(true);
     expect(g.readOk({})).toHaveLength(3);
     expect(g.check()).toBe("local-pairing-off");
+  });
+});
+
+describe("dialsLeft", () => {
+  it("is null until two digits are typed, ignoring spaces and hyphens", () => {
+    const b = new DialBudget();
+    for (const s of ["", "4", " 4 ", "a4812", "-", "4a", "\u0664\u0668"])
+      expect(dialsLeft(b, s, 0), JSON.stringify(s)).toBeNull();
+    for (const s of ["48", "4 8", "4-8", " 48 12", "4812 3456"])
+      expect(dialsLeft(b, s, 0), JSON.stringify(s)).toBe(2);
+  });
+
+  it("is two less the dials spent, per nameplate, and frees after 300 s", () => {
+    const b = new DialBudget();
+    b.spend("48", 0, 1);
+    expect(dialsLeft(b, "48", 1)).toBe(1);
+    expect(dialsLeft(b, "49", 1)).toBe(2);
+    b.spend("48", 10, 1);
+    expect(dialsLeft(b, "4812", 11)).toBe(0);
+    expect(dialsLeft(b, "48", 300)).toBe(1);
+    expect(dialsLeft(b, "48", 310)).toBe(2);
+  });
+
+  it("spends and keeps nothing", () => {
+    const b = new DialBudget();
+    dialsLeft(b, "48 12", 0);
+    expect(b.check("48", 0)).toEqual({ allowed: true, used: 0 });
+  });
+});
+
+describe("NameplateMemory", () => {
+  it("keeps a nameplate until 300 s after its window closed, and the latest close wins", () => {
+    const m = new NameplateMemory();
+    m.shown("48", 100);
+    m.shown("48", 50);
+    expect(m.recent(399)).toEqual(["48"]);
+    expect(m.recent(400)).toEqual([]);
+    m.shown("48", 500);
+    expect(m.recent(700)).toEqual(["48"]);
+  });
+});
+
+describe("JoinPlan reasons", () => {
+  const code = { kind: "code", nameplate: "48" } as const;
+  const seen = (p: JoinPlan): JoinPlan => {
+    p.see("p1-a", true, "48");
+    p.see("p1-b", true, "48");
+    return p;
+  };
+
+  it("a budget stop is spent unless a dial ended after C2", () => {
+    const p = seen(new JoinPlan(code));
+    p.ended("before-c2");
+    p.ended("budget");
+    expect([p.result(), p.reason()]).toEqual(["pairing-code-failed", "spent"]);
+  });
+
+  it("a result that is not pairing-code-failed has no reason", () => {
+    const p = seen(new JoinPlan(code));
+    p.ended("before-c2");
+    p.ended("before-c2");
+    expect([p.result(), p.reason()]).toEqual(["pairing-not-found", null]);
+  });
+
+  it("a code spent at the start browses nothing", () => {
+    const p = new JoinPlan(code);
+    p.startSpent();
+    expect(p.browses).toBe(false);
+    expect([p.result(), p.reason()]).toEqual(["pairing-code-failed", "spent"]);
   });
 });

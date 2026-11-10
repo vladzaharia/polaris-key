@@ -8,6 +8,8 @@ import {
   DialBudget,
   GATED_CALLS,
   JoinPlan,
+  NameplateMemory,
+  type JoinInput,
   LocalPairingGate,
   LocalExchange,
   HandshakeLimiter,
@@ -179,6 +181,27 @@ export interface LocalSection {
     }[];
     want: { allowed: boolean; used: number }[];
   }[];
+  nameplateMemory: {
+    seconds: number;
+    rows: {
+      id: string;
+      events: (
+        | { t: number; shown: string }
+        | { t: number; draw: string; inUse: string[] }
+      )[];
+      want: { nameplate: string | null; consumed: number }[];
+    }[];
+  };
+  joinReasons: {
+    precedence: string[];
+    rows: {
+      id: string;
+      input: JoinInput;
+      budget: number;
+      dials: DialOutcome[];
+      want: { result: string; reason: string | null };
+    }[];
+  };
   window: {
     id: string;
     steps: {
@@ -639,6 +662,61 @@ export function registerLocalSuites(
           dialled,
           result: plan.result(),
         }).toEqual(r.want);
+      });
+  });
+
+  describe("peer-matrix local: nameplateMemory", () => {
+    for (const r of l.nameplateMemory.rows)
+      it(r.id, () => {
+        const memory = new NameplateMemory();
+        const got: { nameplate: string | null; consumed: number }[] = [];
+        for (const e of r.events) {
+          if ("shown" in e) {
+            memory.shown(e.shown, e.t);
+            continue;
+          }
+          const s = stream(e.draw);
+          const inUse = [...e.inUse, ...memory.recent(e.t)];
+          got.push({
+            nameplate: drawNameplate(s.source, inUse),
+            consumed: s.consumed(),
+          });
+        }
+        expect(got).toEqual(r.want);
+      });
+  });
+
+  describe("peer-matrix local: joinReasons", () => {
+    it("the precedence the reason is chosen by", () => {
+      expect(l.joinReasons.precedence).toEqual([
+        "invalid",
+        "other-app",
+        "spent-at-start",
+        "wrong",
+        "spent-mid-join",
+      ]);
+    });
+    for (const r of l.joinReasons.rows)
+      it(r.id, () => {
+        const plan = new JoinPlan(r.input);
+        if (r.input.kind === "code") {
+          const budget = new DialBudget();
+          budget.spend(r.input.nameplate, 0, r.budget);
+          if (!budget.check(r.input.nameplate, 1).allowed) plan.startSpent();
+        }
+        // Two matching adverts, so a plan that browses has a dial for each outcome.
+        for (const n of ["a", "b"]) {
+          const instance = r.input.kind === "qr" ? r.input.instance : `p1-${n}`;
+          const nameplate = r.input.kind === "code" ? r.input.nameplate : "00";
+          plan.see(instance, true, nameplate);
+        }
+        for (const outcome of r.dials) {
+          if (plan.next() === null) break;
+          plan.ended(outcome);
+        }
+        expect({ result: plan.result(), reason: plan.reason() }).toEqual(
+          r.want,
+        );
       });
   });
 

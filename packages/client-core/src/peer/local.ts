@@ -87,6 +87,28 @@ export function drawNameplate(
 }
 
 /**
+ * The nameplates this device showed for one product in windows that closed less than
+ * `LOCAL_DIAL_BUDGET_SECONDS` (300) ago (§15.12, "The code"), in memory. The shower's draw skips
+ * them too, so a renewed window never reuses the nameplate of the window just closed, whose dials
+ * a joiner may have spent. Hold one per product for the life of the process, like `DialBudget`.
+ */
+export class NameplateMemory {
+  private readonly closed = new Map<string, number>();
+
+  /** The window that showed `nameplate` closed at the monotonic time `t` (seconds). */
+  shown(nameplate: string, t: number): void {
+    this.closed.set(nameplate, Math.max(t, this.closed.get(nameplate) ?? t));
+  }
+
+  /** The nameplates of windows that closed less than 300 s before `t`, to add to `inUse`. */
+  recent(t: number): string[] {
+    for (const [n, at] of this.closed)
+      if (t - at >= LOCAL_DIAL_BUDGET_SECONDS) this.closed.delete(n);
+    return [...this.closed.keys()];
+  }
+}
+
+/**
  * The password: a u32be of 4 bytes, drawn again at 4 294 000 000 or more, then mod 10^6, written
  * with leading zeros. Null when the source runs out.
  */
@@ -373,15 +395,53 @@ export function negotiateLocalCaps(
 export type JoinInput =
   | { kind: "code"; nameplate: string }
   | { kind: "qr"; instance: string }
-  | { kind: "invalid" };
+  | { kind: "invalid" }
+  | { kind: "other-app" };
 
-/** How one dial ended. */
-export type DialOutcome = "transport" | "before-c2" | "after-c2";
+/**
+ * How one dial ended. `budget` is a dial the joiner's budget stopped in the middle of a join
+ * (nothing was dialled).
+ */
+export type DialOutcome = "transport" | "before-c2" | "after-c2" | "budget";
 
 export type JoinResult =
   | "transport"
   | "pairing-code-failed"
   | "pairing-not-found";
+
+/**
+ * Why a joiner answered `pairing-code-failed` (§15.12, "Errors"). Display only. The first that
+ * applies wins: `invalid` or `other-app` (the parse), `spent` (refused at the start), `wrong` (a
+ * dial ended after C2), `spent` (the budget stopped a dial in the middle of the join).
+ */
+export type PairingCodeFailedReason =
+  | "invalid"
+  | "other-app"
+  | "spent"
+  | "wrong";
+
+/** Why a showing device's code is the code it is (`LocalCode.reason`). Display only. */
+export type LocalCodeReason =
+  | "opened"
+  | "wrong-code"
+  | "declined"
+  | "timeout"
+  | "closed";
+
+/** Why a window ended: the `WindowClosed` reasons, and `off` when the gate went off. */
+export type LocalWindowEnd = WindowClosed | "off";
+
+/** Why a pairing ended without a link (`onFailed`, and the reason of a joiner's `peer-closed`). */
+export type LocalPairFailureReason =
+  | "declined"
+  | "timeout"
+  | "full"
+  | "too-many-tries"
+  | "closed"
+  | "cancelled";
+
+/** Which limit `local-links-full` hit. */
+export type LocalLinksCap = "stored" | "reachable";
 
 /**
  * The joiner's choices over one browse. A code or QR that did not parse browses nothing and
@@ -394,12 +454,23 @@ export class JoinPlan {
   private dials = 0;
   private transport = false;
   private afterC2 = false;
+  private budgetStopped = false;
+  private spentAtStart = false;
 
   constructor(private readonly input: JoinInput) {}
 
   /** Whether anything is browsed at all. */
   get browses(): boolean {
-    return this.input.kind !== "invalid";
+    return (
+      this.input.kind !== "invalid" &&
+      this.input.kind !== "other-app" &&
+      !this.spentAtStart
+    );
+  }
+
+  /** The nameplate's dials were spent before the join began: nothing is browsed or dialled. */
+  startSpent(): void {
+    this.spentAtStart = true;
   }
 
   get kept(): readonly string[] {
@@ -437,13 +508,25 @@ export class JoinPlan {
     this.dials++;
     if (outcome === "transport") this.transport = true;
     else if (outcome === "after-c2") this.afterC2 = true;
+    else if (outcome === "budget") this.budgetStopped = true;
   }
 
   /** The answer once no dial is left (or the browse ran out). */
   result(): JoinResult {
-    if (this.input.kind === "invalid") return "pairing-code-failed";
+    if (!this.browses) return "pairing-code-failed";
     if (this.transport) return "transport";
-    return this.afterC2 ? "pairing-code-failed" : "pairing-not-found";
+    return this.afterC2 || this.budgetStopped
+      ? "pairing-code-failed"
+      : "pairing-not-found";
+  }
+
+  /** Of a `pairing-code-failed` result, why; null for any other result. */
+  reason(): PairingCodeFailedReason | null {
+    if (this.result() !== "pairing-code-failed") return null;
+    if (this.input.kind === "invalid") return "invalid";
+    if (this.input.kind === "other-app") return "other-app";
+    if (this.spentAtStart) return "spent";
+    return this.afterC2 ? "wrong" : "spent";
   }
 }
 
@@ -477,6 +560,25 @@ export class DialBudget {
   spend(nameplate: string, t: number, dials: number): void {
     this.recent(nameplate, t).push(...Array<number>(dials).fill(t));
   }
+
+  /** The dials a join of this nameplate may still make now: 2 less the dials spent. */
+  left(nameplate: string, t: number): 0 | 1 | 2 {
+    return (LOCAL_DIAL_BUDGET - this.check(nameplate, t).used) as 0 | 1 | 2;
+  }
+}
+
+/**
+ * The dials left for the nameplate a person has typed so far (`localLinks.dialsLeft`): null unless
+ * the text, with ASCII spaces and hyphens removed, starts with two ASCII digits. It reads those two
+ * digits only, keeps nothing and spends nothing.
+ */
+export function dialsLeft(
+  budget: DialBudget,
+  text: string,
+  t: number,
+): 0 | 1 | 2 | null {
+  const m = /^[0-9]{2}/.exec(text.replace(/[ -]/g, ""));
+  return m === null ? null : budget.left(m[0], t);
 }
 
 // ── The pairing window (§15.12, "The pairing window") ────────────────────────────────────────

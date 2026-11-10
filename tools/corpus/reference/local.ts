@@ -836,6 +836,93 @@ export function refDialBudget(joins: readonly BudgetJoin[]): BudgetStep[] {
   });
 }
 
+// ── The shower's nameplate memory (§15.12, "The code") ───────────────────────
+
+/** A window that showed `shown` closed at `t`, or a draw at `t` over the byte stream `draw`. */
+export type MemoryEvent =
+  | { t: number; shown: string }
+  | { t: number; draw: Uint8Array; inUse: readonly string[] };
+
+export interface MemoryStep {
+  nameplate: string | null;
+  consumed: number;
+}
+
+/**
+ * A draw skips every nameplate in `inUse` and every nameplate whose window closed less than 300 s
+ * before the draw; with all 100 skipped it draws among all. Returns one step per draw.
+ */
+export function refNameplateMemory(
+  events: readonly MemoryEvent[],
+): MemoryStep[] {
+  const closedAt = new Map<string, number>();
+  const out: MemoryStep[] = [];
+  for (const e of events) {
+    if ("shown" in e) {
+      closedAt.set(e.shown, Math.max(e.t, closedAt.get(e.shown) ?? e.t));
+      continue;
+    }
+    const skipped = new Set<number>(e.inUse.map(Number));
+    for (const [n, at] of closedAt)
+      if (e.t - at < REF_DIAL_BUDGET_SECONDS) skipped.add(Number(n));
+    const d = refNameplate(e.draw, [...skipped]);
+    out.push({
+      nameplate: d.value === null ? null : refNameplateText(d.value),
+      consumed: d.consumed,
+    });
+  }
+  return out;
+}
+
+// ── The joiner's reason (§15.12, "Errors") ───────────────────────────────────
+
+/** The order in which the reasons of `pairing-code-failed` are tried; the first that applies wins. */
+export const REF_JOIN_REASON_PRECEDENCE = [
+  "invalid",
+  "other-app",
+  "spent-at-start",
+  "wrong",
+  "spent-mid-join",
+] as const;
+
+export interface JoinReasonIn {
+  input:
+    | { kind: "code"; nameplate: string }
+    | { kind: "qr"; instance: string }
+    | { kind: "invalid" }
+    | { kind: "other-app" };
+  /** Dials of the typed nameplate already spent in the last 300 s (a QR is never limited). */
+  budget: number;
+  /** How each dial ended; `budget` is a dial the budget stopped. */
+  dials: ("transport" | "before-c2" | "after-c2" | "budget")[];
+}
+
+export interface JoinReasonOut {
+  result: "transport" | "pairing-code-failed" | "pairing-not-found";
+  reason: "invalid" | "other-app" | "spent" | "wrong" | null;
+}
+
+export function refJoinReason(i: JoinReasonIn): JoinReasonOut {
+  const failed = (reason: JoinReasonOut["reason"]): JoinReasonOut => ({
+    result: "pairing-code-failed",
+    reason,
+  });
+  if (i.input.kind === "invalid") return failed("invalid");
+  if (i.input.kind === "other-app") return failed("other-app");
+  if (i.input.kind === "code" && i.budget >= REF_DIAL_BUDGET)
+    return failed("spent");
+  let wrong = false;
+  let stopped = false;
+  for (const d of i.dials.slice(0, REF_LOCAL_JOIN_CANDIDATES)) {
+    if (d === "transport") return { result: "transport", reason: null };
+    if (d === "after-c2") wrong = true;
+    if (d === "budget") stopped = true;
+  }
+  if (wrong) return failed("wrong");
+  if (stopped) return failed("spent");
+  return { result: "pairing-not-found", reason: null };
+}
+
 // ── The gate (§15.12, "Gates") ───────────────────────────────────────────────
 
 export type GateRead =
