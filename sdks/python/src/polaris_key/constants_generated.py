@@ -155,9 +155,16 @@ __all__ = [
     "SYNC_ENVELOPE_PAD_BLOCK",
     "SYNC_EXPORT_BLOB_MAX_BYTES",
     "SYNC_EXPORT_FORMAT",
+    "SYNC_EXPORT_ITEM_RESERVE_BYTES",
     "SYNC_EXPORT_MAX_BYTES",
+    "SYNC_EXPORT_MAX_CHUNKS",
     "SYNC_EXPORT_MAX_ENTRIES",
+    "SYNC_EXPORT_MAX_PULLS",
+    "SYNC_EXPORT_MAX_WAIT_MS",
+    "SYNC_EXPORT_RETRY_AFTER_MAX_MS",
     "SYNC_EXPORT_STORE_DIR",
+    "SYNC_EXPORT_ZIP_END_BYTES",
+    "SYNC_EXPORT_ZIP_ENTRY_BYTES",
     "SYNC_FILE_FORMAT",
     "SYNC_FILE_MAX_BYTES",
     "SYNC_FILE_SEGMENT_BYTES",
@@ -2302,16 +2309,44 @@ SYNC_EXPORT_BLOB_MAX_BYTES: Final[int] = 268435456
 SYNC_EXPORT_FORMAT: Final[str] = "pkey-sync-export/1"
 
 
+#: Cloud Sync: `SYNC_EXPORT_ITEM_RESERVE_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_ITEM_RESERVE_BYTES: Final[int] = 1024
+
+
 #: Cloud Sync: `SYNC_EXPORT_MAX_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
 SYNC_EXPORT_MAX_BYTES: Final[int] = 4294967295
+
+
+#: Cloud Sync: `SYNC_EXPORT_MAX_CHUNKS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_MAX_CHUNKS: Final[int] = 65536
 
 
 #: Cloud Sync: `SYNC_EXPORT_MAX_ENTRIES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
 SYNC_EXPORT_MAX_ENTRIES: Final[int] = 65000
 
 
+#: Cloud Sync: `SYNC_EXPORT_MAX_PULLS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_MAX_PULLS: Final[int] = 64
+
+
+#: Cloud Sync: `SYNC_EXPORT_MAX_WAIT_MS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_MAX_WAIT_MS: Final[int] = 5400000
+
+
+#: Cloud Sync: `SYNC_EXPORT_RETRY_AFTER_MAX_MS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_RETRY_AFTER_MAX_MS: Final[int] = 900000
+
+
 #: Cloud Sync: `SYNC_EXPORT_STORE_DIR` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
 SYNC_EXPORT_STORE_DIR: Final[str] = "stores/sync.cloudSync/"
+
+
+#: Cloud Sync: `SYNC_EXPORT_ZIP_END_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_ZIP_END_BYTES: Final[int] = 22
+
+
+#: Cloud Sync: `SYNC_EXPORT_ZIP_ENTRY_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`).
+SYNC_EXPORT_ZIP_ENTRY_BYTES: Final[int] = 92
 
 
 #: Cloud Sync: `SYNC_FILE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).

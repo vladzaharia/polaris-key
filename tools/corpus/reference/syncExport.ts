@@ -2,27 +2,37 @@
 // `pkey-sync-export/1`): what `cloudSync.export()` puts in the archive, restated from the spec as
 // one whole-buffer function over node:crypto and `reference/syncVectors.ts` (the sealing
 // reference). Nothing from client-core. The zip container is not pinned (D4), only the entries:
-// their names, their order and their bytes.
+// their names, their order and their bytes, and the zip32 total they imply (§13.12 Bounds).
 //
 // Input: what the device holds after a flushed pull with `more: false`: the changes as served
-// (sealed in end-to-end mode), the files' stored bytes and the kept revisions' pointers. Output:
-// the entry list, or a refusal before the first byte.
+// (sealed in end-to-end mode), the files' pointers and what the transport serves for them (a
+// recipe), the kept revisions' pointers. Output: the entry list, or a refusal before the first
+// byte.
 
 import { createDecipheriv, createHash } from "node:crypto";
 import {
+  REF_CODEC_RAW,
   REF_FILE,
+  REF_MANIFEST,
   cat,
   fromHex,
   refBlind,
-  refCanonicalJson,
+  refChunkId,
+  refEncodeManifest,
   refFilePlainSize,
   refKColl,
   refKFile,
   refKNames,
   refKid,
+  refOpenChunk,
+  refOpenFile,
   refOpenRecord,
+  refOpenServerChunk,
   refOpenValueAnyName,
+  refParseManifest,
+  refSealChunk,
   refSealFile,
+  refSealServerChunk,
   refStream,
   toHex,
   utf8,
@@ -34,6 +44,15 @@ export const REF_EXPORT = {
   storeDir: "stores/sync.cloudSync/",
   maxEntries: 65_000,
   maxBytes: 4_294_967_295,
+  /** Most chunk records over every manifest of one export. */
+  maxChunks: 65_536,
+  /** The zip32 bytes an entry adds to its name's length twice and its data: 30 + 16 + 46. */
+  zipEntryBytes: 92,
+  zipEndBytes: 22,
+  /** What a not-yet-known JSON item counts for in the plan, before 6 bytes per byte of its names. */
+  itemReserveBytes: 1024,
+  /** `MAX_JSON_DEPTH` (§1.2). */
+  maxDepth: 64,
 } as const;
 
 /** The fixed text of `README.txt`: ASCII, LF, no interpolation. */
@@ -54,75 +73,178 @@ stores/sync.cloudSync/records/         the synced records, one file a collection
 stores/sync.cloudSync/index.json       which file holds which collection
 stores/sync.cloudSync/files/           the synced files
 stores/sync.cloudSync/files.json       which file belongs to which record
+
+A file marked "partial" in data.json is incomplete or did not match what
+the app stored. Do not rely on it.
 `;
 
 // ── input ────────────────────────────────────────────────────────────────────────────────────
 
-export interface RefFilePointer {
-  version: number;
-  size: number;
-  sha256: string;
-  format: "whole" | "chunks";
-}
-
-/** How a case's stored bytes are made: a deterministic plaintext, sealed when `saltHex` is given. */
+/** How a whole file's stored bytes are made: a deterministic plaintext, sealed when `saltHex` is given. */
 export interface RefStoredRecipe {
   /** The literal label of `refStream(label, length)` (SHA-256(label ‖ u32be(i)) blocks). */
   label: string;
   length: number;
   /** End-to-end: the 32-byte salt of `pkey-sync-file/1`. Absent: server mode, the plaintext. */
   saltHex?: string;
-  /** What the transport hands back is only the first `cut` bytes. */
+  /** What the transport serves is these bytes of another plaintext (same length) instead, sealed under this salt. */
+  swap?: { label: string; saltHex?: string };
+  /** What the transport serves has this many more bytes after the stored ones. */
+  extra?: number;
+  /** What the transport serves is only the first `cut` bytes. */
   cut?: number;
-  /** What the transport hands back has the low bit of this byte flipped. */
+  /** What the transport serves has the low bit of this byte flipped. */
   flipAt?: number;
 }
 
-export interface RefExportFile extends RefFilePointer {
+/**
+ * How a chunked file is made: the plaintext is `refStream(label, Σ chunkLens)` cut at `chunkLens`
+ * (no CDC here), one raw (codec 0) chunk object each, a `pkey-sync-chunks/1` manifest over them,
+ * sealed as a file stream under `saltHex` in end-to-end mode. The lies are the transport's.
+ */
+export interface RefChunkedRecipe {
+  label: string;
+  chunkLens: number[];
+  saltHex?: string;
+  /** The manifest's header says this `plainSize` instead of the sum. */
+  manifestPlainSize?: number;
+  /** The manifest's `plainSha256` has its first bit flipped. */
+  plainSha256Flip?: boolean;
+  /** The transport serves the stored manifest with the low bit of this byte flipped. */
+  manifestFlipAt?: number;
+  /** The transport serves no object for this chunk index. */
+  dropChunk?: number;
+  /** The transport serves this chunk's object with its last bit flipped. */
+  flipChunk?: number;
+}
+
+export interface RefExportFile {
   collection: string;
   /** The record id as it is on the wire (blinded in end-to-end mode). */
   record: string;
-  stored: RefStoredRecipe;
+  version: number;
+  /** As served: any JSON value, validated by the export. */
+  size: unknown;
+  sha256: string;
+  format: "whole" | "chunks";
+  stored?: RefStoredRecipe;
+  chunked?: RefChunkedRecipe;
 }
 
 export type RefExportChange = Record<string, unknown>;
 
 export interface RefExportInput {
   product: string;
-  subject: string;
   exportedAt: number;
   encryption: "e2e" | "server";
   rootHex?: string;
   includeRevisions: boolean;
   unsynced: number;
+  /** `maxBytes` is the zip32 total, not the file bytes. */
   caps?: { maxEntries?: number; maxBytes?: number };
   changes: RefExportChange[];
   files: RefExportFile[];
 }
 
-/** The pointer a recipe has before the transport cuts or flips anything: the sealed stream's. */
+const S = REF_FILE.segmentBytes;
+
+/** The stored size of a plaintext of `n` bytes as a `pkey-sync-file/1` stream. */
+export const refPlainToSealed = (n: number): number =>
+  REF_FILE.headerBytes + n + REF_FILE.tag * Math.max(1, Math.ceil(n / S));
+
+/** The stored bytes of a whole file before the transport alters anything, and what it serves. */
 export function refRecipeBytes(
   recipe: RefStoredRecipe,
   collection: string,
   rootHex: string | undefined,
 ): { full: Uint8Array; served: Uint8Array } {
-  const plain = refStream(recipe.label, recipe.length);
-  const full =
-    recipe.saltHex === undefined
+  const seal = (label: string, saltHex: string | undefined): Uint8Array => {
+    const plain = refStream(label, recipe.length);
+    return saltHex === undefined
       ? plain
       : refSealFile(
           fromHex(rootHex as string),
           collection,
-          fromHex(recipe.saltHex),
+          fromHex(saltHex),
           plain,
         );
-  let served: Uint8Array = full;
+  };
+  const full = seal(recipe.label, recipe.saltHex);
+  let served: Uint8Array =
+    recipe.swap === undefined
+      ? full
+      : seal(recipe.swap.label, recipe.swap.saltHex);
+  if (recipe.extra !== undefined)
+    served = cat(served, refStream(`${recipe.label} extra`, recipe.extra));
   if (recipe.flipAt !== undefined) {
-    served = Uint8Array.from(full);
+    served = Uint8Array.from(served);
     served[recipe.flipAt] = (served[recipe.flipAt] ?? 0) ^ 0x01;
   }
   if (recipe.cut !== undefined) served = served.subarray(0, recipe.cut);
   return { full, served };
+}
+
+export interface RefChunkedBytes {
+  plain: Uint8Array;
+  /** The stored manifest before the transport alters it: what the pointer's `sha256` is of. */
+  full: Uint8Array;
+  served: Uint8Array;
+  /** Chunk objects the transport serves, by id (hex). */
+  objects: Map<string, Uint8Array>;
+}
+
+export function refChunkedBytes(
+  recipe: RefChunkedRecipe,
+  collection: string,
+  rootHex: string | undefined,
+): RefChunkedBytes {
+  const root = rootHex === undefined ? null : fromHex(rootHex);
+  const length = recipe.chunkLens.reduce((a, b) => a + b, 0);
+  const plain = refStream(recipe.label, length);
+  const records: { id: Uint8Array; plainLen: number }[] = [];
+  const objects = new Map<string, Uint8Array>();
+  let at = 0;
+  recipe.chunkLens.forEach((len, i) => {
+    const body = plain.subarray(at, at + len);
+    at += len;
+    const id = refChunkId(root, collection, body);
+    records.push({ id, plainLen: len });
+    if (recipe.dropChunk === i) return;
+    let obj =
+      root === null
+        ? refSealServerChunk(REF_CODEC_RAW, body)
+        : refSealChunk(root, collection, id, REF_CODEC_RAW, body);
+    if (recipe.flipChunk === i) {
+      obj = Uint8Array.from(obj);
+      obj[obj.length - 1] = (obj[obj.length - 1] ?? 0) ^ 0x01;
+    }
+    objects.set(toHex(id), obj);
+  });
+  const plainSha256 = new Uint8Array(
+    createHash("sha256").update(plain).digest(),
+  );
+  if (recipe.plainSha256Flip === true)
+    plainSha256[0] = (plainSha256[0] ?? 0) ^ 1;
+  const manifest = refEncodeManifest({
+    plainSize: recipe.manifestPlainSize ?? length,
+    plainSha256,
+    records,
+  });
+  const full =
+    root === null
+      ? manifest
+      : refSealFile(
+          root,
+          collection,
+          fromHex(recipe.saltHex as string),
+          manifest,
+        );
+  let served = full;
+  if (recipe.manifestFlipAt !== undefined) {
+    served = Uint8Array.from(full);
+    served[recipe.manifestFlipAt] = (served[recipe.manifestFlipAt] ?? 0) ^ 0x01;
+  }
+  return { plain, full, served, objects };
 }
 
 // ── output ───────────────────────────────────────────────────────────────────────────────────
@@ -133,7 +255,12 @@ export interface RefExportEntry {
 }
 
 export type RefExportResult =
-  | { ok: true; entries: RefExportEntry[] }
+  | {
+      ok: true;
+      entries: RefExportEntry[];
+      /** The zip32 total the plan counted before the first byte, and the one the entries make. */
+      plan: { total: number; actual: number };
+    }
   | { ok: false; code: "sync-export-too-large" };
 
 interface Skipped {
@@ -144,19 +271,70 @@ interface Skipped {
   partial?: true;
 }
 
+/** The entry-name grammar of §13.12: the only names an export holds. */
+export const REF_EXPORT_NAME =
+  /^(README\.txt|data\.json|stores\/sync\.cloudSync\/(settings|files|index)\.json|stores\/sync\.cloudSync\/records\/(0|[1-9][0-9]*)\.ndjson|stores\/sync\.cloudSync\/files\/(0|[1-9][0-9]*)\.bin)$/;
+
 // ── helpers ──────────────────────────────────────────────────────────────────────────────────
 
 const sha256 = (b: Uint8Array): string =>
   createHash("sha256").update(b).digest("hex");
 const byBytes = (a: string, b: string): number =>
   Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
-const line = (v: unknown): Uint8Array => utf8(refCanonicalJson(v) + "\n");
 const isObj = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === "object" && !Array.isArray(v);
+const nullObject = (): Record<string, unknown> =>
+  Object.create(null) as Record<string, unknown>;
+const bytesOf = (s: string): number => Buffer.byteLength(s, "utf8");
 const b64urlDecode = (s: string): Uint8Array | null => {
   if (!/^[A-Za-z0-9_-]+$/.test(s)) return null;
   const b = Buffer.from(s, "base64url");
   return b.toString("base64url") === s ? new Uint8Array(b) : null;
+};
+const isSize = (n: unknown): n is number =>
+  typeof n === "number" && Number.isSafeInteger(n) && n >= 0;
+
+const LONE =
+  /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+
+class Unserialisable extends Error {}
+
+/**
+ * Canonical JSON (§13.10.3) with the refusals the export meets: a number that is not finite, a
+ * string or key with a lone surrogate, and a nesting deeper than `max` (0: no limit). Keys sort by
+ * UTF-16 code unit and are read as own properties only.
+ */
+function canon(v: unknown, max: number, depth = 0): string {
+  if (v === null || typeof v === "boolean") return JSON.stringify(v);
+  if (typeof v === "string") {
+    if (LONE.test(v)) throw new Unserialisable("lone surrogate");
+    return JSON.stringify(v);
+  }
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) throw new Unserialisable("not finite");
+    return JSON.stringify(v);
+  }
+  if (typeof v === "object") {
+    if (max > 0 && depth + 1 > max) throw new Unserialisable("depth");
+    if (Array.isArray(v))
+      return `[${v.map((x) => canon(x, max, depth + 1)).join(",")}]`;
+    const o = v as Record<string, unknown>;
+    return `{${Object.keys(o)
+      .sort()
+      .map((k) => `${canon(k, 0)}:${canon(o[k], max, depth + 1)}`)
+      .join(",")}}`;
+  }
+  throw new Unserialisable("type");
+}
+const line = (v: unknown): Uint8Array => utf8(canon(v, 0) + "\n");
+/** True when `v` and every name in it serialise, nested at most `maxDepth` deep. */
+const serialisable = (v: unknown): boolean => {
+  try {
+    canon(v, REF_EXPORT.maxDepth);
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 /** One `pkey-sync-file/1` stream read as the exporter reads it: a segment at a time, first failure stops. */
@@ -180,7 +358,6 @@ function openFileSegments(
     return none;
   const header = served.subarray(0, REF_FILE.headerBytes);
   const key = refKFile(refKColl(root, collection), served.subarray(32, 64));
-  const S = REF_FILE.segmentBytes;
   const n = Math.max(1, Math.ceil(plainSize / S));
   const out: Uint8Array[] = [];
   for (let i = 0; i < n; i++) {
@@ -211,6 +388,13 @@ function openFileSegments(
   return { plain: cat(...out), partial: false };
 }
 
+interface Pointer {
+  version: number;
+  size: unknown;
+  sha256: unknown;
+  format: unknown;
+}
+
 interface Row {
   collection: string;
   /** The wire id of the record, which keys its files. */
@@ -219,8 +403,21 @@ interface Row {
   version: number;
   value?: unknown;
   hasValue: boolean;
-  pointer?: RefFilePointer;
+  pointer?: Pointer;
   binding: { sha256: string; size: number; format: string } | null;
+}
+
+/** A file the plan will read: what to read and how many plaintext bytes it is planned at. */
+interface Planned {
+  row: Row;
+  file: RefExportFile;
+  live: boolean;
+  bound: boolean;
+  planned: number;
+  manifest?: {
+    records: { id: Uint8Array; plainLen: number }[];
+    plainSha256: Uint8Array;
+  };
 }
 
 // ── the export ───────────────────────────────────────────────────────────────────────────────
@@ -229,7 +426,10 @@ export function refExport(inp: RefExportInput): RefExportResult {
   const e2e = inp.encryption === "e2e";
   const root = e2e ? fromHex(inp.rootHex as string) : null;
   const kn = root === null ? null : refKNames(root);
-  const skipped: Skipped[] = [];
+  const settingSkips: Skipped[] = [];
+  const recordSkips: Skipped[] = [];
+  const fileSkips: Skipped[] = [];
+  const partialSkips: Skipped[] = [];
 
   // Settings, in the byte order of the name the Worker served.
   const settings = new Map<string, unknown>();
@@ -239,10 +439,11 @@ export function refExport(inp: RefExportInput): RefExportResult {
   for (const c of settingChanges) {
     const wire = c["setting"] as string;
     const got = openSetting(root, kn, wire, c);
-    if (got === null) skipped.push({ kind: "setting", code: "invalid" });
+    if (got === null || !serialisable(got.name) || !serialisable(got.value))
+      settingSkips.push({ kind: "setting", code: "invalid" });
     else settings.set(got.name, got.value);
   }
-  const settingsObject: Record<string, unknown> = {};
+  const settingsObject = nullObject();
   for (const [k, v] of settings) settingsObject[k] = v;
 
   // Records, a collection at a time, rows in the byte order of the wire id.
@@ -253,6 +454,8 @@ export function refExport(inp: RefExportInput): RefExportResult {
     ),
   ].sort(byBytes);
   const written: Array<{ collection: string; rows: Row[] }> = [];
+  /** E2E records with a file and no value, per collection: nothing names the id or binds the file. */
+  const fileOnly = new Map<string, number>();
   for (const collection of collections) {
     const rows: Row[] = [];
     const mine = recordChanges
@@ -268,18 +471,16 @@ export function refExport(inp: RefExportInput): RefExportResult {
       const r = openRecord(root, kn, collection, wire, c);
       if (r === "omit") continue;
       if (r === "file-only") {
-        // E2E: a file and no value. No id is revealed and no binding names the file.
-        skipped.push({ kind: "file", code: "sync-file-invalid", collection });
+        fileOnly.set(collection, (fileOnly.get(collection) ?? 0) + 1);
         continue;
       }
-      if (r === "invalid") {
-        skipped.push({ kind: "record", code: "invalid", collection });
+      if (
+        r === "invalid" ||
+        !serialisable(r.id) ||
+        !serialisable(r.hasValue ? r.value : null)
+      ) {
+        recordSkips.push({ kind: "record", code: "invalid", collection });
         continue;
-      }
-      if (e2e && r.pointer !== undefined && r.binding === null) {
-        // A file the sealed value does not name is no readable file there (§13.10.4).
-        skipped.push({ kind: "file", code: "sync-file-invalid", collection });
-        delete r.pointer;
       }
       rows.push(r);
     }
@@ -287,16 +488,83 @@ export function refExport(inp: RefExportInput): RefExportResult {
     if (rows.length > 0) written.push({ collection, rows });
   }
 
+  // The manifests of every chunked file are fetched and checked before anything else is read.
+  const chunkStore = new Map<string, RefChunkedBytes>();
+  const chunked = (f: RefExportFile): RefChunkedBytes => {
+    const key = `${f.collection}\u0000${f.record}\u0000${f.version}`;
+    let c = chunkStore.get(key);
+    if (c === undefined) {
+      c = refChunkedBytes(
+        f.chunked as RefChunkedRecipe,
+        f.collection,
+        inp.rootHex,
+      );
+      chunkStore.set(key, c);
+    }
+    return c;
+  };
+  let chunkTotal = 0;
+  /** The plan size of a candidate, or null when the file cannot be read at all. */
+  const validate = (
+    f: RefExportFile,
+  ): { planned: number; manifest?: Planned["manifest"] } | null => {
+    if (!isSize(f.size)) return null;
+    if (typeof f.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(f.sha256))
+      return null;
+    if (f.format === "whole") {
+      if (f.stored === undefined) return null;
+      if (!e2e) return { planned: f.size };
+      const plain = refFilePlainSize(f.size);
+      return plain === null ? null : { planned: plain };
+    }
+    if (f.chunked === undefined) return null;
+    const { served } = chunked(f);
+    if (
+      served.length >
+      refPlainToSealed(
+        REF_MANIFEST.headerBytes +
+          REF_MANIFEST.recordBytes * REF_MANIFEST.maxChunks,
+      )
+    )
+      return null;
+    if (sha256(served) !== f.sha256) return null;
+    let bytes: Uint8Array;
+    if (root === null) bytes = served;
+    else {
+      const o = refOpenFile(root, f.collection, refKid(root), served);
+      if (!o.ok) return null;
+      bytes = o.plain;
+    }
+    const m = refParseManifest(bytes);
+    if (!m.ok) return null;
+    const stored = e2e
+      ? refPlainToSealed(m.manifest.plainSize)
+      : m.manifest.plainSize;
+    if (stored !== f.size) return null;
+    chunkTotal += m.manifest.records.length;
+    return {
+      planned: m.manifest.plainSize,
+      manifest: {
+        records: m.manifest.records,
+        plainSha256: m.manifest.plainSha256,
+      },
+    };
+  };
+
   // The plan: every file entry, live first and then the revisions, newest first.
-  interface Planned {
-    row: Row;
-    file: RefExportFile;
-    live: boolean;
-  }
   const planned: Planned[] = [];
-  for (const { rows } of written)
+  for (const collection of collections) {
+    for (let i = 0; i < (fileOnly.get(collection) ?? 0); i++)
+      fileSkips.push({ kind: "file", code: "sync-file-invalid", collection });
+    const rows = written.find((w) => w.collection === collection)?.rows ?? [];
     for (const row of rows) {
       if (row.pointer === undefined) continue;
+      if (e2e && row.binding === null) {
+        // A file the sealed value does not name is no readable file there (§13.10.4).
+        fileSkips.push({ kind: "file", code: "sync-file-invalid", collection });
+        delete row.pointer;
+        continue;
+      }
       const mine = inp.files.filter(
         (f) => f.collection === row.collection && f.record === row.wire,
       );
@@ -312,59 +580,162 @@ export function refExport(inp: RefExportInput): RefExportResult {
             f.size === row.binding.size &&
             f.format === row.binding.format;
       const live = candidates.find(fits);
-      if (live === undefined) {
-        skipped.push({
-          kind: "file",
-          code: "sync-file-invalid",
-          collection: row.collection,
+      const mark = (f: RefExportFile, isLive: boolean): void => {
+        const v = validate(f);
+        if (v === null) {
+          fileSkips.push({
+            kind: "file",
+            code: "sync-file-invalid",
+            collection,
+          });
+          if (isLive) delete row.pointer;
+          return;
+        }
+        planned.push({
+          row,
+          file: f,
+          live: isLive,
+          bound: isLive,
+          planned: v.planned,
+          ...(v.manifest === undefined ? {} : { manifest: v.manifest }),
         });
+      };
+      if (live === undefined) {
+        fileSkips.push({ kind: "file", code: "sync-file-invalid", collection });
         delete row.pointer;
         continue;
       }
-      planned.push({ row, file: live, live: true });
+      mark(live, true);
       if (inp.includeRevisions)
-        for (const f of candidates)
-          if (f !== live) planned.push({ row, file: f, live: false });
+        for (const f of candidates) if (f !== live) mark(f, false);
     }
+  }
 
+  // The bounds, all before the first byte.
+  const dir = REF_EXPORT.storeDir;
   const maxEntries = inp.caps?.maxEntries ?? REF_EXPORT.maxEntries;
   const maxBytes = inp.caps?.maxBytes ?? REF_EXPORT.maxBytes;
+  const refuse = (): RefExportResult => ({
+    ok: false,
+    code: "sync-export-too-large",
+  });
   const entryCount = 5 + written.length + planned.length;
-  const fileBytes = planned.reduce(
-    (n, p) => n + (e2e ? (refFilePlainSize(p.file.size) ?? 0) : p.file.size),
-    0,
-  );
-  if (entryCount > maxEntries || fileBytes > maxBytes)
-    return { ok: false, code: "sync-export-too-large" };
+  if (entryCount > maxEntries || chunkTotal > REF_EXPORT.maxChunks)
+    return refuse();
+  let fileBytes = 0;
+  for (const p of planned) {
+    fileBytes += p.planned; // each term and the sum stay safe integers: stop at the cap
+    if (fileBytes > maxBytes) return refuse();
+  }
 
-  // The files, read one at a time, in plan order.
-  const dir = REF_EXPORT.storeDir;
+  const lineOf = (r: Row, file: unknown): Uint8Array => {
+    const o = nullObject();
+    o["id"] = r.id;
+    o["version"] = r.version;
+    if (r.hasValue) o["value"] = r.value;
+    if (file !== undefined) o["file"] = file;
+    return line(o);
+  };
+  const liveRows = new Set(planned.filter((p) => p.live).map((p) => p.row));
+  let known = bytesOf(REF_EXPORT_README);
+  known += line(settingsObject).length;
+  const indexKnown = line({
+    records: written.map(({ collection, rows }, i) => ({
+      entry: `${dir}records/${i}.ndjson`,
+      collection,
+      count: rows.length,
+    })),
+  });
+  known += indexKnown.length;
+  for (const { rows } of written)
+    for (const r of rows)
+      known +=
+        lineOf(r, undefined).length +
+        (liveRows.has(r) ? REF_EXPORT.itemReserveBytes : 0);
+  // files.json and data.json depend on what the reads find: they count at their bound.
+  const reserve = REF_EXPORT.itemReserveBytes;
+  known += 2 + planned.length;
+  for (const p of planned)
+    known += reserve + 6 * (bytesOf(p.row.collection) + bytesOf(p.row.id));
+  known += reserve;
+  const skippable = [
+    ...settingChanges.map(() => ""),
+    ...inp.changes
+      .filter((c) => Array.isArray(c["record"]))
+      .map((c) => (c["record"] as string[])[0] as string),
+    ...inp.files.map((f) => f.collection),
+  ];
+  for (const c of skippable) known += reserve + 6 * bytesOf(c);
+  const names = [
+    "README.txt",
+    `${dir}settings.json`,
+    ...written.map((_, i) => `${dir}records/${i}.ndjson`),
+    ...planned.map((_, n) => `${dir}files/${n}.bin`),
+    `${dir}files.json`,
+    `${dir}index.json`,
+    "data.json",
+  ];
+  const overhead =
+    names.reduce((a, n) => a + REF_EXPORT.zipEntryBytes + 2 * bytesOf(n), 0) +
+    REF_EXPORT.zipEndBytes;
+  const planTotal = fileBytes + known + overhead;
+  if (planTotal > maxBytes) return refuse();
+
+  // The files, read one at a time, in plan order, at most the planned size each.
   const fileEntries: RefExportEntry[] = [];
   const fileIndex: unknown[] = [];
   const lineFile = new Map<Row, unknown>();
   planned.forEach((p, n) => {
     const entry = `files/${n}.bin`;
-    const { served } = refRecipeBytes(
-      p.file.stored,
-      p.row.collection,
-      inp.rootHex,
-    );
     let plain: Uint8Array;
     let partial: boolean;
-    if (root !== null) {
-      ({ plain, partial } = openFileSegments(
-        root,
-        p.row.collection,
-        p.file.size,
-        served,
-      ));
+    if (p.file.format === "chunks") {
+      const c = chunked(p.file);
+      const m = p.manifest as NonNullable<Planned["manifest"]>;
+      const pieces: Uint8Array[] = [];
+      partial = false;
+      for (const rec of m.records) {
+        const obj = c.objects.get(toHex(rec.id));
+        const o =
+          obj === undefined
+            ? null
+            : root === null
+              ? refOpenServerChunk(rec.id, obj)
+              : refOpenChunk(root, p.row.collection, rec.id, obj);
+        if (o === null || !o.ok || o.plain.length !== rec.plainLen) {
+          partial = true;
+          break;
+        }
+        pieces.push(o.plain);
+      }
+      plain = cat(...pieces);
+      if (!partial && sha256(plain) !== toHex(m.plainSha256)) partial = true;
     } else {
-      plain = served;
-      partial =
-        served.length !== p.file.size || sha256(served) !== p.file.sha256;
+      const { served } = refRecipeBytes(
+        p.file.stored as RefStoredRecipe,
+        p.row.collection,
+        inp.rootHex,
+      );
+      const read = served.subarray(0, p.file.size as number);
+      const storedOk =
+        read.length === p.file.size && sha256(read) === p.file.sha256;
+      if (root !== null) {
+        const o = openFileSegments(
+          root,
+          p.row.collection,
+          p.file.size as number,
+          read,
+        );
+        plain = o.plain;
+        partial = o.partial || !storedOk;
+      } else {
+        plain = read;
+        partial = !storedOk;
+      }
     }
+    if (plain.length > p.planned) throw new Error("read past the plan");
     if (partial)
-      skipped.push({
+      partialSkips.push({
         kind: "file",
         code: "sync-file-invalid",
         collection: p.row.collection,
@@ -373,22 +744,32 @@ export function refExport(inp: RefExportInput): RefExportResult {
       });
     fileEntries.push({ name: dir + entry, bytes: plain });
     const digest = sha256(plain);
-    fileIndex.push({
-      entry: dir + entry,
-      collection: p.row.collection,
-      id: p.row.id,
-      version: p.file.version,
-      live: p.live,
-      size: plain.length,
-      sha256: digest,
-    });
-    if (p.live)
-      lineFile.set(p.row, {
-        entry: dir + entry,
-        version: p.file.version,
-        size: plain.length,
-        sha256: digest,
-      });
+    const item = nullObject();
+    item["entry"] = dir + entry;
+    item["collection"] = p.row.collection;
+    item["id"] = p.row.id;
+    item["version"] = p.file.version;
+    item["live"] = p.live;
+    item["size"] = plain.length;
+    item["sha256"] = digest;
+    if (partial) {
+      item["partial"] = true;
+      item["expectedSize"] = p.planned;
+    }
+    if (e2e && !p.live) item["bound"] = false;
+    fileIndex.push(item);
+    if (p.live) {
+      const f = nullObject();
+      f["entry"] = dir + entry;
+      f["version"] = p.file.version;
+      f["size"] = plain.length;
+      f["sha256"] = digest;
+      if (partial) {
+        f["partial"] = true;
+        f["expectedSize"] = p.planned;
+      }
+      lineFile.set(p.row, f);
+    }
   });
 
   // The record files.
@@ -397,16 +778,7 @@ export function refExport(inp: RefExportInput): RefExportResult {
   let records = 0;
   written.forEach(({ collection, rows }, i) => {
     const name = `${dir}records/${i}.ndjson`;
-    const lines = rows.map((r) => {
-      const o: Record<string, unknown> = {
-        id: r.id,
-        version: r.version,
-      };
-      if (r.hasValue) o["value"] = r.value;
-      const f = lineFile.get(r);
-      if (f !== undefined) o["file"] = f;
-      return line(o);
-    });
+    const lines = rows.map((r) => lineOf(r, lineFile.get(r)));
     records += rows.length;
     recordEntries.push({ name, bytes: cat(...lines) });
     indexRecords.push({ entry: name, collection, count: rows.length });
@@ -416,7 +788,6 @@ export function refExport(inp: RefExportInput): RefExportResult {
     schema: REF_EXPORT.format,
     source: "device",
     product: inp.product,
-    subject: inp.subject,
     exportedAt: inp.exportedAt,
     encryption: inp.encryption,
     counts: {
@@ -425,20 +796,30 @@ export function refExport(inp: RefExportInput): RefExportResult {
       files: fileEntries.length,
     },
     unsynced: inp.unsynced,
-    skipped: skipped.map((s) => ({ ...s })),
+    skipped: [
+      ...settingSkips,
+      ...recordSkips,
+      ...fileSkips,
+      ...partialSkips,
+    ].map((s) => ({ ...s })),
   };
-  return {
-    ok: true,
-    entries: [
-      { name: "README.txt", bytes: utf8(REF_EXPORT_README) },
-      { name: `${dir}settings.json`, bytes: line(settingsObject) },
-      ...recordEntries,
-      ...fileEntries,
-      { name: `${dir}files.json`, bytes: line(fileIndex) },
-      { name: `${dir}index.json`, bytes: line({ records: indexRecords }) },
-      { name: "data.json", bytes: line(data) },
-    ],
-  };
+  const entries: RefExportEntry[] = [
+    { name: "README.txt", bytes: utf8(REF_EXPORT_README) },
+    { name: `${dir}settings.json`, bytes: line(settingsObject) },
+    ...recordEntries,
+    ...fileEntries,
+    { name: `${dir}files.json`, bytes: line(fileIndex) },
+    { name: `${dir}index.json`, bytes: line({ records: indexRecords }) },
+    { name: "data.json", bytes: line(data) },
+  ];
+  const actual =
+    entries.reduce(
+      (a, e) =>
+        a + e.bytes.length + REF_EXPORT.zipEntryBytes + 2 * bytesOf(e.name),
+      0,
+    ) + REF_EXPORT.zipEndBytes;
+  if (actual > planTotal) throw new Error("the plan undercounted the archive");
+  return { ok: true, entries, plan: { total: planTotal, actual } };
 }
 
 // ── opening ──────────────────────────────────────────────────────────────────────────────────
@@ -458,7 +839,7 @@ function openSetting(
   }
   const members = c["members"];
   if (Array.isArray(members)) {
-    const value: Record<string, unknown> = {};
+    const value = nullObject();
     for (const m of members) {
       const env =
         isObj(m) && typeof m["ct"] === "string" ? b64urlDecode(m["ct"]) : null;
@@ -489,9 +870,9 @@ function openSetting(
   return r.name === wire ? { name: wire, value: r.value } : null;
 }
 
-function pointerOf(c: RefExportChange): RefFilePointer | undefined {
+function pointerOf(c: RefExportChange): Pointer | undefined {
   const f = c["file"];
-  return isObj(f) ? (f as unknown as RefFilePointer) : undefined;
+  return isObj(f) ? (f as unknown as Pointer) : undefined;
 }
 
 /** `"omit"`: an empty sealed record whose id is not revealed. `"invalid"`: a cell failed to open. `"file-only"`: an end-to-end record with a file and no value. */
@@ -524,7 +905,7 @@ function openRecord(
     if (!Array.isArray(list)) return "invalid";
     if (list.length === 0) return "omit";
     let id: string | null = null;
-    const fields: Record<string, unknown> = {};
+    const fields = nullObject();
     const elements: unknown[] = [];
     for (const cell of list) {
       const env =

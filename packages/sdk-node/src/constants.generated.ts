@@ -1970,14 +1970,35 @@ export const SYNC_EXPORT_BLOB_MAX_BYTES = 268435456;
 /** Cloud Sync: `SYNC_EXPORT_FORMAT` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
 export const SYNC_EXPORT_FORMAT = "pkey-sync-export/1";
 
+/** Cloud Sync: `SYNC_EXPORT_ITEM_RESERVE_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_ITEM_RESERVE_BYTES = 1024;
+
 /** Cloud Sync: `SYNC_EXPORT_MAX_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
 export const SYNC_EXPORT_MAX_BYTES = 4294967295;
+
+/** Cloud Sync: `SYNC_EXPORT_MAX_CHUNKS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_MAX_CHUNKS = 65536;
 
 /** Cloud Sync: `SYNC_EXPORT_MAX_ENTRIES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
 export const SYNC_EXPORT_MAX_ENTRIES = 65000;
 
+/** Cloud Sync: `SYNC_EXPORT_MAX_PULLS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_MAX_PULLS = 64;
+
+/** Cloud Sync: `SYNC_EXPORT_MAX_WAIT_MS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_MAX_WAIT_MS = 5400000;
+
+/** Cloud Sync: `SYNC_EXPORT_RETRY_AFTER_MAX_MS` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_RETRY_AFTER_MAX_MS = 900000;
+
 /** Cloud Sync: `SYNC_EXPORT_STORE_DIR` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
 export const SYNC_EXPORT_STORE_DIR = "stores/sync.cloudSync/";
+
+/** Cloud Sync: `SYNC_EXPORT_ZIP_END_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_ZIP_END_BYTES = 22;
+
+/** Cloud Sync: `SYNC_EXPORT_ZIP_ENTRY_BYTES` (WIRE-CONTRACT-V4 §13.12, `@polaris-key/protocol/sync`). */
+export const SYNC_EXPORT_ZIP_ENTRY_BYTES = 92;
 
 /** Cloud Sync: `SYNC_FILE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
 export const SYNC_FILE_FORMAT = "pkey-sync-file/1";

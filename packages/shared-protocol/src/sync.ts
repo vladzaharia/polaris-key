@@ -163,6 +163,20 @@ export const SYNC_EXPORT_MAX_ENTRIES = 65_000;
 export const SYNC_EXPORT_MAX_BYTES = 4_294_967_295;
 /** §13.12: most bytes a browser export holds as a Blob when the host gives no sink (256 MiB). */
 export const SYNC_EXPORT_BLOB_MAX_BYTES = 268_435_456;
+/** §13.12: the most chunk records over every manifest of one export; over it the export is refused. */
+export const SYNC_EXPORT_MAX_CHUNKS = 65_536;
+/** §13.12: zip32 bytes an entry adds besides its data and twice its name: 30 (local header) + 16 (data descriptor) + 46 (central directory). */
+export const SYNC_EXPORT_ZIP_ENTRY_BYTES = 92;
+/** §13.12: zip32 bytes of the end-of-central-directory record. */
+export const SYNC_EXPORT_ZIP_END_BYTES = 22;
+/** §13.12: what an item of `files.json` or `data.json`, not yet known when the plan is made, counts for (plus 6 bytes per byte of its names). */
+export const SYNC_EXPORT_ITEM_RESERVE_BYTES = 1024;
+/** §13.12: most pulls an export makes while waiting for `more: false`; over it the export fails with reason `network`. */
+export const SYNC_EXPORT_MAX_PULLS = 64;
+/** §13.12: longest one wait taken from a `Retry-After`, in milliseconds (the longer one is cut to it). */
+export const SYNC_EXPORT_RETRY_AFTER_MAX_MS = 900_000;
+/** §13.12: most time one export spends waiting in all (rate limits and retries), in milliseconds; over it the export fails with reason `network`. */
+export const SYNC_EXPORT_MAX_WAIT_MS = 5_400_000;
 
 /** §13.11.2: reads of the recovery blob per device a day. */
 export const SYNC_RECOVERY_READS_PER_DAY = 5;

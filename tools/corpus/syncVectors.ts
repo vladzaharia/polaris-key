@@ -12,8 +12,12 @@
 import { createCipheriv, createHash, hkdfSync } from "node:crypto";
 import { readFileSync } from "node:fs";
 import {
+  REF_EXPORT_NAME,
+  refChunkedBytes,
   refExport,
+  refPlainToSealed,
   refRecipeBytes,
+  type RefChunkedRecipe,
   type RefExportChange,
   type RefExportFile,
   type RefExportInput,
@@ -55,6 +59,8 @@ import {
   refWrapInfo,
   refX25519Public,
   refSealValue,
+  REF_VALUE_VERSION,
+  refPad,
   refTransferPlan,
   refBe32,
   REF_CDC,
@@ -3246,7 +3252,6 @@ const EXP_ROOT_HEX = toHex(EXP_ROOT);
 const EXP_KN = refKNames(EXP_ROOT);
 const EXP_CLIENT = "c_AAAAAAAAAAAAAAAAAAAAAA";
 const EXP_HLC = "000000000001:0000";
-const EXP_SUBJECT = "u_exportSubject0000001";
 const EXP_AT = 1_767_225_600_000;
 
 const xSalt = (l: string): Uint8Array =>
@@ -3259,6 +3264,23 @@ const xCt = (
   label: string,
 ): string =>
   b64url(refSealValue(EXP_ROOT, collection, name, value, xSalt(label)));
+/** A value envelope whose plaintext JSON text is written as given (a number a double cannot hold). */
+function xCtRaw(
+  collection: string,
+  name: string,
+  rawJson: string,
+  label: string,
+): string {
+  const salt = xSalt(label);
+  const header = cat(Uint8Array.of(REF_VALUE_VERSION), refKid(EXP_ROOT), salt);
+  const key = refKMsg(refKColl(EXP_ROOT, collection), salt);
+  const p = refPad(utf8(`{"k":${JSON.stringify(name)},"v":${rawJson}}`));
+  const c = createCipheriv("aes-256-gcm", key, new Uint8Array(12));
+  c.setAAD(header);
+  return b64url(
+    cat(header, Buffer.concat([c.update(p), c.final(), c.getAuthTag()])),
+  );
+}
 const xBlind = (kind: string, ctx: string, n: string): string =>
   refBlind(EXP_KN, kind, ctx, n);
 
@@ -3269,31 +3291,66 @@ function xTamper(ct: string): string {
   return raw.toString("base64url");
 }
 
+/** An object whose own members are exactly `json`'s (a `__proto__` member is an ordinary one). */
+const own = (json: string): Record<string, unknown> =>
+  JSON.parse(json) as Record<string, unknown>;
+
+interface XPointer {
+  version: number;
+  size: unknown;
+  sha256: string;
+  format: "whole" | "chunks";
+}
 interface XFile {
-  pointer: { version: number; size: number; sha256: string; format: "whole" };
+  pointer: XPointer;
   file: RefExportFile;
 }
 
-/** A stored file and its pointer; the pointer is the uncut, unflipped stream's. */
+/** A stored file and its pointer; the pointer is the uncut, unflipped stream's. `size` may be made to lie. */
 function xFile(
   collection: string,
   record: string,
   version: number,
   stored: RefStoredRecipe,
   e2e: boolean,
+  size?: unknown,
 ): XFile {
   const { full } = refRecipeBytes(
     stored,
     collection,
     e2e ? EXP_ROOT_HEX : undefined,
   );
-  const pointer = {
+  const pointer: XPointer = {
     version,
-    size: full.length,
+    size: size === undefined ? full.length : size,
     sha256: sha256Hex(full),
-    format: "whole" as const,
+    format: "whole",
   };
   return { pointer, file: { ...pointer, collection, record, stored } };
+}
+
+/** A chunked file: the pointer's `size` is the stored size of the whole file, its `sha256` the stored manifest's. */
+function xChunked(
+  collection: string,
+  record: string,
+  version: number,
+  chunked: RefChunkedRecipe,
+  e2e: boolean,
+  size?: unknown,
+): XFile {
+  const { full } = refChunkedBytes(
+    chunked,
+    collection,
+    e2e ? EXP_ROOT_HEX : undefined,
+  );
+  const plain = chunked.chunkLens.reduce((a, b) => a + b, 0);
+  const pointer: XPointer = {
+    version,
+    size: size === undefined ? (e2e ? refPlainToSealed(plain) : plain) : size,
+    sha256: sha256Hex(full),
+    format: "chunks",
+  };
+  return { pointer, file: { ...pointer, collection, record, chunked } };
 }
 
 const xRecipe = (
@@ -3304,6 +3361,17 @@ const xRecipe = (
 ): RefStoredRecipe => ({
   label: `pkey-sync vector export ${label}`,
   length,
+  ...(e2e ? { saltHex: xFileSalt(label) } : {}),
+  ...over,
+});
+const xChunks = (
+  label: string,
+  chunkLens: number[],
+  e2e: boolean,
+  over: Partial<RefChunkedRecipe> = {},
+): RefChunkedRecipe => ({
+  label: `pkey-sync vector export ${label}`,
+  chunkLens,
   ...(e2e ? { saltHex: xFileSalt(label) } : {}),
   ...over,
 });
@@ -3328,7 +3396,7 @@ const sRecord = (
   id: string,
   version: number,
   value?: unknown,
-  file?: XFile["pointer"],
+  file?: XPointer,
 ): RefExportChange => ({
   record: [collection, id],
   ...(value === undefined ? {} : { value }),
@@ -3374,7 +3442,7 @@ const eRecord = (
   id: string,
   value: unknown,
   version: number,
-  file?: XFile["pointer"],
+  file?: XPointer,
 ) => ({
   record: [collection, xBlind("record", collection, id)],
   ct: xCt(collection, id, value, `record ${collection} ${id}`),
@@ -3418,7 +3486,7 @@ const eFileOnly = (
   collection: string,
   id: string,
   version: number,
-  file: XFile["pointer"],
+  file: XPointer,
 ) => ({
   record: [collection, xBlind("record", collection, id)],
   version,
@@ -3430,7 +3498,7 @@ const eWire = (collection: string, id: string): string =>
 const bindingOf = (f: XFile): Record<string, unknown> => ({
   sha256: f.pointer.sha256,
   size: f.pointer.size,
-  format: "whole",
+  format: f.pointer.format,
 });
 
 interface ExportRowSpec {
@@ -3447,7 +3515,6 @@ function exportRow(spec: ExportRowSpec): Record<string, unknown> {
     id: spec.id,
     description: spec.description,
     product: input.product,
-    subject: input.subject,
     exportedAt: input.exportedAt,
     encryption: input.encryption,
     ...(e2e ? { rootHex: input.rootHex } : {}),
@@ -3461,15 +3528,7 @@ function exportRow(spec: ExportRowSpec): Record<string, unknown> {
     return { ...base, expect: { refusal: { code: result.code } } };
   const names = new Set<string>();
   const entries = result.entries.map((e) => {
-    if (
-      names.has(e.name) ||
-      e.name.startsWith("/") ||
-      e.name
-        .split("/")
-        .some((seg) => seg === "" || seg === "." || seg === "..") ||
-      e.name.includes("\\") ||
-      e.name.includes(":")
-    )
+    if (names.has(e.name) || !REF_EXPORT_NAME.test(e.name))
       throw new Error(
         `syncVectors export ${spec.id}: bad entry name ${e.name}`,
       );
@@ -3505,7 +3564,6 @@ const xInput = (
     Pick<RefExportInput, "encryption" | "changes">,
 ): RefExportInput => ({
   product: "demo",
-  subject: EXP_SUBJECT,
   exportedAt: EXP_AT,
   includeRevisions: false,
   unsynced: 0,
@@ -3513,6 +3571,13 @@ const xInput = (
   ...(over.encryption === "e2e" ? { rootHex: EXP_ROOT_HEX } : {}),
   ...over,
 });
+
+/** The zip32 total a row's plan counts (what `caps.maxBytes` is held against). */
+function planTotal(input: RefExportInput): number {
+  const r = refExport({ ...input, caps: undefined } as RefExportInput);
+  if (!r.ok) throw new Error("syncVectors export: the base row is refused");
+  return r.plan.total;
+}
 
 function buildExportCases(): unknown[] {
   const rows: ExportRowSpec[] = [];
@@ -3576,17 +3641,26 @@ function buildExportCases(): unknown[] {
       "maxEntries 5 (README, settings, files.json, index.json and data.json alone fill it): refused.",
     input: { ...serverBasic, caps: { maxEntries: 5 } },
   });
-  const fileBytes = sSave.pointer.size + sOnly.pointer.size;
+  const fileBytes =
+    (sSave.pointer.size as number) + (sOnly.pointer.size as number);
+  const total = planTotal(serverBasic);
   rows.push({
     id: "bytes-at-cap",
-    description: "maxBytes equal to the planned file bytes: written.",
-    input: { ...serverBasic, caps: { maxBytes: fileBytes } },
+    description:
+      "maxBytes (the zip32 total: file bytes, the other entries and the zip overhead of section 13.12) equal to the planned total: written.",
+    input: { ...serverBasic, caps: { maxBytes: total } },
   });
   rows.push({
     id: "too-many-bytes",
     description:
-      "maxBytes one below the planned file bytes: sync-export-too-large, nothing written.",
-    input: { ...serverBasic, caps: { maxBytes: fileBytes - 1 } },
+      "maxBytes one below the planned zip32 total: sync-export-too-large, nothing written.",
+    input: { ...serverBasic, caps: { maxBytes: total - 1 } },
+  });
+  rows.push({
+    id: "too-many-bytes-with-json",
+    description:
+      "maxBytes equal to the planned file bytes alone: the other entries and the zip overhead push the total over it, so the export is refused.",
+    input: { ...serverBasic, caps: { maxBytes: fileBytes } },
   });
 
   // e2e-basic
@@ -3684,7 +3758,7 @@ function buildExportCases(): unknown[] {
   rows.push({
     id: "e2e-file-truncated",
     description:
-      "A 2.5 MiB end-to-end file the transport served only up to the middle of its second segment: segment 0 authenticates and is written, the rest is not, and the entry is listed with partial true. A save whose value names no file and a file-only record are listed as sync-file-invalid with no entry.",
+      "A 2.5 MiB end-to-end file the transport served only up to the middle of its second segment: segment 0 authenticates and is written, the rest is not, and the entry is listed with partial true (files.json and the record's file carry partial and expectedSize). A save whose value names no file and a file-only record are listed as sync-file-invalid with no entry.",
     input: xInput({
       encryption: "e2e",
       changes: [
@@ -3699,6 +3773,52 @@ function buildExportCases(): unknown[] {
         eFileOnly("saves", "slot-3", 23, orphan.pointer),
       ],
       files: [big.file, unbound.file, orphan.file],
+    }),
+  });
+
+  // e2e-file-swapped: a valid stream of another file of the same collection and size.
+  const swapA = xFile(
+    "saves",
+    eWire("saves", "slot-1"),
+    31,
+    xRecipe("e2e-swap-a", 1000, true, {
+      swap: {
+        label: "pkey-sync vector export e2e-swap-b",
+        saltHex: xFileSalt("e2e-swap-b"),
+      },
+    }),
+    true,
+  );
+  const swapOk = xFile(
+    "saves",
+    eWire("saves", "slot-2"),
+    32,
+    xRecipe("e2e-swap-ok", 500, true),
+    true,
+  );
+  rows.push({
+    id: "e2e-file-swapped",
+    description:
+      "The transport serves, for slot-1, another file of the same collection and the same size: every segment authenticates, but the stored bytes do not hash to the sha256 the sealed binding names. The entry is written and listed with partial true; slot-2 is read normally.",
+    input: xInput({
+      encryption: "e2e",
+      changes: [
+        eRecord(
+          "saves",
+          "slot-1",
+          { name: "Swapped", $file: bindingOf(swapA) },
+          31,
+          swapA.pointer,
+        ),
+        eRecord(
+          "saves",
+          "slot-2",
+          { name: "Fine", $file: bindingOf(swapOk) },
+          32,
+          swapOk.pointer,
+        ),
+      ],
+      files: [swapA.file, swapOk.file],
     }),
   });
 
@@ -3769,7 +3889,7 @@ function buildExportCases(): unknown[] {
   rows.push({
     id: "e2e-binding-names-revision-all",
     description:
-      "The same with includeRevisions: the bound file (live true) then the other (live false).",
+      "The same with includeRevisions: the bound file (live true) then the other (live false, bound false: nothing sealed names a kept revision).",
     input: { ...bindInput, includeRevisions: true },
   });
 
@@ -3791,7 +3911,7 @@ function buildExportCases(): unknown[] {
   rows.push({
     id: "server-file-mismatch",
     description:
-      "Server mode: a file served shorter than its pointer and one whose bytes do not match the pointer's sha256 are written as served and listed sync-file-invalid with partial true.",
+      "Server mode: a file served shorter than its pointer and one whose bytes do not match the pointer's sha256 are written as served and listed sync-file-invalid with partial true (files.json and the record's file carry partial and expectedSize).",
     input: xInput({
       encryption: "server",
       changes: [
@@ -3799,6 +3919,380 @@ function buildExportCases(): unknown[] {
         sRecord("saves", "slot-2", 4, { name: "Flipped" }, flipped.pointer),
       ],
       files: [short.file, flipped.file],
+    }),
+  });
+
+  // server-file-longer-than-pointer
+  const longOk = xFile(
+    "saves",
+    "slot-1",
+    5,
+    xRecipe("server-long", 10, false, { extra: 90 }),
+    false,
+  );
+  const longBad = xFile(
+    "saves",
+    "slot-2",
+    6,
+    xRecipe("server-long-flip", 10, false, { extra: 90, flipAt: 2 }),
+    false,
+  );
+  rows.push({
+    id: "server-file-longer-than-pointer",
+    description:
+      "Server mode: the pointers say 10 bytes and the transport serves 100. At most the planned 10 bytes are read: slot-1's first 10 bytes hash to its pointer, so it is written whole and not partial; slot-2's first 10 bytes do not, so it is written and listed partial.",
+    input: xInput({
+      encryption: "server",
+      changes: [
+        sRecord("saves", "slot-1", 5, { name: "Long" }, longOk.pointer),
+        sRecord(
+          "saves",
+          "slot-2",
+          6,
+          { name: "Long, flipped" },
+          longBad.pointer,
+        ),
+      ],
+      files: [longOk.file, longBad.file],
+    }),
+  });
+
+  // pointer-size-invalid (server) and e2e-pointer-size-invalid
+  const badSizes: unknown[] = [-1, 1.5, "10", null, 2 ** 53];
+  const invalidFiles = badSizes.map((size, i) =>
+    xFile(
+      "saves",
+      `slot-${i + 1}`,
+      40 + i,
+      xRecipe(`server-bad-size-${i}`, 10, false),
+      false,
+      size,
+    ),
+  );
+  const validAfter = xFile(
+    "saves",
+    "slot-6",
+    46,
+    xRecipe("server-good-size", 10, false),
+    false,
+  );
+  rows.push({
+    id: "pointer-size-invalid",
+    description:
+      'Server mode: pointers whose size is -1, 1.5, the string "10", null and 2^53 (not a non-negative safe integer). Each is listed sync-file-invalid with no entry, counts 0 and nothing is read; slot-6, with a valid size, is written.',
+    input: xInput({
+      encryption: "server",
+      changes: [
+        ...invalidFiles.map((f, i) =>
+          sRecord("saves", `slot-${i + 1}`, 40 + i, { n: i }, f.pointer),
+        ),
+        sRecord("saves", "slot-6", 46, { n: 5 }, validAfter.pointer),
+      ],
+      files: [...invalidFiles.map((f) => f.file), validAfter.file],
+    }),
+  });
+  const eBad = xFile(
+    "saves",
+    eWire("saves", "slot-1"),
+    41,
+    xRecipe("e2e-bad-size", 10, true),
+    true,
+    70,
+  );
+  rows.push({
+    id: "e2e-pointer-size-invalid",
+    description:
+      "End-to-end: the sealed binding names size 70, which no pkey-sync-file/1 stream has (the smallest is 80): the file matches its binding but is listed sync-file-invalid with no entry, and nothing is read.",
+    input: xInput({
+      encryption: "e2e",
+      changes: [
+        eRecord(
+          "saves",
+          "slot-1",
+          { name: "Odd", $file: bindingOf(eBad) },
+          41,
+          eBad.pointer,
+        ),
+      ],
+      files: [eBad.file],
+    }),
+  });
+  const huge = 2 ** 53 - 1;
+  const overA = xFile(
+    "saves",
+    "slot-1",
+    50,
+    xRecipe("server-huge-a", 4, false),
+    false,
+    huge,
+  );
+  const overB = xFile(
+    "saves",
+    "slot-2",
+    51,
+    xRecipe("server-huge-b", 4, false),
+    false,
+    huge,
+  );
+  rows.push({
+    id: "server-file-over-cap",
+    description:
+      "Server mode: two pointers of 2^53 - 1 bytes each, valid sizes. The planned sum is over the cap (and over a safe integer, so a sum must stop at the cap): sync-export-too-large, nothing read.",
+    input: xInput({
+      encryption: "server",
+      changes: [
+        sRecord("saves", "slot-1", 50, { n: 1 }, overA.pointer),
+        sRecord("saves", "slot-2", 51, { n: 2 }, overB.pointer),
+      ],
+      files: [overA.file, overB.file],
+    }),
+  });
+
+  // chunked files
+  const three = [70_000, 100_000, 50_000];
+  const cs1 = xChunked(
+    "saves",
+    "slot-1",
+    60,
+    xChunks("chunks-server-1", three, false),
+    false,
+  );
+  const cs2 = xChunked(
+    "saves",
+    "slot-2",
+    61,
+    xChunks("chunks-server-2", [4096], false),
+    false,
+  );
+  const chunksServer = xInput({
+    encryption: "server",
+    changes: [
+      sRecord("notes", "n-1", 4, { title: "a" }),
+      sRecord("saves", "slot-1", 60, { name: "Chunks" }, cs1.pointer),
+      sRecord("saves", "slot-2", 61, { name: "One chunk" }, cs2.pointer),
+    ],
+    files: [cs1.file, cs2.file],
+  });
+  rows.push({
+    id: "chunks-server-basic",
+    description:
+      "Server mode: two chunked files (3 chunks and 1). The pointer's size is the whole file's stored size (its plain size here), its sha256 the stored manifest's; the manifest is fetched and checked first, the plan size is its plainSize, and the chunks are fetched and reassembled in order.",
+    input: chunksServer,
+  });
+  const ce1 = xChunked(
+    "saves",
+    eWire("saves", "slot-1"),
+    60,
+    xChunks("chunks-e2e-1", three, true),
+    true,
+  );
+  rows.push({
+    id: "chunks-e2e-basic",
+    description:
+      "End-to-end: a chunked save. The pointer's size is the sealed size of the whole file, its sha256 the sealed manifest's; the sealed binding names it (format chunks). The manifest opens as a file stream, each chunk under its id.",
+    input: xInput({
+      encryption: "e2e",
+      changes: [
+        eRecord(
+          "saves",
+          "slot-1",
+          { name: "Chunks", $file: bindingOf(ce1) },
+          60,
+          ce1.pointer,
+        ),
+      ],
+      files: [ce1.file],
+    }),
+  });
+  rows.push({
+    id: "chunks-plansize-over-cap",
+    description:
+      "The chunked files of chunks-server-basic with maxBytes 200000: the plan size is the manifests' plainSize (224096 together), which is over it before any chunk is fetched: sync-export-too-large.",
+    input: { ...chunksServer, caps: { maxBytes: 200_000 } },
+  });
+  const liesLabel = (s: string) => `chunks-lie-${s}`;
+  const lie = (
+    n: number,
+    over: Partial<RefChunkedRecipe>,
+    size?: unknown,
+  ): XFile =>
+    xChunked(
+      "saves",
+      `slot-${n}`,
+      70 + n,
+      xChunks(liesLabel(String(n)), three, false, over),
+      false,
+      size,
+    );
+  const lies = [
+    lie(1, { manifestPlainSize: 220_001 }),
+    lie(2, {}, 10),
+    lie(3, { manifestFlipAt: 70 }),
+    lie(4, { plainSha256Flip: true }),
+    lie(5, { dropChunk: 1 }),
+    lie(6, { flipChunk: 2 }),
+    lie(7, {}),
+  ];
+  rows.push({
+    id: "chunks-manifest-lies",
+    description:
+      "Server mode, seven chunked files: slot-1's manifest header says a plainSize the records do not add up to, slot-2's pointer says size 10 while its manifest says 220000, slot-3's stored manifest does not hash to the pointer's sha256: each is sync-file-invalid with no entry and counts 0. slot-4's plainSha256 is wrong (all chunks read, the entry is written, partial true), slot-5's second chunk is not served and slot-6's third chunk is altered (the entry ends at the last good chunk, partial true). slot-7 is fine.",
+    input: xInput({
+      encryption: "server",
+      changes: lies.map((f, i) =>
+        sRecord("saves", `slot-${i + 1}`, 71 + i, { n: i + 1 }, f.pointer),
+      ),
+      files: lies.map((f) => f.file),
+    }),
+  });
+  const eLie = (
+    n: number,
+    over: Partial<RefChunkedRecipe>,
+    size?: unknown,
+  ): XFile =>
+    xChunked(
+      "saves",
+      eWire("saves", `slot-${n}`),
+      80 + n,
+      xChunks(`chunks-e2e-lie-${n}`, three, true, over),
+      true,
+      size,
+    );
+  const eLies = [
+    eLie(1, { manifestPlainSize: 220_001 }),
+    eLie(2, {}, 1000),
+    eLie(3, { dropChunk: 1 }),
+    eLie(4, { flipChunk: 2 }),
+    eLie(5, {}),
+  ];
+  rows.push({
+    id: "chunks-e2e-manifest-lies",
+    description:
+      "End-to-end, five chunked files: slot-1's authenticated manifest says a plainSize its records do not add up to and slot-2's binding names a size that is not the manifest's: each is sync-file-invalid with no entry. slot-3's second chunk is not served and slot-4's third chunk fails its tag (the entry ends at the last good chunk, partial true). slot-5 is fine.",
+    input: xInput({
+      encryption: "e2e",
+      changes: eLies.map((f, i) =>
+        eRecord(
+          "saves",
+          `slot-${i + 1}`,
+          { n: i + 1, $file: bindingOf(f) },
+          81 + i,
+          f.pointer,
+        ),
+      ),
+      files: eLies.map((f) => f.file),
+    }),
+  });
+
+  // unserialisable rows and settings
+  const nest = (n: number): unknown => {
+    let v: unknown = 1;
+    for (let i = 0; i < n; i++) v = [v];
+    return v;
+  };
+  rows.push({
+    id: "server-unserialisable-row",
+    description:
+      "Server mode: a record whose value holds a lone surrogate, a record nested 65 deep (MAX_JSON_DEPTH is 64) and a setting with a lone surrogate cannot be written as canonical JSON: each is dropped and listed code invalid, in both modes. A record nested exactly 64 deep and a plain one are written.",
+    input: xInput({
+      encryption: "server",
+      changes: [
+        sRecord("notes", "ok", 1, { title: "fine" }),
+        sRecord("notes", "bad-text", 2, { title: "a\ud800b" }),
+        sRecord("notes", "deep-64", 3, nest(64)),
+        sRecord("notes", "deep-65", 4, nest(65)),
+        sSetting("bad.text", "\udc00", 5),
+        sSetting("good.text", "ok", 6),
+      ],
+    }),
+  });
+  rows.push({
+    id: "e2e-unserialisable-row",
+    description:
+      "End-to-end: a record and a setting whose sealed value is the number 1e999 (not finite once read as a double) are dropped and listed code invalid, like a value a runtime cannot read at all; the rest is written.",
+    input: xInput({
+      encryption: "e2e",
+      changes: [
+        eRecord("notes", "ok", { title: "fine" }, 1),
+        {
+          record: ["notes", xBlind("record", "notes", "inf")],
+          ct: xCtRaw("notes", "inf", "1e999", "raw inf record"),
+          version: 2,
+        },
+        eSetting("good.text", "ok", 3),
+        {
+          ...eSetting("bad.number", 0, 4),
+          ct: xCtRaw("$settings", "bad.number", "1e999", "raw inf setting"),
+        },
+      ],
+    }),
+  });
+
+  // proto-keys: names that are special in some object models are ordinary members.
+  rows.push({
+    id: "proto-keys",
+    description:
+      "Server mode: settings, a merge setting's member, record ids, field names, a union element and a collection named __proto__ or constructor are ordinary names: each is written as an own member or string, in byte order, none dropped.",
+    input: xInput({
+      encryption: "server",
+      changes: [
+        sSetting("__proto__", 1, 2),
+        sSetting("constructor", 2, 3),
+        sSetting("theme", "dark", 1),
+        sSetting(
+          "keybinds",
+          own('{"__proto__":"x","fire":"y"}'),
+          4,
+          own('{"__proto__":"x","fire":"y"}'),
+        ),
+        sRecord("notes", "__proto__", 3, { title: "a" }),
+        sRecord("notes", "constructor", 4, { title: "b" }),
+        sRecord("notes", "toString", 5, { title: "c" }),
+        sRecord("profile", "p-1", 6, own('{"__proto__":1,"name":"x"}')),
+        sRecord("tags", "t-1", 7, ["__proto__", "constructor"]),
+        sRecord("__proto__", "a", 8, { n: 1 }),
+        sRecord("constructor", "a", 9, { n: 2 }),
+      ],
+    }),
+  });
+
+  // hostile-ids: person-chosen and Worker-chosen names live in JSON, never in an entry name.
+  const hostile = [
+    "../x",
+    "a\\b",
+    "C:",
+    "CON",
+    "NUL",
+    "a".repeat(4096),
+    "\u00e9",
+    "e\u0301",
+    "a",
+    "A",
+  ];
+  const hostileFiles = hostile.map((id, i) =>
+    xFile("saves", id, 90 + i, xRecipe(`hostile-${i}`, 3 + i, false), false),
+  );
+  const crossCollection = xFile(
+    "../c",
+    "CON",
+    99,
+    xRecipe("hostile-collection", 5, false),
+    false,
+  );
+  rows.push({
+    id: "hostile-ids",
+    description:
+      "Server mode: record ids ../x, a\\b, C:, CON, NUL, a 4 KiB name, an NFC and an NFD spelling of the same letter and a case pair, each with a file, a collection named ../c and a setting named ../s. They appear only inside JSON values: every entry name is one the grammar allows, numbered by position.",
+    input: xInput({
+      encryption: "server",
+      changes: [
+        sSetting("../s", 1, 1),
+        ...hostile.map((id, i) =>
+          sRecord("saves", id, 90 + i, { i }, hostileFiles[i]!.pointer),
+        ),
+        sRecord("../c", "CON", 99, { c: 1 }, crossCollection.pointer),
+      ],
+      files: [...hostileFiles.map((f) => f.file), crossCollection.file],
     }),
   });
 

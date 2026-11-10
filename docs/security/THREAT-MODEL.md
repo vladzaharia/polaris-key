@@ -9013,21 +9013,34 @@ took it first.
 - **T33, the device export writes plaintext outside protected storage.** In end-to-end mode the
   data was ciphertext at rest and is now a readable file, in a place the person chose. Controls:
   an explicit destination only (the SDK never picks a location, never writes to shared storage on
-  its own and never uploads); the file is written as `<destination>.partial` with owner-only
-  access, flushed and renamed over the destination, and an error or a cancel removes the partial,
-  so no other plaintext temp copy exists; no value, id or path is logged; no secret and no
-  ciphertext is in the archive (the root, wraps, recovery code, device keys, tokens, `clientId`s,
-  the journal and blinded names are never written); entry names are fixed or indexes, so a
-  person-chosen id or a Worker-chosen name cannot make an unzip write outside its folder; the
-  entry and byte caps (`SYNC_EXPORT_MAX_ENTRIES`, `SYNC_EXPORT_MAX_BYTES`) are checked before the
-  first byte, so a hostile store cannot exhaust the disk or memory (the host holds one segment at
-  a time). A row the Worker forged or altered fails to open (the name check of §13.10.4) and lands
-  in `skipped`; a file the sealed value does not bind is not written. In server mode the export
-  trusts the Worker as sync does. Residual: once written, the file is as safe as its holder keeps
-  it (backups, shared folders, a stolen unlocked device); kept revisions in end-to-end mode are
+  its own and never uploads); on a path the partial is created exclusively with owner-only access
+  at creation (no pre-created file, link, directory or device is followed or written), flushed and
+  renamed atomically over the destination, an error or a cancel removes it and leaves the old
+  destination as it was, and the next export removes a partial a crash left; no other plaintext
+  temp copy exists; no value, id or path is logged; no secret, no ciphertext and no pairwise
+  subject is in the archive; entry names come from a closed grammar (fixed names and decimal
+  positions), so no person-chosen id, device name or Worker-chosen text can make an unzip write
+  outside its folder or collide; everything the Worker serves is untrusted: a file is read at most
+  its planned size, hashed against the pointer (or the binding in end-to-end mode, the manifest
+  for chunks) and ends listed partial on any difference, so a same-size swap is flagged and not
+  written as live; a pointer's size must be a safe integer, a chunked file is planned by its
+  authenticated manifest, and the entry, chunk, zip32-total and wait bounds are all checked
+  before the first byte, so a hostile store cannot exhaust the disk, memory or time; a row that
+  cannot be written as canonical JSON is dropped and listed, never aborting the export. In
+  end-to-end mode a row the Worker forged or altered fails to open (the name check of §13.10.4)
+  and lands in `skipped`; a file the sealed value does not bind is not written. In server mode the
+  export trusts the Worker as sync does. Residuals: once written, the file is as safe as its holder
+  keeps it (backups, shared folders, a stolen unlocked device); the SDK has no consent gate (the
+  app already holds the data, and the app decides when to export); a Worker can withhold rows or
+  serve stale ones, so an export is the Worker's view, complete only as far as the Worker is honest
+  (`unsynced` and `skipped` say what the device knows); kept revisions in end-to-end mode are
   authenticated but bound to nothing, so a Worker can present another file of the same collection
-  as an older revision (an integrity limit of the person's own copy, never a disclosure); the
-  hourly file allowance (§13.8.2) means a large export can wait.
+  as an older revision (an integrity limit of the person's own copy, never a disclosure; marked
+  `live: false`, `bound: false`); a crash leaves a `.partial` until the next export removes it;
+  a file the SDK cannot remove (an SAF document it did not create, a browser's already-saved
+  download) is the app's to delete; and the hourly file
+  allowance (§13.8.2) means a large export can wait, up to the wait bound, then fails with
+  reason `network`.
 
 ### The account override layer (U-03, U-27)
 
