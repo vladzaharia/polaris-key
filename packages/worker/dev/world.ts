@@ -353,8 +353,22 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
   }
 
   // ── The router ───────────────────────────────────────────────────────────────────────────
-  const handle = (req: Request): Promise<Response> =>
-    dispatchWith(req, env, db, now());
+  let lastServed = 0;
+  const handle = (req: Request): Promise<Response> => {
+    const t = now();
+    lastServed = t;
+    return dispatchWith(req, env, db, t);
+  };
+
+  /** Signed documents carry whole-second times: a config changed in the second of the last
+   * request would sign with an `issuedAt` that is not newer. Wait out that second. */
+  async function untilNextSecond(): Promise<void> {
+    while (now() <= lastServed) {
+      await new Promise<void>((r) =>
+        setTimeout(r, 1000 - (Date.now() % 1000) + 1),
+      );
+    }
+  }
 
   async function activateAs(key: string, deviceId: string): Promise<Response> {
     return handle(
@@ -597,6 +611,7 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
       return `${s}: 100 seats added and the limit is still not reached`;
     },
     async setConfig(key, value, target) {
+      await untilNextSecond();
       const ids = target
         ? [licenseOf[stateOf(target)]]
         : Object.values(licenseOf);

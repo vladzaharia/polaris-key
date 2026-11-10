@@ -8,7 +8,6 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
-import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -653,8 +652,7 @@ describe("the Node SDK against a live pkey dev server", () => {
     );
     await client.sync();
     expect(client.config.get("render.quality", "draft")).toBe("draft");
-    // Signed documents carry whole-second timestamps; a change in the same second is not newer.
-    await sleep(1100);
+    // The dev server waits out the second of the last sync, so the change signs as newer.
     const seen: unknown[] = [];
     client.config.onConfigChange("render.quality", (c) => seen.push(c.value));
     const changed = await post(s.url, "config", {

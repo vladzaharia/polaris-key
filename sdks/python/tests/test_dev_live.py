@@ -48,7 +48,6 @@ import importlib.util
 import os
 import shutil
 import subprocess
-import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -435,9 +434,7 @@ def test_a_config_change_arrives_as_an_event(dev: Dev, lifecycle: Lifecycle) -> 
         client.subscribe(every.append, ["config"]),
     ]
     try:
-        # Signed documents carry whole-second times: a change in the second of the last sync
-        # shows on the sync after it, so let the second pass.
-        time.sleep(1.1)
+        # The dev server waits out the second of the last sync before it signs a changed config.
         _control(dev, "config", {"name": CONFIG_KEY, "value": CONFIG_VALUE})
         assert changed == [], "the client saw the change before it synced"
         assert client.sync(force=True).applied

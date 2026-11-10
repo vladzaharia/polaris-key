@@ -267,9 +267,7 @@ final class PkeyDevLiveTests: XCTestCase {
             recorder.stop()
         }
 
-        // Signed documents carry whole-second times: a change made in the second of the last sync
-        // shows on the sync after it (docs: Run Polaris Key locally, "Change things while it runs").
-        try await Task.sleep(nanoseconds: 1_100_000_000)
+        // The dev server waits out the second of the last sync before it signs a changed config.
         let said = try await DevLiveControl(baseUrl: env.baseUrl).post(
             "config", ["name": setting, "value": value])
         XCTAssertTrue(said.contains(setting), "the control command names what it changed: \(said)")

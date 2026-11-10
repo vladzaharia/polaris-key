@@ -31,7 +31,6 @@ func run(t: PKeyTestContext, bed: PKeyDevLive) -> void:
 	var events := []
 	sdk.config.config_changed.connect(func(keys: PackedStringArray) -> void: events.append(Array(keys)))
 
-	await PKeyDevLive.pause(1.1)
 	var posted := await bed.control("config", {"name": KEY, "value": target, "key": "ok"})
 	t.check("config: the server accepts the change", posted["status"] == 200 and posted["body"] is Dictionary and posted["body"].get("ok") == true, str(posted))
 
