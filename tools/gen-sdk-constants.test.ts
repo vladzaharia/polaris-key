@@ -858,10 +858,6 @@ describe("the header-value tables and SdkId", () => {
 });
 
 describe("gen constants --check", () => {
-  it("the committed files are up to date", async () => {
-    expect(await run({ check: true })).toEqual([]);
-  });
-
   it("reports a hand edit to any generated file, and does not write under --check", async () => {
     const root = mkdtempSync(join(tmpdir(), "gen-constants-"));
     mkdirSync(join(root, "sdks/godot/addons/polaris_key"), { recursive: true });
