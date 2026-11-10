@@ -67,10 +67,9 @@ def is_instance_name(name: str) -> bool:
     return isinstance(name, str) and _INSTANCE.match(name) is not None
 
 
-def parse_txt(entries: Sequence[str]) -> Dict[str, Any]:
-    """``{"ok": True, "mode": ..., "h": ...}`` or ``{"ok": False, "reason": ...}`` (``duplicate``,
-    ``version``, ``mode``, ``tag``). An entry splits at its first ``=``; one without ``=`` or with an
-    empty key is ignored; a repeated key refuses."""
+def txt_entries(entries: Sequence[str]) -> Optional[Dict[str, str]]:
+    """The key-value entries of a TXT record: an entry splits at its first ``=``; one without ``=`` or with
+    an empty key is ignored. ``None`` when a key repeats."""
     kv: Dict[str, str] = {}
     for e in entries:
         at = e.find("=")
@@ -78,18 +77,37 @@ def parse_txt(entries: Sequence[str]) -> Dict[str, Any]:
             continue
         k = e[:at]
         if k in kv:
-            return {"ok": False, "reason": "duplicate"}
+            return None
         kv[k] = e[at + 1 :]
+    return kv
+
+
+_NAMEPLATE = re.compile(r"[0-9]{2}\Z")
+
+
+def parse_txt(entries: Sequence[str]) -> Dict[str, Any]:
+    """``{"ok": True, "mode": ..., "h": ...}`` or ``{"ok": False, "reason": ...}`` (``duplicate``,
+    ``version``, ``mode``, ``tag``, ``nameplate``). Entries split as :func:`txt_entries` splits them; a
+    repeated key refuses. A pairing window's advert (``m=q``, §15.12) also carries ``n``, the nameplate."""
+    kv = txt_entries(entries)
+    if kv is None:
+        return {"ok": False, "reason": "duplicate"}
     if kv.get("v") != "1":
         return {"ok": False, "reason": "version"}
     m = kv.get("m")
-    if m not in ("a", "v", "p"):
+    if m not in ("a", "v", "p", "q"):
         return {"ok": False, "reason": "mode"}
     if m == "a":
         return {"ok": True, "mode": m}
     h = kv.get("h")
     if h is None or _TAG.match(h) is None:
         return {"ok": False, "reason": "tag"}
+    if m == "q":
+        # ``n`` is read for ``q`` only: exactly two ASCII digits (§15.12).
+        n = kv.get("n")
+        if n is None or _NAMEPLATE.match(n) is None:
+            return {"ok": False, "reason": "nameplate"}
+        return {"ok": True, "mode": m, "h": h, "n": n}
     return {"ok": True, "mode": m, "h": h}
 
 

@@ -118,6 +118,7 @@ RECORD: Dict[str, int] = {
     "VOUCH_RESULT": 0x8011,
     "CONFIRM": 0x8012,
     "CONTACT": 0x0013,
+    "LOCAL_LINK": 0x0014,
     "SAS_COMMIT": 0x8014,
     "SAS_NONCE": 0x8015,
     "SAS_REVEAL": 0x8016,
@@ -133,29 +134,33 @@ class _Row(NamedTuple):
     name: str
     modes: str
     body_len: Optional[int] = None
+    #: The capability a session must hold for the type (§15.6, §15.11, §15.12). ``xfer/1`` is enforced by the
+    #: assembler (``xfer_allowed``), ``local/1`` by the mode-q handshake, ``app/1`` by the host.
+    needs: Optional[str] = None
 
 
-#: The type table (modes: ``a``, ``v``, ``p``, ``c``).
+#: The type table (modes: ``a``, ``v``, ``p``, ``c``, ``q``, ``l``).
 RECORD_TYPES: Tuple[_Row, ...] = (
-    _Row(0x8001, 0x8001, "HELLO", "avpc"),
+    _Row(0x8001, 0x8001, "HELLO", "avpcql"),
     _Row(0x0002, 0x0002, "RING", "a"),
     _Row(0x0003, 0x0003, "TRUST", "a"),
-    _Row(0x0004, 0x0004, "PING", "avpc", 8),
-    _Row(0x0005, 0x0005, "PONG", "avpc", 8),
+    _Row(0x0004, 0x0004, "PING", "avpcql", 8),
+    _Row(0x0005, 0x0005, "PONG", "avpcql", 8),
     _Row(0x0006, 0x0006, "CANDIDATES", "a"),
     _Row(0x8010, 0x8010, "VOUCH_REQ", "v"),
     _Row(0x8011, 0x8011, "VOUCH_RESULT", "v"),
-    _Row(0x8012, 0x8012, "CONFIRM", "p"),
+    _Row(0x8012, 0x8012, "CONFIRM", "pq"),
     _Row(0x0013, 0x0013, "CONTACT", "p"),
+    _Row(0x0014, 0x0014, "LOCAL_LINK", "q", None, "local/1"),
     _Row(0x8014, 0x8014, "SAS_COMMIT", "vp"),
     _Row(0x8015, 0x8015, "SAS_NONCE", "vp"),
     _Row(0x8016, 0x8016, "SAS_REVEAL", "vp"),
-    _Row(0x0020, 0x0025, "XFER", "ac"),
+    _Row(0x0020, 0x0025, "XFER", "acl", None, "xfer/1"),
     _Row(0x0030, 0x003F, "SYNC", "v"),
-    _Row(0x0100, 0x7FFF, "APP", "ac"),
-    _Row(0x8100, 0xFFFD, "APP_CRITICAL", "ac"),
-    _Row(0x80FE, 0x80FE, "REKEY", "avpc", 0),
-    _Row(0x80FF, 0x80FF, "CLOSE", "avpc"),
+    _Row(0x0100, 0x7FFF, "APP", "acl", None, "app/1"),
+    _Row(0x8100, 0xFFFD, "APP_CRITICAL", "acl", None, "app/1"),
+    _Row(0x80FE, 0x80FE, "REKEY", "avpcql", 0),
+    _Row(0x80FF, 0x80FF, "CLOSE", "avpcql"),
 )
 
 
@@ -215,7 +220,7 @@ class RecordAssembler:
     """Reads records in order, in a session of one mode (the checks run in the order §15.6 lists)."""
 
     def __init__(self, mode: str) -> None:
-        if mode not in ("a", "v", "p", "c"):
+        if mode not in ("a", "v", "p", "c", "q", "l"):
             raise ValueError("mode")
         self._mode = mode
         self._open: Optional[Tuple[int, List[bytes], int]] = None  # type, parts, size

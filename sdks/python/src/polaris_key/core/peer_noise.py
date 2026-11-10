@@ -140,9 +140,10 @@ def hkdf_sha256(salt: bytes, ikm: bytes, info: bytes, length: int) -> bytes:
 
 
 def peer_noise_protocol(mode: str) -> str:
-    """The Noise protocol name of a mode: XXpsk0 for ``a`` (R-1) and ``c`` (the contact secret is the PSK),
+    """The Noise protocol name of a mode: XXpsk0 for ``a`` (R-1), ``c`` (the contact secret is the PSK) and the
+    local-link modes ``q`` and ``l`` (§15.12),
     plain XX for ``v`` and ``p``."""
-    return "Noise_XXpsk0_25519_AESGCM_SHA256" if mode in ("a", "c") else "Noise_XX_25519_AESGCM_SHA256"
+    return "Noise_XXpsk0_25519_AESGCM_SHA256" if mode in ("a", "c", "q", "l") else "Noise_XX_25519_AESGCM_SHA256"
 
 
 def peer_prologue(slug: str, mode: str) -> bytes:
