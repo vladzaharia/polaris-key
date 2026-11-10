@@ -25364,7 +25364,11 @@ function validatePlatformSignIn(psi, errors) {
     }
   }
 }
-var CONNECT_MEMBERS = ["relay", "interAccount", "localPairing"];
+var CONNECT_MEMBERS = [
+  "relay",
+  "interAccount",
+  "localPairing"
+];
 function validateConnectBlock(productRoot, modules, errors, warnings) {
   const connect = productRoot.connect;
   if (connect === void 0) return;
