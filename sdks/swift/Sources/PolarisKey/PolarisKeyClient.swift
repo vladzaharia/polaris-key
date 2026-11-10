@@ -503,6 +503,13 @@ public actor PolarisKeyClient {
             await publisher.publish()
         }
         core.onDiscovery { [weak self] result in await self?.discoveryRead(result) }
+        // The local-pairing gate (§15.12): applied before anything can suspend, and numbered when the request started, so
+        // an older answer that arrives after a newer one changes nothing.
+        let gateConnect = connect
+        core.onDiscovery(sequenced: { [weak self] result, seq in
+            gateConnect.noteLocalDiscovery(result, seq: seq)
+            await self?.armLocalGateReread(result)
+        })
         backendSync.set { [weak self] force in
             guard let self else { return false }
             let result = await self.sync(force: force)
@@ -579,6 +586,40 @@ public actor PolarisKeyClient {
     }
 
     private var linksReread: Task<Void, Never>?
+    private var localGateReread: Task<Void, Never>?
+    private var localGateRetries = 0
+
+    /// Keep the local-pairing gate fresh while it is on (§15.12): read discovery again every 1 to 4 hours, with jitter,
+    /// so a gate turned off reaches an idle host; and after a read that was neither a document nor a not-found (offline,
+    /// an error status) read again in 5 minutes, then 10, then every 15, so an on-path attacker that drops one read
+    /// cannot keep the gate on. A read that clears the gate stops the timer.
+    private func armLocalGateReread(_ result: DiscoveryResult) {
+        localGateReread?.cancel()
+        localGateReread = nil
+        guard connect.localPairing() else {
+            localGateRetries = 0
+            return
+        }
+        let delay: TimeInterval
+        switch result {
+        case .ok, .notFound:
+            localGateRetries = 0
+            delay = Double.random(in: 3600...14400)
+        default:
+            let n = localGateRetries
+            localGateRetries += 1
+            delay = n == 0 ? 300 : n == 1 ? 600 : 900
+        }
+        scheduleLocalGateReread(delay)
+    }
+
+    private func scheduleLocalGateReread(_ seconds: TimeInterval) {
+        localGateReread = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            guard !Task.isCancelled, let self else { return }
+            await self.discover()
+        }
+    }
 
     /// Read discovery again when the cached links answer lapses, so a lapse withdraws the adverts.
     private func rereadLinksGate() {
@@ -954,6 +995,8 @@ public actor PolarisKeyClient {
     public func close() {
         linksReread?.cancel()
         linksReread = nil
+        localGateReread?.cancel()
+        localGateReread = nil
         refreshTask?.cancel()
         refreshTask = nil
         // Bounded like the sign-out step: a hanging advert withdrawal cannot keep a closed client's sockets.

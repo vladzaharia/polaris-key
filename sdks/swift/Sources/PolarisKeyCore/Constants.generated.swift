@@ -2167,7 +2167,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "connect.relay": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.links": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.transfer": CapabilityRow(status: "implemented", service: "connect", na: []),
-    "connect.local": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.local": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.app": CapabilityRow(status: "implemented", service: "connect", na: []),
     "devices.fingerprint": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.facts": CapabilityRow(status: "implemented", service: "core", na: []),
@@ -2263,4 +2263,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "3ae8bfe8e9e3af74e0e6cb1b63ea285f86f614a85e5b2608b5259d91d6127c51"
+public let CAPABILITY_DIGEST = "5ecd9284f6920c1b0d9156b9cf19dfb7a27b6b108a4234db1cd9192f503c1f7e"

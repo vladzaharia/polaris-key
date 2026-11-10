@@ -110,6 +110,8 @@ public final class ConnectSession: Sendable, CustomStringConvertible, CustomRefl
     public let path: String
     /// The link a mode-`c` session runs over (§15.10); nil for the person's own devices.
     public let contact: ConnectContactRef?
+    /// The local link a mode-`l` session runs over (§15.12); nil otherwise.
+    public let local: ConnectLocalRef?
     /// The peer's authenticated static key (32 raw bytes): the certificate's `agreeKey` in mode `a`, the pinned
     /// contact key in mode `c`. Direct Transfer keys its partial files by it.
     public let remoteStatic: Data?
@@ -120,9 +122,10 @@ public final class ConnectSession: Sendable, CustomStringConvertible, CustomRefl
     public init(
         link: any ConnectSessionLink, peerDeviceId: String, caps: [String], hello: PeerHello, role: String,
         remoteAddress: String, path: String = "lan", budget: ConnectQueueBudget? = nil,
-        contact: ConnectContactRef? = nil, remoteStatic: Data? = nil
+        contact: ConnectContactRef? = nil, remoteStatic: Data? = nil, local: ConnectLocalRef? = nil
     ) {
         self.contact = contact
+        self.local = local
         self.remoteStatic = remoteStatic
         self.link = link
         self.peerDeviceId = peerDeviceId
@@ -136,6 +139,7 @@ public final class ConnectSession: Sendable, CustomStringConvertible, CustomRefl
 
     public var description: String {
         contact.map { "ConnectSession(contact: \($0.id), path: \(path), role: \(role))" }
+            ?? local.map { "ConnectSession(local: \($0.id), path: \(path), role: \(role))" }
             ?? "ConnectSession(peer: \(peerDeviceId), path: \(path), role: \(role))"
     }
     public var customMirror: Mirror { Mirror(self, children: [:]) }
@@ -341,6 +345,7 @@ public final class ConnectSessionHandlers: Sendable {
     private let path: String
     private let budget: ConnectQueueBudget?
     private let contacts: [ConnectContactRef]
+    private let locals: [ConnectLocalRef]
     private let box = LockedValue<ConnectSession?>(nil)
     private let linkBox = LockedValue<(any ConnectSessionLink)?>(nil)
     private let onEstablishedFn: (@Sendable (ConnectSession) -> Void)?
@@ -351,6 +356,7 @@ public final class ConnectSessionHandlers: Sendable {
 
     public init(
         role: String, path: String = "lan", budget: ConnectQueueBudget? = nil, contacts: [ConnectContactRef] = [],
+        locals: [ConnectLocalRef] = [],
         onEstablished: (@Sendable (ConnectSession) -> Void)? = nil, onRing: (@Sendable (String, Int) -> Void)? = nil,
         onTrust: (@Sendable (String) -> Void)? = nil, onRingWanted: (@Sendable () -> Void)? = nil,
         onEnded: (@Sendable () -> Void)? = nil
@@ -359,6 +365,7 @@ public final class ConnectSessionHandlers: Sendable {
         self.path = path
         self.budget = budget
         self.contacts = contacts
+        self.locals = locals
         onEstablishedFn = onEstablished
         onRingFn = onRing
         onTrustFn = onTrust
@@ -374,11 +381,13 @@ public final class ConnectSessionHandlers: Sendable {
         PeerLinkHandlers(
             onEstablished: { [self] e, address in
                 let ref = e.contactIndex.flatMap { contacts.indices.contains($0) ? contacts[$0] : nil }
-                // Mode c has no device id: the contact that opened the session names the peer.
-                guard let id = e.peerDeviceId ?? (ref != nil ? "" : nil), let link = linkBox.current else { return }
+                let local = e.localIndex.flatMap { locals.indices.contains($0) ? locals[$0] : nil }
+                // Modes c and l have no device id: the link that opened the session names the peer.
+                guard let id = e.peerDeviceId ?? (ref != nil || local != nil ? "" : nil), let link = linkBox.current
+                else { return }
                 let s = ConnectSession(
                     link: link, peerDeviceId: id, caps: e.caps, hello: e.hello, role: role, remoteAddress: address,
-                    path: path, budget: budget, contact: ref, remoteStatic: e.remoteStatic)
+                    path: path, budget: budget, contact: ref, remoteStatic: e.remoteStatic, local: local)
                 box.set(s)
                 onEstablishedFn?(s)
             },

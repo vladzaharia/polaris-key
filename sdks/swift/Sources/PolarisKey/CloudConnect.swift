@@ -124,6 +124,9 @@ import PolarisKeyCore
         /// Inter-account links (CC-19): `pair`, `list`, `remove`, `setReachable`, `open`, `onLink`. Off unless
         /// discovery says `interAccount`.
         public let links: CloudLinks
+        /// Local links (CC-29, §15.12): pair with a code on the same network with no account, then `list`, `rename`,
+        /// `remove`, `setReachable`, `open` and `onLink`. Off unless discovery says `localPairing`.
+        public let localLinks: LocalLinks
         private let channelListeners = Listeners<ConnectSession>()
         private let noticeListeners = Listeners<ConnectNotice>()
         private let statusBox = LockedValue(
@@ -155,6 +158,8 @@ import PolarisKeyCore
         ) {
             let links = CloudLinks(connect: connect)
             self.links = links
+            let localLinks = LocalLinks(connect: connect)
+            self.localLinks = localLinks
             // Partial files live in the product's state directory; a bare facade (tests) gets a private one,
             // removed when the facade is released.
             let privateDirectory =
@@ -167,6 +172,9 @@ import PolarisKeyCore
             self.transfer = transfer
             connect.rosterDeparted.set { keys in for k in keys { transfer.purge(agreeKey: k) } }
             links.hook(adopt: { s in Task { await transfer.adopt(s) } }, removed: { transfer.purge(agreeKey: $0) })
+            localLinks.hook(
+                adopt: { s in Task { await transfer.adopt(s) } }, removed: { transfer.purge(key: $0) },
+                takesSessions: { transfer.listening })
             self.nearby = CloudNearby(nearby, deliver: { [queue] f in queue.async(execute: f) })
             let channel = channelListeners
             let notices = noticeListeners
@@ -174,7 +182,7 @@ import PolarisKeyCore
             let q = queue
             core = CloudConnectCore(
                 connect: connect, discovery: discovery, applyTrust: applyTrust, now: now, links: links,
-                transfer: transfer,
+                localLinks: localLinks, transfer: transfer,
                 emit: Emit(
                     inbound: { s in
                         let subs = channel.all
@@ -187,8 +195,17 @@ import PolarisKeyCore
             let core = self.core
             transfer.bind(
                 openDevice: { id, relay in try await core.open(id, relay: relay, lanAttempt: nil) },
-                openLink: { id, relay in try await links.open(id, relay: relay) },
-                hasLink: { id in await links.list().contains { $0.id == id } })
+                openLink: { id, relay in
+                    // A link of either kind: a contact's id and a local link's are derived apart and cannot collide.
+                    if await links.list().contains(where: { $0.id == id }) {
+                        return try await links.open(id, relay: relay)
+                    }
+                    return try await localLinks.open(id)
+                },
+                hasLink: { id in
+                    if await links.list().contains(where: { $0.id == id }) { return true }
+                    return await localLinks.has(id)
+                })
         }
 
         /// For tests: hand a session in as an inbound one.
@@ -213,7 +230,7 @@ import PolarisKeyCore
         /// The sign-out step: Connect stops (bounded), then the nearby adverts and requests, before the device
         /// leaves Connect (G18). Never throws and never waits past 15 s a step.
         func stopForSignOut(bound: TimeInterval = cloudConnectStopSeconds) async {
-            await core.stop(timeout: bound)
+            await core.stopForSignOut(timeout: bound)
             transfer.purgeAll()  // sign-out and forget delete every partial file
             await stopNearby(bound: bound)
         }
@@ -307,14 +324,24 @@ import PolarisKeyCore
         private var lanAttempt = cloudConnectLanAttemptSeconds
         private var contactRelay: ConnectContactRelay?
         private let links: CloudLinks
+        private let localLinks: LocalLinks
         private let transfer: CloudTransfer
+        /// A device with no account (§15.12): the LAN service holds local links alone, and exists only while the device
+        /// holds a link. `running` is true all the while.
+        private var accountless = false
+        private var options = CloudConnectOptions()
+        private var reconfiguring = false
+        private var reconfigureAgain = false
+        /// The host asked for Connect and has not stopped it: a sign-out brings the local-link service back up.
+        private var hostStarted = false
 
         init(
             connect: ConnectClient, discovery: @escaping @Sendable () async -> ProductDiscoveryDocument?,
             applyTrust: (@Sendable (String) async -> PeerTrustResult)?, now: @escaping @Sendable () -> Int,
-            links: CloudLinks, transfer: CloudTransfer, emit: Emit
+            links: CloudLinks, localLinks: LocalLinks, transfer: CloudTransfer, emit: Emit
         ) {
             self.links = links
+            self.localLinks = localLinks
             self.transfer = transfer
             self.connect = connect
             self.discovery = discovery
@@ -360,11 +387,17 @@ import PolarisKeyCore
         /// A later `stop()` or a timed-out `start()` moved the generation on: whatever this run brought up is its own to
         /// close, and nothing it made is kept.
         private func bringUp(_ o: CloudConnectOptions, _ gen: Int) async throws {
+            options = o
             switch await connect.identity() {
             case .ready(let i): selfId = i.deviceId
             case .unsupported(let u): throw CloudConnectError.unsupported(u)
-            case .refused(let r): throw CloudConnectError.refused(r)
-            case .error(let c, let m): throw CloudConnectError.failed(code: c, message: m)
+            case .refused(let r):
+                // No account: local links alone, while pairing with a code is on (§15.12).
+                if r.code == "account_required", try await bringUpAccountless(o, gen) { return }
+                throw CloudConnectError.refused(r)
+            case .error(let c, let m):
+                if c == ErrorCode.noToken, try await bringUpAccountless(o, gen) { return }
+                throw CloudConnectError.failed(code: c, message: m)
             }
             guard gen == generation else { throw CancellationError() }
             lanAttempt = o.lanAttemptSeconds
@@ -442,9 +475,76 @@ import PolarisKeyCore
                 }
             }
             await links.attach(lan: lan, relay: contactRelay, lanAttempt: lanAttempt, relayOn: relayOn)
+            await localLinks.attach(lan: lan)
             guard gen == generation else { throw CancellationError() }
             running = true
+            hostStarted = true
             publish()
+        }
+
+        /// A device with no account brings up the local-link service when pairing with a code is on and the host did not
+        /// turn the LAN off. It binds no listener until it holds a link: `status().lan` stays `off` and `running` is true.
+        /// False (nothing done) when the gate is off or the LAN is off, so the identity's own error is thrown.
+        private func bringUpAccountless(_ o: CloudConnectOptions, _ gen: Int) async throws -> Bool {
+            guard o.lan, connect.localPairing() else { return false }
+            accountless = true
+            lanFailed = nil
+            relayReason = "host"
+            unsub.append(
+                connect.localChanges.add { [weak self] in
+                    guard let self else { return }
+                    Task { await self.reconfigure() }
+                })
+            await reconfigure()
+            guard gen == generation else { throw CancellationError() }
+            running = true
+            hostStarted = true
+            publish()
+            return true
+        }
+
+        /// The local links or the gate moved: bring the listener up at the first link and take it down when the last
+        /// is removed (or the gate goes off). One pass at a time; a change during a pass runs another.
+        private func reconfigure() async {
+            if reconfiguring {
+                reconfigureAgain = true
+                return
+            }
+            reconfiguring = true
+            defer { reconfiguring = false }
+            repeat {
+                reconfigureAgain = false
+                if !accountless || stopping { return }
+                let held = await connect.liveLocals().count
+                if held > 0, lan == nil {
+                    let gen = generation
+                    let src = ConnectLanSource.client(connect, now: now, applyTrust: applyTrust)
+                    do {
+                        let svc = try await ConnectLanService.startLocal(src, options: options.lanOptions)
+                        guard gen == generation, accountless else {
+                            await svc.stop()
+                            return
+                        }
+                        lan = svc
+                        unsub.append(
+                            svc.onError { [weak self] e in
+                                guard let self else { return }
+                                Task { await self.lanProblem(e) }
+                            })
+                        await localLinks.attach(lan: svc)
+                    } catch let e as ConnectLanError {
+                        lanFailed = e
+                    } catch {
+                        lanFailed = ConnectLanError(.notListening, "The LAN service could not start.")
+                    }
+                    publish()
+                } else if held == 0, let svc = lan {
+                    lan = nil
+                    await localLinks.detach()
+                    await svc.stop()
+                    publish()
+                }
+            } while reconfigureAgain
         }
 
         /// A `start()` is in flight (tests).
@@ -465,10 +565,35 @@ import PolarisKeyCore
         /// sign-out never leaves a service behind it). Returns after `timeout` whatever a transport is doing; what
         /// has not closed by then is force-cancelled (D-12).
         func stop(timeout: TimeInterval) async {
+            hostStarted = false
+            await halt(timeout: timeout)
+        }
+
+        private func halt(timeout: TimeInterval) async {
             if starting == nil && !running && lan == nil && relay == nil { return }
             stopping = true
             defer { stopping = false }
             await teardown(timeout: timeout, waitFor: starting)
+        }
+
+        /// The sign-out step: everything stops (bounded); then, when the host had started Connect, pairing with a code
+        /// is still on and a link is reachable, the local-link service starts again with no account, inside the same
+        /// bound. `stop()` never restarts it (§15.12, "Not account data").
+        func stopForSignOut(timeout: TimeInterval) async {
+            let resume = hostStarted
+            let o = options
+            await halt(timeout: timeout)
+            hostStarted = resume
+            guard resume, o.lan, connect.localPairing(), await connect.liveLocals().contains(where: \.reachable) else {
+                return
+            }
+            _ = await connectBounded(timeout) { [self] in await self.resumeAccountless(o) }
+        }
+
+        private func resumeAccountless(_ o: CloudConnectOptions) async {
+            let gen = generation
+            options = o
+            _ = try? await bringUpAccountless(o, gen)
         }
 
         private func teardown(timeout: TimeInterval, waitFor t: Task<Void, Error>?) async {
@@ -480,14 +605,17 @@ import PolarisKeyCore
             lan = nil
             relay = nil
             contactRelay = nil
+            accountless = false
             let open = Array(sessions.values)
             sessions = [:]
             relayStatus = nil
             publish()
             let links = self.links
+            let localLinks = self.localLinks
             let closed = await connectBounded(timeout) {
                 if let t { _ = try? await t.value }
                 await links.detach()
+                await localLinks.detach()
                 for s in open { await s.close() }
                 await cr?.stop()
                 await r?.stop()
@@ -500,6 +628,7 @@ import PolarisKeyCore
                 r?.abort()
                 cr?.abort()
                 Task { await links.detach() }
+                Task { await localLinks.detach() }
                 t?.cancel()
             }
         }

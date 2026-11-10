@@ -24,7 +24,8 @@ import PolarisKeyCore
     import Crypto
 #endif
 
-/// Where a transfer goes: one of the person's own devices, or a link made with `cloudConnect.links`.
+/// Where a transfer goes: one of the person's own devices, or a link made with `cloudConnect.links` or
+/// `cloudConnect.localLinks` (a link's id names one or the other: the two are derived apart and cannot collide).
 public enum TransferPeer: Sendable, Equatable, ExpressibleByStringLiteral {
     case device(String)
     case link(String)
@@ -32,9 +33,20 @@ public enum TransferPeer: Sendable, Equatable, ExpressibleByStringLiteral {
     public init(stringLiteral value: String) { self = .device(value) }
 }
 
+/// What kind of peer an offer comes from.
+public enum TransferPeerKind: String, Sendable, Equatable {
+    /// One of the person's own devices (`deviceId`, an authenticated label).
+    case device
+    /// A link made with `cloudConnect.links` (`linkId`).
+    case link
+    /// A local link made with `cloudConnect.localLinks` (`linkId`, §15.12).
+    case local
+}
+
 /// Who an offer comes from. `label` is authenticated for a device (`authenticated`); for a link it is the label
-/// this device stored for the contact.
+/// this device stored for the contact or the local link.
 public struct TransferPeerInfo: Sendable, Equatable {
+    public let kind: TransferPeerKind
     public let label: String?
     public let deviceId: String?
     public let linkId: String?
@@ -443,6 +455,9 @@ public final class CloudTransfer: Sendable {
     /// Delete every partial file (sign-out, forget).
     func purgeAll() { store.purgeAll() }
 
+    /// Delete the partial files of the peer whose static key this is (32 raw bytes).
+    func purge(key: Data) { if key.count == 32 { store.purge(key: key) } }
+
     /// Delete the partial files of the link whose `agreeKey` this is (43 base64url characters).
     func purge(agreeKey: String) {
         if let k = Base64URL.decodeStrict(agreeKey), k.count == 32 { store.purge(key: k) }
@@ -511,14 +526,17 @@ public final class CloudTransfer: Sendable {
         // This session's claim on the store: effects queued before a purge, or after the session closed, are refused.
         let token = store.begin(peer: key)
         let contact = session.contact
+        let local = session.local
         let peerInfo = TransferPeerInfo(
-            label: contact != nil ? contact?.label : session.hello.label,
-            deviceId: contact == nil ? session.peerDeviceId : nil, linkId: contact?.id, authenticated: contact == nil)
+            kind: contact != nil ? .link : local != nil ? .local : .device,
+            label: contact != nil ? contact?.label : local != nil ? local?.label : session.hello.label,
+            deviceId: contact == nil && local == nil ? session.peerDeviceId : nil, linkId: contact?.id ?? local?.id,
+            authenticated: contact == nil && local == nil)
         let options = XferMachineOptions(
-            mode: contact != nil ? .c : .a, caps: session.caps, maxMessage: peerMaxMessageBytes,
+            mode: contact != nil ? .c : local != nil ? .l : .a, caps: session.caps, maxMessage: peerMaxMessageBytes,
             hostLimit: state.with { $0.maxSize }, free: { store.free },
             handler: { _ in state.with { $0.handler != nil } ? .ask : .decline },
-            categories: contact?.categories ?? [], peerKey: key,
+            categories: contact?.categories ?? local?.categories ?? [], peerKey: key,
             partials: store.partials(key: key, mono: mono()),
             rehash: { ref, offset in store.rehash(ref: ref, offset: offset, token: token) })
         let ports = XferEndpointPorts(

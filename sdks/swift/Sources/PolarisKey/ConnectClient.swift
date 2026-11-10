@@ -168,6 +168,9 @@ public struct ConnectOptions: Sendable {
     public var keys: (any DeviceKeyPort)?
     /// Where the identity is kept. Nil: the Keychain.
     public var store: ConnectStateStore?
+    /// Where the local links (§15.12) are kept. Nil: the Keychain, or memory when `store` is given (a host or test
+    /// that supplies its own Connect record keeps no Keychain item of ours).
+    public var localStore: LocalLinkStateStore?
     /// Accept a key store whose keys die with the process (`DeviceKeyStore.inMemory()`). Off by
     /// default: without it a memory-only store is `invalid-options`, because keys that are gone
     /// at the next launch leave a dead entry in the person's roster.
@@ -178,12 +181,14 @@ public struct ConnectOptions: Sendable {
     public var nearbyRequesterNetwork: (any NearbyRequesterNetwork)?
 
     public init(
-        keys: (any DeviceKeyPort)? = nil, store: ConnectStateStore? = nil, allowEphemeralKeys: Bool = false,
+        keys: (any DeviceKeyPort)? = nil, store: ConnectStateStore? = nil, localStore: LocalLinkStateStore? = nil,
+        allowEphemeralKeys: Bool = false,
         nearbyApproverNetwork: (any NearbyApproverNetwork)? = nil,
         nearbyRequesterNetwork: (any NearbyRequesterNetwork)? = nil
     ) {
         self.keys = keys
         self.store = store
+        self.localStore = localStore
         self.allowEphemeralKeys = allowEphemeralKeys
         self.nearbyApproverNetwork = nearbyApproverNetwork
         self.nearbyRequesterNetwork = nearbyRequesterNetwork
@@ -196,6 +201,14 @@ public actor ConnectClient {
     private let accessGroup: String?
     private var madeKeys: (any DeviceKeyPort)?
     private var madeStore: ConnectStateStore?
+    private var madeLocal: LocalLinkStore?
+    /// The cached discovery answer `services.connect.localPairing` (§15.12 "Gates"), and the sequence number of the
+    /// read that set it: an older read never overwrites a newer one.
+    nonisolated let localGate = LockedValue(LocalGateBox())
+    /// Fires when the local links change or the gate moves.
+    nonisolated let localChanges = ConnectSignal()
+    /// Told, once, what a read that took the gate from on to off or none makes the host do.
+    nonisolated let localGateEffects = LockedValue<(@Sendable ([LocalGateEffect]) -> Void)?>(nil)
     /// Moves whenever the held identity is stored or removed, so the LAN and relay services drop their cached copy (N8).
     public nonisolated let identityChanges = ConnectIdentityEpoch()
     /// Fires when the contacts change or the discovery `interAccount` answer may have.
@@ -628,6 +641,22 @@ public actor ConnectClient {
         return k
     }
 
+    /// The local-link store of this product: the host's, the Keychain item `connect-local`, or memory.
+    func localLinkStore() throws -> LocalLinkStore {
+        if let s = madeLocal { return s }
+        let state: LocalLinkStateStore
+        if let s = options.localStore {
+            state = s
+        } else if options.store != nil {
+            state = LocalLinkStateStore.inMemory(productSlug: core.product)
+        } else {
+            state = try LocalLinkStateStore(productSlug: core.product, accessGroup: accessGroup)
+        }
+        let s = LocalLinkStore(state)
+        madeLocal = s
+        return s
+    }
+
     func store() throws -> ConnectStateStore {
         if let s = options.store { return s }
         if let s = madeStore { return s }
@@ -846,4 +875,56 @@ public actor ConnectClient {
             subject: ring.sub, deviceId: deviceId, ring: ring, certificate: cert, ringJws: r.ring,
             certificateJws: r.certificate, discKeys: disc, keysStale: stale)
     }
+}
+
+/// The gate and the sequence number of the read that set it.
+struct LocalGateBox: Sendable {
+    var gate = LocalPairingGate()
+    var seq = 0
+}
+
+extension ConnectClient {
+    /// The cached discovery answer `services.connect.localPairing` (§15.9, §15.12 "Gates"): true only while the
+    /// product's setting, `launch.localPairing` and the service are on. It never fetches: false while no document is
+    /// held, and a cached `true` keeps working offline.
+    public nonisolated func localPairing() -> Bool { localGate.with { $0.gate.allowed } }
+
+    /// A discovery read finished. A successful read replaces the answer, a not-found clears it, any other answer
+    /// changes nothing; a read older than the one that set the answer is ignored. A read that takes a cached
+    /// `true` away reports the effects the host must carry out, and the links are told the gate moved either way.
+    nonisolated func noteLocalDiscovery(_ result: DiscoveryResult, seq: Int) {
+        let (effects, moved) = localGate.with { b -> ([LocalGateEffect], Bool) in
+            if seq < b.seq { return ([], false) }
+            let was = b.gate.state
+            let effects: [LocalGateEffect]
+            switch result {
+            case .ok(let doc):
+                let f = doc.services[.connect]
+                effects = b.gate.readOk(
+                    connectEnabled: f?.enabled == true, localPairing: f?.extras["localPairing"] == .bool(true))
+            case .notFound: effects = b.gate.readNotFound()
+            default: effects = b.gate.readError()
+            }
+            b.seq = seq
+            return (effects, b.gate.state != was)
+        }
+        if !effects.isEmpty { localGateEffects.current?(effects) }
+        if moved { localChanges.fire() }
+    }
+
+    /// The local links in held order, decoded; empty while the gate is off or the record is unusable (it serves
+    /// nothing and never replaces the file).
+    func liveLocals() async -> [ConnectLiveLocal] {
+        guard localPairing(), let store = try? localLinkStore(), let rows = try? await store.rows() else { return [] }
+        return rows.map(ConnectLocals.live)
+    }
+
+    /// Write a link's `lastSeen`: at most hourly, coarsened to the hour.
+    func touchLocal(id: String) async {
+        guard let store = try? localLinkStore() else { return }
+        await store.touch(id: id, now: await core.now())
+    }
+
+    /// Tell the listeners the local links or the gate moved.
+    public nonisolated func notifyLocals() { localChanges.fire() }
 }

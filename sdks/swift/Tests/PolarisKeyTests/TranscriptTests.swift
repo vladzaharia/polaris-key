@@ -1,5 +1,5 @@
 // @pkey-feature core.discover core.sync sync.settings core.cache license.activate license.enroll
-// @pkey-feature core.presentation connect.links
+// @pkey-feature core.presentation connect.links connect.local
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
@@ -435,6 +435,8 @@ enum SwiftReplay {
                 })
             // `connect.links` (CC-19): the cached `services.connect.interAccount` the SDK gates links on.
             out["interAccount"] = .bool(await client.connect.interAccount())
+            // `connect.local` (CC-29): the cached `services.connect.localPairing` the SDK gates local pairing on.
+            out["localPairing"] = .bool(client.connect.localPairing())
         case "nearbyStart", "nearbyPoll", "nearbyApprove":
             guard let server else { throw ReplayError("nearby without a replay server") }
             await NearbyReplay.run(client, step: step, session: session, server: server, into: &out)

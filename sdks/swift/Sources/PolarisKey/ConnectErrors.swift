@@ -28,6 +28,8 @@ public enum ConnectLanReason: String, Sendable, CaseIterable {
     case notConfigured = "not_configured"
     /// The OS registered the advert under another name, so it was withdrawn; the next rotation retries.
     case registrationRenamed = "registration_renamed"
+    /// A dial to one link was refused because the last one failed a moment ago (§15.12, "Mode l").
+    case busy
 
     /// The registered client code.
     public var code: String {
@@ -36,6 +38,7 @@ public enum ConnectLanReason: String, Sendable, CaseIterable {
         case .permissionDenied: return ErrorCode.nearbyPermissionDenied
         case .unknownPeer, .tooLarge, .badType: return ErrorCode.invalidArgument
         case .notListening, .registrationRenamed: return ErrorCode.connectUnavailable
+        case .busy: return ErrorCode.peerBusy
         case .connectFailed, .closed: return ErrorCode.networkError
         case .handshakeFailed, .wrongPeer: return ErrorCode.peerCertInvalid
         }
