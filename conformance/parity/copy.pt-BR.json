@@ -213,6 +213,38 @@
       "title": "Link de login expirado",
       "message": "Este link de login expirou. Volte para {product} e comece de novo."
     },
+    "unsupported_response_type": {
+      "title": "Solicitação de acesso inválida",
+      "message": "O app pediu uma resposta de acesso que não aceitamos. Fale com o desenvolvedor."
+    },
+    "request_not_supported": {
+      "title": "Solicitação de acesso inválida",
+      "message": "O app enviou a solicitação de acesso num formato que não aceitamos. Fale com o desenvolvedor."
+    },
+    "request_uri_not_supported": {
+      "title": "Solicitação de acesso inválida",
+      "message": "O app enviou a solicitação de acesso num formato que não aceitamos. Fale com o desenvolvedor."
+    },
+    "login_required": {
+      "title": "Login obrigatório",
+      "message": "O app não conseguiu fazer seu login sem perguntar. Entre para continuar."
+    },
+    "consent_required": {
+      "title": "Aprovação necessária",
+      "message": "O app precisa da sua aprovação antes de fazer seu login. Entre para aprovar."
+    },
+    "interaction_required": {
+      "title": "Login não concluído",
+      "message": "O app não conseguiu concluir seu login sozinho. Entre para continuar."
+    },
+    "unauthorized_client": {
+      "title": "Solicitação de acesso inválida",
+      "message": "O app pediu um tipo de acesso que não pode usar. Fale com o desenvolvedor."
+    },
+    "invalid_token": {
+      "title": "Acesso encerrado",
+      "message": "Seu acesso a este app expirou ou foi encerrado. Entre de novo."
+    },
     "license_choice_required": {
       "title": "Escolha uma licença",
       "message": "Escolha qual licença este dispositivo usa e continue."

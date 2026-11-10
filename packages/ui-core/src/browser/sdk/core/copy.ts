@@ -261,6 +261,24 @@ const FR: CopyBundle = {
       "La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur.",
     invalid_request_uri:
       "Ce lien de connexion a expiré. Retournez dans {product} et recommencez.",
+    // I-21 (WIRE-CONTRACT-V5 §12.13): the product issuer's codes, which reach a registered
+    // client and never an app built on this kit; registered so every wire code has French copy.
+    unsupported_response_type:
+      "L’app a demandé une réponse de connexion que nous ne prenons pas en charge. Contactez son développeur.",
+    request_not_supported:
+      "L’app a envoyé sa demande de connexion sous une forme que nous n’acceptons pas. Contactez son développeur.",
+    request_uri_not_supported:
+      "L’app a envoyé sa demande de connexion sous une forme que nous n’acceptons pas. Contactez son développeur.",
+    login_required:
+      "L’app n’a pas pu vous connecter sans vous le demander. Connectez-vous pour continuer.",
+    consent_required:
+      "L’app a besoin de votre accord avant de vous connecter. Connectez-vous pour le donner.",
+    interaction_required:
+      "L’app n’a pas pu terminer votre connexion seule. Connectez-vous pour continuer.",
+    unauthorized_client:
+      "L’app a demandé un type de connexion qu’elle n’a pas le droit d’utiliser. Contactez son développeur.",
+    invalid_token:
+      "Votre connexion à cette app a expiré ou a été fermée. Connectez-vous à nouveau.",
     license_choice_required:
       "Choisissez la licence que cet appareil utilise, puis continuez.",
     interstitial_required:

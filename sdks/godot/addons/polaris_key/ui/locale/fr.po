@@ -6789,6 +6789,86 @@ msgstr "Lien de connexion expiré"
 msgid "core.codes.invalid_request_uri.message"
 msgstr "Ce lien de connexion a expiré. Retournez dans {product} et recommencez."
 
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_response_type.title"
+msgstr "Demande de connexion non valide"
+
+#. The app asked for a sign-in response we don't support. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_response_type.message"
+msgstr "L’app a demandé une réponse de connexion que nous ne prenons pas en charge. Contactez son développeur."
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_not_supported.title"
+msgstr "Demande de connexion non valide"
+
+#. The app sent its sign-in request in a form we don't accept. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_not_supported.message"
+msgstr "L’app a envoyé sa demande de connexion sous une forme que nous n’acceptons pas. Contactez son développeur."
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_uri_not_supported.title"
+msgstr "Demande de connexion non valide"
+
+#. The app sent its sign-in request in a form we don't accept. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_uri_not_supported.message"
+msgstr "L’app a envoyé sa demande de connexion sous une forme que nous n’acceptons pas. Contactez son développeur."
+
+#. Sign-in required
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.login_required.title"
+msgstr "Connexion obligatoire"
+
+#. The app couldn't sign you in without asking. Sign in to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.login_required.message"
+msgstr "L’app n’a pas pu vous connecter sans vous le demander. Connectez-vous pour continuer."
+
+#. Approval needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.consent_required.title"
+msgstr "Accord nécessaire"
+
+#. The app needs your approval before it can sign you in. Sign in to approve it.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.consent_required.message"
+msgstr "L’app a besoin de votre accord avant de vous connecter. Connectez-vous pour le donner."
+
+#. Sign-in not finished
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.interaction_required.title"
+msgstr "Connexion inachevée"
+
+#. The app couldn't finish signing you in on its own. Sign in to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.interaction_required.message"
+msgstr "L’app n’a pas pu terminer votre connexion seule. Connectez-vous pour continuer."
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unauthorized_client.title"
+msgstr "Demande de connexion non valide"
+
+#. The app asked for a sign-in type it isn't allowed to use. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unauthorized_client.message"
+msgstr "L’app a demandé un type de connexion qu’elle n’a pas le droit d’utiliser. Contactez son développeur."
+
+#. Sign-in ended
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_token.title"
+msgstr "Connexion terminée"
+
+#. Your sign-in to this app expired or was ended. Sign in again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_token.message"
+msgstr "Votre connexion à cette app a expiré ou a été fermée. Connectez-vous à nouveau."
+
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_choice_required.title"

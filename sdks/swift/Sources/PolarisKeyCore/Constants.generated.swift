@@ -61,6 +61,14 @@ public enum ErrorCode {
     public static let unsupportedGrantType = "unsupported_grant_type"
     public static let invalidScope = "invalid_scope"
     public static let redirectUriMismatch = "redirect_uri_mismatch"
+    public static let unsupportedResponseType = "unsupported_response_type"
+    public static let requestNotSupported = "request_not_supported"
+    public static let requestUriNotSupported = "request_uri_not_supported"
+    public static let loginRequired = "login_required"
+    public static let consentRequired = "consent_required"
+    public static let interactionRequired = "interaction_required"
+    public static let unauthorizedClient = "unauthorized_client"
+    public static let invalidToken = "invalid_token"
     public static let invalidRequestUri = "invalid_request_uri"
     public static let licenseChoiceRequired = "license_choice_required"
     public static let interstitialRequired = "interstitial_required"
@@ -292,6 +300,14 @@ public let ERROR_CODE_VALUES: [String] = [
     "unsupported_grant_type",
     "invalid_scope",
     "redirect_uri_mismatch",
+    "unsupported_response_type",
+    "request_not_supported",
+    "request_uri_not_supported",
+    "login_required",
+    "consent_required",
+    "interaction_required",
+    "unauthorized_client",
+    "invalid_token",
     "invalid_request_uri",
     "license_choice_required",
     "interstitial_required",
@@ -523,6 +539,14 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "unsupported_grant_type": "wire",
     "invalid_scope": "wire",
     "redirect_uri_mismatch": "wire",
+    "unsupported_response_type": "wire",
+    "request_not_supported": "wire",
+    "request_uri_not_supported": "wire",
+    "login_required": "wire",
+    "consent_required": "wire",
+    "interaction_required": "wire",
+    "unauthorized_client": "wire",
+    "invalid_token": "wire",
     "invalid_request_uri": "wire",
     "license_choice_required": "wire",
     "interstitial_required": "wire",

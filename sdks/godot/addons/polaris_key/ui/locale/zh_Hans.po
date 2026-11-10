@@ -6763,6 +6763,86 @@ msgstr "登录链接已过期"
 msgid "core.codes.invalid_request_uri.message"
 msgstr "此登录链接已过期。请返回 {product} 重新开始。"
 
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_response_type.title"
+msgstr "登录请求无效"
+
+#. The app asked for a sign-in response we don't support. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_response_type.message"
+msgstr "应用请求了我们不支持的登录响应。请联系其开发者。"
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_not_supported.title"
+msgstr "登录请求无效"
+
+#. The app sent its sign-in request in a form we don't accept. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_not_supported.message"
+msgstr "应用以我们不接受的形式发送了登录请求。请联系其开发者。"
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_uri_not_supported.title"
+msgstr "登录请求无效"
+
+#. The app sent its sign-in request in a form we don't accept. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_uri_not_supported.message"
+msgstr "应用以我们不接受的形式发送了登录请求。请联系其开发者。"
+
+#. Sign-in required
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.login_required.title"
+msgstr "需要登录"
+
+#. The app couldn't sign you in without asking. Sign in to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.login_required.message"
+msgstr "应用无法在不询问你的情况下为你登录。请登录以继续。"
+
+#. Approval needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.consent_required.title"
+msgstr "需要你的同意"
+
+#. The app needs your approval before it can sign you in. Sign in to approve it.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.consent_required.message"
+msgstr "应用在为你登录前需要你的同意。请登录以同意。"
+
+#. Sign-in not finished
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.interaction_required.title"
+msgstr "登录未完成"
+
+#. The app couldn't finish signing you in on its own. Sign in to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.interaction_required.message"
+msgstr "应用无法自行完成登录。请登录以继续。"
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unauthorized_client.title"
+msgstr "登录请求无效"
+
+#. The app asked for a sign-in type it isn't allowed to use. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unauthorized_client.message"
+msgstr "应用请求了它无权使用的登录方式。请联系其开发者。"
+
+#. Sign-in ended
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_token.title"
+msgstr "登录已结束"
+
+#. Your sign-in to this app expired or was ended. Sign in again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_token.message"
+msgstr "你在此应用的登录已过期或已被结束。请重新登录。"
+
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_choice_required.title"

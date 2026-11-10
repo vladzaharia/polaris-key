@@ -6789,6 +6789,86 @@ msgstr "El enlace de inicio de sesión caducó"
 msgid "core.codes.invalid_request_uri.message"
 msgstr "Este enlace de inicio de sesión caducó. Vuelve a {product} y empieza de nuevo."
 
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_response_type.title"
+msgstr "Solicitud de inicio de sesión no válida"
+
+#. The app asked for a sign-in response we don't support. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_response_type.message"
+msgstr "La app pidió una respuesta de inicio de sesión que no admitimos. Contacta con su desarrollador."
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_not_supported.title"
+msgstr "Solicitud de inicio de sesión no válida"
+
+#. The app sent its sign-in request in a form we don't accept. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_not_supported.message"
+msgstr "La app envió su solicitud de inicio de sesión en un formato que no aceptamos. Contacta con su desarrollador."
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_uri_not_supported.title"
+msgstr "Solicitud de inicio de sesión no válida"
+
+#. The app sent its sign-in request in a form we don't accept. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.request_uri_not_supported.message"
+msgstr "La app envió su solicitud de inicio de sesión en un formato que no aceptamos. Contacta con su desarrollador."
+
+#. Sign-in required
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.login_required.title"
+msgstr "Inicio de sesión obligatorio"
+
+#. The app couldn't sign you in without asking. Sign in to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.login_required.message"
+msgstr "La app no pudo iniciar tu sesión sin preguntarte. Inicia sesión para continuar."
+
+#. Approval needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.consent_required.title"
+msgstr "Aprobación necesaria"
+
+#. The app needs your approval before it can sign you in. Sign in to approve it.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.consent_required.message"
+msgstr "La app necesita tu aprobación antes de iniciar tu sesión. Inicia sesión para aprobarla."
+
+#. Sign-in not finished
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.interaction_required.title"
+msgstr "Inicio de sesión sin terminar"
+
+#. The app couldn't finish signing you in on its own. Sign in to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.interaction_required.message"
+msgstr "La app no pudo terminar de iniciar tu sesión por sí sola. Inicia sesión para continuar."
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unauthorized_client.title"
+msgstr "Solicitud de inicio de sesión no válida"
+
+#. The app asked for a sign-in type it isn't allowed to use. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unauthorized_client.message"
+msgstr "La app pidió un tipo de inicio de sesión que no tiene permitido. Contacta con su desarrollador."
+
+#. Sign-in ended
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_token.title"
+msgstr "Sesión finalizada"
+
+#. Your sign-in to this app expired or was ended. Sign in again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_token.message"
+msgstr "Tu sesión en esta app caducó o se cerró. Vuelve a iniciar sesión."
+
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_choice_required.title"

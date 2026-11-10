@@ -2562,6 +2562,38 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
     <string name="core_codes_invalid_request_uri_message">Dieser Anmeldelink ist abgelaufen. Gehen Sie zurück zu %1$s und beginnen Sie erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_response_type_title">Anmeldeanfrage ungültig</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_response_type_message">Die App hat eine Anmeldeantwort angefragt, die wir nicht unterstützen. Wenden Sie sich an den Entwickler.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_not_supported_title">Anmeldeanfrage ungültig</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_not_supported_message">Die App hat ihre Anmeldeanfrage in einer Form gesendet, die wir nicht annehmen. Wenden Sie sich an den Entwickler.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_uri_not_supported_title">Anmeldeanfrage ungültig</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_request_uri_not_supported_message">Die App hat ihre Anmeldeanfrage in einer Form gesendet, die wir nicht annehmen. Wenden Sie sich an den Entwickler.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_login_required_title">Anmeldung erforderlich</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_login_required_message">Die App konnte Sie nicht ohne Rückfrage anmelden. Melden Sie sich an, um fortzufahren.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_consent_required_title">Zustimmung erforderlich</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_consent_required_message">Die App braucht Ihre Zustimmung, bevor sie Sie anmelden kann. Melden Sie sich an, um zuzustimmen.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interaction_required_title">Anmeldung nicht abgeschlossen</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interaction_required_message">Die App konnte die Anmeldung nicht allein abschließen. Melden Sie sich an, um fortzufahren.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_client_title">Anmeldeanfrage ungültig</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_client_message">Die App hat eine Anmeldeart angefragt, die sie nicht verwenden darf. Wenden Sie sich an den Entwickler.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_token_title">Anmeldung beendet</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_token_message">Ihre Anmeldung bei dieser App ist abgelaufen oder wurde beendet. Melden Sie sich erneut an.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">Lizenz wählen</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">Wählen Sie, welche Lizenz dieses Gerät verwendet, und fahren Sie dann fort.</string>

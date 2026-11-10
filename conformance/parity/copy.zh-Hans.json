@@ -213,6 +213,38 @@
       "title": "登录链接已过期",
       "message": "此登录链接已过期。请返回 {product} 重新开始。"
     },
+    "unsupported_response_type": {
+      "title": "登录请求无效",
+      "message": "应用请求了我们不支持的登录响应。请联系其开发者。"
+    },
+    "request_not_supported": {
+      "title": "登录请求无效",
+      "message": "应用以我们不接受的形式发送了登录请求。请联系其开发者。"
+    },
+    "request_uri_not_supported": {
+      "title": "登录请求无效",
+      "message": "应用以我们不接受的形式发送了登录请求。请联系其开发者。"
+    },
+    "login_required": {
+      "title": "需要登录",
+      "message": "应用无法在不询问你的情况下为你登录。请登录以继续。"
+    },
+    "consent_required": {
+      "title": "需要你的同意",
+      "message": "应用在为你登录前需要你的同意。请登录以同意。"
+    },
+    "interaction_required": {
+      "title": "登录未完成",
+      "message": "应用无法自行完成登录。请登录以继续。"
+    },
+    "unauthorized_client": {
+      "title": "登录请求无效",
+      "message": "应用请求了它无权使用的登录方式。请联系其开发者。"
+    },
+    "invalid_token": {
+      "title": "登录已结束",
+      "message": "你在此应用的登录已过期或已被结束。请重新登录。"
+    },
     "license_choice_required": {
       "title": "选择许可证",
       "message": "选择此设备使用的许可证，然后继续。"

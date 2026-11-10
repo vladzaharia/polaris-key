@@ -273,6 +273,14 @@ class ErrorCode:
     UNSUPPORTED_GRANT_TYPE: Final = "unsupported_grant_type"
     INVALID_SCOPE: Final = "invalid_scope"
     REDIRECT_URI_MISMATCH: Final = "redirect_uri_mismatch"
+    UNSUPPORTED_RESPONSE_TYPE: Final = "unsupported_response_type"
+    REQUEST_NOT_SUPPORTED: Final = "request_not_supported"
+    REQUEST_URI_NOT_SUPPORTED: Final = "request_uri_not_supported"
+    LOGIN_REQUIRED: Final = "login_required"
+    CONSENT_REQUIRED: Final = "consent_required"
+    INTERACTION_REQUIRED: Final = "interaction_required"
+    UNAUTHORIZED_CLIENT: Final = "unauthorized_client"
+    INVALID_TOKEN: Final = "invalid_token"
     INVALID_REQUEST_URI: Final = "invalid_request_uri"
     LICENSE_CHOICE_REQUIRED: Final = "license_choice_required"
     INTERSTITIAL_REQUIRED: Final = "interstitial_required"
@@ -504,6 +512,14 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "unsupported_grant_type",
     "invalid_scope",
     "redirect_uri_mismatch",
+    "unsupported_response_type",
+    "request_not_supported",
+    "request_uri_not_supported",
+    "login_required",
+    "consent_required",
+    "interaction_required",
+    "unauthorized_client",
+    "invalid_token",
     "invalid_request_uri",
     "license_choice_required",
     "interstitial_required",
@@ -737,6 +753,14 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "unsupported_grant_type": "wire",
         "invalid_scope": "wire",
         "redirect_uri_mismatch": "wire",
+        "unsupported_response_type": "wire",
+        "request_not_supported": "wire",
+        "request_uri_not_supported": "wire",
+        "login_required": "wire",
+        "consent_required": "wire",
+        "interaction_required": "wire",
+        "unauthorized_client": "wire",
+        "invalid_token": "wire",
         "invalid_request_uri": "wire",
         "license_choice_required": "wire",
         "interstitial_required": "wire",
