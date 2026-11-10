@@ -234,22 +234,80 @@ final class IdentityAccessTokenTests: XCTestCase {
         XCTAssertEqual(sent, 2)
     }
 
-    func testARefusalKeepsItsWireCodeAndInvalidGrantDropsTheHeldToken() async throws {
+    func testARefusalKeepsItsWireCodeAndIsNotCached() async throws {
         let n = ExchangeCounter()
         await server.route(tokenPath) { _ in
-            switch n.next() {
-            case 1: return StubServer.Reply(body: grant())
-            case 2: return StubServer.Reply(status: 400, body: "{\"error\":\"invalid_grant\"}")
-            default: return StubServer.Reply(body: grant("dddd.eeee.ffff"))
-            }
+            n.next() == 1
+                ? StubServer.Reply(status: 400, body: "{\"error\":\"invalid_grant\"}")
+                : StubServer.Reply(body: grant())
         }
         let c = try await client()
-        _ = try await c.identity.accessToken()
-        let e = await code { _ = try await c.identity.accessToken(refresh: true) }
+        let e = await code { _ = try await c.identity.accessToken() }
         XCTAssertEqual(e?.code, ErrorCode.invalidGrant)
         XCTAssertEqual(e?.status, 400)
         let at = try await c.identity.accessToken()
-        XCTAssertEqual(at.accessToken, "dddd.eeee.ffff")
+        XCTAssertEqual(at.accessToken, jwt)
+        let sent = await exchanges().count
+        XCTAssertEqual(sent, 2)
+    }
+
+    func testALateInvalidGrantForAReplacedTokenLeavesTheNewOneAlone() async throws {
+        let cache = AccessTokenCache()
+        let gate = Gate()
+        let now: @Sendable () async -> Int = { 1_700_000_000 }
+        async let old: AccessToken = cache.get(
+            key: "A", refresh: false, now: now,
+            exchange: {
+                await gate.wait()
+                throw PolarisError(code: ErrorCode.invalidGrant, message: "refused", status: 400)
+            })
+        await gate.untilEntered()
+        _ = try await cache.get(key: "B", refresh: false, now: now, exchange: { ("aaaa.bbbb.new1", 600) })
+        await gate.release()
+        do {
+            _ = try await old
+            XCTFail("the old exchange was refused")
+        } catch let e as PolarisError {
+            XCTAssertEqual(e.code, ErrorCode.invalidGrant)
+        }
+        let ran = ExchangeCounter()
+        let kept = try await cache.get(
+            key: "B", refresh: false, now: now, exchange: { _ = ran.next(); return ("x.y.z", 600) })
+        XCTAssertEqual(kept.accessToken, "aaaa.bbbb.new1")  // still held
+        XCTAssertEqual(ran.next(), 1)  // nothing asked again
+    }
+
+    func testAnImmediateRetryAfterAFailureMakesANewRequest() async throws {
+        let cache = AccessTokenCache()
+        let gate = Gate()
+        let now: @Sendable () async -> Int = { 1_700_000_000 }
+        async let first: AccessToken = cache.get(
+            key: "k", refresh: false, now: now,
+            exchange: {
+                await gate.wait()
+                throw PolarisError(code: IdentityClient.serverError, message: "down", status: 500)
+            })
+        await gate.untilEntered()
+        let ran = ExchangeCounter()
+        // A joiner that asks again the moment it hears the failure.
+        let joiner = Task { () -> AccessToken? in
+            let exchange: @Sendable () async throws -> (token: String, expiresIn: Int) = {
+                _ = ran.next()
+                return ("aaaa.bbbb.new1", 600)
+            }
+            do {
+                _ = try await cache.get(key: "k", refresh: false, now: now, exchange: exchange)
+                return nil
+            } catch {
+                return try? await cache.get(key: "k", refresh: false, now: now, exchange: exchange)
+            }
+        }
+        try await Task.sleep(nanoseconds: 50_000_000)  // the joiner reaches the cache while the first is in flight
+        await gate.release()
+        _ = try? await first
+        let retried = await joiner.value
+        XCTAssertEqual(retried?.accessToken, "aaaa.bbbb.new1")  // a new request, not the dead flight's failure
+        XCTAssertEqual(ran.next(), 2)
     }
 
     func testClearDropsTheHeldToken() async throws {
@@ -389,26 +447,54 @@ final class IdentityAccessTokenTests: XCTestCase {
         XCTAssertEqual(sent, 2)
     }
 
-    func testA429HeaderWinsOverTheBody() async throws {
+    func testA429ReadsTheBodyFirstThenTheHeader() async throws {
         await server.route(tokenPath) { _ in
             StubServer.Reply(
                 status: 429, body: "{\"error\":\"rate_limited\",\"retryAfter\":60}",
                 headers: ["Retry-After": "7"])
         }
         let c = try await client()
-        let e = await code { _ = try await c.identity.accessToken() }
-        XCTAssertEqual(e?.retryAfterSeconds, 7)
+        let both = await code { _ = try await c.identity.accessToken() }
+        XCTAssertEqual(both?.retryAfterSeconds, 60)
+        server = StubServer()
+        await server.route(tokenPath) { _ in
+            StubServer.Reply(status: 429, body: "{\"error\":\"rate_limited\"}", headers: ["Retry-After": "7"])
+        }
+        let c2 = try await client()
+        let header = await code { _ = try await c2.identity.accessToken() }
+        XCTAssertEqual(header?.retryAfterSeconds, 7)
+    }
+
+    func testTheWaitIsPerDeviceTokenAndClearLiftsIt() async throws {
+        let cache = AccessTokenCache()
+        let now: @Sendable () async -> Int = { 1_700_000_000 }
+        let limited: @Sendable () async throws -> (token: String, expiresIn: Int) = {
+            throw PolarisError(code: ErrorCode.rateLimited, message: "slow", status: 429, retryAfterSeconds: 60)
+        }
+        let ran = ExchangeCounter()
+        let fine: @Sendable () async throws -> (token: String, expiresIn: Int) = {
+            _ = ran.next()
+            return (jwt, 600)
+        }
+        _ = try? await cache.get(key: "A", refresh: false, now: now, exchange: limited)
+        let held = await code { _ = try await cache.get(key: "A", refresh: true, now: now, exchange: fine) }
+        XCTAssertEqual(held?.retryAfterSeconds, 60)
+        _ = try await cache.get(key: "B", refresh: false, now: now, exchange: fine)  // another key is not held off
+        XCTAssertEqual(ran.next(), 2)
+        await cache.clear()
+        _ = try await cache.get(key: "A", refresh: false, now: now, exchange: fine)  // clear lifted the wait
+        XCTAssertEqual(ran.next(), 4)
     }
 
     // ── Redirects ────────────────────────────────────────────────────────────────────────
 
-    func testARedirectAnswerIsNotFollowedAndIsBadResponse() async throws {
+    func testARedirectAnswerIsNotFollowedAndIsNetworkError() async throws {
         await server.route(tokenPath) { _ in
             StubServer.Reply(status: 307, headers: ["Location": "https://evil.example/steal"])
         }
         let c = try await client()
         let e = await code { _ = try await c.identity.accessToken() }
-        XCTAssertEqual(e?.code, ErrorCode.badResponse)
+        XCTAssertEqual(e?.code, IdentityClient.networkError)
         let sent = await exchanges()
         XCTAssertEqual(sent.count, 1)
         XCTAssertFalse(sent[0].followRedirects)

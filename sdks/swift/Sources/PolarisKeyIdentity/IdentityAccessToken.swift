@@ -53,8 +53,9 @@ private let accessTokenType = "urn:ietf:params:oauth:token-type:access_token"
 /// the same `key` (the device token) and more than 60 seconds remain, and otherwise runs `exchange` once:
 /// callers with the same key that arrive while it runs share its answer, a caller with another key does
 /// not. `refresh` skips the held token; it still joins an exchange in flight. A refused or failed exchange
-/// is not cached. After `holdOff` no exchange starts until the time has passed. `clear` drops the token
-/// and detaches any exchange in flight, so its answer is not kept after a sign-out.
+/// is not cached, except that a `rate_limited` answer carrying `retryAfterSeconds` is remembered per key:
+/// until that wait has passed `get` fails fast with `rate_limited`, sending nothing, `refresh` included.
+/// `clear` drops the token, the wait and any exchange in flight, so its answer is not kept after a sign-out.
 actor AccessTokenCache {
     private struct Flight {
         let id: Int
@@ -64,13 +65,8 @@ actor AccessTokenCache {
 
     private var held: (key: String, token: AccessToken)?
     private var flight: Flight?
-    private var generation = 0
+    private var limited: (key: String, until: Int)?
     private var nextId = 0
-    private var notBefore = 0
-
-    /// No exchange starts before `time` (epoch seconds): a 429's wait. The limit is the device's, so a
-    /// sign-out does not lift it.
-    func holdOff(until time: Int) { notBefore = max(notBefore, time) }
 
     func get(
         key: String, refresh: Bool, now: @escaping @Sendable () async -> Int,
@@ -83,40 +79,57 @@ actor AccessTokenCache {
                 expiresAt: held.token.expiresAt)
         }
         if let flight, flight.key == key { return try await flight.task.value }
-        if notBefore > t {
-            let wait = notBefore - t
-            throw PolarisError(
-                code: ErrorCode.rateLimited,
-                message: "too many access token requests: try again in \(wait) seconds.",
-                status: 429, retryAfterSeconds: wait)
+        if let limited, limited.key == key {
+            if limited.until > t {
+                let wait = limited.until - t
+                throw PolarisError(
+                    code: ErrorCode.rateLimited,
+                    message: "too many access token requests: try again in \(wait) seconds.",
+                    status: 429, retryAfterSeconds: wait)
+            }
+            self.limited = nil
         }
         nextId += 1
         let id = nextId
-        let started = generation
+        // The task body runs on this actor and settles the cache before it answers, so a caller that asks
+        // again the moment it hears a failure never finds the failed exchange still in flight.
         let task = Task<AccessToken, Error> {
-            let grant = try await exchange()
-            let at = await now()
-            return AccessToken(
-                accessToken: grant.token, expiresIn: grant.expiresIn, expiresAt: at + grant.expiresIn)
+            let outcome: Result<AccessToken, Error>
+            var waitUntil: Int?
+            do {
+                let grant = try await exchange()
+                let at = await now()
+                outcome = .success(
+                    AccessToken(
+                        accessToken: grant.token, expiresIn: grant.expiresIn, expiresAt: at + grant.expiresIn))
+            } catch {
+                outcome = .failure(error)
+                if let e = error as? PolarisError, e.code == ErrorCode.rateLimited,
+                    let wait = e.retryAfterSeconds, wait > 0
+                {
+                    waitUntil = await now() + wait
+                }
+            }
+            settle(id: id, key: key, outcome: outcome, waitUntil: waitUntil)
+            return try outcome.get()
         }
         flight = Flight(id: id, key: key, task: task)
-        do {
-            let token = try await task.value
-            // Kept only while this is still the client's exchange: a `clear()` (sign-out) or a call with
-            // another device token while it ran means the answer is not ours to keep.
-            if generation == started, flight?.id == id { held = (key, token) }
-            if flight?.id == id { flight = nil }
-            return token
-        } catch {
-            if flight?.id == id { flight = nil }
-            throw error
-        }
+        return try await task.value
+    }
+
+    /// Kept only while this is still the client's exchange: a `clear()` (sign-out) or a call with another
+    /// device token while it ran means the answer is not ours to keep.
+    private func settle(id: Int, key: String, outcome: Result<AccessToken, Error>, waitUntil: Int?) {
+        guard flight?.id == id else { return }
+        if case .success(let token) = outcome { held = (key, token) }
+        if let waitUntil { limited = (key, waitUntil) }
+        flight = nil
     }
 
     func clear() {
-        generation += 1
         held = nil
         flight = nil
+        limited = nil
     }
 }
 
@@ -153,19 +166,9 @@ extension IdentityClient {
                 code: ErrorCode.noToken, message: "Sign in before asking for an access token.")
         }
         let core = self.core
-        do {
-            return try await accessTokens.get(
-                key: deviceToken, refresh: refresh, now: { await core.now() },
-                exchange: { try await IdentityClient.exchangeAccessToken(core, endpoint, deviceToken) })
-        } catch let error as PolarisError {
-            if error.code == ErrorCode.invalidGrant {
-                // The Worker's one refusal for a device that holds no sign-in: nothing held is good any more.
-                await accessTokens.clear()
-            } else if error.code == ErrorCode.rateLimited, let wait = error.retryAfterSeconds, wait > 0 {
-                await accessTokens.holdOff(until: await core.now() + wait)
-            }
-            throw error
-        }
+        return try await accessTokens.get(
+            key: deviceToken, refresh: refresh, now: { await core.now() },
+            exchange: { try await IdentityClient.exchangeAccessToken(core, endpoint, deviceToken) })
     }
 
     /// Drop the held access token (sign-out, deactivation).
@@ -229,15 +232,16 @@ extension IdentityClient {
         }
         if (300..<400).contains(response.status) {
             throw PolarisError(
-                code: ErrorCode.badResponse,
-                message: "the access token endpoint answered with a redirect.", status: response.status)
+                code: IdentityClient.networkError,
+                message: "the access token endpoint answered with a redirect; it is never followed.",
+                status: response.status)
         }
         guard response.status == 200 else { throw accessTokenRefusal(response) }
         return try readAccessToken(response.body)
     }
 
-    /// A refusal keeps the Worker's wire code; a 429's wait is the `Retry-After` header, else the body's
-    /// `retryAfter` (the recording carries only that), rounded up.
+    /// A refusal keeps the Worker's wire code; a 429's wait is the body's `retryAfter` (the recording
+    /// carries only that), rounded up, else the `Retry-After` header.
     private static func accessTokenRefusal(_ response: PolarisResponse) -> PolarisError {
         let object = (try? JSONDecoder().decode(JSONValue.self, from: response.body))?.objectValue ?? [:]
         let code = object["error"]?.objectValue?["code"]?.stringValue ?? object["error"]?.stringValue
@@ -249,12 +253,12 @@ extension IdentityClient {
                 status: response.status)
         }
         var wait: Int?
-        if let header = response.header("retry-after"), let n = Int(header.trimmingCharacters(in: .whitespaces)),
-            n >= 0
+        if let seconds = object["retryAfter"]?.doubleValue, seconds.isFinite, seconds >= 0 {
+            wait = Int(min(seconds.rounded(.up), Double(Int32.max)))
+        } else if let header = response.header("retry-after"),
+            let n = Int(header.trimmingCharacters(in: .whitespaces)), n >= 0
         {
             wait = n
-        } else if let seconds = object["retryAfter"]?.doubleValue, seconds.isFinite, seconds >= 0 {
-            wait = Int(min(seconds.rounded(.up), Double(Int32.max)))
         }
         let fallback = response.status == 429 ? ErrorCode.rateLimited : "http_\(response.status)"
         return PolarisError(
