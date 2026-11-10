@@ -717,3 +717,215 @@ describe("@polaris-key/protocol/identity: silent restore (WIRE-CONTRACT-V5 §12.
     expect(exchange.provider).toBe("apple");
   });
 });
+
+describe("@polaris-key/protocol/identity: Sign in with <Product> (WIRE-CONTRACT-V5 §12.13)", () => {
+  it("pins the scopes, the identifier shapes, the lifetimes and the limits", () => {
+    expect(identity.ISSUER_SCOPES).toEqual([
+      "openid",
+      "profile",
+      "email",
+      "offline_access",
+      "pkey:entitlements",
+    ]);
+    expect(identity.ISSUER_RESERVED_SCOPES).toEqual([
+      "pkey:licenses",
+      "pkey:sync",
+    ]);
+    for (const reserved of identity.ISSUER_RESERVED_SCOPES)
+      expect(identity.ISSUER_SCOPES as readonly string[]).not.toContain(
+        reserved,
+      );
+    expect(identity.ISSUER_CONSENT_CLAIMS).toEqual([
+      "name",
+      "picture",
+      "email",
+    ]);
+    // The own client's scopes never include `openid`: layer 2 serves it to registered clients only.
+    expect(identity.AUTHORIZE_SCOPES as readonly string[]).not.toContain(
+      "openid",
+    );
+
+    const client = new RegExp(identity.CLIENT_ID_PATTERN);
+    expect(client.test(`cl_${"A".repeat(22)}`)).toBe(true);
+    expect(client.test(`cl_${"A".repeat(21)}`)).toBe(false);
+    expect(client.test(`cl_${"A".repeat(22)}x`)).toBe(false);
+    // A product slug (lowercase, digits, hyphens) can never be a client id.
+    expect(client.test("djdl")).toBe(false);
+    const secret = new RegExp(identity.CLIENT_SECRET_PATTERN);
+    expect(secret.test(`pkeycs_${"A".repeat(43)}`)).toBe(true);
+    expect(secret.test(`pkeycs_${"A".repeat(42)}`)).toBe(false);
+    expect(secret.test(`pkeyci_${"A".repeat(43)}`)).toBe(false);
+    const refresh = new RegExp(identity.ISSUER_REFRESH_TOKEN_PATTERN);
+    expect(refresh.test(`pkeyo_${"A".repeat(43)}`)).toBe(true);
+    expect(refresh.test(`pkeyo_${"A".repeat(43)}=`)).toBe(false);
+    expect(refresh.test(`pkeyt_${"A".repeat(43)}`)).toBe(false);
+    const handle = new RegExp(identity.END_SESSION_HANDLE_PATTERN);
+    expect(handle.test(`eo_${"A".repeat(22)}`)).toBe(true);
+    expect(handle.test(`rq_${"A".repeat(22)}`)).toBe(false);
+    expect(identity.END_SESSION_HANDLE_TTL_SECONDS).toBe(120);
+
+    expect(identity.ISSUER_TOKEN_TTL_SECONDS).toBe(600);
+    expect(identity.ISSUER_REFRESH_IDLE_SECONDS).toBe(30 * 86_400);
+    expect(identity.ISSUER_REFRESH_MAX_SECONDS).toBe(90 * 86_400);
+    expect(identity.MAX_ISSUER_CLIENTS).toBe(20);
+    expect(identity.MAX_CLIENT_REDIRECT_URIS).toBe(10);
+    expect(identity.MAX_CLIENT_SECRETS).toBe(2);
+    expect(identity.MAX_REFRESH_FAMILIES).toBe(10);
+
+    expect(identity.ISSUER_TOKEN_ALG).toBe("RS256");
+    expect(identity.ID_TOKEN_TYP).toBe("JWT");
+    expect(identity.ACCESS_TOKEN_TYP).toBe("at+jwt");
+    // Issuer tokens are not Polaris documents: no `pkey-*+jws` type is either.
+    expect(identity.ACCESS_TOKEN_TYP).not.toMatch(/^pkey-/);
+    expect(identity.DEVICE_SUBJECT_TOKEN_TYPE).toBe(
+      identity.EXCHANGE_ISSUED_TOKEN_TYPE,
+    );
+    expect(identity.ACCESS_TOKEN_TYPE).toBe(
+      "urn:ietf:params:oauth:token-type:access_token",
+    );
+    // Service-scoped: not on the barrel.
+    expect("ISSUER_SCOPES" in barrel).toBe(false);
+    expect("CLIENT_ID_PATTERN" in barrel).toBe(false);
+  });
+
+  it("types the client, the card record, the consent items and discovery", () => {
+    const client: identity.RegisteredClient = {
+      clientId: `cl_${"A".repeat(22)}`,
+      key: "forum",
+      name: "DJDL Community",
+      developerName: null,
+      type: "web",
+      redirectUris: ["https://forum.example.com/auth/oidc/callback"],
+      postLogoutRedirectUris: ["https://forum.example.com/"],
+      scopes: [
+        "openid",
+        "profile",
+        "email",
+        "pkey:entitlements",
+        "offline_access",
+      ],
+      claims: { required: ["name"] },
+      status: "active",
+    };
+    // @ts-expect-error a reserved scope is never a client's.
+    const reserved: identity.IssuerScope = "pkey:licenses";
+    expect(reserved).toBe("pkey:licenses");
+    const record: identity.ClientRecord = {
+      product: "djdl",
+      kind: "web",
+      appName: "DJDL",
+      developerName: "Example",
+      iconUrl: null,
+      origins: [],
+      services: { license: true, cloudSync: false },
+      nameVerified: true,
+      registered: {
+        clientId: client.clientId,
+        name: client.name,
+        developerName: "Example",
+        iconUrl: null,
+        returnHost: "forum.example.com",
+        nameVerified: true,
+      },
+    };
+    expect(record.registered?.returnHost).toBe("forum.example.com");
+    const items: identity.ConsentItem[] = [
+      {
+        kind: "profile",
+        claims: ["name", "picture", "email"],
+        required: ["name"],
+      },
+      { kind: "entitlements" },
+      { kind: "offline" },
+    ];
+    expect(items.map((i) => i.kind)).toEqual([
+      "profile",
+      "entitlements",
+      "offline",
+    ]);
+    const fragment: Pick<identity.IdentityDiscovery, "accessToken"> = {
+      accessToken: true,
+    };
+    expect(fragment.accessToken).toBe(true);
+    const off: Pick<identity.IdentityDiscovery, "accessToken"> = {
+      // @ts-expect-error `accessToken` is the literal true: absent means not served.
+      accessToken: false,
+    };
+    expect(off.accessToken).toBe(false);
+  });
+
+  it("types the token answers, the claims and the device exchange", () => {
+    const answer: identity.IssuerTokenResponse = {
+      access_token: "a.b.c",
+      token_type: "Bearer",
+      expires_in: identity.ISSUER_TOKEN_TTL_SECONDS,
+      scope: "openid profile",
+      id_token: "a.b.c",
+    };
+    expect("refresh_token" in answer).toBe(false);
+    // @ts-expect-error a registered client's answer carries no layer-1 member.
+    const layer1: identity.IssuerTokenResponse = { ...answer, subject: "ps_x" };
+    expect(layer1.scope).toBe("openid profile");
+    const refused: identity.IssuerTokenError = { error: "unauthorized_client" };
+    expect(refused.error).toBe("unauthorized_client");
+    const redirectError: identity.IssuerAuthorizeRedirectError =
+      "login_required";
+    expect(redirectError).toBe("login_required");
+    const idToken: identity.IdTokenClaims = {
+      iss: "https://key.plrs.im/djdl/identity",
+      sub: `ps_${"A".repeat(22)}`,
+      aud: client(),
+      azp: client(),
+      exp: 1_800_000_600,
+      iat: 1_800_000_000,
+      auth_time: 1_799_999_000,
+      at_hash: "A".repeat(22),
+      "pkey:entitlements": ["pro"],
+    };
+    expect(idToken.exp - idToken.iat).toBe(identity.ISSUER_TOKEN_TTL_SECONDS);
+    const params: identity.AccessTokenExchangeParams = {
+      grant_type: identity.TOKEN_EXCHANGE_GRANT_TYPE,
+      client_id: "djdl",
+      subject_token: "pkeyt_x",
+      subject_token_type: identity.DEVICE_SUBJECT_TOKEN_TYPE,
+      requested_token_type: identity.ACCESS_TOKEN_TYPE,
+    };
+    expect(params.subject_token_type).toBe("urn:polaris-key:token-type:device");
+    const exchanged: identity.AccessTokenExchangeResponse = {
+      access_token: "a.b.c",
+      issued_token_type: identity.ACCESS_TOKEN_TYPE,
+      token_type: "Bearer",
+      expires_in: 600,
+      scope: "",
+    };
+    expect(exchanged.scope).toBe("");
+    const withRefresh: identity.AccessTokenExchangeResponse = {
+      ...exchanged,
+      // @ts-expect-error the device exchange never answers a refresh token.
+      refresh_token: "r",
+    };
+    expect(withRefresh.expires_in).toBe(600);
+    const meta: Pick<
+      identity.OpenIdConfiguration,
+      "subject_types_supported" | "id_token_signing_alg_values_supported"
+    > = {
+      subject_types_supported: ["pairwise"],
+      id_token_signing_alg_values_supported: ["RS256"],
+    };
+    expect(meta.subject_types_supported).toEqual(["pairwise"]);
+    const view: identity.EndSessionView = {
+      request: `eo_${"A".repeat(22)}`,
+      product: { appName: "DJDL", iconUrl: null },
+      client: null,
+      returnHost: null,
+      signedIn: true,
+      expiresAt: 1_800_000_120,
+    };
+    const back: identity.EndSessionRedirect = { redirect: null };
+    expect([view.client, back.redirect]).toEqual([null, null]);
+
+    function client(): string {
+      return `cl_${"A".repeat(22)}`;
+    }
+  });
+});

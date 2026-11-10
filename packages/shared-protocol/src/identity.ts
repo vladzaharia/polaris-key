@@ -13,6 +13,10 @@
 // Nothing here is signed. The device label is display data that no server decision reads
 // (§12.7.1); the request handle, the client record and the app-consent view are same-origin
 // portal JSON (§12.7.2, §12.7.3). `PROTOCOL_VERSION` stays 4.
+//
+// I-21 adds §12.13 at the end: Sign in with <Product>, the product as an OpenID provider for its
+// registered clients, and the device exchange. Its tokens are RS256 JWTs under a per-product issuer
+// key, outside the signed document set: `PROTOCOL_VERSION` stays 5 (WIRE-CONTRACT-V5 §9).
 
 /**
  * The `error` query value of the friendly sign-in card, and the code of the portal passthrough
@@ -209,6 +213,11 @@ export interface ClientRecord {
   services: { license: boolean; cloudSync: boolean };
   /** False when the render-time display-name check failed: render the neutral frame. */
   nameVerified: boolean;
+  /**
+   * I-21 (§12.13.2): present only on a request from a registered client, whose own presentation it
+   * is. `appName` and `iconUrl` above stay the product's, and `kind` is `web`.
+   */
+  registered?: RegisteredClientRecord;
 }
 
 /** `GET /api/signin/requests/:handle` (§12.7.2). */
@@ -260,7 +269,16 @@ export type ConsentItem =
       more: number;
     }
   | { kind: "cloudSync" }
-  | { kind: "profile"; claims: string[] };
+  | {
+      kind: "profile";
+      claims: string[];
+      /** I-21 (§12.13.6), a registered client's request only: the claims shown with no switch. */
+      required?: IssuerClaim[];
+    }
+  /** I-21 (§12.13.6), a registered client's request only: "Which <Product> features you have". */
+  | { kind: "entitlements" }
+  /** I-21 (§12.13.6), a registered client's request only: `offline_access`, a refresh token. */
+  | { kind: "offline" };
 
 /** `GET /api/signin/requests/:handle/consent` (§12.7.3): app consent, never the S-19 grants. */
 export interface AppConsentView {
@@ -505,6 +523,11 @@ export interface IdentityDiscovery {
   nativeRedirect?: NativeRedirectDiscovery;
   /** I-49 (§12.11.8): silent restore is served; the `restore` endpoint comes with it. */
   restore?: true;
+  /**
+   * I-21 (§12.6, §12.13.10): the device exchange is served (Identity on and the product's issuer
+   * on). An SDK calls `identity.accessToken()` only when it is present.
+   */
+  accessToken?: true;
   endpoints: {
     session: string;
     sessionLicense: string;
@@ -546,7 +569,10 @@ export interface IdentityDiscovery {
 
 // ── I-08: app passthrough on an OAuth-shaped authorize and token (§12.4, §12.5) ─────────────────
 
-/** §12.4: the scopes `authorize` grants. `openid` answers `invalid_scope` until I-21. */
+/**
+ * §12.4: the scopes `authorize` grants the product's own client. `openid` answers `invalid_scope`
+ * there: only a registered client is served it ({@link ISSUER_SCOPES}, §12.13).
+ */
 export const AUTHORIZE_SCOPES = ["profile", "email", "cloudSync"] as const;
 export type AuthorizeScope = (typeof AUTHORIZE_SCOPES)[number];
 
@@ -594,7 +620,8 @@ export type AuthorizeRedirectError =
 /**
  * §12.5: a `200` from `POST /<p>/identity/token` (`authorization_code`). The activation response
  * under its OAuth names: `access_token` is the `pkeyt_` device token. Exactly these members; no
- * `expires_in` and no `refresh_token` before I-21.
+ * `expires_in` and no `refresh_token`, which I-21 leaves so: a registered client's answer is
+ * {@link IssuerTokenResponse}.
  */
 export interface TokenResponse {
   access_token: string;
@@ -1111,4 +1138,384 @@ export type RestoreKeyResponse = RestoreKeyCurrent | RestoreKeyIssued;
 export interface RestoreDiscovery {
   restore: true;
   endpoints: { restore: string };
+}
+
+// ── I-21: Sign in with <Product>, the product as an OpenID provider (§12.13) ────────────────────
+//
+// Registered clients sign people in on the issuer's `authorize` and `token`, and read `userinfo`,
+// `revoke` and `end-session`. The `id_token` and the access token are RS256 JWTs under the
+// product's issuer key (§12.13.5): never a `pkey-*+jws`, never verified by `shared-jws` or
+// client-core. The product's own client is unchanged; its apps reach their backend through the
+// device exchange (§12.13.10).
+
+/** §12.13.6: the scopes a registered client may be granted, as the provider metadata lists them. */
+export const ISSUER_SCOPES = [
+  "openid",
+  "profile",
+  "email",
+  "offline_access",
+  "pkey:entitlements",
+] as const;
+export type IssuerScope = (typeof ISSUER_SCOPES)[number];
+
+/**
+ * §12.13.6: reserved and never served. `pkey:licenses` (D5) and `pkey:sync` (U-16). `authorize`
+ * ignores them, and a manifest client may not list them.
+ */
+export const ISSUER_RESERVED_SCOPES = ["pkey:licenses", "pkey:sync"] as const;
+
+/** §12.13.6: the claims ConsentStep shows a switch for (`profile` delivers two, `email` one). */
+export const ISSUER_CONSENT_CLAIMS = ["name", "picture", "email"] as const;
+export type IssuerClaim = (typeof ISSUER_CONSENT_CLAIMS)[number];
+
+/** §12.13.2, §8: a registered client's id, `cl_` and 16 random bytes in base64url. */
+export const CLIENT_ID_PATTERN = "^cl_[A-Za-z0-9_-]{22}$";
+
+/** §12.13.2, §8: a `web` client's secret, `pkeycs_` and 32 random bytes in base64url. Shown once. */
+export const CLIENT_SECRET_PATTERN = "^pkeycs_[A-Za-z0-9_-]{43}$";
+
+/** §12.13.7, §8: an issuer refresh token, `pkeyo_` and 32 random bytes in base64url. Opaque. */
+export const ISSUER_REFRESH_TOKEN_PATTERN = "^pkeyo_[A-Za-z0-9_-]{43}$";
+
+/** §12.13.9, §8: an end-session handle, `eo_` and 16 random bytes in base64url. */
+export const END_SESSION_HANDLE_PATTERN = "^eo_[A-Za-z0-9_-]{22}$";
+
+/** §12.13.9: how long an end-session handle lives, seconds. Single use. */
+export const END_SESSION_HANDLE_TTL_SECONDS = 120;
+
+/** §12.13.5: the lifetime of an `id_token` and of an access token, seconds (`expires_in`). */
+export const ISSUER_TOKEN_TTL_SECONDS = 600;
+
+/** §12.13.7: a refresh token ends this long after its last use (30 days). */
+export const ISSUER_REFRESH_IDLE_SECONDS = 2_592_000;
+
+/** §12.13.7: a refresh family ends this long after it opened (90 days), however it is used. */
+export const ISSUER_REFRESH_MAX_SECONDS = 7_776_000;
+
+/** §12.13.2: the most registered clients a product holds. */
+export const MAX_ISSUER_CLIENTS = 20;
+
+/** §12.13.2: the most redirect URIs, and the most post-logout redirect URIs, per client. */
+export const MAX_CLIENT_REDIRECT_URIS = 10;
+
+/** §12.13.2: the most live secrets per `web` client, so one can replace the other. */
+export const MAX_CLIENT_SECRETS = 2;
+
+/** §12.13.7: the most live refresh families per account and client; an eleventh revokes the oldest. */
+export const MAX_REFRESH_FAMILIES = 10;
+
+/** §12.13.5: the one JWS algorithm of an issuer token. A verifier pins it. */
+export const ISSUER_TOKEN_ALG = "RS256";
+
+/** §12.13.5: the JWS `typ` of an `id_token`. */
+export const ID_TOKEN_TYP = "JWT";
+
+/** §12.13.5: the JWS `typ` of an access token (RFC 9068). `application/at+jwt` is the same value. */
+export const ACCESS_TOKEN_TYP = "at+jwt";
+
+/**
+ * §12.13.10: the device exchange's `subject_token_type`, the caller's own `pkeyt_` device token.
+ * The same string as {@link EXCHANGE_ISSUED_TOKEN_TYPE}, the type §12.11.3 issues.
+ */
+export const DEVICE_SUBJECT_TOKEN_TYPE = "urn:polaris-key:token-type:device";
+
+/** §12.13.10: the device exchange's `requested_token_type` and `issued_token_type` (RFC 8693). */
+export const ACCESS_TOKEN_TYPE =
+  "urn:ietf:params:oauth:token-type:access_token";
+
+/** §12.13.2: `web` is confidential (a secret); `spa` and `native` are public (PKCE). */
+export type RegisteredClientType = "web" | "spa" | "native";
+
+/** §12.13.2: a registered client as the console and manifest ingest hold it. No secret, ever. */
+export interface RegisteredClient {
+  /** {@link CLIENT_ID_PATTERN}. Minted once per `(product, key)`, never reused. */
+  clientId: string;
+  /** The manifest key, `^[a-z][a-z0-9-]{1,31}$`, unique within the product. */
+  key: string;
+  name: string;
+  /** Null means the product's developer; another one makes a partner client (D8). */
+  developerName: string | null;
+  type: RegisteredClientType;
+  /** 1 to {@link MAX_CLIENT_REDIRECT_URIS}; matched exactly, the loopback port aside. */
+  redirectUris: string[];
+  /** 0 to {@link MAX_CLIENT_REDIRECT_URIS}, under the same classes and matching. */
+  postLogoutRedirectUris: string[];
+  /** A subset of {@link ISSUER_SCOPES} that holds `openid`. */
+  scopes: IssuerScope[];
+  /** The claims ConsentStep shows with no switch; a subset of what `scopes` deliver. */
+  claims: { required: IssuerClaim[] };
+  /** A disabled client is unknown to every issuer route. */
+  status: "active" | "disabled";
+}
+
+/** §12.13.2: `ClientRecord.registered`, the card's view of the registered client asking. */
+export interface RegisteredClientRecord {
+  clientId: string;
+  /** The client's name; its `key` when the display-name check fails. */
+  name: string;
+  /** The client's developer name, else the product's developer. */
+  developerName: string | null;
+  /** Same-origin, or null. */
+  iconUrl: string | null;
+  /** The `https` redirect URI's host; null for a loopback or private-use-scheme URI. */
+  returnHost: string | null;
+  /** False when the name or developer name failed the check: render the neutral frame. */
+  nameVerified: boolean;
+}
+
+/** §12.13.3: `prompt` values the issuer acts on. Others are ignored; `none` stands alone. */
+export type IssuerPrompt = "none" | "login" | "consent";
+
+/**
+ * §12.13.3: `GET` (query) or `POST` (form body) `/<p>/identity/authorize` from a registered client.
+ * `request`, `request_uri` and `claims` are not served; Polaris extensions are ignored.
+ */
+export interface IssuerAuthorizeParams {
+  response_type: "code";
+  client_id: string;
+  redirect_uri: string;
+  /** Space-delimited and holding `openid`. */
+  scope: string;
+  /** At most {@link AUTHORIZE_STATE_MAX} characters. */
+  state?: string;
+  /** Required from a `spa` or `native` client; from a `web` client, this or `nonce`. */
+  code_challenge?: string;
+  code_challenge_method?: "S256";
+  /** At most 255 characters; copied into the `id_token`. */
+  nonce?: string;
+  response_mode?: "query";
+  /** Space-delimited {@link IssuerPrompt} values. */
+  prompt?: string;
+  /** A non-negative decimal integer, seconds. */
+  max_age?: string;
+  id_token_hint?: string;
+  login_hint?: string;
+}
+
+/** §12.13.3: the `error` a redirect to a registered client carries. */
+export type IssuerAuthorizeRedirectError =
+  | AuthorizeRedirectError
+  | "unsupported_response_type"
+  | "request_not_supported"
+  | "request_uri_not_supported"
+  | "login_required"
+  | "consent_required"
+  | "interaction_required";
+
+/** §12.13.4: the form parameters of `token` for a registered client, by grant. */
+export type IssuerTokenParams =
+  | {
+      grant_type: "authorization_code";
+      code: string;
+      redirect_uri: string;
+      /** Exactly when the code carries a challenge. */
+      code_verifier?: string;
+      /** A public client's id; a `web` client may authenticate by `Basic` instead. */
+      client_id?: string;
+      client_secret?: string;
+    }
+  | {
+      grant_type: "refresh_token";
+      refresh_token: string;
+      /** A subset of the granted scope that keeps `openid`. Absent keeps the scope. */
+      scope?: string;
+      client_id?: string;
+      client_secret?: string;
+    };
+
+/**
+ * §12.13.4: a registered client's `200` from `token`. Exactly these members, and no layer-1 one;
+ * `refresh_token` only when `offline_access` is granted.
+ */
+export interface IssuerTokenResponse {
+  /** An `at+jwt` ({@link AccessTokenClaims}). */
+  access_token: string;
+  token_type: "Bearer";
+  /** {@link ISSUER_TOKEN_TTL_SECONDS}. */
+  expires_in: number;
+  /** The granted scope, space-delimited. */
+  scope: string;
+  /** An RS256 `id_token` ({@link IdTokenClaims}). */
+  id_token: string;
+  /** {@link ISSUER_REFRESH_TOKEN_PATTERN}. */
+  refresh_token?: string;
+}
+
+/** §12.13.4, §12.13.7: the flat RFC 6749 §5.2 body of `token` and `revoke` for a registered client. */
+export interface IssuerTokenError {
+  error:
+    | "invalid_request"
+    | "invalid_client"
+    | "invalid_grant"
+    | "unauthorized_client"
+    | "unsupported_grant_type"
+    | "invalid_scope"
+    | "rate_limited";
+  error_description?: string;
+}
+
+/** §12.13.5: the claims of an `id_token` (header `{"alg":"RS256","typ":"JWT","kid"}`). */
+export interface IdTokenClaims {
+  /** The issuer, `<origin>/<p>/identity`. */
+  iss: string;
+  /** The pairwise subject ({@link PAIRWISE_SUBJECT_PATTERN}). */
+  sub: string;
+  /** The `client_id`, a string. */
+  aud: string;
+  /** The `client_id`. */
+  azp: string;
+  exp: number;
+  iat: number;
+  auth_time: number;
+  /** When the request sent one; never after a refresh. */
+  nonce?: string;
+  /** OIDC Core §3.1.3.6, over the access token issued with it. */
+  at_hash: string;
+  name?: string;
+  /** An absolute URL of the account's chosen picture. */
+  picture?: string;
+  email?: string;
+  email_verified?: boolean;
+  /** Entitlement ids, sorted, each once. */
+  "pkey:entitlements"?: string[];
+}
+
+/** §12.13.5: the claims of an access token (RFC 9068, header `{"alg":"RS256","typ":"at+jwt","kid"}`). */
+export interface AccessTokenClaims {
+  iss: string;
+  sub: string;
+  /** The issuer. */
+  aud: string;
+  /** A registered client's id, or the product slug for the device exchange. */
+  client_id: string;
+  exp: number;
+  iat: number;
+  /** 16 random bytes in base64url. */
+  jti: string;
+  /** Space-delimited; `""` from the device exchange. */
+  scope: string;
+  /** Present when a sign-in made the token; absent from the device exchange. */
+  auth_time?: number;
+  "pkey:entitlements"?: string[];
+}
+
+/** §12.13.5: one key of `<issuer>/jwks`. Never a private member. */
+export interface IssuerJwk {
+  kty: "RSA";
+  use: "sig";
+  alg: "RS256";
+  /** The RFC 7638 SHA-256 thumbprint, base64url. */
+  kid: string;
+  n: string;
+  e: string;
+}
+
+/** §12.13.5: `GET <issuer>/jwks`: the `next`, `active` and `retired` keys. */
+export interface IssuerJwks {
+  keys: IssuerJwk[];
+}
+
+/** §12.13.1: `GET <issuer>/.well-known/openid-configuration` (OpenID Connect Discovery §3). */
+export interface OpenIdConfiguration {
+  issuer: string;
+  authorization_endpoint: string;
+  token_endpoint: string;
+  userinfo_endpoint: string;
+  jwks_uri: string;
+  revocation_endpoint: string;
+  end_session_endpoint: string;
+  service_documentation: string;
+  scopes_supported: IssuerScope[];
+  claims_supported: string[];
+  response_types_supported: ["code"];
+  response_modes_supported: ["query"];
+  grant_types_supported: string[];
+  subject_types_supported: ["pairwise"];
+  id_token_signing_alg_values_supported: ["RS256"];
+  token_endpoint_auth_methods_supported: string[];
+  revocation_endpoint_auth_methods_supported: string[];
+  code_challenge_methods_supported: ["S256"];
+  prompt_values_supported: IssuerPrompt[];
+  authorization_response_iss_parameter_supported: true;
+  claims_parameter_supported: false;
+  request_parameter_supported: false;
+  request_uri_parameter_supported: false;
+  frontchannel_logout_supported: false;
+  backchannel_logout_supported: false;
+}
+
+/** §12.13.8: a `200` from `userinfo`: `sub`, then each granted claim, read live. Unsigned. */
+export interface UserInfoResponse {
+  sub: string;
+  name?: string;
+  picture?: string;
+  email?: string;
+  email_verified?: boolean;
+  "pkey:entitlements"?: string[];
+}
+
+/** §12.13.7: `POST <issuer>/revoke` (RFC 7009), with the client authentication of `token`. */
+export interface RevokeParams {
+  token: string;
+  /** Any other value is ignored. */
+  token_type_hint?: "refresh_token" | "access_token";
+  client_id?: string;
+  client_secret?: string;
+}
+
+/** §12.13.9: `GET` or `POST <issuer>/end-session` (RP-Initiated Logout 1.0). */
+export interface EndSessionParams {
+  id_token_hint?: string;
+  client_id?: string;
+  /** Used only when it matches one of the client's `postLogoutRedirectUris`. */
+  post_logout_redirect_uri?: string;
+  state?: string;
+}
+
+/** §12.13.9: `GET /api/signout/requests/:handle` on the customer host. */
+export interface EndSessionView {
+  /** {@link END_SESSION_HANDLE_PATTERN}. */
+  request: string;
+  product: { appName: string; iconUrl: string | null };
+  /** The client named, or null when none was. */
+  client: {
+    name: string;
+    developerName: string | null;
+    iconUrl: string | null;
+    nameVerified: boolean;
+  } | null;
+  /** The return's host, or null with no return. */
+  returnHost: string | null;
+  /** A Polaris Locker session exists on this host. */
+  signedIn: boolean;
+  /** Epoch seconds. */
+  expiresAt: number;
+}
+
+/** §12.13.9: the answer of `…/confirm` (Sign out) and `…/cancel` (Stay signed in). */
+export interface EndSessionRedirect {
+  /** The registered return with `state`, or null with no return. */
+  redirect: string | null;
+}
+
+/** §12.13.10: the device exchange's form parameters, beside `X-PKey-Device`. */
+export interface AccessTokenExchangeParams {
+  grant_type: typeof TOKEN_EXCHANGE_GRANT_TYPE;
+  /** The product slug. */
+  client_id: string;
+  /** The caller's own `pkeyt_` device token. */
+  subject_token: string;
+  subject_token_type: typeof DEVICE_SUBJECT_TOKEN_TYPE;
+  requested_token_type: typeof ACCESS_TOKEN_TYPE;
+}
+
+/** §12.13.10: the device exchange's `200`. Exactly these members; never a refresh token. */
+export interface AccessTokenExchangeResponse {
+  /** An `at+jwt` whose `client_id` is the slug and whose `scope` is `""`. */
+  access_token: string;
+  issued_token_type: typeof ACCESS_TOKEN_TYPE;
+  token_type: "Bearer";
+  /** {@link ISSUER_TOKEN_TTL_SECONDS}. */
+  expires_in: number;
+  scope: "";
 }

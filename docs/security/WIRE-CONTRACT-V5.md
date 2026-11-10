@@ -1,6 +1,6 @@
 # Polaris Wire Contract v5
 
-**Status:** Normative. Supersedes `WIRE-CONTRACT-V4.md` (CC-04.1), the way v4 superseded v3. v4 remains the record, including the amendment history in its header; everything v4 said that v5 does not change is restated here, so this document can be read on its own. v5 adds two signed documents and one new section, §15 (Cloud Connect), and nothing else changes on the wire. §12.11 (platform sign-in) is written. U-33.1 amends §13 (Cloud Sync): files on records (§13.2, §13.8), end-to-end push and pull (§13.3, §13.4), the new error codes (§13.9), and the new §13.10 (end-to-end encryption) and §13.11 (the key ring), with the identifiers (§8), counters (§9) and client machine (§11.5) that follow. Those amendments are unsigned and add no `typ`, claim or signed shape. The plans are `plans/CC-01.md` (R-1, R-3, R-8, R-9, R-11), `plans/CC-01-cloud-connect.md` and `plans/CC-01-cloud-sync.md`.
+**Status:** Normative. Supersedes `WIRE-CONTRACT-V4.md` (CC-04.1), the way v4 superseded v3. v4 remains the record, including the amendment history in its header; everything v4 said that v5 does not change is restated here, so this document can be read on its own. v5 adds two signed documents and one new section, §15 (Cloud Connect), and nothing else changes on the wire. §12.11 (platform sign-in) is written. U-33.1 amends §13 (Cloud Sync): files on records (§13.2, §13.8), end-to-end push and pull (§13.3, §13.4), the new error codes (§13.9), and the new §13.10 (end-to-end encryption) and §13.11 (the key ring), with the identifiers (§8), counters (§9) and client machine (§11.5) that follow. Those amendments are unsigned and add no `typ`, claim or signed shape. I-21.1 adds §12.13 (Sign in with <Product>: a product as an OpenID provider, and the device exchange), with its identifiers (§8) and the edits to §12.4 to §12.9 that follow. Its tokens are RS256 JWTs outside the signed document set, and no counter moves (§9). The plans are `plans/CC-01.md` (R-1, R-3, R-8, R-9, R-11), `plans/CC-01-cloud-connect.md` and `plans/CC-01-cloud-sync.md`.
 **PROTOCOL_VERSION:** `5` (`@polaris-key/protocol` `core.PROTOCOL_VERSION`).
 **Scope:** Everything that crosses the wire or the disk boundary between the Polaris Worker, the CI that signs releases, and the client SDKs (Node, React, Python, Swift, Godot, Kotlin): JWS envelope and its strictness, the eight signed artifacts, trust distribution, the pinned release keys, device principal, offline bundles, verified cache, the monotonic clock floor and the feed `seq` floor. Server-internal behavior (D1 shapes, admin API) is out of scope except where it produces signed artifacts.
 **Conformance:** `conformance/corpus/v2/` pins every rule marked **[C]** byte-for-byte across all implementations, within the representation limits declared in §10. `pnpm gen corpus --check` is the drift gate. The v4 plan is `docs/research/2026-09-29-godot-omniplatform/program/plans/P3-01.md`; its §2–§4 are the long form of §1–§4 and §11 here.
@@ -1202,6 +1202,12 @@ Amendment A1 (see the design spec) withdrew the interim `plrs` rebrand, so the v
 | Backend challenge scheme | `PKey-License` (`BACKEND_AUTH_SCHEME`): `WWW-Authenticate: PKey-License realm="<slug>", error="<code>"` on a backend's 401 (§14.3)                                                                                                                                               | —                                                         |
 | Server SDK ids           | `node-server`, `python-server`, `swift-server`, `kotlin-server`: the `X-PKey-SDK` a server core sends on its trust-manifest fetch (§14.4; `enums.json` `sdkId`)                                                                                                                  | —                                                         |
 | Relay ticket prefix      | `pkeyrt_` + 32 base64url characters: a 60-second single-use WebSocket ticket (§15.7), never a document                                                                                                                                                                           | —                                                         |
+| Client id                | `cl_` + 22 base64url characters (16 random bytes), `CLIENT_ID_PATTERN` `^cl_[A-Za-z0-9_-]{22}$`: a registered client of a product's issuer (§12.13.2). The product's own client stays its slug, which has no `_`                                                                 | —                                                         |
+| Refresh token prefix     | `pkeyo_` + 43 base64url characters (256 bits), `ISSUER_REFRESH_TOKEN_PATTERN`: an issuer refresh token (§12.13.7), opaque, rotated on every use, stored only as `hashKey(token, KEY_HASH_PEPPER)`                                                                                | —                                                         |
+| Client secret prefix     | `pkeycs_` + 43 base64url characters (256 bits), `CLIENT_SECRET_PATTERN`: a `web` client's secret (§12.13.2), shown once, stored only as `hashKey(secret, KEY_HASH_PEPPER)`, never in a manifest                                                                                  | —                                                         |
+| End-session handle       | `eo_` + 22 base64url characters, `END_SESSION_HANDLE_PATTERN` `^eo_[A-Za-z0-9_-]{22}$`: single use, `END_SESSION_HANDLE_TTL_SECONDS` = 120 (§12.13.9)                                                                                                                            | —                                                         |
+| Issuer token `typ`       | `JWT` (`id_token`) and `at+jwt` (access token, RFC 9068), RS256 only, under a per-product issuer key (§12.13.5). Not Polaris documents: no `pkey-*+jws` verifier accepts one, and none enters the corpus                                                                         | —                                                         |
+| Device token exchange    | `subject_token_type` `urn:polaris-key:token-type:device` (`DEVICE_SUBJECT_TOKEN_TYPE`, also §12.11.3's `issued_token_type`) and `requested_token_type` `urn:ietf:params:oauth:token-type:access_token` (`ACCESS_TOKEN_TYPE`, §12.13.10)                                          | —                                                         |
 | Peer protocol            | `pkey-peer/1` (prologue, adverts, handshake, records, §15.4–§15.6); relay subprotocol `pkey-relay.1` (§15.7)                                                                                                                                                                     | —                                                         |
 | Peer service type        | `_pkeypeer._tcp` (§15.4)                                                                                                                                                                                                                                                         | —                                                         |
 | Peer limits              | `PEER_CERT_SECONDS` = 604 800; `PEER_CERT_RENEW_SECONDS` = 302 400; `MAX_PEER_CERT_SECONDS` = 604 800; `RING_SECONDS` = 604 800; `MAX_RING_DEVICES` = 128; `MAX_PEER_MESSAGE_BYTES` = 1 048 576 (§15.2, §15.3, §15.6)                                                            | —                                                         |
@@ -1214,7 +1220,7 @@ The outlet kind `direct` is presented as Polaris Key: the console, the download 
 
 v5 is additive on the wire: the six v4 documents keep their shapes and bytes, and no SDK enforces `protocolVersion`, so a deployed v4 SDK is unaffected. The two new `typ`s (§2) enter with the bump, as `pkey-bundle+jws` entered with v3 and `pkey-feed+jws` and `pkey-release+jws` with v4. An SDK that predates v5 never fetches or verifies either, and refuses an unknown `typ`. Every SDK's constant follows `PROTOCOL_VERSION` through `pnpm gen constants`; nothing else is required until its parity row for the Cloud Connect features (`connect.*`) flips. The new corpus sections and files (§15.9) are inert until then, because runners read named sections. Version counters: `PROTOCOL_VERSION` goes from 4 to 5. `corpusVersion` stays 2 (the sections are additive, as `feedCases` were), `DISCOVERY_VERSION` stays 2, and `CACHE_VERSION` stays 3: Connect state is its own store record, never the licence cache. The new counters are `noiseVectorsVersion = 1` and `peerMatrixVersion = 1`. The statements below that say a counter "stays 4" were written inside v4 and are restated for v5 with the new value.
 
-v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 5` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 2` (§5.2; SP-08 turned the `visionOS` and `tvOS` rows from no value into canonical values), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), `syncScenariosVersion = 2` (§11.5), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. HA-12 adds the unsigned discovery member `core.presentation` (§5.5) and the client table `presentation-matrix.json` (`presentationMatrixVersion = 1`). Every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because an SDK that predates it ignores the member. The trust-custody amendment (§1, §2.3, §4.1, §7) changes no counter either (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `gateMatrixVersion` 2, `CACHE_VERSION` 3): its two cache slices are additive, its corpus cases are appended, and its one changed verdict (`trust-member-shapes-ignored`) is a client tightening. I-09 adds the account routes (§12.3), `license_owned` on key entry (§12.2 step 3) and the identity fragment's account members (§12.6): the identity routes are additive within v4 and detected from discovery (a client uses a route only when the fragment advertises it), no signed document changes, and every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2). Deployed SDKs keep the behaviour they shipped with: no SDK enforces `protocolVersion`, and an SDK that predates `?signer=` reads the default manifest as before. An install activated by a bundle through the old `importedBundle` marker re-imports after upgrading, and a bundle past its 30-day import window needs a fresh mint. LK-SKIP (§12.4.2) changes no counter: it adds the optional `authorize` parameter `key_return`, the request view's `keyReturn`, one portal route and the token answer's `via: "key"` behind an opt-in no deployed SDK sends, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `DISCOVERY_VERSION` 2, `CACHE_VERSION` 3 and `transcriptVersion` 1. Cloud Sync adds unsigned routes detected from `services.sync` (§13): every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because Cloud Sync data is never signed, the config document keeps its shape and resolution (§2.2.1), and an SDK that predates it ignores `services.sync` and the catalog's `user` and `cloudSync` members. A new SDK on a Worker without the routes finds no `settings: true` and keeps `config.set` on the device. SP-53 changes no counter; it adds `backendMatrixVersion = 1` (§14, `backend-matrix.json`). Product backends add one request header to the developer's own backend and no Worker route, `typ`, claim or signed shape, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `DISCOVERY_VERSION` 2 and `CACHE_VERSION` 3. A deployed SDK never sends `X-PKey-License`, so a backend that adopts a drop-in before its apps update answers `license_required` until they do. SP-54 changes no counter: it adds one optional member inside the licence document's `profile` (`user`, §2.1), which §3.2 already leaves unchecked, appends three `licenseDocCases` and the section `licenseUserCases`, and adds no `typ`, claim or route, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2 and `CACHE_VERSION` 3. Every SDK that predates it ignores the member; a new reader against an older Worker reads `null`, and a backend that requires sign-in then answers `sign_in_required` until the Worker that signs the member is deployed. CM-29 adds the unsigned discovery member `services.commerce` and moves two device routes (§5.6). Every counter is unchanged, because an SDK that predates it ignores the member. DISC-01 adds the unsigned discovery member `core.portal` (§5.7) and the client table `portal-matrix.json` (`portalMatrixVersion = 1`); the terminal kits' ui-matrix goes to `uiMatrixVersion = 6`. Every other counter is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because a shipped SDK ignores the member and keeps printing the link it printed before; nothing can change a shipped build. Cloud Sync files and end-to-end encryption (§13.2–§13.4, §13.8–§13.11) add unsigned routes, discovery members and one new cipher suite for stored data, and no `typ`, claim, header or signed shape. `PROTOCOL_VERSION` stays 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2 and `CACHE_VERSION` 3. Two client tables move when their corpus lands: `syncScenariosVersion` goes from 2 to 3 (§11.5) and the new `sync-vectors.json` starts at `syncVectorsVersion = 1` (§13.10.8). A new SDK on a Worker that does not advertise `services.sync.encryption` stays local with status `unsupported` when the app requires E2E; an SDK that predates this amendment ignores every new member. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
+v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 5` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 2` (§5.2; SP-08 turned the `visionOS` and `tvOS` rows from no value into canonical values), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), `syncScenariosVersion = 2` (§11.5), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. HA-12 adds the unsigned discovery member `core.presentation` (§5.5) and the client table `presentation-matrix.json` (`presentationMatrixVersion = 1`). Every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because an SDK that predates it ignores the member. The trust-custody amendment (§1, §2.3, §4.1, §7) changes no counter either (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `gateMatrixVersion` 2, `CACHE_VERSION` 3): its two cache slices are additive, its corpus cases are appended, and its one changed verdict (`trust-member-shapes-ignored`) is a client tightening. I-09 adds the account routes (§12.3), `license_owned` on key entry (§12.2 step 3) and the identity fragment's account members (§12.6): the identity routes are additive within v4 and detected from discovery (a client uses a route only when the fragment advertises it), no signed document changes, and every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2). Deployed SDKs keep the behaviour they shipped with: no SDK enforces `protocolVersion`, and an SDK that predates `?signer=` reads the default manifest as before. An install activated by a bundle through the old `importedBundle` marker re-imports after upgrading, and a bundle past its 30-day import window needs a fresh mint. LK-SKIP (§12.4.2) changes no counter: it adds the optional `authorize` parameter `key_return`, the request view's `keyReturn`, one portal route and the token answer's `via: "key"` behind an opt-in no deployed SDK sends, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `DISCOVERY_VERSION` 2, `CACHE_VERSION` 3 and `transcriptVersion` 1. Cloud Sync adds unsigned routes detected from `services.sync` (§13): every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because Cloud Sync data is never signed, the config document keeps its shape and resolution (§2.2.1), and an SDK that predates it ignores `services.sync` and the catalog's `user` and `cloudSync` members. A new SDK on a Worker without the routes finds no `settings: true` and keeps `config.set` on the device. SP-53 changes no counter; it adds `backendMatrixVersion = 1` (§14, `backend-matrix.json`). Product backends add one request header to the developer's own backend and no Worker route, `typ`, claim or signed shape, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `DISCOVERY_VERSION` 2 and `CACHE_VERSION` 3. A deployed SDK never sends `X-PKey-License`, so a backend that adopts a drop-in before its apps update answers `license_required` until they do. SP-54 changes no counter: it adds one optional member inside the licence document's `profile` (`user`, §2.1), which §3.2 already leaves unchecked, appends three `licenseDocCases` and the section `licenseUserCases`, and adds no `typ`, claim or route, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2 and `CACHE_VERSION` 3. Every SDK that predates it ignores the member; a new reader against an older Worker reads `null`, and a backend that requires sign-in then answers `sign_in_required` until the Worker that signs the member is deployed. CM-29 adds the unsigned discovery member `services.commerce` and moves two device routes (§5.6). Every counter is unchanged, because an SDK that predates it ignores the member. DISC-01 adds the unsigned discovery member `core.portal` (§5.7) and the client table `portal-matrix.json` (`portalMatrixVersion = 1`); the terminal kits' ui-matrix goes to `uiMatrixVersion = 6`. Every other counter is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because a shipped SDK ignores the member and keeps printing the link it printed before; nothing can change a shipped build. Cloud Sync files and end-to-end encryption (§13.2–§13.4, §13.8–§13.11) add unsigned routes, discovery members and one new cipher suite for stored data, and no `typ`, claim, header or signed shape. `PROTOCOL_VERSION` stays 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2 and `CACHE_VERSION` 3. Two client tables move when their corpus lands: `syncScenariosVersion` goes from 2 to 3 (§11.5) and the new `sync-vectors.json` starts at `syncVectorsVersion = 1` (§13.10.8). A new SDK on a Worker that does not advertise `services.sync.encryption` stays local with status `unsupported` when the app requires E2E; an SDK that predates this amendment ignores every new member. I-21 (§12.13) changes no counter: its routes are unsigned and detected from the provider metadata, its tokens are RS256 JWTs outside the signed document set and the corpus, and the device exchange is detected from `accessToken`. `PROTOCOL_VERSION` stays 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `transcriptVersion` 1 and `CACHE_VERSION` 3; SP-68 later moves `backendMatrixVersion` to 2 when it adds RS256 vectors to `backend-matrix.json`. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
 
 ## 10. Divergence & hardening ledger
 
@@ -1368,7 +1374,8 @@ PX-W9's key entry with I-09's step 3 (`license_owned`). §12.3 (attach, subject 
 the account members of §12.6 are I-09's; §12.4 (`authorize`, Continue and Cancel), §12.5
 (`token`) and the issuer and endpoints of §12.6 are I-08's; the licence choice (§12.4.1, §12.5.1) is
 I-08b's. §12.7 is PX-W13's passthrough request metadata and §12.8 is PX-W17's Identity-off
-behaviour. The plan is `plans/I-09.md`.
+behaviour. The plan is `plans/I-09.md`. §12.13 (Sign in with <Product>, the product as an OpenID
+provider) is I-21's; its tokens are RS256 JWTs outside the signed document set.
 
 ### 12.1 What the toggle scopes
 
@@ -1524,12 +1531,15 @@ Pinned by `identity-attach.json`, `identity-attach-errors.json` and
 Pinned by `redirect-web-happy.json`, `redirect-web-errors.json` and `identity-request-hints.json`
 (transcripts; their `browser` steps are the requests no SDK makes). A native app reaches the same
 endpoint through a pushed request (§12.12). The authorization server of
-layer 1 is one per product: the issuer is `<origin>/<p>/identity`, discovery's `issuer`. Its one
-client is the product's own public client: `client_id` is the product slug and PKCE `S256` is
-mandatory; any other `client_id` is `invalid_client`. Only while the product's Identity service is
-on (§12.8).
+layer 1 is one per product: the issuer is `<origin>/<p>/identity`, discovery's `issuer`. Its own
+client is the product's public client: `client_id` is the product slug and PKCE `S256` is
+mandatory. A `client_id` of the `cl_` form is a registered client (I-21), which follows §12.13.3
+instead of the table below; any other `client_id` is `invalid_client`. Only while the product's
+Identity service is on (§12.8).
 
-`GET /<p>/identity/authorize` is a browser navigation, never a `fetch`:
+`GET /<p>/identity/authorize` is a browser navigation, never a `fetch`. From I-21 it also takes a
+form `POST` navigation, which reads the same parameters from its
+`application/x-www-form-urlencoded` body alone (OIDC Core §3.1.2.1, §12.13.1):
 
 | Parameter                                              | Rule                                                                                                                                                                                                                                                                                                                    |
 | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1538,8 +1548,8 @@ on (§12.8).
 | `redirect_uri`                                         | Required. Its origin is in the product's `web.origins` and its path in `identity.redirectPaths`, both matched exactly: no query, fragment, userinfo, wildcard, prefix, suffix or dot segment                                                                                                                            |
 | `state`                                                | Required, 16 to 512 characters                                                                                                                                                                                                                                                                                          |
 | `code_challenge`, `code_challenge_method`              | Required, 43 base64url characters and `S256`. `plain` and an absent method are refused                                                                                                                                                                                                                                  |
-| `scope`                                                | Optional, space-delimited `profile`, `email`, `cloudSync`. Absent: every one the product grants. Unknown values are ignored. `openid` is `invalid_scope` until I-21                                                                                                                                                     |
-| `nonce`                                                | Optional, at most 255 characters, kept for I-21                                                                                                                                                                                                                                                                         |
+| `scope`                                                | Optional, space-delimited `profile`, `email`, `cloudSync`. Absent: every one the product grants. Unknown values are ignored. `openid` is `invalid_scope` for the own client: only a registered client is served it (§12.13)                                                                                             |
+| `nonce`                                                | Optional, at most 255 characters, kept on the code. The own client receives no `id_token`                                                                                                                                                                                                                               |
 | `login_hint`, `name_hint`, `purpose`, `license_choice` | Optional Polaris extensions. `login_hint` prefills the email field; `name_hint` is offered as a placeholder and a tap-to-use suggestion, never a filled-in value. Neither verifies anything, and one that does not normalise is dropped. `purpose` is `signin` or `attach`; `license_choice` is `card` or `app` (I-08b) |
 | `key_return`                                           | Optional, sent last. Only `allow`; any other value is `invalid_request`. Kept for `purpose=signin` on a product with License and the launch gate on, else dropped silently (§12.4.2)                                                                                                                                    |
 
@@ -1608,7 +1618,8 @@ differs from the pushed record renders `invalid_client`. Any other parameter alo
 3. **A `200`** carries exactly `access_token` (the `pkeyt_` device token, not repeated as
    `token`), `token_type: "Bearer"`, `scope` (the granted subset), `schemaVersion`, `device`,
    `license` (`null` on a licence-less device) and `subject`. There is no `expires_in` and no
-   `refresh_token` before I-21, and no `keyEntries` before I-08b. The `200` for a key-return code
+   `refresh_token`: I-21 leaves the own client's answer as it is (a registered client's is
+   §12.13.4). There is no `keyEntries` before I-08b. The `200` for a key-return code
    (§12.4.2) is exactly these members plus `via: "key"` and `keyEntries`. In it `scope` is `""`,
    `license` is never `null`, and `subject` is `null`: the bind by key re-binds the device without an account, as `license/activate` does,
    so it writes no binding and clears any binding the device held (U-02). The Worker sends
@@ -1632,8 +1643,9 @@ differs from the pushed record renders `invalid_client`. Any other parameter alo
    `400 invalid_grant`, `400 unsupported_grant_type`, `400 invalid_scope`; and the Polaris refusals
    beside them, as on `license/activate`: `403 not_entitled`, `403 device_limit` (with `limit`,
    `deviceCount`, `manageUrl`), `409 license_choice_required`, `429 rate_limited`.
-   `interstitial_required` is answered only by the token-exchange grant (§12.11.3); refresh
-   (I-21) answers `unsupported_grant_type` until then. On a key-return code, `license_owned` (with
+   `interstitial_required` is answered only by the token-exchange grant (§12.11.3). The own
+   client's `refresh_token` answers `unsupported_grant_type`: refresh is a registered client's
+   (§12.13.4). The device exchange (§12.13.10) is another token-exchange grant of the own client. On a key-return code, `license_owned` (with
    `signInUrl`) and `key_entry_limit` (with `keyEntries` and `manageUrl`) are flat under their own
    codes, as on `license/activate`, and are not folded into `not_entitled`.
 6. **Never a token in a URL.** The device token is in the body of this response only, and the
@@ -1861,6 +1873,12 @@ claimedHttps: string[]}` (full registered URIs). All three are present only whil
 An SDK uses the native redirect channel only when `request` is present; otherwise it uses the device
 code. Pinned by `discovery-identity.json` and `locker-discovery-identity.json`.
 
+I-21 adds `"accessToken": true` exactly while the device exchange (§12.13.10) is served: Identity
+on and `identity.issuer.enabled` true. An SDK calls `identity.accessToken()` only when it is
+present, and raises `service-unavailable` otherwise. The issuer's provider metadata (§12.13.1) is a
+separate document, `<issuer>/.well-known/openid-configuration`, that no SDK reads; the fragment
+gains nothing else from I-21, and its `issuer` is the same value. `DISCOVERY_VERSION` stays 2.
+
 ### 12.7 Passthrough request metadata
 
 These are the Identity service's browser-facing shapes: same-origin portal JSON and the device
@@ -1921,7 +1939,8 @@ nameVerified}`, with `kind` one of `web`, `native` and `device`. `appName` and
   `developerName` come from the product's listing, `iconUrl` is the same-origin
   `/media/<product>/icon`, `origins` are the registered `web.origins`, and `services` is
   `{license, cloudSync}`. A render-time check of the display-name rules replaces a failing app
-  name with the product slug and sets `nameVerified: false`.
+  name with the product slug and sets `nameVerified: false`. A request from a registered client
+  adds `registered`, the client's own presentation (§12.13.2).
 - **Request handle.** `rq_` and 16 random bytes in base64url, stored under its peppered hash for
   600 s, and bound to the browser that created it. The binder lives in the `__Host-pk_req` cookie
   (HttpOnly, Secure, SameSite=Lax, Path=/), and its hash lives in the record. The record holds the
@@ -1958,15 +1977,17 @@ expiresAt}` to the binding browser, plus `purpose`, `licenseChoice`, `loginHint`
 
 ### 12.8 A product with Identity off
 
-1. Device and JSON routes under `/<p>/identity/*` answer the registry's nested
+1. Device and JSON routes under `/<p>/identity/*`, the issuer's `openid-configuration`, `jwks`,
+   `userinfo` and `revoke` included (§12.13.1), answer the registry's nested
    `404 {"error":{"code":"not_found"}}`. An SDK reports it as `service-unavailable`
    (`service-disabled` in React), keeping its device token and licence state.
 2. `POST /<p>/devices/register` keeps its single `registration_closed` body: the JSON API never
    tells "Identity is off" from "absent".
-3. A **navigation** — `GET` or `HEAD` with `Sec-Fetch-Mode: navigate`, or an `Accept` header that
-   lists `text/html` with a non-zero quality — to `/<p>/identity/<entry>`, where `<entry>` is one
-   of `authorize`, `auth/start`, `auth/device` or `auth/device/verify`
-   (`IDENTITY_NAVIGATION_ENTRIES`), answers
+3. A **navigation** — `GET` or `HEAD` (and, to `authorize` and `end-session`, a form `POST`) with
+   `Sec-Fetch-Mode: navigate`, or an `Accept` header that lists `text/html` with a non-zero
+   quality — to `/<p>/identity/<entry>`, where `<entry>` is one of `authorize`, `auth/start`,
+   `auth/device`, `auth/device/verify` or `end-session` (`IDENTITY_NAVIGATION_ENTRIES`; I-21 adds
+   `end-session`), answers
    `303 Location: <origin>/signin?product=<slug>&error=identity_disabled` (`<origin>` is the customer origin: `CUSTOMER_ORIGIN` when it is set to a usable origin, else `CONSOLE_ORIGIN`, else the request's own origin) with
    `Cache-Control: no-store`. A `*/*` or JSON `Accept` is never a navigation. The redirect runs
    in Core before dispatch, so no Identity code runs. `token` is a JSON route and answers the
@@ -1978,6 +1999,12 @@ expiresAt}` to the binding browser, plus `purpose`, `licenseChoice`, `loginHint`
    turning Identity off clears every binding (no seat is released, documents are unchanged), and
    the Worker refuses to write one while the toggle is off.
 6. Restore keys (§12.11.8) are revoked, not hidden: `DELETE /<p>/identity/restore` answers `204` and every deletion runs while Identity is off; `POST` and the restore grant are gated.
+7. **The issuer** (§12.13) needs the toggle on and the product setting `identity.issuer.enabled`
+   true. With the toggle on and the setting off, the routes §12.13.1 adds answer the registry's
+   `404` as in rule 1, `end-session` included, navigation or not; a registered client's id is
+   unknown (`invalid_client`); and the device exchange's token type is unknown (§12.13.10).
+   Turning either off revokes every refresh family of the product. Clients, client grants and
+   issuer keys stay, so turning it back on asks nobody again.
 
 This discloses nothing new: discovery already publishes `identity: {enabled:false}` for every
 existing product, and an unknown slug keeps its 404. The transcript `identity-disabled.json`
@@ -1992,13 +2019,13 @@ unchanged, and a client reads every value below as any https URL.
 
 1. **Unsigned values that name the host.** `manageUrl` and `signInUrl` (§5.3, §12.2),
    `accountPortal` (§12.6), `verificationUri` and `verificationUriComplete` (device start),
-   `freeDeviceUrl` and `getLicense.activateUrl`, `core.portal.activate` (§5.7), and the `Location` of `authorize` (§12.4 rule 3)
-   and of §12.8 rule 3. With no usable `CUSTOMER_ORIGIN` they are what they were.
+   `freeDeviceUrl` and `getLicense.activateUrl`, `core.portal.activate` (§5.7), and the `Location` of `authorize` (§12.4 rule 3),
+   of `end-session` (§12.13.9) and of §12.8 rule 3. With no usable `CUSTOMER_ORIGIN` they are what they were.
 2. **Routes.** It serves `/`, `/activate`, `/signin`, `/device`, `/tv`, `/login[/…]`, `/callback`,
-   `/logout`, `/magic/verify`, `/signin/return` (§12.12), `/api/*`, `/media/*`, `/download/<token>`, `/assets/*`, its own
+   `/logout`, `/magic/verify`, `/signin/return` (§12.12), `/signout` (§12.13.9), `/api/*`, `/media/*`, `/download/<token>`, `/assets/*`, its own
    `/.well-known/polaris-host.json` and `/robots.txt`. Everything else, the product routes and
-   `/manage` included, is the plain `404`. The issuer, `authorize`, `token`, discovery and every
-   signed document stay on the API host.
+   `/manage` included, is the plain `404`. The issuer, `authorize`, `token`, discovery, every
+   §12.13 route and every signed document stay on the API host.
 3. **The bind hop.** `authorize` cannot set the request's `__Host-pk_req` cookie on another host.
    It binds the request to a fresh binder and a single-use **bind token** (32 random bytes,
    stored by its peppered hash, 120 seconds) and answers
@@ -2008,6 +2035,10 @@ unchanged, and a client reads every value below as any https URL.
    `Location` is built from the stored handle; nothing in the query is echoed. An unknown, used,
    expired, malformed or mismatched token is the plain `404`; `HEAD` does not redeem. A bind URL is
    worth what the `authorize` URL is worth: whoever opens it binds their browser to that request.
+   A registered client's `prompt=none` request is decided at this redemption, which then answers
+   `303` straight to its redirect URI (§12.13.3 rule 3). `end-session` takes the same hop to
+   `/signout?request=eo_…&bind=<token>`, whose redemption answers `303 /signout?request=eo_…`
+   (§12.13.9).
 4. **The device page stays on the API host.** `/device` and `/tv` look a code up across products
    and answer `302` to `<api>/<p>/identity/auth/device?user_code=` (`<api>` from configuration,
    never the request). The confirmation, the IdP leg and the callback happen in one browser on one
@@ -2391,6 +2422,290 @@ SDKs never calls `request` and ignores the discovery members below.
 9. **Fallback.** Without `request` in discovery (§12.6), or when no class can be used, the client
    raises `redirect-unavailable` and the kit offers the device code. Cancel, expiry and failure
    reuse `cancelled`, `sign-in-expired` and `sign-in-failed`.
+
+### 12.13 Sign in with <Product>
+
+Written by I-21.1. The long form is `plans/I-20.md`. The Worker serves each subsection from the slice that builds it (I-21.2 to I-21.16), and discovery names a member only from the release that serves it. A product becomes an OpenID provider for websites and apps that are not its own: its **registered clients**. The issuer is §12.4's, `<origin>/<p>/identity` on the API host (§12.9 rule 2). It signs people in on §12.4's `authorize` and §12.5's `token`, and adds discovery, a key set, `userinfo`, revocation and end-session. The product's own client (`client_id` = the slug) is unchanged: it never receives `openid`, an `id_token` or a refresh token, and its `token` answer stays byte for byte §12.5's. A product's own app reaches its developer's backend through the device exchange (§12.13.10) instead.
+
+Nothing here is a Polaris signed document. The `id_token` and the access token are JWS under RS256 with the product's **issuer key** (§12.13.5), a key that signs nothing else. No verifier of §1–§3 ever accepts one, and no corpus file holds one. `PROTOCOL_VERSION` stays 5 (§9). This section follows OpenID Connect Core 1.0 ("OIDC Core"), OpenID Connect Discovery 1.0, OpenID Connect RP-Initiated Logout 1.0, RFC 6749, RFC 6750, RFC 7009, RFC 7636, RFC 7638, RFC 8252, RFC 8693, RFC 9068, RFC 9207 and RFC 9700. Where they leave a choice, this section makes it; where it is silent, they govern. Only the device exchange is **[C]**, pinned by `identity-access-token.json` (I-21.13). The relying-party flows are pinned by the Worker suite (`test/surfaces/identityIssuer*.test.ts`) and by the OIDF Basic OP, Config OP and RP-Initiated Logout OP test plans run against staging; no SDK replays them. The threats and their controls are the THREAT-MODEL section "Sign in with <Product>: the product issuer (I-21)", rows IS-1 to IS-14 (I-21.16), which the rules below cite by id.
+
+**When it is served.** While the product's Identity service is on (§12.8) **and** the product setting `identity.issuer.enabled` is true (boolean, default `false`). Otherwise the routes §12.13.1 adds answer as §12.8 rules 1, 3 and 7 say (the registry's `404`, or the `identity_disabled` redirect for a navigation while Identity is off), a registered client's id is unknown to `authorize`, `token` and `revoke` (`invalid_client`), and the device exchange's token type is unknown (§12.13.10).
+
+#### 12.13.1 Endpoints and discovery
+
+Every path is under the issuer.
+
+| Route                               | Methods       | Caller                      | Answer                                                                                                    |
+| ----------------------------------- | ------------- | --------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `/.well-known/openid-configuration` | `GET`         | anyone                      | The provider metadata below. `Cache-Control: public, max-age=300`; CORS `*` without credentials           |
+| `/jwks`                             | `GET`         | anyone                      | The issuer key set (§12.13.5). `Cache-Control: public, max-age=300`; CORS `*` without credentials         |
+| `/authorize`                        | `GET`, `POST` | a browser navigation        | §12.4 for the own client, §12.13.3 for a registered one. `POST` is a form navigation (OIDC Core §3.1.2.1) |
+| `/token`                            | `POST`        | the client                  | §12.5 for the own client; §12.13.4 for a registered one; §12.13.10 for the device exchange                |
+| `/userinfo`                         | `GET`, `POST` | a holder of an access token | §12.13.8                                                                                                  |
+| `/revoke`                           | `POST`        | a registered client         | §12.13.7 (RFC 7009)                                                                                       |
+| `/end-session`                      | `GET`, `POST` | a browser navigation        | §12.13.9 (RP-Initiated Logout)                                                                            |
+
+The customer host adds `/signout` and its three JSON routes (§12.13.9, §12.9 rule 2).
+
+**Provider metadata** (OIDC Discovery §3). A JSON object whose `issuer` is exactly the issuer and whose URLs are absolute on the API host (`OpenIdConfiguration`):
+
+| Member                                                                                                                                                          | Value                                                                                                                               |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `issuer`                                                                                                                                                        | the issuer, equal to §12.6's `issuer` and to every token's `iss`                                                                    |
+| `authorization_endpoint`, `token_endpoint`, `userinfo_endpoint`, `jwks_uri`, `revocation_endpoint`, `end_session_endpoint`                                      | `<issuer>/authorize`, `<issuer>/token`, `<issuer>/userinfo`, `<issuer>/jwks`, `<issuer>/revoke` and `<issuer>/end-session`          |
+| `service_documentation`                                                                                                                                         | the docs page for Sign in with <Product>                                                                                            |
+| `scopes_supported`                                                                                                                                              | `["openid","profile","email","offline_access","pkey:entitlements"]` (§12.13.6)                                                      |
+| `claims_supported`                                                                                                                                              | `["sub","iss","aud","exp","iat","auth_time","nonce","azp","at_hash","name","picture","email","email_verified","pkey:entitlements"]` |
+| `response_types_supported`                                                                                                                                      | `["code"]`                                                                                                                          |
+| `response_modes_supported`                                                                                                                                      | `["query"]`                                                                                                                         |
+| `grant_types_supported`                                                                                                                                         | `["authorization_code","refresh_token","urn:ietf:params:oauth:grant-type:token-exchange"]`                                          |
+| `subject_types_supported`                                                                                                                                       | `["pairwise"]`                                                                                                                      |
+| `id_token_signing_alg_values_supported`                                                                                                                         | `["RS256"]`                                                                                                                         |
+| `token_endpoint_auth_methods_supported`, `revocation_endpoint_auth_methods_supported`                                                                           | `["client_secret_basic","client_secret_post","none"]`                                                                               |
+| `code_challenge_methods_supported`                                                                                                                              | `["S256"]`                                                                                                                          |
+| `prompt_values_supported`                                                                                                                                       | `["none","login","consent"]`                                                                                                        |
+| `authorization_response_iss_parameter_supported`                                                                                                                | `true` (RFC 9207)                                                                                                                   |
+| `claims_parameter_supported`, `request_parameter_supported`, `request_uri_parameter_supported`, `frontchannel_logout_supported`, `backchannel_logout_supported` | `false`                                                                                                                             |
+
+A later release may add members, and a relying party ignores the ones it does not know. Polaris discovery (`/.well-known/polaris.json`) carries none of this: its identity fragment gains only `accessToken` (§12.6, §12.13.10).
+
+#### 12.13.2 Registered clients
+
+The product's developer declares a registered client in the console or in the manifest's `identity.clients` (I-21.4 adds the validator rules), and nowhere else: there is no dynamic registration (IS-1). A product has at most 20 (`MAX_ISSUER_CLIENTS`). Manifest ingest upserts a client by `(product, key)`, and disables, never deletes, one the manifest drops.
+
+| Member (`RegisteredClient`) | Rule                                                                                                                                                                                                                                                      |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `clientId`                  | `cl_` + 22 base64url characters (16 random bytes), `CLIENT_ID_PATTERN`. The Worker mints it once per `(product, key)` and never reuses it. A product slug has no `_`, so a slug is never one                                                              |
+| `key`                       | The manifest key, `^[a-z][a-z0-9-]{1,31}$`, unique within the product                                                                                                                                                                                     |
+| `name`, `developerName`     | Display names under the display-name rules and reserved terms (PX-W13). A null `developerName` means the product's developer. A client with another developer is a **partner client**: it gets the product's subject (§12.13.6, D8), and the card says so |
+| `type`                      | `web` (confidential, holds a secret), `spa` (public, in a browser) or `native` (public, an installed app)                                                                                                                                                 |
+| `redirectUris`              | 1 to 10 (`MAX_CLIENT_REDIRECT_URIS`), each of a class below                                                                                                                                                                                               |
+| `postLogoutRedirectUris`    | 0 to 10, each of a class below                                                                                                                                                                                                                            |
+| `scopes`                    | The scopes the client may be granted: a subset of `ISSUER_SCOPES` that holds `openid`                                                                                                                                                                     |
+| `claims.required`           | The claims the person cannot switch off on ConsentStep: a subset of `name`, `picture` and `email` that `scopes` deliver                                                                                                                                   |
+| `status`                    | `active` or `disabled`. A disabled client is unknown to every route below                                                                                                                                                                                 |
+
+**Redirect URI classes.** A registered redirect or post-logout URI is one of:
+
+1. an `https` URI with a host and no fragment, userinfo or `*`. It may carry a query, which is then part of it;
+2. for a `native` client only, a loopback `http://127.0.0.1/<path>` or `http://[::1]/<path>`, registered without a port (RFC 8252 §7.3). `localhost` is never registered;
+3. for a `native` client only, a private-use scheme in reverse-DNS form, `<scheme>:/<path>` (RFC 8252 §7.1), whose scheme does not start with `im.plrs.` or `locker.polaris.`.
+
+**Matching** (IS-3). A presented `redirect_uri` or `post_logout_redirect_uri` matches a registered URI of the client only when the two strings are equal, with no normalisation: no case folding, percent-decoding, default port or trailing slash (RFC 9700 §4.1.3). The one exception is the loopback port. A presented loopback URI carries an explicit port from 1 to 65535, and it matches when it equals a registered loopback URI once that port is removed. A presented URI with `localhost`, a fragment or userinfo matches nothing.
+
+**Secrets** (IS-12). A `web` client authenticates with a secret; `spa` and `native` clients hold none. A secret is `pkeycs_` + 43 base64url characters (32 random bytes). The console generates it and shows it once; the Worker then keeps only `hashKey(secret, KEY_HASH_PEPPER)`, its last four characters and when it was last used. A client holds at most 2 live secrets (`MAX_CLIENT_SECRETS`), so one can replace the other. A secret is never in a manifest.
+
+**Client authentication**, at `token` and `revoke` (RFC 6749 §2.3):
+
+1. A `web` client uses exactly one of `client_secret_basic` (`Authorization: Basic` over the form-urlencoded `client_id` and secret, RFC 6749 §2.3.1) and `client_secret_post` (`client_id` and `client_secret` in the form body).
+2. Both methods at once, neither, a wrong or revoked secret, or a `client_id` that differs between the header and the body is `401 invalid_client`. After a `Basic` attempt the `401` carries `WWW-Authenticate: Basic realm="<issuer>"`.
+3. A `spa` or `native` client sends `client_id` in the body and no secret. One that sends a secret is `401 invalid_client`.
+4. Secrets are compared in constant time.
+
+**The card's client record.** A request from a registered client carries §12.7.2's client record with `kind: "web"`, `appName` and `iconUrl` still the product's, and `registered` (`RegisteredClientRecord`):
+
+| Member          | Value                                                                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `clientId`      | the client's id                                                                                                                                        |
+| `name`          | the client's name; its `key` when the render-time display-name check fails                                                                             |
+| `developerName` | the client's `developerName`, else the product's developer                                                                                             |
+| `iconUrl`       | the client's icon, same-origin, or null                                                                                                                |
+| `returnHost`    | the host of the request's `redirect_uri` when it is `https`; null for a loopback or private-use-scheme URI, which returns to an app on the same device |
+| `nameVerified`  | false when the check failed for the name or the developer name. The card then renders the neutral frame (IS-1)                                         |
+
+The card shows the product, the client, "by <developer>" and the return host (IS-1).
+
+#### 12.13.3 `authorize` for a registered client
+
+`GET` or `POST /<p>/identity/authorize`, a browser navigation (§12.4). A `POST` reads its parameters from the `application/x-www-form-urlencoded` body alone (OIDC Core §3.1.2.1). A `client_id` of the `cl_` form follows this table, and any other follows §12.4.
+
+| Parameter                                                                                                                                     | Rule                                                                                                                                                                                                                                                                                                                |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `client_id`, `redirect_uri`                                                                                                                   | Checked first. `client_id` is an active registered client of this product while the issuer is served, and `redirect_uri` matches one of its redirect URIs (§12.13.2). A failure renders the branded `invalid_client` (401) or `redirect_uri_mismatch` (400) page and never redirects, whatever else is wrong (IS-3) |
+| `request`, `request_uri`                                                                                                                      | `request_not_supported` and `request_uri_not_supported`. A pushed request (§12.12) is the own client's                                                                                                                                                                                                              |
+| `response_type`                                                                                                                               | Required, `code`. Absent is `invalid_request`; any other value is `unsupported_response_type`                                                                                                                                                                                                                       |
+| `response_mode`                                                                                                                               | Optional, `query` only. Any other value is `invalid_request`                                                                                                                                                                                                                                                        |
+| `scope`                                                                                                                                       | Required, space-delimited, and holds `openid`, else `invalid_scope`. Values outside the client's `scopes`, unknown values and the reserved `pkey:licenses` and `pkey:sync` are ignored. What remains is the requested scope                                                                                         |
+| `state`                                                                                                                                       | Optional, at most 512 characters, else `invalid_request`. Echoed on every redirect when it was sent                                                                                                                                                                                                                 |
+| `code_challenge`, `code_challenge_method`                                                                                                     | A `spa` or `native` client sends both: 43 base64url characters and `S256`. A `web` client sends them, a `nonce`, or both. A `web` client with neither, a public client without PKCE, `plain`, an absent method or a malformed challenge is `invalid_request` (RFC 9700 §2.1.1; IS-4)                                |
+| `nonce`                                                                                                                                       | Optional except as above. At most 255 characters, else `invalid_request`. Copied into the `id_token`                                                                                                                                                                                                                |
+| `prompt`                                                                                                                                      | Optional, a space-delimited set of `none`, `login` and `consent`; other values are ignored. `none` with another value is `invalid_request` (OIDC Core §3.1.2.1)                                                                                                                                                     |
+| `max_age`                                                                                                                                     | Optional, a non-negative decimal integer of at most 10 digits, else `invalid_request`. `max_age=0` acts as `prompt=login`                                                                                                                                                                                           |
+| `id_token_hint`                                                                                                                               | Optional. An `id_token` this issuer signed: RS256 under one of this product's issuer keys, `typ` `JWT`, `iss` this issuer. `exp` is not checked, so an expired hint is accepted. A hint that fails is `invalid_request`. Its `sub` is checked as rule 3 says                                                        |
+| `login_hint`                                                                                                                                  | As §12.4: it prefills the email field and verifies nothing                                                                                                                                                                                                                                                          |
+| `claims`, `display`, `ui_locales`, `claims_locales`, `acr_values`, `name_hint`, `purpose`, `license_choice`, `key_return`, unknown parameters | Ignored. The claims parameter is not served, and a registered client binds no device                                                                                                                                                                                                                                |
+
+1. **Errors.** After the first row, an error is `302 <redirect_uri>?error=…&state=…&iss=<issuer>` (RFC 6749 §4.1.2.1, RFC 9207), joined to a registered query with `&`. The codes are `invalid_request`, `unsupported_response_type`, `invalid_scope`, `request_not_supported`, `request_uri_not_supported`, `login_required`, `consent_required`, `interaction_required`, `access_denied` (Cancel) and `server_error`. Every check in the table runs before a request handle is minted.
+2. **Interactive.** Success is §12.4 rule 3: the request handle and, across hosts, the bind hop. On the card, no session, a `login` prompt, or a session whose last sign-in is older than `max_age` asks for a fresh sign-in, and `auth_time` is that sign-in's time. ConsentStep (§12.13.6) shows when no client grant covers the request or `prompt` holds `consent`. Otherwise the card shows "Continue as <name>", one tap. Every interactive sign-in ends in a press of Continue (D22; IS-8).
+3. **`prompt=none`** (D4) never shows the card. It is decided where the Polaris Locker session lives: at the bind redemption on the customer host (§12.9 rule 3), or by `authorize` itself when the customer origin is the API host's own origin. In place of `303 /signin?request=…`, the answer is a `303` straight to the redirect URI:
+   - with a code, when a session exists, satisfies `max_age` and the hint, and a client grant covers the request (§12.13.6);
+   - else with `login_required` (no session, one too old, or an account other than the hint's `sub`), `consent_required` (no covering grant) or `interaction_required` (the product's terms are unaccepted, or the card has any other step to show).
+
+   The handle is taken either way. Wherever this rule decides, a session whose subject is not the hint's `sub` is `login_required` for an interactive request too. With no session, an interactive request signs in as usual.
+
+4. **Continue** is §12.4 rule 4 with two differences. `choice` is refused (`400 bad_request`). `consent.claims` must hold every `claims.required` claim the request reaches, else `400 bad_request`: declining a required claim is Cancel. Continue writes the client grant (§12.13.6), never `account_product_grants`, and answers `{"redirect": "<redirect_uri>?code=…&state=…&iss=<issuer>"}`.
+5. **The code** lives 60 seconds and is single use. It is bound to the product, the `client_id`, the `redirect_uri`, the challenge (or none), the `nonce` (or none), the granted scope and claims, the account, its pairwise subject and `auth_time` (IS-4).
+
+#### 12.13.4 `token` for a registered client
+
+`POST /<p>/identity/token`, `application/x-www-form-urlencoded`, with the client authentication of §12.13.2. A JSON body or a repeated parameter is `invalid_request`. `X-PKey-Device` is not read. Every answer is `Cache-Control: no-store`. CORS answers a `spa` client's request from an origin of its redirect URIs with that origin, never with credentials, and any other origin with no CORS header. A preflight allows the product's `web.origins` and the origins of its `spa` clients' redirect URIs.
+
+1. **`authorization_code`**: `code`, `redirect_uri` (required and compared exactly with the code's), and `code_verifier` exactly when the code carries a challenge. A verifier for a code without one is `invalid_grant`. The redemption is §12.5 rule 2's single atomic step: match or mismatch, the code ends. An unknown, expired, used or mismatching code, another client's code or another `redirect_uri` is `invalid_grant`. A code presented after it was redeemed also revokes the refresh family it opened (RFC 6749 §4.1.2): the Worker keeps a redeemed code's tombstone for 10 minutes (IS-4).
+2. **`refresh_token`**: `refresh_token` and an optional `scope`, a subset of the granted scope that keeps `openid`. A wider scope, or one without `openid`, is `invalid_scope`; an absent one keeps the scope. The token rotates (§12.13.7). The answer carries a new access token and `id_token` with the same `sub`, `aud`, `azp` and `auth_time` and no `nonce` (OIDC Core §12.2). Each use checks again that the client is active, the client grant exists, Identity and the issuer are on, and the account and its subject are live. A failure there is `invalid_grant`.
+3. **Other grants.** The token-exchange and restore grants are the own client's: a registered client that sends one gets `unauthorized_client`. `client_credentials` is `unsupported_grant_type` until U-16, and so is an unknown grant.
+4. **A `200`** (`IssuerTokenResponse`) carries exactly `access_token` (an `at+jwt`), `token_type: "Bearer"`, `expires_in: 600`, `scope` (the granted scope, space-delimited), `id_token`, and `refresh_token` only when `offline_access` is granted. It has no layer-1 member (`schemaVersion`, `device`, `license`, `subject`).
+5. **Errors** are flat (RFC 6749 §5.2), `{"error", "error_description"?}` (`IssuerTokenError`): `400 invalid_request`, `401 invalid_client`, `400 invalid_grant`, `400 unauthorized_client`, `400 unsupported_grant_type` and `400 invalid_scope`; and `429 rate_limited` with `Retry-After` (§12.13.11).
+
+#### 12.13.5 The tokens and the issuer key
+
+| Token         | Form                                                                  | Lifetime                           | Members                                                                                                                                                                                                                                                                                                                                                       |
+| ------------- | --------------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id_token`    | Compact JWS, header `{"alg":"RS256","typ":"JWT","kid"}`               | 600 s (`ISSUER_TOKEN_TTL_SECONDS`) | `iss`, `sub`, `aud` (the `client_id`, a string), `azp` (the `client_id`), `exp`, `iat`, `auth_time`, `nonce` (when the request sent one; never after a refresh) and `at_hash` (OIDC Core §3.1.3.6, over the access token issued with it); then, as granted (§12.13.6), `name`, `picture`, `email`, `email_verified` and `pkey:entitlements` (`IdTokenClaims`) |
+| Access token  | Compact JWS, header `{"alg":"RS256","typ":"at+jwt","kid"}` (RFC 9068) | 600 s                              | `iss`, `sub`, `aud` (the issuer), `client_id`, `exp`, `iat`, `jti` (16 random bytes, base64url) and `scope`; `auth_time` when a sign-in made it; `pkey:entitlements` when granted (`AccessTokenClaims`)                                                                                                                                                       |
+| Refresh token | Opaque: `pkeyo_` + 43 base64url characters                            | §12.13.7                           | None: it names a server-side record                                                                                                                                                                                                                                                                                                                           |
+
+`exp` is `iat + 600`. `iat`, `exp` and `auth_time` are integer seconds. A token is readable by anyone who holds it, and it carries nothing beyond the person's consent (§12.13.6).
+
+**Verifying an issuer token** (`userinfo`, SP-68's backends, U-16; IS-6):
+
+1. `alg` is exactly `RS256`; never `none`, an `HS*` algorithm or `EdDSA`.
+2. The key is chosen by `kid` from this product's key set alone, among the keys that have signed (`active` and `retired`).
+3. `typ` is `JWT` for an `id_token` and `at+jwt` for an access token (`application/at+jwt` is the same value, RFC 9068 §4), so neither stands in for the other.
+4. `iss` is this issuer. An access token's `aud` is this issuer; an `id_token`'s is the verifying client.
+5. `exp` has not passed. The Worker allows no skew on its own clock; a verifier on another clock allows `CLOCK_SKEW_SECONDS`.
+
+The Polaris document verifiers (`shared-jws`, client-core and every SDK's) stay EdDSA-only and never accept an issuer token, and a verifier of issuer tokens never accepts a `pkey-*+jws`.
+
+**The issuer key** (D2; IS-7). Each product has its own RSA-2048 key ring (public exponent 65537), apart from its Ed25519 product keys. A `kid` is the RFC 7638 SHA-256 thumbprint of the public key, in base64url. A private key is sealed under `PLATFORM_KEK` as the key-vault kind `issuer-signing-key`, with the additional data `pkey:v2:<product>:issuer-signing-key:<kid>`, and no route, log or export ever carries it. The first key of a product is active at once. After that, a key moves through three states:
+
+| State     | Signs                              | In `/jwks` | Leaves the state                                               |
+| --------- | ---------------------------------- | ---------- | -------------------------------------------------------------- |
+| `next`    | no                                 | yes        | for `active`, at least 7 days after it was published           |
+| `active`  | yes, and is the only one that does | yes        | for `retired`, when the next key becomes active, every 90 days |
+| `retired` | no                                 | yes        | out of the set, 30 days later                                  |
+
+An emergency rotation (Superadmin, step-up, audited) activates a new key and drops the old `kid` from the set at once, so every token it signed fails. `/jwks` answers `{"keys": […]}`, each key exactly `{"kty":"RSA","use":"sig","alg":"RS256","kid","n","e"}` (`IssuerJwk`), never with a private member. The issuer key signs only this product's issuer tokens, and a product key or a release key never signs one.
+
+#### 12.13.6 Scopes, claims and consent
+
+| Scope                        | ConsentStep line                                          | Delivers                  |
+| ---------------------------- | --------------------------------------------------------- | ------------------------- |
+| `openid`                     | none: the card's header names the account and the product | `sub`, `auth_time`        |
+| `profile`                    | the screen name and the picture, one switch each          | `name`, `picture`         |
+| `email`                      | the email address, one switch                             | `email`, `email_verified` |
+| `pkey:entitlements`          | which <Product> features the person has                   | `pkey:entitlements`       |
+| `offline_access`             | staying signed in to the client while the person is away  | a refresh token           |
+| `pkey:licenses`, `pkey:sync` | reserved and never served (D5; `pkey:sync` is U-16's)     | nothing                   |
+
+**Claims.**
+
+- `sub` is the account's pairwise subject for the product (`ps_…`, §8). It is the same for every client of the product and for the product's own apps, and the account id never leaves (IS-9). A partner client gets it too (D8), and the card says so.
+- `name` is the account's screen name. `picture` is the account's chosen picture, PX-W16's `/media/avatar/<asset>` made absolute on the customer origin (§12.9), and is absent while the account shows initials. It is never a provider's picture URL.
+- `email` is the account's primary address. `email_verified` is true only when Polaris Key verified that address itself, and never on the word of a product connection (I-32) or anything a tenant mints (IS-10).
+- `pkey:entitlements` is a sorted array of the entitlement ids the subject holds for the product, limited to the catalog keys marked `userGrant` (LX-01 §7). It never carries licence state, a licence id, a tier or a key.
+- A claim with no value is absent, never `null`.
+
+**Consent** (D19, D22; IS-2, IS-8). A **client grant** is keyed `(account, client)` and records the claims and scopes granted, a `scopeHash`, and when it was granted, changed and last used. `scopeHash` is §12.7.3's function, with `claims` the claims the request showed and `services` its `pkey:*` and `offline_access` scopes. A grant **covers** a request when every item the request would show was decided in it, granted or declined: an optional claim declined before is not asked again (I-34). `prompt=consent` asks again anyway. A code carries the claims the grant holds that the request asks for.
+
+ConsentStep for a client never shows the licence line or Cloud Sync. Its view is §12.7.3's, with `items` in this order, each only when requested: `{kind: "profile", claims, required}` (claims among `name`, `picture` and `email`), `{kind: "entitlements"}` and `{kind: "offline"}`. A required claim has no switch. The entitlement and offline lines have none either, and are granted by Continue, so `offline_access` is granted only through a ConsentStep that showed it or a grant that holds it (OIDC Core §11). The copy says that a shared claim is the same for every app the person signs in to (S-16 §5.4 item 12). A client grant neither needs nor writes `account_product_grants`.
+
+#### 12.13.7 Refresh tokens and revocation
+
+**Refresh tokens** (D3; IS-5). A refresh token is `pkeyo_` + 43 base64url characters (32 random bytes), issued only with `offline_access`, and stored only as `hashKey(token, KEY_HASH_PEPPER)`.
+
+1. Code redemption opens a **family**. Its record holds the family, the client, the account, the scope, the claims, `auth_time` and the token that replaced it.
+2. Every use rotates the token: the presented one is spent and a new one joins the family.
+3. A spent token presented again is `invalid_grant` and revokes the whole family, with no grace period (audit `identity.refresh.reuse`).
+4. A token ends 30 days after its last use (`ISSUER_REFRESH_IDLE_SECONDS`), and its family 90 days after it opened (`ISSUER_REFRESH_MAX_SECONDS`).
+5. An account holds at most 10 live families per client (`MAX_REFRESH_FAMILIES`). An eleventh revokes the oldest.
+
+**`revoke`** (RFC 7009). `POST <issuer>/revoke`, form-encoded, with `token`, an optional `token_type_hint` (`refresh_token` or `access_token`; any other value is ignored) and the client authentication of §12.13.2. It answers `200` with an empty body and `no-store` for:
+
+- a refresh token of this client, whose whole family it revokes;
+- an access token, which it does not revoke: the token ends within 600 seconds;
+- a token that is unknown, malformed or already ended, which changes nothing (RFC 7009 §2.2).
+
+A refresh token of another client of the product is `400 unauthorized_client` and revokes nothing. The other errors are §12.13.4 rule 5's, and CORS is `token`'s.
+
+**What ends access.** An access token already issued expires within 600 seconds on every path.
+
+| Path                                       | Effect                                                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| Locker, Connected apps, **Disconnect**     | Deletes the client grant and revokes its families. `userinfo` refuses at once                          |
+| The console disables or deletes a client   | Revokes every family of the client. Deleting it also deletes its grants                                |
+| Identity or the issuer turned off          | Revokes every family of the product. Grants, clients and keys stay, so turning it on asks nobody again |
+| Account deletion, removal from the product | Deletes the account's grants and families for the product                                              |
+| Account merge (D21)                        | Revokes the absorbed account's families. Its grants move to the survivor where it holds none           |
+| Product deletion                           | Deletes every client, grant, family and key of the product                                             |
+| A spent refresh token presented again      | Revokes that family                                                                                    |
+
+A person reads "<Client> is signed out within 10 minutes", which is the access token's lifetime.
+
+#### 12.13.8 `userinfo`
+
+`GET` or `POST <issuer>/userinfo` (OIDC Core §5.3). The access token comes in `Authorization: Bearer` (RFC 6750 §2.1) or, on a `POST`, as the form member `access_token` (RFC 6750 §2.2), never in the query. Both at once is `400 invalid_request`.
+
+1. The token is verified as §12.13.5 says for an access token, and its `scope` holds `openid`. An `id_token`, a `pkeyt_` device token, the device exchange's token (it holds no `openid`) and another product's token are refused (IS-6).
+2. It is read live. The client grant still exists (a Disconnect refuses at once), the client is active, Identity and the issuer are on, and the account and its subject are live.
+3. A `200` (`UserInfoResponse`) is `application/json` and `no-store`: `sub`, then each claim the client grant still holds and the token's scope reaches, read now (`name`, `picture`, `email`, `email_verified`, `pkey:entitlements`). It is not signed.
+4. A refusal is `401` with `WWW-Authenticate: Bearer error="invalid_token"` and the body `{"error":"invalid_token"}`. A request with no token is `401` with `WWW-Authenticate: Bearer` and no `error` (RFC 6750 §3.1).
+5. CORS is `token`'s, for the token's `client_id`. A preflight allows `Authorization`.
+
+#### 12.13.9 End-session
+
+`GET` or `POST <issuer>/end-session` (RP-Initiated Logout 1.0), a browser navigation. A `POST` reads its form body alone. The parameters are `id_token_hint` (recommended), `client_id`, `post_logout_redirect_uri` and `state`; `logout_hint` and `ui_locales` are ignored.
+
+1. **The client** is the one `client_id` names, or the hint's `aud`, and the two agree when both are sent. The hint is checked as at `authorize` (§12.13.3); an expired one is accepted. A bad hint, a disagreement or a malformed parameter renders the branded `invalid_request` page (400). An unknown or disabled `client_id` renders the `invalid_client` page (401). Neither redirects.
+2. **The return** (IS-13). `post_logout_redirect_uri` is used only when the client is known and the URI matches one of its `postLogoutRedirectUris` (§12.13.2). One sent without a known client, or unmatched, renders `invalid_request` and never redirects.
+3. **The hop.** It stores an end-session handle, `eo_` + 22 base64url characters (16 random bytes), used once, for 120 seconds (`END_SESSION_HANDLE_PATTERN`, `END_SESSION_HANDLE_TTL_SECONDS`). The handle holds the product, the client, the return, `state` and the hint's `sub`. The answer is `303 <customer>/signout?request=eo_…&bind=<token>` through §12.9 rule 3's bind hop, or `303 <origin>/signout?request=eo_…` with the binder cookie when the customer origin is the API host's own origin. It carries `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+4. **The page.** `GET /signout?request=eo_…` on the customer host serves the card shell, which asks "Sign out of Polaris Locker too?". Its three JSON routes are same-origin and need the binder cookie; the two `POST`s also need the portal CSRF header.
+
+   | Route                                | Answer                                                                                                                                                    |
+   | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `GET /api/signout/requests/<handle>` | `EndSessionView`: `{request, product: {appName, iconUrl}, client: {name, developerName, iconUrl, nameVerified} \| null, returnHost, signedIn, expiresAt}` |
+   | `POST …/confirm` (**Sign out**)      | Ends the Polaris Locker session on this host and no other. `{"redirect": "<post_logout_redirect_uri>?state=…"}`, or `{"redirect": null}` with no return   |
+   | `POST …/cancel` (**Stay signed in**) | Ends nothing. The same answer                                                                                                                             |
+
+   `returnHost` is the return's host, or null; `signedIn` says whether a session exists on this host. Both `POST`s take the handle, and `state` is appended only when it was sent. A handle that is unknown, expired, taken or bound to another browser is `404 not_found`, always in the same shape.
+
+5. **What it ends.** The Locker session on that host, and only on **Sign out**. Refresh tokens and client grants survive: a relying party that holds `offline_access` keeps it, and Disconnect ends it (§12.13.7). There is no front- or back-channel logout, so a relying party learns that a session ended at its next `authorize`.
+
+#### 12.13.10 The device exchange [C]
+
+D6. A product's own app gets a short-lived access token for its developer's backend (SP-68) from its device token, with no `openid` and no browser. Pinned by `identity-access-token.json` (I-21.13): the exchange, its refusals and Identity off. `POST /<p>/identity/token`, form-encoded, as §12.5 rule 1 (`X-PKey-Device` required, a `no-store` answer, CORS for `web.origins`, 30 a minute per client network and 10 a minute per device id, failing closed):
+
+| Parameter              | Value                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------- |
+| `grant_type`           | `urn:ietf:params:oauth:grant-type:token-exchange`                               |
+| `client_id`            | the product slug                                                                |
+| `subject_token`        | the caller's own `pkeyt_` device token                                          |
+| `subject_token_type`   | `urn:polaris-key:token-type:device` (`DEVICE_SUBJECT_TOKEN_TYPE`)               |
+| `requested_token_type` | `urn:ietf:params:oauth:token-type:access_token` (`ACCESS_TOKEN_TYPE`), required |
+
+1. **Served** while Identity is on and the issuer is served (§12.13), because its token verifies only against the issuer's key set. Otherwise the subject token type is unknown: `400 invalid_request`, as §12.11.7 answers an unknown type. Discovery's identity fragment carries `"accessToken": true` exactly while it is served (§12.6).
+2. **Checks** (IS-11). Each refusal is the one `400 invalid_grant`: the subject token is a live device token of this product, it belongs to the device `X-PKey-Device` names, and that device is signed in (it holds a sign-in binding, §12.3). `actor_token` or `actor_token_type` is `invalid_request`. `scope`, `audience` and `resource` are ignored. A registered client, once authenticated (§12.13.2), gets `unauthorized_client`; any other `client_id` that is not the slug is `invalid_client`.
+3. **A `200`** (`AccessTokenExchangeResponse`) carries exactly `access_token`, `issued_token_type: "urn:ietf:params:oauth:token-type:access_token"`, `token_type: "Bearer"`, `expires_in: 600` and `scope: ""`; never a refresh token or an `id_token`. The access token is §12.13.5's, with `sub` the device's pairwise subject, `client_id` the slug, `scope` `""`, and no `auth_time` or `pkey:entitlements`. It never yields more than the device token.
+4. **The client** (I-21b). An SDK asks only when `accessToken` is in discovery; without it the call raises `service-unavailable`. It keeps the token in memory only, reuses it until `expires_in − 60` seconds have passed, and drops it on sign-out.
+
+#### 12.13.11 Limits, errors and deployed clients
+
+**Limits** (IS-14). Each fails closed: `429 rate_limited` with `Retry-After` on a JSON route, the branded page on a navigation. Discovery and the key set are served from the edge cache.
+
+| Limit                                            | Value                                                                                                                                                       |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Clients per product                              | 20                                                                                                                                                          |
+| Redirect URIs, post-logout URIs and live secrets | 10, 10 and 2 per client                                                                                                                                     |
+| Live refresh families                            | 10 per account and client; the oldest is revoked                                                                                                            |
+| `authorize`                                      | 60 a minute per client network (§12.4 rule 3)                                                                                                               |
+| `token`                                          | 30 a minute per client network for a public client; 600 a minute per confidential `client_id`; 20 failed client authentications a minute per client network |
+| The device exchange                              | §12.5 rule 1                                                                                                                                                |
+| `userinfo`                                       | 120 a minute per subject and client                                                                                                                         |
+| `revoke`                                         | 60 a minute per client                                                                                                                                      |
+| `end-session`                                    | 30 a minute per client network                                                                                                                              |
+
+**Errors.** Eight new wire codes are registered in `conformance/parity/errors.json`: `unsupported_response_type`, `request_not_supported`, `request_uri_not_supported`, `login_required`, `consent_required` and `interaction_required` in the `authorize` redirect, `unauthorized_client` on `token` and `revoke`, and `invalid_token` on `userinfo`. They reach a relying party and never an app built on a Polaris SDK. The rest are existing codes: `invalid_request`, `invalid_client`, `invalid_grant`, `invalid_scope`, `unsupported_grant_type`, `redirect_uri_mismatch`, `access_denied`, `server_error`, `bad_request`, `not_found` and `rate_limited`. No client code is new: I-21b's SDKs raise `service-unavailable` without `accessToken`.
+
+**Deployed clients and workers.** The Worker ships with the issuer off, the setting's default. A deployed SDK never sends `openid` or the exchange's token type, and ignores `accessToken`. The own client's `token` answer is byte for byte what it was, so every `redirect-*`, `devicecode-*`, `identity-*` and `locker-redirect-*` transcript stays identical; I-21.13 re-records `discovery-identity.json` and `locker-discovery-identity.json`. An I-21b SDK on an older Worker finds no `accessToken` and raises `service-unavailable`. Turning the issuer off answers `404` on its routes and refuses refresh, and tokens already issued end within 600 seconds.
 
 ## 13. Cloud Sync (HTTP, additive)
 
