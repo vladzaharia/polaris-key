@@ -48,7 +48,7 @@ const INDEX = join(HERE, "INDEX.md");
 // takes a letter suffix like every other phase's (PX-W9b, the SDK half of PX-W9; PX-W13b); a front-end
 // package split in two takes a/b (PX-14a, PX-14b). Locker mockup re-skins (phase MK) are MK-L1, MK-L2.
 const ID_RE =
-  /^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|MO|PS|CM|DOC|AX|LK|CC)-\d{2}[a-z]?|PX-(?:\d{2}[a-z]?|W\d{1,2}[a-z]?)|CC-\d{2}[A-Z]|MK-L\d)$/;
+  /^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|MO|PS|CM|DOC|AX|LK|CC)-\d{2}[a-z]?|PX-(?:\d{2}[a-z]?|W\d{1,2}[a-z]?)|CC-\d{2}[A-Z]|CC-\d{2}\.\d{2}|MK-L\d)$/;
 const DONE = new Set(["done", "dropped"]);
 
 const UX_COVERAGE = join(HERE, "ux-coverage.json");
