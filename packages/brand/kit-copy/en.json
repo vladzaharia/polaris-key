@@ -2951,12 +2951,12 @@
     "locker.signout.body": {
       "value": "Polaris Locker can still sign you in to apps in this browser.",
       "role": "body",
-      "note": "Body of the sign-out page when a registered client asked. Arguments: {app} = the client's name (never translated)."
+      "note": "Body of the sign-out page's question. No arguments."
     },
     "locker.signout.confirm": {
       "value": "Sign out",
       "role": "button",
-      "note": "Primary button of the sign-out page: ends the Polaris Locker session on this device."
+      "note": "Primary button of the sign-out page: ends this browser's Polaris Locker session and no other."
     },
     "locker.signout.stay": {
       "value": "Stay signed in",
@@ -3037,6 +3037,11 @@
       "value": "Sign out of Polaris Locker",
       "role": "button",
       "note": "Button of the expired sign-out page: ends this browser's Polaris Locker session."
+    },
+    "locker.signout.returnFailed": {
+      "value": "Couldn't return you to {app}.",
+      "role": "body",
+      "note": "Callout of the sign-out page when it could not send the person back to the client; the button beside it is Back to the client. Arguments: {app} = the client's name, or the product's when none (never translated)."
     },
     "signin.unreachable.network": {
       "value": "Check your connection.",

@@ -605,6 +605,7 @@
     "locker.signout.expired.in": "Vous êtes toujours connecté à Polaris Locker.",
     "locker.signout.expired.out": "Vous n'êtes pas connecté à Polaris Locker.",
     "locker.signout.expired.signOut": "Se déconnecter de Polaris Locker",
+    "locker.signout.returnFailed": "Impossible de revenir à {app}.",
     "signin.unreachable.network": "Vérifiez votre connexion.",
     "signin.unreachable.wait": "Patientez un instant.",
     "signin.key.skip": "Continuer sans compte",

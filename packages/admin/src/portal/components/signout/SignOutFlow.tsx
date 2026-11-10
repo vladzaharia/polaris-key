@@ -79,10 +79,15 @@ export function SignOutFlow({
   const [error, setError] = React.useState<string | null>(null);
   // A return the page tried on its own and could not make: the button is the way on.
   const [autoFailed, setAutoFailed] = React.useState(false);
+  // The expired page's own Sign out: its "signed out" step has no passport (the page had none).
+  const [fromExpired, setFromExpired] = React.useState(false);
   const autoStarted = React.useRef(false);
 
   const gone = req.error instanceof HttpError && req.error.status === 404;
   const name = view?.client?.name ?? null;
+  const returnFailed = t("locker.signout.returnFailed", {
+    app: name ?? view?.product.appName ?? "",
+  });
 
   /** The session check and its CSRF token, read again (another tab may have changed either). */
   const refreshSession = (): Promise<unknown> =>
@@ -119,7 +124,7 @@ export function SignOutFlow({
       if (out.redirect !== null) {
         consumeQuietSignOut();
         if (auto) setAutoFailed(true);
-        setError(t("signin.request.gone"));
+        setError(returnFailed);
         return;
       }
       setPhase(action === "confirm" ? "done" : "stayed");
@@ -136,7 +141,12 @@ export function SignOutFlow({
         setPhase("expired");
         return;
       }
-      if (auto) setAutoFailed(true);
+      if (auto) {
+        // The button that is left says "Back to <App>": the line says the same thing.
+        setAutoFailed(true);
+        setError(returnFailed);
+        return;
+      }
       setError(portalErrorCopy(err, { account: true }).line);
     }
   };
@@ -149,6 +159,9 @@ export function SignOutFlow({
     signOutExpected();
     try {
       await mutate("signOutHere");
+      // The "signed out" step moves focus to its heading and announces it.
+      setFromExpired(true);
+      setPhase("done");
     } catch (err) {
       consumeQuietSignOut();
       setError(portalErrorCopy(err, { account: true }).line);
@@ -175,12 +188,12 @@ export function SignOutFlow({
 
   const step: Step = req.isPending
     ? "loading"
-    : phase === "expired" || gone
-      ? "expired"
-      : req.error || !view
-        ? "unreachable"
-        : phase === "done" || phase === "stayed"
-          ? phase
+    : phase === "done" || phase === "stayed"
+      ? phase
+      : phase === "expired" || gone
+        ? "expired"
+        : req.error || !view
+          ? "unreachable"
           : returning
             ? "returning"
             : view.signedIn
@@ -357,7 +370,7 @@ export function SignOutFlow({
       header={
         req.isPending ? (
           <HeaderSkeleton />
-        ) : view && !gone ? (
+        ) : view && !gone && step !== "expired" && !fromExpired ? (
           <SignOutHeader view={view} />
         ) : undefined
       }

@@ -605,6 +605,7 @@
     "locker.signout.expired.in": "Polaris Locker에 계속 로그인되어 있습니다.",
     "locker.signout.expired.out": "Polaris Locker에 로그인되어 있지 않습니다.",
     "locker.signout.expired.signOut": "Polaris Locker에서 로그아웃",
+    "locker.signout.returnFailed": "{app}(으)로 돌아가지 못했습니다.",
     "signin.unreachable.network": "연결을 확인하세요.",
     "signin.unreachable.wait": "잠시만 기다려 주세요.",
     "signin.key.skip": "계정 없이 계속",

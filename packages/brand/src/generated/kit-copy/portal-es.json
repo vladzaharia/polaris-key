@@ -46,6 +46,7 @@
   "locker.signout.expired.in": "Sigues con la sesión iniciada en Polaris Locker.",
   "locker.signout.expired.out": "No has iniciado sesión en Polaris Locker.",
   "locker.signout.expired.signOut": "Cerrar sesión en Polaris Locker",
+  "locker.signout.returnFailed": "No se pudo volver a {app}.",
   "profile.title": "Perfil",
   "profile.subtitle": "Cómo apareces en Polaris Locker y, si aceptas compartirlo, en una app.",
   "profile.edit": "Editar perfil",

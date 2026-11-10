@@ -61,6 +61,7 @@ export type PortalCopyKey =
   | "locker.signout.expired.in"
   | "locker.signout.expired.out"
   | "locker.signout.expired.signOut"
+  | "locker.signout.returnFailed"
   | "profile.title"
   | "profile.subtitle"
   | "profile.edit"

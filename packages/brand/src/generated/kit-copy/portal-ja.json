@@ -46,6 +46,7 @@
   "locker.signout.expired.in": "Polaris Locker にサインインしたままです。",
   "locker.signout.expired.out": "Polaris Locker にサインインしていません。",
   "locker.signout.expired.signOut": "Polaris Locker からサインアウト",
+  "locker.signout.returnFailed": "{app} に戻れませんでした。",
   "profile.title": "プロフィール",
   "profile.subtitle": "Polaris Lockerでの表示と、同意した場合にアプリへ表示される内容です。",
   "profile.edit": "プロフィールを編集",

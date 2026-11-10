@@ -146,9 +146,10 @@ export function RequestFlow({
   const notYou = async (): Promise<void> => {
     try {
       await mutate("signOutHere");
-    } catch {
+    } catch (err) {
       // The session was not ended (the table only runs after a confirmed write), so the families
       // stay; the session check says what is true.
+      setError(portalErrorCopy(err, { account: true }).line);
       await qc.invalidateQueries({ queryKey: qk.me() });
     }
   };
@@ -487,6 +488,7 @@ export function RequestFlow({
         onNotYou={() => void notYou()}
         keyHref={keyHrefFor(lic.getLicense, handle)}
         notice={notice}
+        refusal={error}
         initialId={
           chosen?.kind === "license"
             ? chosen.row.id

@@ -605,6 +605,7 @@
     "locker.signout.expired.in": "你仍登录着 Polaris Locker。",
     "locker.signout.expired.out": "你尚未登录 Polaris Locker。",
     "locker.signout.expired.signOut": "退出 Polaris Locker",
+    "locker.signout.returnFailed": "无法返回 {app}。",
     "signin.unreachable.network": "请检查网络连接。",
     "signin.unreachable.wait": "请稍候。",
     "signin.key.skip": "不使用账户继续",

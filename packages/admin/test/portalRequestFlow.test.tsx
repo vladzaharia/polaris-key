@@ -1274,4 +1274,17 @@ describe("Not you? (the sign-out can fail)", () => {
       expect(fetchedRequests()).toContain("POST /logout");
     }
   });
+
+  it("a refused sign-out (status 400 or more) shows the card's callout", async () => {
+    flow(choices(), {
+      "POST /logout": { status: 500, body: { error: "boom" } },
+    });
+    renderPortal();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Choose a license for this device",
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Not you?" }));
+    expect(await screen.findByRole("alert")).toBeTruthy();
+  });
 });

@@ -46,6 +46,7 @@
   "locker.signout.expired.in": "You're still signed in to Polaris Locker.",
   "locker.signout.expired.out": "You're not signed in to Polaris Locker.",
   "locker.signout.expired.signOut": "Sign out of Polaris Locker",
+  "locker.signout.returnFailed": "Couldn't return you to {app}.",
   "profile.title": "Profile",
   "profile.subtitle": "How you appear in Polaris Locker, and to an app once you agree to share it.",
   "profile.edit": "Edit profile",

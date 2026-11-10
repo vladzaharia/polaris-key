@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { EndSessionView } from "@polaris-key/protocol/identity";
 import { consumeQuietSignOut } from "../src/portal/data.js";
@@ -188,11 +188,27 @@ describe("the sign-out page", () => {
       [`POST ${REQUEST}/cancel`]: { status: 500, body: { error: "boom" } },
     });
     renderPortal();
-    expect(await screen.findByRole("alert")).toBeTruthy();
+    const alert = await screen.findByRole("alert");
+    // The line matches its only button: no "Try again." beside "Back to Community".
+    expect(alert.textContent).toContain("Couldn't return you to Community.");
+    expect(alert.textContent).not.toMatch(/try again/i);
     expect(
       screen.getByRole("button", { name: "Back to Community" }),
     ).toBeTruthy();
     expect(went).toEqual([]);
+  });
+
+  it("a return the page will not follow says so in sign-out words", async () => {
+    mockFetch({
+      ...signedIn(),
+      [REQUEST]: VIEW,
+      [`POST ${REQUEST}/confirm`]: { redirect: "javascript:alert(1)" },
+    });
+    renderPortal();
+    await press("Sign out");
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Couldn't return you to Community.");
+    expect(document.body.textContent).not.toMatch(/start signing in again/i);
   });
 
   it("a request that is gone is the expired step: never sign-in words, and whether you are still signed in", async () => {
@@ -218,7 +234,7 @@ describe("the sign-out page", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
-  it("the expired step's Sign out ends the session and then says you are not signed in", async () => {
+  it("the expired step's Sign out ends the session and moves to the signed-out step, with focus on its heading", async () => {
     let live = true;
     mockFetch({
       ...signedIn(),
@@ -238,13 +254,47 @@ describe("the sign-out page", () => {
         name: "Sign out of Polaris Locker",
       }),
     );
-    expect(
-      await screen.findByText("You're not signed in to Polaris Locker."),
-    ).toBeTruthy();
+    const h1 = await heading("You're signed out of Polaris Locker");
     expect(fetchedRequests()).toContain("POST /logout");
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+    expect(screen.queryByText("This page has expired")).toBeNull();
+    expect(screen.getByRole("link", { name: "Sign in again" })).toBeTruthy();
+  });
+
+  it("a failed Sign out on the expired step shows the callout and keeps the button", async () => {
+    mockFetch({
+      ...signedIn(),
+      "POST /logout": { status: 500, body: { error: "boom" } },
+      [REQUEST]: { status: 404, body: { error: "not_found" } },
+    });
+    renderPortal();
+    await press("Sign out of Polaris Locker");
+    const alert = await screen.findByRole("alert");
+    expect(alert.querySelector("svg")).not.toBeNull();
+    expect(screen.getByText("This page has expired")).toBeTruthy();
     expect(
-      screen.getByRole("link", { name: "Open Polaris Locker" }),
+      screen.getByRole("button", { name: "Sign out of Polaris Locker" }),
     ).toBeTruthy();
+    expect(consumeQuietSignOut()).toBe(false);
+  });
+
+  it("the expired step has no passport: no where-line, from a load or from an answer", async () => {
+    mockFetch({
+      ...signedIn(),
+      [REQUEST]: VIEW,
+      [`POST ${REQUEST}/confirm`]: {
+        status: 404,
+        body: { error: "not_found" },
+      },
+    });
+    renderPortal();
+    expect(
+      await screen.findByText("Returns you to community.example.com"),
+    ).toBeTruthy();
+    await press("Sign out");
+    expect(await heading("This page has expired")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/Returns you to/);
+    expect(document.body.textContent).not.toMatch(/signed you out/);
   });
 
   it("a request that is gone with no session offers to open Polaris Locker", async () => {
