@@ -597,6 +597,8 @@ const KOTLIN_UNASSERTED = new Set([
   "client.client",
   "client.playPacks",
   "client.flavor",
+  // An sdkOnly row with no symbol: Kotlin cancels by cancelling the coroutine that runs the export.
+  "cloudSync.cancelExport",
 ]);
 /** Extension functions on the client, declared top-level in the sdk package (Boot.kt). */
 const KOTLIN_EXTENSION = new Set(["client.boot", "client.bootHost"]);
@@ -636,6 +638,11 @@ function renderKotlin(api: Api): string {
       lines.push(
         `val cancelById: (CloudTransfer, String) -> Unit = CloudTransfer::cancel  // ${r.id}`,
       );
+    } else if (r.id === "cloudSync.export") {
+      // `export(destination: Path, options)` and `export(output: OutputStream, options)` overload; the typed reference picks the path one.
+      lines.push(
+        `val exportToPath: suspend (CloudSyncClient, Path, CloudSyncExportOptions) -> CloudSyncExport = CloudSyncClient::export  // ${r.id}`,
+      );
     } else if (r.id.startsWith("cloudConnect.transfer.")) {
       // Direct Transfer (CC-20): the verbs live on `cloudConnect.transfer` (`CloudTransfer`); the offer answers on `TransferOffer`.
       lines.push(
@@ -669,6 +676,8 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.sdk.CloudLinks`,
     `import im.plrs.key.sdk.CloudNearby`,
     `import im.plrs.key.sdk.CloudSyncClient`,
+    `import im.plrs.key.sdk.CloudSyncExport`,
+    `import im.plrs.key.sdk.CloudSyncExportOptions`,
     `import im.plrs.key.sdk.CloudSyncHostOptions`,
     `import im.plrs.key.sdk.CloudTransfer`,
     `import im.plrs.key.sdk.CommerceClient`,
@@ -687,6 +696,7 @@ function renderKotlin(api: Api): string {
       .map((n) => `import im.plrs.key.sdk.${n}`),
     `import im.plrs.key.update.UpdateClient`,
     `import im.plrs.key.update.UpdateClientOptions`,
+    `import java.nio.file.Path`,
     ``,
     `/** Compile-only and never called: a renamed or removed symbol fails the test source set's build. */`,
     `internal suspend fun apiSurface() {`,

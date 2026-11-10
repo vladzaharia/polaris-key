@@ -4,6 +4,8 @@
 
 package im.plrs.key.sdk
 
+import im.plrs.key.core.sync.ExportFileOpener
+
 @Suppress("TooManyFunctions")
 internal class GuardedFileCodec(private val inner: FileCodec, private val live: () -> Boolean) : FileCodec {
     private fun check() {
@@ -29,6 +31,16 @@ internal class GuardedFileCodec(private val inner: FileCodec, private val live: 
     override fun openManifest(stored: ByteArray): FileOpened = inner.also { check() }.openManifest(stored)
 
     override fun sealWhole(plain: ByteArray): ByteArray = inner.also { check() }.sealWhole(plain)
+
+    override fun newPlannedOpener(plainSize: Long): ExportFileOpener {
+        check()
+        val opener = inner.newPlannedOpener(plainSize)
+        return object : ExportFileOpener {
+            override fun push(data: ByteArray): List<ByteArray> = opener.also { check() }.push(data)
+
+            override fun finish() = opener.also { check() }.finish()
+        }
+    }
 
     override fun newOpener(): FileOpener {
         check()

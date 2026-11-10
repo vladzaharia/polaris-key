@@ -4562,9 +4562,7 @@
         "swift": {
           "labels": ["to", "options"]
         },
-        "kotlin": {
-          "planned": "U-51"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "U-51"
         }
@@ -4597,6 +4595,10 @@
         "swift": {
           "sdkOnly": true,
           "reason": "Swift cancels with the Task that awaits cloudSync.export(to:options:)"
+        },
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin cancels by cancelling the coroutine (or the Java future) that runs the export"
         }
       },
       "layer": "client"

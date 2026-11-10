@@ -683,9 +683,8 @@
       ]
     },
     "sync.export": {
-      "status": "planned",
-      "wp": "U-51",
-      "note": "U-51.1 registered the feature; this SDK's slice implements it."
+      "status": "implemented",
+      "note": "client.cloudSync.export(destination: Path, options) and export(output: OutputStream, options), suspend (:core's SyncExport plans the archive, refuses with sync-export-too-large before the first byte, then streams a STORED zip32 with data descriptors, an incremental SHA-256 against the pointer and a CRC-32 in constant memory; :sdk's CloudSyncExport.kt does the preconditions, the flush, the pulls and their bounds, the file source over FileTransferEngine and the destination). A path export writes <destination>.partial (CREATE_NEW, no link followed, owner-only at creation, forced to disk) and renames it over the destination; a failure or a cancel removes the partial and keeps the old file. The OutputStream overload (Android SAF) is written and flushed and never closed or kept by the SDK. PolarisKeyFutures.exportFuture. SyncVectorsTest replays every exportCases row on the JCA and on Tink (ZipFile), SyncExportZipTest, SyncExportStreamTest, CloudSyncExportTest."
     }
   }
 }
