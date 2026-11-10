@@ -7,6 +7,11 @@
  * Sync off: the same answer for all three, so nothing is revealed. A read, so no step-up and no
  * audit row (it returns no personal data beyond the account's own device labels and sizes); the
  * session and the CSRF header are the router's. Rate limit: 60 a minute per account and product.
+ *
+ * `state: "removing"` (PX-18): the person asked to remove their data from this product and part of
+ * the removal is still owed (U-12.1's `pending`): the product's removal ledger holds an entry for
+ * their subject while the subject row is still live. Identity owns that ledger, so the state is
+ * set here, on top of Cloud Sync's summary, and never by Cloud Sync reading Identity (rule 6).
  */
 
 import { existingSubjectFor } from "../../../core/accounts/accountSubjects.js";
@@ -21,6 +26,7 @@ import {
   type PortalHooksFor,
 } from "./api.js";
 import { productLinked } from "./dataExport.js";
+import { subjectErasureKey } from "../accounts/subjectErasureLedger.js";
 import type { PortalSession } from "./session.js";
 
 /** Reads a minute per account and product: a card refreshes far less often. */
@@ -52,5 +58,25 @@ export async function handleProductSync(
   const reader = loaded?.hooks.cloudSyncSummary();
   if (!reader) return notFound();
   const subject = await existingSubjectFor(db, session.accountId, product);
-  return portalJson(await reader.summary(subject));
+  const summary = await reader.summary(subject);
+  if (subject !== null && (await removalOwed(env, product, subject)))
+    return portalJson({ ...summary, state: "removing" });
+  return portalJson(summary);
+}
+
+/**
+ * Whether a removal of this subject's data is recorded and not finished: its ledger entry exists
+ * (the caller has just read the live subject row). A failing read answers "no", so the card shows
+ * the data as it is rather than failing.
+ */
+async function removalOwed(
+  env: Env,
+  product: string,
+  subject: string,
+): Promise<boolean> {
+  try {
+    return (await env.BLOBS?.head(subjectErasureKey(product, subject))) != null;
+  } catch {
+    return false;
+  }
 }

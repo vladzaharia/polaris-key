@@ -3,6 +3,7 @@ import { ErrorState } from "../../ui/ErrorState.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
+import { CloudSyncCard } from "../components/product/CloudSyncCard.js";
 import { DevicesCard } from "../components/product/DevicesCard.js";
 import { GetItPanel, useGetItShown } from "../components/product/GetItPanel.js";
 import { HelpCard } from "../components/product/HelpCard.js";
@@ -16,13 +17,18 @@ import {
   useLicense,
   usePackageAccess,
   useProduct,
+  useProductSync,
 } from "../data.js";
 import { PackagesPointer } from "../components/product/PackagesPointer.js";
 import { ProductIdentityCard } from "../components/product/ProductIdentityCard.js";
 import { ProductDataCard } from "../components/product/ProductDataCard.js";
 import { RemoveLicenseDialog } from "../components/product/RemoveLicenseDialog.js";
 import { toast } from "../../ui/toast.js";
-import { consumeHeadingFocus, focusSectionHeading } from "../focus.js";
+import {
+  consumeHeadingFocus,
+  focusSectionHeading,
+  pendingSectionFocus,
+} from "../focus.js";
 import { useLibrary } from "../library.js";
 import { quickAction, type LicensedProduct } from "../model/library.js";
 import {
@@ -40,6 +46,8 @@ import {
   ROUTE_FOCUS_DEADLINE_MS,
   href,
   navigate,
+  replaceRoute,
+  resolveHash,
   scrollBehavior,
   setParams,
   useDocumentTitle,
@@ -152,8 +160,13 @@ function ProductBody({
   // Get it is in the nav only when its card is drawn (an ended license with nothing to download
   // has none): the nav never points at a section the page does not have.
   const getIt = useGetItShown(product, here);
+  // Sync Across Devices (PX-18): asked only once the product view says sync is on; a 404 (sync
+  // went off meanwhile, an older Worker) takes the section away with its nav entries.
+  const syncOn = view.data?.services.sync === true;
+  const sync = useProductSync(product.slug, syncOn);
   const sections = presentSections(product, releasesOn, {
     packageAccess: pkg.data?.available === true,
+    cloudSync: syncOn && sync.data !== null,
   }).filter((s) => s !== "get" || getIt);
   const [current, setCurrent] = React.useState<ProductSection | null>(
     section && sections.includes(section) ? section : (sections[0] ?? null),
@@ -164,6 +177,12 @@ function ProductBody({
     section && sections.includes(section) && section !== sections[0]
       ? section
       : null,
+  );
+  // A section deep link not scrolled to yet. Sync Across Devices arrives with a later read (the
+  // product view, then its summary), so a `sync` link is scrolled to when it does, unless the
+  // person has scrolled by then. Any other section is scrolled to on mount or not at all.
+  const owed = React.useRef<ProductSection | null>(
+    section && section !== sections[0] ? section : null,
   );
   const headingRef = React.useRef<HTMLHeadingElement>(null);
   // PX-23: the header menu's Remove from my library, for the licence the page shows.
@@ -182,23 +201,72 @@ function ProductBody({
   };
 
   // After adding this product, focus its heading (§9.4): once the dialog has left (through its
-  // exit) and handed focus back to its opener, and without scrolling away from a deep link.
+  // exit) and handed focus back to its opener, and without scrolling away from a deep link. A
+  // jump that names a section (⌘K) focuses that section's heading instead, once it has scrolled
+  // there (below).
+  const focusOwed = React.useRef<ProductSection | null>(null);
   React.useEffect(() => {
-    if (consumeHeadingFocus(product.slug))
+    const slug = product.slug;
+    const s = pendingSectionFocus(slug) as ProductSection | null;
+    if (s && s === owed.current) {
+      // The request stays pending until the section is there, so the router leaves focus alone.
+      focusOwed.current = s;
+      return () => {
+        if (focusOwed.current) consumeHeadingFocus(slug);
+      };
+    }
+    if (consumeHeadingFocus(slug))
       void focusRoute({
         root: document.querySelector("main") ?? undefined,
         deadline: ROUTE_FOCUS_DEADLINE_MS,
       });
   }, [product.slug]);
 
-  // A section deep link scrolls there once.
+  // A section deep link scrolls there once: at once when its card is on the page from the start,
+  // else (sync) as soon as it arrives.
   React.useEffect(() => {
-    if (!section || section === sections[0]) return;
+    const s = owed.current;
+    if (!s) return;
+    if (!sections.includes(s)) {
+      if (s !== "sync") owed.current = null;
+      return;
+    }
+    owed.current = null;
+    held.current = s;
+    setCurrent(s);
     document
-      .getElementById(`section-${section}`)
+      .getElementById(`section-${s}`)
       ?.scrollIntoView?.({ block: "start" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (focusOwed.current === s) {
+      focusOwed.current = null;
+      consumeHeadingFocus(product.slug);
+      focusPageHeading(() => document.getElementById(`section-${s}-h`));
+    }
+  }, [sections.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // `#/p/<slug>/sync` for a product without sync, once that is known (the product view says it is
+  // off, or the summary answered 404): the address becomes the product page's own, in place.
+  const syncKnownOff =
+    view.data !== undefined && (!syncOn || sync.data === null);
+  React.useEffect(() => {
+    if (!syncKnownOff) return;
+    const { route } = resolveHash(window.location.hash);
+    if (
+      route.kind !== "product" ||
+      route.product !== product.slug ||
+      route.section !== "sync"
+    )
+      return;
+    if (owed.current === "sync") owed.current = null;
+    // A ⌘K jump to the section that is not here lands on the page's heading instead.
+    if (focusOwed.current === "sync") {
+      focusOwed.current = null;
+      consumeHeadingFocus(product.slug);
+      focusPageHeading();
+    }
+    const query = route.params.toString();
+    replaceRoute(`${href.product(product.slug)}${query ? `?${query}` : ""}`);
+  }, [syncKnownOff, product.slug]);
 
   // The nav marks the section being read (owner polish 2026-10-07): the one whose top most
   // recently passed the reading line, which sits where a jump to a section puts it (its scroll
@@ -245,6 +313,7 @@ function ProductBody({
     };
     const release = (): void => {
       held.current = null;
+      owed.current = null;
     };
     const releaseOnKey = (e: KeyboardEvent): void => {
       if (SCROLL_KEYS.has(e.key)) release();
@@ -414,6 +483,17 @@ function ProductBody({
               ) : null}
               {identityOn ? (
                 <ProductIdentityCard productName={product.name} />
+              ) : null}
+              {/* Sync Across Devices (PX-18) ends the licence's stack: the facts about devices
+                  together, in the side column from 1024 px, and on a phone in the nav's order. */}
+              {has("sync") ? (
+                <CloudSyncCard
+                  product={product}
+                  summary={sync.data}
+                  loading={sync.isPending}
+                  error={sync.error}
+                  onRetry={() => void sync.refetch()}
+                />
               ) : null}
             </div>
           ) : null}

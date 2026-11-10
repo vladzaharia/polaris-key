@@ -455,6 +455,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "features/cloud-sync/collections",
           "features/cloud-sync/saves",
           "features/cloud-sync/encryption",
+          "features/cloud-sync/export-and-removal",
         ),
       },
       {

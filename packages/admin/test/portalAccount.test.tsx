@@ -14,6 +14,7 @@ import {
 } from "./portalHarness.js";
 import {
   captureDownloads,
+  confirmItsYou,
   deferred,
   settle,
   type DownloadCapture,
@@ -284,7 +285,7 @@ describe("Your data: Download my data (I-11)", () => {
     const { data, button } = await open();
     await userEvent.click(button);
     await waitFor(() => expect(files.saved).toHaveLength(1));
-    expect(files.saved[0]!.filename).toBe("polaris-key-account-data.json");
+    expect(files.saved[0]!.filename).toBe("polaris-locker-account-data.json");
     expect(JSON.parse(await files.saved[0]!.text())).toEqual(ACCOUNT_FILE);
     // Only the account's route: no product's export, no deletion.
     expect(fetchedRequests().filter((r) => /export|DELETE/.test(r))).toEqual([
@@ -453,22 +454,6 @@ const STALE_METHODS = {
 
 /** The Worker's answer to a change that needs a sign-in from the last five minutes. */
 const STEP_UP = { status: 401, body: { error: "step_up_required" } };
-
-/** Confirm it's you with an email code, in the prompt that replaced the refusal. */
-async function confirmItsYou(scope: HTMLElement): Promise<void> {
-  const prompt = await within(scope).findByRole("group", {
-    name: "Confirm it's you first",
-  });
-  await userEvent.click(
-    within(prompt).getByRole("button", {
-      name: `Email me a code at ${ACCOUNT.email}`,
-    }),
-  );
-  await userEvent.type(
-    await within(prompt).findByRole("textbox", { name: "6-digit code" }),
-    "481920",
-  );
-}
 
 describe("Your data: a stale sign-in asks to confirm it's you in place (I-11)", () => {
   let files: DownloadCapture;

@@ -48,6 +48,32 @@ export interface PortalProduct extends PortalPresentation {
   >;
 }
 
+// ── Sync Across Devices (U-12.5, PX-18) ──────────────────────────────────────────────────────
+
+/**
+ * `GET /api/products/<p>/sync`: what the product's sync holds for this account, as sizes and
+ * times only (never a value, a collection or a file name), and a device as its label (read
+ * server-side, never its id). `404` when the product has sync off or is not this account's.
+ */
+export interface PortalCloudSync {
+  /** `e2e`: only the person's devices can read the data; `server`: the server can. */
+  encryption: "e2e" | "server";
+  /** Nothing is stored yet. */
+  empty: boolean;
+  /**
+   * `paused`: the operator has put syncing on hold; `full`: the person is at their limit;
+   * `removing`: they removed their data from the product and the last part is still finishing.
+   */
+  state: "active" | "paused" | "full" | "removing";
+  /** Epoch seconds the hold began; only with `paused`. */
+  pausedSince: number | null;
+  usage: { bytes: number };
+  /** The limit in force; `tierLabel` names the tier that set it, if one did. */
+  quota: { bytes: number; tierLabel: string | null };
+  /** Each device's label and when it last pushed or pulled (epoch seconds, up to an hour stale). */
+  devices: Array<{ label: string; lastSyncAt: number }>;
+}
+
 // ── Downloads and store links (PX-W2; G2, G4) ──────────────────────────────────────────────
 
 /** Why a file can't be downloaded by this account (the Worker's codes, never copy). */
@@ -256,6 +282,9 @@ export const productApi = {
   product: (product: string) =>
     call<PortalProduct>(`/api/products/${enc(product)}`),
 
+  productSync: (product: string) =>
+    call<PortalCloudSync>(`/api/products/${enc(product)}/sync`),
+
   createSupportCode: (product: string) =>
     call<{ supportCode: string }>(
       `/api/products/${enc(product)}/support-code`,
@@ -265,11 +294,31 @@ export const productApi = {
   exportProductData: (product: string) =>
     download(
       `/api/products/${enc(product)}/export`,
-      `polaris-key-${product}-data.json`,
+      `polaris-locker-${product}-data.json`,
     ),
 
+  /**
+   * U-12.3: the same export as a zip with every synced record and file in it (`?format=zip`;
+   * end-to-end encrypted files as the stored ciphertext), for the Sync Across Devices card.
+   */
+  exportProductArchive: (product: string) =>
+    download(
+      `/api/products/${enc(product)}/export?format=zip`,
+      `polaris-locker-${product}-data.zip`,
+    ),
+
+  /**
+   * `removed: false` when there was nothing left to remove; `pending: true` when part of it (a
+   * store that failed) finishes in the background: the Worker's pass completes it (U-12.1).
+   */
   removeProductData: (product: string, alsoRemoveLicense: boolean) =>
-    call<{ ok: true; product: string; detachedLicenses: string[] }>(
+    call<{
+      ok: true;
+      product: string;
+      removed?: boolean;
+      pending?: true;
+      detachedLicenses: string[];
+    }>(
       `/api/products/${enc(product)}/data${
         alsoRemoveLicense ? "?alsoRemoveLicense=1" : ""
       }`,
@@ -277,7 +326,7 @@ export const productApi = {
     ),
 
   exportAccountData: () =>
-    download("/api/me/export", "polaris-key-account-data.json"),
+    download("/api/me/export", "polaris-locker-account-data.json"),
 
   downloads: (product: string) =>
     call<PortalDownloads>(`/api/products/${enc(product)}/downloads`),

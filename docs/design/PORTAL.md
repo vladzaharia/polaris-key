@@ -71,7 +71,15 @@ A selected Discover tile opens a storefront product route. Unknown, ineligible, 
 
 ### 4.4 Product pages and focused flows
 
-A product route renders Worker-backed product information and the sections named in [§2](#2-navigation-and-routing): Get it, What’s new, License, Devices, conditional Package access, and Help. The `sync` route is reserved, but Cloud Sync has no portal data source and is not rendered. The page shows the product’s current presentation, license seats, devices, releases and downloads; optional panels remain absent rather than inventing a fallback record.
+A product route renders Worker-backed product information and the sections named in [§2](#2-navigation-and-routing): Get it, What’s new, License, Devices, conditional Sync Across Devices and Package access, and Help. The page shows the product’s current presentation, license seats, devices, releases and downloads; optional panels remain absent rather than inventing a fallback record.
+
+**Sync Across Devices** (the end-user label of Cloud Sync, PX-18) appears only when the product record has `services.sync` on and `GET /api/products/<product>/sync` answers; a `404` removes the section, its navigation entries and the jump palette's action, and `#/p/<product>/sync` then canonicalizes to the product route in place. The card sits after Devices (and the product sign-in card): in the side column from 1024 px, in the navigation order on a phone. It reads sizes and times only:
+
+- the usage against the limit, as the Devices card reads its count (the used size strong, a bar beside it, warning from 80 %), with the tier's allowance only near or at the limit;
+- each device's last sync, five at a time, relative with the date and time; a device the Worker does not name reads "Unnamed device";
+- the states loading, error with Try again, empty, paused (since when), full (how to make room) and removing (a removal of the person's data is still finishing: one line, nothing else).
+
+Its one action is **Download synced data**, the product's export as a zip with every synced record and file (`?format=zip`), through the same download flow and step-up as Your data; with end-to-end encryption a line says the download is readable only on the person's devices, and a too-large export points to the developer's support. Removal has one home, the Your data card: the sync card's quiet link moves focus to its **Remove**. That dialog's **Download my data first** saves the zip when sync is on, and its consequences say the devices stop syncing. The jump palette offers "See synced data for <Product>" only when the tab already holds that product's record with sync on, and lands focus on the section's heading.
 
 A lapsed license (updates ended) says so once, in the License card's term timeline. The downloads table has no **Not included** row for it, and **Renew** appears only in the License card. This is the owner's 2026-10-08 decision, built by PX-28.
 
@@ -89,23 +97,24 @@ Profile reads and saves the display name and picture through the profile API. Th
 
 ## 5. Data, writes, and freshness
 
-The portal data layer is three modules over one HTTP client (`lib/http.ts`, whose `HttpError` is the only error class): `portal/queries.ts` holds every query key (`qk`) and one `queryOptions` factory per read (`pq`), `portal/mutations.ts` holds `PORTAL_MUTATIONS` (the queries each confirmed write makes stale; hooks call `useWrite`), and `portal/data.ts` holds the hooks and the QueryClient. All portal query keys begin with `portal`; reads do not silently retry, refetch on window focus, and use a 30-second default stale time. Optional APIs that return 404 become an explicit absence only where the UI has a defined absence state, such as Discover, profile editing, methods, sessions, downloads, and package access.
+The portal data layer is three modules over one HTTP client (`lib/http.ts`, whose `HttpError` is the only error class): `portal/queries.ts` holds every query key (`qk`) and one `queryOptions` factory per read (`pq`), `portal/mutations.ts` holds `PORTAL_MUTATIONS` (the queries each confirmed write makes stale; hooks call `useWrite`), and `portal/data.ts` holds the hooks and the QueryClient. All portal query keys begin with `portal`; reads do not silently retry, refetch on window focus, and use a 30-second default stale time. Optional APIs that return 404 become an explicit absence only where the UI has a defined absence state, such as Discover, profile editing, methods, sessions, downloads, package access, and the sync summary.
 
-| Customer action                | Worker result that the portal refreshes                                                    |
-| ------------------------------ | ------------------------------------------------------------------------------------------ |
-| Add from Discover              | Library, Discover, license summaries, product record                                       |
-| Remove an open library entry   | Library, Discover; product and storefront caches are removed                               |
-| Claim a license key            | Library, license summaries, releases, Discover                                             |
-| Remove a device                | License detail, license summaries, Library, product record                                 |
-| Remove a license               | License detail is removed; license summaries, Library, product, releases, Discover refresh |
-| Save profile                   | Profile and session account data are updated; stale profile errors refresh Profile         |
-| Change sign-in method          | Methods, session, Profile, Library, license summaries refresh                              |
-| Schedule or cancel deletion    | The session account refreshes (the shell notice and Your data follow it)                   |
-| Download my data               | Nothing: the file is read-only                                                             |
-| Remove my data from a product  | License detail, license summaries, Library, product, releases, Discover refresh            |
-| Get a support code             | The product record refreshes                                                               |
-| End a session                  | Sessions refresh when the mutation settles                                                 |
-| Mint or revoke a package token | That product-and-license token list refreshes                                              |
+| Customer action                | Worker result that the portal refreshes                                                      |
+| ------------------------------ | -------------------------------------------------------------------------------------------- |
+| Add from Discover              | Library, Discover, license summaries, product record                                         |
+| Remove an open library entry   | Library, Discover; product and storefront caches are removed                                 |
+| Claim a license key            | Library, license summaries, releases, Discover                                               |
+| Remove a device                | License detail, license summaries, Library, product record                                   |
+| Remove a license               | License detail is removed; license summaries, Library, product, releases, Discover refresh   |
+| Save profile                   | Profile and session account data are updated; stale profile errors refresh Profile           |
+| Change sign-in method          | Methods, session, Profile, Library, license summaries refresh                                |
+| Schedule or cancel deletion    | The session account refreshes (the shell notice and Your data follow it)                     |
+| Download my data               | Nothing: the file is read-only                                                               |
+| Download synced data           | Nothing: the zip is read-only                                                                |
+| Remove my data from a product  | License detail, license summaries, Library, product, synced data, releases, Discover refresh |
+| Get a support code             | The product record refreshes                                                                 |
+| End a session                  | Sessions refresh when the mutation settles                                                   |
+| Mint or revoke a package token | That product-and-license token list refreshes                                                |
 
 Mutations do not retry automatically. A 401 rechecks `GET /api/me`; a deliberate account deletion uses the quiet-sign-out path. The CSRF token comes from the newest accepted session read, preventing an older in-flight session response from replacing a token issued after step-up.
 
@@ -121,7 +130,7 @@ The following are intentionally not presented above as shipped portal functional
 
 - Provider email-gate completion, passkey enrollment and management, device-code sign-in, and app handoff completion are specified in [SIGN-IN.md](SIGN-IN.md) but require their corresponding Worker and portal work before they are shipped together.
 - Connected products and data export are absent from Account until their APIs exist.
-- Cloud Sync is parked: the route name is reserved but the product page has no Cloud Sync data source or rendered section. Package access, per-product downloads, Discover, profile editing, methods, and sessions are conditional on their Worker responses; their portal homes either render the received data or stay absent as described above.
+- Sync Across Devices, Package access, per-product downloads, Discover, profile editing, methods, and sessions are conditional on their Worker responses; their portal homes either render the received data or stay absent as described above.
 - The supplemental portal studies and historical PX work-package tables are research coverage, not a shipped-surface inventory. They must not be used to infer navigation, permissions, data fields, or customer actions that the current portal has not implemented.
 
 ## 8. Source map
@@ -129,5 +138,5 @@ The following are intentionally not presented above as shipped portal functional
 - App composition and signed-in/signed-out boundary: `packages/admin/src/portal/App.tsx`
 - Canonical routes, legacy redirects and deep-link sanitisation: `packages/admin/src/portal/router.ts`, on the shared hash-router core `packages/admin/src/lib/router-core.ts`; route focus and its announcement: `packages/admin/src/ui/focusRoute.ts`
 - Server client: `packages/admin/src/portal/api.ts` (a barrel over `packages/admin/src/portal/api/`) on the shared HTTP client `packages/admin/src/lib/http.ts`; query keys and read factories: `packages/admin/src/portal/queries.ts`; the write table and cache invalidation: `packages/admin/src/portal/mutations.ts` on `packages/admin/src/lib/writes.ts`; hooks: `packages/admin/src/portal/data.ts`
-- Shell, sign-in card, page components, and focused flows: `packages/admin/src/portal/components/` and `packages/admin/src/portal/pages/`
+- Shell, sign-in card, page components, and focused flows: `packages/admin/src/portal/components/` and `packages/admin/src/portal/pages/`; the Sync Across Devices card: `packages/admin/src/portal/components/product/CloudSyncCard.tsx`, its model in `packages/admin/src/portal/model/product.ts`
 - Portal API route and handler composition: `packages/worker/src/console/routes.ts` and `packages/worker/src/console/`

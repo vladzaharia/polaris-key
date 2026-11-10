@@ -3,7 +3,7 @@ title: "Download, remove or delete your data"
 description: "Download your account file or one app's file, remove an app's data, get a support code and delete your account."
 type: "help"
 status: "shipped"
-lastReviewed: "2026-10-11"
+lastReviewed: "2026-11-10"
 sidebar:
   order: 5
 ---
@@ -37,6 +37,15 @@ Removing information from an app deletes the information Locker holds for you in
 
 Keeping your license keeps the app in your library. Its developer can still connect you to old
 records through that license. Removing the license takes it out of your library too.
+
+## Synced data
+
+An app that syncs has a **Sync Across Devices** section on its page.
+
+- **Download synced data** saves a zip file with everything the app synced, files included. If only your devices can read your synced data, the files stay encrypted.
+- **Remove it in Your Data** takes you to **Remove my data**, which removes everything Locker holds for you in that app. Your devices stop syncing it. If the section then says **Removing your data**, the rest finishes shortly; there's nothing else to do.
+
+A device with no name, or no longer signed in, shows as **Unnamed device**.
 
 ## Get a support code
 

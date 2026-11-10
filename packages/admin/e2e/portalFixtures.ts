@@ -1728,10 +1728,11 @@ export function samRoutes(): Record<string, Handler> {
   };
 }
 
-/** One scenario product with Identity on (§3.1), for the product page's sign-in card (PX-13). */
-export function identityOn(
+/** One scenario product's view with `on` added to its services. */
+function servicesOn(
   s: PortalScenario,
   slug: string,
+  on: Record<string, boolean>,
 ): Record<string, Handler> {
   const base = portalRoutes(s)[`/api/products/${slug}`] as (
     req: Request,
@@ -1740,11 +1741,47 @@ export function identityOn(
     [`/api/products/${slug}`]: (req) => {
       const r = base(req);
       const body = r.body as { services: Record<string, boolean> };
-      return {
-        ...r,
-        body: { ...body, services: { ...body.services, identity: true } },
-      };
+      return { ...r, body: { ...body, services: { ...body.services, ...on } } };
     },
+  };
+}
+
+/** One scenario product with Identity on (§3.1), for the product page's sign-in card (PX-13). */
+export function identityOn(
+  s: PortalScenario,
+  slug: string,
+): Record<string, Handler> {
+  return servicesOn(s, slug, { identity: true });
+}
+
+/**
+ * What `GET /api/products/<p>/sync` answers (U-12.5) for the product page's Sync Across Devices
+ * card (PX-18): end-to-end encrypted, 142 MB of a Pro tier's 1 GB, three devices (one label with
+ * no break point, which must wrap at 320 px).
+ */
+export const SYNC_SUMMARY = {
+  encryption: "e2e",
+  empty: false,
+  state: "active",
+  pausedSince: null,
+  usage: { bytes: 142 * 1024 ** 2 },
+  quota: { bytes: 1024 ** 3, tierLabel: "Pro" },
+  devices: [
+    { label: "Mara's MacBook Pro", lastSyncAt: NOW - 180 },
+    { label: "MarasSamsungGalaxyS24Ultra5G", lastSyncAt: NOW - 26 * 3600 },
+    { label: "Studio PC", lastSyncAt: NOW - 3 * DAY },
+  ],
+} as const;
+
+/** One scenario product with sync on and its summary (`over` changes it: empty, paused…). */
+export function syncOn(
+  s: PortalScenario,
+  slug: string,
+  over: Record<string, unknown> = {},
+): Record<string, Handler> {
+  return {
+    ...servicesOn(s, slug, { sync: true }),
+    [`/api/products/${slug}/sync`]: { body: { ...SYNC_SUMMARY, ...over } },
   };
 }
 

@@ -67,6 +67,8 @@ export function ProductDataCard({
             <Button
               variant="outline"
               className="w-full border-danger-border text-danger sm:w-auto"
+              // The Sync Across Devices card's "Remove it in Your Data" moves focus here.
+              data-remove-data=""
               aria-label={t("locker.productData.removeAria", { product: name })}
               onClick={() => setRemoving(true)}
             >

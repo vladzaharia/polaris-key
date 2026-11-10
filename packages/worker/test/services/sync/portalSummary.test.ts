@@ -23,7 +23,9 @@ import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
 } from "../../../src/services/identity/portal/session.js";
+import { recordSubjectErasure } from "../../../src/services/identity/accounts/subjectErasureLedger.js";
 import { handlePortalApi } from "../../portalHarness.js";
+import { asR2, R2Mock } from "../../r2Mock.js";
 import { issuePortalSessionRow } from "../../portalSessionRow.js";
 import { SPEC, validateAgainst } from "../../specSchema.js";
 import {
@@ -241,6 +243,30 @@ describe("GET /api/products/<product>/sync", () => {
     const paused = await state();
     expect(paused.state).toBe("paused");
     expect(paused.pausedSince).toBe(NOW);
+  });
+
+  it("state is removing while a recorded removal of this person's data is still owed (PX-18)", async () => {
+    const { w, ada } = await setup();
+    w.env.BLOBS = asR2(new R2Mock());
+    await push(w, [mut("ui.theme", "set", { value: SECRET_VALUE })]);
+    const read = async () => {
+      const res = await portal(w, `/api/products/${SLUG}/sync`, ada);
+      expect(res.status).toBe(200);
+      return (await res.json()) as { state: string };
+    };
+    expect((await read()).state).toBe("active");
+    // U-12.1 records the removal before it starts; while the subject row is still live (a store
+    // that failed, a pass to come), the removal is owed.
+    expect(await recordSubjectErasure(w.env, SLUG, w.subject, NOW)).toBe(
+      "created",
+    );
+    const body = await read();
+    expect(body.state).toBe("removing");
+    expect(validateAgainst("PortalCloudSyncSummary", body)).toEqual([]);
+    // Another product's ledger entry is not this one's.
+    w.env.BLOBS = asR2(new R2Mock());
+    await recordSubjectErasure(w.env, "other-product", w.subject, NOW);
+    expect((await read()).state).toBe("active");
   });
 
   it("needs the session, and only answers GET", async () => {

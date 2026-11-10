@@ -16,11 +16,13 @@ import {
 } from "../../copy/yourData.js";
 import {
   useExportProductData,
+  useExportSyncedData,
   useProduct,
   useRemoveProductData,
 } from "../../data.js";
 import { isStepUpRequired, portalErrorCopy } from "../../errors.js";
 import { StepUpInline } from "../account/StepUpInline.js";
+import { ExportTooLarge, isExportTooLarge } from "../DownloadData.js";
 import type { LibraryProduct } from "../../model/library.js";
 
 /**
@@ -38,9 +40,12 @@ import type { LibraryProduct } from "../../model/library.js";
  * about one.
  *
  * A refusal (`409 not_removable`) wrote nothing, so the data is still there too: the dialog says
- * so, stops offering the choice for this page and lets the person remove the data alone. Any other
- * error stays inline as well. Only a success refreshes the library and the product (and, with the
- * license gone, hands the page back to `onLeftLibrary`).
+ * so, stops offering the choice for this page and lets the person remove the data alone. So did a
+ * `503 erasure_ledger_unavailable` (the removal could not be recorded first): "Nothing was
+ * removed", try again. Any other error stays inline as well. Only a success refreshes the library,
+ * the product and its synced data (and, with the license gone, hands the page back to
+ * `onLeftLibrary`); a success whose last part finishes in the background (`pending`, U-12.1) says
+ * so in its toast, with nothing for the person to do.
  */
 export function RemoveProductDataDialog({
   open,
@@ -70,7 +75,11 @@ export function RemoveProductDataDialog({
   // What the retry after a step-up prompt met: shown in the dialog like any other refusal.
   const [retryError, setRetryError] = React.useState<unknown>(null);
   const services = useProduct(product.slug, { enabled: open }).data?.services;
-  const exportData = useExportProductData(product.slug);
+  // "Download my data first" keeps everything that is about to go: with sync on that is the zip,
+  // which holds the JSON's document and every synced record and file besides.
+  const exportJson = useExportProductData(product.slug);
+  const exportZip = useExportSyncedData(product.slug);
+  const exportData = services?.sync ? exportZip : exportJson;
   const offered =
     licenses > 0 && !refused && product.licenses.every((l) => l.removable);
   const also = offered && alsoRemove;
@@ -81,14 +90,16 @@ export function RemoveProductDataDialog({
       setAskFirst(false);
       setAskDownload(false);
       setRetryError(null);
-      exportData.reset();
+      exportJson.reset();
+      exportZip.reset();
     }
   }, [open]);
 
   /** The removal, its toast and the close; throws what the Worker refused. */
   const run = async (alsoRemoveLicense: boolean): Promise<void> => {
+    let res: Awaited<ReturnType<typeof remove.mutateAsync>>;
     try {
-      await remove.mutateAsync(alsoRemoveLicense);
+      res = await remove.mutateAsync(alsoRemoveLicense);
     } catch (err) {
       // Nothing was written: the license can't go, but the data still can.
       if (isNotRemovable(err)) {
@@ -97,8 +108,13 @@ export function RemoveProductDataDialog({
       }
       throw err;
     }
-    // The dialog said what stays and what goes; the toast only says it is done.
-    toast.success(t("locker.productData.removed", { product: name }));
+    // The dialog said what stays and what goes; the toast only says it is done, or that its last
+    // part finishes by itself.
+    if (res.pending)
+      toast.success(t("locker.productData.removing", { product: name }), {
+        description: t("locker.productData.removingBody"),
+      });
+    else toast.success(t("locker.productData.removed", { product: name }));
     onOpenChange(false);
     if (alsoRemoveLicense) onLeftLibrary?.();
   };
@@ -129,7 +145,12 @@ export function RemoveProductDataDialog({
       describeError={(err) =>
         isNotRemovable(err)
           ? notRemovableCopy(name, err.reason)
-          : portalErrorCopy(err)
+          : isNotRecorded(err)
+            ? {
+                title: t("yourData.remove.refused.title"),
+                description: t("locker.error.boot.body"),
+              }
+            : portalErrorCopy(err)
       }
       onConfirm={async () => {
         setRetryError(null);
@@ -162,6 +183,7 @@ export function RemoveProductDataDialog({
         download={exportData}
         ask={askDownload}
         setAsk={setAskDownload}
+        presentation={product.presentation}
       />
       {offered ? (
         <Checkbox
@@ -181,6 +203,11 @@ function isNotRemovable(err: unknown): err is HttpError {
   return err instanceof HttpError && err.code === "not_removable";
 }
 
+/** `503 erasure_ledger_unavailable`: the removal could not be recorded first, so nothing changed. */
+function isNotRecorded(err: unknown): boolean {
+  return err instanceof HttpError && err.code === "erasure_ledger_unavailable";
+}
+
 /**
  * **Download my data first** (I-11): the product's file, before the removal that cannot be undone.
  * The same request as the card's Download; a stale sign-in asks to confirm and runs it again, any
@@ -190,10 +217,12 @@ function DownloadFirst({
   download,
   ask,
   setAsk,
+  presentation,
 }: {
   download: ReturnType<typeof useExportProductData>;
   ask: boolean;
   setAsk: (ask: boolean) => void;
+  presentation: LibraryProduct["presentation"];
 }): React.ReactElement {
   const start = (): void => {
     if (download.isPending) return;
@@ -234,7 +263,11 @@ function DownloadFirst({
       ) : null}
       {failure ? (
         <p role="alert" className="text-sm text-danger">
-          {failure.line}
+          {isExportTooLarge(download.error) ? (
+            <ExportTooLarge presentation={presentation} />
+          ) : (
+            failure.line
+          )}
         </p>
       ) : null}
     </div>

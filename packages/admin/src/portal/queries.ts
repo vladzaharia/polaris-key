@@ -9,6 +9,7 @@ import {
   type PortalMethods,
   type PortalSession,
   type PortalAccountDevice,
+  type PortalCloudSync,
 } from "./api.js";
 
 /**
@@ -34,6 +35,7 @@ export const qk = {
     ["portal", "storefrontName", product] as const,
   downloads: (product: string) => ["portal", "downloads", product] as const,
   product: (product: string) => ["portal", "product", product] as const,
+  productSync: (product: string) => ["portal", "productSync", product] as const,
   registryTokens: (product: string, license: string) =>
     ["portal", "registryTokens", product, license] as const,
   personalTokens: () => ["portal", "personalTokens"] as const,
@@ -199,6 +201,19 @@ export const pq = {
     queryOptions({
       queryKey: qk.product(product),
       queryFn: () => portalApi.product(product),
+      enabled,
+    }),
+
+  /**
+   * The product's Sync Across Devices card (U-12.5): read only while the product view says sync
+   * is on. `null` (404) means sync went off meanwhile, or this Worker has no such route: the
+   * section then leaves the page.
+   */
+  productSync: (product: string, enabled = true) =>
+    queryOptions({
+      queryKey: qk.productSync(product),
+      queryFn: (): Promise<PortalCloudSync | null> =>
+        orNull(() => portalApi.productSync(product)),
       enabled,
     }),
 

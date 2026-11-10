@@ -789,6 +789,14 @@ export function navigate(to: string): void {
 }
 
 /**
+ * Put `to` in place of the current entry, with no new history entry: the canonical spelling of
+ * the page on screen (a product's section it turns out not to have, `ProductPage`).
+ */
+export function replaceRoute(to: string): void {
+  router.navigate(to, { replace: true });
+}
+
+/**
  * `navigate` for a modal that holds a history entry of its own (activate.tsx): the move replaces
  * that entry, so Back goes to the page the modal opened over and not to a dead copy of it.
  */

@@ -8506,6 +8506,16 @@
       "role": "hint",
       "note": "Portal shell, library and product pages (P0-36)."
     },
+    "locker.productData.removing": {
+      "value": "Removing your data from {product}",
+      "role": "title",
+      "note": "Remove my data: the toast when the removal is accepted but part of it finishes in the background. Arguments: {product} = the app's name."
+    },
+    "locker.productData.removingBody": {
+      "value": "It finishes shortly. There's nothing else to do.",
+      "role": "body",
+      "note": "Remove my data: under the toast title when part of the removal finishes in the background."
+    },
     "locker.productData.removeAsk": {
       "value": "Remove your data from {product}?",
       "role": "title",
@@ -9001,6 +9011,11 @@
       "role": "label",
       "note": "Jump palette (P0-36)."
     },
+    "locker.jump.sync": {
+      "value": "See synced data for {product}",
+      "role": "label",
+      "note": "Jump palette (P0-36): the action that opens a product page's Sync Across Devices card. Arguments: {product} = the app's name."
+    },
     "locker.jump.recent": {
       "value": "Recent",
       "role": "label",
@@ -9010,6 +9025,86 @@
       "value": "{count, plural, one {# product} other {# products}}",
       "role": "a11y",
       "note": "Jump palette (P0-36)."
+    },
+    "locker.sync.storage": {
+      "value": "Storage",
+      "role": "label",
+      "note": "Sync Across Devices card on a product page (PX-18): the meter's label for how much of the person's limit their synced data uses."
+    },
+    "locker.sync.used": {
+      "value": "{used} of {limit}",
+      "role": "label",
+      "note": "Sync Across Devices card on a product page (PX-18): the meter's reading. Arguments: {used} and {limit} are sizes already formatted (“142 MB”, “1 GB”)."
+    },
+    "locker.sync.stored": {
+      "value": "{used} stored",
+      "role": "label",
+      "note": "Sync Across Devices card on a product page (PX-18): the reading when the person's limit is zero (no meter). Arguments: {used} = a size already formatted (“142 MB”)."
+    },
+    "locker.sync.tierLimit": {
+      "value": "Your {tier} tier includes {limit}.",
+      "role": "hint",
+      "note": "Sync Across Devices card on a product page (PX-18): near or at the limit: what the person's tier allows. Arguments: {tier} = the tier's name (“Pro”); {limit} = a size already formatted (“1 GB”)."
+    },
+    "locker.sync.lastSynced": {
+      "value": "Last synced",
+      "role": "label",
+      "note": "Sync Across Devices card on a product page (PX-18): the heading of the list of devices, each with when it last synced."
+    },
+    "locker.sync.empty": {
+      "value": "Nothing synced. Sign in to {product} on a device to start.",
+      "role": "body",
+      "note": "Sync Across Devices card on a product page (PX-18): nothing is stored. Arguments: {product} = the app's name."
+    },
+    "locker.sync.paused": {
+      "value": "Sync paused since {date}",
+      "role": "title",
+      "note": "Sync Across Devices card on a product page (PX-18): the operator has put syncing on hold. Arguments: {date} = a date already formatted (“Sep 30”)."
+    },
+    "locker.sync.pausedBody": {
+      "value": "Your changes stay on your devices and sync when it resumes.",
+      "role": "body",
+      "note": "Sync Across Devices card on a product page (PX-18): under the paused title."
+    },
+    "locker.sync.removing": {
+      "value": "Removing your data. It finishes shortly.",
+      "role": "body",
+      "note": "Sync Across Devices card on a product page (PX-18): the person removed their data from the app and the last part is still finishing on its own."
+    },
+    "locker.sync.fullBody": {
+      "value": "New changes stay on your devices. Delete something in {product} to make room.",
+      "role": "body",
+      "note": "Sync Across Devices card on a product page (PX-18): under the Storage full title. Arguments: {product} = the app's name."
+    },
+    "locker.sync.private": {
+      "value": "Only your devices can read your synced data, including this download.",
+      "role": "body",
+      "note": "Sync Across Devices card on a product page (PX-18): next to Download synced data when the data is end-to-end encrypted: the download holds it as stored, readable only on the person's devices."
+    },
+    "locker.sync.loadFailed": {
+      "value": "Couldn't load your synced data.",
+      "role": "body",
+      "note": "Sync Across Devices card on a product page (PX-18): the card failed to load; the Try again button is separate."
+    },
+    "locker.sync.download": {
+      "value": "Download synced data",
+      "role": "button",
+      "note": "Sync Across Devices card on a product page (PX-18): downloads a zip of the app's data with every synced file."
+    },
+    "locker.sync.tooLarge": {
+      "value": "Your synced data is too large to download at once.",
+      "role": "body",
+      "note": "Sync Across Devices card on a product page (PX-18): Download synced data refused: the data is more than one download can hold."
+    },
+    "locker.sync.askCopy": {
+      "value": "Ask {developer} for a copy.",
+      "role": "label",
+      "note": "Sync Across Devices card on a product page (PX-18): after the too-large refusal, a link to the developer's support. Arguments: {developer} = the developer's name."
+    },
+    "locker.sync.removeIn": {
+      "value": "Remove it in Your Data",
+      "role": "label",
+      "note": "Sync Across Devices card on a product page (PX-18): a quiet link to the Your Data card's Remove my data, the page's one way to remove the data."
     },
     "locker.library.justAdded": {
       "value": "Added just now",
@@ -9125,6 +9220,11 @@
       "value": "{developer} is told, so they can delete their own copy.",
       "role": "body",
       "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "yourData.remove.syncStops": {
+      "value": "Your devices stop syncing {product}.",
+      "role": "body",
+      "note": "Remove my data, with sync on: what happens to the person's devices. Arguments: {product} = the app's name."
     },
     "yourData.remove.entryStays": {
       "value": "{product} stays in your library.",

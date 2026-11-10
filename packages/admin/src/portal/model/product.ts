@@ -1,5 +1,6 @@
 import type {
   PortalArtifact,
+  PortalCloudSync,
   PortalDownloadFile,
   PortalDownloads,
   PortalInstallSource,
@@ -11,6 +12,7 @@ import type {
   PortalStoreLink,
 } from "../api.js";
 import type { PlatformKey } from "../../ui/Glyphs.js";
+import { storageTone, type MeterTone } from "../../ui/charts/Meter.js";
 import {
   resolveHash,
   type PortalRoute,
@@ -67,14 +69,15 @@ export const SECTION_LABEL: Record<ProductSection, string> = {
 };
 
 /**
- * The sections this product has. Cloud Sync (G26) has no data source yet and is always absent;
- * Package access (G13, F-21) shows when the selected licence's product has a private feed;
- * Help needs the developer's support links (G16).
+ * The sections this product has. Sync Across Devices (G26, PX-18) shows only when the product view
+ * says the product has sync on (`services.sync`) and its summary did not answer 404; Package
+ * access (G13, F-21) shows when the selected licence's product has a private feed; Help needs the
+ * developer's support links (G16).
  */
 export function presentSections(
   p: LibraryProduct,
   releasesOn: boolean,
-  extra: { packageAccess?: boolean } = {},
+  extra: { packageAccess?: boolean; cloudSync?: boolean } = {},
 ): ProductSection[] {
   const set = new Set<ProductSection>();
   if (releasesOn && p.releases.length > 0) {
@@ -84,11 +87,102 @@ export function presentSections(
   set.add("license");
   // Every licence, from a key or from signing in, has devices to remove remotely (owner, 2026-10-05).
   set.add("devices");
+  if (extra.cloudSync) set.add("sync");
   if (extra.packageAccess) set.add("package");
   const pres = p.presentation;
   if (pres.supportUrl || pres.supportEmail || pres.website) set.add("help");
   set.add("data");
   return SECTION_ORDER.filter((s) => set.has(s));
+}
+
+// ── Sync Across Devices (PX-18) ────────────────────────────────────────────────────────────────
+
+/** The sync card's storage line. */
+export interface SyncStorage {
+  /** The used size and the limit, as written ("142 MB", "1 GB"); `limit` is `null` with none. */
+  used: string;
+  limit: string | null;
+  /** The whole reading, the meter's value text: "142 MB of 1 GB", or "142 MB stored". */
+  text: string;
+  /** The meter's numbers and tone (warning from 80 %, danger at the limit); `null` with a zero
+   *  limit, where the reading stands alone. */
+  meter: { value: number; max: number; tone: MeterTone } | null;
+  /**
+   * "Your Pro tier includes 1 GB." at 80 % of the limit or more, where it explains the limit; `null`
+   * below that (the License card already names the tier) or when no tier set the limit.
+   */
+  tierNote: string | null;
+}
+
+const SYNC_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
+
+/**
+ * A synced size: counted in 1,024s, as the limits are set (the 256 MB default, a 1 GB tier), so a
+ * limit reads as the round number its tier gives, and named the way people know the units.
+ * Whole numbers from 10, else one decimal without a bare ".0" ("1 GB", "1.2 GB", "142 MB"). The
+ * unit is kept to its number with a no-break space, so "1 GB" never wraps apart.
+ */
+function syncSize(bytes: number): string {
+  let n = Math.max(0, bytes);
+  let i = 0;
+  while (n >= 1024 && i < SYNC_UNITS.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  const v = n >= 10 || i === 0 ? Math.round(n) : Math.round(n * 10) / 10;
+  return `${v}\u00a0${SYNC_UNITS[i]}`;
+}
+
+/** How much of the person's limit their synced data uses, in words and as a meter. */
+export function syncStorage(
+  s: Pick<PortalCloudSync, "usage" | "quota">,
+): SyncStorage {
+  const usedBytes = s.usage.bytes;
+  const limitBytes = s.quota.bytes;
+  const used = syncSize(usedBytes);
+  if (!(limitBytes > 0))
+    return {
+      used,
+      limit: null,
+      text: t("locker.sync.stored", { used }),
+      meter: null,
+      tierNote: null,
+    };
+  const limit = syncSize(limitBytes);
+  const tone = storageTone(usedBytes, limitBytes);
+  const tier = s.quota.tierLabel?.trim() || null;
+  return {
+    used,
+    limit,
+    text: t("locker.sync.used", { used, limit }),
+    meter: { value: usedBytes, max: limitBytes, tone },
+    tierNote:
+      tier && tone !== "accent"
+        ? t("locker.sync.tierLimit", { tier, limit })
+        : null,
+  };
+}
+
+/** One device that synced; `label` is `null` for a device the Worker does not name. */
+export interface SyncDevice {
+  label: string | null;
+  lastSyncAt: number;
+}
+
+/** The devices that synced, most recent first. */
+export function syncDevices(s: Pick<PortalCloudSync, "devices">): SyncDevice[] {
+  return [...s.devices]
+    .sort((a, b) => b.lastSyncAt - a.lastSyncAt)
+    .map((d) => {
+      const label = d.label.trim();
+      // The Worker writes the catalog's English "Unnamed device" for a device it may not name:
+      // one with no label, or one no longer signed in to this person (U-12.5 shows a label only
+      // while the device is bound to them).
+      return {
+        label: label && label !== t("devices.unnamed") ? label : null,
+        lastSyncAt: d.lastSyncAt,
+      };
+    });
 }
 
 export interface FileRowModel {

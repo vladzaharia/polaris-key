@@ -8,6 +8,7 @@ import {
   FIXTURE_NOW,
   identityOn,
   profileRoutes,
+  syncOn,
   samRoutes,
   tidewaterInstallSources,
   portalRoutes,
@@ -1929,6 +1930,63 @@ export const SHIPPED: ShippedState[] = [
       await p.getByRole("heading", { name: "Sign In to Nightfall" }).waitFor();
     },
   },
+  // §4.20 Sync Across Devices (PX-18): Tidewater Studio with sync on, in each state the card has
+  // a baseline for, and with sync off behind a `sync` deep link.
+  {
+    section: "4.20",
+    id: "product-sync",
+    title: "Product page: Sync Across Devices (Tidewater Studio)",
+    scenario: "three",
+    path: "/#/p/tidewater",
+    routes: syncOn("three", "tidewater"),
+    ready: async (p) => {
+      await h1(p, "Tidewater Studio");
+      await p.getByRole("meter", { name: "Storage" }).waitFor();
+    },
+  },
+  {
+    section: "4.20",
+    id: "product-sync-empty",
+    title: "Product page: Sync Across Devices, nothing synced yet",
+    scenario: "three",
+    path: "/#/p/tidewater",
+    routes: syncOn("three", "tidewater", {
+      empty: true,
+      usage: { bytes: 0 },
+      devices: [],
+    }),
+    ready: async (p) => {
+      await h1(p, "Tidewater Studio");
+      await p.getByText("Nothing synced.", { exact: false }).waitFor();
+    },
+  },
+  {
+    section: "4.20",
+    id: "product-sync-paused",
+    title: "Product page: Sync Across Devices, syncing paused",
+    scenario: "three",
+    path: "/#/p/tidewater",
+    routes: syncOn("three", "tidewater", {
+      state: "paused",
+      pausedSince: FIXTURE_NOW - 86_400,
+    }),
+    ready: async (p) => {
+      await h1(p, "Tidewater Studio");
+      await p.getByText(/^Sync paused since /).waitFor();
+    },
+  },
+  {
+    // Sync off: a `sync` deep link becomes the product page's own address, with no section.
+    section: "4.20",
+    id: "product-no-sync",
+    title: "Product page without Sync Across Devices, from a sync link",
+    scenario: "three",
+    path: "/#/p/tidewater/sync",
+    ready: async (p) => {
+      await h1(p, "Tidewater Studio");
+      await p.waitForFunction(() => location.hash === "#/p/tidewater");
+    },
+  },
   // §4.27 Jump to a product (PX-03).
   {
     section: "4.27",
@@ -2027,7 +2085,6 @@ export const PENDING: PendingState[] = [
     title: "App sign-in: device code (method choice, TV signed in)",
     wp: ["PX-14"],
   },
-  { section: "4.20", title: "Product page with Cloud Sync", wp: ["PX-18"] },
   {
     section: "4.20",
     title:

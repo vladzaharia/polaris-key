@@ -98,6 +98,11 @@ export function removeConsequences(o: {
       detail: kinds(o.services, 0, false),
       product: o.name,
     }),
+    // PX-18: the removal unbinds the devices, so they stop syncing (what stays on them is the
+    // SDK's to say, U-52).
+    ...(o.services?.sync
+      ? [t("yourData.remove.syncStops", { product: o.name })]
+      : []),
     t("yourData.remove.developerTold", {
       developer: o.developer ?? t("license.developerFallbackCap"),
     }),

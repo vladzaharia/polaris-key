@@ -4,7 +4,10 @@ import { AlertCircle, Download, FileDown } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { toast } from "../../ui/toast.js";
 import { YOUR_DATA_COPY } from "../copy/yourData.js";
+import { HttpError } from "../api.js";
 import { isStepUpRequired, portalErrorCopy } from "../errors.js";
+import type { Presentation } from "../model/library.js";
+import { LINK_CLASS } from "../linkClass.js";
 import { StepUpInline } from "./account/StepUpInline.js";
 import { DataRow } from "./DataRow.js";
 
@@ -54,6 +57,46 @@ export function DownloadData({
   /** An Account screen: no developer to contact. */
   account?: boolean;
 }): React.ReactElement {
+  const flow = useDataDownload(download, account);
+  return (
+    <DataRow
+      icon={<FileDown aria-hidden />}
+      title={title}
+      description={description}
+      below={flow.below}
+    >
+      <Button
+        ref={flow.button}
+        variant="outline"
+        className="h-auto min-h-9 w-full whitespace-normal py-1.5 max-sm:min-h-11 sm:w-auto"
+        iconStart={<Download aria-hidden />}
+        loading={download.isPending}
+        aria-label={label}
+        onClick={flow.start}
+      >
+        {t("boot.consent.download")}
+      </Button>
+    </DataRow>
+  );
+}
+
+/**
+ * The flow behind a download button, for a caller that lays out its own button (the Sync Across
+ * Devices card): `start` for its click, `button` for its ref (focus comes back to it), and `below`
+ * for the confirm-it's-you prompt or the refusal, placed under it. The rules are the ones above.
+ */
+export function useDataDownload(
+  download: DataDownload,
+  account = false,
+  /** Words a refusal itself (the too-large zip's next step); `null` keeps the usual line. */
+  describe?: (err: unknown) => React.ReactNode | null,
+): {
+  start: () => void;
+  button: React.RefObject<HTMLButtonElement | null>;
+  below: React.ReactNode;
+  /** `below` has something in it (the prompt, or a refusal). */
+  open: boolean;
+} {
   const button = React.useRef<HTMLButtonElement>(null);
   // A stale sign-in: the prompt takes the refusal's place, and confirming runs the download again.
   const [askFirst, setAskFirst] = React.useState(false);
@@ -80,46 +123,74 @@ export function DownloadData({
         }),
     });
   };
+  // Always a fragment, empty or not: DataRow lays its row out the same either way.
+  const below = (
+    <>
+      {askFirst ? (
+        <StepUpInline
+          verb={t("locker.verb.downloadData")}
+          onConfirmed={() => {
+            setAskFirst(false);
+            start();
+          }}
+          onCancel={() => {
+            setAskFirst(false);
+            requestAnimationFrame(() => button.current?.focus());
+          }}
+        />
+      ) : null}
+      {failure ? (
+        <p role="alert" className="flex gap-2 text-sm text-danger">
+          <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>{describe?.(download.error) ?? failure.line}</span>
+        </p>
+      ) : null}
+    </>
+  );
+  return { start, button, below, open: askFirst || failure !== null };
+}
+
+/** `413 export_too_large`: the zip would hold more than one download can (U-12.3). */
+export function isExportTooLarge(err: unknown): boolean {
+  return err instanceof HttpError && err.code === "export_too_large";
+}
+
+/**
+ * The too-large zip's words (PX-18): it is too large to download at once, and, when the product
+ * names a support contact, "Ask <developer> for a copy." linked to it. Trying again would get the
+ * same answer, so there is no Try again.
+ */
+export function ExportTooLarge({
+  presentation,
+}: {
+  presentation: Pick<Presentation, "developer" | "supportUrl" | "supportEmail">;
+}): React.ReactElement {
+  const { developer, supportUrl, supportEmail } = presentation;
+  const href =
+    supportUrl && /^https:\/\//.test(supportUrl)
+      ? supportUrl
+      : supportEmail
+        ? `mailto:${supportEmail}`
+        : null;
   return (
-    <DataRow
-      icon={<FileDown aria-hidden />}
-      title={title}
-      description={description}
-      below={
+    <>
+      {t("locker.sync.tooLarge")}
+      {href ? (
         <>
-          {askFirst ? (
-            <StepUpInline
-              verb={t("locker.verb.downloadData")}
-              onConfirmed={() => {
-                setAskFirst(false);
-                start();
-              }}
-              onCancel={() => {
-                setAskFirst(false);
-                requestAnimationFrame(() => button.current?.focus());
-              }}
-            />
-          ) : null}
-          {failure ? (
-            <p role="alert" className="flex gap-2 text-sm text-danger">
-              <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
-              <span>{failure.line}</span>
-            </p>
-          ) : null}
+          {" "}
+          <a
+            href={href}
+            {...(href.startsWith("https:")
+              ? { target: "_blank", rel: "noreferrer" }
+              : {})}
+            className={LINK_CLASS}
+          >
+            {t("locker.sync.askCopy", {
+              developer: developer ?? t("license.developerFallback"),
+            })}
+          </a>
         </>
-      }
-    >
-      <Button
-        ref={button}
-        variant="outline"
-        className="h-auto min-h-9 w-full whitespace-normal py-1.5 max-sm:min-h-11 sm:w-auto"
-        iconStart={<Download aria-hidden />}
-        loading={download.isPending}
-        aria-label={label}
-        onClick={start}
-      >
-        {t("boot.consent.download")}
-      </Button>
-    </DataRow>
+      ) : null}
+    </>
   );
 }

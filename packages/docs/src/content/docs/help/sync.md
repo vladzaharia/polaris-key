@@ -3,7 +3,7 @@ title: "Sync Across Devices"
 description: "How your settings follow you between devices, what its status messages mean, and what happens when your storage is full."
 type: "help"
 status: "shipped"
-lastReviewed: "2026-11-09"
+lastReviewed: "2026-11-10"
 sidebar:
   order: 9
 ---
@@ -35,9 +35,9 @@ Synced data is usually encrypted on your devices, so Polaris Locker can't read i
 - If the developer has paused syncing, your changes stay on the device and send once it resumes.
 - If you are over your storage, new changes that add data are refused. Clearing or deleting data always works. Nothing is deleted for you.
 
-## Clear or delete synced data
+## Your synced data in Polaris Locker
 
-Sign in at [polaris.locker](https://polaris.locker) and see [Manage your data](/docs/help/manage-your-data/). Deleting your account deletes your synced data.
+Open the app at [polaris.locker](https://polaris.locker): **Sync Across Devices** shows your storage and each device's last sync. To download or remove it, see [Synced data](/docs/help/manage-your-data/#synced-data).
 
 ## Related
 

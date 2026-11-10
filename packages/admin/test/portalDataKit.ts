@@ -1,5 +1,7 @@
-import { act } from "@testing-library/react";
+import { act, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
+import { ACCOUNT, NOW_S } from "./portalHarness.js";
 
 /** One file the page asked the browser to save: the name it gave it, and its bytes as text. */
 export interface SavedFile {
@@ -68,4 +70,65 @@ export function settle(): Promise<void> {
   return act(async () => {
     await new Promise((r) => setTimeout(r, 40));
   });
+}
+
+/**
+ * `GET /api/me/methods` for an account whose sign-in is older than five minutes: one email, the
+ * last link, so the confirm-it's-you prompt offers a code to that address.
+ */
+export const STALE = {
+  methods: [
+    {
+      id: "lnk_mail1",
+      kind: "email",
+      group: "email",
+      label: "Email",
+      display: ACCOUNT.email,
+      connectedAt: NOW_S - 90 * 86_400,
+      lastUsedAt: NOW_S - 3 * 86_400,
+      canRemove: false,
+      reason: "last_link",
+      flag: null,
+      relay: false,
+      tenantScoped: false,
+    },
+  ],
+  emails: [
+    {
+      methodId: "lnk_mail1",
+      email: ACCOUNT.email,
+      primary: true,
+      connectedAt: NOW_S - 90 * 86_400,
+      lastUsedAt: NOW_S - 3 * 86_400,
+      canRemove: false,
+      reason: "last_link",
+    },
+  ],
+  passkeys: [],
+  providers: [],
+  passkey: { canAdd: false, reason: null },
+  primaryEmail: ACCOUNT.email,
+  hideMyEmail: false,
+  stepUp: {
+    authenticatedAt: NOW_S - 3600,
+    freshUntil: NOW_S - 3300,
+    fresh: false,
+    maxAgeSeconds: 300,
+  },
+};
+
+/** Confirm it's you with an email code, in the prompt that replaced the refusal. */
+export async function confirmItsYou(scope: HTMLElement): Promise<void> {
+  const prompt = await within(scope).findByRole("group", {
+    name: "Confirm it's you first",
+  });
+  await userEvent.click(
+    within(prompt).getByRole("button", {
+      name: `Email me a code at ${ACCOUNT.email}`,
+    }),
+  );
+  await userEvent.type(
+    await within(prompt).findByRole("textbox", { name: "6-digit code" }),
+    "481920",
+  );
 }

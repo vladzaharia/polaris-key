@@ -31,6 +31,7 @@ import {
   type PortalRelease,
   type PortalSession,
   type PortalAccountDevice,
+  type PortalCloudSync,
   type PortalStorefrontProduct,
 } from "./api.js";
 import { browser } from "./browser.js";
@@ -276,6 +277,19 @@ export function useProduct(
 }
 
 /**
+ * The product's Sync Across Devices card (U-12.5, `GET /api/products/<p>/sync`): usage against the
+ * limit, whether syncing is on hold, and when each device last synced. Asked only while `enabled`
+ * (the product view says sync is on); `null` when the Worker answers 404 (sync went off meanwhile,
+ * or an older Worker), and the section then leaves the page.
+ */
+export function useProductSync(
+  product: string,
+  enabled: boolean,
+): UseQueryResult<PortalCloudSync | null> {
+  return useQuery(pq.productSync(product, enabled));
+}
+
+/**
  * Every listed product's downloads view (PX-08: store-aware quick actions, §5.4), by slug, and
  * whether any is still on its first load. A product whose view failed is absent from the map:
  * its quick action falls back to `GET /api/releases`, never to a guess.
@@ -464,6 +478,17 @@ export function useExportAccountData() {
 export function useExportProductData(product: string) {
   return useMutation({
     mutationFn: () => portalApi.exportProductData(product),
+  });
+}
+
+/**
+ * PX-18: Download synced data, the product's export as a zip with every synced record and file
+ * (`GET /api/products/<p>/export?format=zip`). Started by a press, like the JSON file; it reads
+ * and changes nothing.
+ */
+export function useExportSyncedData(product: string) {
+  return useMutation({
+    mutationFn: () => portalApi.exportProductArchive(product),
   });
 }
 

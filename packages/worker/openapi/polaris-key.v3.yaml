@@ -15372,7 +15372,8 @@ paths:
       description: >
         U-12.5. The numbers behind Polaris Locker's Cloud Sync card: how much of their limit the
         account uses, whether syncing is on hold (`state`: `active`, `paused` while the operator
-        has put writes on hold, `full` at the limit) and when each device last synced. Sizes and
+        has put writes on hold, `full` at the limit, `removing` while a removal of the account's
+        data from the product is still finishing) and when each device last synced. Sizes and
         times only: never a setting, a record, a collection name or a file name, in either
         encryption mode, and a device is its label, never its id. A device's time is its last
         push or last pull, at most an hour stale. Read-only: it never creates a subject or an
@@ -29381,7 +29382,13 @@ components:
       properties:
         encryption: { type: string, enum: [e2e, server] }
         empty: { type: boolean, description: Nothing is stored yet. }
-        state: { type: string, enum: [active, paused, full] }
+        state:
+          type: string
+          enum: [active, paused, full, removing]
+          description: >
+            `paused` while the operator has put writes on hold; `full` at the limit; `removing`
+            while a removal of the account's data from this product is recorded and part of it is
+            still owed (it finishes on its own); else `active`.
         pausedSince:
           type: [integer, "null"]
           description: Epoch seconds the hold began; only while `paused`.
