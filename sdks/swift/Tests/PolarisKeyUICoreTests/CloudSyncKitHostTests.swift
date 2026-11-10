@@ -190,11 +190,19 @@ final class CloudSyncKitHostTests: XCTestCase {
         let host = CloudSyncKitHostModel(source: fake.source())
         await host.start()
         XCTAssertEqual(host.status?.screen.state, .synced)
-        // A sign-out is not a fault: neutral copy, and Sign in only when the host app supplies it.
+        // A sign-out is not a fault: neutral copy, and Sign in only when the host app (or the kit's own
+        // sign-in, a host made over a client) supplies it.
         fake.get { fake.cont }?.yield(.signedOut(reason: .accountRequired, unsynced: 0))
         await wait(host) { host.status?.screen.state == .error }
         XCTAssertEqual(host.status?.screen.copy.first?.key, "cloudSync.syncStopped")
         XCTAssertNil(host.status?.onSignIn)
+        // The app's own handler gives the row its button, and a neutral row carries no primary action.
+        var signedIn = 0
+        host.onSignIn = { signedIn += 1 }
+        XCTAssertNotNil(host.status?.onSignIn)
+        host.status?.onSignIn?()
+        XCTAssertEqual(signedIn, 1)
+        XCTAssertNil(host.signInModel)
         // A change event redraws from the machine.
         fake.set { fake.status = SyncStatus(state: .syncing, pending: 1) }
         fake.get { fake.cont }?.yield(.change(keys: ["a"], origin: .local))
