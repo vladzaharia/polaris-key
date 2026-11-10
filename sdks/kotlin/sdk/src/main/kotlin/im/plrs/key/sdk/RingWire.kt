@@ -9,6 +9,7 @@ import im.plrs.key.core.CoreContext
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.JsonText
 import im.plrs.key.core.PolarisException
+import im.plrs.key.core.PolarisRequest
 import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.arrayValue
 import im.plrs.key.core.boolValue
@@ -22,14 +23,34 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 
-internal class RingWire(private val core: CoreContext) {
+private const val HTTP_FORBIDDEN = 403
+
+/**
+ * [onAccountRequired] hears a 403 `account_required` (the subject's data was removed): its `signInUrl` (or null) and
+ * the subject the call started for. No redirect is followed, so the answer comes from the Worker's own origin.
+ */
+internal class RingWire(
+    private val core: CoreContext,
+    private val onAccountRequired: (signInUrl: String?, forSubject: String?) -> Unit = { _, _ -> },
+) {
     suspend fun request(method: String, path: String, body: JsonElement? = null): PolarisResponse {
         val token = core.token() ?: throw PolarisException(ErrorCode.noToken, "Activate, register or sign in before using the key ring.")
         val headers = LinkedHashMap<String, String>()
         headers["authorization"] = "Bearer $token"
         if (body != null) headers["content-type"] = "application/json"
-        val res = core.request(core.endpoints.url(path), method, headers, body?.toString()?.toByteArray(Charsets.UTF_8))
-        if (!res.isOk) throw refusal(res)
+        val who = core.storedSubject()
+        val res = core.transport.send(
+            PolarisRequest(
+                core.endpoints.url(path),
+                method,
+                core.headers(headers),
+                body?.toString()?.toByteArray(Charsets.UTF_8),
+                core.requestTimeoutSeconds,
+                null,
+                followRedirects = false,
+            ),
+        )
+        if (!res.isOk) throw refusal(res, who)
         return res
     }
 
@@ -38,9 +59,11 @@ internal class RingWire(private val core: CoreContext) {
     }
 
     /** The Worker answers `{"error": {"code", "message"}}`, or `{"error": "<code>"}` for a bare 404. */
-    private fun refusal(res: PolarisResponse): PolarisException {
+    private fun refusal(res: PolarisResponse, who: String?): PolarisException {
         val code = wireErrorCode(res.body) ?: ErrorCode.httpError
-        val message = JsonText.parseOrNull(res.text).objectValue?.get("error").objectValue?.get("message").stringValue
+        val err = JsonText.parseOrNull(res.text).objectValue?.get("error").objectValue
+        val message = err?.get("message").stringValue
+        if (res.status == HTTP_FORBIDDEN && code == ErrorCode.accountRequired) onAccountRequired(err?.get("signInUrl").stringValue, who)
         return PolarisException(code, message ?: "The server answered ${res.status}.", httpStatus = res.status)
     }
 

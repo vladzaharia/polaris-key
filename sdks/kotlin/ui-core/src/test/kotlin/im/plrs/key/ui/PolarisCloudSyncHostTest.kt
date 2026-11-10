@@ -91,8 +91,11 @@ class PolarisCloudSyncHostTest {
     fun aBlockedMachineWithoutAnAccountSaysSignedOut() = runTest {
         val fake = Fake()
         val host = host(fake)
-        fake.status = { SyncStatus(SyncState.Blocked, 0, reason = "accountRequired") }
+        // The machine's own reason: `account_required`, which a relaunch keeps.
+        fake.status = { SyncStatus(SyncState.Blocked, 0, reason = "account_required") }
         assertEquals(PolarisCloudSyncRow.SignedOut, host.row())
+        fake.status = { SyncStatus(SyncState.Blocked, 0, reason = "forbidden") }
+        assertEquals(PolarisCloudSyncRow.Error, host.row())
     }
 
     @Test

@@ -132,7 +132,8 @@ public class PolarisCloudSyncHost(
             SyncState.Offline, SyncState.Paused -> setRow(PolarisCloudSyncRow.Offline)
 
             SyncState.Blocked -> {
-                signedOut = status.reason == "accountRequired" || status.reason == "unauthorized"
+                // The machine's blocked reasons are `account_required` (a removed binding, kept across a relaunch) and `unauthorized`.
+                signedOut = status.reason == "account_required" || status.reason == "unauthorized"
                 setRow(if (signedOut) PolarisCloudSyncRow.SignedOut else PolarisCloudSyncRow.Error)
             }
         }

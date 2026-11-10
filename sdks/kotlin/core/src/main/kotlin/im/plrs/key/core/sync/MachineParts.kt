@@ -21,6 +21,7 @@ internal class MachineParts(val core: MachineCore) {
     val results = MachineResults(this)
     val exchange = MachineExchange(this)
     val receiver = MachineReceive(this)
+    val account = MachineAccount(this)
     val records = MachineRecords(this)
     val merge = MachineMerge(this)
     val puts = MachineRecordPuts(this)
@@ -41,6 +42,7 @@ public class CloudSyncMachine private constructor(private val parts: MachinePart
     SyncEdits by parts.edits,
     SyncReads by parts.reads,
     SyncSession by parts.session,
+    SyncAccount by parts.account,
     SyncExchange by parts.receiver,
     SyncRecords by parts.records,
     SyncCollections by parts.records,
@@ -115,7 +117,7 @@ public class CloudSyncMachine private constructor(private val parts: MachinePart
          */
         public fun relaunch(machine: CloudSyncMachine, opts: CloudSyncOptions, journalLost: Boolean = false): CloudSyncMachine {
             val saved = machine.persist()
-            val next = opts.copyWith(machine.now, machine.networkState)
+            val next = opts.copyWith(machine.now, machine.networkState).also { it.hasRoot = machine.hasRoot }
             if (!journalLost) return CloudSyncMachine(next, saved)
             next.offsetMs = 0
             next.contacted = false
