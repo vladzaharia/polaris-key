@@ -43,7 +43,11 @@ import {
  * anti-aliasing) and compared with `e2e/__baselines__/portal/<platform>/<name>.png`. Up to
  * {@link MAX_DIFF_RATIO} of the pixels may differ by more than {@link CHANNEL_TOLERANCE} on any
  * channel; a different size is a mismatch. On a mismatch the actual image and a diff land in
- * `e2e/__baselines__/portal/.out/` (git-ignored) for review.
+ * `e2e/__baselines__/portal/.out/` (git-ignored) for review. A missing baseline under `CI` writes
+ * `<name>.actual.png` there too, and the test still fails: nothing is accepted automatically. CI
+ * uploads `.out` as the `portal-visual-diff-<shard>` artifact on failure, and
+ * `scripts/accept-baselines.mjs <run-id>` copies each `<name>.actual.png` over its linux baseline
+ * for review in the diff.
  *
  * Fonts render differently per OS, so baselines are per platform. **`linux` is the committed set**:
  * it is what CI renders (ubuntu, Playwright's Chromium). A missing baseline fails under `CI`;
@@ -670,11 +674,13 @@ export async function matchBaseline(
   const actual = downscale(shot, SCALE);
   const file = `${BASELINES}/${name}.png`;
   if (UPDATE || !existsSync(file)) {
-    if (!UPDATE && IN_CI)
+    if (!UPDATE && IN_CI) {
+      writePng(`${OUT}/${name}.actual.png`, actual);
       return {
         status: "missing",
-        detail: `no ${process.platform} baseline for ${name}: record it with PK_UPDATE_BASELINES=1 (scripts/portal-baselines.sh for linux)`,
+        detail: `no ${process.platform} baseline for ${name}: accept the CI image with scripts/accept-baselines.mjs <run-id> --allow-new (actual in ${OUT}), or record it with scripts/portal-baselines.sh`,
       };
+    }
     writePng(file, actual);
     return { status: "recorded", detail: file };
   }
