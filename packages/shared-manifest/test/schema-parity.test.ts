@@ -1553,6 +1553,30 @@ const MUTATIONS: Mutation[] = [
       ]),
   },
   {
+    code: "invalid_client_redirect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.clients[0].redirectUris = [
+        "https://user:pw@forum.example.com/cb",
+      ]),
+  },
+  {
+    code: "invalid_client_redirect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.clients[0].redirectUris = ["http://forum.example.com/cb"]),
+  },
+  {
+    // A loopback or private-use URI is a native client's: the schema cannot condition on `type`.
+    code: "invalid_client_redirect",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) =>
+      (p(d).identity.clients[0].redirectUris = ["http://127.0.0.1/cb"]),
+  },
+  {
     code: "client_scope_unknown",
     file: "product",
     schema: "rejects",

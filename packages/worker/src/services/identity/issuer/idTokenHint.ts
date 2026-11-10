@@ -5,7 +5,9 @@
  * to compare with the signed-in account's subject; nothing else in it is read or trusted.
  *
  * `alg` is pinned before any key is chosen, so `none`, an `HS*` algorithm and `EdDSA` never reach
- * a key. The key set is the product's own (`issuerJwks`), so another product's token fails.
+ * a key. The key set is the product's own (`issuerJwks`), so another product's token fails. The
+ * hint's `aud` must be the REQUESTING client's id: one client cannot probe the signed-in account
+ * with a hint another client was issued.
  */
 
 import { compactVerify, createLocalJWKSet, decodeProtectedHeader } from "jose";
@@ -21,6 +23,7 @@ export async function verifyIdTokenHint(
   db: Db,
   product: string,
   issuer: string,
+  clientId: string,
   hint: string,
 ): Promise<string | null> {
   if (hint.length === 0 || hint.length > ID_TOKEN_HINT_MAX_LENGTH) return null;
@@ -36,7 +39,7 @@ export async function verifyIdTokenHint(
       string,
       unknown
     >;
-    if (claims.iss !== issuer) return null;
+    if (claims.iss !== issuer || claims.aud !== clientId) return null;
     return typeof claims.sub === "string" && claims.sub !== ""
       ? claims.sub
       : null;

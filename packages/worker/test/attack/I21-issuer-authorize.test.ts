@@ -340,6 +340,20 @@ describe("prompt=none abuse (D4, IS-8)", () => {
     expect(where(res).searchParams.get("error")).toBe("invalid_request");
   });
 
+  it("a hint issued to another client is refused: one client cannot probe with another's token", async () => {
+    const sibling = await mk("sibling", "spa", ["https://sib.example.com/cb"]);
+    const hint = await signIssuerJwt(
+      w.env,
+      w.db,
+      SLUG,
+      "JWT",
+      { iss: ISSUER, sub: w.subject, aud: sibling.clientId },
+      NOW,
+    );
+    const res = await authorize(params(victim, { id_token_hint: hint }));
+    expect(where(res).searchParams.get("error")).toBe("invalid_request");
+  });
+
   it("an expired hint of the wrong subject cannot be used to learn a session", async () => {
     await grant(victim);
     const { cookie } = await login();
@@ -348,7 +362,12 @@ describe("prompt=none abuse (D4, IS-8)", () => {
       w.db,
       SLUG,
       "JWT",
-      { iss: ISSUER, sub: "ps_" + "z".repeat(22), exp: NOW - 5 },
+      {
+        iss: ISSUER,
+        sub: "ps_" + "z".repeat(22),
+        aud: victim.clientId,
+        exp: NOW - 5,
+      },
       NOW,
     );
     const a = await none(victim, { id_token_hint: hint });

@@ -159,7 +159,13 @@ export async function authorizeRegistered(
   const hint = single(params, "id_token_hint");
   if (hint === null) return err({ error: "invalid_request" });
   if (hint !== undefined) {
-    hintSub = await verifyIdTokenHint(db, product.slug, issuer, hint);
+    hintSub = await verifyIdTokenHint(
+      db,
+      product.slug,
+      issuer,
+      client.clientId,
+      hint,
+    );
     if (hintSub === null) return err({ error: "invalid_request" });
   }
   const loginHint = single(params, "login_hint");

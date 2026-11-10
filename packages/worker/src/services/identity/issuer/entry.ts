@@ -35,6 +35,7 @@ import {
 } from "../../../core/accounts/accountSubjects.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
+import { rateLimitOk } from "../../../core/rateLimit.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
 import { randomId } from "../../../platform/crypto.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
@@ -57,6 +58,13 @@ import { claimsForCode, grantCovers } from "./coverage.js";
 import { getClientGrant, touchClientGrant } from "./grantsRepo.js";
 import { withQuery } from "./redirect.js";
 import { issuerServed } from "./served.js";
+
+/** The silent path's budget per account: Continue's, in its own bucket. */
+export const SILENT_RATE = {
+  bucket: "identityIssuerSilent",
+  limit: 30,
+  windowSec: 60,
+};
 
 /** RFC 6749 §4.1.2.1: a redirect-only code, not a registered wire code. */
 const SERVER_ERROR = "server_error";
@@ -112,6 +120,18 @@ export async function silentSignInEntry(
       return answer(cx, { error: "login_required" });
   }
   if (!reg.prompt.none) return null;
+
+  // Each silent answer signs a code in the person's name: a per-account budget like Continue's
+  // (30 a minute, failing closed), so a page cannot drive the session in a loop.
+  if (
+    !(await rateLimitOk(
+      env,
+      "_portal",
+      { ...SILENT_RATE, id: live.accountId },
+      now,
+    ))
+  )
+    return answer(cx, { error: SERVER_ERROR });
 
   // `prompt=none` with a session: `max_age`, then consent, then anything else the card would show.
   const authTime = portalSessionAuthenticatedAt(cookie);

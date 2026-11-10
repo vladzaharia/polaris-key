@@ -297,6 +297,18 @@ describe("prompt=none", () => {
   });
 });
 
+describe("silent budget", () => {
+  it("the 31st silent answer for an account in a minute is server_error, not a code", async () => {
+    await grant();
+    let last: Response | null = null;
+    for (let i = 0; i < 31; i++) {
+      const a = await enter({ prompt: "none" }, { session: true });
+      last = await a.entry();
+    }
+    expect(target(last!).searchParams.get("error")).toBe("server_error");
+  });
+});
+
 describe("id_token_hint", () => {
   const hint = (sub: string, over: Record<string, unknown> = {}) =>
     signIssuerJwt(
@@ -395,6 +407,7 @@ describe("id_token_hint", () => {
     );
     await bad(await hint(w.subject, { iss: "https://evil.example/identity" }));
     await bad(await hint("", {}));
+    await bad(await hint(w.subject, { aud: "cl_" + "z".repeat(22) }));
     await bad("a".repeat(8193));
   });
 });
