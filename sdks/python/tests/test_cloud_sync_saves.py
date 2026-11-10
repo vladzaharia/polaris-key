@@ -265,7 +265,12 @@ def conflict_rig(tmp_path: Path, mine: bytes) -> Any:
 
 def test_save_conflict_opens_request(tmp_path: Path) -> None:
     w, c, request = conflict_rig(tmp_path, data(700, 9))
-    assert (request.id, request.cause, request.collection, request.record) == ("w:saves/slot-1", "write", "saves", "slot-1")
+    assert (request.id, request.cause, request.collection, request.record) == (
+        "w:saves/slot-1",
+        "write",
+        "saves",
+        "slot-1",
+    )
     assert request.state == "open" and request.error is None
     assert request.choices == ["local", "remote", "both"]
     assert request.remote["value"] == {"chapter": "Two", "savedAt": 5} and request.remote["version"] == 400
@@ -344,7 +349,10 @@ def test_save_keep_remote(tmp_path: Path) -> None:
     w, c, request = conflict_rig(tmp_path, data(700, 9))
     calls = len(w.seen)
     closed: List[Dict[str, Any]] = []
-    c.events.subscribe(lambda e: closed.append(e.data) if e.data.get("type") == "conflictClosed" else None, ("cloudSync",))
+    c.events.subscribe(
+        lambda e: closed.append(e.data) if e.data.get("type") == "conflictClosed" else None,
+        ("cloudSync",),
+    )
     kept = request.keep("remote")
     # Keeping the other copy pulls (so read() returns it) and writes nothing to the files or the records.
     assert kept == {"ok": True, "kept": "remote", "version": 400}
@@ -396,7 +404,10 @@ def test_save_keep_both_needs_free_slot(tmp_path: Path) -> None:
 def test_save_request_freezes_slot(tmp_path: Path) -> None:
     w, c, request = conflict_rig(tmp_path, data(700, 9))
     seen: List[str] = []
-    c.events.subscribe(lambda e: seen.append(e.data["type"]) if "conflict" in e.data.get("type", "") else None, ("cloudSync",))
+    c.events.subscribe(
+        lambda e: seen.append(e.data["type"]) if "conflict" in e.data.get("type", "") else None,
+        ("cloudSync",),
+    )
     calls = len(w.seen)
     later = data(750, 4)
     out = c.cloud_sync.saves.write("slot-1", later, {"chapter": "Later"}).wait(10)
@@ -464,7 +475,9 @@ def test_save_exact_write_supersedes(tmp_path: Path) -> None:
         lambda e: closed.append(f"{e.data['id']}:{e.data['how']}") if e.data.get("type") == "conflictClosed" else None,
         ("cloudSync",),
     )
-    out = c.cloud_sync.saves.write("slot-1", data(650, 6), {"chapter": "Exact"}, base_version=request.remote["version"]).wait(10)
+    out = c.cloud_sync.saves.write(
+        "slot-1", data(650, 6), {"chapter": "Exact"}, base_version=request.remote["version"]
+    ).wait(10)
     assert out["state"] == "done"
     assert closed == ["w:saves/slot-1:superseded"]
     assert c.cloud_sync.conflicts() == []
@@ -484,7 +497,10 @@ def test_save_keep_on_closed_request(tmp_path: Path) -> None:
 def test_save_keep_conflicts_again(tmp_path: Path) -> None:
     w, c, request = conflict_rig(tmp_path, data(700, 9))
     opened: List[str] = []
-    c.events.subscribe(lambda e: opened.append(e.data["id"]) if e.data.get("type") == "conflictOpened" else None, ("cloudSync",))
+    c.events.subscribe(
+        lambda e: opened.append(e.data["id"]) if e.data.get("type") == "conflictOpened" else None,
+        ("cloudSync",),
+    )
     before = request.remote["version"]
     # Another device writes again before the keep lands.
     theirs(w, version=500, chapter="Three")
