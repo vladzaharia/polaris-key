@@ -378,15 +378,26 @@
             "part": "template"
           },
           {
-            "name": "Godot SDK (4.6.3 UI matrix)",
+            "name": "Godot SDK (4.6.3 UI matrix 1/2)",
             "os": "ubuntu-latest",
             "godot": "4.6.3",
             "template": "",
             "suites": "",
             "part": "matrix",
             "ui_paths": "auto",
-            "ui_shards": "4",
+            "ui_shards": "8",
             "ui_range": "0-3"
+          },
+          {
+            "name": "Godot SDK (4.6.3 UI matrix 2/2)",
+            "os": "ubuntu-latest",
+            "godot": "4.6.3",
+            "template": "",
+            "suites": "",
+            "part": "matrix",
+            "ui_paths": "auto",
+            "ui_shards": "8",
+            "ui_range": "4-7"
           },
           {
             "name": "Godot SDK (4.5.2 editor)",
@@ -405,15 +416,26 @@
             "part": "template"
           },
           {
-            "name": "Godot SDK (4.5.2 UI matrix)",
+            "name": "Godot SDK (4.5.2 UI matrix 1/2)",
             "os": "ubuntu-latest",
             "godot": "4.5.2",
             "template": "",
             "suites": "",
             "part": "matrix",
             "ui_paths": "auto",
-            "ui_shards": "4",
+            "ui_shards": "8",
             "ui_range": "0-3"
+          },
+          {
+            "name": "Godot SDK (4.5.2 UI matrix 2/2)",
+            "os": "ubuntu-latest",
+            "godot": "4.5.2",
+            "template": "",
+            "suites": "",
+            "part": "matrix",
+            "ui_paths": "auto",
+            "ui_shards": "8",
+            "ui_range": "4-7"
           },
           {
             "name": "Godot SDK (4.4.1 editor)",

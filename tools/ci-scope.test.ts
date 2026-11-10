@@ -88,7 +88,7 @@ const expectFullMatrices = (
   lanes: string[] = Object.keys(scope.lanes),
 ) => {
   for (const lane of lanes) expect(out[lane], lane).toBe("true");
-  expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(17);
+  expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(19);
   expect(JSON.parse(out["kotlin-desktop-matrix"]!).os).toHaveLength(3);
   expect(JSON.parse(out["kotlin-emulator-matrix"]!)["api-level"]).toEqual([
     24, 34, 36,
@@ -281,7 +281,7 @@ describe("the changes job outputs", () => {
         expect(out[lane], lane).toBe("true");
       expect(out.full).toBe("true");
       expect(JSON.parse(out["python-matrix"]!).include).toHaveLength(3);
-      expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(17);
+      expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(19);
     },
   );
 
