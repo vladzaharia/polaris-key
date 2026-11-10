@@ -70,12 +70,12 @@ const refuse = (status: number, error: string): Response =>
 function target(
   redirectUri: string,
   issuer: string,
-  state: string,
+  state: string | null,
   member: { code: string } | { error: string },
 ): string {
   const url = new URL(redirectUri);
   for (const [k, v] of Object.entries(member)) url.searchParams.set(k, v);
-  url.searchParams.set("state", state);
+  if (state !== null) url.searchParams.set("state", state);
   url.searchParams.set("iss", issuer);
   return url.toString();
 }
@@ -190,6 +190,9 @@ export async function handleSignInContinue(
   const live = await liveRequest(env, db, req, handle, now);
   if (!live || !live.record.authz) return NOT_FOUND();
   const { authz } = live.record;
+  // A registered client's Continue (consent, the client grant, its code) is I-21.8's; the own
+  // client's Continue never serves it, so no `account_product_grants` row is written for it.
+  if (authz.registered) return NOT_FOUND();
   const product = await loadProductPublic(db, live.record.product);
   if (!product) return NOT_FOUND();
   if (

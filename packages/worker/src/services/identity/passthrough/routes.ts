@@ -38,6 +38,9 @@ import { licenseConsentItem } from "./anchor.js";
 import { licenseChoiceView, replaceView } from "./choice.js";
 import { clientRecordFor, cloudSyncOn } from "./client.js";
 import { readSignInRequest } from "./request.js";
+import { getActiveClient } from "../issuer/clientsRepo.js";
+import { registeredClientRecord } from "../issuer/registeredView.js";
+import { issuerServed } from "../issuer/served.js";
 
 /** The profile claims an app may receive (D19); the consent list names all three. */
 export const CONSENT_PROFILE_CLAIMS = ["name", "picture", "email"] as const;
@@ -71,9 +74,36 @@ export async function signInRequestView(
   const live = await liveRequest(env, db, req, handle, now);
   if (!live) return { status: 404 };
   const { record, product } = live;
+  const client = await clientRecordFor(
+    env,
+    db,
+    product,
+    record.kind,
+    now,
+    hooksFor,
+  );
+  // I-21.6: a registered client's request names the client. A client that is gone or disabled
+  // since the request was made leaves no card: the same 404 as an unknown handle.
+  if (record.authz?.registered) {
+    const stored = await getActiveClient(
+      db,
+      product.slug,
+      record.authz.clientId,
+    );
+    if (!stored || !(await issuerServed(db, product.slug)))
+      return { status: 404 };
+    client.registered = await registeredClientRecord(
+      env,
+      db,
+      product,
+      stored,
+      record.authz.redirectUri,
+      client.developerName,
+    );
+  }
   const view: SignInRequestView = {
     request: handle,
-    client: await clientRecordFor(env, db, product, record.kind, now, hooksFor),
+    client,
     deviceLabel: record.deviceLabel,
     userCode: record.userCode,
     expiresAt: record.expiresAt,

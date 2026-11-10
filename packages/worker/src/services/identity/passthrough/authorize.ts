@@ -56,6 +56,11 @@ import {
   type NativeRequestInfo,
 } from "./request.js";
 import { readPushed } from "./pushedStore.js";
+import { CLIENT_ID_PATTERN } from "@polaris-key/protocol/identity";
+import {
+  authorizeRegistered,
+  registeredErrorRedirect,
+} from "../issuer/authorize.js";
 import { redirectPathsOf, validateRedirectUri } from "./redirectUri.js";
 
 /** `authorize` is a navigation that writes one record: 60 a minute per client network. */
@@ -67,6 +72,8 @@ export const AUTHORIZE_RATE = {
 
 /** The longest `nonce` kept (RFC 9207 / OIDC practice; I-21 reads it). */
 export const NONCE_MAX_LENGTH = 255;
+
+const CLIENT_ID_RE = new RegExp(CLIENT_ID_PATTERN);
 
 /** S256 of a verifier is 32 bytes: always 43 base64url characters. */
 const CHALLENGE_RE = /^[A-Za-z0-9_-]{43}$/;
@@ -294,7 +301,11 @@ export async function handleAuthorize(ctx: {
 
   // 1. The two values a redirect depends on. Nothing redirects until both are valid.
   const clientId = single(params, "client_id");
-  if (clientId !== product.slug)
+  const registeredId =
+    typeof clientId === "string" && CLIENT_ID_RE.test(clientId)
+      ? clientId
+      : null;
+  if (clientId !== product.slug && registeredId === null)
     return refusalPage(ctx, 401, ErrorCode.InvalidClient);
   const issuer = issuerOf(req, product);
 
@@ -304,7 +315,23 @@ export async function handleAuthorize(ctx: {
   let native: NativeRequestInfo | undefined;
   let deviceLabel: string | null = null;
   let reqOrigin: string | null;
-  if (params.has("request_uri")) {
+  if (registeredId !== null) {
+    // I-21.6 (§12.13.3): a registered client. Its own checks, its own redirect URI classes.
+    const reg = await authorizeRegistered(
+      { db, product, issuer },
+      params,
+      registeredId,
+      (status, code) => refusalPage(ctx, status, code),
+    );
+    if (!reg.ok) return reg.response;
+    kind = "web";
+    redirectUri = reg.redirectUri;
+    authz = reg.authz;
+    // Only an `https` redirect names an origin; a loopback or private-use URI returns to the device.
+    reqOrigin = redirectUri.startsWith("https://")
+      ? new URL(redirectUri).origin
+      : null;
+  } else if (params.has("request_uri")) {
     // §12.12: a pushed request replaces the whole parameter set. It is resolved first, and an
     // unknown, expired, malformed or already taken one never redirects.
     const uri = single(params, "request_uri");
@@ -363,7 +390,9 @@ export async function handleAuthorize(ctx: {
     authz = built.authz;
   }
   const fail = (error: AuthorizeRedirectError): Response =>
-    errorRedirect(redirectUri, issuer, error, authz.state);
+    authz.registered
+      ? registeredErrorRedirect(redirectUri, issuer, error, authz.state)
+      : errorRedirect(redirectUri, issuer, error, authz.state);
 
   // The card lives on the customer host once `CUSTOMER_ORIGIN` is usable (LK-04): the binder
   // cannot be set from here, so the redirect goes through the bind hop.

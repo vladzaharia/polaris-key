@@ -58,7 +58,20 @@ export interface SignInCodeRecord {
    * answers `invalid_grant` to any other `X-PKey-Device`.
    */
   deviceId?: string;
+  /**
+   * A registered client's code (V5 §12.13.3 rule 5; I-21.6): the claims the grant holds that the
+   * request reaches, and the sign-in's `auth_time` (epoch seconds). `clientId` is the `cl_` id,
+   * `subject` the product's pairwise subject, `choice` is `null` and `licenseChoice` `card`.
+   */
+  registered?: { claims: string[]; authTime: number };
 }
+
+/**
+ * The proof of a code issued without a PKCE challenge (a `web` registered client that sent a
+ * `nonce`, V5 §12.13.3). `token` redeems such a code with the same constant, and refuses a
+ * verifier for it (§12.13.4 rule 1).
+ */
+export const NO_CHALLENGE_PROOF = "pkey:no-challenge";
 
 async function codeRef(
   env: Env,
@@ -80,7 +93,7 @@ export function mintAuthorizationCode(): string {
 export async function issueAuthorizationCode(
   env: Env,
   record: SignInCodeRecord,
-  codeChallenge: string,
+  codeChallenge: string | null,
 ): Promise<string> {
   const code = mintAuthorizationCode();
   await putArtefact(
@@ -88,7 +101,10 @@ export async function issueAuthorizationCode(
     await codeRef(env, record.product, code),
     JSON.stringify(record),
     AUTHORIZATION_CODE_TTL_SECONDS,
-    { proof: await hashKey(codeChallenge), maxAttempts: 1 },
+    {
+      proof: await hashKey(codeChallenge ?? NO_CHALLENGE_PROOF),
+      maxAttempts: 1,
+    },
   );
   return code;
 }

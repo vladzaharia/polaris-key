@@ -307,21 +307,18 @@
       "code": "unsupported_response_type",
       "kind": "wire",
       "service": "identity",
-      "plannedBy": "I-21.6",
       "description": "In the authorize redirect's `error` query to a registered client (RFC 6749 §4.1.2.1): `response_type` is present and is not `code` (WIRE-CONTRACT-V5 §12.13.3; I-21)."
     },
     {
       "code": "request_not_supported",
       "kind": "wire",
       "service": "identity",
-      "plannedBy": "I-21.6",
       "description": "In the authorize redirect's `error` query to a registered client: the request carried a `request` object (OpenID Connect Core §6), which the issuer does not accept (WIRE-CONTRACT-V5 §12.13.3; I-21)."
     },
     {
       "code": "request_uri_not_supported",
       "kind": "wire",
       "service": "identity",
-      "plannedBy": "I-21.6",
       "description": "In the authorize redirect's `error` query to a registered client: the request carried `request_uri`. A pushed request is the product's own client's (WIRE-CONTRACT-V5 §12.12, §12.13.3; I-21)."
     },
     {
