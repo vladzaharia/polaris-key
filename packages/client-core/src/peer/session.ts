@@ -1450,8 +1450,13 @@ export class HandshakeLimiter {
       hit: (): (() => void) => {
         if (settled) return () => undefined;
         settled = true;
-        const i = mine.lastIndexOf(t);
-        if (i >= 0) mine.splice(i, 1);
+        // The live list: a later call may have replaced the one captured above with a filtered copy.
+        const live = this.groups.get(group);
+        const i = live ? live.lastIndexOf(t) : -1;
+        if (live && i >= 0) {
+          live.splice(i, 1);
+          if (live.length === 0) this.groups.delete(group);
+        }
         this.pending++;
         let done = false;
         return (): void => {

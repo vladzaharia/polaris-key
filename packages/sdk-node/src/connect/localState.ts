@@ -98,11 +98,13 @@ export const localLinkId = (peerKey: Uint8Array): string =>
 function parseRows(v: unknown): LocalLinkRow[] | null {
   if (!Array.isArray(v) || v.length > MAX_LOCAL_LINKS) return null;
   const out: LocalLinkRow[] = [];
+  const seen = new Set<string>();
   for (const r of v) {
     if (!isRecord(r)) return null;
     if (
       typeof r.id !== "string" ||
       !ID.test(r.id) ||
+      seen.has(r.id) ||
       !key32(r.ownKey) ||
       !key32(r.ownPublic) ||
       !key32(r.peerKey) ||
@@ -115,6 +117,7 @@ function parseRows(v: unknown): LocalLinkRow[] | null {
     if (r.lastSeen !== undefined && !Number.isSafeInteger(r.lastSeen))
       return null;
     if (typeof r.reachable !== "boolean") return null;
+    seen.add(r.id);
     out.push({
       id: r.id,
       ownKey: r.ownKey,
