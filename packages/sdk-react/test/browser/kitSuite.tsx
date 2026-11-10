@@ -3,7 +3,7 @@
 // The React kit (`@polaris-key/react/kit`) in real Chromium. The responsive scenes cover every
 // UI-KITS §7.1 size (both schemes at 390 and 1440, one scheme each, alternating, at the other
 // sizes), and the complete fixture state matrix covers the 390 and 1440 baseline rows in both
-// schemes. The suite is split over kit.0, kit.1 and kit.2 (registerKitPart) so the three files
+// schemes. The suite is split over kit/0, kit/1 and kit/2 (registerKitPart) so the three files
 // run side by side. On every render:
 //
 //   * nothing scrolls sideways (DL15);
