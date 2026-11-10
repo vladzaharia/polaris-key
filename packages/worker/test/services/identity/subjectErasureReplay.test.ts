@@ -7,6 +7,10 @@
  * other's entries, and the objects pass after a Durable Object restore.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  registerSubjectStore,
+  unregisterSubjectStore,
+} from "../../../src/core/accounts/subjectHooks.js";
 import { NOW } from "../../seed.js";
 import type { Db } from "../../../src/db/types.js";
 import {
@@ -283,5 +287,94 @@ describe("after a Durable Object restore", () => {
     // A subject the ledger does not name is not touched.
     expect(erasureLeftovers(ns, `${P}:${other}`)).not.toEqual(ERASED_LEFTOVERS);
     expect(OBJECTS_REQUEST_KEY).toContain("subject-erasure-ledger");
+  });
+});
+
+describe("the objects pass cycle", () => {
+  const entries = async (
+    w: World,
+    product: string,
+    from: number,
+    n: number,
+  ) => {
+    for (let i = from; i < from + n; i++)
+      await recordSubjectErasure(w.env, product, pairwise(i), NOW);
+  };
+  const run = (
+    w: World,
+    product: string,
+    complete: (a: {
+      product: string;
+      subject: string;
+    }) => Promise<{ removed: boolean }>,
+    now = NOW,
+  ) =>
+    replaySubjectErasures(
+      { db: w.db, env: w.env, now },
+      complete,
+      { objects: true, product },
+      { maxComplete: 1 },
+    );
+
+  it("keeps its cursor per product", async () => {
+    const { w } = await withDo();
+    state.failing = false;
+    await entries(w, "zzz", 3000, 2);
+    await entries(w, "aaa", 3100, 1);
+    const none = async () => ({ removed: false });
+    // zzz stops at its bound and leaves a cursor; aaa must still be walked from its first entry.
+    expect(await run(w, "zzz", none)).toMatchObject({ more: true });
+    expect(await run(w, "aaa", none)).toMatchObject({
+      scanned: 1,
+      objects: 1,
+      more: false,
+    });
+  });
+
+  it("is spent only by a cycle without a failure", async () => {
+    const { w } = await withDo();
+    state.failing = false;
+    await entries(w, "aaa", 3200, 2);
+    // Both entries are unknown to D1, so the stores run; make the first fail through a store.
+    registerSubjectStore("a.fails", {
+      merge: async () => {},
+      delete: async (_c, { subject }) => {
+        if (subject === pairwise(3200)) throw new Error("down");
+      },
+    });
+    try {
+      const none = async () => ({ removed: false });
+      const first = await run(w, "aaa", none);
+      expect(first).toMatchObject({ more: true, cycleFailed: true });
+      const second = await run(w, "aaa", none);
+      expect(second).toMatchObject({
+        more: false,
+        failures: [],
+        cycleFailed: true,
+      });
+      // The next cycle starts clean and, with the store healthy, ends clean.
+      unregisterSubjectStore("a.fails");
+      await run(w, "aaa", none);
+      expect(await run(w, "aaa", none)).toMatchObject({
+        more: false,
+        cycleFailed: false,
+      });
+    } finally {
+      unregisterSubjectStore("a.fails");
+    }
+  });
+
+  it("counts removals owed for more than a week", async () => {
+    const { w } = await withDo();
+    state.failing = true;
+    await upsertAccountSubject(w.db, "acct_stale", P, pairwise(3300));
+    await recordSubjectErasure(w.env, P, pairwise(3300), NOW);
+    const wall = Math.floor(Date.now() / 1000);
+    expect(await replaySubjectRemovals(w.ctx(wall + 3600))).toMatchObject({
+      stale: 0,
+    });
+    expect(
+      await replaySubjectRemovals(w.ctx(wall + 8 * 24 * 3600)),
+    ).toMatchObject({ stale: 1 });
   });
 });

@@ -9,7 +9,12 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { NOW } from "../../seed.js";
-import { getRing } from "../../../src/core/keyring/store.js";
+import { setDeviceSubject } from "../../../src/core/accounts/accountSubjects.js";
+import {
+  registerSubjectStore,
+  unregisterSubjectStore,
+} from "../../../src/core/accounts/subjectHooks.js";
+import { createRing, getRing } from "../../../src/core/keyring/store.js";
 import { completeProductRemoval } from "../../../src/services/identity/accounts/productRemoval.js";
 import { ErasureLedgerError } from "../../../src/services/identity/accounts/erasureLedger.js";
 import {
@@ -21,7 +26,9 @@ import {
   createRingAs,
   D1,
   D2,
+  KID,
   P,
+  RING,
   remove,
   resetState,
   state,
@@ -160,5 +167,70 @@ describe("the cascade", () => {
     expect(await createRingAs(w, D1)).toBe(403);
     expect(await createRingAs(w, D2)).toBe(403);
     expect(await getRing(w.db, P, w.subject)).toBeNull();
+  });
+
+  it("leaves no binding or ring behind when a request rebinds a device after the stores ran", async () => {
+    const w = await world();
+    state.failing = false;
+    // Sorts after core.keyring: it runs after the ring was deleted, as a late sign-in would.
+    registerSubjectStore("m.rebind", {
+      merge: async () => {},
+      delete: async () => {
+        await setDeviceSubject(w.env, w.db, P, D1, w.subject);
+        await createRing(w.db, {
+          product: P,
+          subject: w.subject,
+          ringId: RING,
+          rootKid: KID,
+          wrap: {
+            deviceId: D1,
+            ringId: RING,
+            epoch: 1,
+            kid: KID,
+            kem: 32,
+            enc: "e",
+            ct: "c",
+            by: D1,
+          },
+          now: NOW,
+        });
+      },
+    });
+    try {
+      await remove(w);
+    } finally {
+      unregisterSubjectStore("m.rebind");
+    }
+    expect(await subjectRow(w)).toBeNull();
+    expect(await getRing(w.db, P, w.subject)).toBeNull();
+    expect(
+      await w.db.all(
+        "SELECT 1 FROM keyring_wraps WHERE subject = ?",
+        w.subject,
+      ),
+    ).toHaveLength(0);
+    expect(
+      await w.db.all("SELECT 1 FROM devices WHERE subject = ?", w.subject),
+    ).toHaveLength(0);
+    expect(await createRingAs(w, D1)).toBe(403);
+  });
+
+  it("two concurrent completions record the event and the history row once", async () => {
+    const w = await world();
+    state.failing = false;
+    await Promise.all([
+      completeProductRemoval(w.ctx(), { product: P, subject: w.subject }),
+      completeProductRemoval(w.ctx(), { product: P, subject: w.subject }),
+    ]);
+    expect(
+      await w.db.all(
+        "SELECT 1 FROM subject_events WHERE type = 'subject.deleted'",
+      ),
+    ).toHaveLength(1);
+    expect(
+      await w.db.all(
+        "SELECT 1 FROM portal_audit WHERE action = 'account.product.remove'",
+      ),
+    ).toHaveLength(1);
   });
 });

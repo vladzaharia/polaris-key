@@ -157,6 +157,9 @@ export interface SubjectReplayFailure {
   message: string;
 }
 
+/** A removal still owed after this long is reported to the operator (seconds). */
+export const SUBJECT_ERASURE_STALE_SECONDS = 7 * 24 * 60 * 60;
+
 export interface SubjectReplayResult {
   /** Ledger entries read this pass. */
   scanned: number;
@@ -166,6 +169,10 @@ export interface SubjectReplayResult {
   objects: number;
   /** Ledger entries deleted after the retention window. */
   swept: number;
+  /** Removals still owed whose ledger entry is older than {@link SUBJECT_ERASURE_STALE_SECONDS}. */
+  stale: number;
+  /** Objects pass: some pass of this cycle (this one included) had a failure. */
+  cycleFailed: boolean;
   /** The pass stopped at a bound; the next one continues after the last entry it handled. */
   more: boolean;
   failures: SubjectReplayFailure[];
@@ -271,6 +278,8 @@ export async function replaySubjectErasures(
     completed: 0,
     objects: 0,
     swept: 0,
+    stale: 0,
+    cycleFailed: false,
     more: false,
     failures: [],
   };
@@ -285,7 +294,26 @@ export async function replaySubjectErasures(
       : `${SUBJECT_ERASURE_PREFIX}${opts.product}/`;
   const resumeKey = objects ? OBJECTS_RESUME_KEY : RESUME_KEY;
 
-  const resumedFrom = await readResume(env, resumeKey);
+  // The objects cursor belongs to one product and carries whether the cycle has failed so far.
+  const rawResume = await readResume(env, resumeKey);
+  let cycleFailed = false;
+  let resumedFrom: string | null = rawResume;
+  if (objects) {
+    resumedFrom = null;
+    try {
+      const c = JSON.parse(rawResume ?? "null") as {
+        product?: unknown;
+        key?: unknown;
+        failed?: unknown;
+      } | null;
+      if (c && c.product === opts.product && typeof c.key === "string") {
+        resumedFrom = c.key;
+        cycleFailed = c.failed === true;
+      }
+    } catch {
+      // an unreadable cursor restarts the cycle
+    }
+  }
   let from: { cursor: string } | { startAfter: string } | null =
     resumedFrom === null ? null : { startAfter: resumedFrom };
   let handledKey: string | null = null;
@@ -313,6 +341,7 @@ export async function replaySubjectErasures(
     const live = await liveSubjects(db, entries);
     for (const e of entries) {
       const isLive = live.has(`${e.product}/${e.subject}`);
+      if (isLive && now - e.at > SUBJECT_ERASURE_STALE_SECONDS) result.stale++;
       if (isLive || objects) {
         if (budget === 0) {
           stopped = true;
@@ -391,7 +420,18 @@ export async function replaySubjectErasures(
   }
   // A finished cycle starts over from the first key; a pass that stopped at a bound resumes after
   // the last entry it handled.
+  result.cycleFailed = cycleFailed || result.failures.length > 0;
   const next = result.more ? handledKey : null;
-  if (next !== resumedFrom) await writeResume(env, resumeKey, next);
+  if (objects) {
+    const value =
+      next === null
+        ? null
+        : JSON.stringify({
+            product: opts.product,
+            key: next,
+            failed: result.cycleFailed,
+          });
+    if (value !== rawResume) await writeResume(env, resumeKey, value);
+  } else if (next !== resumedFrom) await writeResume(env, resumeKey, next);
   return result;
 }

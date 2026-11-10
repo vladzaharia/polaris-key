@@ -15341,6 +15341,9 @@ paths:
         a store fails the answer is `200` with `pending: true`: the other stores still ran, the
         subject stays, and the removal is finished on the next maintenance tick or by repeating
         the request.
+        With `alsoRemoveLicense`, a failure while detaching a licence answers `500` after the
+        removal was recorded: the data removal still completes on the next maintenance tick, and
+        the licence stays until the request is repeated.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: alsoRemoveLicense

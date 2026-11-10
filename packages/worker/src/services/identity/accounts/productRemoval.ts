@@ -13,7 +13,7 @@ import {
   clearDeviceSubjects,
   runSubjectDeleteIsolated,
 } from "../../../core/accounts/subjectHooks.js";
-import { portalAudit } from "../portal/repo.js";
+import { randomId } from "../../../platform/crypto.js";
 import { detachLicense } from "./claim.js";
 import { stmtSubjectEvent } from "./events.js";
 import {
@@ -128,8 +128,8 @@ export async function removeProductData(
  *   STORES. Every registered store's `delete`, fault-isolated and in name order, so the key ring
  *   (the last E2E key material) goes before the Cloud Sync bytes. A failure leaves the subject row
  *   in place and answers `pending` with the store names.
- *   COMMIT. One batch: `subject.deleted`, support codes, aliases and the subject row; then the
- *   audit row.
+ *   COMMIT. One batch: `subject.deleted`, the audit row, any binding or ring a late request
+ *   created, support codes, aliases and the subject row.
  */
 export async function completeProductRemoval(
   ctx: AccountContext,
@@ -169,25 +169,46 @@ export async function completeProductRemoval(
     args.licenseIds ??
     (await accountLicenses(db, row.account_id, product)).map((l) => l.id);
   const detached = args.detached ?? false;
+  // A sign-in that raced the fence may have bound a device again: clear it once more, then close
+  // the same gap inside the commit.
+  await clearDeviceSubjects(
+    db,
+    env,
+    { kind: "subject", product, subject },
+    "product_removed",
+  );
+  // ONE batch. The guarded event and audit run while the subject row still exists (the row goes
+  // later in the same batch), so two completions record them once. The binding and key ring
+  // statements make the commit leave nothing behind that a late rebind or ring write created
+  // after the stores ran.
   await db.batch([
     stmtSubjectDeletedOnce(
       row.account_id,
       { product, subject, licenseIds, detached },
       now,
     ),
+    stmtAuditOnce(
+      row.account_id,
+      product,
+      subject,
+      detached
+        ? "Removed product data and its licenses from the library"
+        : "Removed product data",
+      now,
+    ),
+    {
+      sql: `UPDATE devices SET subject = NULL
+             WHERE product = ? AND subject IS NOT NULL
+               AND (subject = ? OR subject IN (
+                 SELECT alias FROM account_product_subject_aliases WHERE product = ? AND subject = ?))`,
+      params: [product, subject, product, subject],
+    },
+    ...["keyring_wraps", "keyring_adopted", "keyrings"].map((t) => ({
+      sql: `DELETE FROM ${t} WHERE product = ? AND subject = ?`,
+      params: [product, subject],
+    })),
     ...stmtsEndSubject(row.account_id, product, subject),
   ]);
-  await portalAudit(db, {
-    accountId: row.account_id,
-    action: "account.product.remove",
-    product,
-    targetKind: "product",
-    targetId: product,
-    summary: detached
-      ? "Removed product data and its licenses from the library"
-      : "Removed product data",
-    now,
-  });
   return { removed: true };
 }
 
@@ -207,6 +228,34 @@ export function replaySubjectRemovals(
     (a) => completeProductRemoval(ctx, a),
     opts,
   );
+}
+
+/** The account's `account.product.remove` history row, written only while the subject row exists. */
+function stmtAuditOnce(
+  accountId: string,
+  product: string,
+  subject: string,
+  summary: string,
+  now: number,
+): DbStatement {
+  return {
+    sql: `INSERT INTO portal_audit
+            (id, account_id, at, action, product, target_kind, target_id, summary)
+          SELECT ?, ?, ?, 'account.product.remove', ?, 'product', ?, ?
+           WHERE EXISTS (SELECT 1 FROM account_product_subjects
+                          WHERE account_id = ? AND product = ? AND subject = ?)`,
+    params: [
+      randomId("paud"),
+      accountId,
+      now,
+      product,
+      product,
+      summary,
+      accountId,
+      product,
+      subject,
+    ],
+  };
 }
 
 /** `subject.deleted`, written only while the subject row still exists, so two completions of the

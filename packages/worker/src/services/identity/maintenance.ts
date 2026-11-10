@@ -81,6 +81,7 @@ async function subjectErasureReplay(
   { db, now }: PlatformMaintenanceContext,
   env: Env,
   rec: MaintenanceRecorder,
+  reportStale = false,
 ): Promise<void> {
   await rec.step("subjectErasureLedger", async () => {
     const ctx = { db, env, now, origin: await originOf(env, db) };
@@ -92,7 +93,8 @@ async function subjectErasureReplay(
       const o = await replaySubjectRemovals(ctx, { objects: true, product });
       failures.push(...o.failures);
       repaired += o.objects;
-      if (!o.more && o.failures.length === 0) await finishObjectsPass(env);
+      // Spent only by a whole cycle without a failure; a failed cycle starts over next tick.
+      if (!o.more && !o.cycleFailed) await finishObjectsPass(env);
     }
     if (failures.length > 0)
       throw new Error(
@@ -102,6 +104,10 @@ async function subjectErasureReplay(
             .map((f) => `${f.product}/${f.subject} (${f.step}: ${f.message})`)
             .join(", ") +
           (failures.length > 10 ? ", …" : ""),
+      );
+    if (reportStale && r.stale > 0)
+      throw new Error(
+        `${r.stale} product removal(s) still owed after 7 days (a store keeps failing)`,
       );
     return repaired + r.swept;
   });
@@ -196,7 +202,7 @@ export const identityMaintenance: MaintenanceContribution = {
     );
     if (env) {
       await erasureLedgerReplay(ctx, env, rec);
-      await subjectErasureReplay(ctx, env, rec);
+      await subjectErasureReplay(ctx, env, rec, true);
     }
     // I-11: due requests enter the resumable erasure state machine, then incomplete erasures
     // retry under their own back-off. Both runs are bounded and fault-isolated.

@@ -10831,6 +10831,10 @@ erasure_ledger_unavailable` with nothing changed. The prefix is not `erasures/`:
   failure does not stop the others: the key ring (`core.keyring`) goes before the Cloud Sync object
   (`sync.cloudSync`). The console's per-subject delete is isolated the same way and its Cloud Sync
   delete removes the ring first. Account erasure moves its device fence ahead of the store rounds.
+- **Commit closes the gap.** The commit batch itself clears any device binding and deletes any key
+  ring or wrap for the subject and its aliases, and writes the history row and `subject.deleted`
+  only while the subject row exists, so a sign-in or ring write that raced the stores leaves
+  nothing behind and two completions record once.
 - **Commit and resume.** If a store fails the answer is `200` with `pending: true`; the subject
   row stays, the developer is not told and nothing is audited yet. A ledger entry beside a live
   subject row means a removal is owed, and the person's repeat or the maintenance pass (U-12.2)
@@ -10844,8 +10848,11 @@ erasure_ledger_unavailable` with nothing changed. The prefix is not `erasures/`:
   tombstone is needed.
 - **Residuals.** Between a restore and the next tick, up to 15 minutes, the restored rows are
   readable; the request-time fence of account erasure has no per-subject counterpart (decision
-  D4). A Durable Object point-in-time restore brings its data back and the tick does not look for
-  it: the operator runs the objects pass for the product (runbook, "After a D1 or Cloud Sync
+  D4). While a removal stays `pending`, devices that sign in again are fenced on each tick and
+  the data they create is removed when the stores finally succeed; the nightly step reports any
+  removal still owed after 7 days (a count, never an account). A Durable Object point-in-time restore brings its data back and the tick does not look for
+  it: the operator runs the objects pass for the product (its cursor belongs to one product, and
+  the request is cleared only after a whole cycle without a failure) (runbook, "After a D1 or Cloud Sync
   Durable Object restore"). A person who removes their data while a store stays down is told
   `pending`, and the data of that store stays until the pass succeeds.
 
