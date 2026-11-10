@@ -31,13 +31,13 @@ const table = JSON.parse(
 const ICON_DIR = join(PKG, "icons/services");
 
 describe("service icon table", () => {
-  it("has eleven icons: core, every service in tools/services.json (Commerce and Connect included), packs", () => {
+  it("has an icon for core, every service in tools/services.json (Commerce and Connect included), packs", () => {
     expect([...SERVICE_ICON_IDS]).toEqual([
       "core",
       ...table.services.map((s) => s.slug),
       "packs",
     ]);
-    expect(SERVICE_ICON_IDS).toHaveLength(11);
+    expect(SERVICE_ICON_IDS).toHaveLength(table.services.length + 2);
   });
 
   it("names the glyph tools/services.json console.icon names", () => {
@@ -123,8 +123,12 @@ describe("files on disk", () => {
       expect(sprite).toContain(`id="pk-service-${id}"`);
       expect(sprite).toContain(`id="pk-service-${id}-compact"`);
     }
-    expect(sprite.match(/stroke-width="2"/g)).toHaveLength(11);
-    expect(sprite.match(/stroke-width="1.6"/g)).toHaveLength(11);
+    expect(sprite.match(/stroke-width="2"/g)).toHaveLength(
+      SERVICE_ICON_IDS.length,
+    );
+    expect(sprite.match(/stroke-width="1.6"/g)).toHaveLength(
+      SERVICE_ICON_IDS.length,
+    );
   });
 
   it("no file names a service 'Polaris Key Update'", () => {

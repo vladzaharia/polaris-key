@@ -8,7 +8,7 @@
 // end-to-end mode. The saves API on top of it is test/cloudSyncSaves.test.ts.
 
 import { IDBFactory } from "fake-indexeddb";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   SAVES_FILE_INVALID,
   encodeManifest,
@@ -456,15 +456,22 @@ describe("the file layer: engine, journal, cache and one writer", () => {
           })
         : undefined;
     const b = bytes(800);
-    await h.files.engine.upload({
-      id: "t1",
-      ...target,
-      source: rangedBytes(b),
-      size: b.length,
-      sha256: await sha(b),
-      enc: "none",
-      baseVersion: "*",
-    });
+    // The engine waits `hold.until - Date.now()`: a frozen clock makes the capped wait exact
+    // instead of 3_600_000 minus however many milliseconds the upload took.
+    const frozen = vi.spyOn(Date, "now").mockReturnValue(Date.now());
+    try {
+      await h.files.engine.upload({
+        id: "t1",
+        ...target,
+        source: rangedBytes(b),
+        size: b.length,
+        sha256: await sha(b),
+        enc: "none",
+        baseVersion: "*",
+      });
+    } finally {
+      frozen.mockRestore();
+    }
     expect(h.sleeps).toContain(3_600_000);
     expect(Math.max(...h.sleeps)).toBeLessThanOrEqual(3_600_000);
   });

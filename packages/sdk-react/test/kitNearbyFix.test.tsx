@@ -198,9 +198,10 @@ describe("<NearbySignIn> endings and choices", () => {
     const a = await adapterOf(bridge);
     const { container } = wrap(
       a,
-      <NearbySignIn prompt={false} settleMs={150} />,
+      <NearbySignIn prompt={false} settleMs={600} />,
     );
     await waitFor(() => expect(bridge.nearbyStart).toHaveBeenCalled());
+    // A gap of 15x between this wait and the settle time, so a stalled machine cannot cross it.
     await new Promise((r) => setTimeout(r, 40));
     expect(bridge.nearbyChoose).not.toHaveBeenCalled();
     await waitFor(() => expect(bridge.nearbyChoose).toHaveBeenCalled());

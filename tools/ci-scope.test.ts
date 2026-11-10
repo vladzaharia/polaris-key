@@ -86,8 +86,10 @@ const expectFullMatrices = (
   lanes: string[] = Object.keys(scope.lanes),
 ) => {
   for (const lane of lanes) expect(out[lane], lane).toBe("true");
-  expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(17);
-  expect(JSON.parse(out["kotlin-desktop-matrix"]!).os).toHaveLength(3);
+  expect(JSON.parse(out["godot-matrix"]!)).toEqual(scope.matrices.godot!.main);
+  expect(JSON.parse(out["kotlin-desktop-matrix"]!)).toEqual(
+    scope.matrices["kotlin-desktop"]!.main,
+  );
   expect(JSON.parse(out["kotlin-emulator-matrix"]!)["api-level"]).toEqual([
     24, 34, 36,
   ]);
@@ -265,7 +267,7 @@ describe("the changes job outputs", () => {
     expect(out.python).toBe("true");
     expect(out.swift).toBe("false");
     expect(out.full).toBe("false");
-    expect(JSON.parse(out["python-matrix"]!).include).toHaveLength(2);
+    expect(JSON.parse(out["python-matrix"]!)).toEqual(scope.matrices.python!.pr);
     expect(JSON.parse(out["kotlin-desktop-matrix"]!).os).toEqual([
       "ubuntu-latest",
     ]);
@@ -278,8 +280,12 @@ describe("the changes job outputs", () => {
       for (const lane of Object.keys(scope.lanes))
         expect(out[lane], lane).toBe("true");
       expect(out.full).toBe("true");
-      expect(JSON.parse(out["python-matrix"]!).include).toHaveLength(3);
-      expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(17);
+      expect(JSON.parse(out["python-matrix"]!)).toEqual(
+        scope.matrices.python!.main,
+      );
+      expect(JSON.parse(out["godot-matrix"]!)).toEqual(
+        scope.matrices.godot!.main,
+      );
     },
   );
 
@@ -425,7 +431,7 @@ describe("the ci-scope command", () => {
     expect(out["swift-linux"]).toBe("true");
     expect(out.python).toBe("false");
     expect(out.full).toBe("false");
-    expect(JSON.parse(out["python-matrix"]!).include).toHaveLength(2);
+    expect(JSON.parse(out["python-matrix"]!)).toEqual(scope.matrices.python!.pr);
   });
 
   it.each([
@@ -439,7 +445,9 @@ describe("the ci-scope command", () => {
       expect(run.status, run.stderr).toBe(0);
       const out = outputsOf(run.stdout);
       expect(out.full).toBe("true");
-      expect(JSON.parse(out["python-matrix"]!).include).toHaveLength(3);
+      expect(JSON.parse(out["python-matrix"]!)).toEqual(
+        scope.matrices.python!.main,
+      );
       expectFullMatrices(out);
     },
   );
