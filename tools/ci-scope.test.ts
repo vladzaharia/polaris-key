@@ -48,6 +48,7 @@ interface Step {
   if?: string;
 }
 interface Job {
+  name?: string;
   needs?: string | string[];
   if?: string;
   "continue-on-error"?: boolean;
@@ -72,9 +73,12 @@ const NIGHTLY_JOBS = [
   "swiftui-mac",
   "compose-desktop",
   "apple-footprint",
+  "full-ci",
 ];
 /** Lanes whose only job lives in nightly-advisory.yml: no `changes` job there, so no ci.yml owner. */
 const NIGHTLY_LANES = ["swift-linux", "swiftui-mac", "compose-desktop"];
+/** Lanes no ci.yml job owns: the local gate's (tools/gate.mjs) view of "any change in the package". */
+const GATE_LANES = ["swift-floor"];
 
 const on = (files: string[] | null) =>
   Object.entries(selectLanes(scope, files))
@@ -85,6 +89,21 @@ const on = (files: string[] | null) =>
 const expectAdvisory = (name: string) => {
   expect(nightly.jobs[name]!["continue-on-error"]).toBe(true);
   expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).not.toContain(name);
+};
+
+/** Every lane on, and every matrix in its pull-request shape (the floor and the latest). */
+const expectPrMatrices = (out: Record<string, string>) => {
+  for (const name of Object.keys(scope.matrices))
+    expect(JSON.parse(out[`${name}-matrix`]!), name).toEqual(
+      matrixFor(scope, name, true),
+    );
+};
+
+/** Every lane on, every matrix in its pull-request shape. */
+const expectEveryLaneOnPrMatrices = (out: Record<string, string>) => {
+  for (const lane of Object.keys(scope.lanes))
+    expect(out[lane], lane).toBe("true");
+  expectPrMatrices(out);
 };
 
 /** Every lane on, and every matrix in its full shape. */
@@ -167,20 +186,80 @@ describe("lane selection", () => {
     expect(on(["sdks/swift/Sources/PolarisKeyCore/Client.swift"])).toEqual([
       "docs-snippets",
       "swift",
+      "swift-sources",
       "swift-floor",
       "swift-linux",
     ]);
   });
 
-  it("keeps the Swift floor to the package: the Godot addon, the CLI and the kit lint need only the Apple job", () => {
+  it("runs the plugin lane too for the Swift sources the Godot plugin compiles", () => {
+    expect(
+      on(["sdks/swift/Sources/PolarisKeyPlatform/Keychain.swift"]),
+    ).toContain("apple-plugin");
+    expect(on(["sdks/swift/Sources/PolarisKeyGameCenterC/shim.h"])).toContain(
+      "apple-plugin",
+    );
+  });
+
+  it("keeps the compile floor to what the compiler reads: a test-only change does not run it", () => {
+    expect(on(["sdks/swift/Tests/PolarisKeyTests/ClientTests.swift"])).toEqual([
+      "docs-snippets",
+      "swift",
+      "swift-floor",
+      "swift-linux",
+    ]);
+    for (const file of [
+      "sdks/swift/Package.swift",
+      "sdks/swift/Package.resolved",
+    ])
+      expect(on([file]), file).toContain("swift-sources");
+  });
+
+  it("keeps the Apple jobs to what they read: the CLI and the kit lint need the Apple job, the plugin its own lane", () => {
+    expect(on(["packages/ui-qa/rules/kit-rules.json"])).toContain("swift");
+    expect(on(["packages/cli/scripts/start-dev-ci.mjs"])).toContain("swift");
+    expect(on(["packages/cli/src/index.ts"])).not.toContain("swift");
     for (const file of [
       "sdks/godot/native/ios/build.sh",
-      "packages/cli/src/index.ts",
-      "packages/ui-qa/rules/kit-rules.json",
+      "sdks/godot/addons/polaris_key/native/pkey_apple.gd",
+      "packages/cli/src/transportAppleBa.ts",
     ]) {
-      expect(on([file]), file).toContain("swift");
-      expect(on([file]), file).not.toContain("swift-floor");
+      const lanes = on([file]);
+      expect(lanes, file).toContain("apple-plugin");
+      expect(lanes, file).not.toContain("swift");
+      expect(lanes, file).not.toContain("swift-sources");
+      expect(lanes, file).not.toContain("swift-floor");
     }
+  });
+
+  it("a GDScript-only change selects no Apple lane and no Android lane", () => {
+    for (const file of [
+      "sdks/godot/addons/polaris_key/core/licence.gd",
+      "sdks/godot/addons/polaris_key/ui/dialog.gd",
+      "sdks/godot/tests/suite_core.gd",
+      "sdks/godot/README.md",
+    ]) {
+      const lanes = on([file]);
+      for (const lane of [
+        "swift",
+        "swift-sources",
+        "swift-floor",
+        "apple-plugin",
+        "android",
+      ])
+        expect(lanes, `${file} -> ${lane}`).not.toContain(lane);
+      expect(lanes, file).toContain("godot");
+    }
+  });
+
+  it("runs the Android lane for the plugin's Kotlin and facades, not for the GDScript core", () => {
+    for (const file of [
+      "sdks/godot/native/android/build.gradle.kts",
+      "sdks/godot/addons/polaris_key/native/pkey_android.gd",
+      "sdks/kotlin/platform/src/Main.kt",
+    ])
+      expect(on([file]), file).toContain("android");
+    expect(on(["sdks/godot/native/ios/build.sh"])).not.toContain("android");
   });
 
   it("runs the kit lint lane for a kit's UI sources", () => {
@@ -485,6 +564,10 @@ describe("ci.yml reads the scope", () => {
     for (const lane of Object.keys(scope.lanes)) {
       // The nightly lanes run unfiltered from nightly-advisory.yml, off the push path.
       if (NIGHTLY_LANES.includes(lane)) continue;
+      if (GATE_LANES.includes(lane)) {
+        expect(Object.keys(jobs.changes!.outputs ?? {}), lane).toContain(lane);
+        continue;
+      }
       // A lane gates a whole job (`if:`) or a step of one (the docs link check in `js`).
       const owner = Object.entries(jobs).filter(([, j]) =>
         JSON.stringify(j).includes(`needs.changes.outputs.${lane} ==`),
@@ -508,12 +591,15 @@ describe("ci.yml reads the scope", () => {
     const ok = jobs["ci-ok"]!;
     expect(ok.if).toBe("${{ always() }}");
     // The advisory jobs left ci.yml for nightly-advisory.yml, so CI OK cannot need them.
-    const others = Object.keys(jobs).filter((id) => id !== "ci-ok");
+    // `full-run` marks a full run for require-ci-ok.sh; a narrowed run skips it, so ci-ok cannot need it.
+    const others = Object.keys(jobs).filter(
+      (id) => id !== "ci-ok" && id !== "full-run",
+    );
     expect(needsOf(ok).sort()).toEqual(others.sort());
     for (const id of NIGHTLY_JOBS) expect(jobs[id], id).toBeUndefined();
   });
 
-  it("runs the full CI on pushes to main and next, superseding a run in flight", () => {
+  it("runs CI on pushes to main and next, superseding a run in flight", () => {
     const push = ci.on.push as { branches?: string[] };
     expect(push.branches).toEqual(["main", "next"]);
     const concurrency = (
@@ -522,13 +608,14 @@ describe("ci.yml reads the scope", () => {
       }
     ).concurrency;
     // One group per pull request, else per ref; always superseded (PRs, next and main).
+    // A dispatch (the nightly, the pre-tag run) has its own group: a push must not cancel it.
     expect(concurrency.group).toBe(
-      "ci-${{ github.event.pull_request.number || github.ref }}",
+      "ci-${{ github.event_name == 'workflow_dispatch' && 'dispatch-' || '' }}${{ github.event.pull_request.number || github.ref }}",
     );
     expect(concurrency["cancel-in-progress"]).toBe(true);
   });
 
-  it("runs the full CI on a push to next that has no green base, like main", () => {
+  it("runs every lane on a push to next that has no green base, on the pull-request matrices", () => {
     // ci.yml hands the scope the event name and the ref; no base means no per-lane diff.
     const lanes = ciOutputs(scope, {
       event: "push",
@@ -538,10 +625,59 @@ describe("ci.yml reads the scope", () => {
     for (const lane of Object.keys(scope.lanes))
       expect(lanes[lane], lane).toBe("true");
     expect(lanes.full).toBe("true");
-    for (const name of Object.keys(scope.matrices))
-      expect(JSON.parse(String(lanes[`${name}-matrix`]))).toEqual(
-        matrixFor(scope, name, false),
-      );
+    // Every lane runs, but it is not a full RUN: a tag cannot rest on it.
+    expect(lanes["full-run"]).toBe("false");
+    expectPrMatrices(lanes);
+  });
+
+  it("marks a full run for a push to main, a tag and a dispatch, never for next or a pull request", () => {
+    const fullRun = (o: Parameters<typeof ciOutputs>[1]) =>
+      ciOutputs(scope, o)["full-run"];
+    expect(
+      fullRun({ event: "push", ref: "refs/heads/main", files: null }),
+    ).toBe("true");
+    expect(
+      fullRun({ event: "push", ref: "refs/tags/v1.0.0", files: null }),
+    ).toBe("true");
+    expect(
+      fullRun({
+        event: "workflow_dispatch",
+        ref: "refs/heads/next",
+        files: null,
+      }),
+    ).toBe("true");
+    expect(
+      fullRun({ event: "push", ref: "refs/heads/next", files: null }),
+    ).toBe("false");
+    expect(fullRun({ event: "pull_request", files: ["README.md"] })).toBe(
+      "false",
+    );
+    expect(fullRun({ event: "pull_request", files: null })).toBe("true");
+  });
+
+  it("has the full-run job mark a full run, outside ci-ok", () => {
+    const job = jobs["full-run"]!;
+    expect(job.name).toBe("Full run (every lane, full matrices)");
+    expect(job.if).toBe("${{ needs.changes.outputs.full-run == 'true' }}");
+    expect(jobs.changes!.outputs).toHaveProperty("full-run");
+    expect(needsOf(jobs["ci-ok"]!)).not.toContain("full-run");
+    // require-ci-ok.sh looks the job up by this name.
+    const script = readFileSync(
+      join(ROOT, "tools", "require-ci-ok.sh"),
+      "utf8",
+    );
+    expect(script).toContain("FULL_JOB:-" + job.name + "}");
+    expect(groupOfJob(scope, job.name!)).toBe("always");
+  });
+
+  it("dispatches in its own concurrency group, with the shuffle input and the nightly's env", () => {
+    const on = ci.on as unknown as {
+      workflow_dispatch: { inputs: { shuffle: { default: boolean } } };
+    };
+    expect(on.workflow_dispatch.inputs.shuffle.default).toBe(false);
+    const env = (ci as unknown as { env: Record<string, string> }).env;
+    expect(env.PKEY_TEST_SCOPE).toContain("workflow_dispatch");
+    expect(env.PKEY_TEST_SHUFFLE).toContain("inputs.shuffle");
   });
 
   it("scopes ci-ok's skipped lanes to a narrowed run", () => {
@@ -734,7 +870,7 @@ describe("a push to next narrows each lane to the files since its own base", () 
   const allFiles = (files: string[] | null) =>
     Object.fromEntries(trackedGroups(scope).map((g) => [g, files]));
 
-  it("runs only the lanes the files since each base touch, on the FULL matrices", () => {
+  it("runs only the lanes the files since each base touch, on the pull-request matrices", () => {
     // The python fix after a python-only red: python's base is old and sees the Python change
     // alongside the fix; every other lane's base is the previous commit.
     const out = ciOutputs(scope, {
@@ -754,10 +890,8 @@ describe("a push to next narrows each lane to the files since its own base", () 
     expect(out.kotlin).toBe("false");
     expect(out.godot).toBe("false");
     expect(out.full).toBe("false");
-    for (const name of Object.keys(scope.matrices))
-      expect(JSON.parse(String(out[`${name}-matrix`]))).toEqual(
-        matrixFor(scope, name, false),
-      );
+    expect(out["full-run"]).toBe("false");
+    expectPrMatrices(out);
   });
 
   it("runs a lane that has no base (mixed), and skips one that is green and untouched", () => {
@@ -775,7 +909,7 @@ describe("a push to next narrows each lane to the files since its own base", () 
     expect(out.full).toBe("false");
   });
 
-  it("runs every lane on the full matrices when no lane has a base", () => {
+  it("runs every lane on the pull-request matrices when no lane has a base", () => {
     const out = ciOutputs(scope, {
       event: "push",
       ref: next,
@@ -785,7 +919,7 @@ describe("a push to next narrows each lane to the files since its own base", () 
       expect(out[lane], lane).toBe("true");
     expect(out.full).toBe("true");
     expect(out["js-base"]).toBe("");
-    expectFullMatrices(out);
+    expectEveryLaneOnPrMatrices(out);
   });
 
   it("runs every lane when a shared path changed since its base", () => {
@@ -800,7 +934,7 @@ describe("a push to next narrows each lane to the files since its own base", () 
     for (const lane of Object.keys(scope.lanes))
       expect(out[lane], lane).toBe("true");
     expect(out.full).toBe("false");
-    expectFullMatrices(out);
+    expectPrMatrices(out);
   });
 
   it("runs every lane when the diff cannot be read", () => {
@@ -919,7 +1053,7 @@ describe("a push to next narrows each lane to the files since its own base", () 
     const out = outputsOf(run.stdout);
     expect(out.full).toBe("true");
     expect(out["js-base"]).toBe("");
-    expectFullMatrices(out);
+    expectEveryLaneOnPrMatrices(out);
   });
 });
 
@@ -1081,6 +1215,17 @@ describe("the JS test jobs narrow with the js base", () => {
   });
 });
 
+describe("nightly-advisory.yml dispatches the full CI on next", () => {
+  it("runs ci.yml on next with the shuffle, and may write only actions", () => {
+    const job = nightly.jobs["full-ci"]!;
+    const run = (job.steps ?? []).map((st) => st.run ?? "").join("\n");
+    expect(run).toContain("gh workflow run ci.yml --ref next -f shuffle=true");
+    expect(
+      (job as unknown as { permissions: Record<string, string> }).permissions,
+    ).toEqual({ actions: "write", contents: "read" });
+  });
+});
+
 describe("nightly-advisory.yml holds the advisory lanes", () => {
   it("runs on a schedule and on demand only, read-only", () => {
     expect(Object.keys(nightly.on).sort()).toEqual([
@@ -1115,7 +1260,7 @@ describe("ci.yml keeps the Swift SDK building on its oldest toolchain", () => {
     expect(floor["runs-on"]).toBe("macos-15");
     // The Swift docs snippets ride this job (macOS slot diet), on their own lane.
     expect(floor.if).toBe(
-      "needs.changes.outputs.swift-floor == 'true' || needs.changes.outputs.docs-snippets == 'true'",
+      "needs.changes.outputs.swift-sources == 'true' || needs.changes.outputs.docs-snippets == 'true'",
     );
     expect(ci.jobs["docs-snippets-swift"]).toBeUndefined();
     expect([floor.needs ?? []].flat()).toContain("changes");

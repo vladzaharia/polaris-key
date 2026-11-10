@@ -121,9 +121,32 @@
     "swift": {
       "paths": [
         "sdks/swift/",
-        "sdks/godot/",
-        "packages/cli/",
-        "packages/ui-qa/"
+        "packages/ui-qa/",
+        "packages/cli/scripts/start-dev-ci.mjs"
+      ]
+    },
+    "apple-plugin": {
+      "paths": [
+        "sdks/godot/native/ios/",
+        "sdks/godot/native/check_gamekit_weak.sh",
+        "sdks/godot/native/deps.env",
+        "sdks/godot/addons/polaris_key/native/",
+        "sdks/godot/tools/",
+        "sdks/godot/tests/runner.gd",
+        "sdks/godot/tests/native/",
+        "sdks/godot/tests/suite_native_apple.gd",
+        "sdks/godot/tests/suite_transports.gd",
+        "sdks/godot/tests/suite_update.gd",
+        "sdks/swift/Sources/PolarisKeyPlatform",
+        "sdks/swift/Sources/PolarisKeyGameCenter",
+        "packages/cli/src/transport"
+      ]
+    },
+    "swift-sources": {
+      "paths": [
+        "sdks/swift/Sources/",
+        "sdks/swift/Package.",
+        "sdks/swift/tools/"
       ]
     },
     "swift-floor": {
@@ -158,7 +181,14 @@
     "android": {
       "paths": [
         "sdks/kotlin/",
-        "sdks/godot/",
+        "sdks/godot/native/android/",
+        "sdks/godot/addons/polaris_key/native/",
+        "sdks/godot/tools/",
+        "sdks/godot/tests/runner.gd",
+        "sdks/godot/tests/native/",
+        "sdks/godot/tests/suite_native_android.gd",
+        "sdks/godot/tests/suite_transports.gd",
+        "sdks/godot/tests/suite_update.gd",
         "packages/ui-qa/",
         "examples/ui/compose-android/"
       ]
@@ -498,7 +528,7 @@
     }
   },
   "jobs": {
-    "always": ["Changes (*", "CI OK"],
+    "always": ["Changes (*", "Full run (*", "CI OK"],
     "js": [
       "JS/TS static (*",
       "JS/TS tests (Worker)",
@@ -520,12 +550,10 @@
     "ui-recipes": ["UI recipes (*"],
     "python": ["Python SDK (*"],
     "e2e-backend": ["End to end (*"],
-    "swift": [
-      "Swift SDK (macos-26)",
-      "Apple platform hosted tests (*",
-      "Apple platform plugin (*"
-    ],
-    "swift-floor": ["Swift SDK floor (*"],
+    "swift": ["Swift SDK (macos-26)", "Apple platform hosted tests (*"],
+    "apple-plugin": ["Apple platform plugin (*"],
+    "swift-sources": ["Swift SDK floor (*"],
+    "swift-floor": [],
     "swift-linux": [],
     "swiftui-mac": [],
     "compose-desktop": [],

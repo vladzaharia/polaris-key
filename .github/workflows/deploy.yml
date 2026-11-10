@@ -60,8 +60,13 @@ jobs:
       #
       # tools/require-ci-ok.sh polls up to 120 minutes while CI is queued or in progress and
       # fails CLOSED: any other conclusion, no CI OK check run from ci.yml, or an API error is a
-      # refusal. It reads the check run only through ci.yml's own push runs of this SHA (name AND
-      # workflow), so a job named "CI OK" in another workflow cannot satisfy it. Other workflows'
+      # refusal. It reads the check run only through ci.yml's own push and dispatch runs of this SHA
+      # (name AND workflow), so a job named "CI OK" in another workflow cannot satisfy it.
+      #
+      # REQUIRE_FULL: a tag needs a FULL run on the exact SHA (every lane on the full matrices: a
+      # push to main or a dispatch, whose "Full run" job succeeded). A push to next runs the floor
+      # and the latest of each matrix, and promote.yml's fast-forward starts no run on main, so the
+      # lead dispatches it before tagging: gh workflow run ci.yml --ref main (docs/RUNBOOK.md). Other workflows'
       # check runs (Publish SDKs, native desktop, flatpak, feed closure) and advisory jobs do not
       # gate the deploy. Like the checks above this lives in the tag's own tree, so it stops
       # mistakes, not an actor who can write a tag (see "environment: production" below).
@@ -71,6 +76,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
+          REQUIRE_FULL: "1"
         run: |
           tools/require-ci-ok.sh
           echo "ok=true" >> "$GITHUB_OUTPUT"

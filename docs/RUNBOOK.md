@@ -108,10 +108,30 @@ Only semver-like `v*` tags deploy production. Pushes to `main` run CI but do not
 **The lead flow: push to `next`, `main` follows when green, tag from `main`.**
 
 ```sh
-git push origin <sha>:refs/heads/next   # the full CI runs on next, like on main
+git push origin <sha>:refs/heads/next   # CI runs on next, narrowed per lane, on the floor and latest of each matrix
 # CI completes with success -> promote.yml fast-forwards main to that SHA (nothing to do)
+gh workflow run ci.yml --ref main       # the full run on that SHA: every lane, every matrix (see below)
+# wait for its CI OK to be green on the SHA, then:
 git fetch origin main && git tag v0.1.0 origin/main && git push origin v0.1.0
 ```
+
+**Before a tag: a full CI run on the exact SHA.** A push to `next` runs only the floor and the
+latest of each matrix (Godot 4.5.2 and 4.6.3, the Windows and macOS desktop legs, Python on macOS
+and emulator API 34 are left out), and `promote.yml`'s fast-forward starts no run on `main`. The
+full matrices run nightly on `next`'s HEAD (`nightly-advisory.yml`, job `full-ci`) and on demand.
+`deploy.yml` refuses a tag until a run of `ci.yml` that checked every lane on the full matrices (its
+`Full run (every lane, full matrices)` job succeeded: a push to `main`, or a dispatch) has a green
+`CI OK` on the tagged SHA. A run from a push to `next` or a pull request never counts. Dispatch it
+on the commit you will tag, after `main` has moved there:
+
+```sh
+gh workflow run ci.yml --ref main
+gh run list --workflow ci.yml --branch main --event workflow_dispatch --limit 1   # watch it
+```
+
+A dispatch on a branch runs that branch's tip, so `--ref main` is the SHA `git tag v… origin/main`
+tags. Tagging before it is green is not an error to fix by hand: the deploy waits up to 120 minutes
+and refuses if no full run exists.
 
 `promote.yml` moves `main` only by fast-forward and only when `main` is already an ancestor of the
 tested SHA; if `main` holds a commit `next` lacks (a hotfix pushed straight to `main`) the run fails
@@ -123,8 +143,8 @@ ran on that exact SHA (through `next`), and `deploy.yml` accepts that run as the
 runs CI and publishes the prerelease as before.
 
 `deploy.yml`'s `verify` job does not rebuild or retest. It waits (up to 120 minutes) for the CI
-workflow's `CI OK` check run on the tagged SHA and refuses on anything but `success`, on no such
-check run, and on an API error. A newer push to the same branch cancels the CI run in flight, so tag
+workflow's `CI OK` check run on the tagged SHA, from a full run (above), and refuses on anything but
+`success`, on no such check run, on no full run, and on an API error. A newer push to the same branch cancels the CI run in flight, so tag
 the SHA whose `CI OK` is green; a tag on a superseded SHA is refused. Production is protected by the
 environment-scoped token, the `v*` deployment tag policy, the admin-only `v*` tag ruleset and this
 gate; the `production` environment has no required reviewer (DEPLOYMENT.md §7).
@@ -2696,8 +2716,9 @@ red one blocks nothing.
   lint, the production-dependency audit, `pnpm gen --check` (the conformance corpus among the drift
   gates), the admin build and the docs link check.
 - The other lanes (workerd smoke, Node floor, browsers, console, UI kits, React kit, Python, the
-  Swift SDK and Apple plugin (three macOS jobs: `apple`, `apple-hosted`,
-  `apple-plugin`, one lane because they read the same paths), the Swift floor, Kotlin, Android, Godot) run when a
+  Swift SDK (`apple`, `apple-hosted`: lane `swift`), the Apple plugin (`apple-plugin`: its own lane,
+  the Godot addon's native code and facades and the Swift platform sources it compiles), the Swift
+  floor (`swift-sources`), Kotlin, Android, Godot) run when a
   changed path is one of the lane's `paths` in `tools/ci-scope.json`, or one of its `shared` inputs
   (the contract, the shared packages, `ci.yml` and its actions, the scope map, the lockfile). A lane's `paths` list
   what its job reads, not only its own tree: the Python lane names the Python samples under
@@ -2708,17 +2729,20 @@ red one blocks nothing.
   A push to `next` measures each lane against its own newest green ancestor (job conclusions, whole
   ancestry; contribute/setup docs). A new lane or matrix is one entry in that file, its `jobs` row and one job in `ci.yml`
   (`tools/ci-scope.test.ts` fails when the two disagree).
-- A pull request runs the floor and the latest of each matrix (Python 3.9 and 3.14 on Linux, Godot
-  4.7.2 and 4.4.1, Kotlin desktop on Linux, emulator API 24 and 36); `main` pushes run every lane
-  and the full matrix (Python on macOS too, all four Linux Godot engines and the Windows and macOS
+- A pull request, and a push to `next`, run the floor and the latest of each matrix (Python 3.9 and 3.14 on Linux, Godot
+  4.7.2 and 4.4.1, Kotlin desktop on Linux, emulator API 24 and 36); `main` pushes, a tag and a
+  dispatch run every lane and the full matrix (Python on macOS too, all four Linux Godot engines and the Windows and macOS
   smokes, Kotlin desktop on macOS and Windows, emulator API 34). So does a pull request whose
   changed files `git` cannot list: every lane, every matrix in full.
 - `swift-floor` keeps the Swift SDK building on the oldest toolchain it supports, Xcode 16.4 (Swift
   6.1) on macos-15. `PolarisKeyPlatform`'s Xcode 26+ code is behind `#if compiler(>=6.3)`, so
   `apple` (Xcode 26.6) compiles only the guarded branch and this job compiles the other. It builds
-  the package and the iOS schemes; the package's tests run once, on `apple`. Its lane is the
-  package alone (`sdks/swift/`), where `apple`'s also takes the Godot addon, the CLI and the kit
-  lint. `sdks/swift/tools/select-xcode-16.sh` fails it unless the compiler is Swift 6.0 to 6.2.
+  the package and the iOS schemes; the package's tests run once, on `apple`. Its lane
+  (`swift-sources`) is what the compiler reads (`Sources/`, `Package.*`, the Xcode scripts): a
+  test-only change, the Godot addon and the CLI leave it out, as they leave out `apple`, whose lane
+  keeps the whole package, the kit lint and the dev-server script. A GDScript-only change selects
+  no Apple lane and no Android lane (`android` reads `sdks/kotlin/`, the plugin's Kotlin in
+  `sdks/godot/native/android/` and the facades in `addons/polaris_key/native/`). `sdks/swift/tools/select-xcode-16.sh` fails it unless the compiler is Swift 6.0 to 6.2.
 - `ci.yml`, `native-desktop.yml` and `feed-closure.yml` set up pnpm, Node and the install through the
   composite action `.github/actions/setup-js`. `native-desktop.yml` runs only for its own paths, and
   its filter lists the composite action too: a change to it changes those jobs

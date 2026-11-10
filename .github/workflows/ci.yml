@@ -3,19 +3,37 @@ name: CI
 on:
   push:
     # `next` is the lead's integration branch: it runs CI narrowed, per lane, to the files touched
-    # since that lane's newest green ancestor (tools/ci-scope.mjs), on the full matrices, and a lane
-    # runs whenever it has none; promote.yml fast-forwards main to the SHA that went green there. main runs the full CI,
-    # and releases are tagged from main.
+    # since that lane's newest green ancestor (tools/ci-scope.mjs), on the pull-request matrices
+    # (the floor and the latest of each), and a lane runs whenever it has none; promote.yml
+    # fast-forwards main to the SHA that went green there. main runs the full CI, and releases are
+    # tagged from main.
     branches: [main, next]
   pull_request:
+  # The full run (every lane, the full matrices): the nightly (nightly-advisory.yml dispatches it on
+  # next's HEAD), on demand, and before a `v*` tag, which deploy.yml accepts only after a full run
+  # is green on its exact SHA: `gh workflow run ci.yml --ref main`.
+  workflow_dispatch:
+    inputs:
+      shuffle:
+        description: "Run the Worker suite's files in a random order (the nightly sets it)"
+        type: boolean
+        default: false
 
 # A newer push to the same branch, or a newer push to the same pull request, supersedes the run in
 # flight: the lanes run for an hour, and a result for a commit that is no longer the tip is noise.
 # A cancelled run concludes "cancelled", and nothing treats that as green: a tag on a superseded
 # commit is refused by deploy.yml until CI OK is green on that exact SHA.
+# A dispatched run has its own group, so a push does not cancel the nightly or the pre-tag run.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event_name == 'workflow_dispatch' && 'dispatch-' || '' }}${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
+# The nightly and the pre-tag run read the whole tree: scoped suites run in full (PKEY_TEST_SCOPE).
+# Only a dispatch sets them; the Worker's file shuffle (packages/worker/vitest.config.ts) also needs
+# the `shuffle` input.
+env:
+  PKEY_TEST_SCOPE: ${{ github.event_name == 'workflow_dispatch' && 'all' || '' }}
+  PKEY_TEST_SHUFFLE: ${{ github.event_name == 'workflow_dispatch' && inputs.shuffle && '1' || '' }}
 
 # Least privilege. Without this block the workflow inherits the repository default, which is
 # configurable per-org and may be read-write. CI only ever needs to read the checkout.
@@ -26,14 +44,14 @@ permissions:
 # once, by the `changes` job from tools/ci-scope.json (the same map `pnpm gate` reads
 # through tools/ci-scope.mjs): a lane runs when a changed path is one of its `paths` or a `shared` input;
 # the four `js*` jobs always run. A pull request runs the floor and the latest of each matrix. A push
-# to `next` tracks green per lane: for each lane, the base is the newest ancestor of HEAD (the whole
+# to `next` (also on those matrices) tracks green per lane: for each lane, the base is the newest ancestor of HEAD (the whole
 # ancestry, not a window) on which every job of the lane concluded success in this workflow's push
 # run (job conclusions, so a lane that passed inside a failed or cancelled run counts), or was
 # skipped by a successful `changes` job because it was green at its own base. A lane runs when a file
-# changed since ITS base is one of its paths or a shared input, or when it has no base, on the full
-# matrices. `CI OK` on such a run means: every lane touched since its own base passed here, and every
-# other lane was green at its base. `main`, a tag, a manual run, and any run whose ancestry, API or
-# diff cannot be read run every lane and the full matrix. A skipped lane counts as passed in `ci-ok`
+# changed since ITS base is one of its paths or a shared input, or when it has no base. `CI OK` on such a run means: every lane touched since its own base passed here, and every
+# other lane was green at its base. `main`, a tag, a dispatch, and any run whose ancestry, API or
+# diff cannot be read run every lane (the first three on the full matrices; the `Full run` job below
+# marks them, and a tag is deployed only after one is green on its SHA). A skipped lane counts as passed in `ci-ok`
 # only when the run narrowed (`changes.outputs.full` is "false"), which is sound only because a lane
 # is skipped only when it was green at its base; on a full run a skipped job fails it. A failed or
 # cancelled one never counts. tools/ci-scope.json `jobs` maps every job below to its lane
@@ -49,6 +67,8 @@ jobs:
       actions: read
     outputs:
       full: ${{ steps.scope.outputs.full }}
+      # "true" only for a push to main, a tag and a dispatch: every lane on the full matrices.
+      full-run: ${{ steps.scope.outputs.full-run }}
       # The js group's green base when only packages/ changed since it, else empty: the test jobs
       # then run turbo for the affected packages only (tools/ci-js-affected.mjs).
       js-base: ${{ steps.scope.outputs.js-base }}
@@ -62,6 +82,8 @@ jobs:
       ui-recipes: ${{ steps.scope.outputs.ui-recipes }}
       python: ${{ steps.scope.outputs.python }}
       swift: ${{ steps.scope.outputs.swift }}
+      apple-plugin: ${{ steps.scope.outputs.apple-plugin }}
+      swift-sources: ${{ steps.scope.outputs.swift-sources }}
       swift-floor: ${{ steps.scope.outputs.swift-floor }}
       swift-linux: ${{ steps.scope.outputs.swift-linux }}
       swiftui-mac: ${{ steps.scope.outputs.swiftui-mac }}
@@ -93,6 +115,17 @@ jobs:
         # tools/ci-scope.mjs has no dependencies: plain Node, no install (it calls `gh` for a push to
         # next). Outside a pull request BASE_REF is empty; a push to a branch but next runs every lane.
         run: node tools/ci-scope.mjs ci --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" --base "origin/$BASE_REF" --github-output
+
+  # The mark of a full run, read by tools/require-ci-ok.sh (the name is its FULL_JOB). It is not in
+  # ci-ok's needs: a narrowed run skips it, and a skipped job there would fail a full-lane run.
+  full-run:
+    name: Full run (every lane, full matrices)
+    needs: changes
+    if: ${{ needs.changes.outputs.full-run == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo "Every lane ran on the full matrices for $GITHUB_SHA." >> "$GITHUB_STEP_SUMMARY"
 
   # The old single `js` job is four parallel jobs (CS-2): `js` (static checks, below) and the three
   # test jobs `js-worker`, `js-admin`, `js-rest`. Together they run exactly the packages the old
@@ -207,7 +240,7 @@ jobs:
       # included: test/storefront/, test/services/distribution/ascWriteGate.test.ts,
       # test/surfaces/feedAdapters.test.ts.
       - if: steps.affected.outputs.affected == 'true'
-        run: pnpm exec turbo run test --filter=@polaris-key/worker
+        run: tools/ci-measure.sh "js-worker tests" pnpm exec turbo run test --filter=@polaris-key/worker
 
   js-admin:
     name: JS/TS tests (admin)
@@ -225,7 +258,7 @@ jobs:
         run: pnpm build
       # The admin SPA's jsdom suites (unit and axe) in their own job: the longest single-package tail.
       - if: steps.affected.outputs.affected == 'true'
-        run: pnpm exec turbo run test --filter=@polaris-key/admin
+        run: tools/ci-measure.sh "js-admin tests" pnpm exec turbo run test --filter=@polaris-key/admin
 
   js-rest:
     name: JS/TS tests (other packages, conformance runners)
@@ -269,7 +302,7 @@ jobs:
       # run: turbo's `--filter=...[sha]` includes them and the three `!` filters take the other
       # jobs' packages out. Without a base the three `!` filters alone select everything else.
       - run: >-
-          pnpm exec turbo run test ${JS_BASE:+"--filter=...[$JS_BASE]"}
+          tools/ci-measure.sh "js-rest tests" pnpm exec turbo run test ${JS_BASE:+"--filter=...[$JS_BASE]"}
           --filter=!@polaris-key/worker --filter=!@polaris-key/admin
           --filter=!@polaris-key/conformance-browser
         env:
@@ -312,7 +345,7 @@ jobs:
         env:
           PKEY_ELEMENTS_UNSTAMPED_OK: "1" # never published: the deploy job stamps the tag's version
       - run: pnpm --filter @polaris-key/worker typecheck:workerd
-      - run: pnpm --filter @polaris-key/worker test:workerd
+      - run: tools/ci-measure.sh "workerd tests" pnpm --filter @polaris-key/worker test:workerd
 
   # P1b-05 Part B: the Node conformance runner and the Node SDK suites on the LOWEST Node that
   # `engines.node` allows. One runtime is not proof: notes/A7 §6 found decoder behaviour that only
@@ -636,7 +669,7 @@ jobs:
       - run: pnpm exec turbo run build --filter=@polaris-key/react...
       # The Vitest workspace has React 18 and React 19 projects; keep both supported majors live.
       - if: matrix.part == 'rest'
-        run: pnpm --filter @polaris-key/react test
+        run: tools/ci-measure.sh "react tests" pnpm --filter @polaris-key/react test
       - if: matrix.part == 'kit'
         run: pnpm --filter @polaris-key/react exec vitest run -c vitest.browser.config.ts kit.browser.test.tsx
       - if: matrix.part == 'rest'
@@ -735,8 +768,8 @@ jobs:
         # The PTY suites drive a real terminal and assert on redraw timing, so they run on their own
         # after the parallel run instead of competing with xdist workers for the CPU.
         run: |
-          .venv/bin/python -m pytest -q -n auto --ignore=tests/cli/test_pty.py --ignore=tests/cli/test_hostile.py
-          .venv/bin/python -m pytest -q -p no:xdist tests/cli/test_pty.py tests/cli/test_hostile.py
+          "$GITHUB_WORKSPACE/tools/ci-measure.sh" "pytest (parallel)" .venv/bin/python -m pytest -q -n auto --ignore=tests/cli/test_pty.py --ignore=tests/cli/test_hostile.py
+          "$GITHUB_WORKSPACE/tools/ci-measure.sh" "pytest (pty)" .venv/bin/python -m pytest -q -p no:xdist tests/cli/test_pty.py tests/cli/test_hostile.py
       # The Qt nearby sign-in tests skip without PySide6 (the leg above installs `.[dev]` only). The live
       # leg installs the qt extra and runs them headless; a skip here is a failure, not a pass.
       - name: pytest, Qt nearby sign-in (PySide6, offscreen)
@@ -859,12 +892,13 @@ jobs:
   # `apple`. The scheme lists are the old job's: packs and update plain, the platform and its C
   # surface with warnings as errors (with SWIFT_TREAT_WARNINGS_AS_ERRORS the clang importer's
   # libzstd configuration-macro warnings fail PolarisKeyPacks, measured with Xcode 26.6, which is
-  # not this job's concern). Its lane, `swift-floor`, is the package alone (sdks/swift/): a change
-  # to the Godot addon or the CLI needs `apple`, not a second macOS run of the same package.
+  # not this job's concern). Its lane, `swift-sources`, is what the compiler reads (Sources/, Package.*,
+  # the Xcode selection scripts): a test-only change, the Godot addon or the CLI needs `apple`, not a
+  # second macOS run of the same package. (`swift-floor`, the whole package, is the local gate's lane.)
   swift-floor:
     name: Swift SDK floor (macos-15, Xcode 16.4)
     needs: changes
-    if: needs.changes.outputs.swift-floor == 'true' || needs.changes.outputs.docs-snippets == 'true'
+    if: needs.changes.outputs.swift-sources == 'true' || needs.changes.outputs.docs-snippets == 'true'
     runs-on: macos-15
     timeout-minutes: 30
     defaults:
@@ -875,13 +909,13 @@ jobs:
       - name: Xcode 16.4, Swift below 6.3
         run: sdks/swift/tools/select-xcode-16.sh
       - name: swift build (macOS host)
-        if: needs.changes.outputs.swift-floor == 'true'
+        if: needs.changes.outputs.swift-sources == 'true'
         run: swift build --package-path sdks/swift
       # One invocation builds every library (the package scheme); the platform and its C surface
       # then rebuild with warnings as errors (the libzstd importer warnings fail PolarisKeyPacks
       # under SWIFT_TREAT_WARNINGS_AS_ERRORS, so the package scheme runs without it).
       - name: iOS build (every library, platform strict)
-        if: needs.changes.outputs.swift-floor == 'true'
+        if: needs.changes.outputs.swift-sources == 'true'
         working-directory: sdks/swift
         run: |
           xcodebuild -scheme PolarisKey-Package -destination 'generic/platform=iOS' \
@@ -910,7 +944,8 @@ jobs:
   # 6-7 min, about 55 to 65 min in all, and the job was cancelled in its hosted-test or plugin
   # steps. The four share no state, so each gets its own runner): `apple`, the SDK's tests and
   # builds; `apple-hosted`, the hosted StoreKit/Keychain tests; `apple-footprint`, the report-only
-  # footprint measurement; `apple-plugin`, the Godot addon's Apple half. The old `swift` job ran
+  # footprint measurement; `apple-plugin`, the Godot addon's Apple half (its own lane: the addon's
+  # native code, its Apple facades and the Swift platform sources it compiles, not the GDScript core). The old `swift` job ran
   # the same `swift test` and a subset of the iOS builds below on macos-15. Its Xcode 16.4 half is
   # `swift-floor` above; the package's tests run only in `apple`.
   #
@@ -1000,9 +1035,9 @@ jobs:
           fi
       - name: swift test (parallel, no rebuild)
         run: |
-          swift test --package-path sdks/swift --skip-build --parallel --skip PkeyDevLiveTests
+          tools/ci-measure.sh "swift test (parallel)" swift test --package-path sdks/swift --skip-build --parallel --skip PkeyDevLiveTests
           # The live suite shares one pkey dev server, so it runs serially.
-          swift test --package-path sdks/swift --skip-build --filter PkeyDevLiveTests
+          tools/ci-measure.sh "swift test (live)" swift test --package-path sdks/swift --skip-build --filter PkeyDevLiveTests
       - name: Stop pkey dev (Swift live lane)
         if: always()
         run: node packages/cli/scripts/start-dev-ci.mjs stop --lang swift --job-status "${{ job.status }}"
@@ -1091,7 +1126,7 @@ jobs:
   apple-plugin:
     name: Apple platform plugin (macos-26)
     needs: changes
-    if: needs.changes.outputs.swift == 'true'
+    if: needs.changes.outputs.apple-plugin == 'true'
     runs-on: macos-26
     timeout-minutes: 40
     defaults:
@@ -1239,7 +1274,7 @@ jobs:
       - name: Module tests, conformance (JCA and Tink), module boundaries, local publish
         working-directory: sdks/kotlin
         run: >-
-          ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test
+          "$GITHUB_WORKSPACE/tools/ci-measure.sh" "kotlin module tests" ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test
           :release:test :update:test :packs:test :sdk:test :ui-core:test :server:test :server-ktor:test :spring-boot-starter:test :desktop:test :conformance:test :sample-cli:test checkModuleBoundaries
           :core:publishCorePublicationToLocalRepository :license:publishLicensePublicationToLocalRepository
           :config:publishConfigPublicationToLocalRepository :identity:publishIdentityPublicationToLocalRepository
@@ -1338,7 +1373,8 @@ jobs:
       - name: JVM desktop suites (macOS, login Keychain)
         if: runner.os == 'macOS'
         working-directory: sdks/kotlin
-        run: ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test :update:test :sdk:test :desktop:test
+        run: >-
+          "$GITHUB_WORKSPACE/tools/ci-measure.sh" "kotlin desktop tests (macOS)" ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test :update:test :sdk:test :desktop:test
       - name: JVM desktop suites (Windows, Credential Manager)
         if: runner.os == 'Windows'
         working-directory: sdks/kotlin
@@ -1427,7 +1463,7 @@ jobs:
       - name: Unit tests (play and direct)
         working-directory: sdks/kotlin
         run: >-
-          ./gradlew --no-daemon :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest
+          "$GITHUB_WORKSPACE/tools/ci-measure.sh" "android unit tests" ./gradlew --no-daemon :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest
           :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest :ui:verifyRoborazziDebug
           :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest :billing:testDebugUnitTest
           :games:testDebugUnitTest
@@ -1784,7 +1820,7 @@ jobs:
           # run the `ci` selection as four parallel processes; the Windows and macOS smoke legs
           # run it all (PKEY_TEST_PART unset).
           if [ -n "${{ matrix.part }}" ]; then export PKEY_TEST_PART="${{ matrix.part }}"; export PKEY_TEST_PARALLEL=1; fi
-          sdks/godot/tools/run_tests.sh
+          tools/ci-measure.sh "godot ${{ matrix.godot }} ${{ matrix.part || 'smoke' }} ${{ matrix.ui_paths }} ${{ matrix.ui_range }}" sdks/godot/tools/run_tests.sh
       # Import, export and runs must leave the tree as committed: no rewritten file, no new .uid.
       - run: git diff --exit-code -- sdks/godot && test -z "$(git status --porcelain -- sdks/godot)"
       - name: Stop pkey dev (Godot live lane)
