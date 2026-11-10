@@ -83,7 +83,13 @@ extension KitSaveConflict {
             f.dateStyle = .short
             f.timeStyle = .short
             f.doesRelativeDateFormatting = true
-            let relative = f.string(from: date)
+            // The formatter words "today" and "yesterday" against the real clock, so move the date by
+            // the whole days between `now` and the real clock: the same day word, whatever `now` is.
+            let shift =
+                calendar.dateComponents(
+                    [.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: Date())
+                ).day ?? 0
+            let relative = f.string(from: calendar.date(byAdding: .day, value: shift, to: date) ?? date)
             // "Today, 10:42" reads mid-sentence in lower case; only the day word changes.
             return relative.prefix(1).lowercased(with: locale) + relative.dropFirst()
         }
