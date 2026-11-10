@@ -54,6 +54,12 @@ var device_id: String:
 	set(value):
 		_device_id = value
 var codec: Codec
+## Told when a key-ring call answers 403 `account_required` from the Worker's own URL:
+## `Callable(sign_in_url: Variant, subject: Variant)`, `subject` being `subject_now`'s answer when the call
+## started (U-52).
+var on_account_required: Callable = Callable()
+## The person Cloud Sync is signed in as now (`Callable() -> Variant`); read when a call starts.
+var subject_now: Callable = Callable()
 
 var _device_id := ""
 var _device_source: Callable = Callable()
@@ -195,14 +201,36 @@ func _to_string() -> String:
 
 ## A ring over a started `PKeyCore`: requests carry the device token.
 static func for_core(core: PKeyCore, keys: Object, vault: PKeySyncRingVault) -> PKeySyncRing:
+	# The ring a request belongs to, held weakly: the lambda lives in the ring.
+	var box := {}
 	var req := func(method: String, path: String, body: Variant) -> PKeyResult:
-		return await core.request(method, path, body, true)
+		var owner: PKeySyncRing = box["ring"].get_ref()
+		# The person the call is made for, noted now: an answer for someone who has since left is ignored.
+		var who: Variant = owner.subject_now.call() if owner != null and owner.subject_now.is_valid() else null
+		var r: PKeyResult = await core.request(method, path, body, true)
+		if not r.ok and String(r.code) == PKeyConstants.ErrorCode.ACCOUNT_REQUIRED:
+			owner = box["ring"].get_ref()
+			# Only the Worker's own answer counts: the final URL is the one asked for (no redirect hop).
+			var answered: Variant = r.detail.get("url") if r.detail is Dictionary else null
+			if owner != null and owner.on_account_required.is_valid() and answered == core.url(path):
+				owner.on_account_required.call(_sign_in_url_of(r), who)
+		return r
 	var ring := PKeySyncRing.new(core.product, core.device_id, req, keys, vault)
+	box["ring"] = weakref(ring)
 	var ref := weakref(core)
 	ring._device_source = func() -> String:
 		var c := ref.get_ref() as PKeyCore
 		return c.device_id if c != null else ""
 	return ring
+
+
+## The `signInUrl` an `account_required` answer carries (unvetted: the Cloud Sync host vets it), or null.
+static func _sign_in_url_of(r: PKeyResult) -> Variant:
+	var d: Variant = r.detail
+	var e: Variant = d.get("error") if d is Dictionary else null
+	var body: Variant = e.get("body") if e is Dictionary else null
+	var err: Variant = body.get("error") if body is Dictionary else null
+	return err.get("signInUrl") if err is Dictionary and err.get("signInUrl") is String else null
 
 
 # ── State ────────────────────────────────────────────────────────────────────────────────

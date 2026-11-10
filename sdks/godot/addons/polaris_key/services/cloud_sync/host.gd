@@ -80,6 +80,12 @@ var _closed := false
 ## After a purge the journal stays unsaved until a principal signs in again.
 var _purged := false
 var _root_pending: Variant = null
+## The subject `account_required` refused (U-52): saved with the machine, and not signed in again until a
+## sign-out (a purge) or another subject.
+var _refused: Variant = null
+## The key ring's stored root could not be removed after `account_required` (or the removal is still to do):
+## saved with the blocked state, retried at start and before any sign-in, which waits for it.
+var _forget_pending := false
 ## Bumped on every (re)build: an answer for an older machine is dropped.
 var _gen := 0
 ## How long `purge` waits for a pump in progress (ms); a test may shorten it.
@@ -200,6 +206,8 @@ func start() -> Dictionary:
 		_open_keys[k] = true
 	_mirror = _vetted(_opts.get("catalog"))
 	_served = null  # never persisted: a fresh start refetches, and the mirror wins
+	_refused = saved["refused"]
+	_forget_pending = saved["forgetPending"]
 	var built := _build(saved["persisted"])
 	if not built["ok"]:
 		_started = false
@@ -363,11 +371,71 @@ func _on_root_changed(present: bool) -> void:
 func sign_in(subject: String) -> Dictionary:
 	if _machine == null:
 		return Types.fail("not-started")
+	# The subject the Worker refused stays signed out, with its edits in `local`, until a sign-out or
+	# another subject (the relaunch would otherwise move them to a new partition and meet the 403 again).
+	if _refused != null and subject == _refused:
+		return Types.ok()
 	var r: Dictionary = _machine.sign_in(subject)
 	if r["ok"]:
 		_purged = false
+		_refused = null
 		touch()
 	return r
+
+
+## The subject `account_required` refused, or null.
+func refused() -> Variant:
+	return _refused
+
+
+## A person completed a sign-in during this run (not the cached subject replayed at launch): a refusal of
+## that same subject is lifted, so a relinked or cleared binding can come back. Another subject lifts it in
+## `sign_in` anyway; the replayed subject stays refused.
+func lift_refusal(subject: String) -> void:
+	if _refused != null and subject == _refused:
+		_refused = null
+
+
+## Whether the key ring still has a stored root to remove after `account_required`.
+func forget_pending() -> bool:
+	return _forget_pending
+
+
+## The service reports the ring's forget: done (false) or failed (true). Saved with the blocked state.
+func set_forget_pending(pending: bool) -> void:
+	if _forget_pending == pending:
+		return
+	_forget_pending = pending
+	if is_started() and _machine != null and not _purged:
+		_save()
+
+
+## The host saw `account_required` on a route the machine does not drive (a key-ring call or a file
+## transfer): the machine takes the same transition as for a `/sync` 403, a request in flight is
+## cancelled and its answer dropped, and the machine is saved as it stands (blocked, no partition). The
+## events are delivered at once. Nothing happens with no subject, or when already blocked this way.
+## `for_subject` (with `bound`): the subject the call was made for; an answer for someone who has since
+## signed out or been replaced is ignored.
+func account_required(sign_in_url: Variant = null, bound := false, for_subject: Variant = null) -> void:
+	if not is_started() or _machine == null or _machine.subject() == null:
+		return
+	if bound and _machine.subject() != for_subject:
+		return
+	if _machine.status().get("reason") == "account_required":
+		return
+	var who: Variant = _machine.subject()
+	_gen += 1  # the answer of a request in flight is dropped
+	if _transport != null:
+		_transport.cancel_all()
+	_machine.account_required(sign_in_url)
+	_refused = who
+	_forget_pending = true
+	_purged = false
+	_open_keys = {}
+	if _timer != null:
+		_timer.stop()
+	_save()
+	_emit(_machine)
 
 
 # ── the pump ──────────────────────────────────────────────────────────────────────────────────
@@ -433,8 +501,14 @@ func _pump() -> void:
 
 
 func _receive(m: Machine, res: Dictionary, opened: Variant = null) -> void:
-	if m == _machine:
-		m.receive(res, opened)
+	if m != _machine:
+		return
+	var who: Variant = m.subject()
+	m.receive(res, opened)
+	# A /sync 403 account_required: the refused subject is remembered with the blocked machine.
+	if who != null and m.subject() == null and m.status().get("reason") == "account_required":
+		_refused = who
+		_forget_pending = true
 
 
 ## The ids of the mutations the codec refuses to seal, one at a time.
@@ -637,7 +711,13 @@ func _save(persisted: Variant = null) -> void:
 		"persisted": snapshot,
 		"catalog": null,
 		"openKeys": _open_keys.keys(),
+		"refused": _refused,
+		"forgetPending": _forget_pending,
 	})
+	if not ok and _refused != null:
+		# The blocked state could not be rewritten: the old file still holds the subject's snapshot, so it goes
+		# (the refusal stays in memory for this run; a boot after it starts from nothing and is told again).
+		_file.remove()
 	if not ok and not _save_warned:
 		_save_warned = true
 		push_warning("Cloud Sync host: the journal could not be saved")
@@ -689,6 +769,8 @@ func ensure_current() -> void:
 ## sweep temporary siblings. Nothing is saved again until `sign_in`. True when the file is gone.
 func purge() -> bool:
 	_purged = true
+	_refused = null
+	_forget_pending = false
 	_gen += 1
 	var removed := _file.remove()
 	_open_keys = {}

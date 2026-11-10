@@ -9,7 +9,8 @@ extends RefCounted
 ##
 ##   status_row   "" (hidden: local, Sync off or unreadable), "synced", "syncing", "offline",
 ##                "error", "locked" or "ring-changed" (the strip's states)
-##   signed_out   with `error`: nobody is signed in (neutral wording, Sign in to sync)
+##   signed_out   with `error`: nobody is signed in (neutral wording, Sign in to sync): a 401, or the
+##                account_required of a removed or cleared binding (U-52), which stays across a relaunch
 ##   screen       "" or "unlock", "ring_change", "recovery_code"
 ##
 ## No recovery code is kept past `clear_code()`; no event carries a value. Redraw on `changed`.
@@ -70,6 +71,12 @@ func refresh() -> void:
 	if sdk == null or not is_instance_valid(sdk) or sdk.get("cloud_sync") == null:
 		_set_row("")
 		return
+	# A relaunch reads a blocked machine (U-52) only once Cloud Sync has started; start it (idempotent, a
+	# no-op while Sync is off) so the signed-out row is there from the first read, not after the next event.
+	if sdk.cloud_sync.has_method("attach"):
+		await sdk.cloud_sync.attach()
+		if mine != _generation:
+			return
 	var r: PKeyResult = await sdk.cloud_sync.status()
 	if mine != _generation:
 		return
@@ -88,6 +95,9 @@ func refresh() -> void:
 		"offline", "paused":
 			_set_row("offline")
 		"blocked":
+			# `account_required` (a per-product removal, U-52) and a refused token are not faults: the row says
+			# "You're signed out." and offers "Sign in to sync" (cloudSync.signedOut / cloudSync.signIn), and
+			# stays so across a relaunch. Any other block is an error.
 			var why := String(st.get("reason", ""))
 			signed_out = why == "account_required" or why == "unauthorized"
 			_set_row("error")
