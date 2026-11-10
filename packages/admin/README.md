@@ -37,11 +37,12 @@ test/                     vitest + jsdom unit suites
 e2e/                      Chromium suites against the built SPA under the Worker's CSP;
                           e2e/__baselines__/portal/linux holds the portal screenshots
 scripts/portal-baselines.sh   re-records the linux baselines in Playwright's image (needs Docker)
+scripts/accept-baselines.mjs  copies a CI run's `.actual.png` artifacts over the linux baselines
 ```
 
 - Layer rules (`test/boundaries.test.ts`): `lib/` imports only `lib/`; `ui/` imports only `ui/`, `lib/` and the listed app-neutral modules; `console/` and `portal/` never import each other; nothing reachable from `portal/main.tsx` is console code or `api.ts`. `lib/errorCopy.ts` and `ui/form.tsx` read `lib/http.ts`'s `HttpError`, so the portal bundle no longer carries `api.ts`. Listed exceptions are in its `KNOWN` table, which only shrinks.
 - Help links live in exactly two tables: `src/console/nav.ts` (per-page and per-section `docs`) and `src/lib/docsLinks.ts` (`DOCS_LINKS`). Both hold site-absolute `/docs/…/` paths. `../worker/test/docsLinks.test.ts` checks each against the built `../docs/dist/docs-slugs.json`, anchors included, and skips without a docs build. `test/nav-docs-targets.test.ts` checks the door rule and that no target is a moved page. Renaming a docs page updates both tables in the same change.
-- Baselines: CI compares the portal against the committed linux images, rendered in Playwright's image. `pnpm --filter @polaris-key/admin e2e:baselines` re-records them (needs Docker); `scripts/portal-baselines.sh --check` compares as CI does. Runs on other platforms use local, git-ignored images.
+- Baselines: CI compares the portal against the committed linux images, rendered in Playwright's image. `pnpm --filter @polaris-key/admin e2e:baselines` re-records them (needs Docker); `scripts/portal-baselines.sh --check` compares as CI does. To accept a CI result instead of re-recording, run `scripts/accept-baselines.mjs <run-id>` (`--job <shard>` for one artifact, `--allow-new` for a baseline that does not exist yet): a failed shard uploads its `<name>.actual.png` files, the script copies them over the baselines and prints old and new size and the share of pixels changed, and it refuses a run whose head is not an ancestor of HEAD. The failing test stays red until you commit the accepted images. Runs on other platforms use local, git-ignored images.
 - The inline theme script in both shells must stay byte-identical. Changing it means updating `ADMIN_SCRIPT_HASHES` in `../worker/src/core/adminCsp.ts` (`test/theme.test.tsx` checks the sources).
 - `pnpm test` here is jsdom only; `test:e2e` needs a Playwright Chromium and the built SPA.
 

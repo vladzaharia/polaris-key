@@ -12,6 +12,12 @@
 #   PORTAL_FILTER=product-token scripts/portal-baselines.sh   only the tests whose name matches
 #                                          (vitest -t); update mode then keeps every other baseline
 #
+# When to use which: a baseline that CI reports as mismatched or missing is accepted from the
+# run, not re-recorded here: the failed shard uploads the `portal-visual-diff-<shard>` artifact and
+# `scripts/accept-baselines.mjs <run-id>` copies its images over the baselines and prints each
+# change for review. Use this script for a deliberate wholesale re-record, for a change CI has
+# not run yet, or to reproduce a mismatch locally (`--check`).
+#
 # Needs Docker; the container is linux/amd64 (what CI runs), emulated on an arm64 host. The pnpm store lives in the `pk-portal-baselines-pnpm` volume between runs.
 set -euo pipefail
 
