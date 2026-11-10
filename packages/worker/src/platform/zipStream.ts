@@ -28,7 +28,7 @@ const MAX_NAME_BYTES = 255;
 
 export class ZipError extends Error {
   constructor(
-    readonly code: "bad_name" | "too_many_entries" | "too_large",
+    readonly reason: "name" | "entries" | "size",
     message: string,
   ) {
     super(message);
@@ -55,7 +55,7 @@ export function crc32(bytes: Uint8Array, crc = 0): number {
 /** Throws a {@link ZipError} unless `name` is safe to put in an archive. */
 export function checkEntryName(name: string): void {
   const bad = (why: string): never => {
-    throw new ZipError("bad_name", `entry name refused (${why})`);
+    throw new ZipError("name", `entry name refused (${why})`);
   };
   if (name.length === 0) bad("empty");
   if (new TextEncoder().encode(name).length > MAX_NAME_BYTES) bad("too long");
@@ -70,16 +70,13 @@ export function checkEntryName(name: string): void {
 /** Check every name up front: valid, and none repeated. Throws a {@link ZipError}. */
 export function checkEntries(entries: readonly { name: string }[]): void {
   if (entries.length > ZIP_MAX_ENTRIES) {
-    throw new ZipError(
-      "too_many_entries",
-      `more than ${ZIP_MAX_ENTRIES} entries`,
-    );
+    throw new ZipError("entries", `more than ${ZIP_MAX_ENTRIES} entries`);
   }
   const seen = new Set<string>();
   for (const { name } of entries) {
     checkEntryName(name);
     if (seen.has(name)) {
-      throw new ZipError("bad_name", "entry name refused (repeated)");
+      throw new ZipError("name", "entry name refused (repeated)");
     }
     seen.add(name);
   }
@@ -191,7 +188,7 @@ export function zipStream(
         size += chunk.length;
         pos += chunk.length;
         if (pos > ZIP_MAX_BYTES) {
-          throw new ZipError("too_large", "archive past 4 GiB");
+          throw new ZipError("size", "archive past 4 GiB");
         }
         yield chunk;
       }
@@ -200,8 +197,7 @@ export function zipStream(
       yield tail;
       done.push({ nameBytes, crc, size, offset });
     }
-    if (pos > ZIP_MAX_BYTES)
-      throw new ZipError("too_large", "archive past 4 GiB");
+    if (pos > ZIP_MAX_BYTES) throw new ZipError("size", "archive past 4 GiB");
     yield centralDirectory(done, pos);
   })();
   return new ReadableStream<Uint8Array>({

@@ -204,7 +204,7 @@ export async function handleProductExport(
     try {
       checkEntries(entries);
     } catch (e) {
-      if (e instanceof ZipError && e.code === "too_many_entries") {
+      if (e instanceof ZipError && e.reason === "entries") {
         return err(413, "export_too_large");
       }
       throw e;

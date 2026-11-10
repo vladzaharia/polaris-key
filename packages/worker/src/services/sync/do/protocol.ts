@@ -427,6 +427,9 @@ export type CloudSyncReply =
       collections: InspectedCollection[];
       /** Uploads begun and not yet finalized, aborted or expired. */
       uploadsOpen: number;
+      /** U-12.5: each device that has a client binding here, and the epoch second a push or an
+       *  hourly pull last stamped it. Ids and times only. */
+      devices: Array<{ deviceId: string; lastSeen: number }>;
     }
   | {
       op: "inspectValues";

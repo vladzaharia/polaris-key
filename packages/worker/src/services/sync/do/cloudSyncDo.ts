@@ -96,6 +96,8 @@ import { hexEncode } from "../../../platform/bytes.js";
 
 /** Records read per query by an export. */
 const EXPORT_PAGE = 500;
+/** A pull stamps its client binding at most this often (U-12.5). */
+const CLIENT_SEEN_STEP_SECONDS = 3600;
 
 const reply = (body: CloudSyncReply | CloudSyncError, status = 200): Response =>
   new Response(JSON.stringify(body), {
@@ -861,6 +863,10 @@ export class CloudSyncDO implements DurableObject {
       family: op.family,
       ...(op.encryption === "e2e" ? { e2e: true } : {}),
     });
+    // U-12.5: the portal shows when each device last synced, and a device that only pulls would
+    // never move `last_seen` (a push does). Hourly, and not a write the merge guard counts.
+    if (op.clientId)
+      this.store.touchClient(op.clientId, CLIENT_SEEN_STEP_SECONDS);
     return reply({ op: "pull", outcome, meter: this.store.takeMeter() });
   }
 
@@ -897,6 +903,7 @@ export class CloudSyncDO implements DurableObject {
             })),
       collections: tables.collections,
       uploadsOpen: tables.uploadsOpen,
+      devices: gone ? [] : this.store.deviceActivity(),
     });
   }
 

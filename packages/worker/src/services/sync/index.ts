@@ -36,6 +36,7 @@ import {
   syncMode,
 } from "./handlers/common.js";
 import { syncKeyring } from "./keyring.js";
+import { cloudSyncSummary } from "./portalSummary.js";
 import { syncIntegration } from "./integration.js";
 import { syncProductDeletion, syncProductPurge } from "./productDeletion.js";
 import { syncMaintenance } from "./maintenance.js";
@@ -63,6 +64,8 @@ export const syncService: ServiceDescriptor = {
   },
   /** U-05.9: the 15-minute per-product aggregate (`sync_product_usage`), on the connector tick. */
   scheduled: syncScheduled,
+  /** U-12.5: the portal's per-person summary, through Core's hooks. */
+  cloudSyncSummary,
   handle: SYNC_ROUTES.handle,
   /** U-05.19: `sync/usage` on the console API. */
   adminHandle: handleSyncAdmin,

@@ -339,6 +339,38 @@ export class SqlStore implements SyncStore {
     );
   }
 
+  /**
+   * A pull is a device being here: stamp the client's `last_seen` when it is older than
+   * `minAgeSeconds` (an hour: at most one write per client per hour). Not a store write in the
+   * merge's sense: `writes` and `seq` do not move, so the absorb guard and every cursor are
+   * unaffected, and nothing is stamped on an absorbed or erased object or on an unknown client.
+   */
+  touchClient(clientId: string, minAgeSeconds: number): void {
+    if (!this.hasSchema()) return;
+    if (
+      this.getMeta("absorbed_into") !== undefined ||
+      this.getMeta("erased_at") !== undefined
+    )
+      return;
+    const now = this.clock();
+    this.run(
+      `UPDATE clients SET last_seen = ? WHERE client_id = ? AND last_seen <= ?`,
+      now,
+      clientId,
+      now - minAgeSeconds,
+    );
+  }
+
+  /** Each device with a client binding and when it was last here, newest first (counts and ids
+   *  only; the portal summary maps ids to labels). One entry per device. */
+  deviceActivity(): Array<{ deviceId: string; lastSeen: number }> {
+    if (!this.hasSchema()) return [];
+    return this.all<{ device_id: string; seen: number }>(
+      `SELECT device_id, MAX(last_seen) AS seen FROM clients
+        GROUP BY device_id ORDER BY seen DESC, device_id`,
+    ).map((r) => ({ deviceId: r.device_id, lastSeen: Number(r.seen) }));
+  }
+
   clientCount(): number {
     if (!this.hasSchema()) return 0;
     return Number(
