@@ -242,7 +242,12 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
     expect(deploy.jobs["publish-sdks"]).toMatchObject({
       needs: ["verify", "deploy-worker"],
       uses: "./.github/workflows/publish-sdks.yml",
-      permissions: { contents: "read", "id-token": "write" },
+      permissions: {
+        contents: "read",
+        "id-token": "write",
+        checks: "read",
+        actions: "read",
+      },
       // Without it the called workflow's swift-sign job reads every package-registry secret as
       // empty (the v0.8.15 tag run), although it declares the environment itself.
       secrets: "inherit",
@@ -1477,6 +1482,45 @@ describe("publish-sdks.yml waits for CI OK and skips the tests CI already ran", 
             ["tested"],
           ]);
   });
+});
+
+describe("every call of a reusable workflow grants what its jobs ask for", () => {
+  // GitHub checks a called workflow's job permissions against the caller's grant before any job
+  // runs, skipped jobs included; one missing scope fails the whole run at startup.
+  const rank = (level: string | undefined) =>
+    level === "write" ? 2 : level === "read" ? 1 : 0;
+  const calls = workflowFiles.flatMap((file) =>
+    Object.entries(workflow(file).jobs ?? {})
+      .filter(([, job]) => job.uses?.startsWith("./.github/workflows/"))
+      .map(([id, job]) => ({
+        file,
+        id,
+        job,
+        callee: job.uses!.replace("./.github/workflows/", ""),
+      })),
+  );
+
+  it("finds the calls", () => {
+    expect(calls.map((c) => `${c.file} ${c.id}`)).toContain(
+      "deploy.yml publish-sdks",
+    );
+  });
+
+  it.each(calls.map((c) => [`${c.file} ${c.id} -> ${c.callee}`, c] as const))(
+    "%s",
+    (_, c) => {
+      const grant = c.job.permissions ?? workflow(c.file).permissions ?? {};
+      const callee = workflow(c.callee);
+      for (const [jobId, job] of Object.entries(callee.jobs ?? {}))
+        for (const [scope, level] of Object.entries(
+          job.permissions ?? callee.permissions ?? {},
+        ))
+          expect(
+            rank(grant[scope]) >= rank(level),
+            `${c.callee} ${jobId} asks ${scope}: ${level}`,
+          ).toBe(true);
+    },
+  );
 });
 
 describe("promote.yml fast-forwards main to the next that went green", () => {

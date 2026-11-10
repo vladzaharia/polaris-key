@@ -501,9 +501,14 @@ jobs:
   publish-sdks:
     name: Publish SDKs
     needs: [verify, deploy-worker]
+    # A called workflow's jobs may hold only what its caller grants, even a job whose `if` skips
+    # it: publish-sdks.yml's ci-gate asks for checks and actions read, and without them here the
+    # whole tag run fails at startup (the v0.10.3 tag run).
     permissions:
       contents: read
       id-token: write
+      checks: read
+      actions: read
     uses: ./.github/workflows/publish-sdks.yml
     with:
       # CI OK was proven green on this exact SHA by `verify`, so the SDK suites CI already ran
