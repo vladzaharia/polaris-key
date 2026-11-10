@@ -54,6 +54,7 @@ import im.plrs.key.core.UnsupportedReason
 import im.plrs.key.core.sync.CallResult
 import im.plrs.key.core.sync.MergeKeep
 import im.plrs.key.core.sync.ReadResult
+import im.plrs.key.core.sync.SignInUrl
 import im.plrs.key.core.sync.SyncDiscovery
 import im.plrs.key.core.sync.SyncEvent
 import im.plrs.key.core.sync.SyncStatus
@@ -191,29 +192,8 @@ public class CloudSyncClient internal constructor(private val api: CloudSyncApi)
     public fun transfers(): List<SaveTransfer> = api.saves.transfers()
 }
 
-/**
- * A sign-in URL fit to hand to the app: https on the Worker's origin, else null. A path is resolved against
- * the origin (the path itself is not restricted); control characters, whitespace and a backslash are refused
- * before parsing, and so is userinfo.
- */
-internal fun safeSignInUrl(url: String?, origin: String): String? {
-    if (url == null || url.any(::unsafeUrlChar)) return null
-    val base = runCatching { URI(origin) }.getOrNull() ?: return null
-    val resolved = runCatching { base.resolve(URI(url)) }.getOrNull() ?: return null
-    return if (sameWorkerOrigin(resolved, base)) resolved.toString() else null
-}
-
-private fun unsafeUrlChar(c: Char): Boolean = c.code <= 0x20 || c.code in 0x7F..0x9F || c == '\\'
-
-/** https, no userinfo, the Worker's host exactly (a trailing dot or a punycode lookalike is another host), and :443 is the default. */
-private fun sameWorkerOrigin(u: URI, base: URI): Boolean {
-    fun port(x: URI) = if (x.port == -1) HTTPS_PORT else x.port
-    val secure = u.scheme.equals("https", true) && base.scheme.equals("https", true)
-    val host = u.host != null && u.host.equals(base.host, true)
-    return secure && host && u.rawUserInfo == null && port(u) == port(base)
-}
-
-private const val HTTPS_PORT = 443
+/** A sign-in URL fit to hand to the app: https on the Worker's origin, else null (the one rule, [SignInUrl.safe]). */
+internal fun safeSignInUrl(url: String?, origin: String): String? = SignInUrl.safe(url, origin)
 
 /** What a scheduler holds in place of a person or a transfer id: the SHA-256 hex of it. */
 internal fun ownerTag(subject: String): String =

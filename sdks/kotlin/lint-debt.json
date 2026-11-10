@@ -2081,8 +2081,8 @@
       "detekt:exceptions.SwallowedException": 3,
       "detekt:exceptions.TooGenericExceptionCaught": 3,
       "detekt:style.LoopWithTooManyJumpStatements": 1,
-      "detekt:style.MagicNumber": 6,
-      "detekt:style.ReturnCount": 3
+      "detekt:style.MagicNumber": 3,
+      "detekt:style.ReturnCount": 2
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudSyncChunkCache.kt": {
       "detekt:style.LoopWithTooManyJumpStatements": 1,

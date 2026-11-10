@@ -676,7 +676,7 @@ class CloudSyncSettingsTest {
         }
         assertNull(safeSignInUrl(null, origin))
         // The default port is normalised, a path is not restricted; userinfo, a backslash and lookalike hosts are refused.
-        assertEquals("https://key.example:443/x", safeSignInUrl("https://key.example:443/x", origin))
+        assertEquals("https://key.example/x", safeSignInUrl("https://key.example:443/x", origin))
         assertEquals("https://key.example/any/where?a=b#c", safeSignInUrl("https://key.example/any/where?a=b#c", origin))
         for (bad in listOf(
             "https://user:pw@key.example/x",
