@@ -2,7 +2,7 @@
 title: "Cloud Sync"
 description: "A signed-in person's settings, saves and records, synced across their devices: what works, how a product declares its data and the quota."
 type: "concept"
-lastReviewed: "2026-11-01"
+lastReviewed: "2026-11-09"
 sidebar:
   order: 1
 ---
@@ -60,12 +60,10 @@ A `user` block on a locked key does nothing, and `pkey validate` warns. A `secre
 ## Who can read it
 
 With `e2e`, the default, the person's devices seal each value before it leaves, with a key ring only
-their devices hold. Polaris Key stores ciphertext. It sees which declared keys exist, when they
-change and how large they are, and open settings under a blinded name; it never sees a value. You
-see the same: the console shows counts, never a person's settings. A person recovers the key on a
-new device from another of their devices or from a recovery code. With neither, nobody can recover
-their synced settings, and Polaris Key can't help. With `server`, Polaris Key can read the values
-and you can use `mapValues` in a migration.
+their devices hold. Polaris Key stores ciphertext and never sees a value, and the console shows
+counts, never a person's settings. With `server`, Polaris Key can read the values.
+[End-to-end encryption](/docs/features/cloud-sync/encryption/) covers what the server sees, the
+recovery code, a new device and server mode.
 
 A collection with `merge` or `union` records that held data before a product turned on `e2e` stays
 readable, but an `e2e` app can't change those records until it deletes and writes them again. A
@@ -159,7 +157,8 @@ The **Usage** page shows how many people have data, the storage they use against
 
 ## Next steps
 
-- In your app: [Node](/docs/build/sdks/node/your-own-ui/#synced-settings), [Python](/docs/build/sdks/python/your-own-ui/#synced-settings) and [React](/docs/build/sdks/react/your-own-ui/#synced-settings), the calls, states and events. [Swift](/docs/build/sdks/swift/#cloud-sync-settings), [Kotlin](/docs/build/sdks/kotlin/#cloud-sync-settings) and [Godot](/docs/build/sdks/godot/#cloud-sync-settings-polariskeycloud_sync), the same calls; end-to-end mode is in review there and `sync.e2e` is planned.
+- In your app: [Node](/docs/build/sdks/node/your-own-ui/#synced-settings), [Python](/docs/build/sdks/python/your-own-ui/#synced-settings) and [React](/docs/build/sdks/react/your-own-ui/#synced-settings), the calls, states and events. [Swift](/docs/build/sdks/swift/#cloud-sync-settings), [Kotlin](/docs/build/sdks/kotlin/#cloud-sync-settings) and [Godot](/docs/build/sdks/godot/#cloud-sync-settings-polariskeycloud_sync), the same calls.
+- [End-to-end encryption](/docs/features/cloud-sync/encryption/): the key ring, the recovery code and a new device.
 - [The catalog](/docs/features/managed-config/catalog/): declare the keys that sync.
 - [Management states](/docs/features/managed-config/management-states/): which keys are locked.
 - [Sign-in](/docs/features/sign-in/): the principal Cloud Sync needs.

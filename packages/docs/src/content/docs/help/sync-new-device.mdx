@@ -1,0 +1,68 @@
+---
+title: "Unlock sync on a new device"
+description: "What to do when an app says Sync is locked: enter your recovery code, or start over."
+type: "help"
+status: "shipped"
+lastReviewed: "2026-11-09"
+sidebar:
+  order: 9
+---
+
+import Callout from "../../../components/docs/Callout.astro";
+
+Some apps encrypt your synced data on your devices, so only your devices can read it. A new device doesn't have the key yet. The app says **Sync is locked**, and the device keeps its own settings until you unlock it.
+
+## Unlock with your recovery code
+
+You need the [recovery code](/docs/help/recovery-code/) you saved for this app.
+
+1. In the app, select **Unlock sync**.
+2. In **Recovery code**, enter your code. Spaces, dashes and capital letters don't matter.
+3. Select **Unlock**.
+
+## Check it worked
+
+The app no longer says **Sync is locked**, and your synced settings and saves appear. Next time, the device unlocks by itself.
+
+## If the device unlocks by itself
+
+Some apps on iPhone, iPad, Mac and Android unlock a new device from your device's encrypted backup. Then you never see **Sync is locked**.
+
+In a web browser, the recovery code is the only way. Some browsers ask for it each time you open the app.
+
+## If the code isn't right
+
+The app says **That code isn't right. Check it and try again.** Check each group of the code and try again. A typing mistake is caught before anything is sent. A code that looks right but doesn't match counts toward a limit of 5 tries a day on each device.
+
+## If you have no recovery code
+
+If you still have a device that is signed in and unlocked, choose **New recovery code** there. Then use the new code on this device. See [Your recovery code](/docs/help/recovery-code/).
+
+If you have no unlocked device and no code, nothing can read your synced data. Start over.
+
+## What happens when you start over
+
+<Callout type="danger" title="Your current synced data is lost">
+  Start over can't be undone. Use it only if you can't find your recovery code
+  and have no unlocked device.
+</Callout>
+
+The app makes a new key and a new recovery code. A device that still has the old key can move your data to the new key for 30 days.
+
+You get an email, [encryption was reset](/docs/help/emails/#encryption-reset). If it wasn't you, [secure your account](/docs/help/secure-your-account/).
+
+## Start over
+
+1. In the app, select **Unlock sync**, then **Start over**.
+2. Read the warning, then select **Start over**.
+3. The app shows your new recovery code. Save it, check **I've saved my recovery code**, then select **Done**.
+
+## If your sync key changed
+
+The app says **Your sync key changed** when another device set up a new key. Choose **That was me** only if you did. If not, choose **Use recovery code**, then [secure your account](/docs/help/secure-your-account/).
+
+## Related
+
+- [Your recovery code](/docs/help/recovery-code/)
+- [Sync Across Devices](/docs/help/sync/)
+- [Emails from Polaris Locker](/docs/help/emails/)

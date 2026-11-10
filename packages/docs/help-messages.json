@@ -1122,8 +1122,9 @@
     },
     "keyring_conflict": {
       "page": "accounts",
+      "article": "sync-new-device",
       "why": "Encryption for your synced data was already set up for this account, so this device can't set it up again.",
-      "fix": "Unlock sync with another signed-in device or with your recovery code."
+      "fix": "Select Unlock sync and enter your recovery code."
     },
     "platform-identity-unavailable": {
       "page": "signing-in",
@@ -1133,8 +1134,9 @@
     },
     "sync-locked": {
       "page": "accounts",
+      "article": "sync-new-device",
       "why": "Your synced data is encrypted, and this device doesn't have the key to open it yet.",
-      "fix": "Unlock sync with your recovery code or with another signed-in device."
+      "fix": "Select Unlock sync and enter your recovery code."
     },
     "sync-file-invalid": {
       "page": "accounts",
@@ -1143,6 +1145,7 @@
     },
     "recovery-code-invalid": {
       "page": "accounts",
+      "article": "recovery-code",
       "why": "The recovery code you entered doesn't match the one for this account.",
       "fix": "Check the code for typing mistakes and try again."
     },

@@ -185,6 +185,8 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "help/your-data",
           "help/manage-your-data",
           "help/sync",
+          "help/sync-new-device",
+          "help/recovery-code",
           "help/messages/accounts",
         ),
       },
@@ -452,6 +454,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "features/cloud-sync/files",
           "features/cloud-sync/collections",
           "features/cloud-sync/saves",
+          "features/cloud-sync/encryption",
         ),
       },
       {
