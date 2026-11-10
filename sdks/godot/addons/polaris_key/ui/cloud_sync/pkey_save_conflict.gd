@@ -513,7 +513,8 @@ func _render() -> void:
 
 
 ## The model input of a state (ui-matrix `saveConflict`).
-static func input(p_step: String, p_local_when := "", p_remote_when := "", p_device := "", p_deleted := false, p_both := false, p_keep := "", p_sync_on := true, p_newer := "", p_reopened := false) -> Dictionary:
+static func input(p_step: String, p_local_when := "", p_remote_when := "", p_device := "", p_deleted := false, p_both := false, p_keep := "",
+		p_sync_on := true, p_newer := "", p_reopened := false) -> Dictionary:
 	var c := {"step": p_step}
 	var local := {}
 	if p_local_when != "":

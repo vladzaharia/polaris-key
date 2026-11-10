@@ -8,11 +8,14 @@ extends RefCounted
 ## `{n}` the month number, `{y}` the year.
 const LOCALES := {
 	"en": {"today": "today", "yesterday": "yesterday", "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], "date": "{m} {d}", "dated": "{m} {d}, {y}"},
-	"de": {"today": "heute", "yesterday": "gestern", "months": ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."], "date": "{d}. {m}", "dated": "{d}. {m} {y}"},
+	"de": {"today": "heute", "yesterday": "gestern", "months": ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.",
+			"Dez."], "date": "{d}. {m}", "dated": "{d}. {m} {y}"},
 	"es": {"today": "hoy", "yesterday": "ayer", "months": ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"], "date": "{d} {m}", "dated": "{d} {m} {y}"},
-	"fr": {"today": "aujourd’hui", "yesterday": "hier", "months": ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."], "date": "{d} {m}", "dated": "{d} {m} {y}"},
+	"fr": {"today": "aujourd’hui", "yesterday": "hier", "months": ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.",
+			"nov.", "déc."], "date": "{d} {m}", "dated": "{d} {m} {y}"},
 	"it": {"today": "oggi", "yesterday": "ieri", "months": ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"], "date": "{d} {m}", "dated": "{d} {m} {y}"},
-	"pt-BR": {"today": "hoje", "yesterday": "ontem", "months": ["jan.", "fev.", "mar.", "abr.", "mai.", "jun.", "jul.", "ago.", "set.", "out.", "nov.", "dez."], "date": "{d} de {m}", "dated": "{d} de {m} de {y}"},
+	"pt-BR": {"today": "hoje", "yesterday": "ontem", "months": ["jan.", "fev.", "mar.", "abr.", "mai.", "jun.", "jul.", "ago.", "set.", "out.", "nov.",
+			"dez."], "date": "{d} de {m}", "dated": "{d} de {m} de {y}"},
 	"ja": {"today": "今日", "yesterday": "昨日", "months": [], "date": "{n}月{d}日", "dated": "{y}年{n}月{d}日"},
 	"ko": {"today": "오늘", "yesterday": "어제", "months": [], "date": "{n}월 {d}일", "dated": "{y}년 {n}월 {d}일"},
 	"zh-Hans": {"today": "今天", "yesterday": "昨天", "months": [], "date": "{n}月{d}日", "dated": "{y}年{n}月{d}日"},

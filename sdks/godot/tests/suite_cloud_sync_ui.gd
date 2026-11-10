@@ -824,7 +824,8 @@ func _ux_round(t: PKeyTestContext) -> void:
 
 const MATRIX_PATH := "res://tests/corpus/v2/ui-matrix.json"
 ## The labels of the controls a save screen offers, by copy key.
-const BUTTON_KEYS := ["saveConflict.keepThis", "saveConflict.keepOther", "saveConflict.acceptDelete", "saveConflict.keepBoth", "common.cancel", "common.done", "common.tryAgain", "saveConflict.chooseAgain"]
+const BUTTON_KEYS := ["saveConflict.keepThis", "saveConflict.keepOther", "saveConflict.acceptDelete", "saveConflict.keepBoth", "common.cancel",
+		"common.done", "common.tryAgain", "saveConflict.chooseAgain"]
 
 
 ## Build the scene a `saveConflict` row names, from the row's own input.
@@ -957,7 +958,9 @@ func _saves_rows(t: PKeyTestContext) -> void:
 				# The controls offered are the model's actions, and a disabled one is never one of them.
 				var offered := 0
 				for n in drawn:
-					if n is Button and not (n as Button).disabled and (n as Button).text != catalog.format("common.cancel", {}) and (n as Button).text != catalog.format("common.done", {}) and (n as Button).text != catalog.format("common.tryAgain", {}) and (n as Button).text != catalog.format("saveConflict.chooseAgain", {}):
+					if (n is Button and not (n as Button).disabled and (n as Button).text != catalog.format("common.cancel", {})
+							and (n as Button).text != catalog.format("common.done", {}) and (n as Button).text != catalog.format("common.tryAgain", {})
+							and (n as Button).text != catalog.format("saveConflict.chooseAgain", {})):
 						offered += 1
 				var model_actions := 0
 				for a in acts:
@@ -1018,7 +1021,8 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 		primaries += 1 if (n as Button).theme_type_variation == &"PKeyPrimary" else 0
 	t.check("saves: choose has no filled control", primaries == 0 and b.has("KeepThis") and b.has("KeepOther") and b.has("KeepBoth") and b.has("Cancel"))
 	t.check("saves: the first focus is Cancel, never a choice", v._initial_focus() == b["Cancel"])
-	t.check("saves: the choices are one column in reading order, Cancel last", v._actions.get_child(0) == b["KeepThis"] and v._actions.get_child(1) == b["KeepOther"] and v._actions.get_child(2) == b["KeepBoth"] and _last_visible(v._actions) == b["Cancel"])
+	t.check("saves: the choices are one column in reading order, Cancel last", v._actions.get_child(0) == b["KeepThis"]
+			and v._actions.get_child(1) == b["KeepOther"] and v._actions.get_child(2) == b["KeepBoth"] and _last_visible(v._actions) == b["Cancel"])
 	t.check("saves: the choices are not split into a docked bar", b["Cancel"].get_parent() == b["KeepThis"].get_parent())
 	var picked: Array = []
 	v.keep_requested.connect(func(k: String) -> void: picked.append(k))
@@ -1037,7 +1041,8 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	await _frames(3)
 	var fb := _buttons(full)
 	var reason := full.find_child("BothFull", true, false) as Label
-	t.check("saves: Keep both is disabled while every slot is in use, with its reason under it", (fb["KeepBoth"] as Button).disabled and reason.visible and reason.get_index() == (fb["KeepBoth"] as Button).get_index() + 1 and reason.text == PKeyUiView.catalog().format("saveConflict.bothFull", {}))
+	t.check("saves: Keep both is disabled while every slot is in use, with its reason under it", (fb["KeepBoth"] as Button).disabled and reason.visible
+			and reason.get_index() == (fb["KeepBoth"] as Button).get_index() + 1 and reason.text == PKeyUiView.catalog().format("saveConflict.bothFull", {}))
 	var asked: Array = []
 	full.keep_requested.connect(func(k: String) -> void: asked.append(k))
 	full._on_keep_both()
@@ -1049,9 +1054,11 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	await _frames(3)
 	var gb := _buttons(gone)
 	var cat = PKeyUiView.catalog()
-	t.check("saves: a deleted copy has its own title and lede", (gone.find_child("Title", true, false) as Label).text == cat.format("saveConflict.deletedTitle", {}) and (gone.find_child("Lede", true, false) as Label).text == cat.format("saveConflict.deletedLede", {}))
+	t.check("saves: a deleted copy has its own title and lede", (gone.find_child("Title", true,
+			false) as Label).text == cat.format("saveConflict.deletedTitle", {}) and (gone.find_child("Lede", true, false) as Label).text == cat.format("saveConflict.deletedLede", {}))
 	t.check("saves: Delete it here too is its own button and Keep both goes", (gb["KeepOther"] as Button).text == "Delete it here too" and not gb.has("KeepBoth"))
-	t.check("saves: Delete it here too is outlined in the danger colour, never filled", (gb["KeepOther"] as Button).theme_type_variation != &"PKeyPrimary" and (gb["KeepOther"] as Button).has_theme_color_override(&"font_color"))
+	t.check("saves: Delete it here too is outlined in the danger colour, never filled",
+			(gb["KeepOther"] as Button).theme_type_variation != &"PKeyPrimary" and (gb["KeepOther"] as Button).has_theme_color_override(&"font_color"))
 	_free(gone)
 	# It keeps the shape and fill of the other choices, and its words read, in both schemes.
 	var mx = MATRIX.new()
@@ -1064,13 +1071,17 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 		# Two panes: each version card is level with the choice it maps to, and carries no outline.
 		var lc := d.find_child("Local", true, false) as Control
 		var rc := d.find_child("Remote", true, false) as Control
-		t.check("saves (%s): the cards line up with their choices" % scheme, d.two_pane_fits() and absf(lc.global_position.y - (db["KeepThis"] as Control).global_position.y) <= 4.0 and absf(rc.global_position.y - (db["KeepOther"] as Control).global_position.y) <= 4.0, "%s %s / %s %s" % [lc.global_position.y, rc.global_position.y, (db["KeepThis"] as Control).global_position.y, (db["KeepOther"] as Control).global_position.y])
+		t.check("saves (%s): the cards line up with their choices" % scheme, d.two_pane_fits()
+				and absf(lc.global_position.y - (db["KeepThis"] as Control).global_position.y) <= 4.0
+				and absf(rc.global_position.y - (db["KeepOther"] as Control).global_position.y) <= 4.0, "%s %s / %s %s" % [lc.global_position.y,
+				rc.global_position.y, (db["KeepThis"] as Control).global_position.y, (db["KeepOther"] as Control).global_position.y])
 		t.check("saves (%s): the cards are tints, not outlined controls" % scheme, ((lc as PanelContainer).get_theme_stylebox(&"panel") as StyleBoxFlat).border_width_left == 0)
 		var del := db["KeepOther"] as Button
 		var keep := db["KeepThis"] as Button
 		var dbox := del.get_theme_stylebox(&"normal") as StyleBoxFlat
 		var kbox := keep.get_theme_stylebox(&"normal") as StyleBoxFlat
-		t.check("saves (%s): Delete it here too has the other choices' corner radius and fill" % scheme, dbox != null and kbox != null and dbox.corner_radius_top_left == kbox.corner_radius_top_left and dbox.bg_color == kbox.bg_color and dbox.border_color != kbox.border_color, "%s %s" % [dbox, kbox])
+		t.check("saves (%s): Delete it here too has the other choices' corner radius and fill" % scheme, dbox != null and kbox != null
+				and dbox.corner_radius_top_left == kbox.corner_radius_top_left and dbox.bg_color == kbox.bg_color and dbox.border_color != kbox.border_color, "%s %s" % [dbox, kbox])
 		var ratio := _contrast(del.get_theme_color(&"font_color"), kbox.bg_color if kbox != null else Color.BLACK)
 		t.check("saves (%s): Delete it here too reads at 4.5:1 or better" % scheme, ratio >= 4.5, "%.2f font %s fill %s" % [ratio, del.get_theme_color(&"font_color"), kbox.bg_color])
 		(st["vp"] as Node).free()
@@ -1101,12 +1112,15 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	var kd := _buttons(kept)
 	var finished: Array = []
 	kept.done.connect(func() -> void: finished.append(1))
-	t.check("saves: kept titles itself with the choice that was made, and Done takes the focus", (kept.find_child("Title", true, false) as Label).text == "Kept the other version" and not (kept.find_child("Status", true, false) as Label).visible and kept._initial_focus() == kd["Done"] and kd.size() == 1)
+	t.check("saves: kept titles itself with the choice that was made, and Done takes the focus", (kept.find_child("Title", true,
+			false) as Label).text == "Kept the other version" and not (kept.find_child("Status", true, false) as Label).visible and kept._initial_focus() == kd["Done"] and kd.size() == 1)
 	var mark := kept.find_child("Mark", true, false) as TextureRect
-	t.check("saves: kept draws the success mark in the success colour above its title", mark.visible and mark.texture != null and mark.modulate == kept._success_colour() and mark.get_index() < (kept.find_child("Title", true, false) as Label).get_index(), str(mark.modulate))
+	t.check("saves: kept draws the success mark in the success colour above its title", mark.visible and mark.texture != null
+			and mark.modulate == kept._success_colour() and mark.get_index() < (kept.find_child("Title", true, false) as Label).get_index(), str(mark.modulate))
 	var both_kept: PKeySaveConflict = _sc.save_conflict("kept-both")
 	await _frames(3)
-	t.check("saves: keeping both says where the other version went", (both_kept.find_child("Title", true, false) as Label).text == "Kept both versions" and (both_kept.find_child("Status", true, false) as Label).text == "The other version is saved as a copy.")
+	t.check("saves: keeping both says where the other version went", (both_kept.find_child("Title", true, false) as Label).text == "Kept both versions"
+			and (both_kept.find_child("Status", true, false) as Label).text == "The other version is saved as a copy.")
 	_free(both_kept)
 	kept._cancel()
 	t.check("saves: Escape on kept is Done", finished == [1])
@@ -1117,19 +1131,24 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	var again: Array = []
 	failed.retry_requested.connect(func(k: String) -> void: again.append(k))
 	(fl["TryAgain"] as Button).pressed.emit()
-	t.check("saves: failed leaves both saves as they were, never says kept, and Try again repeats the choice", (failed.find_child("Status", true, false) as Label).text == PKeyUiView.catalog().format("saveConflict.failed", {}) and again == ["local"] and not (failed.model["copy"] as Array).has("saveConflict.keptLocal"))
-	t.check("saves: failed focuses Cancel (the TV lands on a safe control) and Try again is not filled", failed._initial_focus() == fl["Cancel"] and (fl["TryAgain"] as Button).theme_type_variation != &"PKeyPrimary")
+	t.check("saves: failed leaves both saves as they were, never says kept, and Try again repeats the choice", (failed.find_child("Status", true,
+			false) as Label).text == PKeyUiView.catalog().format("saveConflict.failed", {}) and again == ["local"] and not (failed.model["copy"] as Array).has("saveConflict.keptLocal"))
+	t.check("saves: failed focuses Cancel (the TV lands on a safe control) and Try again is not filled", failed._initial_focus() == fl["Cancel"]
+			and (fl["TryAgain"] as Button).theme_type_variation != &"PKeyPrimary")
 	var chosen: Array = []
 	failed.choose_again_requested.connect(func() -> void: chosen.append(1))
 	(fl["ChooseAgain"] as Button).pressed.emit()
 	var primaries_failed := 0
 	for n in fl.values():
 		primaries_failed += 1 if (n as Button).theme_type_variation == &"PKeyPrimary" else 0
-	t.check("saves: failed offers Try again, Choose again and Cancel in that order, none filled, and Choose again asks the host", chosen == [1] and primaries_failed == 0 and failed._actions.get_child(failed._actions.get_children().find(fl["TryAgain"]) + 1) == fl["ChooseAgain"] and _last_visible(failed._actions) == fl["Cancel"])
+	t.check("saves: failed offers Try again, Choose again and Cancel in that order, none filled, and Choose again asks the host", chosen == [1]
+			and primaries_failed == 0 and failed._actions.get_child(failed._actions.get_children().find(fl["TryAgain"]) + 1) == fl["ChooseAgain"] and _last_visible(failed._actions) == fl["Cancel"])
 	_free(failed)
 	var failed_gone: PKeySaveConflict = _sc.save_conflict("failed-deleted")
 	await _frames(3)
-	t.check("saves: failed after a deletion keeps the deletion's title and says the save is unchanged", (failed_gone.find_child("Title", true, false) as Label).text == "This save was deleted elsewhere" and (failed_gone.find_child("Status", true, false) as Label).text == "Couldn't keep your choice. Your save is unchanged.", (failed_gone.find_child("Title", true, false) as Label).text)
+	t.check("saves: failed after a deletion keeps the deletion's title and says the save is unchanged", (failed_gone.find_child("Title", true,
+			false) as Label).text == "This save was deleted elsewhere" and (failed_gone.find_child("Status", true,
+			false) as Label).text == "Couldn't keep your choice. Your save is unchanged.", (failed_gone.find_child("Title", true, false) as Label).text)
 	_free(failed_gone)
 	# Newer tags the named card and nothing else: no fill, no focus change, no reorder.
 	var plain_choose: PKeySaveConflict = _sc.save_conflict("choose")
@@ -1137,7 +1156,8 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	await _frames(3)
 	var nl := newer_remote.find_child("Local", true, false) as Control
 	var nr := newer_remote.find_child("Remote", true, false) as Control
-	t.check("saves: Newer tags the other version's card only", not (nl.find_child("Newer", true, false) as Label).visible and (nr.find_child("Newer", true, false) as Label).visible and (nr.find_child("Newer", true, false) as Label).text == "Newer")
+	t.check("saves: Newer tags the other version's card only", not (nl.find_child("Newer", true, false) as Label).visible and (nr.find_child("Newer",
+			true, false) as Label).visible and (nr.find_child("Newer", true, false) as Label).text == "Newer")
 	var nb := _buttons(newer_remote)
 	var pb := _buttons(plain_choose)
 	var same := nb.keys() == pb.keys() and newer_remote._initial_focus().name == plain_choose._initial_focus().name
@@ -1149,7 +1169,8 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	var newer_gone: PKeySaveConflict = _sc.save_conflict("deleted")
 	newer_gone.newer = "local"
 	await _frames(3)
-	t.check("saves: with one version there is no Newer tag", not (newer_gone.find_child("Local", true, false).find_child("Newer", true, false) as Label).visible and not (newer_gone.find_child("Remote", true, false).find_child("Newer", true, false) as Label).visible)
+	t.check("saves: with one version there is no Newer tag", not (newer_gone.find_child("Local", true, false).find_child("Newer", true,
+			false) as Label).visible and not (newer_gone.find_child("Remote", true, false).find_child("Newer", true, false) as Label).visible)
 	_free(newer_gone)
 	# TV focus: a pad only. The screen takes the focus onto Cancel, and a direction reaches the choices.
 	PKeyUiView.pad_only_override = true
@@ -1169,7 +1190,8 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	await _frames(3)
 	var st := strip.find_child("Status", true, false) as Label
 	var figs := strip.find_child("Figures", true, false) as Label
-	t.check("strip: transferring says Syncing saves before its figures", st.text == "Syncing saves…" and figs.text == "38 MB of 61 MB" and strip._bar.visible and not strip._bar.indeterminate and is_equal_approx(strip._bar.value, 0.62), st.text)
+	t.check("strip: transferring says Syncing saves before its figures", st.text == "Syncing saves…" and figs.text == "38 MB of 61 MB"
+			and strip._bar.visible and not strip._bar.indeterminate and is_equal_approx(strip._bar.value, 0.62), st.text)
 	# One announcement per state change: the label is live, the figures are not, so a byte update is silent.
 	if "accessibility_live" in st:
 		t.check("strip: only the label is live", int(st.get("accessibility_live")) == 1 and int(figs.get("accessibility_live")) == 0)
@@ -1183,11 +1205,13 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	_free(strip)
 	var plain: PKeyCloudSyncStatus = _sc.cloud_sync("transferring-plain")
 	await _frames(3)
-	t.check("strip: without figures the label stands alone and the bar runs", (plain.find_child("Status", true, false) as Label).text == "Syncing saves…" and plain._bar.visible and plain._bar.size.x > 20.0)
+	t.check("strip: without figures the label stands alone and the bar runs", (plain.find_child("Status", true,
+			false) as Label).text == "Syncing saves…" and plain._bar.visible and plain._bar.size.x > 20.0)
 	_free(plain)
 	var waiting: PKeyCloudSyncStatus = _sc.cloud_sync("waiting-battery")
 	await _frames(3)
-	t.check("strip: waiting names what it waits for, with no bar and no Synced", (waiting.find_child("Status", true, false) as Label).text == "Waiting for power" and not waiting._bar.visible and not waiting._action.visible)
+	t.check("strip: waiting names what it waits for, with no bar and no Synced", (waiting.find_child("Status", true,
+			false) as Label).text == "Waiting for power" and not waiting._bar.visible and not waiting._action.visible)
 	t.check("strip: waiting for power is the info glyph, not offline", waiting._glyph.get_meta(&"pkey_glyph") == "info")
 	_free(waiting)
 	var waiting_net: PKeyCloudSyncStatus = _sc.cloud_sync("waiting")
@@ -1202,8 +1226,10 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	await _frames(3)
 	var retried: Array = []
 	bad.retry_requested.connect(func() -> void: retried.append(1))
-	t.check("strip: a failed transfer says so and Try again is secondary", (bad.find_child("Status", true, false) as Label).text == "Couldn't sync your saves." and bad._action.text == "Try again" and bad._action.theme_type_variation == &"PKeyLink")
-	t.check("strip: Try again lines up with the words", is_equal_approx(bad._action.global_position.x, bad._text.global_position.x), "%s %s" % [bad._action.global_position.x, bad._text.global_position.x])
+	t.check("strip: a failed transfer says so and Try again is secondary", (bad.find_child("Status", true,
+			false) as Label).text == "Couldn't sync your saves." and bad._action.text == "Try again" and bad._action.theme_type_variation == &"PKeyLink")
+	t.check("strip: Try again lines up with the words", is_equal_approx(bad._action.global_position.x, bad._text.global_position.x),
+			"%s %s" % [bad._action.global_position.x, bad._text.global_position.x])
 	bad._action.pressed.emit()
 	t.check("strip: Try again asks the game", retried == [1])
 	_free(bad)
@@ -1497,7 +1523,8 @@ func _real_conflict_flow(t: PKeyTestContext) -> void:
 	var auto := await _write_at(a, at, t0 + 7500000, "slot1", 440, {"chapter": "Chapter 3 (after boss)"})
 	await _frames(4)
 	t.check("real flow: an autosave of the frozen slot settles conflict and the screen stays away", auto.get("state") == "conflict" and host.conflict() == null and strip.state == "conflict")
-	t.check("real flow: the held copy is the autosave, nothing was uploaded", (files.records["slot1"]["value"] as Dictionary).get("chapter") == "Chapter 5" and (a["saves"].conflicts()[0].local["value"] as Dictionary).get("chapter") == "Chapter 3 (after boss)")
+	t.check("real flow: the held copy is the autosave, nothing was uploaded",
+			(files.records["slot1"]["value"] as Dictionary).get("chapter") == "Chapter 5" and (a["saves"].conflicts()[0].local["value"] as Dictionary).get("chapter") == "Chapter 3 (after boss)")
 	_free_strip(strip)
 	host.stop()
 	_free_node(sdk)
