@@ -11605,6 +11605,115 @@ license_owned` with `signInUrl` and nothing is counted. A licence that is not us
   leaves its account and its Cloud Sync principal, and the answer names no subject whatever bearer
   is presented. It never carries an account, an account email or the key.
 
+### Sign in with <Product>: the product issuer (I-21)
+
+plans/I-20.md §9, WIRE-CONTRACT-V5 §12.13. A product becomes an OpenID provider for websites and
+apps that are not its own: registered clients (`cl_…`) send a person's browser to
+`GET /<p>/identity/authorize`, redeem the code at `POST /<p>/identity/token` for an RS256 `id_token`
+and `at+jwt`, refresh, read `userinfo`, revoke, and end the session at `end-session`. The product's
+own app reaches its developer's backend through the device exchange. The tokens are not Polaris
+signed documents: no `pkey-*+jws` verifier accepts one, and `PROTOCOL_VERSION` stays 5. The issuer
+is dark until a product sets `identity.issuer.enabled`. One row per threat, ids IS-1 to IS-14, which
+the contract cites. Tests: `test/services/identity/issuer/*.test.ts` and `test/attack/I21-*.test.ts`.
+
+- **IS-1 Look-alike client phishing (S-16 §5.4 item 14).** Only the product's developer registers a
+  client, through the manifest or the console (at most 20 per product, no dynamic registration).
+  The card names the client, the product, the developer ("by <developer>" for a partner client) and
+  the host the person returns to, from the stored record and never from a query parameter. A client
+  name or developer name is re-checked at render time with the display rules and the reserved terms
+  (`registeredView.ts`): one that fails draws the neutral frame and the client's key, never a spoofed
+  product. A client whose `status` is not `active` is unknown to every issuer route, which read it
+  live, so an operator or the manifest can switch one off at once. Tests: `issuerContinue`,
+  `portalRegisteredClient`.
+- **IS-2 A rogue developer harvesting emails.** Every claim beyond `sub` is the person's to share,
+  per client: the first Continue always asks (D22), an optional claim has its own switch, a
+  required one is asked or the request is Cancel, and a declined claim is in no token and not in
+  `userinfo` (read live). "Connected apps" lists every client. Audit rows
+  `identity.client.continue`, `identity.client.token`, `identity.client.signin`,
+  `identity.client.revoke` and `identity.session.end` name the subject and the client and hold
+  no claim value, code or token. Residual: a profile claim a person shared is the client's to keep
+  (the copy says so).
+- **IS-3 Redirect substitution, open redirect and IdP mix-up.** `client_id` and `redirect_uri` are
+  checked before anything else and the redirect URI must equal a registered one exactly (no case
+  fold, percent-decoding, default port, trailing slash, wildcard, fragment, userinfo or
+  `localhost`; a native loopback port aside). Until both are valid the answer is a branded page and
+  never a redirect, and every later error and the success redirect build on the registered string,
+  never the one the request sent. `iss` is on every redirect (RFC 9207) and the issuer key is the
+  product's own. Tests: `I21-issuer-authorize` (fuzzed redirect classes).
+- **IS-4 Code interception or injection.** PKCE `S256` is required of public clients, and a
+  confidential client sends PKCE or a `nonce` (`plain` is `invalid_request`). A code lives 60
+  seconds, is single use (one atomic consume, a mismatch ends it too) and is bound to the client,
+  the redirect URI, the challenge, `nonce`, the granted scope and claims, the account and the
+  subject. A code presented again revokes the family it opened (10-minute tombstone, audit
+  `identity.refresh.code_reuse`). Client authentication is verified before the code is touched, so a
+  stranger cannot burn one. Tests: `I21-tokenCode`.
+- **IS-5 Refresh token theft and replay.** `pkeyo_` tokens are opaque, 256 bits, stored only as an
+  HMAC under `KEY_HASH_PEPPER`, rotated on every use; a spent token presented again revokes its
+  family with no grace (audit `identity.refresh.reuse`). A token ends 30 days after its last use,
+  a family 90 days after it opened, an account holds at most 10 live families per client, and each
+  use re-checks the client, grant, both toggles, the account and the subject. Revocation paths are
+  the table of §12.13.7; ended rows are purged 30 days later. Tests: `issuerRefresh`.
+- **IS-6 Token confusion and cross-product replay.** Each product signs with its own RS256 key
+  (`typ` `JWT` or `at+jwt`), `alg` is pinned before any key is chosen, and `iss`, `aud` and `typ` are
+  checked: `userinfo` refuses an `id_token`, a `pkeyt_` device token and the device exchange's token
+  (it holds no `openid`), an `id_token_hint` must be an `id_token` of this issuer and this client,
+  and another product's token fails at this product's key set. The document verifiers of §1 to §3 stay
+  EdDSA-only and never see an issuer token. Tests: `I21-tokenConfusion`, `issuerUserinfo`.
+- **IS-7 Issuer key compromise.** The RSA-2048 key is sealed under `PLATFORM_KEK` (R2-09) with the
+  AAD `pkey:v2:<product>:issuer-signing-key:<kid>`, so a blob copied to another product or `kid`
+  does not open; it is never exported, logged or returned. Keys rotate every 90 days, a `next` key
+  is published 7 days before it signs, a retired one stays 30 days, and an emergency rotation
+  (Superadmin, step-up, audited) drops a `kid` at once. The key set is cached for 60 seconds so a
+  dropped key stops verifying quickly. Tests: `issuerKeys`.
+- **IS-8 Silent SSO and a clickjacked consent.** An interactive sign-in always shows Continue
+  (D22). `prompt=none` is answered only with a live Polaris Locker session AND a grant that
+  covers this client's request, on the customer host that holds the session, and is otherwise
+  `login_required`, `consent_required` or `interaction_required`. Continue needs the account
+  session, the portal CSRF header and the request's binder, and the card's pages send
+  `frame-ancestors 'none'`. Tests: `issuerSilent`, `issuerContinue`.
+- **IS-9 Cross-tenant correlation.** `sub` is the pairwise subject of the product, so two products
+  never share one and the account id never leaves. A partner client of a product gets the
+  product's `sub` (D8) and the card says it is another company's app. A profile claim (name,
+  picture, email) is a join key across apps the person shares it with, and the consent copy says a
+  shared claim is the same for every app.
+- **IS-10 Tenant-minted identities presented as verified.** `email_verified` is true only for the
+  account's Polaris-verified primary email (`profileClaims`). A sign-in connection's claims and
+  groups (I-32) never reach a token.
+- **IS-11 The device exchange (D6).** The own client only: the caller's own `pkeyt_` device token,
+  `X-PKey-Device` naming that device and a device that holds a sign-in (a bound pairwise subject
+  of an active account not on the erasure ledger). Every refusal of the credential is the one
+  `400 invalid_grant`; a registered client gets `unauthorized_client`, an unserved issuer
+  `invalid_request`. The answer is 600 seconds, an empty scope, no refresh token, no `id_token`,
+  no `auth_time` and no entitlements: never more than the device token. 10 a minute per device and
+  30 a minute per network, failing closed. Tests: `issuerDeviceExchange`.
+- **IS-12 Client secret leakage.** `pkeycs_` has a scannable prefix, is stored only as an HMAC under
+  the pepper, shown once, at most 2 live per client, with `last_used_at`. A public client holds no
+  secret. The credential is hashed and compared against every live secret in constant time whether
+  or not the client exists, a failure costs a budget of 20 a minute per client and network and a
+  correct credential is never refused by it. Tests: `I21-tokenCode` ("secret guessing").
+- **IS-13 Logout CSRF and an open redirect at `end-session`.** `end-session` ends nothing: it
+  validates the request and hands the browser to Polaris Locker's `/signout`, which asks "Sign out
+  of Polaris Locker too?". `post_logout_redirect_uri` is used only when the client is known (by
+  `client_id`, or by the `id_token_hint`'s audience, which the hint's verification then binds) and
+  the string equals one of its registered `postLogoutRedirectUris`; the redirect built is the
+  REGISTERED string plus `state`, never the one sent, and anything else renders a branded page and
+  redirects nowhere. The hint is checked as at `authorize` (`alg` and `typ` pinned, this product's
+  keys, `iss`, `aud`; expired accepted). A repeated or oversized parameter is refused. The handle
+  (`eo_`, 120 seconds, single use) is bound to the browser by the `__Host-pk_req` binder; the page
+  and its three JSON routes are same-origin, and Sign out and Stay signed in need the portal CSRF
+  header while the browser holds a session, are refused cross-site by Fetch Metadata, and spend
+  the handle only after every check has passed. Sign out ends this browser's one session, never
+  another session of the account; refresh tokens and grants survive it. Tests: `issuerEndSession`,
+  `I21-endSession`.
+- **IS-14 Cost and denial of service.** Each limit of §12.13.11 fails closed: `authorize` 60 a
+  minute per network, `token` 30 per client and network (public) or 600 per client (confidential)
+  with 20 failed authentications per client and network, `userinfo` 120 per network and per subject
+  and client, `revoke` 60 per client, `end-session` 30 per network, the exchange 10 per device.
+  Client and redirect-URI counts are capped (20 clients, 10 redirect URIs, 10 post-logout URIs, 2
+  secrets), refresh families are capped at 10, and discovery and the key set are public and cached.
+  Residual: RSA signing is a CPU cost per token, bounded by those limits and by 600-second token
+  lifetimes that clients reuse.
+
 ### Platform → Connections: the operator's side of connections (I-31)
 
 The console adds, changes, turns off and deletes platform connections, claims their email domains

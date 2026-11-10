@@ -11,7 +11,10 @@
  */
 
 import { ISSUER_REFRESH_TOKEN_PATTERN } from "@polaris-key/protocol/identity";
+import { appendAudit } from "../../../core/audit.js";
 import { ErrorCode, methodNotAllowed } from "../../../core/errors.js";
+import { rateLimitOk } from "../../../core/rateLimit.js";
+import { randomId } from "../../../platform/crypto.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { oauth, readForm } from "../passthrough/oauthHttp.js";
@@ -20,6 +23,13 @@ import { findRefreshToken, revokeRefreshFamily } from "./refreshRepo.js";
 import { issuerServed } from "./served.js";
 
 const TOKEN_RE = new RegExp(ISSUER_REFRESH_TOKEN_PATTERN);
+
+/** `revoke`: 60 a minute per client (§12.13.11), failing closed. */
+export const REVOKE_RATE = {
+  bucket: "identityIssuerRevoke",
+  limit: 60,
+  windowSec: 60,
+};
 
 export async function handleRevoke(
   req: Request,
@@ -40,6 +50,20 @@ export async function handleRevoke(
   const auth = await authenticate({ req, env, db, slug, now, form });
   if (!auth.ok) return scopedCors(auth.response, null);
   const { client } = auth;
+  if (
+    !(await rateLimitOk(
+      env,
+      slug,
+      { ...REVOKE_RATE, id: client.clientId },
+      now,
+    ))
+  )
+    return scopedCors(
+      oauth(429, "rate_limited", undefined, {
+        retryAfter: REVOKE_RATE.windowSec,
+      }),
+      client,
+    );
   const token = form.get("token");
   if (!token)
     return scopedCors(
@@ -50,7 +74,22 @@ export async function handleRevoke(
     const row = await findRefreshToken(env, db, slug, token);
     if (row && row.clientId !== client.clientId)
       return scopedCors(oauth(400, ErrorCode.UnauthorizedClient), client);
-    if (row) await revokeRefreshFamily(db, slug, row.familyId, now);
+    if (row) {
+      await revokeRefreshFamily(db, slug, row.familyId, now);
+      await appendAudit(db, {
+        product: slug,
+        id: randomId("aud"),
+        at: now,
+        actor_sub: null,
+        actor_name: null,
+        actor_email: null,
+        action: "identity.client.revoke",
+        target_kind: "client",
+        target_id: client.clientId,
+        parent_id: null,
+        summary: "A refresh token family was revoked by the client",
+      });
+    }
   }
   return scopedCors(
     new Response(null, {
