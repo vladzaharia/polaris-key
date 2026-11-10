@@ -10,6 +10,8 @@ from typing import Any, Callable, List, Optional, Tuple
 
 import pytest
 
+from support.clock import until
+
 from polaris_key.connect.loop import connect_loop
 from polaris_key.core.peer_mdns import (
     ENTRY_TTL_SECONDS,
@@ -282,12 +284,9 @@ def test_stop_says_goodbye_with_zero_ttl_and_closes_the_socket() -> None:
 
 
 def test_the_advert_is_repeated_after_a_second() -> None:
-    import threading
-
     rig = Rig(addresses=lambda: ["10.0.0.2"])
     advertise(rig)
-    threading.Event().wait(1.4)
-    assert len(rig.sock.sent) >= 2
+    until(lambda: len(rig.sock.sent) >= 2)  # the repeat is due a second after the first announce
 
 
 def test_a_socket_that_cannot_open_is_mdns_unavailable() -> None:
