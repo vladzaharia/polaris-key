@@ -143,11 +143,27 @@ public enum CanonicalJSON {
         return try parse(s, numbersAsDoubles: numbersAsDoubles)
     }
 
+    /// `parse`, except that a string with a lone surrogate escape does not fail the document. A Swift string
+    /// cannot hold one, so the string becomes the number NaN (a value a canonical writer refuses), and an
+    /// object with such a key becomes NaN as a whole. The export reads a Worker's answer this way so that one
+    /// row no runtime could write is dropped and listed, and never stops the rest.
+    public static func parseLeniently(utf8 data: Data) throws -> JSONValue {
+        guard let s = String(data: data, encoding: .utf8) else {
+            throw SyncCryptoError.unspellable("not UTF-8")
+        }
+        var p = Reader(bytes: Array(s.utf8), asDoubles: false)
+        p.lenient = true
+        return try p.document()
+    }
+
     private struct Reader {
         let b: [UInt8]
         let asDoubles: Bool
         var i = 0
         var depth = 0
+        /// A lone surrogate escape is not an error: `string()` notes it in `tainted` and the caller decides.
+        var lenient = false
+        var tainted = false
         init(bytes: [UInt8], asDoubles: Bool) {
             b = bytes
             self.asDoubles = asDoubles
@@ -180,7 +196,13 @@ public enum CanonicalJSON {
             case 0x6E: return try literal("null", .null)
             case 0x74: return try literal("true", .bool(true))
             case 0x66: return try literal("false", .bool(false))
-            case 0x22: return .string(try string())
+            case 0x22:
+                let s = try string()
+                if tainted {
+                    tainted = false
+                    return .double(.nan)
+                }
+                return .string(s)
             case 0x5B:
                 depth += 1
                 defer { depth -= 1 }
@@ -218,10 +240,15 @@ public enum CanonicalJSON {
                     i += 1
                     return .object(o)
                 }
+                var badKey = false
                 while true {
                     ws()
                     guard i < b.count, b[i] == 0x22 else { throw fail() }
                     let k = try string()
+                    if tainted {
+                        tainted = false
+                        badKey = true
+                    }
                     ws()
                     guard i < b.count, b[i] == 0x3A else { throw fail() }
                     i += 1
@@ -235,7 +262,7 @@ public enum CanonicalJSON {
                     }
                     if b[i] == 0x7D {
                         i += 1
-                        return .object(o)
+                        return badKey ? .double(.nan) : .object(o)
                     }
                     throw fail()
                 }
@@ -335,18 +362,28 @@ public enum CanonicalJSON {
                 case 0x74: out.append("\t")
                 case 0x75:
                     let u = try hex4()
+                    func lone() throws {
+                        guard lenient else { throw SyncCryptoError.unspellable("lone surrogate") }
+                        tainted = true
+                        out.append("\u{FFFD}")
+                    }
                     if u >= 0xD800 && u <= 0xDBFF {
                         guard i + 1 < b.count, b[i] == 0x5C, b[i + 1] == 0x75 else {
-                            throw SyncCryptoError.unspellable("lone surrogate")
+                            try lone()
+                            continue
                         }
+                        let after = i
                         i += 2
                         let lo = try hex4()
                         guard lo >= 0xDC00 && lo <= 0xDFFF else {
-                            throw SyncCryptoError.unspellable("lone surrogate")
+                            // The escape that follows is read again as itself.
+                            i = after
+                            try lone()
+                            continue
                         }
                         out.append(Unicode.Scalar(0x10000 + ((u - 0xD800) << 10) + (lo - 0xDC00))!)
                     } else if u >= 0xDC00 && u <= 0xDFFF {
-                        throw SyncCryptoError.unspellable("lone surrogate")
+                        try lone()
                     } else {
                         out.append(Unicode.Scalar(u)!)
                     }

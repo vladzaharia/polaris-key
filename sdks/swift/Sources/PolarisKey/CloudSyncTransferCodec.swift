@@ -68,6 +68,14 @@ public protocol FileCodec: Sendable {
     /// The stored form of a whole file (a fresh salt every call).
     func sealWhole(_ plain: Data) throws -> Data
     func makeOpener() throws -> any FileOpener
+    /// An opener for a stored whole file whose plaintext size the caller already knows (the export's
+    /// plan): the last segment comes from that size, not from the end of the input, so the root never
+    /// leaves the codec. `finish` throws when the input ended before the last segment.
+    func makePlannedOpener(plainSize: Int) throws -> any FileOpener
+}
+
+extension FileCodec {
+    public func makePlannedOpener(plainSize: Int) throws -> any FileOpener { try makeOpener() }
 }
 
 private final class SyncOpener: FileOpener, @unchecked Sendable {
@@ -76,6 +84,19 @@ private final class SyncOpener: FileOpener, @unchecked Sendable {
     init(collKey: Data, kid: Data) { inner = SyncFileStream.Opener(collKey: collKey, kid: kid) }
     func push(_ data: Data) throws -> [Data] { try lock.withLock { try inner.push(data) } }
     func finish() throws -> Data { try lock.withLock { try inner.finish() } }
+}
+
+private final class PlannedSyncOpener: FileOpener, @unchecked Sendable {
+    private var inner: SyncFileStream.PlannedOpener
+    private let lock = NSLock()
+    init(collKey: Data, kid: Data, plainSize: Int) throws {
+        inner = try SyncFileStream.PlannedOpener(collKey: collKey, kid: kid, plainSize: plainSize)
+    }
+    func push(_ data: Data) throws -> [Data] { try lock.withLock { try inner.push(data) } }
+    func finish() throws -> Data {
+        try lock.withLock { try inner.finish() }
+        return Data()
+    }
 }
 
 private final class PassThrough: FileOpener, @unchecked Sendable {
@@ -132,6 +153,9 @@ public struct E2eFileCodec: FileCodec, CustomStringConvertible, CustomReflectabl
     }
 
     public func makeOpener() -> any FileOpener { SyncOpener(collKey: collKey, kid: kid) }
+    public func makePlannedOpener(plainSize: Int) throws -> any FileOpener {
+        try PlannedSyncOpener(collKey: collKey, kid: kid, plainSize: plainSize)
+    }
 }
 
 /// The codec of a collection of a server-mode product.
