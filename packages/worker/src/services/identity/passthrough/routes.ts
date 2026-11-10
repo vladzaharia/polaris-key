@@ -38,6 +38,8 @@ import { licenseConsentItem } from "./anchor.js";
 import { licenseChoiceView, replaceView } from "./choice.js";
 import { clientRecordFor, cloudSyncOn } from "./client.js";
 import { readSignInRequest } from "./request.js";
+import { existingSubjectFor } from "../../../core/accounts/accountSubjects.js";
+import { termsOwed } from "../productTerms.js";
 import { getActiveClient } from "../issuer/clientsRepo.js";
 import { registeredConsentView } from "../issuer/consentView.js";
 import { claimsOfScopes, lineScopes } from "../issuer/coverage.js";
@@ -249,6 +251,7 @@ export async function signInConsentView(
   const account = await getPortalAccount(db, accountId, now);
   if (!account) return { status: 404 };
   const authz = live.record.authz;
+  const termsCtx = { env, db, ...(settings ? { registry: settings } : {}) };
   if (authz?.registered) {
     // I-21.8 (§12.13.3): a registered client's consent: claims, entitlements, offline; no licence.
     const client = (await issuerServed(db, product.slug))
@@ -280,6 +283,12 @@ export async function signInConsentView(
           now,
           requestCreatedAt(live.record.expiresAt),
         ),
+        reask: authz.registered.prompt.consent,
+        wrongAccount:
+          authz.registered.hintSub !== null &&
+          (await existingSubjectFor(db, account.id, product.slug)) !==
+            authz.registered.hintSub,
+        terms: (await termsOwed(termsCtx, account.id, product.slug)) ?? null,
       }),
     };
   }
@@ -292,6 +301,7 @@ export async function signInConsentView(
     now,
     settings,
   );
+  const owed = await termsOwed(termsCtx, account.id, product.slug);
   const view: AppConsentView = {
     request: handle,
     person: {
@@ -305,6 +315,7 @@ export async function signInConsentView(
     scopeHash,
     firstTime,
     changed,
+    ...(owed ? { terms: owed } : {}),
   };
   return { status: 200, body: view };
 }

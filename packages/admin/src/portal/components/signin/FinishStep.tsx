@@ -27,9 +27,9 @@ import {
   useStepFocus,
 } from "../../../ui/auth/index.js";
 import { cn } from "../../../lib/cn.js";
-import { LINK_CLASS } from "../../linkClass.js";
 import { Pill, PRIMARY_CLASS, Unreachable } from "./requestParts.js";
-import { t, tParts } from "../../../lib/copy.js";
+import { t } from "../../../lib/copy.js";
+import { TermsSentence } from "./TermsCheck.js";
 import {
   portalApi,
   HttpError,
@@ -77,10 +77,6 @@ function providerName(kind: string): string {
   return NAME[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1);
 }
 
-function safeHref(url: string): string | null {
-  return /^https:\/\//.test(url) || url.startsWith("/") ? url : null;
-}
-
 function ProviderMark({
   kind,
   className = "size-4 shrink-0",
@@ -96,54 +92,6 @@ function ProviderMark({
   ) : kind === "steam" ? (
     <SteamGlyph className={c} />
   ) : null;
-}
-
-/** A terms link that opens in a new tab: a 44 px target, named for what it opens. */
-function TermsLink({
-  url,
-  children,
-}: {
-  url: string;
-  children: React.ReactNode;
-}): React.ReactElement {
-  const href = safeHref(url);
-  return href ? (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer noopener"
-      className={cn(LINK_CLASS, "-my-3 py-3")}
-    >
-      {children}
-    </a>
-  ) : (
-    <span>{children}</span>
-  );
-}
-
-/** "I agree to the {term}" with the link filling the slot (a catalog sentence, a real link). */
-function TermsSentence({
-  sentence,
-  url,
-  label,
-}: {
-  sentence: "signin.gate.productTerms" | "signin.gate.platformTerms";
-  url: string;
-  label: string;
-}): React.ReactElement {
-  return (
-    <>
-      {tParts(sentence, ["term"]).map((part, i) =>
-        typeof part === "string" ? (
-          <React.Fragment key={i}>{part}</React.Fragment>
-        ) : (
-          <TermsLink key={i} url={url}>
-            {label}
-          </TermsLink>
-        ),
-      )}
-    </>
-  );
 }
 
 export function FinishStep({

@@ -493,6 +493,23 @@ describe("success", () => {
       iconUrl: null,
       returnHost: "forum.example.com",
       nameVerified: true,
+      partner: false,
+    });
+  });
+
+  it("a client with a developer of its own is a partner", async () => {
+    const partner = await mk("partnered", "web", ["https://p.example.com/cb"], {
+      developerName: "Partner Ltd",
+    });
+    const { handle, cookie } = await accepted(partner);
+    const req = new Request("https://key.plrs.im/x", { headers: { cookie } });
+    const body = (await viewOf(w.env, w.db, req, handle, NOW, undefined))
+      .body as {
+      client: { registered: { partner: boolean; developerName: string } };
+    };
+    expect(body.client.registered).toMatchObject({
+      partner: true,
+      developerName: "Partner Ltd",
     });
   });
 

@@ -93,3 +93,21 @@ export async function termsGate(
     ? { ok: true, accept: terms }
     : { ok: false };
 }
+
+/**
+ * The terms the account still owes, for the consent view: `{version, url}` when the product has terms
+ * in force that this account has not accepted, else `undefined`.
+ */
+export async function termsOwed(
+  ctx: { env: Env; db: Db; registry?: SettingsRegistry },
+  accountId: string,
+  product: string,
+): Promise<{ version: string; url: string } | undefined> {
+  const terms = await productTerms(ctx, product);
+  if (
+    !terms ||
+    (await termsAccepted(ctx.db, accountId, product, terms.version))
+  )
+    return undefined;
+  return { version: terms.version, url: terms.url };
+}

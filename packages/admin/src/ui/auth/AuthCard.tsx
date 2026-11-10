@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cn } from "../../lib/cn.js";
-import { Globe, Monitor, Smartphone, Tv } from "lucide-react";
+import { AppWindow, Globe, Monitor, Smartphone, Tv } from "lucide-react";
 import { t, tParts } from "../../lib/copy.js";
 import { useLargeTextFlag } from "../../lib/useLargeTextFlag.js";
 
@@ -287,7 +287,7 @@ export type CardHeaderProps =
       developer: string | null;
       /** The key on-ramp of an app's request keeps the device line (§3.1). */
       where?: {
-        glyph: "globe" | "device" | "phone" | "tv";
+        glyph: "globe" | "device" | "phone" | "tv" | "app";
         text: string;
       } | null;
     }
@@ -300,7 +300,7 @@ export type CardHeaderProps =
       name: string;
       developer: string | null;
       where: {
-        glyph: "globe" | "device" | "phone" | "tv";
+        glyph: "globe" | "device" | "phone" | "tv" | "app";
         text: string;
       } | null;
       /** The device-code panel's code (the `device` variant). */
@@ -316,6 +316,7 @@ const WHERE_GLYPH = {
   device: Monitor,
   phone: Smartphone,
   tv: Tv,
+  app: AppWindow,
 } as const;
 
 /**
@@ -372,7 +373,7 @@ function Where({
   centered = false,
 }: {
   where:
-    | { glyph: "globe" | "device" | "phone" | "tv"; text: string }
+    | { glyph: "globe" | "device" | "phone" | "tv" | "app"; text: string }
     | null
     | undefined;
   /** No art: the pane centres its identity block. */
@@ -381,9 +382,29 @@ function Where({
   if (!where) return null;
   const Glyph = WHERE_GLYPH[where.glyph];
   return (
-    <p className={cn(WHERE, centered && "passport:justify-center")}>
-      <Glyph aria-hidden className="mt-0.5 size-4 shrink-0" />
-      <span className="min-w-0 [overflow-wrap:anywhere]">{where.text}</span>
+    <p
+      className={cn(
+        WHERE,
+        // Centred, the glyph rides the first line: a wrapped host never leaves it at the pane's edge.
+        centered && "passport:block passport:text-center",
+      )}
+    >
+      <Glyph
+        aria-hidden
+        className={cn(
+          "mt-0.5 size-4 shrink-0",
+          centered &&
+            "passport:mr-1.5 passport:mt-0 passport:inline passport:align-[-0.15em]",
+        )}
+      />
+      <span
+        className={cn(
+          "min-w-0 [overflow-wrap:anywhere]",
+          centered && "passport:inline",
+        )}
+      >
+        {where.text}
+      </span>
     </p>
   );
 }

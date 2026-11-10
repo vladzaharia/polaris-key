@@ -17,8 +17,9 @@
  *                   `login_required` (no session, one too old, another account than the hint's),
  *                   `consent_required` (no covering grant) or `interaction_required` (terms).
  *   interactive     with no session, the card signs in as usual (`null`). A live session whose
- *                   subject is not the `id_token_hint`'s is `login_required` all the same; any
- *                   other session shows the card, which asks again for a `login` prompt or a
+ *                   subject is not the `id_token_hint`'s shows the card too, which says who is
+ *                   expected and offers to switch account (the consent view's `wrongAccount`); any
+ *                   session shows the card, which asks again for a `login` prompt or a
  *                   session older than `max_age` and always ends in a press of Continue (D22).
  *
  * The handle is TAKEN (one atomic consume) whenever this answers a redirect, so the request
@@ -113,13 +114,15 @@ export async function silentSignInEntry(
   if (!live || !cookie)
     return reg.prompt.none ? answer(cx, { error: "login_required" }) : null;
 
-  // A session of another account than the hint's is `login_required`, whatever the prompt.
+  // Past here the request is `prompt=none` or it is the card's. An interactive request whose hint
+  // names another account is not bounced: the card shows who is expected and the person switches
+  // account (`wrongAccount`, `issuer/continue.ts`).
+  if (!reg.prompt.none) return null;
   if (reg.hintSub !== null) {
     const subject = await existingSubjectFor(db, live.accountId, slug);
     if (subject === null || !constantTimeEqual(subject, reg.hintSub))
       return answer(cx, { error: "login_required" });
   }
-  if (!reg.prompt.none) return null;
 
   // Each silent answer signs a code in the person's name: a per-account budget like Continue's
   // (30 a minute, failing closed), so a page cannot drive the session in a loop.

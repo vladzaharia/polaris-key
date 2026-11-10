@@ -306,7 +306,7 @@ describe("id_token_hint", () => {
     expect(target(await entry()).searchParams.get("code")).not.toBeNull();
   });
 
-  it("another account's sub is login_required, interactive or not", async () => {
+  it("another account's sub is login_required for prompt=none and the card for an interactive request", async () => {
     await grant();
     const other = await hint("ps_" + "x".repeat(22));
     const none = await enter(
@@ -316,13 +316,12 @@ describe("id_token_hint", () => {
     expect(target(await none.entry()).searchParams.get("error")).toBe(
       "login_required",
     );
+    // Interactive: not bounced. The card answers, and says who is expected (`wrongAccount`).
     const interactive = await enter(
       { id_token_hint: other },
       { session: true },
     );
-    expect(target(await interactive.entry()).searchParams.get("error")).toBe(
-      "login_required",
-    );
+    cardShown(await interactive.entry());
   });
 
   it("with no session an interactive request signs in as usual", async () => {

@@ -49,5 +49,10 @@ export async function registeredClientRecord(
       ? new URL(redirectUri).host
       : null,
     nameVerified: nameOk && developerOk,
+    // Another company's client: it has a developer name of its own, and it is not the product's.
+    partner:
+      client.developerName !== null &&
+      developerOk &&
+      client.developerName !== productDeveloper,
   };
 }

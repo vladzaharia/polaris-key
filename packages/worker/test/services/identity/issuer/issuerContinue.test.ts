@@ -266,7 +266,7 @@ describe("Continue", () => {
     ).toEqual(["name", "picture", "email"]);
   });
 
-  it("a hint of another account is login_required, to the registered URI, and takes the handle", async () => {
+  it("a hint of another account is 409 wrong_account: the person switches, nothing is consumed", async () => {
     const hint = await signIssuerJwt(
       w.env,
       w.db,
@@ -282,14 +282,14 @@ describe("Continue", () => {
     );
     const s = await start({ id_token_hint: hint });
     const out = await cont(s);
-    expect(out.status).toBe(200);
-    const u = redirectOf(out);
-    expect(u.searchParams.get("error")).toBe("login_required");
-    expect(u.searchParams.get("code")).toBeNull();
+    expect(out.status).toBe(409);
+    expect(out.json.error).toBe("wrong_account");
+    expect((await consentOf(s)).body.wrongAccount).toBe(true);
     expect(
       await getClientGrant(w.db, SLUG, accountId, client.clientId),
     ).toBeNull();
-    expect((await cont(s)).status).toBe(404);
+    // Still pending: the card can offer to switch account, and Cancel still answers.
+    expect((await cont(s)).status).toBe(409);
     // The right account's hint continues.
     const ok = await signIssuerJwt(
       w.env,
@@ -431,6 +431,122 @@ describe("Continue re-checks what the request was registered for", () => {
       NOW,
     );
     expect((await cont(b)).status).toBe(404);
+  });
+});
+
+describe("a decision, once made, stays made (V5 §12.13.6)", () => {
+  const decide = async (extra: Record<string, string>, claims?: string[]) => {
+    const s = await start(extra);
+    const out = await cont(
+      s,
+      claims === undefined ? {} : { consent: { claims } },
+    );
+    expect(out.status).toBe(200);
+    return s;
+  };
+
+  it("a new scope asks only about the new item and never switches a declined claim back on", async () => {
+    await decide({ scope: "openid profile email" }, ["name"]);
+    const first = await getClientGrant(w.db, SLUG, accountId, client.clientId);
+    expect(first).toMatchObject({
+      claimsGranted: ["name"],
+      claimsDeclined: ["picture", "email"],
+    });
+    // The client now also asks to stay signed in.
+    const s = await start({ scope: "openid profile email offline_access" });
+    const view = await consentOf(s);
+    expect(view.body.items).toEqual([{ kind: "offline" }]);
+    expect(view.body.shared).toEqual(["name"]);
+    expect(view.body.changed).toBe(true);
+    // One press with no consent posted: the old decisions stand.
+    const out = await cont(s);
+    expect(out.status).toBe(200);
+    const after = (await getClientGrant(
+      w.db,
+      SLUG,
+      accountId,
+      client.clientId,
+    ))!;
+    expect(after).toMatchObject({
+      claimsGranted: ["name"],
+      claimsDeclined: ["picture", "email"],
+      scopes: ["offline_access"],
+    });
+    const code = await redeemAuthorizationCode(
+      w.env,
+      SLUG,
+      redirectOf(out).searchParams.get("code")!,
+      pair.challenge,
+    );
+    expect(code!.registered!.claims).toEqual(["name"]);
+  });
+
+  it("a declined claim cannot be flipped on by a posted consent", async () => {
+    await decide({ scope: "openid profile email" }, ["name"]);
+    const s = await start({ scope: "openid profile email offline_access" });
+    for (const claims of [
+      ["picture"],
+      ["name", "email"],
+      ["name", "picture", "email"],
+    ]) {
+      const out = await cont(s, { consent: { claims } });
+      expect(out.status, claims.join()).toBe(400);
+    }
+    expect(
+      (await getClientGrant(w.db, SLUG, accountId, client.clientId))!
+        .claimsDeclined,
+    ).toEqual(["picture", "email"]);
+  });
+
+  it("a new claim is asked, and merged beside the old decisions", async () => {
+    await decide({ scope: "openid profile" }, ["name"]);
+    const s = await start({ scope: "openid profile email" });
+    expect((await consentOf(s)).body.items).toEqual([
+      { kind: "profile", claims: ["email"], required: [] },
+    ]);
+    await cont(s, { consent: { claims: ["email"] } });
+    expect(
+      await getClientGrant(w.db, SLUG, accountId, client.clientId),
+    ).toMatchObject({
+      claimsGranted: ["name", "email"],
+      claimsDeclined: ["picture"],
+    });
+  });
+
+  it("prompt=consent lists everything again, each switch starting from the grant, and the person may change it", async () => {
+    await decide({ scope: "openid profile email" }, ["name", "email"]);
+    const s = await start({ scope: "openid profile email", prompt: "consent" });
+    const view = await consentOf(s);
+    expect(view.body.items[0]).toMatchObject({
+      kind: "profile",
+      claims: ["name", "picture", "email"],
+      off: ["picture"],
+    });
+    await cont(s, { consent: { claims: ["name", "picture"] } });
+    expect(
+      await getClientGrant(w.db, SLUG, accountId, client.clientId),
+    ).toMatchObject({
+      claimsGranted: ["name", "picture"],
+      claimsDeclined: ["email"],
+    });
+  });
+});
+
+describe("the consent view's terms and the partner flag", () => {
+  it("lists the terms until accepted, and Continue with the version accepts them", async () => {
+    await ingestIdentity(w.db, SLUG, {
+      issuer: { enabled: true },
+      terms: { version: "2026-10", url: "https://acme.example/terms" },
+    });
+    const s = await start();
+    expect((await consentOf(s)).body.terms).toEqual({
+      version: "2026-10",
+      url: "https://acme.example/terms",
+    });
+    expect((await cont(s)).status).toBe(409);
+    expect((await cont(s, { terms: "2026-10" })).status).toBe(200);
+    const again = await start();
+    expect((await consentOf(again)).body.terms).toBeUndefined();
   });
 });
 

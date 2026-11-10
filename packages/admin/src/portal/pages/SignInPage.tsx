@@ -77,6 +77,7 @@ import {
 import {
   navigation,
   requestHandleFromUrl,
+  takeReauthEmail,
   safeRedirect,
 } from "../model/signInRequest.js";
 import { useSignInRequest } from "../requestData.js";
@@ -222,6 +223,8 @@ export function SignInPage({
   // An app's sign-in (`/signin?request=rq_…`, PX-14a): the header is the request's data, and the
   // product is the request's, never a query value.
   const [handle] = React.useState(requestHandleFromUrl);
+  // A fresh sign-in the app asked for starts from the address that was signed in.
+  const [reauthEmail] = React.useState(() => takeReauthEmail(handle));
   const request = useSignInRequest(handle);
   const product = urlProduct ?? request.data?.client.product ?? null;
   const caps = useCapabilities(product);
@@ -622,7 +625,10 @@ export function SignInPage({
         <MethodsStep
           caps={caps.data}
           context={ctx ?? null}
-          initialEmail={step.email ?? request.data?.loginHint ?? undefined}
+          initialEmail={
+            step.email ?? reauthEmail ?? request.data?.loginHint ?? undefined
+          }
+          registered={request.data?.client.registered !== undefined}
           focusEmail={step.focusEmail}
           notice={
             step.notice ??
@@ -750,6 +756,7 @@ function MethodsStep({
   caps,
   context,
   initialEmail,
+  registered = false,
   focusEmail,
   notice,
   onSent,
@@ -768,6 +775,8 @@ function MethodsStep({
   context: { slug: string; name: string; developerName?: string | null } | null;
   /** The address to start from: kept when an expired sign-in comes back here. */
   initialEmail?: string;
+  /** A registered client's request binds no licence: no key path, no purchase wording. */
+  registered?: boolean;
   /** Focus and select the address (Change on a routed step), not the heading. */
   focusEmail?: boolean;
   /** Why the card came back here (an expired sign-in), shown under the title. */
@@ -891,7 +900,12 @@ function MethodsStep({
     : carriedName
       ? t("signin.key.carriedLede", { product: carriedName })
       : context
-        ? t("signin.methods.ledeApp", { product: context.name })
+        ? t(
+            registered ? "locker.issuer.signInWith" : "signin.methods.ledeApp",
+            {
+              product: context.name,
+            },
+          )
         : null;
 
   return (
@@ -1045,7 +1059,10 @@ function MethodsStep({
           </Button>
         ) : null}
       </div>
-      {!other && !attachDevice && (carried || caps.modules.claim) ? (
+      {!other &&
+      !attachDevice &&
+      !registered &&
+      (carried || caps.modules.claim) ? (
         <QuietLinks>
           {carried ? (
             <QuietLink onClick={() => setParams({ activate: null })}>

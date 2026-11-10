@@ -83,6 +83,10 @@ export function signOutQuietly(client: QueryClient): void {
   quietSignOut = true;
   client.setQueryData(qk.me(), null);
 }
+/** The next sign-out is the person's own doing (a fresh sign-in the app asked for): no toast. */
+export function signOutExpected(): void {
+  quietSignOut = true;
+}
 export function consumeQuietSignOut(): boolean {
   const q = quietSignOut;
   quietSignOut = false;

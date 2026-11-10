@@ -46,8 +46,13 @@ import { issuerOf } from "../passthrough/authorize.js";
 import { consentScope } from "../passthrough/routes.js";
 import { termsGate } from "../productTerms.js";
 import { getActiveClient } from "./clientsRepo.js";
-import { claimsFromConsent, claimsOfScopes, lineScopes } from "./coverage.js";
-import { clientGrantStatement } from "./grantsRepo.js";
+import {
+  claimsFromConsent,
+  claimsOfScopes,
+  claimsToAsk,
+  lineScopes,
+} from "./coverage.js";
+import { clientGrantStatement, getClientGrant } from "./grantsRepo.js";
 import { needsFreshSignIn, requestCreatedAt } from "./reauth.js";
 import { withQuery } from "./redirect.js";
 import { stillRegistered } from "./registration.js";
@@ -101,14 +106,13 @@ export async function continueRegistered(
   if (!stillRegistered(client, authz.redirectUri, authz.scope))
     return refuse(404, ErrorCode.NotFound);
 
-  // 3. The hinted account is the one signing in.
+  // 3. The hinted account is the one signing in. An interactive request is not bounced: the card
+  //    shows the person who is expected (`wrongAccount`) and they switch account; `prompt=none`
+  //    never gets here (the entry answers it `login_required`).
   if (reg.hintSub !== null) {
     const subject = await existingSubjectFor(db, accountId, slug);
-    if (subject === null || !constantTimeEqual(subject, reg.hintSub)) {
-      if (!(await takeSignInRequest(env, cx.req, cx.handle, now)))
-        return refuse(404, ErrorCode.NotFound);
-      return redirectTo(cx, { error: "login_required" });
-    }
+    if (subject === null || !constantTimeEqual(subject, reg.hintSub))
+      return refuse(409, "wrong_account");
   }
 
   // 4. A fresh sign-in, when the request asked for one.
@@ -117,10 +121,27 @@ export async function continueRegistered(
   )
     return refuse(409, "reauth_required");
 
-  // 5. The claims granted: every required one, and only ones the request reaches.
+  // 5. The decisions: only the claims the card asked about now (a declined claim stays declined),
+  //    merged into the grant, every required claim granted.
   const reached = claimsOfScopes(authz.scope);
-  const granted = claimsFromConsent<IssuerClaim>(body, reached);
-  if (granted === null) return refuse(400, ErrorCode.BadRequest);
+  const before = await getClientGrant(db, slug, accountId, client.clientId);
+  const asked = claimsToAsk(reached, before, reg.prompt.consent);
+  // An echo of a claim already granted is harmless; naming a declined one is not.
+  const known = reached.filter(
+    (c) => asked.includes(c) || before?.claimsGranted.includes(c),
+  );
+  const posted = claimsFromConsent<IssuerClaim>(body, known);
+  if (posted === null) return refuse(400, ErrorCode.BadRequest);
+  const granted = reached.filter(
+    (c) =>
+      posted.includes(c) ||
+      (!asked.includes(c) && before?.claimsGranted.includes(c)),
+  );
+  const declined = reached.filter(
+    (c) =>
+      !granted.includes(c) &&
+      (asked.includes(c) || before?.claimsDeclined.includes(c)),
+  );
   if (
     !client.claims.required
       .filter((c) => reached.includes(c))
@@ -149,8 +170,8 @@ export async function continueRegistered(
         clientId: client.clientId,
         product: slug,
         claimsGranted: granted,
-        claimsDeclined: reached.filter((c) => !granted.includes(c)),
-        scopes: lines,
+        claimsDeclined: declined,
+        scopes: [...new Set([...(before?.scopes ?? []), ...lines])],
         scopeHash: await consentScope(reached, lines),
       },
       now,

@@ -10,7 +10,8 @@ import {
   type Chosen,
 } from "../../model/signInRequest.js";
 import { cn } from "../../../lib/cn.js";
-import { ConsentActions, ConsentHead } from "./requestParts.js";
+import { ConsentFoot, ConsentHead } from "./requestParts.js";
+import { useTermsCheck } from "./TermsCheck.js";
 
 /**
  * ConsentStep (SIGN-IN.md §3.8, PX-14a): "Continue to <App> as <first name>?". The chosen licence
@@ -43,12 +44,17 @@ export function ConsentStep({
   error: string | null;
   /** Back to the licence list with the selection kept; null where no choice precedes. */
   onChange: (() => void) | null;
-  onContinue: () => void;
+  /** The terms version shown, when the product's terms are unaccepted. */
+  onContinue: (terms?: string) => void;
   onDeny: () => void;
   onNotYou: () => void;
 }): React.ReactElement {
   const line = licenseParts(chosen, { product, app, device, attach });
   const lines = consentLines(view);
+  const terms = useTermsCheck(view.terms, product);
+  const go = (): void => {
+    if (terms.pass()) onContinue(terms.version);
+  };
   return (
     <>
       <ConsentHead person={view.person} app={app} onNotYou={onNotYou} />
@@ -111,11 +117,12 @@ export function ConsentStep({
           {t("signin.consent.pairwise")}
         </p>
       </section>
-      {error ? <AuthNotice>{error}</AuthNotice> : null}
-      <ConsentActions
+      <ConsentFoot
+        terms={terms.check}
+        error={error}
         app={app}
         busy={busy}
-        onContinue={onContinue}
+        onContinue={go}
         onDeny={onDeny}
       />
     </>

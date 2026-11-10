@@ -60,7 +60,7 @@ export function RequestHeader({
   const icon = reg ? (
     <span className="relative inline-flex" data-client-icon>
       {mark}
-      <span className="absolute -bottom-1.5 -end-1.5 rounded-lg bg-surface p-0.5 ring-1 ring-border">
+      <span className="absolute -bottom-1.5 -end-1.5 rounded-lg bg-surface-raised p-0.5 ring-1 ring-border">
         <ProductIcon
           slug={m.product}
           name={view.client.appName}
@@ -80,7 +80,7 @@ export function RequestHeader({
         icon={icon}
         art={art}
         name={m.name}
-        developer={m.developer}
+        developer={m.byline ?? m.developer}
         where={m.where}
       />
     );
@@ -90,7 +90,7 @@ export function RequestHeader({
       icon={icon}
       art={art}
       name={m.name}
-      developer={m.developer}
+      developer={m.byline ?? m.developer}
       where={m.where}
       code={m.code}
       attach={view.purpose === "attach"}

@@ -3,60 +3,36 @@
  * token at `userinfo`, and what cannot. Tokens are crafted with the issuer's real key where a valid
  * signature is the point, so each case isolates the one claim or header that must refuse it.
  */
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { SignJWT, generateKeyPair } from "jose";
 import { dispatchWith } from "../../src/dispatch.js";
 import {
   signIssuerJwt,
   ensureIssuerKeys,
 } from "../../src/services/identity/issuer/keys.js";
-import {
-  deleteClient,
-  type ClientRecord,
-} from "../../src/services/identity/issuer/clientsRepo.js";
+import { deleteClient } from "../../src/services/identity/issuer/clientsRepo.js";
 import { NOW, seedProduct } from "../seed.js";
-import { BASE, SLUG, type World } from "../services/connect/connectFixture.js";
+import { BASE, SLUG } from "../services/connect/connectFixture.js";
 import { enableIssuer } from "../services/identity/issuer/issuerHelpers.js";
-import { issuerFlow } from "../services/identity/issuer/issuerFlow.js";
-import {
-  issuerWorld,
-  mkClient,
-} from "../services/identity/issuer/issuerWorld.js";
+import { issuerSuite } from "../services/identity/issuer/issuerFlow.js";
 
 const ISSUER = `${BASE}/${SLUG}/identity`;
-let w: World, accountId: string, spa: ClientRecord;
-let pair: { verifier: string; challenge: string };
-const { codeFor, token, grantForm } = issuerFlow(() => ({
-  w,
-  accountId,
-  pair,
-}));
-
-beforeEach(async () => {
-  ({ w, accountId, pair } = await issuerWorld());
-  (w.env as unknown as Record<string, unknown>).KEY_HASH_PEPPER =
-    "confusion-pepper";
-  spa = await mkClient(w, {
-    key: "spa-app",
-    type: "spa",
-    redirectUris: ["https://spa.example.com/cb"],
-  });
-});
+const { s, codeFor, token, grantForm } = issuerSuite("confusion-pepper");
 
 const userinfo = (t: string, at = NOW) =>
   dispatchWith(
     new Request(`${ISSUER}/userinfo`, {
       headers: { authorization: `Bearer ${t}` },
     }),
-    w.env,
-    w.db,
+    s.w.env,
+    s.w.db,
     at,
   );
 const base = (over: Record<string, unknown> = {}) => ({
   iss: ISSUER,
   aud: ISSUER,
-  sub: w.subject,
-  client_id: spa.clientId,
+  sub: s.w.subject,
+  client_id: s.spa.clientId,
   scope: "openid profile",
   iat: NOW,
   exp: NOW + 600,
@@ -64,7 +40,7 @@ const base = (over: Record<string, unknown> = {}) => ({
 });
 const real = async () => {
   const body = (await (
-    await token(grantForm(spa, await codeFor(spa)))
+    await token(grantForm(s.spa, await codeFor(s.spa)))
   ).json()) as Record<string, string>;
   return body;
 };
@@ -86,9 +62,9 @@ describe("token confusion (IS-6)", () => {
   it("a validly signed token with one wrong claim or header is refused", async () => {
     await real(); // a person with a grant, so the genuine claims have something to read
     const sign = (typ: "JWT" | "at+jwt", claims: Record<string, unknown>) =>
-      signIssuerJwt(w.env, w.db, SLUG, typ, claims, NOW);
+      signIssuerJwt(s.w.env, s.w.db, SLUG, typ, claims, NOW);
     await denied(await sign("JWT", base()), NOW); // right claims, id_token typ
-    await denied(await sign("at+jwt", base({ aud: spa.clientId }))); // an id_token's audience
+    await denied(await sign("at+jwt", base({ aud: s.spa.clientId }))); // an id_token's audience
     await denied(
       await sign("at+jwt", base({ aud: "https://evil.example.com" })),
     );
@@ -112,18 +88,18 @@ describe("token confusion (IS-6)", () => {
 
   it("a token whose client or grant is gone is refused even though it verifies", async () => {
     const t = await real();
-    await w.db.run("DELETE FROM identity_client_grants");
+    await s.w.db.run("DELETE FROM identity_client_grants");
     await denied(t.access_token!);
-    await deleteClient(w.db, SLUG, spa.clientId);
+    await deleteClient(s.w.db, SLUG, s.spa.clientId);
     await denied(t.access_token!);
   });
 
   it("another product's token is refused, even claiming this issuer, and a forged key is too", async () => {
-    await seedProduct(w.db, "rival");
-    await enableIssuer(w.db, "rival");
+    await seedProduct(s.w.db, "rival");
+    await enableIssuer(s.w.db, "rival");
     const foreign = await signIssuerJwt(
-      w.env,
-      w.db,
+      s.w.env,
+      s.w.db,
       "rival",
       "at+jwt",
       base(),
@@ -133,7 +109,7 @@ describe("token confusion (IS-6)", () => {
     const { privateKey } = await generateKeyPair("RS256", {
       modulusLength: 2048,
     });
-    const kid = await ensureIssuerKeys(w.env, w.db, SLUG, NOW);
+    const kid = await ensureIssuerKeys(s.w.env, s.w.db, SLUG, NOW);
     const forged = await new SignJWT(base())
       .setProtectedHeader({ alg: "RS256", typ: "at+jwt", kid })
       .sign(privateKey);
@@ -145,7 +121,7 @@ describe("token confusion (IS-6)", () => {
     const [, payload] = t.access_token!.split(".");
     const h = (o: unknown) =>
       Buffer.from(JSON.stringify(o)).toString("base64url");
-    const kid = await ensureIssuerKeys(w.env, w.db, SLUG, NOW);
+    const kid = await ensureIssuerKeys(s.w.env, s.w.db, SLUG, NOW);
     await denied(`${h({ alg: "none", typ: "at+jwt" })}.${payload}.`);
     await denied(
       `${h({ alg: "HS256", typ: "at+jwt", kid })}.${payload}.${Buffer.from("sig").toString("base64url")}`,
@@ -176,17 +152,17 @@ describe("token confusion (IS-6)", () => {
     const t = await real();
     const p = new URLSearchParams({
       response_type: "code",
-      client_id: spa.clientId,
+      client_id: s.spa.clientId,
       redirect_uri: "https://spa.example.com/cb",
       scope: "openid",
-      code_challenge: pair.challenge,
+      code_challenge: s.pair.challenge,
       code_challenge_method: "S256",
       id_token_hint: t.access_token!,
     });
     const res = await dispatchWith(
       new Request(`${BASE}/${SLUG}/identity/authorize?${p}`),
-      w.env,
-      w.db,
+      s.w.env,
+      s.w.db,
       NOW,
     );
     expect(

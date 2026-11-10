@@ -13,23 +13,36 @@ import type {
   ConsentItem,
 } from "@polaris-key/protocol/identity";
 import type { ClientRecord } from "./clientsRepo.js";
-import { claimsOfScopes, grantCovers } from "./coverage.js";
+import {
+  claimsForCode,
+  claimsOfScopes,
+  claimsToAsk,
+  grantCovers,
+} from "./coverage.js";
 import type { ClientGrant } from "./grantsRepo.js";
 
 export function registeredConsentItems(
   client: Pick<ClientRecord, "claims">,
   scope: readonly string[],
+  grant: ClientGrant | null,
+  reask: boolean,
 ): ConsentItem[] {
-  const claims = claimsOfScopes(scope);
+  const reached = claimsOfScopes(scope);
+  const claims = claimsToAsk(reached, grant, reask);
+  const asked = (line: string): boolean =>
+    scope.includes(line) && (reask || !grant || !grant.scopes.includes(line));
   const items: ConsentItem[] = [];
   if (claims.length > 0)
     items.push({
       kind: "profile",
-      claims: [...claims],
+      claims,
       required: client.claims.required.filter((c) => claims.includes(c)),
+      ...(reask && grant
+        ? { off: claims.filter((c) => grant.claimsDeclined.includes(c)) }
+        : {}),
     });
-  if (scope.includes("pkey:entitlements")) items.push({ kind: "entitlements" });
-  if (scope.includes("offline_access")) items.push({ kind: "offline" });
+  if (asked("pkey:entitlements")) items.push({ kind: "entitlements" });
+  if (asked("offline_access")) items.push({ kind: "offline" });
   return items;
 }
 
@@ -41,16 +54,25 @@ export function registeredConsentView(input: {
   scopeHash: string;
   grant: ClientGrant | null;
   reauth: boolean;
+  /** `prompt=consent`: ask about everything again, starting each switch from the grant. */
+  reask: boolean;
+  wrongAccount: boolean;
+  terms: AppConsentView["terms"] | null;
 }): AppConsentView {
   const { client, scope, grant } = input;
   return {
     request: input.handle,
     person: input.person,
-    items: registeredConsentItems(client, scope),
+    items: registeredConsentItems(client, scope, grant, input.reask),
     scopeHash: input.scopeHash,
     firstTime: grant === null,
     changed:
       grant !== null && !grantCovers(grant, scope, client.claims.required),
     ...(input.reauth ? { reauth: true as const } : {}),
+    ...(input.wrongAccount ? { wrongAccount: true as const } : {}),
+    ...(grant && claimsForCode(grant, scope).length > 0
+      ? { shared: claimsForCode(grant, scope) }
+      : {}),
+    ...(input.terms ? { terms: input.terms } : {}),
   };
 }

@@ -274,6 +274,11 @@ export type ConsentItem =
       claims: string[];
       /** I-21 (§12.13.6), a registered client's request only: the claims shown with no switch. */
       required?: IssuerClaim[];
+      /**
+       * A registered client's request only: the listed claims that start switched OFF, because the
+       * person declined them before and `prompt=consent` asks again (a switch starts from the grant).
+       */
+      off?: IssuerClaim[];
     }
   /** I-21 (§12.13.6), a registered client's request only: "Which <Product> features you have". */
   | { kind: "entitlements" }
@@ -301,6 +306,22 @@ export interface AppConsentView {
    * the person signs in again (`prompt=login`, or a sign-in older than `max_age`). Absent otherwise.
    */
   reauth?: true;
+  /**
+   * I-21.8 (§12.13.3 rule 3), a registered client's INTERACTIVE request whose `id_token_hint` names
+   * another account than the one signed in: Continue is refused until the person switches account.
+   * Absent otherwise.
+   */
+  wrongAccount?: true;
+  /**
+   * A registered client's request only: the claims this client already gets from an earlier decision
+   * (never listed again), so the card can say so once.
+   */
+  shared?: IssuerClaim[];
+  /**
+   * The product's terms the person has not accepted yet, to show above Continue; Continue sends
+   * `terms: version`. Absent when none are due.
+   */
+  terms?: { version: string; url: string };
 }
 
 /**
@@ -1266,6 +1287,11 @@ export interface RegisteredClientRecord {
   returnHost: string | null;
   /** False when the name or developer name failed the check: render the neutral frame. */
   nameVerified: boolean;
+  /**
+   * D8 (§12.13.2): another company's client (a developer name that is not the product's). The card
+   * says "by <developer>" and that it can recognise the person as the product's apps do.
+   */
+  partner: boolean;
 }
 
 /** §12.13.3: `prompt` values the issuer acts on. Others are ignored; `none` stands alone. */

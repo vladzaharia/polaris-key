@@ -3,12 +3,14 @@
  * `token` form posts, Basic headers. Bound to the test's world by a getter, so a `beforeEach` that
  * rebuilds the world rebinds them.
  */
-import { expect } from "vitest";
+import { beforeEach, expect } from "vitest";
 import { dispatchWith } from "../../../../src/dispatch.js";
 import { SETTINGS } from "../../../../src/mount.js";
 import type { ClientRecord } from "../../../../src/services/identity/issuer/clientsRepo.js";
 import { handleSignInContinue } from "../../../../src/services/identity/passthrough/continue.js";
+import { addClientSecret } from "../../../../src/services/identity/issuer/clientsRepo.js";
 import { NOW } from "../../../seed.js";
+import { issuerWorld, mkClient } from "./issuerWorld.js";
 import { BASE, SLUG, type World } from "../../connect/connectFixture.js";
 
 type Form = Record<string, string>;
@@ -16,6 +18,54 @@ interface FlowCtx {
   w: World;
   accountId: string;
   pair: { verifier: string; challenge: string };
+}
+
+/** The world every token test starts from, rebuilt before each test: `s.spa`, `s.web` (with `s.secret`). */
+export interface IssuerSuite extends FlowCtx {
+  spa: ClientRecord;
+  web: ClientRecord;
+  secret: string;
+}
+
+/**
+ * A fresh world per test with the issuer on, one account, a public (spa) and a web client and the
+ * web client's secret, plus the flow helpers bound to it.
+ */
+export function issuerSuite(pepper: string) {
+  const s = {} as IssuerSuite;
+  beforeEach(async () => {
+    Object.assign(s, await issuerWorld());
+    (s.w.env as unknown as Record<string, unknown>).KEY_HASH_PEPPER = pepper;
+    s.spa = await mkClient(s.w, {
+      key: "spa-app",
+      type: "spa",
+      redirectUris: ["https://spa.example.com/cb"],
+    });
+    s.web = await mkClient(s.w, {
+      key: "forum",
+      type: "web",
+      redirectUris: ["https://forum.example.com/cb"],
+    });
+    s.secret = (await addClientSecret(
+      s.w.env,
+      s.w.db,
+      SLUG,
+      s.web.clientId,
+      NOW,
+    ))!.secret;
+  });
+  const flow = issuerFlow(() => s);
+  /** What the web client gets for `code` with its secret: the error code, whatever the answer. */
+  const webRedeemError = async (
+    code: string,
+    extra: Record<string, string> = {},
+  ): Promise<string | undefined> =>
+    flow.err(
+      await flow.token(
+        flow.grantForm(s.web, code, { client_secret: s.secret, ...extra }),
+      ),
+    );
+  return { s, webRedeemError, ...flow };
 }
 
 export function issuerFlow(ctx: () => FlowCtx) {

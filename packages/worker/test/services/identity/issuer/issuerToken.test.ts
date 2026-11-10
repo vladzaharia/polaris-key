@@ -3,7 +3,7 @@
  * nonce-only code and its fixed proof), the tokens (RS256 under the product's issuer key, claims only
  * as granted), per-client CORS, and `resolveSubjectEntitlements`. Time is the injected `now`.
  */
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   compactVerify,
   createLocalJWKSet,
@@ -15,7 +15,6 @@ import {
   addClientSecret,
   revokeClientSecret,
   updateClient,
-  type ClientRecord,
 } from "../../../../src/services/identity/issuer/clientsRepo.js";
 import { deleteClient } from "../../../../src/services/identity/issuer/clientsRepo.js";
 import { issuerJwks } from "../../../../src/services/identity/issuer/keys.js";
@@ -26,46 +25,26 @@ import {
 } from "../../../../src/services/identity/portal/repo.js";
 import { subjectFor } from "../../../../src/core/accounts/accountSubjects.js";
 import { NOW, seedLicenseWithKey, seedProduct } from "../../../seed.js";
-import { BASE, SLUG, type World } from "../../connect/connectFixture.js";
-import { issuerFlow } from "./issuerFlow.js";
-import { issuerWorld, mkClient } from "./issuerWorld.js";
+import { BASE, SLUG } from "../../connect/connectFixture.js";
+import { issuerSuite } from "./issuerFlow.js";
+import { mkClient } from "./issuerWorld.js";
 
 const ISSUER = `${BASE}/${SLUG}/identity`;
 const SPA_CB = "https://spa.example.com/cb";
-const WEB_CB = "https://forum.example.com/cb";
-let w: World;
-let accountId: string;
-let spa: ClientRecord;
-let web: ClientRecord;
-let secret: string;
-let pair: { verifier: string; challenge: string };
 
 const mk = (
   key: string,
   type: "web" | "spa" | "native",
   redirectUris: string[],
-) => mkClient(w, { key, type, redirectUris });
+) => mkClient(s.w, { key, type, redirectUris });
 
-beforeEach(async () => {
-  ({ w, accountId, pair } = await issuerWorld());
-  (w.env as unknown as Record<string, unknown>).KEY_HASH_PEPPER =
-    "token-pepper";
-  spa = await mk("spa-app", "spa", [SPA_CB]);
-  web = await mk("forum", "web", [WEB_CB]);
-  secret = (await addClientSecret(w.env, w.db, SLUG, web.clientId, NOW))!
-    .secret;
-});
-
-const { codeFor, token, basic, grantForm, err } = issuerFlow(() => ({
-  w,
-  accountId,
-  pair,
-}));
+const { s, webRedeemError, codeFor, token, basic, grantForm, err } =
+  issuerSuite("token-pepper");
 type Form = Record<string, string>;
 
 describe("a public client redeems its code", () => {
   it("answers exactly the §12.13.4 members, signed RS256 under the product's key, no-store", async () => {
-    const res = await token(grantForm(spa, await codeFor(spa)));
+    const res = await token(grantForm(s.spa, await codeFor(s.spa)));
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("no-store");
     const body = (await res.json()) as Record<string, string | number>;
@@ -83,17 +62,17 @@ describe("a public client redeems its code", () => {
       scope: "openid profile email offline_access pkey:entitlements",
     });
     expect(body.refresh_token).toMatch(/^pkeyo_[A-Za-z0-9_-]{43}$/);
-    const keys = createLocalJWKSet(await issuerJwks(w.db, SLUG));
+    const keys = createLocalJWKSet(await issuerJwks(s.w.db, SLUG));
     const id = await jwtVerify(body.id_token as string, keys, {
       algorithms: ["RS256"],
       typ: "JWT",
       issuer: ISSUER,
-      audience: spa.clientId,
+      audience: s.spa.clientId,
       currentDate: new Date(NOW * 1000),
     });
     expect(id.payload).toMatchObject({
-      sub: w.subject,
-      azp: spa.clientId,
+      sub: s.w.subject,
+      azp: s.spa.clientId,
       auth_time: NOW,
       iat: NOW,
       exp: NOW + 600,
@@ -111,8 +90,8 @@ describe("a public client redeems its code", () => {
       currentDate: new Date(NOW * 1000),
     });
     expect(at.payload).toMatchObject({
-      sub: w.subject,
-      client_id: spa.clientId,
+      sub: s.w.subject,
+      client_id: s.spa.clientId,
       scope: body.scope,
       auth_time: NOW,
       exp: NOW + 600,
@@ -134,7 +113,7 @@ describe("a public client redeems its code", () => {
 
   it("at_hash is the left half of SHA-256 of the access token", async () => {
     const body = (await (
-      await token(grantForm(spa, await codeFor(spa)))
+      await token(grantForm(s.spa, await codeFor(s.spa)))
     ).json()) as Record<string, string>;
     const digest = new Uint8Array(
       await crypto.subtle.digest(
@@ -143,7 +122,7 @@ describe("a public client redeems its code", () => {
       ),
     );
     const want = Buffer.from(digest.slice(0, 16)).toString("base64url");
-    const keys = createLocalJWKSet(await issuerJwks(w.db, SLUG));
+    const keys = createLocalJWKSet(await issuerJwks(s.w.db, SLUG));
     const { payload } = await compactVerify(body.id_token!, keys, {
       algorithms: ["RS256"],
     });
@@ -151,16 +130,18 @@ describe("a public client redeems its code", () => {
   });
 
   it("carries only the claims granted, the nonce when sent, and no refresh token without offline_access", async () => {
-    const code = await codeFor(spa, { scope: "openid profile", nonce: "n-9" }, [
-      "name",
-    ]);
-    const body = (await (await token(grantForm(spa, code))).json()) as Record<
+    const code = await codeFor(
+      s.spa,
+      { scope: "openid profile", nonce: "n-9" },
+      ["name"],
+    );
+    const body = (await (await token(grantForm(s.spa, code))).json()) as Record<
       string,
       string
     >;
     expect(body.refresh_token).toBeUndefined();
     expect(body.scope).toBe("openid profile");
-    const keys = createLocalJWKSet(await issuerJwks(w.db, SLUG));
+    const keys = createLocalJWKSet(await issuerJwks(s.w.db, SLUG));
     const { payload } = await jwtVerify(body.id_token!, keys, {
       algorithms: ["RS256"],
       currentDate: new Date(NOW * 1000),
@@ -175,113 +156,125 @@ describe("a public client redeems its code", () => {
     const attempts: [string, (c: string) => Form][] = [
       [
         "wrong verifier",
-        (c) => grantForm(spa, c, { code_verifier: "B".repeat(43) }),
+        (c) => grantForm(s.spa, c, { code_verifier: "B".repeat(43) }),
       ],
       [
         "wrong redirect",
-        (c) => grantForm(spa, c, { redirect_uri: SPA_CB + "/" }),
+        (c) => grantForm(s.spa, c, { redirect_uri: SPA_CB + "/" }),
       ],
     ];
     for (const [name, build] of attempts) {
-      const code = await codeFor(spa);
+      const code = await codeFor(s.spa);
       const res = await token(build(code));
       expect(res.status, name).toBe(400);
       expect(await err(res), name).toBe("invalid_grant");
       // The attempt spent the code: the right request now finds nothing.
-      expect(await err(await token(grantForm(spa, code))), name).toBe(
+      expect(await err(await token(grantForm(s.spa, code))), name).toBe(
         "invalid_grant",
       );
     }
-    const code = await codeFor(spa);
-    expect((await token(grantForm(spa, code))).status).toBe(200);
-    expect(await err(await token(grantForm(spa, code)))).toBe("invalid_grant");
+    const code = await codeFor(s.spa);
+    expect((await token(grantForm(s.spa, code))).status).toBe(200);
+    expect(await err(await token(grantForm(s.spa, code)))).toBe(
+      "invalid_grant",
+    );
   });
 
   it("a public client's code is refused without a verifier before the store, so nothing is spent", async () => {
-    const code = await codeFor(spa);
-    const f = grantForm(spa, code);
+    const code = await codeFor(s.spa);
+    const f = grantForm(s.spa, code);
     delete f.code_verifier;
     expect(await err(await token(f))).toBe("invalid_grant");
-    expect((await token(grantForm(spa, code))).status).toBe(200);
+    expect((await token(grantForm(s.spa, code))).status).toBe(200);
   });
 
   it("the fixed no-challenge string is never accepted as a verifier, and a malformed one spends nothing", async () => {
-    const code = await codeFor(spa);
+    const code = await codeFor(s.spa);
     const res = await token(
-      grantForm(spa, code, { code_verifier: "pkey:no-challenge" }),
+      grantForm(s.spa, code, { code_verifier: "pkey:no-challenge" }),
     );
     expect(res.status).toBe(400);
     expect(await err(res)).toBe("invalid_grant");
-    expect((await token(grantForm(spa, code))).status).toBe(200);
+    expect((await token(grantForm(s.spa, code))).status).toBe(200);
   });
 
   it("a redirect or scope removed from the client after Continue voids the code", async () => {
-    const code = await codeFor(spa);
+    const code = await codeFor(s.spa);
     await updateClient(
-      w.db,
+      s.w.db,
       SLUG,
-      spa.clientId,
+      s.spa.clientId,
       { redirectUris: ["https://moved.example.com/cb"] },
       NOW,
     );
-    expect(await err(await token(grantForm(spa, code)))).toBe("invalid_grant");
+    expect(await err(await token(grantForm(s.spa, code)))).toBe(
+      "invalid_grant",
+    );
     await updateClient(
-      w.db,
+      s.w.db,
       SLUG,
-      spa.clientId,
+      s.spa.clientId,
       { redirectUris: [SPA_CB] },
       NOW,
     );
-    const c2 = await codeFor(spa);
-    await updateClient(w.db, SLUG, spa.clientId, { scopes: ["openid"] }, NOW);
-    expect(await err(await token(grantForm(spa, c2)))).toBe("invalid_grant");
+    const c2 = await codeFor(s.spa);
+    await updateClient(
+      s.w.db,
+      SLUG,
+      s.spa.clientId,
+      { scopes: ["openid"] },
+      NOW,
+    );
+    expect(await err(await token(grantForm(s.spa, c2)))).toBe("invalid_grant");
   });
 
   it("a missing redirect_uri or code is invalid_request and spends nothing", async () => {
-    const code = await codeFor(spa);
-    const f = grantForm(spa, code);
+    const code = await codeFor(s.spa);
+    const f = grantForm(s.spa, code);
     delete f.redirect_uri;
     const res = await token(f);
     expect(res.status).toBe(400);
     expect(await err(res)).toBe("invalid_request");
-    expect((await token(grantForm(spa, code))).status).toBe(200);
+    expect((await token(grantForm(s.spa, code))).status).toBe(200);
   });
 
   it("a code is the client's own, and a deleted grant or client voids it", async () => {
     const other = await mk("spa-two", "spa", ["https://two.example.com/cb"]);
-    const code = await codeFor(spa);
+    const code = await codeFor(s.spa);
     expect(
       await err(await token(grantForm(other, code, { redirect_uri: SPA_CB }))),
     ).toBe("invalid_grant");
-    const c2 = await codeFor(spa);
-    await w.db.run("DELETE FROM identity_client_grants");
-    expect(await err(await token(grantForm(spa, c2)))).toBe("invalid_grant");
-    const c3 = await codeFor(spa);
-    await deleteClient(w.db, SLUG, spa.clientId);
-    const res = await token(grantForm(spa, c3));
+    const c2 = await codeFor(s.spa);
+    await s.w.db.run("DELETE FROM identity_client_grants");
+    expect(await err(await token(grantForm(s.spa, c2)))).toBe("invalid_grant");
+    const c3 = await codeFor(s.spa);
+    await deleteClient(s.w.db, SLUG, s.spa.clientId);
+    const res = await token(grantForm(s.spa, c3));
     expect(res.status).toBe(401);
   });
 });
 
-describe("a web client authenticates before anything else", () => {
+describe("a s.web client authenticates before anything else", () => {
   it("accepts Basic and post, and a nonce-only code redeems without a verifier", async () => {
     const a = await token(
-      grantForm(web, await codeFor(web), { client_id: web.clientId }),
-      { headers: basic(web.clientId, secret) },
+      grantForm(s.web, await codeFor(s.web), { client_id: s.web.clientId }),
+      { headers: basic(s.web.clientId, s.secret) },
     );
     expect(a.status).toBe(200);
-    const f = grantForm(web, await codeFor(web), { client_secret: secret });
+    const f = grantForm(s.web, await codeFor(s.web), {
+      client_secret: s.secret,
+    });
     expect((await token(f)).status).toBe(200);
   });
 
-  it("refuses both methods, neither, a wrong, revoked or short secret, and a header/body id mismatch", async () => {
+  it("refuses both methods, neither, a wrong, revoked or short s.secret, and a header/body id mismatch", async () => {
     const attempt = async (
       form: Form,
       headers: Record<string, string> = {},
     ) => {
-      const code = await codeFor(web);
+      const code = await codeFor(s.web);
       const res = await token(
-        { ...grantForm(web, code), ...form },
+        { ...grantForm(s.web, code), ...form },
         { headers },
       );
       expect(res.status, JSON.stringify(form)).toBe(401);
@@ -289,80 +282,87 @@ describe("a web client authenticates before anything else", () => {
       return { res, code };
     };
     await attempt({}); // neither
-    await attempt({ client_secret: secret }, basic(web.clientId, secret)); // both
+    await attempt({ client_secret: s.secret }, basic(s.web.clientId, s.secret)); // both
     await attempt({ client_secret: "pkeycs_" + "A".repeat(43) });
     await attempt({ client_secret: "" });
     const wrongBasic = await attempt(
       {},
-      basic(web.clientId, "pkeycs_" + "A".repeat(43)),
+      basic(s.web.clientId, "pkeycs_" + "A".repeat(43)),
     );
     expect(wrongBasic.res.headers.get("www-authenticate")).toMatch(/^Basic/);
-    await attempt({ client_id: spa.clientId }, basic(web.clientId, secret)); // mismatch
+    await attempt(
+      { client_id: s.spa.clientId },
+      basic(s.web.clientId, s.secret),
+    ); // mismatch
     await attempt({}, { authorization: "Basic !!!notbase64" });
-    await attempt({}, { authorization: "Bearer " + secret });
-    const live = (await addClientSecret(w.env, w.db, SLUG, web.clientId, NOW))!;
-    await revokeClientSecret(w.db, SLUG, web.clientId, live.id, NOW);
+    await attempt({}, { authorization: "Bearer " + s.secret });
+    const live = (await addClientSecret(
+      s.w.env,
+      s.w.db,
+      SLUG,
+      s.web.clientId,
+      NOW,
+    ))!;
+    await revokeClientSecret(s.w.db, SLUG, s.web.clientId, live.id, NOW);
     await attempt({ client_secret: live.secret });
   });
 
   it("a failed authentication does not burn the code", async () => {
-    const code = await codeFor(web);
-    expect((await token(grantForm(web, code))).status).toBe(401);
+    const code = await codeFor(s.web);
+    expect((await token(grantForm(s.web, code))).status).toBe(401);
     expect(
-      (await token(grantForm(web, code, { client_secret: secret }))).status,
+      (await token(grantForm(s.web, code, { client_secret: s.secret }))).status,
     ).toBe(200);
   });
 
   it("the fixed proof string as a verifier is refused for a nonce-only code", async () => {
-    const code = await codeFor(web);
+    const code = await codeFor(s.web);
     const res = await token(
-      grantForm(web, code, {
-        client_secret: secret,
+      grantForm(s.web, code, {
+        client_secret: s.secret,
         code_verifier: "pkey:no-challenge",
       }),
     );
     expect(await err(res)).toBe("invalid_grant");
     expect(
-      (await token(grantForm(web, code, { client_secret: secret }))).status,
+      (await token(grantForm(s.web, code, { client_secret: s.secret }))).status,
     ).toBe(200);
   });
 
   it("a verifier for a nonce-only code, even the fixed proof string, is invalid_grant and ends the code", async () => {
-    for (const verifier of [pair.verifier, "A".repeat(43)]) {
-      const code = await codeFor(web);
+    for (const verifier of [s.pair.verifier, "A".repeat(43)]) {
+      const code = await codeFor(s.web);
       const res = await token(
-        grantForm(web, code, {
-          client_secret: secret,
+        grantForm(s.web, code, {
+          client_secret: s.secret,
           code_verifier: verifier,
         }),
       );
       expect(res.status, verifier).toBe(400);
       expect(await err(res)).toBe("invalid_grant");
-      expect(
-        await err(await token(grantForm(web, code, { client_secret: secret }))),
-      ).toBe("invalid_grant");
+      expect(await webRedeemError(code)).toBe("invalid_grant");
     }
   });
 
-  it("a code with a challenge needs its verifier, and a web client's PKCE code redeems with it", async () => {
-    const withPkce = await codeFor(web, {
-      code_challenge: pair.challenge,
+  it("a code with a challenge needs its verifier, and a s.web client's PKCE code redeems with it", async () => {
+    const withPkce = await codeFor(s.web, {
+      code_challenge: s.pair.challenge,
       code_challenge_method: "S256",
     });
     const noVerifier = await token(
-      grantForm(web, withPkce, { client_secret: secret }),
+      grantForm(s.web, withPkce, { client_secret: s.secret }),
     );
     expect(await err(noVerifier)).toBe("invalid_grant");
-    const again = await codeFor(web, {
-      code_challenge: pair.challenge,
+    const again = await codeFor(s.web, {
+      code_challenge: s.pair.challenge,
       code_challenge_method: "S256",
     });
     expect(
       (
         await token(
-          grantForm(web, again, {
-            client_secret: secret,
-            code_verifier: pair.verifier,
+          grantForm(s.web, again, {
+            client_secret: s.secret,
+            code_verifier: s.pair.verifier,
           }),
         )
       ).status,
@@ -371,31 +371,34 @@ describe("a web client authenticates before anything else", () => {
 });
 
 describe("public clients and unknown clients", () => {
-  it("a public client sending a secret anywhere, or an unknown client, is invalid_client", async () => {
-    const code = await codeFor(spa);
+  it("a public client sending a s.secret anywhere, or an unknown client, is invalid_client", async () => {
+    const code = await codeFor(s.spa);
     expect(
-      (await token(grantForm(spa, code, { client_secret: secret }))).status,
+      (await token(grantForm(s.spa, code, { client_secret: s.secret }))).status,
     ).toBe(401);
     expect(
       (
-        await token(grantForm(spa, code), {
-          headers: basic(spa.clientId, secret),
+        await token(grantForm(s.spa, code), {
+          headers: basic(s.spa.clientId, s.secret),
         })
       ).status,
     ).toBe(401);
     expect(
-      (await token(grantForm(spa, code, { client_id: "cl_" + "z".repeat(22) })))
-        .status,
+      (
+        await token(
+          grantForm(s.spa, code, { client_id: "cl_" + "z".repeat(22) }),
+        )
+      ).status,
     ).toBe(401);
-    expect((await token(grantForm(spa, code))).status).toBe(200);
+    expect((await token(grantForm(s.spa, code))).status).toBe(200);
   });
 
   it("the issuer off makes a registered client unknown", async () => {
-    const code = await codeFor(spa);
-    await w.db.run(
+    const code = await codeFor(s.spa);
+    await s.w.db.run(
       "DELETE FROM product_settings WHERE key = 'identity.issuer.enabled'",
     );
-    expect((await token(grantForm(spa, code))).status).toBe(401);
+    expect((await token(grantForm(s.spa, code))).status).toBe(401);
   });
 });
 
@@ -405,12 +408,12 @@ describe("grants and shapes", () => {
       "urn:ietf:params:oauth:grant-type:token-exchange",
       "urn:polaris-key:grant-type:restore",
     ]) {
-      const res = await token({ grant_type: grant, client_id: spa.clientId });
+      const res = await token({ grant_type: grant, client_id: s.spa.clientId });
       expect(res.status, grant).toBe(400);
       expect(await err(res)).toBe("unauthorized_client");
     }
     for (const grant of ["client_credentials", "password", "bogus"]) {
-      const res = await token({ grant_type: grant, client_id: spa.clientId });
+      const res = await token({ grant_type: grant, client_id: s.spa.clientId });
       expect(await err(res), grant).toBe("unsupported_grant_type");
     }
   });
@@ -422,11 +425,11 @@ describe("grants and shapes", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           grant_type: "authorization_code",
-          client_id: spa.clientId,
+          client_id: s.spa.clientId,
         }),
       }),
-      w.env,
-      w.db,
+      s.w.env,
+      s.w.db,
       NOW,
     );
     expect(await err(json)).toBe("invalid_request");
@@ -434,17 +437,17 @@ describe("grants and shapes", () => {
       new Request(`${BASE}/${SLUG}/identity/token`, {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: `grant_type=authorization_code&client_id=${spa.clientId}&client_id=${spa.clientId}`,
+        body: `grant_type=authorization_code&client_id=${s.spa.clientId}&client_id=${s.spa.clientId}`,
       }),
-      w.env,
-      w.db,
+      s.w.env,
+      s.w.db,
       NOW,
     );
     expect(await err(dup)).toBe("invalid_request");
   });
 
   it("never reads X-PKey-Device", async () => {
-    const res = await token(grantForm(spa, await codeFor(spa)), {
+    const res = await token(grantForm(s.spa, await codeFor(s.spa)), {
       headers: { "x-pkey-device": "!!" },
     });
     expect(res.status).toBe(200);
@@ -453,8 +456,8 @@ describe("grants and shapes", () => {
 
 describe("CORS (§12.13.4)", () => {
   const withOrigin = (origin: string) => ({ origin });
-  it("a spa client's answer is readable from its own redirect origin, never with credentials", async () => {
-    const res = await token(grantForm(spa, await codeFor(spa)), {
+  it("a s.spa client's answer is readable from its own redirect origin, never with credentials", async () => {
+    const res = await token(grantForm(s.spa, await codeFor(s.spa)), {
       headers: withOrigin("https://spa.example.com"),
     });
     expect(res.headers.get("access-control-allow-origin")).toBe(
@@ -462,42 +465,42 @@ describe("CORS (§12.13.4)", () => {
     );
     expect(res.headers.get("access-control-allow-credentials")).toBeNull();
     expect(res.headers.get("x-pkey-client-cors")).toBeNull();
-    const other = await token(grantForm(spa, await codeFor(spa)), {
+    const other = await token(grantForm(s.spa, await codeFor(s.spa)), {
       headers: withOrigin("https://evil.example.com"),
     });
     expect(other.headers.get("access-control-allow-origin")).toBeNull();
     expect(other.headers.get("x-pkey-client-cors")).toBeNull();
   });
 
-  it("another client's origin, a web client and a failed authentication get no allow-origin", async () => {
+  it("another client's origin, a s.web client and a failed authentication get no allow-origin", async () => {
     await mk("spa-two", "spa", ["https://two.example.com/cb"]);
-    const cross = await token(grantForm(spa, await codeFor(spa)), {
+    const cross = await token(grantForm(s.spa, await codeFor(s.spa)), {
       headers: withOrigin("https://two.example.com"),
     });
     expect(cross.headers.get("access-control-allow-origin")).toBeNull();
     const webRes = await token(
-      grantForm(web, await codeFor(web), { client_secret: secret }),
+      grantForm(s.web, await codeFor(s.web), { client_secret: s.secret }),
       { headers: withOrigin("https://forum.example.com") },
     );
     expect(webRes.status).toBe(200);
     expect(webRes.headers.get("access-control-allow-origin")).toBeNull();
     const bad = await token(
-      grantForm(spa, "x".repeat(43), { client_id: "cl_" + "z".repeat(22) }),
+      grantForm(s.spa, "x".repeat(43), { client_id: "cl_" + "z".repeat(22) }),
       { headers: withOrigin("https://spa.example.com") },
     );
     expect(bad.status).toBe(401);
     expect(bad.headers.get("access-control-allow-origin")).toBeNull();
   });
 
-  it("a preflight allows a spa client's origin and no other", async () => {
+  it("a preflight allows a s.spa client's origin and no other", async () => {
     const pre = (origin: string) =>
       dispatchWith(
         new Request(`${BASE}/${SLUG}/identity/token`, {
           method: "OPTIONS",
           headers: { origin, "access-control-request-method": "POST" },
         }),
-        w.env,
-        w.db,
+        s.w.env,
+        s.w.db,
         NOW,
       );
     const ok = await pre("https://spa.example.com");
@@ -512,7 +515,7 @@ describe("CORS (§12.13.4)", () => {
       ),
     ).toBeNull();
     // Issuer off: no extra origin.
-    await w.db.run(
+    await s.w.db.run(
       "DELETE FROM product_settings WHERE key = 'identity.issuer.enabled'",
     );
     expect(
@@ -543,8 +546,8 @@ describe("resolveSubjectEntitlements (LX-01 §2.2)", () => {
       entitlements?: Record<string, unknown>;
     } = {},
   ) {
-    await seedProduct(w.db, "ent", { catalog: CATALOG });
-    const { licenseId } = await seedLicenseWithKey(w.db, "ent", {
+    await seedProduct(s.w.db, "ent", { catalog: CATALOG });
+    const { licenseId } = await seedLicenseWithKey(s.w.db, "ent", {
       expiresAt: over.expiresAt ?? null,
       entitlements: (over.entitlements ?? {
         vpn: { state: "enforced", value: true, updatedAt: NOW },
@@ -553,17 +556,17 @@ describe("resolveSubjectEntitlements (LX-01 §2.2)", () => {
       }) as never,
     });
     const account = await getOrCreateAccountByEmail(
-      w.db,
+      s.w.db,
       "grace@example.com",
       NOW,
     );
-    await linkLicense(w.db, account.id, "ent", licenseId, "admin", NOW);
-    return subjectFor(w.db, account.id, "ent", NOW);
+    await linkLicense(s.w.db, account.id, "ent", licenseId, "admin", NOW);
+    return subjectFor(s.w.db, account.id, "ent", NOW);
   }
 
   it("lists the userGrant flags that are on, sorted, and nothing else", async () => {
     const sub = await holder();
-    expect(await resolveSubjectEntitlements(w.db, "ent", sub, NOW)).toEqual([
+    expect(await resolveSubjectEntitlements(s.w.db, "ent", sub, NOW)).toEqual([
       "studio",
       "vpn",
     ]);
@@ -571,35 +574,39 @@ describe("resolveSubjectEntitlements (LX-01 §2.2)", () => {
 
   it("is empty for an unknown subject, an expired licence, a false flag and a product with no catalog", async () => {
     const sub = await holder({ expiresAt: NOW - 10 });
-    expect(await resolveSubjectEntitlements(w.db, "ent", sub, NOW)).toEqual([]);
+    expect(await resolveSubjectEntitlements(s.w.db, "ent", sub, NOW)).toEqual(
+      [],
+    );
     expect(
       await resolveSubjectEntitlements(
-        w.db,
+        s.w.db,
         "ent",
         "ps_" + "u".repeat(22),
         NOW,
       ),
     ).toEqual([]);
     expect(
-      await resolveSubjectEntitlements(w.db, SLUG, w.subject, NOW),
+      await resolveSubjectEntitlements(s.w.db, SLUG, s.w.subject, NOW),
     ).toBeInstanceOf(Array);
     expect(
-      await resolveSubjectEntitlements(w.db, "nobody", w.subject, NOW),
+      await resolveSubjectEntitlements(s.w.db, "nobody", s.w.subject, NOW),
     ).toEqual([]);
   });
 
   it("an access token carries the claim only when pkey:entitlements was granted", async () => {
     const withIt = (await (
-      await token(grantForm(spa, await codeFor(spa)))
+      await token(grantForm(s.spa, await codeFor(s.spa)))
     ).json()) as Record<string, string>;
-    const keys = createLocalJWKSet(await issuerJwks(w.db, SLUG));
+    const keys = createLocalJWKSet(await issuerJwks(s.w.db, SLUG));
     const { payload } = await jwtVerify(withIt.access_token!, keys, {
       algorithms: ["RS256"],
       currentDate: new Date(NOW * 1000),
     });
     expect(Array.isArray(payload["pkey:entitlements"])).toBe(true);
     const without = (await (
-      await token(grantForm(spa, await codeFor(spa, { scope: "openid" }, [])))
+      await token(
+        grantForm(s.spa, await codeFor(s.spa, { scope: "openid" }, [])),
+      )
     ).json()) as Record<string, string>;
     const p2 = (
       await jwtVerify(without.access_token!, keys, {

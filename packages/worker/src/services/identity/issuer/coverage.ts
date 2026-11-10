@@ -75,3 +75,20 @@ export function claimsFromConsent<T extends string>(
     return null;
   return reached.filter((c) => claims.includes(c));
 }
+
+/**
+ * The claims a request asks about NOW: every one it reaches when the person has no grant, or when
+ * `prompt=consent` asks again; otherwise only the undecided ones. A claim the person declined stays
+ * declined and is never asked again (V5 §12.13.6; I-34 is where they change it).
+ */
+export function claimsToAsk(
+  reached: readonly IssuerClaim[],
+  grant: ClientGrant | null,
+  reask: boolean,
+): IssuerClaim[] {
+  if (!grant || reask) return [...reached];
+  return reached.filter(
+    (c) =>
+      !grant.claimsGranted.includes(c) && !grant.claimsDeclined.includes(c),
+  );
+}

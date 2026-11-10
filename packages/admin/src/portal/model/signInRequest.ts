@@ -34,10 +34,12 @@ export interface HeaderModel {
   /** The listing name; the product slug when it did not verify. Server data, never a query value. */
   name: string;
   developer: string | null;
+  /** A partner client's header line: "by <developer>". The footer keeps the plain name. */
+  byline: string | null;
   product: string;
   where:
     | { glyph: "globe"; text: string }
-    | { glyph: "device" | "phone" | "tv"; text: string }
+    | { glyph: "device" | "phone" | "tv" | "app"; text: string }
     | null;
   /** The device-code panel's code. */
   code: string | null;
@@ -69,9 +71,13 @@ export function headerModel(view: SignInRequestView): HeaderModel {
       verified: reg.nameVerified,
       name: reg.name,
       developer: reg.nameVerified ? reg.developerName : null,
+      byline:
+        reg.nameVerified && reg.partner && reg.developerName
+          ? t("common.byDeveloper", { developer: reg.developerName })
+          : null,
       product: client.product,
       where: {
-        glyph: reg.returnHost ? "globe" : "device",
+        glyph: reg.returnHost ? "globe" : "app",
         text: reg.returnHost
           ? t("locker.issuer.returnsTo", { host: reg.returnHost })
           : t("locker.issuer.returnsDevice"),
@@ -100,6 +106,7 @@ export function headerModel(view: SignInRequestView): HeaderModel {
     verified: client.nameVerified,
     name: client.appName,
     developer: client.nameVerified ? client.developerName : null,
+    byline: null,
     product: client.product,
     where,
     code: client.kind === "device" ? view.userCode : null,
@@ -399,10 +406,14 @@ export const navigation = {
 export interface ClientLine {
   id: "name" | "picture" | "email" | "entitlements" | "offline";
   text: string;
+  /** What the switch does, for a screen reader: "Share your picture with <App>". */
+  label: string;
   /** A claim the person cannot switch off. */
   required: boolean;
   /** A claim with a switch; the entitlement and offline lines have none. */
   claim: boolean;
+  /** An optional claim that starts off: the person declined it before and asked again. */
+  startsOff: boolean;
 }
 
 /** The lines of a registered client's consent view, in the Worker's order. */
@@ -419,24 +430,69 @@ export function clientLines(
         out.push({
           id: c,
           text: t(`locker.issuer.claim.${c}`),
+          label: t(`locker.issuer.share.${c}`, { app }),
           required: (item.required ?? []).some((r) => r === c),
           claim: true,
+          startsOff: (item.off ?? []).some((r) => r === c),
         });
       }
     } else if (item.kind === "entitlements")
       out.push({
         id: "entitlements",
         text: t("locker.issuer.entitlements", { product }),
+        label: t("locker.issuer.entitlements", { product }),
         required: false,
         claim: false,
+        startsOff: false,
       });
     else if (item.kind === "offline")
       out.push({
         id: "offline",
-        text: t("locker.issuer.offline", { app }),
+        text: t("locker.issuer.offline"),
+        label: t("locker.issuer.offline"),
         required: false,
         claim: false,
+        startsOff: false,
       });
   }
   return out;
+}
+
+/** "your screen name and your picture": the claims the client already gets, as one phrase. */
+export function sharedPhrase(claims: readonly string[]): string {
+  const words = claims
+    .filter((c) => c === "name" || c === "picture" || c === "email")
+    .map((c) => t(`locker.issuer.sharedItem.${c}`));
+  return new Intl.ListFormat(document.documentElement.lang || "en", {
+    style: "long",
+    type: "conjunction",
+  }).format(words);
+}
+
+const REAUTH_KEY = "pk-reauth-email";
+
+/** The address of the session a fresh sign-in replaces, for the sign-in step to start from (this tab only). */
+export function stashReauthEmail(handle: string, email: string | null): void {
+  try {
+    if (email)
+      window.sessionStorage.setItem(
+        REAUTH_KEY,
+        JSON.stringify([handle, email]),
+      );
+  } catch {
+    // No storage: the field starts empty.
+  }
+}
+
+/** The stashed address for this request, once; any other request's is dropped. */
+export function takeReauthEmail(handle: string | null): string | undefined {
+  try {
+    const raw = window.sessionStorage.getItem(REAUTH_KEY);
+    if (raw === null) return undefined;
+    window.sessionStorage.removeItem(REAUTH_KEY);
+    const [h, email] = JSON.parse(raw) as [unknown, unknown];
+    return h === handle && typeof email === "string" ? email : undefined;
+  } catch {
+    return undefined;
+  }
 }

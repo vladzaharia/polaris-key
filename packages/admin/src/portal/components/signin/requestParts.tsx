@@ -2,7 +2,7 @@ import * as React from "react";
 import { RadioGroup } from "radix-ui";
 import { RefreshCw } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
-import { AuthTitle } from "../../../ui/auth/index.js";
+import { AuthNotice, AuthTitle } from "../../../ui/auth/index.js";
 import { portalErrorCopy } from "../../errors.js";
 import { cn } from "../../../lib/cn.js";
 import { t } from "../../../lib/copy.js";
@@ -24,13 +24,19 @@ import { firstName } from "../../model/signInRequest.js";
 /** The step's one primary: the neutral ink button the card uses everywhere. */
 export const PRIMARY_CLASS = AUTH_PRIMARY_CLASS;
 
-/** The request is gone (or never existed): say so and return to the library. */
-export function RequestGone(): React.ReactElement {
+/** The request is gone (or never existed), or its client was switched off: say so and return to the library. */
+export function RequestGone({
+  title = t("signin.request.goneTitle"),
+  body = t("signin.request.gone"),
+}: {
+  title?: string;
+  body?: string;
+}): React.ReactElement {
   return (
     <>
       <div className="space-y-2">
-        <AuthTitle>{t("signin.request.goneTitle")}</AuthTitle>
-        <p className="text-fg-muted">{t("signin.request.gone")}</p>
+        <AuthTitle>{title}</AuthTitle>
+        <p className="text-fg-muted">{body}</p>
       </div>
       <Button asChild variant="neutral" size="xl" className={PRIMARY_CLASS}>
         <a href="/">{t("signin.return.library")}</a>
@@ -373,5 +379,27 @@ export function ConsentActions({
         {t("signin.consent.deny")}
       </Button>
     </div>
+  );
+}
+
+/** What closes a consent step: the terms check, a refusal, then Continue and Don't allow. */
+export function ConsentFoot({
+  terms,
+  error,
+  ...actions
+}: {
+  terms: React.ReactNode;
+  error: string | null;
+  app: string;
+  busy: "continue" | "deny" | null;
+  onContinue: () => void;
+  onDeny: () => void;
+}): React.ReactElement {
+  return (
+    <>
+      {terms}
+      {error ? <AuthNotice>{error}</AuthNotice> : null}
+      <ConsentActions {...actions} />
+    </>
   );
 }

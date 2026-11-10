@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
   AppConsentView,
   SignInRequestView,
 } from "@polaris-key/protocol/identity";
-import { navigation } from "../src/portal/model/signInRequest.js";
+import {
+  navigation,
+  stashReauthEmail,
+  takeReauthEmail,
+} from "../src/portal/model/signInRequest.js";
 import {
   ACCOUNT,
   axeViolations,
@@ -40,6 +44,7 @@ const VIEW: SignInRequestView = {
       iconUrl: null,
       returnHost: "community.example.com",
       nameVerified: true,
+      partner: true,
     },
   },
   deviceLabel: null,
@@ -111,6 +116,18 @@ function posted(path: string): unknown {
   return sent.length > 0 && sent[0] ? JSON.parse(sent[0]) : undefined;
 }
 
+/** Press Continue on the consent step. */
+const pressContinue = (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(screen.getByRole("button", { name: "Continue to Community" }));
+
+/** Render the card, press Continue, and wait for the card to say why it did not go. */
+async function continueRefused(): Promise<void> {
+  renderPortal();
+  await screen.findByRole("heading", { level: 1, name: /Continue to/ });
+  await pressContinue(userEvent.setup());
+  expect(await screen.findByRole("alert")).toBeTruthy();
+}
+
 /** The consent step for a registered client, and a user to drive it. */
 async function openConsent() {
   flow();
@@ -128,7 +145,7 @@ describe("the card for a registered client", () => {
     renderPortal();
     await screen.findByText("wants you to sign in with your", { exact: false });
     expect(screen.getByText("Community", { selector: "strong" })).toBeTruthy();
-    expect(screen.getByText("Partner Ltd")).toBeTruthy();
+    expect(screen.getByText("by Partner Ltd")).toBeTruthy();
     expect(
       screen.getByText("Returns you to community.example.com"),
     ).toBeTruthy();
@@ -136,41 +153,194 @@ describe("the card for a registered client", () => {
     expect(document.body.textContent).not.toMatch(/Polaris Key/);
   });
 
-  it("shows the consent lines with a switch on optional claims and a Required tag, and no licence line", async () => {
+  it("shows what the client asks for, a switch on each optional claim and the lock on the rest", async () => {
     flow();
     renderPortal();
     await screen.findByRole("heading", {
       level: 1,
       name: /Continue to Community as Mara/,
     });
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Community asks for" }),
+    ).toBeTruthy();
+    // The screen name shows its value; the row is fixed, so it has the lock and no switch.
     expect(screen.getByText("Your screen name")).toBeTruthy();
-    expect(screen.getByText("Required")).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Your picture" })).toBeTruthy();
     expect(
-      screen.getByRole("switch", { name: "Your email address" }),
+      screen.getAllByText("Fennick", { exact: false }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByRole("switch", { name: /screen name/ })).toBeNull();
+    // Every fixed row says so: the name, the features and staying signed in.
+    expect(screen.getAllByText("Required")).toHaveLength(3);
+    // The switches are named for what they do, and the whole row is their label.
+    const picture = screen.getByRole("switch", {
+      name: "Share your picture with Community",
+    });
+    expect(picture.getAttribute("aria-checked")).toBe("true");
+    expect(
+      screen.getByRole("switch", {
+        name: "Share your email address with Community",
+      }),
     ).toBeTruthy();
-    expect(
-      screen.queryByRole("switch", { name: "Your screen name" }),
-    ).toBeNull();
     expect(screen.getByText("Which Forum App features you have")).toBeTruthy();
-    expect(
-      screen.getByText("Staying signed in to Community while you're away"),
-    ).toBeTruthy();
+    expect(screen.getByText("Stay signed in while you're away")).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/license|synced/i);
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("a click on a row's words switches it", async () => {
+    const user = await openConsent();
+    await user.click(screen.getByText("Your picture"));
+    expect(
+      screen
+        .getByRole("switch", { name: "Share your picture with Community" })
+        .getAttribute("aria-checked"),
+    ).toBe("false");
+  });
+
+  it("a partner client says another company makes it; the product's own does not", async () => {
+    await openConsent();
     expect(
       screen.getByText(
-        "What you share is the same for every app you sign in to with Forum App.",
+        "Community is made by Partner Ltd, not Forum App. It can tell you're the same person Forum App's apps know.",
       ),
     ).toBeTruthy();
-    expect(await axeViolations()).toEqual([]);
+    cleanup();
+    flow(CONSENT, {
+      ...VIEW,
+      client: {
+        ...VIEW.client,
+        registered: { ...VIEW.client.registered!, partner: false },
+      },
+    });
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: /Continue to/ });
+    expect(
+      screen.getByText(
+        "Apps you sign in to with Forum App get the same name and email, so they can tell it's you.",
+      ),
+    ).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/is made by/);
+  });
+
+  it("asks only about what is undecided, says what is already shared, and starts a re-asked item off", async () => {
+    flow({
+      ...CONSENT,
+      firstTime: false,
+      changed: true,
+      items: [
+        {
+          kind: "profile",
+          claims: ["picture"],
+          required: [],
+          off: ["picture"],
+        },
+      ],
+      shared: ["name", "email"],
+    });
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: /Continue to/ });
+    expect(
+      screen.getByText(
+        "Already shared with Community: your screen name and your email address",
+        {
+          exact: false,
+        },
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText("Your email address")).toBeNull();
+    const picture = screen.getByRole("switch", {
+      name: "Share your picture with Community",
+    });
+    expect(picture.getAttribute("aria-checked")).toBe("false");
+    await pressContinue(userEvent.setup());
+    await waitFor(() => expect(went).toHaveLength(1));
+    expect(posted(`${REQUEST}/continue`)).toEqual({ consent: { claims: [] } });
+  });
+
+  it("the product's terms are one check above Continue: unticked it asks, ticked it posts the version", async () => {
+    flow({
+      ...CONSENT,
+      terms: { version: "t-2", url: "https://example.com/terms" },
+    });
+    await continueRefused();
+    expect(posted(`${REQUEST}/continue`)).toBeUndefined();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("checkbox"));
+    await pressContinue(user);
+    await waitFor(() => expect(went).toHaveLength(1));
+    expect(posted(`${REQUEST}/continue`)).toMatchObject({ terms: "t-2" });
+  });
+
+  it("a terms_required answer shows the terms from a fresh view, never the generic line", async () => {
+    let calls = 0;
+    mockFetch({
+      ...signedIn(),
+      [REQUEST]: VIEW,
+      [`${REQUEST}/consent`]: () =>
+        ++calls === 1
+          ? CONSENT
+          : {
+              ...CONSENT,
+              terms: { version: "t-2", url: "https://example.com/terms" },
+            },
+      [`POST ${REQUEST}/continue`]: {
+        status: 409,
+        body: { error: "terms_required" },
+      },
+    });
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: /Continue to/ });
+    await pressContinue(userEvent.setup());
+    expect(await screen.findByRole("checkbox")).toBeTruthy();
+    expect(screen.queryByText(/Something went wrong/)).toBeNull();
+  });
+
+  it("a client switched off after the card loaded ends the request with a way out", async () => {
+    mockFetch({
+      ...signedIn(),
+      [REQUEST]: VIEW,
+      [`${REQUEST}/consent`]: CONSENT,
+      [`POST ${REQUEST}/continue`]: {
+        status: 404,
+        body: { error: "not_found" },
+      },
+    });
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: /Continue to/ });
+    await pressContinue(userEvent.setup());
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Community can't sign you in right now",
+      }),
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: /library/i })).toBeTruthy();
+  });
+
+  it("another account than the one the client expects: a step to use another account", async () => {
+    flow({ ...CONSENT, wrongAccount: true });
+    renderPortal();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Community is expecting another account",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Use another account" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Don't allow" })).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Continue to Community" }),
+    ).toBeNull();
   });
 
   it("Continue posts the claims switched on and goes to the redirect", async () => {
     const user = await openConsent();
-    await user.click(screen.getByRole("switch", { name: "Your picture" }));
     await user.click(
-      screen.getByRole("button", { name: "Continue to Community" }),
+      screen.getByRole("switch", { name: "Share your picture with Community" }),
     );
+    await pressContinue(user);
     await waitFor(() =>
       expect(went).toEqual(["https://community.example.com/cb?code=1"]),
     );
@@ -212,27 +382,50 @@ describe("the card for a registered client", () => {
     expect(screen.queryByText("Partner Ltd")).toBeNull();
   });
 
-  it("asks the person to sign in again when the request needs a fresh sign-in", async () => {
+  it("asks the person to confirm it's them when the request needs a fresh sign-in", async () => {
     flow({ ...CONSENT, reauth: true });
     renderPortal();
-    const heading = await screen.findByRole("heading", {
-      level: 1,
-      name: "Sign in again",
-    });
-    expect(heading).toBeTruthy();
     expect(
-      screen.getByText(
-        "Community asked you to sign in again before you continue.",
-      ),
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Confirm it's you",
+      }),
+    ).toBeTruthy();
+    // The account being confirmed is shown, and the app's ask is said once.
+    expect(screen.getByText(ACCOUNT.email)).toBeTruthy();
+    expect(
+      screen.getByText("Community asks you to sign in again."),
     ).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: "Continue to Community" }),
     ).toBeNull();
-    const card = screen
-      .getByRole("button", { name: "Sign in again" })
-      .closest("main, section, div")!;
     expect(
-      within(card as HTMLElement).getByRole("button", { name: "Don't allow" }),
+      screen.getByRole("button", { name: "Sign in as Mara" }),
     ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Don't allow" })).toBeTruthy();
+  });
+
+  it("a wait after too many tries says so without naming a device", async () => {
+    mockFetch({
+      ...signedIn(),
+      [REQUEST]: VIEW,
+      [`${REQUEST}/consent`]: CONSENT,
+      [`POST ${REQUEST}/continue`]: {
+        status: 429,
+        body: { error: "rate_limited", retryAfter: 60 },
+      },
+    });
+    await continueRefused();
+    expect(document.body.textContent).not.toMatch(/device/i);
+  });
+});
+
+describe("the address a fresh sign-in starts from", () => {
+  it("is handed over once, for the same request only", () => {
+    stashReauthEmail(HANDLE, "mara@fennick.studio");
+    expect(takeReauthEmail("rq_other")).toBeUndefined();
+    stashReauthEmail(HANDLE, "mara@fennick.studio");
+    expect(takeReauthEmail(HANDLE)).toBe("mara@fennick.studio");
+    expect(takeReauthEmail(HANDLE)).toBeUndefined();
   });
 });
