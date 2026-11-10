@@ -51,6 +51,7 @@ export function ClientDrawer({
   open,
   onOpenChange,
   onCreated,
+  onSaved,
 }: {
   slug: string;
   /** Absent: register a new client. */
@@ -58,6 +59,8 @@ export function ClientDrawer({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: (client: IdentityClient) => void;
+  /** An edit was saved (the drawer is closing). */
+  onSaved?: () => void;
 }): React.ReactElement {
   const creating = client === undefined;
   const stepUp = useStepUpDraft(STEP_UP_KEY(slug, client), open, () =>
@@ -82,6 +85,7 @@ export function ClientDrawer({
           stepUp={stepUp}
           onDone={() => onOpenChange(false)}
           onCreated={onCreated}
+          onSaved={onSaved}
         />
       ) : null}
     </Drawer>
@@ -94,30 +98,35 @@ function ClientFormBody({
   stepUp,
   onDone,
   onCreated,
+  onSaved,
 }: {
   slug: string;
   client?: IdentityClient;
   stepUp: ReturnType<typeof useStepUpDraft>;
   onDone: () => void;
   onCreated?: (client: IdentityClient) => void;
+  onSaved?: () => void;
 }): React.ReactElement {
   const creating = client === undefined;
-  const start = React.useMemo<ClientValues>(() => {
-    const base = client ? valuesOf(client) : EMPTY_CLIENT;
+  const base = React.useMemo<ClientValues>(
+    () => (client ? valuesOf(client) : EMPTY_CLIENT),
+    [client],
+  );
+  // The entries a step-up sign-in kept: read once, when the drawer opens, and applied as unsaved
+  // changes against the stored client, so closing the drawer still asks.
+  const restored = React.useMemo<Partial<ClientValues> | null>(() => {
     const saved = stepUp.take();
-    if (saved?.values) {
-      try {
-        return { ...base, ...(JSON.parse(saved.values) as ClientValues) };
-      } catch {
-        return base;
-      }
+    if (!saved?.values) return null;
+    try {
+      return JSON.parse(saved.values) as Partial<ClientValues>;
+    } catch {
+      return null;
     }
-    return base;
-    // Read once, when the drawer opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const start = { ...base, ...restored };
   const form = useAdminForm<ClientValues>({
-    values: start,
+    values: base,
     validate: (v) => validateClient(v, { creating }),
     mapServerErrors: (e) => {
       if (!(e instanceof HttpError) || !e.fields?.length) return null;
@@ -158,13 +167,25 @@ function ClientFormBody({
           await mutate("updateIdentityClient", slug, client.id, body);
           toast.success("Client saved");
           onDone();
+          onSaved?.();
         }
       } catch (e) {
-        if (stepUp.check(e)) return;
+        // Rethrown on a step-up too: the form still counts as holding unsaved entries.
+        stepUp.check(e);
         throw e;
       }
     },
   });
+  React.useEffect(() => {
+    if (!restored) return;
+    for (const [k, v] of Object.entries(restored)) {
+      form.rhf.setValue(k as keyof ClientValues, v as never, {
+        shouldDirty: true,
+      });
+    }
+    // On mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const failure =
     form.submitError &&
     !(
@@ -182,7 +203,13 @@ function ClientFormBody({
       <DrawerBody className="space-y-5">
         {stepUp.needed ? (
           <Notice>
-            <StepUpNotice />
+            <StepUpNotice
+              why={
+                creating
+                  ? undefined
+                  : "Adding an address or widening access needs a fresh sign-in."
+              }
+            />
           </Notice>
         ) : null}
         {failure ? (

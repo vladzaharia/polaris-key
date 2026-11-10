@@ -51,10 +51,15 @@ export function useStepUpDraft(
 }
 
 /** The notice above a form whose save was refused for want of a fresh sign-in. */
-export function StepUpNotice(): React.ReactElement {
+export function StepUpNotice({
+  why = "This needs a sign-in from the last 5 minutes.",
+}: {
+  /** Why this save needs it, when the form can say. */
+  why?: string;
+}): React.ReactElement {
   return (
     <Callout alert tone="warning" title="Sign in again to save">
-      This needs a sign-in from the last 5 minutes. Your entries are kept.
+      {why} Your entries are kept.
     </Callout>
   );
 }

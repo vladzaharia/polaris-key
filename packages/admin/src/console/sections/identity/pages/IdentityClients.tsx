@@ -101,11 +101,13 @@ function Address({ label, value }: { label: string; value: string }) {
 
 /** What the switch's confirmation and the first-run action both say about turning the provider on. */
 const providerCopy = (name: string) => ({
+  label: `Sign in with ${name}`,
+  claim: "This overrides .pkey/product until you revert it.",
   title: (to: unknown) =>
     to === true
       ? `Turn on Sign in with ${name}?`
       : `Turn off Sign in with ${name}?`,
-  label: (to: unknown) => (to === true ? "Turn on" : "Turn off"),
+  button: (to: unknown) => (to === true ? "Turn on" : "Turn off"),
   consequences: (to: unknown) =>
     to === true
       ? [
@@ -144,8 +146,8 @@ function TurnOnDialog({
       }}
       intent="caution"
       title={copy.title(true)}
-      consequences={copy.consequences(true)}
-      confirmLabel={copy.label(true)}
+      consequences={[...copy.consequences(true), copy.claim]}
+      confirmLabel={copy.button(true)}
       confirmDisabled={reason.trim() === "" || !row}
       confirmDisabledReason={blocker(
         [!row, "Wait for the setting to load"],
@@ -203,7 +205,12 @@ export function IdentityClientsPage({
     <PageHeader
       title="Clients"
       description={`Websites and apps that sign people in with ${name}.`}
-      primaryAction={d ? register : undefined}
+      // First run: the empty state's step is the one primary.
+      primaryAction={
+        d && !(!d.issuer.enabled && d.clients.length === 0)
+          ? register
+          : undefined
+      }
       refetching={q.isFetching && !q.isPending}
     />
   );
@@ -239,10 +246,12 @@ export function IdentityClientsPage({
           title="Provider"
           copy={{
             [ISSUER_KEY]: {
+              label: copy.label,
+              claim: copy.claim,
               consequences: copy.consequences,
               confirm: (to) => ({
                 title: copy.title(to),
-                confirmLabel: copy.label(to),
+                confirmLabel: copy.button(to),
               }),
               saved: (to) => `Sign in with ${name} is ${to ? "on" : "off"}`,
             },

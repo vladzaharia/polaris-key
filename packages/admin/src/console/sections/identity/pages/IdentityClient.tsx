@@ -387,6 +387,7 @@ export function IdentityClientPage({
         client={c}
         open={editing}
         onOpenChange={setEditing}
+        onSaved={() => focusSoon(buttonNamed("Edit"))}
       />
       <OneTimeSecretDialog
         open={minted !== null}

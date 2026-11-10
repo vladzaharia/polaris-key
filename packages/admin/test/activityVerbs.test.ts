@@ -69,6 +69,13 @@ describe("activity verbs for sign-in clients (I-21.14)", () => {
       "identity.client.secret.created",
       "identity.client.secret.revoked",
       "identity.issuer.key.emergency_rotated",
+      "identity.issuer.key.created",
+      "identity.issuer.key.published",
+      "identity.issuer.key.rotated",
+      "identity.issuer.key.dropped",
+      "identity.client.continue",
+      "identity.client.signin",
+      "identity.client.token",
     ])
       expect(verbFor(a)).not.toBe(a);
   });

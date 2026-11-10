@@ -495,6 +495,14 @@ describe("Sign in with <Product> in the console", () => {
       await page.goto(`${app.url}/manage.html${hash}`);
     };
 
+    /** Escape asks before it drops the entries, and Keep editing leaves the drawer open. */
+    const keepsEntries = async (page: Page) => {
+      await page.keyboard.press("Escape");
+      await page.getByText("Discard your changes?").waitFor();
+      await page.getByRole("button", { name: /keep editing/i }).click();
+      await page.getByRole("dialog").waitFor();
+    };
+
     /** The client record of the forum, with one secret, answering `handler` first. */
     const openForum = (hash: string, handler: Handler) =>
       open(
@@ -530,11 +538,13 @@ describe("Sign in with <Product> in the console", () => {
         },
       );
       await title(page, TITLE);
-      const register = page
-        .getByRole("button", { name: "Register client" })
-        .first();
-      await register.waitFor();
-      expect(await register.getAttribute("aria-disabled")).toBe("true");
+      await page
+        .getByRole("button", { name: "Turn on Sign in with DJDL" })
+        .waitFor();
+      // The step is the one primary: no disabled Register above it.
+      expect(
+        await page.getByRole("button", { name: "Register client" }).count(),
+      ).toBe(0);
       await page
         .getByRole("button", { name: "Turn on Sign in with DJDL" })
         .click();
@@ -542,6 +552,10 @@ describe("Sign in with <Product> in the console", () => {
       await dialog.getByRole("textbox").fill("First client");
       await dialog.getByRole("button", { name: "Turn on" }).click();
       await page.getByText(ISSUER).first().waitFor();
+      const register = page
+        .getByRole("button", { name: "Register client" })
+        .first();
+      await register.waitFor();
       expect(await register.getAttribute("aria-disabled")).not.toBe("true");
       await closeContext(page.context());
     });
@@ -565,6 +579,8 @@ describe("Sign in with <Product> in the console", () => {
         .getByRole("textbox", { name: /^Redirect addresses/ })
         .fill("https://two.example.com/cb");
       await drawer.getByRole("button", { name: "Register client" }).click();
+      await drawer.getByRole("button", { name: "Sign in again" }).waitFor();
+      await keepsEntries(page);
       await signInAgain(
         page,
         drawer.getByRole("button", { name: "Sign in again" }),
@@ -572,6 +588,7 @@ describe("Sign in with <Product> in the console", () => {
       );
       const back = page.getByRole("dialog");
       await back.getByRole("textbox", { name: /^Key\b/ }).waitFor();
+      await keepsEntries(page);
       expect(
         await back.getByRole("textbox", { name: /^Key\b/ }).inputValue(),
       ).toBe("community");
@@ -598,12 +615,23 @@ describe("Sign in with <Product> in the console", () => {
         "https://forum.example.com/auth/callback\nhttps://new.example.com/cb",
       );
       await drawer.getByRole("button", { name: "Save" }).click();
+      await drawer.getByRole("button", { name: "Sign in again" }).waitFor();
+      await drawer
+        .getByText(
+          "Adding an address or widening access needs a fresh sign-in.",
+        )
+        .waitFor();
+      await keepsEntries(page);
       await signInAgain(
         page,
         drawer.getByRole("button", { name: "Sign in again" }),
         hash,
       );
       const back = page.getByRole("dialog");
+      await back
+        .getByRole("textbox", { name: /^Redirect addresses/ })
+        .waitFor();
+      await keepsEntries(page);
       expect(
         await back
           .getByRole("textbox", { name: /^Redirect addresses/ })

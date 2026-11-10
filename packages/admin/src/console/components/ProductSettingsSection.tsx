@@ -52,6 +52,10 @@ export interface SettingCopy {
     to: unknown,
     who: ProductWho,
   ) => { title: string; confirmLabel: string };
+  /** The row's name, when the page's card already names the setting differently. */
+  label?: string;
+  /** Replaces the line saying a save claims the setting from the manifest. */
+  claim?: string;
   /** The toast after a save of `to`. */
   saved?: (to: unknown) => string;
 }
@@ -303,14 +307,15 @@ function ProductSettingRow({
   const claim =
     linked && s.manifestPath
       ? [
-          `This claims it from ${manifestFile(s.manifestPath)}: later resyncs leave it alone until you revert it.`,
+          copy?.claim ??
+            `This claims it from ${manifestFile(s.manifestPath)}: later resyncs leave it alone until you revert it.`,
         ]
       : [];
   return (
     <SettingRow
       id={`setting-${s.key}`}
       settingKey={s.key}
-      label={s.label}
+      label={copy?.label ?? s.label}
       help={
         pendingRow ? (
           <>
