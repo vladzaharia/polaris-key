@@ -9,14 +9,6 @@ import { channelLabel } from "@polaris-key/manifest";
 import type { CodeLanguage } from "../../../../lib/highlight.js";
 import type { UpdaterId } from "../../../../api.js";
 
-export const PLATFORM_LABEL: Record<string, string> = {
-  macos: "macOS",
-  windows: "Windows",
-  linux: "Linux",
-  android: "Android",
-  ios: "iOS",
-};
-
 export const UPDATER_LABEL: Record<UpdaterId, string> = {
   sparkle: "Sparkle",
   winsparkle: "WinSparkle",

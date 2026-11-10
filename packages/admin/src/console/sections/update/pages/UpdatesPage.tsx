@@ -14,6 +14,7 @@ import { CloudOff } from "lucide-react";
 import { channelLabel } from "@polaris-key/manifest";
 import type { UpdaterGroup, UpdaterId, UpdatersView } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
+import { platformName } from "../../../../lib/vocab/platforms.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { formatCount } from "../../../../lib/format.js";
 import { inlineCode } from "../../../../lib/inline.js";
@@ -35,13 +36,8 @@ import { useUpdaters } from "../../distribution/data.js";
 import { publicUrl } from "../../distribution/model/format.js";
 import { useReleaseStore } from "../../release/data.js";
 import { channelNames } from "./feedEndpoints.js";
-import {
-  PLATFORM_LABEL,
-  renderUpdaterSetup,
-  UPDATER_LABEL,
-} from "../model/updaterSetup.js";
+import { renderUpdaterSetup, UPDATER_LABEL } from "../model/updaterSetup.js";
 
-const platformName = (p: string) => PLATFORM_LABEL[p] ?? p;
 const TRACK = codecs.string("stable");
 const LINK =
   "py-1 text-fg-strong underline underline-offset-4 hover:no-underline";
