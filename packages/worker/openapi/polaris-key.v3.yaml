@@ -15335,7 +15335,12 @@ paths:
         older than five minutes, and is rate-limited to 5 a minute per account and product,
         charged after the account is proven to be linked to the product. `404` for a product the
         account holds nothing in. Repeating it is harmless: it answers `removed: false` when
-        nothing was left to remove.
+        nothing was left to remove. Order: the removal is first written to a ledger outside the
+        database (`503 erasure_ledger_unavailable` if that fails, with nothing changed), the
+        devices signed in with the subject lose the binding, then each store deletes on its own. If
+        a store fails the answer is `200` with `pending: true`: the other stores still ran, the
+        subject stays, and the removal is finished on the next maintenance tick or by repeating
+        the request.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: alsoRemoveLicense
@@ -15362,6 +15367,12 @@ paths:
                     description: >
                       False when there was no subject and no licence left to remove (a repeat, or
                       a product the account never signed in to).
+                  pending:
+                    type: boolean
+                    enum: [true]
+                    description: >
+                      Present when a store could not be emptied yet. The rest of the data is gone;
+                      the removal completes on its own or when the request is repeated.
                   detachedLicenses:
                     type: array
                     items: { type: string }
@@ -15410,6 +15421,11 @@ paths:
                         enum: [no_active_key, key_claim_off]
         "429":
           description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "503":
+          description: "`erasure_ledger_unavailable`: the removal could not be recorded; nothing was changed."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }

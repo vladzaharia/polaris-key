@@ -311,9 +311,10 @@ export async function handleFile(
 // ── POST delete ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * Erases the person's Cloud Sync data: the object (every row and R2 object, SSE-C keys first), the
- * directory row, then the key ring (D-12). A crash between steps leaves a directory row or a ring
- * the repeat removes; the object goes first so no key outlives the data it opens. Works in either
+ * Erases the person's Cloud Sync data: the key ring first (the last end-to-end key material,
+ * D-12), then the object (every row and R2 object, SSE-C keys first) and the directory row. A crash
+ * between steps leaves an object or a directory row the repeat removes; the keys go before the
+ * bytes, so a failure part-way never leaves data whose keys are still in the ring. Works in either
  * mode: a person's data can be removed whether or not the server can read it. The body must say
  * `{"confirm": true}`; the console's typed word is the user-facing half.
  */
@@ -349,12 +350,12 @@ export async function handleDelete(
     { kind: "user", id: subject },
     "Deleted Cloud Sync data",
   );
+  await keyringStore.delete({ db, env, now }, at);
   try {
     await cloudSyncStore.delete({ db, env, now }, at);
   } catch (e) {
     if (e instanceof CloudSyncDoError) return unavailable();
     throw e;
   }
-  await keyringStore.delete({ db, env, now }, at);
   return adminJson({ deleted: true });
 }
