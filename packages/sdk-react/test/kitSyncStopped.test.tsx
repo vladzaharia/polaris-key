@@ -5,6 +5,7 @@
 // relaunch), and Sign in to sync starts the kit's own sign-in when the app wires no handler.
 
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { stubResizeObserver } from "./autoFixtures.js";
 import {
   act,
   cleanup,
@@ -16,16 +17,7 @@ import {
 import { CloudSyncStatus } from "../src/kit/statusDrive.js";
 import { PolarisContext } from "../src/react/context.js";
 
-beforeAll(() => {
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe = vi.fn();
-      disconnect = vi.fn();
-      unobserve = vi.fn();
-    },
-  );
-});
+beforeAll(stubResizeObserver);
 afterEach(cleanup);
 
 function fakeClient(initial: { state: string; reason?: string }) {
