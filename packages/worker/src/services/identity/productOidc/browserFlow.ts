@@ -10,10 +10,6 @@ import {
 } from "../../../core/oidc/client.js";
 import { hashKey } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
-import {
-  PRODUCT_SIGNIN_RETURN_TO,
-  safeReturnTo,
-} from "../../../platform/returnTo.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
@@ -39,7 +35,6 @@ export async function beginAuthFlow(
   env: Env,
   db: Db,
   product: Product,
-  returnTo?: string,
   deviceId?: string,
   viaDeviceCode = false,
   opts: {
@@ -99,7 +94,7 @@ export async function beginAuthFlow(
   if (!redirectUriAllowed(oidc.row, redirectUri)) {
     return errorResponse(400, "bad_request", "redirect_uri not allow-listed");
   }
-  const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo, deviceId };
+  const flow: FlowRecord = { verifier, nonce, redirectUri, deviceId };
   if (viaDeviceCode) flow.viaDeviceCode = true;
   if (opts.deviceName) flow.deviceName = opts.deviceName;
   if (opts.startedAt !== undefined) flow.startedAt = opts.startedAt;
@@ -163,20 +158,17 @@ export async function handleAuthStart(
     { bucket: "authStart", id: clientNetwork(req), limit: 60, windowSec: 60 },
   );
   if (limited) return limited;
-  const rawReturnTo = new URL(req.url).searchParams.get("return_to");
-  const returnTo = safeReturnTo(req, rawReturnTo, PRODUCT_SIGNIN_RETURN_TO);
-  if (rawReturnTo && !returnTo)
-    return errorResponse(400, "bad_request", "return_to not allowed");
-  const flow = await beginAuthFlow(
-    req,
-    env,
-    db,
-    product,
-    returnTo,
-    undefined,
-    false,
-    { browser: true },
-  );
+  // `return_to` was the cookie-session page's way back; that session is gone (SP-40), so a page
+  // that still sends it learns here instead of being signed in with nowhere to land.
+  if (new URL(req.url).searchParams.has("return_to"))
+    return errorResponse(
+      400,
+      "bad_request",
+      "return_to is no longer supported; use bearer mode with the app redirect",
+    );
+  const flow = await beginAuthFlow(req, env, db, product, undefined, false, {
+    browser: true,
+  });
   if (flow instanceof Response) return flow;
   const headers = new Headers({ location: flow.authorizeUrl });
   if (flow.binderCookie) headers.append("set-cookie", flow.binderCookie);

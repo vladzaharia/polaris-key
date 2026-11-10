@@ -287,11 +287,8 @@ paths:
                         deviceChoice: true
                         keyEntryLimit: 10
                         endpoints:
-                          session: https://key.plrs.im/djdl/identity/session
-                          sessionLicense: https://key.plrs.im/djdl/identity/session/license
                           authStart: https://key.plrs.im/djdl/identity/auth/start
                           authCallback: https://key.plrs.im/djdl/identity/auth/callback
-                          authLogout: https://key.plrs.im/djdl/identity/auth/logout
                           authDeviceStart: https://key.plrs.im/djdl/identity/auth/device/start
                           authDeviceEntry: https://key.plrs.im/djdl/identity/auth/device
                           authDeviceVerify: https://key.plrs.im/djdl/identity/auth/device/verify
@@ -7311,206 +7308,6 @@ paths:
         "204": { $ref: "#/components/responses/CorsPreflight" }
 
   # ── identity ──────────────────────────────────────────────────────────────────
-  /{product}/identity/session:
-    get:
-      operationId: getBrowserSession
-      tags: [identity]
-      summary: The browser session's fused document
-      description: >
-        Cookie-authenticated (`pkey_<product>_session`); the build gate also enforces here.
-
-
-        This is the ONE surface still serving the FUSED v2 shape — licence claims, config,
-        secrets and entitlements in a single `doc` — because the React SDK migrates against
-        whatever this route serves, in its own wave. It is plain JSON, NOT a JWS: nothing on
-        this path is signed, so there is no `typ`, no `ETag` and no 304. `payload.secrets`
-        is ALWAYS `{}`; a browser is not a secret-delivery target.
-
-
-        There is no 401 on this route, ever. An absent, unknown or dead session is a 200 with
-        `{"authenticated": false, "doc": null}` — the page decides what to render. A build-gate
-        refusal is also a 200: `authenticated` stays true, `doc` goes null, and `blocked`
-        carries the hyphenated `reason` plus, for a version block only, `allowedRange`.
-        `csrfToken` is present on both authenticated bodies and is what `POST
-        /identity/auth/logout` demands back in `X-CSRF-Token`.
-      security: [{ browserSession: [] }]
-      parameters:
-        - { $ref: "#/components/parameters/Product" }
-        - { $ref: "#/components/parameters/VersionHeader" }
-        - { $ref: "#/components/parameters/ChannelHeader" }
-      responses:
-        "200":
-          description: Session document — or the unauthenticated/blocked forms of it.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/BrowserSessionResponse" }
-              examples:
-                anonymous:
-                  summary: No cookie, unknown session, or a dead device (test/services/identity/browserSession.test.ts)
-                  value: { authenticated: false, doc: null }
-                signedIn:
-                  summary: The fused document
-                  value:
-                    authenticated: true
-                    csrfToken: csrf_7hK2mQ0xZ
-                    doc:
-                      schemaVersion: 1
-                      aud: djdl
-                      iss: key.plrs.im
-                      licenseId: lic_djdl_1
-                      deviceId: browser:lic_djdl_1
-                      issuedAt: 1756252800
-                      expiresAt: 1756256400
-                      graceUntil: 1758844800
-                      profile:
-                        name: Ada Lovelace
-                        firstName: Ada
-                        email: ada@example.com
-                        activatedAt: 1690000000
-                      payload:
-                        config:
-                          app.theme:
-                            {
-                              state: enforced,
-                              value: dark,
-                              updatedAt: 1756252800,
-                            }
-                        secrets: {}
-                        entitlements:
-                          polarisVpn:
-                            {
-                              state: enforced,
-                              value: true,
-                              updatedAt: 1756252800,
-                            }
-                blocked:
-                  summary: The build gate refused this page's version
-                  value:
-                    authenticated: true
-                    doc: null
-                    blocked:
-                      reason: version-too-old
-                      allowedRange: { min: "2.0.0", max: "99.0.0" }
-                    csrfToken: csrf_7hK2mQ0xZ
-        "405": { $ref: "#/components/responses/MethodNotAllowed" }
-        "500":
-          description: >
-            The product has no active catalog, or it could not validate the payload — LEGACY
-            FLAT. Fails closed: a missing or broken catalog withholds the document rather than
-            widening it.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-              examples:
-                catalogUnavailable:
-                  summary: test/services/identity/browserSession.test.ts
-                  value:
-                    {
-                      error: catalog_unavailable,
-                      message: active catalog could not validate the config payload,
-                    }
-  /{product}/identity/session/license:
-    post:
-      operationId: sessionFromLicenseKey
-      tags: [identity]
-      summary: Mint a browser session from a license key
-      description: >
-        Exchanges a `pkey_<product>_…` key for the session cookie, for products whose portal
-        offers key entry beside (or instead of) OIDC. The key may be sent as the body field
-        `key` or, if that is absent, as `Authorization: Bearer`. Success is 201, not 200, and
-        the body is `{"ok": true, "keyEntries": {…}}` — the payload is the `Set-Cookie`. Device-limit
-        accounting applies: a browser session counts toward the limit like any other device, so an
-        exhausted pool is a 403 `device_limit` carrying `limit` and `deviceCount` at the top
-        level, plus `manageUrl` (PX-W8) while the product's customer portal is on. It is a key
-        entry on the `browser` surface (PX-W9, WIRE-CONTRACT-V4 §12.2): the browser device is
-        `browser:<licenseId>`, so it counts once per enrolment, and past the limit it can be
-        refused `key_entry_limit`. All errors are LEGACY FLAT.
-      parameters: [{ $ref: "#/components/parameters/Product" }]
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/SessionFromLicenseRequest" }
-            examples:
-              key:
-                summary: test/services/identity/browserSession.test.ts
-                value: { key: pkey_djdl_4Sc9ItiFEQMbGXeAbXVdIw }
-      responses:
-        "201":
-          description: >
-            Session established. The body is `ok` and the licence's key entries after this one
-            (PX-W9); the cookie is the point.
-          headers:
-            Set-Cookie: { $ref: "#/components/headers/SetSessionCookie" }
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/SessionFromLicenseResult" }
-              examples:
-                established:
-                  summary: test/surfaces/keyEntries.test.ts
-                  value: { ok: true, keyEntries: { used: 1, limit: 10 } }
-        "400":
-          description: Unparseable body — LEGACY FLAT.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-              examples:
-                invalidBody:
-                  { value: { error: bad_request, message: invalid body } }
-        "401": { $ref: "#/components/responses/LegacyUnauthorized" }
-        "403":
-          description: >
-            The license's device limit is reached, or (PX-W9, §12.2 step 4) it has no key entries
-            left — LEGACY FLAT, with `manageUrl` while the product's customer portal is on, and
-            `keyEntries` on `key_entry_limit`. `license_owned` (I-09, §12.2 step 3): the licence
-            is in an account, with `signInUrl`; no cookie is set and nothing is counted.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-              examples:
-                licenseOwned:
-                  summary: test/surfaces/identityAccount.test.ts
-                  value:
-                    {
-                      error: license_owned,
-                      message: license is in an account,
-                      signInUrl: "https://key.plrs.im/signin?product=djdl",
-                    }
-                keyEntryLimit:
-                  summary: test/surfaces/keyEntries.test.ts
-                  value:
-                    {
-                      error: key_entry_limit,
-                      message: key entry limit reached,
-                      manageUrl: "https://key.plrs.im/activate?product=djdl",
-                      keyEntries: { used: 1, limit: 1 },
-                    }
-                deviceLimit:
-                  {
-                    value:
-                      {
-                        error: device_limit,
-                        message: device limit reached,
-                        limit: 5,
-                        deviceCount: 5,
-                        manageUrl: "https://key.plrs.im/#/p/djdl/free-device?license=lic_djdl_1",
-                      },
-                  }
-        "405": { $ref: "#/components/responses/MethodNotAllowed" }
-        "429":
-          description: 30 attempts per 60 s per client IP — LEGACY FLAT.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-              examples:
-                limited:
-                  {
-                    value:
-                      {
-                        error: rate_limited,
-                        message: too many session attempts,
-                      },
-                  }
   /{product}/identity/auth/start:
     get:
       operationId: authStart
@@ -7766,47 +7563,6 @@ paths:
                   }
                 noIdToken:
                   { value: { error: oidc_error, message: no id_token } }
-  /{product}/identity/auth/logout:
-    post:
-      operationId: authLogout
-      tags: [identity]
-      summary: End the browser session
-      description: >
-        Deletes the session record and clears the cookie. Takes no body; it takes the session
-        cookie plus the `X-CSRF-Token` header, whose value is the `csrfToken` from
-        `GET /identity/session`. Note the shape of the CSRF check: it runs only when a session
-        actually exists, so logging out with no session is a plain 200 with the clear-cookie
-        rather than a 403.
-      security: [{ browserSession: [] }]
-      parameters:
-        - { $ref: "#/components/parameters/Product" }
-        - name: X-CSRF-Token
-          in: header
-          required: true
-          description: The `csrfToken` this session was issued by `GET /{product}/identity/session`.
-          schema: { type: string, pattern: "^csrf_[A-Za-z0-9_-]+$" }
-      responses:
-        "200":
-          description: Logged out. The cookie is cleared with `Max-Age=0`.
-          headers:
-            Set-Cookie: { $ref: "#/components/headers/ClearSessionCookie" }
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/OkResult" }
-              examples:
-                loggedOut:
-                  summary: test/services/identity/browserSession.test.ts
-                  value: { ok: true }
-        "403":
-          description: >
-            A session exists but the CSRF header is missing or wrong — LEGACY FLAT.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-              examples:
-                csrfMismatch:
-                  { value: { error: forbidden, message: csrf mismatch } }
-        "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /{product}/identity/auth/device/start:
     post:
       operationId: deviceAuthStart
@@ -25417,19 +25173,9 @@ components:
       bearerFormat: pkey_
       description: >
         The customer's LICENSE KEY (`pkey_<product>_…`), presented as a bearer credential by
-        `/license/activate` and (optionally) `/identity/session/license`. It is not a session
+        `/license/activate`. It is not a session
         credential: it is redeemed once per device for a `pkeyt_` device token and should
         never be sent to any other route.
-    browserSession:
-      type: apiKey
-      in: cookie
-      name: pkey_<product>_session
-      description: >
-        The product browser session cookie. The real name substitutes the product slug with
-        every dash replaced by an underscore (`my-app` → `pkey_my_app_session`), while the
-        cookie's `Path` uses the raw slug. `HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`.
-        The value is an opaque base64url token with no prefix — unlike `pkeyt_` device
-        tokens.
     adminSession:
       type: apiKey
       in: cookie
@@ -25590,8 +25336,8 @@ components:
       name: X-PKey-Version
       in: header
       description: >
-        The calling build's version. Read by the build gate on `/license/document` and
-        `/identity/session`, where it DEFAULTS to `0.0.0` when absent; elsewhere it is
+        The calling build's version. Read by the build gate on `/license/document`,
+        where it DEFAULTS to `0.0.0` when absent; elsewhere it is
         recorded as the device's `appVersion`.
       schema: { type: string }
     ChannelHeader:
@@ -32264,15 +32010,6 @@ components:
             results:
               type: array
               items: { $ref: "#/components/schemas/MutationResult" }
-    SessionFromLicenseResult:
-      type: object
-      description: >
-        `POST /{product}/identity/session/license`'s 201: `ok`, and the licence's key entries
-        after this browser key entry (PX-W9, §12.2). The cookie is the point.
-      required: [ok]
-      properties:
-        ok: { type: boolean, const: true }
-        keyEntries: { $ref: "#/components/schemas/KeyEntries" }
     PortalKeyPreview:
       type: object
       description: >
@@ -32550,72 +32287,6 @@ components:
         entitlements:
           type: object
           additionalProperties: { $ref: "#/components/schemas/ManagedEntry" }
-    FusedSessionDoc:
-      type: object
-      description: >
-        The FUSED v2 shape — licence claims, config, secrets and entitlements in ONE artifact,
-        served UNSIGNED as JSON. Wire v3 split this into `pkey-license+jws` +
-        `pkey-config+jws`; the browser session is the last minter, and this schema goes with it
-        when the React SDK migrates. `deviceId` is always `browser:<licenseId>`.
-      required:
-        [
-          schemaVersion,
-          aud,
-          iss,
-          licenseId,
-          deviceId,
-          issuedAt,
-          expiresAt,
-          graceUntil,
-          profile,
-          payload,
-        ]
-      properties:
-        schemaVersion: { type: integer }
-        aud: { type: string }
-        iss: { type: string, const: key.plrs.im }
-        licenseId: { type: string }
-        deviceId: { type: string }
-        issuedAt: { type: integer }
-        expiresAt: { type: integer }
-        graceUntil: { type: integer }
-        profile: { $ref: "#/components/schemas/DocProfile" }
-        payload: { $ref: "#/components/schemas/ManagedPayload" }
-    BrowserSessionResponse:
-      type: object
-      description: >
-        Always HTTP 200. `authenticated:false` with a null `doc` covers no cookie, an unknown
-        session and a dead device alike; `authenticated:true` with a null `doc` plus `blocked`
-        is the build gate's refusal. `csrfToken` appears only on the authenticated forms.
-      required: [authenticated, doc]
-      properties:
-        authenticated: { type: boolean }
-        doc:
-          oneOf:
-            - { $ref: "#/components/schemas/FusedSessionDoc" }
-            - { type: "null" }
-        blocked:
-          type: object
-          description: Present only when the build gate refused this build.
-          required: [reason]
-          properties:
-            reason:
-              {
-                type: string,
-                enum: [version-too-old, version-too-new, channel-not-entitled],
-              }
-            allowedRange: { $ref: "#/components/schemas/AllowedRange" }
-        csrfToken:
-          type: string
-          description: Echo this back in `X-CSRF-Token` to log out.
-          pattern: "^csrf_[A-Za-z0-9_-]+$"
-    SessionFromLicenseRequest:
-      type: object
-      description: >
-        The licence key to exchange. When `key` is absent or not a string the handler falls
-        back to `Authorization: Bearer`.
-      properties:
-        key: { type: string, pattern: "^pkey_[a-z0-9-]+_.+$" }
     AuthFlowState:
       type: object
       description: >

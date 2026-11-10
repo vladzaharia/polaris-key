@@ -1310,10 +1310,10 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// R9-06 — safeReturnTo divergence between the product OIDC flow and the portal
+// R9-06 — return_to on the product OIDC flow and the portal
 // ═════════════════════════════════════════════════════════════════════════════
-describe("R9-06 safeReturnTo: /manage is allowed on the product flow, denied on the portal", () => {
-  it("product /auth/start accepts return_to=/manage/... while the portal rejects it", async () => {
+describe("R9-06 return_to: refused on the product flow, checked on the portal", () => {
+  it("product /auth/start refuses return_to, and the portal rejects /manage", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = makeEnv(kv, [SLUG]);
@@ -1324,44 +1324,26 @@ describe("R9-06 safeReturnTo: /manage is allowed on the product flow, denied on 
     await seedCustomOidc(db, "https://id.example");
     const product = (await loadProduct(env, db, SLUG))!;
 
-    const res = await handleAuthStart(
-      req(
-        `https://key.plrs.im/${SLUG}/auth/start?return_to=${encodeURIComponent(
-          "https://key.plrs.im/manage/api/products",
-        )}`,
-      ),
-      env,
-      db,
-      product,
-    );
-    // INVERTED. The product copy of the validator checked the ORIGIN and nothing else, so it
-    // parked a CUSTOMER sign-in on `/manage/…` — the one surface that reads an operator's
-    // session — while its portal twin refused the identical value by name. Both customer realms
-    // refuse it now.
-    expect(res.status).toBe(400);
-    expect(await res.json()).toMatchObject({ error: "bad_request" });
+    // The product flow once checked the ORIGIN and nothing else, so it could park a CUSTOMER
+    // sign-in on `/manage/…`. The cookie session it returned to is gone (SP-40); no target is
+    // accepted now.
+    for (const target of [
+      "https://key.plrs.im/manage/api/products",
+      "https://key.plrs.im/djdl/welcome?tab=account",
+    ]) {
+      const res = await handleAuthStart(
+        req(
+          `https://key.plrs.im/${SLUG}/auth/start?return_to=${encodeURIComponent(target)}`,
+        ),
+        env,
+        db,
+        product,
+      );
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ error: "bad_request" });
+    }
 
-    // Control: `/manage` is refused, not `return_to` as such. An ordinary same-origin target is
-    // accepted and round-trips onto the flow record, query string intact.
-    const allowed = "https://key.plrs.im/djdl/welcome?tab=account";
-    const ok = await handleAuthStart(
-      req(
-        `https://key.plrs.im/${SLUG}/auth/start?return_to=${encodeURIComponent(allowed)}`,
-      ),
-      env,
-      db,
-      product,
-    );
-    expect(ok.status).toBe(302);
-    const state = new URL(ok.headers.get("location")!).searchParams.get(
-      "state",
-    )!;
-    const flow = JSON.parse(
-      (await artefacts(env).get(await flowKey(env, SLUG, state)))!,
-    ) as { returnTo?: string };
-    expect(flow.returnTo).toBe(allowed);
-
-    // The portal twin (portal/auth.ts:100) refuses the same value.
+    // The portal still refuses the same `/manage` value.
     const portal = await handlePortalLogin(
       req(
         `https://key.plrs.im/login?return_to=${encodeURIComponent(

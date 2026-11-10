@@ -72,11 +72,6 @@ import {
   handleAuthStart,
 } from "./oidc.js";
 import {
-  handleBrowserLogout,
-  handleBrowserSession,
-  handleBrowserSessionLicense,
-} from "./browserSession.js";
-import {
   handleIdentityAttach,
   handleIdentitySignOut,
   handleIdentitySubject,
@@ -123,20 +118,6 @@ const choiceRow = (action: "licenses" | "devices" | "complete" | "cancel") => ({
 });
 
 export const IDENTITY_ROUTES = serviceRoutes("identity", [
-  {
-    path: "session",
-    methods: ["GET"],
-    auth: { kind: "session" },
-    handler: ({ req, env, db, product, now, settings }) =>
-      handleBrowserSession(req, env, db, product, now, settings),
-  },
-  {
-    path: "session/license",
-    methods: ["POST"],
-    auth: { kind: "handler" },
-    handler: ({ req, env, db, product, now, settings }) =>
-      handleBrowserSessionLicense(req, env, db, product, now, settings),
-  },
   // I-08 (WIRE-CONTRACT-V4 §12.4, §12.5): the app passthrough. `authorize` is a navigation that
   // starts the platform sign-in; `token` redeems the code (PKCE) from a form body and answers
   // CORS without credentials. Both handlers keep their own method guard and rate limits.
@@ -285,13 +266,6 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     auth: { kind: "code" },
     handler: ({ req, env, db, product, now }) =>
       handleAuthCallback(req, env, db, product, now),
-  },
-  {
-    path: "auth/logout",
-    methods: ["POST"],
-    auth: { kind: "session" },
-    handler: ({ req, env, db, product, now }) =>
-      handleBrowserLogout(req, env, db, product, now),
   },
   {
     path: "auth/device",

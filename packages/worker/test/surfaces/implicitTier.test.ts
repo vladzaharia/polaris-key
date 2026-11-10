@@ -24,11 +24,7 @@ import type { SqliteDb } from "../../src/db/sqlite.js";
 import { matchRoute } from "../../src/router.js";
 import { dispatchService } from "../../src/core/registry.js";
 import { loadProduct, type Product } from "../../src/core/products.js";
-import { SERVICES, SETTINGS } from "../../src/mount.js";
-import {
-  handleBrowserSession,
-  handleBrowserSessionLicense,
-} from "../../src/services/identity/browserSession.js";
+import { SERVICES } from "../../src/mount.js";
 import { licenseDeviceLimit } from "../../src/core/licensing/authz.js";
 import { getLicense, getTier } from "../../src/core/licensing/store.js";
 import { upgradedTier } from "../../src/core/licensing/issue.js";
@@ -172,52 +168,23 @@ async function render(shape: LicenceShape, tierId: string | null) {
     await call(w, `/${SLUG}/config/document`, { headers })
   ).text();
 
-  const login = await handleBrowserSessionLicense(
-    new Request(`https://key.plrs.im/${SLUG}/identity/session/license`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ key }),
-    }) as unknown as Request,
-    w.env,
-    w.db,
-    w.product,
-    NOW,
-    SETTINGS,
-  );
-  expect(login.status).toBe(201);
-  const session = await (
-    await handleBrowserSession(
-      new Request(`https://key.plrs.im/${SLUG}/identity/session`, {
-        headers: { cookie: login.headers.get("set-cookie")! },
-      }) as unknown as Request,
-      w.env,
-      w.db,
-      w.product,
-      NOW,
-      SETTINGS,
-    )
-  ).text();
-
   const row = (await getLicense(w.db, SLUG, licenseId))!;
   const limit = await licenseDeviceLimit(w.db, w.product, row, NOW);
   return {
     activation: activation.license,
     licenceDoc,
     configDoc,
-    // The CSRF token is random per login; everything else is the signed document.
-    session: session.replace(/"csrfToken":"[^"]*"/, '"csrfToken":"-"'),
     limit,
   };
 }
 
 describe("an implicit-tier licence renders as a tierless one", () => {
   for (const shape of SHAPES) {
-    it(`${shape.name}: licence document, config document, browser session, activation and seat limit are byte-identical`, async () => {
+    it(`${shape.name}: licence document, config document, activation and seat limit are byte-identical`, async () => {
       const tierless = await render(shape, null);
       const implicit = await render(shape, IMPLICIT);
       expect(implicit.licenceDoc).toBe(tierless.licenceDoc);
       expect(implicit.configDoc).toBe(tierless.configDoc);
-      expect(implicit.session).toBe(tierless.session);
       expect(implicit.limit).toBe(tierless.limit);
       expect(implicit.activation).toEqual(tierless.activation);
       expect(implicit.activation["tierId"]).toBeNull();

@@ -19,7 +19,6 @@ import {
   portalOriginOf,
 } from "../../src/core/licensing/manageUrl.js";
 import { handleActivate } from "../../src/services/license/activation.js";
-import { handleBrowserSessionLicense } from "../../src/services/identity/browserSession.js";
 import type { Env } from "../../src/platform/env.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
 
@@ -275,31 +274,5 @@ describe("device_limit carries manageUrl", () => {
     );
     expect(res.status).toBe(401);
     expect("manageUrl" in ((await res.json()) as object)).toBe(false);
-  });
-
-  it("on session/license (the browser key entry)", async () => {
-    const { key } = await seedLicenseWithKey(db, "djdl", LIMIT_ONE);
-    expect(
-      (await handleActivate(activateReq(key, "dev-1"), env, db, product, NOW))
-        .status,
-    ).toBe(200);
-    const res = await handleBrowserSessionLicense(
-      new Request("https://key.plrs.im/djdl/identity/session/license", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key }),
-      }) as unknown as Request,
-      env,
-      db,
-      product,
-      NOW,
-    );
-    expect(res.status).toBe(403);
-    expect(await res.json()).toMatchObject({
-      error: "device_limit",
-      limit: 1,
-      deviceCount: 1,
-      manageUrl: "https://key.plrs.im/activate?product=djdl&next=free-device",
-    });
   });
 });

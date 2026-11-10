@@ -14,10 +14,7 @@
  * expecting a license document and verify perfectly. Every call site here passes one — the
  * license and config documents, and all three artifacts `console/handlers/bundles.ts` mints — so the
  * optionality is inherited from `signJws`, not exercised: a signer that omits `typ` is a bug
- * rather than a compatibility choice. The one Polaris Key document with no `typ` is the FUSED
- * browser-session artifact (`services/identity/doc.ts`), and it never reaches this function:
- * `/identity/session` serves it as plain JSON to a page, unsigned, so there is nothing to
- * domain-separate. It gets a `typ` if and when it is ever signed.
+ * rather than a compatibility choice. There is no Polaris Key document without a `typ`.
  *
  * Key material is opened by `Product.signingKey()` in `core/products.ts` when a route needs it;
  * `loadPublicSigningKey(s)` reads only public halves, which `core/trust/trust.ts` publishes.

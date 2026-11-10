@@ -32,11 +32,7 @@ import {
 import { accountDisabledPage } from "../card/http.js";
 import { PLATFORM_SIGNIN_ENDED } from "../accounts/platformMigration.js";
 import { updateArtefact } from "../../../core/singleUse.js";
-import {
-  type DeviceFlowRecord,
-  type FlowRecord,
-  deviceFlowKey,
-} from "./config.js";
+import { type DeviceFlowRecord, deviceFlowKey } from "./config.js";
 
 /** The developer's name from the product's listing (Distribution's hook), or null. */
 export async function listingDeveloper(
@@ -359,20 +355,16 @@ export function platformSignInEndedPage(): Response {
  * redirects to the customer host), not back into this product's sign-in: that would go straight
  * back to the platform IdP, whose own session (the authorize request asks for no `prompt`) signs
  * the same subject in again and is refused again. Polaris Locker's sign-in is where another
- * account can be chosen, as "Single sign-on ended" sends people there too. **Back to <Product>** returns to the app's page when the flow came from one
- * (`returnTo`, checked same-origin at the start); a device-code flow has none.
+ * account can be chosen, as "Single sign-on ended" sends people there too. Nothing leads back to the app's page: the flow has no `returnTo`.
  */
 export function productAccountDisabledPage(
   product: Product,
-  flow: FlowRecord,
   view: PageView = {},
 ): Response {
   return accountDisabledPage({
     app: view.app ?? { name: product.slug },
     signInHref: "/login",
-    back: flow.returnTo
-      ? { href: flow.returnTo, productName: shownName(product, view.app) }
-      : null,
+    back: null,
   });
 }
 

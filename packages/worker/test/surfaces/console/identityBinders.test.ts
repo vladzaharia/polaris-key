@@ -1,17 +1,14 @@
 /**
- * The `returnTo` shape, same-origin JSON on the card endpoints, the browser-session cookie
- * and key exchange, the portal logout, and the admin sign-in's origin and timeout.
+ * The `returnTo` shape, same-origin JSON on the card endpoints, the portal logout, and the admin sign-in's origin and timeout.
  */
 import { issuerMetadataResponse } from "../../oidcIssuerFake.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "../../helpers.js";
 import { KvMock } from "../../kvMock.js";
-import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "../../seed.js";
-import { loadProduct } from "../../../src/core/products.js";
+import { makeEnv, NOW } from "../../seed.js";
 import {
   CARD_RETURN_TO,
   PORTAL_SIGNIN_RETURN_TO,
-  PRODUCT_SIGNIN_RETURN_TO,
   safeReturnTo,
 } from "../../../src/platform/returnTo.js";
 import {
@@ -20,10 +17,6 @@ import {
   readGuardedJsonObject,
 } from "../../../src/core/accounts/browserRequestGuard.js";
 import { readJsonObject } from "../../../src/services/identity/card/http.js";
-import {
-  handleBrowserSession,
-  handleBrowserSessionLicense,
-} from "../../../src/services/identity/browserSession.js";
 import { handlePortalLogout } from "../../../src/services/identity/portal/auth.js";
 import {
   handleAdminCallback,
@@ -70,9 +63,6 @@ describe("returnTo never yields a protocol-relative redirect", () => {
     expect(safeReturnTo(here, "/", CARD_RETURN_TO)).toBe("/");
   });
   it("the absolute policies are unchanged", () => {
-    expect(safeReturnTo(here, `${ORIGIN}/x`, PRODUCT_SIGNIN_RETURN_TO)).toBe(
-      `${ORIGIN}/x`,
-    );
     expect(
       safeReturnTo(here, `${ORIGIN}/manage/x`, PORTAL_SIGNIN_RETURN_TO),
     ).toBeUndefined();
@@ -130,93 +120,6 @@ describe("card JSON endpoints", () => {
         }),
       ),
     ).toBeNull();
-  });
-});
-
-async function productFixture() {
-  const db = makeTestDb();
-  const env = makeEnv(new KvMock(), ["djdl"]);
-  await seedProduct(db, "djdl");
-  const product = (await loadProduct(env, db, "djdl"))!;
-  return { db, env, product };
-}
-
-describe("/session/license is same-origin only", () => {
-  it("opens a session for same-origin JSON and refuses a cross-site POST", async () => {
-    const { db, env, product } = await productFixture();
-    const { key } = await seedLicenseWithKey(db, "djdl");
-    const make = (extra: Record<string, string>) =>
-      new Request(`${ORIGIN}/djdl/identity/session/license`, {
-        method: "POST",
-        headers: { "content-type": "text/plain", ...extra },
-        body: JSON.stringify({ key }),
-      }) as unknown as Request;
-    const cross = await handleBrowserSessionLicense(
-      make({ "sec-fetch-site": "cross-site" }),
-      env,
-      db,
-      product,
-      NOW,
-    );
-    expect(cross.status).toBe(403);
-    expect(cross.headers.get("set-cookie")).toBeNull();
-    const own = await handleBrowserSessionLicense(
-      make({ "sec-fetch-site": "same-origin" }),
-      env,
-      db,
-      product,
-      NOW,
-    );
-    expect(own.status).toBe(201);
-  });
-});
-
-describe("product session cookie parsing", () => {
-  const get = (cookie: string) =>
-    new Request(`${ORIGIN}/djdl/identity/session`, {
-      headers: { cookie },
-    }) as unknown as Request;
-  it("a malformed percent-encoding is signed out, not a 500", async () => {
-    const { db, env, product } = await productFixture();
-    const res = await handleBrowserSession(
-      get("pkey_djdl_session=%E0%A4%A"),
-      env,
-      db,
-      product,
-      NOW,
-    );
-    expect(res.status).toBe(200);
-    expect(
-      ((await res.json()) as { authenticated: boolean }).authenticated,
-    ).toBe(false);
-  });
-  it("a duplicated cookie fails closed instead of taking the first", async () => {
-    const { db, env, product } = await productFixture();
-    const { key } = await seedLicenseWithKey(db, "djdl");
-    const opened = await handleBrowserSessionLicense(
-      new Request(`${ORIGIN}/djdl/identity/session/license`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key }),
-      }) as unknown as Request,
-      env,
-      db,
-      product,
-      NOW,
-    );
-    const mine = opened.headers.get("set-cookie")!.split(";")[0]!;
-    const authed = async (cookie: string) =>
-      (
-        (await (
-          await handleBrowserSession(get(cookie), env, db, product, NOW + 1)
-        ).json()) as { authenticated: boolean }
-      ).authenticated;
-    expect(await authed(mine)).toBe(true);
-    for (const dup of [
-      `${mine}; pkey_djdl_session=planted`,
-      `pkey_djdl_session=planted; ${mine}`,
-    ])
-      expect(await authed(dup)).toBe(false);
   });
 });
 

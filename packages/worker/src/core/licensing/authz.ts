@@ -17,9 +17,7 @@
  * ── WHY IT IS IN CORE ───────────────────────────────────────────────────────────────────────
  *
  * These were License's when License was the only service that minted a grant. Identity's carve
- * (P3) makes that false: `POST /<p>/identity/session/license` and the whole OIDC sign-in path
- * authorize a device and mint a token, and `GET /<p>/identity/session` builds a document from
- * the same merged payload. A service may not import a sibling (`test/boundaries.test.ts`), and
+ * (P3) makes that false: the whole OIDC sign-in path authorizes a device and mints a token. A service may not import a sibling (`test/boundaries.test.ts`), and
  * duplicating a seat check is how two services end up admitting a different number of machines
  * to the same licence.
  *
@@ -177,8 +175,7 @@ export async function resolveEntitlements(
  *
  * Wire v3 split the document in two, so nothing new should call this: License takes
  * `.entitlements` through `resolveEntitlements`, Config takes `.config`/`.secrets` through its
- * own document builder. What still wants all three at once is the pre-v3 shape identity's
- * `GET /<p>/identity/session` mints for a browser and the portal renders in its entitlement
+ * own document builder. What still wants all three at once is the pre-v3 shape the portal renders in its entitlement
  * view. It is composed from the SAME two steps the split documents use, in the same order, so
  * it cannot drift away from them.
  *
@@ -428,8 +425,8 @@ export async function authorizeDevice(
     /**
      * PX-W9 (WIRE-CONTRACT-V4 §12.2 step 5): this authorisation is a key entry on an Identity
      * product. A NEW authorisation that takes a seat records exactly one entry, in the seat
-     * claim's own batch (`core/licensing/keyEntries.ts`). Passed only by `license/activate` (`app`) and
-     * `identity/session/license` (`browser`), and only while Identity is on; enrolment, sign-in
+     * claim's own batch (`core/licensing/keyEntries.ts`). Passed by `license/activate` (`app`) and the browser licence choice (`browser`), and only while
+     * Identity is on; enrolment, sign-in
      * and store binding never pass it.
      */
     keyEntry?: { surface: "app" | "browser" };

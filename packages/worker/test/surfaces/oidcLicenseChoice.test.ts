@@ -594,13 +594,11 @@ describe("I-26 device-code flow", () => {
 // ── the other flow kinds ────────────────────────────────────────────────────────────────────
 
 describe("I-26 browser and state-poll flows", () => {
-  it("return_to flow: no new licence, then a browser session on the pick", async () => {
+  it("browser flow: no new licence, then the signed-in page on the pick", async () => {
     await insertLic({ id: "lic_std", tier: "std", account: accountId });
     const before = await licenseCount();
     const start = await handleAuthStart(
-      new Request(
-        `${ORIGIN}/djdl/identity/auth/start?return_to=${encodeURIComponent(`${ORIGIN}/djdl/app`)}`,
-      ) as unknown as Request,
+      new Request(`${ORIGIN}/djdl/identity/auth/start`) as unknown as Request,
       env,
       db,
       product,
@@ -626,12 +624,10 @@ describe("I-26 browser and state-poll flows", () => {
       action: "use",
       license: "lic_std",
     });
-    expect(done.status).toBe(303);
-    expect(done.headers.get("location")).toBe(`${ORIGIN}/djdl/app`);
-    const set = setCookies(done);
-    expect(set.some((c) => c.startsWith("pkey_djdl_session="))).toBe(true);
+    expect(done.status).toBe(200);
+    // No session cookie: the binder is cleared and nothing else is set.
+    expect(setCookies(done).some((c) => c.includes("_session="))).toBe(false);
     expect(cookieOf(done, LICENSE_CHOICE_BINDER_COOKIE)).toBe("");
-    expect(await deviceLicense("browser:lic_std")).toBe("lic_std");
     expect(await licenseCount()).toBe(before);
   });
 

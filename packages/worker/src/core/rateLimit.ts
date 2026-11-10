@@ -76,7 +76,6 @@ const FAIL_MODE: Record<string, FailMode> = {
   // rows it writes are the DoS amplifier. A 429 tells a real client to back off; an unlimited
   // mint tells an attacker to keep going.
   register: "closed",
-  browserSessionLicense: "closed",
   // Pushed native sign-in requests (per network and per device id): unauthenticated, so closed.
   identityRequest: "closed",
   identityRequestDevice: "closed",

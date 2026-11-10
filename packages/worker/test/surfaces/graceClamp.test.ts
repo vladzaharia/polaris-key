@@ -53,11 +53,6 @@ import {
   graceClampReportCsv,
   graceClampState,
 } from "../../src/core/licensing/graceClamp.js";
-import { buildDoc } from "../../src/services/identity/doc.js";
-import {
-  handleBrowserSession,
-  handleBrowserSessionLicense,
-} from "../../src/services/identity/browserSession.js";
 import { handleAdmin } from "../../src/console/index.js";
 import { ADMIN_COOKIE, CSRF_HEADER } from "../../src/core/console/session.js";
 import { setServices } from "../../src/core/products/store.js";
@@ -415,64 +410,6 @@ describe("LX-07: the offline bundle", () => {
     const docs = await mintBundle(w, undefined, 45);
     expect(docs.license).toBeUndefined();
     expect(docs.config!.doc.graceUntil).toBe(NOW + 45 * DAY);
-  });
-});
-
-// ── Identity's fused browser-session document ───────────────────────────────────────────────
-
-describe("LX-07: the browser-session document", () => {
-  it("is clamped the same way, and the opt-out restores today's window", async () => {
-    const w = await world();
-    const { key } = await seedLicenseWithKey(w.db, SLUG, {
-      expiresAt: NOW + 5 * DAY,
-    });
-    const login = await handleBrowserSessionLicense(
-      new Request(`https://key.plrs.im/${SLUG}/identity/session/license`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key }),
-      }) as unknown as Request,
-      w.env,
-      w.db,
-      w.product,
-      NOW,
-      SETTINGS,
-    );
-    expect(login.status).toBe(201);
-    const cookie = login.headers.get("set-cookie")!;
-    const session = async () => {
-      const res = await handleBrowserSession(
-        new Request(`https://key.plrs.im/${SLUG}/identity/session`, {
-          headers: { cookie },
-        }) as unknown as Request,
-        w.env,
-        w.db,
-        w.product,
-        NOW,
-        SETTINGS,
-      );
-      return ((await res.json()) as { doc: { graceUntil: number } }).doc;
-    };
-    expect((await session()).graceUntil).toBe(NOW + 5 * DAY);
-    await setClamp(w.db, false);
-    expect((await session()).graceUntil).toBe(WINDOW);
-  });
-
-  it("buildDoc takes the clamp", () => {
-    const input = {
-      schemaVersion: 1,
-      aud: SLUG,
-      licenseId: "lic",
-      deviceId: "dev",
-      now: NOW,
-      maxOfflineDays: 30,
-      profile: null,
-      payload: { config: {}, secrets: {}, entitlements: {} },
-    } as unknown as Parameters<typeof buildDoc>[0];
-    expect(buildDoc(input).graceUntil).toBe(WINDOW);
-    expect(buildDoc({ ...input, clampGraceTo: NOW + DAY }).graceUntil).toBe(
-      NOW + DAY,
-    );
   });
 });
 

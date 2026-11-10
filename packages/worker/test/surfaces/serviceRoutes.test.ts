@@ -530,11 +530,8 @@ async function seedOidcConfig(db: SqliteDb, slug: string): Promise<void> {
 }
 
 const IDENTITY_PATHS = [
-  "/oidcprod/identity/session",
-  "/oidcprod/identity/session/license",
   "/oidcprod/identity/auth/start",
   "/oidcprod/identity/auth/callback",
-  "/oidcprod/identity/auth/logout",
   "/oidcprod/identity/auth/device/start",
   "/oidcprod/identity/auth/device/verify",
   "/oidcprod/identity/auth/device/poll",
@@ -590,12 +587,13 @@ describe("an OIDC product whose manifest declared it", () => {
     }
   });
 
-  it("serves the browser-session document at its new URL", async () => {
-    const res = await call(env, db, product, "/oidcprod/identity/session");
-    expect(res.status).toBe(200);
-    // Unauthenticated shape, unchanged by the move: the response BODY is not part of this task
-    // (the React SDK migrates against it in a sibling wave), only the URL is.
-    expect(await res.json()).toEqual({ authenticated: false, doc: null });
+  it("serves no browser-session route (cookie mode is removed)", async () => {
+    for (const path of [
+      "/oidcprod/identity/session",
+      "/oidcprod/identity/session/license",
+      "/oidcprod/identity/auth/logout",
+    ])
+      expect((await call(env, db, product, path)).status, path).toBe(404);
   });
 
   it("advertises the service in discovery from the flag, not from the row", async () => {

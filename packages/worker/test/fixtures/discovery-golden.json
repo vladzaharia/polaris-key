@@ -226,11 +226,8 @@
           "claimedHttps": []
         },
         "endpoints": {
-          "session": "https://key.plrs.im/full/identity/session",
-          "sessionLicense": "https://key.plrs.im/full/identity/session/license",
           "authStart": "https://key.plrs.im/full/identity/auth/start",
           "authCallback": "https://key.plrs.im/full/identity/auth/callback",
-          "authLogout": "https://key.plrs.im/full/identity/auth/logout",
           "authDeviceStart": "https://key.plrs.im/full/identity/auth/device/start",
           "authDeviceEntry": "https://key.plrs.im/full/identity/auth/device",
           "authDeviceVerify": "https://key.plrs.im/full/identity/auth/device/verify",
