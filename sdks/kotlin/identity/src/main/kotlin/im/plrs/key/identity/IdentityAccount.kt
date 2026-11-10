@@ -128,7 +128,7 @@ internal class IdentityAccount(
     private val onAccepted: suspend () -> Unit = {},
 ) {
     /** The identity fragment, discovering once when this client has not yet (a fragment is never guessed). */
-    private suspend fun fragment(): IdentityDiscovery? {
+    internal suspend fun fragment(): IdentityDiscovery? {
         if (core.discoveryDocument() == null) {
             try {
                 core.discover()

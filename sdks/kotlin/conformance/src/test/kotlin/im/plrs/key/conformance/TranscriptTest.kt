@@ -13,7 +13,7 @@
 // @pkey-feature identity.redirect.native
 // @pkey-feature identity.exchange identity.pgs sync.keyring sync.settings identity.restore sync.files sync.files.delta sync.saves sync.records
 // @pkey-feature identity.nearby
-// @pkey-feature identity.link
+// @pkey-feature identity.link identity.accesstoken
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -461,6 +461,8 @@ object KotlinReplay {
                     out["restoreEndpoint"] = JsonPrimitive(identity?.enabled == true && identity.endpoints["restore"] != null)
                     // identity.nearby (I-45.12): the fragment's `nearby` flag and its three routes (V5 section 12.11.5).
                     out["nearby"] = if (identity?.enabled == true && identity.extras["nearby"].boolValue == true) JsonPrimitive(true) else JsonNull
+                    // identity.accesstoken (V5 section 12.13.10): the fragment's `accessToken` member.
+                    out["accessToken"] = JsonPrimitive(identity?.enabled == true && identity.extras["accessToken"].boolValue == true)
                     out["nearbyEndpoints"] = JsonPrimitive(
                         identity?.enabled == true &&
                             listOf("nearbyStart", "nearbyApprove", "nearbyPoll").all { !identity.endpoints[it].isNullOrEmpty() },
@@ -850,6 +852,26 @@ object KotlinReplay {
             "signOut" -> when (val r = client.identity.signOut()) {
                 is SignOutResult.SignedOut -> out["released"] = JsonPrimitive(r.released)
                 SignOutResult.Unavailable -> out["result"] = JsonPrimitive("unavailable")
+            }
+
+            // identity.accesstoken: every recorded step asks again inside the 600 second window, so each one bypasses the
+            // held token (`refresh`); the reuse rule is pinned by AccessTokenTest.
+            "accessToken" -> try {
+                val r = client.identity.accessToken(refresh = true)
+                out["result"] = JsonPrimitive("ok")
+                out["accessTokenHeld"] = JsonPrimitive(r.accessToken.isNotEmpty())
+                out["tokenType"] = JsonPrimitive(r.tokenType)
+                out["expiresIn"] = JsonPrimitive(r.expiresIn)
+            } catch (e: PolarisException) {
+                out["accessTokenHeld"] = JsonPrimitive(false)
+                if (e.code == ErrorCode.serviceUnavailable) {
+                    out["result"] = JsonPrimitive("unavailable")
+                } else {
+                    out["result"] = JsonPrimitive("refused")
+                    out["status"] = e.httpStatus?.let { JsonPrimitive(it) } ?: JsonNull
+                    out["code"] = JsonPrimitive(e.code)
+                    e.retryAfterSeconds?.let { out["retryAfter"] = JsonPrimitive(it) }
+                }
             }
 
             // identity.attach: the preview, the confirm, and the typed refusals.

@@ -47,6 +47,8 @@ extends RefCounted
 ##                                         device with license.deactivate()
 ##   attach(confirm)                       preview (false) or add this device's licence to the signed-in
 ##                                         account (true); see attach()
+##   access_token(refresh)                 the app's own access token for its own backend (a coroutine
+##                                         answering a PKeyResult); NOT a licence check; see PKeyIdentityAccessToken
 ##   open_account()                        open the product's account page (the discovered
 ##                                         `accountPortal`); ok with detail {url, opened}
 ##
@@ -100,6 +102,8 @@ var ladder: PKeyIdentityAutoSignIn
 var link: PKeyIdentityLink
 ## Silent restore, rung 2 of the ladder and its enrolment (PKeyIdentityRestore).
 var restore: PKeyIdentityRestore
+## The device exchange behind `access_token()`.
+var access_tokens: PKeyIdentityAccessToken
 ## The nearby routes (`nearby/start`, `nearby/poll`): see PKeyIdentityNearbyRoutes.
 var nearby_routes: PKeyIdentityNearbyRoutes
 ## The device key port (PKeyDeviceKeyStore or the options' own) the exchange signs its proof with:
@@ -154,6 +158,7 @@ func _init() -> void:
 	ladder = PKeyIdentityAutoSignIn.new(self)
 	link = PKeyIdentityLink.new(self)
 	restore = PKeyIdentityRestore.new(self)
+	access_tokens = PKeyIdentityAccessToken.new(self)
 	nearby_routes = PKeyIdentityNearbyRoutes.new(self)
 	nearby = PKeyIdentityNearby.new(self)
 
@@ -162,6 +167,7 @@ func _init() -> void:
 func bind(core: PKeyCore, host: Node) -> void:
 	_cancel_active()
 	link._reset()
+	access_tokens.clear()
 	_core_ref = weakref(core)
 	_host = host
 	_account = PKeyIdentityAccount.new(core, _before_sign_out)
@@ -316,6 +322,7 @@ func _drop_unconfirmed() -> void:
 ## `server_revoked`: the Worker's `signout` ran, which deleted this device's restore key in the same request.
 func _mark_signed_out(server_revoked := true) -> void:
 	var core := _core()
+	access_tokens.clear()
 	core.tokens.bump_sign_out_generation()
 	core.cache.set_explicit_sign_out(true)
 	await restore.after_sign_out(server_revoked)
@@ -331,6 +338,15 @@ func subject() -> PKeyResult:
 	if _account == null:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
 	return await _account.subject()
+
+
+## The app's own access token for its own backend (identity.accesstoken, V5 §12.13.10): the device token exchanged
+## (RFC 8693) for a 600 second `at+jwt`, in memory only, dropped at sign-out; `refresh` asks for a new one. ok: detail
+## {access_token, token_type: "Bearer", expires_in, expires_at}. Proof of a sign-in, NOT a licence check: no tier,
+## no entitlement. `service-unavailable` (detail.kind "unavailable", nothing sent) unless discovery carries
+## `accessToken: true`; `no-token`; else the Worker's code (`rate_limited` with detail.retry_after_seconds). A coroutine.
+func access_token(refresh := false) -> PKeyResult:
+	return await access_tokens.get_token(refresh)
 
 
 ## Open the product's page in the customer portal (ok, detail {url, opened}; when not opened,
@@ -365,6 +381,7 @@ func add_before_sign_out(hook: Callable) -> void:
 
 ## A released sign-out wiped the credential: the licence surface reports the change.
 func _on_account_wiped() -> void:
+	access_tokens.clear()
 	var license = _host.get("license") if _host != null and is_instance_valid(_host) else null
 	if license != null and license.on_changed.is_valid():
 		license.on_changed.call()

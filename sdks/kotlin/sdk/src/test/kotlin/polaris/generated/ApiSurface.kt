@@ -77,6 +77,7 @@ internal suspend fun apiSurface() {
     IdentityClient::choice  // identity.useLicenseChoice
     IdentityClient::attach  // identity.attachLicense
     IdentityClient::openAccount  // identity.openAccount
+    IdentityClient::accessToken  // identity.accessToken
     PolarisKeyClient::events  // events
     CloudSyncClient::status  // cloudSync.status
     CloudSyncClient::flush  // cloudSync.flush

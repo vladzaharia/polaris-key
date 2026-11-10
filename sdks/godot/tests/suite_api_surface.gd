@@ -56,6 +56,7 @@ const ROWS := [
 	["identity.useLicenseChoice", "res://addons/polaris_key/services/identity.gd", "property", "choice"],
 	["identity.attachLicense", "res://addons/polaris_key/services/identity.gd", "method", "attach"],
 	["identity.openAccount", "res://addons/polaris_key/services/identity.gd", "method", "open_account"],
+	["identity.accessToken", "res://addons/polaris_key/services/identity.gd", "method", "access_token"],
 	["events", SDK, "signal", "event"],
 	["cloudSync.status", "res://addons/polaris_key/services/cloud_sync.gd", "method", "status"],
 	["cloudSync.flush", "res://addons/polaris_key/services/cloud_sync.gd", "method", "flush"],

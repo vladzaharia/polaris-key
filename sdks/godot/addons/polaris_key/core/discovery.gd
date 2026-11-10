@@ -78,7 +78,8 @@ static func parse(value: Variant, expected_product: String) -> Dictionary:
 ## manifest, or {} while the product's Identity service is off or the document has none:
 ## {account: bool, issuer, key_entry_limit (int, or -1 when absent), attach, subject, signout,
 ## restore (silent restore is offered: the member and its endpoint, V5 12.11.8), restore_endpoint, token,
-## account_portal, device_choice (the `deviceChoice` boolean, UK-42.22), nonce, link ("" when absent), exchange ({} or {kinds, google_server_client_id,
+## account_portal, device_choice (the `deviceChoice` boolean, UK-42.22),
+## access_token (the `accessToken` boolean, V5 12.13.10), nonce, link ("" when absent), exchange ({} or {kinds, google_server_client_id,
 ## pgs_server_client_id}), endpoints: every string endpoint as served}. A client uses an
 ## endpoint only when it is here and never builds one.
 static func identity_from(manifest: Variant) -> Dictionary:
@@ -103,6 +104,7 @@ static func identity_from(manifest: Variant) -> Dictionary:
 		"restore_endpoint": endpoints.get("restore", ""),
 		"token": endpoints.get("token", ""),
 		"device_choice": PKeyClaims.is_true(fragment.get("deviceChoice")),
+		"access_token": PKeyClaims.is_true(fragment.get("accessToken")),
 		"issuer": fragment["issuer"] if _nonempty(fragment.get("issuer")) else "",
 		"key_entry_limit": int(limit) if PKeyClaims.is_number(limit) else -1,
 		"attach": endpoints.get("attach", ""),

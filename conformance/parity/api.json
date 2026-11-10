@@ -3970,14 +3970,8 @@
         "swift": {
           "labels": ["refresh"]
         },
-        "kotlin": {
-          "planned": "I-21b",
-          "reason": "the Kotlin port is I-21b.3"
-        },
-        "godot": {
-          "planned": "I-21b",
-          "reason": "the Godot port is I-21b.3"
-        }
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },

@@ -254,7 +254,10 @@
       "except": [{ "runtime": "jvm", "reason": "runtime" }],
       "note": "Rung 2 of autoSignIn on Android over Block Store (I-49.11): redeem, enrol after a sign-in and daily, sign-out deletion with a retry queue, AutoSignInOptions.restore and AndroidOptions.restore; the six restore transcripts are replayed (I-49.12). JVM desktop has no backup item."
     },
-    "identity.accesstoken": { "status": "planned", "wp": "I-21b" },
+    "identity.accesstoken": {
+      "status": "implemented",
+      "note": "I-21b.3: client.identity.accessToken(refresh) (and PolarisKeyFutures.accessToken; AccessToken.kt; WIRE-CONTRACT-V5 section 12.13.10): POST discovery's identity token endpoint with the token-exchange form (device token as subject_token, no Authorization), only when discovery carries accessToken: true (else the typed service-unavailable N/A, no request) and the endpoint is on the product's own origin; no redirect is followed. In memory only, bound to the device token it was asked with, reused until expires_in minus 60 seconds, one exchange at a time, dropped at sign-out; a 429's retryAfter is remembered per token and fails fast with rate_limited (refresh included); an access_token over 8 KiB is bad_response. Not a licence check. identity-access-token replays in TranscriptTest (every step with refresh); AccessTokenTest pins the rules."
+    },
     "identity.link": {
       "status": "implemented",
       "except": [{ "runtime": "jvm", "reason": "runtime" }],

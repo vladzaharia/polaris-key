@@ -302,7 +302,10 @@
       ],
       "note": "I-49.15: rung 2 of PolarisKey.identity.auto_sign_in (services/identity/restore.gd, PKeyIdentityRestore): the restore grant over the PKeyPlatformBackup item (iCloud Keychain through the pkp_call bk_* ops on iOS and macOS, Block Store through the plugin's bk_* ops on Android), enrolment after every completed sign-in and once a day on rung 1, sign-out deletion (DELETE restore queued in restore.v1 for the next launch, the item, the explicit-sign-out flag), the auto_sign_in options restore and backup_access_group. The secret is held as bytes and zeroed in place when a redeem or an enrolment is done (PKeyPlatformBackup.RestoreValue; tests/identity/test_restore.gd reads typed references after the call). A refused redeem deletes the item on Android only. Proven by tests/identity/test_restore.gd and the restore-* and discovery-identity-restore transcripts replayed in suite_transcripts."
     },
-    "identity.accesstoken": { "status": "planned", "wp": "I-21b" },
+    "identity.accesstoken": {
+      "status": "implemented",
+      "note": "I-21b.3: PolarisKey.identity.access_token(refresh) (services/identity/access_token.gd, PKeyIdentityAccessToken; WIRE-CONTRACT-V5 section 12.13.10): a coroutine answering a PKeyResult with detail {access_token, token_type, expires_in, expires_at}. It POSTs discovery's identity token endpoint with the token-exchange form (the device token as subject_token, no Authorization) only when discovery carries accessToken: true (else service-unavailable with detail.kind unavailable and no request) and the endpoint is on the Worker's own origin; no redirect is followed. In memory only, bound to the device token it was asked with, reused until expires_in minus 60 seconds, one exchange at a time, dropped at sign-out; a 429's retryAfter is remembered per token and fails fast with rate_limited (refresh included); an access_token over 8 KiB is bad_response. Not a licence check. identity-access-token replays in suite_transcripts (every step with refresh); tests/identity/test_access_token.gd pins the rules."
+    },
     "identity.link": {
       "status": "implemented",
       "except": [

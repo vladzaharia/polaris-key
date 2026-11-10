@@ -30,6 +30,7 @@ import im.plrs.key.core.peer.nearby.NearbyRequest
 import im.plrs.key.core.peer.nearby.NearbyRequestOptions
 import im.plrs.key.core.peer.nearby.PickOutcome
 import im.plrs.key.core.sync.SyncStatus
+import im.plrs.key.identity.AccessToken
 import im.plrs.key.identity.AttachResult
 import im.plrs.key.identity.AutoSignInOptions
 import im.plrs.key.identity.AutoSignInResult
@@ -200,6 +201,10 @@ public class PolarisKeyFutures @JvmOverloads constructor(
 
     /** `identity.choice.cancel(grant)`: give the grant up. */
     public fun choiceCancel(grant: String): CompletableFuture<ChoiceResult<Unit>> = call { client.identity.choice.cancel(grant) }
+
+    /** `identity.accessToken(refresh)`: the app's own access token for its own backend (not a licence check). */
+    @JvmOverloads
+    public fun accessToken(refresh: Boolean = false): CompletableFuture<AccessToken> = call { client.identity.accessToken(refresh) }
 
     /** `identity.attach(confirm)`: preview (false) or add the device's licence to the signed-in account (true). */
     public fun attach(confirm: Boolean): CompletableFuture<AttachResult> = call { client.identity.attach(confirm) }
