@@ -314,6 +314,12 @@ class _GuardedFileCodec:
             self._check()
             yield piece
 
+    def open_planned(self, stored: Any, plain_size: int) -> Any:
+        self._check()
+        for piece in self._inner.open_planned(stored, plain_size):
+            self._check()
+            yield piece
+
 
 class SyncCodec:
     """What the E2E machine's host seals and opens with. It holds no key itself: every call reads

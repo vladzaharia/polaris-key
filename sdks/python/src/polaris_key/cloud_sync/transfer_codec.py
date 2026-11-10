@@ -82,6 +82,12 @@ class FileCodec(Protocol):
         provisional until the iterator ends."""
         ...
 
+    def open_planned(self, stored: Iterable[bytes], plain_size: int) -> Iterator[bytes]:
+        """:meth:`open_stream` for a reader that knows the plaintext size: each yielded piece has verified
+        (the last-segment flag comes from the size), and a source that ends early or fails a tag raises
+        after the pieces that did verify. Reads nothing past the planned segments."""
+        ...
+
 
 class E2eFileCodec:
     """The codec of a collection of an end-to-end product. ``root`` is the ring root."""
@@ -132,6 +138,9 @@ class E2eFileCodec:
 
     def open_stream(self, stored: Iterable[bytes]) -> Iterator[bytes]:
         return sf.open_file_stream(self._coll_key, self._kid, stored)
+
+    def open_planned(self, stored: Iterable[bytes], plain_size: int) -> Iterator[bytes]:
+        return sf.open_file_stream_planned(self._coll_key, self._kid, stored, plain_size)
 
 
 class ServerFileCodec:
@@ -194,6 +203,9 @@ class ServerFileCodec:
         return iter(source)
 
     def open_stream(self, stored: Iterable[bytes]) -> Iterator[bytes]:
+        return iter(stored)
+
+    def open_planned(self, stored: Iterable[bytes], plain_size: int) -> Iterator[bytes]:
         return iter(stored)
 
 

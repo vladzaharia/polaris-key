@@ -37,6 +37,7 @@ import asyncio
 import collections.abc
 import functools
 import inspect
+import threading
 from typing import Any, AsyncIterator, Callable, Generator, Iterable, Optional
 
 from .client import PolarisKeyClient
@@ -173,6 +174,28 @@ class _AsyncCloudSync:
 
     def cloud_empty(self) -> GuardedCoroutine:
         return GuardedCoroutine(_to_thread(self._target.cloud_empty), "cloud_empty")
+
+    def export(self, destination: Any, include_revisions: bool = False, **options: Any) -> GuardedCoroutine:
+        """``cloud_sync.export`` as a coroutine on a worker thread. Cancelling the task (or setting the
+        ``cancel`` event you pass) ends the export and its waits, removes the partial file and raises
+        ``CancelledError`` once the thread has cleaned up."""
+
+        async def run() -> Any:
+            cancel = options.pop("cancel", None) or threading.Event()
+            work = asyncio.ensure_future(
+                _to_thread(self._target.export, destination, include_revisions, cancel=cancel, **options)
+            )
+            try:
+                return await asyncio.shield(work)
+            except asyncio.CancelledError:
+                cancel.set()
+                try:
+                    await work
+                except BaseException:  # noqa: BLE001 - the thread's own outcome; the task is cancelled either way
+                    pass
+                raise
+
+        return GuardedCoroutine(run(), "export")
 
     def on_conflict(self, fn: Callable[[Any], Any]) -> Callable[[], None]:
         """Listen for MergeRequests. ``fn`` is a plain function, called on the thread that opened the

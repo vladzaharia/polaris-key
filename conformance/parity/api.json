@@ -4555,9 +4555,7 @@
         "node": {
           "planned": "U-51"
         },
-        "python": {
-          "planned": "U-51"
-        },
+        "python": {},
         "react": {
           "planned": "U-51",
           "shape": "hook",
@@ -4581,6 +4579,10 @@
       "kind": "method",
       "feature": "sync.export",
       "sdks": {
+        "python": {
+          "sdkOnly": true,
+          "reason": "Python cancels with the threading.Event passed as cancel, or by cancelling the awaiting task"
+        },
         "godot": {
           "planned": "U-51",
           "sdkOnly": true,
