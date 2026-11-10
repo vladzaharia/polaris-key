@@ -9,7 +9,15 @@ import { closeContext } from "./teardown.js";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { chromium, firefox, webkit, type Browser, type Page } from "playwright";
+import {
+  chromium,
+  firefox,
+  webkit,
+  type Browser,
+  type Page,
+  type Request,
+} from "playwright";
+import { frames, fontsAndFrames } from "./settle.js";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { GLOBAL_PAGES, SECTIONS } from "../src/console/nav.js";
@@ -1471,6 +1479,27 @@ async function open(
   // answers the app's own files, with the CSP on its `.html` responses.
   const answered = (u: URL) =>
     u.pathname.startsWith("/manage/api/") || u.origin === IMG_ORIGIN;
+  // Requests the fixtures are still answering: the page is at rest once there are none (a fixed
+  // beat both slows every open and fails on a slow machine).
+  let inflight = 0;
+  let idleWaiters: Array<() => void> = [];
+  const quiet = async () => {
+    do {
+      if (inflight > 0) await new Promise<void>((r) => idleWaiters.push(r));
+      await fontsAndFrames(page);
+    } while (inflight > 0);
+  };
+  const settled = (r: Request) => {
+    if (!answered(new URL(r.url())) || --inflight > 0) return;
+    const w = idleWaiters;
+    idleWaiters = [];
+    for (const f of w) f();
+  };
+  ctx.on("request", (r) => {
+    if (answered(new URL(r.url()))) inflight++;
+  });
+  ctx.on("requestfinished", settled);
+  ctx.on("requestfailed", settled);
   await ctx.route(answered, async (route) => {
     const url = new URL(route.request().url());
     const image = fixtureImage(url);
@@ -1554,10 +1583,10 @@ async function open(
       { timeout: 5_000 },
     )
     .catch(() => undefined);
-  await page.waitForTimeout(350);
+  await quiet();
   if (c.act) {
     await c.act(page);
-    await page.waitForTimeout(400);
+    await quiet();
   }
   // A nested scroller (a virtualized table, a drawer body) is measured at its end, where a
   // virtualizer has drawn its last rows and only a real gap can remain below them.
@@ -1576,7 +1605,7 @@ async function open(
     }
     return n;
   });
-  if (nested) await page.waitForTimeout(300);
+  if (nested) await frames(page);
   return { page, gaps, errors };
 }
 
@@ -1592,7 +1621,7 @@ async function shoot(page: Page, file: string): Promise<void> {
     return true;
   });
   if (scrolls) {
-    await page.waitForTimeout(150);
+    await frames(page);
     await page.screenshot({ path: `${SHOTS}/${file}--bottom.png` });
     await page.evaluate(() => {
       document.getElementById("content")!.scrollTop = 0;
@@ -2170,7 +2199,7 @@ if (!part || part.index === MISC_PART) {
               .click();
             const dialog = page.getByRole("alertdialog");
             await dialog.waitFor();
-            await page.waitForTimeout(500);
+            await fontsAndFrames(page);
             const m = await dialog.evaluate((el) => {
               const box = (e: Element | null) => {
                 const r = e!.getBoundingClientRect();
