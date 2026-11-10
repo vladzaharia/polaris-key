@@ -907,6 +907,7 @@ function openRecord(
     let id: string | null = null;
     const fields = nullObject();
     const elements: unknown[] = [];
+    const seen = new Set<string>();
     for (const cell of list) {
       const env =
         isObj(cell) && typeof cell["ct"] === "string"
@@ -921,6 +922,10 @@ function openRecord(
       const r = refOpenRecord(root, collection, w, env);
       if (!r.ok) return "invalid";
       const cut = r.name.indexOf("\u0000");
+      // A name the row repeats is not one row's cells: the whole row is invalid.
+      const own = r.name.slice(cut + 1);
+      if (seen.has(own)) return "invalid";
+      seen.add(own);
       id = r.name.slice(0, cut);
       if (kind === "field") fields[r.name.slice(cut + 1)] = r.value;
       else elements.push(r.value);

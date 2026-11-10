@@ -130,6 +130,17 @@ export interface ExportSummary {
   /** The zip32 total the plan counted before the first byte. */
   plannedBytes: number;
   entries: number;
+  /** What `data.json` counts. */
+  counts: { settings: number; records: number; files: number };
+  /** `data.json`'s `skipped`. */
+  skipped: Array<{
+    kind: string;
+    collection?: string;
+    entry?: string;
+    code: string;
+    partial?: boolean;
+  }>;
+  unsynced: number;
 }
 
 // ── fixed text ───────────────────────────────────────────────────────────────────────────────
@@ -836,7 +847,14 @@ export async function exportToSink(
   const { bytes } = await zip.finish(names);
   if (bytes > plannedBytes)
     throw new Error("the export plan undercounted the archive");
-  return { bytes, plannedBytes, entries: names.length };
+  return {
+    bytes,
+    plannedBytes,
+    entries: names.length,
+    counts: data.counts,
+    skipped: data.skipped,
+    unsynced: inp.unsynced,
+  };
 }
 
 /** Every entry's name, in the order a reader lists them. */

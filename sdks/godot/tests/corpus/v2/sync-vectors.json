@@ -5645,6 +5645,128 @@
       }
     },
     {
+      "id": "e2e-repeated-cell",
+      "description": "End-to-end: a merge record whose cells name the same field twice and a union record whose cells name the same element twice are dropped whole and listed code invalid, as a pull drops them; a merge and a union record with distinct cells are written.",
+      "product": "demo",
+      "exportedAt": 1767225600000,
+      "encryption": "e2e",
+      "rootHex": "2cebb0ea8b6ed24e4c8858ceaf65b55f519a314413cbb9ea2feaf4715303b0bc",
+      "includeRevisions": false,
+      "unsynced": 0,
+      "changes": [
+        {
+          "record": [
+            "profile",
+            "x:Pgnxyjt5p-K8xSecagnEwyxJkB7ZtR5r6-tFHbcW3Ok"
+          ],
+          "fields": [
+            {
+              "field": "x:zKqKs0qYBrMSwkmeZwyMuudFMMpxqwmQRf4uWSJPFT8",
+              "ct": "AcjAb9LGP08PvugjpprzMEm9CkvK4vS-1uWQCorAfNUvELBnp6ctx_VFPlKkw-Zsm_YPcslWCoc7_UJxOFW18quO8EWwPb5ocM5t8qlllhdXNOODeAuNSE2Khi2RhG_2WNWYF1MB2wSkQRO6J0C-R8A",
+              "editedHlc": "000000000001:0000"
+            }
+          ],
+          "version": 7,
+          "editedHlc": "000000000001:0000"
+        },
+        {
+          "record": [
+            "profile",
+            "x:kKA9VlGOmencO7ZrAQ-TQMrJFQ2L8eoMkLvZX_g5ZvM"
+          ],
+          "fields": [
+            {
+              "field": "x:zKqKs0qYBrMSwkmeZwyMuudFMMpxqwmQRf4uWSJPFT8",
+              "ct": "AcjAb9LGP08PvugjpprzMEnRbq_UYYCRdz3q4bDG98phT8-0ouoZXZbuEzOIzsdAvcNDQnn-5aUDW23AQXAeMSzZOzxHsDkI0xkZ_G0DHCuLyY_9iWvo7w7Q-Td6fMgFTJhuUraThOFdGajBR6bu9EY",
+              "editedHlc": "000000000001:0000"
+            },
+            {
+              "field": "x:zKqKs0qYBrMSwkmeZwyMuudFMMpxqwmQRf4uWSJPFT8",
+              "ct": "AcjAb9LGP08PvugjpprzMEnRbq_UYYCRdz3q4bDG98phT8-0ouoZXZbuEzOIzsdAvcNDQnn-5aUDW23AQXAeMSzZOzxHsDkI0xkZ_G0DHCuLyY_9iWvo7w7Q-Td6fMgFTJhuUraThOFdGajBR6bu9EY",
+              "editedHlc": "000000000001:0000"
+            }
+          ],
+          "version": 9,
+          "editedHlc": "000000000001:0000"
+        },
+        {
+          "record": ["tags", "x:Q6ecCFHxnF93bVnpTHIH8RzMRRelGDY8D9CKnGfcnzA"],
+          "elements": [
+            {
+              "element": "x:t-H8uMn0UWOk9YOTlOTLPV81lV8vWRrMP5h3pmxD2ys",
+              "ct": "AcjAb9LGP08PvugjpprzMEmYig1WUi7XQzdjAa-t-Ee4XmAmj6vCxCeipk_B6feJMub3ZYJKbfdAESVYp2_UXhopTCBWqS794NTUk2xyhcC0k5ZwWix2-vKaAqvhxX8fulLGuS6u4hCWXp01N62DF4c"
+            },
+            {
+              "element": "x:lFUwkmtw7-uP2Uk_Lyp-bKsFsHqVPkVPXxaSE7GwZZs",
+              "ct": "AcjAb9LGP08PvugjpprzMEkyMMQ8A5-gVZ9ImbWEWz56m9RnQMt7l5RJbbHvnfAp6BvckV3Vd5yR1P20HWbZITKMIYaIXiZVpddvkZmzC_ohDgDPDudvdI0HSVxa5R1hBRk9LNp-Sl3bBqz1WvnkJ14"
+            }
+          ],
+          "version": 8
+        },
+        {
+          "record": ["tags", "x:h911HtYkkLtW_c5nK5lq8wL2VvB9odmmc6RY-mjd2B0"],
+          "elements": [
+            {
+              "element": "x:jgv4KhnF2LMnq5sLZ-qBV1dwbV8PznX62jAi_uWReYM",
+              "ct": "AcjAb9LGP08PvugjpprzMEnHNqrF6d-YgixEmKFnT8kR8C25SMvej_UazT9xLwB7nEtmeHj134J8RzR2jgwh8jl56NtRMsePyJmuRUHb1vGVutuM1hGqxzguC9rkBfdmT_8aihcamarLKpBN8-CI3jE"
+            },
+            {
+              "element": "x:jgv4KhnF2LMnq5sLZ-qBV1dwbV8PznX62jAi_uWReYM",
+              "ct": "AcjAb9LGP08PvugjpprzMEnHNqrF6d-YgixEmKFnT8kR8C25SMvej_UazT9xLwB7nEtmeHj134J8RzR2jgwh8jl56NtRMsePyJmuRUHb1vGVutuM1hGqxzguC9rkBfdmT_8aihcamarLKpBN8-CI3jE"
+            }
+          ],
+          "version": 10
+        }
+      ],
+      "files": [],
+      "expect": {
+        "entries": [
+          {
+            "name": "README.txt",
+            "size": 1053,
+            "sha256Hex": "b033f2cc173e07580bb45d11ea4268f71fb885e21bc3d4ffd041c333705fa66a",
+            "utf8": "This is a readable copy of data an app synced with Polaris Locker.\n\nThe app made it on this device. It is NOT encrypted: anyone who can open\nthis file can read everything in it. Keep it where you keep your other\nprivate files, and delete it when you no longer need it. The time it was\nmade is \"exportedAt\" in data.json, in milliseconds since 1970-01-01 UTC.\n\nPolaris Locker's own export of this data, from its website, uses the same\nlayout and holds the data as the app stored it: encrypted when the app\nencrypts it.\n\ndata.json                              what this holds, and what could not be read\nstores/sync.cloudSync/settings.json    the synced settings\nstores/sync.cloudSync/records/         the synced records, one file a collection\nstores/sync.cloudSync/index.json       which file holds which collection\nstores/sync.cloudSync/files/           the synced files\nstores/sync.cloudSync/files.json       which file belongs to which record\n\nA file marked \"partial\" in data.json is incomplete or did not match what\nthe app stored. Do not rely on it.\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/settings.json",
+            "size": 3,
+            "sha256Hex": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+            "utf8": "{}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/0.ndjson",
+            "size": 46,
+            "sha256Hex": "ff7173ca4f380422bfab3745b6cebc1edf6e6e56fdc855e6ffe81097a27be78b",
+            "utf8": "{\"id\":\"p-1\",\"value\":{\"name\":\"y\"},\"version\":7}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/1.ndjson",
+            "size": 43,
+            "sha256Hex": "d438e6fdc1b7b3b0082769f2f3f0c2c2fd1e2fb41ffe040db62809019d42e02f",
+            "utf8": "{\"id\":\"t-1\",\"value\":[\"c\",\"d\"],\"version\":8}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/files.json",
+            "size": 3,
+            "sha256Hex": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "utf8": "[]\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/index.json",
+            "size": 179,
+            "sha256Hex": "99a13c34452f23b5ca20176ed3c4f86aebb8f07928426ee3d1f19f8071b257bd",
+            "utf8": "{\"records\":[{\"collection\":\"profile\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/0.ndjson\"},{\"collection\":\"tags\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/1.ndjson\"}]}\n"
+          },
+          {
+            "name": "data.json",
+            "size": 297,
+            "sha256Hex": "44f66e7f05b0bbe92eabb40a3195af75dad65ad2bf768ff57a33d4f54369ce5c",
+            "utf8": "{\"counts\":{\"files\":0,\"records\":2,\"settings\":0},\"encryption\":\"e2e\",\"exportedAt\":1767225600000,\"product\":\"demo\",\"schema\":\"pkey-sync-export/1\",\"skipped\":[{\"code\":\"invalid\",\"collection\":\"profile\",\"kind\":\"record\"},{\"code\":\"invalid\",\"collection\":\"tags\",\"kind\":\"record\"}],\"source\":\"device\",\"unsynced\":0}\n"
+          }
+        ]
+      }
+    },
+    {
       "id": "e2e-file-truncated",
       "description": "A 2.5 MiB end-to-end file the transport served only up to the middle of its second segment: segment 0 authenticates and is written, the rest is not, and the entry is listed with partial true (files.json and the record's file carry partial and expectedSize). A save whose value names no file and a file-only record are listed as sync-file-invalid with no entry.",
       "product": "demo",

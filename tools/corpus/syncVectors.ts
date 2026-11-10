@@ -3725,6 +3725,30 @@ function buildExportCases(): unknown[] {
     }),
   });
 
+  // e2e-repeated-cell: a row whose cells repeat a name is not one row's cells.
+  const twiceFields = eFields("profile", "p-2", { name: "x", level: 3 }, 9);
+  const twiceElements = eElements("tags", "t-2", ["a", "b"], 10);
+  rows.push({
+    id: "e2e-repeated-cell",
+    description:
+      "End-to-end: a merge record whose cells name the same field twice and a union record whose cells name the same element twice are dropped whole and listed code invalid, as a pull drops them; a merge and a union record with distinct cells are written.",
+    input: xInput({
+      encryption: "e2e",
+      changes: [
+        eFields("profile", "p-1", { name: "y" }, 7),
+        {
+          ...twiceFields,
+          fields: [twiceFields.fields[0], twiceFields.fields[0]],
+        },
+        eElements("tags", "t-1", ["c", "d"], 8),
+        {
+          ...twiceElements,
+          elements: [twiceElements.elements[1], twiceElements.elements[1]],
+        },
+      ],
+    }),
+  });
+
   // e2e-file-truncated: 2.5 MiB, served up to the middle of segment 1.
   const seg = REF_FILE.segmentBytes + REF_FILE.tag;
   const big = xFile(
