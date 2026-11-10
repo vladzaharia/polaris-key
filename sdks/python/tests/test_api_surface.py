@@ -67,6 +67,12 @@ ATTRS = [
     ("identity.signIn.session.reopen", "SignInSession", "reopen"),
     ("identity.signIn.session.cancel", "SignInSession", "cancel"),
     ("identity.signIn.session.wait", "SignInSession", "wait"),
+    ("identity.signIn.session.complete", "SignInSession", "complete"),
+    ("identity.choice", "IdentityClient", "choice"),
+    ("identity.choice.licenses", "IdentityClient", "licenses"),
+    ("identity.choice.devices", "IdentityClient", "devices"),
+    ("identity.choice.complete", "IdentityClient", "complete"),
+    ("identity.choice.cancel", "IdentityClient", "cancel"),
     ("identity.autoSignIn", "IdentityClient", "auto_sign_in"),
     ("identity.useLicenseChoice", "IdentityClient", "choice"),
     ("identity.attachLicense", "IdentityClient", "attach"),
@@ -168,11 +174,6 @@ REMOVED = [
     ("license.is_entitled", "LicenseClient", "is_entitled"),
     ("license.entitlement_value", "LicenseClient", "entitlement_value"),
     ("license.get_entitlements", "LicenseClient", "get_entitlements"),
-    ("identity.sign_in_with_browser", "IdentityClient", "sign_in_with_browser"),
-    ("identity.begin_sign_in", "IdentityClient", "begin_sign_in"),
-    ("identity.poll_sign_in", "IdentityClient", "poll_sign_in"),
-    ("identity.wait_for_sign_in", "IdentityClient", "wait_for_sign_in"),
-    ("identity.accept_sign_in", "IdentityClient", "accept_sign_in"),
 ]
 
 @pytest.mark.parametrize("concept,cls,name", ATTRS)

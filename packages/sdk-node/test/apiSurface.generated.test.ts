@@ -283,11 +283,3 @@ it("removed: license.getEntitlements", () =>
   expect("getEntitlements" in LicenseClient.prototype).toBe(false));
 it("removed: PolarisKeyClient.getCurrentDevice", () =>
   expect("getCurrentDevice" in PolarisKeyClient.prototype).toBe(false));
-it("removed: identity.signInWithBrowser", () =>
-  expect("signInWithBrowser" in IdentityClient.prototype).toBe(false));
-it("removed: identity.beginSignIn", () =>
-  expect("beginSignIn" in IdentityClient.prototype).toBe(false));
-it("removed: identity.pollSignIn", () =>
-  expect("pollSignIn" in IdentityClient.prototype).toBe(false));
-it("removed: identity.waitForSignIn", () =>
-  expect("waitForSignIn" in IdentityClient.prototype).toBe(false));

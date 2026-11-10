@@ -67,7 +67,8 @@
     },
     "core.devicekeys": {
       "status": "planned",
-      "wp": "CC-26"
+      "wp": "CC-24",
+      "note": "CC-26 shipped the browser store in client-core (deviceKeyStoreWeb); no React surface exposes it yet. Parked on CC-24, the first browser consumer (sealed relay mailbox), until a package owns the React surface."
     },
     "license.gate": {
       "status": "implemented"

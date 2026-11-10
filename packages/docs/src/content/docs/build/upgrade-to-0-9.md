@@ -192,35 +192,6 @@ Each removal, with its fix and the release that made it, is in the [developer ch
 | swift | `PolarisGateModel` | PolarisKeyGate | 0.9 |
 | swift | `PolarisSignIn` | the kit's sign-in screens (PolarisKeyGate) | 0.9 |
 | swift | `PolarisOfflineActivation` | the kit's offline screens (PolarisKeyGate) | 0.9 |
-| node | `identity.signInWithBrowser` | `identity.signIn.start` | 0.9 |
-| node | `identity.beginSignIn` | `identity.signIn.start` | 0.9 |
-| node | `identity.pollSignIn` | `identity.signIn.session.wait` | 0.9 |
-| node | `identity.waitForSignIn` | `identity.signIn.session.wait` | 0.9 |
-| swift | `identity.signInWithBrowser` | `identity.signIn.start` | 0.9 |
-| swift | `identity.beginSignIn` | `identity.signIn.start` | 0.9 |
-| swift | `identity.pollSignIn` | `identity.signIn.session.wait` | 0.9 |
-| swift | `identity.waitForSignIn` | `identity.signIn.session.wait` | 0.9 |
-| swift | `identity.acceptSignIn` | `identity.attachLicense` | 0.9 |
-| kotlin | `identity.beginSignIn` | `identity.signIn.start` | 0.9 |
-| kotlin | `identity.pollSignIn` | `identity.signIn.session.wait` | 0.9 |
-| kotlin | `identity.waitForSignIn` | `identity.signIn.session.wait` | 0.9 |
-| godot | `identity.begin_sign_in` | `identity.signIn.start` | 0.9 |
-| godot | `identity.sign_in_with_browser` | `identity.signIn.start` | 0.9 |
-| godot | `identity.request_sign_in` | `identity.signIn.start` | 0.9 |
-| godot | `identity.poll_sign_in` | `identity.signIn.session.wait` | 0.9 |
-| godot | `identity.wait_for_sign_in` | `identity.signIn.session.wait` | 0.9 |
-| godot | `identity.accept_sign_in` | `identity.signIn.session.accept` | 0.9 |
-| godot | `identity.cancel` | `identity.signIn.session.cancel` | 0.9 |
-| godot | `identity.is_signing_in` | `identity.signIn.session.isWaiting` | 0.9 |
-| godot | `identity.signed_in_identity` | `identity.subject` | 0.9 |
-| godot | `identity.sign_in_pending` | `identity.signIn.session.outcome` | 0.9 |
-| godot | `identity.sign_in_confirm` | `identity.signIn.session.outcome` | 0.9 |
-| godot | `identity.sign_in_finished` | `identity.signIn.session.outcome` | 0.9 |
-| python | `identity.sign_in_with_browser` | `identity.signIn.start` | 0.9 |
-| python | `identity.begin_sign_in` | `identity.signIn.start` | 0.9 |
-| python | `identity.poll_sign_in` | `identity.signIn.session.wait` | 0.9 |
-| python | `identity.wait_for_sign_in` | `identity.signIn.session.wait` | 0.9 |
-| python | `identity.accept_sign_in` | `identity.signIn.session.wait` | 0.9 |
 
 <!-- /GENERATED:upgrade-sdk -->
 <!-- prettier-ignore-end -->

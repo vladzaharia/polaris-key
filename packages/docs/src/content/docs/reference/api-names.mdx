@@ -115,11 +115,11 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `config.get` | `config.get` | `useManagedConfig().get` | `config.get` | `config.get` | `config.get` | `get_value` | `config.resolve` |
 | `config.getConfigSource` | `config.getConfigSource` | `config.getConfigSource` | `config.get_config_source` | `config.getConfigSource` | `config.getConfigSource` | `get_config_source` | `config.resolve` |
 | `config.getSecret` | `config.getSecret` | — | `config.get_secret` | `config.getSecret` | `config.getSecret` | `config.get_secret` | `config.secret` |
-| `config.mintToken` | `config.mintToken` | planned (U-20) | `config.mint_token` | `config.mintToken` | `config.mintToken` | `config.mint_token` | `config.mint` |
+| `config.mintToken` | `config.mintToken` | planned (U-38) | `config.mint_token` | `config.mintToken` | `config.mintToken` | `config.mint_token` | `config.mint` |
 | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `config.set` | `set_value` | `config.local` |
 | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.clear` | `config.local` |
 | `config.clearAll` | `config.clearAll` | `config.clearAll` | `config.clear_all` | `config.clearAll` | `config.clearAll` | `config.clear_all` | `config.local` |
-| `config.onConfigChange` | `config.onConfigChange` | planned (U-20) | `config.on_config_change` | `config.onConfigChange` | `changes` | `config_changed` | `config.resolve` |
+| `config.onConfigChange` | `config.onConfigChange` | planned (U-38) | `config.on_config_change` | `config.onConfigChange` | `changes` | `config_changed` | `config.resolve` |
 | `config.setting` | `config.setting` | `useConfigSetting` | `config.setting` | `config.setting` | `config.setting` | `config.setting` | `config.resolve` |
 | `config.setting.value` | `config.setting.value` | `config.setting.value` | `config.setting.value` | `config.setting.value` | `config.setting.value` | `config.setting.value` | `config.resolve` |
 | `config.setting.source` | `config.setting.source` | `config.setting.source` | `config.setting.source` | `config.setting.source` | `config.setting.source` | `config.setting.source` | `config.resolve` |
@@ -127,7 +127,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | `config.setting.visibility` | `config.resolve` |
 | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `set_value` | `config.resolve` |
 | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.resolve` |
-| `config.setting.on` | `config.setting.on` | planned (U-20) | `config.setting.on` | `config.setting.on` | `config.setting.on` | `changed` | `config.resolve` |
+| `config.setting.on` | `config.setting.on` | planned (U-38) | `config.setting.on` | `config.setting.on` | `config.setting.on` | `changed` | `config.resolve` |
 | `config.setting.sync` | `config.setting.sync` | `useSetting().sync` | `config.setting.sync` | `config.setting.sync` | `config.setting.sync` | `config.setting.sync` | `config.sync` |
 | `config.listUserConfig` | `config.listUserConfig` | — | `config.list_user_config` | `config.listUserConfig` | `config.listUserConfig` | `config.list_user_config` | — |
 | `config.schemaVersion` | `config.schemaVersion` | — | `config.schema_version` | `config.schemaVersion` | `config.schemaVersion` | `config.schema_version` | — |
@@ -185,7 +185,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `identity.signIn` | `identity.signIn` | `usePolarisAuth().signIn` | `identity.sign_in` | `identity.signIn` | `identity.signIn` | `identity.sign_in` | `identity.devicecode` |
-| `identity.subject` | `identity.subject` | planned (I-10a) | `identity.subject` | `identity.subject` | `identity.subject` | `identity.subject` | `identity.account` |
+| `identity.subject` | `identity.subject` | `identity.subject` | `identity.subject` | `identity.subject` | `identity.subject` | `identity.subject` | `identity.account` |
 | `identity.signOut` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.account` |
 | `identity.signIn.start` | `identity.signIn.start` | `usePolarisAuth().signIn.start` | `identity.sign_in.start` | `SignInNamespace.start` | `SignInNamespace.start` | `PKeySignInNamespace.start` | `identity.devicecode` |
 | `identity.signIn.startNearby` | — | — | — | — | `SignInNamespace.startNearby` | `PKeySignInNamespace.start_nearby` | — |
@@ -196,20 +196,20 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `identity.signIn.session.accept` | — | — | — | — | — | `PKeySignInSession.accept` | — |
 | `identity.signIn.session.isWaiting` | — | — | — | — | — | `PKeySignInSession.is_waiting` | — |
 | `identity.signIn.session.outcome` | — | — | — | — | — | `PKeySignInSession.outcome` | — |
-| `identity.signIn.session.complete` | `identity.signIn.session.complete` | `SignInSession.complete` | planned (I-10a) | `SignInSession.complete` | `SignInSession.complete` | `PKeySignInSession.complete` | `identity.redirect.web` |
+| `identity.signIn.session.complete` | `identity.signIn.session.complete` | `SignInSession.complete` | `identity.sign_in.session.complete` | `SignInSession.complete` | `SignInSession.complete` | `PKeySignInSession.complete` | `identity.redirect.web` |
 | `identity.signIn.keyReturn` | `RedirectSignInOptions.keyReturn` | `signIn.start({ keyReturn })` | `key_return` | `keyReturn` | `SignInOptions.keyReturn` | `sign_in.start({key_return})` | `identity.keyreturn` |
-| `identity.choice` | `identity.choice` | `usePolarisAuth().choice` | planned (I-10a) | planned (I-10b) | `identity.choice` | `PKeyIdentity.choice` | `identity.choice` |
-| `identity.choice.licenses` | `identity.choice.licenses` | `usePolarisAuth().choice.licenses` | planned (I-10a) | `ChoiceNamespace.licenses` | `ChoiceClient.licenses` | `PKeyIdentityChoice.licenses` | `identity.choice` |
-| `identity.choice.devices` | `identity.choice.devices` | `usePolarisAuth().choice.devices` | planned (I-10a) | `ChoiceNamespace.devices` | `ChoiceClient.devices` | `PKeyIdentityChoice.devices` | `identity.choice` |
-| `identity.choice.complete` | `identity.choice.complete` | `usePolarisAuth().choice.complete` | planned (I-10a) | `ChoiceNamespace.complete` | `ChoiceClient.complete` | `PKeyIdentityChoice.complete` | `identity.choice` |
-| `identity.choice.cancel` | `identity.choice.cancel` | `usePolarisAuth().choice.cancel` | planned (I-10a) | `ChoiceNamespace.cancel` | `ChoiceClient.cancel` | `PKeyIdentityChoice.cancel` | `identity.choice` |
+| `identity.choice` | `identity.choice` | `usePolarisAuth().choice` | `identity.choice` | `identity.choice` | `identity.choice` | `PKeyIdentity.choice` | `identity.choice` |
+| `identity.choice.licenses` | `identity.choice.licenses` | `usePolarisAuth().choice.licenses` | `identity.choice.licenses` | `ChoiceNamespace.licenses` | `ChoiceClient.licenses` | `PKeyIdentityChoice.licenses` | `identity.choice` |
+| `identity.choice.devices` | `identity.choice.devices` | `usePolarisAuth().choice.devices` | `identity.choice.devices` | `ChoiceNamespace.devices` | `ChoiceClient.devices` | `PKeyIdentityChoice.devices` | `identity.choice` |
+| `identity.choice.complete` | `identity.choice.complete` | `usePolarisAuth().choice.complete` | `identity.choice.complete` | `ChoiceNamespace.complete` | `ChoiceClient.complete` | `PKeyIdentityChoice.complete` | `identity.choice` |
+| `identity.choice.cancel` | `identity.choice.cancel` | `usePolarisAuth().choice.cancel` | `identity.choice.cancel` | `ChoiceNamespace.cancel` | `ChoiceClient.cancel` | `PKeyIdentityChoice.cancel` | `identity.choice` |
 | `identity.autoSignIn` | `identity.autoSignIn` | `usePolarisAuth().autoSignIn` | `identity.auto_sign_in` | `identity.autoSignIn` | `identity.autoSignIn` | `PKeyIdentity.auto_sign_in` | `identity.autosignin` |
 | `identity.link.offer` | — | `usePolarisAuth().link.offer` | — | `LinkNamespace.offer` | `LinkClient.offer` | `PKeyIdentityLink.offer` | `identity.link` |
 | `identity.link.accept` | — | `usePolarisAuth().link.accept` | — | `LinkNamespace.accept` | `LinkClient.accept` | `PKeyIdentityLink.accept` | `identity.link` |
 | `identity.link.decline` | — | `usePolarisAuth().link.decline` | — | `LinkNamespace.decline` | `LinkClient.decline` | `PKeyIdentityLink.decline` | `identity.link` |
 | `identity.useLicenseChoice` | `identity.choice` | `useLicenseChoice` | `identity.choice` | `LicenseChoiceModel` | `identity.choice` | `identity.choice` | `identity.choice` |
-| `identity.attachLicense` | `attach` | planned (I-10a) | `attach` | `attach` | `attach` | `attach` | `identity.attach` |
-| `identity.openAccount` | `identity.openAccount` | planned (I-10a) | `identity.open_account` | `identity.openAccount` | `identity.openAccount` | `identity.open_account` | `identity.account` |
+| `identity.attachLicense` | `attach` | `identity.attachLicense` | `attach` | `attach` | `attach` | `attach` | `identity.attach` |
+| `identity.openAccount` | `identity.openAccount` | `identity.openAccount` | `identity.open_account` | `identity.openAccount` | `identity.openAccount` | `identity.open_account` | `identity.account` |
 | `identity.accessToken` | `identity.accessToken` | `usePolarisAuth().accessToken` | planned (I-21b) | planned (I-21b) | planned (I-21b) | planned (I-21b) | `identity.accesstoken` |
 | `identity.current` | `identity.current` | — | `identity.current` | `identity.current` | — | `identity.current` | — |
 | `identity.forget` | `identity.forget` | — | — | — | — | — | — |
@@ -547,32 +547,3 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Swift | `PolarisSignIn` | the kit's sign-in screens (PolarisKeyGate) | SP-52b |
 | Swift | `PolarisOfflineActivation` | the kit's offline screens (PolarisKeyGate) | SP-52b |
 | Swift | `GateOptions` | KitGateOptions | SP-52b |
-| Node | `identity.signInWithBrowser` | `identity.signIn.start` | I-10a |
-| Node | `identity.beginSignIn` | `identity.signIn.start` | I-10a |
-| Node | `identity.pollSignIn` | `identity.signIn.session.wait` | I-10a |
-| Node | `identity.waitForSignIn` | `identity.signIn.session.wait` | I-10a |
-| Swift | `identity.signInWithBrowser` | `identity.signIn.start` | I-10b |
-| Swift | `identity.beginSignIn` | `identity.signIn.start` | I-10b |
-| Swift | `identity.pollSignIn` | `identity.signIn.session.wait` | I-10b |
-| Swift | `identity.waitForSignIn` | `identity.signIn.session.wait` | I-10b |
-| Swift | `identity.acceptSignIn` | `identity.attachLicense` | I-10b |
-| Kotlin | `identity.beginSignIn` | `identity.signIn.start` | I-10b |
-| Kotlin | `identity.pollSignIn` | `identity.signIn.session.wait` | I-10b |
-| Kotlin | `identity.waitForSignIn` | `identity.signIn.session.wait` | I-10b |
-| Godot | `identity.begin_sign_in` | `identity.signIn.start` | I-10b |
-| Godot | `identity.sign_in_with_browser` | `identity.signIn.start` | I-10b |
-| Godot | `identity.request_sign_in` | `identity.signIn.start` | I-10b |
-| Godot | `identity.poll_sign_in` | `identity.signIn.session.wait` | I-10b |
-| Godot | `identity.wait_for_sign_in` | `identity.signIn.session.wait` | I-10b |
-| Godot | `identity.accept_sign_in` | `identity.signIn.session.accept` | I-10b |
-| Godot | `identity.cancel` | `identity.signIn.session.cancel` | I-10b |
-| Godot | `identity.is_signing_in` | `identity.signIn.session.isWaiting` | I-10b |
-| Godot | `identity.signed_in_identity` | `identity.subject` | I-10b |
-| Godot | `identity.sign_in_pending` | `identity.signIn.session.outcome` | I-10b |
-| Godot | `identity.sign_in_confirm` | `identity.signIn.session.outcome` | I-10b |
-| Godot | `identity.sign_in_finished` | `identity.signIn.session.outcome` | I-10b |
-| Python | `identity.sign_in_with_browser` | `identity.signIn.start` | I-10a |
-| Python | `identity.begin_sign_in` | `identity.signIn.start` | I-10a |
-| Python | `identity.poll_sign_in` | `identity.signIn.session.wait` | I-10a |
-| Python | `identity.wait_for_sign_in` | `identity.signIn.session.wait` | I-10a |
-| Python | `identity.accept_sign_in` | `identity.signIn.session.wait` | I-10a |

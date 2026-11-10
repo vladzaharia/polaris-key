@@ -247,18 +247,6 @@ const REMOVED := [
 	["devices.get_current_device", "res://addons/polaris_key/services/devices.gd", "get_current_device"],
 	["commerce.get_binding", "res://addons/polaris_key/services/commerce.gd", "get_binding"],
 	["update.apply", "res://addons/polaris_key/services/update.gd", "apply"],
-	["identity.begin_sign_in", "res://addons/polaris_key/services/identity.gd", "begin_sign_in"],
-	["identity.sign_in_with_browser", "res://addons/polaris_key/services/identity.gd", "sign_in_with_browser"],
-	["identity.request_sign_in", "res://addons/polaris_key/services/identity.gd", "request_sign_in"],
-	["identity.poll_sign_in", "res://addons/polaris_key/services/identity.gd", "poll_sign_in"],
-	["identity.wait_for_sign_in", "res://addons/polaris_key/services/identity.gd", "wait_for_sign_in"],
-	["identity.accept_sign_in", "res://addons/polaris_key/services/identity.gd", "accept_sign_in"],
-	["identity.cancel", "res://addons/polaris_key/services/identity.gd", "cancel"],
-	["identity.is_signing_in", "res://addons/polaris_key/services/identity.gd", "is_signing_in"],
-	["identity.signed_in_identity", "res://addons/polaris_key/services/identity.gd", "signed_in_identity"],
-	["identity.sign_in_pending", "res://addons/polaris_key/services/identity.gd", "sign_in_pending"],
-	["identity.sign_in_confirm", "res://addons/polaris_key/services/identity.gd", "sign_in_confirm"],
-	["identity.sign_in_finished", "res://addons/polaris_key/services/identity.gd", "sign_in_finished"],
 ]
 
 
