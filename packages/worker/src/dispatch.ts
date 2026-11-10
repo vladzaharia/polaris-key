@@ -62,7 +62,11 @@ import {
   notFound,
   wireError,
 } from "./core/errors.js";
-import { REQUEST_HANDLE_PATTERN } from "@polaris-key/protocol/identity";
+import {
+  END_SESSION_HANDLE_PATTERN,
+  REQUEST_HANDLE_PATTERN,
+} from "@polaris-key/protocol/identity";
+import { handleSignOutBind } from "./core/signOutEntry.js";
 import {
   handleSignInBind,
   handleSignInEntry,
@@ -357,6 +361,29 @@ async function routeRequest(
       if (
         !new RegExp(REQUEST_HANDLE_PATTERN).test(handle) ||
         (cancelled !== null && cancelled !== "1")
+      )
+        return notFound();
+      const shell = await handlePortal(req, env, db, "/", {
+        hooksFor,
+        settings: SETTINGS,
+      });
+      const headers = new Headers(shell.headers);
+      headers.set("cache-control", "no-store");
+      headers.set("referrer-policy", "no-referrer");
+      return new Response(shell.body, { status: shell.status, headers });
+    }
+    // I-21.12 (§12.13.9): the page `end-session` hands the browser. The bind hop on the customer
+    // host, then the portal shell for the browser that holds the binder; the SPA reads the handle
+    // and the JSON routes answer only that browser. Anything else is the plain not-found.
+    case "signOut": {
+      if (req.method !== "GET" && req.method !== "HEAD")
+        return methodNotAllowed();
+      if (onCustomerHost && isBindHop(req)) return handleSignOutBind(req, env);
+      const handle = url.searchParams.get("request") ?? "";
+      if (
+        !new RegExp(END_SESSION_HANDLE_PATTERN).test(handle) ||
+        url.searchParams.has("bind") ||
+        !/(?:^|;\s*)__Host-pk_req=/.test(req.headers.get("cookie") ?? "")
       )
         return notFound();
       const shell = await handlePortal(req, env, db, "/", {

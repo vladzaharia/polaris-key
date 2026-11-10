@@ -100,6 +100,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   signInEntry: [["/signin", ["get"]]],
   // I-15 (§12.12): the hosted desktop ReturnStep on the customer host.
   signInReturn: [["/signin/return", ["get"]]],
+  // I-21.12 (§12.13.9): the page `end-session` redirects to, on the customer host.
+  signOut: [["/signout", ["get"]]],
   // F-37.1b: the key host's hops into Polaris Locker.
   lockerLink: [
     ["/approve", ["get"]],
@@ -829,6 +831,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/identity/auth/choose",
   // I-08: `authorize` is a browser navigation to the card; only `token` is a page's `fetch`.
   "/{product}/identity/authorize",
+  // I-21.12: `end-session` is a browser navigation too (RP-initiated logout).
+  "/{product}/identity/end-session",
   // I-21.5: the issuer's public documents answer `Access-Control-Allow-Origin: *` themselves (the
   // same bytes for every origin, no credentials), not the per-product `web.origins` allowlist.
   "/{product}/identity/.well-known/openid-configuration",

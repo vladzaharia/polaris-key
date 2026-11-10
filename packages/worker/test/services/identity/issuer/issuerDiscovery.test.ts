@@ -80,9 +80,8 @@ describe("openid-configuration", () => {
     expect(meta).toMatchObject({
       userinfo_endpoint: `${ISSUER}/userinfo`,
       revocation_endpoint: `${ISSUER}/revoke`,
+      end_session_endpoint: `${ISSUER}/end-session`,
     });
-    // Not served yet: discovery does not name it.
-    expect(meta).not.toHaveProperty("end_session_endpoint");
   });
 
   it("takes GET only, and creates no key", async () => {

@@ -37,6 +37,10 @@ import { consumeStepUpReturn } from "./focus.js";
 import { commitLastMethod } from "./lastMethod.js";
 import { SignInPage } from "./pages/SignInPage.js";
 import { RequestFlow } from "./components/signin/RequestFlow.js";
+import {
+  SignOutFlow,
+  endSessionHandleFromUrl,
+} from "./components/signout/SignOutFlow.js";
 import { requestHandleFromUrl } from "./model/signInRequest.js";
 import { StorefrontPage } from "./pages/StorefrontPage.js";
 import { restoreCarriedKey } from "./carriedKey.js";
@@ -165,6 +169,12 @@ function Boot(): React.ReactElement {
         </Button>
       </StarScreen>
     );
+  }
+  // A relying party's sign-out (`/signout?request=eo_…`, I-21.12): the card reads the request itself
+  // and works with or without a session here.
+  if (window.location.pathname === "/signout") {
+    const handle = endSessionHandleFromUrl();
+    if (handle) return <SignOutFlow handle={handle} />;
   }
   if (!session.data) return <SignInPage />;
   // An app's sign-in (`/signin?request=rq_…`) continues in the card, not in the library.

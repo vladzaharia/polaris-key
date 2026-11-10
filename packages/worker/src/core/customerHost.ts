@@ -35,6 +35,7 @@ export const CUSTOMER_ROUTE_KINDS: ReadonlySet<string> = new Set([
   "portalMedia",
   "signInEntry",
   "signInReturn",
+  "signOut",
   "deviceEntry",
   "deviceApprove",
   // Help (LK-09, D7): `docs` is confined to `customerDocsPath` below, not served whole.
@@ -269,6 +270,9 @@ export function oldCustomerUrlRedirect(
     case "signInReturn":
       permanent = false;
       break;
+    // `/signout?request=` stays on the API host's address: `end-session` sends the bind hop there.
+    case "signOut":
+      return null;
     case "deviceEntry":
       permanent = true;
       break;

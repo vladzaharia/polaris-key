@@ -68,6 +68,8 @@ export type Route =
   | { kind: "signInEntry" }
   /** I-15 (WIRE-CONTRACT-V5 §12.12 rule 7): the hosted desktop ReturnStep, `/signin/return?request=`. */
   | { kind: "signInReturn" }
+  /** I-21.12 (WIRE-CONTRACT-V5 §12.13.9): Polaris Locker's "Sign out of Polaris Locker too?", `/signout?request=eo_…`. */
+  | { kind: "signOut" }
   /** F-37.1b: the key host's hop into Polaris Locker (`/approve?code=`, `/account/packages`). */
   | { kind: "lockerLink"; to: "approve" | "packages" }
   /** I-06: the login card's platform providers, `/login/<provider>[/callback|/notifications]`. */
@@ -227,6 +229,7 @@ export function matchRoute(pathname: string): Route {
   // The platform device-code entry pages: a code typed here finds its product (core/deviceEntry.ts).
   if (path === "/signin") return { kind: "signInEntry" };
   if (path === "/signin/return") return { kind: "signInReturn" };
+  if (path === "/signout") return { kind: "signOut" };
   if (path === "/device") return { kind: "deviceEntry", tv: false };
   if (path === "/tv") return { kind: "deviceEntry", tv: true };
   // The approval after sign-in, on the customer host only (the product is found by the binder).

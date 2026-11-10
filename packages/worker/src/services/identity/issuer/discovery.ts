@@ -38,7 +38,7 @@ export const JWKS_MAX_AGE_SECONDS = 60;
 const SERVED_ENDPOINTS = {
   userinfo_endpoint: true,
   revocation_endpoint: true,
-  end_session_endpoint: false,
+  end_session_endpoint: true,
 } as const;
 
 /** The client authentication methods of `token` and `revoke` (§12.13.2). */

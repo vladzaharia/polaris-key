@@ -88,6 +88,7 @@ import { readCiJson } from "../../core/ciScope.js";
 import { handleChoice } from "./passthrough/choiceRoutes.js";
 import { handleRestoreKey } from "./restore/route.js";
 import { handleRevoke } from "./issuer/revoke.js";
+import { handleEndSession } from "./issuer/endSession.js";
 import { handleUserinfo } from "./issuer/userinfo.js";
 import {
   handleIssuerJwks,
@@ -176,6 +177,16 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     auth: { kind: "handler" },
     handler: ({ req, env, db, product, now }) =>
       handleRevoke(req, env, db, product.slug, now),
+  },
+  // I-21.12 (§12.13.9): RP-initiated logout. A browser navigation (no CORS, like `authorize`): it
+  // validates the request and `303`s to the customer host's `/signout`. The handler keeps its own
+  // method guard and budget, and answers the registry's 404 while the issuer is off.
+  {
+    path: "end-session",
+    methods: ["GET", "POST"],
+    auth: { kind: "none" },
+    handler: ({ req, env, db, product, now, hooks }) =>
+      handleEndSession({ req, env, db, product, now, hooks }),
   },
   {
     path: "token",
