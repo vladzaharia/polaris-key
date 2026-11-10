@@ -75,7 +75,7 @@ describe("CloudSyncStatus", () => {
     const el = await draw("pk-cloud-sync-status", {
       cloudSync: { state: "error", signedIn: false },
     });
-    expect(q(el, '[data-key="cloudSync.signedOut"]')).not.toBeNull();
+    expect(q(el, '[data-key="cloudSync.syncStopped"]')).not.toBeNull();
     expect(q(el, '[data-key="cloudSync.error"]')).toBeNull();
     expect(q(el, 'button[data-key="cloudSync.signIn"]')).not.toBeNull();
     expect(q(el, '[data-part="status"]')?.getAttribute("data-status")).toBe(

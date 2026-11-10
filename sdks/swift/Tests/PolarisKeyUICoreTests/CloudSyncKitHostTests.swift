@@ -90,7 +90,7 @@ final class CloudSyncKitHostTests: XCTestCase {
             (SyncStatus(state: .locked, pending: 0, reason: .keyring), .locked, "cloudSync.locked"),
             (
                 SyncStatus(state: .blocked, pending: 0, reason: .accountRequired), .error,
-                "cloudSync.signedOut"
+                "cloudSync.syncStopped"
             ),
             (SyncStatus(state: .blocked, pending: 0, reason: .quota), .error, "cloudSync.error"),
         ]
@@ -193,7 +193,7 @@ final class CloudSyncKitHostTests: XCTestCase {
         // A sign-out is not a fault: neutral copy, and Sign in only when the host app supplies it.
         fake.get { fake.cont }?.yield(.signedOut(reason: .accountRequired, unsynced: 0))
         await wait(host) { host.status?.screen.state == .error }
-        XCTAssertEqual(host.status?.screen.copy.first?.key, "cloudSync.signedOut")
+        XCTAssertEqual(host.status?.screen.copy.first?.key, "cloudSync.syncStopped")
         XCTAssertNil(host.status?.onSignIn)
         // A change event redraws from the machine.
         fake.set { fake.status = SyncStatus(state: .syncing, pending: 1) }

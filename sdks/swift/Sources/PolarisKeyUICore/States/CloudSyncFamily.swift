@@ -80,7 +80,7 @@ extension KitStates {
             let args: [String: CopyArgument] = sync.lastSynced.map { ["time": .text($0)] } ?? [:]
             if signedOut {
                 // Not a fault: it says so and offers Sign in to sync.
-                return KitScreen(state, [c.line("cloudSync.signedOut"), c.line("cloudSync.signIn")])
+                return KitScreen(state, [c.line("cloudSync.syncStopped"), c.line("cloudSync.signIn")])
             }
             var lines = [c.line("cloudSync.\(sync.state.rawValue)", args)]
             if review { lines.append(c.line("common.review")) }

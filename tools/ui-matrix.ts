@@ -4704,7 +4704,7 @@ function cloudSyncFamily(a: A): Draft[] {
       },
       "CloudSyncStatus",
       "error",
-      ["cloudSync.signedOut", "cloudSync.signIn"],
+      ["cloudSync.syncStopped", "cloudSync.signIn"],
       inv(
         "A device whose account is gone says so and offers Sign in to sync; it is never an error or a sync time.",
         { copy: ["cloudSync.error", "cloudSync.synced"] },

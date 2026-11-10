@@ -704,7 +704,7 @@ func _kit_signed_out(t: PKeyTestContext) -> void:
 	sdk.event.emit("cloudSync", {"type": "signInOffered", "sign_in_url": null})
 	await _frames()
 	t.check("signed-out strip: live after account_required", strip.state == "error" and not strip.signed_in and strip.visible)
-	t.check("signed-out strip: the words are cloudSync.signedOut and cloudSync.signIn", \
+	t.check("signed-out strip: the words are cloudSync.syncStopped and cloudSync.signIn", \
 			(strip.find_child("Status", true, false) as Label).text == "You're signed out." \
 			and (_buttons(strip)["Action"] as Button).text == "Sign in to sync")
 	sdk.event.emit("cloudSync", {"type": "change", "keys": [], "origin": "remote"})

@@ -514,7 +514,7 @@ public struct CloudSyncStatusView: View {
     }
 
     /// A failed sync with nobody signed in is not a fault (ui-core: neutral tone, Sign in to sync).
-    private func signedOut(_ line: CopyLine) -> Bool { line.key == "cloudSync.signedOut" }
+    private func signedOut(_ line: CopyLine) -> Bool { line.key == "cloudSync.syncStopped" }
 
     private enum Tone { case neutral, warning, danger }
 

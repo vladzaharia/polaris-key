@@ -298,7 +298,7 @@ func _render() -> void:
 		return
 	var copy: Array = model.get("copy", [])
 	var args := {"time": sync_time}
-	var key := "cloudSync.signedOut" if copy.has("cloudSync.signedOut") else String(copy[0]) if not copy.is_empty() else ""
+	var key := "cloudSync.syncStopped" if copy.has("cloudSync.syncStopped") else String(copy[0]) if not copy.is_empty() else ""
 	var action_key = model.get("decisions", {}).get("primary")
 	var bar := false
 	match st:

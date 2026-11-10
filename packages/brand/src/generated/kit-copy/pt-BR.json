@@ -335,7 +335,7 @@
   "cloudSync.offline": "Offline · as alterações serão sincronizadas quando você reconectar",
   "cloudSync.conflict": "Algumas alterações estão em conflito.",
   "cloudSync.error": "Não foi possível sincronizar. Tente novamente mais tarde.",
-  "cloudSync.signedOut": "Você saiu da conta.",
+  "cloudSync.syncStopped": "A sincronização parou.",
   "cloudSync.signIn": "Entrar para sincronizar",
   "cloudSync.locked": "A sincronização está bloqueada.",
   "cloudSync.unlock": "Desbloquear sincronização",

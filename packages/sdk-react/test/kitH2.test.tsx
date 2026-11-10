@@ -91,7 +91,7 @@ describe("CloudSyncStatus", () => {
       />,
     );
     expect(
-      container.querySelector('[data-key="cloudSync.signedOut"]'),
+      container.querySelector('[data-key="cloudSync.syncStopped"]'),
     ).not.toBeNull();
     expect(container.querySelector('[data-key="cloudSync.error"]')).toBeNull();
     expect(

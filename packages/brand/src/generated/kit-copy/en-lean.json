@@ -216,7 +216,7 @@
   "cloudSync.offline": "Offline · changes sync when you reconnect",
   "cloudSync.conflict": "Some changes conflict.",
   "cloudSync.error": "Couldn't sync. Try again later.",
-  "cloudSync.signedOut": "You're signed out.",
+  "cloudSync.syncStopped": "Sync stopped.",
   "cloudSync.signIn": "Sign in to sync",
   "cloudSync.transferring": "Syncing saves…",
   "cloudSync.transferProgress": "{size} of {total}",

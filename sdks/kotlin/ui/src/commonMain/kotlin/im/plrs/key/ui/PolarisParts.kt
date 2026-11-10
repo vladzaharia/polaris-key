@@ -570,7 +570,7 @@ public fun PolarisCloudSyncStatus(
 
         PolarisCloudSync.Error -> catalog.format("cloudSync.error", locale)
 
-        PolarisCloudSync.SignedOut -> catalog.format("cloudSync.signedOut", locale)
+        PolarisCloudSync.SignedOut -> catalog.format("cloudSync.syncStopped", locale)
 
         PolarisCloudSync.Locked -> catalog.format("cloudSync.locked", locale)
 

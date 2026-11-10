@@ -96,7 +96,7 @@ func refresh() -> void:
 			_set_row("offline")
 		"blocked":
 			# `account_required` (a per-product removal, U-52) and a refused token are not faults: the row says
-			# "You're signed out." and offers "Sign in to sync" (cloudSync.signedOut / cloudSync.signIn), and
+			# "You're signed out." and offers "Sign in to sync" (cloudSync.syncStopped / cloudSync.signIn), and
 			# stays so across a relaunch. Any other block is an error.
 			var why := String(st.get("reason", ""))
 			signed_out = why == "account_required" or why == "unauthorized"

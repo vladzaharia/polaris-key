@@ -349,7 +349,7 @@ export type KitCopyKey =
   | "cloudSync.offline"
   | "cloudSync.conflict"
   | "cloudSync.error"
-  | "cloudSync.signedOut"
+  | "cloudSync.syncStopped"
   | "cloudSync.signIn"
   | "cloudSync.locked"
   | "cloudSync.unlock"

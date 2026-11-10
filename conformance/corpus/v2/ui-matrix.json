@@ -12538,7 +12538,7 @@
       "expect": {
         "component": "CloudSyncStatus",
         "state": "error",
-        "copy": ["cloudSync.signIn", "cloudSync.signedOut"],
+        "copy": ["cloudSync.signIn", "cloudSync.syncStopped"],
         "actions": ["start-sign-in"]
       },
       "mustNot": {
