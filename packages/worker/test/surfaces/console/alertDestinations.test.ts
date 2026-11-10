@@ -3,7 +3,7 @@
  * routes (platform and product), the product override and the failure alert.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "../../helpers.js";
 import { KvMock } from "../../kvMock.js";
 import { makeEnv, NOW, seedProduct } from "../../seed.js";
@@ -954,8 +954,7 @@ describe("fix round: security review", () => {
     expect(mails).toEqual([]);
   });
 
-  // Disabled as flaky (owner 2026-10-23): timing assertion fails under load. Re-enable once it asserts on ordering, not wall-clock timing.
-  it.skip("delivers to destinations in parallel", async () => {
+  it("delivers to destinations in parallel", async () => {
     const env = adminEnv();
     const db = makeTestDb();
     for (let i = 0; i < 3; i++)
@@ -971,17 +970,21 @@ describe("fix round: security review", () => {
         },
         NOW,
       );
+    // A barrier, not a timer: no delivery answers until all three are in flight, so serial
+    // delivery never gets there and the wait below fails.
     let inflight = 0;
-    let peak = 0;
-    await raiseAlert(env, db, alert({ product: null }), NOW, {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const done = raiseAlert(env, db, alert({ product: null }), NOW, {
       fetchImpl: async () => {
-        peak = Math.max(peak, ++inflight);
-        await new Promise((r) => setTimeout(r, 20));
-        inflight--;
+        inflight++;
+        await gate;
         return new Response(null, { status: 200 });
       },
     });
-    expect(peak).toBe(3);
+    await vi.waitFor(() => expect(inflight).toBe(3));
+    release();
+    await done;
   });
 
   it("only turning a destination on skips the step-up on PATCH", async () => {

@@ -33,7 +33,7 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { REPO, type Snippet, type SnippetLang } from "./extract";
-import type { Failure } from "./lanes";
+import { harnessFailure, type Failure } from "./lanes";
 import { IGNORED } from "./nativeIgnore";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -54,19 +54,6 @@ export function requiredLanes(): NativeLang[] {
     .map((s) => s.trim())
     .filter((s): s is NativeLang => (NATIVE_LANGS as string[]).includes(s));
 }
-
-const harnessFailure = (message: string): Failure => ({
-  snippet: {
-    file: "(harness)",
-    line: 0,
-    lang: "ts",
-    meta: "",
-    optOut: false,
-    code: "",
-  },
-  line: 0,
-  message,
-});
 
 interface Run {
   code: number;

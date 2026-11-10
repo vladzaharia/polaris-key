@@ -1350,18 +1350,24 @@ describe("the RFC 8628 user-code page", () => {
     );
   });
 
-  // Disabled as flaky (owner 2026-10-23): timing-sensitive rate window fails under load. Re-enable once the rate window is driven by a fake clock.
-  it.skip("rate-limits the page per IP (429), independently for each IP", async () => {
-    let first429 = -1;
-    for (let i = 0; i < 40 && first429 < 0; i++) {
-      const res = await entry(`${ENTRY}?user_code=BCDF-GHJK`, {
-        ip: "198.51.100.9",
-      });
-      if (res.status === 429) first429 = i;
+  it("rate-limits the page per IP (429), independently for each IP", async () => {
+    // The limiter reads Date.now(): freeze it on a window boundary so no run of 31 can straddle one.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW * 1000 - ((NOW * 1000) % 3_600_000));
+    try {
+      let first429 = -1;
+      for (let i = 0; i < 40 && first429 < 0; i++) {
+        const res = await entry(`${ENTRY}?user_code=BCDF-GHJK`, {
+          ip: "198.51.100.9",
+        });
+        if (res.status === 429) first429 = i;
+      }
+      expect(first429).toBe(30);
+      // A different client is unaffected: there is no product-wide bucket to exhaust.
+      expect((await entry(ENTRY, { ip: "198.51.100.10" })).status).toBe(200);
+    } finally {
+      vi.useRealTimers();
     }
-    expect(first429).toBe(30);
-    // A different client is unaffected: there is no product-wide bucket to exhaust.
-    expect((await entry(ENTRY, { ip: "198.51.100.10" })).status).toBe(200);
   });
 
   it("rate-limits an IPv6 client per /64, so rotating addresses inside it buys nothing", async () => {

@@ -7,8 +7,12 @@ description: >-
 # both makes it abort with "Multiple versions of pnpm specified".
 inputs:
   node-version:
-    description: The Node version setup-node installs.
-    default: "22"
+    description: >-
+      The Node version setup-node installs. An exact release, not a floating "22": the Unicode
+      data in ICU moves between 22.x releases (22.13 carries Unicode 16, 22.23 carries 17), and
+      tools/gen-godot-nfc.test.ts compares against it. Bump it deliberately, to a release at
+      least 14 days old.
+    default: 22.23.4
   install:
     description: >-
       "true" runs `pnpm install`; "false" leaves the install to the caller (a job that must check

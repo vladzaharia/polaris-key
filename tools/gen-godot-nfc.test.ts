@@ -18,10 +18,10 @@ import { readFileSync } from "node:fs";
 
 const x = loadExtract();
 const t = buildTables(x);
-// The tables are pinned to UCD 16.0. A Node built with newer Unicode data (ICU 78 =
-// Unicode 17) composes pairs the pinned tables do not know, so the comparison is only
-// meaningful when Node carries exactly 16.0; it is skipped on any other version.
-const node16 = parseFloat(process.versions.unicode ?? "0") === 16;
+// The tables are pinned to UCD 16.0 and are the reference. Node 22.23's ICU 78 (Unicode 17) agrees
+// with them on every code point and every (starter, mark) pair, so the comparison runs on any Node
+// that carries Unicode 16 or newer; CI pins the Node version (.github/actions/setup-js).
+const nodeHasNfc16 = parseFloat(process.versions.unicode ?? "0") >= 16;
 
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -72,7 +72,7 @@ describe("godot-nfc tables", () => {
   });
 });
 
-describe.skipIf(!node16)(
+describe.skipIf(!nodeHasNfc16)(
   "reference NFC equals Node's String.prototype.normalize",
   () => {
     it("for every code point", () => {

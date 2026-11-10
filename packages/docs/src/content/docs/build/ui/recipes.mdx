@@ -46,7 +46,7 @@ pnpm --dir examples/ui/recipes -r build
 </pk-gate>
 ```
 
-```js
+```js no-compile excerpt-needs-htmx
 // main.js, bundled
 import "htmx.org";
 import "@polaris-key/elements";
@@ -61,7 +61,7 @@ Set `input` in script, never as an attribute. Sample: `examples/ui/recipes/htmx/
 
 Tell the compiler the `pk-*` tags are not Vue components, bind `input` with `.prop` and listen with `@pk-action`.
 
-```js
+```js no-compile excerpt-needs-vue
 // vite.config.js
 vue({
   template: {
@@ -98,7 +98,7 @@ Sample: `examples/ui/recipes/svelte/`.
 
 Solid sets attributes as strings unless told otherwise. `prop:input` assigns the property and `on:pk-action` listens for the element's own event.
 
-```tsx
+```tsx no-compile excerpt-needs-solid
 <pk-gate prop:input={gateInput(state())} on:pk-action={onAction}>
   <main>{props.children}</main>
 </pk-gate>
@@ -112,7 +112,7 @@ Sample: `examples/ui/recipes/solid/`.
 
 Preact assigns a prop as a property when the element has one, so `input` takes the object as is. The event is `onpk-action`, lower case with the hyphen.
 
-```tsx
+```tsx no-compile excerpt-needs-preact
 <pk-gate input={gateInput(state)} onpk-action={onAction}>
   <main>{children}</main>
 </pk-gate>
@@ -126,7 +126,7 @@ Sample: `examples/ui/recipes/preact/`.
 
 Angular 21. Add `CUSTOM_ELEMENTS_SCHEMA` so the template accepts `pk-*`, bind `[input]` (a property binding) and listen with `(pk-action)`. The event type is `CustomEvent`, so cast it in the template.
 
-```ts
+```ts no-compile excerpt-needs-angular
 @Component({
   selector: "app-root",
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -181,7 +181,7 @@ pk-gate::part(secondary) {
 }
 ```
 
-```js
+```js no-compile excerpt-dom-only
 document.getElementById("provider").theme = {
   accent: "#b45309",
   product: { name: "Tidewater Studio", developer: "Harbor Audio" },
