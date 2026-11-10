@@ -326,7 +326,8 @@
             let screen = m.signInScreen
             XCTAssertEqual(screen.state, .linkOffer)
             XCTAssertTrue(screen.shows("signin.linkOffer.stale"))
-            XCTAssertNotEqual(m.announcement?.key, "signin.linkOffer.stale", "the problem row takes focus; it is not also announced")
+            XCTAssertNotEqual(
+                m.announcement?.key, "signin.linkOffer.stale", "the problem row takes focus; it is not also announced")
             XCTAssertTrue(screen.shows("signin.again"))
             XCTAssertFalse(screen.shows("signin.linkOffer.primary"))
             XCTAssertTrue(screen.shows("signin.linkOffer.decline"))

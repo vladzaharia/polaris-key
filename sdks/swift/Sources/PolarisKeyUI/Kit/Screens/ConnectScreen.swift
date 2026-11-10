@@ -242,7 +242,8 @@ public struct LinkPairingView: View {
                             Text(
                                 strings.string(
                                     "a11y.linkCode",
-                                    ["code": .text(code.map(String.init).joined(separator: " "))])))
+                                    ["code": .text(code.map(String.init).joined(separator: " "))]))
+                        )
                         .padding(.horizontal, style.space(.md))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, style.space(.md))

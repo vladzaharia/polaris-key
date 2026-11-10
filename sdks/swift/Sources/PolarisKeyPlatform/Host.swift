@@ -478,7 +478,8 @@ public final class PlatformHost: Sendable {
                 case .invalidName: return ["ok": false, "error": "invalid_name"]
                 case .refusedService: return ["ok": false, "error": "refused_service"]
                 case .invalidValue: return ["ok": false, "error": "invalid_value"]
-                case .unavailable(let status): return ["ok": false, "error": "unavailable", "status": .int(Int(status))]
+                case .unavailable(let status):
+                    return ["ok": false, "error": "unavailable", "status": .int(Int(status))]
                 case .keychain(let status): return ["ok": false, "error": "keychain", "status": .int(Int(status))]
                 }
             } catch {

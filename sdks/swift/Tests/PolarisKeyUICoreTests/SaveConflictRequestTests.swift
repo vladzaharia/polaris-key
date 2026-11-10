@@ -102,8 +102,10 @@ final class SaveConflictRequestTests: XCTestCase {
         let request = open(remote: side(1_000, "Mac", version: 4)) { [registry] _ in
             calls.with { $0 += 1 }
             // The other device saved again while the keep ran: the request reopens with its new side.
-            registry.update("w:saves/slot1") { $0.remote = MergeSide(
-                value: .object([:]), version: 5, savedAt: 9_000, device: "Mac", file: nil) }
+            registry.update("w:saves/slot1") {
+                $0.remote = MergeSide(
+                    value: .object([:]), version: 5, savedAt: 9_000, device: "Mac", file: nil)
+            }
             return .failed(code: "conflict", reopened: true)
         }
         box.with { $0 = request }
@@ -148,18 +150,23 @@ final class SaveConflictRequestTests: XCTestCase {
         cal.timeZone = TimeZone(identifier: "UTC")!
         let en = Locale(identifier: "en_US")
         func ms(_ y: Int, _ mo: Int, _ d: Int, _ h: Int, _ mi: Int) -> Int {
-            Int(cal.date(from: DateComponents(year: y, month: mo, day: d, hour: h, minute: mi))!.timeIntervalSince1970 * 1000)
+            Int(
+                cal.date(from: DateComponents(year: y, month: mo, day: d, hour: h, minute: mi))!.timeIntervalSince1970
+                    * 1000)
         }
         let now = cal.date(from: DateComponents(year: 2026, month: 11, day: 5, hour: 12, minute: 0))!
         let today = KitSaveConflict.worded(savedAt: ms(2026, 11, 5, 10, 42), now: now, locale: en, calendar: cal)
         XCTAssertTrue(today.hasPrefix("today"), today)
         XCTAssertTrue(today.contains("10:42"), today)
-        XCTAssertTrue(KitSaveConflict.worded(savedAt: ms(2026, 11, 4, 21, 40), now: now, locale: en, calendar: cal).hasPrefix("yesterday"))
+        XCTAssertTrue(
+            KitSaveConflict.worded(savedAt: ms(2026, 11, 4, 21, 40), now: now, locale: en, calendar: cal).hasPrefix(
+                "yesterday"))
         let sameYear = KitSaveConflict.worded(savedAt: ms(2026, 10, 30, 10, 12), now: now, locale: en, calendar: cal)
         XCTAssertTrue(sameYear.contains("Oct 30") && !sameYear.contains("2026"), sameYear)
         let other = KitSaveConflict.worded(savedAt: ms(2025, 10, 30, 10, 12), now: now, locale: en, calendar: cal)
         XCTAssertTrue(other.contains("2025"), other)
-        let de = KitSaveConflict.worded(savedAt: ms(2026, 11, 5, 10, 42), now: now, locale: Locale(identifier: "de_DE"), calendar: cal)
+        let de = KitSaveConflict.worded(
+            savedAt: ms(2026, 11, 5, 10, 42), now: now, locale: Locale(identifier: "de_DE"), calendar: cal)
         XCTAssertTrue(de.hasPrefix("heute"), de)
     }
 

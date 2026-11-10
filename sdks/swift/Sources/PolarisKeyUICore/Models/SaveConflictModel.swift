@@ -76,8 +76,9 @@ extension KitSaveConflict {
         f.locale = locale
         f.calendar = calendar
         f.timeZone = calendar.timeZone
-        if calendar.isDate(date, inSameDayAs: now) || calendar.isDate(
-            date, inSameDayAs: calendar.date(byAdding: .day, value: -1, to: now) ?? now)
+        if calendar.isDate(date, inSameDayAs: now)
+            || calendar.isDate(
+                date, inSameDayAs: calendar.date(byAdding: .day, value: -1, to: now) ?? now)
         {
             f.dateStyle = .short
             f.timeStyle = .short
@@ -212,7 +213,9 @@ public final class SaveConflictModel {
             if e.code == "sync-merge-closed" {
                 // The request ended meanwhile: nothing is left to choose, and Try again could never succeed.
                 (onClosed ?? onCancel)?()
-            } else if e.reopened && (e.code == "conflict" || e.code == "slots-full") && reread(reopened: e.code == "conflict") {
+            } else if e.reopened && (e.code == "conflict" || e.code == "slots-full")
+                && reread(reopened: e.code == "conflict")
+            {
                 // The other copy moved (or Keep both lost its slot) while the keep ran: nothing was applied.
                 // Back to the choices on the request's current sides, which say so.
             } else if e.reopened && e.code == "conflict" && request == nil {
