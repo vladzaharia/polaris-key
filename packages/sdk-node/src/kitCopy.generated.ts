@@ -1698,6 +1698,12 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-merge-closed.title": "Already decided",
     "core.codes.sync-merge-closed.message":
       "The choice was already made, or a newer change replaced it. Nothing changed.",
+    "core.codes.sync-export-too-large.title": "Copy too large",
+    "core.codes.sync-export-too-large.message":
+      "The synced data is too big to save as one file. Nothing was saved.",
+    "core.codes.sync-export-failed.title": "Copy not saved",
+    "core.codes.sync-export-failed.message":
+      "The copy of your synced data couldn't be saved. Check the destination and try again.",
     "core.codes.invalid-options.title": "App not set up",
     "core.codes.invalid-options.message":
       "The app's licensing isn't set up correctly. Contact the developer.",
@@ -3844,6 +3850,12 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-merge-closed.title": "Bereits entschieden",
     "core.codes.sync-merge-closed.message":
       "Die Auswahl wurde bereits getroffen oder durch eine neuere Änderung ersetzt. Es wurde nichts geändert.",
+    "core.codes.sync-export-too-large.title": "Kopie zu groß",
+    "core.codes.sync-export-too-large.message":
+      "Die synchronisierten Daten sind zu groß für eine einzelne Datei. Es wurde nichts gespeichert.",
+    "core.codes.sync-export-failed.title": "Kopie nicht gespeichert",
+    "core.codes.sync-export-failed.message":
+      "Die Kopie Ihrer synchronisierten Daten konnte nicht gespeichert werden. Prüfen Sie das Ziel und versuchen Sie es erneut.",
     "core.codes.invalid-options.title": "App nicht eingerichtet",
     "core.codes.invalid-options.message":
       "Die Lizenzierung der App ist nicht korrekt eingerichtet. Wenden Sie sich an den Entwickler.",
@@ -5983,6 +5995,12 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-merge-closed.title": "Déjà décidé",
     "core.codes.sync-merge-closed.message":
       "Le choix a déjà été fait ou remplacé par une modification plus récente. Rien n’a changé.",
+    "core.codes.sync-export-too-large.title": "Copie trop volumineuse",
+    "core.codes.sync-export-too-large.message":
+      "Les données synchronisées sont trop volumineuses pour tenir dans un seul fichier. Rien n'a été enregistré.",
+    "core.codes.sync-export-failed.title": "Copie non enregistrée",
+    "core.codes.sync-export-failed.message":
+      "La copie de vos données synchronisées n'a pas pu être enregistrée. Vérifiez la destination et réessayez.",
     "core.codes.invalid-options.title": "App non configurée",
     "core.codes.invalid-options.message":
       "La gestion des licences de l’app n’est pas correctement configurée. Contactez le développeur.",
@@ -8111,6 +8129,12 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-merge-closed.title": "Ya decidido",
     "core.codes.sync-merge-closed.message":
       "La elección ya se hizo o la sustituyó un cambio más reciente. No se cambió nada.",
+    "core.codes.sync-export-too-large.title": "Copia demasiado grande",
+    "core.codes.sync-export-too-large.message":
+      "Los datos sincronizados son demasiado grandes para guardarlos en un solo archivo. No se guardó nada.",
+    "core.codes.sync-export-failed.title": "Copia no guardada",
+    "core.codes.sync-export-failed.message":
+      "No se pudo guardar la copia de tus datos sincronizados. Revisa el destino e inténtalo de nuevo.",
     "core.codes.invalid-options.title": "App no configurada",
     "core.codes.invalid-options.message":
       "El sistema de licencias de la app no está configurado correctamente. Contacta con el desarrollador.",
@@ -10203,6 +10227,12 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-merge-closed.title": "Já decidido",
     "core.codes.sync-merge-closed.message":
       "A escolha já foi feita ou foi substituída por uma alteração mais recente. Nada foi alterado.",
+    "core.codes.sync-export-too-large.title": "Cópia grande demais",
+    "core.codes.sync-export-too-large.message":
+      "Os dados sincronizados são grandes demais para um único arquivo. Nada foi salvo.",
+    "core.codes.sync-export-failed.title": "Cópia não salva",
+    "core.codes.sync-export-failed.message":
+      "Não foi possível salvar a cópia dos seus dados sincronizados. Verifique o destino e tente novamente.",
     "core.codes.invalid-options.title": "App não configurado",
     "core.codes.invalid-options.message":
       "O licenciamento do app não está configurado corretamente. Contate o desenvolvedor.",
@@ -12306,6 +12336,12 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-merge-closed.title": "Già deciso",
     "core.codes.sync-merge-closed.message":
       "La scelta è già stata fatta o sostituita da una modifica più recente. Non è cambiato nulla.",
+    "core.codes.sync-export-too-large.title": "Copia troppo grande",
+    "core.codes.sync-export-too-large.message":
+      "I dati sincronizzati sono troppo grandi per un solo file. Non è stato salvato nulla.",
+    "core.codes.sync-export-failed.title": "Copia non salvata",
+    "core.codes.sync-export-failed.message":
+      "Non è stato possibile salvare la copia dei dati sincronizzati. Controlla la destinazione e riprova.",
     "core.codes.invalid-options.title": "App non configurata",
     "core.codes.invalid-options.message":
       "La gestione delle licenze dell'app non è configurata correttamente. Contatta lo sviluppatore.",
@@ -14429,6 +14465,12 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-merge-closed.title": "選択済み",
     "core.codes.sync-merge-closed.message":
       "すでに選択済みか、より新しい変更に置き換えられています。何も変更されていません。",
+    "core.codes.sync-export-too-large.title": "コピーが大きすぎます",
+    "core.codes.sync-export-too-large.message":
+      "同期したデータが大きすぎて、1つのファイルに保存できません。何も保存されていません。",
+    "core.codes.sync-export-failed.title": "コピーを保存できません",
+    "core.codes.sync-export-failed.message":
+      "同期したデータのコピーを保存できませんでした。保存先を確認して、もう一度お試しください。",
     "core.codes.invalid-options.title": "アプリが設定されていません",
     "core.codes.invalid-options.message":
       "アプリのライセンス設定が正しくありません。開発者に問い合わせてください。",
@@ -16468,6 +16510,12 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-merge-closed.title": "이미 선택됨",
     "core.codes.sync-merge-closed.message":
       "이미 선택했거나 더 최근 변경으로 대체되었습니다. 변경된 내용은 없습니다.",
+    "core.codes.sync-export-too-large.title": "사본이 너무 큼",
+    "core.codes.sync-export-too-large.message":
+      "동기화된 데이터가 너무 커서 파일 하나로 저장할 수 없습니다. 아무것도 저장되지 않았습니다.",
+    "core.codes.sync-export-failed.title": "사본을 저장하지 못함",
+    "core.codes.sync-export-failed.message":
+      "동기화된 데이터의 사본을 저장하지 못했습니다. 저장 위치를 확인하고 다시 시도하세요.",
     "core.codes.invalid-options.title": "앱이 설정되지 않음",
     "core.codes.invalid-options.message":
       "앱의 라이선스 설정이 올바르지 않아요. 개발자에게 문의하세요.",
@@ -18361,6 +18409,12 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-merge-closed.title": "已做出选择",
     "core.codes.sync-merge-closed.message":
       "已经做出选择，或已被更新的更改取代。未做任何更改。",
+    "core.codes.sync-export-too-large.title": "副本过大",
+    "core.codes.sync-export-too-large.message":
+      "同步的数据太大，无法保存为一个文件。未保存任何内容。",
+    "core.codes.sync-export-failed.title": "副本未保存",
+    "core.codes.sync-export-failed.message":
+      "无法保存同步数据的副本。请检查保存位置后重试。",
     "core.codes.invalid-options.title": "应用未设置",
     "core.codes.invalid-options.message":
       "应用的许可功能未正确设置。请联系开发者。",

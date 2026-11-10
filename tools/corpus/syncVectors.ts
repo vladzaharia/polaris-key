@@ -12,7 +12,16 @@
 import { createCipheriv, createHash, hkdfSync } from "node:crypto";
 import { readFileSync } from "node:fs";
 import {
+  refExport,
+  refRecipeBytes,
+  type RefExportChange,
+  type RefExportFile,
+  type RefExportInput,
+  type RefStoredRecipe,
+} from "./reference/syncExport.js";
+import {
   REF_E2E_OVERHEAD,
+  b64url,
   REF_ENVELOPE_FIXED,
   REF_PAD_BLOCK,
   cat,
@@ -3224,6 +3233,583 @@ function buildCanonicalJsonCases(): CanonicalJsonCase[] {
   return rows;
 }
 
+// ── The device export (§13.12, `pkey-sync-export/1`) ─────────────────────────────────────────
+// Rows hold what the device has after a flushed pull: the changes as the Worker served them
+// (sealed in end-to-end mode), the files' stored bytes (made from a recipe: a deterministic
+// plaintext, sealed with `saltHex` in end-to-end mode, then cut or flipped as the transport
+// served them) and the expected entries: names, order, sizes, SHA-256 and the text of the small
+// ones. The zip container is not pinned (D4). `reference/syncExport.ts` computes the expectation
+// from the sealed inputs alone.
+
+const EXP_ROOT = mat("export root");
+const EXP_ROOT_HEX = toHex(EXP_ROOT);
+const EXP_KN = refKNames(EXP_ROOT);
+const EXP_CLIENT = "c_AAAAAAAAAAAAAAAAAAAAAA";
+const EXP_HLC = "000000000001:0000";
+const EXP_SUBJECT = "u_exportSubject0000001";
+const EXP_AT = 1_767_225_600_000;
+
+const xSalt = (l: string): Uint8Array =>
+  mat(`export value salt ${l}`).subarray(0, 16);
+const xFileSalt = (l: string): string => toHex(mat(`export file salt ${l}`));
+const xCt = (
+  collection: string,
+  name: string,
+  value: unknown,
+  label: string,
+): string =>
+  b64url(refSealValue(EXP_ROOT, collection, name, value, xSalt(label)));
+const xBlind = (kind: string, ctx: string, n: string): string =>
+  refBlind(EXP_KN, kind, ctx, n);
+
+/** A flipped bit in a base64url `ct`: the envelope no longer authenticates. */
+function xTamper(ct: string): string {
+  const raw = Buffer.from(ct, "base64url");
+  raw[raw.length - 1] = (raw[raw.length - 1] ?? 0) ^ 0x01;
+  return raw.toString("base64url");
+}
+
+interface XFile {
+  pointer: { version: number; size: number; sha256: string; format: "whole" };
+  file: RefExportFile;
+}
+
+/** A stored file and its pointer; the pointer is the uncut, unflipped stream's. */
+function xFile(
+  collection: string,
+  record: string,
+  version: number,
+  stored: RefStoredRecipe,
+  e2e: boolean,
+): XFile {
+  const { full } = refRecipeBytes(
+    stored,
+    collection,
+    e2e ? EXP_ROOT_HEX : undefined,
+  );
+  const pointer = {
+    version,
+    size: full.length,
+    sha256: sha256Hex(full),
+    format: "whole" as const,
+  };
+  return { pointer, file: { ...pointer, collection, record, stored } };
+}
+
+const xRecipe = (
+  label: string,
+  length: number,
+  e2e: boolean,
+  over: Partial<RefStoredRecipe> = {},
+): RefStoredRecipe => ({
+  label: `pkey-sync vector export ${label}`,
+  length,
+  ...(e2e ? { saltHex: xFileSalt(label) } : {}),
+  ...over,
+});
+
+// Server-mode changes.
+const sSetting = (
+  setting: string,
+  value: unknown,
+  version: number,
+  members?: Record<string, unknown>,
+): RefExportChange => ({
+  setting,
+  scope: "user",
+  value,
+  version,
+  editedHlc: EXP_HLC,
+  updatedBy: EXP_CLIENT,
+  ...(members === undefined ? {} : { members }),
+});
+const sRecord = (
+  collection: string,
+  id: string,
+  version: number,
+  value?: unknown,
+  file?: XFile["pointer"],
+): RefExportChange => ({
+  record: [collection, id],
+  ...(value === undefined ? {} : { value }),
+  version,
+  ...(file === undefined ? {} : { file }),
+});
+
+// End-to-end changes.
+const eSetting = (key: string, value: unknown, version: number) => ({
+  setting: key,
+  scope: "user",
+  ct: xCt("$settings", key, value, `setting ${key}`),
+  version,
+  editedHlc: EXP_HLC,
+  updatedBy: EXP_CLIENT,
+});
+const eOpenSetting = (key: string, value: unknown, version: number) => ({
+  setting: xBlind("setting", "$settings", key),
+  scope: "user",
+  ct: xCt("$settings", key, value, `open ${key}`),
+  version,
+  editedHlc: EXP_HLC,
+  updatedBy: EXP_CLIENT,
+});
+const eMergeSetting = (
+  key: string,
+  members: Record<string, unknown>,
+  version: number,
+) => ({
+  setting: key,
+  scope: "user",
+  version,
+  editedHlc: EXP_HLC,
+  updatedBy: EXP_CLIENT,
+  members: Object.entries(members).map(([m, v]) => ({
+    member: xBlind("member", key, m),
+    ct: xCt("$settings", `${key}\0${m}`, v, `member ${key} ${m}`),
+    editedHlc: EXP_HLC,
+  })),
+});
+const eRecord = (
+  collection: string,
+  id: string,
+  value: unknown,
+  version: number,
+  file?: XFile["pointer"],
+) => ({
+  record: [collection, xBlind("record", collection, id)],
+  ct: xCt(collection, id, value, `record ${collection} ${id}`),
+  version,
+  ...(file === undefined ? {} : { file }),
+});
+const eFields = (
+  collection: string,
+  id: string,
+  fields: Record<string, unknown>,
+  version: number,
+) => ({
+  record: [collection, xBlind("record", collection, id)],
+  fields: Object.entries(fields).map(([f, v]) => ({
+    field: xBlind("field", collection, f),
+    ct: xCt(collection, `${id}\0${f}`, v, `field ${collection} ${id} ${f}`),
+    editedHlc: EXP_HLC,
+  })),
+  version,
+  editedHlc: EXP_HLC,
+});
+const eElements = (
+  collection: string,
+  id: string,
+  elements: unknown[],
+  version: number,
+) => ({
+  record: [collection, xBlind("record", collection, id)],
+  elements: elements.map((e) => ({
+    element: xBlind("element", collection, refCanonicalJson(e)),
+    ct: xCt(
+      collection,
+      `${id}\0${refCanonicalJson(e)}`,
+      e,
+      `element ${collection} ${id} ${refCanonicalJson(e)}`,
+    ),
+  })),
+  version,
+});
+const eFileOnly = (
+  collection: string,
+  id: string,
+  version: number,
+  file: XFile["pointer"],
+) => ({
+  record: [collection, xBlind("record", collection, id)],
+  version,
+  file,
+});
+const eWire = (collection: string, id: string): string =>
+  xBlind("record", collection, id);
+
+const bindingOf = (f: XFile): Record<string, unknown> => ({
+  sha256: f.pointer.sha256,
+  size: f.pointer.size,
+  format: "whole",
+});
+
+interface ExportRowSpec {
+  id: string;
+  description: string;
+  input: RefExportInput;
+}
+
+function exportRow(spec: ExportRowSpec): Record<string, unknown> {
+  const { input } = spec;
+  const result = refExport(input);
+  const e2e = input.encryption === "e2e";
+  const base = {
+    id: spec.id,
+    description: spec.description,
+    product: input.product,
+    subject: input.subject,
+    exportedAt: input.exportedAt,
+    encryption: input.encryption,
+    ...(e2e ? { rootHex: input.rootHex } : {}),
+    includeRevisions: input.includeRevisions,
+    unsynced: input.unsynced,
+    ...(input.caps === undefined ? {} : { caps: input.caps }),
+    changes: input.changes,
+    files: input.files,
+  };
+  if (!result.ok)
+    return { ...base, expect: { refusal: { code: result.code } } };
+  const names = new Set<string>();
+  const entries = result.entries.map((e) => {
+    if (
+      names.has(e.name) ||
+      e.name.startsWith("/") ||
+      e.name
+        .split("/")
+        .some((seg) => seg === "" || seg === "." || seg === "..") ||
+      e.name.includes("\\") ||
+      e.name.includes(":")
+    )
+      throw new Error(
+        `syncVectors export ${spec.id}: bad entry name ${e.name}`,
+      );
+    names.add(e.name);
+    const text = /\.(txt|json|ndjson)$/.test(e.name);
+    if (text) {
+      const s = Buffer.from(e.bytes).toString("utf8");
+      if (!s.endsWith("\n")) throw new Error(`${spec.id}: ${e.name} lacks LF`);
+      if (e.name.endsWith(".json") || e.name.endsWith(".ndjson"))
+        for (const l of s.split("\n").filter((x) => x !== ""))
+          if (refCanonicalJson(JSON.parse(l)) !== l)
+            throw new Error(`${spec.id}: ${e.name} is not canonical JSON`);
+    }
+    return {
+      name: e.name,
+      size: e.bytes.length,
+      sha256Hex: sha256Hex(e.bytes),
+      ...(text
+        ? { utf8: Buffer.from(e.bytes).toString("utf8") }
+        : e.bytes.length <= 128
+          ? { hex: toHex(e.bytes) }
+          : {}),
+    };
+  });
+  const last = entries[entries.length - 1];
+  if (last?.name !== "data.json")
+    throw new Error(`syncVectors export ${spec.id}: data.json is not last`);
+  return { ...base, expect: { entries } };
+}
+
+const xInput = (
+  over: Partial<RefExportInput> &
+    Pick<RefExportInput, "encryption" | "changes">,
+): RefExportInput => ({
+  product: "demo",
+  subject: EXP_SUBJECT,
+  exportedAt: EXP_AT,
+  includeRevisions: false,
+  unsynced: 0,
+  files: [],
+  ...(over.encryption === "e2e" ? { rootHex: EXP_ROOT_HEX } : {}),
+  ...over,
+});
+
+function buildExportCases(): unknown[] {
+  const rows: ExportRowSpec[] = [];
+
+  // server-basic
+  const sSave = xFile(
+    "saves",
+    "slot-1",
+    12,
+    xRecipe("server-save", 100, false),
+    false,
+  );
+  const sOnly = xFile(
+    "saves",
+    "slot-2",
+    13,
+    xRecipe("server-file-only", 7, false),
+    false,
+  );
+  const serverBasic = xInput({
+    encryption: "server",
+    changes: [
+      sRecord("notes", "n-2", 5, { title: "b" }),
+      sSetting("theme", "dark", 3),
+      sRecord("notes", "n-1", 4, { title: "a" }),
+      sSetting("audio.volume", 7, 2),
+      sSetting("keybinds", { fire: "x", jump: "space" }, 6, {
+        fire: "x",
+        jump: "space",
+      }),
+      sRecord("tags", "t-1", 9, ["b", "a"]),
+      sRecord("profile", "p-1", 8, { level: 3, name: "x" }),
+      sRecord("empty-merge", "e-1", 10, {}),
+      sRecord("saves", "slot-1", 12, { name: "Level 1" }, sSave.pointer),
+      sRecord("saves", "slot-2", 13, undefined, sOnly.pointer),
+    ],
+    files: [sSave.file, sOnly.file],
+  });
+  rows.push({
+    id: "server-basic",
+    description:
+      "Server mode: declared settings and a merge setting as its object, a value, a merge and a union record, an empty merge record (kept: its id is known), a save with a file and a record with a file and no value. Collections and ids in byte order, settings as canonical JSON.",
+    input: serverBasic,
+  });
+  const serverEntries = (refExport(serverBasic) as { entries: unknown[] })
+    .entries.length;
+  rows.push({
+    id: "entries-at-cap",
+    description: "maxEntries equal to the entry count: the export is written.",
+    input: { ...serverBasic, caps: { maxEntries: serverEntries } },
+  });
+  rows.push({
+    id: "entries-one-over-cap",
+    description:
+      "maxEntries one below the entry count: sync-export-too-large, nothing written.",
+    input: { ...serverBasic, caps: { maxEntries: serverEntries - 1 } },
+  });
+  rows.push({
+    id: "too-many-entries",
+    description:
+      "maxEntries 5 (README, settings, files.json, index.json and data.json alone fill it): refused.",
+    input: { ...serverBasic, caps: { maxEntries: 5 } },
+  });
+  const fileBytes = sSave.pointer.size + sOnly.pointer.size;
+  rows.push({
+    id: "bytes-at-cap",
+    description: "maxBytes equal to the planned file bytes: written.",
+    input: { ...serverBasic, caps: { maxBytes: fileBytes } },
+  });
+  rows.push({
+    id: "too-many-bytes",
+    description:
+      "maxBytes one below the planned file bytes: sync-export-too-large, nothing written.",
+    input: { ...serverBasic, caps: { maxBytes: fileBytes - 1 } },
+  });
+
+  // e2e-basic
+  const eSave = xFile(
+    "saves",
+    eWire("saves", "slot-1"),
+    12,
+    xRecipe("e2e-save", 1000, true),
+    true,
+  );
+  rows.push({
+    id: "e2e-basic",
+    description:
+      "End-to-end: a declared setting, an open key (blinded on the wire), a merge setting, value, merge-field and union records, an empty merge record (omitted: its id is not revealed) and a save whose sealed value binds its file. The `$file` binding is not exported.",
+    input: xInput({
+      encryption: "e2e",
+      changes: [
+        eRecord("notes", "n-2", { title: "b" }, 5),
+        eSetting("audio.volume", 7, 2),
+        eOpenSetting("custom.hotkey", "f5", 3),
+        eMergeSetting("keybinds", { jump: "space", fire: "x" }, 6),
+        eRecord("notes", "n-1", { title: "a" }, 4),
+        eFields("profile", "p-1", { name: "x", level: 3 }, 8),
+        eElements("tags", "t-1", ["b", "a", { id: 7 }], 9),
+        eFields("empty", "e-1", {}, 10),
+        eRecord(
+          "saves",
+          "slot-1",
+          { name: "Level 1", $file: bindingOf(eSave) },
+          12,
+          eSave.pointer,
+        ),
+      ],
+      files: [eSave.file],
+    }),
+  });
+
+  // e2e-invalid-row
+  const swapped = eRecord("notes", "n-1", { title: "a" }, 4);
+  const other = eRecord("notes", "n-2", { title: "b" }, 5);
+  const badFields = eFields("profile", "p-2", { name: "y", level: 4 }, 11);
+  (badFields.fields[1] as { ct: string }).ct = xTamper(
+    (badFields.fields[1] as { ct: string }).ct,
+  );
+  rows.push({
+    id: "e2e-invalid-row",
+    description:
+      "End-to-end rows that do not open are skipped with code invalid and the rest is written: a setting with a tampered envelope, a record carrying another record's envelope (the name check) and a merge record with one tampered cell (the whole row is dropped).",
+    input: xInput({
+      encryption: "e2e",
+      changes: [
+        eSetting("audio.volume", 7, 2),
+        {
+          ...eSetting("theme", "dark", 3),
+          ct: xTamper(eSetting("theme", "dark", 3).ct),
+        },
+        { ...swapped, ct: (other as { ct: string }).ct },
+        eRecord("notes", "n-3", { title: "c" }, 6),
+        eFields("profile", "p-1", { name: "x", level: 3 }, 8),
+        badFields,
+      ],
+    }),
+  });
+
+  // e2e-file-truncated: 2.5 MiB, served up to the middle of segment 1.
+  const seg = REF_FILE.segmentBytes + REF_FILE.tag;
+  const big = xFile(
+    "saves",
+    eWire("saves", "slot-1"),
+    21,
+    xRecipe(
+      "e2e-big",
+      2 * REF_FILE.segmentBytes + REF_FILE.segmentBytes / 2,
+      true,
+      {
+        cut: REF_FILE.headerBytes + seg + 1000,
+      },
+    ),
+    true,
+  );
+  const unbound = xFile(
+    "saves",
+    eWire("saves", "slot-2"),
+    22,
+    xRecipe("e2e-unbound", 10, true),
+    true,
+  );
+  const orphan = xFile(
+    "saves",
+    eWire("saves", "slot-3"),
+    23,
+    xRecipe("e2e-orphan", 10, true),
+    true,
+  );
+  rows.push({
+    id: "e2e-file-truncated",
+    description:
+      "A 2.5 MiB end-to-end file the transport served only up to the middle of its second segment: segment 0 authenticates and is written, the rest is not, and the entry is listed with partial true. A save whose value names no file and a file-only record are listed as sync-file-invalid with no entry.",
+    input: xInput({
+      encryption: "e2e",
+      changes: [
+        eRecord(
+          "saves",
+          "slot-1",
+          { name: "Big", $file: bindingOf(big) },
+          21,
+          big.pointer,
+        ),
+        eRecord("saves", "slot-2", { name: "No binding" }, 22, unbound.pointer),
+        eFileOnly("saves", "slot-3", 23, orphan.pointer),
+      ],
+      files: [big.file, unbound.file, orphan.file],
+    }),
+  });
+
+  // order-and-revisions (and the live-only variant)
+  const rev = (c: string, r: string, v: number, label: string, len: number) =>
+    xFile(c, r, v, xRecipe(label, len, false), false);
+  const a10 = rev("alpha", "a", 10, "a10", 30);
+  const a7 = rev("alpha", "a", 7, "a7", 20);
+  const a3 = rev("alpha", "a", 3, "a3", 10);
+  const aB5 = rev("alpha", "B", 5, "aB5", 5);
+  const z1 = rev("zeta", "b", 2, "z1", 3);
+  const orderInput = xInput({
+    encryption: "server",
+    changes: [
+      sRecord("zeta", "b", 2, { n: 1 }, z1.pointer),
+      sRecord("alpha", "b", 8, { n: 2 }),
+      sRecord("alpha", "a", 10, { n: 3 }, a10.pointer),
+      sRecord("alpha", "B", 5, { n: 4 }, aB5.pointer),
+    ],
+    files: [a3.file, a10.file, aB5.file, a7.file, z1.file],
+  });
+  rows.push({
+    id: "order-and-revisions",
+    description:
+      "includeRevisions: collections alpha, zeta; ids B, a, b (byte order). Record alpha/a has its live file (version 10) then its kept revisions newest first (7, 3), numbered in record order across the archive.",
+    input: { ...orderInput, includeRevisions: true },
+  });
+  rows.push({
+    id: "order-live-only",
+    description: "The same store without includeRevisions: live files only.",
+    input: orderInput,
+  });
+
+  // e2e-binding-revision: the sealed value names the older file.
+  const older = xFile(
+    "saves",
+    eWire("saves", "slot-1"),
+    4,
+    xRecipe("e2e-old", 50, true),
+    true,
+  );
+  const newer = xFile(
+    "saves",
+    eWire("saves", "slot-1"),
+    9,
+    xRecipe("e2e-new", 60, true),
+    true,
+  );
+  const bindInput = xInput({
+    encryption: "e2e",
+    changes: [
+      eRecord(
+        "saves",
+        "slot-1",
+        { name: "Old", $file: bindingOf(older) },
+        9,
+        newer.pointer,
+      ),
+    ],
+    files: [newer.file, older.file],
+  });
+  rows.push({
+    id: "e2e-binding-names-revision",
+    description:
+      "The record's pointer is the newer file but its sealed value binds the older one: the older file is the live one, and the newer is not exported.",
+    input: bindInput,
+  });
+  rows.push({
+    id: "e2e-binding-names-revision-all",
+    description:
+      "The same with includeRevisions: the bound file (live true) then the other (live false).",
+    input: { ...bindInput, includeRevisions: true },
+  });
+
+  // server-file-mismatch
+  const short = xFile(
+    "saves",
+    "slot-1",
+    3,
+    xRecipe("server-short", 40, false, { cut: 25 }),
+    false,
+  );
+  const flipped = xFile(
+    "saves",
+    "slot-2",
+    4,
+    xRecipe("server-flip", 40, false, { flipAt: 3 }),
+    false,
+  );
+  rows.push({
+    id: "server-file-mismatch",
+    description:
+      "Server mode: a file served shorter than its pointer and one whose bytes do not match the pointer's sha256 are written as served and listed sync-file-invalid with partial true.",
+    input: xInput({
+      encryption: "server",
+      changes: [
+        sRecord("saves", "slot-1", 3, { name: "Short" }, short.pointer),
+        sRecord("saves", "slot-2", 4, { name: "Flipped" }, flipped.pointer),
+      ],
+      files: [short.file, flipped.file],
+    }),
+  });
+
+  const ids = new Set<string>();
+  for (const r of rows) {
+    if (ids.has(r.id)) throw new Error(`syncVectors export: duplicate ${r.id}`);
+    ids.add(r.id);
+  }
+  return rows.map(exportRow);
+}
+
 export function buildSyncVectors(): unknown {
   const cdcEditCases = buildCdcEditCases();
   return {
@@ -3251,5 +3837,6 @@ export function buildSyncVectors(): unknown {
     fileStreamCases: buildFileStreamCases(),
     manifestCases: buildManifestCases(),
     canonicalJsonCases: buildCanonicalJsonCases(),
+    exportCases: buildExportCases(),
   };
 }

@@ -4445,5 +4445,1892 @@
       "inputJson": "{\"\\ud800\":1}",
       "expect": { "result": "invalid" }
     }
+  ],
+  "exportCases": [
+    {
+      "id": "server-basic",
+      "description": "Server mode: declared settings and a merge setting as its object, a value, a merge and a union record, an empty merge record (kept: its id is known), a save with a file and a record with a file and no value. Collections and ids in byte order, settings as canonical JSON.",
+      "product": "demo",
+      "subject": "u_exportSubject0000001",
+      "exportedAt": 1767225600000,
+      "encryption": "server",
+      "includeRevisions": false,
+      "unsynced": 0,
+      "changes": [
+        { "record": ["notes", "n-2"], "value": { "title": "b" }, "version": 5 },
+        {
+          "setting": "theme",
+          "scope": "user",
+          "value": "dark",
+          "version": 3,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        { "record": ["notes", "n-1"], "value": { "title": "a" }, "version": 4 },
+        {
+          "setting": "audio.volume",
+          "scope": "user",
+          "value": 7,
+          "version": 2,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        {
+          "setting": "keybinds",
+          "scope": "user",
+          "value": { "fire": "x", "jump": "space" },
+          "version": 6,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA",
+          "members": { "fire": "x", "jump": "space" }
+        },
+        { "record": ["tags", "t-1"], "value": ["b", "a"], "version": 9 },
+        {
+          "record": ["profile", "p-1"],
+          "value": { "level": 3, "name": "x" },
+          "version": 8
+        },
+        { "record": ["empty-merge", "e-1"], "value": {}, "version": 10 },
+        {
+          "record": ["saves", "slot-1"],
+          "value": { "name": "Level 1" },
+          "version": 12,
+          "file": {
+            "version": 12,
+            "size": 100,
+            "sha256": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+            "format": "whole"
+          }
+        },
+        {
+          "record": ["saves", "slot-2"],
+          "version": 13,
+          "file": {
+            "version": 13,
+            "size": 7,
+            "sha256": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+            "format": "whole"
+          }
+        }
+      ],
+      "files": [
+        {
+          "version": 12,
+          "size": 100,
+          "sha256": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+          "format": "whole",
+          "collection": "saves",
+          "record": "slot-1",
+          "stored": {
+            "label": "pkey-sync vector export server-save",
+            "length": 100
+          }
+        },
+        {
+          "version": 13,
+          "size": 7,
+          "sha256": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+          "format": "whole",
+          "collection": "saves",
+          "record": "slot-2",
+          "stored": {
+            "label": "pkey-sync vector export server-file-only",
+            "length": 7
+          }
+        }
+      ],
+      "expect": {
+        "entries": [
+          {
+            "name": "README.txt",
+            "size": 944,
+            "sha256Hex": "ae5b46a206201fbc3f9c1cbed5691c4548f49a5b8c04ac974e1eb3fca9e20d47",
+            "utf8": "This is a readable copy of data an app synced with Polaris Locker.\n\nThe app made it on this device. It is NOT encrypted: anyone who can open\nthis file can read everything in it. Keep it where you keep your other\nprivate files, and delete it when you no longer need it. The time it was\nmade is \"exportedAt\" in data.json, in milliseconds since 1970-01-01 UTC.\n\nPolaris Locker's own export of this data, from its website, uses the same\nlayout and holds the data as the app stored it: encrypted when the app\nencrypts it.\n\ndata.json                              what this holds, and what could not be read\nstores/sync.cloudSync/settings.json    the synced settings\nstores/sync.cloudSync/records/         the synced records, one file a collection\nstores/sync.cloudSync/index.json       which file holds which collection\nstores/sync.cloudSync/files/           the synced files\nstores/sync.cloudSync/files.json       which file belongs to which record\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/settings.json",
+            "size": 73,
+            "sha256Hex": "67fdad816fc012235645ef4f7031710908982786d20d242475221d9ed4a29795",
+            "utf8": "{\"audio.volume\":7,\"keybinds\":{\"fire\":\"x\",\"jump\":\"space\"},\"theme\":\"dark\"}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/0.ndjson",
+            "size": 37,
+            "sha256Hex": "40dce7fa00ae9d379610b6cbc7929602b8e2fddd6342e9d968a30d284d36be90",
+            "utf8": "{\"id\":\"e-1\",\"value\":{},\"version\":10}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/1.ndjson",
+            "size": 94,
+            "sha256Hex": "862da66297593df8c80aefd68ef6a7b471236d49f4be509c8e39f0778f15ca68",
+            "utf8": "{\"id\":\"n-1\",\"value\":{\"title\":\"a\"},\"version\":4}\n{\"id\":\"n-2\",\"value\":{\"title\":\"b\"},\"version\":5}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/2.ndjson",
+            "size": 56,
+            "sha256Hex": "1fd555fb968066016905c7af58c84799cc833eec6eaf10f9e9454b88c6c393c4",
+            "utf8": "{\"id\":\"p-1\",\"value\":{\"level\":3,\"name\":\"x\"},\"version\":8}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/3.ndjson",
+            "size": 389,
+            "sha256Hex": "ac7ff031f3f374de5dc6fa8a1742b5e8cd9a878f3036bf02adb548e86f9beb1b",
+            "utf8": "{\"file\":{\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"sha256\":\"d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8\",\"size\":100,\"version\":12},\"id\":\"slot-1\",\"value\":{\"name\":\"Level 1\"},\"version\":12}\n{\"file\":{\"entry\":\"stores/sync.cloudSync/files/1.bin\",\"sha256\":\"42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f\",\"size\":7,\"version\":13},\"id\":\"slot-2\",\"version\":13}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/4.ndjson",
+            "size": 43,
+            "sha256Hex": "0bfccc23c89b31d7da9ed6f1857b3b9c15e21a33b50e6cd3a6f9a034b4599afb",
+            "utf8": "{\"id\":\"t-1\",\"value\":[\"b\",\"a\"],\"version\":9}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/0.bin",
+            "size": 100,
+            "sha256Hex": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+            "hex": "7a2cbecc9f960f53abebbd26d7fb58bcba18696a5c8e7c2264326a5f4f9d16908388bbab0635751fd35c08bb40cc42201beb64051ee9b147397f6ed6721c92e8c7db04d4938cc549b13b79122265f431ae6baace18c396c1a8a036cca47507cffd673802"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/1.bin",
+            "size": 7,
+            "sha256Hex": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+            "hex": "d673070cac561e"
+          },
+          {
+            "name": "stores/sync.cloudSync/files.json",
+            "size": 386,
+            "sha256Hex": "059bcfd6873e37174c23df89ed796f2402a0c752b5581dfd707c0cd3beac20f5",
+            "utf8": "[{\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"id\":\"slot-1\",\"live\":true,\"sha256\":\"d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8\",\"size\":100,\"version\":12},{\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/1.bin\",\"id\":\"slot-2\",\"live\":true,\"sha256\":\"42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f\",\"size\":7,\"version\":13}]\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/index.json",
+            "size": 431,
+            "sha256Hex": "d701ab8f0c4574826c2a60317930a57f9d8234d6a11e0e66383c9eb4973656c9",
+            "utf8": "{\"records\":[{\"collection\":\"empty-merge\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/0.ndjson\"},{\"collection\":\"notes\",\"count\":2,\"entry\":\"stores/sync.cloudSync/records/1.ndjson\"},{\"collection\":\"profile\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/2.ndjson\"},{\"collection\":\"saves\",\"count\":2,\"entry\":\"stores/sync.cloudSync/records/3.ndjson\"},{\"collection\":\"tags\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/4.ndjson\"}]}\n"
+          },
+          {
+            "name": "data.json",
+            "size": 223,
+            "sha256Hex": "abc4f8e2984e18d4fdbcae9f732542fc7f010d95cdb6cbfd82a2a44e9d7dbb40",
+            "utf8": "{\"counts\":{\"files\":2,\"records\":7,\"settings\":3},\"encryption\":\"server\",\"exportedAt\":1767225600000,\"product\":\"demo\",\"schema\":\"pkey-sync-export/1\",\"skipped\":[],\"source\":\"device\",\"subject\":\"u_exportSubject0000001\",\"unsynced\":0}\n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "entries-at-cap",
+      "description": "maxEntries equal to the entry count: the export is written.",
+      "product": "demo",
+      "subject": "u_exportSubject0000001",
+      "exportedAt": 1767225600000,
+      "encryption": "server",
+      "includeRevisions": false,
+      "unsynced": 0,
+      "caps": { "maxEntries": 12 },
+      "changes": [
+        { "record": ["notes", "n-2"], "value": { "title": "b" }, "version": 5 },
+        {
+          "setting": "theme",
+          "scope": "user",
+          "value": "dark",
+          "version": 3,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        { "record": ["notes", "n-1"], "value": { "title": "a" }, "version": 4 },
+        {
+          "setting": "audio.volume",
+          "scope": "user",
+          "value": 7,
+          "version": 2,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        {
+          "setting": "keybinds",
+          "scope": "user",
+          "value": { "fire": "x", "jump": "space" },
+          "version": 6,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA",
+          "members": { "fire": "x", "jump": "space" }
+        },
+        { "record": ["tags", "t-1"], "value": ["b", "a"], "version": 9 },
+        {
+          "record": ["profile", "p-1"],
+          "value": { "level": 3, "name": "x" },
+          "version": 8
+        },
+        { "record": ["empty-merge", "e-1"], "value": {}, "version": 10 },
+        {
+          "record": ["saves", "slot-1"],
+          "value": { "name": "Level 1" },
+          "version": 12,
+          "file": {
+            "version": 12,
+            "size": 100,
+            "sha256": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+            "format": "whole"
+          }
+        },
+        {
+          "record": ["saves", "slot-2"],
+          "version": 13,
+          "file": {
+            "version": 13,
+            "size": 7,
+            "sha256": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+            "format": "whole"
+          }
+        }
+      ],
+      "files": [
+        {
+          "version": 12,
+          "size": 100,
+          "sha256": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+          "format": "whole",
+          "collection": "saves",
+          "record": "slot-1",
+          "stored": {
+            "label": "pkey-sync vector export server-save",
+            "length": 100
+          }
+        },
+        {
+          "version": 13,
+          "size": 7,
+          "sha256": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+          "format": "whole",
+          "collection": "saves",
+          "record": "slot-2",
+          "stored": {
+            "label": "pkey-sync vector export server-file-only",
+            "length": 7
+          }
+        }
+      ],
+      "expect": {
+        "entries": [
+          {
+            "name": "README.txt",
+            "size": 944,
+            "sha256Hex": "ae5b46a206201fbc3f9c1cbed5691c4548f49a5b8c04ac974e1eb3fca9e20d47",
+            "utf8": "This is a readable copy of data an app synced with Polaris Locker.\n\nThe app made it on this device. It is NOT encrypted: anyone who can open\nthis file can read everything in it. Keep it where you keep your other\nprivate files, and delete it when you no longer need it. The time it was\nmade is \"exportedAt\" in data.json, in milliseconds since 1970-01-01 UTC.\n\nPolaris Locker's own export of this data, from its website, uses the same\nlayout and holds the data as the app stored it: encrypted when the app\nencrypts it.\n\ndata.json                              what this holds, and what could not be read\nstores/sync.cloudSync/settings.json    the synced settings\nstores/sync.cloudSync/records/         the synced records, one file a collection\nstores/sync.cloudSync/index.json       which file holds which collection\nstores/sync.cloudSync/files/           the synced files\nstores/sync.cloudSync/files.json       which file belongs to which record\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/settings.json",
+            "size": 73,
+            "sha256Hex": "67fdad816fc012235645ef4f7031710908982786d20d242475221d9ed4a29795",
+            "utf8": "{\"audio.volume\":7,\"keybinds\":{\"fire\":\"x\",\"jump\":\"space\"},\"theme\":\"dark\"}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/0.ndjson",
+            "size": 37,
+            "sha256Hex": "40dce7fa00ae9d379610b6cbc7929602b8e2fddd6342e9d968a30d284d36be90",
+            "utf8": "{\"id\":\"e-1\",\"value\":{},\"version\":10}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/1.ndjson",
+            "size": 94,
+            "sha256Hex": "862da66297593df8c80aefd68ef6a7b471236d49f4be509c8e39f0778f15ca68",
+            "utf8": "{\"id\":\"n-1\",\"value\":{\"title\":\"a\"},\"version\":4}\n{\"id\":\"n-2\",\"value\":{\"title\":\"b\"},\"version\":5}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/2.ndjson",
+            "size": 56,
+            "sha256Hex": "1fd555fb968066016905c7af58c84799cc833eec6eaf10f9e9454b88c6c393c4",
+            "utf8": "{\"id\":\"p-1\",\"value\":{\"level\":3,\"name\":\"x\"},\"version\":8}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/3.ndjson",
+            "size": 389,
+            "sha256Hex": "ac7ff031f3f374de5dc6fa8a1742b5e8cd9a878f3036bf02adb548e86f9beb1b",
+            "utf8": "{\"file\":{\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"sha256\":\"d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8\",\"size\":100,\"version\":12},\"id\":\"slot-1\",\"value\":{\"name\":\"Level 1\"},\"version\":12}\n{\"file\":{\"entry\":\"stores/sync.cloudSync/files/1.bin\",\"sha256\":\"42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f\",\"size\":7,\"version\":13},\"id\":\"slot-2\",\"version\":13}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/4.ndjson",
+            "size": 43,
+            "sha256Hex": "0bfccc23c89b31d7da9ed6f1857b3b9c15e21a33b50e6cd3a6f9a034b4599afb",
+            "utf8": "{\"id\":\"t-1\",\"value\":[\"b\",\"a\"],\"version\":9}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/0.bin",
+            "size": 100,
+            "sha256Hex": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+            "hex": "7a2cbecc9f960f53abebbd26d7fb58bcba18696a5c8e7c2264326a5f4f9d16908388bbab0635751fd35c08bb40cc42201beb64051ee9b147397f6ed6721c92e8c7db04d4938cc549b13b79122265f431ae6baace18c396c1a8a036cca47507cffd673802"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/1.bin",
+            "size": 7,
+            "sha256Hex": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+            "hex": "d673070cac561e"
+          },
+          {
+            "name": "stores/sync.cloudSync/files.json",
+            "size": 386,
+            "sha256Hex": "059bcfd6873e37174c23df89ed796f2402a0c752b5581dfd707c0cd3beac20f5",
+            "utf8": "[{\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"id\":\"slot-1\",\"live\":true,\"sha256\":\"d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8\",\"size\":100,\"version\":12},{\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/1.bin\",\"id\":\"slot-2\",\"live\":true,\"sha256\":\"42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f\",\"size\":7,\"version\":13}]\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/index.json",
+            "size": 431,
+            "sha256Hex": "d701ab8f0c4574826c2a60317930a57f9d8234d6a11e0e66383c9eb4973656c9",
+            "utf8": "{\"records\":[{\"collection\":\"empty-merge\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/0.ndjson\"},{\"collection\":\"notes\",\"count\":2,\"entry\":\"stores/sync.cloudSync/records/1.ndjson\"},{\"collection\":\"profile\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/2.ndjson\"},{\"collection\":\"saves\",\"count\":2,\"entry\":\"stores/sync.cloudSync/records/3.ndjson\"},{\"collection\":\"tags\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/4.ndjson\"}]}\n"
+          },
+          {
+            "name": "data.json",
+            "size": 223,
+            "sha256Hex": "abc4f8e2984e18d4fdbcae9f732542fc7f010d95cdb6cbfd82a2a44e9d7dbb40",
+            "utf8": "{\"counts\":{\"files\":2,\"records\":7,\"settings\":3},\"encryption\":\"server\",\"exportedAt\":1767225600000,\"product\":\"demo\",\"schema\":\"pkey-sync-export/1\",\"skipped\":[],\"source\":\"device\",\"subject\":\"u_exportSubject0000001\",\"unsynced\":0}\n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "entries-one-over-cap",
+      "description": "maxEntries one below the entry count: sync-export-too-large, nothing written.",
+      "product": "demo",
+      "subject": "u_exportSubject0000001",
+      "exportedAt": 1767225600000,
+      "encryption": "server",
+      "includeRevisions": false,
+      "unsynced": 0,
+      "caps": { "maxEntries": 11 },
+      "changes": [
+        { "record": ["notes", "n-2"], "value": { "title": "b" }, "version": 5 },
+        {
+          "setting": "theme",
+          "scope": "user",
+          "value": "dark",
+          "version": 3,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        { "record": ["notes", "n-1"], "value": { "title": "a" }, "version": 4 },
+        {
+          "setting": "audio.volume",
+          "scope": "user",
+          "value": 7,
+          "version": 2,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        {
+          "setting": "keybinds",
+          "scope": "user",
+          "value": { "fire": "x", "jump": "space" },
+          "version": 6,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA",
+          "members": { "fire": "x", "jump": "space" }
+        },
+        { "record": ["tags", "t-1"], "value": ["b", "a"], "version": 9 },
+        {
+          "record": ["profile", "p-1"],
+          "value": { "level": 3, "name": "x" },
+          "version": 8
+        },
+        { "record": ["empty-merge", "e-1"], "value": {}, "version": 10 },
+        {
+          "record": ["saves", "slot-1"],
+          "value": { "name": "Level 1" },
+          "version": 12,
+          "file": {
+            "version": 12,
+            "size": 100,
+            "sha256": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+            "format": "whole"
+          }
+        },
+        {
+          "record": ["saves", "slot-2"],
+          "version": 13,
+          "file": {
+            "version": 13,
+            "size": 7,
+            "sha256": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+            "format": "whole"
+          }
+        }
+      ],
+      "files": [
+        {
+          "version": 12,
+          "size": 100,
+          "sha256": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+          "format": "whole",
+          "collection": "saves",
+          "record": "slot-1",
+          "stored": {
+            "label": "pkey-sync vector export server-save",
+            "length": 100
+          }
+        },
+        {
+          "version": 13,
+          "size": 7,
+          "sha256": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+          "format": "whole",
+          "collection": "saves",
+          "record": "slot-2",
+          "stored": {
+            "label": "pkey-sync vector export server-file-only",
+            "length": 7
+          }
+        }
+      ],
+      "expect": { "refusal": { "code": "sync-export-too-large" } }
+    },
+    {
+      "id": "too-many-entries",
+      "description": "maxEntries 5 (README, settings, files.json, index.json and data.json alone fill it): refused.",
+      "product": "demo",
+      "subject": "u_exportSubject0000001",
+      "exportedAt": 1767225600000,
+      "encryption": "server",
+      "includeRevisions": false,
+      "unsynced": 0,
+      "caps": { "maxEntries": 5 },
+      "changes": [
+        { "record": ["notes", "n-2"], "value": { "title": "b" }, "version": 5 },
+        {
+          "setting": "theme",
+          "scope": "user",
+          "value": "dark",
+          "version": 3,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        { "record": ["notes", "n-1"], "value": { "title": "a" }, "version": 4 },
+        {
+          "setting": "audio.volume",
+          "scope": "user",
+          "value": 7,
+          "version": 2,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        {
+          "setting": "keybinds",
+          "scope": "user",
+          "value": { "fire": "x", "jump": "space" },
+          "version": 6,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA",
+          "members": { "fire": "x", "jump": "space" }
+        },
+        { "record": ["tags", "t-1"], "value": ["b", "a"], "version": 9 },
+        {
+          "record": ["profile", "p-1"],
+          "value": { "level": 3, "name": "x" },
+          "version": 8
+        },
+        { "record": ["empty-merge", "e-1"], "value": {}, "version": 10 },
+        {
+          "record": ["saves", "slot-1"],
+          "value": { "name": "Level 1" },
+          "version": 12,
+          "file": {
+            "version": 12,
+            "size": 100,
+            "sha256": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+            "format": "whole"
+          }
+        },
+        {
+          "record": ["saves", "slot-2"],
+          "version": 13,
+          "file": {
+            "version": 13,
+            "size": 7,
+            "sha256": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+            "format": "whole"
+          }
+        }
+      ],
+      "files": [
+        {
+          "version": 12,
+          "size": 100,
+          "sha256": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+          "format": "whole",
+          "collection": "saves",
+          "record": "slot-1",
+          "stored": {
+            "label": "pkey-sync vector export server-save",
+            "length": 100
+          }
+        },
+        {
+          "version": 13,
+          "size": 7,
+          "sha256": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+          "format": "whole",
+          "collection": "saves",
+          "record": "slot-2",
+          "stored": {
+            "label": "pkey-sync vector export server-file-only",
+            "length": 7
+          }
+        }
+      ],
+      "expect": { "refusal": { "code": "sync-export-too-large" } }
+    },
+    {
+      "id": "bytes-at-cap",
+      "description": "maxBytes equal to the planned file bytes: written.",
+      "product": "demo",
+      "subject": "u_exportSubject0000001",
+      "exportedAt": 1767225600000,
+      "encryption": "server",
+      "includeRevisions": false,
+      "unsynced": 0,
+      "caps": { "maxBytes": 107 },
+      "changes": [
+        { "record": ["notes", "n-2"], "value": { "title": "b" }, "version": 5 },
+        {
+          "setting": "theme",
+          "scope": "user",
+          "value": "dark",
+          "version": 3,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        { "record": ["notes", "n-1"], "value": { "title": "a" }, "version": 4 },
+        {
+          "setting": "audio.volume",
+          "scope": "user",
+          "value": 7,
+          "version": 2,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        {
+          "setting": "keybinds",
+          "scope": "user",
+          "value": { "fire": "x", "jump": "space" },
+          "version": 6,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA",
+          "members": { "fire": "x", "jump": "space" }
+        },
+        { "record": ["tags", "t-1"], "value": ["b", "a"], "version": 9 },
+        {
+          "record": ["profile", "p-1"],
+          "value": { "level": 3, "name": "x" },
+          "version": 8
+        },
+        { "record": ["empty-merge", "e-1"], "value": {}, "version": 10 },
+        {
+          "record": ["saves", "slot-1"],
+          "value": { "name": "Level 1" },
+          "version": 12,
+          "file": {
+            "version": 12,
+            "size": 100,
+            "sha256": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+            "format": "whole"
+          }
+        },
+        {
+          "record": ["saves", "slot-2"],
+          "version": 13,
+          "file": {
+            "version": 13,
+            "size": 7,
+            "sha256": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+            "format": "whole"
+          }
+        }
+      ],
+      "files": [
+        {
+          "version": 12,
+          "size": 100,
+          "sha256": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+          "format": "whole",
+          "collection": "saves",
+          "record": "slot-1",
+          "stored": {
+            "label": "pkey-sync vector export server-save",
+            "length": 100
+          }
+        },
+        {
+          "version": 13,
+          "size": 7,
+          "sha256": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+          "format": "whole",
+          "collection": "saves",
+          "record": "slot-2",
+          "stored": {
+            "label": "pkey-sync vector export server-file-only",
+            "length": 7
+          }
+        }
+      ],
+      "expect": {
+        "entries": [
+          {
+            "name": "README.txt",
+            "size": 944,
+            "sha256Hex": "ae5b46a206201fbc3f9c1cbed5691c4548f49a5b8c04ac974e1eb3fca9e20d47",
+            "utf8": "This is a readable copy of data an app synced with Polaris Locker.\n\nThe app made it on this device. It is NOT encrypted: anyone who can open\nthis file can read everything in it. Keep it where you keep your other\nprivate files, and delete it when you no longer need it. The time it was\nmade is \"exportedAt\" in data.json, in milliseconds since 1970-01-01 UTC.\n\nPolaris Locker's own export of this data, from its website, uses the same\nlayout and holds the data as the app stored it: encrypted when the app\nencrypts it.\n\ndata.json                              what this holds, and what could not be read\nstores/sync.cloudSync/settings.json    the synced settings\nstores/sync.cloudSync/records/         the synced records, one file a collection\nstores/sync.cloudSync/index.json       which file holds which collection\nstores/sync.cloudSync/files/           the synced files\nstores/sync.cloudSync/files.json       which file belongs to which record\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/settings.json",
+            "size": 73,
+            "sha256Hex": "67fdad816fc012235645ef4f7031710908982786d20d242475221d9ed4a29795",
+            "utf8": "{\"audio.volume\":7,\"keybinds\":{\"fire\":\"x\",\"jump\":\"space\"},\"theme\":\"dark\"}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/0.ndjson",
+            "size": 37,
+            "sha256Hex": "40dce7fa00ae9d379610b6cbc7929602b8e2fddd6342e9d968a30d284d36be90",
+            "utf8": "{\"id\":\"e-1\",\"value\":{},\"version\":10}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/1.ndjson",
+            "size": 94,
+            "sha256Hex": "862da66297593df8c80aefd68ef6a7b471236d49f4be509c8e39f0778f15ca68",
+            "utf8": "{\"id\":\"n-1\",\"value\":{\"title\":\"a\"},\"version\":4}\n{\"id\":\"n-2\",\"value\":{\"title\":\"b\"},\"version\":5}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/2.ndjson",
+            "size": 56,
+            "sha256Hex": "1fd555fb968066016905c7af58c84799cc833eec6eaf10f9e9454b88c6c393c4",
+            "utf8": "{\"id\":\"p-1\",\"value\":{\"level\":3,\"name\":\"x\"},\"version\":8}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/3.ndjson",
+            "size": 389,
+            "sha256Hex": "ac7ff031f3f374de5dc6fa8a1742b5e8cd9a878f3036bf02adb548e86f9beb1b",
+            "utf8": "{\"file\":{\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"sha256\":\"d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8\",\"size\":100,\"version\":12},\"id\":\"slot-1\",\"value\":{\"name\":\"Level 1\"},\"version\":12}\n{\"file\":{\"entry\":\"stores/sync.cloudSync/files/1.bin\",\"sha256\":\"42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f\",\"size\":7,\"version\":13},\"id\":\"slot-2\",\"version\":13}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/4.ndjson",
+            "size": 43,
+            "sha256Hex": "0bfccc23c89b31d7da9ed6f1857b3b9c15e21a33b50e6cd3a6f9a034b4599afb",
+            "utf8": "{\"id\":\"t-1\",\"value\":[\"b\",\"a\"],\"version\":9}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/0.bin",
+            "size": 100,
+            "sha256Hex": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+            "hex": "7a2cbecc9f960f53abebbd26d7fb58bcba18696a5c8e7c2264326a5f4f9d16908388bbab0635751fd35c08bb40cc42201beb64051ee9b147397f6ed6721c92e8c7db04d4938cc549b13b79122265f431ae6baace18c396c1a8a036cca47507cffd673802"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/1.bin",
+            "size": 7,
+            "sha256Hex": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+            "hex": "d673070cac561e"
+          },
+          {
+            "name": "stores/sync.cloudSync/files.json",
+            "size": 386,
+            "sha256Hex": "059bcfd6873e37174c23df89ed796f2402a0c752b5581dfd707c0cd3beac20f5",
+            "utf8": "[{\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"id\":\"slot-1\",\"live\":true,\"sha256\":\"d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8\",\"size\":100,\"version\":12},{\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/1.bin\",\"id\":\"slot-2\",\"live\":true,\"sha256\":\"42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f\",\"size\":7,\"version\":13}]\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/index.json",
+            "size": 431,
+            "sha256Hex": "d701ab8f0c4574826c2a60317930a57f9d8234d6a11e0e66383c9eb4973656c9",
+            "utf8": "{\"records\":[{\"collection\":\"empty-merge\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/0.ndjson\"},{\"collection\":\"notes\",\"count\":2,\"entry\":\"stores/sync.cloudSync/records/1.ndjson\"},{\"collection\":\"profile\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/2.ndjson\"},{\"collection\":\"saves\",\"count\":2,\"entry\":\"stores/sync.cloudSync/records/3.ndjson\"},{\"collection\":\"tags\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/4.ndjson\"}]}\n"
+          },
+          {
+            "name": "data.json",
+            "size": 223,
+            "sha256Hex": "abc4f8e2984e18d4fdbcae9f732542fc7f010d95cdb6cbfd82a2a44e9d7dbb40",
+            "utf8": "{\"counts\":{\"files\":2,\"records\":7,\"settings\":3},\"encryption\":\"server\",\"exportedAt\":1767225600000,\"product\":\"demo\",\"schema\":\"pkey-sync-export/1\",\"skipped\":[],\"source\":\"device\",\"subject\":\"u_exportSubject0000001\",\"unsynced\":0}\n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "too-many-bytes",
+      "description": "maxBytes one below the planned file bytes: sync-export-too-large, nothing written.",
+      "product": "demo",
+      "subject": "u_exportSubject0000001",
+      "exportedAt": 1767225600000,
+      "encryption": "server",
+      "includeRevisions": false,
+      "unsynced": 0,
+      "caps": { "maxBytes": 106 },
+      "changes": [
+        { "record": ["notes", "n-2"], "value": { "title": "b" }, "version": 5 },
+        {
+          "setting": "theme",
+          "scope": "user",
+          "value": "dark",
+          "version": 3,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        { "record": ["notes", "n-1"], "value": { "title": "a" }, "version": 4 },
+        {
+          "setting": "audio.volume",
+          "scope": "user",
+          "value": 7,
+          "version": 2,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        {
+          "setting": "keybinds",
+          "scope": "user",
+          "value": { "fire": "x", "jump": "space" },
+          "version": 6,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA",
+          "members": { "fire": "x", "jump": "space" }
+        },
+        { "record": ["tags", "t-1"], "value": ["b", "a"], "version": 9 },
+        {
+          "record": ["profile", "p-1"],
+          "value": { "level": 3, "name": "x" },
+          "version": 8
+        },
+        { "record": ["empty-merge", "e-1"], "value": {}, "version": 10 },
+        {
+          "record": ["saves", "slot-1"],
+          "value": { "name": "Level 1" },
+          "version": 12,
+          "file": {
+            "version": 12,
+            "size": 100,
+            "sha256": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+            "format": "whole"
+          }
+        },
+        {
+          "record": ["saves", "slot-2"],
+          "version": 13,
+          "file": {
+            "version": 13,
+            "size": 7,
+            "sha256": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+            "format": "whole"
+          }
+        }
+      ],
+      "files": [
+        {
+          "version": 12,
+          "size": 100,
+          "sha256": "d18cc2af94306cfdcf670bbc66744909571b60a3505d5cce9d539c5b99362eb8",
+          "format": "whole",
+          "collection": "saves",
+          "record": "slot-1",
+          "stored": {
+            "label": "pkey-sync vector export server-save",
+            "length": 100
+          }
+        },
+        {
+          "version": 13,
+          "size": 7,
+          "sha256": "42d8633e2c4acd5fe99cca8179795c46b44e65e0b03f5babae942e548ff1977f",
+          "format": "whole",
+          "collection": "saves",
+          "record": "slot-2",
+          "stored": {
+            "label": "pkey-sync vector export server-file-only",
+            "length": 7
+          }
+        }
+      ],
+      "expect": { "refusal": { "code": "sync-export-too-large" } }
+    },
+    {
+      "id": "e2e-basic",
+      "description": "End-to-end: a declared setting, an open key (blinded on the wire), a merge setting, value, merge-field and union records, an empty merge record (omitted: its id is not revealed) and a save whose sealed value binds its file. The `$file` binding is not exported.",
+      "product": "demo",
+      "subject": "u_exportSubject0000001",
+      "exportedAt": 1767225600000,
+      "encryption": "e2e",
+      "rootHex": "2cebb0ea8b6ed24e4c8858ceaf65b55f519a314413cbb9ea2feaf4715303b0bc",
+      "includeRevisions": false,
+      "unsynced": 0,
+      "changes": [
+        {
+          "record": ["notes", "x:UiSMj-wAOTN3Y-LLhcnZ9wl58qHcKggDCvOASckExA0"],
+          "ct": "AcjAb9LGP08PvugjpprzMEka__jDP_S2gaUZFmgCxLIfxxlfm6K83VNSmUC0Cvo3D-w3jm4PcNfmw28kIyH-QfETonOoocDMNQDKH8xhfjuIViDeNWjO6matBWO30l4sxnQ0NKs2VXZkfL9UnfoTmR8",
+          "version": 5
+        },
+        {
+          "setting": "audio.volume",
+          "scope": "user",
+          "ct": "AcjAb9LGP08PvugjpprzMElqtsd-50zi69AvTPu4c9blmJqjLk3JPLp2zTNVmwVtHmhn10weqzPT7HSfs9DpNWrUaDLesCUUPF-m4KEW-OIVkH9GOtVAQBi4fz1BBx7H50kXhmAnL56Ui6fmTuVvxtI",
+          "version": 2,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        {
+          "setting": "x:P7iAA31kXxdm515NvlIzCZn9XCOQkB5rPXATAP1xPwU",
+          "scope": "user",
+          "ct": "AcjAb9LGP08PvugjpprzMEkn4oqljSBEz3bsqlBITm1TP59luwmjAoO7XRoUbIT-ZcO7l_gMbYYittFWLF3RNcXLv4P_e748nlc5AGB1MYq-5s2-VT1iPvf-_2OCi5SjdpqsAnUVxgazslrngfjfURg",
+          "version": 3,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        {
+          "setting": "keybinds",
+          "scope": "user",
+          "version": 6,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA",
+          "members": [
+            {
+              "member": "x:cxB2HFfJp9QpZGDqTRJRm_iHAoMmDewpwGp27-teG_A",
+              "ct": "AcjAb9LGP08PvugjpprzMEk3x_qmwO9uNt3SvaNQZj2dT8IHLmf2_gYF0s-AAU1vKTUA9szCH_3SYMgiC73ogIU66H7UKEAk6iwqDvRTReN6lJ0QkdX5XmAP3FEJUNIgENyH2EhetrYKDDJbOOE9ukM",
+              "editedHlc": "000000000001:0000"
+            },
+            {
+              "member": "x:E0F7JZ5VOgPld5LKtjG7foRvLOgnX02eTX-GgHhlWLo",
+              "ct": "AcjAb9LGP08PvugjpprzMEl7qsdJNTY28uLATy4YQKA1hExWpvRPxgytmpTRDgx6TVW3wO0_k0F0IiOVGP14jsZQWYSLfwlYTn-Ho08aW-fgbU-JUrlSkc2ces7dQ8bxrTqjaRyMbHOEujTsUYRo4s0",
+              "editedHlc": "000000000001:0000"
+            }
+          ]
+        },
+        {
+          "record": ["notes", "x:do76xkn0Z187PDGsUrupa3xvS2Y75D6VzSNhiSipErA"],
+          "ct": "AcjAb9LGP08PvugjpprzMEmbcPhFia9HK35NjCmXyGKCIl8rreN7xwZyv2ZHz1TmkBFuFy-gSONDQk5k-RqYCQQMekWYQHRYOGZhiZ30s_1afSy_aUDgNoXbiIm3LEI6MbkrAg771Sf3Pm5FLrxHTAM",
+          "version": 4
+        },
+        {
+          "record": [
+            "profile",
+            "x:Pgnxyjt5p-K8xSecagnEwyxJkB7ZtR5r6-tFHbcW3Ok"
+          ],
+          "fields": [
+            {
+              "field": "x:zKqKs0qYBrMSwkmeZwyMuudFMMpxqwmQRf4uWSJPFT8",
+              "ct": "AcjAb9LGP08PvugjpprzMEm9CkvK4vS-1uWQCorAfNUvELBnp6ctx_VFPlKkw-Zsm_YPcslWCoc7_UJwOFW18quO8EWwPb5ocM5t8qlllhdXNOODeAuNSE2Khi2RhG_2WCgtvtVEAnmijrkzsjPUuLg",
+              "editedHlc": "000000000001:0000"
+            },
+            {
+              "field": "x:M9uJyPASzVV4PwnJIKowYmyPQheWBsoFpeCTTh6Vv4w",
+              "ct": "AcjAb9LGP08PvugjpprzMEkfd_B8g7clEhTFNgy7Dw3FIQEQ7MXGkIiXg8nyMqKvp0fNcBuxs-pGnA3XAZbNGANVrzjI35nWfJMUAMN4s1IkxJvSMwyz5saZhgmy14Gn56XccIW4IpIEXMvaUWLtlJQ",
+              "editedHlc": "000000000001:0000"
+            }
+          ],
+          "version": 8,
+          "editedHlc": "000000000001:0000"
+        },
+        {
+          "record": ["tags", "x:Q6ecCFHxnF93bVnpTHIH8RzMRRelGDY8D9CKnGfcnzA"],
+          "elements": [
+            {
+              "element": "x:jgv4KhnF2LMnq5sLZ-qBV1dwbV8PznX62jAi_uWReYM",
+              "ct": "AcjAb9LGP08PvugjpprzMElvtIbL5uMGMQbV5GmfHSbDt-1JuQt29zNIvd3yMYRskhfJe_Pu8E9lUehl_rWclS7sQWZ_8P8wC9yCDiHtpz_OqKAXuHPYx0bvYNcnPz-MeR7uD95DnGFi3aadz_-ISQk"
+            },
+            {
+              "element": "x:ugaHa1UZaUe8wXU9ULqGvSjq8jTx9M9ShimvGx1u6yg",
+              "ct": "AcjAb9LGP08PvugjpprzMEl86Woh3VX2SwcTJ4fc4rA7XqrbY-uLrq4OWjveWKVpKydQicExJbMJjiMZTyLGzK-OBqE4axpmb41PBaJ2bUobSceHBBaIeZOEEP7ojp2oaCLwLJiyQX8Dk6HNKeI_HK0"
+            },
+            {
+              "element": "x:SpHbqDAOAyliD5zlFi2RthSv8JbHjXJtH7sMUKpzrDQ",
+              "ct": "AcjAb9LGP08PvugjpprzMEngOWrJu5scy311OLyyDfB1IrKNHWDxqDyBIJkjmBQjjDuh4-4tmWI13zPwAKPfjes-Khq76UIRflvtOnKphfBYXZFQdI7PKG_Qz9VjwM6tGAERoECL5yrwCMAUwGib8Eg"
+            }
+          ],
+          "version": 9
+        },
+        {
+          "record": ["empty", "x:nL4cQaQ01hSH4xtVHeSsAenOd7o-N1dbChGeydbGr_s"],
+          "fields": [],
+          "version": 10,
+          "editedHlc": "000000000001:0000"
+        },
+        {
+          "record": ["saves", "x:KlYGt__fuwc8AfSo8J2xiK9rbCzkoN2McnTgXSGuSWw"],
+          "ct": "AcjAb9LGP08PvugjpprzMElBE9yplK0ZulhF93JWAfDwChRSK0Bn6gnqaRa00xYWqqwpZNsAaNuRHOpYezk6WQKpcl9CZV5p1fQaLlW_HfkfwCNyDxpVqzVEfcvN7SjE_Tspj0RnNcC_TgFZ7VuBqOabqbk-roCDRSv7gUICEB1mkAW6O5zUwajIfYBjvk8uQanZFPZ0kUUj2hRJdatcPOqLA5qgrkQ40xW0I888O6BK-iTWYTfwAuEYZwelBu8Xf9ItENhQ_03Og53VPg_n7Ce5Dfed94e5ci-Wkg9U3APZJtAnY_cD4hOgfTQyXDTZSA",
+          "version": 12,
+          "file": {
+            "version": 12,
+            "size": 1080,
+            "sha256": "45d7ad49f0c4133609b763f5188da9de571d1395632812f601667cb9265c5afd",
+            "format": "whole"
+          }
+        }
+      ],
+      "files": [
+        {
+          "version": 12,
+          "size": 1080,
+          "sha256": "45d7ad49f0c4133609b763f5188da9de571d1395632812f601667cb9265c5afd",
+          "format": "whole",
+          "collection": "saves",
+          "record": "x:KlYGt__fuwc8AfSo8J2xiK9rbCzkoN2McnTgXSGuSWw",
+          "stored": {
+            "label": "pkey-sync vector export e2e-save",
+            "length": 1000,
+            "saltHex": "a499c6bfe6c26a4056a4097749381d2c894337c090da0143befbb5068d304939"
+          }
+        }
+      ],
+      "expect": {
+        "entries": [
+          {
+            "name": "README.txt",
+            "size": 944,
+            "sha256Hex": "ae5b46a206201fbc3f9c1cbed5691c4548f49a5b8c04ac974e1eb3fca9e20d47",
+            "utf8": "This is a readable copy of data an app synced with Polaris Locker.\n\nThe app made it on this device. It is NOT encrypted: anyone who can open\nthis file can read everything in it. Keep it where you keep your other\nprivate files, and delete it when you no longer need it. The time it was\nmade is \"exportedAt\" in data.json, in milliseconds since 1970-01-01 UTC.\n\nPolaris Locker's own export of this data, from its website, uses the same\nlayout and holds the data as the app stored it: encrypted when the app\nencrypts it.\n\ndata.json                              what this holds, and what could not be read\nstores/sync.cloudSync/settings.json    the synced settings\nstores/sync.cloudSync/records/         the synced records, one file a collection\nstores/sync.cloudSync/index.json       which file holds which collection\nstores/sync.cloudSync/files/           the synced files\nstores/sync.cloudSync/files.json       which file belongs to which record\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/settings.json",
+            "size": 79,
+            "sha256Hex": "a9bd5570764df0e7a210a15cda8422ab0fe41ce2a2cce42f154b357576c416db",
+            "utf8": "{\"audio.volume\":7,\"custom.hotkey\":\"f5\",\"keybinds\":{\"fire\":\"x\",\"jump\":\"space\"}}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/0.ndjson",
+            "size": 94,
+            "sha256Hex": "862da66297593df8c80aefd68ef6a7b471236d49f4be509c8e39f0778f15ca68",
+            "utf8": "{\"id\":\"n-1\",\"value\":{\"title\":\"a\"},\"version\":4}\n{\"id\":\"n-2\",\"value\":{\"title\":\"b\"},\"version\":5}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/1.ndjson",
+            "size": 56,
+            "sha256Hex": "1fd555fb968066016905c7af58c84799cc833eec6eaf10f9e9454b88c6c393c4",
+            "utf8": "{\"id\":\"p-1\",\"value\":{\"level\":3,\"name\":\"x\"},\"version\":8}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/2.ndjson",
+            "size": 210,
+            "sha256Hex": "d83c0b3f5da4e0fe536da8f6f5d467edb90508e9c2e168dbe62c050ffd0f3f27",
+            "utf8": "{\"file\":{\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"sha256\":\"6c59949511953509c6cc3a5e2bcf40a1633178e1213a6f4d4381cc3808d97f59\",\"size\":1000,\"version\":12},\"id\":\"slot-1\",\"value\":{\"name\":\"Level 1\"},\"version\":12}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/3.ndjson",
+            "size": 52,
+            "sha256Hex": "601d2019f7fcaa8676d42e3de47f616cd94dd67768d6bad4d920e463c9c9c60d",
+            "utf8": "{\"id\":\"t-1\",\"value\":[\"b\",\"a\",{\"id\":7}],\"version\":9}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/0.bin",
+            "size": 1000,
+            "sha256Hex": "6c59949511953509c6cc3a5e2bcf40a1633178e1213a6f4d4381cc3808d97f59"
+          },
+          {
+            "name": "stores/sync.cloudSync/files.json",
+            "size": 196,
+            "sha256Hex": "7388cd7f63d9c14273d5cc21a60dce873283fa36792ac9fe107043b590032dcd",
+            "utf8": "[{\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"id\":\"slot-1\",\"live\":true,\"sha256\":\"6c59949511953509c6cc3a5e2bcf40a1633178e1213a6f4d4381cc3808d97f59\",\"size\":1000,\"version\":12}]\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/index.json",
+            "size": 343,
+            "sha256Hex": "6a101d2d24d93dfda0e69c4e700a88a74f10f8d24b3342bcffc4ce446cef5ac0",
+            "utf8": "{\"records\":[{\"collection\":\"notes\",\"count\":2,\"entry\":\"stores/sync.cloudSync/records/0.ndjson\"},{\"collection\":\"profile\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/1.ndjson\"},{\"collection\":\"saves\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/2.ndjson\"},{\"collection\":\"tags\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/3.ndjson\"}]}\n"
+          },
+          {
+            "name": "data.json",
+            "size": 220,
+            "sha256Hex": "1e29919f4e55f3f132230ea26e9646526df39ba2460d50320451b01471d93916",
+            "utf8": "{\"counts\":{\"files\":1,\"records\":5,\"settings\":3},\"encryption\":\"e2e\",\"exportedAt\":1767225600000,\"product\":\"demo\",\"schema\":\"pkey-sync-export/1\",\"skipped\":[],\"source\":\"device\",\"subject\":\"u_exportSubject0000001\",\"unsynced\":0}\n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2e-invalid-row",
+      "description": "End-to-end rows that do not open are skipped with code invalid and the rest is written: a setting with a tampered envelope, a record carrying another record's envelope (the name check) and a merge record with one tampered cell (the whole row is dropped).",
+      "product": "demo",
+      "subject": "u_exportSubject0000001",
+      "exportedAt": 1767225600000,
+      "encryption": "e2e",
+      "rootHex": "2cebb0ea8b6ed24e4c8858ceaf65b55f519a314413cbb9ea2feaf4715303b0bc",
+      "includeRevisions": false,
+      "unsynced": 0,
+      "changes": [
+        {
+          "setting": "audio.volume",
+          "scope": "user",
+          "ct": "AcjAb9LGP08PvugjpprzMElqtsd-50zi69AvTPu4c9blmJqjLk3JPLp2zTNVmwVtHmhn10weqzPT7HSfs9DpNWrUaDLesCUUPF-m4KEW-OIVkH9GOtVAQBi4fz1BBx7H50kXhmAnL56Ui6fmTuVvxtI",
+          "version": 2,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        {
+          "setting": "theme",
+          "scope": "user",
+          "ct": "AcjAb9LGP08PvugjpprzMEno8BOx0cEpl4e7fG2Inh7GMvtbJgiJrEyM3F9dQ36t6Oo3YdmCNFO2Q-9cLCddOc0Lgg3xjdr1pEFt4jQVjrYEFwPPIt3qSjbfYv4_lDqnpfSj51DoaU9HYc8ocUgU1uY",
+          "version": 3,
+          "editedHlc": "000000000001:0000",
+          "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        {
+          "record": ["notes", "x:do76xkn0Z187PDGsUrupa3xvS2Y75D6VzSNhiSipErA"],
+          "ct": "AcjAb9LGP08PvugjpprzMEka__jDP_S2gaUZFmgCxLIfxxlfm6K83VNSmUC0Cvo3D-w3jm4PcNfmw28kIyH-QfETonOoocDMNQDKH8xhfjuIViDeNWjO6matBWO30l4sxnQ0NKs2VXZkfL9UnfoTmR8",
+          "version": 4
+        },
+        {
+          "record": ["notes", "x:vQjOqNWIcr3YbpNDKAZAw9gpytQoJ4QnBp2Rz1Fum74"],
+          "ct": "AcjAb9LGP08PvugjpprzMElQPlmyKDLpjSHhUmALx8x-Q7YQvc21Sw343brb4bt1SJcnhCXtwPomBrTAuoM7-EcGNaFZL7JCJNZRvf1n_WQHdCZrbeoAbFRuLZ1K0KJE4l-ookiCN2-qJ3iDItE4jzg",
+          "version": 6
+        },
+        {
+          "record": [
+            "profile",
+            "x:Pgnxyjt5p-K8xSecagnEwyxJkB7ZtR5r6-tFHbcW3Ok"
+          ],
+          "fields": [
+            {
+              "field": "x:zKqKs0qYBrMSwkmeZwyMuudFMMpxqwmQRf4uWSJPFT8",
+              "ct": "AcjAb9LGP08PvugjpprzMEm9CkvK4vS-1uWQCorAfNUvELBnp6ctx_VFPlKkw-Zsm_YPcslWCoc7_UJwOFW18quO8EWwPb5ocM5t8qlllhdXNOODeAuNSE2Khi2RhG_2WCgtvtVEAnmijrkzsjPUuLg",
+              "editedHlc": "000000000001:0000"
+            },
+            {
+              "field": "x:M9uJyPASzVV4PwnJIKowYmyPQheWBsoFpeCTTh6Vv4w",
+              "ct": "AcjAb9LGP08PvugjpprzMEkfd_B8g7clEhTFNgy7Dw3FIQEQ7MXGkIiXg8nyMqKvp0fNcBuxs-pGnA3XAZbNGANVrzjI35nWfJMUAMN4s1IkxJvSMwyz5saZhgmy14Gn56XccIW4IpIEXMvaUWLtlJQ",
+              "editedHlc": "000000000001:0000"
+            }
+          ],
+          "version": 8,
+          "editedHlc": "000000000001:0000"
+        },
+        {
+          "record": [
+            "profile",
+            "x:kKA9VlGOmencO7ZrAQ-TQMrJFQ2L8eoMkLvZX_g5ZvM"
+          ],
+          "fields": [
+            {
+              "field": "x:zKqKs0qYBrMSwkmeZwyMuudFMMpxqwmQRf4uWSJPFT8",
+              "ct": "AcjAb9LGP08PvugjpprzMEnRbq_UYYCRdz3q4bDG98phT8-0ouoZXZbuEzOIzsdAvcNDQnn-5aUDW23BQXAeMSzZOzxHsDkI0xkZ_G0DHCuLyY_9iWvo7w7Q-Td6fMgFTOiYQrMVlxSjdPaEPPwoz9Q",
+              "editedHlc": "000000000001:0000"
+            },
+            {
+              "field": "x:M9uJyPASzVV4PwnJIKowYmyPQheWBsoFpeCTTh6Vv4w",
+              "ct": "AcjAb9LGP08PvugjpprzMEmA-c5ZhJyvliMRUsNSnm-ajlja6y9ueVk6zsmnADVTUU3daBu7otCqVyN-5TLw62gRE_zgieb9PyKQbX1BWUG3QspYjuFW86OJ065cIBc8yk3Yx0obywIUcLDCaWmfVQA",
+              "editedHlc": "000000000001:0000"
+            }
+          ],
+          "version": 11,
+          "editedHlc": "000000000001:0000"
+        }
+      ],
+      "files": [],
+      "expect": {
+        "entries": [
+          {
+            "name": "README.txt",
+            "size": 944,
+            "sha256Hex": "ae5b46a206201fbc3f9c1cbed5691c4548f49a5b8c04ac974e1eb3fca9e20d47",
+            "utf8": "This is a readable copy of data an app synced with Polaris Locker.\n\nThe app made it on this device. It is NOT encrypted: anyone who can open\nthis file can read everything in it. Keep it where you keep your other\nprivate files, and delete it when you no longer need it. The time it was\nmade is \"exportedAt\" in data.json, in milliseconds since 1970-01-01 UTC.\n\nPolaris Locker's own export of this data, from its website, uses the same\nlayout and holds the data as the app stored it: encrypted when the app\nencrypts it.\n\ndata.json                              what this holds, and what could not be read\nstores/sync.cloudSync/settings.json    the synced settings\nstores/sync.cloudSync/records/         the synced records, one file a collection\nstores/sync.cloudSync/index.json       which file holds which collection\nstores/sync.cloudSync/files/           the synced files\nstores/sync.cloudSync/files.json       which file belongs to which record\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/settings.json",
+            "size": 19,
+            "sha256Hex": "a425c2159985fadd1bc5a8a63b1c9d87fa4d31468ebdad1f187340952de97cf0",
+            "utf8": "{\"audio.volume\":7}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/0.ndjson",
+            "size": 47,
+            "sha256Hex": "823d80040418f1bcffa35f9de900896ed1728205a240687e4f4b22eadf063f39",
+            "utf8": "{\"id\":\"n-3\",\"value\":{\"title\":\"c\"},\"version\":6}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/1.ndjson",
+            "size": 56,
+            "sha256Hex": "1fd555fb968066016905c7af58c84799cc833eec6eaf10f9e9454b88c6c393c4",
+            "utf8": "{\"id\":\"p-1\",\"value\":{\"level\":3,\"name\":\"x\"},\"version\":8}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/files.json",
+            "size": 3,
+            "sha256Hex": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "utf8": "[]\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/index.json",
+            "size": 180,
+            "sha256Hex": "6c5936566d52d2426e25486a43277d593b00219bde651673dd183d29c0d1f840",
+            "utf8": "{\"records\":[{\"collection\":\"notes\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/0.ndjson\"},{\"collection\":\"profile\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/1.ndjson\"}]}\n"
+          },
+          {
+            "name": "data.json",
+            "size": 369,
+            "sha256Hex": "2db4e6220ededa9ac4d071129df5d5eeba657d0a991a929bcf8bd25ca1988f22",
+            "utf8": "{\"counts\":{\"files\":0,\"records\":2,\"settings\":1},\"encryption\":\"e2e\",\"exportedAt\":1767225600000,\"product\":\"demo\",\"schema\":\"pkey-sync-export/1\",\"skipped\":[{\"code\":\"invalid\",\"kind\":\"setting\"},{\"code\":\"invalid\",\"collection\":\"notes\",\"kind\":\"record\"},{\"code\":\"invalid\",\"collection\":\"profile\",\"kind\":\"record\"}],\"source\":\"device\",\"subject\":\"u_exportSubject0000001\",\"unsynced\":0}\n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2e-file-truncated",
+      "description": "A 2.5 MiB end-to-end file the transport served only up to the middle of its second segment: segment 0 authenticates and is written, the rest is not, and the entry is listed with partial true. A save whose value names no file and a file-only record are listed as sync-file-invalid with no entry.",
+      "product": "demo",
+      "subject": "u_exportSubject0000001",
+      "exportedAt": 1767225600000,
+      "encryption": "e2e",
+      "rootHex": "2cebb0ea8b6ed24e4c8858ceaf65b55f519a314413cbb9ea2feaf4715303b0bc",
+      "includeRevisions": false,
+      "unsynced": 0,
+      "changes": [
+        {
+          "record": ["saves", "x:KlYGt__fuwc8AfSo8J2xiK9rbCzkoN2McnTgXSGuSWw"],
+          "ct": "AcjAb9LGP08PvugjpprzMElBE9yplK0ZulhF93JWAfDwChRSK0Bn6gnqaRa00xYWqqwpZNsAaNuRHOpYezk6WQKpcl9CZV5p1fQaLlW_HfkfwCNyDxpVq2UQIM_I6CzM_jt43kExNcW6EVdbv1jVpe6bpOtp9NeFFCr-gEFTERk0kgHhaZeHlKrKctJl7BslQPyORKAkxkcj2hRJdatcPOqIBZCh5l0owFj7KIxrfM4VrgPTJiSvAhyYZwelBu8Xf9ItENhQ_03Og53VPg_n7Ce5Dfed94e5ci-Wkg9U3APZUYnVI5ExTV7Z48LRcoEksg",
+          "version": 21,
+          "file": {
+            "version": 21,
+            "size": 2621552,
+            "sha256": "da93da01e02e4e335f45d02898566c3cd64e2b81d16cc95c239d11623cb3c11f",
+            "format": "whole"
+          }
+        },
+        {
+          "record": ["saves", "x:-DEh0ekhyzmPfbgA0b4Z11phTJR-mvBTxD3KoRgY4-4"],
+          "ct": "AcjAb9LGP08PvugjpprzMElFgOXtlnx3WbKhnqsFhQW2zL7Yq3jp7PlFwIzMWb_t2oIQ2BDrrykHvScjmVuCC2iA5JOMdEeGLo64V7R25cpf9Fhk7I2B43lXzt_G87eUWw_bxVCuEb7kQwsMu_L4sIw",
+          "version": 22,
+          "file": {
+            "version": 22,
+            "size": 90,
+            "sha256": "924effa15c22860621f15a1fa8a931aa3d30d1750fae39edcda3e15112897236",
+            "format": "whole"
+          }
+        },
+        {
+          "record": ["saves", "x:bhfY9LZmr7vEwnl1TKOLABsk6CGkNAUXD0qxaT_GFm4"],
+          "version": 23,
+          "file": {
+            "version": 23,
+            "size": 90,
+            "sha256": "9940e699e494bbb5bd17bfad9cb11ce504a358b086ff66d55f6a030eac309f4b",
+            "format": "whole"
+          }
+        }
+      ],
+      "files": [
+        {
+          "version": 21,
+          "size": 2621552,
+          "sha256": "da93da01e02e4e335f45d02898566c3cd64e2b81d16cc95c239d11623cb3c11f",
+          "format": "whole",
+          "collection": "saves",
+          "record": "x:KlYGt__fuwc8AfSo8J2xiK9rbCzkoN2McnTgXSGuSWw",
+          "stored": {
+            "label": "pkey-sync vector export e2e-big",
+            "length": 2621440,
+            "saltHex": "3ae0e9a4d7c98bf29c8476fd9389cbaef30db0f7ee6c167dd4e877477b1d1d2f",
+            "cut": 1049656
+          }
+        },
+        {
+          "version": 22,
+          "size": 90,
+          "sha256": "924effa15c22860621f15a1fa8a931aa3d30d1750fae39edcda3e15112897236",
+          "format": "whole",
+          "collection": "saves",
+          "record": "x:-DEh0ekhyzmPfbgA0b4Z11phTJR-mvBTxD3KoRgY4-4",
+          "stored": {
+            "label": "pkey-sync vector export e2e-unbound",
+            "length": 10,
+            "saltHex": "6170ca20ae19de611913d4b3c3a7d77589fe97129823daa8e0c644b67f9e80d4"
+          }
+        },
+        {
+          "version": 23,
+          "size": 90,
+          "sha256": "9940e699e494bbb5bd17bfad9cb11ce504a358b086ff66d55f6a030eac309f4b",
+          "format": "whole",
+          "collection": "saves",
+          "record": "x:bhfY9LZmr7vEwnl1TKOLABsk6CGkNAUXD0qxaT_GFm4",
+          "stored": {
+            "label": "pkey-sync vector export e2e-orphan",
+            "length": 10,
+            "saltHex": "4b9800648cdc2dfbacbe4de2d24766642c68eeecd361551ce13d89fe85173031"
+          }
+        }
+      ],
+      "expect": {
+        "entries": [
+          {
+            "name": "README.txt",
+            "size": 944,
+            "sha256Hex": "ae5b46a206201fbc3f9c1cbed5691c4548f49a5b8c04ac974e1eb3fca9e20d47",
+            "utf8": "This is a readable copy of data an app synced with Polaris Locker.\n\nThe app made it on this device. It is NOT encrypted: anyone who can open\nthis file can read everything in it. Keep it where you keep your other\nprivate files, and delete it when you no longer need it. The time it was\nmade is \"exportedAt\" in data.json, in milliseconds since 1970-01-01 UTC.\n\nPolaris Locker's own export of this data, from its website, uses the same\nlayout and holds the data as the app stored it: encrypted when the app\nencrypts it.\n\ndata.json                              what this holds, and what could not be read\nstores/sync.cloudSync/settings.json    the synced settings\nstores/sync.cloudSync/records/         the synced records, one file a collection\nstores/sync.cloudSync/index.json       which file holds which collection\nstores/sync.cloudSync/files/           the synced files\nstores/sync.cloudSync/files.json       which file belongs to which record\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/settings.json",
+            "size": 3,
+            "sha256Hex": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+            "utf8": "{}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/0.ndjson",
+            "size": 268,
+            "sha256Hex": "b90f665646f9c82b23e9944e2bb5f789d40bf5883580b5c65da894190dc32710",
+            "utf8": "{\"file\":{\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"sha256\":\"3601e06bd3fd8294d18effb9d4db93f471ae8901ce022585a25973d71c847df9\",\"size\":1048576,\"version\":21},\"id\":\"slot-1\",\"value\":{\"name\":\"Big\"},\"version\":21}\n{\"id\":\"slot-2\",\"value\":{\"name\":\"No binding\"},\"version\":22}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/0.bin",
+            "size": 1048576,
+            "sha256Hex": "3601e06bd3fd8294d18effb9d4db93f471ae8901ce022585a25973d71c847df9"
+          },
+          {
+            "name": "stores/sync.cloudSync/files.json",
+            "size": 199,
+            "sha256Hex": "effb7011e262df3f5c329f56143e3431dde1d3dfcec57aa7c255d480cd3677b0",
+            "utf8": "[{\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"id\":\"slot-1\",\"live\":true,\"sha256\":\"3601e06bd3fd8294d18effb9d4db93f471ae8901ce022585a25973d71c847df9\",\"size\":1048576,\"version\":21}]\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/index.json",
+            "size": 96,
+            "sha256Hex": "1edf7885e94af01bcc46b70e29c1b52e081cb55283c3fa6d2bbbf36a6a455235",
+            "utf8": "{\"records\":[{\"collection\":\"saves\",\"count\":2,\"entry\":\"stores/sync.cloudSync/records/0.ndjson\"}]}\n"
+          },
+          {
+            "name": "data.json",
+            "size": 470,
+            "sha256Hex": "0016ce431483692e99cd4956edb5cae2f6e54f7d96d833cc14063ae678ff6884",
+            "utf8": "{\"counts\":{\"files\":1,\"records\":2,\"settings\":0},\"encryption\":\"e2e\",\"exportedAt\":1767225600000,\"product\":\"demo\",\"schema\":\"pkey-sync-export/1\",\"skipped\":[{\"code\":\"sync-file-invalid\",\"collection\":\"saves\",\"kind\":\"file\"},{\"code\":\"sync-file-invalid\",\"collection\":\"saves\",\"kind\":\"file\"},{\"code\":\"sync-file-invalid\",\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"kind\":\"file\",\"partial\":true}],\"source\":\"device\",\"subject\":\"u_exportSubject0000001\",\"unsynced\":0}\n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "order-and-revisions",
+      "description": "includeRevisions: collections alpha, zeta; ids B, a, b (byte order). Record alpha/a has its live file (version 10) then its kept revisions newest first (7, 3), numbered in record order across the archive.",
+      "product": "demo",
+      "subject": "u_exportSubject0000001",
+      "exportedAt": 1767225600000,
+      "encryption": "server",
+      "includeRevisions": true,
+      "unsynced": 0,
+      "changes": [
+        {
+          "record": ["zeta", "b"],
+          "value": { "n": 1 },
+          "version": 2,
+          "file": {
+            "version": 2,
+            "size": 3,
+            "sha256": "32ebf2dd2623c3ab7d7e8d842a850e62122f349e8bda81c616df893d12614d38",
+            "format": "whole"
+          }
+        },
+        { "record": ["alpha", "b"], "value": { "n": 2 }, "version": 8 },
+        {
+          "record": ["alpha", "a"],
+          "value": { "n": 3 },
+          "version": 10,
+          "file": {
+            "version": 10,
+            "size": 30,
+            "sha256": "2b0e71bf0a2fcfa00e7c3bbb82a0581226347bcd7722b4dd9e568cf034553913",
+            "format": "whole"
+          }
+        },
+        {
+          "record": ["alpha", "B"],
+          "value": { "n": 4 },
+          "version": 5,
+          "file": {
+            "version": 5,
+            "size": 5,
+            "sha256": "06349156a3d4bf81ff3703e4bc5514eb05a95a9ae4c22436db618909de36ad86",
+            "format": "whole"
+          }
+        }
+      ],
+      "files": [
+        {
+          "version": 3,
+          "size": 10,
+          "sha256": "3527c9141b5b6763146def6ee32256da57e45fb204ce7cdfa76cfa0864bcd165",
+          "format": "whole",
+          "collection": "alpha",
+          "record": "a",
+          "stored": { "label": "pkey-sync vector export a3", "length": 10 }
+        },
+        {
+          "version": 10,
+          "size": 30,
+          "sha256": "2b0e71bf0a2fcfa00e7c3bbb82a0581226347bcd7722b4dd9e568cf034553913",
+          "format": "whole",
+          "collection": "alpha",
+          "record": "a",
+          "stored": { "label": "pkey-sync vector export a10", "length": 30 }
+        },
+        {
+          "version": 5,
+          "size": 5,
+          "sha256": "06349156a3d4bf81ff3703e4bc5514eb05a95a9ae4c22436db618909de36ad86",
+          "format": "whole",
+          "collection": "alpha",
+          "record": "B",
+          "stored": { "label": "pkey-sync vector export aB5", "length": 5 }
+        },
+        {
+          "version": 7,
+          "size": 20,
+          "sha256": "c4e6d655bb5e77f69012ed767888b955003e37864fcf9f0c0add2d25df37186c",
+          "format": "whole",
+          "collection": "alpha",
+          "record": "a",
+          "stored": { "label": "pkey-sync vector export a7", "length": 20 }
+        },
+        {
+          "version": 2,
+          "size": 3,
+          "sha256": "32ebf2dd2623c3ab7d7e8d842a850e62122f349e8bda81c616df893d12614d38",
+          "format": "whole",
+          "collection": "zeta",
+          "record": "b",
+          "stored": { "label": "pkey-sync vector export z1", "length": 3 }
+        }
+      ],
+      "expect": {
+        "entries": [
+          {
+            "name": "README.txt",
+            "size": 944,
+            "sha256Hex": "ae5b46a206201fbc3f9c1cbed5691c4548f49a5b8c04ac974e1eb3fca9e20d47",
+            "utf8": "This is a readable copy of data an app synced with Polaris Locker.\n\nThe app made it on this device. It is NOT encrypted: anyone who can open\nthis file can read everything in it. Keep it where you keep your other\nprivate files, and delete it when you no longer need it. The time it was\nmade is \"exportedAt\" in data.json, in milliseconds since 1970-01-01 UTC.\n\nPolaris Locker's own export of this data, from its website, uses the same\nlayout and holds the data as the app stored it: encrypted when the app\nencrypts it.\n\ndata.json                              what this holds, and what could not be read\nstores/sync.cloudSync/settings.json    the synced settings\nstores/sync.cloudSync/records/         the synced records, one file a collection\nstores/sync.cloudSync/index.json       which file holds which collection\nstores/sync.cloudSync/files/           the synced files\nstores/sync.cloudSync/files.json       which file belongs to which record\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/settings.json",
+            "size": 3,
+            "sha256Hex": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+            "utf8": "{}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/0.ndjson",
+            "size": 420,
+            "sha256Hex": "56e7a495fa5fa329b0fe7d5178f55bf9ec0013dcd6f0724ecfc6047889fbf2be",
+            "utf8": "{\"file\":{\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"sha256\":\"06349156a3d4bf81ff3703e4bc5514eb05a95a9ae4c22436db618909de36ad86\",\"size\":5,\"version\":5},\"id\":\"B\",\"value\":{\"n\":4},\"version\":5}\n{\"file\":{\"entry\":\"stores/sync.cloudSync/files/1.bin\",\"sha256\":\"2b0e71bf0a2fcfa00e7c3bbb82a0581226347bcd7722b4dd9e568cf034553913\",\"size\":30,\"version\":10},\"id\":\"a\",\"value\":{\"n\":3},\"version\":10}\n{\"id\":\"b\",\"value\":{\"n\":2},\"version\":8}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/1.ndjson",
+            "size": 189,
+            "sha256Hex": "4bc286e1f4eb0375f77405245782fb9a569d0cea8ef8184469f8cc69ac98b221",
+            "utf8": "{\"file\":{\"entry\":\"stores/sync.cloudSync/files/4.bin\",\"sha256\":\"32ebf2dd2623c3ab7d7e8d842a850e62122f349e8bda81c616df893d12614d38\",\"size\":3,\"version\":2},\"id\":\"b\",\"value\":{\"n\":1},\"version\":2}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/0.bin",
+            "size": 5,
+            "sha256Hex": "06349156a3d4bf81ff3703e4bc5514eb05a95a9ae4c22436db618909de36ad86",
+            "hex": "2883cd95df"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/1.bin",
+            "size": 30,
+            "sha256Hex": "2b0e71bf0a2fcfa00e7c3bbb82a0581226347bcd7722b4dd9e568cf034553913",
+            "hex": "8d8d813d1bcf17ccc44ce1a5cc89302a8e7b323b9575104212285c93726c"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/2.bin",
+            "size": 20,
+            "sha256Hex": "c4e6d655bb5e77f69012ed767888b955003e37864fcf9f0c0add2d25df37186c",
+            "hex": "5e2b588cd62dbe8a89ae4a6d72b8742d41fbb115"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/3.bin",
+            "size": 10,
+            "sha256Hex": "3527c9141b5b6763146def6ee32256da57e45fb204ce7cdfa76cfa0864bcd165",
+            "hex": "3a118fae93be5ef894d3"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/4.bin",
+            "size": 3,
+            "sha256Hex": "32ebf2dd2623c3ab7d7e8d842a850e62122f349e8bda81c616df893d12614d38",
+            "hex": "ae30c4"
+          },
+          {
+            "name": "stores/sync.cloudSync/files.json",
+            "size": 932,
+            "sha256Hex": "5b23351639b62f34a925e50e6e723f46a85c3068f75a07cf17b81483270ae76a",
+            "utf8": "[{\"collection\":\"alpha\",\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"id\":\"B\",\"live\":true,\"sha256\":\"06349156a3d4bf81ff3703e4bc5514eb05a95a9ae4c22436db618909de36ad86\",\"size\":5,\"version\":5},{\"collection\":\"alpha\",\"entry\":\"stores/sync.cloudSync/files/1.bin\",\"id\":\"a\",\"live\":true,\"sha256\":\"2b0e71bf0a2fcfa00e7c3bbb82a0581226347bcd7722b4dd9e568cf034553913\",\"size\":30,\"version\":10},{\"collection\":\"alpha\",\"entry\":\"stores/sync.cloudSync/files/2.bin\",\"id\":\"a\",\"live\":false,\"sha256\":\"c4e6d655bb5e77f69012ed767888b955003e37864fcf9f0c0add2d25df37186c\",\"size\":20,\"version\":7},{\"collection\":\"alpha\",\"entry\":\"stores/sync.cloudSync/files/3.bin\",\"id\":\"a\",\"live\":false,\"sha256\":\"3527c9141b5b6763146def6ee32256da57e45fb204ce7cdfa76cfa0864bcd165\",\"size\":10,\"version\":3},{\"collection\":\"zeta\",\"entry\":\"stores/sync.cloudSync/files/4.bin\",\"id\":\"b\",\"live\":true,\"sha256\":\"32ebf2dd2623c3ab7d7e8d842a850e62122f349e8bda81c616df893d12614d38\",\"size\":3,\"version\":2}]\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/index.json",
+            "size": 177,
+            "sha256Hex": "5b22f0fbf8ba2e7f10ecd1a5910bac38d4d16e0fca1ba39cbb86b1597840e8b9",
+            "utf8": "{\"records\":[{\"collection\":\"alpha\",\"count\":3,\"entry\":\"stores/sync.cloudSync/records/0.ndjson\"},{\"collection\":\"zeta\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/1.ndjson\"}]}\n"
+          },
+          {
+            "name": "data.json",
+            "size": 223,
+            "sha256Hex": "cda7da6d9061cc98af3e0f6cf38a7897a16c43826ddee120ec8de91b3c76f303",
+            "utf8": "{\"counts\":{\"files\":5,\"records\":4,\"settings\":0},\"encryption\":\"server\",\"exportedAt\":1767225600000,\"product\":\"demo\",\"schema\":\"pkey-sync-export/1\",\"skipped\":[],\"source\":\"device\",\"subject\":\"u_exportSubject0000001\",\"unsynced\":0}\n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "order-live-only",
+      "description": "The same store without includeRevisions: live files only.",
+      "product": "demo",
+      "subject": "u_exportSubject0000001",
+      "exportedAt": 1767225600000,
+      "encryption": "server",
+      "includeRevisions": false,
+      "unsynced": 0,
+      "changes": [
+        {
+          "record": ["zeta", "b"],
+          "value": { "n": 1 },
+          "version": 2,
+          "file": {
+            "version": 2,
+            "size": 3,
+            "sha256": "32ebf2dd2623c3ab7d7e8d842a850e62122f349e8bda81c616df893d12614d38",
+            "format": "whole"
+          }
+        },
+        { "record": ["alpha", "b"], "value": { "n": 2 }, "version": 8 },
+        {
+          "record": ["alpha", "a"],
+          "value": { "n": 3 },
+          "version": 10,
+          "file": {
+            "version": 10,
+            "size": 30,
+            "sha256": "2b0e71bf0a2fcfa00e7c3bbb82a0581226347bcd7722b4dd9e568cf034553913",
+            "format": "whole"
+          }
+        },
+        {
+          "record": ["alpha", "B"],
+          "value": { "n": 4 },
+          "version": 5,
+          "file": {
+            "version": 5,
+            "size": 5,
+            "sha256": "06349156a3d4bf81ff3703e4bc5514eb05a95a9ae4c22436db618909de36ad86",
+            "format": "whole"
+          }
+        }
+      ],
+      "files": [
+        {
+          "version": 3,
+          "size": 10,
+          "sha256": "3527c9141b5b6763146def6ee32256da57e45fb204ce7cdfa76cfa0864bcd165",
+          "format": "whole",
+          "collection": "alpha",
+          "record": "a",
+          "stored": { "label": "pkey-sync vector export a3", "length": 10 }
+        },
+        {
+          "version": 10,
+          "size": 30,
+          "sha256": "2b0e71bf0a2fcfa00e7c3bbb82a0581226347bcd7722b4dd9e568cf034553913",
+          "format": "whole",
+          "collection": "alpha",
+          "record": "a",
+          "stored": { "label": "pkey-sync vector export a10", "length": 30 }
+        },
+        {
+          "version": 5,
+          "size": 5,
+          "sha256": "06349156a3d4bf81ff3703e4bc5514eb05a95a9ae4c22436db618909de36ad86",
+          "format": "whole",
+          "collection": "alpha",
+          "record": "B",
+          "stored": { "label": "pkey-sync vector export aB5", "length": 5 }
+        },
+        {
+          "version": 7,
+          "size": 20,
+          "sha256": "c4e6d655bb5e77f69012ed767888b955003e37864fcf9f0c0add2d25df37186c",
+          "format": "whole",
+          "collection": "alpha",
+          "record": "a",
+          "stored": { "label": "pkey-sync vector export a7", "length": 20 }
+        },
+        {
+          "version": 2,
+          "size": 3,
+          "sha256": "32ebf2dd2623c3ab7d7e8d842a850e62122f349e8bda81c616df893d12614d38",
+          "format": "whole",
+          "collection": "zeta",
+          "record": "b",
+          "stored": { "label": "pkey-sync vector export z1", "length": 3 }
+        }
+      ],
+      "expect": {
+        "entries": [
+          {
+            "name": "README.txt",
+            "size": 944,
+            "sha256Hex": "ae5b46a206201fbc3f9c1cbed5691c4548f49a5b8c04ac974e1eb3fca9e20d47",
+            "utf8": "This is a readable copy of data an app synced with Polaris Locker.\n\nThe app made it on this device. It is NOT encrypted: anyone who can open\nthis file can read everything in it. Keep it where you keep your other\nprivate files, and delete it when you no longer need it. The time it was\nmade is \"exportedAt\" in data.json, in milliseconds since 1970-01-01 UTC.\n\nPolaris Locker's own export of this data, from its website, uses the same\nlayout and holds the data as the app stored it: encrypted when the app\nencrypts it.\n\ndata.json                              what this holds, and what could not be read\nstores/sync.cloudSync/settings.json    the synced settings\nstores/sync.cloudSync/records/         the synced records, one file a collection\nstores/sync.cloudSync/index.json       which file holds which collection\nstores/sync.cloudSync/files/           the synced files\nstores/sync.cloudSync/files.json       which file belongs to which record\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/settings.json",
+            "size": 3,
+            "sha256Hex": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+            "utf8": "{}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/0.ndjson",
+            "size": 420,
+            "sha256Hex": "56e7a495fa5fa329b0fe7d5178f55bf9ec0013dcd6f0724ecfc6047889fbf2be",
+            "utf8": "{\"file\":{\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"sha256\":\"06349156a3d4bf81ff3703e4bc5514eb05a95a9ae4c22436db618909de36ad86\",\"size\":5,\"version\":5},\"id\":\"B\",\"value\":{\"n\":4},\"version\":5}\n{\"file\":{\"entry\":\"stores/sync.cloudSync/files/1.bin\",\"sha256\":\"2b0e71bf0a2fcfa00e7c3bbb82a0581226347bcd7722b4dd9e568cf034553913\",\"size\":30,\"version\":10},\"id\":\"a\",\"value\":{\"n\":3},\"version\":10}\n{\"id\":\"b\",\"value\":{\"n\":2},\"version\":8}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/1.ndjson",
+            "size": 189,
+            "sha256Hex": "5c231303a56c7c0dc96aca0a6827427c1794221a08468088a6a65b91d667e7f5",
+            "utf8": "{\"file\":{\"entry\":\"stores/sync.cloudSync/files/2.bin\",\"sha256\":\"32ebf2dd2623c3ab7d7e8d842a850e62122f349e8bda81c616df893d12614d38\",\"size\":3,\"version\":2},\"id\":\"b\",\"value\":{\"n\":1},\"version\":2}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/0.bin",
+            "size": 5,
+            "sha256Hex": "06349156a3d4bf81ff3703e4bc5514eb05a95a9ae4c22436db618909de36ad86",
+            "hex": "2883cd95df"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/1.bin",
+            "size": 30,
+            "sha256Hex": "2b0e71bf0a2fcfa00e7c3bbb82a0581226347bcd7722b4dd9e568cf034553913",
+            "hex": "8d8d813d1bcf17ccc44ce1a5cc89302a8e7b323b9575104212285c93726c"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/2.bin",
+            "size": 3,
+            "sha256Hex": "32ebf2dd2623c3ab7d7e8d842a850e62122f349e8bda81c616df893d12614d38",
+            "hex": "ae30c4"
+          },
+          {
+            "name": "stores/sync.cloudSync/files.json",
+            "size": 558,
+            "sha256Hex": "ddbe398d4e473a32b6e30e5ff2817ad0e4f351147d8b1733fa3b5fb2d503fb70",
+            "utf8": "[{\"collection\":\"alpha\",\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"id\":\"B\",\"live\":true,\"sha256\":\"06349156a3d4bf81ff3703e4bc5514eb05a95a9ae4c22436db618909de36ad86\",\"size\":5,\"version\":5},{\"collection\":\"alpha\",\"entry\":\"stores/sync.cloudSync/files/1.bin\",\"id\":\"a\",\"live\":true,\"sha256\":\"2b0e71bf0a2fcfa00e7c3bbb82a0581226347bcd7722b4dd9e568cf034553913\",\"size\":30,\"version\":10},{\"collection\":\"zeta\",\"entry\":\"stores/sync.cloudSync/files/2.bin\",\"id\":\"b\",\"live\":true,\"sha256\":\"32ebf2dd2623c3ab7d7e8d842a850e62122f349e8bda81c616df893d12614d38\",\"size\":3,\"version\":2}]\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/index.json",
+            "size": 177,
+            "sha256Hex": "5b22f0fbf8ba2e7f10ecd1a5910bac38d4d16e0fca1ba39cbb86b1597840e8b9",
+            "utf8": "{\"records\":[{\"collection\":\"alpha\",\"count\":3,\"entry\":\"stores/sync.cloudSync/records/0.ndjson\"},{\"collection\":\"zeta\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/1.ndjson\"}]}\n"
+          },
+          {
+            "name": "data.json",
+            "size": 223,
+            "sha256Hex": "157e5a62178eea8c49f2a72d2d85d0cedafd96b80a9fa606f8fca6b6de23f085",
+            "utf8": "{\"counts\":{\"files\":3,\"records\":4,\"settings\":0},\"encryption\":\"server\",\"exportedAt\":1767225600000,\"product\":\"demo\",\"schema\":\"pkey-sync-export/1\",\"skipped\":[],\"source\":\"device\",\"subject\":\"u_exportSubject0000001\",\"unsynced\":0}\n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2e-binding-names-revision",
+      "description": "The record's pointer is the newer file but its sealed value binds the older one: the older file is the live one, and the newer is not exported.",
+      "product": "demo",
+      "subject": "u_exportSubject0000001",
+      "exportedAt": 1767225600000,
+      "encryption": "e2e",
+      "rootHex": "2cebb0ea8b6ed24e4c8858ceaf65b55f519a314413cbb9ea2feaf4715303b0bc",
+      "includeRevisions": false,
+      "unsynced": 0,
+      "changes": [
+        {
+          "record": ["saves", "x:KlYGt__fuwc8AfSo8J2xiK9rbCzkoN2McnTgXSGuSWw"],
+          "ct": "AcjAb9LGP08PvugjpprzMElBE9yplK0ZulhF93JWAfDwChRSK0Bn6gnqaRa00xYWqqwpZNsAaNuRHOpYezk6WQKpcl9CZV5p1fQaLlW_HfkfwCNyDxpVqzdGIcud7S2eomksjEUwMcS8QwUI41GEqu7HpLg8poKFQC7_hENUSE0ywVThMpmLkq7Kc4Vi6BVySqfbT6F3xkIj2hRJdatcPOqLAJLt_0p03Bm8ZNckVoBLrjzHwQbSf5yYZwelBu8Xf9ItENhQ_03Og53VPg_n7Ce5Dfed94e5ci-Wkg9U3APZTP_CLtZZy7NYluiBBOnwSA",
+          "version": 9,
+          "file": {
+            "version": 9,
+            "size": 140,
+            "sha256": "74de0f236a531096fef2f132c09b1d08359cd1641e53aa5b0b4a8a83d919edd4",
+            "format": "whole"
+          }
+        }
+      ],
+      "files": [
+        {
+          "version": 9,
+          "size": 140,
+          "sha256": "74de0f236a531096fef2f132c09b1d08359cd1641e53aa5b0b4a8a83d919edd4",
+          "format": "whole",
+          "collection": "saves",
+          "record": "x:KlYGt__fuwc8AfSo8J2xiK9rbCzkoN2McnTgXSGuSWw",
+          "stored": {
+            "label": "pkey-sync vector export e2e-new",
+            "length": 60,
+            "saltHex": "ec4ce2266c1491c5db56abf47eadea72942c4130d38641fd4f06b785e75a4043"
+          }
+        },
+        {
+          "version": 4,
+          "size": 130,
+          "sha256": "67871d1c9bf70d7234ff89c79d5ec1fc025a0eaebbcc879e6383658e9878bb1c",
+          "format": "whole",
+          "collection": "saves",
+          "record": "x:KlYGt__fuwc8AfSo8J2xiK9rbCzkoN2McnTgXSGuSWw",
+          "stored": {
+            "label": "pkey-sync vector export e2e-old",
+            "length": 50,
+            "saltHex": "7e0ba63db4d4a980bd628ce1bf66f1e46c25d980cc637f03e834331676ae24bb"
+          }
+        }
+      ],
+      "expect": {
+        "entries": [
+          {
+            "name": "README.txt",
+            "size": 944,
+            "sha256Hex": "ae5b46a206201fbc3f9c1cbed5691c4548f49a5b8c04ac974e1eb3fca9e20d47",
+            "utf8": "This is a readable copy of data an app synced with Polaris Locker.\n\nThe app made it on this device. It is NOT encrypted: anyone who can open\nthis file can read everything in it. Keep it where you keep your other\nprivate files, and delete it when you no longer need it. The time it was\nmade is \"exportedAt\" in data.json, in milliseconds since 1970-01-01 UTC.\n\nPolaris Locker's own export of this data, from its website, uses the same\nlayout and holds the data as the app stored it: encrypted when the app\nencrypts it.\n\ndata.json                              what this holds, and what could not be read\nstores/sync.cloudSync/settings.json    the synced settings\nstores/sync.cloudSync/records/         the synced records, one file a collection\nstores/sync.cloudSync/index.json       which file holds which collection\nstores/sync.cloudSync/files/           the synced files\nstores/sync.cloudSync/files.json       which file belongs to which record\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/settings.json",
+            "size": 3,
+            "sha256Hex": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+            "utf8": "{}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/0.ndjson",
+            "size": 202,
+            "sha256Hex": "2733fadeaf477c77c984e0efc698c734a8d3ac0d0a3041e032cc57248669f729",
+            "utf8": "{\"file\":{\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"sha256\":\"6d32215fa0cf893a583866e5ff0257ba2984165f05d440ffd8db9a869e9176a2\",\"size\":50,\"version\":4},\"id\":\"slot-1\",\"value\":{\"name\":\"Old\"},\"version\":9}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/0.bin",
+            "size": 50,
+            "sha256Hex": "6d32215fa0cf893a583866e5ff0257ba2984165f05d440ffd8db9a869e9176a2",
+            "hex": "a82597ff78fb858f4632ed1bdf25b7135c0dd29fde5d40ce93f5ae657fd68be72911097ce5d0141ce20b09dc40f14e2b3dcf"
+          },
+          {
+            "name": "stores/sync.cloudSync/files.json",
+            "size": 193,
+            "sha256Hex": "6abda6f4d7b002e0aededd36cb8116cebfde26ed053c769265890813d3083e22",
+            "utf8": "[{\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"id\":\"slot-1\",\"live\":true,\"sha256\":\"6d32215fa0cf893a583866e5ff0257ba2984165f05d440ffd8db9a869e9176a2\",\"size\":50,\"version\":4}]\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/index.json",
+            "size": 96,
+            "sha256Hex": "84c1fcc650aa4b048695dccad88e46e4eee948af298387145cff6e4dc0895b9a",
+            "utf8": "{\"records\":[{\"collection\":\"saves\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/0.ndjson\"}]}\n"
+          },
+          {
+            "name": "data.json",
+            "size": 220,
+            "sha256Hex": "10f22212ce6a4f9bb26d41d2a1033b103a3c6f2d1aa8346f38fa86a8f2c425f4",
+            "utf8": "{\"counts\":{\"files\":1,\"records\":1,\"settings\":0},\"encryption\":\"e2e\",\"exportedAt\":1767225600000,\"product\":\"demo\",\"schema\":\"pkey-sync-export/1\",\"skipped\":[],\"source\":\"device\",\"subject\":\"u_exportSubject0000001\",\"unsynced\":0}\n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2e-binding-names-revision-all",
+      "description": "The same with includeRevisions: the bound file (live true) then the other (live false).",
+      "product": "demo",
+      "subject": "u_exportSubject0000001",
+      "exportedAt": 1767225600000,
+      "encryption": "e2e",
+      "rootHex": "2cebb0ea8b6ed24e4c8858ceaf65b55f519a314413cbb9ea2feaf4715303b0bc",
+      "includeRevisions": true,
+      "unsynced": 0,
+      "changes": [
+        {
+          "record": ["saves", "x:KlYGt__fuwc8AfSo8J2xiK9rbCzkoN2McnTgXSGuSWw"],
+          "ct": "AcjAb9LGP08PvugjpprzMElBE9yplK0ZulhF93JWAfDwChRSK0Bn6gnqaRa00xYWqqwpZNsAaNuRHOpYezk6WQKpcl9CZV5p1fQaLlW_HfkfwCNyDxpVqzdGIcud7S2eomksjEUwMcS8QwUI41GEqu7HpLg8poKFQC7_hENUSE0ywVThMpmLkq7Kc4Vi6BVySqfbT6F3xkIj2hRJdatcPOqLAJLt_0p03Bm8ZNckVoBLrjzHwQbSf5yYZwelBu8Xf9ItENhQ_03Og53VPg_n7Ce5Dfed94e5ci-Wkg9U3APZTP_CLtZZy7NYluiBBOnwSA",
+          "version": 9,
+          "file": {
+            "version": 9,
+            "size": 140,
+            "sha256": "74de0f236a531096fef2f132c09b1d08359cd1641e53aa5b0b4a8a83d919edd4",
+            "format": "whole"
+          }
+        }
+      ],
+      "files": [
+        {
+          "version": 9,
+          "size": 140,
+          "sha256": "74de0f236a531096fef2f132c09b1d08359cd1641e53aa5b0b4a8a83d919edd4",
+          "format": "whole",
+          "collection": "saves",
+          "record": "x:KlYGt__fuwc8AfSo8J2xiK9rbCzkoN2McnTgXSGuSWw",
+          "stored": {
+            "label": "pkey-sync vector export e2e-new",
+            "length": 60,
+            "saltHex": "ec4ce2266c1491c5db56abf47eadea72942c4130d38641fd4f06b785e75a4043"
+          }
+        },
+        {
+          "version": 4,
+          "size": 130,
+          "sha256": "67871d1c9bf70d7234ff89c79d5ec1fc025a0eaebbcc879e6383658e9878bb1c",
+          "format": "whole",
+          "collection": "saves",
+          "record": "x:KlYGt__fuwc8AfSo8J2xiK9rbCzkoN2McnTgXSGuSWw",
+          "stored": {
+            "label": "pkey-sync vector export e2e-old",
+            "length": 50,
+            "saltHex": "7e0ba63db4d4a980bd628ce1bf66f1e46c25d980cc637f03e834331676ae24bb"
+          }
+        }
+      ],
+      "expect": {
+        "entries": [
+          {
+            "name": "README.txt",
+            "size": 944,
+            "sha256Hex": "ae5b46a206201fbc3f9c1cbed5691c4548f49a5b8c04ac974e1eb3fca9e20d47",
+            "utf8": "This is a readable copy of data an app synced with Polaris Locker.\n\nThe app made it on this device. It is NOT encrypted: anyone who can open\nthis file can read everything in it. Keep it where you keep your other\nprivate files, and delete it when you no longer need it. The time it was\nmade is \"exportedAt\" in data.json, in milliseconds since 1970-01-01 UTC.\n\nPolaris Locker's own export of this data, from its website, uses the same\nlayout and holds the data as the app stored it: encrypted when the app\nencrypts it.\n\ndata.json                              what this holds, and what could not be read\nstores/sync.cloudSync/settings.json    the synced settings\nstores/sync.cloudSync/records/         the synced records, one file a collection\nstores/sync.cloudSync/index.json       which file holds which collection\nstores/sync.cloudSync/files/           the synced files\nstores/sync.cloudSync/files.json       which file belongs to which record\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/settings.json",
+            "size": 3,
+            "sha256Hex": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+            "utf8": "{}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/0.ndjson",
+            "size": 202,
+            "sha256Hex": "2733fadeaf477c77c984e0efc698c734a8d3ac0d0a3041e032cc57248669f729",
+            "utf8": "{\"file\":{\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"sha256\":\"6d32215fa0cf893a583866e5ff0257ba2984165f05d440ffd8db9a869e9176a2\",\"size\":50,\"version\":4},\"id\":\"slot-1\",\"value\":{\"name\":\"Old\"},\"version\":9}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/0.bin",
+            "size": 50,
+            "sha256Hex": "6d32215fa0cf893a583866e5ff0257ba2984165f05d440ffd8db9a869e9176a2",
+            "hex": "a82597ff78fb858f4632ed1bdf25b7135c0dd29fde5d40ce93f5ae657fd68be72911097ce5d0141ce20b09dc40f14e2b3dcf"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/1.bin",
+            "size": 60,
+            "sha256Hex": "90ef9d07d98b67bca620b42d4a84579103f6e7f37fd92d9184b9f84f72b7a801",
+            "hex": "aad2478cc0f60aad58f3e268ecc537ee885e5cba0f3fb9858b86a11cd0f59a6f4899653f5c91f2939cc25cfeb9d18a81c21fe5bd557e631e9c706ec0"
+          },
+          {
+            "name": "stores/sync.cloudSync/files.json",
+            "size": 385,
+            "sha256Hex": "389fbede6011980e7118de3facdb86676a62348d89a21c38732cfa7f60054b3a",
+            "utf8": "[{\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"id\":\"slot-1\",\"live\":true,\"sha256\":\"6d32215fa0cf893a583866e5ff0257ba2984165f05d440ffd8db9a869e9176a2\",\"size\":50,\"version\":4},{\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/1.bin\",\"id\":\"slot-1\",\"live\":false,\"sha256\":\"90ef9d07d98b67bca620b42d4a84579103f6e7f37fd92d9184b9f84f72b7a801\",\"size\":60,\"version\":9}]\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/index.json",
+            "size": 96,
+            "sha256Hex": "84c1fcc650aa4b048695dccad88e46e4eee948af298387145cff6e4dc0895b9a",
+            "utf8": "{\"records\":[{\"collection\":\"saves\",\"count\":1,\"entry\":\"stores/sync.cloudSync/records/0.ndjson\"}]}\n"
+          },
+          {
+            "name": "data.json",
+            "size": 220,
+            "sha256Hex": "2828a04ae63ea9a9109d6b2c9d92163ca6eda5e8e2261b353fbb2209e4e93961",
+            "utf8": "{\"counts\":{\"files\":2,\"records\":1,\"settings\":0},\"encryption\":\"e2e\",\"exportedAt\":1767225600000,\"product\":\"demo\",\"schema\":\"pkey-sync-export/1\",\"skipped\":[],\"source\":\"device\",\"subject\":\"u_exportSubject0000001\",\"unsynced\":0}\n"
+          }
+        ]
+      }
+    },
+    {
+      "id": "server-file-mismatch",
+      "description": "Server mode: a file served shorter than its pointer and one whose bytes do not match the pointer's sha256 are written as served and listed sync-file-invalid with partial true.",
+      "product": "demo",
+      "subject": "u_exportSubject0000001",
+      "exportedAt": 1767225600000,
+      "encryption": "server",
+      "includeRevisions": false,
+      "unsynced": 0,
+      "changes": [
+        {
+          "record": ["saves", "slot-1"],
+          "value": { "name": "Short" },
+          "version": 3,
+          "file": {
+            "version": 3,
+            "size": 40,
+            "sha256": "8aa8dd113187749965c5d0f24ec604d891e6805e51d4ca251a466f97c45c343c",
+            "format": "whole"
+          }
+        },
+        {
+          "record": ["saves", "slot-2"],
+          "value": { "name": "Flipped" },
+          "version": 4,
+          "file": {
+            "version": 4,
+            "size": 40,
+            "sha256": "3ca4debf2fa491f851cb893b671999fb1634a55041208793e29840e1b315b1f8",
+            "format": "whole"
+          }
+        }
+      ],
+      "files": [
+        {
+          "version": 3,
+          "size": 40,
+          "sha256": "8aa8dd113187749965c5d0f24ec604d891e6805e51d4ca251a466f97c45c343c",
+          "format": "whole",
+          "collection": "saves",
+          "record": "slot-1",
+          "stored": {
+            "label": "pkey-sync vector export server-short",
+            "length": 40,
+            "cut": 25
+          }
+        },
+        {
+          "version": 4,
+          "size": 40,
+          "sha256": "3ca4debf2fa491f851cb893b671999fb1634a55041208793e29840e1b315b1f8",
+          "format": "whole",
+          "collection": "saves",
+          "record": "slot-2",
+          "stored": {
+            "label": "pkey-sync vector export server-flip",
+            "length": 40,
+            "flipAt": 3
+          }
+        }
+      ],
+      "expect": {
+        "entries": [
+          {
+            "name": "README.txt",
+            "size": 944,
+            "sha256Hex": "ae5b46a206201fbc3f9c1cbed5691c4548f49a5b8c04ac974e1eb3fca9e20d47",
+            "utf8": "This is a readable copy of data an app synced with Polaris Locker.\n\nThe app made it on this device. It is NOT encrypted: anyone who can open\nthis file can read everything in it. Keep it where you keep your other\nprivate files, and delete it when you no longer need it. The time it was\nmade is \"exportedAt\" in data.json, in milliseconds since 1970-01-01 UTC.\n\nPolaris Locker's own export of this data, from its website, uses the same\nlayout and holds the data as the app stored it: encrypted when the app\nencrypts it.\n\ndata.json                              what this holds, and what could not be read\nstores/sync.cloudSync/settings.json    the synced settings\nstores/sync.cloudSync/records/         the synced records, one file a collection\nstores/sync.cloudSync/index.json       which file holds which collection\nstores/sync.cloudSync/files/           the synced files\nstores/sync.cloudSync/files.json       which file belongs to which record\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/settings.json",
+            "size": 3,
+            "sha256Hex": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+            "utf8": "{}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/records/0.ndjson",
+            "size": 410,
+            "sha256Hex": "b4a9d03c30be3ea25f304d8a26461a9e290e2f5921b03bc8e1a1394a9da5e653",
+            "utf8": "{\"file\":{\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"sha256\":\"e54aeae9e1af17e0a2deb9e7d1ccfa27db57977415b24fa1a5a2f7ee52bdeb61\",\"size\":25,\"version\":3},\"id\":\"slot-1\",\"value\":{\"name\":\"Short\"},\"version\":3}\n{\"file\":{\"entry\":\"stores/sync.cloudSync/files/1.bin\",\"sha256\":\"12c6bf22fed3a3961f03e0cc698d3be236b2ad04fd7c3bd0dcb04c5b869c931b\",\"size\":40,\"version\":4},\"id\":\"slot-2\",\"value\":{\"name\":\"Flipped\"},\"version\":4}\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/0.bin",
+            "size": 25,
+            "sha256Hex": "e54aeae9e1af17e0a2deb9e7d1ccfa27db57977415b24fa1a5a2f7ee52bdeb61",
+            "hex": "1ec59840f9517f3349db2aabe87b5d28462402cc8119e8949a"
+          },
+          {
+            "name": "stores/sync.cloudSync/files/1.bin",
+            "size": 40,
+            "sha256Hex": "12c6bf22fed3a3961f03e0cc698d3be236b2ad04fd7c3bd0dcb04c5b869c931b",
+            "hex": "9a610f9b3571a06377a24501aee766eb6f63f735cd19f1814e6880f089efcfaa3b7658eda82c3cc3"
+          },
+          {
+            "name": "stores/sync.cloudSync/files.json",
+            "size": 384,
+            "sha256Hex": "482d2443901edd00345d5a3bd2493f0dded0048dcfb841ec697d36a60d401f76",
+            "utf8": "[{\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"id\":\"slot-1\",\"live\":true,\"sha256\":\"e54aeae9e1af17e0a2deb9e7d1ccfa27db57977415b24fa1a5a2f7ee52bdeb61\",\"size\":25,\"version\":3},{\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/1.bin\",\"id\":\"slot-2\",\"live\":true,\"sha256\":\"12c6bf22fed3a3961f03e0cc698d3be236b2ad04fd7c3bd0dcb04c5b869c931b\",\"size\":40,\"version\":4}]\n"
+          },
+          {
+            "name": "stores/sync.cloudSync/index.json",
+            "size": 96,
+            "sha256Hex": "1edf7885e94af01bcc46b70e29c1b52e081cb55283c3fa6d2bbbf36a6a455235",
+            "utf8": "{\"records\":[{\"collection\":\"saves\",\"count\":2,\"entry\":\"stores/sync.cloudSync/records/0.ndjson\"}]}\n"
+          },
+          {
+            "name": "data.json",
+            "size": 468,
+            "sha256Hex": "df6120fe8cf73b05cc4a449df0f9105c0fe1265689959444148beab72c5301e4",
+            "utf8": "{\"counts\":{\"files\":2,\"records\":2,\"settings\":0},\"encryption\":\"server\",\"exportedAt\":1767225600000,\"product\":\"demo\",\"schema\":\"pkey-sync-export/1\",\"skipped\":[{\"code\":\"sync-file-invalid\",\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/0.bin\",\"kind\":\"file\",\"partial\":true},{\"code\":\"sync-file-invalid\",\"collection\":\"saves\",\"entry\":\"stores/sync.cloudSync/files/1.bin\",\"kind\":\"file\",\"partial\":true}],\"source\":\"device\",\"subject\":\"u_exportSubject0000001\",\"unsynced\":0}\n"
+          }
+        ]
+      }
+    }
   ]
 }

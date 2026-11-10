@@ -7764,6 +7764,26 @@ msgstr "Déjà décidé"
 msgid "core.codes.sync-merge-closed.message"
 msgstr "Le choix a déjà été fait ou remplacé par une modification plus récente. Rien n’a changé."
 
+#. Copy too large
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-too-large.title"
+msgstr "Copie trop volumineuse"
+
+#. The synced data is too big to save as one file. Nothing was saved.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-too-large.message"
+msgstr "Les données synchronisées sont trop volumineuses pour tenir dans un seul fichier. Rien n'a été enregistré."
+
+#. Copy not saved
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-failed.title"
+msgstr "Copie non enregistrée"
+
+#. The copy of your synced data couldn't be saved. Check the destination and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-failed.message"
+msgstr "La copie de vos données synchronisées n'a pas pu être enregistrée. Vérifiez la destination et réessayez."
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"

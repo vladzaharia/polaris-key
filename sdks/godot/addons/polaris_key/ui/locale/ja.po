@@ -7738,6 +7738,26 @@ msgstr "選択済み"
 msgid "core.codes.sync-merge-closed.message"
 msgstr "すでに選択済みか、より新しい変更に置き換えられています。何も変更されていません。"
 
+#. Copy too large
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-too-large.title"
+msgstr "コピーが大きすぎます"
+
+#. The synced data is too big to save as one file. Nothing was saved.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-too-large.message"
+msgstr "同期したデータが大きすぎて、1つのファイルに保存できません。何も保存されていません。"
+
+#. Copy not saved
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-failed.title"
+msgstr "コピーを保存できません"
+
+#. The copy of your synced data couldn't be saved. Check the destination and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-failed.message"
+msgstr "同期したデータのコピーを保存できませんでした。保存先を確認して、もう一度お試しください。"
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"

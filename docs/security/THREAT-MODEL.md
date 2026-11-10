@@ -9003,6 +9003,32 @@ the system transfer service for the task's life; the SDK cancels tasks older tha
 relaunch and all of them at sign-out. While the app is suspended, a ranged read is bounded only by
 the task's end.
 
+### Cloud Sync device export: T33 (U-51)
+
+`cloudSync.export()` writes a person's synced data, decrypted, to a file on the device
+(WIRE-CONTRACT-V5 §13.12). It adds no route, header or server row. The plan labelled the row T33;
+it is the next free number at U-51.1's base, and the lead renumbers it at merge if another row
+took it first.
+
+- **T33, the device export writes plaintext outside protected storage.** In end-to-end mode the
+  data was ciphertext at rest and is now a readable file, in a place the person chose. Controls:
+  an explicit destination only (the SDK never picks a location, never writes to shared storage on
+  its own and never uploads); the file is written as `<destination>.partial` with owner-only
+  access, flushed and renamed over the destination, and an error or a cancel removes the partial,
+  so no other plaintext temp copy exists; no value, id or path is logged; no secret and no
+  ciphertext is in the archive (the root, wraps, recovery code, device keys, tokens, `clientId`s,
+  the journal and blinded names are never written); entry names are fixed or indexes, so a
+  person-chosen id or a Worker-chosen name cannot make an unzip write outside its folder; the
+  entry and byte caps (`SYNC_EXPORT_MAX_ENTRIES`, `SYNC_EXPORT_MAX_BYTES`) are checked before the
+  first byte, so a hostile store cannot exhaust the disk or memory (the host holds one segment at
+  a time). A row the Worker forged or altered fails to open (the name check of §13.10.4) and lands
+  in `skipped`; a file the sealed value does not bind is not written. In server mode the export
+  trusts the Worker as sync does. Residual: once written, the file is as safe as its holder keeps
+  it (backups, shared folders, a stolen unlocked device); kept revisions in end-to-end mode are
+  authenticated but bound to nothing, so a Worker can present another file of the same collection
+  as an older revision (an integrity limit of the person's own copy, never a disclosure); the
+  hourly file allowance (§13.8.2) means a large export can wait.
+
 ### The account override layer (U-03, U-27)
 
 Operators' managed config for one account on one product (`account_overrides`, keyed by the

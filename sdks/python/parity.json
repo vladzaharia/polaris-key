@@ -581,6 +581,11 @@
     "server.webhooks": {
       "status": "planned",
       "wp": "SP-67"
+    },
+    "sync.export": {
+      "status": "planned",
+      "wp": "U-51",
+      "note": "U-51.1 registered the feature; this SDK's slice implements it."
     }
   }
 }

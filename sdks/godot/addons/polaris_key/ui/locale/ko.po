@@ -7738,6 +7738,26 @@ msgstr "이미 선택됨"
 msgid "core.codes.sync-merge-closed.message"
 msgstr "이미 선택했거나 더 최근 변경으로 대체되었습니다. 변경된 내용은 없습니다."
 
+#. Copy too large
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-too-large.title"
+msgstr "사본이 너무 큼"
+
+#. The synced data is too big to save as one file. Nothing was saved.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-too-large.message"
+msgstr "동기화된 데이터가 너무 커서 파일 하나로 저장할 수 없습니다. 아무것도 저장되지 않았습니다."
+
+#. Copy not saved
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-failed.title"
+msgstr "사본을 저장하지 못함"
+
+#. The copy of your synced data couldn't be saved. Check the destination and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-export-failed.message"
+msgstr "동기화된 데이터의 사본을 저장하지 못했습니다. 저장 위치를 확인하고 다시 시도하세요."
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"

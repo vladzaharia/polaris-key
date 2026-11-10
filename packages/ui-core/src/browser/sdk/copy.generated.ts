@@ -676,6 +676,16 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "File not opened",
     message: "The synced file failed its check, so it wasn't used. Try again.",
   },
+  "sync-export-too-large": {
+    title: "Copy too large",
+    message:
+      "The synced data is too big to save as one file. Nothing was saved.",
+  },
+  "sync-export-failed": {
+    title: "Copy not saved",
+    message:
+      "The copy of your synced data couldn't be saved. Check the destination and try again.",
+  },
   "sync-merge-closed": {
     title: "Already decided",
     message:

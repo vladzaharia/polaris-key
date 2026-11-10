@@ -818,6 +818,11 @@
       "runtime": ["linux", "macos", "windows", "android", "ios", "web"],
       "reason": "runtime",
       "note": "Godot exports games and apps, not servers; a game's backend uses a server core in its own language (plans/SP-53.md §5)."
+    },
+    "sync.export": {
+      "status": "planned",
+      "wp": "U-51",
+      "note": "U-51.1 registered the feature; this SDK's slice implements it."
     }
   }
 }

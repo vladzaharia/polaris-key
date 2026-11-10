@@ -153,6 +153,17 @@ export const SYNC_CDC_FORMAT = "pkey-sync-cdc/1";
 /** §13.11.1: the wrap format. */
 export const SYNC_WRAP_FORMAT = "pkey-sync-wrap/1";
 
+/** §13.12: the schema of a device export's `data.json` (`cloudSync.export()`). */
+export const SYNC_EXPORT_FORMAT = "pkey-sync-export/1";
+/** §13.12: the folder of the Cloud Sync store inside an export, as in the portal's zip (U-12.3). */
+export const SYNC_EXPORT_STORE_DIR = "stores/sync.cloudSync/";
+/** §13.12: most entries an export holds; over it the export is refused (`sync-export-too-large`). The portal's zip cap. */
+export const SYNC_EXPORT_MAX_ENTRIES = 65_000;
+/** §13.12: most file bytes (plaintext) an export holds, the zip32 limit; over it the export is refused. The portal's zip cap. */
+export const SYNC_EXPORT_MAX_BYTES = 4_294_967_295;
+/** §13.12: most bytes a browser export holds as a Blob when the host gives no sink (256 MiB). */
+export const SYNC_EXPORT_BLOB_MAX_BYTES = 268_435_456;
+
 /** §13.11.2: reads of the recovery blob per device a day. */
 export const SYNC_RECOVERY_READS_PER_DAY = 5;
 /** §13.11.4: a reset keeps the old ring this many days, read-only. */

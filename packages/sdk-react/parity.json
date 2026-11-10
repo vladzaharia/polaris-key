@@ -687,6 +687,11 @@
       "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
       "note": "A browser app or desktop renderer is not a server; the backend uses @polaris-key/server (SP-55)."
+    },
+    "sync.export": {
+      "status": "planned",
+      "wp": "U-51",
+      "note": "U-51.1 registered the feature; this SDK's slice implements it. The desktop bridge answers the typed N/A (the host serves no Cloud Sync verb on bridge v4)."
     }
   }
 }

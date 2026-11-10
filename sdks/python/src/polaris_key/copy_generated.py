@@ -187,6 +187,8 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "recovery-code-invalid": CopyEntry("Recovery code not valid", "That recovery code isn't right. Check it and try again."),
         "sync-encryption-pinned": CopyEntry("Encryption required", "This app needs encrypted sync, which isn't available right now. Sync stays off."),
         "sync-file-invalid": CopyEntry("File not opened", "The synced file failed its check, so it wasn't used. Try again."),
+        "sync-export-too-large": CopyEntry("Copy too large", "The synced data is too big to save as one file. Nothing was saved."),
+        "sync-export-failed": CopyEntry("Copy not saved", "The copy of your synced data couldn't be saved. Check the destination and try again."),
         "sync-merge-closed": CopyEntry("Already decided", "The choice was already made, or a newer change replaced it. Nothing changed."),
         "invalid-options": CopyEntry("App not set up", "The app's licensing isn't set up correctly. Contact the developer."),
         "invalid-argument": CopyEntry("Request not accepted", "The app sent a request the licensing bridge could not read. Contact the developer."),
