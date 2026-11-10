@@ -1103,7 +1103,7 @@ jobs:
           java-version: "17"
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: true
       - name: Android SDK packages
         run: |
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -1162,11 +1162,13 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
-      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
+      # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
+      # and overflowed the repo's 10 GB cache quota).
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/next' }}
+          cache-cleanup: on-success
       - name: Lint (ktlint and detekt against the lint-debt ledger)
         working-directory: sdks/kotlin
         run: tools/lint.sh check
@@ -1245,11 +1247,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
-      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
+      # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
+      # and overflowed the repo's 10 GB cache quota).
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: true
       - name: Secret Service (gnome-keyring) for the headless session
         if: runner.os == 'Linux'
         run: |
@@ -1331,11 +1334,13 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
-      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
+      # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
+      # and overflowed the repo's 10 GB cache quota).
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/next' }}
+          cache-cleanup: on-success
       # Per-kit modernity lint (UI-KITS.md §7.3, UK-15): the compose source rules of
       # packages/ui-qa/rules/kit-rules.json. Zero dependencies, so plain Node runs it; it fails on any
       # hit beyond the debt ledger (packages/ui-qa/rules/kit-debt.json) and on stale debt.
@@ -1434,11 +1439,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
-      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
+      # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
+      # and overflowed the repo's 10 GB cache quota).
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.toolchain != 'documented' }}
+          cache-read-only: true
       - name: Android SDK packages
         run: |
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -1498,11 +1504,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      # One writer per cache key: only main saves the Gradle home and build cache; pull requests and
-      # branches restore it read-only (a write per push was ~1 GB and overflowed the repo's cache quota).
+      # One writer per cache key: only next saves the Gradle home and build cache (the kotlin and android
+      # jobs); every other job and every pull request restores it read-only (a write per push was ~1 GB
+      # and overflowed the repo's 10 GB cache quota).
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.api-level != 36 }}
+          cache-read-only: true
       - name: KVM for the emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
