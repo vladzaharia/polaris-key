@@ -14,6 +14,16 @@ allprojects {
     version = "0.1.0"
 }
 
+// Every test JVM runs in one locale and zone, so a test never depends on the machine it runs on (a
+// Roborazzi render, a worded date, a number format). A test that wants another passes it explicitly.
+subprojects {
+    tasks.withType<Test>().configureEach {
+        systemProperty("user.language", "en")
+        systemProperty("user.country", "US")
+        systemProperty("user.timezone", "UTC")
+    }
+}
+
 // :platform publishes one coordinate per flavour (polaris-key-platform-play, -direct; P6-09), and a
 // consumer that is itself published (the Godot binding, P6-10) declares that coordinate so its POM
 // names the right flavour. Inside this build the coordinate IS the :platform project; variant-aware
