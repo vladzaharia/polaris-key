@@ -1,4 +1,4 @@
-// @pkey-feature connect.transfer
+// @pkey-feature connect.transfer connect.local
 //
 // The `xfer` section of conformance/corpus/v2/peer-matrix.json (WIRE-CONTRACT-V5 section 15.11): the control-body
 // codecs, the partial file's path and the shown name, and every machine row (window, offer, hash, ending, resume,
@@ -226,6 +226,15 @@ class PeerMatrixXferTest : ConformanceSuite() {
 
     @Test
     fun limitsRows() = section("limits")
+
+    /** The mode-`l` rows of `local.xfer` (section 15.11 "Where it runs", section 15.12): the same machine, the link's category rule. */
+    @Test
+    fun localModeRows() {
+        val f = Failures("peer-matrix local xfer")
+        val list = rows(Corpus.v2("peer-matrix.json")["local"]!!.obj["xfer"])
+        for (row in list) run(row, f)
+        f.done(list.size)
+    }
 
     private fun section(name: String) {
         val f = Failures("peer-matrix xfer $name")
