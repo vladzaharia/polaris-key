@@ -345,10 +345,17 @@ export class LocalLinkStore {
     label?: string;
     cats: readonly string[];
     now: number;
-  }): Promise<{ stored: true; id: string } | { stored: false }> {
+    /** Judged inside the store call, under the lock: false stores nothing (the gate went off). */
+    allowed?: () => boolean;
+  }): Promise<{ stored: true; id: string } | { stored: false; off?: true }> {
     const id = localLinkId(link.peerKey);
     let full = false;
+    let off = false;
     await this.update((rows) => {
+      if (link.allowed && !link.allowed()) {
+        off = true;
+        return null;
+      }
       if (rows.length >= MAX_LOCAL_LINKS) {
         full = true;
         return null;
@@ -373,6 +380,7 @@ export class LocalLinkStore {
         },
       ];
     });
+    if (off) return { stored: false, off: true };
     return full ? { stored: false } : { stored: true, id };
   }
 }

@@ -17,6 +17,11 @@ import type {
   LocalPairHandle,
   LocalPaired,
 } from "../../src/connect/index.js";
+import {
+  Attempt,
+  storeLink,
+  type LocalSource,
+} from "../../src/connect/localCommon.js";
 import { resetLocalBudgets } from "../../src/connect/localLinks.js";
 import {
   LOCAL_STATE_FILE,
@@ -458,6 +463,33 @@ describe("the store", () => {
     expect(rec.schema).toBe("pkey.connect.local.v1");
     expect(rec.product).toBe(PRODUCT);
     expect(rec.links).toHaveLength(1);
+  });
+
+  it("a pairing already storing when the gate clears writes nothing", async () => {
+    const w = await world();
+    const store = w.a.connect.localStore();
+    let on = true;
+    const src = {
+      slug: PRODUCT,
+      now: () => T0,
+      allowed: () => on,
+      store,
+      notify: () => undefined,
+      onChange: () => () => undefined,
+    } as LocalSource;
+    const a = new Attempt();
+    // The gate is judged inside the store call: it clears between the pairing's last check and the write.
+    on = false;
+    const paired = await storeLink(src, a, {
+      type: "local-link",
+      ownKey: new Uint8Array(32).fill(2),
+      peerKey: new Uint8Array(32).fill(9),
+      secret: new Uint8Array(32).fill(4),
+      cats: [],
+    } as never);
+    expect(paired).toBeNull();
+    expect(a.failure).toBe("closed");
+    expect(await store.rows()).toHaveLength(0);
   });
 
   it("a record with two rows of one id is unusable and is not replaced", async () => {
