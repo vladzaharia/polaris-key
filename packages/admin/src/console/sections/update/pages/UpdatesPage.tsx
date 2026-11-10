@@ -11,6 +11,7 @@
 import * as React from "react";
 import { Tabs } from "radix-ui";
 import { CloudOff } from "lucide-react";
+import { channelLabel } from "@polaris-key/manifest";
 import type { UpdaterGroup, UpdaterId, UpdatersView } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
@@ -198,7 +199,7 @@ function LoadingCards(): React.ReactElement {
 
 const GROUP_TITLE: Record<UpdaterGroup["id"], string> = {
   direct: "Direct downloads",
-  play: "Google Play",
+  play: channelLabel("google-play"),
 };
 
 function StatePill({ g }: { g: UpdaterGroup }): React.ReactElement {

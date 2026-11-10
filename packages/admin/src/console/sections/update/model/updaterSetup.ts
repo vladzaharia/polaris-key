@@ -5,6 +5,7 @@
  * the console's. Identifiers sit in backticks; the page draws them as code.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import type { CodeLanguage } from "../../../../lib/highlight.js";
 import type { UpdaterId } from "../../../../api.js";
 
@@ -20,7 +21,7 @@ export const UPDATER_LABEL: Record<UpdaterId, string> = {
   sparkle: "Sparkle",
   winsparkle: "WinSparkle",
   velopack: "Velopack",
-  "app-installer": "App Installer",
+  "app-installer": channelLabel("app-installer"),
   zsync: "AppImage",
   godot: "Godot updater",
   play: "Play in-app updates",
