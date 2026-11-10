@@ -62,6 +62,14 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Corrections to this brief (2026-11-09, verified against the code)
+
+- Wire is v5 (`PROTOCOL_VERSION = 5`, `docs/security/WIRE-CONTRACT-V5.md`); nothing here changes the wire.
+- `tiers` had no `entitlements_json` and no tier entitlement field existed; the manifest tier spelling is `policyFingerprint`, not `fingerprintMode`.
+- The platform registry exists: `RESERVED_ENTITLEMENT_KEYS` in `shared-manifest/src/reservedNames.ts` (it also lists `pkey.cloudConnect.relayBytes`).
+- The console copy-debt ledger (`packages/admin/test/copy.debt.json`) is already empty.
+- The slices follow `_lead/plans/LX-34-LX-36-LX-41-slices.md`. LX-34.2 (migrations `0160_a`, `0160_b`, provisional) ships `tiers.entitlements_json`, `license_entitlements` and the ledger `entitlement_bucket_backfill`. LX-34.7 and LX-34.8 are the pure planner `core/licensing/entitlementBuckets.ts` and the job `license.entitlement-buckets`.
+
 ## UX coverage (2026-10-09)
 
 Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.

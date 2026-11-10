@@ -246,6 +246,10 @@ export interface TierRow {
   /** LX-41.1 (0154_a): what a licence of this tier does when it lapses; NULL = `stop`. No reader or
    *  writer yet. */
   on_expiry?: string | null;
+  /** LX-34.2 (0160_a): the tier's entitlements bucket, a managed-payload `entitlements` map as JSON;
+   *  NULL = none. No reader or writer yet (LX-34.5 writes it, LX-34.10 reads it). Optional because
+   *  `upsertTier` callers build rows without it and the upsert must not write it. */
+  entitlements_json?: string | null;
   modified_by: string | null;
   modified_at: number;
   /** ST-01b (0079): who owns the row. */

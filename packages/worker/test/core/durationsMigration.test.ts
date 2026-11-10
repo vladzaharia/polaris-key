@@ -1,6 +1,12 @@
 // LX-41.1 (plans/LX-41.md §6.1): the duration columns and their vocabulary triggers, applied to a
 // populated pre-migration database. Nothing reads the columns yet; this pins the schema.
-import { MIGRATIONS_DIR, MIGRATION_FILES } from "./migrationFiles.js";
+import {
+  MIGRATIONS_DIR,
+  MIGRATION_FILES,
+  applyMigrations,
+  columnsOf,
+  databaseBefore,
+} from "./migrationFiles.js";
 import Database from "better-sqlite3";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -18,12 +24,7 @@ const FIRST = MINE[0]!;
 const DOWN = join(HERE, "..", "scripts", "rollback", "0154_durations.down.sql");
 
 function populated(): Database.Database {
-  const db = new Database(":memory:");
-  for (const f of FILES) {
-    if (f >= FIRST) break;
-    db.exec(readFileSync(join(DIR, f), "utf8"));
-  }
-  db.pragma("foreign_keys = OFF");
+  const db = databaseBefore(FIRST);
   db.exec(`
     INSERT INTO tiers (product, id, label, modified_at) VALUES ('p', 'pro', 'Pro', 1);
     INSERT INTO licenses (product, id, status, activated_at, expires_at, modified_at)
@@ -31,14 +32,8 @@ function populated(): Database.Database {
   return db;
 }
 
-function migrate(db: Database.Database): void {
-  for (const f of MINE) db.exec(readFileSync(join(DIR, f), "utf8"));
-}
-
-const cols = (db: Database.Database, t: string): string[] =>
-  (db.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map(
-    (c) => c.name,
-  );
+const migrate = (db: Database.Database): void => applyMigrations(db, MINE);
+const cols = columnsOf;
 
 describe("duration columns migration", () => {
   it("ships exactly four files, one ADD COLUMN each", () => {

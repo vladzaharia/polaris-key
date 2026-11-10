@@ -95,6 +95,10 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "license_batches",
     // LX-33's P0-49 job ledger; dropped after release N+1.
     "license_limit_backfill",
+    // LX-34.2: the product's entitlement catalog (migration 0160_b); writer: services/license/ingest.ts (LX-34.5).
+    "license_entitlements",
+    // LX-34's P0-49 job ledger (migration 0160_b); dropped after release N+1 (LX-34.10).
+    "entitlement_bucket_backfill",
   ],
   config: [
     "product_schema",
