@@ -23,6 +23,8 @@ extends SceneTree
 
 const SDK := preload("res://addons/polaris_key/polaris_key.gd")
 const Context := preload("res://tests/support/test_context.gd")
+## How long the exit drain waits for pending worker tasks (a wall-clock bound on teardown only).
+const DRAIN_MAX_MSEC := 10000
 
 ## Named suite sets. Later work packages append their suites to `ci`; `profile` stays outside, and
 ## so does `ui_matrix` (about a minute), which run_tests.sh runs as a step of its own. `dev_live`
@@ -126,8 +128,27 @@ func _run(args: PackedStringArray, at: int) -> void:
 		if not ok:
 			failed += 1
 
+	failed += await _drain()
 	print("PKEY-TEST SUMMARY suites=%d checks=%d failed=%d" % [names.size(), checks, failed])
 	quit(1 if failed > 0 else 0)
+
+
+## Waits until nothing the SDK started is still running, so the engine quits with no worker task or
+## suspended coroutine alive (a task alive at exit crashes the teardown of some builds, and a
+## coroutine alive at exit is reported as a leaked object): every peer-pump offload and pack job
+## has returned, then two frames let the freed nodes and closed sockets go. Returns the failures
+## (1 when work is still pending after DRAIN_MAX_MSEC).
+func _drain() -> int:
+	var began := Time.get_ticks_msec()
+	while PKeyPeerPump.pending_total + PKeyPackJob.pending > 0 and Time.get_ticks_msec() - began < DRAIN_MAX_MSEC:
+		await process_frame
+	await process_frame
+	await process_frame
+	var left := PKeyPeerPump.pending_total + PKeyPackJob.pending
+	if left > 0:
+		print("FAIL runner drain — %d worker tasks still pending after %d ms (pump %d, pack jobs %d)" % [left, DRAIN_MAX_MSEC, PKeyPeerPump.pending_total, PKeyPackJob.pending])
+		return 1
+	return 0
 
 
 func _run_suite(t: PKeyTestContext, name: String, extra: PackedStringArray) -> bool:

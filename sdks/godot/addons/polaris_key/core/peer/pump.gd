@@ -28,6 +28,11 @@ extends RefCounted
 const MAX_TASKS := 2
 const FRAME_BUDGET_USEC := 8000
 
+## Every `offload` call that has not returned yet, in any pump (waiting for a slot or running). A host
+## that quits (the test runner) waits for it to reach zero: a worker task or a suspended coroutine
+## alive at exit crashes the teardown of some engine builds.
+static var pending_total := 0
+
 ## The number of tasks running now and the most that ever ran together (a test reads them).
 var in_flight := 0
 var peak_in_flight := 0
@@ -115,6 +120,7 @@ func offload(work: Callable) -> Variant:
 	if not uses_threads():
 		inline_run += 1
 		return work.call()
+	pending_total += 1
 	while in_flight >= MAX_TASKS:
 		await _tree.process_frame
 	in_flight += 1
@@ -125,6 +131,7 @@ func offload(work: Callable) -> Variant:
 		await _tree.process_frame
 	WorkerThreadPool.wait_for_task_completion(id)
 	in_flight -= 1
+	pending_total -= 1
 	tasks_run += 1
 	if box.is_empty():
 		return null
