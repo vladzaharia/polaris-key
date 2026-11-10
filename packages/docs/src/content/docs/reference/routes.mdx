@@ -183,6 +183,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}/resume` | distribution | Resume an outlet rollout (CI) |
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}` | distribution | Start an outlet rollout, or set its percentage (CI) |
 | GET | `/{product}/distribution/scoop/{channel}.json` | distribution | Scoop app manifest for one channel |
+| GET | `/{product}/identity/.well-known/openid-configuration` | identity | The product's OpenID provider metadata (Sign in with this product) |
 | POST | `/{product}/identity/attach` | identity | Add the device's licence to the account signed in on it |
 | GET | `/{product}/identity/auth/callback` | identity | OIDC redirect URI |
 | GET | `/{product}/identity/auth/choose` | identity | The legacy sign-in's license chooser (I-26) |
@@ -198,10 +199,12 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/identity/auth/logout` | identity | End the browser session |
 | GET | `/{product}/identity/auth/start` | identity | Begin browser OIDC (PKCE) — 302 to the IdP |
 | GET | `/{product}/identity/authorize` | identity | Send a person to the sign-in card for an app (OAuth-shaped authorize) |
+| POST | `/{product}/identity/authorize` | identity | Send a person to the sign-in card from a form (authorize, form POST) |
 | POST | `/{product}/identity/choice/cancel` | identity | End the pending sign-in; nothing is bound |
 | POST | `/{product}/identity/choice/complete` | identity | Finish the sign-in with the person's choice |
 | POST | `/{product}/identity/choice/devices` | identity | The devices using a full licence (Replace) |
 | POST | `/{product}/identity/choice/licenses` | identity | A fresh licence choice for the pending sign-in |
+| GET | `/{product}/identity/jwks` | identity | The product's issuer key set (Sign in with this product) |
 | GET | `/{product}/identity/link` | identity | What the app may offer to link (I-43.2) |
 | POST | `/{product}/identity/link` | identity | Add a Google or Apple identity to the signed-in account (I-43.2) |
 | POST | `/{product}/identity/nearby/approve` | identity | The signed-in device approves or denies a nearby sign-in (I-40.5) |

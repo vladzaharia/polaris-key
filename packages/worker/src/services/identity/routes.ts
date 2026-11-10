@@ -21,6 +21,9 @@
  *     /identity/auth/choose                 GET   the legacy sign-in's licence chooser (I-26)
  *                                           POST  record a step of it, or the choice
  *     /identity/authorize                   GET   I-08, begin the app passthrough sign-in
+ *                                           POST  I-21.5, the same from a form (parameters in the body)
+ *     /identity/.well-known/openid-configuration  GET  I-21.5, the issuer's provider metadata (issuer on)
+ *     /identity/jwks                        GET   I-21.5, the issuer's key set (issuer on)
  *     /identity/token                       POST  I-08, redeem the code (form body)
  *     /identity/nonce                       POST  I-13.2, the native exchange's nonce (keys in the body)
  *     /identity/link                        GET   I-43.2, the link offer (device bearer)
@@ -92,6 +95,10 @@ import { handleLink } from "./passthrough/link.js";
 import { readCiJson } from "../../core/ciScope.js";
 import { handleChoice } from "./passthrough/choiceRoutes.js";
 import { handleRestoreKey } from "./restore/route.js";
+import {
+  handleIssuerJwks,
+  handleOpenIdConfiguration,
+} from "./issuer/discovery.js";
 
 /** The grant routes' largest body: a grant, a licence id or a choice with a key. */
 const CHOICE_BODY_CAP = 4 * 1024;
@@ -142,7 +149,7 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
   // CORS without credentials. Both handlers keep their own method guard and rate limits.
   {
     path: "authorize",
-    methods: ["GET"],
+    methods: ["GET", "POST"],
     auth: { kind: "none" },
     handler: ({ req, env, db, product, now, settings, hooks }) =>
       handleAuthorize({
@@ -154,6 +161,22 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
         hooks,
         ...(settings ? { settings } : {}),
       }),
+  },
+  // I-21.5 (§12.13.1): the issuer's public documents. Served only while `identity.issuer.enabled`
+  // is on, else the registry's 404. No `cors` flag: the allowlist is per product, and these answer
+  // `Access-Control-Allow-Origin: *` themselves (the same bytes for every origin).
+  {
+    path: ".well-known/openid-configuration",
+    methods: ["GET"],
+    auth: { kind: "none" },
+    handler: ({ req, db, product }) =>
+      handleOpenIdConfiguration(req, db, product.slug),
+  },
+  {
+    path: "jwks",
+    methods: ["GET"],
+    auth: { kind: "none" },
+    handler: ({ req, db, product }) => handleIssuerJwks(req, db, product.slug),
   },
   {
     path: "token",

@@ -39504,6 +39504,65 @@
     "cookies": [],
     "body": "30:61b5f4a46397ebc3"
   },
+  "cors GET /djdl/identity/.well-known/openid-configuration": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors GET+origin /djdl/identity/.well-known/openid-configuration": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors OPTIONS+origin+preflight /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors GET+other /djdl/identity/.well-known/openid-configuration": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors OPTIONS+other+preflight /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors OPTIONS /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors POST+body+origin /djdl/identity/.well-known/openid-configuration": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
   "cors GET /djdl/identity/attach": {
     "status": 405,
     "headers": {
@@ -40288,12 +40347,19 @@
     "body": "18:e3933184560739b7"
   },
   "cors POST+body+origin /djdl/identity/authorize": {
-    "status": 405,
+    "status": 400,
     "headers": {
-      "content-type": "text/plain;charset=UTF-8"
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "content-security-policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; style-src 'sha256-/<tok>='; font-src 'self'",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "referrer-policy": "no-referrer",
+      "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+      "strict-transport-security": "max-age=31536000; includeSubDomains"
     },
     "cookies": [],
-    "body": "18:e3933184560739b7"
+    "body": "33778:76ac17700f7a8720"
   },
   "cors GET /djdl/identity/choice/cancel": {
     "status": 405,
@@ -40570,6 +40636,65 @@
     },
     "cookies": [],
     "body": "32:97af5772e08c551c"
+  },
+  "cors GET /djdl/identity/jwks": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors GET+origin /djdl/identity/jwks": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors OPTIONS+origin+preflight /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors GET+other /djdl/identity/jwks": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors OPTIONS+other+preflight /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors OPTIONS /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors POST+body+origin /djdl/identity/jwks": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
   },
   "cors GET /djdl/identity/link": {
     "status": 400,

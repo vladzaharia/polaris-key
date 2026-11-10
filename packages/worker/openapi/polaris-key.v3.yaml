@@ -8911,6 +8911,152 @@ paths:
           description: 60 calls per 60 s per client network. Fails closed.
           content:
             text/html: { schema: { type: string } }
+    post:
+      operationId: identityAuthorizeForm
+      tags: [identity]
+      summary: Send a person to the sign-in card from a form (authorize, form POST)
+      description: >
+        I-21.5 (WIRE-CONTRACT-V5 §12.4, §12.13.1). A browser form navigation (OIDC Core §3.1.2.1):
+        the same request as the `GET`, with its parameters in an
+        `application/x-www-form-urlencoded` body of at most 8 KiB. The query string is ignored, so
+        no parameter can ride beside the form. Every answer, rate limit and refusal is the `GET`'s;
+        another content type or an over-long body renders a branded `400` page. With Identity off a
+        browser form navigation lands on the friendly card (`identity_disabled`).
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              description: The `GET` parameters, as form members.
+              additionalProperties: { type: string }
+      responses:
+        "303":
+          description: To the card, as for `GET`.
+        "302":
+          description: An error back to the app, as for `GET`.
+        "400":
+          description: "`redirect_uri_mismatch`, or a body that is not a form: a branded page, never a redirect."
+          content:
+            text/html: { schema: { type: string } }
+        "401":
+          description: "`invalid_client`: a branded page, never a redirect."
+          content:
+            text/html: { schema: { type: string } }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: 60 calls per 60 s per client network. Fails closed.
+          content:
+            text/html: { schema: { type: string } }
+  /{product}/identity/.well-known/openid-configuration:
+    get:
+      operationId: identityOpenIdConfiguration
+      tags: [identity]
+      summary: The product's OpenID provider metadata (Sign in with this product)
+      description: >
+        I-21.5 (WIRE-CONTRACT-V5 §12.13.1). OpenID Connect Discovery 1.0 metadata for the issuer
+        `<origin>/<p>/identity`. Served only while Identity is on and the product setting
+        `identity.issuer.enabled` is true; otherwise the registry's `404`. Names an endpoint only
+        once the Worker serves it. `cache-control: public, max-age=300`;
+        `access-control-allow-origin: *`, no credentials. Reads nothing per person.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: The provider metadata.
+          headers:
+            Cache-Control:
+              { schema: { type: string }, example: "public, max-age=300" }
+            Access-Control-Allow-Origin:
+              { schema: { type: string }, example: "*" }
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [issuer, authorization_endpoint, token_endpoint, jwks_uri]
+                properties:
+                  issuer: { type: string, format: uri }
+                  authorization_endpoint: { type: string, format: uri }
+                  token_endpoint: { type: string, format: uri }
+                  userinfo_endpoint: { type: string, format: uri }
+                  jwks_uri: { type: string, format: uri }
+                  revocation_endpoint: { type: string, format: uri }
+                  end_session_endpoint: { type: string, format: uri }
+                  service_documentation: { type: string, format: uri }
+                  scopes_supported: { type: array, items: { type: string } }
+                  claims_supported: { type: array, items: { type: string } }
+                  response_types_supported:
+                    { type: array, items: { type: string } }
+                  response_modes_supported:
+                    { type: array, items: { type: string } }
+                  grant_types_supported:
+                    { type: array, items: { type: string } }
+                  subject_types_supported:
+                    { type: array, items: { type: string } }
+                  id_token_signing_alg_values_supported:
+                    { type: array, items: { type: string } }
+                  token_endpoint_auth_methods_supported:
+                    { type: array, items: { type: string } }
+                  revocation_endpoint_auth_methods_supported:
+                    { type: array, items: { type: string } }
+                  code_challenge_methods_supported:
+                    { type: array, items: { type: string } }
+                  prompt_values_supported:
+                    { type: array, items: { type: string } }
+                  authorization_response_iss_parameter_supported:
+                    { type: boolean }
+                  claims_parameter_supported: { type: boolean }
+                  request_parameter_supported: { type: boolean }
+                  request_uri_parameter_supported: { type: boolean }
+                  frontchannel_logout_supported: { type: boolean }
+                  backchannel_logout_supported: { type: boolean }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+  /{product}/identity/jwks:
+    get:
+      operationId: identityIssuerJwks
+      tags: [identity]
+      summary: The product's issuer key set (Sign in with this product)
+      description: >
+        I-21.5 (WIRE-CONTRACT-V5 §12.13.1, §12.13.5). The RS256 public keys that verify the
+        product's `id_token` and `at+jwt`: the `active`, `next` and `retired` keys, each exactly
+        `kty`, `use`, `alg`, `kid`, `n` and `e`, never a private member. Not the Ed25519
+        `/.well-known/jwks.json`. Served only while Identity is on and `identity.issuer.enabled`
+        is true; otherwise the registry's `404`. It never creates a key, so the set is empty until
+        the first token. `cache-control: public, max-age=60` (short, so a dropped key stops
+        verifying quickly); `access-control-allow-origin: *`, no credentials.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: The key set.
+          headers:
+            Cache-Control:
+              { schema: { type: string }, example: "public, max-age=60" }
+            Access-Control-Allow-Origin:
+              { schema: { type: string }, example: "*" }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [keys]
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+                      required: [kty, use, alg, kid, n, e]
+                      additionalProperties: false
+                      properties:
+                        kty: { type: string, const: RSA }
+                        use: { type: string, const: sig }
+                        alg: { type: string, const: RS256 }
+                        kid: { type: string }
+                        n: { type: string }
+                        e: { type: string }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /{product}/identity/token:
     post:
       operationId: identityToken
