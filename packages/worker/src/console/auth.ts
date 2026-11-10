@@ -88,6 +88,7 @@ import {
   issueSessionV2,
   type SessionIdentity,
 } from "../core/console/session.js";
+import { registerReset } from "../platform/testReset.js";
 
 const FLOW_TTL_SECONDS = 600;
 /**
@@ -385,6 +386,7 @@ const DISCOVERY_RETRY_MS = 45_000;
 export function resetConsoleDiscoveryFailures(): void {
   discoveryFailedAt.clear();
 }
+registerReset(resetConsoleDiscoveryFailures);
 
 type ConsoleRp = NonNullable<ReturnType<typeof consoleRelyingParty>>;
 

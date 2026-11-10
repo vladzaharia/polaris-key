@@ -46,6 +46,7 @@ import {
   APP_STORE_SERVER_API_SANDBOX,
   serverApiToken,
 } from "../../../../core/stores/apple/server.js";
+import { registerReset } from "../../../../platform/testReset.js";
 export {
   PLATFORM_APP_STORE_SERVER_CREDENTIAL,
   appStoreCredential,
@@ -67,6 +68,9 @@ export const APPLE_ACTED_TYPES = [
 export const MAX_APPLE_JWS = 32 * 1024;
 
 let rootsOverride: readonly Uint8Array[] | null = null;
+registerReset(() => {
+  rootsOverride = null;
+});
 
 /** TEST ONLY: replace the pinned root (a generated chain's root), or restore it with `null`. */
 export function setAppleRootsForTesting(

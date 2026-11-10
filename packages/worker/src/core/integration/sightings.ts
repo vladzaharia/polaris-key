@@ -28,6 +28,7 @@ import {
   normalizePlatformHeader,
   normalizeSdkHeader,
 } from "../clientMetadata.js";
+import { registerReset } from "../../platform/testReset.js";
 
 /** `conformance/parity/enums.json` `sdkId`: the SDK ids a sighting accepts. */
 export const SIGHTING_SDK_IDS: ReadonlySet<string> = new Set([
@@ -126,6 +127,7 @@ const LAST_WRITE_CAP = 4096;
 export function resetSightingThrottle(): void {
   LAST_WRITE.clear();
 }
+registerReset(resetSightingThrottle);
 
 /**
  * True when this key is due a write, and records that it is taking it. When the map is full,

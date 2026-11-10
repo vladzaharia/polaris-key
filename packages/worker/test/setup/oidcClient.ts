@@ -1,21 +1,59 @@
-// I-30: test isolation for the one relying-party client (`src/core/oidc/client.ts`).
+// Test isolation for isolate-level state.
 //
-//   - It caches discovery documents and key sets per isolate; tests install a fresh IdP key per
-//     case, so every test starts with empty caches, as a fresh Worker isolate would.
+//   - Every module cache registers its clear with `src/platform/testReset.ts`; each test starts
+//     by running them all, so a file sees what a fresh Worker isolate would even when the runner
+//     shares one module graph across files (`--no-isolate`).
+//   - The relying-party client (I-30) caches discovery documents and key sets; tests install a
+//     fresh IdP key per case.
 //   - It discovers the issuer before every authorization request. A test that only STARTS a
 //     sign-in has no IdP of its own, so the default `fetch` answers any issuer's discovery
 //     document (Pocket ID's shape, `test/oidcIssuerFake.ts`) and passes every other URL on. A test
 //     that completes a sign-in installs its own `fetch` for the token endpoint and the JWKS, which
 //     replaces this default for that test.
-import { beforeEach } from "vitest";
-import { resetOidcClientCaches } from "../../src/core/oidc/client.js";
+import { readFileSync } from "node:fs";
+import { afterAll, beforeAll, beforeEach, expect, vi } from "vitest";
 import { issuerDiscovery } from "../oidcIssuerFake.js";
 
 const DISCOVERY = "/.well-known/openid-configuration";
-const realFetch = globalThis.fetch;
+// Under `--no-isolate` this file runs once per test file in one global scope: keep the first
+// (real) `fetch`, never an earlier file's stub or this file's own wrapper.
+const REAL_FETCH = Symbol.for("pkey.test.realFetch");
+const scope = globalThis as unknown as Record<symbol, typeof fetch>;
+const realFetch = (scope[REAL_FETCH] ??= globalThis.fetch);
 
-beforeEach(() => {
-  resetOidcClientCaches();
+// A file that mocks a module (`vi.mock`, `vi.doMock`) needs a module graph of its own: a module
+// another file already loaded keeps the real dependency. Such a file starts from an empty module
+// cache and leaves one behind. Every other file shares the worker's graph under `--no-isolate`
+// and costs nothing under the default.
+const testPath = expect.getState().testPath;
+const mocksModules =
+  testPath !== undefined &&
+  /\bvi\s*\.\s*(?:mock|doMock)\s*\(/.test(readFileSync(testPath, "utf8"));
+
+// Isolate-level state is emptied at the file boundary, before the file's own `beforeAll` (a file
+// installs its test doubles there) and after it. What a file stubs, it gives back.
+async function emptyIsolate(): Promise<void> {
+  // Imported late: after `vi.resetModules()` the registry to clear is the current graph's.
+  (await import("../../src/platform/testReset.js")).runResets();
+}
+
+beforeAll(async () => {
+  if (mocksModules) vi.resetModules();
+  await emptyIsolate();
+});
+
+afterAll(async () => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+  vi.useRealTimers();
+  await emptyIsolate();
+  if (mocksModules) vi.resetModules();
+});
+
+beforeEach(async () => {
+  // The relying-party client's caches are emptied per test: each test installs its own IdP key.
+  (await import("../../src/core/oidc/client.js")).resetOidcClientCaches();
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url =
       typeof input === "string"

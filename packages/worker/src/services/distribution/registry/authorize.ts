@@ -79,6 +79,7 @@ import {
   type RegistryFeed,
   type RegistrySettingsSource,
 } from "./settings.js";
+import { registerReset } from "../../../platform/testReset.js";
 
 export type { FeedPrincipal } from "../../../core/registry/registryTokens.js";
 
@@ -255,6 +256,7 @@ export function resolveFeedPrincipal(
 
 /** A licence's hold on one gate flag, per isolate for the token window. */
 const holds = new Map<string, { held: boolean; until: number }>();
+registerReset(() => holds.clear());
 
 async function licenceHolds(
   db: Db,

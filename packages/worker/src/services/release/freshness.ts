@@ -38,6 +38,7 @@ import { meterUpstreamCalls } from "./gateway.js";
 import type { FetchImpl } from "./githubApp.js";
 import { UpstreamRateLimitedError } from "./github.js";
 import { syncReleaseStoreReport } from "./sync.js";
+import { registerReset } from "../../platform/testReset.js";
 
 export const FRESHNESS_SYNCS_PER_TICK = 25;
 /** The most syncs one GitHub App installation gets in a tick (they share one hourly quota). */
@@ -70,6 +71,9 @@ export interface FreshnessBudget {
 }
 
 let tickBudget: FreshnessBudget = { now: -1, plan: null };
+registerReset(() => {
+  tickBudget = { now: -1, plan: null };
+});
 
 function budgetFor(now: number, db: Db): FreshnessBudget {
   if (tickBudget.now !== now || tickBudget.db !== db)

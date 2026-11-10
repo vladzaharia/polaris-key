@@ -12,6 +12,7 @@ import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { open } from "../../platform/keyvault.js";
 import { listVerificationProductKeys } from "../products/store.js";
+import { registerReset } from "../../platform/testReset.js";
 
 export interface TrustSigner {
   kid: string;
@@ -22,6 +23,7 @@ export interface TrustSigner {
  *  so a changed row never reuses a stale key. Status is re-read from the DB on every call. */
 const MEMO_MS = 60_000;
 const memo = new Map<string, { pem: string; at: number }>();
+registerReset(() => memo.clear());
 
 /**
  * The signer for `kid`, or `null` when the product has no such key, the key is revoked (or

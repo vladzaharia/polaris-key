@@ -22,6 +22,7 @@ import {
   type LiveSubject,
   type ResolvedConsoleSubject,
 } from "../core/console/session.js";
+import { registerReset } from "../platform/testReset.js";
 
 const CACHE_LIMIT = 500;
 
@@ -37,6 +38,7 @@ const keyOf = (c: { aid: string; sid: string }): string => `${c.sid}|${c.aid}`;
 export function resetConsoleSessionCache(): void {
   cache.clear();
 }
+registerReset(resetConsoleSessionCache);
 
 /** The `LiveSubject` for one request: cached `consoleSubject`, then the sign-out mark. */
 export function liveSubjectFor(env: Env, db: Db, now: number): LiveSubject {

@@ -100,6 +100,7 @@ import {
   type PolicyView,
   type VersionScheme,
 } from "../resolve.js";
+import { registerReset } from "../../../platform/testReset.js";
 
 /** The work units one whole resolution may spend (see the header): about 150 ms worst case. */
 export const MAX_RESOLUTION_WORK = 1_000_000;
@@ -271,6 +272,7 @@ export interface Resolution {
 
 /** `versionInRange` answers, memoised: the solver asks the same few questions very often. */
 const rangeMemo = new Map<string, boolean>();
+registerReset(() => rangeMemo.clear());
 const RANGE_MEMO_MAX = 50_000;
 
 /** `versionInRange`, memoised (bounded; a full memo starts over). */

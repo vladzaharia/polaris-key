@@ -42,6 +42,7 @@ import {
   productsByRepository,
 } from "../../services/release/public.js";
 import { secret } from "../../platform/env.js";
+import { registerReset } from "../../platform/testReset.js";
 
 /** How long the App's inventory and a page's probe stay fresh, in seconds. */
 export const REPOSITORY_CACHE_SECONDS = 60;
@@ -66,6 +67,7 @@ export function resetGithubRepositoryCache(): void {
   inventoryCache = null;
   probeCache.clear();
 }
+registerReset(resetGithubRepositoryCache);
 
 async function inventory(
   env: Env,

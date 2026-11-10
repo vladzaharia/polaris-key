@@ -17,6 +17,7 @@
  */
 
 import type { Db } from "../db/types.js";
+import { registerReset } from "../platform/testReset.js";
 
 /** How long an isolate trusts its copy of the table (notes/S-13 §6.3: "within 30 seconds"). */
 export const SETTINGS_CACHE_MS = 30_000;
@@ -54,7 +55,10 @@ interface CacheEntry {
   read: StoreRead;
 }
 
-const cache = new WeakMap<object, CacheEntry>();
+let cache = new WeakMap<object, CacheEntry>();
+registerReset(() => {
+  cache = new WeakMap();
+});
 
 /**
  * The cache key: the D1 binding when the env carries one (stable for the isolate's life, while the

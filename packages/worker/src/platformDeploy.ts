@@ -88,6 +88,7 @@ import { reservedNamesMode } from "./core/licensing/reservedNames.js";
 import { displayNameOptions } from "./core/accounts/reservedDisplayNames.js";
 import { reconcilePackageFileRefs } from "./services/release/api.js";
 import { runLicensingCatchUp } from "./core/licensing/licensingCatchUp.js";
+import { registerReset } from "./platform/testReset.js";
 
 export const DEPLOY_HOOK_PATH = "/webhooks/deploy";
 /** The one workflow whose runs may call the hook. */
@@ -128,6 +129,9 @@ export function deployHookPolicy(
 
 /** Test seam: the JWKS fetcher the hook uses (`null` = GitHub's, through the KV cache). */
 let jwksFetcherOverride: JwksFetcher | null = null;
+registerReset(() => {
+  jwksFetcherOverride = null;
+});
 export function setDeployHookJwksFetcherForTests(f: JwksFetcher | null): void {
   jwksFetcherOverride = f;
 }

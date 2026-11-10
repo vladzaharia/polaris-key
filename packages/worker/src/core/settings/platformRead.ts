@@ -27,6 +27,7 @@ import {
   type SettingsContext,
 } from "./resolve.js";
 import type { SettingDef } from "./types.js";
+import { registerReset } from "../../platform/testReset.js";
 
 /** The value each typed reader returns, by registry key. */
 export interface PlatformValues {
@@ -65,6 +66,9 @@ export interface PlatformValues {
 }
 
 let CORE_REGISTRY: SettingsRegistry | undefined;
+registerReset(() => {
+  CORE_REGISTRY = undefined;
+});
 
 /** Core's registry (the platform and Core slices): every platform-scope entry there is. */
 export function coreSettingsRegistry(): SettingsRegistry {

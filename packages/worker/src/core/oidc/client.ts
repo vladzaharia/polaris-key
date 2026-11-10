@@ -54,6 +54,7 @@ import {
 import { pkcePair } from "../../platform/pkce.js";
 import { randomToken } from "../../platform/random.js";
 import { isRedirect, readCappedText } from "../readCapped.js";
+import { registerReset } from "../../platform/testReset.js";
 
 // ── constants ────────────────────────────────────────────────────────────────────────────────
 
@@ -316,6 +317,7 @@ export function resetOidcClientCaches(): void {
   discoveryCache.clear();
   jwksCache.clear();
 }
+registerReset(resetOidcClientCaches);
 
 function stringList(v: unknown): string[] {
   return Array.isArray(v)

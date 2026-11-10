@@ -5,6 +5,8 @@
  * and the new epoch, and never a key.
  */
 
+import { registerReset } from "../../platform/testReset.js";
+
 export interface RelayPoke {
   product: string;
   subject: string;
@@ -16,6 +18,9 @@ export type RelayPokePort = (poke: RelayPoke) => Promise<void>;
 const NO_POKE: RelayPokePort = async () => {};
 
 let port: RelayPokePort = NO_POKE;
+registerReset(() => {
+  port = NO_POKE;
+});
 
 /** CC-07.4 installs the relay's port here; `null` restores the no-op. */
 export function setRelayPokePort(next: RelayPokePort | null): void {
