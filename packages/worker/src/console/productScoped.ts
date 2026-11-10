@@ -12,6 +12,7 @@
 
 import { notFound } from "../core/console/respond.js";
 import { handleChannels } from "./handlers/channels.js";
+import { handleUpdaters } from "./handlers/updaters.js";
 import { handleFeedsAdmin } from "./handlers/feeds.js";
 import { handleProductScopedResource } from "./handlers/products.js";
 import { handleActivity } from "./handlers/activity.js";
@@ -63,6 +64,9 @@ export async function handleProductScoped(c: AdminCtx): Promise<Response> {
   // surfaces (neither may read the other).
   if (resource === "distribution" && rest[1] === "channels" && !rest[2])
     return handleChannels(c);
+  // P2-11: the Updates page's read, composed the same way.
+  if (resource === "distribution" && rest[1] === "updaters" && !rest[2])
+    return handleUpdaters(c);
   if (resource === "distribution" && rest[1] === "feeds") {
     // The system product's feeds are the platform's: reachable only from Platform → Package feeds
     // (`/manage/api/platform/feeds/…`), never as a product scope.

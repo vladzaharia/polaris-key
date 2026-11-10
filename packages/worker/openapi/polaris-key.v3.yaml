@@ -20019,6 +20019,37 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/distribution/updaters:
+    get:
+      operationId: getAdminProductUpdaters
+      tags: [admin]
+      summary: The updaters a product's shipped platforms can use, with Verified state
+      description: >
+        P2-11. The shipped platforms (a build, a declared file or a named outlet; a planned platform
+        has none) grouped by what verifies together: `direct` (self-updaters on direct downloads)
+        and `play`, each with its platforms and their updater ids (the first is the usual one), plus
+        `store`, the platforms the store updates. A group's state is `verified` once a device has reported an update outcome (offered,
+        downloaded, applied or confirmed) on the group's outlets, `failing` while a
+        device reported a reverted update or a boot rollback, `not_seen` otherwise, `unavailable`
+        when the update-health counters could not be read (no data, not zero). Reports count a device once per release
+        over the counters' 30-day retention on the app's newest releases; an event names an
+        outlet and a channel but no platform, so a fact is per outlet. Read-only; area `ship`; admin
+        session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The updaters read.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminProductUpdaters" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   /manage/api/products/{product}/assets/settings/{key}:
     patch:
       operationId: setAdminAssetSetting
@@ -26801,6 +26832,56 @@ components:
         channels:
           type: array
           items: { $ref: "#/components/schemas/AdminChannel" }
+    AdminProductUpdaters:
+      type: object
+      required: [product, now, access, groups, store]
+      properties:
+        product: { type: string }
+        now: { type: integer, description: Epoch seconds. }
+        access:
+          type: [string, "null"]
+          description: The app's delivery access mode, who can check for updates.
+        groups:
+          type: array
+          items:
+            type: object
+            required: [id, state, reports, reverted, release, platforms]
+            properties:
+              id: { type: string, enum: [direct, play] }
+              state:
+                type: string
+                enum: [verified, failing, not_seen, unavailable]
+              reports: { type: integer, minimum: 0 }
+              reverted: { type: integer, minimum: 0 }
+              release:
+                type: [string, "null"]
+                description: The version with the most reverts, when any.
+              platforms:
+                type: array
+                items:
+                  type: object
+                  required: [platform, arches, updaters]
+                  properties:
+                    platform: { type: string }
+                    arches: { type: array, items: { type: string } }
+                    updaters:
+                      type: array
+                      items:
+                        type: string
+                        enum:
+                          [
+                            sparkle,
+                            winsparkle,
+                            velopack,
+                            app-installer,
+                            zsync,
+                            godot,
+                            play,
+                          ]
+        store:
+          type: array
+          description: Platforms the store updates; no self-updater.
+          items: { type: string }
     AdminChannel:
       type: object
       required:

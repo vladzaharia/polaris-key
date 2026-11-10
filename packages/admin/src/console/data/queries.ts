@@ -351,6 +351,7 @@ export const qk = {
 
   // update
   feed: (slug: string) => product(slug, "update", "feed"),
+  updaters: (slug: string) => product(slug, "distribution", "updaters"),
 
   // identity
   portal: (slug: string) => product(slug, "identity", "portal"),

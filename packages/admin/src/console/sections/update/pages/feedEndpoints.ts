@@ -63,3 +63,14 @@ export function updaterNote(platforms: readonly string[]): string | null {
   if (win) return "Sparkle appears once a release ships for macOS.";
   return "Sparkle and WinSparkle appear once a release ships for macOS or Windows.";
 }
+
+/** The release tracks the store names, plus `stable`, `stable` first. */
+export function channelNames(
+  store: ReleaseStoreResponse | undefined,
+): string[] {
+  const set = new Set<string>(["stable"]);
+  for (const c of store?.channels ?? []) set.add(c.channel);
+  return [...set].sort((a, b) =>
+    a === "stable" ? -1 : b === "stable" ? 1 : a.localeCompare(b),
+  );
+}

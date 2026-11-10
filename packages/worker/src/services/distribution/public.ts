@@ -68,6 +68,11 @@ export {
   type ProductPlatforms,
 } from "./facts.js";
 export {
+  updateChecks,
+  type OutletChecks,
+  type UpdateChecks,
+} from "./updaterChecks.js";
+export {
   channelFacts,
   type DeliveryAttention,
   type DeliveryFacet,

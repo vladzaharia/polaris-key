@@ -284,6 +284,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products/{product}/integration", ["get"]],
     // A-20.4: the channel read model (delivery and commerce facets per channel).
     ["/manage/api/products/{product}/distribution/channels", ["get"]],
+    // P2-11: the Updates page's read (updaters per shipped platform, Verified).
+    ["/manage/api/products/{product}/distribution/updaters", ["get"]],
     // A-32.3: the CI readiness read (the checks a `v*` tag needs).
     ["/manage/api/products/{product}/release/ci-readiness", ["get"]],
     // A-32.6: create the `release` environment and the `v*` tag ruleset.

@@ -363,7 +363,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/src/console/sections/distribution/pages/OutletsPage.tsx": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/admin/src/console/sections/feeds/model/sourceLine.tsx": {
       "jscpd:duplicate": 1
@@ -498,7 +498,7 @@
       "jscpd:duplicate": 2
     },
     "packages/admin/src/console/sections/update/pages/UpdateChannelsPage.tsx": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 2
     },
     "packages/admin/src/console/shell/ThemeMenu.tsx": {
       "jscpd:duplicate": 1

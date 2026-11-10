@@ -82,6 +82,26 @@ Update through Core's descriptor hooks, never by import, and only while Distribu
   the Sparkle version floor, and the trust anchor Polaris Key deliberately never
   reimplements.
 
+## The Updates page
+
+Ship builds → **Updates** in the console groups the platforms the product ships by what verifies
+together: direct downloads (macOS, Windows, Linux), Google Play, and the platforms a store
+updates, which need no setup. Each platform has a **Set up with** choice (a view, nothing is
+saved) of the updaters it can use, with the steps and snippets for the chosen release track. A
+Windows-only product sees no Sparkle, and a platform only a store ships gets no self-updater. The
+Godot updater appears for a Godot game.
+
+A group is **Verified** once a device has reported an update outcome (offered, downloaded,
+applied or confirmed) on its outlets. The Worker reads
+[update health](/docs/features/ship-builds/channels/update-health/) for it: Sparkle and the other
+feed readers send no `X-PKey-SDK` header, so no SDK sighting exists for them. An event names an
+outlet and a channel but no platform, so the state is one per group, never per platform. A group
+reads **Not seen yet** before the first report and **No data** while the counters cannot be read.
+It shows the number of reverted devices, and the release with the most, while devices report a
+reverted update or a roll back after a failed start. Those count for 30 days, on the newest six
+releases, so the state clears when they age out. The Updates item in the sidebar carries the
+number of groups in that state.
+
 ## For readers new to Sparkle
 
 [Sparkle](https://sparkle-project.org/) is the de facto standard auto-update framework for

@@ -180,6 +180,7 @@ export const ROUTE_LEDGER: readonly LedgerRow[] = [
     from: "distribution/credentials",
     fate: "live",
   },
+  { id: "updaters", scope: "product", from: "update/updates", fate: "live" },
   { id: "feed", scope: "product", from: "update/feed", fate: "live" },
   {
     id: "portal",
@@ -419,8 +420,8 @@ export const ROUTE_LEDGER: readonly LedgerRow[] = [
     scope: "product",
     from: "updates",
     fate: "moved",
-    to: "feed",
-    by: "P0-31",
+    to: "updaters",
+    by: "P2-11",
   },
 ];
 
