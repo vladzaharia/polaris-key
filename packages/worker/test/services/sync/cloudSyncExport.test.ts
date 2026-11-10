@@ -16,9 +16,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runSubjectExport } from "../../../src/core/accounts/subjectHooks.js";
+import {
+  deleteCloudSyncIfUnchanged,
+  exportCloudSync,
+} from "../../../src/services/sync/do/client.js";
 import { cloudSyncStore } from "../../../src/services/sync/subjectStore.js";
 import {
   INLINE_FILES_ROWS,
+  MAX_EXPORT_SUBREQUESTS,
   INLINE_RECORDS_BYTES,
 } from "../../../src/services/sync/exportSection.js";
 import { zipStream } from "../../../src/platform/zipStream.js";
@@ -391,5 +396,49 @@ describe("the zip entries", () => {
     const sync = all["sync.cloudSync"] as Record<string, unknown>;
     expect(sync.recordsIn).toBe("zip");
     expect(JSON.stringify(all).length).toBeLessThan(INLINE_RECORDS_BYTES);
+  });
+
+  it("an object that goes away mid-export stops the stream instead of finishing short", async () => {
+    const w = await filesWorld();
+    await push(w, [setRecord("a", 1)]);
+    bulkRecords(w, 3, 10);
+    const entries = await cloudSyncStore.exportEntries!(ctx(w), who(w));
+    // Absorbed between the listing and the streaming.
+    await deleteCloudSyncIfUnchanged(
+      w.env,
+      who(w),
+      {
+        seq: (await exportCloudSync(w.env, who(w)))!.seq,
+        writes: (await exportCloudSync(w.env, who(w)))!.writes,
+      },
+      "ps_survivor",
+    );
+    await expect(
+      new Response(zipStream(entries)).arrayBuffer(),
+    ).rejects.toThrow();
+  });
+
+  it("refuses a zip over the subrequest budget up front", async () => {
+    const w = await filesWorld();
+    await stored(w, "saves", "s1", bytesOf(10));
+    exec(
+      w,
+      `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ${MAX_EXPORT_SUBREQUESTS / 2})
+       INSERT INTO files SELECT collection, 'c' || i, version, object_key, format, enc, size, sha256,
+         'live', ssec_kid, created_at, client_id FROM files, n WHERE record_id = 's1'`,
+    );
+    await expect(
+      cloudSyncStore.exportEntries!(ctx(w), who(w)),
+    ).rejects.toMatchObject({ reason: "entries" });
+  });
+
+  it("reads only objects under the person's own prefix", async () => {
+    const w = await filesWorld();
+    await stored(w, "saves", "s1", bytesOf(50));
+    exec(w, `UPDATE files SET object_key = 'u/${SLUG}/ps_other/' || 'x'`);
+    const entries = await cloudSyncStore.exportEntries!(ctx(w), who(w));
+    await expect(
+      new Response(zipStream(entries)).arrayBuffer(),
+    ).rejects.toThrow();
   });
 });

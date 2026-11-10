@@ -6,22 +6,28 @@
  * `404` for a product the account is not linked to, one that does not exist, and one with Cloud
  * Sync off: the same answer for all three, so nothing is revealed. A read, so no step-up and no
  * audit row (it returns no personal data beyond the account's own device labels and sizes); the
- * session and the CSRF header are the router's. Rate limit: none beyond the portal's sweep.
+ * session and the CSRF header are the router's. Rate limit: 60 a minute per account and product.
  */
 
 import { existingSubjectFor } from "../../../core/accounts/accountSubjects.js";
 import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import {
   err,
   notFound,
   portalHooks,
   portalJson,
+  requireActionRateLimit,
   type PortalHooksFor,
 } from "./api.js";
 import { productLinked } from "./dataExport.js";
 import type { PortalSession } from "./session.js";
 
+/** Reads a minute per account and product: a card refreshes far less often. */
+const SYNC_SUMMARY_LIMIT_PER_MINUTE = 60;
+
 export async function handleProductSync(
+  env: Env,
   db: Db,
   session: PortalSession,
   req: Request,
@@ -32,6 +38,16 @@ export async function handleProductSync(
   if (req.method !== "GET") return err(405, "method_not_allowed");
   const linked = await productLinked(db, session.accountId, product);
   if (!linked) return notFound();
+  const limited = await requireActionRateLimit(
+    req,
+    env,
+    session,
+    "portalSyncSummary",
+    now,
+    SYNC_SUMMARY_LIMIT_PER_MINUTE,
+    product,
+  );
+  if (limited) return limited;
   const loaded = await portalHooks(db, hooksFor, product, now);
   const reader = loaded?.hooks.cloudSyncSummary();
   if (!reader) return notFound();

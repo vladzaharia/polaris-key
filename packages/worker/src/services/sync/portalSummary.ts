@@ -21,7 +21,6 @@ import type {
 } from "../../core/hooks.js";
 import { syncPauseNotice } from "../../core/accounts/syncPause.js";
 import { syncTierLimits } from "../../core/accounts/syncTierLimits.js";
-import { getDevice } from "../../core/devices/store.js";
 import { getActiveSchema } from "../../core/products/store.js";
 import { callCloudSync } from "./do/client.js";
 import { syncMode } from "./handlers/common.js";
@@ -64,14 +63,25 @@ export function cloudSyncSummary(ctx: HookContext) {
         : quota > 0 && bytes >= quota
           ? "full"
           : "active";
-      const devices: CloudSyncDeviceActivity[] = [];
-      for (const d of inspected.devices.slice(0, MAX_DEVICES)) {
-        const row = await getDevice(db, product, d.deviceId);
-        devices.push({
-          label: row?.label?.trim() || "Unnamed device",
-          lastSyncAt: d.lastSeen,
-        });
+      const listed = inspected.devices.slice(0, MAX_DEVICES);
+      // One read for every label. A binding outlives a device that moved to another person, so a
+      // label is shown only while the device is still bound to this subject.
+      const labels = new Map<string, string>();
+      if (listed.length > 0 && subject !== null) {
+        const rows = await db.all<{ device_id: string; label: string | null }>(
+          `SELECT device_id, label FROM devices
+            WHERE product = ? AND subject = ?
+              AND device_id IN (${listed.map(() => "?").join(", ")})`,
+          product,
+          subject,
+          ...listed.map((d) => d.deviceId),
+        );
+        for (const r of rows) labels.set(r.device_id, r.label?.trim() ?? "");
       }
+      const devices: CloudSyncDeviceActivity[] = listed.map((d) => ({
+        label: labels.get(d.deviceId) || "Unnamed device",
+        lastSyncAt: d.lastSeen,
+      }));
       return {
         encryption: mode.serve,
         empty: inspected.empty,

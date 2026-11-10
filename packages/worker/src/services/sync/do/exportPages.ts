@@ -99,7 +99,11 @@ function fit<T>(rows: T[]): { rows: T[]; capped: boolean } {
   return { rows, capped: false };
 }
 
-function summary(store: SqlStore): ExportSummary {
+function summary(
+  store: SqlStore,
+  pin: { product: string; subject: string },
+  absorbed: readonly string[],
+): ExportSummary {
   const stats = new Map<string, ExportCollection>();
   const entry = (name: string): ExportCollection => {
     let c = stats.get(name);
@@ -124,6 +128,9 @@ function summary(store: SqlStore): ExportSummary {
   const since = store.getEncryptionSince();
   return {
     seq: store.currentSeq(),
+    keyPrefixes: [pin.subject, ...absorbed].map(
+      (s) => `u/${pin.product}/${s}/`,
+    ),
     ...(since !== undefined ? { encryptionSince: since } : {}),
     usage: reportedUsage(store, store.getUsage()),
     settings: store.settingsAfter(0).map(({ members, ...row }) => ({
@@ -150,14 +157,17 @@ function summary(store: SqlStore): ExportSummary {
 export function exportPage(
   store: SqlStore,
   page: ExportPageRequest,
-  live: boolean,
+  pin: { product: string; subject: string } | null,
+  absorbed: readonly string[],
 ): ExportPageResult {
+  const live = pin !== null;
   if (page.part === "summary")
-    return { part: "summary", summary: live ? summary(store) : null };
-  if (!live) {
-    const none = { rows: [], next: null };
-    return { part: page.part, ...none } as ExportPageResult;
-  }
+    return {
+      part: "summary",
+      summary: pin ? summary(store, pin, absorbed) : null,
+    };
+  // The caller answers a page of a gone object with an error before getting here.
+  if (!live) throw new Error("exportPage: the object is gone");
   switch (page.part) {
     case "records": {
       const got = store

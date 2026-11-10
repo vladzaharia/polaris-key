@@ -2707,6 +2707,7 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
     sweep: true,
     handler: (c, m, s) =>
       handleProductSync(
+        c.env,
         c.db,
         s.session,
         c.req,
