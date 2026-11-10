@@ -578,7 +578,7 @@ class CloudConnectTest {
         val s = ca.cloudConnect.open(idB)
         s.send("hello".toByteArray())
         assertTrue(inCallback.await(5, TimeUnit.SECONDS))
-        cb.cloudConnect.stopMillis = 3000
+        cb.cloudConnect.stopMillis = 300
         val t0 = System.nanoTime()
         cb.cloudConnect.stopForSignOut() // never fails
         val took = (System.nanoTime() - t0) / 1_000_000

@@ -58,6 +58,8 @@ publishing {
 }
 
 tasks.withType<Test>().configureEach {
+    // The classes share nothing but loopback sockets on ephemeral ports: two JVMs halve the wall time.
+    maxParallelForks = 2
     systemProperty("pkey.repoRoot", rootProject.projectDir.resolve("../..").canonicalPath)
     testLogging {
         events("failed")
