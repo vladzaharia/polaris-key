@@ -2663,6 +2663,11 @@
       "sdk": "node",
       "path": "cloudConnect.localLinks",
       "reason": "the accessor of the local links namespace (cloudConnect.localLinks.pair, .join, .list, .rename, .remove, .setReachable, .open, .onLink); not a verb"
+    },
+    {
+      "sdk": "python",
+      "path": "cloudConnect.local_links",
+      "reason": "the accessor of the local links namespace (cloud_connect.local_links.pair, .join, .list, .rename, .remove, .set_reachable, .open, .on_link); not a verb"
     }
   ],
   "concepts": [
@@ -7990,7 +7995,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "python": {}
       },
       "layer": "client",
       "args": [
@@ -8005,7 +8011,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "python": {}
       },
       "layer": "client",
       "args": [
@@ -8020,7 +8027,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "python": {}
       },
       "layer": "client"
     },
@@ -8029,7 +8037,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "python": {}
       },
       "layer": "client",
       "args": [
@@ -8048,7 +8057,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "python": {}
       },
       "layer": "client",
       "args": [
@@ -8063,7 +8073,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "python": {}
       },
       "layer": "client",
       "args": [
@@ -8082,7 +8093,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "python": {}
       },
       "layer": "client",
       "args": [
@@ -8097,7 +8109,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "python": {}
       },
       "layer": "client",
       "args": [
@@ -8112,7 +8125,8 @@
       "kind": "method",
       "feature": "connect.local",
       "sdks": {
-        "node": {}
+        "node": {},
+        "python": {}
       },
       "layer": "client"
     },
