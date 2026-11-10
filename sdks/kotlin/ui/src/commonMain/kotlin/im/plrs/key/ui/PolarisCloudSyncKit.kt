@@ -20,7 +20,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,7 +40,9 @@ private val StripGlyph = 20.dp
 
 /**
  * The Cloud Sync row and its screens, bound to [host]. With a flow in front only the screens draw; otherwise
- * the row, when Cloud Sync has something to say. [onSignIn] opens the app's own sign-in; null hides the button.
+ * the row, when Cloud Sync has something to say. [onSignIn] opens the app's own sign-in; null opens the
+ * kit's own sign-in in the row's place (the client PolarisKeyGate or PolarisKeyProvider provides), and
+ * hides the button where there is none.
  */
 @Composable
 public fun PolarisCloudSyncKit(host: PolarisCloudSyncHost, modifier: Modifier = Modifier, onSignIn: (() -> Unit)? = null) {
@@ -48,29 +52,36 @@ public fun PolarisCloudSyncKit(host: PolarisCloudSyncHost, modifier: Modifier = 
     }
     val flow by host.flow.collectAsState()
     val status by host.status.collectAsState()
+    val client = LocalPolarisKey.current
+    var signingIn by remember { mutableStateOf(false) }
     val open = flow
     val shown = status
     if (open != null) {
         PolarisSyncFlow(open, modifier)
+    } else if (signingIn && client != null && onSignIn == null) {
+        // The machine follows the sign-in's own events, so the row redraws once it is done.
+        val held = rememberHeldSignIn(client to "cloudSyncStatus", client.signInActions()) { signingIn = false }
+        PolarisSignIn(held, modifier, onCancel = { signingIn = false })
     } else if (shown != null) {
-        val row = when (shown.row) {
-            PolarisCloudSyncRow.Synced -> PolarisCloudSync.Synced
-            PolarisCloudSyncRow.Syncing -> PolarisCloudSync.Syncing
-            PolarisCloudSyncRow.Offline -> PolarisCloudSync.Offline
-            PolarisCloudSyncRow.Error -> PolarisCloudSync.Error
-            PolarisCloudSyncRow.SignedOut -> PolarisCloudSync.SignedOut
-            PolarisCloudSyncRow.Locked -> PolarisCloudSync.Locked
-            PolarisCloudSyncRow.RingChanged -> PolarisCloudSync.RingChanged
-        }
         PolarisCloudSyncStatus(
-            row,
+            shown.row.toStatus(),
             modifier,
             syncedAtMillis = shown.syncedAtMillis,
             onUnlock = host::openUnlock,
             onReview = host::openReview,
-            onSignIn = onSignIn,
+            onSignIn = onSignIn ?: client?.let { { signingIn = true } },
         )
     }
+}
+
+private fun PolarisCloudSyncRow.toStatus(): PolarisCloudSync = when (this) {
+    PolarisCloudSyncRow.Synced -> PolarisCloudSync.Synced
+    PolarisCloudSyncRow.Syncing -> PolarisCloudSync.Syncing
+    PolarisCloudSyncRow.Offline -> PolarisCloudSync.Offline
+    PolarisCloudSyncRow.Error -> PolarisCloudSync.Error
+    PolarisCloudSyncRow.SignedOut -> PolarisCloudSync.SignedOut
+    PolarisCloudSyncRow.Locked -> PolarisCloudSync.Locked
+    PolarisCloudSyncRow.RingChanged -> PolarisCloudSync.RingChanged
 }
 
 /** The CloudSyncStatus states of a background transfer (ui-matrix `cloudSync`, U-22.K0). */

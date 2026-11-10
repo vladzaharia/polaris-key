@@ -2929,12 +2929,8 @@
       "ktlint:standard:parameter-list-wrapping": 6
     },
     "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/PartsTest.kt": {
-      "detekt:style.MaxLineLength": 5,
-      "ktlint:standard:argument-list-wrapping": 28,
-      "ktlint:standard:binary-expression-wrapping": 4,
-      "ktlint:standard:function-literal": 10,
-      "ktlint:standard:max-line-length": 5,
-      "ktlint:standard:wrapping": 4
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:max-line-length": 1
     },
     "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/PolarisCopyCatalogTest.kt": {
       "detekt:style.MaxLineLength": 1,
@@ -3201,11 +3197,7 @@
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:naming.FunctionNaming": 11,
       "detekt:style.MagicNumber": 1,
-      "detekt:style.MaxLineLength": 2,
-      "ktlint:standard:argument-list-wrapping": 11,
-      "ktlint:standard:binary-expression-wrapping": 1,
-      "ktlint:standard:function-naming": 11,
-      "ktlint:standard:max-line-length": 2
+      "ktlint:standard:function-naming": 11
     },
     "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisPlatform.kt": {
       "detekt:complexity.TooManyFunctions": 1,

@@ -282,6 +282,14 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
             PolarisCloudSyncStatus(PolarisCloudSync.Error, onRetry = {})
         }
     },
+    // Sync stopped: a muted label with Sign in to sync on its line.
+    "cloudSyncStatus-signed-out" to {
+        PolarisScreen(showLogo = false) {
+            PolarisTitle("Sync Across Devices")
+            Spacer(Modifier.height(16.dp))
+            PolarisCloudSyncStatus(PolarisCloudSync.SignedOut, onSignIn = {})
+        }
+    },
     // The Cloud Sync screens (U-42), resolved by KitStates from the cloudSync family's inputs.
     "cloudSyncStatus-locked" to {
         PolarisScreen(showLogo = false) {
