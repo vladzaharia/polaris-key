@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { updatersView } from "../src/console/lib/updaterModel.js";
+import { updatersView } from "../../../src/console/lib/updaterModel.js";
 
 const p = (platform: string, sources = ["builds"] as never[]) => ({
   platform,
