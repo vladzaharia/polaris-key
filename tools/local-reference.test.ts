@@ -102,11 +102,14 @@ describe("local reference", () => {
 
   it("closes the window on the fifth failed guess and rotates on the first four", () => {
     const ev: WindowEvent[] = [{ event: "open", t: 0 }];
-    for (let i = 0; i < 5; i++)
+    for (let i = 0; i < 5; i++) {
       ev.push(
         { event: "c1", t: 1 + i * 13, valid: true },
         { event: "msg1", t: 2 + i * 13, opens: false },
       );
+      // A failed guess holds the window until the rotation is done.
+      if (i < 4) ev.push({ event: "rotated", t: 3 + i * 13 });
+    }
     const out = refLocalWindow(ev);
     const last = out[out.length - 1]!;
     expect(last.closed).toBe("too-many-tries");
@@ -141,8 +144,12 @@ describe("local reference", () => {
   });
 
   it("gates on a cached boolean true and withdraws when it clears", () => {
-    const on = { services: { connect: { localPairing: true } } };
-    const off = { services: { connect: { localPairing: false } } };
+    const on = {
+      services: { connect: { enabled: true, localPairing: true } },
+    };
+    const off = {
+      services: { connect: { enabled: true, localPairing: false } },
+    };
     const out = refLocalGate("none", [
       { call: "pair" },
       { read: "ok", body: on },
