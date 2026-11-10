@@ -19,7 +19,7 @@ import {
   SYNC_EXPORT_RETRY_AFTER_MAX_MS,
 } from "@polaris-key/protocol/sync";
 import { PolarisError } from "../errors.js";
-import type { SyncResponse } from "../cloud-sync.js";
+import type { SyncResponse, SyncStatus } from "../cloud-sync.js";
 import type { ExportFilePointer, ExportFileSource } from "./export.js";
 import {
   DOWNLOAD_RANGE_BYTES,
@@ -75,6 +75,25 @@ export const isExportCancel = (e: unknown): boolean =>
 export const checkExportCancel = (signal?: AbortSignal): void => {
   if (signal?.aborted) throw cancelled();
 };
+
+/** The refusals the machine's own state gives, before anything is read. */
+export function refuseExportByStatus(s: SyncStatus): void {
+  if (s.state === "unsupported" && s.code !== undefined)
+    throw new PolarisError(
+      s.code,
+      "Cloud Sync is pinned to end-to-end encryption",
+    );
+  if (s.state === "locked")
+    throw new PolarisError(
+      "sync-locked",
+      "This device holds no root for the key ring; unlock it first.",
+    );
+  if (
+    s.state === "local" ||
+    (s.state === "blocked" && s.reason === "account_required")
+  )
+    throw new PolarisError("account_required", "Sign in to export");
+}
 
 const MAX_ATTEMPTS = 8;
 const BACKOFF_BASE_MS = 500;

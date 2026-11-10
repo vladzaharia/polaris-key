@@ -76,6 +76,7 @@ import { BackendClient, type BackendClientOptions } from "./backend/client.js";
 import { KeyringClient, type KeyringOptions } from "./keyring/client.js";
 import { CloudSyncHost, type CloudSyncHostOptions } from "./cloudSync/host.js";
 import { CloudSyncApi } from "./cloudSync/api.js";
+export type { CloudSyncExportOptions } from "./cloudSync/export.js";
 import { SavesApi } from "./cloudSync/saves.js";
 import { readStoredSubject } from "./identity/account.js";
 import { ConnectClient, type ConnectOptions } from "./connect/client.js";

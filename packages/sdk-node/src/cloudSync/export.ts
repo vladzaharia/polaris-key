@@ -21,6 +21,7 @@ import {
   checkExportCancel,
   exportToSink,
   pullChanges,
+  refuseExportByStatus,
   transportFileSource,
   webCryptoSyncPort,
   type CloudSyncExport,
@@ -65,25 +66,6 @@ const defaultSleep = (ms: number, signal?: AbortSignal): Promise<void> =>
     signal?.addEventListener("abort", done, { once: true });
   });
 
-/** The refusals the machine's own state gives, before anything is read. */
-function refuseByStatus(s: SyncStatus): void {
-  if (s.state === "unsupported" && s.code !== undefined)
-    throw new PolarisError(
-      s.code,
-      "Cloud Sync is pinned to end-to-end encryption",
-    );
-  if (s.state === "locked")
-    throw new PolarisError(
-      ErrorCode.syncLocked,
-      "This device holds no root for the key ring; unlock it first.",
-    );
-  if (
-    s.state === "local" ||
-    (s.state === "blocked" && s.reason === "account_required")
-  )
-    throw new PolarisError(ErrorCode.accountRequired, "Sign in to export");
-}
-
 export async function runNodeExport(
   d: NodeExportDeps,
   destination: string,
@@ -93,7 +75,7 @@ export async function runNodeExport(
   checkExportCancel(signal);
   const paths = await prepareDestination(destination);
   const status = await d.flush();
-  refuseByStatus(status);
+  refuseExportByStatus(status);
   checkExportCancel(signal);
   const e2e = d.host.machine.encryptionMode() === "e2e";
   const transport = new NodeFileTransport({
