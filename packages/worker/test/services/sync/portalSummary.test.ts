@@ -9,7 +9,7 @@
  * `last_seen` at most hourly and never `writes`, `seq` or the pull's own answer.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { invalidatePlatformSettings } from "../../../src/core/platformSettings.js";
 import { setDeviceLabel } from "../../../src/core/devices/store.js";
 import { setServices } from "../../../src/core/products/store.js";
@@ -294,11 +294,17 @@ describe("GET /api/products/<product>/sync", () => {
 });
 
 describe("the pull stamps clients.last_seen hourly", () => {
+  afterEach(() => vi.useRealTimers());
+
   // The device pulls with its client id.
   const pullAs = (w: World, clientId = CLIENT) =>
     send(w, authed(w), `/${SLUG}/sync?cursor=0&clientId=${clientId}`, "GET");
 
   it("moves a stale stamp, leaves a fresh one, and never writes, seq or the answer", async () => {
+    // The answer carries `serverNow` (whole seconds of the Object's clock): hold the clock so two
+    // pulls a second apart on a slow runner still compare equal.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW * 1000);
     const { w } = await setup();
     await push(w, [mut("ui.theme", "set", { value: SECRET_VALUE })]);
     const writes = meta(w, "writes");
