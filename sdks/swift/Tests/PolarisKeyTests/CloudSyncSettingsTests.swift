@@ -330,7 +330,61 @@ final class CloudSyncSettingsTests: XCTestCase {
         XCTAssertEqual(offers.count, 1)
         XCTAssertEqual(offers.first, .some(nil), "an off-origin URL is never handed to the app")
         XCTAssertNil(try r.roots.load(), "the ring was forgotten")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: stateFile.path))
+        // U-52: the machine is kept as it stands (blocked, the partition gone), not purged.
+        await eventually("the blocked machine was saved") { FileManager.default.fileExists(atPath: stateFile.path) }
+        let status = try await r.client.cloudSync.status()
+        XCTAssertEqual(status.state, .blocked)
+        XCTAssertEqual(status.reason, .accountRequired)
+        let saved = CloudSyncStateFile(stateDir: stateDirURL ?? dir, product: "djdl").load()
+        XCTAssertEqual(saved.persisted?.blocked, .accountRequired)
+        XCTAssertNil(saved.persisted?.partitions[ALICE], "the subject's partition is deleted")
+        XCTAssertEqual(saved.refused, ALICE)
+    }
+
+    func testBlockedSurvivesARelaunchAndOnlyAnotherSubjectLiftsIt() async throws {
+        let first = try await rig()
+        await signIn(first)
+        await serve(first.roots, push403: true)
+        try await first.client.config.set(VOL, .double(0.5))
+        try await first.client.cloudSync.flush()
+        await eventually("blocked") { ((try? await first.client.cloudSync.status().state) ?? .local) == .blocked }
+        await eventually("saved") { FileManager.default.fileExists(atPath: stateFile.path) }
+        await first.client.cloudSyncClose()
+        // A relaunch in the same directory, the identity still holding the refused subject.
+        server = StubServer()
+        let second = try await rig()
+        try await second.client.cloudSync.flush()  // attaches; the held subject is not signed in again
+        let status = try await second.client.cloudSync.status()
+        XCTAssertEqual(status.state, .blocked)
+        XCTAssertEqual(status.reason, .accountRequired)
+        let sent = await server.requests(forPath: "/djdl/sync").count
+        let pushed = await server.requests(forPath: "/djdl/sync/ops").count
+        XCTAssertEqual(sent + pushed, 0, "a blocked device sends nothing")
+        second.client.identity.updateSubject(BOB)
+        await eventually("another subject signs in") {
+            ((try? await second.client.cloudSync.status().state) ?? .blocked) != .blocked
+        }
+    }
+
+    func testAKeyRingAccountRequiredBlocksCloudSyncToo() async throws {
+        let r = try await rig()
+        await signIn(r)
+        await server.route("/djdl/devices/keyring") { _ in
+            StubServer.Reply(status: 403, body: #"{"error":{"code":"account_required","signInUrl":"/djdl/signin"}}"#)
+        }
+        do {
+            _ = try await r.client.keyring.read()
+            XCTFail("the ring route refuses")
+        } catch let e as PolarisError { XCTAssertEqual(e.code, ErrorCode.accountRequired) }
+        await eventually("blocked") { ((try? await r.client.cloudSync.status().state) ?? .local) == .blocked }
+        await eventually("signed-out offer") {
+            r.events.all.contains { if case .signInOffered = $0 { return true } else { return false } }
+        }
+        let offers = r.events.all.compactMap { e -> String?? in
+            if case .signInOffered(let u) = e { return .some(u) } else { return nil }
+        }
+        XCTAssertEqual(offers.first, .some("https://key.example/djdl/signin"), "the path is vetted onto the origin")
+        XCTAssertNil(try r.roots.load(), "the ring was forgotten")
     }
 
     func testTheSignInUrlCheck() {
@@ -455,4 +509,5 @@ final class CloudSyncSettingsTests: XCTestCase {
 
 extension PolarisKeyClient {
     fileprivate func cloudSyncFlush() async { _ = try? await cloudSync.flush() }
+    fileprivate func cloudSyncClose() async { await cloudSyncApi.hostIfStarted()?.close() }
 }

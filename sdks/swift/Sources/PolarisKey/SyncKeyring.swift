@@ -475,6 +475,9 @@ public actor SyncKeyring: CustomReflectable {
         }
     }
     private nonisolated let memory = RingMemory()
+    /// Told when a ring route answers `account_required` (the client wires Cloud Sync here), with the answer's
+    /// `signInUrl` unvetted. The call still throws its own error.
+    nonisolated let accountRequiredHook = LockedValue<(@Sendable (String?) -> Void)?>(nil)
     private var madeKeys: (any DeviceKeyPort)?
     private var madeRoots: RingRootStore?
     private var madeBackup: (any SyncRootBackupPort)?
@@ -1138,8 +1141,21 @@ public actor SyncKeyring: CustomReflectable {
             data = try JSONSerialization.data(withJSONObject: body)
         }
         let res = try await core.request(core.endpoints.url(path), method: method, headers: headers, body: data)
-        guard res.isOK else { throw Self.refusal(res) }
+        guard res.isOK else {
+            let error = Self.refusal(res)
+            // The Worker took the account away (WIRE-CONTRACT-V5 section 11.5): Cloud Sync learns it here too.
+            if res.status == 403, error.code == ErrorCode.accountRequired {
+                accountRequiredHook.current?(Self.signInUrl(res.body))
+            }
+            throw error
+        }
         return res
+    }
+
+    /// The `signInUrl` of an `account_required` body: inside `error` or beside it.
+    static func signInUrl(_ body: Data) -> String? {
+        guard let o = object(body) else { return nil }
+        return o["error"]?.objectValue?["signInUrl"]?.stringValue ?? o["signInUrl"]?.stringValue
     }
 
     private func send(_ method: String, _ path: String, _ body: [String: Any]? = nil) async throws {

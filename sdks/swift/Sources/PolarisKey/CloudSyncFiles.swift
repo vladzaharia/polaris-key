@@ -50,14 +50,18 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
     private let token: @Sendable () async -> String?
     private let timeoutSeconds: Double
     private let bulk: (any BulkChannel)?
+    /// Told when a route answers 403 `account_required` (WIRE-CONTRACT-V5 section 11.5), with the answer's
+    /// `signInUrl` unvetted. The call still returns its refusal.
+    private let onAccountRequired: (@Sendable (String?) -> Void)?
 
     public init(
         product: String, baseUrl: String, transport: any PolarisTransport,
         headers: @escaping @Sendable () async -> [String: String],
         token: @escaping @Sendable () async -> String?, timeoutSeconds: Double = 15,
-        bulk: (any BulkChannel)? = nil
+        bulk: (any BulkChannel)? = nil, onAccountRequired: (@Sendable (String?) -> Void)? = nil
     ) {
         self.bulk = bulk
+        self.onAccountRequired = onAccountRequired
         self.product = product
         self.baseUrl = baseUrl
         self.transport = transport
@@ -67,10 +71,13 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
     }
 
     /// The client's own transport, headers and device token.
-    public init(core: CoreContext, bulk: (any BulkChannel)? = nil) {
+    public init(
+        core: CoreContext, bulk: (any BulkChannel)? = nil, onAccountRequired: (@Sendable (String?) -> Void)? = nil
+    ) {
         self.init(
             product: core.product, baseUrl: core.endpoints.baseUrl, transport: core.transport,
-            headers: { await core.headers() }, token: { await core.token }, bulk: bulk)
+            headers: { await core.headers() }, token: { await core.token }, bulk: bulk,
+            onAccountRequired: onAccountRequired)
     }
 
     // MARK: Paths
@@ -295,6 +302,9 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions, TransferTask
                 for (k, v) in inner where k != "code" && k != "message" { top[k] = v }
             default: code = o["code"]?.stringValue
             }
+        }
+        if res.status == 403, code == ErrorCode.accountRequired {
+            onAccountRequired?(top["signInUrl"]?.stringValue)
         }
         return FileRefusal(
             status: res.status, code: code ?? Self.fallbackCode(res.status),

@@ -219,8 +219,14 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
         #endif
         background = bulk
         engine = FileTransferEngine(
-            transport: CloudSyncFileTransport(core: core, bulk: bulk), journal: journal,
+            transport: CloudSyncFileTransport(core: core, bulk: bulk, onAccountRequired: Self.accountRequired(api)),
+            journal: journal,
             maxRetryAfterSeconds: savesMaxRetryAfterSeconds)
+    }
+
+    /// A file route's `account_required` reaches Cloud Sync like a `/sync` 403 does.
+    private static func accountRequired(_ api: CloudSyncApi) -> @Sendable (String?) -> Void {
+        { url in Task { await api.accountRequired(signInUrl: url) } }
     }
 
     /// The records port for the host the API holds; one per host.
@@ -255,7 +261,7 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
                 maxBytes: chunkCacheBudget(largestSave: options.maxBytes))
         }
         return SavesContext(
-            records: recs, engine: engine, revisions: CloudSyncFileTransport(core: core), codec: codec,
+            records: recs, engine: engine, revisions: CloudSyncFileTransport(core: core, onAccountRequired: Self.accountRequired(api)), codec: codec,
             cache: cache)
     }
 

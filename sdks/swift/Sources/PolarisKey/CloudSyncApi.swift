@@ -18,7 +18,10 @@
 //         failure is reported (`purgeFailed`) and never replaces the sign-out's error. Purge also runs when
 //         Sync is off.
 //  - A-4  A sign-out that happens elsewhere (`account_required`, a released device) reaches the machine as
-//         `signedOut` and forgets and purges once.
+//         `signedOut` and forgets and purges once. `account_required` keeps the machine as it stands
+//         (blocked, partition gone; status stays `blocked` across a relaunch) instead of purging it, and
+//         the refused subject is not signed in again until a sign-out or another subject. A key-ring or
+//         file route's `account_required` calls `accountRequired(signInUrl:)` here (A-4b).
 //  - A-5  `signInUrl` is vetted (`safeSignInUrl`): no control characters or whitespace, resolved against
 //         the Worker origin, https on that origin only. The offer follows the forget and comes only for
 //         `accountRequired` / `subjectChanged`.
@@ -400,12 +403,14 @@ actor CloudSyncApi {
         case IdentityChange.signedIn, IdentityChange.subjectChanged:
             if let target = change.subject {
                 if target != subject { await signIn(target) }
-            } else if subject != nil {
+            } else {
                 // A readable "no session": the principal is gone with the account.
-                await leave()
+                await h.clearRefused()
+                if subject != nil { await leave() }
             }
         case IdentityChange.signedOut:
             // A sign-out that happened elsewhere (the hook already left when it was ours).
+            await h.clearRefused()
             if subject != nil { await leave() }
         default: break
         }
@@ -414,6 +419,8 @@ actor CloudSyncApi {
     private func signIn(_ target: String) async {
         let h = host()
         guard await h.isStarted else { return }
+        // The Worker took this subject's account away: only a sign-out or another subject lifts it.
+        if await h.refused == target { return }
         // Another person: the first leaves (unsynced edits dropped, then forgotten) before this one
         // starts. The device credential is already the new person's, so nothing is sent for the old one.
         if let old = subject, old != target { await signOutNow() }
@@ -477,6 +484,7 @@ actor CloudSyncApi {
         let left = max(0, SYNC_SIGNOUT_FLUSH_MS - Int(Date().timeIntervalSince(began) * 1000))
         explicitForget = true
         defer { explicitForget = false }
+        if let h = hostValue, await h.isStarted { await h.clearRefused() }
         let who = subject
         if let h = hostValue, await h.isStarted, who != nil {
             await h.signOut()
@@ -527,6 +535,21 @@ actor CloudSyncApi {
         try await forget()
     }
 
+    private func saveBlocked(_ refused: String?) async {
+        if let h = hostValue { await h.saveBlocked(subject: refused) }
+    }
+
+    /// A key-ring or file route answered `account_required` (WIRE-CONTRACT-V5 section 11.5): the machine takes
+    /// the same transition as for a `/sync` 403. `signInUrl` is the answer's, unvetted; it is vetted on the way
+    /// out like every offer. Never throws into the route that saw it.
+    func accountRequired(signInUrl: String?) async {
+        await attach()
+        guard let h = hostValue, await h.isStarted else { return }
+        await h.accountRequired(signInUrl: signInUrl)
+        await drainEvents()
+        await settle()
+    }
+
     private func purge() async {
         do { try await host().purge() } catch { emit(.purgeFailed) }
     }
@@ -541,7 +564,10 @@ actor CloudSyncApi {
         let left = !leftReasons.isEmpty
         // The root leaves memory before anything else runs.
         var forgotten: Task<Void, Never>?
-        if left && !explicitForget { forgotten = startForget() }
+        // `account_required` keeps the machine as it stands (blocked, partition gone) instead of purging it.
+        let blocked = leftReasons.contains(.accountRequired)
+        let was = subject
+        if left && !explicitForget { forgotten = startForget(keeping: blocked ? .some(was) : nil) }
         let origin = config
         for e in events {
             switch e {
@@ -578,11 +604,13 @@ actor CloudSyncApi {
     }
 
     /// Ring first, then the purge; single-flight so two events never forget twice at once.
-    private func startForget() -> Task<Void, Never> {
+    /// With `keeping` (after `account_required`; the subject the Worker refused) the machine is saved as it
+    /// stands, so its status is still `blocked` after a relaunch; every other leave purges it.
+    private func startForget(keeping refused: String??) -> Task<Void, Never> {
         if let t = forgetTask { return t }
         let t = Task {
             try? await self.forgetPerson()
-            await self.purge()
+            if let refused { await self.saveBlocked(refused) } else { await self.purge() }
             self.forgetDone()
         }
         forgetTask = t
