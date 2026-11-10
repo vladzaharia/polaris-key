@@ -75,6 +75,10 @@ import {
   Sha256,
   type SyncJson,
 } from "@polaris-key/client-core/sync";
+import {
+  defineExportSuites,
+  type ExportCase,
+} from "../node/syncExportSuite.js";
 
 interface HkdfCase {
   id: string;
@@ -1220,3 +1224,7 @@ describe("sync-vectors.json: deltaCases", () => {
     });
   }
 });
+
+defineExportSuites(
+  (syncVectors as unknown as { exportCases: ExportCase[] }).exportCases,
+);

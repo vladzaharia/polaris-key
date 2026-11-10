@@ -68,6 +68,7 @@ import {
   canonicalJson,
   type SyncJson,
 } from "@polaris-key/client-core/sync";
+import { defineExportSuites, type ExportCase } from "./syncExportSuite.js";
 
 interface HkdfCase {
   id: string;
@@ -1109,3 +1110,7 @@ describe("sync-vectors.json: deltaCases", () => {
     });
   }
 });
+
+defineExportSuites(
+  (vectors as unknown as { exportCases: ExportCase[] }).exportCases,
+);
