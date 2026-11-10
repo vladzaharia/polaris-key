@@ -3055,11 +3055,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pairing_code_failed_title">Não foi possível parear</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pairing_code_failed_message">Esse código não funcionou. Confira e tente novamente.</string>
+    <string name="core_codes_pairing_code_failed_message">Esse código não funcionou. Digite o código que o outro dispositivo mostra agora.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pairing_not_found_title">Dispositivo não encontrado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pairing_not_found_message">Não foi possível encontrar o outro dispositivo. Confira se os dois estão na mesma rede.</string>
+    <string name="core_codes_pairing_not_found_message">Não foi possível encontrar o outro dispositivo. Confira o código e se os dois estão na mesma rede.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_local_links_full_title">Sem espaço para parear</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

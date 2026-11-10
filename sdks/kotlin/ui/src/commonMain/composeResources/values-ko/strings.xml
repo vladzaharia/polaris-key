@@ -3029,11 +3029,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pairing_code_failed_title">페어링하지 못함</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pairing_code_failed_message">코드가 맞지 않습니다. 확인한 후 다시 시도하세요.</string>
+    <string name="core_codes_pairing_code_failed_message">코드가 맞지 않습니다. 상대 기기에 지금 표시된 코드를 입력하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pairing_not_found_title">기기를 찾을 수 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pairing_not_found_message">상대 기기를 찾을 수 없습니다. 두 기기가 같은 네트워크에 있는지 확인하세요.</string>
+    <string name="core_codes_pairing_not_found_message">상대 기기를 찾을 수 없습니다. 코드를 확인하고, 두 기기가 같은 네트워크에 있는지도 확인하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_local_links_full_title">더 이상 페어링할 수 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

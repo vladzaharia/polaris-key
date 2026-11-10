@@ -3029,11 +3029,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pairing_code_failed_title">配对失败</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pairing_code_failed_message">该代码无效。请检查后重试。</string>
+    <string name="core_codes_pairing_code_failed_message">该代码无效。请输入另一台设备现在显示的代码。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pairing_not_found_title">未找到设备</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pairing_not_found_message">找不到另一台设备。请确认两台设备在同一网络中。</string>
+    <string name="core_codes_pairing_not_found_message">找不到另一台设备。请检查代码，并确认两台设备在同一网络中。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_local_links_full_title">无法再配对</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

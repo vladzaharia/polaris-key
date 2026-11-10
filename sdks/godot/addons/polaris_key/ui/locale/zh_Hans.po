@@ -7963,20 +7963,20 @@ msgstr "此应用已关闭通过代码配对。"
 msgid "core.codes.pairing-code-failed.title"
 msgstr "配对失败"
 
-#. That code didn't work. Check it and try again.
+#. That code didn't work. Enter the code the other device shows now.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-code-failed.message"
-msgstr "该代码无效。请检查后重试。"
+msgstr "该代码无效。请输入另一台设备现在显示的代码。"
 
 #. Device not found
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-not-found.title"
 msgstr "未找到设备"
 
-#. Can't find the other device. Check you're both on the same network.
+#. Can't find the other device. Check the code, and that you're both on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pairing-not-found.message"
-msgstr "找不到另一台设备。请确认两台设备在同一网络中。"
+msgstr "找不到另一台设备。请检查代码，并确认两台设备在同一网络中。"
 
 #. No room to pair
 #. Core copy (conformance/parity/copy.en.json, codes).

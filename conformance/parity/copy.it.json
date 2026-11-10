@@ -691,11 +691,11 @@
     },
     "pairing-code-failed": {
       "title": "Associazione non riuscita",
-      "message": "Quel codice non ha funzionato. Controllalo e riprova."
+      "message": "Quel codice non ha funzionato. Inserisci il codice che mostra ora l'altro dispositivo."
     },
     "pairing-not-found": {
       "title": "Dispositivo non trovato",
-      "message": "Impossibile trovare l'altro dispositivo. Controlla che siano entrambi sulla stessa rete."
+      "message": "Impossibile trovare l'altro dispositivo. Controlla il codice e che siano entrambi sulla stessa rete."
     },
     "local-links-full": {
       "title": "Nessuno spazio per associare",

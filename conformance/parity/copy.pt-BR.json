@@ -691,11 +691,11 @@
     },
     "pairing-code-failed": {
       "title": "Não foi possível parear",
-      "message": "Esse código não funcionou. Confira e tente novamente."
+      "message": "Esse código não funcionou. Digite o código que o outro dispositivo mostra agora."
     },
     "pairing-not-found": {
       "title": "Dispositivo não encontrado",
-      "message": "Não foi possível encontrar o outro dispositivo. Confira se os dois estão na mesma rede."
+      "message": "Não foi possível encontrar o outro dispositivo. Confira o código e se os dois estão na mesma rede."
     },
     "local-links-full": {
       "title": "Sem espaço para parear",

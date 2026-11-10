@@ -1712,6 +1712,95 @@ export const MERGE_EVENT_VALUES: readonly MergeEvent[] = [
   "conflictClosed",
 ];
 
+/** Why the code a showing device shows now is the code (`LocalCode.reason`, WIRE-CONTRACT-V5 §15.12), in kebab-case in every SDK: `opened` (the first code of a window), `wrong-code` (a counted failed guess), `declined` (the other person declined), `timeout` (a deadline ran out), `closed` (any other end without a link). Display only; no decision depends on it. */
+export const LocalCodeReason = {
+  opened: "opened",
+  wrongCode: "wrong-code",
+  declined: "declined",
+  timeout: "timeout",
+  closed: "closed",
+} as const;
+export type LocalCodeReason =
+  (typeof LocalCodeReason)[keyof typeof LocalCodeReason];
+
+/** Every `LocalCodeReason` value, in source order. */
+export const LOCAL_CODE_REASON_VALUES: readonly LocalCodeReason[] = [
+  "opened",
+  "wrong-code",
+  "declined",
+  "timeout",
+  "closed",
+];
+
+/** Why a pairing window ended (`onEnd`, WIRE-CONTRACT-V5 §15.12): `expired` (300 s ran out), `too-many-tries` (the fifth failed guess), `stored` (a link was made), `person` (the host closed it), `off` (the local-pairing gate went off). Display only. */
+export const LocalWindowEnd = {
+  expired: "expired",
+  tooManyTries: "too-many-tries",
+  stored: "stored",
+  person: "person",
+  off: "off",
+} as const;
+export type LocalWindowEnd =
+  (typeof LocalWindowEnd)[keyof typeof LocalWindowEnd];
+
+/** Every `LocalWindowEnd` value, in source order. */
+export const LOCAL_WINDOW_END_VALUES: readonly LocalWindowEnd[] = [
+  "expired",
+  "too-many-tries",
+  "stored",
+  "person",
+  "off",
+];
+
+/** Why a pairing that reached consent ended without a link (`onFailed`, and the `reason` of a joiner's `peer-closed`, WIRE-CONTRACT-V5 §15.12): `declined`, `timeout`, `full` (the cap), `too-many-tries` (the fifth failed guess), `closed` (any other end), `cancelled` (the host cancelled). */
+export const LocalPairFailure = {
+  declined: "declined",
+  timeout: "timeout",
+  full: "full",
+  tooManyTries: "too-many-tries",
+  closed: "closed",
+  cancelled: "cancelled",
+} as const;
+export type LocalPairFailure =
+  (typeof LocalPairFailure)[keyof typeof LocalPairFailure];
+
+/** Every `LocalPairFailure` value, in source order. */
+export const LOCAL_PAIR_FAILURE_VALUES: readonly LocalPairFailure[] = [
+  "declined",
+  "timeout",
+  "full",
+  "too-many-tries",
+  "closed",
+  "cancelled",
+];
+
+/** The `reason` of `pairing-code-failed` on a joining device (WIRE-CONTRACT-V5 §15.12): `invalid` (the code or QR did not parse), `other-app` (a QR for another app), `spent` (the dial budget for the nameplate is used), `wrong` (an attempt failed after the other device's first reply). The first that applies wins, in that order, with `spent` at the start before `wrong`; a budget stop in the middle of a join is `spent`. */
+export const PairingCodeFailedReason = {
+  invalid: "invalid",
+  otherApp: "other-app",
+  spent: "spent",
+  wrong: "wrong",
+} as const;
+export type PairingCodeFailedReason =
+  (typeof PairingCodeFailedReason)[keyof typeof PairingCodeFailedReason];
+
+/** Every `PairingCodeFailedReason` value, in source order. */
+export const PAIRING_CODE_FAILED_REASON_VALUES: readonly PairingCodeFailedReason[] =
+  ["invalid", "other-app", "spent", "wrong"];
+
+/** The `cap` of `local-links-full` (WIRE-CONTRACT-V5 §15.12): `stored` (the 32 links a device keeps per product) or `reachable` (the 8 links it advertises). */
+export const LocalLinksCap = {
+  stored: "stored",
+  reachable: "reachable",
+} as const;
+export type LocalLinksCap = (typeof LocalLinksCap)[keyof typeof LocalLinksCap];
+
+/** Every `LocalLinksCap` value, in source order. */
+export const LOCAL_LINKS_CAP_VALUES: readonly LocalLinksCap[] = [
+  "stored",
+  "reachable",
+];
+
 /** The `X-PKey-*` request header names (wire contract v3 §5). */
 export const HeaderName = {
   arch: "X-PKey-Arch",

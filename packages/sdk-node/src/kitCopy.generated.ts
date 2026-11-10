@@ -1765,10 +1765,10 @@ export const KIT_COPY: Readonly<
       "Pairing with a code is off for this app.",
     "core.codes.pairing-code-failed.title": "Couldn't pair",
     "core.codes.pairing-code-failed.message":
-      "That code didn't work. Check it and try again.",
+      "That code didn't work. Enter the code the other device shows now.",
     "core.codes.pairing-not-found.title": "Device not found",
     "core.codes.pairing-not-found.message":
-      "Can't find the other device. Check you're both on the same network.",
+      "Can't find the other device. Check the code, and that you're both on the same network.",
     "core.codes.local-links-full.title": "No room to pair",
     "core.codes.local-links-full.message":
       "This device has no room for another pairing. Forget a paired device first.",
@@ -3914,10 +3914,10 @@ export const KIT_COPY: Readonly<
       "Das Koppeln mit einem Code ist für diese App deaktiviert.",
     "core.codes.pairing-code-failed.title": "Koppeln fehlgeschlagen",
     "core.codes.pairing-code-failed.message":
-      "Dieser Code hat nicht funktioniert. Prüfen Sie ihn und versuchen Sie es erneut.",
+      "Dieser Code hat nicht funktioniert. Geben Sie den Code ein, den das andere Gerät jetzt anzeigt.",
     "core.codes.pairing-not-found.title": "Gerät nicht gefunden",
     "core.codes.pairing-not-found.message":
-      "Das andere Gerät wurde nicht gefunden. Prüfen Sie, ob beide Geräte im selben Netzwerk sind.",
+      "Das andere Gerät wurde nicht gefunden. Prüfen Sie den Code und ob beide Geräte im selben Netzwerk sind.",
     "core.codes.local-links-full.title": "Kein Platz zum Koppeln",
     "core.codes.local-links-full.message":
       "Auf diesem Gerät ist kein Platz für eine weitere Kopplung. Entfernen Sie zuerst ein gekoppeltes Gerät.",
@@ -6052,10 +6052,10 @@ export const KIT_COPY: Readonly<
       "L'association avec un code est désactivée pour cette app.",
     "core.codes.pairing-code-failed.title": "Association impossible",
     "core.codes.pairing-code-failed.message":
-      "Ce code n'a pas fonctionné. Vérifiez-le et réessayez.",
+      "Ce code n'a pas fonctionné. Saisissez le code qu'affiche maintenant l'autre appareil.",
     "core.codes.pairing-not-found.title": "Appareil introuvable",
     "core.codes.pairing-not-found.message":
-      "L'autre appareil est introuvable. Vérifiez que les deux sont sur le même réseau.",
+      "L'autre appareil est introuvable. Vérifiez le code, et que les deux appareils sont sur le même réseau.",
     "core.codes.local-links-full.title": "Plus de place pour associer",
     "core.codes.local-links-full.message":
       "Cet appareil n'a plus de place pour une autre association. Oubliez d'abord un appareil associé.",
@@ -8181,10 +8181,10 @@ export const KIT_COPY: Readonly<
       "La vinculación con un código está desactivada en esta app.",
     "core.codes.pairing-code-failed.title": "No se pudo vincular",
     "core.codes.pairing-code-failed.message":
-      "Ese código no funcionó. Revísalo e inténtalo de nuevo.",
+      "Ese código no funcionó. Introduce el código que muestra ahora el otro dispositivo.",
     "core.codes.pairing-not-found.title": "Dispositivo no encontrado",
     "core.codes.pairing-not-found.message":
-      "No se encuentra el otro dispositivo. Comprueba que ambos estén en la misma red.",
+      "No se encuentra el otro dispositivo. Revisa el código y comprueba que ambos estén en la misma red.",
     "core.codes.local-links-full.title": "Sin espacio para vincular",
     "core.codes.local-links-full.message":
       "Este dispositivo no tiene espacio para otra vinculación. Olvida primero un dispositivo vinculado.",
@@ -10272,10 +10272,10 @@ export const KIT_COPY: Readonly<
       "O pareamento com um código está desativado neste app.",
     "core.codes.pairing-code-failed.title": "Não foi possível parear",
     "core.codes.pairing-code-failed.message":
-      "Esse código não funcionou. Confira e tente novamente.",
+      "Esse código não funcionou. Digite o código que o outro dispositivo mostra agora.",
     "core.codes.pairing-not-found.title": "Dispositivo não encontrado",
     "core.codes.pairing-not-found.message":
-      "Não foi possível encontrar o outro dispositivo. Confira se os dois estão na mesma rede.",
+      "Não foi possível encontrar o outro dispositivo. Confira o código e se os dois estão na mesma rede.",
     "core.codes.local-links-full.title": "Sem espaço para parear",
     "core.codes.local-links-full.message":
       "Este dispositivo não tem espaço para outro pareamento. Esqueça um dispositivo pareado primeiro.",
@@ -12375,10 +12375,10 @@ export const KIT_COPY: Readonly<
       "L'associazione con un codice è disattivata per questa app.",
     "core.codes.pairing-code-failed.title": "Associazione non riuscita",
     "core.codes.pairing-code-failed.message":
-      "Quel codice non ha funzionato. Controllalo e riprova.",
+      "Quel codice non ha funzionato. Inserisci il codice che mostra ora l'altro dispositivo.",
     "core.codes.pairing-not-found.title": "Dispositivo non trovato",
     "core.codes.pairing-not-found.message":
-      "Impossibile trovare l'altro dispositivo. Controlla che siano entrambi sulla stessa rete.",
+      "Impossibile trovare l'altro dispositivo. Controlla il codice e che siano entrambi sulla stessa rete.",
     "core.codes.local-links-full.title": "Nessuno spazio per associare",
     "core.codes.local-links-full.message":
       "Questo dispositivo non ha spazio per un'altra associazione. Dimentica prima un dispositivo associato.",
@@ -14498,10 +14498,10 @@ export const KIT_COPY: Readonly<
       "このアプリでは、コードによるペアリングはオフになっています。",
     "core.codes.pairing-code-failed.title": "ペアリングできませんでした",
     "core.codes.pairing-code-failed.message":
-      "そのコードは使えませんでした。確認して、もう一度お試しください。",
+      "そのコードは使えませんでした。相手のデバイスに今表示されているコードを入力してください。",
     "core.codes.pairing-not-found.title": "デバイスが見つかりません",
     "core.codes.pairing-not-found.message":
-      "相手のデバイスが見つかりません。両方が同じネットワークにあるか確認してください。",
+      "相手のデバイスが見つかりません。コードを確認し、両方が同じネットワークにあることも確認してください。",
     "core.codes.local-links-full.title": "これ以上ペアリングできません",
     "core.codes.local-links-full.message":
       "このデバイスにはこれ以上ペアリングを保存できません。先にペアリング済みのデバイスを削除してください。",
@@ -16535,10 +16535,10 @@ export const KIT_COPY: Readonly<
       "이 앱에서는 코드로 페어링하기가 꺼져 있습니다.",
     "core.codes.pairing-code-failed.title": "페어링하지 못함",
     "core.codes.pairing-code-failed.message":
-      "코드가 맞지 않습니다. 확인한 후 다시 시도하세요.",
+      "코드가 맞지 않습니다. 상대 기기에 지금 표시된 코드를 입력하세요.",
     "core.codes.pairing-not-found.title": "기기를 찾을 수 없음",
     "core.codes.pairing-not-found.message":
-      "상대 기기를 찾을 수 없습니다. 두 기기가 같은 네트워크에 있는지 확인하세요.",
+      "상대 기기를 찾을 수 없습니다. 코드를 확인하고, 두 기기가 같은 네트워크에 있는지도 확인하세요.",
     "core.codes.local-links-full.title": "더 이상 페어링할 수 없음",
     "core.codes.local-links-full.message":
       "이 기기에는 더 이상 페어링을 저장할 수 없습니다. 먼저 페어링된 기기를 삭제하세요.",
@@ -18416,10 +18416,11 @@ export const KIT_COPY: Readonly<
     "core.codes.local-pairing-off.title": "无法配对",
     "core.codes.local-pairing-off.message": "此应用已关闭通过代码配对。",
     "core.codes.pairing-code-failed.title": "配对失败",
-    "core.codes.pairing-code-failed.message": "该代码无效。请检查后重试。",
+    "core.codes.pairing-code-failed.message":
+      "该代码无效。请输入另一台设备现在显示的代码。",
     "core.codes.pairing-not-found.title": "未找到设备",
     "core.codes.pairing-not-found.message":
-      "找不到另一台设备。请确认两台设备在同一网络中。",
+      "找不到另一台设备。请检查代码，并确认两台设备在同一网络中。",
     "core.codes.local-links-full.title": "无法再配对",
     "core.codes.local-links-full.message":
       "此设备已无法再保存配对。请先移除一台已配对的设备。",

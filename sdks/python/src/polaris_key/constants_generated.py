@@ -84,6 +84,16 @@ __all__ = [
     "MERGE_CAUSE_VALUES",
     "MergeEvent",
     "MERGE_EVENT_VALUES",
+    "LocalCodeReason",
+    "LOCAL_CODE_REASON_VALUES",
+    "LocalWindowEnd",
+    "LOCAL_WINDOW_END_VALUES",
+    "LocalPairFailure",
+    "LOCAL_PAIR_FAILURE_VALUES",
+    "PairingCodeFailedReason",
+    "PAIRING_CODE_FAILED_REASON_VALUES",
+    "LocalLinksCap",
+    "LOCAL_LINKS_CAP_VALUES",
     "HeaderName",
     "HEADER_NAME_VALUES",
     "ServiceSlug",
@@ -1968,6 +1978,100 @@ class MergeEvent:
 MERGE_EVENT_VALUES: Tuple[str, ...] = (
     "conflictOpened",
     "conflictClosed",
+)
+
+
+class LocalCodeReason:
+    """Why the code a showing device shows now is the code (`LocalCode.reason`, WIRE-CONTRACT-V5 §15.12), in kebab-case in every SDK: `opened` (the first code of a window), `wrong-code` (a counted failed guess), `declined` (the other person declined), `timeout` (a deadline ran out), `closed` (any other end without a link). Display only; no decision depends on it."""
+
+    OPENED: Final = "opened"
+    WRONG_CODE: Final = "wrong-code"
+    DECLINED: Final = "declined"
+    TIMEOUT: Final = "timeout"
+    CLOSED: Final = "closed"
+
+
+#: Every ``LocalCodeReason`` value, in source order.
+LOCAL_CODE_REASON_VALUES: Tuple[str, ...] = (
+    "opened",
+    "wrong-code",
+    "declined",
+    "timeout",
+    "closed",
+)
+
+
+class LocalWindowEnd:
+    """Why a pairing window ended (`onEnd`, WIRE-CONTRACT-V5 §15.12): `expired` (300 s ran out), `too-many-tries` (the fifth failed guess), `stored` (a link was made), `person` (the host closed it), `off` (the local-pairing gate went off). Display only."""
+
+    EXPIRED: Final = "expired"
+    TOO_MANY_TRIES: Final = "too-many-tries"
+    STORED: Final = "stored"
+    PERSON: Final = "person"
+    OFF: Final = "off"
+
+
+#: Every ``LocalWindowEnd`` value, in source order.
+LOCAL_WINDOW_END_VALUES: Tuple[str, ...] = (
+    "expired",
+    "too-many-tries",
+    "stored",
+    "person",
+    "off",
+)
+
+
+class LocalPairFailure:
+    """Why a pairing that reached consent ended without a link (`onFailed`, and the `reason` of a joiner's `peer-closed`, WIRE-CONTRACT-V5 §15.12): `declined`, `timeout`, `full` (the cap), `too-many-tries` (the fifth failed guess), `closed` (any other end), `cancelled` (the host cancelled)."""
+
+    DECLINED: Final = "declined"
+    TIMEOUT: Final = "timeout"
+    FULL: Final = "full"
+    TOO_MANY_TRIES: Final = "too-many-tries"
+    CLOSED: Final = "closed"
+    CANCELLED: Final = "cancelled"
+
+
+#: Every ``LocalPairFailure`` value, in source order.
+LOCAL_PAIR_FAILURE_VALUES: Tuple[str, ...] = (
+    "declined",
+    "timeout",
+    "full",
+    "too-many-tries",
+    "closed",
+    "cancelled",
+)
+
+
+class PairingCodeFailedReason:
+    """The `reason` of `pairing-code-failed` on a joining device (WIRE-CONTRACT-V5 §15.12): `invalid` (the code or QR did not parse), `other-app` (a QR for another app), `spent` (the dial budget for the nameplate is used), `wrong` (an attempt failed after the other device's first reply). The first that applies wins, in that order, with `spent` at the start before `wrong`; a budget stop in the middle of a join is `spent`."""
+
+    INVALID: Final = "invalid"
+    OTHER_APP: Final = "other-app"
+    SPENT: Final = "spent"
+    WRONG: Final = "wrong"
+
+
+#: Every ``PairingCodeFailedReason`` value, in source order.
+PAIRING_CODE_FAILED_REASON_VALUES: Tuple[str, ...] = (
+    "invalid",
+    "other-app",
+    "spent",
+    "wrong",
+)
+
+
+class LocalLinksCap:
+    """The `cap` of `local-links-full` (WIRE-CONTRACT-V5 §15.12): `stored` (the 32 links a device keeps per product) or `reachable` (the 8 links it advertises)."""
+
+    STORED: Final = "stored"
+    REACHABLE: Final = "reachable"
+
+
+#: Every ``LocalLinksCap`` value, in source order.
+LOCAL_LINKS_CAP_VALUES: Tuple[str, ...] = (
+    "stored",
+    "reachable",
 )
 
 

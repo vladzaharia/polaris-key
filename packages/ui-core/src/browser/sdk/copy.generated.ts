@@ -778,12 +778,13 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   },
   "pairing-code-failed": {
     title: "Couldn't pair",
-    message: "That code didn't work. Check it and try again.",
+    message:
+      "That code didn't work. Enter the code the other device shows now.",
   },
   "pairing-not-found": {
     title: "Device not found",
     message:
-      "Can't find the other device. Check you're both on the same network.",
+      "Can't find the other device. Check the code, and that you're both on the same network.",
   },
   "local-links-full": {
     title: "No room to pair",

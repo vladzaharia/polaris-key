@@ -3055,11 +3055,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pairing_code_failed_title">Association impossible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pairing_code_failed_message">Ce code n'a pas fonctionné. Vérifiez-le et réessayez.</string>
+    <string name="core_codes_pairing_code_failed_message">Ce code n'a pas fonctionné. Saisissez le code qu'affiche maintenant l'autre appareil.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_pairing_not_found_title">Appareil introuvable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_pairing_not_found_message">L'autre appareil est introuvable. Vérifiez que les deux sont sur le même réseau.</string>
+    <string name="core_codes_pairing_not_found_message">L'autre appareil est introuvable. Vérifiez le code, et que les deux appareils sont sur le même réseau.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_local_links_full_title">Plus de place pour associer</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

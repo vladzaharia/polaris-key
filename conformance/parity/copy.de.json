@@ -691,11 +691,11 @@
     },
     "pairing-code-failed": {
       "title": "Koppeln fehlgeschlagen",
-      "message": "Dieser Code hat nicht funktioniert. Prüfen Sie ihn und versuchen Sie es erneut."
+      "message": "Dieser Code hat nicht funktioniert. Geben Sie den Code ein, den das andere Gerät jetzt anzeigt."
     },
     "pairing-not-found": {
       "title": "Gerät nicht gefunden",
-      "message": "Das andere Gerät wurde nicht gefunden. Prüfen Sie, ob beide Geräte im selben Netzwerk sind."
+      "message": "Das andere Gerät wurde nicht gefunden. Prüfen Sie den Code und ob beide Geräte im selben Netzwerk sind."
     },
     "local-links-full": {
       "title": "Kein Platz zum Koppeln",
