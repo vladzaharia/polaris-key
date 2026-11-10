@@ -15,6 +15,8 @@
 import type { Env } from "../../../platform/env.js";
 import type {
   CloudSyncError,
+  ExportPageRequest,
+  ExportPageResult,
   CloudSyncOp,
   CloudSyncReply,
   DoPin,
@@ -101,6 +103,23 @@ export async function exportCloudSync(
       ...(opts.forMerge ? { forMerge: true } : {}),
     })
   ).document;
+}
+
+/**
+ * One bounded page of the person's own export (U-12.4): a summary, or a page of records, parked
+ * copies, files or chunks. `exportCloudSync` is the merge's; this is what leaves through the portal.
+ */
+export async function exportPageCloudSync<P extends ExportPageRequest>(
+  env: Pick<Env, "CLOUD_SYNC">,
+  pin: DoPin,
+  page: P,
+): Promise<Extract<ExportPageResult, { part: P["part"] }>> {
+  const { result } = await callCloudSync<"exportPage">(env, pin, {
+    op: "exportPage",
+    page,
+  });
+  if (result.part !== page.part) throw new CloudSyncDoError(502, "bad_reply");
+  return result as Extract<ExportPageResult, { part: P["part"] }>;
 }
 
 /**

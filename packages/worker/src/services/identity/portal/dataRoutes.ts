@@ -187,21 +187,23 @@ export async function handleProductExport(
   // ordinary response and never a cut-off download.
   let archive: Response | null = null;
   if (format === "zip") {
-    const entries: ZipEntry[] = [
-      {
-        name: "README.txt",
-        read: () => new TextEncoder().encode(ARCHIVE_README),
-      },
-      {
-        name: "data.json",
-        read: () => new TextEncoder().encode(JSON.stringify(document, null, 2)),
-      },
-      ...(await exportProductArchiveEntries(
-        { db, env, now, hooksFor },
-        document,
-      )),
-    ];
+    let entries: ZipEntry[];
     try {
+      entries = [
+        {
+          name: "README.txt",
+          read: () => new TextEncoder().encode(ARCHIVE_README),
+        },
+        {
+          name: "data.json",
+          read: () =>
+            new TextEncoder().encode(JSON.stringify(document, null, 2)),
+        },
+        ...(await exportProductArchiveEntries(
+          { db, env, now, hooksFor },
+          document,
+        )),
+      ];
       checkEntries(entries);
     } catch (e) {
       if (e instanceof ZipError && e.reason === "entries") {

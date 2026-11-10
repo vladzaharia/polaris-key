@@ -68,6 +68,7 @@ import {
   releaseForMerge,
 } from "./fileGc.js";
 import { FILES_USED } from "./fileOps.js";
+import { exportPage, validExportPage } from "./exportPages.js";
 import { fileStoreOf } from "./client.js";
 import { SCHEMA_VERSION, SqlStore } from "./sqlStore.js";
 import { inspectValues } from "./inspectValues.js";
@@ -456,6 +457,20 @@ export class CloudSyncDO implements DurableObject {
               ? null
               : this.exportAll(op, op.forMerge === true),
         });
+      case "exportPage": {
+        if (!validExportPage(op.page))
+          return reply({ error: "bad_request" }, 400);
+        this.migrateIfBehind();
+        // Nothing to export from an absorbed, erased or never-written object.
+        const live =
+          this.pinned() !== null &&
+          this.store.getMeta("absorbed_into") === undefined &&
+          this.store.getMeta("erased_at") === undefined;
+        return reply({
+          op: "exportPage",
+          result: exportPage(this.store, op.page, live),
+        });
+      }
       case "absorb":
         return this.absorb(op);
       case "deleteAll":

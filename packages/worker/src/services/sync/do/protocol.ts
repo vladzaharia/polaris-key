@@ -254,6 +254,12 @@ export type CloudSyncOp =
    */
   | (DoPin & { op: "exportAll"; forMerge?: boolean })
   /**
+   * One bounded read of a person's own export (U-12.4), the zip's and the JSON's source: `exportAll`
+   * stays for merges. A page never holds more than `limit` rows or about 1 MiB; the cursor it
+   * answers is the one to ask the next page with, null on the last. Reads only.
+   */
+  | (DoPin & { op: "exportPage"; page: ExportPageRequest })
+  /**
    * The survivor of an account merge takes in the absorbed subject's export (U-05.8). Only the
    * store's `merge` hook sends it (`do/client.ts` `absorbCloudSync`); the pin names the SURVIVOR,
    * and the document must be of the same product and another subject. `policies` is the catalog's
@@ -315,6 +321,62 @@ export type ExportedChunk = Pick<
   "collection" | "chunkId" | "storedBytes"
 > &
   Partial<Pick<StoredChunk, "refs" | "objectKey" | "ssecKid">>;
+
+/** What `exportPage` asks for. Cursors are the last row's key of the page before. */
+export type ExportPageRequest =
+  | { part: "summary" }
+  | { part: "records"; collection: string; after: number; limit: number }
+  | { part: "parked"; after: number; limit: number }
+  | {
+      part: "files";
+      after?: [string, string, number];
+      limit: number;
+    }
+  | { part: "chunks"; collection: string; after: string; limit: number };
+
+/** One collection in the export's summary: counters, never a value. */
+export type ExportCollection = InspectedCollection;
+
+/** A person's export without its bulk: counts and the small tables, inline. */
+export interface ExportSummary {
+  seq: number;
+  encryptionSince?: number;
+  usage: StoreUsage;
+  /** Live rows and tombstones (at most 256 rows, 64 KiB: the store's own caps). */
+  settings: ExportedSetting[];
+  /** Every collection that holds a record, a tombstone, a file or a chunk, in name order. */
+  collections: ExportCollection[];
+  /** Collections that hold a record row or a tombstone: the zip has a records file for each. */
+  recordCollections: string[];
+  tombstones: number;
+  parked: number;
+  /** Live files and kept revisions. */
+  files: number;
+  chunks: { collection: string; count: number; bytes: number }[];
+  clients: { clientId: string; deviceId: string; lastSeen: number }[];
+}
+
+/**
+ * A chunk row of a page with where its bytes are: the Worker reads them from R2 and the zip carries
+ * them, so these two members never reach a JSON export.
+ */
+export interface ExportChunkSource {
+  chunkId: string;
+  storedBytes: number;
+  key: string;
+  ssecKey?: string;
+}
+
+export type ExportPageResult =
+  | { part: "summary"; summary: ExportSummary | null }
+  | { part: "records"; rows: ExportedRecord[]; next: number | null }
+  | { part: "parked"; rows: ExportedParked[]; next: number | null }
+  | {
+      part: "files";
+      rows: ExportedFile[];
+      next: [string, string, number] | null;
+    }
+  | { part: "chunks"; rows: ExportChunkSource[]; next: string | null };
 
 export interface ExportDocument {
   product: string;
@@ -439,6 +501,7 @@ export type CloudSyncReply =
       next: string | null;
     }
   | { op: "exportAll"; document: ExportDocument | null }
+  | { op: "exportPage"; result: ExportPageResult }
   | { op: "absorb"; changed: number; skipped?: number; meter?: OpMeter }
   | { op: "deleteAll"; deleted: boolean };
 
