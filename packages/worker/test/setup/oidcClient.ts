@@ -37,10 +37,10 @@ async function emptyIsolate(): Promise<void> {
   (await import("../../src/platform/testReset.js")).runResets();
 }
 
-beforeAll(async () => {
-  if (mocksModules) vi.resetModules();
-  await emptyIsolate();
-});
+// At evaluation, not in a hook: the test file's own imports resolve right after this file does.
+if (mocksModules) vi.resetModules();
+
+beforeAll(emptyIsolate);
 
 afterAll(async () => {
   vi.restoreAllMocks();
