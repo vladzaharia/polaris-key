@@ -20,7 +20,10 @@ import type {
   SaveTransfer,
   WriteOptions,
 } from "@polaris-key/client-core/sync";
-import type { SyncCollection } from "@polaris-key/client-core/sync";
+import type {
+  CloudSyncExport,
+  SyncCollection,
+} from "@polaris-key/client-core/sync";
 import type { FileRevision } from "@polaris-key/protocol/sync";
 import type { Json } from "@polaris-key/client-core/cloud-sync";
 import type {
@@ -49,6 +52,25 @@ export type CloudSyncEvent = SyncEvent | ConflictStreamEvent;
 export type IdentityNote =
   | { kind: "signedIn"; subject: string }
   | { kind: "signedOut" };
+
+/** What `cloudSync.export()` takes in a browser (sync.export, WIRE-CONTRACT-V5 §13.12). */
+export interface BrowserExportOptions {
+  /** Also write each file's kept revisions (default false). */
+  includeRevisions?: boolean;
+  /** Abort the export: nothing is kept, a `sink` is aborted, and the call rejects with `cancelled`. */
+  signal?: AbortSignal;
+  /**
+   * Where to stream the archive, for instance the writable of a `showSaveFilePicker()` handle.
+   * Without it the archive is built in memory as a Blob (at most 256 MiB: a larger export is
+   * refused, `sync-export-too-large`, before anything is read). The SDK writes to it and closes
+   * it, aborts it on an error or a cancel, and never keeps it.
+   */
+  sink?: WritableStream<Uint8Array>;
+}
+
+/** What `cloudSync.export()` answers: the archive's facts, and the Blob when no `sink` was given.
+ *  The SDK keeps neither the Blob nor the sink once the call settles; revoke any object URL you make. */
+export type BrowserExport = CloudSyncExport & { blob?: Blob };
 
 /**
  * The saves of the signed-in person (sync.saves, U-22.7): records with one file each, over Cloud
@@ -118,6 +140,14 @@ export interface CloudSyncClient {
   conflicts(): MergeRequest[];
   /** Whether the cloud held nothing at the person's first pull; `null` before one (or signed out). */
   cloudEmpty(): boolean | null;
+  /**
+   * Make a readable, NOT encrypted copy of the synced data (sync.export): a zip as a Blob, or
+   * streamed into `options.sink`. Say so to the person first. Refuses with `account_required`,
+   * `sync-locked`, `sync-encryption-pinned`, `cancelled`, `sync-export-too-large` and
+   * `sync-export-failed` (`reason` `destination`, `network` or `busy`: one export per client).
+   * Throws the typed unsupported where Cloud Sync cannot run (the desktop bridge too).
+   */
+  export(options?: BrowserExportOptions): Promise<BrowserExport>;
   /** The status may have moved (a send finished, a record was followed); read `status()`. */
   onStatus(listener: () => void): () => void;
   /**
@@ -176,6 +206,10 @@ export function unsupportedCloudSync(
     onConflict: () => () => undefined,
     conflicts: () => [],
     cloudEmpty: () => null,
+    export: () =>
+      Promise.reject(
+        new UnsupportedError({ ...unsupported, feature: Feature.syncExport }),
+      ),
     onStatus: () => () => undefined,
     // Nothing runs here, so there is nothing to wire.
     attach: async () => undefined,
@@ -279,6 +313,10 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
     },
     conflicts: () => real?.conflicts() ?? [],
     cloudEmpty: () => real?.cloudEmpty() ?? null,
+    export: async (o) =>
+      src.enabled()
+        ? (await ready()).export(o)
+        : (off().export(o) as Promise<never>),
     onStatus: (l) => (statusListeners.add(l), () => statusListeners.delete(l)),
     attach: async () => {
       if (src.enabled()) await (await ready()).attach();

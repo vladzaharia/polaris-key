@@ -11,7 +11,11 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import type { Unsupported } from "@polaris-key/client-core";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import { safeSignInUrl } from "../core/signInUrl.js";
-import type { SyncStatus } from "../core/cloudSync.js";
+import type {
+  BrowserExport,
+  BrowserExportOptions,
+  SyncStatus,
+} from "../core/cloudSync.js";
 import type { SettingSync } from "../core/localConfig.js";
 import { useConfigSetting, useCtx, type UseConfigSetting } from "./hooks.js";
 import { unsupportedOf } from "./unsupportedOf.js";
@@ -63,6 +67,15 @@ export interface UseCloudSync {
   offer: SignInOffer | null;
   /** Send what is waiting now (bounded) and save the journal. Resolves to the status after. */
   flush: () => Promise<SyncStatus>;
+  /**
+   * Make a readable, NOT encrypted copy of the synced data (sync.export): a zip as `blob`, or
+   * streamed into `options.sink` (a `showSaveFilePicker()` writable) with no blob. Say so to the
+   * person first. The hook keeps neither the Blob nor the sink after it settles. A browser has no
+   * path, so there is no destination argument. Rejects with the typed unsupported where Cloud Sync
+   * cannot run, and with `account_required`, `sync-locked`, `sync-encryption-pinned`, `cancelled`,
+   * `sync-export-too-large` or `sync-export-failed` (`reason` `destination`, `network`, `busy`).
+   */
+  export: (options?: BrowserExportOptions) => Promise<BrowserExport>;
   dismissOffer: () => void;
 }
 
@@ -120,6 +133,16 @@ export function useCloudSync(): UseCloudSync {
     setView(read());
     return status;
   }, [client, read]);
+  const exportData = useCallback(
+    async (options?: BrowserExportOptions) => {
+      try {
+        return await client.export(options);
+      } finally {
+        setView(read());
+      }
+    },
+    [client, read],
+  );
   const dismissOffer = useCallback(() => setOffer(null), []);
-  return { ...view, offer, flush, dismissOffer };
+  return { ...view, offer, flush, export: exportData, dismissOffer };
 }

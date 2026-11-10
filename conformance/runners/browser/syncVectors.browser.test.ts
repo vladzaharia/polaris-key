@@ -1,4 +1,4 @@
-// @pkey-feature sync.files.delta sync.e2e.recovery
+// @pkey-feature sync.files.delta sync.e2e.recovery sync.export
 //
 // The browser conformance runner for `conformance/corpus/v2/sync-vectors.json` (WIRE-CONTRACT-V5
 // section 13.10), mirroring `../node/syncVectors.test.ts` through WebCrypto in a real engine.

@@ -2326,7 +2326,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     ],
   },
   "sync.e2e": { status: "implemented", service: "sync", na: [] },
-  "sync.export": { status: "planned", service: "sync", na: [] },
+  "sync.export": { status: "implemented", service: "sync", na: [] },
   "connect.identity": { status: "implemented", service: "connect", na: [] },
   "connect.noise": { status: "implemented", service: "connect", na: [] },
   "connect.protocol": { status: "implemented", service: "connect", na: [] },
@@ -2651,4 +2651,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "f5fc8bbcb3b483aac007789dd2ab4b0b912e8a26c7bb8e8e94759a257e2c7247";
+  "b871182a512e1c3c42fd2da8bc665f1f0067827db4a776fc8378dce2c7dd9d62";

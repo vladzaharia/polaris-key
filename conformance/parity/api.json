@@ -4557,7 +4557,7 @@
           "planned": "U-51"
         },
         "react": {
-          "planned": "U-51",
+          "spelling": "useCloudSync().export",
           "shape": "hook",
           "reason": "a browser has no path: the hook's export (useCloudSync().export, spelled by U-51.4) takes options and answers a Blob, or writes to options.sink; the desktop bridge answers unsupported"
         },

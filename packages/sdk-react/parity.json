@@ -689,9 +689,8 @@
       "note": "A browser app or desktop renderer is not a server; the backend uses @polaris-key/server (SP-55)."
     },
     "sync.export": {
-      "status": "planned",
-      "wp": "U-51",
-      "note": "U-51.1 registered the feature; this SDK's slice implements it. The desktop bridge answers the typed N/A (the host serves no Cloud Sync verb on bridge v4)."
+      "status": "implemented",
+      "note": "useCloudSync().export(options) over adapter.cloudSync.export (ui-core browser/sdk/browser/cloudSync/export.ts, loaded on first use): flush, pull from the start until more is false, then client-core's exportToSink into a Blob (refused over 256 MiB before anything is read) or the caller's WritableStream (the File System Access picker's), closed at the end and aborted on an error or a cancel. The SDK keeps neither the Blob nor the stream after the call. The end-to-end keys come from the ring vault's non-extractable handle through exportKeys (the root's bytes are never read) and a lock ends the export. The desktop bridge and the local adapter answer the typed N/A (the host serves no Cloud Sync verb on bridge v4). test/cloudSyncExport.test.ts, test/cloudSyncExportHook.test.tsx; exportCases in the browser conformance runner."
     }
   }
 }

@@ -346,6 +346,22 @@ export class RingEngine implements KeyringClient {
     return guardFileCodec(inner, () => this.held && this.rootGen === gen);
   }
 
+  /** The port and root input the device export derives with (see `KeyringClient.exportKeys`). */
+  async exportKeys(): Promise<{
+    port: SyncCryptoPort;
+    root: Uint8Array;
+    alive(): boolean;
+  } | null> {
+    const gen = this.rootGen;
+    const keys = this.held ? await this.ringKeys() : null;
+    if (keys === null || gen !== this.rootGen || !this.held) return null;
+    const { port, root } = await keys.withRoot(async (p, r) => ({
+      port: p,
+      root: r,
+    }));
+    return { port, root, alive: () => this.held && this.rootGen === gen };
+  }
+
   /** The derived keys the sealing codec takes, or null while this device holds no root. */
   async ringKeys(): Promise<RingKeys | null> {
     const rec = await (await this.vault()).get();
