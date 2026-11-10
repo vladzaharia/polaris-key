@@ -36,19 +36,23 @@ const SIZES := [
 	["750x1334@2", Vector2i(750, 1334), 2.0, [0.0, 20.0, 0.0, 0.0], 2.0],
 ]
 
+## The fewest frames the first-focus probe waits.
+const FOCUS_MIN_FRAMES := 3
+
+## The shorter side, in logical pixels, up to which a size is reach-sensitive.
+const REACH_SHORT_SIDE := 720.0
+
+
+## Frames the probes waited, by kind (settle, first focus, reach): the matrix's cost is frames, and the
+## suite prints these so a change to a probe shows what it saved. Not a check.
+static var frames := {"settle": 0, "settles": 0, "first_focus": 0, "reach": 0, "save_conflict": 0}
+
 ## Whether a size row of SIZES applies to `screen` (a row with a sixth member lists the screens it is
 ## held for; every other row applies to every screen but those HELD_BACK lists for it).
 static func applies(row: Array, screen: String) -> bool:
 	if (HELD_BACK.get(row[0], []) as Array).has(screen):
 		return false
 	return row.size() < 6 or (row[5] as Array).has(screen)
-
-
-## The fewest frames the first-focus probe waits.
-const FOCUS_MIN_FRAMES := 3
-
-## The shorter side, in logical pixels, up to which a size is reach-sensitive (REACH_PROBED).
-const REACH_SHORT_SIDE := 720.0
 
 
 ## Whether the probes that spend frames to move the focus (the first focus, the primary's reach through
@@ -593,10 +597,6 @@ const COLUMNS := {
 const WIDE_SCREENS := ["gate", "gate.error", "gate.revoked", "gate.channel", "activation", "gate.presented", "gate.presented_monogram", "gate.presented_long", "gate.presented_rtl"]
 const MOBILE_BODY_DP := 16
 const MOBILE_CONTROL_DP := 48
-
-## Frames the probes waited, by kind (settle, first focus, reach): the matrix's cost is frames, and the
-## suite prints these so a change to a probe shows what it saved. Not a check.
-static var frames := {"settle": 0, "settles": 0, "first_focus": 0, "reach": 0, "save_conflict": 0}
 
 var _sc = SCENARIOS.new()
 var _translations := {}
