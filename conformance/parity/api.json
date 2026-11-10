@@ -4567,9 +4567,7 @@
           "planned": "U-51",
           "labels": ["to", "options"]
         },
-        "kotlin": {
-          "planned": "U-51"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "U-51"
         }
@@ -4581,6 +4579,10 @@
       "kind": "method",
       "feature": "sync.export",
       "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "reason": "Kotlin cancels by cancelling the coroutine (or the Java future) that runs the export"
+        },
         "godot": {
           "planned": "U-51",
           "sdkOnly": true,

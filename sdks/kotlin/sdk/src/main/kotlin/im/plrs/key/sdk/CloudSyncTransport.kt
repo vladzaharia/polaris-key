@@ -13,6 +13,7 @@ package im.plrs.key.sdk
 import im.plrs.key.core.CoreContext
 import im.plrs.key.core.JsonText
 import im.plrs.key.core.PolarisRequest
+import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.stringValue
 import im.plrs.key.core.sync.SyncResponse
 import kotlinx.coroutines.CancellationException
@@ -62,13 +63,18 @@ public object CloudSyncTransport {
         )
     }
 
-    /** Send one machine request; the answer is a [SyncResponse], or [SyncResponse.TRANSPORT]. */
-    public suspend fun send(core: CoreContext, req: JsonObject, bound: String? = null): SyncResponse {
-        val wire = prepared(core, req, bound) ?: return SyncResponse.TRANSPORT
+    /** The raw answer to one machine request, or null when nothing is sent (no token, not a sync route, another person) or no answer came. */
+    internal suspend fun exchange(core: CoreContext, req: JsonObject, bound: String? = null): PolarisResponse? {
+        val wire = prepared(core, req, bound) ?: return null
         // Any failure to get an answer is "nothing was processed"; no message is kept (it could name a URL).
-        val res = runCatching { core.transport.send(wire) }
+        return runCatching { core.transport.send(wire) }
             .onFailure { if (it is CancellationException) throw it }
             .getOrNull()
+    }
+
+    /** Send one machine request; the answer is a [SyncResponse], or [SyncResponse.TRANSPORT]. */
+    public suspend fun send(core: CoreContext, req: JsonObject, bound: String? = null): SyncResponse {
+        val res = exchange(core, req, bound)
         return if (res == null) SyncResponse.TRANSPORT else answer(res.status, res.body)
     }
 
