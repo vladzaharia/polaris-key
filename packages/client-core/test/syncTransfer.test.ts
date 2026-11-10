@@ -244,8 +244,9 @@ describe("TransferEngine upload", () => {
   ])(
     "refuses a finalize answer whose %s is not the one begun",
     async (_n, change) => {
-      for (const data of [small, big]) {
+      for (const data of [small, parts5]) {
         const s = new FakeServer();
+        smallParts(s);
         const orig = s.finalize;
         s.finalize = async (t, r) => {
           const reply = await orig(t, r);
@@ -261,8 +262,9 @@ describe("TransferEngine upload", () => {
   );
 
   it("refuses a finalize answer whose version is not above a numeric base (whole mode, single and multipart)", async () => {
-    for (const data of [small, big]) {
+    for (const data of [small, parts5]) {
       const s = new FakeServer();
+      smallParts(s);
       const orig = s.finalize;
       // The answer names the very version the caller based its write on.
       s.finalize = async (t, r) => {
@@ -314,7 +316,7 @@ describe("TransferEngine upload", () => {
 
   it("journals parts in ascending order whichever finishes first", async () => {
     const s = new FakeServer();
-    s.partBytes = 8 * MIB;
+    smallParts(s);
     s.delay = (n) => 30 - n * 5; // 5 finishes first, then 4, …
     const seen: number[][] = [];
     const j = memoryJournal();
@@ -324,14 +326,14 @@ describe("TransferEngine upload", () => {
       return put(id, rec);
     };
     const { e } = engine(s, j);
-    await e.upload(await request(big));
+    await e.upload(await request(parts5));
     for (const d of seen) expect(d).toEqual([...d].sort((a, b) => a - b));
     expect(seen.some((d) => d.length === 5)).toBe(true);
   });
 
   it("resumes from the journal after a crash mid-multipart, sending only the missing parts", async () => {
     const s = new FakeServer();
-    s.partBytes = 8 * MIB;
+    smallParts(s);
     const j = memoryJournal();
     // First run: parts 1 and 2 land, then the process dies on part 3 (an unrecoverable throw).
     s.hook = (kind, n) => {
@@ -339,7 +341,7 @@ describe("TransferEngine upload", () => {
       return undefined;
     };
     const first = engine(s, j, { maxAttempts: 1 });
-    await expect(first.e.upload(await request(big))).rejects.toMatchObject({
+    await expect(first.e.upload(await request(parts5))).rejects.toMatchObject({
       reason: "retries-exhausted",
     });
     const rec = (await j.get("t1")) as TransferJournalRecord;
@@ -353,24 +355,25 @@ describe("TransferEngine upload", () => {
     s.calls = [];
     s.partPuts = [];
     const second = engine(s, j);
-    const out = await second.e.upload(await request(big));
+    const out = await second.e.upload(await request(parts5));
     expect(s.begins).toBe(1);
     expect(s.calls[0]).toBe("status");
     for (const n of rec.done) expect(s.partPuts).not.toContain(n);
     expect(s.partPuts.length).toBe(5 - rec.done.length);
-    expect(out.size).toBe(big.length);
+    expect(out.size).toBe(parts5.length);
     expect(await j.list()).toEqual([]);
   });
 
   it("resends a part the journal calls done but the server lost", async () => {
     const s = new FakeServer();
+    smallParts(s);
     const j = memoryJournal();
     s.hook = (kind, n) => {
       if (kind === "putPart" && n === 5) throw new Error("killed");
       return undefined;
     };
     const first = engine(s, j, { maxAttempts: 1 });
-    await expect(first.e.upload(await request(big))).rejects.toBeInstanceOf(
+    await expect(first.e.upload(await request(parts5))).rejects.toBeInstanceOf(
       TransferError,
     );
     const rec = (await j.get("t1")) as TransferJournalRecord;
@@ -378,13 +381,14 @@ describe("TransferEngine upload", () => {
     s.uploads.get(rec.uploadId)!.parts.delete(2);
     s.hook = () => undefined;
     s.partPuts = [];
-    await engine(s, j).e.upload(await request(big));
+    await engine(s, j).e.upload(await request(parts5));
     expect(s.partPuts).toContain(2);
     expect(s.partPuts).not.toContain(1);
   });
 
   it("finalize's upload_incomplete resends the named parts", async () => {
     const s = new FakeServer();
+    smallParts(s);
     const j = memoryJournal();
     let dropped = false;
     const finalize = s.finalize;
@@ -395,7 +399,7 @@ describe("TransferEngine upload", () => {
       }
       return finalize(t, r);
     };
-    await engine(s, j).e.upload(await request(big));
+    await engine(s, j).e.upload(await request(parts5));
     expect(s.partPuts.filter((n) => n === 3).length).toBe(2);
     expect(s.calls.filter((c) => c === "finalize").length).toBe(2);
   });
@@ -453,8 +457,9 @@ describe("TransferEngine upload", () => {
 
   it("begins afresh when the journal record is past expiresAt, without asking the server", async () => {
     const s = new FakeServer();
+    smallParts(s);
     const j = memoryJournal();
-    const req = await request(big);
+    const req = await request(parts5);
     await j.put("t1", {
       v: 1,
       id: "t1",
@@ -463,7 +468,7 @@ describe("TransferEngine upload", () => {
       record: "rec1",
       uploadId: "old",
       mode: "multipart",
-      partBytes: 8 * MIB,
+      partBytes: MIB,
       done: [1, 2],
       sha256: req.sha256,
       size: req.size,
@@ -477,7 +482,7 @@ describe("TransferEngine upload", () => {
   });
 
   it("reads the journal's expiresAt as epoch milliseconds: a seconds-sized value is long past, a future one is resumed", async () => {
-    const req = await request(big);
+    const req = await request(parts5);
     const record = (expiresAt: number) => ({
       v: 1 as const,
       id: "t1",
@@ -486,7 +491,7 @@ describe("TransferEngine upload", () => {
       record: "rec1",
       uploadId: "old",
       mode: "multipart" as const,
-      partBytes: 8 * MIB,
+      partBytes: MIB,
       done: [1, 2],
       sha256: req.sha256,
       size: req.size,
@@ -495,6 +500,7 @@ describe("TransferEngine upload", () => {
     });
     // As seconds this would be a day from now; as milliseconds it is January 1970.
     const secs = new FakeServer();
+    smallParts(secs);
     const j1 = memoryJournal();
     await j1.put("t1", record(Math.floor(Date.now() / 1000) + 86_400));
     await engine(secs, j1).e.upload(req);
@@ -502,11 +508,12 @@ describe("TransferEngine upload", () => {
     expect(secs.begins).toBe(1);
     // A day ahead in milliseconds is live: the server is asked and no new session begins.
     const live = new FakeServer();
+    smallParts(live);
     live.uploads.set("old", {
       sha256: req.sha256,
       size: req.size,
       mode: "multipart",
-      partBytes: 8 * MIB,
+      partBytes: MIB,
       parts: new Map([
         [1, new Uint8Array(1)],
         [2, new Uint8Array(1)],
@@ -567,7 +574,7 @@ describe("TransferEngine upload", () => {
 
   it("honours Retry-After, holding every part, and backs off without it", async () => {
     const s = new FakeServer();
-    s.partBytes = 8 * MIB;
+    smallParts(s);
     let first = true;
     s.hook = (kind, n) => {
       if (kind === "putPart" && n === 1 && first) {
@@ -581,8 +588,8 @@ describe("TransferEngine upload", () => {
     let clock = 1_000_000;
     const { e, sleeps } = engine(s, memoryJournal(), { now: () => clock });
     // The fake clock does not move, so every part sent after the 429 waits the full hold.
-    const out = await e.upload(await request(big));
-    expect(out.size).toBe(big.length);
+    const out = await e.upload(await request(parts5));
+    expect(out.size).toBe(parts5.length);
     expect(sleeps.length).toBeGreaterThan(0);
     expect(sleeps.every((ms) => ms === 7000)).toBe(true);
     expect(s.partPuts.filter((n) => n === 1).length).toBe(2);
@@ -693,6 +700,7 @@ describe("TransferEngine upload", () => {
 
   it("stops on an abort signal and keeps the journal for a resume", async () => {
     const s = new FakeServer();
+    smallParts(s);
     const j = memoryJournal();
     const ac = new AbortController();
     s.delay = () => 5;
@@ -701,7 +709,7 @@ describe("TransferEngine upload", () => {
       return undefined;
     };
     await expect(
-      engine(s, j).e.upload(await request(big, { signal: ac.signal })),
+      engine(s, j).e.upload(await request(parts5, { signal: ac.signal })),
     ).rejects.toMatchObject({ reason: "aborted" });
     const rec = (await j.get("t1")) as TransferJournalRecord;
     expect(rec.state).toBe("uploading");
