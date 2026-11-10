@@ -254,6 +254,7 @@ async function check(
   width: number,
   text200 = false,
 ) {
+  // brittle-ok: a CSP report has no completion signal; the beat lets late reports arrive first
   await page.waitForTimeout(400);
   if (SHOTS)
     await page.screenshot({
