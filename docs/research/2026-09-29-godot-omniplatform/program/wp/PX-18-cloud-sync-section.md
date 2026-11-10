@@ -28,6 +28,32 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/U-01b.md`](../plans/U-01b.md) §11: one quota number per tier, shown read-only with a link to Tiers, plus the ceiling and the pause state. Labels are read server-side.
 
+## Corrections (2026-11-09)
+
+The lead's U-12/PX-18 slice plan splits this package into PX-18.1 (the read-only card, its section,
+nav entries and ⌘K action), PX-18.2 (export and removal from the card, the portal e2e states and
+baselines) and PX-18.3 (PORTAL.md, Help and the BUILT UX pass). Checked against the code, these win
+over the text below:
+
+- The toggle is `services.sync` on the product view, not `services.cloudSync`. The data source is
+  U-12.5's `GET /api/products/{product}/sync` (sizes and times only; a device is its label).
+- End users never see "Cloud Sync": the section and card are **Sync Across Devices**
+  (`account.cloudSync` in the kit copy catalog).
+- PORTAL.md is a current-state document, not the UI and API spec: §4.4 and §7 say the `sync` route
+  is reserved. The "§8 (360 px)" and "§9 (one h1)" references predate its rewrite; the checks live in
+  PORTAL.md §6 and the portal e2e quality suite.
+- One card shared with U-11a is not possible: U-11a built a console-only `Storage.tsx`. The shared
+  parts are `ui/charts/Meter` and `storageTone`, which now lives beside it in `Meter.tsx`.
+- Mockups 31 and 32 predate the Polaris Locker branding. Their Cloud-Sync-only "Delete synced data"
+  is undone by the next push from any signed-in device, so the card's destructive action is the
+  whole-product "Remove my data from <Product>" (PX-18.2). Their per-device "Up to date" and
+  "Preferences only" have no data behind them: a device shows its last sync time only. Their "What's
+  synced" data classes are not shown: the summary never names a collection.
+- The ⌘K action is offered only when this tab already holds the top match's product view with
+  sync on (library items carry no services).
+- "Delete requires step-up" is the existing Remove my data route's gate, used from the card in
+  PX-18.2.
+
 ## Goal
 
 Products with Cloud Sync show `CloudSyncCard` (storage bar, data classes, per-device last sync, export, delete with step-up) with a `#/p/:product/sync` section, a TOC entry and a ⌘K action; products without the service show none of it.

@@ -39,8 +39,8 @@ function summary(over: Partial<PortalCloudSync> = {}): PortalCloudSync {
     empty: false,
     state: "active",
     pausedSince: null,
-    usage: { bytes: 142_000_000 },
-    quota: { bytes: 1_000_000_000, tierLabel: "Pro" },
+    usage: { bytes: 142 * 1024 ** 2 },
+    quota: { bytes: 1024 ** 3, tierLabel: "Pro" },
     devices: [
       { label: "Studio PC", lastSyncAt: NOW_S - 3 * DAY },
       { label: "Mara's MacBook Pro", lastSyncAt: NOW_S - 180 },
@@ -166,6 +166,8 @@ describe("Sync Across Devices on the product page (PX-18.1)", () => {
     );
     expect(within(card).queryByRole("meter")).toBeNull();
     expect(within(card).queryByRole("list")).toBeNull();
+    // Nothing is stored, so there is nothing yet to say who can read.
+    expect(card.textContent).not.toMatch(/Only your devices/);
     expect(await axeViolations()).toEqual([]);
   });
 
@@ -188,7 +190,7 @@ describe("Sync Across Devices on the product page (PX-18.1)", () => {
 
   it("full: the meter is at the limit and the card says what happens to new changes", async () => {
     mockFetch(
-      routes(true, summary({ state: "full", usage: { bytes: 1_000_000_000 } })),
+      routes(true, summary({ state: "full", usage: { bytes: 1024 ** 3 } })),
     );
     renderPortal();
     await page();

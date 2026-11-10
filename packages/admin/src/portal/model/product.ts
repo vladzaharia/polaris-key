@@ -108,9 +108,22 @@ export interface SyncStorage {
   tier: string | null;
 }
 
-/** A size in the downloads' units (`formatSize`), without a bare ".0" ("1 GB"); zero is "0 B". */
+const SYNC_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
+
+/**
+ * A synced size: counted in 1,024s, as the limits are set (the 256 MB default, a 1 GB tier), so a
+ * limit reads as the round number its tier gives, and named the way people know the units.
+ * Whole numbers from 10, else one decimal without a bare ".0" ("1 GB", "1.2 GB", "142 MB").
+ */
 function syncSize(bytes: number): string {
-  return (formatSize(Math.max(0, bytes)) ?? "0 B").replace(/\.0 /, " ");
+  let n = Math.max(0, bytes);
+  let i = 0;
+  while (n >= 1024 && i < SYNC_UNITS.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  const v = n >= 10 || i === 0 ? Math.round(n) : Math.round(n * 10) / 10;
+  return `${v} ${SYNC_UNITS[i]}`;
 }
 
 /** How much of the person's limit their synced data uses, in words and as a meter. */

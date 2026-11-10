@@ -499,28 +499,42 @@ describe("Sync Across Devices (PX-18)", () => {
     ).toEqual(["license", "devices", "sync", "package", "data"]);
   });
 
+  const MB = 1024 ** 2;
+  const GB = 1024 ** 3;
+
   it("reads the use against the limit, with the tone warning from 80 % and danger at the limit", () => {
-    const at = (bytes: number, limit = 1_000_000_000, tierLabel = "Pro") =>
+    const at = (bytes: number, limit = GB, tierLabel = "Pro") =>
       syncStorage({ usage: { bytes }, quota: { bytes: limit, tierLabel } });
-    expect(at(142_000_000)).toEqual({
+    expect(at(142 * MB)).toEqual({
       text: "142 MB of 1 GB",
-      meter: { value: 142_000_000, max: 1_000_000_000, tone: "accent" },
+      meter: { value: 142 * MB, max: GB, tone: "accent" },
       tier: "Pro",
     });
-    expect(at(800_000_000).meter?.tone).toBe("warning");
-    expect(at(1_000_000_000).meter?.tone).toBe("danger");
+    expect(at(0.8 * GB).meter?.tone).toBe("warning");
+    expect(at(GB).meter?.tone).toBe("danger");
     // Over the limit: the reading says so, the meter stays full.
-    expect(at(1_200_000_000).text).toBe("1.2 GB of 1 GB");
+    expect(at(1.2 * GB).text).toBe("1.2 GB of 1 GB");
     expect(at(0).text).toBe("0 B of 1 GB");
+  });
+
+  it("counts in 1,024s, so a tier's limit reads as its round number", () => {
+    const text = (bytes: number, limit: number) =>
+      syncStorage({
+        usage: { bytes },
+        quota: { bytes: limit, tierLabel: null },
+      }).text;
+    expect(text(5_000, 256 * MB)).toBe("4.9 KB of 256 MB");
+    expect(text(999, 2 * GB)).toBe("999 B of 2 GB");
+    expect(text(10.4 * MB, 64 * MB)).toBe("10 MB of 64 MB");
   });
 
   it("drops the tier when none set the limit, and the meter when the limit is zero", () => {
     expect(
       syncStorage({
         usage: { bytes: 5_000 },
-        quota: { bytes: 268_435_456, tierLabel: null },
-      }),
-    ).toMatchObject({ text: "5 KB of 268 MB", tier: null });
+        quota: { bytes: 256 * MB, tierLabel: null },
+      }).tier,
+    ).toBeNull();
     expect(
       syncStorage({
         usage: { bytes: 5_000 },
@@ -529,7 +543,7 @@ describe("Sync Across Devices (PX-18)", () => {
     ).toBeNull();
     expect(
       syncStorage({
-        usage: { bytes: 42_000_000 },
+        usage: { bytes: 42 * MB },
         quota: { bytes: 0, tierLabel: "Free" },
       }),
     ).toEqual({ text: "42 MB stored", meter: null, tier: "Free" });

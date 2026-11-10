@@ -137,7 +137,7 @@ function SyncBody({
           ) : null}
         </>
       )}
-      {summary.encryption === "e2e" ? (
+      {summary.encryption === "e2e" && !summary.empty ? (
         <p className="flex items-start gap-2 text-sm text-fg-muted">
           <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
           {t("locker.sync.private")}
