@@ -108,6 +108,33 @@ const meta = (w: World, k: string) =>
   )?.value;
 
 describe("GET /api/products/<product>/sync", () => {
+  it("shows a device label only while the device is still bound to this person", async () => {
+    const { w, ada } = await setup();
+    expect((await push(w, [mut("ui.theme", "set", { value: 1 })])).status).toBe(
+      200,
+    );
+    await setDeviceLabel(w.db, SLUG, DEVICE, "Ada's Mac");
+    await w.db.run(
+      "UPDATE devices SET subject = ? WHERE product = ? AND device_id = ?",
+      "ps_someoneElse",
+      SLUG,
+      DEVICE,
+    );
+    const body = await (
+      await portal(w, `/api/products/${SLUG}/sync`, ada)
+    ).text();
+    expect(body).not.toContain("Ada's Mac");
+    expect(JSON.parse(body).devices[0].label).toBe("Unnamed device");
+  });
+
+  it("is rate limited per account and product", async () => {
+    const { w, ada } = await setup();
+    let last = 200;
+    for (let i = 0; i < 61; i++)
+      last = (await portal(w, `/api/products/${SLUG}/sync`, ada)).status;
+    expect(last).toBe(429);
+  });
+
   it("is the published shape and carries sizes and times only", async () => {
     const { w, ada } = await setup();
     expect(

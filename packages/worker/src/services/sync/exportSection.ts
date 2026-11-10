@@ -52,8 +52,13 @@ export const INLINE_RECORDS_BYTES = 4 * 1024 * 1024;
 export const INLINE_FILES_ROWS = 2000;
 /** Rows read from the object per page. */
 const PAGE = 500;
-/** A person's chunk index is held in memory while the zip is written; past this the zip is refused. */
-const MAX_CHUNK_ROWS = 250_000;
+/**
+ * What one export may ask the Worker's subrequest budget for: two calls a file (its pointer and
+ * the R2 read) and one a chunk (a page row carries the source), with margin for the pages. Past
+ * it the zip is refused up front (`413`), never cut off halfway. It also keeps the file and chunk
+ * indexes, which are held while the zip is written, a few hundred KiB.
+ */
+export const MAX_EXPORT_SUBREQUESTS = 8_000;
 
 const enc = new TextEncoder();
 const size = (v: unknown): number => JSON.stringify(v).length;
@@ -196,12 +201,16 @@ async function* chunksOf(body: ReadableStream): AsyncGenerator<Uint8Array> {
 /** Opens one R2 object of this person's rows; throws when it is missing or not the recorded size. */
 async function openObject(
   bucket: R2Bucket | undefined,
+  prefixes: readonly string[],
   key: string,
   ssecKey: string | undefined,
   bytes: number,
 ): Promise<ReadableStream> {
   if (!bucket)
     throw new Error("cloud sync export: the file store is not bound");
+  // Only this person's objects (their own subject, or one folded into it): nothing else is read.
+  if (!prefixes.some((p) => key.startsWith(p)))
+    throw new Error("cloud sync export: an object outside the person's prefix");
   const obj = await bucket.get(key, {
     ...(ssecKey !== undefined ? { ssecKey } : {}),
   });
@@ -223,7 +232,8 @@ async function* ndjson(
   }
 }
 
-const json = (v: unknown): Uint8Array => enc.encode(JSON.stringify(v, null, 2));
+/** Compact: the indexes are held whole, so they are not indented. */
+const json = (v: unknown): Uint8Array => enc.encode(JSON.stringify(v));
 
 export async function exportEntries(ctx: Ctx, pin: DoPin): Promise<ZipEntry[]> {
   const s = await summaryOf(ctx, pin);
@@ -231,9 +241,8 @@ export async function exportEntries(ctx: Ctx, pin: DoPin): Promise<ZipEntry[]> {
   const bucket = fileStoreOf(ctx.env);
   const chunkRows = s.chunks.reduce((n, c) => n + c.count, 0);
   if (
-    s.files + chunkRows + s.recordCollections.length + s.chunks.length >
-      ZIP_MAX_ENTRIES ||
-    chunkRows > MAX_CHUNK_ROWS
+    s.files + s.recordCollections.length + s.chunks.length > ZIP_MAX_ENTRIES ||
+    2 * s.files + chunkRows > MAX_EXPORT_SUBREQUESTS
   )
     throw new ZipError("entries", "the Cloud Sync data has too many entries");
   if ((s.files > 0 || chunkRows > 0) && !bucket)
@@ -303,7 +312,13 @@ export async function exportEntries(ctx: Ctx, pin: DoPin): Promise<ZipEntry[]> {
             throw new Error("cloud sync export: a file is gone");
           const file = r.outcome.file;
           return chunksOf(
-            await openObject(bucket, file.key, file.ssecKey, file.size),
+            await openObject(
+              bucket,
+              s.keyPrefixes,
+              file.key,
+              file.ssecKey,
+              file.size,
+            ),
           );
         },
       });
@@ -342,6 +357,7 @@ export async function exportEntries(ctx: Ctx, pin: DoPin): Promise<ZipEntry[]> {
               for (const row of page.rows) {
                 const body = await openObject(
                   bucket,
+                  s.keyPrefixes,
                   row.key,
                   row.ssecKey,
                   row.storedBytes,

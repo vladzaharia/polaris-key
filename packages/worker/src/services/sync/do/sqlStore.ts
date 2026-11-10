@@ -26,7 +26,7 @@
  * A row moves between `settings` and `tombstones` as `deleted` flips; its members stay put.
  *
  * Lazy: an object that was never written has no tables. Reads answer from "no schema" as an empty
- * store without creating anything (a pull never writes: T14); `prepare(true)` creates the schema
+ * store without creating anything (a pull writes no row but its client binding's `last_seen`, at most hourly: `touchClient`); `prepare(true)` creates the schema
  * (the first write) and `prepare(false)` only migrates one that already exists. Every statement
  * is parameterised: nothing here concatenates a value into SQL.
  */
@@ -345,7 +345,7 @@ export class SqlStore implements SyncStore {
    * merge's sense: `writes` and `seq` do not move, so the absorb guard and every cursor are
    * unaffected, and nothing is stamped on an absorbed or erased object or on an unknown client.
    */
-  touchClient(clientId: string, minAgeSeconds: number): void {
+  touchClient(clientId: string, deviceId: string, minAgeSeconds: number): void {
     if (!this.hasSchema()) return;
     if (
       this.getMeta("absorbed_into") !== undefined ||
@@ -354,9 +354,10 @@ export class SqlStore implements SyncStore {
       return;
     const now = this.clock();
     this.run(
-      `UPDATE clients SET last_seen = ? WHERE client_id = ? AND last_seen <= ?`,
+      `UPDATE clients SET last_seen = ? WHERE client_id = ? AND device_id = ? AND last_seen <= ?`,
       now,
       clientId,
+      deviceId,
       now - minAgeSeconds,
     );
   }

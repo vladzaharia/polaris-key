@@ -8926,13 +8926,21 @@ behind the portal's session, CSRF header, five-minute step-up, rate limit and au
 - **Ciphertext stays ciphertext.** In end-to-end mode the zip carries the stored bytes, which the
   Worker cannot open; in server mode it opens a file with the person's SSE-C key, as the file `GET`
   does. Entry names are indexes (`files/<n>.bin`), never the blinded ids the data holds.
-- **Bounded.** A page is at most 500 rows or about 1 MiB; one R2 read is open at a time. The JSON
-  holds records only up to 4 MiB and file metadata up to 2,000 rows, else it names the zip. A zip over
-  65,000 entries (or 250,000 chunk rows) is `413 export_too_large`; a stored object that is missing
-  or the wrong size stops the stream, so a truncated archive is never taken for a whole one.
-- **Residual.** A file replaced, or a chunk collected, between the listing and its read ends the
-  download; the person starts it again. A chunk row under an SSE-C key the object no longer holds is
-  left out of the container.
+- **Bounded.** A page is at most 500 rows or about 1 MiB and one R2 read is open at a time; the file
+  and chunk indexes (`files.json`, `chunks.json`, written compactly) are held whole, which the
+  caps keep to a few hundred KiB. The JSON holds records only up to 4 MiB and file metadata up to
+  2,000 rows, else it names the zip. A zip is refused with `413 export_too_large` before anything
+  is sent above 65,000 entries or above 8,000 subrequests (two a file, one a chunk), so a download
+  never runs out of subrequests halfway.
+- **Fails closed.** A page of an object that was erased or absorbed after the listing is a `410`, a
+  stored object that is missing, the wrong size or outside the person's own R2 prefix (`u/<product>/
+<subject>/`, or a subject folded into it) is not read, and each stops the stream, so a truncated
+  archive is never taken for a whole one.
+- **Residual.** The export is not a point-in-time snapshot: a record changed while it streams can
+  appear at two versions in its ndjson (take the last row per id), and `data.json` is read earlier.
+  Bytes are checked against the row's size, not its SHA-256. A file replaced, or a chunk collected,
+  between the listing and its read ends the download; the person starts it again. A chunk row under
+  an SSE-C key the object no longer holds is left out of the container.
 
 ### Cloud Sync delta files: T31 and T32 (U-37)
 

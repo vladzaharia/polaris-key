@@ -462,13 +462,24 @@ export class CloudSyncDO implements DurableObject {
           return reply({ error: "bad_request" }, 400);
         this.migrateIfBehind();
         // Nothing to export from an absorbed, erased or never-written object.
-        const live =
-          this.pinned() !== null &&
+        const pin =
           this.store.getMeta("absorbed_into") === undefined &&
-          this.store.getMeta("erased_at") === undefined;
+          this.store.getMeta("erased_at") === undefined
+            ? this.pinned()
+            : null;
+        const live = pin !== null;
+        // A page of an object that went away mid-export is an error, never an empty page: the
+        // stream stops instead of finishing short.
+        if (!live && op.page.part !== "summary")
+          return objectError("absorbed", 410);
         return reply({
           op: "exportPage",
-          result: exportPage(this.store, op.page, live),
+          result: exportPage(
+            this.store,
+            op.page,
+            pin,
+            absorbedFrom(this.fileHost()),
+          ),
         });
       }
       case "absorb":
@@ -881,7 +892,11 @@ export class CloudSyncDO implements DurableObject {
     // U-12.5: the portal shows when each device last synced, and a device that only pulls would
     // never move `last_seen` (a push does). Hourly, and not a write the merge guard counts.
     if (op.clientId)
-      this.store.touchClient(op.clientId, CLIENT_SEEN_STEP_SECONDS);
+      this.store.touchClient(
+        op.clientId,
+        op.deviceId,
+        CLIENT_SEEN_STEP_SECONDS,
+      );
     return reply({ op: "pull", outcome, meter: this.store.takeMeter() });
   }
 

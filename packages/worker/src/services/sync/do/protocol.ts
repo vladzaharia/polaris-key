@@ -346,6 +346,8 @@ export interface ExportSummary {
   settings: ExportedSetting[];
   /** Every collection that holds a record, a tombstone, a file or a chunk, in name order. */
   collections: ExportCollection[];
+  /** The R2 key prefixes this person's objects live under: their own subject and the subjects folded into it. */
+  keyPrefixes: string[];
   /** Collections that hold a record row or a tombstone: the zip has a records file for each. */
   recordCollections: string[];
   tombstones: number;
