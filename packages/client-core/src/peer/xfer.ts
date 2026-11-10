@@ -436,7 +436,7 @@ export class XferDeliveredMemory {
 }
 
 export interface XferMachineOptions {
-  /** The session's mode: transfers run in `a` and `c` only. */
+  /** The session's mode: transfers run in `a`, `c` and `l` only (§15.11, "Where it runs"). */
   mode: string;
   /** The session's capabilities (the intersection of both payloads). */
   caps: readonly string[];
@@ -448,7 +448,7 @@ export interface XferMachineOptions {
   free?: () => number | null;
   /** No handler: every `OFFER` is declined. */
   handler: XferHandler | null;
-  /** The link's categories (mode c). */
+  /** The link's categories (modes c and l). */
   categories?: readonly string[];
   /** The remote static key: 32 raw bytes (the certificate's `agreeKey`, or the pinned contact key). */
   peerKey: Uint8Array;
@@ -805,7 +805,7 @@ export class XferMachine {
   private onRecord(type: number, body: Uint8Array, more: boolean): void {
     // Step 1: the mode and the capability.
     if (
-      (this.o.mode !== "a" && this.o.mode !== "c") ||
+      (this.o.mode !== "a" && this.o.mode !== "c" && this.o.mode !== "l") ||
       !this.o.caps.includes(XFER_CAP)
     ) {
       this.out.close = "peer_not_allowed";
@@ -879,9 +879,9 @@ export class XferMachine {
       kept?.held === true
     )
       return refuse("busy");
-    // Step 5: the category, before the person is asked.
+    // Step 5: the category, before the person is asked (a link: mode c or l).
     if (
-      this.o.mode === "c" &&
+      (this.o.mode === "c" || this.o.mode === "l") &&
       (f.cat === undefined || !(this.o.categories ?? []).includes(f.cat))
     )
       return refuse("category");

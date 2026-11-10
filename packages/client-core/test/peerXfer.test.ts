@@ -397,6 +397,35 @@ describe("the machine's edges", () => {
     expect(m.nextDeadline()).toBeNull();
   });
 
+  it("runs in mode l with a link's category rule, and refuses modes v, p and q", () => {
+    const body = (cat?: string): Uint8Array =>
+      xferOfferBody({
+        id: idOf(3),
+        size: 0,
+        sha256: sha,
+        chunk: 1,
+        ...(cat !== undefined ? { cat } : {}),
+      });
+    const local = (cats: string[]) => mk({ mode: "l", categories: cats });
+    // A category the link did not approve is refused before the person is asked.
+    const refused = local(["photos"]).receive(5, XFER.OFFER, body("music"));
+    expect(refused.ask).toBeUndefined();
+    expect(refused.send).toEqual([
+      { t: "CANCEL", id: idOf(3), reason: "category" },
+    ]);
+    expect(
+      local(["photos"]).receive(5, XFER.OFFER, body()).ask,
+    ).toBeUndefined();
+    // One it approved is asked.
+    expect(
+      local(["photos"]).receive(5, XFER.OFFER, body("photos")).ask,
+    ).toBeDefined();
+    for (const mode of ["v", "p", "q"])
+      expect(mk({ mode }).receive(5, XFER.OFFER, body()).close).toBe(
+        "peer_not_allowed",
+      );
+  });
+
   it("refuses a duplicate or a fifth offer locally and rejects bad host arguments", () => {
     const m = mk();
     for (let i = 1; i <= 4; i++)
