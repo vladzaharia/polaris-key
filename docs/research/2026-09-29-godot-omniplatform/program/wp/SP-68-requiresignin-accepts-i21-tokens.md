@@ -1,16 +1,20 @@
 # SP-68 `requireSignIn()` accepts I-21 issuer tokens (`Authorization: Bearer`, RS256 JWKS)
 
-| Field       | Value                                                                                                                                                                           |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (framework drop-ins (2026-10-08))                                                                                                |
-| Size        | 0.5–0.8 engineer-weeks                                                                                                                                                          |
-| Depends on  | [I-21](I-21-product-issuer.md), [SP-55](SP-55-polaris-key-server-express-hono-next.md), [SP-56](SP-56-python-server-drop-ins.md), [SP-57](SP-57-kotlin-server-drop-ins-ktor.md) |
-| Unblocks    | none                                                                                                                                                                            |
-| Role        | `pkey-sdk-porter`                                                                                                                                                               |
-| Plan mode   | no                                                                                                                                                                              |
-| Gates       | `all-sdks`, `drift-gate`                                                                                                                                                        |
-| Human input | none                                                                                                                                                                            |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                       |
+| Field       | Value                                                                                                                                                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (framework drop-ins (2026-10-08))                                                                                                                                         |
+| Size        | 0.5–0.8 engineer-weeks                                                                                                                                                                                                   |
+| Depends on  | [I-21](I-21-product-issuer.md), [I-21b](I-21b-identity-access-token.md), [SP-55](SP-55-polaris-key-server-express-hono-next.md), [SP-56](SP-56-python-server-drop-ins.md), [SP-57](SP-57-kotlin-server-drop-ins-ktor.md) |
+| Unblocks    | none                                                                                                                                                                                                                     |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                                        |
+| Plan mode   | no                                                                                                                                                                                                                       |
+| Gates       | `all-sdks`, `drift-gate`                                                                                                                                                                                                 |
+| Human input | none                                                                                                                                                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                |
+
+## Amendment (plan I-20, 2026-11-09)
+
+[`plans/I-20.md`](../plans/I-20.md) §3.4, §4 and §7: this package depends on I-21b (the SDKs' `identity.accessToken()`), not only on I-21. It appends `issuerTokenCases` to `backend-matrix.json` (`backendMatrixVersion` 1 to 2, `pnpm gen corpus`) with the RS256 JWKS cases, and verifies `Bearer <at+jwt>` as §3.4 specifies. `server.signin` gains the `issuerToken` family.
 
 ## Goal
 

@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-2)                                                                                       |
 | Size        | 0.4–0.6 engineer-weeks                                                                                                                                             |
 | Depends on  | [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-11](I-11-portal-library.md), [I-12](I-12-console-users.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-21](I-21-product-issuer.md), [I-23](I-23-app-profiles.md)                                                               |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-21](I-21-product-issuer.md), [I-21b](I-21b-identity-access-token.md), [I-23](I-23-app-profiles.md)                      |
 | Role        | `pkey-wire-planner` (planning only)                                                                                                                                |
 | Plan mode   | yes: planning only; writes `plans/I-20.md`, which needs human approval (merging the plan PR)                                                                       |
 | Gates       | plan mode; human approval                                                                                                                                          |

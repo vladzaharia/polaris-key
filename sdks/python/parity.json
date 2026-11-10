@@ -142,8 +142,8 @@
     },
     "identity.oidc": {
       "status": "planned",
-      "wp": "I-15",
-      "note": "Browser redirect sign-in waits on the native redirect-token route (I-15, SDK parity pass wire item W4). Until then identity.sign_in.start() answers a device-code session whose reopen() opens verification_uri_complete in the system browser and whose wait() polls /identity/auth/device/poll (identity.devicecode); the old /identity/auth/poll is retired and the Worker no longer serves it."
+      "unowned": true,
+      "note": "Superseded by identity.redirect.native (I-15 shipped the native redirect token route and I-15b the SDK flow); nothing is left to build under this row, which the registry can retire."
     },
     "identity.devicecode": {
       "status": "implemented"
@@ -559,8 +559,8 @@
     },
     "connect.local": {
       "status": "planned",
-      "unowned": true,
-      "note": "CC-29.9 and CC-29.10 build it (WIRE-CONTRACT-V5 section 15.12): core/peer_cpace.py, core/peer_local.py and connect/local_links.py; the local-only profile refuses it (local-only). The program registry has no CC-29 row yet; this names wp CC-29 once it does."
+      "wp": "CC-29",
+      "note": "CC-29.9 and CC-29.10 build it (WIRE-CONTRACT-V5 section 15.12): core/peer_cpace.py, core/peer_local.py and connect/local_links.py; the local-only profile refuses it (local-only)."
     },
     "connect.app": {
       "status": "implemented",

@@ -8,6 +8,14 @@ description: "Changes to the SDKs, the CLI, the manifest and the API, newest fir
 
 Changes to the SDKs, the CLI, the manifest and the API, newest version first. The tables of what each removal is replaced by are in [Upgrade to 0.9](/docs/build/upgrade-to-0-9/).
 
+## 0.10.4
+
+### Godot PKeySaves.resolve is removed
+
+Removed · 2026-11-05 · sync · godot
+
+**Action required:** a Godot game that settled a save conflict with `PKeySaves.resolve` now takes the merge request the conflict hands it and calls `keep` on it. Every SDK settles a conflict the same way now.
+
 ## 0.10.1
 
 ### PKEY_ADMIN_COOKIE is removed

@@ -9116,12 +9116,6 @@
       "from": "identity.accept_sign_in",
       "to": "identity.signIn.session.wait",
       "package": "I-10a"
-    },
-    {
-      "sdk": "godot",
-      "from": "PKeySaves.resolve",
-      "to": "cloudSync.mergeRequest.keep",
-      "package": "U-08"
     }
   ]
 }

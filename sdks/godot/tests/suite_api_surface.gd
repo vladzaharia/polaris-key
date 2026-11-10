@@ -259,7 +259,6 @@ const REMOVED := [
 	["identity.sign_in_pending", "res://addons/polaris_key/services/identity.gd", "sign_in_pending"],
 	["identity.sign_in_confirm", "res://addons/polaris_key/services/identity.gd", "sign_in_confirm"],
 	["identity.sign_in_finished", "res://addons/polaris_key/services/identity.gd", "sign_in_finished"],
-	["PKeySaves.resolve", "res://addons/polaris_key/services/cloud_sync/saves.gd", "resolve"],
 ]
 
 

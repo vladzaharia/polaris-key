@@ -100,7 +100,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `connect.relay` | The relay: ticket, WebSocket channel, quotas | transcripts + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `connect.links` | Inter-account links: mode p pairing and contacts | transcripts + `peer-matrix.json` `contact` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | ✓ | web, desktop-bridge: runtime |
 | `connect.transfer` | Direct Transfer: data between Cloud Connect peers | `peer-matrix.json` `xfer` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `connect.local` | Local links: pairing by a code or QR without an account (mode q) and later LAN sessions (mode l) | unit + transcripts (CC-29) | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | planned (unowned) | planned (unowned); N/A (web: runtime) | planned (unowned) | web, desktop-bridge: runtime |
+| `connect.local` | Local links: pairing by a code or QR without an account (mode q) and later LAN sessions (mode l) | unit + transcripts (CC-29) | planned (CC-29) | N/A (web, desktop-bridge: runtime) | planned (CC-29) | planned (CC-29) | planned (CC-29b); N/A (web: runtime) | planned (CC-29) | web, desktop-bridge: runtime |
 | `connect.app` | The cloudConnect API: start, stop, peers, devices, open, onChannel | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Devices and identity
@@ -114,7 +114,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | web: runtime |
 | `telemetry.updates` | Update-health events: the journalled update events on devices/report | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | web: runtime |
 | `devices.attest` | Device attestation (App Attest, Play Integrity) raising the trust level | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓; N/A (macos: runtime); N/A (ios: outlet) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (web: runtime); N/A (ios: outlet); N/A (android: outlet) | ✓; N/A (jvm: runtime); N/A (android: outlet) | node, python, web, desktop-bridge, macos, windows, linux, jvm, dotnet, tauri: runtime; any: outlet |
-| `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (I-15) | ✓ | planned (I-15) | planned (I-15) | planned (I-15) | planned (I-15) | — |
+| `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
 | `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | web: runtime |
 | `identity.devicelabel` | Device label sent on device-code sign-in, activation and registration (WIRE-CONTRACT-V4 §12.7.1) | `device-label.json` + transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
 | `identity.toggle` | Identity off for a product: every sign-in entry fails fast, licences keep working | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
@@ -225,10 +225,10 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 
 | SDK | Feature | Note |
 | --- | --- | --- |
-| Node | `connect.local` | CC-29.7 and CC-29.8 build it (WIRE-CONTRACT-V5 §15.12): client.cloudConnect.localLinks over a LAN service that runs with no account, and the pkey.connect.local.v1 store. The program registry has no CC-29 row yet; this names wp CC-29 once it does. |
-| Python | `connect.local` | CC-29.9 and CC-29.10 build it (WIRE-CONTRACT-V5 section 15.12): core/peer_cpace.py, core/peer_local.py and connect/local_links.py; the local-only profile refuses it (local-only). The program registry has no CC-29 row yet; this names wp CC-29 once it does. |
-| Swift | `connect.local` | CC-29.11 and CC-29.12 build it (WIRE-CONTRACT-V5 section 15.12): PeerCPace.swift and PeerLocal.swift in PolarisKeyCore, and ConnectLocalLinks.swift; scanning on iOS and iPadOS is CC-29K.3. The program registry has no CC-29 row yet; this names wp CC-29 once it does. |
+| Node | `identity.oidc` | Superseded by identity.redirect.native (I-15 shipped the native redirect token route and I-15b the SDK flow); nothing is left to build under this row, which the registry can retire. |
+| Python | `identity.oidc` | Superseded by identity.redirect.native (I-15 shipped the native redirect token route and I-15b the SDK flow); nothing is left to build under this row, which the registry can retire. |
+| Swift | `identity.oidc` | Superseded by identity.redirect.native (I-15 shipped the native redirect token route and I-15b the SDK flow); nothing is left to build under this row, which the registry can retire. |
 | Swift | `server.config` | No package yet: the framework drop-ins plan (§5.7) gives serverClient() to Node and Python only (SP-63). The normal client with a memory store works on a server today. |
-| Godot | `connect.local` | CC-29b.G1 to CC-29b.G4 build it after CC-19b and CC-20b (WIRE-CONTRACT-V5 section 15.12); web has no LAN. The program registry has no CC-29b row yet; this names wp CC-29b once it does. |
-| Kotlin | `connect.local` | CC-29.13 and CC-29.14 build it on the JVM (WIRE-CONTRACT-V5 section 15.12): :core peer/CPace.kt and peer/Local.kt, and :sdk ConnectLocalLinks.kt; Android follows in CC-29b.A. The program registry has no CC-29 row yet; this names wp CC-29 once it does. |
+| Godot | `identity.oidc` | Superseded by identity.redirect.native (I-15 shipped the native redirect token route and I-15b the SDK flow); nothing is left to build under this row, which the registry can retire. |
+| Kotlin | `identity.oidc` | Superseded by identity.redirect.native (I-15 shipped the native redirect token route and I-15b the SDK flow); nothing is left to build under this row, which the registry can retire. |
 | Kotlin | `server.config` | No package yet: the framework drop-ins plan (§5.7) gives serverClient() to Node and Python only (SP-63). The normal client with a memory store works on a server today. |
